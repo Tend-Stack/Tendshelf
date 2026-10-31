@@ -1,13 +1,15 @@
 # Architecture
 
-One Go process serves pages, fragments, a small JSON API and audio. SQLite (WAL) holds everything that
-is not an audio file or a cached image. ffmpeg/ffprobe are child processes. No Node, no SPA.
+One Go process serves pages, fragments, a small JSON API, audio and read-along text. SQLite (WAL) holds everything that
+is not an audio file or a cached image. ffmpeg/ffprobe are child processes, and so is the optional alignment worker for read-along
+([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)). No Node, no SPA.
 
 ## Invariants
 
 1. Library audio files are never written, renamed or deleted, except by the write-details job, which
    verifies before swapping and keeps a backup until the user confirms or undoes.
-2. Copy-protected files are never decoded, streamed, remuxed or analysed.
+2. Copy-protected files are never decoded, streamed, remuxed or analysed. The same holds for ebooks:
+   library ebooks are read-only, uploads are kept byte-identical, protected ebooks are refused.
 3. Every read of a book, file, cover, progress row or search result passes one authorization function
    (`share.Can`), and list/search queries filter by grants in SQL.
 4. An older binary never opens a newer database writable; it refuses and leaves the file byte-identical.
@@ -17,6 +19,9 @@ is not an audio file or a cached image. ffmpeg/ffprobe are child processes. No N
 7. Background work is a persisted job; a restart resumes or re-queues it, never silently repeats a
    file swap.
 8. The server binary builds with `CGO_ENABLED=0` and contains no JavaScript build output.
+9. A read-along time is measured from the audio or marked as a gap, never interpolated; an alignment is
+   keyed by recipe, model hashes, edition text hash and audio quick hashes, so a re-run is reproducible.
+10. A text location is stored beside the position (invariant 6), never instead of it.
 
 ## Packages
 
@@ -36,11 +41,15 @@ is not an audio file or a cached image. ffmpeg/ffprobe are child processes. No N
 | `internal/jobs` | Persisted job queue: leases, per-kind concurrency, cancellation, progress events, restart recovery. |
 | `internal/web` | templ pages/components, static assets (embedded), HTMX handlers, security headers, the page router. |
 | `internal/api` | JSON API v1 for native/mobile clients and the player's sync calls. Same services as `web`. |
+| `internal/ebook` | Ebook ingestion (R1): format detection, copy-protection check, one parser per format (EPUB 2/3 with SMIL, PDF text layer, TXT/Markdown, DOCX, HTML, FB2, DRM-free MOBI/AZW3), the canonical document `tendshelf-doc-v1` with stable IDs and source offsets, sentence segmenter, pairing scores. No HTTP, no model. |
+| `internal/align` | Read-along alignment (R3): normaliser, emissions cache, greedy CTC transcript, block mapping and anchors, CTC forced alignment, confidence, timing files, the `align.book` job; Media Overlays import/export (R6). Pure Go. |
+| `internal/align/runtime` | Checks runtime components (hashes, `--describe`, licence), launches and owns the loopback emissions worker (`tendshelf-emissions-v1`), idle stop, parent-death cleanup. The only code that starts it. |
 | `internal/research` | Optional Research module (P6): clip extraction, measurements, export. Registered only when enabled. |
 | `desktop/` (P5) | Separate Go module: Wails v3 shell. Not imported by the server. |
 
 Dependency direction: `web`, `api` → services (`library`, `progress`, `share`, `users`, `metadata`,
-`scan`, `jobs`, `research`) → `db`, `media`. Services never import `web` or `api`.
+`scan`, `jobs`, `research`, `ebook`, `align`) → `db`, `media`. `align` uses `ebook` (documents) and
+`media` (ffmpeg decode); `ebook` imports neither. Services never import `web` or `api`.
 
 ## Data model
 
@@ -54,8 +63,8 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `sessions` | `token_hash` PK, `user_id`, `created_at`, `expires_at`, `last_seen_at`, `user_agent` | Cookie sessions. |
 | `devices` | `id`, `user_id`, `name`, `kind` ('web','pwa','desktop','mobile'), `token_hash` UNIQUE NULL, `created_at`, `last_seen_at`, `revoked_at` | Device tokens for the API. |
 | `invites` | `id`, `token_hash` UNIQUE, `created_by`, `email` NULL, `role` ('member','guest'), `grants_json`, `expires_at`, `max_uses`, `use_count`, `revoked_at`, `created_at` | Accepting creates a user and its grants in one transaction. |
-| `share_links` | `id`, `token_hash` UNIQUE, `book_id`, `created_by`, `expires_at` NOT NULL, `password_hash` NULL, `revoked_at`, `created_at` | Anonymous listen-only link for one book; progress kept per browser in local storage only. |
-| `grants` | `id`, `user_id`, `library_id` NULL, `book_id` NULL, `can_download`, `expires_at` NULL, `created_by`, `created_at` | CHECK exactly one of `library_id`/`book_id`. Owner/admin implicitly see all. |
+| `share_links` | `id`, `token_hash` UNIQUE, `book_id`, `created_by`, `expires_at` NOT NULL, `password_hash` NULL, `can_read` (R5, default 0), `revoked_at`, `created_at` | Anonymous listen-only link for one book; progress kept per browser in local storage only. |
+| `grants` | `id`, `user_id`, `library_id` NULL, `book_id` NULL, `can_download`, `can_read` (R5, default 0), `expires_at` NULL, `created_by`, `created_at` | CHECK exactly one of `library_id`/`book_id`. Owner/admin implicitly see all. |
 | `libraries` | `id`, `name`, `created_at`, `scan_interval_min` | |
 | `library_folders` | `id`, `library_id`, `path` UNIQUE, `created_at` | |
 | `books` | `id`, `library_id`, `root_path` UNIQUE, `title`, `sort_title`, `subtitle`, `description`, `publisher`, `published_year`, `language`, `isbn`, `asin`, `abridged`, `dramatized`, `explicit`, `duration_ms`, `cover_id`, `refused_reason` NULL, `added_at`, `updated_at`, `missing_since` NULL | Resolved values (cache of the merge). |
@@ -68,15 +77,23 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `book_labels` | `book_id`, `kind` ('genre','tag'), `value` | |
 | `covers` | `id`, `book_id`, `source`, `mime`, `width`, `height`, `sha256`, `path`, `created_at` | Files under `<data>/covers/`; thumbnails under `<data>/cache/thumbs/`. |
 | `online_cache` | `provider`, `query_key`, `response_json`, `fetched_at`; PK (`provider`,`query_key`) | Expires after 7 days. |
-| `progress` | `user_id`, `book_id`, `position_ms`, `duration_ms`, `finished_at` NULL, `client_updated_at`, `server_updated_at`, `device_id`; PK (`user_id`,`book_id`) | |
+| `progress` | `user_id`, `book_id`, `position_ms`, `duration_ms`, `finished_at` NULL, `client_updated_at`, `server_updated_at`, `device_id`, `position_source` ('audio','text', R5), `text_edition_id` NULL, `text_sid` NULL, `text_off` NULL; PK (`user_id`,`book_id`) | A text update sets `position_ms` to the sentence start (or, in a gap, the previous timed sentence's end). |
 | `listening_sessions` | `id`, `user_id`, `book_id`, `device_id`, `started_at`, `ended_at`, `start_ms`, `end_ms`, `listened_ms`, `speed` | Statistics (P4). |
-| `bookmarks` | `id`, `user_id`, `book_id`, `position_ms`, `title`, `created_at`, `updated_at`, `deleted_at` | Soft delete so offline clients sync deletions. |
-| `notes` | `id`, `user_id`, `book_id`, `position_ms` NULL, `body`, `created_at`, `updated_at`, `deleted_at` | |
+| `bookmarks` | `id`, `user_id`, `book_id`, `position_ms`, `title`, `edition_id` NULL, `sid` NULL (R4), `created_at`, `updated_at`, `deleted_at` | Soft delete so offline clients sync deletions. `sid` set when made in the text. |
+| `notes` | `id`, `user_id`, `book_id`, `position_ms` NULL, `highlight_id` NULL (R4), `body`, `created_at`, `updated_at`, `deleted_at` | A note on a text passage hangs on its highlight. |
 | `shelves` / `shelf_items` | `id`, `owner_id`, `name`, `shared` (P3), `created_at` / `shelf_id`, `book_id`, `idx`, `added_at` | |
 | `jobs` | `id`, `kind`, `state` ('queued','running','done','failed','cancelled','held'), `payload_json`, `result_json`, `error_code`, `error_text`, `attempts`, `max_attempts`, `lease_until`, `not_before`, `progress_json`, `created_by`, `created_at`, `updated_at` | |
 | `file_writes` | `id`, `job_id`, `audio_file_id`, `state` ('copying','verifying','swapped','confirmed','undone','failed'), `original_path`, `backup_path`, `temp_path`, `before_sha256`, `after_sha256`, `audio_hash`, `created_at`, `updated_at` | The write-details ledger; drives restart recovery and Undo. |
 | `audit_log` | `id`, `at`, `user_id`, `action`, `target`, `detail_json` | Logins, invites, grants, file writes, research toggles. |
 | `books_fts` | FTS5 over title, subtitle, authors, narrators, series, description | Notes are per user: searched with a user filter, not in this index. |
+| `user_settings` | `user_id`, `key`, `value_json`, `updated_at`; PK (`user_id`,`key`) | The one per-user settings store (playback preferences, `reader.v1`, chosen edition per book `edition.<bookID>`). |
+| `ebook_files` (R1) | `id` (`ebf_`), `sha256` UNIQUE, `size`, `format` CHECK IN ('epub','pdf','txt','md','docx','html','fb2','mobi','azw3'), `origin` ('library','upload'), `path` UNIQUE, `library_folder_id` NULL, `mtime_ns`, `quick_hash`, `refused_reason` NULL ('drm','unsupported','damaged','too_large','no_text'), `added_at`, `missing_since` NULL | Library ebooks read-only; uploads under `<data>/ebooks/`. |
+| `editions` (R1) | `id` (`ed_`), `ebook_file_id`, `book_id` NULL (NULL = unpaired), `doc_sha256`, `parse_recipe`, `title`, `authors_json`, `language`, `isbn`, `asin`, `layout` ('reflow','page'), `chapter_count`, `word_count`, `has_overlays`, `is_default`, `pair_source` ('folder','upload','identifier','title','user'), `pair_score` REAL, `paired_by` NULL, `paired_at`, `created_at`, `updated_at` | Partial unique index: one `is_default` per book. Document file `<data>/text/<doc_sha256>.json.gz`. |
+| `edition_chapters` (R1) | `edition_id`, `idx`, `title`, `src`, `front`, `word_count`, `sentence_count`, `text_sha256`; PK (`edition_id`,`idx`) | `text_sha256` over the normalised text drives re-alignment of changed chapters only. |
+| `runtime_components` (R3) | `id` (`rt_`), `kind` ('emissions-model'), `name`, `language`, `revision`, `model_sha256`, `files_json` (path, size, sha256), `python_path`, `worker_sha256`, `licence_spdx`, `licence_url`, `source_url`, `checked_at`, `disabled` | Only checked rows are usable; the licence is shown on `/admin/runtimes` and `/about`. |
+| `alignments` (R3) | `id` (`al_`), `edition_id`, `book_id`, `source` ('model','overlay'), `recipe`, `runtime_id` NULL, `model_sha256` NULL, `audio_key`, `doc_sha256`, `state` CHECK IN ('queued','emitting','aligning','done','partial','failed','cancelled','held'), `labels_json` (`abridged`, `different_edition`), `job_id`, `coverage` REAL, `sentences_total`, `sentences_timed`, `error_code` NULL, `created_at`, `finished_at` NULL, `superseded_by` NULL | `audio_key` = SHA-256 of the ordered audio `quick_hash` list. The newest `done`/`partial` row per edition is used. |
+| `alignment_chapters` (R3) | `alignment_id`, `chapter_idx`, `state` ('pending','aligned','unmatched','failed'), `chapter_key`, `start_ms` NULL, `end_ms` NULL, `sentences_total`, `sentences_timed`, `mean_confidence` REAL; PK (`alignment_id`,`chapter_idx`) | Timing file `<data>/align/<chapter_key>.json.gz`, shared by every alignment with the same key. |
+| `highlights` (R4) | `id` (`hl_`), `user_id`, `book_id`, `edition_id`, `start_sid`, `start_off`, `end_sid`, `end_off`, `quote`, `quote_prefix`, `quote_suffix`, `start_ms` NULL, `end_ms` NULL, `alignment_id` NULL, `colour` ('yellow','green','blue','pink'), `created_at`, `updated_at`, `deleted_at` | Text range and time range. Private to `user_id`. Soft delete for offline sync. |
 | `research_*` (P6) | `research_sources`, `research_clips`, `research_measurements` | Created by the P6 migration. |
 
 ## Media handling
@@ -105,10 +122,13 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 ## Background jobs
 
 Kinds: `scan.library`, `media.probe`, `media.cover`, `media.compat`, `metadata.local`,
-`metadata.online` (only user-triggered), `media.write_details`, `research.extract`, `research.measure`.
-A job runner per kind with bounded concurrency (probe 2, compat 1, write_details 1). Leases of 60 s
+`metadata.online` (only user-triggered), `media.write_details`, `research.extract`, `research.measure`,
+`ebook.ingest` (R1), `align.book` (R3, states and resume in [read-along.md](read-along.md) section 2),
+`align.export_overlays` (R6).
+A job runner per kind with bounded concurrency (probe 2, compat 1, write_details 1, ingest 1, align 1, export 1). Leases of 60 s
 renewed while running; on startup, expired `running` jobs return to `queued` except `write_details`,
-which goes to `held` until `file_writes` recovery decides. Cancellation via context. Progress is
+which goes to `held` until `file_writes` recovery decides, and `align.book`, which resumes from its
+emissions cache and finished chapters (a held alignment waits for Resume or Discard). Cancellation via context. Progress is
 written to `progress_json` at most once per second and read by `/hx/jobs/{id}` polling.
 
 ## HTTP routes
@@ -128,15 +148,26 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `/shelves`, `/shelves/{id}` | |
 | `/me` | Account, devices, playback preferences, downloads (P4), statistics (P4) |
 | `/invite/{token}`, `/s/{token}` | Accept an invite; anonymous share link |
+| `/books/{id}/text` (R1) | The book's text editions: upload, pairing, default edition, alignment status, export |
+| `/books/{id}/read?mode=readalong\|read\|focus&edition=&at=` (R4) | Reader inside the layout (player keeps playing) |
 | `/admin/users`, `/admin/libraries`, `/admin/jobs`, `/admin/settings`, `/admin/research` | Admin; research only when enabled |
+| `/admin/ebooks` (R2), `/admin/runtimes` (R3), `/about` (R3) | Unpaired and refused ebooks; word-timing runtime check and licences; credits and model licences |
 
 HTMX fragments (`/hx/...`): `GET /hx/libraries/{id}/items?cursor=&sort=&filter=` (infinite scroll),
 `GET /hx/search/suggest?q=`, `GET /hx/books/{id}/bookmarks`, `POST /hx/books/{id}/bookmarks`,
 `DELETE /hx/bookmarks/{id}`, `POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}`,
 `POST /hx/books/{id}/match` (starts lookup job), `GET /hx/books/{id}/compare?candidate=`,
-`POST /hx/books/{id}/apply`, `POST /hx/shelves/{id}/items`.
+`POST /hx/books/{id}/apply`, `POST /hx/shelves/{id}/items`. Read-along: `POST /hx/books/{id}/editions`
+(upload), `POST /hx/editions/{id}/pair`, `POST /hx/editions/{id}/unpair`, `POST /hx/editions/{id}/default`,
+`DELETE /hx/editions/{id}` (forgets the edition; deletes only an uploaded copy), `POST /hx/editions/{id}/alignments`,
+`POST /hx/alignments/{id}/cancel|resume|discard`, `GET /hx/editions/{id}/alignment`,
+`GET /hx/books/{id}/read/chapters/{idx}?edition=`, `GET /hx/books/{id}/read/toc?edition=`, `POST /hx/me/reader-settings`,
+`GET|POST /hx/books/{id}/highlights`, `PATCH|DELETE /hx/highlights/{id}`, `POST /hx/editions/{id}/exports/overlays`,
+`POST /hx/admin/runtimes/check`.
 
-Media and system: `GET /stream/{audioFileID}`, `GET /covers/{bookID}?w=320`, `GET /healthz`,
+Media and system: `GET /stream/{audioFileID}`, `GET /covers/{bookID}?w=320`,
+`GET /text/{editionID}/chapters/{idx}/timing.json` (ETag = chapter key), `GET /text/{editionID}/res/{resID}`
+(raster images only), `GET /text/{editionID}/original` and `GET /exports/{id}` (`download_text`), `GET /healthz`,
 `GET /sw.js`, `GET /manifest.webmanifest`, `GET /static/...` (embedded, immutable, hashed names).
 
 JSON API v1 (`/api/v1`, bearer device token or session cookie + CSRF):
@@ -144,12 +175,16 @@ JSON API v1 (`/api/v1`, bearer device token or session cookie + CSRF):
 `GET /libraries/{id}/books?cursor=&sort=`, `GET /books/{id}` (files, chapters, cover URLs),
 `GET /progress?since=`, `PUT /progress/{bookID}`, `POST /progress/batch`, `GET|POST /books/{id}/bookmarks`,
 `PATCH|DELETE /bookmarks/{id}`, `GET|POST /books/{id}/notes`, `PATCH|DELETE /notes/{id}`,
-`GET /search?q=`, `POST /sessions`. Errors: `{"error":{"code":"...","message":"..."}}` with codes
+`GET /search?q=`, `POST /sessions`, `GET /books/{id}/editions`, `GET /editions/{id}/chapters/{idx}` (text
+model JSON), `GET /editions/{id}/chapters/{idx}/timing`, `GET|POST /books/{id}/highlights`,
+`PATCH|DELETE /highlights/{id}`. Errors: `{"error":{"code":"...","message":"..."}}` with codes
 `unauthorized` 401, `forbidden` 403, `not_found` 404, `invalid` 400, `conflict` 409, `too_large` 413,
-`rate_limited` 429, `drm_refused` 422, `unavailable` 503. A forbidden book returns `not_found` to
+`rate_limited` 429, `drm_refused` 422 (audio and ebooks), `unsupported` 415 (ebook format), `not_ready` 409
+(no usable alignment yet), `unavailable` 503 (word-timing runtime missing). A forbidden book returns `not_found` to
 non-admins (no existence leak).
 
-**Progress update** body: `{"positionMs","durationMs","finished","clientUpdatedAt","deviceId"}`.
+**Progress update** body: `{"positionMs","durationMs","finished","clientUpdatedAt","deviceId"}`, plus optional
+`"text":{"editionId","sentenceId","offset"}` and `"source":"audio"|"text"` (R5).
 `clientUpdatedAt` is clamped to server time + 60 s; the update applies only if it is newer than the
 stored one. Response: `{"applied":bool,"progress":{...}}` (200 either way, so offline batches never fail).
 
@@ -166,6 +201,11 @@ stored one. Response: `{"applied":bool,"progress":{...}}` (200 either way, so of
 - Invites: link `/invite/{token}`, default expiry 7 days, default one use, optional email via SMTP.
   Share links `/s/{token}`: one book, expiry required (max 90 days), optional password, no account.
 - Passkeys (WebAuthn) later, added beside passwords.
+- Read-along actions (R5): `read_text` (reader page, chapter text, timing, images) needs `can_read` on the
+  grant or share link (default off: sharing a book shares listening only); `download_text` (original
+  ebook, overlay export) needs `can_read` and `can_download`; upload, pairing and alignment are owner/admin.
+  Without `read_text` every text route answers `not_found`. Highlights, notes and reader settings are
+  readable only by their own user, admins included.
 - Security headers: `Content-Security-Policy: default-src 'self'; img-src 'self' data:; media-src 'self'
   blob:; script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action
   'self'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`.
@@ -176,7 +216,19 @@ Service worker (`/sw.js`, plain JS) caches the app shell and visited pages. "Dow
 files in Cache Storage after `navigator.storage.persist()`; offline playback answers Range requests from
 the cached response. Progress, bookmarks and notes made offline queue in IndexedDB and go to
 `POST /api/v1/progress/batch` and the bookmark/note endpoints on reconnect. iOS storage limits and
-eviction must be measured and stated in the UI (guess: large books may be evicted on iOS).
+eviction must be measured and stated in the UI (guess: large books may be evicted on iOS). With
+`read_text` and an aligned edition, Download also stores chapter fragments, timing JSON and images
+(keyed by alignment ID); offline highlights queue with bookmarks and notes.
+
+## Read-along (R)
+
+Full design: [read-along.md](read-along.md). In short: `internal/ebook` turns a DRM-free ebook into an
+immutable canonical document with stable sentence IDs; `internal/align` decodes the audio with ffmpeg,
+asks the owned worker only for wav2vec2 CTC emissions (cached, resumable), then maps, anchors and
+force-aligns in Go and writes content-addressed per-chapter timing files; the reader page is templ +
+HTMX and `static/js/readalong.js` follows the player's global time with `requestAnimationFrame` and
+binary search over typed arrays. Storage per 10-hour book about 1-1.5 MB of text and timings plus a
+reconstructible emissions cache of about 58 MB (guesses, measured in R3).
 
 ## Desktop (P5)
 
@@ -203,6 +255,22 @@ Standard library only today. The first package (P0) needs:
 | `modernc.org/sqlite` (v1.60.1, already in the local module cache; TendVox uses it) | SQLite driver | Chosen over `mattn/go-sqlite3`: pure Go, so `CGO_ENABLED=0` cross-compiles to ARM NAS boxes, Windows, macOS and scratch containers; FTS5 is compiled in (checked in `lib/sqlite_linux_amd64.go`). Cost: slower than the C driver on heavy writes (guess 1.5-2x); fine for this workload. BSD-3 |
 | `htmx.min.js` 2.x, vendored to `internal/web/static/vendor/` | Interactivity | Download once from the official release, record version and SHA-256 in `NOTICES.md`; licence 0BSD (guess, read it from the release) |
 | `golang.org/x/crypto` (argon2) | Password hashing in P1 | BSD-3 |
+
+Read-along (phase R), each awaiting approval:
+
+| Module / file / runtime | Why | Note |
+| --- | --- | --- |
+| `golang.org/x/net/html` | HTML5 parsing of EPUB 2 XHTML, HTML files and MOBI/KF8 content (R1) | BSD-3; Go team |
+| `golang.org/x/text` (`unicode/norm`) | NFC normalisation for matching and alignment (R1, R3) | BSD-3; Go team |
+| PDF text-layer reader: candidate `github.com/ledongthuc/pdf`, or an own minimal reader | PDF import (R1) | BSD-3 (guess, read it); evaluate ToUnicode/CMap coverage on fixtures before choosing; the module may not be enough for complex PDFs (guess) |
+| Fonts vendored to `internal/web/static/fonts/` (woff2): Literata, Atkinson Hyperlegible Next, OpenDyslexic | Reader typography (R4) | SIL OFL 1.1 (guess for each; read it from the release); `NOTICES.md` rows |
+| Optional runtime, not shipped: Python 3.12 + `torch` CPU (2.8, as TendVox) + `transformers` + `safetensors` + `numpy` | The emissions worker (R3) | Owner-installed; BSD-3 / Apache-2.0 / Apache-2.0 / BSD-3 (guess for exact versions) |
+| Optional models, not shipped: `facebook/wav2vec2-base-960h` (English), `jonatasgrosman/wav2vec2-large-xlsr-53-spanish` (Spanish) | Emissions (R3) | Apache-2.0 per model cards (TendVox `docs/alignment-worker.md`); revision and file hashes pinned in `runtimes/align/models/*.json` |
+| Test-only, opt-in: epubcheck (Java) | Validate the overlay export (R6) | BSD-3 (guess); never in `make check` |
+
+Considered and not chosen: `github.com/clipperhouse/uax29` (sentence segmentation; own rules handle
+abbreviations better and stay versioned), `github.com/yuin/goldmark` (Markdown; only structure is
+needed), whisper.cpp or Parakeet as a second ASR runtime (see read-along.md section 2).
 
 Later, each with its own approval: `github.com/go-webauthn/webauthn` (passkeys), `github.com/fsnotify/fsnotify`
 (folder watcher), `github.com/wailsapp/wails/v3` (desktop module only), an OpenID Connect client.

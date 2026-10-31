@@ -20,6 +20,10 @@ Expected first entries (fill in when the port lands; do not pre-credit code that
 - **TendVox Extractor** (internal, same author): `extractor_details.py`, `extractor_online.py`,
   `extractor_db.py`, `extractor_pitch.py`, `extractor_measure.py`, `categories.json`. Those files
   themselves follow Audiobookshelf; keep both credits.
+- **TendVox** (internal, same author), for read-along (R3): `runtimes/alignment/worker.py` (basis of
+  `runtimes/align/worker.py`), `internal/review/fidelity_normalize.go` and the English number forms
+  (basis of the `tendshelf-normalize-v1` normaliser), the owned-server lifetime in
+  `internal/providers/alignment_server_linux.go`.
 
 ## Vendored files
 

@@ -18,7 +18,9 @@ was reused, extended or replaced.
   framework. Every new Go module needs operator approval and a row in `NOTICES.md` in the same commit.
   Approved so far: none (see "Dependencies awaiting approval" in `docs/architecture.md`).
 - **One server binary**, pure Go (`CGO_ENABLED=0` must build). Static assets and migrations are embedded
-  with `embed`. External programs: `ffmpeg` and `ffprobe` only, located via config or `PATH`.
+  with `embed`. External programs: `ffmpeg` and `ffprobe` only, located via config or `PATH`, plus the
+  optional owner-installed alignment worker for read-along, launched only by `internal/align/runtime`
+  (decision `docs/decisions/0001-read-along.md`). Tendshelf never downloads runtimes or models.
 - **templ** for HTML. Generated `*_templ.go` files are committed so `go build` works without the templ
   CLI; `make generate` regenerates them and CI fails if the tree changes afterwards. Pin the templ CLI
   version to the `github.com/a-h/templ` version in `go.mod`.
@@ -71,6 +73,9 @@ was reused, extended or replaced.
   as a backup and supports Undo. No other code path may write, rename or delete a library file.
 - Copy-protected files (`.aax`, `.aaxc`, `.aa`, `.m4p`, or streams ffprobe reports as encrypted) are
   listed as refused and never decoded, streamed or remuxed. Tendshelf never removes or works around DRM.
+- Ebook files (read-along text editions, `docs/read-along.md`) follow the same rules: library ebooks are
+  read-only, uploads are kept byte-identical, and copy-protected ebooks (Adobe ADEPT, Apple, Readium LCP,
+  encrypted EPUB content, PDF `/Encrypt`, encrypted MOBI, any KFX) are refused, never decrypted.
 - ffmpeg/ffprobe run with `-protocol_whitelist file,pipe` (and `-nostdin`), fixed argument lists (never
   a shell), a context deadline and output size limits.
 

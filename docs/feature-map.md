@@ -2,7 +2,8 @@
 
 Phases are defined in [roadmap.md](roadmap.md). "ABS" is Audiobookshelf 2.37.2 (server source read on
 2026-10-31: models, controllers and providers listed there); "Audible" is the Audible mobile app from
-general knowledge. Cells marked `?` are unverified guesses; check before quoting them publicly.
+general knowledge. "Kindle" is Amazon's Kindle apps with Whispersync for Voice and Immersion Reading,
+from general knowledge. Cells marked `?` are unverified guesses; check before quoting them publicly.
 
 | Feature | ABS | Audible | Tendshelf phase |
 | --- | --- | --- | --- |
@@ -12,7 +13,7 @@ general knowledge. Cells marked `?` are unverified guesses; check before quoting
 | Move/rename detection keeping progress | Yes (ino-based) | n/a | P1 (size + quick hash) |
 | Copy-protected files refused and shown as such | Partial? (plays only decrypted) | n/a | P1 |
 | Multiple libraries and folders | Yes | n/a | P1 |
-| Ebooks, comics | Yes | No | Not planned |
+| Standalone ebook library, comics | Yes (EPUB, PDF, MOBI, AZW3, CBR, CBZ) | No (Kindle is a separate app) | Not planned (ebooks only as a book's text edition, see Reading along) |
 | Podcasts (subscribe, download episodes) | Yes | Yes (Audible originals) | Later |
 | **Details and covers** | | | |
 | Details from folder names, file tags, sidecars (`.opf`, `.nfo`, `desc.txt`, `reader.txt`, `metadata.json`) | Yes | n/a | P1 (names, tags), P2 (sidecars) |
@@ -43,6 +44,25 @@ general knowledge. Cells marked `?` are unverified guesses; check before quoting
 | Mark finished / not started; reading status | Yes | Yes | P1 |
 | Cast to Chromecast / AirPlay | Chromecast (web) | Yes | Later (AirPlay works from Safari's own audio element) |
 | Car mode / big-button screen | No? | Removed? | P4 |
+| **Reading along** ([read-along.md](read-along.md)) | | Audible / Kindle | |
+| Add an ebook to an audiobook (text edition); several editions per book | Partial: one primary ebook per book (`Book.ebookFile`), other files supplementary | Partial: only a purchased Kindle edition matched to the Audible title | R1 (ingest), R2 (pairing, editions) |
+| Ebook formats | EPUB, PDF, MOBI, AZW3 (`globals.js`) | Kindle formats; EPUB, PDF, DOCX converted by Send to Kindle? | R1: EPUB 2/3, PDF (text layer, reflow or page view), TXT, Markdown, DOCX, HTML, FB2, DRM-free MOBI/AZW3 |
+| Copy-protected ebooks refused with a plain message | No? (no protection check found in 2.37.2 source) | n/a (store DRM) | R1 |
+| Automatic ebook-audiobook matching (folder, ISBN/ASIN, title + author), manual pairing | Partial (files in the same folder form one item) | Yes (by purchase) | R2 |
+| Read-along: sentence highlighted while listening, gentle auto-scroll | No (no code found in 2.37.2) | Yes (Immersion Reading; granularity ?) | R4 |
+| Word-level highlight | No | ? | R4 |
+| Tap a sentence to play from there | No | ? | R4 |
+| "Lost the place?" button back to the voice | No | ? | R4 |
+| Focus line (one sentence at a time, large type) | No | No? | R4 |
+| Alignment of the user's own files, computed locally | No | No (Amazon-matched titles only) | R3 |
+| Text not in the recording shown as such (abridged, other edition) | No | ? | R3, R4 |
+| Reader typography: fonts, size, spacing, margins, themes | Partial: sans/serif, font scale, line spacing, text stroke, dark/sepia/light (`Reader.vue`) | Yes (dyslexia font ?) | R4 (incl. dyslexia-friendly font, night and high contrast) |
+| Highlights and notes shared between text and audio (text range and time range) | No (no highlight model) | Partial? (Kindle highlights and Audible clips are separate) | R4 |
+| Switch formats without losing the place (one position) | No: `ebookLocation`/`ebookProgress` stored beside the audio position (`MediaProgress.js`) | Yes (Whispersync for Voice) | R5 |
+| Offline read-along | n/a | Yes? | R5 (needs P4) |
+| Guests read along only if the ebook is shared too | No? | n/a | R5 (needs P3) |
+| EPUB3 Media Overlays import (use existing SMIL timings) | No (no SMIL code found) | No? | R6 |
+| EPUB3 Media Overlays export of the alignment | No | No | R6 |
 | **Collections** | | | |
 | Shelves / collections (user) | Collections (library-wide) + playlists (user) | Collections | P1 (personal shelves), P3 (shared shelves) |
 | Wish list | No | Yes | Not planned |

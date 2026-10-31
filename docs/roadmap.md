@@ -9,6 +9,7 @@ in `AGENTS.md` and the status below records scope, checks, limits and next step.
 | --- | --- | --- |
 | P0 skeleton | **Partly done**: documents, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` schema-check placeholder, Makefile. Dependencies not yet added. | `go build ./... && go test ./...` pass (initial commit). |
 | P1-P6 | Not started | |
+| R read-along (R1-R6) | Designed 2026-10-31 ([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)); not started. Dependencies await approval. | Design only; no code, no checks run. |
 
 ## P0 Skeleton
 
@@ -54,6 +55,42 @@ across a file boundary, speed, sleep timer and resume on a second browser all wo
 Exit: ported parser tables from the Extractor tests pass in Go; write-details round-trip on synthetic
 m4b, mp3 and flac with real ffmpeg (`TENDSHELF_TEST_FFMPEG`) keeps the audio hash; a crash injected at
 each `file_writes` state recovers correctly.
+
+## R Read-along (after P2)
+
+Integrated into the book, player, position, sharing and offline downloads; not a second app. Starts
+after P2 (player and details exist). R5's sharing part needs P3 and its offline part P4; until then
+those rows stay open in the status. Design: [read-along.md](read-along.md).
+
+- **R1 Ebook ingestion**: `internal/ebook`, migration `ebooks` (`ebook_files`, `editions`,
+  `edition_chapters`, `user_settings`); scanner finds ebooks in book folders; upload on `/books/{id}/text`;
+  copy-protection refusal; parsers for EPUB 2/3, TXT/Markdown, HTML, DOCX, FB2 first, then PDF (text
+  layer, reflow check, page fallback) and DRM-free MOBI/AZW3; canonical document with stable IDs;
+  `ebook.ingest` job. Exit: every parser and refusal fixture passes; same file gives byte-identical
+  document; hostile-file tests pass; the Text page lists chapters and first lines.
+- **R2 Pairing**: automatic by folder, upload, ISBN/ASIN, title + author (suggestion when not unique);
+  manual pair/unpair; `/admin/ebooks` inbox; several editions, book default, per-user choice. Exit:
+  pairing table tests; an unpaired ebook never appears as a book; no ebook is ever written.
+- **R3 Alignment job**: `internal/align` and `internal/align/runtime`, migration `alignments`
+  (`runtime_components`, `alignments`, `alignment_chapters`); `runtimes/align/worker.py`; `/admin/runtimes`
+  check; emissions cache; mapping, forced alignment, confidence, failure labels; resume, cancel, hold;
+  re-align changed chapters only. Exit: synthetic-emission accuracy (clean at least 99 %, perturbed at
+  least 95 % of sentences within ±250 ms, zero invented times); job crash/resume tests; opt-in real run
+  on a public-domain recording records the ±250 ms share, CPU time per audio hour and storage per book
+  here (replacing the guesses in read-along.md).
+- **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line (Car once P4 lands);
+  `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reader settings and vendored
+  fonts; migration `highlights` (`highlights`, `bookmarks.edition_id/sid`, `notes.highlight_id`); highlights,
+  bookmarks and notes in both directions. Exit: handler tests by role; contrast checked for every theme
+  and highlight colour; manual check at 390/768/1440 px recorded (Go-driven browser check once chosen);
+  highlight changes within one frame of a sentence start on a mid-range phone (measured).
+- **R5 Cross-format position**: `progress.position_source/text_*`; Read mode drives the position;
+  edition switch maps through time or quote; `can_read` on grants and share links with the P3 matrix;
+  offline text download with P4. Exit: read on one browser, press play on another, the voice starts at
+  that sentence; guest without `can_read` gets 404 on every text route; airplane-mode read-along check.
+- **R6 Media Overlays**: import SMIL when the audio matches, otherwise align; export a new EPUB 3.3 with
+  sentence-level overlays. Exit: import fixtures (match used, mismatch ignored); export then re-import
+  within 1 ms; opt-in epubcheck passes.
 
 ## P3 Multi-user, invitations, sharing
 

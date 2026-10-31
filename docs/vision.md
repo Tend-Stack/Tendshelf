@@ -11,6 +11,7 @@ it happens to run on their own machine.
 | **The family listener** | Partner, parent, teenager. Not technical at all. Uses a phone. | Open a link, tap a cover, it plays, it remembers. Nothing else to learn. |
 | **The invited guest** | A friend the owner lends one book to, for a month. | A link that works on their phone without creating anything complicated, and stops working when the loan ends. |
 | **The commuter / runner / sleeper** | Any of the above, listening in a car, on a run, in bed. | Big controls, lock-screen controls, offline downloads, a sleep timer that fades out, never losing their place. |
+| **The reader-listener** | Reads on the train, listens while walking or cooking; a language learner; a reader with dyslexia or low vision. | Add the ebook beside the audiobook, see the words light up as they are spoken, and switch between reading and listening without hunting for the place. |
 | **The researcher** (admin, opt-in) | Studies narration style for TendVox calibration. | Measure pace, pauses, pitch and loudness of owned books, keep the numbers, delete the clips. |
 
 ## Jobs to be done
@@ -24,6 +25,10 @@ it happens to run on their own machine.
 6. "When the details are wrong, I want to fix them once, from a good online match, field by field,
    and optionally save them into the file itself, safely."
 7. "When I come back after a pause, I want to hear the last few seconds again so I know where I am."
+8. "When I read along, I want the line being spoken to light up and the page to follow it, so that my
+   eyes and ears stay together without effort."
+9. "When I stop listening and pick up the text (or the other way round), I want to be at the same
+   sentence, so that switching formats never costs me my place."
 
 ## What "wow" means here
 
@@ -44,13 +49,28 @@ Measurable, not adjectives. Each is an acceptance target for the phase that deli
   folder of numbered MP3s, multi-disc folders) with no manual fixing.
 - **Sharing in two taps**: "Share this book" gives a link with an expiry; the guest listens on their phone
   without installing anything.
-- **Small and calm**: one binary, under 100 MB RAM idle with a 2,000-book library (target; measure it),
+- **The words follow the voice** (read-along, [read-along.md](read-along.md)): add an EPUB, PDF, DOCX or
+  other DRM-free ebook to a book you own and, after one background job, the sentence being spoken is
+  highlighted (and the word, where the browser allows it) and the page scrolls gently with it. Targets:
+  at least 95 % of narrated sentences highlighted within ±250 ms of the voice (measured on a
+  public-domain recording); the highlight moves within one animation frame of the player crossing a
+  sentence start; tap any sentence and it plays from there;
+  one **Back to the voice** button when you have scrolled away.
+- **Switch formats without losing your place**: read on the train, press play on the walk home and the
+  narrator starts at the sentence you were reading; stop listening and the text opens at the sentence
+  you last heard. One position, shared by every device.
+- **Reading comfort for everyone**: Focus line (one sentence at a time in large type), a
+  dyslexia-friendly font option, sizes to 250 %, sepia and night themes, all at WCAG AA contrast.
+- **Honest timing**: text that is not in the recording (front matter, an abridged cut, another edition's
+  extra paragraph) is shown in grey, never highlighted with an invented time.
+: one binary, under 100 MB RAM idle with a 2,000-book library (target; measure it),
   no background network traffic, nothing to keep up to date except the binary.
 - **Beautiful on a phone first**, at home on a 27-inch monitor, readable in sunlight and at night.
 
 ## Not goals
 
-- Ebooks and comics (Audiobookshelf does them; Tendshelf stays focused on listening). Revisit later.
-- Selling, DRM removal, or downloading from stores. Tendshelf refuses copy-protected files.
+- A standalone ebook library and comics (Audiobookshelf does them). Ebooks are admitted only as the
+  text edition of an audiobook, for read-along ([decision 0001](decisions/0001-read-along.md)).
+- Selling, DRM removal, or downloading from stores. Tendshelf refuses copy-protected audio and ebooks.
 - A social network. Sharing is private, person to person.
 - A cloud service run by us. Self-hosted only.
