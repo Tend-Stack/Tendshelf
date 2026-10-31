@@ -1,0 +1,21 @@
+# Build output
+/bin/
+/dist/
+
+# Local runtime data and test runs (never commit databases, covers, audio or clips)
+/data/
+/.local/
+/.cache/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+
+# Editors and OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Never expected here (no Node in this project); ignore so a stray install cannot be committed
+node_modules/
