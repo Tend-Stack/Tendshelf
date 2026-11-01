@@ -67,6 +67,7 @@ type server struct {
 	lib      *library.Repo
 	dataDir  string
 	jobs     *jobs.Runner
+	version  string
 }
 
 // settingCSRFKey is the settings row that keeps the CSRF key between runs.
@@ -141,6 +142,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		lib:      opts.Library,
 		dataDir:  opts.DataDir,
 		jobs:     opts.Jobs,
+		version:  opts.Version,
 	}
 	s.csrf = NewCSRF(key, sessionOrCookieBinding)
 	s.csrf.Deny = http.HandlerFunc(s.forbidden)
@@ -156,6 +158,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerAdmin(mux)
 	//
 	s.registerSetupSteps(mux)
+	s.registerMe(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})
@@ -201,7 +204,7 @@ func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, 
 	err := components.Layout(components.Page{
 		Title:   title,
 		Current: current,
-		Theme:   themeFrom(r),
+		Theme:   s.themeFor(r),
 		CSRF:    s.csrf.TokenFrom(r.Context()),
 		Assets:  s.assets,
 		Sheet:   sheet,
@@ -226,7 +229,7 @@ func (s *server) frame(w http.ResponseWriter, r *http.Request, status int, title
 	var buf bytes.Buffer
 	err := components.Frame(components.Page{
 		Title:  title,
-		Theme:  themeFrom(r),
+		Theme:  s.themeFor(r),
 		CSRF:   s.csrf.TokenFrom(r.Context()),
 		Assets: s.assets,
 		Styles: styles,

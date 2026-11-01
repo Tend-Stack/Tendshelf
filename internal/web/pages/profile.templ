@@ -1,0 +1,114 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// ProfileDevice is one signed-in browser of the person.
+type ProfileDevice struct {
+	// ID is the first 16 hex characters of the stored session hash; never the token.
+	ID string
+	// Title is "This browser" for the current one, otherwise the device label.
+	Title string
+	// Meta is the device label for the current browser, otherwise when it was last seen.
+	Meta    string
+	Current bool
+}
+
+// ProfileView is what Profile shows. The handler writes every sentence.
+type ProfileView struct {
+	CSRF       string
+	UserID     string
+	Name       string
+	Role       string // Owner, Admin, Member or Guest
+	ServerName string
+	// Banner is the line after a password change, or empty.
+	Banner  string
+	Devices []ProfileDevice
+	// Others is how many other browsers are signed in.
+	Others int
+	// Libraries is the "Your server" row for a person who manages libraries, or empty.
+	Libraries string
+	Version   string
+}
+
+// meChevron is the trailing arrow of a row, drawn in CSS.
+templ meChevron() {
+	<span class="ts-me__chev" aria-hidden="true"></span>
+}
+
+// Profile is the person's own page: who they are, their settings and devices, and sign out.
+templ Profile(v ProfileView) {
+	<div class="ts-me">
+		<header class="ts-me__head">
+			@components.Avatar(v.UserID, v.Name, "lg")
+			<div class="ts-me__who">
+				<h1 class="title-2 ts-me__name">{ v.Name }</h1>
+				<span class="ts-me__sub">
+					<span class={ "ts-role", templ.KV("ts-role--owner", v.Role == "Owner") }>{ v.Role }</span>
+					if v.ServerName != "" {
+						<span class="caption ts-me__lead">{ v.ServerName }</span>
+					}
+				</span>
+			</div>
+		</header>
+		if v.Banner != "" {
+			<p class="ts-banner ts-me__banner" role="status">
+				@components.Icon("check", false)
+				{ v.Banner }
+			</p>
+		}
+		<section aria-labelledby="pf-mine" class="ts-me__section">
+			<h2 id="pf-mine" class="ts-sr">Yours</h2>
+			<a class="ts-me__row" href="/me/settings">
+				<span class="body ts-me__rowtext">Settings</span>
+				@meChevron()
+			</a>
+			<a class="ts-me__row" href="/me/password">
+				<span class="body ts-me__rowtext">Change password</span>
+				@meChevron()
+			</a>
+		</section>
+		<section aria-labelledby="pf-dev" class="ts-me__section">
+			<h2 id="pf-dev" class="ts-overline">Your devices</h2>
+			for _, d := range v.Devices {
+				<div class="ts-me__row ts-me__device">
+					<span class="ts-me__deviceicon" aria-hidden="true">
+						@components.Icon("output", false)
+					</span>
+					<span class="ts-me__rowtext">
+						<span class="body ts-me__rowtitle">{ d.Title }</span>
+						<span class="caption ts-me__lead">{ d.Meta }</span>
+					</span>
+					if !d.Current {
+						<form method="post" action={ templ.URL("/me/sessions/" + d.ID + "/signout") }>
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ "Sign out " + d.Title }>Sign out</button>
+						</form>
+					}
+				</div>
+			}
+			if v.Others > 0 {
+				<form method="post" action="/me/sessions/signout-others" class="ts-me__others">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--quiet">Sign out everywhere else</button>
+				</form>
+			}
+		</section>
+		if v.Libraries != "" {
+			<section aria-labelledby="pf-srv" class="ts-me__section">
+				<h2 id="pf-srv" class="ts-overline">Your server</h2>
+				<a class="ts-me__row" href="/admin/libraries">
+					<span class="ts-me__rowtext">
+						<span class="body ts-me__rowtitle">Libraries</span>
+						<span class="caption ts-me__lead">{ v.Libraries }</span>
+					</span>
+					@meChevron()
+				</a>
+			</section>
+		}
+		<form method="post" action="/logout" class="ts-me__signout" hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<button type="submit" class="ts-btn ts-btn--secondary ts-btn--block">Sign out</button>
+		</form>
+		<p class="caption ts-me__foot">Tendshelf { v.Version } · open source</p>
+	</div>
+}
