@@ -44,3 +44,4 @@
 .ts-shelf-sheet__new { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16) var(--space-4) 0; }
 .ts-shelf-sheet__toggle:focus-visible, .ts-shelf-rename > summary:focus-visible, .ts-shelf-row:focus-visible, .ts-shelf-item .ts-row__main:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 .ts-shelf-sheet__new .ts-field__label { display: flex; align-items: center; min-height: var(--size-tap); }
+.ts-shelf-item__gap { display: block; width: var(--size-tap); height: var(--size-tap); }
