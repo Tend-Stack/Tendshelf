@@ -320,7 +320,7 @@ func TestVisualMatrixUsed(t *testing.T) {
 			t.Errorf("%s does not use visualMatrix", f)
 		}
 		for _, l := range strings.Split(src, "\n") {
-			if own.MatchString(l) && (strings.Contains(l, `"dark"`) || strings.Contains(l, "1440") || strings.Contains(l, "390")) {
+			if own.MatchString(l) && (strings.Contains(l, `"dark"`) || strings.Contains(l, "768")) {
 				t.Errorf("%s keeps its own matrix loop: %s", f, strings.TrimSpace(l))
 			}
 		}

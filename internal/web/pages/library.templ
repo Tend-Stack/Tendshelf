@@ -161,10 +161,10 @@ templ filterForm(v LibraryView, prefix string, bar bool) {
 				}
 			</select>
 		} else {
-			<div class="ts-filter-group">
-				<label class="ts-field__label" for={ prefix + "-title" }>Filter by title</label>
+			<label class="ts-filter-group" for={ prefix + "-title" }>
+				<span class="ts-field__label">Filter by title</span>
 				<input class="ts-input" type="search" id={ prefix + "-title" } name="title" value={ v.TitleFilter } placeholder="Filter this library by title" maxlength="100" autocomplete="off"/>
-			</div>
+			</label>
 			<fieldset class="ts-filter-group">
 				<legend class="ts-field__label">Sort by</legend>
 				for _, o := range v.SortOptions {

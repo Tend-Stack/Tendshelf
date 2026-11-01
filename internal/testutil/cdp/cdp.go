@@ -222,6 +222,12 @@ func (t *Tab) TryEval(expr string, out any) error {
 	return json.Unmarshal(res.Result.Value, out)
 }
 
+// Call sends any DevTools command to this page (for example Emulation.setCPUThrottlingRate) and
+// decodes the result into out, which may be nil.
+func (t *Tab) Call(method string, params, out any) error {
+	return t.b.call(t.session, method, params, out)
+}
+
 // Navigate loads url and waits until the document and its fonts have loaded.
 func (t *Tab) Navigate(url string) {
 	t.t.Helper()
