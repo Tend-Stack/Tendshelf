@@ -53,6 +53,13 @@ func TestKitchenSinkRenders(t *testing.T) {
 	if strings.Contains(body, "ts-sheet-layer") {
 		t.Error("sheet layer without ?sheet=1")
 	}
+	// The sheet renders in #sheet, after and outside #main, so a canonical URL works without JavaScript.
+	if i, m := strings.Index(sheet, `<div id="sheet" class="ts-sheet-region"><div class="ts-sheet-layer">`), strings.Index(sheet, `</main>`); i < 0 || i < m {
+		t.Errorf("sheet layer is not inside #sheet after </main> (sheet at %d, main ends %d)", i, m)
+	}
+	if !strings.Contains(sheet, `data-ts-close`) {
+		t.Error("sheet lacks a close link")
+	}
 }
 
 func TestKitchenSinkThemeCookie(t *testing.T) {

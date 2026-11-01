@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/a-h/templ"
+
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
@@ -20,7 +22,11 @@ func registerDev(mux *http.ServeMux, s *server) {
 			http.Redirect(w, r, "/dev/kitchen-sink", http.StatusSeeOther)
 			return
 		}
-		s.page(w, r, http.StatusOK, "Kitchen sink", "", pages.KitchenSink(r.URL.Query().Get("sheet") == "1"))
+		var sheet templ.Component // nil: no sheet
+		if r.URL.Query().Get("sheet") == "1" {
+			sheet = pages.KitchenSheet()
+		}
+		s.pageSheet(w, r, http.StatusOK, "Kitchen sink", "", pages.KitchenSink(), sheet)
 	})
 	mux.HandleFunc("GET /dev/kitchen-sink/b", func(w http.ResponseWriter, r *http.Request) {
 		s.page(w, r, http.StatusOK, "Kitchen sink, page B", "", pages.KitchenSinkB())

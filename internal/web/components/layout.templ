@@ -13,6 +13,9 @@ type Page struct {
 	Theme   string // dark, light, sepia or contrast; "" follows the system
 	CSRF    string
 	Assets  *static.Set
+	// Sheet, when set, is rendered inside #sheet on a full-page load, so a canonical URL such as
+	// ?sheet=1 shows the sheet without JavaScript. Fragments swap sheets into #sheet.
+	Sheet templ.Component
 }
 
 // htmxConfig is the htmx 4 configuration meta content.
@@ -66,6 +69,11 @@ templ Layout(p Page, body templ.Component) {
 			</div>
 			@PlayerSlot()
 			@Toasts()
+			<div id="sheet" class="ts-sheet-region">
+				if p.Sheet != nil {
+					@p.Sheet
+				}
+			</div>
 		</body>
 	</html>
 }

@@ -60,7 +60,7 @@ const shellRectsJS = `(() => {
 })()`
 
 // TestVisualKitchenSink captures the kitchen sink in every theme at phone and desktop width, plus
-// the open sheet and the toasts, and fails on horizontal overflow.
+// and the toasts, and fails on horizontal overflow.
 func TestVisualKitchenSink(t *testing.T) {
 	b := chromium(t)
 	base := appServer(t)
@@ -101,33 +101,111 @@ func TestVisualKitchenSink(t *testing.T) {
 				tab.WaitFor(`document.querySelectorAll('#toasts .ts-toast').length === 3`, 5*time.Second)
 				time.Sleep(400 * time.Millisecond)
 				tab.Screenshot(filepath.Join(out, fmt.Sprintf("toasts-%d.png", vp.w)))
-				tab.Navigate(base + "/dev/kitchen-sink?sheet=1")
-				time.Sleep(400 * time.Millisecond)
-				tab.Screenshot(filepath.Join(out, fmt.Sprintf("sheet-%d.png", vp.w)))
-				var sheet struct {
-					Over   bool    `json:"over"`
-					Bottom float64 `json:"bottom"`
-					H      float64 `json:"h"`
-				}
-				tab.Eval(`(() => { const r = document.querySelector('.ts-sheet').getBoundingClientRect();
-					return {over: document.documentElement.scrollWidth > innerWidth, bottom: r.bottom, h: innerHeight}; })()`, &sheet)
-				t.Logf("sheet bottom %.0f of viewport %.0f", sheet.Bottom, sheet.H)
-				// Known limit (reported as a plan gap): #main has a view-transition-name, so it is a
-				// stacking context and a sheet layer inside it sits under the tab bar (z-index 10).
-				var top string
-				tab.Eval(`(() => { const e = document.elementFromPoint(innerWidth / 2, innerHeight - 8);
-					return e ? (e.id || e.className || e.tagName) : ""; })()`, &top)
-				t.Logf("element at the sheet's bottom edge: %q", top)
-				if sheet.Over {
-					t.Error("horizontal overflow with the sheet open")
-				}
-				if sheet.Bottom < sheet.H-1 || sheet.Bottom > sheet.H+1 {
-					t.Errorf("sheet bottom = %.0f, want the viewport bottom %.0f (fixed layer inside #main)", sheet.Bottom, sheet.H)
-				}
 			})
 		}
 	}
 	t.Logf("screenshots in %s", out)
+}
+
+const sheetProbeJS = `(() => {
+  const s = document.querySelector("#sheet .ts-sheet");
+  if (!s) return null;
+  const r = s.getBoundingClientRect();
+  const hit = (y) => { const e = document.elementFromPoint(innerWidth / 2, y); return {inside: Boolean(e && e.closest(".ts-sheet")), what: e ? (e.id || e.className || e.tagName) : ""}; };
+  return {bottom: r.bottom, h: innerHeight, over: document.documentElement.scrollWidth > innerWidth,
+    centre: hit(r.top + r.height / 2), edge: hit(innerHeight - 8), focused: document.activeElement === s,
+    outsideMain: !document.getElementById("main").contains(s)};
+})()`
+
+type sheetProbe struct {
+	Bottom float64 `json:"bottom"`
+	H      float64 `json:"h"`
+	Over   bool    `json:"over"`
+	Centre struct {
+		Inside bool   `json:"inside"`
+		What   string `json:"what"`
+	} `json:"centre"`
+	Edge struct {
+		Inside bool   `json:"inside"`
+		What   string `json:"what"`
+	} `json:"edge"`
+	Focused     bool `json:"focused"`
+	OutsideMain bool `json:"outsideMain"`
+}
+
+func checkSheet(t *testing.T, name string, p sheetProbe) {
+	t.Helper()
+	t.Logf("%s: sheet bottom %.0f of %.0f; centre hits %q, bottom edge hits %q", name, p.Bottom, p.H, p.Centre.What, p.Edge.What)
+	if !p.Centre.Inside || !p.Edge.Inside {
+		t.Errorf("%s: the sheet is covered (centre %q, bottom edge %q)", name, p.Centre.What, p.Edge.What)
+	}
+	if p.Bottom < p.H-1 || p.Bottom > p.H+1 {
+		t.Errorf("%s: sheet bottom = %.0f, want the viewport bottom %.0f", name, p.Bottom, p.H)
+	}
+	if p.Over {
+		t.Errorf("%s: horizontal overflow with the sheet open", name)
+	}
+	if !p.OutsideMain {
+		t.Errorf("%s: the sheet is inside #main", name)
+	}
+}
+
+// TestVisualSheet: a sheet swapped into #sheet (and one on a canonical ?sheet=1 page) covers the tab
+// bar at phone width, takes focus, closes with its exit motion and hands focus back to its opener.
+func TestVisualSheet(t *testing.T) {
+	b := chromium(t)
+	base := appServer(t)
+	out := visualDir(t, "chromium")
+	for _, vp := range []struct {
+		w, h   int
+		mobile bool
+	}{{390, 844, true}, {1440, 900, false}} {
+		t.Run(fmt.Sprint(vp.w), func(t *testing.T) {
+			tab := b.NewTab(vp.w, vp.h, vp.mobile, false)
+			tab.Navigate(base + "/dev/kitchen-sink")
+			tab.Eval(`document.querySelector('#ks-sheet a').click()`, nil)
+			tab.WaitFor(`document.querySelector('#sheet .ts-sheet')`, 5*time.Second)
+			time.Sleep(400 * time.Millisecond)
+			tab.Screenshot(filepath.Join(out, fmt.Sprintf("sheet-%d.png", vp.w)))
+			var p sheetProbe
+			tab.Eval(sheetProbeJS, &p)
+			checkSheet(t, "swapped", p)
+			if !p.Focused {
+				t.Error("the sheet did not take focus")
+			}
+			var loc string
+			tab.Eval(`location.pathname + location.search`, &loc)
+			if loc != "/dev/kitchen-sink" {
+				t.Errorf("opening the sheet changed the URL to %q", loc)
+			}
+			tab.Eval(`document.querySelector('#sheet [data-ts-close][aria-label="Close"]').click()`, nil)
+			tab.WaitFor(`!document.querySelector('#sheet .ts-sheet-layer')`, 5*time.Second)
+			var after struct {
+				Empty   bool `json:"empty"`
+				Opener  bool `json:"opener"`
+				Display string
+			}
+			tab.Eval(`({empty: document.getElementById("sheet").childElementCount === 0,
+				opener: document.activeElement === document.querySelector("#ks-sheet a"),
+				Display: getComputedStyle(document.getElementById("sheet")).display})`, &after)
+			if !after.Empty || after.Display != "none" {
+				t.Errorf("after closing, #sheet empty = %v, display %q", after.Empty, after.Display)
+			}
+			if !after.Opener {
+				t.Error("focus did not return to the opener")
+			}
+			// Escape closes too.
+			tab.Eval(`document.querySelector('#ks-sheet a').click()`, nil)
+			tab.WaitFor(`document.querySelector('#sheet .ts-sheet')`, 5*time.Second)
+			tab.Eval(`document.dispatchEvent(new KeyboardEvent("keydown", {key: "Escape", bubbles: true}))`, nil)
+			tab.WaitFor(`!document.querySelector('#sheet .ts-sheet-layer')`, 5*time.Second)
+			// The canonical URL, as without JavaScript.
+			tab.Navigate(base + "/dev/kitchen-sink?sheet=1")
+			time.Sleep(400 * time.Millisecond)
+			tab.Eval(sheetProbeJS, &p)
+			checkSheet(t, "canonical", p)
+		})
+	}
 }
 
 // TestVisualSwapNoShift: a boosted navigation runs one view transition, leaves the navigation,
@@ -143,9 +221,10 @@ func TestVisualSwapNoShift(t *testing.T) {
 			tab := b.NewTab(vp.w, vp.h, vp.mobile, false)
 			tab.Navigate(base + "/dev/kitchen-sink")
 			tab.Eval(`(() => {
-				window.__cls = 0; window.__vt = 0; window.__settled = 0;
-				new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; })
-					.observe({type: "layout-shift", buffered: true});
+				window.__cls = 0; window.__vt = 0; window.__settled = 0; window.__shifts = [];
+				new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) { window.__cls += e.value;
+					window.__shifts.push(e.value + " @" + Math.round(e.startTime) + " " + e.sources.map((s) => (s.node && (s.node.id || s.node.className || s.node.tagName)) + " " + JSON.stringify(s.previousRect) + "->" + JSON.stringify(s.currentRect)).join("; ")); } })
+					.observe({type: "layout-shift", buffered: false}); // shifts from the page load itself (font swap) are not the swap's
 				document.addEventListener("htmx:before:viewTransition", () => window.__vt++);
 				document.addEventListener("htmx:after:settle", () => window.__settled++);
 			})()`, nil)
@@ -168,6 +247,9 @@ func TestVisualSwapNoShift(t *testing.T) {
 				t.Errorf("htmx:before:viewTransition fired %d times, want 1", res.VT)
 			}
 			if res.CLS != 0 {
+				var shifts []string
+				tab.Eval(`window.__shifts`, &shifts)
+				t.Logf("shifts: %v", shifts)
 				t.Errorf("layout shift sum = %v, want 0", res.CLS)
 			}
 			if fmt.Sprint(before) != fmt.Sprint(after) {

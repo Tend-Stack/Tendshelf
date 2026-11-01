@@ -40,10 +40,40 @@ document.addEventListener("htmx:after:swap", (event) => {
   if (main && target === main) main.classList.add("ts-entering");
 });
 
-// Leaving sheets and toasts are removed when their exit animation ends.
+// Sheets live in #sheet, outside #main. Opening one (a swap into #sheet, or a full page load with
+// the sheet in it) focuses it; closing plays the exit motion, then returns focus to the opener.
+let opener = null;
+function focusSheet(source) {
+  const sheet = document.querySelector("#sheet .ts-sheet");
+  if (!sheet) return;
+  opener = source || null;
+  sheet.focus();
+}
+function closeSheet() {
+  const layer = document.querySelector("#sheet .ts-sheet-layer");
+  if (!layer) return false;
+  for (const el of layer.querySelectorAll(".ts-sheet, .ts-scrim")) el.classList.add("is-leaving");
+  return true;
+}
+focusSheet(null);
+document.addEventListener("htmx:after:swap", (event) => {
+  const ctx = event.detail && event.detail.ctx;
+  if (ctx && ctx.target && ctx.target.id === "sheet") focusSheet(ctx.sourceElement);
+});
+document.addEventListener("click", (event) => {
+  if (event.target.closest && event.target.closest("[data-ts-close]") && closeSheet()) event.preventDefault();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && closeSheet()) event.preventDefault();
+});
+
+// Leaving sheets and toasts are removed when their exit animation ends (a sheet takes its layer along).
 document.addEventListener("animationend", (event) => {
   const el = event.target;
   if (!(el instanceof Element)) return;
-  if (el.classList.contains("is-leaving")) el.remove();
-  else if (el.classList.contains("ts-entering")) el.classList.remove("ts-entering");
+  if (el.classList.contains("is-leaving")) {
+    const layer = el.classList.contains("ts-sheet") && el.closest(".ts-sheet-layer");
+    (layer || el).remove();
+    if (layer && opener && opener.isConnected) opener.focus();
+  } else if (el.classList.contains("ts-entering")) el.classList.remove("ts-entering");
 });

@@ -23,6 +23,7 @@
 .ts-scrim, .ts-dialog { transition: opacity var(--duration-base) var(--easing-enter); }
 @starting-style { .ts-scrim, .ts-dialog { opacity: 0; } }
 .ts-sheet.is-leaving { animation: ts-sink var(--duration-base) var(--easing-exit) both; }
+.ts-scrim.is-leaving { animation: ts-fade-out var(--duration-base) var(--easing-exit) both; }
 
 /* Toasts */
 .ts-toast { transition: opacity var(--duration-base) var(--easing-enter), translate var(--duration-base) var(--easing-enter); }
@@ -67,6 +68,7 @@
   ::view-transition-group(ts-cover) { animation: none; }
   @starting-style { .ts-sheet, .ts-toast { translate: none; opacity: 0; } }
   .ts-sheet, .ts-toast { transition: opacity var(--duration-fast) linear; }
+  .ts-scrim.is-leaving { animation-duration: var(--duration-fast); }
   .ts-sheet.is-leaving, .ts-toast.is-leaving { animation-name: ts-fade-out; animation-duration: var(--duration-fast); }
   .ts-press:active, .ts-btn:active, .ts-iconbtn:active { transform: none; }
   .ts-value { transition-duration: var(--duration-fast); }

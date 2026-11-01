@@ -218,6 +218,7 @@ so Back, reload and links without JavaScript all work.
 | Download rows | client only | Service worker and IndexedDB (P4); no server polling |
 | Users list `#users` | after invite, revoke, role change | `GET /hx/admin/users` |
 | Toasts `#toasts` | any response | `hx-swap-oob` (`role="status"`, errors `role="alert"`) |
+| Sheets `#sheet` | click on the opener | Page + `hx-select="#sheet > *"`, `hx-swap="innerHTML"`; sheets render in `#sheet` outside `#main`, and the canonical URL renders the sheet inside it on a full load |
 | Reader text `#reader-text` (R4) | open, `revealed` near the end | `GET /hx/books/{id}/read/chapters/{idx}?edition=` |
 | Reader mode | mode switcher | Page + `hx-select`: `GET /books/{id}/read?mode=` |
 | Reading settings (R4) | `change` | `POST /hx/me/reader-settings`, `hx-swap="none"` |

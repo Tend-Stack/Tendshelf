@@ -61,7 +61,7 @@ func TestLayoutShell(t *testing.T) {
 	if got := attrOf(t, body, `<body`, "hx-headers:inherited"); !regexp.MustCompile(`^\{"X-CSRF-Token":"[A-Za-z0-9_-]{43}"\}$`).MatchString(got) {
 		t.Errorf("hx-headers:inherited = %s", got)
 	}
-	for _, id := range []string{"main", "player", "audio", "toasts", "nav-tabbar", "nav-rail", "nav-side"} {
+	for _, id := range []string{"main", "player", "audio", "toasts", "sheet", "nav-tabbar", "nav-rail", "nav-side"} {
 		if !strings.Contains(body, `id="`+id+`"`) {
 			t.Errorf("missing id %s", id)
 		}
@@ -72,9 +72,13 @@ func TestLayoutShell(t *testing.T) {
 			t.Errorf("#%s lacks hx-preserve: %s", id, tag)
 		}
 	}
-	// Player, audio and toasts sit outside #main.
+	// The sheet region is empty without a sheet and is swapped into, so it is not preserved.
+	if !strings.Contains(body, `<div id="sheet" class="ts-sheet-region"></div>`) {
+		t.Error(`want an empty <div id="sheet" class="ts-sheet-region"></div>`)
+	}
+	// Player, audio, toasts and sheets sit outside #main.
 	mainStart, mainEnd := strings.Index(body, `<main `), strings.Index(body, `</main>`)
-	for _, id := range []string{"player", "audio", "toasts", "nav-tabbar", "nav-rail", "nav-side"} {
+	for _, id := range []string{"player", "audio", "toasts", "sheet", "nav-tabbar", "nav-rail", "nav-side"} {
 		if i := strings.Index(body, `id="`+id+`"`); i > mainStart && i < mainEnd {
 			t.Errorf("#%s is inside #main", id)
 		}

@@ -17,22 +17,26 @@ templ KitchenBar(v int) {
 	</div>
 }
 
+// KitchenSheet is the sheet. It renders into #sheet, outside #main, so no view-transition stacking
+// context sits between it and the tab bar. Close and the scrim are plain links to the canonical page
+// (no JavaScript needed); shell.js intercepts them to play the exit motion and return focus.
+templ KitchenSheet() {
+	<div class="ts-sheet-layer">
+		<a class="ts-scrim" href="/dev/kitchen-sink" hx-boost="false" data-ts-close aria-label="Close the sheet" tabindex="-1"></a>
+		<div class="ts-sheet" role="dialog" aria-modal="true" aria-labelledby="ks-sheet-title" tabindex="-1">
+			<div class="ts-sheet__grab"></div>
+			<div class="ts-sheet__head">
+				<h2 id="ks-sheet-title" class="ts-sheet__title">Sleep timer</h2>
+				<a class="ts-iconbtn" href="/dev/kitchen-sink" hx-boost="false" data-ts-close aria-label="Close">@components.Icon("close", false)</a>
+			</div>
+			<p class="body">The sheet slides up in 200 ms, or fades when motion is reduced.</p>
+		</div>
+	</div>
+}
+
 // KitchenSink shows every utility class, the press feedback, progress, skeletons, toasts, a sheet,
 // the shared cover and the theme switch.
-templ KitchenSink(sheet bool) {
-	if sheet {
-		<div class="ts-sheet-layer">
-			<a class="ts-scrim" href="/dev/kitchen-sink" aria-label="Close the sheet"></a>
-			<div class="ts-sheet" role="dialog" aria-modal="true" aria-labelledby="ks-sheet-title">
-				<div class="ts-sheet__grab"></div>
-				<div class="ts-sheet__head">
-					<h2 id="ks-sheet-title" class="ts-sheet__title">Sleep timer</h2>
-					<a class="ts-iconbtn" href="/dev/kitchen-sink" aria-label="Close">@components.Icon("close", false)</a>
-				</div>
-				<p class="body">The sheet slides up in 200 ms, or fades when motion is reduced.</p>
-			</div>
-		</div>
-	}
+templ KitchenSink() {
 	<div class="ts-stack ts-gap-32">
 		<h1 class="title-1">Kitchen sink</h1>
 		<section id="ks-utilities" class="ts-stack" aria-labelledby="ks-utilities-h">
@@ -121,7 +125,7 @@ templ KitchenSink(sheet bool) {
 		</section>
 		<section id="ks-sheet" class="ts-stack" aria-labelledby="ks-sheet-h">
 			<h2 id="ks-sheet-h" class="title-3">Sheet</h2>
-			<div class="ts-cluster"><a class="ts-btn ts-btn--secondary" href="/dev/kitchen-sink?sheet=1">Open the sheet</a></div>
+			<div class="ts-cluster"><a class="ts-btn ts-btn--secondary" href="/dev/kitchen-sink?sheet=1" hx-get="/dev/kitchen-sink?sheet=1" hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML">Open the sheet</a></div>
 		</section>
 		<section id="ks-cover" class="ts-stack" aria-labelledby="ks-cover-h">
 			<h2 id="ks-cover-h" class="title-3">Shared cover</h2>

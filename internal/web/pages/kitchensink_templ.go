@@ -71,9 +71,10 @@ func KitchenBar(v int) templ.Component {
 	})
 }
 
-// KitchenSink shows every utility class, the press feedback, progress, skeletons, toasts, a sheet,
-// the shared cover and the theme switch.
-func KitchenSink(sheet bool) templ.Component {
+// KitchenSheet is the sheet. It renders into #sheet, outside #main, so no view-transition stacking
+// context sits between it and the tab bar. Close and the scrim are plain links to the canonical page
+// (no JavaScript needed); shell.js intercepts them to play the exit motion and return focus.
+func KitchenSheet() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -90,20 +91,41 @@ func KitchenSink(sheet bool) templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		if sheet {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"ts-sheet-layer\"><a class=\"ts-scrim\" href=\"/dev/kitchen-sink\" aria-label=\"Close the sheet\"></a><div class=\"ts-sheet\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"ks-sheet-title\"><div class=\"ts-sheet__grab\"></div><div class=\"ts-sheet__head\"><h2 id=\"ks-sheet-title\" class=\"ts-sheet__title\">Sleep timer</h2><a class=\"ts-iconbtn\" href=\"/dev/kitchen-sink\" aria-label=\"Close\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = components.Icon("close", false).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</a></div><p class=\"body\">The sheet slides up in 200 ms, or fades when motion is reduced.</p></div></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"ts-sheet-layer\"><a class=\"ts-scrim\" href=\"/dev/kitchen-sink\" hx-boost=\"false\" data-ts-close aria-label=\"Close the sheet\" tabindex=\"-1\"></a><div class=\"ts-sheet\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"ks-sheet-title\" tabindex=\"-1\"><div class=\"ts-sheet__grab\"></div><div class=\"ts-sheet__head\"><h2 id=\"ks-sheet-title\" class=\"ts-sheet__title\">Sleep timer</h2><a class=\"ts-iconbtn\" href=\"/dev/kitchen-sink\" hx-boost=\"false\" data-ts-close aria-label=\"Close\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
 		}
+		templ_7745c5c3_Err = components.Icon("close", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</a></div><p class=\"body\">The sheet slides up in 200 ms, or fades when motion is reduced.</p></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// KitchenSink shows every utility class, the press feedback, progress, skeletons, toasts, a sheet,
+// the shared cover and the theme switch.
+func KitchenSink() templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"ts-stack ts-gap-32\"><h1 class=\"title-1\">Kitchen sink</h1><section id=\"ks-utilities\" class=\"ts-stack\" aria-labelledby=\"ks-utilities-h\"><h2 id=\"ks-utilities-h\" class=\"title-3\">Utilities</h2><p class=\"body\">ts-stack is this column. ts-center and ts-measure are on the paragraph below.</p><div class=\"ts-center ts-measure\"><p class=\"body\">ts-center ts-measure: a line of text kept to the reading width and centred in the content width.</p></div><div class=\"ts-cluster ts-gap-4\"><span class=\"ts-chip\">ts-cluster</span><span class=\"ts-chip\">ts-gap-4</span></div><div class=\"ts-cluster ts-gap-8\"><span class=\"ts-chip\">ts-gap-8</span><span class=\"ts-chip\">b</span></div><div class=\"ts-cluster ts-gap-12\"><span class=\"ts-chip\">ts-gap-12</span><span class=\"ts-chip\">b</span></div><div class=\"ts-cluster ts-gap-16\"><span class=\"ts-chip\">ts-gap-16</span><span class=\"ts-chip\">b</span></div><div class=\"ts-cluster ts-gap-24\"><span class=\"ts-chip\">ts-gap-24</span><span class=\"ts-chip\">b</span></div><div class=\"ts-cluster ts-gap-32\"><span class=\"ts-chip\">ts-gap-32</span><span class=\"ts-chip\">b</span></div><div class=\"ts-grid\"><span class=\"ts-chip\">ts-grid</span><span class=\"ts-chip\">two</span><span class=\"ts-chip\">three</span><span class=\"ts-chip\">four</span></div><div class=\"ts-grid ts-grid--covers\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -113,12 +135,12 @@ func KitchenSink(sheet bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templruntime.NewAttributeExpression("ts-grid--covers ts-cover--fill " + strconv.Itoa(i)).Resolve(ctx)
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templruntime.NewAttributeExpression("ts-grid--covers ts-cover--fill " + strconv.Itoa(i)).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/kitchensink.templ`, Line: 53, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/kitchensink.templ`, Line: 57, Col: 106}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -143,7 +165,7 @@ func KitchenSink(sheet bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"ts-cluster\"><button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-get=\"/hx/dev/progress?v=0\" hx-target=\"#ks-bar\" hx-swap=\"outerMorph\">0</button> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-get=\"/hx/dev/progress?v=30\" hx-target=\"#ks-bar\" hx-swap=\"outerMorph\">30</button> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-get=\"/hx/dev/progress?v=100\" hx-target=\"#ks-bar\" hx-swap=\"outerMorph\">100</button></div></section><section id=\"ks-skeleton\" class=\"ts-stack\" aria-labelledby=\"ks-skeleton-h\"><h2 id=\"ks-skeleton-h\" class=\"title-3\">Loading</h2><div class=\"ts-cluster\"><div class=\"ts-skeleton ts-cover--112\" role=\"status\" aria-label=\"Loading\"></div><span class=\"ts-spinner\" role=\"status\" aria-label=\"Working\"></span> <span class=\"ts-eq\" aria-hidden=\"true\"><span></span><span></span><span></span></span><div class=\"ts-cover ts-cover--64 ts-appear\" aria-label=\"ts-appear\"></div></div></section><section id=\"ks-toasts\" class=\"ts-stack\" aria-labelledby=\"ks-toasts-h\"><h2 id=\"ks-toasts-h\" class=\"title-3\">Toasts</h2><div class=\"ts-cluster\"><button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-post=\"/hx/dev/toast?kind=ok\" hx-swap=\"none\">Saved</button> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-post=\"/hx/dev/toast?kind=hint\" hx-swap=\"none\">Hint</button> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-post=\"/hx/dev/toast?kind=err\" hx-swap=\"none\">Error</button></div></section><section id=\"ks-sheet\" class=\"ts-stack\" aria-labelledby=\"ks-sheet-h\"><h2 id=\"ks-sheet-h\" class=\"title-3\">Sheet</h2><div class=\"ts-cluster\"><a class=\"ts-btn ts-btn--secondary\" href=\"/dev/kitchen-sink?sheet=1\">Open the sheet</a></div></section><section id=\"ks-cover\" class=\"ts-stack\" aria-labelledby=\"ks-cover-h\"><h2 id=\"ks-cover-h\" class=\"title-3\">Shared cover</h2><a class=\"ts-cover ts-cover--48 ts-vt-cover\" href=\"/dev/kitchen-sink/b\" data-probe-nav aria-label=\"Open the cover page\"></a></section><section id=\"ks-themes\" class=\"ts-stack\" aria-labelledby=\"ks-themes-h\"><h2 id=\"ks-themes-h\" class=\"title-3\">Themes</h2><div class=\"ts-cluster\"><a class=\"ts-chip\" hx-boost=\"false\" href=\"/dev/kitchen-sink?theme=dark\">Dark</a> <a class=\"ts-chip\" hx-boost=\"false\" href=\"/dev/kitchen-sink?theme=light\">Light</a> <a class=\"ts-chip\" hx-boost=\"false\" href=\"/dev/kitchen-sink?theme=sepia\">Sepia</a> <a class=\"ts-chip\" hx-boost=\"false\" href=\"/dev/kitchen-sink?theme=contrast\">Contrast</a></div></section></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"ts-cluster\"><button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-get=\"/hx/dev/progress?v=0\" hx-target=\"#ks-bar\" hx-swap=\"outerMorph\">0</button> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-get=\"/hx/dev/progress?v=30\" hx-target=\"#ks-bar\" hx-swap=\"outerMorph\">30</button> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-get=\"/hx/dev/progress?v=100\" hx-target=\"#ks-bar\" hx-swap=\"outerMorph\">100</button></div></section><section id=\"ks-skeleton\" class=\"ts-stack\" aria-labelledby=\"ks-skeleton-h\"><h2 id=\"ks-skeleton-h\" class=\"title-3\">Loading</h2><div class=\"ts-cluster\"><div class=\"ts-skeleton ts-cover--112\" role=\"status\" aria-label=\"Loading\"></div><span class=\"ts-spinner\" role=\"status\" aria-label=\"Working\"></span> <span class=\"ts-eq\" aria-hidden=\"true\"><span></span><span></span><span></span></span><div class=\"ts-cover ts-cover--64 ts-appear\" aria-label=\"ts-appear\"></div></div></section><section id=\"ks-toasts\" class=\"ts-stack\" aria-labelledby=\"ks-toasts-h\"><h2 id=\"ks-toasts-h\" class=\"title-3\">Toasts</h2><div class=\"ts-cluster\"><button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-post=\"/hx/dev/toast?kind=ok\" hx-swap=\"none\">Saved</button> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-post=\"/hx/dev/toast?kind=hint\" hx-swap=\"none\">Hint</button> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" hx-post=\"/hx/dev/toast?kind=err\" hx-swap=\"none\">Error</button></div></section><section id=\"ks-sheet\" class=\"ts-stack\" aria-labelledby=\"ks-sheet-h\"><h2 id=\"ks-sheet-h\" class=\"title-3\">Sheet</h2><div class=\"ts-cluster\"><a class=\"ts-btn ts-btn--secondary\" href=\"/dev/kitchen-sink?sheet=1\" hx-get=\"/dev/kitchen-sink?sheet=1\" hx-target=\"#sheet\" hx-select=\"#sheet > *\" hx-swap=\"innerHTML\">Open the sheet</a></div></section><section id=\"ks-cover\" class=\"ts-stack\" aria-labelledby=\"ks-cover-h\"><h2 id=\"ks-cover-h\" class=\"title-3\">Shared cover</h2><a class=\"ts-cover ts-cover--48 ts-vt-cover\" href=\"/dev/kitchen-sink/b\" data-probe-nav aria-label=\"Open the cover page\"></a></section><section id=\"ks-themes\" class=\"ts-stack\" aria-labelledby=\"ks-themes-h\"><h2 id=\"ks-themes-h\" class=\"title-3\">Themes</h2><div class=\"ts-cluster\"><a class=\"ts-chip\" hx-boost=\"false\" href=\"/dev/kitchen-sink?theme=dark\">Dark</a> <a class=\"ts-chip\" hx-boost=\"false\" href=\"/dev/kitchen-sink?theme=light\">Light</a> <a class=\"ts-chip\" hx-boost=\"false\" href=\"/dev/kitchen-sink?theme=sepia\">Sepia</a> <a class=\"ts-chip\" hx-boost=\"false\" href=\"/dev/kitchen-sink?theme=contrast\">Contrast</a></div></section></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

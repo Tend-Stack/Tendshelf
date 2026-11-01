@@ -63,6 +63,11 @@ func NewHandler(opts Options) http.Handler {
 
 // page renders body inside the layout. Pages are per person and per theme, so never cached.
 func (s *server) page(w http.ResponseWriter, r *http.Request, status int, title, current string, body templ.Component) {
+	s.pageSheet(w, r, status, title, current, body, nil)
+}
+
+// pageSheet is page with a sheet (or nil) rendered into #sheet, outside #main.
+func (s *server) pageSheet(w http.ResponseWriter, r *http.Request, status int, title, current string, body, sheet templ.Component) {
 	var buf bytes.Buffer
 	err := components.Layout(components.Page{
 		Title:   title,
@@ -70,6 +75,7 @@ func (s *server) page(w http.ResponseWriter, r *http.Request, status int, title,
 		Theme:   themeFrom(r),
 		CSRF:    s.csrf.TokenFrom(r.Context()),
 		Assets:  s.assets,
+		Sheet:   sheet,
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render page", "path", r.URL.Path, "err", err)
