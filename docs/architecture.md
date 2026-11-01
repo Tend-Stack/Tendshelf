@@ -252,7 +252,24 @@ finished, and more than 60 s away from here; it is checked after a save answers 
 of 60 s or more, and on becoming visible after 60 s hidden; "Stay here" saves with `force=1`. A file the browser
 cannot decode is requested as `?compat=1` (`HEAD`, polled at `Retry-After` for up to 10 minutes). Media Session
 carries the title, author, chapter and cover with eight action handlers. Keys: Space and the arrows in player.js; `/`,
-`g l`, `g h` and `?` in shell.js. Budgets (`TestJSBudget`, gzip bytes): player.js 11 KB, shell.js 4 KB; `player.css` 4 KB.
+`g l`, `g h` and `?` in shell.js. Budgets (`TestJSBudget`, gzip bytes): player.js 11 KB, shell.js 4 KB, player-full.js 8 KB,
+24 KB in all; `player.css` 4 KB.
+
+Full player (P1c-5a, `static/js/player-full.js`, a second async module, no imports; `components/player_full.templ`): one
+`<dialog id="player-full" class="ts-player" hx-preserve>` in `Layout` after `#player`. It never touches `#audio`: it reads
+`window.tsPlayer` (`info()`, `state()`, `seek`, `skip`, `chapter`, `play`, `toggle`) and the `ts:player:state`, `ts:player:tick`
+and `ts:player:ready` events (player.js fires ready once the API exists, because both modules load async). Below 1280 px it
+opens with `showModal()` (focus trap, Escape, focus back on the opener; the bar is hidden by `is-covered`) inside a view
+transition that glides the cover (`view-transition-name: ts-now-cover`, named only during the transition; none with reduced
+motion); from 1280 px it is a non-modal 400 px side panel and the bar stays. The mini open link (kept `hx-boost="false"`) and a
+swipe up on the bar open it; the chevron, Escape and a swipe down on the header close it (`--ts-drag` follows the finger;
+under 30 % of the height it springs back). The cover accent and tint reach CSS only as `--cover-accent` and `--cover-tint`
+on `#player-full` (`style.setProperty`, validated as `#rrggbb`, per `data-theme` or the system scheme, removed for the contrast
+theme and when missing); `data-tint` on the dialog picks the strength (full in dark, pale in light and sepia, none in contrast).
+The scrubber covers the whole book: ticks at chapter starts, fill, needle and chapter line from `--ts-pos`, `--ts-ch-at`,
+`--ts-ch-w`; a real range input under it (keys by the skip setting, PageUp/PageDown a chapter, Home/End; a pointer drag is
+ours, halved past 40 px and quartered past 80 px from the bar, snapping within 1.5 % of a chapter start, seek on release;
+`aria-valuetext` at most every 10 s while playing). The chapters sheet is built with DOM APIs from a `<template>`.
 
 ## Design regions
 
