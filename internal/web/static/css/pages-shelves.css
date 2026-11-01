@@ -1,0 +1,45 @@
+/* Personal shelves (P1b-8): the list, one shelf, the delete page, and the "Add to shelf" sheet on the
+   book page. Tokens only. Rows and "Show more" come from pages-library.css, covers from pages-home.css. */
+
+.ts-shelves { display: flex; flex-direction: column; gap: var(--space-12); max-width: 720px; }
+.ts-shelves--narrow { max-width: 480px; }
+.ts-shelves .ts-lib-head__title { overflow-wrap: anywhere; }
+.ts-shelf-back { align-self: flex-start; margin-left: calc(var(--space-12) * -1); color: var(--ink-muted); }
+.ts-shelf-lead { margin: 0; color: var(--ink-muted); }
+
+/* The list: a stack of up to three covers, the name, the count */
+.ts-shelf-list, .ts-shelf-items, .ts-shelf-sheet__list { list-style: none; margin: 0; padding: 0; }
+.ts-shelf-row { border-bottom: 1px solid var(--line); text-decoration: none; }
+.ts-shelf-row__stack { display: flex; flex: none; min-width: 36px; padding-right: var(--space-8); }
+.ts-shelf-row__stack .ts-cover { margin-right: -12px; border-radius: var(--radius-sm); box-shadow: 0 0 0 2px var(--ground); }
+.ts-shelf-row__stack .ts-cover--36 .ts-cover__title { display: none; }
+
+/* New shelf and rename: one field and one button */
+.ts-shelf-new { margin-top: var(--space-16); }
+.ts-shelf-new > .ts-overline { display: block; margin: 0 0 var(--space-8); }
+.ts-shelf-form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); }
+.ts-shelf-tools { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-4) var(--space-16); }
+.ts-shelf-tools .ts-btn--quiet { margin-left: calc(var(--space-12) * -1); }
+.ts-shelf-rename[open] { flex: 1 1 100%; }
+.ts-shelf-rename > summary { cursor: pointer; list-style: none; }
+.ts-shelf-rename > summary::-webkit-details-marker { display: none; }
+.ts-shelf-rename .ts-shelf-form { padding: var(--space-8) 0 var(--space-4); }
+.ts-shelf-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
+
+/* One shelf: a row with its three buttons */
+.ts-shelf-item { display: flex; align-items: center; gap: var(--space-4); border-bottom: 1px solid var(--line); }
+.ts-shelf-item .ts-row { flex: 1; min-width: 0; }
+.ts-shelf-item__tools { display: flex; flex: none; align-items: center; }
+.ts-shelf-item__tools .ts-icon { width: 20px; height: 20px; }
+
+/* The sheet on the book page */
+.ts-book__shelf { margin: var(--space-12) 0 0; }
+.ts-sheet-layer--shelves .ts-sheet { max-height: 85vh; max-height: 85dvh; overflow-y: auto; }
+.ts-shelf-sheet__toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); width: 100%; min-height: var(--size-tap);
+  padding: 0 var(--space-16); border: 0; border-radius: var(--radius-md); background: transparent; color: var(--ink); font: 500 16px/22px var(--font-sans); text-align: left; cursor: pointer; }
+.ts-shelf-sheet__toggle:hover { background: var(--raised-hover); }
+.ts-shelf-sheet__toggle[aria-pressed="true"] { background: var(--raised); color: var(--ink); font-weight: 600; }
+.ts-shelf-sheet__toggle[aria-pressed="true"] .ts-icon { color: var(--accent); }
+.ts-shelf-sheet__toggle .ts-icon { width: 20px; height: 20px; flex: none; }
+.ts-shelf-sheet__new { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16) var(--space-4) 0; }
+.ts-shelf-sheet__toggle:focus-visible, .ts-shelf-rename > summary:focus-visible, .ts-shelf-row:focus-visible, .ts-shelf-item .ts-row__main:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }

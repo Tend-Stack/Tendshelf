@@ -143,7 +143,7 @@ func TestAriaCurrentHome(t *testing.T) {
 	_, body := getPage(t, "/", nil)
 	var links []string
 	for _, l := range regexp.MustCompile(`<a [^>]*data-nav="[^"]*"[^>]*>`).FindAllString(body, -1) {
-		if !strings.Contains(l, `data-nav="/admin/`) { // the owner's "Your server" group is not a main destination
+		if !strings.Contains(l, `data-nav="/admin/`) && !strings.Contains(l, `data-nav="/shelves`) { // the sidebar groups (Your server, Your shelves) are not main destinations
 			links = append(links, l)
 		}
 	}

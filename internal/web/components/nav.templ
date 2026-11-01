@@ -14,6 +14,23 @@ var MainNav = []NavItem{
 	{"profile", "Profile", "/me", "profile"},
 }
 
+// shelfHref is where a sidebar shelf link goes: the shelf, or the list of shelves for the entries
+// that have no id ("Shelves" when the person has none, "All shelves" after the first twelve).
+func shelfHref(s ShelfLink) string {
+	if s.ID == "" {
+		return "/shelves"
+	}
+	return "/shelves/" + s.ID
+}
+
+// shelfKey is the Page.Current value of a shelf page: "shelf-{id}", or "shelves" for the list.
+func shelfKey(s ShelfLink) string {
+	if s.ID == "" {
+		return "shelves"
+	}
+	return "shelf-" + s.ID
+}
+
 // TabBar is the phone's bottom navigation.
 templ TabBar(current string) {
 	<nav aria-label="Main" id="nav-tabbar" hx-preserve class="ts-tabbar ts-nav-tabbar">
@@ -59,7 +76,7 @@ templ SideRail(current string) {
 }
 
 // Sidebar is the desktop navigation (1280 px and up).
-templ Sidebar(current string, admin bool) {
+templ Sidebar(current string, admin bool, shelves []ShelfLink) {
 	<nav aria-label="Main" id="nav-side" hx-preserve class="ts-side ts-nav-side">
 		<span class="ts-side__brand ts-brand">
 			@Mark()
@@ -77,6 +94,23 @@ templ Sidebar(current string, admin bool) {
 				@Icon(it.Icon, false)
 				{ it.Label }
 			</a>
+		}
+		if len(shelves) > 0 {
+			<span class="ts-side__group ts-overline">Your shelves</span>
+			for _, sh := range shelves {
+				<a
+					href={ templ.SafeURL(shelfHref(sh)) }
+					class="ts-side__item"
+					data-nav={ shelfHref(sh) }
+					if current == shelfKey(sh) {
+						aria-current="page"
+					}
+				>
+					@Icon("bookmark", false)
+					<span class="ts-truncate">{ sh.Name }</span>
+					<span class="ts-side__count">{ sh.Count }</span>
+				</a>
+			}
 		}
 		if admin {
 			<span class="ts-side__group ts-overline">Your server</span>

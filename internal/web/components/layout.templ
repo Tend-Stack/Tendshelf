@@ -21,6 +21,9 @@ type Page struct {
 	Styles []string
 	// Admin shows the "Your server" group in the desktop sidebar.
 	Admin bool
+	// Shelves are the person's shelves in the desktop sidebar ("Your shelves"), empty for people
+	// who may not use shelves.
+	Shelves []ShelfLink
 }
 
 // htmxConfig is the htmx 4 configuration meta content.
@@ -51,7 +54,7 @@ templ Layout(p Page, body templ.Component) {
 			<div class="ts-shell">
 				@TabBar(p.Current)
 				@SideRail(p.Current)
-				@Sidebar(p.Current, p.Admin)
+				@Sidebar(p.Current, p.Admin, p.Shelves)
 				<main id="main" class="ts-main" tabindex="-1" hx-history-elt>
 					@body
 				</main>

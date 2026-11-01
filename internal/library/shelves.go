@@ -39,12 +39,20 @@ type Shelf struct {
 	CreatedAt, UpdatedAt int64
 }
 
+// ShelfCover is the cover of one book on a shelf. The book id and title are there so a page can draw
+// the cover (the image address is built from the book id). A book without a cover file has an
+// empty SHA and is drawn from its title.
+type ShelfCover struct {
+	BookID, Title string
+	CoverRef
+}
+
 // ShelfSummary is a shelf with the number of books the scope may open on it and up to three of
 // their covers, in shelf order.
 type ShelfSummary struct {
 	Shelf
 	Books  int
-	Covers []CoverRef
+	Covers []ShelfCover
 }
 
 // cleanShelfName trims name and checks it: 1 to 80 characters, no control characters.
@@ -173,18 +181,22 @@ func (r *Repo) Shelves(ctx context.Context, sc Scope, ownerID string) ([]ShelfSu
 	if err != nil {
 		return nil, err
 	}
-	cover := make(map[string]*CoverRef, len(cards))
+	byID := make(map[string]BookCard, len(cards))
 	for _, c := range cards {
-		cover[c.ID] = c.Cover
+		byID[c.ID] = c
 	}
 	at := make(map[string]int, len(out))
 	for i, s := range out {
 		at[s.ID] = i
 	}
 	for _, p := range picks {
-		if c := cover[p.book]; c != nil {
+		if c, ok := byID[p.book]; ok {
+			sc := ShelfCover{BookID: c.ID, Title: c.Title}
+			if c.Cover != nil {
+				sc.CoverRef = *c.Cover
+			}
 			i := at[p.shelf]
-			out[i].Covers = append(out[i].Covers, *c)
+			out[i].Covers = append(out[i].Covers, sc)
 		}
 	}
 	return out, nil

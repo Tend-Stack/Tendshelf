@@ -1,0 +1,72 @@
+package components
+
+// ShelfLink is one shelf in the desktop sidebar: its name and the number of books the person may open.
+type ShelfLink struct{ ID, Name, Count string }
+
+// ShelfSheetRow is one shelf in the "Add to shelf" sheet. Action is the address its button posts
+// to: add when the book is not on the shelf, remove when it is.
+type ShelfSheetRow struct {
+	ID, Name, Action string
+	On               bool
+}
+
+// ShelfSheetView is the "Add to shelf" sheet of the book page. The handler writes every word.
+type ShelfSheetView struct {
+	CSRF, BookID string
+	// Back is the address every action returns to: the book page with the sheet open.
+	Back, CloseHref string
+	Shelves         []ShelfSheetRow
+	// NewAction is where the "New shelf" form posts; NewName and Error come back after a refusal.
+	NewAction, NewName, Error                         string
+	Title, NewLabel, NewButton, CloseLabel, NameLabel string
+}
+
+func pressed(on bool) string {
+	if on {
+		return "true"
+	}
+	return "false"
+}
+
+// ShelfSheet is the "Add to shelf" sheet. It renders into #sheet, outside #main. Each row is a
+// form: a toggle button that adds or removes the book, then the sheet re-renders in place.
+templ ShelfSheet(v ShelfSheetView) {
+	<div class="ts-sheet-layer ts-sheet-layer--shelves">
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
+		<div class="ts-sheet ts-shelf-sheet" role="dialog" aria-modal="true" aria-labelledby="shs-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="shs-title" class="ts-sheet__title">{ v.Title }</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel }>
+					@Icon("close", false)
+				</a>
+			</div>
+			if len(v.Shelves) > 0 {
+				<ul class="ts-shelf-sheet__list">
+					for _, s := range v.Shelves {
+						<li>
+							<form method="post" action={ templ.URL(s.Action) } hx-post={ s.Action } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML">
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<input type="hidden" name="book_id" value={ v.BookID }/>
+								<input type="hidden" name="next" value={ v.Back }/>
+								<button type="submit" class="ts-shelf-sheet__toggle" aria-pressed={ pressed(s.On) }>
+									<span class="ts-shelf-sheet__name ts-truncate">{ s.Name }</span>
+									if s.On {
+										@Icon("check", false)
+									}
+								</button>
+							</form>
+						</li>
+					}
+				</ul>
+			}
+			<form class="ts-shelf-sheet__new" method="post" action={ templ.URL(v.NewAction) } hx-post={ v.NewAction } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<input type="hidden" name="book_id" value={ v.BookID }/>
+				<input type="hidden" name="next" value={ v.Back }/>
+				@TextField(Field{ID: "shs-name", Name: "name", Label: v.NameLabel, Value: v.NewName, Error: v.Error, Autocomplete: "off"})
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ v.NewButton }</button>
+			</form>
+		</div>
+	</div>
+}

@@ -8,6 +8,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
+	"github.com/a-h/templ"
 )
 
 // The book page and the pages of authors, narrators and series (P1b-6), and search. Everything is
@@ -24,11 +25,17 @@ func (s *server) registerBook(mux *http.ServeMux) {
 }
 
 func (s *server) getBook(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	id, tab := r.PathValue("id"), r.PathValue("tab")
+	tab := r.PathValue("tab")
 	if tab == "" {
 		tab = "about"
 	}
+	s.renderBook(w, r, r.PathValue("id"), tab, http.StatusOK, nil)
+}
+
+// renderBook is the book page. shelf is non-nil when a shelf form was refused: the page then
+// answers with that status and the "Add to shelf" sheet open, showing the refusal.
+func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab string, status int, shelf *shelfForm) {
+	ctx := r.Context()
 	if !bookTabValid(tab) {
 		s.notFound(w, r)
 		return
@@ -47,6 +54,19 @@ func (s *server) getBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := bookHeader(d, tab)
+	shelves := s.canShelve(r)
+	var sheet templ.Component
+	styles := pages.BookStyles
+	if shelves {
+		v.ShelfHref, v.ShelfLabel = shelfSheetHref(id), shelfAddLabel
+		styles = append(append([]string(nil), styles...), pages.ShelfStyles[2])
+		if shelf != nil || r.URL.Query().Get("sheet") == "shelves" {
+			if sheet, err = s.shelfSheet(r, id, shelf); err != nil {
+				s.serverError(w, r, "shelf sheet", err)
+				return
+			}
+		}
+	}
 	switch tab {
 	case "about":
 		var series, narrated []library.BookCard
@@ -79,7 +99,7 @@ func (s *server) getBook(w http.ResponseWriter, r *http.Request) {
 	case "details":
 		v.Rows = bookDetailsView(d, s.canManage(r))
 	}
-	s.pageStyled(w, r, http.StatusOK, d.Book.Title, "library", pages.Book(v), nil, pages.BookStyles...)
+	s.pageStyled(w, r, status, d.Book.Title, "library", pages.Book(v), sheet, styles...)
 }
 
 // getPerson serves an author or a narrator page. A person with no visible listable book in this
