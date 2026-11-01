@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
 
@@ -215,3 +216,48 @@ const (
 	bookmarkExportGroup  = "Book"
 	bookmarkExportHeader = "Bookmarks and notes"
 )
+
+// P1c-4 player. "Rewound 5 s after your break" and the hint style are in BRAND.md; "Chapter {n} · {m}
+// min left" follows the MiniPlayer board; the rest follows the voice rules. {name} marks a value the
+// player fills in.
+const (
+	msgPlayerOpen     = "Open {title}, chapter {n}"
+	msgOpenBook       = "Open {title}"
+	msgMinLeft        = "{m} min left"
+	msgPlayPrefix     = "Play"
+	msgPausePrefix    = "Pause"
+	msgBackSeconds    = "Back {n} seconds"
+	msgForwardSeconds = "Forward {n} seconds"
+	msgChapterLeft    = "Chapter {n} · {m} min left"
+	msgRewound        = "Rewound 5 s after your break"
+	msgCompatWait     = compatWaitText
+	msgCompatFailed   = "This book can't play in this browser."
+	msgSignedOut      = "You're signed out. Sign in to keep your place."
+	msgSignIn         = "Sign in"
+	msgContinueAsk    = "You were at {time} on {device}. Continue there?"
+	msgOtherDevice    = "another device"
+	msgContinueThere  = "Continue there"
+	msgStayHere       = "Stay here"
+
+	msgKeysTitle   = "Keyboard shortcuts"
+	msgKeysPlay    = "Play or pause"
+	msgKeysSkip    = "Back or forward"
+	msgKeysSearch  = "Search"
+	msgKeysLibrary = "Library"
+	msgKeysHome    = "Home"
+	msgKeysList    = "This list"
+	msgKeysClose   = "Close"
+)
+
+// playerMsgs fills the strings the layout hands to the player (data-ts-msg-* on #player).
+func playerMsgs() components.PlayerMsgs {
+	return components.PlayerMsgs{
+		Open: msgPlayerOpen, OpenBook: msgOpenBook, MinLeft: msgMinLeft, PlayPrefix: msgPlayPrefix, PausePrefix: msgPausePrefix,
+		BackSeconds: msgBackSeconds, ForwardSeconds: msgForwardSeconds, ChapterLeft: msgChapterLeft,
+		Rewound: msgRewound, CompatWait: msgCompatWait, CompatFailed: msgCompatFailed,
+		SignedOut: msgSignedOut, SignIn: msgSignIn, ContinueAsk: msgContinueAsk, OtherDevice: msgOtherDevice,
+		ContinueThere: msgContinueThere, StayHere: msgStayHere,
+		KeysTitle: msgKeysTitle, KeysPlay: msgKeysPlay, KeysSkip: msgKeysSkip, KeysSearch: msgKeysSearch,
+		KeysLibrary: msgKeysLibrary, KeysHome: msgKeysHome, KeysList: msgKeysList, KeysClose: msgKeysClose,
+	}
+}

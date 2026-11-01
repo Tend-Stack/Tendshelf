@@ -1,0 +1,18 @@
+package components
+
+// KeysHelp is the keyboard shortcuts sheet. A native dialog: Escape and the Close button close it
+// without script; shell.js opens it on "?". The rows match the keys shell.js and player.js handle.
+templ KeysHelp(m PlayerMsgs) {
+	<dialog id="keys-help" class="ts-keys" aria-labelledby="keys-help-title">
+		<h2 id="keys-help-title" class="ts-keys__title">{ m.KeysTitle }</h2>
+		<dl class="ts-keys__list">
+			<div class="ts-keys__row"><dt><kbd>Space</kbd></dt><dd>{ m.KeysPlay }</dd></div>
+			<div class="ts-keys__row"><dt><kbd>←</kbd> / <kbd>→</kbd></dt><dd>{ m.KeysSkip }</dd></div>
+			<div class="ts-keys__row"><dt><kbd>/</kbd></dt><dd>{ m.KeysSearch }</dd></div>
+			<div class="ts-keys__row"><dt><kbd>G</kbd> then <kbd>L</kbd></dt><dd>{ m.KeysLibrary }</dd></div>
+			<div class="ts-keys__row"><dt><kbd>G</kbd> then <kbd>H</kbd></dt><dd>{ m.KeysHome }</dd></div>
+			<div class="ts-keys__row"><dt><kbd>?</kbd></dt><dd>{ m.KeysList }</dd></div>
+		</dl>
+		<form method="dialog"><button class="ts-btn">{ m.KeysClose }</button></form>
+	</dialog>
+}
