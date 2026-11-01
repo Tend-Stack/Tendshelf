@@ -187,4 +187,10 @@ func TestPlayerJSRules(t *testing.T) {
 	if strings.Contains(string(full), "getElementById(\"audio\")") || regexp.MustCompile(`\baudio\.`).Match(full) {
 		t.Error("player-full.js touches #audio")
 	}
+	// Volume, rate and pitch belong to player.js alone (P1c-5b).
+	for _, banned := range []string{".volume =", "playbackRate", "preservesPitch"} {
+		if strings.Contains(string(full), banned) {
+			t.Errorf("player-full.js contains %q", banned)
+		}
+	}
 }

@@ -1,6 +1,8 @@
 package web
 
 import (
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -50,6 +52,30 @@ func TestFullPlayerMarkup(t *testing.T) {
 			t.Errorf("the full player lacks %s", want)
 		}
 	}
+	// P1c-5b: the speed and sleep sheets, both sleep cards, the toast region and template, the bar's
+	// extras; nothing disabled; five speeds and six sleep choices.
+	for _, want := range []string{`data-ts-speed-sheet`, `data-ts-sleep-sheet`, `data-ts-sleep-card="full"`, `data-ts-full-toasts`,
+		`data-ts-bookmark-toast`, `data-ts-speed-range`, `data-ts-sleep-minutes`, `data-ts-sleep-start`, `data-ts-full-sleep-left`,
+		`role="radiogroup"`, `aria-keyshortcuts="B"`, `aria-label="Bookmark this moment"`, `Fine-tune`, `Custom`, `Turn off`, `+10 min`,
+		`hx-select="#sheet > *"`} {
+		if !strings.Contains(dlg, want) {
+			t.Errorf("the full player lacks %s", want)
+		}
+	}
+	if n := strings.Count(dlg, "data-ts-speed-choice="); n != 5 {
+		t.Errorf("speed choices = %d, want 5", n)
+	}
+	if n := strings.Count(dlg, "data-ts-sleep-choice="); n != 6 {
+		t.Errorf("sleep choices = %d, want 6", n)
+	}
+	if strings.Contains(dlg, "disabled") {
+		t.Error("a control of the full player is still disabled")
+	}
+	for _, want := range []string{`data-ts-bar-speed`, `data-ts-bar-sleep`, `data-ts-volume`, `data-ts-sleep-card="bar"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page lacks %s", want)
+		}
+	}
 	// HANDOFF: title, chapter, time left, play/pause, skip, scrubber, settings.
 	order := []string{`data-ts-full-title`, `data-ts-full-chapter`, `data-ts-full-left`, `data-ts-full-toggle`, `data-ts-full-back`,
 		`data-ts-full-forward`, `data-ts-range`, `data-ts-open-speed`}
@@ -92,5 +118,52 @@ func TestFullPlayerCopy(t *testing.T) {
 		if got != want {
 			t.Errorf("copy %q, want %q", got, want)
 		}
+	}
+}
+
+// TestFullPlayerCopy5b: the speed, sleep timer and bookmark words, and the attributes the player reads.
+func TestFullPlayerCopy5b(t *testing.T) {
+	for got, want := range map[string]string{
+		msgSleeping: "Sleeping in {n} seconds", msgPlusTen: "+10 min", msgSleepOffLabel: "Sleep timer, off",
+		msgSpeedLabel: "Playback speed, {v} times", msgSleepFadingShake: "Fading out. Shake your phone to add 10 minutes.",
+		msgBookmarkMoment: "Bookmark this moment", msgSleepEndOfChapter: "End of chapter", msgSleepStart: "Start timer",
+	} {
+		if got != want {
+			t.Errorf("copy %q, want %q", got, want)
+		}
+	}
+	_, body := getPage(t, "/", nil)
+	for _, attr := range []string{"speed-value", "speed-label", "sleep-in", "sleep-off-label", "sleep-on-label", "sleeping", "sleep-fading",
+		"sleep-fading-shake", "bookmark-failed", "bookmarked", "bookmark-moment-at"} {
+		if !strings.Contains(body, "data-ts-msg-"+attr+`="`) {
+			t.Errorf("#player lacks data-ts-msg-%s", attr)
+		}
+	}
+	for _, want := range []string{`data-ts-msg-bookmarked="Bookmarked at {time} · "`, `Add a note`, `<kbd>B</kbd>`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page lacks %s", want)
+		}
+	}
+}
+
+// TestFullPlayerSpeedSetting: the speed sheet saves through POST /me/settings (no new endpoint).
+func TestFullPlayerSpeedSetting(t *testing.T) {
+	a := newTestApp(t)
+	ck := a.owner(t)
+	if rec := settingsPost(t, a, ck, "/me/settings", url.Values{"speed": {"2.35"}}, true); rec.Code != http.StatusNoContent {
+		t.Fatalf("speed 2.35 = %d, want 204", rec.Code)
+	}
+	if got := settingsOf(t, a).Speed; got != 2.35 {
+		t.Errorf("saved speed = %v, want 2.35", got)
+	}
+	if rec := settingsPost(t, a, ck, "/me/settings", url.Values{"speed": {"2.33"}}, true); rec.Code != http.StatusUnprocessableEntity {
+		t.Errorf("speed 2.33 = %d, want 422", rec.Code)
+	}
+	if got := settingsOf(t, a).Speed; got != 2.35 {
+		t.Errorf("speed after a refused post = %v, want 2.35", got)
+	}
+	rec := a.do(http.MethodPost, "/me/settings", url.Values{"speed": {"1.00"}}, func(r *http.Request) { r.Header.Set("HX-Request", "true") }, ck)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("speed without a token = %d, want 403", rec.Code)
 	}
 }
