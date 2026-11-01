@@ -36,7 +36,7 @@ Measurable, not adjectives. Each is an acceptance target for the phase that deli
 
 - **First sound in under one second** after tapping play on a book on the home network (server on a
   modest mini PC, phone on Wi-Fi). Library page interactive in under 300 ms on a mid-range phone.
-- **Never lose your place.** Position saved every 15 s while playing, on pause, on page hide and on
+- **Never lose your place.** Position saved every 10 s while playing, on pause, on page hide and on
   lock; offline listening syncs on reconnect; the newest position wins across devices, and "you were at
   4:12:30 on your laptop, continue there?" when two devices disagree by more than a minute.
 - **Lock screen like a native app**: title, chapter, cover, play/pause, skip by the user's interval,

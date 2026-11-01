@@ -1,25 +1,32 @@
 # Design
 
-Visual design for Tendshelf is produced with Claude Design and then implemented by hand as templ
-components and plain CSS.
+Visual design for Tendshelf is produced with Claude Design and implemented by hand as templ components
+and plain CSS. The accepted design is **Walnut & Ember** ([decision 0002](../decisions/0002-design-handoff.md)).
 
 ## Files
 
 | Path | What | Owner |
 | --- | --- | --- |
-| `docs/design/claude-design-prompt.md` | The brief given to Claude Design (screens, tone, constraints). | The lead writes it; do not edit without the lead. |
-| `docs/design/exports/<YYYY-MM-DD>-<topic>/` | What Claude Design returns: screenshots (PNG), HTML/CSS mock-ups, notes. One folder per round; never overwritten. | Added as received. |
-| `docs/design/tokens.md` | The chosen design tokens (colours with contrast ratios, type scale, spacing, radii, motion) with the export they came from. | Written when a round is accepted. |
-| `docs/design/screens.md` | Accepted screens per breakpoint (390, 768, 1440 px) and their states (empty, loading, error, offline). | Written when a round is accepted. |
+| `tendshelf-handoff/` | The accepted handoff (exported 2026-11-01): design system (`tokens.css`, `tokens.json`, `components/bundle.css`, 36 components with `README.md` and `preview.html`, logos), `screens/` (114 boards as PNG + reference HTML, listed in `screens/INDEX.md`), `docs/HANDOFF.md` (grid, persistent elements, motion, HTMX regions, accessibility, copy deck, cover accent, reader) and the original brief. Start with its `README.md`. | Replaced only by a new accepted round. |
+| `claude-design-prompt.md`, `claude-design-prompt-reader.md` | The briefs given to Claude Design. | The lead writes them; do not edit without the lead. |
+
+Live copies (owner access only): the design system at
+https://claude.ai/artifact/64fwa6bjmdTQn8KJtgbh4P and the screens canvas at
+https://claude.ai/artifact/KXfHbFsyKpv3K7xfVqnZSw. The folder here is the reference the code follows;
+a new design round replaces the folder in one commit and records what changed.
 
 ## Rules for turning a design into code
 
-- Exports are references, not code to paste. Rebuild them as templ components in
-  `internal/web/components/` and CSS in `internal/web/static/css/`; tokens become custom properties in
-  `tokens.css`.
-- No external fonts, icon CDNs, Tailwind classes or framework markup from an export. Fonts are system
-  fonts or self-hosted files with their licence in `NOTICES.md`; icons are inline SVG sprites.
-- Every accepted colour pair is checked for WCAG AA contrast and recorded in `tokens.md`, light and dark.
-- Mobile (390 px) is the primary frame; desktop layouts extend it, they do not replace it.
-- Keep the persistent player bar and the `#main` content region from `docs/architecture.md`; a design
-  that needs a full-page reload during playback is sent back.
+- Precedence inside the handoff: `docs/HANDOFF.md` > component `README.md` > `BRAND.md` > board PNG >
+  board HTML. `AGENTS.md` and `docs/architecture.md` win over the handoff on stack, routes, security
+  and privacy (see decision 0002 for the resolved differences).
+- `tokens.css` and `bundle.css` become `internal/web/static/css/`; extend with new `ts-` classes. Board
+  HTML is reference markup (inline layout styles, placeholder covers, frozen `is-focus`/`is-hover`
+  states): rebuild it as templ components in `internal/web/components/`, never paste it.
+- No external fonts, icon CDNs, Tailwind classes or framework markup. Fraunces, Fira Sans and Fira Mono
+  are self-hosted with their licence in `NOTICES.md`; icons are inline SVG sprites.
+- Every theme (`dark`, `light`, `sepia`, `contrast`) is checked; text 4.5:1, contrast theme 7:1.
+- Phone (390 px) is the primary frame; tablet (1024) and desktop (1440) extend it.
+- Keep the persistent player and the `#main` region from `docs/architecture.md`; a design that needs a
+  full-page reload during playback is sent back.
+- Nothing from `screens/directions/` (early moodboards) and no TV layouts.

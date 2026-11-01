@@ -64,6 +64,7 @@ from general knowledge. Cells marked `?` are unverified guesses; check before qu
 | EPUB3 Media Overlays import (use existing SMIL timings) | No (no SMIL code found) | No? | R6 |
 | EPUB3 Media Overlays export of the alignment | No | No | R6 |
 | **Collections** | | | |
+| "Because you listened to…" row (rule-based: same author, narrator, series, genre; no AI) | No | Yes (recommendations) | P1 |
 | Shelves / collections (user) | Collections (library-wide) + playlists (user) | Collections | P1 (personal shelves), P3 (shared shelves) |
 | Wish list | No | Yes | Not planned |
 | **Users and sharing** | | | |
@@ -81,6 +82,7 @@ from general knowledge. Cells marked `?` are unverified guesses; check before qu
 | Offline downloads | Yes (mobile apps) | Yes | P4 (PWA) |
 | Native desktop app | No | Windows (retired?) | P5 (Wails v3) |
 | Native mobile app | Yes (stalled) | Yes | Later (evaluate Wails v3 mobile; PWA first) |
+| TV app | No | Yes (some TV platforms?) | Later (own layouts; not designed yet) |
 | **Feeds and integrations** | | | |
 | RSS/podcast feed of a book or series | Yes | No | Later |
 | OPDS catalogue | No (not in server source) | No | Later |

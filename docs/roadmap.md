@@ -1,54 +1,136 @@
 # Roadmap
 
-Each phase ends with a usable vertical slice. A phase is done when its exit criteria pass on the gates
-in `AGENTS.md` and the status below records scope, checks, limits and next step.
+Work is grouped into milestones; each ends with something usable. A milestone is a sequence of phases
+(P = server and listening app, R = read-along), and each phase ships as packages of about one agent
+session (split by layer: data and jobs, then pages, then client code). A phase is done when its exit
+criteria pass on the gates in `AGENTS.md` and the status below records scope, checks, limits and next
+step. Order and scope decisions: [decision 0002](decisions/0002-design-handoff.md) (2026-11-01).
+
+Visual source: [design handoff](design/tendshelf-handoff/README.md). Every page package names the boards
+it builds (`screens/INDEX.md`) and records a side-by-side check at 390, 768, 1024 and 1440 px in all four
+themes.
 
 ## Status
 
-| Phase | State | Evidence |
-| --- | --- | --- |
-| P0 skeleton | **Partly done**: documents, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` schema-check placeholder, Makefile. Dependencies not yet added. | `go build ./... && go test ./...` pass (initial commit). |
-| P1-P6 | Not started | |
-| R read-along (R1-R6) | Designed 2026-10-31 ([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)); not started. Dependencies await approval. | Design only; no code, no checks run. |
+| Milestone | Phase | State | Evidence |
+| --- | --- | --- | --- |
+| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01. P0a and P0b in progress. | `make check` green 2026-11-01 (skeleton only). |
+| M1 It plays | P1a-P1c | Not started | |
+| M2 Family | P3 | Not started | |
+| M3 Pocket | P4 | Not started | |
+| M4 Details | P2 | Not started | |
+| M5 Read along | R1-R6 | Designed 2026-10-31 ([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)); UI designed in the handoff (`screens/reader/`). Dependencies await approval. | Design only. |
+| M6 Desktop | P5 | Not started | |
+| M7 Research | P6 | Not started; lab designed (`screens/admin/Research*`). | |
 
-## P0 Skeleton
+## M0 Foundation
 
-- Add the approved dependencies (see `docs/architecture.md`, "Dependencies awaiting approval").
+### P0a Data and jobs
+
+- Add `modernc.org/sqlite` and `golang.org/x/crypto` with `NOTICES.md` rows.
 - `internal/db`: open with read-only pre-check, `application_id`, `user_version`, embedded migrations,
-  `VACUUM INTO` backups, typed refusal errors, migration test harness. Migration `0001_init.sql`
-  creates `settings`, `users`, `sessions`.
-- `internal/web`: layout templ component (header, `#main`, persistent player bar slot), static asset
-  embedding with hashed names, security headers, CSRF middleware, error page, vendored htmx.
-- `internal/jobs`: queue table, runner, lease recovery, `/hx/jobs/{id}` fragment.
-- CI-equivalent `make check` green; `CGO_ENABLED=0 make build` green.
+  `VACUUM INTO` backups (newest three), typed refusal errors, migration test harness. Migration
+  `0001_init.sql` creates `settings`, `users`, `sessions`, `user_settings`, `jobs`, `audit_log`.
+- `internal/jobs`: queue table, runner with per-kind concurrency, 60 s leases, restart recovery,
+  cancellation, progress at most once per second.
+- `cmd/tendshelf`: `-data` directory flag/env, open the database before serving, graceful shutdown of
+  the job runner.
 
-Exit: a templ page served with htmx loaded from `/static`, migrations applied to a fresh database, a
-newer-schema database refused untouched (test), a job survives a restart (test).
+Exit: migrations applied to a fresh database and from the empty fixture; a newer-schema or foreign
+database refused byte-identical (test); a job survives a restart (test); `CGO_ENABLED=0 make build`.
 
-## P1 Single-user library, scanner, player, progress
+### P0b UI shell
 
-- `/setup` creates the owner; login/logout; sessions.
-- Libraries and folders (admin page); scanner for Author/Series/Book, single files, numbered MP3
-  folders, multi-disc folders; DRM refusal; move detection by quick hash; missing files kept.
+- Add `github.com/a-h/templ` (runtime; CLI pinned to the same version in `make generate`, CI fails on a
+  dirty tree) and vendor htmx 2.x with version and SHA-256 in `NOTICES.md`.
+- Static tree embedded with hashed, immutable names: `tokens.css` and `bundle.css` from the handoff,
+  Fraunces, Fira Sans and Fira Mono woff2 (self-hosted, OFL rows in `NOTICES.md`), the logo SVGs and an
+  inline SVG icon sprite.
+- Layout templ component: theme on `<html data-theme>` (system default, user choice later from
+  `user_settings`), `#main` swap region, the three shells (phone tab bar 72 px, tablet rail 88 px,
+  desktop sidebar 264 px) and the empty player slot, `<audio>` and navigation outside swaps with
+  `hx-preserve`; `#toasts` region; error page with plain words; htmx config meta; CSRF middleware.
+- Visual capture helper (opt-in `TENDSHELF_TEST_BROWSER`, system Chromium, no Go module) writing to
+  `.local/tests/visual/<run-id>/`.
+
+Exit: a templ page served with htmx from `/static` under the strict CSP; each shell renders at 390,
+768, 1024 and 1440 in dark, light, sepia and contrast with no horizontal scroll (captures reviewed
+against `screens/core/Home*.png` for the frame only); CSRF rejects an unsafe request without the token.
+
+## M1 It plays (single owner)
+
+Goal: the owner installs it, points it at a folder and listens on phone and laptop. Built in three
+packages; each page package uses the `screens/core`, `screens/browse`, `screens/people` and
+`screens/states` boards.
+
+### P1a Library, scanner and media
+
+- Libraries and folders; scanner for Author/Series/Book, single files, numbered MP3 folders, multi-disc
+  folders; DRM refusal; move detection by quick hash; missing files kept.
 - ffprobe probe, chapters (embedded, or one per file), embedded/folder covers and thumbnails.
+- Cover tint and per-theme cover accent computed at scan time (handoff "Cover accent and theme
+  rules"), stored with the cover; ember fallback.
 - Local details: folder names and file tags with per-field source (`metadata_values`).
-- Home, library grid (infinite scroll), book page, authors, narrators, series, search (FTS5), personal shelves.
-- Player (`static/js/player.js`): multi-file timeline, chapters, speed 0.5-3.0, skip intervals, sleep
-  timer with fade, auto-rewind after pause, Media Session, keyboard shortcuts, progress sync every 15 s
-  and on pause/hide (`sendBeacon`), mark finished, bookmarks and notes.
 - Compatibility copies for unplayable formats.
 
-Exit: on a synthetic 200-book fixture library, first scan groups every layout correctly; play, seek
-across a file boundary, speed, sleep timer and resume on a second browser all work; first sound under
-1 s on localhost; Playwright-free checks are Go `httptest` plus a manual phone check recorded here
-(browser automation tooling must not add Node; evaluate a Go-driven option such as chromedp separately).
+Exit: on a synthetic 200-book fixture library, first scan groups every layout correctly; refused files
+are listed with a plain reason; accent contrast checks pass for the tested pairs in the handoff.
 
-## P2 Metadata providers, covers, write-to-file
+### P1b Accounts and browse pages
+
+- `/setup`: owner account first, then server name and first folder with the scan streaming in
+  (`screens/people/Onboard*`, reordered per decision 0002); login/logout; sessions; Settings and
+  Profile (theme, playback preferences).
+- Home (Continue listening hero with the one-resume rule, New on the shelf spines, Your series in
+  progress, rule-based Because you listened to), library grid and list with filters in the URL
+  (infinite scroll), book page with tabs, authors, narrators, series, search (FTS5) with did-you-mean,
+  personal shelves, Libraries admin with scan progress and problems in plain words.
+- Edge states: loading skeletons, server error, no results.
+
+Exit: every page's handler tests; boards matched side by side at the four widths in four themes;
+library page interactive in under 300 ms on a mid-range phone (measured).
+
+### P1c Player and progress
+
+- Mini-player, full player (phone, tablet) and desktop player bar and panel; cover accent only on the
+  player root.
+- Player module (`static/js/player.js`): multi-file timeline, chapters, speed 0.5-3.0, skip intervals,
+  sleep timer with fade and +10 min, auto-rewind after pause with its hint, Media Session, keyboard
+  shortcuts, progress sync every 10 s and on pause/hide (`sendBeacon`) firing `progress-saved`, mark
+  finished, "continue on the other device?" prompt, bookmarks and notes.
+
+Exit: play, seek across a file boundary, speed, sleep timer and resume on a second browser all work;
+first sound under 1 s on localhost; the player is usable one-handed at 390 px (recorded manual check).
+
+## M2 Family (P3 multi-user, invitations, sharing)
+
+- Roles owner/admin/member/guest; users admin page; grants per library and per book with expiry and
+  download permission; `share.Can` with a role-by-action test matrix.
+- Invites by link and optional email (SMTP settings); share links for one book; Rosa's invite flow and
+  large-text Home (`screens/people/Invite*`, `RosaHome`); Share & invite pages.
+- Device tokens and the JSON API v1; shared shelves; "Shared with you" Home row.
+
+Exit: for every route, a test proves each role gets exactly the documented access, and forbidden books
+never appear in lists, counts, search or covers. First tagged release (v0.1) after this milestone.
+
+## M3 Pocket (P4 PWA offline and polish)
+
+- Manifest, service worker, install prompt, offline downloads with persistent storage, offline queue,
+  Downloads tab and offline banner (`screens/browse/DownloadsPhone`, `screens/states/StateOffline`).
+- Listening statistics, Eyes-free (car) mode, shake to extend sleep (where permitted), scheduled
+  database backups.
+- Accessibility audit (WCAG 2.2 AA, contrast theme 7:1) and performance budget checks at the four widths.
+
+Exit: a downloaded book plays in airplane mode on Android Chrome and iOS Safari (recorded manual
+check), and offline progress syncs on reconnect.
+
+## M4 Details (P2 metadata providers, covers, write-to-file)
 
 - Sidecars: `.opf`, `.nfo`, `desc.txt`, `reader.txt`, `metadata.json`; precedence names < tags <
   sidecars < user/online choices.
 - Online lookup (explicit button): Audnexus by ASIN (other Audible regions), Audible catalogue,
-  Google Books, Open Library, iTunes; scoring, cache, spacing; field-by-field compare and apply.
+  Google Books, Open Library, iTunes; scoring, cache, spacing; field-by-field compare sheet and apply
+  (`screens/core/ComparePhone`).
 - Covers: online (fetched by the server), upload, choose; author photos and bios from Audnexus.
 - Write details into the file with verification, backup, "Looks good" and Undo; restart recovery.
 
@@ -56,14 +138,13 @@ Exit: ported parser tables from the Extractor tests pass in Go; write-details ro
 m4b, mp3 and flac with real ffmpeg (`TENDSHELF_TEST_FFMPEG`) keeps the audio hash; a crash injected at
 each `file_writes` state recovers correctly.
 
-## R Read-along (after P2)
+## M5 Read along (R)
 
-Integrated into the book, player, position, sharing and offline downloads; not a second app. Starts
-after P2 (player and details exist). R5's sharing part needs P3 and its offline part P4; until then
-those rows stay open in the status. Design: [read-along.md](read-along.md).
+Integrated into the book, player, position, sharing and offline downloads; not a second app. Comes
+after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); boards: `screens/reader/`.
 
 - **R1 Ebook ingestion**: `internal/ebook`, migration `ebooks` (`ebook_files`, `editions`,
-  `edition_chapters`, `user_settings`); scanner finds ebooks in book folders; upload on `/books/{id}/text`;
+  `edition_chapters`); scanner finds ebooks in book folders; upload on `/books/{id}/text`;
   copy-protection refusal; parsers for EPUB 2/3, TXT/Markdown, HTML, DOCX, FB2 first, then PDF (text
   layer, reflow check, page fallback) and DRM-free MOBI/AZW3; canonical document with stable IDs;
   `ebook.ingest` job. Exit: every parser and refusal fixture passes; same file gives byte-identical
@@ -78,11 +159,11 @@ those rows stay open in the status. Design: [read-along.md](read-along.md).
   least 95 % of sentences within ±250 ms, zero invented times); job crash/resume tests; opt-in real run
   on a public-domain recording records the ±250 ms share, CPU time per audio hour and storage per book
   here (replacing the guesses in read-along.md).
-- **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line (Car once P4 lands);
-  `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reader settings and vendored
-  fonts; migration `highlights` (`highlights`, `bookmarks.edition_id/sid`, `notes.highlight_id`); highlights,
-  bookmarks and notes in both directions. Exit: handler tests by role; contrast checked for every theme
-  and highlight colour; manual check at 390/768/1440 px recorded (Go-driven browser check once chosen);
+- **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line and Eyes-free;
+  `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reading settings (Fraunces,
+  Fira Sans, OpenDyslexic); migration `highlights` (`highlights`, `bookmarks.edition_id/sid`,
+  `notes.highlight_id`); highlights, bookmarks and notes in both directions. Exit: handler tests by
+  role; contrast checked for every theme and highlight colour; side-by-side check at the four widths;
   highlight changes within one frame of a sentence start on a mid-range phone (measured).
 - **R5 Cross-format position**: `progress.position_source/text_*`; Read mode drives the position;
   edition switch maps through time or quote; `can_read` on grants and share links with the P3 matrix;
@@ -92,41 +173,23 @@ those rows stay open in the status. Design: [read-along.md](read-along.md).
   sentence-level overlays. Exit: import fixtures (match used, mismatch ignored); export then re-import
   within 1 ms; opt-in epubcheck passes.
 
-## P3 Multi-user, invitations, sharing
-
-- Roles owner/admin/member/guest; users admin page; grants per library and per book with expiry and
-  download permission; `share.Can` with a role-by-action test matrix.
-- Invites by link and optional email (SMTP settings); share links for one book.
-- Device tokens and the JSON API v1; shared shelves.
-
-Exit: for every route, a test proves each role gets exactly the documented access, and forbidden books
-never appear in lists, counts, search or covers.
-
-## P4 PWA offline and polish
-
-- Manifest, service worker, install prompt, offline downloads with persistent storage, offline queue.
-- Listening statistics, "continue on this device?" prompt, car mode (big buttons), shake to extend
-  sleep (where permitted), scheduled database backups.
-- Accessibility audit (WCAG 2.2 AA) and performance budget checks at 390/768/1440 px.
-
-Exit: a downloaded book plays in airplane mode on Android Chrome and iOS Safari (recorded manual
-check), and offline progress syncs on reconnect.
-
-## P5 Wails desktop
+## M6 Desktop (P5 Wails)
 
 - `desktop/` module, Wails v3 pinned; connect-to-server and personal modes; media keys; tray.
 
 Exit: Linux build runs both modes in an isolated session; other platforms recorded as not verified.
 
-## P6 Research module port
+## M7 Research (P6 module port)
 
 - Port the TendVox Extractor: clip extraction, categories, measurements, coverage, keep-numbers/delete-
-  clips, `tendvox-reference-styles` v1 export; off by default, admin-only, fair-practice rules.
+  clips, `tendvox-reference-styles` v1 export; off by default, admin-only, fair-practice rules; the
+  Research door and lab from `screens/admin/Research*` with the `lab-*` tokens.
 
 Exit: the Go export matches the Extractor's export for the same synthetic fixture within stated
 tolerances; disabled module returns 404 for every research route.
 
 ## Later
 
-Native mobile (evaluate Wails v3 mobile when stable), OPDS, podcasts, RSS feeds of books/series,
-passkeys, OpenID Connect, folder watcher, merge MP3 folder to M4B, custom metadata providers, Chromecast.
+TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), native mobile
+(evaluate Wails v3 mobile when stable), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID
+Connect, folder watcher, merge MP3 folder to M4B, custom metadata providers, Chromecast.

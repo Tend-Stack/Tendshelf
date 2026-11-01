@@ -241,8 +241,8 @@ the top; gentle scrolls only when it leaves the middle band of the screen. A
 user scroll or touch pauses auto-scroll and shows the **Back to the voice** button; tapping it (or 8 s
 without scrolling, if "return automatically" is on) jumps back to the current sentence.
 
-**Reader settings** (`user_settings` key `reader.v1`, also cached locally for offline): font (system serif,
-system sans, Literata, Atkinson Hyperlegible, OpenDyslexic: vendored, self-hosted), size 80-250 %, line
+**Reader settings** (`user_settings` key `reader.v1`, also cached locally for offline): font (Fraunces,
+Fira Sans, OpenDyslexic: vendored, self-hosted; [decision 0002](decisions/0002-design-handoff.md)), size 80-250 %, line
 spacing 1.2-2.2, margins narrow/normal/wide, theme light/sepia/night/high contrast (each checked at
 4.5:1 including both highlight colours), highlight style word/sentence/both/none, auto-scroll on/off,
 follow style steady (default)/gentle, return automatically on/off. Dyslexia fonts are a preference, not a claim:
@@ -320,8 +320,8 @@ alignment job locally when a runtime is checked.
   Project Gutenberg text and 10 minutes of hand-checked sentence starts, prepared under
   `.local/tests/align-accuracy/<run-id>/`, never committed. Records the ±250 ms share and CPU time per
   audio hour. Target (guess): at least 95 %.
-- **Browser**: the highlight script is checked with the Go-driven browser option chosen in P1; until then,
-  a recorded manual check at 390/768/1440 px.
+- **Browser**: the highlight script is checked with the Chromium capture helper (P0b) and a recorded
+  manual check at 390, 768, 1024 and 1440 px.
 
 ## Not handled (and why)
 

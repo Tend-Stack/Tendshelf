@@ -75,7 +75,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `book_people` | `book_id`, `person_id`, `role` ('author','narrator'), `idx` | |
 | `series` / `book_series` | `id`, `name`, `sort_name`, `description` / `book_id`, `series_id`, `sequence` TEXT, `idx` | Sequence is text ("1.5", "0"). |
 | `book_labels` | `book_id`, `kind` ('genre','tag'), `value` | |
-| `covers` | `id`, `book_id`, `source`, `mime`, `width`, `height`, `sha256`, `path`, `created_at` | Files under `<data>/covers/`; thumbnails under `<data>/cache/thumbs/`. |
+| `covers` | `id`, `book_id`, `source`, `mime`, `width`, `height`, `sha256`, `path`, `tint` NULL, `accent_json` NULL, `created_at` | Files under `<data>/covers/`; thumbnails under `<data>/cache/thumbs/`. `tint` is the sampled hex colour, `accent_json` the checked accent per theme (`dark`, `light`, `sepia`); NULL means the ember fallback. |
 | `online_cache` | `provider`, `query_key`, `response_json`, `fetched_at`; PK (`provider`,`query_key`) | Expires after 7 days. |
 | `progress` | `user_id`, `book_id`, `position_ms`, `duration_ms`, `finished_at` NULL, `client_updated_at`, `server_updated_at`, `device_id`, `position_source` ('audio','text', R5), `text_edition_id` NULL, `text_sid` NULL, `text_off` NULL; PK (`user_id`,`book_id`) | A text update sets `position_ms` to the sentence start (or, in a gap, the previous timed sentence's end). |
 | `listening_sessions` | `id`, `user_id`, `book_id`, `device_id`, `started_at`, `ended_at`, `start_ms`, `end_ms`, `listened_ms`, `speed` | Statistics (P4). |
@@ -111,6 +111,11 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
   HLS; reconsider only with a measured need.
 - **Covers**: embedded picture or folder image (`cover.*`, `folder.*`) at scan time; thumbnails
   (160, 320, 640 px JPEG) produced by ffmpeg and cached.
+- **Cover colour** (at scan time, standard library `image/jpeg` on the 160 px thumbnail): the dominant
+  colour ignoring near-black, near-white and small areas becomes `tint`; converted to OKLCH, chroma
+  capped at 0.10, lightness set per theme (dark 0.75-0.85, light and sepia 0.38-0.46), then checked
+  (play-button text 4.5:1, scrubber fill 3:1 on its ground). Failing or grey covers fall back to ember.
+  Rules: handoff `docs/HANDOFF.md`, "Cover accent and theme rules". The contrast theme never uses it.
 - **Write details into the file** (P2): `ffmpeg -map 0 -c copy` with the new tags and chapters into a
   temp file in the same directory; verify the audio stream hash (`-map 0:a -c copy -f hash`) equals the
   original's, duration within 50 ms, chapter count and times equal, tags read back; check free space
@@ -138,7 +143,7 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | Route | Page |
 | --- | --- |
 | `/` | Home: continue listening, recently added, shelves |
-| `/setup` | First run: create the owner (only while no owner exists) |
+| `/setup` | First run (only while no owner exists): create the owner account first, then name the server and add the first folder ([decision 0002](decisions/0002-design-handoff.md)) |
 | `/login`, `POST /logout` | |
 | `/libraries/{id}` | Grid/list with sort and filter |
 | `/books/{id}` | Book: cover, details, chapters, play, bookmarks, notes |
@@ -187,6 +192,34 @@ non-admins (no existence leak).
 `"text":{"editionId","sentenceId","offset"}` and `"source":"audio"|"text"` (R5).
 `clientUpdatedAt` is clamped to server time + 60 s; the update applies only if it is newer than the
 stored one. Response: `{"applied":bool,"progress":{...}}` (200 either way, so offline batches never fail).
+
+## Design regions
+
+The design handoff (`docs/design/tendshelf-handoff/docs/HANDOFF.md`, "Server-rendered partials") names
+targets and triggers; its suggested routes are replaced by these ([decision 0002](decisions/0002-design-handoff.md)).
+"Page + `hx-select`" means the canonical page URL answers with a full page and htmx selects the region,
+so Back, reload and links without JavaScript all work.
+
+| Region (target) | Trigger | Route |
+| --- | --- | --- |
+| Continue listening hero `#home-hero` | load, `progress-saved from:body` | `GET /hx/home/hero` |
+| Home rows `#row-{name}` | load, `revealed` below the fold | `GET /hx/home/rows/{name}` (`recent`, `series`, `finished`, `shared`, `because`) |
+| Library grid `#library-grid` | change on filters, sort, view | Page + `hx-select`: `GET /libraries/{id}?view=&sort=&filter=` with `hx-push-url`; more rows from `/hx/libraries/{id}/items` |
+| Search results `#search-results` | `input changed delay:150ms` | Page + `hx-select`: `GET /search?q=` |
+| Book tab panels `#book-panel` | click on a tab | Page + `hx-select`: `GET /books/{id}/{tab}` (`about`, `chapters`, `bookmarks`, `details`) with `hx-push-url` |
+| Compare sheet `#sheet` (P2) | "Look up details online" | `POST /hx/books/{id}/match` then `GET /hx/books/{id}/compare?candidate=` |
+| Scan progress `#scan` | while a scan runs | `GET /hx/jobs/{id}` |
+| Download rows | client only | Service worker and IndexedDB (P4); no server polling |
+| Users list `#users` | after invite, revoke, role change | `GET /hx/admin/users` |
+| Toasts `#toasts` | any response | `hx-swap-oob` (`role="status"`, errors `role="alert"`) |
+| Reader text `#reader-text` (R4) | open, `revealed` near the end | `GET /hx/books/{id}/read/chapters/{idx}?edition=` |
+| Reader mode | mode switcher | Page + `hx-select`: `GET /books/{id}/read?mode=` |
+| Reading settings (R4) | `change` | `POST /hx/me/reader-settings`, `hx-swap="none"` |
+| Highlights and notes (R4) | selection menu | `POST /hx/books/{id}/highlights` (out-of-band sentence span and count) |
+| Alignment progress `#align` (R3) | `every 2s` until done | `GET /hx/editions/{id}/alignment` |
+
+Theme and other UI preferences live in `user_settings` (`ui.theme`, `ui.text_size`), so they follow the
+user across devices; before login the system preference applies.
 
 ## Auth and sharing
 
@@ -247,7 +280,8 @@ rules are in `AGENTS.md`.
 
 ## Dependencies awaiting approval
 
-Standard library only today. The first package (P0) needs:
+Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); each gets its
+`NOTICES.md` row in the commit that adds it:
 
 | Module / file | Why | Note |
 | --- | --- | --- |
@@ -255,6 +289,7 @@ Standard library only today. The first package (P0) needs:
 | `modernc.org/sqlite` (v1.60.1, already in the local module cache; TendVox uses it) | SQLite driver | Chosen over `mattn/go-sqlite3`: pure Go, so `CGO_ENABLED=0` cross-compiles to ARM NAS boxes, Windows, macOS and scratch containers; FTS5 is compiled in (checked in `lib/sqlite_linux_amd64.go`). Cost: slower than the C driver on heavy writes (guess 1.5-2x); fine for this workload. BSD-3 |
 | `htmx.min.js` 2.x, vendored to `internal/web/static/vendor/` | Interactivity | Download once from the official release, record version and SHA-256 in `NOTICES.md`; licence 0BSD (guess, read it from the release) |
 | `golang.org/x/crypto` (argon2) | Password hashing in P1 | BSD-3 |
+| Fonts vendored to `internal/web/static/fonts/` (woff2): Fraunces, Fira Sans, Fira Mono | The design's type (P0b); Fira Mono only in the Research lab | SIL OFL 1.1 (read it from each release); self-hosted, never Google Fonts |
 
 Read-along (phase R), each awaiting approval:
 
@@ -263,7 +298,7 @@ Read-along (phase R), each awaiting approval:
 | `golang.org/x/net/html` | HTML5 parsing of EPUB 2 XHTML, HTML files and MOBI/KF8 content (R1) | BSD-3; Go team |
 | `golang.org/x/text` (`unicode/norm`) | NFC normalisation for matching and alignment (R1, R3) | BSD-3; Go team |
 | PDF text-layer reader: candidate `github.com/ledongthuc/pdf`, or an own minimal reader | PDF import (R1) | BSD-3 (guess, read it); evaluate ToUnicode/CMap coverage on fixtures before choosing; the module may not be enough for complex PDFs (guess) |
-| Fonts vendored to `internal/web/static/fonts/` (woff2): Literata, Atkinson Hyperlegible Next, OpenDyslexic | Reader typography (R4) | SIL OFL 1.1 (guess for each; read it from the release); `NOTICES.md` rows |
+| Font vendored to `internal/web/static/fonts/` (woff2): OpenDyslexic | The one extra reader font (R4); the reader otherwise uses the design's Fraunces and Fira Sans | SIL OFL 1.1 (guess; read it from the release); `NOTICES.md` row |
 | Optional runtime, not shipped: Python 3.12 + `torch` CPU (2.8, as TendVox) + `transformers` + `safetensors` + `numpy` | The emissions worker (R3) | Owner-installed; BSD-3 / Apache-2.0 / Apache-2.0 / BSD-3 (guess for exact versions) |
 | Optional models, not shipped: `facebook/wav2vec2-base-960h` (English), `jonatasgrosman/wav2vec2-large-xlsr-53-spanish` (Spanish) | Emissions (R3) | Apache-2.0 per model cards (TendVox `docs/alignment-worker.md`); revision and file hashes pinned in `runtimes/align/models/*.json` |
 | Test-only, opt-in: epubcheck (Java) | Validate the overlay export (R6) | BSD-3 (guess); never in `make check` |
