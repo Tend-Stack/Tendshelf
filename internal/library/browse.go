@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 )
 
 // Browse reads: the lists, cards, facets and detail pages the listener sees. Every query carries the
@@ -34,6 +35,9 @@ func ParseSort(s string) Sort {
 	return SortAdded
 }
 
+// MaxTitleRunes is the longest title filter; a longer one is cut.
+const MaxTitleRunes = 100
+
 const (
 	defaultLimit  = 48
 	maxLimit      = 120
@@ -47,8 +51,12 @@ type ListQuery struct {
 	Sort                           Sort
 	Genres                         []string // every genre must match
 	AuthorID, NarratorID, SeriesID string
-	Cursor                         string // opaque, from BookPage.Next
-	Limit                          int    // 0 = 48, clamped to 1..120
+	// Title keeps the books whose title contains it, ignoring case (at most 100 runes; % and _ are
+	// literal). MinDurationMs is inclusive and MaxDurationMs exclusive; 0 leaves that side open.
+	Title                        string
+	MinDurationMs, MaxDurationMs int64
+	Cursor                       string // opaque, from BookPage.Next
+	Limit                        int    // 0 = 48, clamped to 1..120
 }
 
 // PersonRef names a person on a card.
@@ -183,8 +191,19 @@ func visible(sc Scope, listable bool) *whereClause {
 	return w
 }
 
+// likeEscape makes s literal inside LIKE ... ESCAPE '\'.
+func likeEscape(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
 // where builds the list WHERE for q: scope, listable and every filter.
 func where(sc Scope, q ListQuery) *whereClause {
+	return whereExcept(sc, q, "")
+}
+
+// whereExcept is where without one filter ("author", "narrator" or "series"), which is how a facet
+// ignores its own choice while applying every other.
+func whereExcept(sc Scope, q ListQuery, skip string) *whereClause {
 	w := visible(sc, true)
 	if q.LibraryID != "" {
 		w.add("b.library_id = ?", q.LibraryID)
@@ -192,16 +211,32 @@ func where(sc Scope, q ListQuery) *whereClause {
 	for _, g := range q.Genres {
 		w.add("EXISTS (SELECT 1 FROM book_labels x WHERE x.book_id = b.id AND x.kind = 'genre' AND x.value = ?)", g)
 	}
-	if q.AuthorID != "" {
+	if q.AuthorID != "" && skip != "author" {
 		w.add("EXISTS (SELECT 1 FROM book_people x WHERE x.book_id = b.id AND x.role = 'author' AND x.person_id = ?)", q.AuthorID)
 	}
-	if q.NarratorID != "" {
+	if q.NarratorID != "" && skip != "narrator" {
 		w.add("EXISTS (SELECT 1 FROM book_people x WHERE x.book_id = b.id AND x.role = 'narrator' AND x.person_id = ?)", q.NarratorID)
 	}
-	if q.SeriesID != "" {
+	if q.SeriesID != "" && skip != "series" {
 		w.add("EXISTS (SELECT 1 FROM book_series x WHERE x.book_id = b.id AND x.series_id = ?)", q.SeriesID)
 	}
+	if t := cutRunes(strings.TrimSpace(q.Title), MaxTitleRunes); t != "" {
+		w.add("("+titleKey+") LIKE '%' || ? || '%' ESCAPE '\\'", likeEscape(t))
+	}
+	if q.MinDurationMs > 0 {
+		w.add("b.duration_ms >= ?", q.MinDurationMs)
+	}
+	if q.MaxDurationMs > 0 {
+		w.add("b.duration_ms < ?", q.MaxDurationMs)
+	}
 	return w
+}
+
+func cutRunes(s string, n int) string {
+	if utf8.RuneCountInString(s) <= n {
+		return s
+	}
+	return string([]rune(s)[:n])
 }
 
 const fromVisible = ` FROM books b JOIN libraries l ON l.id = b.library_id`
@@ -560,4 +595,87 @@ func (r *Repo) SeriesInfo(ctx context.Context, sc Scope, id string) (SeriesPage,
 	}
 	sp.Books, err = r.cards(ctx, ids)
 	return sp, err
+}
+
+// NamedFacet is a person or series and how many visible books carry it under the other filters.
+type NamedFacet struct {
+	ID, Name string
+	Count    int
+}
+
+const defaultFacetLimit = 30
+
+// PeopleFacet lists the authors (role "author") or narrators ("narrator") of the books q selects,
+// most books first. It ignores q's own role filter and applies every other, so the chip menu shows
+// what is left to choose. limit 0 is 30. A person chosen in q who has no visible book under the
+// other filters is still listed, with count 0, so the chip can name them.
+func (r *Repo) PeopleFacet(ctx context.Context, sc Scope, q ListQuery, role string, limit int) ([]NamedFacet, error) {
+	if role != RoleAuthor && role != RoleNarrator {
+		return nil, invalid("role is not valid")
+	}
+	if limit <= 0 {
+		limit = defaultFacetLimit
+	}
+	w := whereExcept(sc, q, role)
+	args := append([]any{role}, w.args...)
+	out, err := many(ctx, r.st.Reader(), scanFacet, `SELECT p.id, p.name, COUNT(DISTINCT b.id)
+  FROM book_people bp JOIN people p ON p.id = bp.person_id JOIN books b ON b.id = bp.book_id
+  JOIN libraries l ON l.id = b.library_id WHERE bp.role = ? AND `+w.sql()+`
+  GROUP BY p.id ORDER BY COUNT(DISTINCT b.id) DESC, p.name COLLATE NOCASE, p.id LIMIT ?`, append(args, limit)...)
+	if err != nil {
+		return nil, err
+	}
+	sel := q.AuthorID
+	if role == RoleNarrator {
+		sel = q.NarratorID
+	}
+	return r.withChosen(ctx, sc, out, sel, `SELECT p.id, p.name FROM people p JOIN book_people bp ON bp.person_id = p.id
+  JOIN books b ON b.id = bp.book_id JOIN libraries l ON l.id = b.library_id WHERE bp.role = ? AND p.id = ? AND `, role)
+}
+
+// SeriesFacet is PeopleFacet for series.
+func (r *Repo) SeriesFacet(ctx context.Context, sc Scope, q ListQuery, limit int) ([]NamedFacet, error) {
+	if limit <= 0 {
+		limit = defaultFacetLimit
+	}
+	w := whereExcept(sc, q, "series")
+	out, err := many(ctx, r.st.Reader(), scanFacet, `SELECT s.id, s.name, COUNT(DISTINCT b.id)
+  FROM book_series bs JOIN series s ON s.id = bs.series_id JOIN books b ON b.id = bs.book_id
+  JOIN libraries l ON l.id = b.library_id WHERE `+w.sql()+`
+  GROUP BY s.id ORDER BY COUNT(DISTINCT b.id) DESC, s.name COLLATE NOCASE, s.id LIMIT ?`, append(append([]any(nil), w.args...), limit)...)
+	if err != nil {
+		return nil, err
+	}
+	return r.withChosen(ctx, sc, out, q.SeriesID, `SELECT s.id, s.name FROM series s JOIN book_series bs ON bs.series_id = s.id
+  JOIN books b ON b.id = bs.book_id JOIN libraries l ON l.id = b.library_id WHERE s.id = ? AND `)
+}
+
+func scanFacet(s scanner) (NamedFacet, error) {
+	var f NamedFacet
+	return f, s.Scan(&f.ID, &f.Name, &f.Count)
+}
+
+// withChosen appends the chosen id with count 0 when the facet did not list it and the scope may
+// see a listable book that carries it. prefix is a SELECT of id and name ending in "WHERE ... AND ";
+// its placeholders are lead (the role, for people) then the id, then the scope's.
+func (r *Repo) withChosen(ctx context.Context, sc Scope, list []NamedFacet, id, prefix string, lead ...any) ([]NamedFacet, error) {
+	if id == "" {
+		return list, nil
+	}
+	for _, f := range list {
+		if f.ID == id {
+			return list, nil
+		}
+	}
+	w := visible(sc, true)
+	args := append(append([]any(nil), lead...), id)
+	args = append(args, w.args...)
+	got, err := many(ctx, r.st.Reader(), func(s scanner) (NamedFacet, error) {
+		var f NamedFacet
+		return f, s.Scan(&f.ID, &f.Name)
+	}, prefix+w.sql()+` LIMIT 1`, args...)
+	if err != nil {
+		return nil, err
+	}
+	return append(list, got...), nil
 }
