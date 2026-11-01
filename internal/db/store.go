@@ -34,6 +34,32 @@ func (s *Store) Close() error {
 	return errors.Join(s.r.Close(), s.w.Close())
 }
 
+// SQLite extended result codes the services need to tell apart.
+const (
+	sqliteConstraintForeignKey = 787
+	sqliteConstraintPrimaryKey = 1555
+	sqliteConstraintUnique     = 2067
+)
+
+func sqliteCode(err error) int {
+	var ce interface{ Code() int }
+	if errors.As(err, &ce) {
+		return ce.Code()
+	}
+	return 0
+}
+
+// IsUniqueViolation reports whether err is a UNIQUE or PRIMARY KEY constraint
+// failure. It lets other packages map it to their own error without importing
+// the driver.
+func IsUniqueViolation(err error) bool {
+	c := sqliteCode(err)
+	return c == sqliteConstraintUnique || c == sqliteConstraintPrimaryKey
+}
+
+// IsForeignKeyViolation reports whether err is a FOREIGN KEY constraint failure.
+func IsForeignKeyViolation(err error) bool { return sqliteCode(err) == sqliteConstraintForeignKey }
+
 // WriteTx runs fn in an immediate transaction on the writer. It rolls back on
 // an error or a panic (and re-panics), and commits otherwise.
 func (s *Store) WriteTx(ctx context.Context, fn func(*sql.Tx) error) (err error) {

@@ -573,6 +573,25 @@ func TestLibrarySchema(t *testing.T) {
 	}
 }
 
+func TestConstraintClassifiers(t *testing.T) {
+	st := mustOpen(t, t.TempDir())
+	defer st.Close()
+	if _, err := st.Writer().Exec(`INSERT INTO settings(key, value_json) VALUES ('k', '1')`); err != nil {
+		t.Fatal(err)
+	}
+	_, err := st.Writer().Exec(`INSERT INTO settings(key, value_json) VALUES ('k', '2')`)
+	if !IsUniqueViolation(err) || IsForeignKeyViolation(err) {
+		t.Fatalf("duplicate key: unique=%v fk=%v err=%v", IsUniqueViolation(err), IsForeignKeyViolation(err), err)
+	}
+	_, err = st.Writer().Exec(`INSERT INTO user_settings(user_id, key, value_json, updated_at) VALUES ('nobody', 'k', '1', 1)`)
+	if !IsForeignKeyViolation(err) || IsUniqueViolation(err) {
+		t.Fatalf("missing parent: unique=%v fk=%v err=%v", IsUniqueViolation(err), IsForeignKeyViolation(err), err)
+	}
+	if IsUniqueViolation(nil) || IsForeignKeyViolation(errors.New("x")) {
+		t.Fatal("non-SQLite errors must not match")
+	}
+}
+
 func TestOnlyOneOwner(t *testing.T) {
 	st := mustOpen(t, t.TempDir())
 	defer st.Close()
