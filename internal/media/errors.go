@@ -22,6 +22,11 @@ const (
 	CodeProbeTimeout      = "probe_timeout"
 	CodeProbeFailed       = "probe_failed"
 	CodeProbeOutputTooBig = "probe_output_too_large"
+	CodeFFmpegMissing     = "ffmpeg_missing"
+	CodeFFmpegFailed      = "ffmpeg_failed"
+	CodeFFmpegTimeout     = "ffmpeg_timeout"
+	CodeImageTooLarge     = "image_too_large"
+	CodeCompatNotNeeded   = "compat_not_needed"
 )
 
 var errorTexts = map[string]string{
@@ -33,6 +38,11 @@ var errorTexts = map[string]string{
 	CodeProbeTimeout:      "Reading this file took too long. It may be on a slow or disconnected drive.",
 	CodeProbeFailed:       "Tendshelf could not read this file.",
 	CodeProbeOutputTooBig: "Tendshelf could not read this file.",
+	CodeFFmpegMissing:     "Tendshelf cannot find ffmpeg. Install FFmpeg or set its location.",
+	CodeFFmpegFailed:      "Tendshelf could not convert this file.",
+	CodeFFmpegTimeout:     "Converting this file took too long.",
+	CodeImageTooLarge:     "This picture is too large to use as a cover.",
+	CodeCompatNotNeeded:   "Browsers can play this file as it is.",
 }
 
 // ErrorText returns the plain sentence for an error code, or "" for an unknown code.

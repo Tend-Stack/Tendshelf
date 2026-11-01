@@ -64,3 +64,8 @@ test-scan-real:
 
 clean:
 	rm -rf bin
+
+# Cover, thumbnail and compatibility-copy jobs over files made by real ffmpeg, including WebP covers.
+.PHONY: test-mediajobs-real
+test-mediajobs-real:
+	TENDSHELF_TEST_FFMPEG=1 $(GO) test -count=1 -run 'Real' ./internal/media/ ./internal/mediajobs/

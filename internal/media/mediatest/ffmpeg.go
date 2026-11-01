@@ -150,3 +150,25 @@ func WriteProtected(t testing.TB, path string) {
 	}
 	WriteFake(t, path, FakeFile{Chapters: []FakeChapter{{0, 1000, "One"}}, Cover: true})
 }
+
+// GenOpus writes a two-second Opus file in an Ogg container, a format some browsers cannot play.
+func GenOpus(t testing.TB, tools media.Tools, path string, s Synth) {
+	t.Helper()
+	ffmpeg(t, tools, "-f", "lavfi", "-i", "sine=frequency=500:sample_rate=48000:duration=2",
+		"-c:a", "libopus", "-b:a", "32k", "-ac", "1", "-metadata", "TITLE="+s.Title, "-f", "ogg", path)
+}
+
+// GenImage writes a solid-colour picture of w by h pixels with real ffmpeg. The format follows the
+// extension of path: .png, .webp, or JPEG for anything else. hex is "#rrggbb".
+func GenImage(t testing.TB, tools media.Tools, path, hex string, w, h int) {
+	t.Helper()
+	codec, format := "mjpeg", "image2"
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".png":
+		codec = "png"
+	case ".webp":
+		codec, format = "libwebp", "webp"
+	}
+	ffmpeg(t, tools, "-f", "lavfi", "-i", fmt.Sprintf("color=c=0x%s:s=%dx%d:d=1", strings.TrimPrefix(hex, "#"), w, h),
+		"-frames:v", "1", "-c:v", codec, "-f", format, path)
+}

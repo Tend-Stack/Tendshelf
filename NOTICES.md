@@ -7,6 +7,8 @@ other projects. Every port, vendored file or third-party dependency adds a row h
 
 | Tendshelf file | Source project and file(s) | Licence | How |
 | --- | --- | --- | --- |
+| `internal/media/ffmpeg.go` | Audiobookshelf `server/utils/ffmpegHelpers.js` (embedded cover extraction arguments) | GPL-3.0 | Method port, idiomatic Go |
+| `internal/media/accent.go` | Björn Ottosson's OKLab reference, https://bottosson.github.io/posts/oklab/ (matrices and conversions) | Public domain / MIT | Formulas re-implemented in Go |
 | `internal/media/probe.go` | Audiobookshelf `server/libs/nodeFfprobe/index.js` (ffprobe argument set), `server/utils/prober.js` (stream, tag and chapter reading) | GPL-3.0 | Method port, idiomatic Go |
 | `internal/scan/group.go` | Audiobookshelf `server/utils/scandir.js` (`groupFileItemsIntoLibraryItemDirs`); TendVox Extractor `extractor_details.py` (`book_layout`, `is_parts_set`) | GPL-3.0 | Method port, idiomatic Go |
 | `internal/scan/order.go` | Audiobookshelf `server/scanner/AudioFileScanner.js` (`runSmartTrackOrder`, `getTrackAndDiscNumberFromFilename`); TendVox Extractor `extractor_details.py` (`track_numbers`, `order_parts`, `natural_key`) | GPL-3.0 | Method port, idiomatic Go |
