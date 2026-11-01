@@ -70,3 +70,23 @@ func thousands(n int) string {
 	}
 	return b.String()
 }
+
+// durationText writes a length in plain words for a card: "17 h 32 m", "5 h", "48 m". It rounds to
+// the nearest minute; an unknown (zero or negative) length is "".
+func durationText(ms int64) string {
+	if ms <= 0 {
+		return ""
+	}
+	mins := int((ms + 30_000) / 60_000)
+	if mins < 1 {
+		mins = 1
+	}
+	h, m := mins/60, mins%60
+	switch {
+	case h == 0:
+		return strconv.Itoa(m) + " m"
+	case m == 0:
+		return strconv.Itoa(h) + " h"
+	}
+	return strconv.Itoa(h) + " h " + strconv.Itoa(m) + " m"
+}

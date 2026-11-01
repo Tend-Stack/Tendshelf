@@ -1,0 +1,286 @@
+package pages
+
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// LibChip is a link that narrows the Library to one library (or back to all of them).
+type LibChip struct {
+	Name, Href string
+	Current    bool
+}
+
+// GenreChip is one genre. Href toggles it: it adds the genre to the filters, or removes it when On.
+type GenreChip struct {
+	Name, Href string
+	On         bool
+}
+
+// SortOption is one way to order the list.
+type SortOption struct {
+	Value, Label string
+	On           bool
+}
+
+// LibraryView is the Library page, its list fragment and its filter sheet. The handler builds every
+// address, so the template holds no URL logic: each filter, sort, view and page position is an
+// address a person can bookmark and go Back to.
+type LibraryView struct {
+	// Title is "Library" or the name of the one library shown.
+	Title string
+	// FormAction is the address the filter form sends to (the page without its query).
+	FormAction string
+	// Libraries are the chips that switch between libraries; empty with a single library.
+	Libraries []LibChip
+	// Count is "412 books".
+	Count string
+	// SortLabel names the current sort for the sort chip; SortOptions are all four.
+	SortLabel   string
+	SortOptions []SortOption
+	// View is "grid" or "list"; GridHref and ListHref switch.
+	View               string
+	GridHref, ListHref string
+	// Genres are the chips in the row (the most used, plus any chosen); AllGenres fills the sheet.
+	Genres, AllGenres []GenreChip
+	// SelectedGenres are the chosen ones, carried by the inline bar's form.
+	SelectedGenres []string
+	// SheetHref opens the filter sheet; CloseHref is the page without it.
+	SheetHref, CloseHref string
+	// ClearHref drops the genre filters; it is set only while there are some.
+	ClearHref string
+	// StartHref is "Back to the start" and is set only on a page reached by a cursor.
+	StartHref string
+	Cards     []components.CardView
+	// MoreURL is the page address of the next page (the no-JavaScript "Show more"); MoreHX the
+	// fragment address infinite scroll loads. Both are empty on the last page.
+	MoreURL, MoreHX string
+	Scan            *components.ScanStatusView
+	Empty           *EmptyView
+}
+
+// filterForm is the one form of filters and sort. It is a boosted GET (the layout's inherited boost
+// supplies the target and the swap); hx-select-oob swaps the empty #sheet of the answer in, so the
+// open sheet closes with the new list. prefix keeps the ids of the sheet's copy and the bar's copy
+// apart. bar is the inline version from 1280 px: a select for the sort, the chosen genres carried
+// as hidden fields (the genre chips beside it toggle them).
+templ filterForm(v LibraryView, prefix string, bar bool) {
+	<form class="ts-filter-form" method="get" action={ templ.SafeURL(v.FormAction) } hx-select-oob="#sheet">
+		if v.View == "list" {
+			<input type="hidden" name="view" value="list"/>
+		}
+		if bar {
+			for _, g := range v.SelectedGenres {
+				<input type="hidden" name="genre" value={ g }/>
+			}
+			<label class="ts-sr" for={ prefix + "-sort" }>Sort by</label>
+			<select class="ts-select ts-select--native" id={ prefix + "-sort" } name="sort">
+				for _, o := range v.SortOptions {
+					<option value={ o.Value } selected?={ o.On }>{ o.Label }</option>
+				}
+			</select>
+		} else {
+			<fieldset class="ts-filter-group">
+				<legend class="ts-field__label">Sort by</legend>
+				for _, o := range v.SortOptions {
+					<label class="ts-filter-option" for={ prefix + "-sort-" + o.Value }>
+						<input class="ts-filter-radio" type="radio" id={ prefix + "-sort-" + o.Value } name="sort" value={ o.Value } checked?={ o.On }/>
+						<span>{ o.Label }</span>
+					</label>
+				}
+			</fieldset>
+			if len(v.AllGenres) > 0 {
+				<fieldset class="ts-filter-group">
+					<legend class="ts-field__label">Genre</legend>
+					<div class="ts-filter-genres">
+						for i, g := range v.AllGenres {
+							<label class="ts-filter-option" for={ prefix + "-genre-" + strconv.Itoa(i) }>
+								<input class="ts-check" type="checkbox" id={ prefix + "-genre-" + strconv.Itoa(i) } name="genre" value={ g.Name } checked?={ g.On }/>
+								<span>{ g.Name }</span>
+							</label>
+						}
+					</div>
+				</fieldset>
+			}
+		}
+		<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-filter-submit">Show books</button>
+	</form>
+}
+
+// LibraryFilterSheet is the "Filter and sort" sheet. It renders into #sheet, outside #main. From
+// 1280 px the same filters sit in the page as a bar, so the sheet is hidden there.
+templ LibraryFilterSheet(v LibraryView) {
+	<div class="ts-sheet-layer ts-sheet-layer--filters">
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label="Close the sheet" tabindex="-1"></a>
+		<div class="ts-sheet ts-filter-sheet" role="dialog" aria-modal="true" aria-labelledby="flt-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="flt-title" class="ts-sheet__title">Filter and sort</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label="Close">
+					@components.Icon("close", false)
+				</a>
+			</div>
+			@filterForm(v, "fs", false)
+		</div>
+	</div>
+}
+
+// libraryItems are the books of one page in the chosen view, then the sentinel for the next page.
+// The sentinel is a real link to the next page of the same list (so "Show more" works without
+// JavaScript) that loads the fragment when it scrolls into view and is replaced by the next books.
+templ libraryItems(v LibraryView) {
+	for _, c := range v.Cards {
+		if v.View == "list" {
+			@components.BookRow(c)
+		} else {
+			@components.BookCard(c)
+		}
+	}
+	if v.MoreURL != "" {
+		<a class="ts-more" href={ templ.SafeURL(v.MoreURL) } hx-get={ v.MoreHX } hx-trigger="revealed" hx-target="this" hx-swap="outerHTML" hx-push-url="false">
+			<span class="ts-more__label">Show more</span>
+			<span class="ts-more__loading">
+				@components.SkeletonCards(3)
+			</span>
+		</a>
+	}
+}
+
+// LibraryItems is the fragment infinite scroll swaps in: books and the next sentinel, no page.
+templ LibraryItems(v LibraryView) {
+	@libraryItems(v)
+}
+
+// Library is the page: the title and count, the controls, the list. The filter sheet is rendered
+// into #sheet by the handler when the address says ?sheet=filters.
+templ Library(v LibraryView) {
+	<div class="ts-library">
+		<header class="ts-lib-head">
+			<h1 class="title-1 ts-lib-head__title">{ v.Title }</h1>
+			<p class="caption ts-num ts-lib-head__count" role="status">{ v.Count }</p>
+		</header>
+		if v.Scan != nil {
+			<div class="ts-browse-scan">
+				@components.ScanStatus(*v.Scan)
+			</div>
+		}
+		if len(v.Libraries) > 0 {
+			<nav class="ts-chip-set" aria-label="Libraries">
+				for _, l := range v.Libraries {
+					<a
+						class="ts-chip"
+						href={ templ.SafeURL(l.Href) }
+						if l.Current {
+							aria-current="true"
+						}
+					>
+						if l.Current {
+							@components.Icon("check", false)
+						}
+						{ l.Name }
+					</a>
+				}
+			</nav>
+		}
+		<div class="ts-lib-controls">
+			<a
+				class="ts-btn ts-btn--quiet ts-lib-sort"
+				href={ templ.SafeURL(v.SheetHref) }
+				hx-get={ v.SheetHref }
+				hx-target="#sheet"
+				hx-select="#sheet > *"
+				hx-swap="innerHTML"
+				hx-push-url="false"
+				aria-haspopup="dialog"
+			>
+				{ v.SortLabel }
+				@chevron()
+			</a>
+			<div class="ts-lib-bar">
+				@filterForm(v, "fb", true)
+			</div>
+			<div class="ts-seg" role="group" aria-label="View">
+				<a
+					class="ts-seg__item"
+					href={ templ.SafeURL(v.GridHref) }
+					if v.View != "list" {
+						aria-current="true"
+					}
+				>
+					@components.Icon("grid", false)
+					Grid
+				</a>
+				<a
+					class="ts-seg__item"
+					href={ templ.SafeURL(v.ListHref) }
+					if v.View == "list" {
+						aria-current="true"
+					}
+				>
+					@listIcon()
+					List
+				</a>
+			</div>
+		</div>
+		if len(v.Genres) > 0 || v.ClearHref != "" {
+			<div class="ts-chip-set ts-lib-filters" role="group" aria-label="Filters">
+				for _, g := range v.Genres {
+					<a
+						class="ts-chip"
+						href={ templ.SafeURL(g.Href) }
+						if g.On {
+							aria-current="true"
+						}
+					>
+						if g.On {
+							@components.Icon("check", false)
+						}
+						{ g.Name }
+					</a>
+				}
+				<a
+					class="ts-chip ts-lib-morefilters"
+					href={ templ.SafeURL(v.SheetHref) }
+					hx-get={ v.SheetHref }
+					hx-target="#sheet"
+					hx-select="#sheet > *"
+					hx-swap="innerHTML"
+					hx-push-url="false"
+					aria-haspopup="dialog"
+				>
+					@components.Icon("filter", false)
+					More filters
+				</a>
+				if v.ClearHref != "" {
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ClearHref) }>Clear filters</a>
+				}
+			</div>
+		}
+		if v.StartHref != "" {
+			<p class="ts-lib-start"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.StartHref) }>Back to the start</a></p>
+		}
+		if v.Empty != nil {
+			@Empty(*v.Empty)
+		} else {
+			<div
+				id="library-grid"
+				class={ "ts-lib-items", templ.KV("ts-grid ts-grid--covers", v.View != "list"), templ.KV("ts-lib-rows", v.View == "list") }
+			>
+				@libraryItems(v)
+			</div>
+		}
+	</div>
+}
+
+templ chevron() {
+	<svg class="ts-icon ts-icon--sm" viewBox="0 0 24 24" aria-hidden="true">
+		<path d="m6 9 6 6 6-6"></path>
+	</svg>
+}
+
+templ listIcon() {
+	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true">
+		<path d="M4 6h16M4 12h16M4 18h16"></path>
+	</svg>
+}

@@ -1,0 +1,72 @@
+package components
+
+import "strconv"
+
+// CardView is a book as every list draws it: card, row, spine and cover. The web package builds it
+// from a library.BookCard (browse_views.go); everything here is already plain words.
+type CardView struct {
+	ID, Href, Title, Byline, Duration string
+	// CoverSrc is the 320 px cover address, CoverSrcset the 160, 320 and 640 px set; both are empty
+	// when the book has no cover file.
+	CoverSrc, CoverSrcset string
+	CoverW, CoverH        int
+	// Tint is a "#rrggbb" colour that reaches CSS only through shell.js (data-ts-tint). It is empty
+	// when the book has none, or when no readable ink exists on it. InkClass is the matching text
+	// class, WidthClass and HeightClass size a spine.
+	Tint, InkClass, WidthClass, HeightClass string
+	// AriaLabel is "{title} by {authors}", or the title alone.
+	AriaLabel string
+}
+
+// coverSizes is the sizes attribute for a cover drawn at size: "fill" is the grid cell, any other
+// size is a pixel width (the name of the ts-cover--{size} class).
+func coverSizes(size string) string {
+	if size == "fill" {
+		return "(min-width: 1280px) 160px, (min-width: 768px) 17vw, 33vw"
+	}
+	return size + "px"
+}
+
+func coverClass(v CardView, size string) string {
+	c := "ts-cover ts-cover--" + size
+	if v.CoverSrc == "" {
+		c += " ts-cover--blank"
+		if v.InkClass != "" {
+			c += " " + v.InkClass
+		}
+	}
+	return c
+}
+
+// Cover draws a book's cover inside its own ts-cover box. size is "fill" (the width of the cell) or
+// a pixel size from the ts-cover--{n} set ("56"). A book without a cover file gets a blank cover:
+// the surface colour, or the cover's tint once shell.js applies it, with the title in it. The cover
+// is decoration: the link around it carries the name, so the image has an empty alt.
+templ Cover(v CardView, size string) {
+	<span
+		class={ coverClass(v, size) }
+		if v.CoverSrc == "" && v.Tint != "" {
+			data-ts-tint={ v.Tint }
+		}
+	>
+		if v.CoverSrc != "" {
+			<img
+				class="ts-cover__img"
+				src={ v.CoverSrc }
+				if v.CoverSrcset != "" {
+					srcset={ v.CoverSrcset }
+					sizes={ coverSizes(size) }
+				}
+				if v.CoverW > 0 && v.CoverH > 0 {
+					width={ strconv.Itoa(v.CoverW) }
+					height={ strconv.Itoa(v.CoverH) }
+				}
+				loading="lazy"
+				decoding="async"
+				alt=""
+			/>
+		} else {
+			<span class="ts-cover__title" aria-hidden="true">{ v.Title }</span>
+		}
+	</span>
+}

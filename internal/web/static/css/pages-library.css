@@ -1,0 +1,61 @@
+/* Library (P1b-5): header, controls, filter sheet and bar, the grid and list, infinite scroll.
+   Grid columns come from .ts-grid--covers in utilities.css (3, 5, 6, 7, 8 by width). Tokens only. */
+
+.ts-library { display: flex; flex-direction: column; gap: var(--space-12); }
+.ts-lib-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-4) var(--space-12); min-height: var(--size-tap); }
+.ts-lib-head__title, .ts-lib-head__count { margin: 0; }
+.ts-lib-head__count { color: var(--ink-muted); }
+
+.ts-lib-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); }
+.ts-lib-sort { color: var(--ink); margin-left: calc(var(--space-12) * -1); }
+.ts-lib-sort .ts-icon, .ts-icon--sm { width: 18px; height: 18px; }
+.ts-lib-bar { display: none; }
+.ts-seg__item { text-decoration: none; }
+.ts-seg__item .ts-icon { width: 20px; height: 20px; }
+.ts-seg__item[aria-current="true"] { background: var(--raised); color: var(--ink); font-weight: 600; }
+
+.ts-library .ts-chip { text-decoration: none; min-height: var(--size-tap); }
+.ts-chip[aria-current="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+.ts-lib-start { margin: 0; }
+
+/* The list: a grid of cards, or rows */
+.ts-lib-items.ts-grid { gap: var(--space-20) var(--space-16); }
+.ts-lib-rows { display: flex; flex-direction: column; }
+.ts-lib-rows .ts-row { border-bottom: 1px solid var(--line); }
+.ts-lib-rows .ts-row__main { text-decoration: none; }
+.ts-lib-rows .ts-cover { width: 56px; height: 56px; }
+
+/* Infinite scroll: a link to the next page (works without JavaScript) that the page loads when it
+   scrolls into view. The skeletons show only while the request runs. */
+.ts-more { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: var(--space-12);
+  min-height: var(--size-tap); padding: var(--space-12); color: var(--accent); text-decoration: none; font-weight: 600; border-radius: var(--radius-sm); }
+.ts-more__loading { display: none; align-self: stretch; }
+.ts-more.htmx-request .ts-more__loading { display: block; }
+.ts-skeleton-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-16); }
+.ts-skeleton-card { display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-skeleton-card__cover { aspect-ratio: 1; width: 100%; border-radius: var(--radius-cover); }
+.ts-skeleton-card__line { height: 14px; width: 100%; }
+.ts-skeleton-card__line--short { width: 60%; }
+
+/* Filter and sort: a sheet on phone and tablet, a bar from 1280 px */
+.ts-sheet-layer--filters .ts-sheet { max-height: 85vh; max-height: 85dvh; overflow-y: auto; }
+.ts-filter-form { display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-4); }
+.ts-filter-group { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; }
+.ts-filter-group > legend { padding: 0 0 var(--space-4); }
+.ts-filter-option { display: flex; align-items: center; gap: var(--space-8); min-height: var(--size-tap); cursor: pointer; font-size: 16px; line-height: 22px; }
+.ts-filter-radio { width: 24px; height: 24px; margin: 10px; accent-color: var(--accent-fill); cursor: pointer; flex: none; }
+.ts-filter-genres { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 240px; overflow-y: auto; }
+.ts-filter-submit { align-self: stretch; }
+
+select.ts-select--native { display: inline-block; width: auto; min-width: 180px; }
+
+@media (min-width: 1280px) {
+  .ts-lib-sort, .ts-lib-morefilters, .ts-sheet-layer--filters { display: none; }
+  .ts-lib-bar { display: block; margin-right: auto; }
+  .ts-lib-bar .ts-filter-form { flex-direction: row; align-items: center; padding: 0; }
+  .ts-lib-bar .ts-filter-submit { align-self: auto; min-height: var(--size-tap); padding-inline: var(--space-16); font-size: 15px; }
+  .ts-skeleton-cards { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+}
+@media (min-width: 768px) and (max-width: 1279px) {
+  .ts-skeleton-cards { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}

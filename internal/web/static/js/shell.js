@@ -31,6 +31,21 @@ function applyValues(root) {
 applyValues(document);
 document.addEventListener("htmx:after:settle", () => applyValues(document));
 
+// Cover tints: data-ts-tint ("#rrggbb", checked by the server for readable ink) becomes the
+// --cover-tint custom property through the CSSOM, and .is-tinted switches the spine or blank cover
+// from surface and ink to the tint. Without JS, or in the contrast theme, the tint is not used.
+const tintPattern = /^#[0-9a-f]{6}$/;
+function applyTints(root) {
+  for (const el of root.querySelectorAll("[data-ts-tint]")) {
+    const tint = el.dataset.tsTint;
+    if (!tintPattern.test(tint)) continue;
+    el.style.setProperty("--cover-tint", tint);
+    el.classList.add("is-tinted");
+  }
+}
+applyTints(document);
+document.addEventListener("htmx:after:settle", () => applyTints(document));
+
 // Page enter without View Transitions: outerSync resets the class of #main to the response's, so
 // adding ts-entering after each swap of #main restarts the keyframe every time.
 document.addEventListener("htmx:after:swap", (event) => {
