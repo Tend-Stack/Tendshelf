@@ -115,7 +115,7 @@ func TestBookPageTabs(t *testing.T) {
 	a, f := bookApp(t)
 	b := librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Tabbed", Authors: []string{"Ann Author"}, Description: "About this one.", DurationMs: 3_600_000})
 	for _, c := range []struct{ path, tab string }{
-		{"/books/" + b.ID, "about"}, {"/books/" + b.ID + "/about", "about"}, {"/books/" + b.ID + "/chapters", "chapters"}, {"/books/" + b.ID + "/details", "details"},
+		{"/books/" + b.ID, "about"}, {"/books/" + b.ID + "/about", "about"}, {"/books/" + b.ID + "/chapters", "chapters"}, {"/books/" + b.ID + "/bookmarks", "bookmarks"}, {"/books/" + b.ID + "/details", "details"},
 	} {
 		rec := browseGet(a, c.path, false, nil)
 		body := rec.Body.String()
@@ -139,7 +139,7 @@ func TestBookPageTabs(t *testing.T) {
 			t.Errorf("%s: h1 or title wrong", c.path)
 		}
 	}
-	for _, path := range []string{"/books/" + b.ID + "/bookmarks", "/books/" + b.ID + "/x/y", "/books/" + b.ID + "/"} {
+	for _, path := range []string{"/books/" + b.ID + "/notes", "/books/" + b.ID + "/x/y", "/books/" + b.ID + "/"} {
 		if rec := browseGet(a, path, false, nil); rec.Code != http.StatusNotFound {
 			t.Errorf("%s: %d, want 404", path, rec.Code)
 		}

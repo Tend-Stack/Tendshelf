@@ -14,6 +14,7 @@ dark and light × 4 widths in the full run. The nightly CI job runs `make visual
 | HomePhone, HomeTablet, HomeDesktop (+ Light) | 390, 1024, 1440 | `TestVisualBrowsePages` `home` | main | No Continue listening hero, series or "Because you listened" rows (P1c, P3) |
 | BookPhone, BookDesktop (+ Light) | 390, 1440 | `TestVisualBookPages` `book-about` | main | No play, download or share (P1c, P4, P3); no Start series link or percentages; Add to shelf added; desktop uses two columns instead of the board's full-width tab row |
 | BookTablet (+ Light) | 1024 | `book-details` | secondary | As BookDesktop |
+| BookmarksPhone | 390 (also 768, 1024, 1440) | `TestBookmarkVisual` `bookmarks-tab` | main | It is the book page's Bookmarks tab, so the board's small cover header is not repeated (the book header shows the cover); no Highlights chip and no quotes until R4; "Play from here" is in the markup but hidden until the player lands (P1c-5); the active chip carries a check as well as colour |
 | BookCover | 120 | kitchen sink `ks-cover`, every cover page | — | None |
 | LibraryPhone, LibraryTablet, LibraryPage | 390, 1024, 1440 | `TestVisualBrowsePages` `library-grid`, `library-filtered`; `TestVisualLibraryFilters` | main | Unfinished and Downloaded filters wait for P1c and P4 |
 | LibraryListPhone, LibraryFiltersPhone, LibraryEmptyPhone, LibraryScanningPhone | 390 | `library-list`, `library-filters` (+ `TestVisualLibraryFilterSheet`), `library-empty`, `library-scanning` | secondary | None |
@@ -32,7 +33,7 @@ dark and light × 4 widths in the full run. The nightly CI job runs `make visual
 | StateNoResults | 390 | `book-search-none`, `library-nomatch` | secondary | None |
 | StateError | 390 | none (handler tests only) | — | "Couldn't reach your server" needs the service worker (P4) |
 
-Not built yet, by owning phase: Player*, BookmarksPhone, StatePlayerHints (P1c); ComparePhone (P2);
+Not built yet, by owning phase: Player*, StatePlayerHints (P1c); ComparePhone (P2);
 Invite*, RosaHome, Share*, Users* (P3); DownloadsPhone, StateOffline (P4); Research* (P6); reader boards (R).
 Sepia and contrast are captured only for main pages. The WebKit run (`make visual-webkit`) covers eight
 real pages in dark and light at 447 and 1440 px.

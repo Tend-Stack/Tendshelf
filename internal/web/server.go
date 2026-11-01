@@ -166,7 +166,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerCovers(mux)
 	s.registerBrowse(mux)
 	s.registerBook(mux)
-	//
+	s.registerBookmarks(mux)
 	s.registerAdmin(mux)
 	//
 	s.registerSetupSteps(mux)

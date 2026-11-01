@@ -1,0 +1,37 @@
+/* The Bookmarks tab of the book page and its note and export sheets (P1c-7a). Tokens only. The
+   rows are the bundle's .ts-mark; this file adds the heading, the chips, the list reset, the empty
+   note, a 44 px "Play from here" and the add button, which sticks to the bottom on a phone. */
+
+.ts-bookmarks { display: flex; flex-direction: column; gap: var(--space-12); }
+.ts-bookmarks__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); }
+.ts-bookmarks__title { margin: 0; font: 500 22px/28px var(--font-serif); }
+.ts-bookmarks__toast { margin: 0; align-self: flex-start; max-width: 100%; }
+.ts-bookmarks__toast a { color: var(--accent); display: inline-flex; align-items: center; min-height: var(--size-tap); text-underline-offset: 3px; }
+
+.ts-bookmarks__chips { align-self: flex-start; max-width: 100%; overflow-x: auto; }
+.ts-bookmarks__chips .ts-seg__item { text-decoration: none; white-space: nowrap; }
+.ts-bookmarks__chips .ts-seg__item[aria-current="page"] { background: var(--raised); color: var(--ink); font-weight: 600; }
+.ts-bookmarks__chips .ts-icon { width: 18px; height: 18px; }
+
+.ts-bookmarks__list { list-style: none; margin: 0; padding: 0; }
+.ts-bookmarks__list > li:last-child .ts-mark__stem { visibility: hidden; }
+.ts-mark__when { flex-wrap: wrap; }
+.ts-mark__jump { min-height: var(--size-tap); margin-left: auto; }
+.ts-mark__jump[hidden] { display: none; }
+.ts-mark__note { overflow-wrap: anywhere; white-space: pre-line; }
+.ts-mark__note.is-empty { color: var(--ink-muted); }
+.ts-mark .ts-iconbtn .ts-icon { width: 20px; height: 20px; }
+
+.ts-bookmarks__add { position: sticky; bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--space-8)); z-index: 1; margin: var(--space-8) 0 0; padding: var(--space-8) 0; background: linear-gradient(180deg, transparent 0, var(--ground) var(--space-8)); }
+
+.ts-sheet-layer--bookmarks .ts-sheet { max-height: 85vh; max-height: 85dvh; overflow-y: auto; max-width: 560px; margin: 0 auto; }
+.ts-bookmark-sheet__when { margin: 0; padding: 0 var(--space-16) var(--space-8); font-size: 14px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ts-bookmark-sheet__form { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-8) var(--space-4) 0; }
+.ts-bookmark-sheet__field { max-width: none; }
+.ts-bookmark-sheet__field .ts-field__label { display: flex; align-items: center; min-height: var(--size-tap); }
+.ts-bookmark-sheet__note { min-height: 120px; resize: vertical; font: 400 16px/24px var(--font-sans); }
+.ts-bookmark-sheet__links { list-style: none; margin: 0; padding: 0 var(--space-4); display: flex; flex-direction: column; gap: var(--space-8); }
+
+@media (min-width: 768px) {
+  .ts-bookmarks__add { position: static; margin: var(--space-16) 0 0; padding: 0; background: none; max-width: 360px; }
+}

@@ -1,0 +1,46 @@
+package components
+
+import "strconv"
+
+// BookmarkRowView is one saved moment in the Bookmarks tab. The handler writes every word.
+// PlayAtMs and BookID feed the "Play from here" button, which stays hidden until the player
+// (P1c-5) enables and handles it.
+type BookmarkRowView struct {
+	ID, WhenText, DayText, Note, NoNoteText, EditHref, EditLabel, PlayLabel string
+	PlayAtMs                                                                int64
+	BookID                                                                  string
+}
+
+// BookmarkRow is one bookmark: the place and day, the note (or "No note"), and the edit control.
+// The rail is decoration. The edit control opens the note sheet; without JavaScript it is a link.
+templ BookmarkRow(v BookmarkRowView) {
+	<article class="ts-mark">
+		<div class="ts-mark__rail" aria-hidden="true"><span class="ts-mark__dot"></span><span class="ts-mark__stem"></span></div>
+		<div class="ts-mark__body">
+			<div class="ts-mark__when">
+				<span>{ v.WhenText }</span>
+				<span aria-hidden="true">·</span>
+				<span>{ v.DayText }</span>
+				<button type="button" class="ts-mark__jump" data-ts-play-at={ strconv.FormatInt(v.PlayAtMs, 10) } data-ts-book={ v.BookID } hidden>{ v.PlayLabel }</button>
+			</div>
+			if v.Note != "" {
+				<p class="ts-mark__note">{ v.Note }</p>
+			} else {
+				<p class="ts-mark__note is-empty">{ v.NoNoteText }</p>
+			}
+		</div>
+		<a
+			class="ts-iconbtn"
+			href={ templ.SafeURL(v.EditHref) }
+			hx-get={ v.EditHref }
+			hx-target="#sheet"
+			hx-select="#sheet > *"
+			hx-swap="innerHTML"
+			hx-push-url="false"
+			aria-haspopup="dialog"
+			aria-label={ v.EditLabel }
+		>
+			@Icon("edit", false)
+		</a>
+	</article>
+}
