@@ -5,7 +5,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: build generate test run run-dev check fmt vet clean visual visual-webkit
+.PHONY: build generate test run run-dev check fmt vet clean visual visual-webkit test-media
 
 generate:
 	$(GO) tool templ generate
@@ -47,6 +47,10 @@ visual:
 # Needs TENDSHELF_TEST_WEBKIT_DRIVER=/usr/bin/WebKitWebDriver (the browser defaults to the 4.1 MiniBrowser).
 visual-webkit:
 	$(GO) test -count=1 -tags dev -run 'VisualWebKit' ./internal/web/
+
+# Tests that run real ffmpeg and ffprobe (they skip without the variable). All output goes to temp directories.
+test-media:
+	TENDSHELF_TEST_FFMPEG=1 $(GO) test -count=1 -run 'Real' ./internal/media/...
 
 clean:
 	rm -rf bin
