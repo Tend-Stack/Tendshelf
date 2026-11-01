@@ -32,6 +32,7 @@ is not an audio file or a cached image. ffmpeg/ffprobe are child processes, and 
 | `internal/library` | Libraries, folders, books, files, chapters, people, series, labels, shelves: the read/write repository used by everything else. No HTTP, no ffmpeg. |
 | `internal/scan` | Walks library folders, groups files into books, detects new/changed/moved/missing files, refuses DRM, queues probe and metadata jobs. Ports ABS `scandir.js`/`BookScanner.js` behaviour. |
 | `internal/media` | ffprobe/ffmpeg runner (fixed args, protocol whitelist, deadlines, output caps); probe parsing (streams, tags, chapters, encryption); cover extraction and thumbnails; compatibility copies; stream-copy remux and verification. |
+| `internal/mediajobs` | Jobs `media.cover` (cover choice, stored picture, thumbnails, tint and accent colours) and `media.compat` (compatibility-copy cache with LRU cap). Imports library, media and jobs; never scan or metadata. Registered by `cmd/tendshelf/hooks.go`; the cover job follows the scanner's settled books. |
 | `internal/metadata` | Local sources (names, tags, sidecars), the field-provenance merge, abridged/dramatized detection. Ports `extractor_details.py`. |
 | `internal/metadata/online` | Provider clients (Audnexus, Audible catalogue, Google Books, Open Library, iTunes), scoring, per-site spacing, 10 s timeouts, 7-day cache, safe cover fetch (5 MB, magic-byte check). The only `http.Client` in the program. Ports `extractor_online.py`. |
 | `internal/users` | Accounts, roles, password hashing, devices, per-user settings. |
@@ -109,14 +110,24 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
   128 kbit/s in `.m4a`, faststart, stream-copied when the codec is already AAC) as a job, stored in
   `<data>/cache/compat/` keyed by `quick_hash` + recipe version, total size capped (default 5 GiB,
   least recently used removed). `GET /stream/{audioFileID}?compat=1` serves it once ready. No live
-  HLS; reconsider only with a measured need.
-- **Covers**: embedded picture or folder image (`cover.*`, `folder.*`) at scan time; thumbnails
-  (160, 320, 640 px JPEG) produced by ffmpeg and cached.
+  HLS; reconsider only with a measured need. Built by `internal/mediajobs` (job `media.compat`): the
+  cache is the file system alone (`<quick_hash>-r<recipe>.m4a`, last use = file mtime, oldest evicted
+  above the cap, other recipes removed; `-compat-cache-gib`, default 5), the result is probed (mp4,
+  AAC, length within 1 %) before it is renamed into place, and no database row exists for it.
+  `media.MayNeedCompat` names the formats browsers always play; the player's `canPlayType` decides
+  when to ask (P1c). No free-space check before converting: the cap bounds the cache.
+- **Covers**: job `media.cover` (`internal/mediajobs`), queued for each book the scanner settles. A
+  folder image the owner placed wins: `cover.*`, then `folder.*` (folder books only; jpg, jpeg, png,
+  webp, regular files, at most 20 MiB); otherwise the embedded picture of the first playable file that
+  has one. Embedded JPEG and PNG pictures keep their bytes; a WebP folder image is converted to PNG by
+  ffmpeg (no `x/image`). Stored as `<data>/covers/<sha256>.<jpg|png>`; thumbnails (160, 320, 640 px
+  JPEG, fitted, never enlarged) produced by ffmpeg in `<data>/cache/thumbs/`. A cover whose source is
+  `upload` or `online` is never replaced; rerunning on unchanged input writes nothing.
 - **Cover colour** (at scan time, standard library `image/jpeg` on the 160 px thumbnail): the dominant
   colour ignoring near-black, near-white and small areas becomes `tint`; converted to OKLCH, chroma
   capped at 0.10, lightness set per theme (dark 0.75-0.85, light and sepia 0.38-0.46), then checked
   (play-button text 4.5:1, scrubber fill 3:1 on its ground). Failing or grey covers fall back to ember.
-  Rules: handoff `docs/design/tendshelf-handoff/docs/HANDOFF.md`, "Cover accent and theme rules". The contrast theme never uses it.
+  Rules: handoff `docs/design/tendshelf-handoff/docs/HANDOFF.md`, "Cover accent and theme rules". The contrast theme never uses it. The handoff's example accent pairs were hand-tuned outside its own rules; Tendshelf follows the rules (goldens and ΔE_OK tolerances in internal/media/accent_test.go).
 - **Write details into the file** (P2): `ffmpeg -map 0 -c copy` with the new tags and chapters into a
   temp file in the same directory; verify the audio stream hash (`-map 0:a -c copy -f hash`) equals the
   original's, duration within 50 ms, chapter count and times equal, tags read back; check free space

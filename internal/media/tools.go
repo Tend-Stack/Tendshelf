@@ -14,8 +14,8 @@
 // "Encryption info" side data are the signals; revisit with a real sample), a check of the ffprobe
 // version, and killing a process group (ffprobe starts no child processes).
 //
-// The package imports no other Tendshelf package. Cover, thumbnail and remux code will join it
-// in later slices.
+// The package imports no other Tendshelf package. Picture, thumbnail and compatibility-copy code lives in
+// ffmpeg.go and compat.go; the accent colours in accent.go; remux code will join in a later slice.
 package media
 
 import (
