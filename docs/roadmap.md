@@ -289,6 +289,10 @@ history, duplicate or "still copying" detection, cover lookup, or phone and tabl
 Exit: play, seek across a file boundary, speed, sleep timer and resume on a second browser all work;
 first sound under 1 s on localhost; the player is usable one-handed at 390 px (recorded manual check).
 
+**P1c-1 status (progress data)**: done. Migration 0006 (`progress`, `bookmarks`, `listening_sessions`) and `internal/progress`: newest-wins compare-and-write in one SQL statement inside the single-writer transaction, client time clamped to server now + 60 s, explicit server acts (mark finished) always win, the listening session extended in the same transaction (operator: record sessions from P1c); scoped Home reads in `library/listening.go` (Continue listening, Your series in progress, Because you listened). Checks: `make check`, `-race -count=3`, `TestProgressConcurrentDevices` (2 devices × 50 goroutines); 55.8 µs per save on the lead's machine. Limit: no HTTP yet.
+
+**P1c-2 status (streaming)**: done. `GET /stream/{audioFileID}` with Range, If-Range, HEAD and an ETag while the file matches its scan; access checked before any file is opened; refused, encrypted, unreadable, unprobed and missing files answer 404 without touching the disk; `?compat=1` serves a ready copy or requests one and answers 503 with `Retry-After: 3`. Lead fix: a library file swapped for a symlink after a scan is refused (Lstat + SameFile; the new test got 200 without the fix). Checks: `make check`, `make visual`, `-race -count=3`; 49 routes in the route matrix.
+
 ## M2 Family (P3 multi-user, invitations, sharing)
 
 - Roles owner/admin/member/guest; users admin page; grants per library and per book with expiry and
