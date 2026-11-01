@@ -49,7 +49,9 @@ type Tools struct {
 	FFprobe      string        // absolute path or a name; "" means not available
 	FFmpeg       string        // same
 	ProbeTimeout time.Duration // 0 means 30 seconds
-	Env          []string      // extra KEY=VALUE entries after LC_ALL=C (tests use this)
+	// FFmpegTimeout, if set, replaces the deadline of every ffmpeg operation (tests use it).
+	FFmpegTimeout time.Duration
+	Env           []string // extra KEY=VALUE entries after LC_ALL=C (tests use this)
 }
 
 // Locate finds ffprobe and ffmpeg. A missing tool leaves its field empty and is reported as a
@@ -140,11 +142,16 @@ type runResult struct {
 // run executes bin with args under ctx. stdin is /dev/null, the environment is LC_ALL=C plus
 // extraEnv, and both output streams are capped.
 func run(ctx context.Context, bin string, args []string, extraEnv []string) runResult {
+	return runCapped(ctx, bin, args, extraEnv, stdoutCap)
+}
+
+// runCapped is run with its own stdout cap, for ffmpeg writing a picture to a pipe.
+func runCapped(ctx context.Context, bin string, args []string, extraEnv []string, outCap int) runResult {
 	cmd := exec.CommandContext(ctx, bin, args...)
 	cmd.Stdin = nil // /dev/null
 	cmd.Env = append([]string{"LC_ALL=C"}, extraEnv...)
 	cmd.WaitDelay = waitDelay
-	out := &limitedBuffer{max: stdoutCap}
+	out := &limitedBuffer{max: outCap}
 	errb := &limitedBuffer{max: stderrCap}
 	cmd.Stdout, cmd.Stderr = out, errb
 	err := cmd.Run()

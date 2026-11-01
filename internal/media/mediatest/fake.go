@@ -55,14 +55,19 @@ type FakeFile struct {
 	Tags       map[string]string
 	StreamTags map[string]string
 	Chapters   []FakeChapter
-	Cover      bool // adds an attached picture stream 1 (mjpeg 64x64) whose packet comes first
-	Encrypted  bool // audio packets carry "Encryption info" side data
+	Cover      bool   // adds an attached picture stream 1 (mjpeg 64x64) whose packet comes first
+	CoverColor string // colour of that picture as the fake ffmpeg draws it, "#rrggbb"; default #2c6660
+	Encrypted  bool   // audio packets carry "Encryption info" side data
 
 	Exit       int    // exit status; with Raw unset a nonzero exit prints nothing on stdout
 	SleepMs    int    // delay before answering
 	FloodBytes int    // bytes of junk written to stdout before the answer
 	Stderr     string // written to stderr
 	PadBytes   int    // bytes of filler after the description, to make big files
+
+	// What the fake ffmpeg does when this file is its input (see fakeffmpeg.go).
+	FFmpegExit    int // exit status; 0 = success
+	FFmpegSleepMs int // delay before answering
 }
 
 // WriteFake writes a fake audio file.
@@ -84,7 +89,7 @@ func WriteFake(t testing.TB, path string, f FakeFile) {
 	}
 }
 
-// FakeTools returns Tools that run the fake ffprobe (this test binary; GORACE keeps the race
+// FakeTools returns Tools that run the fake ffprobe and ffmpeg (this test binary; GORACE keeps the race
 // detector from sleeping a second at exit). The package under test
 // must call RunFakeIfRequested in TestMain.
 func FakeTools(t testing.TB) media.Tools {
@@ -93,7 +98,7 @@ func FakeTools(t testing.TB) media.Tools {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return media.Tools{FFprobe: exe, ProbeTimeout: 5 * time.Second, Env: []string{fakeEnv + "=1", "GORACE=atexit_sleep_ms=0"}}
+	return media.Tools{FFprobe: exe, FFmpeg: exe, ProbeTimeout: 5 * time.Second, Env: []string{fakeEnv + "=1", "GORACE=atexit_sleep_ms=0"}}
 }
 
 // RunFakeIfRequested turns this process into the fake ffprobe when TENDSHELF_FAKE_FFPROBE=1 and
@@ -106,6 +111,9 @@ func RunFakeIfRequested() {
 }
 
 func runFake(args []string, stdout, stderr io.Writer) int {
+	if hasArg(args, "-nostdin") { // ffprobe is never given -nostdin; ffmpeg always is
+		return runFakeFFmpeg(args, stdout, stderr)
+	}
 	n := len(args)
 	if !hasPair(args, "-protocol_whitelist", "file,pipe") || n < 2 || args[n-2] != "-i" || !strings.HasPrefix(args[n-1], "file:/") {
 		fmt.Fprintln(stderr, "fake ffprobe: unexpected arguments")
@@ -157,6 +165,15 @@ func runFake(args []string, stdout, stderr io.Writer) int {
 	}
 	stdout.Write(out)
 	return 0
+}
+
+func hasArg(args []string, a string) bool {
+	for _, x := range args {
+		if x == a {
+			return true
+		}
+	}
+	return false
 }
 
 func hasPair(args []string, key, val string) bool {
