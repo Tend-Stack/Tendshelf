@@ -53,16 +53,19 @@ jobs:
           echo "${CFT_SHA256}  chrome.zip" | sha256sum -c -
           unzip -q chrome.zip
           # deb.deps lines look like "libnss3 (>= 2:3.35)" or "libasound2 | libasound2t64": keep the
-          # first name, and on Ubuntu 24.04 use its t64 rename when the old name has no candidate.
+          # first name; when it has no candidate on Ubuntu 24.04, try its t64 rename, appended
+          # (libasound2t64) or after the soname number (libcurl3-gnutls -> libcurl3t64-gnutls).
           # Capture apt-cache's output before searching it: with pipefail, `apt-cache | grep -q`
           # fails when grep stops early and apt-cache dies of SIGPIPE.
           has() { local out; out=$(apt-cache policy "$1"); grep -q 'Candidate: [0-9]' <<<"$out"; }
           pkgs=""
           for p in $(sed -e 's/ *|.*//' -e 's/ *(.*//' chrome-linux64/deb.deps); do
-            if has "$p"; then pkgs="$pkgs $p"
-            elif has "${p}t64"; then pkgs="$pkgs ${p}t64"
-            else echo "no package for $p"; exit 1
-            fi
+            found=""
+            for c in "$p" "${p}t64" "$(sed -E 's/([0-9])-/\1t64-/' <<<"$p")"; do
+              if has "$c"; then found=$c; break; fi
+            done
+            if [ -z "$found" ]; then echo "no package for $p"; exit 1; fi
+            pkgs="$pkgs $found"
           done
           apt-get install -y --no-install-recommends $pkgs
           echo "TENDSHELF_TEST_BROWSER=$RUNNER_TEMP/chrome-linux64/chrome" >> "$GITHUB_ENV"
