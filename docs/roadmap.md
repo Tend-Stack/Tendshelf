@@ -265,6 +265,8 @@ folder browser beside the path field, id `folder`), no folder removal, watching 
 history, duplicate or "still copying" detection, cover lookup, or phone and tablet entry to the admin page
 (P1b-7); OnboardDone has no cover wall (P1b-5). Next: P1b-5.
 
+**P1b-fb status (folder browser)**: done. A Browse button beside the audiobook folder field opens a folder browser: a sheet on Add a folder, an inline panel on setup step 3, as the `?browse=<path>` mode of those two pages (picking links back with `?folder=<path>`; works without JavaScript). Folder names only plus one audio-file count for the open folder; symlinks never followed; the scan's skip list; the data folder and system folders hidden at the root; capped at 5,000 entries, 500 folders and 3 s, then it asks for the typed path. Owner and admin on Add a folder, owner on setup; the chosen path still passes the add-folder checks. Checks: `make check`, `make build`, `make visual` (5 pages x 4 themes x 4 widths, no overflow, 44 px targets, sheet fits). Limits: no per-folder counts, no folder creation, the library choice on Add a folder resets after Browse.
+
 ### P1c Player and progress
 
 - Mini-player, full player (phone, tablet) and desktop player bar and panel; cover accent only on the
