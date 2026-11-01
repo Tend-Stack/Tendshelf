@@ -67,8 +67,8 @@ func (c *Compat) cachePath(f *library.AudioFile) (string, error) {
 	return filepath.Join(c.dir, f.QuickHash+"-r"+strconv.Itoa(media.CompatRecipe)+".m4a"), nil
 }
 
-// refuse returns the plain error for a file that must never be converted.
-func refuse(f *library.AudioFile) error {
+// Refusal returns the plain error for a file that must never be streamed or converted, or nil.
+func Refusal(f *library.AudioFile) error {
 	switch {
 	case f.MissingSince != 0:
 		return &media.Error{Code: media.CodeFileMissing, Text: media.ErrorText(media.CodeFileMissing)}
@@ -112,7 +112,7 @@ func (c *Compat) Request(ctx context.Context, fileID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := refuse(&f); err != nil {
+	if err := Refusal(&f); err != nil {
 		return "", err
 	}
 	if !media.MayNeedCompat(f.Container, f.Codec) {
@@ -151,7 +151,7 @@ func (c *Compat) Run(ctx context.Context, fileID string, guard func(context.Cont
 	case f.MissingSince != 0:
 		return OutcomeMissing, nil
 	}
-	if err := refuse(&f); err != nil {
+	if err := Refusal(&f); err != nil {
 		return "", err
 	}
 	if !media.MayNeedCompat(f.Container, f.Codec) {

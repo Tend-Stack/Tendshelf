@@ -105,7 +105,8 @@ func run(ctx context.Context, args []string) error {
 	if err := registerDetails(d); err != nil {
 		return err
 	}
-	if err := registerMediaJobs(d, mf); err != nil {
+	compat, err := registerMediaJobs(d, mf)
+	if err != nil {
 		return err
 	}
 	if err := sc.Register(runner); err != nil {
@@ -113,7 +114,7 @@ func run(ctx context.Context, args []string) error {
 	}
 	setupCode := auth.NewSetupCode()
 	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: proxies,
-		Library: lib, DataDir: dataDir, Jobs: runner})
+		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat})
 	if err != nil {
 		return err
 	}
