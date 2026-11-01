@@ -1,7 +1,8 @@
 // Command tendshelf runs the Tendshelf audiobook server.
 //
-// This is the P0 skeleton: it serves a placeholder page and /healthz on
-// 127.0.0.1:8095 by default. See docs/architecture.md and docs/roadmap.md.
+// This is the P0 skeleton: it opens the database in the data folder, starts the
+// job runner, and serves a placeholder page and /healthz on 127.0.0.1:8095 by
+// default. See docs/architecture.md and docs/roadmap.md.
 package main
 
 import (
@@ -16,6 +17,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/web"
 )
 
@@ -25,15 +28,19 @@ var version = "dev"
 const defaultAddr = "127.0.0.1:8095"
 
 func main() {
-	if err := run(os.Args[1:]); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	err := run(ctx, os.Args[1:])
+	stop()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "tendshelf:", err)
 		os.Exit(1)
 	}
 }
 
-func run(args []string) error {
+func run(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("tendshelf", flag.ContinueOnError)
 	addr := fs.String("addr", envOr("TENDSHELF_ADDR", defaultAddr), "listen address (host:port)")
+	dataFlag := fs.String("data", envOr("TENDSHELF_DATA", ""), "data folder (database, backups); default is per user")
 	showVersion := fs.Bool("version", false, "print the version and exit")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -43,7 +50,32 @@ func run(args []string) error {
 		return nil
 	}
 
+	dataDir := *dataFlag
+	if dataDir == "" {
+		d, err := defaultDataDir()
+		if err != nil {
+			return err
+		}
+		dataDir = d
+	}
+
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	logger.Info("starting", "version", version, "data", dataDir)
+
+	st, err := db.Open(ctx, dataDir)
+	if err != nil {
+		return describeOpenError(err, dataDir)
+	}
+	defer st.Close()
+	runner, err := jobs.New(st, jobs.Options{Logger: logger})
+	if err != nil {
+		return err
+	}
+	// Job kinds are registered here by the features that own them (P2 onwards).
+	if err := runner.Start(ctx); err != nil {
+		return err
+	}
+
 	srv := &http.Server{
 		Addr:              *addr,
 		Handler:           web.NewHandler(web.Options{Version: version}),
@@ -54,28 +86,46 @@ func run(args []string) error {
 		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelWarn),
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
 	errc := make(chan error, 1)
 	go func() {
 		logger.Info("listening", "addr", "http://"+*addr, "version", version)
 		errc <- srv.ListenAndServe()
 	}()
 
+	var serveErr error
 	select {
 	case err := <-errc:
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
+		if !errors.Is(err, http.ErrServerClosed) {
+			serveErr = err
 		}
-		return err
 	case <-ctx.Done():
+		logger.Info("shutting down")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		serveErr = srv.Shutdown(shutdownCtx)
+		cancel()
 	}
 
-	logger.Info("shutting down")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Stop the runner after the server: running jobs are requeued or held.
+	stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return srv.Shutdown(shutdownCtx)
+	if err := runner.Stop(stopCtx); err != nil {
+		logger.Warn("job runner did not stop in time; unfinished jobs are recovered at the next start", "err", err)
+	}
+	return serveErr // st.Close runs on return
+}
+
+// describeOpenError turns a refusal into plain words that name the file and say
+// it was not changed.
+func describeOpenError(err error, dataDir string) error {
+	var se *db.SchemaError
+	path := db.FilePath(dataDir)
+	switch {
+	case errors.As(err, &se) && errors.Is(err, db.ErrSchemaTooNew):
+		return fmt.Errorf("the database at %s was made by a newer version of Tendshelf (schema %d; this version reads up to %d). Install the newer version or choose another -data folder. The file was not changed.", path, se.Found, se.Supported)
+	case errors.Is(err, db.ErrNotTendshelf):
+		return fmt.Errorf("the file at %s is not a Tendshelf database. The file was not changed.", path)
+	}
+	return fmt.Errorf("open the database at %s: %w", path, err)
 }
 
 func envOr(key, fallback string) string {
