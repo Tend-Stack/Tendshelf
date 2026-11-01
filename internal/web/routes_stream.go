@@ -65,6 +65,18 @@ func (s *server) getStream(w http.ResponseWriter, r *http.Request) {
 		s.streamCompat(w, r, f)
 		return
 	}
+	// The scanner never records symlinks, but a file can be swapped for one after a scan, and a
+	// link may point anywhere on the server. Refuse anything that is not a regular file before
+	// opening, then make sure the opened file is the one checked (no swap in between).
+	lfi, err := os.Lstat(f.Path)
+	if err != nil {
+		s.streamOpenFailed(w, r, f.ID, err)
+		return
+	}
+	if !lfi.Mode().IsRegular() {
+		s.notFound(w, r)
+		return
+	}
 	file, err := openAudio(f.Path)
 	if err != nil {
 		s.streamOpenFailed(w, r, f.ID, err)
@@ -72,7 +84,7 @@ func (s *server) getStream(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 	fi, err := file.Stat()
-	if err != nil || !fi.Mode().IsRegular() {
+	if err != nil || !fi.Mode().IsRegular() || !os.SameFile(lfi, fi) {
 		s.notFound(w, r)
 		return
 	}

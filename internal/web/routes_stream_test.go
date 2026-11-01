@@ -252,6 +252,19 @@ func TestStreamRefusals(t *testing.T) {
 		{"missing", func(t *testing.T, a *testApp, _ library.Book, f library.AudioFile) {
 			streamExec(t, a, `UPDATE audio_files SET missing_since=1 WHERE id=?`, f.ID)
 		}},
+		{"swapped for a symlink", func(t *testing.T, _ *testApp, _ library.Book, f library.AudioFile) {
+			// After the scan the file is replaced by a link to a secret outside the library.
+			secret := filepath.Join(t.TempDir(), "secret.txt")
+			if err := os.WriteFile(secret, []byte("not for listeners"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Remove(f.Path); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(secret, f.Path); err != nil {
+				t.Fatal(err)
+			}
+		}},
 		{"protected extension", func(t *testing.T, a *testApp, _ library.Book, f library.AudioFile) {
 			b, err := os.ReadFile(f.Path)
 			if err != nil {
