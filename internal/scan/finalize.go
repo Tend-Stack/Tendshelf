@@ -29,15 +29,16 @@ func relKey(root, path string) string {
 // finalize settles a book from the rows in the database: play order, offsets, duration, chapters
 // and the refused reason. It is a pure function of those rows, writes only what differs, and does
 // nothing while any live file still waits for its probe. It must run inside the write transaction
-// that settled the book's last file.
-func finalize(tx *library.Tx, bookID string, _ int64) error {
+// that settled the book's last file. It reports settled = the book has at least one live file and
+// none waits for its probe, that is, the function ran past its early return.
+func finalize(tx *library.Tx, bookID string, _ int64) (bool, error) {
 	book, err := tx.Book(bookID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	files, err := tx.AudioFiles(bookID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	var live []library.AudioFile
 	for _, f := range files {
@@ -45,12 +46,12 @@ func finalize(tx *library.Tx, bookID string, _ int64) error {
 			continue
 		}
 		if !settled(&f) {
-			return nil
+			return false, nil
 		}
 		live = append(live, f)
 	}
 	if len(live) == 0 {
-		return nil
+		return false, nil
 	}
 
 	var play, other []library.AudioFile
@@ -111,7 +112,7 @@ func finalize(tx *library.Tx, bookID string, _ int64) error {
 			continue
 		}
 		if err := tx.PutAudioFile(&w); err != nil {
-			return err
+			return false, err
 		}
 	}
 
@@ -128,19 +129,21 @@ func finalize(tx *library.Tx, bookID string, _ int64) error {
 	if book.DurationMs != total || book.RefusedReason != refused {
 		book.DurationMs, book.RefusedReason = total, refused
 		if err := tx.UpdateBook(book); err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	chs := bookChapters(book.Title, tl)
 	old, err := tx.Chapters(bookID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !sameChapters(old, chs) {
-		return tx.ReplaceChapters(bookID, chs)
+		if err := tx.ReplaceChapters(bookID, chs); err != nil {
+			return false, err
+		}
 	}
-	return nil
+	return true, nil
 }
 
 func sameChapters(a, b []library.Chapter) bool {

@@ -30,6 +30,8 @@ type Scanner struct {
 	log   *slog.Logger
 	now   func() time.Time
 
+	followers []Follower
+
 	afterProbe func() // test hook: runs between ffprobe and the write transaction
 }
 
@@ -40,6 +42,32 @@ func New(repo *library.Repo, tools media.Tools, jobs Enqueuer, log *slog.Logger)
 		log = slog.Default()
 	}
 	return &Scanner{repo: repo, tools: tools, jobs: jobs, log: log, now: time.Now}
+}
+
+// Follower is told which books just settled: every file has an answer and the book's order,
+// duration and chapters are written. It runs after the write transaction has committed, so it may
+// read the book. Followers log their own errors and must not call into scan.
+type Follower func(ctx context.Context, bookIDs []string)
+
+// OnBookSettled adds a follower. Call it only before Register.
+func (s *Scanner) OnBookSettled(f Follower) { s.followers = append(s.followers, f) }
+
+// notify tells every follower, in registration order, about the sorted, distinct book ids.
+func (s *Scanner) notify(ctx context.Context, ids []string) {
+	if len(ids) == 0 || len(s.followers) == 0 {
+		return
+	}
+	ids = append([]string(nil), ids...)
+	sort.Strings(ids)
+	out := ids[:0]
+	for i, id := range ids {
+		if i == 0 || id != ids[i-1] {
+			out = append(out, id)
+		}
+	}
+	for _, f := range s.followers {
+		f(ctx, out)
+	}
 }
 
 // Result is what one library scan did. It is stored as the scan job's result.
@@ -60,6 +88,7 @@ type Result struct {
 	SymlinksSkipped int `json:"symlinks_skipped"`
 	UnreadableDirs  int `json:"unreadable_dirs"`
 	ProbesEnqueued  int `json:"probes_enqueued"`
+	BooksSettled    int `json:"books_settled"`
 }
 
 // RefusalText is the plain sentence for a book's refused reason, empty for any other reason.
@@ -85,6 +114,7 @@ type plan struct {
 	hashes    map[string]string // quick hash of files new or changed since the last scan, by path
 	skip      []string          // paths and folders whose absence proves nothing
 	start     int64
+	settled   []string // books finalize settled in the apply transaction
 }
 
 func underAny(path string, prefixes []string) bool {
@@ -167,6 +197,7 @@ func (s *Scanner) ScanLibrary(ctx context.Context, libraryID string, guard func(
 	var applied Result
 	err = s.repo.UpdateGuarded(ctx, guard, func(tx *library.Tx) error {
 		var err error
+		p.settled = nil // the transaction may be retried
 		applied, err = s.apply(tx, p)
 		return err
 	})
@@ -189,6 +220,8 @@ func (s *Scanner) ScanLibrary(ctx context.Context, libraryID string, guard func(
 	if err != nil {
 		return res, err
 	}
+	res.BooksSettled = len(p.settled)
+	s.notify(ctx, p.settled)
 	s.log.Info("scan finished", "library", libraryID, "files", res.FilesSeen, "added", res.FilesAdded,
 		"moved", res.FilesMoved, "changed", res.FilesChanged, "missing", res.FilesMissing,
 		"books_added", res.BooksAdded, "probes", res.ProbesEnqueued)
@@ -521,8 +554,12 @@ func (s *Scanner) apply(tx *library.Tx, p *plan) (Result, error) {
 		}
 	}
 	for _, id := range final {
-		if err := finalize(tx, id, p.start); err != nil {
+		ok, err := finalize(tx, id, p.start)
+		if err != nil {
 			return res, err
+		}
+		if ok {
+			p.settled = append(p.settled, id)
 		}
 	}
 	return res, nil

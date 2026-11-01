@@ -46,6 +46,7 @@ func run(ctx context.Context, args []string) error {
 	dataFlag := fs.String("data", envOr("TENDSHELF_DATA", ""), "data folder (database, backups); default is per user")
 	ffprobe := fs.String("ffprobe", envOr("TENDSHELF_FFPROBE", ""), "ffprobe program name or absolute path; default searches PATH")
 	ffmpeg := fs.String("ffmpeg", envOr("TENDSHELF_FFMPEG", ""), "ffmpeg program name or absolute path; default searches PATH")
+	mf := addMediaFlags(fs)
 	showVersion := fs.Bool("version", false, "print the version and exit")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -78,7 +79,16 @@ func run(ctx context.Context, args []string) error {
 	}
 	// Job kinds are registered here by the features that own them.
 	tools := locateTools(media.Config{FFprobe: *ffprobe, FFmpeg: *ffmpeg}, logger)
-	if err := scan.New(library.New(st), tools, runner, logger).Register(runner); err != nil {
+	lib := library.New(st)
+	sc := scan.New(lib, tools, runner, logger)
+	d := deps{st: st, lib: lib, scanner: sc, runner: runner, tools: tools, dataDir: dataDir, log: logger}
+	if err := registerDetails(d); err != nil {
+		return err
+	}
+	if err := registerMediaJobs(d, mf); err != nil {
+		return err
+	}
+	if err := sc.Register(runner); err != nil {
 		return err
 	}
 	if err := runner.Start(ctx); err != nil {

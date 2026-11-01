@@ -89,6 +89,7 @@ func (s *Scanner) ProbeFile(ctx context.Context, fileID string, guard func(conte
 	if apply != nil {
 		now := s.now().UnixMilli()
 		wrote := false
+		settledBook := ""
 		err = s.repo.UpdateGuarded(ctx, guard, func(tx *library.Tx) error {
 			cur, err := tx.AudioFile(fileID)
 			switch {
@@ -108,7 +109,7 @@ func (s *Scanner) ProbeFile(ctx context.Context, fileID string, guard func(conte
 			if err := tx.PutAudioFile(&cur); err != nil {
 				return err
 			}
-			wrote = true
+			wrote, settledBook = true, ""
 			files, err := tx.AudioFiles(cur.BookID)
 			if err != nil {
 				return err
@@ -118,10 +119,17 @@ func (s *Scanner) ProbeFile(ctx context.Context, fileID string, guard func(conte
 					return nil // more files wait; the last one to settle finalises the book
 				}
 			}
-			return finalize(tx, cur.BookID, now)
+			ok, err := finalize(tx, cur.BookID, now)
+			if ok {
+				settledBook = cur.BookID
+			}
+			return err
 		})
 		if err != nil {
 			return "", err
+		}
+		if settledBook != "" {
+			s.notify(ctx, []string{settledBook})
 		}
 		if !wrote {
 			return outcome, nil
