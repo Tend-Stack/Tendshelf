@@ -60,8 +60,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: var(--duration-fast); }
-  ::view-transition-new(ts-main) { animation-name: ts-fade-in; }
+  ::view-transition-group(*) { animation: none; }
+  ::view-transition-old(*), ::view-transition-new(*), ::view-transition-old(ts-main) { animation-duration: var(--duration-fast); }
+  ::view-transition-new(ts-main) { animation-name: ts-fade-in; animation-duration: var(--duration-fast); }
   .ts-main.ts-entering { animation-name: ts-fade-in; animation-duration: var(--duration-fast); }
   ::view-transition-group(ts-cover) { animation: none; }
   @starting-style { .ts-sheet, .ts-toast { translate: none; opacity: 0; } }
