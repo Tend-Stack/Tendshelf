@@ -73,6 +73,9 @@ templ Shelves(v ShelvesView) {
 					<li>
 						<a class="ts-row ts-shelf-row" href={ templ.SafeURL(r.Href) }>
 							<span class="ts-shelf-row__stack">
+								if len(r.Covers) == 0 {
+									<span class="ts-shelf-row__blank" aria-hidden="true">@components.Icon("library", false)</span>
+								}
 								for _, c := range r.Covers {
 									@components.Cover(c, "36")
 								}

@@ -13,6 +13,7 @@
 .ts-shelf-row__stack { display: flex; flex: none; min-width: 84px; padding-right: var(--space-8); }
 .ts-shelf-row__stack .ts-cover { margin-right: -12px; border-radius: var(--radius-sm); box-shadow: 0 0 0 2px var(--ground); }
 .ts-shelf-row__stack .ts-cover--36 .ts-cover__title { display: none; }
+.ts-shelf-row__blank { display: grid; place-items: center; inline-size: 36px; block-size: 36px; border: 1px solid var(--line); border-radius: var(--radius-cover); background: var(--surface); color: var(--ink-muted); }
 
 /* New shelf and rename: one field and one button */
 .ts-shelf-new { margin-top: var(--space-16); }
