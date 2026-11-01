@@ -417,6 +417,9 @@ func TestAdminLibrariesPage(t *testing.T) {
 	if !strings.Contains(body, `hx-trigger="every 2s"`) {
 		t.Error("an active scan does not show its status")
 	}
+	if !strings.Contains(body, "Scanning your audiobook folder.") || strings.Contains(body, "No scan yet.") {
+		t.Error("the summary line does not say a scan is running")
+	}
 	if banner := a.do(http.MethodGet, "/admin/libraries?marked=3", nil, nil, owner).Body.String(); !strings.Contains(banner, "Marked 3 books as missing.") {
 		t.Error("no banner")
 	}

@@ -104,6 +104,10 @@ func (s *server) lastScanText(ctx context.Context, libs []library.Library) (stri
 		if err != nil {
 			return "", err
 		}
+		if ok && (j.State == jobs.StateQueued || j.State == jobs.StateRunning) {
+			// A scan in progress says so, instead of "No scan yet." or the previous scan's summary.
+			return "Scanning your audiobook folder.", nil
+		}
 		if ok && j.State == jobs.StateDone && (!found || j.UpdatedAt.After(newest.UpdatedAt)) {
 			newest, found = j, true
 		}
