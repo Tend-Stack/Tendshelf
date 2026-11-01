@@ -32,7 +32,7 @@ type PlayerDataView struct {
 	SkipBackS, SkipForwardS         int
 	AutoRewind                      bool
 	AccentDark, AccentLight         string
-	AccentSepia                     string
+	AccentSepia, Tint               string // Tint: the cover's colour for the full player's background fade
 	Files                           []PlayerFileView
 	Chapters                        []PlayerChapterView
 }
@@ -74,6 +74,9 @@ templ PlayerData(v PlayerDataView) {
 		}
 		if v.AccentSepia != "" {
 			data-accent-sepia={ v.AccentSepia }
+		}
+		if v.Tint != "" {
+			data-tint={ v.Tint }
 		}
 	>
 		<ol data-ts-files>

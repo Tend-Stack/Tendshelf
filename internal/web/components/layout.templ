@@ -67,6 +67,7 @@ templ Layout(p Page, body templ.Component) {
 				</main>
 			</div>
 			@PlayerSlot(p.Player)
+			@PlayerFull(p.Player)
 			@Toasts()
 			@KeysHelp(p.Player)
 			<div id="sheet" class="ts-sheet-region">
@@ -75,6 +76,7 @@ templ Layout(p Page, body templ.Component) {
 				}
 			</div>
 			<script type="module" async src={ p.Assets.URL("js/player.js") }></script>
+			<script type="module" async src={ p.Assets.URL("js/player-full.js") }></script>
 		</body>
 	</html>
 }

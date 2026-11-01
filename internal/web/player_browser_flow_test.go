@@ -504,7 +504,7 @@ func TestPlayerBrowserLayout(t *testing.T) {
 			if r.Labels["toggle"] != "Play Harbour Lamp" || r.Labels["back"] != "Back 15 seconds" || r.Labels["forward"] != "Forward 30 seconds" {
 				t.Errorf("%s: labels %+v", name, r.Labels)
 			}
-			if r.Labels["open"] != "Open Harbour Lamp, chapter 4" || r.Labels["meta"] != "Chapter 4 · 1 min left" {
+			if r.Labels["open"] != "Open player: Harbour Lamp, chapter 4" || r.Labels["meta"] != "Chapter 4 · 1 min left" {
 				t.Errorf("%s: open %q, meta %q", name, r.Labels["open"], r.Labels["meta"])
 			}
 			near := func(a, b float64) bool { return a-b < 1.5 && b-a < 1.5 }

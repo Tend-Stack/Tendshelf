@@ -28,13 +28,14 @@ dark and light × 4 widths in the full run. The nightly CI job runs `make visual
 | OnboardDone | 390 | `TestVisualBrowsePages` `onboard-done`; `TestVisualAdminPages` `setup-done` | secondary | Zero counts left out of the summary line |
 | SettingsPhone | 390 | `TestVisualMePages` `settings` | main | Text size and Larger text mode go with P3; several rows wait for their features |
 | ProfilePhone | 390 | `me-profile` | secondary | No stats, bookmarks or finished rows; no Users, Metadata or Research entries |
-| The mini-player (component README MiniPlayer; on LibraryListPhone, SearchTablet, BookDesktop) | 390, 768, 1024, 1440 | `TestPlayerBrowserLayout` | own run (`make player`, dark and light) | Opens the book page until the full player (P1c-5); no long-press speed (P1c-5); the Back button carries its seconds as a number on the icon; Forward shows from 1280 px; hidden while a play control for the loaded book is on screen |
+| The mini-player (component README MiniPlayer; on LibraryListPhone, SearchTablet, BookDesktop) | 390, 768, 1024, 1440 | `TestPlayerBrowserLayout` | own run (`make player`, dark and light) | Opens the full player (the link goes to the book page without script); desktop bar adds a compact scrubber; no long-press speed (P1c-5); the Back button carries its seconds as a number on the icon; Forward shows from 1280 px; hidden while a play control for the loaded book is on screen |
+| PlayerPhone, PlayerPhoneLight, PlayerTablet, PlayerTabletLight, PlayerDesktop, PlayerDesktopLight | 390, 768, 1024, 1440 | `TestFullPlayerBrowserLayout` (`full-<theme>-<width>.png`) | own run (`make player`, dark and light; four themes with `make visual-full`) | Below 1280 px the player is a full-screen dialog; tablet uses the phone layout centred (the board's left-aligned clock and 8-column grid are not built). From 1280 px a 400-wide side panel stands in on any page, not the two-column view on the book's own page (P1c-8 decides). No output-device item (no portable API), no "Playing on this computer" line, no split-view icon; the desktop settings bar shows Chapters beside Speed, Sleep and Bookmark. Speed, Sleep and Bookmark are inert until P1c-5b. The bar stays visible beside the panel |
 | LibrariesPhone, LibrariesTablet, LibrariesPage, LibProblems | 390, 1024, 1440, 420 | `TestVisualAdminPages` `libraries` | main | No folder removal, watching or scan history |
 | StateLoading | 390 | `TestVisualLibraryInfiniteScroll`; kitchen sink `ks-skeleton` | 390 only | None |
 | StateNoResults | 390 | `book-search-none`, `library-nomatch` | secondary | None |
 | StateError | 390 | none (handler tests only) | — | "Couldn't reach your server" needs the service worker (P4) |
 
-Not built yet, by owning phase: Player*, StatePlayerHints (P1c); ComparePhone (P2);
+Not built yet, by owning phase: StatePlayerHints (P1c-5b); ComparePhone (P2);
 Invite*, RosaHome, Share*, Users* (P3); DownloadsPhone, StateOffline (P4); Research* (P6); reader boards (R).
 Sepia and contrast are captured only for main pages. The WebKit run (`make visual-webkit`) covers eight
 real pages in dark and light at 447 and 1440 px.

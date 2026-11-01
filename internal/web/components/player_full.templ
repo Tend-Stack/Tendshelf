@@ -1,0 +1,140 @@
+package components
+
+// Scrubber is the ruler across the whole book (design-system Scrubber): ticks, the fill, the
+// current-chapter line and the needle are drawn by player-full.js through custom properties, and the
+// range input on top carries the keyboard and screen reader semantics. which is "full" or "bar".
+templ Scrubber(m PlayerMsgs, class, which string) {
+	<div class={ "ts-scrub", class } data-ts-scrub={ which }>
+		<div class="ts-scrub__line"></div>
+		<span class="ts-scrub__ticks" data-ts-ticks></span>
+		<div class="ts-scrub__fill"></div>
+		<div class="ts-scrub__chapter"></div>
+		<div class="ts-scrub__needle"></div>
+		<div class="ts-scrub__bubble" aria-hidden="true" data-ts-bubble></div>
+		<label class="ts-sr" for={ "ts-scrub-" + which }>{ m.ScrubLabel }</label>
+		<input id={ "ts-scrub-" + which } class="ts-scrub__input" type="range" min="0" max="0" step="1" value="0" data-ts-range/>
+	</div>
+}
+
+// PlayerFull is the full player (P1c-5): a dialog outside #main, kept by hx-preserve, shown full
+// screen below 1280 px and as a side panel from there. player-full.js fills it from window.tsPlayer.
+// The markup order is the screen reader order of the HANDOFF: title, chapter, time left, play and
+// pause, skip, scrubber, settings; the stylesheet puts the scrubber above the transport, the
+// chapter label in the header and the transport buttons in their visual row. Speed, Sleep and Bookmark are inert until P1c-5b.
+templ PlayerFull(m PlayerMsgs) {
+	<dialog id="player-full" class="ts-player" aria-labelledby="player-full-title" hx-preserve>
+		<div class="ts-player__body" data-ts-full-body>
+			<header class="ts-player__head">
+				<button type="button" class="ts-iconbtn" data-ts-close-player aria-label={ m.ClosePlayer }>
+					@playerChevron()
+				</button>
+				<div class="ts-player__tools">
+					<button type="button" class="ts-iconbtn ts-player__mark" data-ts-bookmark aria-label={ m.Bookmark } disabled>
+						@Icon("bookmark", false)
+					</button>
+					<details class="ts-player__menu" data-ts-chipmenu data-ts-full-menu>
+						<summary class="ts-iconbtn" aria-label={ m.MoreActions }>
+							<svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg>
+						</summary>
+						<div class="ts-player__menubody" role="group" aria-label={ m.MoreActions }>
+							<a class="ts-player__menuitem" href="/" data-ts-full-book>{ m.GoToBook }</a>
+							<form method="post" action="/" data-ts-full-finish>
+								<input type="hidden" name="_csrf" value=""/>
+								<input type="hidden" name="finished" value="1"/>
+								<input type="hidden" name="next" value=""/>
+								<button type="submit" class="ts-player__menuitem">{ m.MarkFinished }</button>
+							</form>
+						</div>
+					</details>
+				</div>
+			</header>
+			<span class="ts-book-block ts-player__block">
+				<span class="ts-cover ts-player__cover"><img data-ts-full-cover alt="" width="256" height="256"/></span>
+			</span>
+			<h2 id="player-full-title" class="title-2 ts-player__title" data-ts-full-title></h2>
+			<p class="body ts-player__author" data-ts-full-author></p>
+			<span class="ts-overline ts-num ts-player__chapter" data-ts-full-chapter></span>
+			<div class="ts-player__times">
+				<span class="time-display" data-ts-full-clock></span>
+				<span class="label ts-num ts-player__left" data-ts-full-left></span>
+			</div>
+			<div class="ts-transport ts-player__transport">
+				<button type="button" class="ts-iconbtn ts-iconbtn--cover ts-iconbtn--xl" data-ts-full-toggle>
+					<span data-ts-icon-play>@Icon("play", true)</span>
+					<span data-ts-icon-pause>@Icon("pause", true)</span>
+				</button>
+				<button type="button" class="ts-iconbtn ts-iconbtn--md ts-skip" data-ts-full-back>
+					@Icon("skip-back", false)
+					<span class="ts-skip__num" data-ts-full-back-num aria-hidden="true"></span>
+				</button>
+				<button type="button" class="ts-iconbtn ts-iconbtn--md ts-skip" data-ts-full-forward>
+					@Icon("skip-forward", false)
+					<span class="ts-skip__num" data-ts-full-forward-num aria-hidden="true"></span>
+				</button>
+				<button type="button" class="ts-iconbtn ts-iconbtn--md" data-ts-full-prev aria-label={ m.PrevChapter }>
+					@Icon("prev-chapter", false)
+				</button>
+				<button type="button" class="ts-iconbtn ts-iconbtn--md" data-ts-full-next aria-label={ m.NextChapter }>
+					@Icon("next-chapter", false)
+				</button>
+			</div>
+			<div class="ts-player__scrub">
+				@Scrubber(m, "", "full")
+				<div class="ts-scrub__times">
+					<span data-ts-full-elapsed></span>
+					<span aria-hidden="true" data-ts-full-fine></span>
+					<span data-ts-full-book-left></span>
+				</div>
+			</div>
+			<div class="ts-player-bar ts-player__bar">
+				<button type="button" class="ts-player-bar__item" data-ts-open-speed disabled>
+					<span class="ts-player-bar__value" data-ts-full-speed></span>
+					<span class="ts-player-bar__label">{ m.Speed }</span>
+				</button>
+				<button type="button" class="ts-player-bar__item" data-ts-open-sleep disabled>
+					@Icon("sleep", false)
+					<span class="ts-player-bar__label">{ m.Sleep }</span>
+				</button>
+				<button type="button" class="ts-player-bar__item" data-ts-open-chapters>
+					@Icon("chapters", false)
+					<span class="ts-player-bar__label">{ m.Chapters }</span>
+				</button>
+				<button type="button" class="ts-player-bar__item ts-player__barmark" data-ts-bookmark disabled>
+					@Icon("bookmark", false)
+					<span class="ts-player-bar__label">{ m.Bookmark }</span>
+				</button>
+			</div>
+		</div>
+		<div class="ts-player__sheet" data-ts-full-sheet>
+			<div class="ts-player__sheetwrap" data-ts-chapters-sheet hidden>
+				<div class="ts-scrim" data-ts-sheet-close></div>
+				<section class="ts-sheet" role="dialog" aria-labelledby="player-full-chapters-title">
+					<div class="ts-sheet__grab"></div>
+					<div class="ts-sheet__head">
+						<h3 id="player-full-chapters-title" class="ts-sheet__title">{ m.Chapters }</h3>
+						<button type="button" class="ts-iconbtn" data-ts-sheet-close aria-label={ m.KeysClose }>
+							@Icon("close", false)
+						</button>
+					</div>
+					<ol class="ts-player__chapters" data-ts-chapter-list></ol>
+				</section>
+			</div>
+		</div>
+		<template data-ts-chapter-row>
+			<li>
+				<button type="button" class="ts-player__chrow">
+					<span class="ts-player__chnum ts-num"></span>
+					<span class="ts-player__chtitle"></span>
+					<span class="ts-player__chtime ts-num"></span>
+					<span class="ts-player__chdone">
+						@Icon("check", false)
+					</span>
+				</button>
+			</li>
+		</template>
+	</dialog>
+}
+
+templ playerChevron() {
+	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+}

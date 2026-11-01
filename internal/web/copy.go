@@ -239,6 +239,27 @@ const (
 	msgContinueThere  = "Continue there"
 	msgStayHere       = "Stay here"
 
+	// P1c-5a full player: the board and the HANDOFF words; the rest follows the voice rules.
+	msgChapterOf     = "Chapter {n} of {total}"
+	msgLeftInChapter = "{t} left in chapter"
+	msgLeftInBook    = "{h} h {m} m left in book"
+	msgScrubLabel    = "Position in book"
+	msgScrubValue    = "{h} hours {m} minutes elapsed, chapter {n}"
+	msgFineScrub     = "Drag up for fine control"
+	msgScrubBubble   = "Chapter {n} · {title} · {t}"
+	msgClosePlayer   = "Close player"
+	msgPrevChapter   = "Previous chapter"
+	msgNextChapter   = "Next chapter"
+	msgSpeed         = "Speed"
+	msgSleep         = "Sleep"
+	msgChapters      = "Chapters"
+	msgBookmark      = "Bookmark"
+	msgMoreActions   = "More"
+	msgGoToBook      = "Go to book"
+	msgMarkFinished  = "Mark as finished"
+	msgChapterPlayed = "{title}, played"
+	msgOpenPlayer    = "Open player: {title}, chapter {n}"
+
 	msgKeysTitle   = "Keyboard shortcuts"
 	msgKeysPlay    = "Play or pause"
 	msgKeysSkip    = "Back or forward"
@@ -259,5 +280,10 @@ func playerMsgs() components.PlayerMsgs {
 		ContinueThere: msgContinueThere, StayHere: msgStayHere,
 		KeysTitle: msgKeysTitle, KeysPlay: msgKeysPlay, KeysSkip: msgKeysSkip, KeysSearch: msgKeysSearch,
 		KeysLibrary: msgKeysLibrary, KeysHome: msgKeysHome, KeysList: msgKeysList, KeysClose: msgKeysClose,
+		ChapterOf: msgChapterOf, LeftInChapter: msgLeftInChapter, LeftInBook: msgLeftInBook, ScrubLabel: msgScrubLabel,
+		ScrubValue: msgScrubValue, FineScrub: msgFineScrub, ClosePlayer: msgClosePlayer, PrevChapter: msgPrevChapter,
+		NextChapter: msgNextChapter, Speed: msgSpeed, Sleep: msgSleep, Chapters: msgChapters, Bookmark: msgBookmark,
+		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
+		OpenPlayer: msgOpenPlayer, ScrubBubble: msgScrubBubble,
 	}
 }

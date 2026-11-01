@@ -270,7 +270,7 @@ func TestNoSkipCollision(t *testing.T) {
 
 // jsBudgets lists every script with its limits: gzip bytes of the served file, and a raw-byte sanity
 // ceiling. A script that is not listed fails, so a new file needs a deliberate budget; a listed
-// script that does not exist yet (player-full.js arrives in P1c-5) is skipped.
+// script that does not exist yet is skipped.
 var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"shell.js": {4 * 1024, 64 * 1024},
 	// The plan said 9 KB, sized from the squeezed file (7.2 KB). The version written for reading
@@ -281,7 +281,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
-const jsTotalGzip = 20 * 1024
+const jsTotalGzip = 24 * 1024 // 11 (player.js) + 4 (shell.js) + 8 (player-full.js) + room
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

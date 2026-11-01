@@ -8,16 +8,21 @@ import (
 	"testing"
 )
 
-// playerMsgNames are the data-ts-msg-* attributes player.js reads (msg("camelCase") -> kebab-case).
+// playerMsgNames are the data-ts-msg-* attributes player.js and player-full.js read
+// (msg("camelCase") -> kebab-case).
 func playerMsgNames(t *testing.T) []string {
 	t.Helper()
-	js, err := os.ReadFile("static/js/player.js")
-	if err != nil {
-		t.Fatal(err)
-	}
-	camel := regexp.MustCompile(`msg\("(\w+)"\)`).FindAllStringSubmatch(string(js), -1)
-	if len(camel) == 0 {
-		t.Fatal("player.js reads no message")
+	var camel [][]string
+	for _, name := range []string{"player.js", "player-full.js"} {
+		js, err := os.ReadFile("static/js/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := regexp.MustCompile(`msg\("(\w+)"\)`).FindAllStringSubmatch(string(js), -1)
+		if len(found) == 0 {
+			t.Fatalf("%s reads no message", name)
+		}
+		camel = append(camel, found...)
 	}
 	var out []string
 	seen := map[string]bool{}
@@ -100,8 +105,12 @@ func TestPlayerLayoutAssets(t *testing.T) {
 	if !js.MatchString(body) {
 		t.Error("the layout does not load player.js as an async module")
 	}
-	if strings.Index(body, "player") < 0 || strings.Count(body, "js/player") != 1 {
-		t.Errorf("player.js is loaded %d times", strings.Count(body, "js/player"))
+	if n := len(regexp.MustCompile(`js/player\.[0-9a-f]*\.?js`).FindAllString(body, -1)); n != 1 {
+		t.Errorf("player.js is loaded %d times", n)
+	}
+	full := regexp.MustCompile(`<script type="module" async src="[^"]*js/player-full[^"]*\.js"></script>`)
+	if n := len(full.FindAllString(body, -1)); n != 1 || strings.Index(body, "js/player-full") < strings.Index(body, "js/player.") {
+		t.Errorf("player-full.js is loaded %d times as an async module after player.js", n)
 	}
 	// Player CSS comes before a page's own sheet and after the shared ones.
 	if i, j := strings.Index(body, "css/motion"), strings.Index(body, "css/player"); i < 0 || j < i {
@@ -140,7 +149,7 @@ func TestPlayerKeysHelp(t *testing.T) {
 func TestPlayerJSRules(t *testing.T) {
 	banned := []string{"innerHTML", "outerHTML", "insertAdjacentHTML", "eval(", "new Function", "new Audio", "document.write", "createElement(\"audio\")", "createElement(\"video\")", "setAttribute(\"style\""}
 	style := regexp.MustCompile(`\.style\.(\w+)`)
-	for _, name := range []string{"player.js", "shell.js"} {
+	for _, name := range []string{"player.js", "player-full.js", "shell.js"} {
 		b, err := os.ReadFile("static/js/" + name)
 		if err != nil {
 			t.Fatal(err)
@@ -167,9 +176,15 @@ func TestPlayerJSRules(t *testing.T) {
 		t.Errorf("player.js looks up #audio %d times", n)
 	}
 	// Words come from the server: no sentence is hard-coded in the player.
-	if regexp.MustCompile(`"[A-Z][a-z]+ [a-z]+[^"]*"`).Match(b) {
-		for _, m := range regexp.MustCompile(`"[A-Z][a-z]+ [a-z]+[^"]*"`).FindAllString(string(b), -1) {
-			t.Errorf("player.js hard-codes the text %s", m)
+	for _, name := range []string{"player.js", "player-full.js"} {
+		src, _ := os.ReadFile("static/js/" + name)
+		for _, m := range regexp.MustCompile(`"[A-Z][a-z]+ [a-z]+[^"]*"`).FindAllString(string(src), -1) {
+			t.Errorf("%s hard-codes the text %s", name, m)
 		}
+	}
+	// Only player.js touches the media element; player-full.js goes through window.tsPlayer.
+	full, _ := os.ReadFile("static/js/player-full.js")
+	if strings.Contains(string(full), "getElementById(\"audio\")") || regexp.MustCompile(`\baudio\.`).Match(full) {
+		t.Error("player-full.js touches #audio")
 	}
 }
