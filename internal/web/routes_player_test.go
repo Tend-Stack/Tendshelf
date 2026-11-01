@@ -146,12 +146,12 @@ func TestPlayerDataPlayTarget(t *testing.T) {
 	}
 	two := []library.AudioFile{f("f0", 0, 3000, false), f("f1", 3000, 3000, false)}
 	cases := []struct {
-		name    string
-		files   []library.AudioFile
-		pos     int64
-		id      string
-		off     int64
-		wantOK  bool
+		name   string
+		files  []library.AudioFile
+		pos    int64
+		id     string
+		off    int64
+		wantOK bool
 	}{
 		{"start", two, 0, "f0", 0, true},
 		{"second file", two, 3500, "f1", 500, true},
