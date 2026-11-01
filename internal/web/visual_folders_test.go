@@ -17,7 +17,7 @@ const fbProbeJS = `(() => {
   const small = [];
   for (const el of document.querySelectorAll(".ts-folders a, .ts-folders button, .ts-sheet a:not(.ts-scrim), main a.ts-btn, main input:not([type=hidden]), body.ts-frame input:not([type=hidden]), body.ts-frame a.ts-btn, body.ts-frame button")) {
     const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height < 44) small.push((el.id || el.className || el.tagName) + ":" + Math.round(r.height));
+    if (r.width > 0 && r.height < 43.5) small.push((el.id || el.className || el.tagName) + ":" + Math.round(r.height));
   }
   const layer = document.querySelector("#sheet .ts-sheet");
   const sheetBottom = layer ? Math.round(layer.getBoundingClientRect().bottom) : -1;

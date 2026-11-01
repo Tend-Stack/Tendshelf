@@ -100,11 +100,13 @@ func browseSeed(t *testing.T, a *testApp, n int) library.Folder {
 	return f
 }
 
+// browseProbeJS checks targets against 43.5 px, not 44: a sheet still sliding in (translate) gives
+// its boxes sub-pixel heights such as 43.9999 although min-height is 44 px.
 const browseProbeJS = `(() => {
   const small = [];
   for (const el of document.querySelectorAll("main a, main button, main select, #sheet a, #sheet label, #sheet button")) {
     const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height > 0 && Math.min(r.width, r.height) < 44) small.push((el.className || el.tagName) + ":" + Math.round(r.width) + "x" + Math.round(r.height));
+    if (r.width > 0 && r.height > 0 && Math.min(r.width, r.height) < 43.5) small.push((el.className || el.tagName) + ":" + Math.round(r.width) + "x" + Math.round(r.height));
   }
   const labels = [...document.querySelectorAll("input:not([type=hidden]), select")].filter(i => !document.querySelector('label[for="' + i.id + '"]')).map(i => i.id || i.name);
   let tint = null;

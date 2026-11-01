@@ -18,7 +18,7 @@ const adminProbeJS = `(() => {
   const small = [];
   for (const el of document.querySelectorAll("main input:not([type=hidden]), main button, main a.ts-btn, main summary, main select, body.ts-frame input:not([type=hidden]), body.ts-frame button, body.ts-frame a.ts-btn")) {
     const r = el.getBoundingClientRect();
-    if (r.width > 0 && r.height < 44) small.push((el.id || el.className || el.tagName) + ":" + Math.round(r.height));
+    if (r.width > 0 && r.height < 43.5) small.push((el.id || el.className || el.tagName) + ":" + Math.round(r.height));
   }
   const labels = [...document.querySelectorAll("input:not([type=hidden]), select")].filter(i => !document.querySelector('label[for="' + i.id + '"]')).map(i => i.id || i.name);
   return {over: document.documentElement.scrollWidth > innerWidth, theme: document.documentElement.dataset.theme || "",
