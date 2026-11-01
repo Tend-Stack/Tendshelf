@@ -58,8 +58,11 @@ func TestRealScan(t *testing.T) {
 			t.Errorf("mp3 chapter %d = %+v", i, c)
 		}
 	}
-	if parts.DurationMs < 5850 || parts.DurationMs > 6150 {
-		t.Errorf("mp3 duration = %d, want 6000 +- 150", parts.DurationMs)
+	// Three 2 s parts; allow 100 ms per file: ffmpeg 6.1 counts the MP3 encoder's padding frames
+	// (6,192 ms in the nightly job), ffmpeg 8 does not (about 6,000 ms). The offsets below must
+	// still add up exactly.
+	if parts.DurationMs < 5700 || parts.DurationMs > 6300 {
+		t.Errorf("mp3 duration = %d, want 6000 +- 300", parts.DurationMs)
 	}
 	files, _ := e.repo.AudioFiles(bg, parts.ID)
 	if len(files) != 3 || files[0].OffsetMs != 0 || files[1].OffsetMs != files[0].DurationMs || files[2].OffsetMs != files[0].DurationMs+files[1].DurationMs {
