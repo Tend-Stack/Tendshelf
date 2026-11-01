@@ -14,7 +14,7 @@ themes.
 
 | Milestone | Phase | State | Evidence |
 | --- | --- | --- | --- |
-| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 2.x, fonts and templ downloads approved). P0a, P0b, P0c in progress. | `make check` green 2026-11-01 (skeleton only). |
+| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 2.x, fonts and templ downloads approved). P0a (data and jobs) built 2026-11-01, see its note below; P0b, P0c in progress. | `make check` green 2026-11-01. |
 | M1 It plays | P1a-P1c | Not started | |
 | M2 Family | P3 | Not started | |
 | M3 Pocket | P4 | Not started | |
@@ -38,6 +38,17 @@ themes.
 
 Exit: migrations applied to a fresh database and from the empty fixture; a newer-schema or foreign
 database refused byte-identical (test); a job survives a restart (test); `CGO_ENABLED=0 make build`.
+
+Status 2026-11-01: built. Scope: `internal/db` (open with a header pre-check that never writes a refused
+file, single-connection writer plus query-only reader pools, migration `0001_init.sql`, verified
+`VACUUM INTO` backups, newest three kept), `internal/jobs` (leases with a fencing token, per-kind
+concurrency, recovery at start and every 30 s, cancel, resume, throttled progress, graceful stop),
+`cmd/tendshelf` (`-data` / `TENDSHELF_DATA`, per-user default folder, plain refusal messages). Dependency:
+`modernc.org/sqlite` v1.61.1 with its transitive modules, rows in `NOTICES.md`. Checks: `make check`
+(gofmt, vet, `go test -race ./...`) and `make build` green; `internal/db` 22 tests, `internal/jobs` 29,
+`cmd/tendshelf` 5; the built binary reports `CGO_ENABLED=0`. Limits: `golang.org/x/crypto` moves to P1b
+(users and sessions logic; only the tables exist now); no lock against two processes on one data folder;
+no job list or pruning; `Enqueue` cannot join a caller's transaction. Next: P0b (UI shell).
 
 ### P0b UI shell
 

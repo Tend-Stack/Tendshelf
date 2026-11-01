@@ -135,6 +135,12 @@ renewed while running; on startup, expired `running` jobs return to `queued` exc
 which goes to `held` until `file_writes` recovery decides, and `align.book`, which resumes from its
 emissions cache and finished chapters (a held alignment waits for Resume or Discard). Cancellation via context. Progress is
 written to `progress_json` at most once per second and read by `/hx/jobs/{id}` polling.
+Claiming a job bumps `attempts`, which is the fencing token: every write a running handler makes is
+conditioned on `state='running' AND attempts=?`, so a handler that lost its lease is cancelled with
+`ErrLeaseLost` and never writes a result. Startup recovery also runs every 30 s as a sweep. A running row
+whose kind is `HoldOnRecovery` or not registered goes to `held` (unknown work never re-runs on its own),
+and a row that used all its attempts goes to `failed` (`interrupted`). On shutdown, handlers are cancelled
+with `ErrShutdown` and their rows go back to `queued` without using an attempt (or to `held`).
 
 ## HTTP routes
 
@@ -286,7 +292,7 @@ Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); 
 | Module / file | Why | Note |
 | --- | --- | --- |
 | `github.com/a-h/templ` (v0.3.1070, fetched through the Go module proxy; not in the local cache) | templ runtime; the CLI at the same version for `make generate` | MIT |
-| `modernc.org/sqlite` (v1.60.1, already in the local module cache; TendVox uses it) | SQLite driver | Chosen over `mattn/go-sqlite3`: pure Go, so `CGO_ENABLED=0` cross-compiles to ARM NAS boxes, Windows, macOS and scratch containers; FTS5 is compiled in (checked in `lib/sqlite_linux_amd64.go`). Cost: slower than the C driver on heavy writes (guess 1.5-2x); fine for this workload. BSD-3 |
+| `modernc.org/sqlite` (v1.61.1, fetched through the module proxy; TendVox uses it) | SQLite driver | Chosen over `mattn/go-sqlite3`: pure Go, so `CGO_ENABLED=0` cross-compiles to ARM NAS boxes, Windows, macOS and scratch containers; FTS5 is compiled in (checked in `lib/sqlite_linux_amd64.go`). Cost: slower than the C driver on heavy writes (guess 1.5-2x); fine for this workload. BSD-3 |
 | `htmx.min.js` 2.x, vendored to `internal/web/static/vendor/` | Interactivity | Download once from the official release, record version and SHA-256 in `NOTICES.md`; licence 0BSD (guess, read it from the release) |
 | `golang.org/x/crypto` (argon2) | Password hashing in P1 | BSD-3 |
 | Fonts vendored to `internal/web/static/fonts/` (woff2): Fraunces, Fira Sans, Fira Mono | The design's type (P0b); Fira Mono only in the Research lab | SIL OFL 1.1 (read it from each release); self-hosted, never Google Fonts |
