@@ -1,0 +1,94 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// SetupServerView is step 2 of 3: naming the server.
+type SetupServerView struct {
+	CSRF  string
+	Name  string
+	Error string // already copy
+}
+
+// SetupServer asks for the server's name.
+templ SetupServer(v SetupServerView) {
+	@components.SetupSteps(2, 3)
+	<h1 class="title-1 ts-frame__title">Let's set up your shelf</h1>
+	<p class="body-lg ts-frame__lead">Tendshelf runs on this computer. Your books stay here, and the people you invite listen from their own phones.</p>
+	<form class="ts-form" method="post" action="/setup/server">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		@components.TextField(components.Field{
+			ID: "server-name", Name: "name", Label: "Name your server", Value: v.Name, Required: true,
+			Hint: "People you invite will see this name. You can change it later.", Error: v.Error,
+			Autofocus: true,
+		})
+		<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Continue</button>
+	</form>
+	@components.PrivacyNote()
+}
+
+// SetupFolderView is step 3 of 3: choosing the folder with the audiobooks.
+type SetupFolderView struct {
+	CSRF  string
+	Path  string
+	Error string // already copy
+	// Added is true once the folder is saved; Scan then shows the scan job.
+	Added bool
+	Scan  *components.ScanStatusView
+}
+
+// SetupFolder asks for the audiobook folder and then shows the scan streaming in.
+templ SetupFolder(v SetupFolderView) {
+	@components.SetupSteps(3, 3)
+	<h1 class="title-1 ts-frame__title">Where are your audiobooks?</h1>
+	<p class="body-lg ts-frame__lead">Pick the folder that holds them. Any mix of folders and files is fine; Tendshelf works out the books.</p>
+	<form class="ts-form" method="post" action="/setup/folder">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		@components.FolderField(components.FolderFieldView{Value: v.Path, Error: v.Error, Added: v.Added, Autofocus: true})
+		if v.Scan != nil {
+			<div class="ts-setup-scan">
+				@components.ScanStatus(*v.Scan)
+			</div>
+		}
+		if !v.Added {
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Use this folder</button>
+		}
+	</form>
+	if v.Added {
+		<p><a class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block" href="/setup/done">Continue</a></p>
+	}
+}
+
+// SetupDoneView is the last step. The handler writes the sentences, so counts read as words.
+type SetupDoneView struct {
+	// Empty is true when no book has been found yet.
+	Empty bool
+	// Books is the headline, such as "412 books, all in one place".
+	Books string
+	// Stats is the line under it.
+	Stats string
+	// Problems is "3 books need a look." or empty.
+	Problems string
+}
+
+// SetupDone closes the first run.
+templ SetupDone(v SetupDoneView) {
+	@components.SetupSteps(3, 3)
+	<div class="ts-done">
+		<span class="ts-done__mark">@components.Icon("check", false)</span>
+		<h1 class="title-1 ts-frame__title">Your shelf is ready</h1>
+		if v.Empty {
+			<p class="body-lg ts-frame__lead">Tendshelf is still reading your folder</p>
+			<p class="body ts-done__stats">Books appear on Home as they're found.</p>
+		} else {
+			<p class="section ts-done__books">{ v.Books }</p>
+			<p class="body ts-done__stats">{ v.Stats }</p>
+		}
+		if v.Problems != "" {
+			<p class="body ts-done__problems">
+				{ v.Problems }
+				<a href="/admin/libraries">See what's up</a>
+			</p>
+		}
+	</div>
+	<p class="ts-done__go"><a class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block" href="/">Start listening</a></p>
+}

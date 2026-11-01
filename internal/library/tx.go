@@ -63,6 +63,18 @@ func validChapterSource(s string) bool {
 // CreateLibrary adds a library. The name is trimmed and must be 1 to 200 characters; the scan
 // interval is 0 (on request) to 10080 minutes (a week).
 func (r *Repo) CreateLibrary(ctx context.Context, name string, scanIntervalMin int) (Library, error) {
+	l, err := r.newLibrary(name, scanIntervalMin)
+	if err != nil {
+		return Library{}, err
+	}
+	if err := r.st.WriteTx(ctx, func(tx *sql.Tx) error { return insertLibrary(ctx, tx, l) }); err != nil {
+		return Library{}, err
+	}
+	return l, nil
+}
+
+// newLibrary validates the fields and returns the library row to insert.
+func (r *Repo) newLibrary(name string, scanIntervalMin int) (Library, error) {
 	name = strings.TrimSpace(name)
 	if n := utf8.RuneCountInString(name); n < 1 || n > 200 {
 		return Library{}, invalid("name must be 1 to 200 characters")
@@ -70,16 +82,13 @@ func (r *Repo) CreateLibrary(ctx context.Context, name string, scanIntervalMin i
 	if scanIntervalMin < 0 || scanIntervalMin > 10080 {
 		return Library{}, invalid("scan interval must be 0 to 10080 minutes")
 	}
-	l := Library{ID: db.NewID("lib"), Name: name, ScanIntervalMin: scanIntervalMin, CreatedAt: r.nowMs()}
-	err := r.st.WriteTx(ctx, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO libraries(id, name, scan_interval_min, created_at) VALUES (?,?,?,?)`,
-			l.ID, l.Name, l.ScanIntervalMin, l.CreatedAt)
-		return err
-	})
-	if err != nil {
-		return Library{}, err
-	}
-	return l, nil
+	return Library{ID: db.NewID("lib"), Name: name, ScanIntervalMin: scanIntervalMin, CreatedAt: r.nowMs()}, nil
+}
+
+func insertLibrary(ctx context.Context, tx *sql.Tx, l Library) error {
+	_, err := tx.ExecContext(ctx, `INSERT INTO libraries(id, name, scan_interval_min, created_at) VALUES (?,?,?,?)`,
+		l.ID, l.Name, l.ScanIntervalMin, l.CreatedAt)
+	return err
 }
 
 // withSlash returns p with exactly one trailing separator, for prefix comparison.
@@ -94,45 +103,56 @@ func withSlash(p string) string {
 // that equals, contains or lies inside any existing folder (of any library) is refused, so one
 // book is never scanned twice. It does not touch the file system.
 func (r *Repo) AddFolder(ctx context.Context, libraryID, path string) (Folder, error) {
-	if !filepath.IsAbs(path) {
-		return Folder{}, invalid("folder path must be absolute")
-	}
-	clean := filepath.Clean(path)
-	f := Folder{ID: db.NewID("lf"), LibraryID: libraryID, Path: clean, CreatedAt: r.nowMs()}
-	err := r.st.WriteTx(ctx, func(tx *sql.Tx) error {
-		var one int
-		if err := tx.QueryRowContext(ctx, `SELECT 1 FROM libraries WHERE id = ?`, libraryID).Scan(&one); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return fmt.Errorf("%w: library", ErrNotFound)
-			}
-			return err
-		}
-		rows, err := tx.QueryContext(ctx, `SELECT path FROM library_folders`)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var p string
-			if err := rows.Scan(&p); err != nil {
-				return err
-			}
-			if p == clean || strings.HasPrefix(p, withSlash(clean)) || strings.HasPrefix(clean, withSlash(p)) {
-				return fmt.Errorf("%w: %s", ErrFolderOverlap, p)
-			}
-		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		rows.Close()
-		_, err = tx.ExecContext(ctx, `INSERT INTO library_folders(id, library_id, path, created_at) VALUES (?,?,?,?)`,
-			f.ID, f.LibraryID, f.Path, f.CreatedAt)
-		return mapErr(err, "folder path")
-	})
+	f, err := r.newFolder(libraryID, path)
 	if err != nil {
 		return Folder{}, err
 	}
+	if err := r.st.WriteTx(ctx, func(tx *sql.Tx) error { return r.insertFolder(ctx, tx, f) }); err != nil {
+		return Folder{}, err
+	}
 	return f, nil
+}
+
+// newFolder validates path and returns the folder row to insert.
+func (r *Repo) newFolder(libraryID, path string) (Folder, error) {
+	if !filepath.IsAbs(path) {
+		return Folder{}, invalid("folder path must be absolute")
+	}
+	return Folder{ID: db.NewID("lf"), LibraryID: libraryID, Path: filepath.Clean(path), CreatedAt: r.nowMs()}, nil
+}
+
+// insertFolder is the body of AddFolder inside a write transaction: the library must exist and no
+// existing folder may overlap f.
+func (r *Repo) insertFolder(ctx context.Context, tx *sql.Tx, f Folder) error {
+	clean := f.Path
+	var one int
+	if err := tx.QueryRowContext(ctx, `SELECT 1 FROM libraries WHERE id = ?`, f.LibraryID).Scan(&one); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: library", ErrNotFound)
+		}
+		return err
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT path FROM library_folders`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return err
+		}
+		if p == clean || strings.HasPrefix(p, withSlash(clean)) || strings.HasPrefix(clean, withSlash(p)) {
+			return fmt.Errorf("%w: %s", ErrFolderOverlap, p)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	rows.Close()
+	_, err = tx.ExecContext(ctx, `INSERT INTO library_folders(id, library_id, path, created_at) VALUES (?,?,?,?)`,
+		f.ID, f.LibraryID, f.Path, f.CreatedAt)
+	return mapErr(err, "folder path")
 }
 
 // Tx is the write view handed to Update. It is valid only inside the callback.

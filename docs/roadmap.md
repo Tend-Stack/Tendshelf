@@ -249,7 +249,21 @@ target), no page uses these reads until P1b-5.
 
 **P1b-3 status**: done. Scope: migration 0004 (`books_fts` contentless FTS5 with `books_fts_ids` rowids, `books_fts_src` view, `books_fts_vocab`, 11 triggers on books, book_people, book_series, people and series names, initial fill); `library.Search` (quoted prefix terms, bm25 weights, total capped at 1000, did-you-mean over the vocabulary with a visible-hit check), `library.Suggest` (books, authors, narrators, series), `RebuildSearch`; all through `Listable` and `Scope` in SQL. Checks: `make check`, `make build`, `CGO_ENABLED=0 go build ./...`, `make test-scan-real`, `go test -race -count=3` on `internal/db` and `internal/library`; new tests cover triggers, cascade, consistency, query sanitising, ranking, scope, refused and missing books, suggestions. Limits: did-you-mean suggestions come from the folded vocabulary (for example "tomas", not "Tomás"); the tokeniser is language-agnostic, no stemming or synonyms; Suggest name matching lowercases ASCII only. Next: P1b-6 builds the search page and `/hx/search/suggest` on this.
 
-**P1b-4 status**: in progress.
+**P1b-4 status**: done (Libraries admin and setup steps 2 and 3). Scope: `/admin/libraries` (folders with
+book counts and sizes, Scan now per library or for all, reusing a scan that is already waiting; "things need a
+look" for protected, damaged, unplayable, missing and cover-less books), `/admin/libraries/folders/new`
+(typed absolute path, checked for existence, readability, the data directory and overlap; library and folder
+created in one transaction), the "emptied on purpose" confirmation (marks books missing only when the folder
+and every subfolder were read and no audio is left, checked again on POST, 409 otherwise), the scan status
+fragment `GET /hx/jobs/{id}` (polls every 2 s until the scan is over and every file has been read), and the
+owner-only setup steps `/setup/server`, `/setup/folder`, `/setup/done`. Reused: access helpers,
+`library.Scope`, `jobs.Runner`, `scan` walk, Frame, SetupSteps, TextField. Extended: AddFolder and
+CreateLibrary (bodies shared), `components.Page` (Styles, Admin), Sidebar ("Your server" group), Frame
+(page styles). Checks: unit tests in library, jobs, scan and web; `make check`, `make build`, `make visual`
+at 390/768/1024/1440 in four themes, `make test-scan-real`. Limits: no Browse button (the next package adds a
+folder browser beside the path field, id `folder`), no folder removal, watching or scheduled scans, scan
+history, duplicate or "still copying" detection, cover lookup, or phone and tablet entry to the admin page
+(P1b-7); OnboardDone has no cover wall (P1b-5). Next: P1b-5.
 
 ### P1c Player and progress
 

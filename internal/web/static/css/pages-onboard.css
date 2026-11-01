@@ -50,3 +50,29 @@
 .ts-privacy__icon { display: inline-flex; flex: none; color: var(--success); }
 .ts-privacy__icon .ts-icon { width: 20px; height: 20px; margin-top: 1px; }
 .ts-privacy p { margin: 0; }
+
+/* Setup steps 2 and 3 (P1b-4): the folder field, the scan progress and the finished page. */
+.ts-folderfield__row { display: flex; align-items: center; gap: var(--space-8); }
+.ts-folderfield__row .ts-input { flex: 1 1 auto; min-width: 0; font-family: var(--font-mono); }
+.ts-folderfield__ok { display: flex; align-items: flex-start; gap: var(--space-8); }
+.ts-folderfield__ok .ts-icon { flex: none; width: 20px; height: 20px; color: var(--success); }
+.ts-input[readonly] { background: var(--raised); }
+
+.ts-setup-scan {
+  padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface);
+}
+.ts-setup-scan .ts-scan { margin-top: 0; }
+
+.ts-done { display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-done__mark {
+  display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px;
+  margin-top: var(--space-32); border-radius: 28px; background: var(--raised); color: var(--success);
+}
+.ts-done__mark .ts-icon { width: 28px; height: 28px; }
+.ts-done .ts-frame__title { margin-top: var(--space-12); }
+.ts-done__books { margin: var(--space-8) 0 0; }
+.ts-done__stats { margin: 0; color: var(--ink-muted); }
+.ts-done__problems { margin: var(--space-8) 0 0; }
+.ts-done__problems a { color: var(--accent); }
+.ts-done__go { margin: var(--space-32) 0 0; }
+.ts-frame .ts-btn--block { box-sizing: border-box; }

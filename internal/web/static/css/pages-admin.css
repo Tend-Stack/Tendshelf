@@ -1,0 +1,94 @@
+/* Libraries admin, Add a folder, Folder emptied, and the scan status. Tokens only. */
+
+.ts-admin { display: flex; flex-direction: column; gap: var(--space-16); padding-bottom: var(--space-32); }
+.ts-admin--narrow { max-width: 560px; }
+.ts-admin__title { margin: var(--space-4) 0 0; }
+.ts-admin__lead { margin: 0; color: var(--ink-muted); }
+.ts-admin__back {
+  display: inline-flex; align-items: center; gap: var(--space-8); min-height: 44px;
+  color: var(--ink-muted); text-decoration: none; font-size: 15px; line-height: 20px;
+}
+.ts-admin__back:hover { color: var(--ink); }
+.ts-admin__banner { margin: 0; }
+.ts-admin__banner .ts-icon { flex: none; width: 20px; height: 20px; color: var(--success); }
+
+.ts-admin__summary {
+  display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16);
+  border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--line);
+}
+.ts-admin__ready { display: flex; align-items: center; gap: var(--space-8); margin: 0; }
+.ts-admin__ready .ts-icon { flex: none; width: 20px; height: 20px; color: var(--success); }
+.ts-admin__last { margin: 0; color: var(--ink-muted); }
+.ts-admin__actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.ts-admin__actions form { display: contents; }
+.ts-admin__actions .ts-btn { flex: 1 1 auto; justify-content: center; }
+.ts-admin__confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
+
+.ts-admin__section { display: flex; flex-direction: column; gap: var(--space-12); margin-top: var(--space-8); }
+.ts-admin__section .section { margin: 0; }
+
+/* Problem cards */
+.ts-problem {
+  display: flex; gap: var(--space-12); padding: var(--space-16);
+  border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--line);
+}
+.ts-problem__icon {
+  display: flex; flex: none; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 18px; background: var(--raised); color: var(--ink-muted);
+}
+.ts-problem__icon .ts-icon { width: 20px; height: 20px; }
+.ts-problem__icon--missing, .ts-problem__icon--damaged { color: var(--warning); }
+.ts-problem__text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: var(--space-4); }
+.ts-problem__title { margin: 0; font-weight: 600; }
+.ts-problem__body { margin: 0; color: var(--ink-muted); }
+.ts-problem__list { margin: var(--space-4) 0 0; padding-left: var(--space-20); color: var(--ink-muted); overflow-wrap: anywhere; }
+
+/* Folder rows */
+.ts-folders { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ts-folder {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-12); align-items: start;
+  padding: var(--space-16) 0; border-bottom: 1px solid var(--line);
+}
+.ts-folder__icon {
+  display: flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+  border-radius: var(--radius-md); background: var(--raised); color: var(--ink-muted);
+}
+.ts-folder__text { display: flex; min-width: 0; flex-direction: column; gap: var(--space-4); }
+.ts-folder__name { font-weight: 600; }
+.ts-folder__path { color: var(--ink-muted); overflow-wrap: anywhere; font-family: var(--font-mono); }
+.ts-folder__meta { color: var(--ink-muted); }
+.ts-folder__actions { grid-column: 2; display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-8); }
+.ts-folder__more > summary { list-style: none; cursor: pointer; }
+.ts-folder__more > summary::-webkit-details-marker { display: none; }
+.ts-folder__link {
+  display: inline-flex; align-items: center; min-height: 44px; color: var(--accent);
+  text-decoration: none; font-size: 15px; line-height: 20px; font-weight: 500;
+}
+.ts-folder__link:hover { text-decoration: underline; }
+
+@media (min-width: 768px) {
+  .ts-admin__actions .ts-btn { flex: 0 0 auto; }
+}
+@media (min-width: 1280px) {
+  .ts-folder { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+  .ts-folder__actions { grid-column: auto; }
+}
+
+/* Scan status (fragment served at /hx/jobs/{id}) */
+.ts-scan { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-4); }
+.ts-scan__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-12); }
+.ts-scan__title { margin: 0; }
+.ts-scan__pct { color: var(--ink-muted); }
+.ts-scan__bar {
+  display: block; width: 100%; height: 4px; border: 0; border-radius: 2px; overflow: hidden;
+  appearance: none; -webkit-appearance: none; background: var(--line); color: var(--accent-fill);
+}
+.ts-scan__bar::-webkit-progress-bar { background: var(--line); border-radius: 2px; }
+.ts-scan__bar::-webkit-progress-value { background: var(--accent-fill); border-radius: 2px; }
+.ts-scan__bar::-moz-progress-bar { background: var(--accent-fill); border-radius: 2px; }
+.ts-scan__note { margin: 0; color: var(--ink-muted); }
+.ts-scan__done { display: flex; align-items: center; gap: var(--space-8); margin: 0; color: var(--ink); }
+.ts-scan__done .ts-icon { flex: none; width: 20px; height: 20px; color: var(--success); }
+.ts-scan__done--failed .ts-icon { color: var(--danger); }
+
+.ts-input--select { appearance: auto; }

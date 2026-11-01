@@ -1,0 +1,77 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// AdminLibraryOption is one library in the Add a folder picker.
+type AdminLibraryOption struct{ ID, Name string }
+
+// AdminAddFolderView is the Add a folder page.
+type AdminAddFolderView struct {
+	CSRF      string
+	Path      string
+	Libraries []AdminLibraryOption
+	// Library is the chosen library id, or "" for "A new library".
+	Library     string
+	NewName     string
+	PathError   string
+	NameError   string
+}
+
+// AdminAddFolder adds a folder to a library or to a new one.
+templ AdminAddFolder(v AdminAddFolderView) {
+	<div class="ts-admin ts-admin--narrow">
+		<a class="ts-admin__back" href="/admin/libraries">
+			@components.Icon("folder", false)
+			Libraries &amp; scanning
+		</a>
+		<h1 class="title-1 ts-admin__title">Add a folder</h1>
+		<form class="ts-form" method="post" action="/admin/libraries/folders">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			@components.FolderField(components.FolderFieldView{Value: v.Path, Error: v.PathError, Autofocus: true})
+			<div class="ts-field">
+				<label class="ts-field__label" for="library">Library</label>
+				<select id="library" name="library" class="ts-input ts-input--select">
+					for _, o := range v.Libraries {
+						<option value={ o.ID } selected?={ o.ID == v.Library }>{ o.Name }</option>
+					}
+					<option value="" selected?={ v.Library == "" }>A new library</option>
+				</select>
+			</div>
+			@components.TextField(components.Field{
+				ID: "new-name", Name: "new_name", Label: "New library name", Value: v.NewName,
+				Hint: "Used when you choose A new library.", Error: v.NameError,
+			})
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Add a folder</button>
+		</form>
+	</div>
+}
+
+// AdminFolderEmptiedView is the "emptied on purpose" confirmation. State is ready, unavailable,
+// audio or nothing.
+type AdminFolderEmptiedView struct {
+	CSRF   string
+	ID     string
+	Path   string
+	State  string
+	Books  int
+	Title  string
+	Body   string
+	Action string // the danger button text, for the ready state
+}
+
+// AdminFolderEmptied asks before marking a folder's books missing, or says why it will not.
+templ AdminFolderEmptied(v AdminFolderEmptiedView) {
+	<div class="ts-admin ts-admin--narrow">
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		<p class="body-lg ts-admin__lead">{ v.Body }</p>
+		if v.State == "ready" {
+			<form class="ts-admin__confirm" method="post" action={ templ.SafeURL("/admin/folders/" + v.ID + "/emptied") }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<button type="submit" class="ts-btn ts-btn--danger">{ v.Action }</button>
+				<a class="ts-btn ts-btn--quiet" href="/admin/libraries">Keep them</a>
+			</form>
+		} else {
+			<p><a class="ts-btn ts-btn--secondary" href="/admin/libraries">Back to libraries</a></p>
+		}
+	</div>
+}

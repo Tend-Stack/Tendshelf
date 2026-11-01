@@ -56,7 +56,7 @@ func Frame(p Page, body templ.Component) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Head(p, "css/pages-onboard.css").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Head(p, frameStyles(p)...).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -74,6 +74,11 @@ func Frame(p Page, body templ.Component) templ.Component {
 		}
 		return nil
 	})
+}
+
+// frameStyles is the onboarding sheet plus any page-specific ones.
+func frameStyles(p Page) []string {
+	return append([]string{"css/pages-onboard.css"}, p.Styles...)
 }
 
 var _ = templruntime.GeneratedTemplate

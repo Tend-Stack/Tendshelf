@@ -59,7 +59,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 
 | Table | Columns (key ones) | Notes |
 | --- | --- | --- |
-| `settings` | `key` PK, `value_json` | Server settings (`research.enabled`, `online.enabled`, `smtp.*`, `listen.addr`). |
+| `settings` | `key` PK, `value_json` | Server settings (`research.enabled`, `online.enabled`, `smtp.*`, `listen.addr`, `server.name` (JSON string), `setup.done` (JSON true, set when the setup folder is added)). |
 | `users` | `id`, `username` UNIQUE NOCASE, `display_name`, `email`, `role` CHECK IN ('owner','admin','member','guest'), `password_hash`, `disabled`, `created_at`, `last_seen_at` | Exactly one owner (partial unique index on `role='owner'`). |
 | `sessions` | `token_hash` PK, `user_id`, `created_at`, `expires_at`, `last_seen_at`, `user_agent` | Cookie sessions. |
 | `devices` | `id`, `user_id`, `name`, `kind` ('web','pwa','desktop','mobile'), `token_hash` UNIQUE NULL, `created_at`, `last_seen_at`, `revoked_at` | Device tokens for the API. |
@@ -169,7 +169,7 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | Route | Page |
 | --- | --- |
 | `/` | Home: continue listening, recently added, shelves |
-| `/setup` | First run (only while no owner exists, 404 after; always needs the setup code from the server log): create the owner account first, then name the server and add the first folder ([decision 0002](decisions/0002-design-handoff.md)) |
+| `/setup` | First run (only while no owner exists, 404 after; always needs the setup code from the server log): create the owner account first, then name the server and add the first folder ([decision 0002](decisions/0002-design-handoff.md)). The next steps are owner-only (404 for anyone else): `/setup/server`, `/setup/folder` (`?job=` shows the scan streaming in), `/setup/done`; once `setup.done` is set the first two redirect to `/` |
 | `/login`, `POST /logout` | Plain forms with full page loads (no hx-boost); 422 on a wrong answer, 429 when limited; `next` is checked by `auth.SafeNext` |
 | `/libraries/{id}` | Grid/list with sort and filter |
 | `/books/{id}` | Book: cover, details, chapters, play, bookmarks, notes |
@@ -181,7 +181,7 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `/invite/{token}`, `/s/{token}` | Accept an invite; anonymous share link |
 | `/books/{id}/text` (R1) | The book's text editions: upload, pairing, default edition, alignment status, export |
 | `/books/{id}/read?mode=readalong\|read\|focus&edition=&at=` (R4) | Reader inside the layout (player keeps playing) |
-| `/admin/users`, `/admin/libraries`, `/admin/jobs`, `/admin/settings`, `/admin/research` | Admin; research only when enabled |
+| `/admin/users`, `/admin/libraries`, `/admin/jobs`, `/admin/settings`, `/admin/research` | Admin; research only when enabled. `/admin/libraries` (P1b-4) lists folders and problems, starts scans, and links to `/admin/libraries/folders/new` and `/admin/folders/{id}/emptied`; scan status is `GET /hx/jobs/{id}` |
 | `/admin/ebooks` (R2), `/admin/runtimes` (R3), `/about` (R3) | Unpaired and refused ebooks; word-timing runtime check and licences; credits and model licences |
 
 HTMX fragments (`/hx/...`): `GET /hx/libraries/{id}/items?cursor=&sort=&filter=` (infinite scroll),

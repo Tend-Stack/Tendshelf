@@ -1,0 +1,92 @@
+package components
+
+import "strconv"
+
+// ScanStatusView is what ScanStatus shows for one scan job.
+type ScanStatusView struct {
+	JobID string
+	// Active is true while the job runs or books are still being read. An active status polls its
+	// own address every 2 seconds; a finished one renders without any polling attributes.
+	Active, Failed bool
+	Books, Percent int
+	ErrorText      string
+	// Setup adds the reassurance for the first-run step.
+	Setup bool
+}
+
+// scanStatusText is the one line the status shows. It changes only on terminal states, so a screen
+// reader is not interrupted every two seconds.
+func scanStatusText(v ScanStatusView) string {
+	switch {
+	case v.Failed && v.ErrorText != "":
+		return v.ErrorText
+	case v.Failed:
+		return "The scan stopped. Try Scan now again."
+	case v.Active:
+		return ""
+	case v.Books == 1:
+		return "Found 1 book."
+	}
+	return "Found " + strconv.Itoa(v.Books) + " books."
+}
+
+// scanActiveText is the visible progress title while a scan streams in.
+func scanActiveText(v ScanStatusView) string {
+	switch {
+	case v.Books == 0:
+		return "Looking for books…"
+	case v.Books == 1:
+		return "Found 1 book… reading covers"
+	}
+	return "Found " + strconv.Itoa(v.Books) + " books… reading covers"
+}
+
+// ScanStatus is the fragment served at /hx/jobs/{id}: a progress bar while the scan is active
+// ("streaming in": books found and files still read), a plain sentence once it is over.
+templ ScanStatus(v ScanStatusView) {
+	<div
+		id={ "scan-" + v.JobID }
+		class="ts-scan"
+		if v.Active {
+			hx-get={ "/hx/jobs/" + v.JobID }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		if v.Active {
+			<div class="ts-scan__head">
+				<span class="ts-scan__title label">{ scanActiveText(v) }</span>
+				<span class="ts-scan__pct caption ts-num">{ strconv.Itoa(v.Percent) }%</span>
+			</div>
+			<progress
+				class="ts-scan__bar"
+				role="progressbar"
+				aria-label="Reading your books"
+				aria-valuemin="0"
+				aria-valuemax="100"
+				aria-valuenow={ strconv.Itoa(v.Percent) }
+				max="100"
+				value={ strconv.Itoa(v.Percent) }
+			>{ strconv.Itoa(v.Percent) }%</progress>
+			if v.Setup {
+				<p class="caption ts-scan__note">You can keep going while it reads. Big libraries take a few minutes.</p>
+			}
+		} else {
+			<p class={ scanDoneClass(v) } role="status">
+				if v.Failed {
+					@Icon("alert", false)
+				} else {
+					@Icon("check", false)
+				}
+				{ scanStatusText(v) }
+			</p>
+		}
+	</div>
+}
+
+func scanDoneClass(v ScanStatusView) string {
+	if v.Failed {
+		return "ts-scan__done ts-scan__done--failed label"
+	}
+	return "ts-scan__done label"
+}
