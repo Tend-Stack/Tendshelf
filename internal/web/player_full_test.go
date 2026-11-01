@@ -41,7 +41,7 @@ func TestFullPlayerMarkup(t *testing.T) {
 		`data-ts-full-prev`, `aria-label="Previous chapter"`, `data-ts-full-back`, `data-ts-full-back-num`, `data-ts-full-toggle`,
 		`ts-iconbtn ts-iconbtn--cover ts-iconbtn--xl`, `data-ts-full-forward`, `data-ts-full-forward-num`, `data-ts-full-next`, `aria-label="Next chapter"`,
 		`data-ts-scrub="full"`, `data-ts-ticks`, `ts-scrub__fill`, `ts-scrub__chapter`, `ts-scrub__needle`, `ts-scrub__bubble`,
-		`type="range"`, `aria-label="Position in book"`, `data-ts-full-elapsed`, `data-ts-full-fine`, `data-ts-full-book-left`,
+		`type="range"`, `<label class="ts-sr" for="ts-scrub-full">Position in book</label>`, `data-ts-full-elapsed`, `data-ts-full-fine`, `data-ts-full-book-left`,
 		`class="ts-player-bar ts-player__bar"`, `data-ts-open-speed`, `data-ts-open-sleep`, `data-ts-open-chapters`,
 		`data-ts-full-sheet`, `data-ts-chapters-sheet`, `data-ts-chapter-list`, `data-ts-chapter-row`,
 		`data-ts-full-book`, `data-ts-full-finish`, `Go to book`, `Mark as finished`,

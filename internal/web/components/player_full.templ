@@ -11,7 +11,8 @@ templ Scrubber(m PlayerMsgs, class, which string) {
 		<div class="ts-scrub__chapter"></div>
 		<div class="ts-scrub__needle"></div>
 		<div class="ts-scrub__bubble" aria-hidden="true" data-ts-bubble></div>
-		<input class="ts-scrub__input" type="range" min="0" max="0" step="1" value="0" aria-label={ m.ScrubLabel } data-ts-range/>
+		<label class="ts-sr" for={ "ts-scrub-" + which }>{ m.ScrubLabel }</label>
+		<input id={ "ts-scrub-" + which } class="ts-scrub__input" type="range" min="0" max="0" step="1" value="0" data-ts-range/>
 	</div>
 }
 
