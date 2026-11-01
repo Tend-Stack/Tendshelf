@@ -181,7 +181,7 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `/setup` | First run (only while no owner exists, 404 after; always needs the setup code from the server log): create the owner account first, then name the server and add the first folder ([decision 0002](decisions/0002-design-handoff.md)). The next steps are owner-only (404 for anyone else): `/setup/server`, `/setup/folder` (`?job=` shows the scan streaming in), `/setup/done`; once `setup.done` is set the first two redirect to `/` |
 | `/login`, `POST /logout` | Plain forms with full page loads (no hx-boost); 422 on a wrong answer, 429 when limited; `next` is checked by `auth.SafeNext` |
 | `/libraries`, `/libraries/{id}` | Library (P1b-5): every visible book, or one library (404 when not visible); `?view=grid\|list&sort=added\|title\|author\|duration&genre=` (up to five, all must match)`&cursor=&sheet=filters`, all in the address; a cursor page is a full page with "Back to the start"; phone and tablet filter in a sheet, from 1280 px in a bar |
-| `/books/{id}`, `/books/{id}/{about\|chapters\|details}` | Book: cover, details, chapters (P1b-6; play, bookmarks and notes arrive with P1c); a book the person cannot open is a 404 |
+| `/books/{id}`, `/books/{id}/{about\|chapters\|bookmarks\|details}` | Book: cover, details, chapters (P1b-6; play arrives with P1c); the Bookmarks tab (P1c-7a) lists the person's own bookmarks and notes (`?only=notes`, `?sheet=bookmark&bookmark=`, `?sheet=export`) and is shown only to people who can listen. Its plain-form routes: `POST /books/{id}/bookmarks` (add; `Accept: application/json` answers 201 for the player), `POST /bookmarks/{id}/note`, `POST /bookmarks/{id}/delete` (each answers 303; another person's bookmark, an unknown one and a book the person cannot listen to are all 404) and `GET /books/{id}/bookmarks/export?format=txt\|md`. A book the person cannot open is a 404 |
 | `/books/{id}/edit`, `/books/{id}/match` | Edit details; online lookup and field compare (P2) |
 | `/authors/{id}`, `/narrators/{id}`, `/series/{id}` | Person (books by title, `?cursor=`) and series (in order) pages (P1b-6); 404 unless the person can open a book of that role |
 | `/search?q=&only=books\|people\|series` | Search: books, people and series from scoped reads, did-you-mean, live results into `#search-results` (P1b-6) |
@@ -194,8 +194,8 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `/admin/ebooks` (R2), `/admin/runtimes` (R3), `/about` (R3) | Unpaired and refused ebooks; word-timing runtime check and licences; credits and model licences |
 
 HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id}/items` with the same query as the page (infinite scroll; the sentinel is a link to the next page, so "Show more" works without JavaScript; a bad cursor is a 400 toast),
-`GET /hx/search/suggest?q=`, `GET /hx/books/{id}/bookmarks`, `POST /hx/books/{id}/bookmarks`,
-`DELETE /hx/bookmarks/{id}`, `POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}`,
+`GET /hx/search/suggest?q=`,
+`POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}`,
 `POST /hx/books/{id}/match` (starts lookup job), `GET /hx/books/{id}/compare?candidate=`,
 `POST /hx/books/{id}/apply`. Read-along: `POST /hx/books/{id}/editions`
 (upload), `POST /hx/editions/{id}/pair`, `POST /hx/editions/{id}/unpair`, `POST /hx/editions/{id}/default`,
