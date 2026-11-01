@@ -35,6 +35,9 @@ var errorTexts = map[string]string{
 	CodeProbeOutputTooBig: "Tendshelf could not read this file.",
 }
 
+// ErrorText returns the plain sentence for an error code, or "" for an unknown code.
+func ErrorText(code string) string { return errorTexts[code] }
+
 // Error is a failure of the media runner with a plain-words Text for the interface and a Detail
 // (capped ffprobe stderr or the cause) that belongs in the log only.
 type Error struct {
