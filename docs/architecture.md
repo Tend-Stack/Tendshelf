@@ -227,6 +227,26 @@ so Back, reload and links without JavaScript all work.
 Theme and other UI preferences live in `user_settings` (`ui.theme`, `ui.text_size`), so they follow the
 user across devices; before login the system preference applies.
 
+## CSS, motion and browser baseline
+
+Stylesheets are hand-written in `internal/web/static/css/` and wrapped at load time in cascade layers
+(`@layer tokens, components, utilities, motion, pages`); source files contain no `@layer`, no
+`!important` and no inline styles. `tokens.css` and `fonts.css` are the `tokens` layer, `bundle.css`
+(the design handoff, verbatim, plus the P0b shell rules) is `components`, `utilities.css` holds layout
+primitives, safe-area and native-feel rules, `motion.css` holds every transition, animation and the
+reduced-motion overrides, and `pages-*.css` are per-page. Layer order lets `motion` and `utilities`
+win without specificity fights. Client code is one file, `static/js/shell.js` (hashed files cannot
+import each other): it only toggles classes and sets custom properties with `style.setProperty`.
+
+Browser baseline: current Chromium (WebView2, Android WebView), WebKit (WKWebView, WebKitGTK 2.52). View
+Transitions, `@starting-style`, `translate` and `dvh` are enhancements: where one is missing the page
+is complete and static (a keyframe on `#main` replaces the view transition). Desktop on Linux uses
+WebKitGTK; its automation window cannot be narrower than 447 CSS px, so WebKit captures use 447 and
+1440 and the 390 px layout is checked in Chromium. `make visual` (Chromium, needs
+`TENDSHELF_TEST_BROWSER`) and `make visual-webkit` (needs `TENDSHELF_TEST_WEBKIT_DRIVER`, best under
+`xvfb-run -a`) write captures to `.local/tests/visual/<run>/`. The `dev` build tag adds `/dev/kitchen-sink`
+and its `/hx/dev/*` fragments; release builds do not register them.
+
 ## Auth and sharing
 
 - Passwords: argon2id (OWASP: 19 MiB, t=2, p=1). Login rate limit per IP and per username.

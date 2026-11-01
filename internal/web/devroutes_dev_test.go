@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// utilityClasses is the class list of docs/architecture.md "CSS" (utilities.css) that the kitchen
+// utilityClasses is the class list of utilities.css (P0c) that the kitchen
 // sink must show, so a visual review covers every one.
 var utilityClasses = []string{
 	"ts-stack", "ts-cluster", "ts-gap-4", "ts-gap-8", "ts-gap-12", "ts-gap-16", "ts-gap-24", "ts-gap-32",
