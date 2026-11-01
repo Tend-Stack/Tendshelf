@@ -2,15 +2,12 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/media"
 )
 
@@ -42,29 +39,8 @@ func TestLocateToolsWarns(t *testing.T) {
 func TestRunStartsWithoutAudioTools(t *testing.T) {
 	dir := t.TempDir()
 	missing := filepath.Join(t.TempDir(), "no-such-ffprobe")
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() {
-		done <- run(ctx, []string{"-data", dir, "-addr", "127.0.0.1:0", "-ffprobe", missing, "-ffmpeg", missing})
-	}()
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		if _, err := os.Stat(db.FilePath(dir) + "-wal"); err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("database was not created")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	time.Sleep(100 * time.Millisecond)
-	cancel()
-	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatalf("run = %v", err)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("run did not return")
+	stop := startRun(t, "-data", dir, "-ffprobe", missing, "-ffmpeg", missing)
+	if err := stop(); err != nil {
+		t.Fatalf("run = %v", err)
 	}
 }

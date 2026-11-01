@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,6 +15,38 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
 )
+
+// startRun starts run with args and waits until start-up has finished (the serving hook), not
+// until a file appears: on a slow machine migrations can still be running when the database file
+// exists. The returned stop cancels run and returns its error.
+func startRun(t *testing.T, args ...string) (stop func() error) {
+	t.Helper()
+	ready := make(chan struct{})
+	serving = func(net.Addr) { close(ready) }
+	t.Cleanup(func() { serving = func(net.Addr) {} })
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- run(ctx, append(args, "-addr", "127.0.0.1:0")) }()
+	select {
+	case <-ready:
+	case err := <-done:
+		cancel()
+		t.Fatalf("run returned before serving: %v", err)
+	case <-time.After(30 * time.Second):
+		cancel()
+		t.Fatal("run did not finish start-up within 30 s")
+	}
+	return func() error {
+		cancel()
+		select {
+		case err := <-done:
+			return err
+		case <-time.After(10 * time.Second):
+			t.Fatal("run did not return after the context was cancelled")
+			return nil
+		}
+	}
+}
 
 func fileHash(t *testing.T, path string) [32]byte {
 	t.Helper()
@@ -81,30 +114,9 @@ func TestRunRefusesForeignFile(t *testing.T) {
 
 func TestRunOpensMigratesAndStops(t *testing.T) {
 	dir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() { done <- run(ctx, []string{"-data", dir, "-addr", "127.0.0.1:0"}) }()
-
-	path := db.FilePath(dir)
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		if _, err := os.Stat(path + "-wal"); err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("database was not created")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	time.Sleep(100 * time.Millisecond) // let the server start
-	cancel()
-	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatalf("run = %v", err)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("run did not return after the context was cancelled")
+	stop := startRun(t, "-data", dir)
+	if err := stop(); err != nil {
+		t.Fatalf("run = %v", err)
 	}
 
 	st, err := db.Open(context.Background(), dir)
@@ -153,23 +165,12 @@ func TestDataFlagDefaultsToEnvironment(t *testing.T) {
 		{nil, envDir},
 		{[]string{"-data", flagDir}, flagDir},
 	} {
-		ctx, cancel := context.WithCancel(context.Background())
-		done := make(chan error, 1)
-		go func() { done <- run(ctx, append(c.args, "-addr", "127.0.0.1:0")) }()
-		deadline := time.Now().Add(5 * time.Second)
-		for {
-			if _, err := os.Stat(db.FilePath(c.want) + "-wal"); err == nil {
-				break
-			}
-			if time.Now().After(deadline) {
-				t.Fatalf("no database in %s", c.want)
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-		time.Sleep(100 * time.Millisecond)
-		cancel()
-		if err := <-done; err != nil {
+		stop := startRun(t, c.args...)
+		if err := stop(); err != nil {
 			t.Fatal(err)
+		}
+		if _, err := os.Stat(db.FilePath(c.want)); err != nil {
+			t.Fatalf("no database in %s: %v", c.want, err)
 		}
 	}
 }

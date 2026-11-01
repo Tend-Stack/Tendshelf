@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,6 +30,10 @@ import (
 var version = "dev"
 
 const defaultAddr = "127.0.0.1:8095"
+
+// serving is called once start-up is finished and the listener is bound; tests replace it to
+// wait for readiness instead of guessing from files on disk.
+var serving = func(net.Addr) {}
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -91,7 +96,14 @@ func run(ctx context.Context, args []string) error {
 	if err := sc.Register(runner); err != nil {
 		return err
 	}
+	// Bind before the runner starts: a busy port fails here with nothing to stop, and once serving
+	// is called, start-up (migrations, registration, runner) is really finished.
+	ln, err := net.Listen("tcp", *addr)
+	if err != nil {
+		return err
+	}
 	if err := runner.Start(ctx); err != nil {
+		ln.Close()
 		return err
 	}
 
@@ -105,11 +117,10 @@ func run(ctx context.Context, args []string) error {
 		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelWarn),
 	}
 
+	logger.Info("listening", "addr", "http://"+ln.Addr().String(), "version", version)
+	serving(ln.Addr())
 	errc := make(chan error, 1)
-	go func() {
-		logger.Info("listening", "addr", "http://"+*addr, "version", version)
-		errc <- srv.ListenAndServe()
-	}()
+	go func() { errc <- srv.Serve(ln) }()
 
 	var serveErr error
 	select {
