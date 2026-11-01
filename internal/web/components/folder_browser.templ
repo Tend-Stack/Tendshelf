@@ -105,6 +105,9 @@ templ folderBrowserBody(v FolderBrowserView) {
 			}
 		</ul>
 	} else if v.Path != "" && v.Message == "" {
+		if v.AudioHere != "" {
+			<p class="ts-folders__count ts-num">{ v.AudioHere }</p>
+		}
 		if len(v.Folders) > 0 {
 			<ul class="ts-folders__list" aria-label={ v.Path }>
 				for _, f := range v.Folders {
@@ -118,9 +121,6 @@ templ folderBrowserBody(v FolderBrowserView) {
 			</ul>
 		} else if v.Empty != "" {
 			<p class="ts-folders__empty">{ v.Empty }</p>
-		}
-		if v.AudioHere != "" {
-			<p class="ts-folders__count ts-num">{ v.AudioHere }</p>
 		}
 	}
 	if v.PickURL != "" {

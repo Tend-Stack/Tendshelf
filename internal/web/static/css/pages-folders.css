@@ -32,4 +32,7 @@
 .ts-folders__message { display: flex; align-items: flex-start; gap: var(--space-8); margin: 0; font: 400 15px/20px var(--font-sans); color: var(--ink); }
 .ts-folders__message .ts-icon { flex: none; width: 20px; height: 20px; color: var(--warning); }
 
-.ts-folders .ts-btn--block { box-sizing: border-box; }
+.ts-folders .ts-btn--block, .ts-folders__body > .ts-btn--block { box-sizing: border-box; }
+
+/* In the sheet the list scrolls and the pick button stays in view. */
+.ts-folders__body > .ts-btn--block { position: sticky; bottom: 0; flex: none; box-shadow: 0 0 0 var(--space-8) var(--surface); }
