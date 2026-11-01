@@ -236,7 +236,16 @@ works with the vendored htmx 4), `-race -count=3` on auth, users and web. Limits
 no account menu (P1b-7), theme still in the `ts_theme` cookie, setup steps 2 and 3 and the scan stream
 (P1b-4), no passkeys, no absolute session cap, the limiter state is per process.
 
-**P1b-2 status**: in progress.
+**P1b-2 status**: done. Scope: `internal/library/browse.go` (`ListBooks` with keyset cursors for the
+added, title, author and duration sorts, genre/author/narrator/series/library filters, `CardsByID`, `Genres`,
+`VisibleLibraries`, `BookDetail`, `Person`, `SeriesInfo`; every query carries the caller's `Scope` and
+`Listable` in SQL, counts and facets use the list's own WHERE) and `GET /covers/{bookID}?w=` (`book.view`
+before any file is opened, thumbnail fallback to the next size then the original, ETag per size, immutable
+cache only with the matching `v`, 405 for other methods, cover paths confined to `<data>/covers/` and
+`<data>/cache/thumbs/`). Checks: `make generate` (no diff), `make check`, `make build`,
+`CGO_ENABLED=0 go build ./...`, `make visual`, `-race -count=3` on library and web (browse and cover tests:
+17 library, 12 web). Limits: no new indexes (migration 0004 belongs to P1b-3; P1b-9 measures the 300 ms
+target), no page uses these reads until P1b-5.
 
 **P1b-3 status**: done. Scope: migration 0004 (`books_fts` contentless FTS5 with `books_fts_ids` rowids, `books_fts_src` view, `books_fts_vocab`, 11 triggers on books, book_people, book_series, people and series names, initial fill); `library.Search` (quoted prefix terms, bm25 weights, total capped at 1000, did-you-mean over the vocabulary with a visible-hit check), `library.Suggest` (books, authors, narrators, series), `RebuildSearch`; all through `Listable` and `Scope` in SQL. Checks: `make check`, `make build`, `CGO_ENABLED=0 go build ./...`, `make test-scan-real`, `go test -race -count=3` on `internal/db` and `internal/library`; new tests cover triggers, cascade, consistency, query sanitising, ranking, scope, refused and missing books, suggestions. Limits: did-you-mean suggestions come from the folded vocabulary (for example "tomas", not "Tomás"); the tokeniser is language-agnostic, no stemming or synonyms; Suggest name matching lowercases ASCII only. Next: P1b-6 builds the search page and `/hx/search/suggest` on this.
 

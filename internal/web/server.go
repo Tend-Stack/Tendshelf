@@ -153,7 +153,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	registerDev(mux, s)
 	// register areas
 	s.registerAuth(mux)
-	// P1b-2: s.registerCovers(mux)
+	s.registerCovers(mux)
 	//
 	// P1b-4: s.registerAdmin(mux)
 	//

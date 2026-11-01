@@ -122,7 +122,9 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
   has one. Embedded JPEG and PNG pictures keep their bytes; a WebP folder image is converted to PNG by
   ffmpeg (no `x/image`). Stored as `<data>/covers/<sha256>.<jpg|png>`; thumbnails (160, 320, 640 px
   JPEG, fitted, never enlarged) produced by ffmpeg in `<data>/cache/thumbs/`. A cover whose source is
-  `upload` or `online` is never replaced; rerunning on unchanged input writes nothing.
+  `upload` or `online` is never replaced; rerunning on unchanged input writes nothing. Served by
+  `GET /covers/{bookID}?w=` after `book.view`; thumbnail fallback to the next size, then the original; ETag
+  per size; immutable only with the `v` hash.
 - **Cover colour** (at scan time, standard library `image/jpeg` on the 160 px thumbnail): the dominant
   colour ignoring near-black, near-white and small areas becomes `tint`; converted to OKLCH, chroma
   capped at 0.10, lightness set per theme (dark 0.75-0.85, light and sepia 0.38-0.46), then checked
