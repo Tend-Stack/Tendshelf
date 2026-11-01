@@ -106,6 +106,20 @@ func TestSetupDoneEmpty(t *testing.T) {
 	}
 }
 
+func TestSetupDoneLeavesOutZeroCounts(t *testing.T) {
+	a := newTestApp(t)
+	owner := a.as(t, users.RoleOwner)
+	_, f := librarytest.NewLibrary(t, a.lib, "Audiobooks", adminAudioDir(t, false))
+	librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Alone", DurationMs: 3 * 60 * 60 * 1000})
+	body := adminHTMLUnescape(a.do(http.MethodGet, "/setup/done", nil, nil, owner).Body.String())
+	if !strings.Contains(body, "3 hours of listening. Covers and details came from your files.") {
+		t.Errorf("stats line: %s", body)
+	}
+	if strings.Contains(body, "0 series") || strings.Contains(body, "0 narrators") {
+		t.Error("zero counts are shown")
+	}
+}
+
 func TestSetupStepsForbidden(t *testing.T) {
 	a := newTestApp(t)
 	owner := a.as(t, users.RoleOwner)

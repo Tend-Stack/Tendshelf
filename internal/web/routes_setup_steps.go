@@ -2,7 +2,6 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"net/http"
 	"net/url"
@@ -245,8 +244,15 @@ func (s *server) getSetupDone(w http.ResponseWriter, r *http.Request) {
 	if !v.Empty {
 		hours := int(math.Round(float64(ov.DurationMs) / 3_600_000))
 		v.Books = booksText(ov.Books) + ", all in one place"
-		v.Stats = fmt.Sprintf("%s of listening · %s · %s. Covers and details came from your files.",
-			hoursText(hours), countText(ov.Series, "1 series", "%d series"), countText(ov.Narrators, "1 narrator", "%d narrators"))
+		// Zero counts are left out: "0 series · 0 narrators" reads as a fault, not a summary.
+		parts := []string{hoursText(hours) + " of listening"}
+		if ov.Series > 0 {
+			parts = append(parts, countText(ov.Series, "1 series", "%d series"))
+		}
+		if ov.Narrators > 0 {
+			parts = append(parts, countText(ov.Narrators, "1 narrator", "%d narrators"))
+		}
+		v.Stats = strings.Join(parts, " · ") + ". Covers and details came from your files."
 	}
 	if ov.Problems > 0 {
 		v.Problems = countText(ov.Problems, "1 book needs a look.", "%d books need a look.")
