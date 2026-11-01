@@ -460,7 +460,7 @@ func TestPlayerBrowserLayout(t *testing.T) {
 	}
 	for _, w := range widths {
 		tab := b.NewTab(w, 900, w < 768, false)
-		tab.Navigate(e.URL + "/")
+		tab.Navigate(e.URL + "/libraries") // not Home: its hero would hide the bar
 		tab.WaitFor(`window.tsPlayer && window.tsPlayer.state().bookId !== "" && !document.getElementById("player").hidden`, 10*time.Second)
 		for _, theme := range themesToCheck {
 			tab.Eval(`document.documentElement.setAttribute("data-theme", `+cdp.Quote(theme)+`)`, nil)

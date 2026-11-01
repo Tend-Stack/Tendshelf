@@ -31,6 +31,7 @@ func (r *Repo) ContinueListening(ctx context.Context, sc Scope, userID string, l
 	w := visible(sc, true)
 	w.add("p.user_id = ?", userID)
 	w.add("p.finished_at IS NULL")
+	w.add("p.position_ms > 0") // a book marked "not started" leaves the shelf
 	type row struct {
 		id                string
 		pos, dur, updated int64
@@ -77,6 +78,8 @@ type SeriesNext struct {
 	// Started is true when Next already has unfinished progress (resume), false when it is a fresh start.
 	Started    bool
 	PositionMs int64
+	// NextIndex is the 1-based place of Next in the visible reading order of the series.
+	NextIndex int
 	// Done and Total count the finished and the visible books of the series.
 	Done, Total int
 	// UpdatedAt is the newest progress time in the series.
@@ -136,6 +139,7 @@ func (r *Repo) SeriesInProgress(ctx context.Context, sc Scope, userID string, li
 	type pick struct {
 		sr      *series
 		next    entry
+		index   int
 		started bool
 	}
 	var picks []pick
@@ -166,7 +170,7 @@ func (r *Repo) SeriesInProgress(ctx context.Context, sc Scope, userID string, li
 		}
 		n := sr.books[next]
 		sr.ref.Sequence = n.seq
-		picks = append(picks, pick{sr: sr, next: n, started: n.has && !n.finished})
+		picks = append(picks, pick{sr: sr, next: n, index: next + 1, started: n.has && !n.finished})
 	}
 	sort.SliceStable(picks, func(i, j int) bool {
 		if picks[i].sr.updated != picks[j].sr.updated {
@@ -204,7 +208,7 @@ func (r *Repo) SeriesInProgress(ctx context.Context, sc Scope, userID string, li
 				done++
 			}
 		}
-		sn := SeriesNext{Series: p.sr.ref, Next: c, Started: p.started, Done: done, Total: len(p.sr.books), UpdatedAt: p.sr.updated}
+		sn := SeriesNext{Series: p.sr.ref, Next: c, Started: p.started, NextIndex: p.index, Done: done, Total: len(p.sr.books), UpdatedAt: p.sr.updated}
 		if p.started {
 			sn.PositionMs = p.next.pos
 		}

@@ -57,8 +57,34 @@ type ListQuery struct {
 	MinDurationMs, MaxDurationMs int64
 	// HasCover keeps the books that have a cover file (the setup page's cover wall).
 	HasCover bool
-	Cursor   string // opaque, from BookPage.Next
-	Limit    int    // 0 = 48, clamped to 1..120
+	// Show narrows to a person's listening state: ShowUnfinished (started, not finished),
+	// ShowNotStarted (no progress or position 0) or ShowFinished. It reads UserID's progress, so
+	// UserID is required with it (ErrInvalid otherwise); any other value is ErrInvalid.
+	Show   string
+	UserID string
+	Cursor string // opaque, from BookPage.Next
+	Limit  int    // 0 = 48, clamped to 1..120
+}
+
+// Show values of ListQuery.Show.
+const (
+	ShowUnfinished = "unfinished"
+	ShowNotStarted = "not_started"
+	ShowFinished   = "finished"
+)
+
+// checkShow is the ErrInvalid a Show filter without a user or with an unknown value earns.
+func checkShow(q ListQuery) error {
+	switch q.Show {
+	case "":
+		return nil
+	case ShowUnfinished, ShowNotStarted, ShowFinished:
+		if q.UserID == "" {
+			return invalid("show needs a user")
+		}
+		return nil
+	}
+	return invalid("show is not valid")
 }
 
 // PersonRef names a person on a card.
@@ -234,6 +260,19 @@ func whereExcept(sc Scope, q ListQuery, skip string) *whereClause {
 	if q.MaxDurationMs > 0 {
 		w.add("b.duration_ms < ?", q.MaxDurationMs)
 	}
+	switch {
+	case q.Show == "":
+	case q.UserID == "":
+		w.add("0") // checkShow refuses this; fail closed if a caller skips it
+	case q.Show == ShowUnfinished:
+		w.add("EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NULL AND p.position_ms > 0)", q.UserID)
+	case q.Show == ShowNotStarted:
+		w.add("NOT EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND (p.finished_at IS NOT NULL OR p.position_ms > 0))", q.UserID)
+	case q.Show == ShowFinished:
+		w.add("EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NOT NULL)", q.UserID)
+	default:
+		w.add("0")
+	}
 	return w
 }
 
@@ -261,6 +300,9 @@ type listRow struct {
 
 // ListBooks returns one page of the books the scope may see, in q.Sort order.
 func (r *Repo) ListBooks(ctx context.Context, sc Scope, q ListQuery) (BookPage, error) {
+	if err := checkShow(q); err != nil {
+		return BookPage{}, err
+	}
 	q.Sort = ParseSort(string(q.Sort))
 	limit := q.Limit
 	switch {
@@ -621,6 +663,9 @@ func (r *Repo) PeopleFacet(ctx context.Context, sc Scope, q ListQuery, role stri
 	if limit <= 0 {
 		limit = defaultFacetLimit
 	}
+	if err := checkShow(q); err != nil {
+		return nil, err
+	}
 	w := whereExcept(sc, q, role)
 	args := append([]any{role}, w.args...)
 	out, err := many(ctx, r.st.Reader(), scanFacet, `SELECT p.id, p.name, COUNT(DISTINCT b.id)
@@ -642,6 +687,9 @@ func (r *Repo) PeopleFacet(ctx context.Context, sc Scope, q ListQuery, role stri
 func (r *Repo) SeriesFacet(ctx context.Context, sc Scope, q ListQuery, limit int) ([]NamedFacet, error) {
 	if limit <= 0 {
 		limit = defaultFacetLimit
+	}
+	if err := checkShow(q); err != nil {
+		return nil, err
 	}
 	w := whereExcept(sc, q, "series")
 	out, err := many(ctx, r.st.Reader(), scanFacet, `SELECT s.id, s.name, COUNT(DISTINCT b.id)

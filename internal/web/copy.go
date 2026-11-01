@@ -179,6 +179,37 @@ func audioHereText(n int) string {
 	return countText(n, "1 audio file here", "%d audio files here")
 }
 
+// P1c-6 play buttons, Home rows and the Show filter. "Start listening", "Resume", "Listen again",
+// "Continue listening", "Chapter {n} · {m} min left in chapter · {h} h {m} m left in book",
+// "Continue series", "Start series" and the filter words are in the copy deck and the boards; the
+// rest follows the voice rules in BRAND.md.
+const (
+	playStart        = "Start listening"
+	playResume       = "Resume"
+	playAgain        = "Listen again"
+	homeContinue     = "Continue listening"
+	homeReadBy       = "read by %s"
+	homeWhere        = "Chapter %d · %d min left in chapter · %s left in book"
+	homeWhereBook    = "%s left in book"
+	homeChapters     = "Chapters"
+	homeBookProgress = "Book progress"
+	homeRulerChapter = "Book progress, chapter %d of %d"
+	homeSeriesTitle  = "Your series in progress"
+	homeSeriesLine   = "Book %d of %d · %s · %d%%"
+	homeSeriesNext   = "Book %d of %d · up next: %s"
+	homeSeriesCont   = "Continue series %s"
+	homeSeriesStart  = "Start series %s"
+	homeBecause      = "Because you listened to"
+	playMarkFinished = "Mark as finished"
+	playMarkNot      = "Mark as not started"
+	chapterPlayed    = "%s, played"
+	showLabel        = "Show"
+	showAny          = "Any"
+	showUnfinished   = "Unfinished"
+	showNotStarted   = "Not started"
+	showFinished     = "Finished"
+)
+
 // P1c-7a bookmarks. "Bookmarks and notes", "Export", "Play from here", "No note", "Add a note", "Bookmark
 // this moment", the empty state, "Chapter {n}", "Tonight" and "Yesterday" are in the copy deck; the
 // rest follows the voice rules in BRAND.md.

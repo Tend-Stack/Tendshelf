@@ -44,11 +44,13 @@ func playerStateOf(tab *cdp.Tab) playerState {
 	return s
 }
 
-// playerOpen opens the home page in a new tab and waits for the player module.
+// playerOpen opens the Library in a new tab and waits for the player module. It is not Home: since
+// P1c-6 Home's hero carries the Resume button of the person's book, which hides the mini-player
+// while it is on screen (one resume per book), and these tests drive the bar.
 func playerOpen(t *testing.T, b *cdp.Browser, base string, w, h int) *cdp.Tab {
 	t.Helper()
 	tab := b.NewTab(w, h, w < 768, false)
-	tab.Navigate(base + "/")
+	tab.Navigate(base + "/libraries")
 	tab.WaitFor(`window.tsPlayer !== undefined`, 10*time.Second)
 	return tab
 }

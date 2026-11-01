@@ -9,6 +9,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
@@ -27,6 +28,7 @@ const (
 
 func (s *server) registerBrowse(mux *http.ServeMux) {
 	mux.HandleFunc("GET /{$}", s.getHome)
+	mux.HandleFunc("GET /hx/home/hero", s.getHomeHero)
 	mux.HandleFunc("GET /libraries", s.getLibrary)
 	mux.HandleFunc("GET /libraries/{id}", s.getLibrary)
 	mux.HandleFunc("GET /hx/libraries/items", s.getLibraryItems)
@@ -76,6 +78,19 @@ func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
 	v := pages.HomeView{Greeting: browseGreetingFor(currentUser(r).DisplayName), SeeAllURL: "/libraries?sort=added"}
 	for _, b := range page.Books {
 		v.New = append(v.New, cardView(b))
+	}
+	var heroID string
+	if v.Hero, heroID, err = s.homeHeroView(ctx, r); err != nil {
+		s.serverError(w, r, "home hero", err)
+		return
+	}
+	if v.Series, err = s.homeSeriesView(ctx, r, heroID); err != nil {
+		s.serverError(w, r, "home series", err)
+		return
+	}
+	if v.Because, err = s.homeBecauseView(ctx, r); err != nil {
+		s.serverError(w, r, "home because", err)
+		return
 	}
 	if v.Scan, err = s.activeScan(r, libs); err != nil {
 		s.serverError(w, r, "home scan", err)
@@ -146,10 +161,11 @@ func browseItems(q browseQuery, cur *library.LibrarySummary, page library.BookPa
 	return v
 }
 
-func (s *server) listQuery(q browseQuery, cur *library.LibrarySummary) library.ListQuery {
+func (s *server) listQuery(u users.User, q browseQuery, cur *library.LibrarySummary) library.ListQuery {
 	from, to := lengthRange(q.Length)
 	return library.ListQuery{LibraryID: curID(cur), Sort: q.Sort, Genres: q.Genres, Cursor: q.Cursor, Limit: browsePageSize,
-		AuthorID: q.Author, NarratorID: q.Narrator, SeriesID: q.Series, Title: q.Title, MinDurationMs: from, MaxDurationMs: to}
+		AuthorID: q.Author, NarratorID: q.Narrator, SeriesID: q.Series, Title: q.Title, MinDurationMs: from, MaxDurationMs: to,
+		Show: q.Show, UserID: u.ID}
 }
 
 // libraryFacets are the choices the Author, Narrator and Series menus list.
@@ -173,7 +189,7 @@ func (s *server) getLibraryItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := parseBrowseQuery(r)
-	page, err := s.lib.ListBooks(r.Context(), s.scope(r), s.listQuery(q, cur))
+	page, err := s.lib.ListBooks(r.Context(), s.scope(r), s.listQuery(currentUser(r), q, cur))
 	if errors.Is(err, library.ErrInvalid) {
 		s.fragment(w, r, http.StatusBadRequest, components.ErrorToast(browseBadCursorToast))
 		return
@@ -193,7 +209,7 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 	}
 	q := parseBrowseQuery(r)
 	sc := s.scope(r)
-	page, err := s.lib.ListBooks(ctx, sc, s.listQuery(q, cur))
+	page, err := s.lib.ListBooks(ctx, sc, s.listQuery(currentUser(r), q, cur))
 	if errors.Is(err, library.ErrInvalid) {
 		s.errorPage(w, r, http.StatusBadRequest)
 		return
@@ -212,7 +228,7 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "library totals", err)
 		return
 	}
-	facets, err := s.libraryFacets(r, s.listQuery(q, cur))
+	facets, err := s.libraryFacets(r, s.listQuery(currentUser(r), q, cur))
 	if err != nil {
 		s.serverError(w, r, "library facets", err)
 		return
@@ -371,6 +387,18 @@ func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *librar
 		}
 	}
 	v.LengthMenu = lm
+
+	sm := pages.FilterMenu{Label: showLabel, Chip: showLabel, AnyLabel: showAny, On: q.Show != "", End: true,
+		AnyHref: set(func(q *browseQuery) { q.Show = "" })}
+	for _, o := range browseShowOptions {
+		val := o.Value
+		sm.Options = append(sm.Options, pages.FilterOption{Name: o.Label, Value: val, On: val == q.Show,
+			Href: set(func(q *browseQuery) { q.Show = val })})
+		if val == q.Show {
+			sm.Chip = showLabel + ": " + o.Label
+		}
+	}
+	v.ShowMenu, v.ShowValue = sm, q.Show
 
 	v.TitleFilter, v.LengthValue = q.Title, q.Length
 	for _, h := range [...]pages.HiddenField{{Name: "author", Value: q.Author}, {Name: "narrator", Value: q.Narrator}, {Name: "series", Value: q.Series}} {

@@ -333,6 +333,9 @@ func sweepRows() []sweepRow {
 	rows := []sweepRow{
 		// Browse
 		sweepGet("GET /{$}", sweepStatic("/"), sweepSame(200)),
+		// P1c-6 rows
+		sweepGet("GET /hx/home/hero", sweepStatic("/hx/home/hero"), sweepSame(200)),
+		sweepGet("GET /hx/books/{id}/play", id(bookID, "/hx/books/", "/play"), sweepStaff(200, 404)),
 		sweepGet("GET /libraries", sweepStatic("/libraries"), sweepSame(200)),
 		sweepGet("GET /libraries/{id}", id(libID, "/libraries/", ""), sweepStaff(200, 404)),
 		sweepGet("GET /hx/libraries/items", sweepStatic("/hx/libraries/items"), sweepSame(200)),

@@ -104,12 +104,12 @@ func TestListeningContinueOrderAndScope(t *testing.T) {
 			t.Errorf("limit %d: %d rows, want %d", limit, len(l), want)
 		}
 	}
-	// "Listen again" (unfinished, position 0) is back in the list.
+	// "Mark as not started" (unfinished, position 0) stays off the shelf: no hero, no mini-player.
 	if _, err := svc.SetFinished(ctx, listenOwner, done.ID, false, 3_600_000); err != nil {
 		t.Fatal(err)
 	}
-	if l, _ := r.ContinueListening(ctx, allScope, listenOwner, 10); len(l) != 4 || l[0].Book.ID != done.ID {
-		t.Fatalf("after listen again: %v", listenTitles(l))
+	if l, _ := r.ContinueListening(ctx, allScope, listenOwner, 10); len(l) != 3 || l[0].Book.ID == done.ID {
+		t.Fatalf("after mark as not started: %v", listenTitles(l))
 	}
 }
 
@@ -169,6 +169,14 @@ func TestListeningSeriesNext(t *testing.T) {
 			if g.Next.ID != books[c.wantNext-1].ID || g.Started != c.started || g.Done != c.done || g.Total != c.total ||
 				g.Series.Name != "Saga" || g.Series.Sequence != fmt.Sprint(c.wantNext) {
 				t.Fatalf("got %+v, want next %d started %v done %d total %d", g, c.wantNext, c.started, c.done, c.total)
+			}
+			// NextIndex counts the visible books: a hidden book before Next does not take a place.
+			wantIndex := c.wantNext
+			if c.hide > 0 && c.hide < c.wantNext {
+				wantIndex--
+			}
+			if g.NextIndex != wantIndex {
+				t.Fatalf("NextIndex = %d, want %d", g.NextIndex, wantIndex)
 			}
 			if c.started && g.PositionMs == 0 {
 				t.Fatal("started series has no position")

@@ -115,8 +115,11 @@ type browseQuery struct {
 	// Author, Narrator and Series are ids; Length is "short", "medium" or "long"; Title is the
 	// words a title must contain. All of them narrow the list and none changes the order.
 	Author, Narrator, Series, Length, Title string
-	Cursor                                  string
-	Sheet                                   bool
+	// Show is "unfinished", "not_started" or "finished" (one at a time); it reads the person's own
+	// listening progress.
+	Show   string
+	Cursor string
+	Sheet  bool
 }
 
 // Length buckets: under 5 hours, 5 to 15 hours, over 15 hours (the spine widths use the same edges).
@@ -141,7 +144,7 @@ func lengthRange(length string) (from, to int64) {
 
 // filtered reports whether any filter narrows the list.
 func (q browseQuery) filtered() bool {
-	return len(q.Genres) > 0 || q.Author != "" || q.Narrator != "" || q.Series != "" || q.Length != "" || q.Title != ""
+	return len(q.Genres) > 0 || q.Author != "" || q.Narrator != "" || q.Series != "" || q.Length != "" || q.Title != "" || q.Show != ""
 }
 
 func parseBrowseQuery(r *http.Request) browseQuery {
@@ -161,6 +164,10 @@ func parseBrowseQuery(r *http.Request) browseQuery {
 	switch l := v.Get("length"); l {
 	case "short", "medium", "long":
 		q.Length = l
+	}
+	switch sh := v.Get("show"); sh {
+	case library.ShowUnfinished, library.ShowNotStarted, library.ShowFinished:
+		q.Show = sh
 	}
 	q.Title = strings.TrimSpace(v.Get("title"))
 	if utf8.RuneCountInString(q.Title) > library.MaxTitleRunes {
@@ -208,7 +215,7 @@ func (q browseQuery) href(path string, mod func(*browseQuery)) string {
 		v.Add("genre", g)
 	}
 	for _, f := range [...]struct{ k, v string }{{"author", q.Author}, {"narrator", q.Narrator}, {"series", q.Series},
-		{"length", q.Length}, {"title", q.Title}} {
+		{"length", q.Length}, {"show", q.Show}, {"title", q.Title}} {
 		if f.v != "" {
 			v.Set(f.k, f.v)
 		}
@@ -238,5 +245,5 @@ func (q *browseQuery) without(g string) {
 
 // clearFilters drops every filter. The order and the view stay.
 func (q *browseQuery) clearFilters() {
-	q.Genres, q.Author, q.Narrator, q.Series, q.Length, q.Title = nil, "", "", "", "", ""
+	q.Genres, q.Author, q.Narrator, q.Series, q.Length, q.Show, q.Title = nil, "", "", "", "", "", ""
 }

@@ -31,6 +31,17 @@ type DetailRow struct {
 	Links        []Link
 }
 
+// BookPlayView is the #book-play region: the book's one play button (nil when no file can play),
+// then a quiet button that marks the book finished (MarkValue "1") or not started ("0"). Refresh is
+// the fragment address the region re-reads when a save or a mark fires progress-saved. Action, Next
+// and CSRF drive the plain-form fallback of the mark.
+type BookPlayView struct {
+	Button               *components.PlayButtonView
+	MarkLabel, MarkValue string
+	Action, Next, CSRF   string
+	Refresh              string
+}
+
 // BookView is the book page. The handler writes every word and address; the template only lays
 // them out. Exactly one of the three panels is filled, by Tab.
 type BookView struct {
@@ -65,6 +76,9 @@ type BookView struct {
 	Rows []DetailRow
 	// Bookmarks fills the Bookmarks tab (P1c-7a).
 	Bookmarks BookmarksView
+	// Play is the play region (the book's one play button and the mark control); nil when the person
+	// may not listen.
+	Play *BookPlayView
 	// ShelfHref opens the "Add to shelf" sheet (the book page with ?sheet=shelves); empty for people
 	// who may not use shelves. It is not a play control: the book's one play button stays alone.
 	ShelfHref, ShelfLabel string
@@ -90,8 +104,33 @@ templ linkList(prefix string, links []Link) {
 	}
 }
 
-// Book is the page of one book: the header, then the About, Chapters and Details tabs. There is no
-// play, download, share or shelf control yet.
+// BookPlay is the play region of the book page: the book's single play button and "Mark as finished"
+// or "Mark as not started". It refreshes itself when progress is saved (progress-saved on the body),
+// so the label follows the listening. The mark is an htmx form with a plain POST fallback.
+templ BookPlay(v *BookPlayView) {
+	if v != nil {
+		<div
+			id="book-play"
+			class="ts-book__play"
+			hx-get={ v.Refresh }
+			hx-trigger="progress-saved from:body"
+			hx-swap="outerHTML"
+		>
+			if v.Button != nil {
+				@components.PlayButton(*v.Button)
+			}
+			<form method="post" action={ templ.SafeURL(v.Action) } hx-post={ v.Action } hx-swap="none">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<input type="hidden" name="finished" value={ v.MarkValue }/>
+				<input type="hidden" name="next" value={ v.Next }/>
+				<button type="submit" class="ts-btn ts-btn--quiet">{ v.MarkLabel }</button>
+			</form>
+		</div>
+	}
+}
+
+// Book is the page of one book: the header, then the About, Chapters, Bookmarks and Details tabs,
+// with the play region under the header text.
 templ Book(v BookView) {
 	<article class="ts-book">
 		<a class="ts-btn ts-btn--quiet ts-book__back" href={ templ.SafeURL(v.BackHref) }>
@@ -124,7 +163,7 @@ templ Book(v BookView) {
 						{ v.Banner }
 					</p>
 				}
-				// P1c: the book's single play button ("Start listening", "Resume" or "Listen again") goes here.
+				@BookPlay(v.Play)
 				if v.ShelfHref != "" {
 					<p class="ts-book__shelf">
 						<a
