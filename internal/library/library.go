@@ -9,8 +9,8 @@
 // types use the zero value for "unknown": 0 for PublishedYear and MissingSince, "" for CoverID,
 // RefusedReason and SHA256, nil for ProbeJSON.
 //
-// People, series, labels, metadata_values and covers have tables (migration 0002) but no
-// writers yet; they arrive with the metadata and cover packages.
+// People, series, labels and metadata_values are written in details.go (P1a-3); covers in
+// covers.go (P1a-4).
 package library
 
 import (

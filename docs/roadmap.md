@@ -15,7 +15,7 @@ themes.
 | Milestone | Phase | State | Evidence |
 | --- | --- | --- | --- |
 | M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 4.0.0, fonts and templ v0.3.1100 downloads approved). **Done 2026-11-01.** P0a (data and jobs), P0b (UI shell) and P0c (utilities and motion) built, reviewed and merged; see their notes below. | `make check` (with and without `-tags dev`), `make build` (CGO_ENABLED=0), `make visual` (Chromium) and `make visual-webkit` (WebKitGTK 2.52.6) green on main 2026-11-01; CI green. |
-| M1 It plays | P1a-P1c | In progress. P1a is split in four packages (P1a-1 schema, repository and media runner; P1a-2 scanner (built 2026-11-01, not yet merged); P1a-3 local details; P1a-4 covers). **P1a-1 built 2026-11-01**, not yet merged. | `make check`, `make build`, `CGO_ENABLED=0 go build ./...` and `make test-media` green on the P1a-1 branch. |
+| M1 It plays | P1a-P1c | In progress. **P1a done 2026-11-01** (four packages, all merged: schema, repository and media runner; scanner; local details; covers, accent and compatibility copies). Next: P1b (accounts and browse pages). | On main ca82f5f: `make check`, `make build` (CGO_ENABLED=0), `make test-media`, `make test-scan-real` and `make test-mediajobs-real` green; `-race -count=3` clean on scan, jobs, metadata, media and mediajobs. |
 | M2 Family | P3 | Not started | |
 | M3 Pocket | P4 | Not started | |
 | M4 Details | P2 | Not started | |
@@ -179,6 +179,35 @@ A folder that is unavailable or newly empty marks nothing missing. Deliberately 
 by an explicit admin action in P1b. Checks: see the package report. Limits: no metadata beyond
 title = folder or file name (P1a-3), no covers (P1a-4), no periodic scan or file watching, no full SHA-256,
 no MP4 box walk. Next: P1a-3 (local details).
+
+**P1a-3 status (2026-11-01)**: `internal/metadata` reads details from folder names (Audiobookshelf
+`scandir.js` order: title, series, author; ASIN, `{narrator}`, sequence, year, subtitle) and file tags
+(TendVox Extractor `meta_from_tags`), detects abridged and dramatized editions, and stores every candidate
+in `metadata_values` with its source. The merge follows one pinned precedence (`user, opf, txt, nfo, tags,
+folder, online`); the automatic job writes only `folder` and `tags` rows, is refused when it tries a `user`
+row, and a `user` value wins even when empty, so P2 edits outrank it. The `metadata.local` job runs from the
+scanner's book-settled hook (prerequisite H, merged first). People, series and labels have writers in
+`internal/library/details.go`. Checks: `make check`, `make build`, `make test-scan-real`, `-race -count=3` on
+metadata and scan; 44 metadata tests (Audiobookshelf name cases and Extractor cases ported); the 200-book
+fixture now asserts title, authors, narrators, series and sequence per layout. Limits: no sidecars (`.opf`,
+`.nfo`, `desc.txt`, P2), no online lookup (P2), no full-text index (P1b, migration 0004).
+
+**P1a-4 status (2026-11-01)**: `internal/mediajobs` runs `media.cover` (from the book-settled hook) and
+`media.compat` (on request). Covers: `cover.*`, then `folder.*`, then the first playable file's embedded
+picture (mjpeg/png kept byte-identical; webp folder images converted to PNG by ffmpeg, no new module);
+stored under `<data>/covers/<sha256>`, thumbnails 160/320/640 JPEG under `<data>/cache/thumbs/` (never
+upscaled); an `upload` or `online` cover is never replaced. Tint from the 160 px thumbnail; per-theme accent
+(dark, light, sepia) in OKLCH with chroma capped at 0.10 and 4.5:1 / 3:1 contrast checks, ember fallback
+for grey covers. Goldens (dark / light): teal `#9ac9c2`/`#35615c`, moss `#b3c695`/`#4f5f32`, rust
+`#f4a987`/`#854423`, plum `#c8b3e1`/`#614e76`, within ΔE_OK 0.019 (dark) and 0.041 (light) of the
+handoff examples, which were hand-tuned outside the handoff's own rules. Compatibility copies: AAC-LC
+128 kbit/s `.m4a` (stream copy for AAC), keyed by quick hash and recipe, file-system cache capped by
+`-compat-cache-gib` (default 5), oldest first; the P1c player decides when to ask. Copy-protected or
+unreadable files never reach ffmpeg (tested with a fake ffmpeg). Checks: `make check`, `make build`,
+`make test-media`, `make test-mediajobs-real`, `-race -count=3` on media and mediajobs; 23 media, 15
+mediajobs, 17 library tests. Limits: no online or uploaded covers (P2), no HTTP serving of covers, thumbs
+or copies (P1b/P1c), no free-space check before converting (the cap bounds the cache), and an embedded
+cover is re-extracted to compare each time its book settles (no write when unchanged). Next: P1b.
 
 ### P1b Accounts and browse pages
 
