@@ -14,7 +14,7 @@ themes.
 
 | Milestone | Phase | State | Evidence |
 | --- | --- | --- | --- |
-| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 4.0.0, fonts and templ v0.3.1100 downloads approved). P0a (data and jobs) built 2026-11-01, see its note below; P0b, P0c in progress. | `make check` green 2026-11-01. |
+| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 4.0.0, fonts and templ v0.3.1100 downloads approved). P0a (data and jobs) and P0b (UI shell) built and merged 2026-11-01, see their notes below; P0c in progress. | `make check` green 2026-11-01. |
 | M1 It plays | P1a-P1c | Not started | |
 | M2 Family | P3 | Not started | |
 | M3 Pocket | P4 | Not started | |
@@ -77,7 +77,11 @@ immutable URLs, load-time `@layer` wrapping, system light and contrast blocks, f
 `http.CrossOriginProtection`), `ts_theme` cookie, `static/js/shell.js`. Checks: `make generate` leaves
 a clean tree, `make check` and `CGO_ENABLED=0 make build` green, 34 top-level tests in `internal/web`,
 `components` and `static`; `TestVisualShell` passes 16 captures (4 widths by 4 themes, no horizontal
-overflow). Limits: WebKit (MiniBrowser at 390 and 1440) is a manual check recorded by the lead; the
+overflow). Lead review 2026-11-01: captures match the `screens/core/Home*` frame (tab bar, rail,
+sidebar); the merged binary serves hashed assets under the strict CSP and refuses a token-less POST
+(403); WebKitGTK 2.52.6 through WebKitWebDriver + MiniBrowser at 1440 and 447 px (GTK's narrowest window)
+renders the same shell, no overflow, Fraunces loaded, View Transitions and `@starting-style` supported.
+Limits: MiniBrowser has no headless mode (P0c needs a hidden display for automated WebKit runs); the
 player, theme picker and sessions are P1; `style="width:..."` in handoff markup needs the P0c
 replacement under `style-src 'self'`; no compression or ETags. Next: P0c.
 
