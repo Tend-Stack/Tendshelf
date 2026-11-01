@@ -44,7 +44,7 @@ The server needs only Go, plus `ffmpeg`/`ffprobe` at run time. The extra package
 checks, the visual capture helper and the later desktop build. There is no Node in this project.
 
 ```sh
-sudo apt install -y build-essential pkg-config sqlite3 ffmpeg woff2 libgtk-3-dev libwebkit2gtk-4.1-dev
+sudo apt install -y build-essential pkg-config sqlite3 ffmpeg woff2 libgtk-4-dev libwebkitgtk-6.0-dev
 go install github.com/a-h/templ/cmd/templ@v0.3.1100      # also pinned in go.mod as a tool
 go install golang.org/x/tools/gopls@latest
 go install honnef.co/go/tools/cmd/staticcheck@latest
@@ -53,7 +53,8 @@ go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0 # desktop (P5); then: 
 ```
 
 Add `$HOME/go/bin` to `PATH`. `gcc` is needed only for `go test -race`; the shipped binary builds
-with `CGO_ENABLED=0`.
+with `CGO_ENABLED=0`. Wails v3 uses GTK 4 and WebKitGTK 6.0 on Linux by default (the `gtk3` build tag
+with `libgtk-3-dev libwebkit2gtk-4.1-dev` is its legacy fallback).
 
 ## Documents
 

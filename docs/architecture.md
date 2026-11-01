@@ -271,7 +271,8 @@ reconstructible emissions cache of about 58 MB (guesses, measured in R3).
 
 ## Desktop (P5)
 
-`desktop/` module, Wails v3 (pinned), Linux `gtk3` build tag as in TendVox until GTK4 is verified. Two
+`desktop/` module, Wails v3.0.0 (pinned), Linux on its default GTK 4 + WebKitGTK 6.0 (the `gtk3` tag is the
+legacy fallback; [decision 0003](decisions/0003-newest-versions.md)). Two
 modes: connect to a Tendshelf server (the window loads the server's pages; native media keys and tray),
 or personal mode running the same core in-process on a local library. See TendVox `docs/wails-v3.md`
 for origin guards and the audio gateway pattern.
