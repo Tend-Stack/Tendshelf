@@ -34,6 +34,9 @@ type SetupFolderView struct {
 	// Added is true once the folder is saved; Scan then shows the scan job.
 	Added bool
 	Scan  *components.ScanStatusView
+	// BrowseURL opens the folder browser; Browser, when set, is shown inline after the form.
+	BrowseURL string
+	Browser   *components.FolderBrowserView
 }
 
 // SetupFolder asks for the audiobook folder and then shows the scan streaming in.
@@ -43,7 +46,7 @@ templ SetupFolder(v SetupFolderView) {
 	<p class="body-lg ts-frame__lead">Pick the folder that holds them. Any mix of folders and files is fine; Tendshelf works out the books.</p>
 	<form class="ts-form" method="post" action="/setup/folder">
 		<input type="hidden" name="_csrf" value={ v.CSRF }/>
-		@components.FolderField(components.FolderFieldView{Value: v.Path, Error: v.Error, Added: v.Added, Autofocus: true})
+		@components.FolderField(components.FolderFieldView{Value: v.Path, Error: v.Error, Added: v.Added, Autofocus: true, BrowseURL: v.BrowseURL})
 		if v.Scan != nil {
 			<div class="ts-setup-scan">
 				@components.ScanStatus(*v.Scan)
@@ -53,6 +56,9 @@ templ SetupFolder(v SetupFolderView) {
 			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Use this folder</button>
 		}
 	</form>
+	if v.Browser != nil {
+		@components.FolderBrowserPanel(*v.Browser)
+	}
 	if v.Added {
 		<p><a class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block" href="/setup/done">Continue</a></p>
 	}

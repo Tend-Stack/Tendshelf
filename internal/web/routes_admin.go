@@ -14,6 +14,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/a-h/templ"
+
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
@@ -251,6 +253,12 @@ func overlapsDataDir(p, data string) bool {
 }
 
 func (s *server) addFolderPage(w http.ResponseWriter, r *http.Request, status int, v pages.AdminAddFolderView) {
+	s.addFolderPageSheet(w, r, status, v, nil)
+}
+
+// addFolderPageSheet is addFolderPage with the folder browser sheet (or nil) in #sheet.
+func (s *server) addFolderPageSheet(w http.ResponseWriter, r *http.Request, status int, v pages.AdminAddFolderView, sheet templ.Component) {
+	v.BrowseURL = browseFieldURL(addFolderURL, v.Path)
 	v.CSRF = s.csrf.TokenFrom(r.Context())
 	libs, err := s.lib.Libraries(r.Context())
 	if err != nil {
@@ -260,7 +268,7 @@ func (s *server) addFolderPage(w http.ResponseWriter, r *http.Request, status in
 	for _, l := range libs {
 		v.Libraries = append(v.Libraries, pages.AdminLibraryOption{ID: l.ID, Name: l.Name})
 	}
-	s.pageStyled(w, r, status, "Add a folder", "admin-libraries", pages.AdminAddFolder(v), nil, adminStyles...)
+	s.pageStyled(w, r, status, "Add a folder", "admin-libraries", pages.AdminAddFolder(v), sheet, folderStyles...)
 }
 
 func (s *server) getAddFolder(w http.ResponseWriter, r *http.Request) {
@@ -270,6 +278,14 @@ func (s *server) getAddFolder(w http.ResponseWriter, r *http.Request) {
 	v := pages.AdminAddFolderView{}
 	if n, err := s.lib.Libraries(r.Context()); err == nil && len(n) > 0 {
 		v.Library = n[0].ID
+	}
+	if folder := folderPrefill(r); folder != "" {
+		v.Path, v.NewName = folder, libraryNameFor(folder)
+	}
+	if fb, ok := s.folderBrowser(r, addFolderURL); ok {
+		fb.Sheet = true
+		s.addFolderPageSheet(w, r, http.StatusOK, v, components.FolderBrowserSheet(fb))
+		return
 	}
 	s.addFolderPage(w, r, http.StatusOK, v)
 }

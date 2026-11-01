@@ -13,8 +13,10 @@ type AdminAddFolderView struct {
 	// Library is the chosen library id, or "" for "A new library".
 	Library     string
 	NewName     string
-	PathError   string
-	NameError   string
+	PathError string
+	NameError string
+	// BrowseURL opens the folder browser in a sheet; empty hides the Browse link.
+	BrowseURL string
 }
 
 // AdminAddFolder adds a folder to a library or to a new one.
@@ -27,7 +29,7 @@ templ AdminAddFolder(v AdminAddFolderView) {
 		<h1 class="title-1 ts-admin__title">Add a folder</h1>
 		<form class="ts-form" method="post" action="/admin/libraries/folders">
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
-			@components.FolderField(components.FolderFieldView{Value: v.Path, Error: v.PathError, Autofocus: true})
+			@components.FolderField(components.FolderFieldView{Value: v.Path, Error: v.PathError, Autofocus: true, BrowseURL: v.BrowseURL, BrowseSheet: true})
 			<div class="ts-field">
 				<label class="ts-field__label" for="library">Library</label>
 				<select id="library" name="library" class="ts-input ts-input--select">

@@ -161,3 +161,19 @@ func problemCards(p library.Problems) []pages.ProblemCard {
 func problemsTitle(n int) string {
 	return countText(n, "1 thing needs a look", "%d things need a look")
 }
+
+// Folder browser. "Browse" is on the OnboardFolder board; the rest follows the voice rules in BRAND.md.
+const (
+	msgBrowseOpen    = "Tendshelf can't open that folder."
+	msgBrowseTooMany = "This folder has too many entries to show. Type the path instead."
+	msgBrowseSlow    = "This folder took too long to open. Type the path instead."
+	msgBrowseEmpty   = "No folders inside."
+)
+
+// audioHereText is the count line under a listing: empty at zero.
+func audioHereText(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return countText(n, "1 audio file here", "%d audio files here")
+}

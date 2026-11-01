@@ -1,0 +1,129 @@
+package components
+
+import (
+	"net/url"
+
+	"github.com/Tend-Stack/tendshelf/internal/scan"
+)
+
+// FolderLink is one folder in a listing: its name and the link that opens it.
+type FolderLink struct{ Name, URL string }
+
+// FolderBrowserView is the folder browser. It is built by the page handler, which writes the
+// sentences, so this file holds markup only. Path is empty on the Places view.
+type FolderBrowserView struct {
+	// FormURL is the page the browser belongs to; closing and picking return there.
+	FormURL string
+	Path    string
+	Parent  string
+	Places  []scan.Place
+	Folders []FolderLink
+	// AudioHere is the count line, already words ("3 audio files here"), or empty.
+	AudioHere string
+	// Empty is the "No folders inside." line, or empty.
+	Empty string
+	// Message is a plain-words problem (already copy), or empty.
+	Message string
+	PickURL, UpURL, PlacesURL string
+	// Sheet is true when the browser renders in #sheet and its links swap the sheet in place.
+	Sheet bool
+}
+
+// BrowseLink is the link that opens path in this browser.
+func (v FolderBrowserView) BrowseLink(path string) string {
+	return v.FormURL + "?browse=" + url.QueryEscape(path)
+}
+
+// browseAttrs makes a browse link swap the sheet in place; outside a sheet the link is plain.
+func browseAttrs(sheet bool, href string) templ.Attributes {
+	if !sheet {
+		return nil
+	}
+	return templ.Attributes{"hx-get": href, "hx-target": "#sheet", "hx-select": "#sheet > *", "hx-swap": "innerHTML"}
+}
+
+// FolderBrowserSheet is the browser as a sheet. Close and the scrim are plain links back to the
+// form page; shell.js plays the exit motion and returns focus.
+templ FolderBrowserSheet(v FolderBrowserView) {
+	<div class="ts-sheet-layer">
+		<a class="ts-scrim" href={ templ.SafeURL(v.FormURL) } hx-boost="false" data-ts-close aria-label="Close" tabindex="-1"></a>
+		<div class="ts-sheet ts-sheet--folders" role="dialog" aria-modal="true" aria-labelledby="folders-title" tabindex="-1">
+			<div class="ts-sheet__grab"></div>
+			<div class="ts-sheet__head">
+				<h2 id="folders-title" class="ts-sheet__title">Choose a folder</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.FormURL) } hx-boost="false" data-ts-close aria-label="Close">@Icon("close", false)</a>
+			</div>
+			<div class="ts-folders__body">
+				@folderBrowserBody(v)
+			</div>
+		</div>
+	</div>
+}
+
+// FolderBrowserPanel is the browser inline, for pages with no sheet region (the setup frame).
+templ FolderBrowserPanel(v FolderBrowserView) {
+	<section class="ts-folders ts-folders--panel" aria-labelledby="folders-title">
+		<div class="ts-folders__head">
+			<h2 id="folders-title" class="ts-folders__title">Choose a folder</h2>
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.FormURL) }>Close</a>
+		</div>
+		@folderBrowserBody(v)
+	</section>
+}
+
+templ folderBrowserBody(v FolderBrowserView) {
+	if v.Path != "" {
+		<p class="ts-folders__path ts-num">{ v.Path }</p>
+		<div class="ts-folders__nav">
+			if v.UpURL != "" {
+				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.UpURL) } { browseAttrs(v.Sheet, v.UpURL)... }>Up one level</a>
+			}
+			if v.PlacesURL != "" {
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.PlacesURL) } { browseAttrs(v.Sheet, v.PlacesURL)... }>Places</a>
+			}
+		</div>
+	}
+	if v.Message != "" {
+		<p class="ts-folders__message">
+			@Icon("alert", false)
+			{ v.Message }
+		</p>
+	}
+	if len(v.Places) > 0 {
+		<h3 class="ts-folders__sub">Places</h3>
+		<ul class="ts-folders__list" aria-label="Places">
+			for _, p := range v.Places {
+				<li>
+					<a class="ts-folders__row" href={ templ.SafeURL(v.BrowseLink(p.Path)) } { browseAttrs(v.Sheet, v.BrowseLink(p.Path))... }>
+						@Icon("folder", false)
+						<span class="ts-folders__name">{ p.Label }</span>
+						if p.Label != p.Path {
+							<span class="ts-folders__hint ts-num">{ p.Path }</span>
+						}
+					</a>
+				</li>
+			}
+		</ul>
+	} else if v.Path != "" && v.Message == "" {
+		if v.AudioHere != "" {
+			<p class="ts-folders__count ts-num">{ v.AudioHere }</p>
+		}
+		if len(v.Folders) > 0 {
+			<ul class="ts-folders__list" aria-label={ v.Path }>
+				for _, f := range v.Folders {
+					<li>
+						<a class="ts-folders__row" href={ templ.SafeURL(f.URL) } { browseAttrs(v.Sheet, f.URL)... }>
+							@Icon("folder", false)
+							<span class="ts-folders__name">{ f.Name }</span>
+						</a>
+					</li>
+				}
+			</ul>
+		} else if v.Empty != "" {
+			<p class="ts-folders__empty">{ v.Empty }</p>
+		}
+	}
+	if v.PickURL != "" {
+		<a class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block" href={ templ.SafeURL(v.PickURL) } hx-boost="false">Use this folder</a>
+	}
+}
