@@ -22,6 +22,8 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/jobs"
+	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
@@ -45,6 +47,12 @@ type Options struct {
 	Hash users.HashParams
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
+	// Library is the library repository; required.
+	Library *library.Repo
+	// DataDir is the data directory (covers and thumbnails live under it); required.
+	DataDir string
+	// Jobs is the job runner (scans and job status); required.
+	Jobs *jobs.Runner
 	// P1b-2..: add fields below this line.
 }
 
@@ -56,6 +64,9 @@ type server struct {
 	users    *users.Repo
 	can      *share.Checker
 	proxies  auth.Proxies
+	lib      *library.Repo
+	dataDir  string
+	jobs     *jobs.Runner
 }
 
 // settingCSRFKey is the settings row that keeps the CSRF key between runs.
@@ -92,11 +103,23 @@ func csrfKey(ctx context.Context, o Options) ([]byte, error) {
 // when the CSRF key can not be loaded; it panics if the embedded static tree is invalid, which is a
 // build defect, not a runtime condition.
 func NewHandler(ctx context.Context, opts Options) (http.Handler, error) {
-	if opts.Store == nil {
-		return nil, errors.New("web: Options.Store is required")
-	}
-	if opts.SetupCode == "" {
-		return nil, errors.New("web: Options.SetupCode is required")
+	_, h, err := newServer(ctx, opts)
+	return h, err
+}
+
+// newServer is NewHandler with the *server returned too, so tests can reach it.
+func newServer(ctx context.Context, opts Options) (*server, http.Handler, error) {
+	switch {
+	case opts.Store == nil:
+		return nil, nil, errors.New("web: Options.Store is required")
+	case opts.SetupCode == "":
+		return nil, nil, errors.New("web: Options.SetupCode is required")
+	case opts.Library == nil:
+		return nil, nil, errors.New("web: Options.Library is required")
+	case opts.DataDir == "":
+		return nil, nil, errors.New("web: Options.DataDir is required")
+	case opts.Jobs == nil:
+		return nil, nil, errors.New("web: Options.Jobs is required")
 	}
 	assets, err := static.Load()
 	if err != nil {
@@ -104,7 +127,7 @@ func NewHandler(ctx context.Context, opts Options) (http.Handler, error) {
 	}
 	key, err := csrfKey(ctx, opts)
 	if err != nil {
-		return nil, fmt.Errorf("web: CSRF key: %w", err)
+		return nil, nil, fmt.Errorf("web: CSRF key: %w", err)
 	}
 	ur := users.New(opts.Store, users.Options{Hash: opts.Hash, Now: opts.Now})
 	ss := auth.NewSessions(opts.Store, opts.Now)
@@ -115,6 +138,9 @@ func NewHandler(ctx context.Context, opts Options) (http.Handler, error) {
 		users:    ur,
 		can:      share.New(opts.Store),
 		proxies:  opts.TrustedProxies,
+		lib:      opts.Library,
+		dataDir:  opts.DataDir,
+		jobs:     opts.Jobs,
 	}
 	s.csrf = NewCSRF(key, sessionOrCookieBinding)
 	s.csrf.Deny = http.HandlerFunc(s.forbidden)
@@ -124,10 +150,14 @@ func NewHandler(ctx context.Context, opts Options) (http.Handler, error) {
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		s.page(w, r, http.StatusOK, "Home", "home", pages.HomePage())
 	})
-	// P0a follow-up: mux.Handle("GET /hx/jobs/{id}", jobsFragment(jobs.Get)) — polls every 2s; not in P0b.
 	registerDev(mux, s)
 	// register areas
 	s.registerAuth(mux)
+	// P1b-2: s.registerCovers(mux)
+	//
+	// P1b-4: s.registerAdmin(mux)
+	//
+	// P1b-4: s.registerSetupSteps(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})
@@ -144,7 +174,7 @@ func NewHandler(ctx context.Context, opts Options) (http.Handler, error) {
 		})
 	})
 	outer.Handle("/", guarded)
-	return securityHeaders(outer), nil
+	return s, securityHeaders(outer), nil
 }
 
 // sessionOrCookieBinding binds a CSRF token to the signed-in session, or to the ts_csrf cookie when

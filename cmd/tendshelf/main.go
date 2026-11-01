@@ -105,7 +105,8 @@ func run(ctx context.Context, args []string) error {
 		return err
 	}
 	setupCode := auth.NewSetupCode()
-	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: proxies})
+	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: proxies,
+		Library: lib, DataDir: dataDir, Jobs: runner})
 	if err != nil {
 		return err
 	}

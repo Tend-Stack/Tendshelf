@@ -624,7 +624,8 @@ func TestCSRFKeyPersisted(t *testing.T) {
 		t.Fatalf("stored key: %v len %d", err, len(key))
 	}
 	// A second handler on the same database (a restart) accepts the first one's form.
-	h2, err := NewHandler(context.Background(), Options{Version: "test", Store: a.st, SetupCode: testSetupCode, Hash: cheapHash})
+	h2, err := NewHandler(context.Background(), Options{Version: "test", Store: a.st, SetupCode: testSetupCode, Hash: cheapHash,
+		Library: a.lib, DataDir: a.dir, Jobs: a.runner})
 	if err != nil {
 		t.Fatal(err)
 	}

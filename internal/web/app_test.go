@@ -2,15 +2,25 @@ package web
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/jobs"
+	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/media"
+	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
@@ -24,8 +34,12 @@ var cheapHash = users.HashParams{MemoryKiB: 64, Time: 1, Threads: 1, SaltLen: 16
 
 // testApp is the whole handler on a throwaway database.
 type testApp struct {
-	h  http.Handler
-	st *db.Store
+	h      http.Handler
+	st     *db.Store
+	dir    string
+	lib    *library.Repo
+	runner *jobs.Runner
+	srv    *server
 
 	once    sync.Once
 	session *http.Cookie
@@ -34,20 +48,58 @@ type testApp struct {
 // newTestApp builds the handler on a fresh database. mods change the options first.
 func newTestApp(t *testing.T, mods ...func(*Options)) *testApp {
 	t.Helper()
-	st, err := db.Open(context.Background(), t.TempDir())
+	dir := t.TempDir()
+	st, err := db.Open(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	o := Options{Version: "test", Store: st, SetupCode: testSetupCode, Hash: cheapHash}
-	for _, m := range mods {
-		m(&o)
-	}
-	h, err := NewHandler(context.Background(), o)
+	lib := library.New(st)
+	runner, err := jobs.New(st, jobs.Options{}) // never started: tests do not run jobs
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &testApp{h: h, st: st}
+	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
+	if err := scan.New(lib, media.Tools{}, runner, quiet).Register(runner); err != nil {
+		t.Fatal(err)
+	}
+	o := Options{Version: "test", Store: st, SetupCode: testSetupCode, Hash: cheapHash, Library: lib, DataDir: dir, Jobs: runner}
+	for _, m := range mods {
+		m(&o)
+	}
+	srv, h, err := newServer(context.Background(), o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &testApp{h: h, st: st, dir: dir, lib: lib, runner: runner, srv: srv}
+}
+
+var memberCounter atomic.Int64
+
+// as returns the session cookie of a new account with the given role. The owner is the account
+// first-run setup creates; any other role gets a fresh account without a password.
+func (a *testApp) as(t *testing.T, role users.Role) *http.Cookie {
+	t.Helper()
+	if role == users.RoleOwner {
+		return a.owner(t)
+	}
+	a.owner(t)
+	name := fmt.Sprintf("%s-%d", role, memberCounter.Add(1))
+	var tok string
+	err := a.st.WriteTx(context.Background(), func(tx *sql.Tx) error {
+		id := db.NewID("usr")
+		if _, err := tx.Exec(`INSERT INTO users(id, username, display_name, role, password_hash, disabled, created_at)
+			VALUES (?, ?, ?, ?, NULL, 0, ?)`, id, name, name, string(role), 1); err != nil {
+			return err
+		}
+		var err error
+		tok, _, err = auth.NewSessions(a.st, nil).Create(context.Background(), tx, id, "test")
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &http.Cookie{Name: auth.CookieName, Value: tok}
 }
 
 var (

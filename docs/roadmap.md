@@ -236,6 +236,12 @@ works with the vendored htmx 4), `-race -count=3` on auth, users and web. Limits
 no account menu (P1b-7), theme still in the `ts_theme` cookie, setup steps 2 and 3 and the scan stream
 (P1b-4), no passkeys, no absolute session cap, the limiter state is per process.
 
+**P1b-2 status**: in progress.
+
+**P1b-3 status**: in progress.
+
+**P1b-4 status**: in progress.
+
 ### P1c Player and progress
 
 - Mini-player, full player (phone, tablet) and desktop player bar and panel; cover accent only on the
