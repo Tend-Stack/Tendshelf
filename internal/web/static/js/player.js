@@ -42,6 +42,8 @@ let prompting = false; // the Continue there? question is on screen
 let beaconSent = false;
 let compatSeq = 0; // bumped to cancel a wait for a converted copy
 let seekSaveTimer = 0;
+let userVolume = storedVolume(); // 0 to 1, per device
+let fade = 1; // 0 to 1, the sleep timer's ramp
 let memoryDeviceId = ""; // used when localStorage is unavailable
 
 // ---- Small helpers ----
@@ -131,7 +133,9 @@ function toast(kind, text, actions) {
       listen(button, "click", action.run);
     }
   }
-  document.getElementById("toasts").append(el);
+  // While the modal full player is open the page behind it is inert, so toasts go into its own region.
+  const host = document.querySelector("#player-full:modal [data-ts-full-toasts]") || document.getElementById("toasts");
+  host.append(el);
   return el;
 }
 
@@ -375,6 +379,48 @@ function skip(direction) {
   seek(bookPosition() + direction * seconds * 1000);
 }
 
+// ---- Volume: the person's level and the sleep timer's fade ----
+
+// The level the person chose, kept on this device. The fade multiplies it and never replaces it.
+function storedVolume() {
+  try {
+    const text = localStorage.getItem("ts.volume");
+    const value = Number(text);
+    return text !== null && value >= 0 && value <= 1 ? value : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function applyVolume() {
+  audio.volume = clamp(userVolume * fade, 0, 1);
+}
+
+function setVolume(value) {
+  userVolume = clamp(value, 0, 1);
+  try {
+    localStorage.setItem("ts.volume", String(userVolume));
+  } catch {
+    // no storage: the level lasts until the page reloads
+  }
+  applyVolume();
+}
+
+// fraction 1 is the person's level, 0 is silence.
+function setFade(fraction) {
+  fade = clamp(fraction, 0, 1);
+  applyVolume();
+}
+
+// iOS ignores the volume property (it reads back 1): there the fade and the slider are not offered.
+function probeVolume() {
+  const before = audio.volume;
+  audio.volume = 0.5;
+  const works = audio.volume === 0.5;
+  audio.volume = before;
+  return works;
+}
+
 function setSpeed(value) {
   if (!book) return;
   book.speed = clamp(Math.round(value * 20) / 20, 0.5, 3); // steps of 0.05
@@ -580,6 +626,7 @@ function state() {
     durationMs: book.durationMs,
     playing: !audio.paused,
     speed: book.speed,
+    volume: userVolume,
     fileIdx: current.fileIdx,
     chapterIdx: chapterIndexAt(bookPosition()),
   };
@@ -908,6 +955,11 @@ listen(document, "htmx:after:settle", () => {
   revealPlayAtButtons();
 });
 
+// Speed changes keep the voice's pitch; the stored level applies from the start.
+audio.preservesPitch = true;
+const canSetVolume = probeVolume();
+applyVolume();
+
 // The loaded book as player-full.js needs it (copies), or null.
 function info() {
   if (!book) return null;
@@ -927,6 +979,10 @@ window.tsPlayer = {
   skip,
   chapter: jumpChapter,
   setSpeed,
+  setVolume,
+  setFade,
+  canSetVolume,
+  toast: (kind, text) => toast(kind, text),
   debug: {
     setPausedAt: (ms) => {
       idleAt = ms;

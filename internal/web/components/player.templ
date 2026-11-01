@@ -1,5 +1,10 @@
 package components
 
+import (
+	"strconv"
+	"strings"
+)
+
 // PlayerMsgs is every word the web player and the keyboard sheet show. The server owns the copy
 // (internal/web/copy.go); player.js reads these from data-ts-msg-* attributes and never hard-codes
 // a word. {name} marks a value the player fills in.
@@ -15,6 +20,18 @@ type PlayerMsgs struct {
 	ClosePlayer, PrevChapter, NextChapter, Speed, Sleep, Chapters           string
 	Bookmark, MoreActions, GoToBook, MarkFinished, ChapterPlayed, OpenPlayer string
 	ScrubBubble                                                              string
+
+	// Speed, sleep timer, volume and the bookmark key (P1c-5b).
+	SpeedValue, SpeedLabel, SpeedFine, SleepTitle, SleepEndOfChapter, SleepMinutes string
+	SleepIn, SleepCustom, SleepCustomLabel, SleepStart, SleepTurnOff, SleepOffLabel string
+	SleepOnLabel, Sleeping, SleepFading, SleepFadingShake, PlusTen, Volume         string
+	BookmarkMoment, BookmarkFailed, KeysBookmark, Bookmarked, BookmarkMomentAt     string
+	AddNote                                                                        string
+}
+
+// fillN puts n where a message has {n}; the templates use it for the sleep timer choices.
+func fillN(s string, n int) string {
+	return strings.Replace(s, "{n}", strconv.Itoa(n), 1)
 }
 
 // Attrs are the data-ts-msg-* attributes of #player, one per string player.js uses.
@@ -57,6 +74,18 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 		"data-ts-msg-chapter-played":  m.ChapterPlayed,
 		"data-ts-msg-open-player":     m.OpenPlayer,
 		"data-ts-msg-scrub-bubble":    m.ScrubBubble,
+
+		"data-ts-msg-speed-value":         m.SpeedValue,
+		"data-ts-msg-speed-label":         m.SpeedLabel,
+		"data-ts-msg-sleep-in":            m.SleepIn,
+		"data-ts-msg-sleep-off-label":     m.SleepOffLabel,
+		"data-ts-msg-sleep-on-label":      m.SleepOnLabel,
+		"data-ts-msg-sleeping":            m.Sleeping,
+		"data-ts-msg-sleep-fading":        m.SleepFading,
+		"data-ts-msg-sleep-fading-shake":  m.SleepFadingShake,
+		"data-ts-msg-bookmark-failed":     m.BookmarkFailed,
+		"data-ts-msg-bookmarked":          m.Bookmarked,
+		"data-ts-msg-bookmark-moment-at":  m.BookmarkMomentAt,
 	}
 }
 
@@ -88,7 +117,20 @@ templ PlayerSlot(m PlayerMsgs) {
 				@Icon("skip-forward", false)
 				<span class="ts-skip__num" data-ts-forward-num aria-hidden="true"></span>
 			</button>
+			<button type="button" class="ts-iconbtn ts-mini__speed" data-ts-bar-speed aria-haspopup="dialog" aria-label={ m.Speed }>
+				<span class="ts-num" data-ts-bar-speed-value></span>
+			</button>
+			<button type="button" class="ts-iconbtn ts-mini__sleep" data-ts-bar-sleep aria-haspopup="dialog" aria-label={ m.SleepOffLabel }>
+				@Icon("sleep", false)
+				<span class="ts-num" data-ts-bar-sleep-left hidden></span>
+			</button>
+			<div class="ts-mini__volume" data-ts-volume-wrap>
+				@Icon("output", false)
+				<label class="ts-sr" for="ts-volume">{ m.Volume }</label>
+				<input id="ts-volume" class="ts-mini__range" type="range" min="0" max="100" step="5" value="100" data-ts-volume/>
+			</div>
 		</div>
+		@SleepCard(m, "bar")
 	</section>
 	<audio id="audio" preload="none" hx-preserve></audio>
 }

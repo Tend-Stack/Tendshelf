@@ -88,7 +88,8 @@ func (s *server) postBookmark(w http.ResponseWriter, r *http.Request) {
 			ID         string `json:"id"`
 			PositionMs int64  `json:"positionMs"`
 			Label      string `json:"label"`
-		}{bm.ID, bm.PositionMs, clock})
+			NoteHref   string `json:"noteHref"` // the server owns addresses; the player's toast links here
+		}{bm.ID, bm.PositionMs, clock, bookmarkSheetHref(b.ID, bm.ID)})
 		return
 	}
 	to := bookmarkTabHref(b.ID) + "?added=" + url.QueryEscape(bm.ID)

@@ -6,7 +6,7 @@
 .ts-mini__open:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); border-radius: var(--radius-md); }
 .ts-mini [hidden] { display: none; }
 .ts-player-slot:not(.is-playing) [data-ts-icon-pause], .ts-player-slot.is-playing [data-ts-icon-play] { display: none; }
-.ts-mini__forward { display: none; }
+.ts-mini__forward, .ts-mini__speed, .ts-mini__sleep, .ts-mini__volume { display: none; }
 
 /* Phone: the content ends above the floating bar */
 body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-24)); }
@@ -24,6 +24,8 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 @media (min-width: 1280px) {
   .ts-mini { border-radius: 0; border-width: 1px 0 0; box-shadow: none; padding-inline: var(--space-24); }
   .ts-mini__forward { display: inline-flex; }
+  .ts-mini__speed, .ts-mini__sleep { display: inline-flex; }
+  .ts-mini__volume { display: flex; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -79,7 +81,6 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 .ts-player__transport [data-ts-full-next] { order: 5; }
 .ts-player__bar { order: 2; margin-top: auto; flex: none; }
 .ts-player__barmark { display: none; }
-.ts-player-bar__item:disabled { opacity: 0.5; cursor: default; }
 .ts-player-bar__item:focus-visible, .ts-player__menuitem:focus-visible, .ts-player__chrow:focus-visible, .ts-player__menu > summary:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 
 /* Scrubber: drawn from custom properties set by player-full.js */
@@ -130,4 +131,35 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 }
 @media (prefers-reduced-motion: reduce) {
   .ts-player.is-settling { transition: none; }
+}
+
+/* P1c-5b: sheets, sleep card, desktop bar speed, sleep and volume */
+.ts-option__meta { margin-left: auto; }
+.ts-player__fine { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-4) var(--space-12); padding: var(--space-8) var(--space-16) var(--space-16); }
+.ts-player__fine input { grid-column: 1 / -1; width: 100%; min-height: var(--size-tap); margin: 0; accent-color: var(--accent); }
+.ts-player__custom { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-12); padding: var(--space-8) var(--space-16) var(--space-16); }
+.ts-player__custom .ts-input { min-width: 0; }
+.ts-player__custom .ts-btn { min-height: var(--size-tap); }
+.ts-player-bar__item.is-active .ts-player-bar__value { color: var(--accent); }
+
+/* The card sits inside the full player (fixed to the dialog, which is transformed) or above the bar */
+.ts-sleepcard { display: flex; align-items: center; gap: var(--space-12); box-sizing: border-box; padding: var(--space-12) var(--space-12) var(--space-12) var(--space-16);
+  border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--raised); color: var(--ink); box-shadow: var(--shadow-float); z-index: 2; }
+.ts-sleepcard[hidden] { display: none; }
+.ts-sleepcard > .ts-icon { flex: none; width: 24px; height: 24px; color: var(--accent); }
+.ts-sleepcard__text { flex: 1; min-width: 0; }
+.ts-sleepcard__title, .ts-sleepcard__hint { margin: 0; }
+.ts-sleepcard__title { font-weight: 600; font-variant-numeric: tabular-nums; }
+.ts-sleepcard__hint { color: var(--ink-muted); }
+.ts-sleepcard .ts-btn { flex: none; min-width: var(--size-tap); min-height: var(--size-tap); }
+.ts-sleepcard[data-ts-sleep-card="full"] { position: fixed; left: var(--space-12); right: var(--space-12); bottom: calc(60px + var(--space-24) + var(--space-12) + env(safe-area-inset-bottom)); }
+.ts-sleepcard[data-ts-sleep-card="bar"] { position: absolute; left: var(--space-8); right: var(--space-8); bottom: calc(100% + var(--space-8)); }
+.ts-player__toasts { top: 48%; bottom: auto; }
+.ts-toast a { color: var(--accent); font-weight: 600; text-decoration: underline; }
+.ts-mini__speed .ts-num { font-weight: 600; }
+.ts-mini__sleep.is-active { color: var(--accent); }
+.ts-mini__volume { align-items: center; gap: var(--space-4); }
+.ts-mini__range { width: 96px; min-height: var(--size-tap); margin: 0; accent-color: var(--accent); }
+@media (min-width: 1280px) {
+  .ts-sleepcard[data-ts-sleep-card="bar"] { left: auto; right: var(--space-24); width: 380px; }
 }
