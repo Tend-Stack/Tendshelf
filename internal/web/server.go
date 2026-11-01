@@ -25,6 +25,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
+	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
@@ -73,6 +74,7 @@ type server struct {
 	jobs     *jobs.Runner
 	version  string
 	compat   *mediajobs.Compat
+	progress *progress.Service
 }
 
 // settingCSRFKey is the settings row that keeps the CSRF key between runs.
@@ -149,6 +151,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		jobs:     opts.Jobs,
 		version:  opts.Version,
 		compat:   opts.Compat,
+		progress: progress.New(opts.Store, opts.Now),
 	}
 	s.csrf = NewCSRF(key, sessionOrCookieBinding)
 	s.csrf.Deny = http.HandlerFunc(s.forbidden)
