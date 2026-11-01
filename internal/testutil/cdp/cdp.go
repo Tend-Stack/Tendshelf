@@ -62,8 +62,10 @@ func Start(t testing.TB, chromePath string) *Browser {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// --mute-audio: the player tests really play their tones (media time still advances, so first
+	// sound and file switches are measured the same), but nothing reaches the speakers.
 	args := append([]string{"--headless", "--remote-debugging-pipe", "--no-first-run", "--disable-gpu",
-		"--hide-scrollbars", "--user-data-dir=" + t.TempDir()}, SandboxArgs()...)
+		"--hide-scrollbars", "--mute-audio", "--user-data-dir=" + t.TempDir()}, SandboxArgs()...)
 	cmd := exec.Command(chromePath, append(args, "about:blank")...)
 	cmd.ExtraFiles = []*os.File{inR, outW}
 	if err := cmd.Start(); err != nil {
