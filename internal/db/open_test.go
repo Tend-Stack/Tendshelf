@@ -104,6 +104,11 @@ var allTables = []string{"settings", "users", "sessions", "user_settings", "jobs
 var libraryTables = []string{"libraries", "library_folders", "books", "audio_files", "chapters", "metadata_values",
 	"people", "book_people", "series", "book_series", "book_labels", "covers"}
 
+// searchTables are the tables migration 0004 adds, with the FTS5 shadow tables of the contentless index
+// (a contentless table has no _content table).
+var searchTables = []string{"books_fts_ids", "books_fts", "books_fts_vocab",
+	"books_fts_data", "books_fts_idx", "books_fts_docsize", "books_fts_config"}
+
 // seedLibrary adds one row to every library table, parents first, then points the book at its cover.
 func seedLibrary(t *testing.T, st *Store) {
 	t.Helper()
@@ -153,7 +158,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables) {
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables) {
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -205,13 +210,17 @@ func TestOpenZeroByteFile(t *testing.T) {
 var seeds = map[int]func(t *testing.T, st *Store){
 	1: seedAll,
 	2: func(t *testing.T, st *Store) { seedAll(t, st); seedLibrary(t, st) },
-	3: func(t *testing.T, st *Store) {
-		seedAll(t, st)
-		seedLibrary(t, st)
-		if _, err := st.Writer().Exec(`UPDATE audio_files SET probe_error = 'not_audio'`); err != nil {
-			t.Fatal(err)
-		}
-	},
+	3: seed3,
+	4: seed3,
+}
+
+// seed3 fills a version 3 database (version 4 adds only derived tables, so it seeds the same rows).
+func seed3(t *testing.T, st *Store) {
+	seedAll(t, st)
+	seedLibrary(t, st)
+	if _, err := st.Writer().Exec(`UPDATE audio_files SET probe_error = 'not_audio'`); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // tablesAt lists the tables that exist, and hold one seeded row, at each version.
@@ -219,6 +228,7 @@ var tablesAt = map[int][]string{
 	1: allTables,
 	2: append(append([]string{}, allTables...), libraryTables...),
 	3: append(append([]string{}, allTables...), libraryTables...),
+	4: append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"),
 }
 
 func TestMigrateFromPreviousFixtures(t *testing.T) {
@@ -497,6 +507,7 @@ var pinnedMigrations = map[int]string{
 	1: "0e70eb5003c239205ad0afda87e019d8983e64fddce9100222314b1075bcfaaa",
 	2: "bf7ece0acfd14ae9dc766e8e4c10d4507ad8ea4b0a50ccf1db01d62ab2f5de60",
 	3: "8ebdf61fb5ed156385ecf3fea7a7f82ba0275c409a88e2824aec5a8c9f0f5a6a",
+	4: "c0424f4fb4e9c40d8863a0b1c3bcb634233f900f01e458733309816beec8e339",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
@@ -694,5 +705,36 @@ func TestWriteTxRollback(t *testing.T) {
 	}
 	if countRows(t, st.Reader(), "settings") != 1 {
 		t.Fatal("commit path lost the row")
+	}
+}
+
+// Migration 0004 builds the search index from the book rows that already exist.
+func TestMigration0004BuildsIndex(t *testing.T) {
+	ms := embedded(t)
+	dir := t.TempDir()
+	prev, err := open(context.Background(), dir, openConfig{migrations: ms[:3], supported: 3, now: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	seeds[3](t, prev)
+	prev.Close()
+
+	st := mustOpen(t, dir)
+	defer st.Close()
+	var rid, want int
+	if err := st.Reader().QueryRow(`SELECT rid FROM books_fts_ids WHERE book_id = 'bk_1'`).Scan(&rid); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{`"ana"*`, `"saga"*`, `"a"*`} {
+		var got int
+		if err := st.Reader().QueryRow(`SELECT rowid FROM books_fts WHERE books_fts MATCH ?`, q).Scan(&got); err != nil || got != rid {
+			t.Errorf("MATCH %s = %d, %v; want rid %d", q, got, err, rid)
+		}
+	}
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM books`).Scan(&want); err != nil {
+		t.Fatal(err)
+	}
+	if n := countRows(t, st.Reader(), "books_fts_ids"); n != want || want != 1 {
+		t.Fatalf("ids = %d, books = %d", n, want)
 	}
 }
