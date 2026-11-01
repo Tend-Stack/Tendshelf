@@ -1,0 +1,82 @@
+package components
+
+// NavItem is one main destination.
+type NavItem struct {
+	Key, Label, Href, Icon string
+}
+
+// MainNav is the one list all three navigations render from, in order.
+var MainNav = []NavItem{
+	{"home", "Home", "/", "home"},
+	{"library", "Library", "/libraries", "library"},
+	{"search", "Search", "/search", "search"},
+	{"downloads", "Downloads", "/me/downloads", "download"},
+	{"profile", "Profile", "/me", "profile"},
+}
+
+// TabBar is the phone's bottom navigation.
+templ TabBar(current string) {
+	<nav aria-label="Main" id="nav-tabbar" hx-preserve class="ts-tabbar ts-nav-tabbar">
+		for _, it := range MainNav {
+			<a
+				href={ templ.SafeURL(it.Href) }
+				class="ts-tabbar__item"
+				data-nav={ it.Href }
+				if it.Key == current {
+					aria-current="page"
+				}
+			>
+				@Icon(it.Icon, false)
+				{ it.Label }
+			</a>
+		}
+	</nav>
+}
+
+// SideRail is the tablet navigation rail (768 to 1279 px).
+templ SideRail(current string) {
+	<nav aria-label="Main" id="nav-rail" hx-preserve class="ts-rail ts-nav-rail">
+		<span class="ts-rail__brand ts-brand">
+			@Mark()
+		</span>
+		for _, it := range MainNav {
+			if it.Key == "profile" {
+				<span class="ts-rail__spacer"></span>
+			}
+			<a
+				href={ templ.SafeURL(it.Href) }
+				class="ts-rail__item"
+				data-nav={ it.Href }
+				if it.Key == current {
+					aria-current="page"
+				}
+			>
+				@Icon(it.Icon, false)
+				{ it.Label }
+			</a>
+		}
+	</nav>
+}
+
+// Sidebar is the desktop navigation (1280 px and up).
+templ Sidebar(current string) {
+	<nav aria-label="Main" id="nav-side" hx-preserve class="ts-side ts-nav-side">
+		<span class="ts-side__brand ts-brand">
+			@Mark()
+			Tendshelf
+		</span>
+		for _, it := range MainNav {
+			<a
+				href={ templ.SafeURL(it.Href) }
+				class="ts-side__item"
+				data-nav={ it.Href }
+				if it.Key == current {
+					aria-current="page"
+				}
+			>
+				@Icon(it.Icon, false)
+				{ it.Label }
+			</a>
+		}
+	</nav>
+}

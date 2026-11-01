@@ -1,0 +1,8 @@
+package components
+
+// PlayerSlot holds the mini-player. It and the audio element live outside #main, so a boosted
+// swap never re-creates them. P1c fills the slot.
+templ PlayerSlot() {
+	<section id="player" class="ts-player-slot" aria-label="Now playing" hx-preserve hidden></section>
+	<audio id="audio" preload="none" hx-preserve></audio>
+}
