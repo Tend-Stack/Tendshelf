@@ -12,11 +12,6 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/share"
 )
 
-var (
-	allScope  = library.Scope{Books: share.Filter{SQL: "1=1"}, Libraries: share.Filter{SQL: "1=1"}}
-	noneScope = library.Scope{Books: share.Filter{SQL: "0=1"}, Libraries: share.Filter{SQL: "0=1"}}
-)
-
 func searchIDs(t *testing.T, r *library.Repo, q string) []string {
 	t.Helper()
 	res, err := r.Search(ctx, allScope, q, 0)

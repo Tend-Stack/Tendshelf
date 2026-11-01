@@ -14,11 +14,6 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/share"
 )
 
-var (
-	allScope  = library.Scope{Books: share.Filter{SQL: "1=1"}, Libraries: share.Filter{SQL: "1=1"}}
-	noneScope = library.Scope{Books: share.Filter{SQL: "0=1"}, Libraries: share.Filter{SQL: "0=1"}}
-)
-
 // browseSeed adds books with equal added_at values and titles that tie under NOCASE, so every
 // ordering has to fall back to the id.
 func browseSeed(t *testing.T) (*library.Repo, library.Library, []library.Book) {
