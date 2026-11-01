@@ -89,6 +89,27 @@ func TestPlayerDataRender(t *testing.T) {
 	}
 }
 
+// TestPlayerDataTint: the cover tint reaches the full player's background fade only while the
+// person keeps the tint on.
+func TestPlayerDataTint(t *testing.T) {
+	e := progRouteEnvOf(t)
+	ctx := context.Background()
+	set := users.Settings{Theme: "system", Speed: 1, SkipBackS: 15, SkipForwardS: 30, NextInSeries: true, PlayerTint: true}
+	if err := e.a.srv.users.SaveSettings(ctx, e.ownerID, set); err != nil {
+		t.Fatal(err)
+	}
+	if _, body := e.player("/hx/player/"+e.book.ID, e.owner); !strings.Contains(body, `data-tint="#1f4a52"`) {
+		t.Errorf("tint missing with PlayerTint on: %s", body)
+	}
+	set.PlayerTint = false
+	if err := e.a.srv.users.SaveSettings(ctx, e.ownerID, set); err != nil {
+		t.Fatal(err)
+	}
+	if _, body := e.player("/hx/player/"+e.book.ID, e.owner); strings.Contains(body, "data-tint") {
+		t.Error("tint present with PlayerTint off")
+	}
+}
+
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
 
 func TestPlayerDataCurrent(t *testing.T) {

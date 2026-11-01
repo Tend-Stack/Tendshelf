@@ -116,6 +116,7 @@ func (s *server) playerView(ctx context.Context, u users.User, sc library.Scope,
 		v.CoverURL = coverURL(book.ID, c.SHA, 512)
 		if set.PlayerTint {
 			v.AccentDark, v.AccentLight, v.AccentSepia = c.Accent["dark"], c.Accent["light"], c.Accent["sepia"]
+			v.Tint = c.Tint
 		}
 	}
 	for _, f := range files {
