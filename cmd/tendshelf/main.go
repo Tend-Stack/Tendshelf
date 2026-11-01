@@ -1,7 +1,7 @@
 // Command tendshelf runs the Tendshelf audiobook server.
 //
-// This is the P0 skeleton: it opens the database in the data folder, starts the
-// job runner, and serves a placeholder page and /healthz on 127.0.0.1:8095 by
+// It opens the database in the data folder, starts the job runner with the library scan and
+// probe jobs, and serves a placeholder page and /healthz on 127.0.0.1:8095 by
 // default. See docs/architecture.md and docs/roadmap.md.
 package main
 
@@ -19,6 +19,9 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
+	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/media"
+	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/web"
 )
 
@@ -41,6 +44,8 @@ func run(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("tendshelf", flag.ContinueOnError)
 	addr := fs.String("addr", envOr("TENDSHELF_ADDR", defaultAddr), "listen address (host:port)")
 	dataFlag := fs.String("data", envOr("TENDSHELF_DATA", ""), "data folder (database, backups); default is per user")
+	ffprobe := fs.String("ffprobe", envOr("TENDSHELF_FFPROBE", ""), "ffprobe program name or absolute path; default searches PATH")
+	ffmpeg := fs.String("ffmpeg", envOr("TENDSHELF_FFMPEG", ""), "ffmpeg program name or absolute path; default searches PATH")
 	showVersion := fs.Bool("version", false, "print the version and exit")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -71,7 +76,11 @@ func run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	// Job kinds are registered here by the features that own them (P2 onwards).
+	// Job kinds are registered here by the features that own them.
+	tools := locateTools(media.Config{FFprobe: *ffprobe, FFmpeg: *ffmpeg}, logger)
+	if err := scan.New(library.New(st), tools, runner, logger).Register(runner); err != nil {
+		return err
+	}
 	if err := runner.Start(ctx); err != nil {
 		return err
 	}
@@ -112,6 +121,16 @@ func run(ctx context.Context, args []string) error {
 		logger.Warn("job runner did not stop in time; unfinished jobs are recovered at the next start", "err", err)
 	}
 	return serveErr // st.Close runs on return
+}
+
+// locateTools finds ffprobe and ffmpeg. Missing tools are not fatal: books are still listed from
+// their file names, and the files that need ffprobe wait with a plain-words error.
+func locateTools(cfg media.Config, log *slog.Logger) media.Tools {
+	tools, err := media.Locate(cfg)
+	if err != nil {
+		log.Warn("audio tools not found; files will be listed but not read", "err", err)
+	}
+	return tools
 }
 
 // describeOpenError turns a refusal into plain words that name the file and say

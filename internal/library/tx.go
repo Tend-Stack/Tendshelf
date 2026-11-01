@@ -144,7 +144,19 @@ type Tx struct {
 
 // Update runs fn in one write transaction. Any error from fn rolls every change back.
 func (r *Repo) Update(ctx context.Context, fn func(*Tx) error) error {
+	return r.UpdateGuarded(ctx, nil, fn)
+}
+
+// UpdateGuarded is Update with a guard that runs first, inside the same transaction. A job handler
+// passes its fence check (jobs.Task.Fence) so a run that lost its lease writes nothing; an error
+// from the guard rolls back and is returned as is. A nil guard is allowed.
+func (r *Repo) UpdateGuarded(ctx context.Context, guard func(context.Context, *sql.Tx) error, fn func(*Tx) error) error {
 	return r.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		if guard != nil {
+			if err := guard(ctx, tx); err != nil {
+				return err
+			}
+		}
 		return fn(&Tx{ctx: ctx, tx: tx, r: r})
 	})
 }
@@ -266,15 +278,15 @@ func (t *Tx) PutAudioFile(f *AudioFile) error {
 		probe = string(f.ProbeJSON)
 	}
 	_, err := t.exec(`INSERT INTO audio_files(id, book_id, path, idx, size, mtime_ns, quick_hash, sha256, container, codec,
-  bitrate, channels, sample_rate, duration_ms, offset_ms, encrypted, probe_json, missing_since, updated_at)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  bitrate, channels, sample_rate, duration_ms, offset_ms, encrypted, probe_json, probe_error, missing_since, updated_at)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   ON CONFLICT(id) DO UPDATE SET book_id=excluded.book_id, path=excluded.path, idx=excluded.idx, size=excluded.size,
   mtime_ns=excluded.mtime_ns, quick_hash=excluded.quick_hash, sha256=excluded.sha256, container=excluded.container,
   codec=excluded.codec, bitrate=excluded.bitrate, channels=excluded.channels, sample_rate=excluded.sample_rate,
   duration_ms=excluded.duration_ms, offset_ms=excluded.offset_ms, encrypted=excluded.encrypted,
-  probe_json=excluded.probe_json, missing_since=excluded.missing_since, updated_at=excluded.updated_at`,
+  probe_json=excluded.probe_json, probe_error=excluded.probe_error, missing_since=excluded.missing_since, updated_at=excluded.updated_at`,
 		f.ID, f.BookID, f.Path, f.Idx, f.Size, f.MtimeNs, f.QuickHash, nullStr(f.SHA256), f.Container, f.Codec,
-		f.Bitrate, f.Channels, f.SampleRate, f.DurationMs, f.OffsetMs, f.Encrypted, probe,
+		f.Bitrate, f.Channels, f.SampleRate, f.DurationMs, f.OffsetMs, f.Encrypted, probe, nullStr(f.ProbeError),
 		nullInt(f.MissingSince), f.UpdatedAt)
 	if db.IsForeignKeyViolation(err) {
 		return fmt.Errorf("%w: book", ErrNotFound)
@@ -318,4 +330,52 @@ func (t *Tx) ReplaceChapters(bookID string, chs []Chapter) error {
 		}
 	}
 	return nil
+}
+
+// Reads on the transaction see its own uncommitted writes.
+
+// Book returns one book, or ErrNotFound.
+func (t *Tx) Book(id string) (Book, error) {
+	return one(t.tx.QueryRowContext(t.ctx, `SELECT `+bookCols+` FROM books WHERE id = ?`, id), scanBook, "book")
+}
+
+// BooksInLibrary returns every book of a library by root path, including books marked missing.
+func (t *Tx) BooksInLibrary(libraryID string) ([]Book, error) {
+	return many(t.ctx, t.tx, scanBook,
+		`SELECT `+bookCols+` FROM books WHERE library_id = ? ORDER BY root_path`, libraryID)
+}
+
+// AudioFile returns one audio file, or ErrNotFound.
+func (t *Tx) AudioFile(id string) (AudioFile, error) {
+	return one(t.tx.QueryRowContext(t.ctx, `SELECT `+audioCols+` FROM audio_files WHERE id = ?`, id), scanAudio, "audio file")
+}
+
+// AudioFilesInLibrary returns every audio file of a library, including missing ones, ordered by
+// book ID, then index, then path.
+func (t *Tx) AudioFilesInLibrary(libraryID string) ([]AudioFile, error) {
+	return many(t.ctx, t.tx, scanAudio, `SELECT `+audioColsA+`
+  FROM audio_files a JOIN books b ON b.id = a.book_id WHERE b.library_id = ? ORDER BY a.book_id, a.idx, a.path`, libraryID)
+}
+
+// AudioFiles returns the files of a book in play order (index, then path).
+func (t *Tx) AudioFiles(bookID string) ([]AudioFile, error) {
+	return many(t.ctx, t.tx, scanAudio,
+		`SELECT `+audioCols+` FROM audio_files WHERE book_id = ? ORDER BY idx, path`, bookID)
+}
+
+// Chapters returns a book's chapters in order.
+func (t *Tx) Chapters(bookID string) ([]Chapter, error) {
+	return many(t.ctx, t.tx, scanChapter,
+		`SELECT idx, start_ms, end_ms, title, source FROM chapters WHERE book_id = ? ORDER BY idx`, bookID)
+}
+
+// DeleteEmptyBook deletes the book (and, by cascade, its chapters and metadata) only when it has no
+// audio file rows at all, and reports whether it did.
+func (t *Tx) DeleteEmptyBook(id string) (bool, error) {
+	res, err := t.exec(`DELETE FROM books WHERE id = ? AND NOT EXISTS (SELECT 1 FROM audio_files WHERE book_id = ?)`, id, id)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
 }

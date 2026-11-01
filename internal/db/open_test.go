@@ -205,12 +205,20 @@ func TestOpenZeroByteFile(t *testing.T) {
 var seeds = map[int]func(t *testing.T, st *Store){
 	1: seedAll,
 	2: func(t *testing.T, st *Store) { seedAll(t, st); seedLibrary(t, st) },
+	3: func(t *testing.T, st *Store) {
+		seedAll(t, st)
+		seedLibrary(t, st)
+		if _, err := st.Writer().Exec(`UPDATE audio_files SET probe_error = 'not_audio'`); err != nil {
+			t.Fatal(err)
+		}
+	},
 }
 
 // tablesAt lists the tables that exist, and hold one seeded row, at each version.
 var tablesAt = map[int][]string{
 	1: allTables,
 	2: append(append([]string{}, allTables...), libraryTables...),
+	3: append(append([]string{}, allTables...), libraryTables...),
 }
 
 func TestMigrateFromPreviousFixtures(t *testing.T) {
@@ -488,6 +496,7 @@ func TestBackupFailureLeavesDatabaseUnmigrated(t *testing.T) {
 var pinnedMigrations = map[int]string{
 	1: "0e70eb5003c239205ad0afda87e019d8983e64fddce9100222314b1075bcfaaa",
 	2: "bf7ece0acfd14ae9dc766e8e4c10d4507ad8ea4b0a50ccf1db01d62ab2f5de60",
+	3: "8ebdf61fb5ed156385ecf3fea7a7f82ba0275c409a88e2824aec5a8c9f0f5a6a",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
@@ -565,6 +574,7 @@ func TestLibrarySchema(t *testing.T) {
 		"audio file encrypted 2":   `UPDATE audio_files SET encrypted = 2 WHERE id = 'af_1'`,
 		"person role":              `INSERT INTO book_people(book_id, person_id, role) VALUES ('bk_1', 'ps_1', 'editor')`,
 		"short quick hash":         `UPDATE audio_files SET quick_hash = 'short' WHERE id = 'af_1'`,
+		"probe error upper case":   `UPDATE audio_files SET probe_error = 'BAD' WHERE id = 'af_1'`,
 	}
 	for name, stmt := range bad {
 		if _, err := st.Writer().Exec(stmt); err == nil {
