@@ -26,7 +26,7 @@ const LONG_PRESS_MS = 500; // a held press on the bar opens the speed sheet
 const SLEEP_STEP_MS = 250;
 const FADE_MS = 10000; // the last seconds of a sleep timer fade out
 const PLUS_MS = 600000; // "+10 min"
-const CHAPTER_MIN_LEFT_MS = 2000; // under this, "End of chapter" means the next chapter's end
+const CHAPTER_MIN_LEFT_MS = 2000; // under this, the end-of-chapter choice means the next chapter's end
 const SKIPPED_AHEAD_MS = 1500; // past a chapter timer's end by this much, the person skipped ahead
 const SHAKE_PEAK = 12; // m/s², above gravity's noise
 const SHAKE_GAP_MS = 150; // peaks closer than this are one jolt
@@ -510,7 +510,7 @@ addEventListener("pagehide", () => saveSpeed(true));
 // ---- Sleep timer ----
 //
 // Counts only while sound plays, from performance.now() deltas (a throttled timer stays accurate),
-// and lives in memory: a reload clears it. "End of chapter" is the chapter's end position when it is
+// and lives in memory: a reload clears it. The end-of-chapter choice is the chapter's end position when it is
 // set; "minutes" is real minutes whatever the speed. The last ten seconds fade the volume out
 // (tsPlayer.setFade multiplies the person's level; it never replaces it).
 
@@ -525,7 +525,7 @@ const cards = [...document.querySelectorAll("[data-ts-sleep-card]")].map((el) =>
 }));
 const coarsePointer = matchMedia("(pointer: coarse)");
 
-// Where "End of chapter" ends: this chapter's end, or the next one's when almost there.
+// Where the end-of-chapter choice ends: this chapter's end, or the next one's when almost there.
 function chapterEndNow() {
   const state = player.state();
   let idx = state.chapterIdx;
@@ -745,17 +745,14 @@ async function addBookmark() {
   }
 }
 
-// "Bookmarked at 12:31 · Add a note": a toast with a link that opens the note sheet like the
+// A bookmark toast (time and a note link) with a link that opens the note sheet like the
 // Bookmarks tab does (the same htmx attributes), after closing a full screen player.
 function showBookmarkToast(saved) {
   const toast = ui["bookmark-toast"].content.firstElementChild.cloneNode(true);
   const link = $("toast-link", toast);
   $("toast-text", toast).textContent = fill(msg("bookmarked"), { time: saved.label });
   link.href = saved.noteHref;
-  for (const [name, value] of [["hx-get", saved.noteHref], ["hx-target", "#sheet"], ["hx-select", "#sheet > *"], ["hx-swap", "innerHTML"],
-    ["hx-push-url", "false"], ["aria-haspopup", "dialog"]]) {
-    link.setAttribute(name, value);
-  }
+  link.setAttribute("hx-get", saved.noteHref); // the other htmx attributes are in the template
   const dismiss = () => {
     toast.classList.add("is-leaving");
     setTimeout(() => toast.remove(), 800); // shell.js usually removes it first
@@ -781,7 +778,7 @@ document.addEventListener("keydown", (event) => {
   addBookmark();
 });
 
-// The Bookmarks tab of the loaded book: its "Bookmark this moment" button shows the live place
+// The Bookmarks tab of the loaded book: its add button shows the live place
 // and saves it (the server's own number is the last saved place, which can be behind).
 function syncAddForms(ms) {
   for (const form of document.querySelectorAll("form[data-ts-bookmark-add]")) {

@@ -181,16 +181,17 @@ func TestBookmarkTab(t *testing.T) {
 	if !(0 < a && a < c && c < b && b < d) {
 		t.Errorf("tab order = %d %d %d %d, want About, Chapters, Bookmarks, Details", a, c, b, d)
 	}
-	bookmarkNotWant(t, page, "Bookmark this moment")
+	// The form is there for the player to show, but hidden and without a stored place or a label.
+	bookmarkWant(t, page, `data-ts-bookmark-add="`+f.book.ID+`" hidden`, `<span data-ts-bookmark-add-label></span>`)
 	bookmarkWant(t, page, "All · 1")
 
 	// The toast follows an added bookmark of the person's own, and only that.
 	toast := bookmarkGet(f, f.owner, bookmarkPath(f, "?added="+ids[0])).Body.String()
 	bookmarkWant(t, toast, "Bookmarked at 1:00 · ", "Add a note", `role="status"`, "sheet=bookmark&amp;bookmark="+ids[0])
-	if other := bookmarkGet(f, f.admin, bookmarkPath(f, "?added="+ids[0])).Body.String(); strings.Contains(other, "Bookmarked at") {
+	if other := bookmarkGet(f, f.admin, bookmarkPath(f, "?added="+ids[0])).Body.String(); strings.Contains(other, "Bookmarked at 1:00") {
 		t.Error("the toast names somebody else's bookmark")
 	}
-	if junk := bookmarkGet(f, f.owner, bookmarkPath(f, "?added=bm_nothing")).Body.String(); strings.Contains(junk, "Bookmarked at") {
+	if junk := bookmarkGet(f, f.owner, bookmarkPath(f, "?added=bm_nothing")).Body.String(); strings.Contains(junk, "Bookmarked at 1:00") {
 		t.Error("the toast names an unknown bookmark")
 	}
 
@@ -231,9 +232,13 @@ func TestBookmarkAdd(t *testing.T) {
 		ID         string `json:"id"`
 		PositionMs int64  `json:"positionMs"`
 		Label      string `json:"label"`
+		NoteHref   string `json:"noteHref"`
 	}
 	if rec.Code != http.StatusCreated || json.Unmarshal(rec.Body.Bytes(), &out) != nil || out.PositionMs != 3_700_000 || out.Label != "1:40" || !strings.HasPrefix(out.ID, "bm_") {
 		t.Errorf("json add = %d %s", rec.Code, rec.Body)
+	}
+	if want := "/books/" + f.book.ID + "/bookmarks?sheet=bookmark&bookmark=" + out.ID; out.NoteHref != want {
+		t.Errorf("noteHref = %q, want %q", out.NoteHref, want)
 	}
 
 	post(f.owner, url.Values{"position_ms": {"99999999999"}}, nil)

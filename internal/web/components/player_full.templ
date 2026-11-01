@@ -208,7 +208,7 @@ templ PlayerFull(m PlayerMsgs) {
 				<span class="ts-toast__ok">@Icon("check", false)</span>
 				<span>
 					<span data-ts-toast-text></span>
-					<a data-ts-toast-link>{ m.AddNote }</a>
+					<a data-ts-toast-link href="/" hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog">{ m.AddNote }</a>
 				</span>
 			</div>
 		</template>
