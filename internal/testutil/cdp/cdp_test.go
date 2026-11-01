@@ -31,6 +31,13 @@ func TestClientSmoke(t *testing.T) {
 	if got.Text != "hello" || got.Width != 390 || !got.Reduced {
 		t.Fatalf("got %+v", got)
 	}
+	// Call reaches any DevTools method; a throttle of 1 is "no throttling".
+	if err := tab.Call("Emulation.setCPUThrottlingRate", map[string]any{"rate": 1}, nil); err != nil {
+		t.Fatalf("Call: %v", err)
+	}
+	if err := tab.Call("No.suchMethod", nil, nil); err == nil {
+		t.Fatal("Call accepted an unknown method")
+	}
 	shot := filepath.Join(t.TempDir(), "s.png")
 	tab.Screenshot(shot)
 	if fi, err := os.Stat(shot); err != nil || fi.Size() < 100 {

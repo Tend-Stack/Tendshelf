@@ -104,7 +104,7 @@ func browseSeed(t *testing.T, a *testApp, n int) library.Folder {
 // its boxes sub-pixel heights such as 43.9999 although min-height is 44 px.
 const browseProbeJS = `(() => {
   const small = [];
-  for (const el of document.querySelectorAll("main a, main button, main select, #sheet a, #sheet label, #sheet button")) {
+  for (const el of document.querySelectorAll("main a, main button, main select, main summary, #sheet a, #sheet label, #sheet button")) {
     const r = el.getBoundingClientRect();
     if (r.width > 0 && r.height > 0 && Math.min(r.width, r.height) < 43.5) small.push((el.className || el.tagName) + ":" + Math.round(r.width) + "x" + Math.round(r.height));
   }
@@ -158,7 +158,8 @@ func TestVisualBrowsePages(t *testing.T) {
 	scanningBase := themedServer(t, scanning.signedIn(t))
 
 	boards := map[string]string{
-		"HomePhone": "core", "HomePhoneLight": "core", "HomeTablet": "core", "HomeTabletLight": "core", "HomeDesktop": "core", "HomeDesktopLight": "core",
+		"OnboardDone": "people",
+		"HomePhone":   "core", "HomePhoneLight": "core", "HomeTablet": "core", "HomeTabletLight": "core", "HomeDesktop": "core", "HomeDesktopLight": "core",
 		"LibraryPhone": "browse", "LibraryListPhone": "browse", "LibraryFiltersPhone": "browse", "LibraryEmptyPhone": "browse",
 		"LibraryScanningPhone": "browse", "LibraryTablet": "browse", "LibraryPage": "browse",
 		"StateLoading": "states", "StateNoResults": "states",
@@ -181,6 +182,8 @@ func TestVisualBrowsePages(t *testing.T) {
 		{"library-list", seededBase, "/libraries?view=list"},
 		{"library-filters", seededBase, "/libraries?sheet=filters"},
 		{"library-nomatch", seededBase, "/libraries?genre=Mystery&genre=Romance"},
+		{"library-filtered", seededBase, "/libraries?genre=Mystery&length=short&title=the"},
+		{"onboard-done", seededBase, "/setup/done"},
 		{"home-empty", emptyBase, "/"},
 		{"library-empty", emptyBase, "/libraries"},
 		{"library-scanning", scanningBase, "/libraries"},
@@ -300,5 +303,75 @@ func TestVisualLibraryInfiniteScroll(t *testing.T) {
 	}
 	if tinted != 0 {
 		t.Errorf("%d blank covers tinted, the seed gave them no tint", tinted)
+	}
+}
+
+// TestVisualLibraryFilters drives the filter bar and the chip menus: a title typed into the field
+// swaps only #library-results (the field keeps focus, the address gains title=, Back undoes it), a
+// chip menu opens inside the window with 44 px links and Escape closes it and returns to its chip,
+// and choosing a menu link filters the list.
+func TestVisualLibraryFilters(t *testing.T) {
+	b := chromium(t)
+	app := newTestApp(t)
+	app.owner(t)
+	browseSeed(t, app, 60)
+	srv := httptest.NewServer(app.signedIn(t))
+	t.Cleanup(srv.Close)
+	out := visualDir(t, "chromium")
+
+	// Desktop: the bar with the title field.
+	tab := b.NewTab(1440, 900, false, false)
+	tab.Navigate(srv.URL + "/libraries")
+	tab.WaitFor(`window.htmx !== undefined`, 5*time.Second)
+	var total int
+	tab.Eval(`document.querySelectorAll("#library-grid .ts-card").length`, &total)
+	tab.Eval(`(() => { const i = document.getElementById("fb-title"); i.focus(); i.value = "the"; i.dispatchEvent(new Event("input", {bubbles: true})); })()`, nil)
+	tab.WaitFor(`location.search.includes("title=the")`, 5*time.Second)
+	tab.WaitFor(`Boolean(document.querySelector(".ts-lib-match"))`, 5*time.Second)
+	var got struct {
+		Focus, Match bool
+		Cards        int
+		Value        string
+	}
+	tab.Eval(`({focus: document.activeElement && document.activeElement.id === "fb-title", match: /books? match/.test(document.querySelector(".ts-lib-match").textContent),
+		cards: document.querySelectorAll("#library-grid .ts-card").length, value: document.getElementById("fb-title").value})`, &got)
+	if !got.Focus || !got.Match || got.Cards == 0 || got.Cards >= total || got.Value != "the" {
+		t.Errorf("after typing: %+v (cards before %d)", got, total)
+	}
+	tab.Screenshot(filepath.Join(out, "browse-filter-title-1440.png"))
+	tab.Eval(`history.back()`, nil)
+	tab.WaitFor(`!location.search.includes("title=")`, 5*time.Second)
+
+	// A menu: open the Author chip, check it sits inside the window and its links are 44 px tall.
+	for _, w := range []int{1440, 390} {
+		tab := b.NewTab(w, 900, w == 390, false)
+		tab.Navigate(srv.URL + "/libraries")
+		tab.WaitFor(`window.htmx !== undefined`, 5*time.Second)
+		tab.Eval(`document.querySelector("details[data-ts-chipmenu] summary").click()`, nil)
+		tab.WaitFor(`document.querySelector("details[data-ts-chipmenu][open] .ts-chipmenu__body")`, 3*time.Second)
+		var m struct {
+			Inside, Tall, One bool
+			Open              int
+		}
+		tab.Eval(`(() => { const body = document.querySelector("details[open] .ts-chipmenu__body"), r = body.getBoundingClientRect();
+			const items = [...body.querySelectorAll("a")];
+			return {inside: r.left >= 0 && r.right <= innerWidth, tall: items.length > 1 && items.every(a => a.getBoundingClientRect().height >= 43.5),
+			one: true, open: document.querySelectorAll("details[data-ts-chipmenu][open]").length}; })()`, &m)
+		if !m.Inside || !m.Tall || m.Open != 1 {
+			t.Errorf("%d px: menu %+v", w, m)
+		}
+		tab.Screenshot(filepath.Join(out, fmt.Sprintf("browse-chipmenu-%d.png", w)))
+		// Opening the Length chip closes the Author menu.
+		tab.Eval(`document.querySelector("details.ts-chipmenu--end summary").click()`, nil)
+		tab.WaitFor(`document.querySelectorAll("details[data-ts-chipmenu][open]").length === 1 && document.querySelector("details.ts-chipmenu--end[open]")`, 3*time.Second)
+		if w == 1440 {
+			tab.Eval(`document.dispatchEvent(new KeyboardEvent("keydown", {key: "Escape", bubbles: true}))`, nil)
+			tab.WaitFor(`document.querySelectorAll("details[data-ts-chipmenu][open]").length === 0 && document.activeElement.tagName === "SUMMARY"`, 3*time.Second)
+		}
+		// Choosing a length filters the list through a plain link.
+		tab.Eval(`(() => { const d = document.querySelector("details.ts-chipmenu--end"); if (!d.open) d.querySelector("summary").click(); })()`, nil)
+		tab.WaitFor(`document.querySelector("details.ts-chipmenu--end[open]")`, 3*time.Second)
+		tab.Eval(`document.querySelector("details.ts-chipmenu--end .ts-chipmenu__item:nth-of-type(2)").click()`, nil)
+		tab.WaitFor(`location.search.includes("length=short") && Boolean(document.querySelector(".ts-lib-match"))`, 5*time.Second)
 	}
 }

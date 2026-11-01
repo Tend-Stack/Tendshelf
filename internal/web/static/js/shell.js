@@ -92,3 +92,30 @@ document.addEventListener("animationend", (event) => {
     if (layer && opener && opener.isConnected) opener.focus();
   } else if (el.classList.contains("ts-entering")) el.classList.remove("ts-entering");
 });
+
+// Filter chip menus (<details data-ts-chipmenu>): they open and their links work without this file.
+// With it, opening one closes the others, a click elsewhere or Escape closes it, and Escape puts
+// focus back on its chip.
+function openChipMenus() {
+  return document.querySelectorAll("details[data-ts-chipmenu][open]");
+}
+document.addEventListener("toggle", (event) => {
+  const menu = event.target;
+  if (!(menu instanceof Element) || !menu.matches("details[data-ts-chipmenu]") || !menu.open) return;
+  for (const other of openChipMenus()) if (other !== menu) other.open = false;
+}, true);
+document.addEventListener("click", (event) => {
+  for (const menu of openChipMenus()) if (!menu.contains(event.target)) menu.open = false;
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  for (const menu of openChipMenus()) {
+    menu.open = false;
+    const chip = menu.querySelector("summary");
+    if (chip) chip.focus();
+    event.preventDefault();
+  }
+});
+
+// Measurement only (make perf): the moment the shell script has run. No data leaves the browser.
+performance.mark("ts-ready");

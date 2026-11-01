@@ -76,3 +76,17 @@
 .ts-done__problems a { color: var(--accent); }
 .ts-done__go { margin: var(--space-32) 0 0; }
 .ts-frame .ts-btn--block { box-sizing: border-box; }
+
+/* The cover wall behind the finished page's headline: decoration, tilted and faded (board OnboardDone). */
+.ts-wall { position: relative; height: 232px; margin: var(--space-8) calc(var(--space-24) * -1) 0; overflow: hidden; pointer-events: none; color: var(--ink);
+  -webkit-mask-image: linear-gradient(currentColor 45%, transparent); mask-image: linear-gradient(currentColor 45%, transparent); }
+.ts-wall__grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-8); width: 124%; margin: var(--space-4) 0 0 -12%; transform: rotate(-8deg); }
+.ts-wall__tile { display: block; opacity: 0.8; }
+.ts-wall__tile--0 { opacity: 0.55; }
+.ts-wall__tile--1 { opacity: 0.92; transform: translateY(10px); }
+.ts-wall__tile--2 { opacity: 0.84; transform: translateY(20px); }
+.ts-wall__tile--3 { opacity: 0.66; transform: translateY(6px); }
+.ts-wall__tile--4 { opacity: 0.92; transform: translateY(16px); }
+.ts-wall__tile--5 { opacity: 0.7; transform: translateY(26px); }
+.ts-wall .ts-cover { display: block; box-shadow: var(--shadow-cover); }
+.ts-wall + .ts-done__mark { margin-top: 0; }

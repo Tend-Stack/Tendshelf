@@ -220,6 +220,9 @@ func (s *server) postSetupFolder(w http.ResponseWriter, r *http.Request) {
 
 // ---- done ----
 
+// setupWallSize is the most covers the finished page shows behind its headline.
+const setupWallSize = 18
+
 func (s *server) getSetupDone(w http.ResponseWriter, r *http.Request) {
 	if !s.allowSetup(w, r) {
 		return
@@ -230,6 +233,15 @@ func (s *server) getSetupDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := pages.SetupDoneView{Empty: ov.Books == 0}
+	// The cover wall: the newest books that have a cover file, drawn as decoration.
+	wall, err := s.lib.ListBooks(r.Context(), s.scope(r), library.ListQuery{Sort: library.SortAdded, Limit: setupWallSize, HasCover: true})
+	if err != nil {
+		s.serverError(w, r, "setup wall", err)
+		return
+	}
+	for _, b := range wall.Books {
+		v.Wall = append(v.Wall, cardView(b))
+	}
 	if !v.Empty {
 		hours := int(math.Round(float64(ov.DurationMs) / 3_600_000))
 		v.Books = booksText(ov.Books) + ", all in one place"

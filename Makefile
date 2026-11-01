@@ -5,7 +5,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: app build generate test run run-dev check fmt vet clean visual visual-full visual-webkit test-media test-scan-real
+.PHONY: app build generate test run run-dev check fmt vet clean visual visual-full visual-webkit perf test-media test-scan-real
 
 generate:
 	$(GO) tool templ generate
@@ -55,6 +55,12 @@ visual:
 
 visual-full:
 	TENDSHELF_VISUAL_FULL=1 $(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
+
+# The Library page on 2,000 books at 390 px with the CPU throttled 4x: median time to interactive must
+# be 300 ms or less (one warm-up load, then five). Needs TENDSHELF_TEST_BROWSER. Numbers and the CPU
+# model are logged; the JSON goes to .local/tests/perf/<run>/library.json.
+perf:
+	TENDSHELF_TEST_PERF=1 $(GO) test -count=1 -v -run 'TestPerf' ./internal/web/
 
 # The same pages in WebKitGTK through WebKitWebDriver and MiniBrowser. MiniBrowser has no headless
 # mode: use `xvfb-run -a make visual-webkit` to keep the window off the desktop.

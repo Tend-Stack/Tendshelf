@@ -1,6 +1,10 @@
 package pages
 
-import "github.com/Tend-Stack/tendshelf/internal/web/components"
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
 
 // SetupServerView is step 2 of 3: naming the server.
 type SetupServerView struct {
@@ -74,12 +78,26 @@ type SetupDoneView struct {
 	Stats string
 	// Problems is "3 books need a look." or empty.
 	Problems string
+	// Wall holds the newest covers, drawn as a tilted wall above the headline (the board's
+	// OnboardDone). It is decoration only: hidden from assistive technology, no links.
+	Wall []components.CardView
 }
 
 // SetupDone closes the first run.
 templ SetupDone(v SetupDoneView) {
 	@components.SetupSteps(3, 3)
 	<div class="ts-done">
+		if len(v.Wall) > 0 {
+			<div class="ts-wall" aria-hidden="true">
+				<div class="ts-wall__grid">
+					for i, c := range v.Wall {
+						<span class={ "ts-wall__tile", "ts-wall__tile--" + strconv.Itoa(i%6) }>
+							@components.Cover(c, "fill")
+						</span>
+					}
+				</div>
+			</div>
+		}
 		<span class="ts-done__mark">@components.Icon("check", false)</span>
 		<h1 class="title-1 ts-frame__title">Your shelf is ready</h1>
 		if v.Empty {

@@ -3,12 +3,16 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/testutil/webdriver"
 )
 
@@ -97,6 +101,76 @@ func TestVisualWebKitKitchenSink(t *testing.T) {
 				t.Errorf("shell rects moved on swap:\nbefore %v\nafter  %v", res.Before, res.After)
 			}
 		})
+	}
+	t.Logf("screenshots in %s", out)
+}
+
+// TestVisualWebKitPages opens eight real pages in WebKitGTK in dark and light at 447 and 1440 px and
+// checks that each has no horizontal overflow, exactly one h1 and no touch target under 44 px
+// (43.5 allowed), then takes a screenshot. Same opt-in as the kitchen sink; `make visual-webkit`
+// runs both and should finish within two minutes.
+func TestVisualWebKitPages(t *testing.T) {
+	driver := os.Getenv("TENDSHELF_TEST_WEBKIT_DRIVER")
+	if driver == "" {
+		t.Skip("TENDSHELF_TEST_WEBKIT_DRIVER not set")
+	}
+	browser := os.Getenv("TENDSHELF_TEST_WEBKIT_BROWSER")
+	if browser == "" {
+		browser = defaultMiniBrowser
+	}
+	app := newTestApp(t)
+	app.owner(t)
+	browseSeed(t, app, 60)
+	all := share.Filter{SQL: "1=1"}
+	books, err := app.lib.ListBooks(context.Background(), library.Scope{Books: all, Libraries: all}, library.ListQuery{Limit: 1})
+	if err != nil || len(books.Books) == 0 {
+		t.Fatalf("seed: %v", err)
+	}
+	signed := themedServer(t, app.signedIn(t))
+	anon := themedServer(t, app.h)
+	out := visualDir(t, "webkit")
+	s := webdriver.Start(t, driver, browser)
+
+	pgs := []struct {
+		name, base, path, probe string
+	}{
+		{"home", signed, "/", browseProbeJS},
+		{"library", signed, "/libraries", browseProbeJS},
+		{"library-list", signed, "/libraries?view=list", browseProbeJS},
+		{"book", signed, "/books/" + books.Books[0].ID, browseProbeJS},
+		{"search", signed, "/search?q=lantern", browseProbeJS},
+		{"settings", signed, "/me/settings", browseProbeJS},
+		{"admin-libraries", signed, "/admin/libraries", browseProbeJS},
+		{"login", anon, "/login", authProbeJS},
+	}
+	for _, w := range []int{447, 1440} {
+		s.SetViewport(w, 900)
+		for _, theme := range []string{"dark", "light"} {
+			for _, pg := range pgs {
+				t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
+					sep := "?"
+					if strings.Contains(pg.path, "?") {
+						sep = "&"
+					}
+					s.Navigate(pg.base + pg.path + sep + "theme=" + theme)
+					var m browseProbe
+					s.Eval(pg.probe, &m)
+					if m.Over {
+						t.Errorf("horizontal overflow")
+					}
+					if m.H1 != 1 {
+						t.Errorf("%d h1 elements", m.H1)
+					}
+					if len(m.Small) > 0 {
+						t.Errorf("targets under 44 px: %v", m.Small)
+					}
+					if len(m.Unlabelled) > 0 {
+						t.Errorf("inputs without a label: %v", m.Unlabelled)
+					}
+					s.Screenshot(filepath.Join(out, fmt.Sprintf("pages-%s-%s-%d.png", pg.name, theme, w)))
+				})
+			}
+		}
 	}
 	t.Logf("screenshots in %s", out)
 }
