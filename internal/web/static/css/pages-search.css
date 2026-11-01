@@ -10,6 +10,7 @@
 .ts-sf__all { margin: var(--space-4) 0 0; }
 .ts-sf__series { font: 500 18px/24px var(--font-serif); }
 .ts-sf__dym { margin: 0; }
+.ts-sf__dym a { display: inline-flex; align-items: center; justify-content: center; min-height: var(--size-tap); min-width: var(--size-tap); color: var(--accent); text-underline-offset: 3px; }
 .ts-sf .ts-empty { max-width: 420px; }
 .ts-sf .ts-empty__title { overflow-wrap: anywhere; }
 .ts-sf .ts-empty .ts-sf__dym { color: var(--ink-muted); }

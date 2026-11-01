@@ -58,9 +58,7 @@ templ searchIcon() {
 templ didYouMean(v SearchView) {
 	if v.Suggestion != "" {
 		<p class="ts-sf__dym">
-			{ v.DidYouMeanPrefix }
-			<a href={ templ.SafeURL(v.SuggestionHref) }>{ v.Suggestion }</a>
-			{ v.DidYouMeanSuffix }
+			{ v.DidYouMeanPrefix }&nbsp;<a href={ templ.SafeURL(v.SuggestionHref) }>{ v.Suggestion }</a>{ v.DidYouMeanSuffix }
 		</p>
 	}
 	<a class="ts-btn ts-btn--primary" href="/search">{ v.ClearButtonLabel }</a>

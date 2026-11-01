@@ -3,7 +3,7 @@
    the tabs and panel the right one. Every link is 44 px (inline ones too). */
 
 .ts-book, .ts-person { display: flex; flex-direction: column; gap: var(--space-16); }
-.ts-book__back { align-self: flex-start; margin-left: calc(var(--space-12) * -1); color: var(--ink); }
+.ts-book__back { align-self: flex-start; justify-self: start; margin-left: calc(var(--space-12) * -1); color: var(--ink); }
 .ts-book__head { display: flex; flex-direction: column; align-items: center; gap: var(--space-16); text-align: center; }
 .ts-book__cover { width: min(70%, 280px); }
 .ts-book__cover .ts-cover { box-shadow: var(--shadow-cover); }
@@ -12,14 +12,14 @@
 .ts-book__title, .ts-person__name { overflow-wrap: anywhere; }
 .ts-book__sub, .ts-book__meta, .ts-person__count { color: var(--ink-muted); }
 .ts-book__people { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 0.3em; }
-.ts-book__people a, .ts-book__detail a, .ts-sf__dym a { display: inline-flex; align-items: center; justify-content: center;
+.ts-book__people a, .ts-book__detail a { display: inline-flex; align-items: center; justify-content: center;
   min-height: var(--size-tap); min-width: var(--size-tap); color: var(--accent); text-underline-offset: 3px; }
 .ts-book .ts-chip { min-height: var(--size-tap); text-decoration: none; }
 .ts-book .ts-banner { margin-top: var(--space-8); text-align: left; }
 
 .ts-book__panel { padding-top: var(--space-16); }
 .ts-book__desc { margin: 0; font-size: 17px; line-height: 26px; white-space: pre-line; }
-.ts-book__more summary { display: inline-flex; list-style: none; cursor: pointer; }
+.ts-book__more summary { margin-left: calc(var(--space-12) * -1); display: inline-flex; list-style: none; cursor: pointer; }
 .ts-book__more summary::-webkit-details-marker { display: none; }
 .ts-book__rail { margin-top: var(--space-24); }
 .ts-book__rail .section { margin: 0 0 var(--space-8); }
@@ -39,7 +39,7 @@ a.ts-book__seriesrow:hover { background: var(--raised-hover); }
 .ts-book__detail dt { font-size: 14px; line-height: 22px; color: var(--ink-muted); }
 .ts-book__detail dd { margin: 0; overflow-wrap: anywhere; line-height: 22px; }
 
-.ts-person__head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-8); }
+.ts-person__head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-8); margin-bottom: var(--space-16); }
 .ts-person__desc { max-width: 60ch; text-align: left; }
 .ts-person__more { margin: var(--space-16) 0 0; text-align: center; }
 .ts-series__by { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; }
@@ -47,7 +47,8 @@ a.ts-book__seriesrow:hover { background: var(--raised-hover); }
 @media (min-width: 768px) {
   .ts-book__head { flex-direction: row; align-items: flex-start; text-align: left; gap: var(--space-24); }
   .ts-book__cover { flex: 0 0 220px; width: 220px; }
-  .ts-book__info, .ts-book__people { align-items: flex-start; justify-content: flex-start; }
+  .ts-book__info { align-items: flex-start; }
+  .ts-book__people { justify-content: flex-start; }
   .ts-book__cards.ts-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 @media (min-width: 1280px) {
