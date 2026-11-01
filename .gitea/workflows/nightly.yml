@@ -52,7 +52,16 @@ jobs:
           curl -fsSL -o chrome.zip "https://storage.googleapis.com/chrome-for-testing-public/${CFT_VERSION}/linux64/chrome-linux64.zip"
           echo "${CFT_SHA256}  chrome.zip" | sha256sum -c -
           unzip -q chrome.zip
-          xargs -a chrome-linux64/deb.deps apt-get install -y --no-install-recommends
+          # deb.deps lines look like "libnss3 (>= 2:3.35)" or "libasound2 | libasound2t64": keep the
+          # first name, and on Ubuntu 24.04 use its t64 rename when the old name has no candidate.
+          pkgs=""
+          for p in $(sed -e 's/ *|.*//' -e 's/ *(.*//' chrome-linux64/deb.deps); do
+            if apt-cache policy "$p" | grep -q 'Candidate: [0-9]'; then pkgs="$pkgs $p"
+            elif apt-cache policy "${p}t64" | grep -q 'Candidate: [0-9]'; then pkgs="$pkgs ${p}t64"
+            else echo "no package for $p"; exit 1
+            fi
+          done
+          apt-get install -y --no-install-recommends $pkgs
           echo "TENDSHELF_TEST_BROWSER=$RUNNER_TEMP/chrome-linux64/chrome" >> "$GITHUB_ENV"
       - name: Record toolchain and candidate identity
         run: |
