@@ -90,6 +90,7 @@ type AudioFile struct {
 	DurationMs, OffsetMs    int64
 	Encrypted               bool
 	ProbeJSON               []byte
+	ProbeError              string // media error code when the file could not be read; "" = none
 	MissingSince, UpdatedAt int64
 }
 
