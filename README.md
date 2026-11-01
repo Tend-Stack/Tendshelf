@@ -30,13 +30,30 @@ route to the same goal:
 
 ## Running the skeleton
 
-Requires Go 1.27.
+Requires Go 1.27 (newest stable; see [decision 0003](docs/decisions/0003-newest-versions.md)).
 
 ```sh
 make build   # bin/tendshelf
 make test
 make run     # http://127.0.0.1:8095 and /healthz
 ```
+
+## Developer setup (Ubuntu 26.04)
+
+The server needs only Go, plus `ffmpeg`/`ffprobe` at run time. The extra packages below are for
+checks, the visual capture helper and the later desktop build. There is no Node in this project.
+
+```sh
+sudo apt install -y build-essential pkg-config sqlite3 ffmpeg woff2 libgtk-3-dev libwebkit2gtk-4.1-dev
+go install github.com/a-h/templ/cmd/templ@v0.3.1100      # also pinned in go.mod as a tool
+go install golang.org/x/tools/gopls@latest
+go install honnef.co/go/tools/cmd/staticcheck@latest
+go install golang.org/x/vuln/cmd/govulncheck@latest
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0 # desktop (P5); then: wails3 doctor
+```
+
+Add `$HOME/go/bin` to `PATH`. `gcc` is needed only for `go test -race`; the shipped binary builds
+with `CGO_ENABLED=0`.
 
 ## Documents
 
