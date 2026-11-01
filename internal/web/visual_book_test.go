@@ -93,6 +93,8 @@ type bookProbeResult struct {
 // sepia and contrast at 390 and 1440. It fails on horizontal overflow, a target under 44 px, an
 // unlabelled field, a page without one h1, a skipped heading level or an inline style. The board
 // PNGs are copied beside the captures.
+// The theme and width combinations come from visualMatrix (fast by default, full with make visual-full);
+// the sentence above describes the full run.
 func TestVisualBookPages(t *testing.T) {
 	b := chromium(t)
 	out := visualDir(t, "chromium")
@@ -121,57 +123,52 @@ func TestVisualBookPages(t *testing.T) {
 	main4 := []page{{"book-about", "/books/" + bookID}, {"author", "/authors/" + authorID}, {"series", "/series/" + seriesID}, {"search", "/search?q=harbour"}}
 	extra := []page{{"book-chapters", "/books/" + bookID + "/chapters"}, {"book-details", "/books/" + bookID + "/details"}, {"narrator", "/narrators/" + narratorID}, {"search-none", "/search?q=lighthuose"}}
 	type job struct {
-		pg     page
-		theme  string
-		widths []int
+		pg    page
+		theme string
+		w     int
 	}
 	var jobs []job
-	for _, p := range main4 {
-		for _, th := range []string{"dark", "light"} {
-			jobs = append(jobs, job{p, th, []int{390, 768, 1024, 1440}})
+	for i, group := range [][]page{main4, extra} {
+		for _, p := range group {
+			for _, sh := range visualMatrix(i == 0) {
+				jobs = append(jobs, job{p, sh.Theme, sh.Width})
+			}
 		}
-		for _, th := range []string{"sepia", "contrast"} {
-			jobs = append(jobs, job{p, th, []int{390, 1440}})
-		}
-	}
-	for _, p := range extra {
-		jobs = append(jobs, job{p, "dark", []int{390, 1440}})
 	}
 	for _, j := range jobs {
-		for _, w := range j.widths {
-			t.Run(fmt.Sprintf("%s-%s-%d", j.pg.name, j.theme, w), func(t *testing.T) {
-				tab := b.NewTab(w, 900, w == 390, false)
-				sep := "?"
-				if strings.Contains(j.pg.path, "?") {
-					sep = "&"
-				}
-				tab.Navigate(base + j.pg.path + sep + "theme=" + j.theme)
-				var m bookProbeResult
-				tab.Eval(bookProbeJS, &m)
-				switch {
-				case m.Over:
-					t.Errorf("horizontal overflow")
-				case m.Theme != j.theme:
-					t.Errorf("data-theme = %q, want %q", m.Theme, j.theme)
-				}
-				if len(m.Small) > 0 {
-					t.Errorf("targets under 44 px: %v", m.Small)
-				}
-				if len(m.Unlabelled) > 0 {
-					t.Errorf("inputs without a label: %v", m.Unlabelled)
-				}
-				if m.H1 != 1 {
-					t.Errorf("%d h1 elements", m.H1)
-				}
-				if m.Skip {
-					t.Errorf("a heading level is skipped")
-				}
-				if m.Styled > 0 {
-					t.Errorf("%d elements with a style attribute", m.Styled)
-				}
-				tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("book-%s-%s-%d.png", j.pg.name, j.theme, w)))
-			})
-		}
+		w := j.w
+		t.Run(fmt.Sprintf("%s-%s-%d", j.pg.name, j.theme, w), func(t *testing.T) {
+			tab := b.NewTab(w, 900, w == 390, false)
+			sep := "?"
+			if strings.Contains(j.pg.path, "?") {
+				sep = "&"
+			}
+			tab.Navigate(base + j.pg.path + sep + "theme=" + j.theme)
+			var m bookProbeResult
+			tab.Eval(bookProbeJS, &m)
+			switch {
+			case m.Over:
+				t.Errorf("horizontal overflow")
+			case m.Theme != j.theme:
+				t.Errorf("data-theme = %q, want %q", m.Theme, j.theme)
+			}
+			if len(m.Small) > 0 {
+				t.Errorf("targets under 44 px: %v", m.Small)
+			}
+			if len(m.Unlabelled) > 0 {
+				t.Errorf("inputs without a label: %v", m.Unlabelled)
+			}
+			if m.H1 != 1 {
+				t.Errorf("%d h1 elements", m.H1)
+			}
+			if m.Skip {
+				t.Errorf("a heading level is skipped")
+			}
+			if m.Styled > 0 {
+				t.Errorf("%d elements with a style attribute", m.Styled)
+			}
+			tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("book-%s-%s-%d.png", j.pg.name, j.theme, w)))
+		})
 	}
 }
 

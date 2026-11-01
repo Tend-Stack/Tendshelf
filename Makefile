@@ -5,7 +5,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: app build generate test run run-dev check fmt vet clean visual visual-webkit test-media test-scan-real
+.PHONY: app build generate test run run-dev check fmt vet clean visual visual-full visual-webkit test-media test-scan-real
 
 generate:
 	$(GO) tool templ generate
@@ -45,8 +45,16 @@ check:
 
 # Screenshots and motion checks in Chromium through its remote-debugging pipe (no driver, no module).
 # Needs TENDSHELF_TEST_BROWSER=/path/to/chrome. Output: .local/tests/visual/<run>/chromium/.
+# VISUAL_RUN narrows the run to one test. `make visual` uses the fast matrix (visualMatrix in
+# internal/web/visual_matrix_test.go); `make visual-full` captures every theme at every width and is
+# what a page package runs before merge.
+VISUAL_RUN ?= Visual
+
 visual:
-	$(GO) test -count=1 -tags dev -run 'Visual' ./internal/web/
+	$(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
+
+visual-full:
+	TENDSHELF_VISUAL_FULL=1 $(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
 
 # The same pages in WebKitGTK through WebKitWebDriver and MiniBrowser. MiniBrowser has no headless
 # mode: use `xvfb-run -a make visual-webkit` to keep the window off the desktop.

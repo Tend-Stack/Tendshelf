@@ -137,6 +137,8 @@ type browseProbe struct {
 // horizontal overflow, small touch targets, an unlabelled input, a page without exactly one h1, or a
 // tint that is missing outside the contrast theme or present inside it. The board PNGs are copied
 // beside the captures.
+// The theme and width combinations come from visualMatrix (fast by default, full with make visual-full);
+// the sentence above describes the full run.
 func TestVisualBrowsePages(t *testing.T) {
 	b := chromium(t)
 	out := visualDir(t, "chromium")
@@ -185,43 +187,42 @@ func TestVisualBrowsePages(t *testing.T) {
 		{"home-scanning", scanningBase, "/"},
 	}
 	for _, pg := range pgs {
-		for _, theme := range themes {
-			for _, w := range []int{390, 768, 1024, 1440} {
-				t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
-					tab := b.NewTab(w, 900, w == 390, false)
-					sep := "?"
-					if strings.Contains(pg.path, "?") {
-						sep = "&"
+		for _, sh := range visualMatrix(pg.name == "home" || pg.name == "library-grid") {
+			theme, w := sh.Theme, sh.Width
+			t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
+				tab := b.NewTab(w, 900, w == 390, false)
+				sep := "?"
+				if strings.Contains(pg.path, "?") {
+					sep = "&"
+				}
+				tab.Navigate(pg.base + pg.path + sep + "theme=" + theme)
+				var m browseProbe
+				tab.Eval(browseProbeJS, &m)
+				if m.Over {
+					t.Errorf("horizontal overflow")
+				}
+				if m.Theme != theme {
+					t.Errorf("data-theme = %q, want %q", m.Theme, theme)
+				}
+				if len(m.Small) > 0 {
+					t.Errorf("targets under 44 px: %v", m.Small)
+				}
+				if len(m.Unlabelled) > 0 {
+					t.Errorf("inputs without a label: %v", m.Unlabelled)
+				}
+				if m.H1 != 1 {
+					t.Errorf("%d h1 elements", m.H1)
+				}
+				if m.Tint != nil {
+					if theme == "contrast" && (m.Tint.Applied || !m.Tint.Tinted) {
+						t.Errorf("contrast theme: tint applied=%v tinted=%v, want no tint on a tinted element", m.Tint.Applied, m.Tint.Tinted)
 					}
-					tab.Navigate(pg.base + pg.path + sep + "theme=" + theme)
-					var m browseProbe
-					tab.Eval(browseProbeJS, &m)
-					if m.Over {
-						t.Errorf("horizontal overflow")
+					if theme != "contrast" && !m.Tint.Applied {
+						t.Errorf("%s theme: the spine tint was not applied", theme)
 					}
-					if m.Theme != theme {
-						t.Errorf("data-theme = %q, want %q", m.Theme, theme)
-					}
-					if len(m.Small) > 0 {
-						t.Errorf("targets under 44 px: %v", m.Small)
-					}
-					if len(m.Unlabelled) > 0 {
-						t.Errorf("inputs without a label: %v", m.Unlabelled)
-					}
-					if m.H1 != 1 {
-						t.Errorf("%d h1 elements", m.H1)
-					}
-					if m.Tint != nil {
-						if theme == "contrast" && (m.Tint.Applied || !m.Tint.Tinted) {
-							t.Errorf("contrast theme: tint applied=%v tinted=%v, want no tint on a tinted element", m.Tint.Applied, m.Tint.Tinted)
-						}
-						if theme != "contrast" && !m.Tint.Applied {
-							t.Errorf("%s theme: the spine tint was not applied", theme)
-						}
-					}
-					tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("browse-%s-%s-%d.png", pg.name, theme, w)))
-				})
-			}
+				}
+				tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("browse-%s-%s-%d.png", pg.name, theme, w)))
+			})
 		}
 	}
 	t.Logf("screenshots in %s", out)

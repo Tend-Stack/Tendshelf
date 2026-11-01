@@ -60,35 +60,34 @@ func TestVisualShell(t *testing.T) {
 	profile := t.TempDir() // removed by the test framework
 	probe := regexp.MustCompile(`data-probe="([^"]*)"`)
 
-	for _, theme := range []string{"dark", "light", "sepia", "contrast"} {
-		for _, w := range []int{390, 768, 1024, 1440} {
-			t.Run(fmt.Sprintf("%s-%d", theme, w), func(t *testing.T) {
-				url := fmt.Sprintf("%s/?theme=%s", srv.URL, theme)
-				base := []string{"--headless", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
-					"--user-data-dir=" + profile, fmt.Sprintf("--window-size=%d,900", w)}
-				shot := filepath.Join(out, fmt.Sprintf("shell-%s-%d.png", theme, w))
-				if b, err := exec.Command(browser, append(base, "--screenshot="+shot, url)...).CombinedOutput(); err != nil {
-					t.Fatalf("screenshot: %v\n%s", err, b)
-				}
-				dom, err := exec.Command(browser, append(base, "--dump-dom", "--virtual-time-budget=3000", url)...).Output()
-				if err != nil {
-					t.Fatalf("dump-dom: %v", err)
-				}
-				m := probe.FindSubmatch(dom)
-				if m == nil {
-					t.Fatal("probe result missing from the DOM")
-				}
-				var res struct {
-					OverflowX bool `json:"overflowX"`
-				}
-				if err := json.Unmarshal([]byte(strings.ReplaceAll(string(m[1]), "&quot;", `"`)), &res); err != nil {
-					t.Fatalf("probe %q: %v", m[1], err)
-				}
-				if res.OverflowX {
-					t.Fatalf("horizontal overflow at %d px in theme %s", w, theme)
-				}
-			})
-		}
+	for _, sh := range visualMatrix(true) {
+		theme, w := sh.Theme, sh.Width
+		t.Run(fmt.Sprintf("%s-%d", theme, w), func(t *testing.T) {
+			url := fmt.Sprintf("%s/?theme=%s", srv.URL, theme)
+			base := []string{"--headless", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
+				"--user-data-dir=" + profile, fmt.Sprintf("--window-size=%d,900", w)}
+			shot := filepath.Join(out, fmt.Sprintf("shell-%s-%d.png", theme, w))
+			if b, err := exec.Command(browser, append(base, "--screenshot="+shot, url)...).CombinedOutput(); err != nil {
+				t.Fatalf("screenshot: %v\n%s", err, b)
+			}
+			dom, err := exec.Command(browser, append(base, "--dump-dom", "--virtual-time-budget=3000", url)...).Output()
+			if err != nil {
+				t.Fatalf("dump-dom: %v", err)
+			}
+			m := probe.FindSubmatch(dom)
+			if m == nil {
+				t.Fatal("probe result missing from the DOM")
+			}
+			var res struct {
+				OverflowX bool `json:"overflowX"`
+			}
+			if err := json.Unmarshal([]byte(strings.ReplaceAll(string(m[1]), "&quot;", `"`)), &res); err != nil {
+				t.Fatalf("probe %q: %v", m[1], err)
+			}
+			if res.OverflowX {
+				t.Fatalf("horizontal overflow at %d px in theme %s", w, theme)
+			}
+		})
 	}
 	t.Logf("screenshots in %s", out)
 }

@@ -42,6 +42,8 @@ const authProbeJS = `(() => {
 // TestVisualAuthPages captures /setup and /login in every theme at four widths and fails on
 // horizontal overflow, small touch targets or an unlabelled input. The 390 dark /setup capture is
 // copied beside the design board for a side-by-side look.
+// The theme and width combinations come from visualMatrix (fast by default, full with make visual-full);
+// the sentence above describes the full run.
 func TestVisualAuthPages(t *testing.T) {
 	b := chromium(t)
 	out := visualDir(t, "chromium")
@@ -66,41 +68,40 @@ func TestVisualAuthPages(t *testing.T) {
 		{"login", loginBase, "/login"},
 	}
 	for _, pg := range pages {
-		for _, theme := range themes {
-			for _, w := range []int{390, 768, 1024, 1440} {
-				t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
-					tab := b.NewTab(w, 900, w == 390, false)
-					sep := "?"
-					if strings.Contains(pg.path, "?") {
-						sep = "&"
-					}
-					tab.Navigate(pg.base + pg.path + sep + "theme=" + theme)
-					var m struct {
-						Over       bool     `json:"over"`
-						Theme      string   `json:"theme"`
-						Small      []string `json:"small"`
-						Unlabelled []string `json:"unlabelled"`
-						H1         int      `json:"h1"`
-					}
-					tab.Eval(authProbeJS, &m)
-					if m.Over {
-						t.Errorf("horizontal overflow")
-					}
-					if m.Theme != theme {
-						t.Errorf("data-theme = %q, want %q", m.Theme, theme)
-					}
-					if len(m.Small) > 0 {
-						t.Errorf("targets under 44 px: %v", m.Small)
-					}
-					if len(m.Unlabelled) > 0 {
-						t.Errorf("inputs without a label: %v", m.Unlabelled)
-					}
-					if m.H1 != 1 {
-						t.Errorf("%d h1 elements", m.H1)
-					}
-					tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("auth-%s-%s-%d.png", pg.name, theme, w)))
-				})
-			}
+		for _, sh := range visualMatrix(pg.name == "setup") {
+			theme, w := sh.Theme, sh.Width
+			t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
+				tab := b.NewTab(w, 900, w == 390, false)
+				sep := "?"
+				if strings.Contains(pg.path, "?") {
+					sep = "&"
+				}
+				tab.Navigate(pg.base + pg.path + sep + "theme=" + theme)
+				var m struct {
+					Over       bool     `json:"over"`
+					Theme      string   `json:"theme"`
+					Small      []string `json:"small"`
+					Unlabelled []string `json:"unlabelled"`
+					H1         int      `json:"h1"`
+				}
+				tab.Eval(authProbeJS, &m)
+				if m.Over {
+					t.Errorf("horizontal overflow")
+				}
+				if m.Theme != theme {
+					t.Errorf("data-theme = %q, want %q", m.Theme, theme)
+				}
+				if len(m.Small) > 0 {
+					t.Errorf("targets under 44 px: %v", m.Small)
+				}
+				if len(m.Unlabelled) > 0 {
+					t.Errorf("inputs without a label: %v", m.Unlabelled)
+				}
+				if m.H1 != 1 {
+					t.Errorf("%d h1 elements", m.H1)
+				}
+				tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("auth-%s-%s-%d.png", pg.name, theme, w)))
+			})
 		}
 	}
 	t.Run("setup-errors-dark-390", func(t *testing.T) {

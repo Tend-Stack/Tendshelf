@@ -28,6 +28,8 @@ const fbProbeJS = `(() => {
 
 // TestVisualFolderBrowser captures the folder browser in the Add a folder sheet and inline on setup
 // step 3, in every theme at four widths, and fails on overflow or a touch target under 44 px.
+// The theme and width combinations come from visualMatrix (fast by default, full with make visual-full);
+// the sentence above describes the full run.
 func TestVisualFolderBrowser(t *testing.T) {
 	b := chromium(t)
 	out := visualDir(t, "chromium")
@@ -63,48 +65,47 @@ func TestVisualFolderBrowser(t *testing.T) {
 		{"field", setupFolderURL, false},
 	}
 	for _, pg := range pgs {
-		for _, theme := range themes {
-			for _, w := range []int{390, 768, 1024, 1440} {
-				t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
-					tab := b.NewTab(w, 900, w == 390, false)
-					sep := "?"
-					if strings.Contains(pg.path, "?") {
-						sep = "&"
-					}
-					tab.Navigate(base + pg.path + sep + "theme=" + theme)
-					var m struct {
-						Over        bool     `json:"over"`
-						Theme       string   `json:"theme"`
-						Small       []string `json:"small"`
-						Rows        int      `json:"rows"`
-						Sheet       bool     `json:"sheet"`
-						SheetBottom int      `json:"sheetBottom"`
-						H           int      `json:"h"`
-						Panel       bool     `json:"panel"`
-					}
-					time.Sleep(450 * time.Millisecond) // the sheet slides up in 200 ms
-					tab.Eval(fbProbeJS, &m)
-					if m.Over {
-						t.Errorf("horizontal overflow")
-					}
-					if m.Theme != theme {
-						t.Errorf("data-theme = %q, want %q", m.Theme, theme)
-					}
-					if len(m.Small) > 0 {
-						t.Errorf("targets under 44 px: %v", m.Small)
-					}
-					if pg.name != "field" && m.Rows == 0 {
-						t.Errorf("no folder rows")
-					}
-					if pg.sheet && (!m.Sheet || m.SheetBottom > m.H) {
-						t.Errorf("sheet missing or taller than the window: %+v", m)
-					}
-					if pg.name == "setup" && !m.Panel {
-						t.Errorf("no inline panel")
-					}
-					tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("folders-%s-%s-%d.png", pg.name, theme, w)))
-				})
-			}
+		for _, sh := range visualMatrix(pg.name == "sheet") {
+			theme, w := sh.Theme, sh.Width
+			t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
+				tab := b.NewTab(w, 900, w == 390, false)
+				sep := "?"
+				if strings.Contains(pg.path, "?") {
+					sep = "&"
+				}
+				tab.Navigate(base + pg.path + sep + "theme=" + theme)
+				var m struct {
+					Over        bool     `json:"over"`
+					Theme       string   `json:"theme"`
+					Small       []string `json:"small"`
+					Rows        int      `json:"rows"`
+					Sheet       bool     `json:"sheet"`
+					SheetBottom int      `json:"sheetBottom"`
+					H           int      `json:"h"`
+					Panel       bool     `json:"panel"`
+				}
+				time.Sleep(450 * time.Millisecond) // the sheet slides up in 200 ms
+				tab.Eval(fbProbeJS, &m)
+				if m.Over {
+					t.Errorf("horizontal overflow")
+				}
+				if m.Theme != theme {
+					t.Errorf("data-theme = %q, want %q", m.Theme, theme)
+				}
+				if len(m.Small) > 0 {
+					t.Errorf("targets under 44 px: %v", m.Small)
+				}
+				if pg.name != "field" && m.Rows == 0 {
+					t.Errorf("no folder rows")
+				}
+				if pg.sheet && (!m.Sheet || m.SheetBottom > m.H) {
+					t.Errorf("sheet missing or taller than the window: %+v", m)
+				}
+				if pg.name == "setup" && !m.Panel {
+					t.Errorf("no inline panel")
+				}
+				tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("folders-%s-%s-%d.png", pg.name, theme, w)))
+			})
 		}
 	}
 	t.Logf("screenshots in %s", out)

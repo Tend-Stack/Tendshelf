@@ -19,6 +19,8 @@ import (
 // horizontal overflow, a target under 44 px, an unlabelled input or a page without exactly one h1.
 // One more capture checks that the person's saved theme, not the cookie, sets data-theme. The
 // ProfilePhone and SettingsPhone boards are copied beside the captures for a side-by-side look.
+// The theme and width combinations come from visualMatrix (fast by default, full with make visual-full);
+// the sentence above describes the full run.
 func TestVisualMePages(t *testing.T) {
 	b := chromium(t)
 	out := visualDir(t, "chromium")
@@ -49,14 +51,11 @@ func TestVisualMePages(t *testing.T) {
 		w                 int
 	}
 	var caps []capture
-	for _, theme := range []string{"dark", "light"} {
-		for _, w := range []int{390, 768, 1024, 1440} {
-			caps = append(caps, capture{"profile", "/me", theme, w}, capture{"settings", "/me/settings", theme, w})
-		}
+	for _, sh := range visualMatrix(true) {
+		caps = append(caps, capture{"settings", "/me/settings", sh.Theme, sh.Width})
 	}
-	for _, w := range []int{390, 1440} {
-		caps = append(caps, capture{"password", "/me/password", "dark", w},
-			capture{"settings", "/me/settings", "sepia", w}, capture{"settings", "/me/settings", "contrast", w})
+	for _, sh := range visualMatrix(false) {
+		caps = append(caps, capture{"profile", "/me", sh.Theme, sh.Width}, capture{"password", "/me/password", sh.Theme, sh.Width})
 	}
 	for _, c := range caps {
 		t.Run(fmt.Sprintf("%s-%s-%d", c.name, c.theme, c.w), func(t *testing.T) {

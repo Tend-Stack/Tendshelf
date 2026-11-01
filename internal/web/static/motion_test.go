@@ -77,19 +77,35 @@ func rules(css string) [][2]string {
 	return out
 }
 
+// TestCSSBudget bounds what a page costs. A page loads the core (tokens, fonts, bundle, utilities,
+// motion) plus its own page files, so a core limit and a per-file limit on each pages-*.css bound
+// every page without a total that grows with each new page.
 func TestCSSBudget(t *testing.T) {
-	var total int
 	entries, err := os.ReadDir("css")
 	if err != nil {
 		t.Fatal(err)
 	}
+	core := map[string]bool{"tokens.css": true, "fonts.css": true, "bundle.css": true, "utilities.css": true, "motion.css": true}
+	var coreTotal int
 	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".css") {
-			total += len(readCSS(t, e.Name()))
+		name := e.Name()
+		if !strings.HasSuffix(name, ".css") {
+			continue
+		}
+		n := len(readCSS(t, name))
+		switch {
+		case core[name]:
+			coreTotal += n
+		case strings.HasPrefix(name, "pages-"):
+			if n > 8*1024 {
+				t.Errorf("%s %d bytes, budget 8 KB", name, n)
+			}
+		default:
+			t.Errorf("%s is neither core nor a pages-*.css file; add it to the budget", name)
 		}
 	}
-	if total > 96*1024 { // 80 KB until P1b-5 (Home, Library) and P1b-fb (folder browser) added their page styles
-		t.Errorf("CSS total %d bytes, budget 96 KB", total)
+	if coreTotal > 72*1024 {
+		t.Errorf("core CSS %d bytes, budget 72 KB", coreTotal)
 	}
 	if n := len(readCSS(t, "utilities.css")); n > 6*1024 {
 		t.Errorf("utilities.css %d bytes, budget 6 KB", n)
