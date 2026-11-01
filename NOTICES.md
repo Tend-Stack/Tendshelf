@@ -35,7 +35,16 @@ Expected first entries (fill in when the port lands; do not pre-credit code that
 
 | Module | Licence | Why |
 | --- | --- | --- |
-| (none yet; standard library only) | | |
+| modernc.org/sqlite v1.61.1 | BSD-3-Clause | Pure-Go SQLite driver (`internal/db` only). The SQLite C source it carries is public domain. |
+| modernc.org/libc v1.79.1 | BSD-3-Clause | C runtime for the transpiled SQLite (indirect). |
+| modernc.org/mathutil v1.7.1 | BSD-3-Clause | Helper of modernc.org/libc (indirect). |
+| modernc.org/memory v1.12.1 | BSD-3-Clause | Allocator of modernc.org/libc (indirect). |
+| github.com/google/uuid v1.6.0 | BSD-3-Clause | Dependency of modernc.org/sqlite (indirect). |
+| github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec | BSD-3-Clause | Dependency of modernc.org/libc (indirect). |
+| golang.org/x/sys v0.49.0 | BSD-3-Clause | Operating-system calls for modernc.org/sqlite and libc (indirect). |
+| github.com/dustin/go-humanize v1.1.0 | MIT | Dependency of modernc.org/sqlite (indirect). |
+| github.com/mattn/go-isatty v0.0.24 | MIT | Dependency of modernc.org/sqlite (indirect). |
+| github.com/ncruces/go-strftime v1.1.0 | MIT | Dependency of modernc.org/sqlite (indirect). |
 
 ## Third-party services
 

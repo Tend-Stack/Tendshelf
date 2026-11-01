@@ -1,22 +1,12 @@
 // Package db owns Tendshelf's SQLite database: opening, schema checks,
 // migrations, pre-migration backups and ID generation.
 //
-// P0 placeholder: no SQLite driver is linked yet. The schema-check rules are
-// implemented here as pure functions so the refusal behaviour is fixed and
-// tested before the driver arrives.
-//
-// TODO(P0, needs operator approval of the download): add modernc.org/sqlite
-// (pure Go; see docs/architecture.md, "Dependencies awaiting approval") and
-// implement Open:
-//  1. If the file exists, open it read-only (mode=ro, never immutable, so WAL
-//     is read normally), read PRAGMA application_id and user_version, and call
-//     CheckHeader. On error, close and return without writing.
-//  2. Open writable with journal_mode=WAL, foreign_keys=ON, busy_timeout=5000,
-//     synchronous=NORMAL.
-//  3. If migrations are pending on an existing database, VACUUM INTO
-//     <data>/backups/tendshelf-v<old>-<UTC>.db, verify it opens, keep three.
-//  4. Apply each embedded migrations/NNNN_name.sql in its own transaction that
-//     also sets user_version (and application_id on the first one).
+// Open follows the rules in AGENTS.md ("Database and migrations"): the header
+// is checked before any write (a refused file stays byte-identical), the
+// database is opened in WAL mode through one single-connection writer pool and
+// a separate query-only reader pool, an existing database is backed up with
+// VACUUM INTO before it is migrated, and each embedded migration commits
+// together with its user_version. Only this package imports the SQLite driver.
 package db
 
 import (
@@ -28,8 +18,8 @@ import (
 const ApplicationID int32 = 0x54534846
 
 // SchemaVersion is the newest schema this binary understands. It equals the
-// number of the last embedded migration (0 until migration 0001 lands).
-const SchemaVersion = 0
+// number of the last embedded migration.
+const SchemaVersion = 1
 
 var (
 	// ErrSchemaTooNew means the database was written by a newer Tendshelf.
@@ -75,12 +65,4 @@ func CheckHeader(h Header, supported int) error {
 		return &SchemaError{Found: h.UserVersion, Supported: supported, Err: ErrNotTendshelf}
 	}
 	return nil
-}
-
-// Store is the database handle the services will receive. Placeholder until
-// the driver lands; it will grow transaction helpers, not query methods (the
-// queries live in the owning packages).
-type Store interface {
-	SchemaVersion() int
-	Close() error
 }
