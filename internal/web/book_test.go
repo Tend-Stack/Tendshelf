@@ -183,6 +183,8 @@ func TestBookPageAccess(t *testing.T) {
 	}
 }
 
+// TestBookPageNoPlayControls: a book with no playable file draws no play button (no dead control).
+// The only button left is "Mark as finished"; downloads and sharing are not on the page yet.
 func TestBookPageNoPlayControls(t *testing.T) {
 	a, f := bookApp(t)
 	b := librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Quiet", Authors: []string{"Ann Author"}, Narrators: []string{"Nan Narrator"}, Series: "Saga", Sequence: "1", Description: "d"})
@@ -190,10 +192,13 @@ func TestBookPageNoPlayControls(t *testing.T) {
 	bookSeedChapters(t, a, b.ID, 3)
 	for _, tab := range []string{"", "/chapters", "/details"} {
 		main := bookMain(browseGet(a, "/books/"+b.ID+tab, false, nil).Body.String())
-		for _, not := range []string{"Resume", "Start listening", "Listen again", "Download", "Share", "<button", "disabled"} {
+		for _, not := range []string{"Resume", "Start listening", "Listen again", "Download", "Share", "disabled", "data-ts-play="} {
 			if strings.Contains(main, not) {
 				t.Errorf("%q on the book page contains %q", tab, not)
 			}
+		}
+		if n := strings.Count(main, "<button"); n != 1 || !strings.Contains(main, "Mark as finished") {
+			t.Errorf("%q on the book page has %d buttons, want only Mark as finished", tab, n)
 		}
 	}
 }

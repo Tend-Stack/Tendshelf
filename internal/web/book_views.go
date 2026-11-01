@@ -3,12 +3,14 @@ package web
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
@@ -196,7 +198,7 @@ func bookAbout(v *pages.BookView, d library.BookDetail, series []library.BookCar
 }
 
 // bookChapters fills the Chapters panel: the first rows, or all of them when all is true.
-func bookChapters(v *pages.BookView, d library.BookDetail, all bool) {
+func bookChapters(v *pages.BookView, d library.BookDetail, all bool, play *chapterPlay) {
 	v.NoChaptersText = bookNoChapters
 	rows := d.Chapters
 	if !all && len(rows) > bookChaptersHead {
@@ -204,13 +206,51 @@ func bookChapters(v *pages.BookView, d library.BookDetail, all bool) {
 		v.Chapters.ShowAllHref = bookTabHref(d.Book.ID, "chapters") + "?all=1"
 		v.Chapters.ShowAllLabel = fmt.Sprintf(bookShowAllChapters, len(d.Chapters))
 	}
+	if play != nil {
+		v.Chapters.BookID = d.Book.ID
+	}
+	current := currentChapterIdx(d.Chapters, play)
 	for i, c := range rows {
 		title := strings.TrimSpace(c.Title)
 		if title == "" {
 			title = fmt.Sprintf(bookChapterN, i+1)
 		}
-		v.Chapters.Rows = append(v.Chapters.Rows, components.ChapterRow{Num: i + 1, Title: title, Dur: clockText(c.EndMs - c.StartMs)})
+		row := components.ChapterRow{Num: i + 1, Title: title, Dur: clockText(c.EndMs - c.StartMs), PlayAtMs: -1}
+		if play != nil {
+			if id, off, ok := playTarget(play.book, play.files, c.StartMs); ok {
+				row.PlayAtMs = c.StartMs
+				row.Href = "/stream/" + id + "#t=" + strconv.FormatFloat(float64(off)/1000, 'f', 3, 64)
+				row.Current = i == current
+				if play.p != nil && (play.p.Finished() || c.EndMs <= play.p.PositionMs) {
+					row.Played = true
+					row.PlayedName = fmt.Sprintf(chapterPlayed, title)
+				}
+			}
+		}
+		v.Chapters.Rows = append(v.Chapters.Rows, row)
 	}
+}
+
+// chapterPlay is what the chapter rows need to become links: the book, its files and the person's
+// progress (nil when there is none). A nil *chapterPlay leaves the rows plain text.
+type chapterPlay struct {
+	book  library.Book
+	files []library.AudioFile
+	p     *progress.Progress
+}
+
+// currentChapterIdx is the index of the chapter at the stored place of an unfinished book, or -1.
+func currentChapterIdx(chs []library.Chapter, play *chapterPlay) int {
+	if play == nil || play.p == nil || play.p.Finished() || play.p.PositionMs <= 0 {
+		return -1
+	}
+	cur := -1
+	for i, c := range chs {
+		if c.StartMs <= play.p.PositionMs {
+			cur = i
+		}
+	}
+	return cur
 }
 
 // bookDetailsView lists the Details rows. Empty values are left out. The folder on disk shows only

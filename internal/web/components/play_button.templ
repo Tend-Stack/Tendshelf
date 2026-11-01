@@ -1,0 +1,54 @@
+package components
+
+import "strconv"
+
+// PlayButtonView is one play control. It is a link to the file (/stream/{file}#t=) so it works
+// without JavaScript; player.js reads the data-ts-* attributes and starts sound in the click.
+// FileStartMs is where the file starts on the book's timeline and StartMs the place to play from on
+// that timeline. FromStart marks "Listen again". Round draws the icon-only variant of a series row,
+// named by AriaLabel.
+type PlayButtonView struct {
+	BookID, FileID, Mime, Href, Label, AriaLabel string
+	FileStartMs, StartMs                         int64
+	MayNeedCompat, FromStart                     bool
+	Round                                        bool
+}
+
+func playBtnClass(v PlayButtonView) string {
+	if v.Round {
+		return "ts-iconbtn ts-iconbtn--tonal"
+	}
+	return "ts-btn ts-btn--primary ts-btn--lg"
+}
+
+func playBtnCompat(v PlayButtonView) string {
+	if v.MayNeedCompat {
+		return "1"
+	}
+	return "0"
+}
+
+// PlayButton is the one control that plays or resumes a book on a screen.
+templ PlayButton(v PlayButtonView) {
+	<a
+		class={ playBtnClass(v) }
+		href={ templ.SafeURL(v.Href) }
+		data-ts-play={ v.BookID }
+		data-ts-file={ v.FileID }
+		data-ts-file-start-ms={ strconv.FormatInt(v.FileStartMs, 10) }
+		data-ts-start-ms={ strconv.FormatInt(v.StartMs, 10) }
+		data-ts-mime={ v.Mime }
+		data-ts-may-need-compat={ playBtnCompat(v) }
+		if v.FromStart {
+			data-ts-from-start="1"
+		}
+		if v.AriaLabel != "" {
+			aria-label={ v.AriaLabel }
+		}
+	>
+		@Icon("play", true)
+		if !v.Round {
+			{ v.Label }
+		}
+	</a>
+}

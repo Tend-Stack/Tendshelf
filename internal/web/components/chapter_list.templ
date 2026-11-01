@@ -3,30 +3,64 @@ package components
 import "strconv"
 
 // ChapterRow is one chapter: its number, its title (already "Chapter {n}" when the file names
-// none) and its length as a clock ("48:10").
+// none) and its length as a clock ("48:10"). When PlayAtMs is 0 or more and the list has a BookID,
+// the row is a link that plays the book from the chapter's start (Href is the plain fallback, the
+// file at that place); Played rows carry the check mark and Current the chapter at the stored place.
+// PlayedName is the accessible name of a played row ("{title}, played").
 type ChapterRow struct {
 	Num        int
 	Title, Dur string
+	PlayAtMs   int64
+	Href       string
+	Played     bool
+	Current    bool
+	PlayedName string
 }
 
 // ChapterListView is the chapters of a book. When only the first rows are shown, ShowAllHref and
-// ShowAllLabel make the link to the full list; both are empty otherwise.
+// ShowAllLabel make the link to the full list; both are empty otherwise. BookID is empty when the
+// rows stay plain text (the person may not listen, or no file can play).
 type ChapterListView struct {
 	Rows                      []ChapterRow
 	ShowAllHref, ShowAllLabel string
+	BookID                    string
 }
 
-// ChapterList draws the chapter rows of the book page. The rows are plain text for now: a chapter
-// becomes a link that starts playback there with the player (P1c), and then the row for the
-// chapter being heard carries aria-current.
+func chapterClass(c ChapterRow) string {
+	if c.Played {
+		return "ts-chapter is-played"
+	}
+	return "ts-chapter"
+}
+
+// ChapterList draws the chapter rows of the book page. With a BookID each row is a link that starts
+// playback there (player.js reads data-ts-play-at; it is not a resume button, so the page still has
+// one). The row for the chapter being heard carries aria-current.
 templ ChapterList(v ChapterListView) {
 	<ol class="ts-chapters">
 		for _, c := range v.Rows {
-			<li class="ts-chapter">
-				<span class="ts-chapter__num" aria-hidden="true">{ strconv.Itoa(c.Num) }</span>
-				<span class="ts-chapter__title">{ c.Title }</span>
-				<span class="ts-chapter__dur">{ c.Dur }</span>
-			</li>
+			if v.BookID != "" && c.PlayAtMs >= 0 && c.Href != "" {
+				<li>
+					<a
+						class={ chapterClass(c) }
+						href={ templ.SafeURL(c.Href) }
+						data-ts-play-at={ strconv.FormatInt(c.PlayAtMs, 10) }
+						data-ts-book={ v.BookID }
+						if c.Current {
+							aria-current="true"
+						}
+						if c.PlayedName != "" {
+							aria-label={ c.PlayedName }
+						}
+					>
+						@chapterCells(c)
+					</a>
+				</li>
+			} else {
+				<li class="ts-chapter">
+					@chapterCells(c)
+				</li>
+			}
 		}
 	</ol>
 	if v.ShowAllHref != "" {
@@ -34,4 +68,15 @@ templ ChapterList(v ChapterListView) {
 			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ShowAllHref) }>{ v.ShowAllLabel }</a>
 		</p>
 	}
+}
+
+templ chapterCells(c ChapterRow) {
+	<span class="ts-chapter__num" aria-hidden="true">{ strconv.Itoa(c.Num) }</span>
+	<span class="ts-chapter__title">{ c.Title }</span>
+	if c.Played {
+		<span class="ts-chapter__state" aria-hidden="true">
+			@Icon("check", false)
+		</span>
+	}
+	<span class="ts-chapter__dur">{ c.Dur }</span>
 }

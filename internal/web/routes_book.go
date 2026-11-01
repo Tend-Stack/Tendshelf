@@ -19,6 +19,7 @@ import (
 func (s *server) registerBook(mux *http.ServeMux) {
 	mux.HandleFunc("GET /books/{id}", s.getBook)
 	mux.HandleFunc("GET /books/{id}/{tab}", s.getBook)
+	mux.HandleFunc("GET /hx/books/{id}/play", s.getBookPlay)
 	mux.HandleFunc("GET /authors/{id}", s.getPerson(library.RoleAuthor))
 	mux.HandleFunc("GET /narrators/{id}", s.getPerson(library.RoleNarrator))
 	mux.HandleFunc("GET /series/{id}", s.getSeries)
@@ -41,7 +42,8 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 		s.notFound(w, r)
 		return
 	}
-	if _, ok := s.loadBook(w, r, id, share.ViewBook); !ok {
+	book, ok := s.loadBook(w, r, id, share.ViewBook)
+	if !ok {
 		return
 	}
 	sc := s.scope(r)
@@ -59,6 +61,14 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 	listen := s.can.Can(ctx, currentUser(r), share.ListenBook, target)
 	if !listen {
 		v.Tabs = slices.DeleteFunc(v.Tabs, func(t pages.BookTab) bool { return t.ID == "bookmarks" })
+	}
+	files, prog, canPlay, err := s.bookPlayData(r, book)
+	if err != nil {
+		s.serverError(w, r, "book play", err)
+		return
+	}
+	if canPlay {
+		v.Play = s.bookPlayView(r, book, files, prog)
 	}
 	shelves := s.canShelve(r)
 	var sheet templ.Component
@@ -101,7 +111,11 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 		}
 		bookAbout(&v, d, series, seqs, narrated)
 	case "chapters":
-		bookChapters(&v, d, r.URL.Query().Get("all") == "1")
+		var play *chapterPlay
+		if canPlay && len(files) > 0 {
+			play = &chapterPlay{book: book, files: files, p: prog}
+		}
+		bookChapters(&v, d, r.URL.Query().Get("all") == "1", play)
 	case "bookmarks":
 		if !listen {
 			s.notFound(w, r)

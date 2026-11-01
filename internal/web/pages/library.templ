@@ -68,6 +68,9 @@ type LibraryView struct {
 	// Menus are the Author, Narrator and Series chips; LengthMenu is the Length chip after the genres.
 	Menus      []FilterMenu
 	LengthMenu FilterMenu
+	// ShowMenu is the "Show" chip (Unfinished, Not started, Finished) and ShowValue the chosen one.
+	ShowMenu  FilterMenu
+	ShowValue string
 	// TitleFilter is the text of the "Filter by title" field.
 	TitleFilter string
 	// Hidden are the person, narrator and series ids the forms carry; LengthValue is the chosen
@@ -133,6 +136,9 @@ templ filterForm(v LibraryView, prefix string, bar bool) {
 			if v.LengthValue != "" {
 				<input type="hidden" name="length" value={ v.LengthValue }/>
 			}
+			if v.ShowValue != "" {
+				<input type="hidden" name="show" value={ v.ShowValue }/>
+			}
 			<div class="ts-search ts-lib-title">
 				@components.Icon("search", false)
 				<label class="ts-sr" for={ prefix + "-title" }>Filter by title</label>
@@ -183,6 +189,19 @@ templ filterForm(v LibraryView, prefix string, bar bool) {
 				for _, o := range v.LengthMenu.Options {
 					<label class="ts-filter-option" for={ prefix + "-length-" + o.Value }>
 						<input class="ts-filter-radio" type="radio" id={ prefix + "-length-" + o.Value } name="length" value={ o.Value } checked?={ o.On }/>
+						<span>{ o.Name }</span>
+					</label>
+				}
+			</fieldset>
+			<fieldset class="ts-filter-group">
+				<legend class="ts-field__label">{ v.ShowMenu.Label }</legend>
+				<label class="ts-filter-option" for={ prefix + "-show-any" }>
+					<input class="ts-filter-radio" type="radio" id={ prefix + "-show-any" } name="show" value="" checked?={ v.ShowValue == "" }/>
+					<span>{ v.ShowMenu.AnyLabel }</span>
+				</label>
+				for _, o := range v.ShowMenu.Options {
+					<label class="ts-filter-option" for={ prefix + "-show-" + o.Value }>
+						<input class="ts-filter-radio" type="radio" id={ prefix + "-show-" + o.Value } name="show" value={ o.Value } checked?={ o.On }/>
 						<span>{ o.Name }</span>
 					</label>
 				}
@@ -381,6 +400,7 @@ templ Library(v LibraryView) {
 				</a>
 			}
 			@filterMenu(v.LengthMenu)
+			@filterMenu(v.ShowMenu)
 			<a
 				class="ts-chip ts-lib-morefilters"
 				href={ templ.SafeURL(v.SheetHref) }

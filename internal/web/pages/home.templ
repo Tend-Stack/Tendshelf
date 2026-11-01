@@ -15,6 +15,11 @@ type EmptyView struct {
 type HomeView struct {
 	// Greeting is "Welcome back, Ana".
 	Greeting string
+	// Hero is the book to continue (nil when none is in progress), Series the series rows and Because
+	// the "Because you listened to" row; all three are drawn into the page, not loaded later.
+	Hero    *HomeHeroView
+	Series  HomeSeriesView
+	Because *HomeBecauseView
 	// New is the newest books, newest first.
 	New []components.CardView
 	// SeeAllURL opens the library sorted by recently added.
@@ -50,10 +55,10 @@ templ Empty(e EmptyView) {
 	}
 }
 
-// Home is the first screen: the greeting and the newest books on a shelf. The listening hero, the
-// series, shared and because rows wait for the listening position (P1c) and sharing (P3); the first
-// of them is the one place on this screen that will carry the book's single Resume button. Until
-// there is progress no Resume button exists anywhere, so the one-resume rule has nothing to guard.
+// Home is the first screen: the greeting, the listening hero, the newest books on a shelf, the series
+// in progress and "Because you listened to". The hero is the one place on this screen that carries a
+// book's Resume button; the series row leaves its play link out for the hero's book. The "Shared with
+// you" row waits for sharing (P3).
 templ Home(v HomeView) {
 	<div class="ts-home">
 		<h1 class="title-1 ts-home__title">{ v.Greeting }</h1>
@@ -65,6 +70,7 @@ templ Home(v HomeView) {
 		if v.Empty != nil {
 			@Empty(*v.Empty)
 		}
+		@HomeHero(v.Hero)
 		if len(v.New) > 0 {
 			<section id="row-recent" class="ts-home__row" aria-labelledby="row-recent-title">
 				<div class="ts-home__rowhead">
@@ -79,5 +85,7 @@ templ Home(v HomeView) {
 				<div class="ts-shelf__plank"></div>
 			</section>
 		}
+		@HomeSeries(v.Series)
+		@HomeBecause(v.Because)
 	</div>
 }

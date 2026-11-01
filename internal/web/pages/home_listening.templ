@@ -1,0 +1,124 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// HomeHeroView is the "Continue listening" card: the book the person stopped in last. Every word is
+// written by the handler. Play is nil when the person may not play the book (no dead button).
+type HomeHeroView struct {
+	Cover components.CardView
+	// Eyebrow is "Continue listening"; Title, Byline and Narrator are the book's words ("read by ...").
+	Eyebrow, Title, Byline, Narrator, BookHref string
+	// RulerLabel names the ruler ("Book progress, chapter 12 of 19"), RulerNow is 0 to 100 as text and
+	// Ticks are the chapter starts as 0 to 100 percentages (text, for data-ts-value).
+	RulerLabel, RulerNow string
+	Ticks                []string
+	// Where is "Chapter 12 · 18 min left in chapter · 6 h 40 m left in book".
+	Where string
+	Play  *components.PlayButtonView
+	// ChaptersHref and ChaptersLabel make the desktop "Chapters" link.
+	ChaptersHref, ChaptersLabel string
+}
+
+// HomeSeriesRowView is one line of "Your series in progress". Play is nil when the book is the hero
+// (one resume button per book) or cannot play.
+type HomeSeriesRowView struct {
+	Cover            components.CardView
+	Name, Meta, Href string
+	Play             *components.PlayButtonView
+}
+
+// HomeSeriesView is the series row with its heading.
+type HomeSeriesView struct {
+	Title string
+	Rows  []HomeSeriesRowView
+}
+
+// HomeBecauseView is "Because you listened to {seed}" and its cards.
+type HomeBecauseView struct {
+	Title, Seed string
+	Cards       []components.CardView
+}
+
+// HomeHero is the hero card inside its #home-hero wrapper. The wrapper is always there, empty when
+// nothing is in progress, so the first save can fill it: it re-reads /hx/home/hero when progress is
+// saved (progress-saved on the body). Without JavaScript the card is just there, with a plain link.
+templ HomeHero(v *HomeHeroView) {
+	<div id="home-hero" hx-get="/hx/home/hero" hx-trigger="progress-saved from:body" hx-swap="outerHTML">
+		if v != nil {
+			<section class="ts-hero ts-home__hero" aria-label={ v.Eyebrow }>
+				<div class="ts-hero__top">
+					<a class="ts-hero__cover" href={ templ.SafeURL(v.BookHref) } tabindex="-1" aria-hidden="true">
+						@components.Cover(v.Cover, "fill")
+					</a>
+					<div class="ts-hero__text">
+						<div class="ts-hero__head">
+							<span class="ts-overline ts-overline--accent">{ v.Eyebrow }</span>
+							<h2 class="ts-hero__title"><a href={ templ.SafeURL(v.BookHref) }>{ v.Title }</a></h2>
+							<p class="ts-hero__byline">
+								{ v.Byline }
+								if v.Narrator != "" {
+									<br/>
+									{ v.Narrator }
+								}
+							</p>
+						</div>
+						<div class="ts-hero__progress">
+							<div class="ts-ruler" role="progressbar" aria-label={ v.RulerLabel } aria-valuemin="0" aria-valuemax="100" aria-valuenow={ v.RulerNow }>
+								<div class="ts-ruler__line"></div>
+								<div class="ts-ruler__fill ts-value" data-ts-value={ v.RulerNow }></div>
+								for _, t := range v.Ticks {
+									<span class="ts-ruler__tick" data-ts-value={ t }></span>
+								}
+							</div>
+							<p class="ts-hero__where">{ v.Where }</p>
+						</div>
+						<div class="ts-hero__actions">
+							if v.Play != nil {
+								@components.PlayButton(*v.Play)
+							}
+							<a class="ts-btn ts-btn--secondary ts-hero__chapters" href={ templ.SafeURL(v.ChaptersHref) }>{ v.ChaptersLabel }</a>
+						</div>
+					</div>
+				</div>
+			</section>
+		}
+	</div>
+}
+
+// HomeSeries is "Your series in progress": a cover, the series, where the person is, and a round play
+// link for the next book (none for the book the hero already offers).
+templ HomeSeries(v HomeSeriesView) {
+	if len(v.Rows) > 0 {
+		<section id="row-series" class="ts-home__row" aria-labelledby="row-series-title">
+			<h2 id="row-series-title" class="section ts-home__rowtitle">{ v.Title }</h2>
+			for _, r := range v.Rows {
+				<div class="ts-row">
+					<a class="ts-row__main" href={ templ.SafeURL(r.Href) }>
+						@components.Cover(r.Cover, "56")
+						<span class="ts-row__text">
+							<span class="ts-row__title">{ r.Name }</span>
+							<span class="ts-row__meta ts-truncate">{ r.Meta }</span>
+						</span>
+					</a>
+					if r.Play != nil {
+						@components.PlayButton(*r.Play)
+					}
+				</div>
+			}
+		</section>
+	}
+}
+
+// HomeBecause is "Because you listened to {seed}" with plain book cards (cards never resume).
+templ HomeBecause(v *HomeBecauseView) {
+	if v != nil && len(v.Cards) > 0 {
+		<section id="row-because" class="ts-home__row" aria-labelledby="row-because-title">
+			<h2 id="row-because-title" class="section ts-home__rowtitle">{ v.Title } <em>{ v.Seed }</em></h2>
+			<div class="ts-home__cards">
+				for _, c := range v.Cards {
+					@components.BookCard(c)
+				}
+			</div>
+		</section>
+	}
+}

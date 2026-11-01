@@ -10,6 +10,27 @@
 .ts-home__rowhead .ts-btn--quiet { margin-right: calc(var(--space-12) * -1); }
 .ts-browse-scan { margin: var(--space-8) 0 var(--space-16); }
 
+/* The hero (P1c-6): cover and words on top, the ruler, then the Resume button; from 768 px it is a
+   card with the words, ruler and buttons beside the cover. Ticks and the fill take their place from
+   --ts-value (shell.js sets it from data-ts-value). */
+.ts-home__hero { margin-top: var(--space-16); }
+.ts-hero__top { display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: var(--space-16); align-items: start; }
+.ts-hero__text { display: contents; }
+.ts-hero__cover { display: block; box-shadow: var(--shadow-cover); border-radius: var(--radius-cover); }
+.ts-hero__head { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ts-hero__title a { color: inherit; text-decoration: none; }
+.ts-hero__progress, .ts-hero__actions { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-hero__actions { flex-direction: row; gap: var(--space-12); }
+.ts-hero__actions .ts-btn--primary { flex: 1; text-decoration: none; }
+.ts-hero__chapters { display: none; text-decoration: none; }
+.ts-ruler__tick[data-ts-value] { left: calc(var(--ts-value, 0) * 1%); }
+
+.ts-home__rowtitle { margin: 0; min-height: var(--size-tap); display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; }
+#row-series, #row-because { margin-top: var(--space-24); }
+#row-series .ts-row .ts-iconbtn { flex: none; text-decoration: none; color: var(--ink); }
+.ts-home__cards { display: flex; gap: var(--space-16); margin-top: var(--space-8); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: var(--space-8); }
+.ts-home__cards > .ts-card { flex: 0 0 106px; min-width: 0; }
+
 /* The shelf scrolls sideways when there are more spines than the width holds; the plank stays put. */
 .ts-shelf--scroll { margin-top: 6px; height: 180px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-inline: 1px; }
 
@@ -41,7 +62,18 @@ html[data-theme="contrast"] .is-tinted,
 html[data-theme="contrast"] .is-tinted.ts-ink-paper,
 html[data-theme="contrast"] .is-tinted.ts-ink-walnut { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
 
+@media (min-width: 768px) {
+  .ts-home__hero { padding: var(--space-24); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+  .ts-hero__top { grid-template-columns: 152px minmax(0, 1fr); gap: 0 var(--space-32); }
+  .ts-hero__text { display: flex; flex-direction: column; gap: var(--space-16); min-width: 0; }
+  .ts-hero__actions .ts-btn--primary { flex: none; }
+  .ts-hero__chapters { display: inline-flex; }
+  .ts-home__cards > .ts-card { flex-basis: 140px; }
+}
 @media (min-width: 1280px) {
+  .ts-hero__top { grid-template-columns: 220px minmax(0, 1fr); }
+  .ts-hero__title { font-size: 32px; line-height: 38px; }
+  .ts-home__cards > .ts-card { flex-basis: 160px; }
   .ts-shelf--scroll { height: 200px; }
   .ts-spine--ws { width: 48px; }
   .ts-spine--wm { width: 54px; }

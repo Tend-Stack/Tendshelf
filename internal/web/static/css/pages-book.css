@@ -25,6 +25,10 @@
 .ts-book__rail .section { margin: 0 0 var(--space-8); }
 .ts-book__cards.ts-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-16); }
 
+.ts-book__play { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-8) var(--space-12); margin-top: var(--space-8); }
+.ts-book__play form { margin: 0; }
+.ts-book__play .ts-btn { text-decoration: none; }
+
 .ts-book__seriesrows, .ts-chapters { list-style: none; margin: 0; padding: 0; }
 .ts-book__seriesrow { display: flex; align-items: center; gap: var(--space-12); min-height: 56px; padding: 0 var(--space-12);
   border-radius: var(--radius-md); color: var(--ink); text-decoration: none; }
@@ -48,6 +52,7 @@ a.ts-book__seriesrow:hover { background: var(--raised-hover); }
   .ts-book__head { flex-direction: row; align-items: flex-start; text-align: left; gap: var(--space-24); }
   .ts-book__cover { flex: 0 0 220px; width: 220px; }
   .ts-book__info { align-items: flex-start; }
+  .ts-book__play { justify-content: flex-start; }
   .ts-book__people { justify-content: flex-start; }
   .ts-book__cards.ts-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }

@@ -771,8 +771,11 @@ listen(document, "click", (event) => {
   }
 
   wantsFirstSound = true;
-  if (book && book.id === data.tsPlay) play();
-  else if (data.tsFile) startFromLink(data);
+  if (book && book.id === data.tsPlay) {
+    // a finished book that is still loaded (the Listen again link) starts at the beginning of the book
+    if (data.tsFromStart === "1") seek(0, true);
+    play();
+  } else if (data.tsFile) startFromLink(data);
   else loadBook(data.tsPlay, { play: true });
 });
 
