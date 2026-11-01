@@ -155,3 +155,17 @@ func (r *Repo) TouchLastSeen(ctx context.Context, ex db.Execer, id string, at in
 	_, err := ex.ExecContext(ctx, `UPDATE users SET last_seen_at = ? WHERE id = ?`, at, id)
 	return err
 }
+
+// SetPassword stores a new password hash for the account, inside the caller's write transaction.
+// The caller hashes first: hashing never happens inside a write transaction. ErrNotFound when no
+// such account exists.
+func (r *Repo) SetPassword(ctx context.Context, ex db.Execer, userID, hash string) error {
+	res, err := ex.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID)
+	if err != nil {
+		return err
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}

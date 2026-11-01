@@ -87,7 +87,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `file_writes` | `id`, `job_id`, `audio_file_id`, `state` ('copying','verifying','swapped','confirmed','undone','failed'), `original_path`, `backup_path`, `temp_path`, `before_sha256`, `after_sha256`, `audio_hash`, `created_at`, `updated_at` | The write-details ledger; drives restart recovery and Undo. |
 | `audit_log` | `id`, `at`, `user_id`, `action`, `target`, `detail_json` | Logins, invites, grants, file writes, research toggles. |
 | `books_fts` | FTS5, contentless with delete, over title, subtitle, authors, narrators, series, description; rowid from `books_fts_ids`; kept by triggers on books, book_people, book_series, people and series names (migration 0004); `books_fts_vocab` feeds did-you-mean. | Notes are per user: searched with a user filter, not in this index. |
-| `user_settings` | `user_id`, `key`, `value_json`, `updated_at`; PK (`user_id`,`key`) | The one per-user settings store (playback preferences, `reader.v1`, chosen edition per book `edition.<bookID>`). |
+| `user_settings` | `user_id`, `key`, `value_json`, `updated_at`; PK (`user_id`,`key`) | The one per-user settings store: typed in `users.Settings` (`ui.theme`, `ui.player_tint`, `ui.big_buttons`, `playback.speed`, `playback.skip_back_s`, `playback.skip_forward_s`, `playback.auto_rewind`, `playback.next_in_series`; the player reads them with `LoadSettings`), `reader.v1`, chosen edition per book `edition.<bookID>`. |
 | `ebook_files` (R1) | `id` (`ebf_`), `sha256` UNIQUE, `size`, `format` CHECK IN ('epub','pdf','txt','md','docx','html','fb2','mobi','azw3'), `origin` ('library','upload'), `path` UNIQUE, `library_folder_id` NULL, `mtime_ns`, `quick_hash`, `refused_reason` NULL ('drm','unsupported','damaged','too_large','no_text'), `added_at`, `missing_since` NULL | Library ebooks read-only; uploads under `<data>/ebooks/`. |
 | `editions` (R1) | `id` (`ed_`), `ebook_file_id`, `book_id` NULL (NULL = unpaired), `doc_sha256`, `parse_recipe`, `title`, `authors_json`, `language`, `isbn`, `asin`, `layout` ('reflow','page'), `chapter_count`, `word_count`, `has_overlays`, `is_default`, `pair_source` ('folder','upload','identifier','title','user'), `pair_score` REAL, `paired_by` NULL, `paired_at`, `created_at`, `updated_at` | Partial unique index: one `is_default` per book. Document file `<data>/text/<doc_sha256>.json.gz`. |
 | `edition_chapters` (R1) | `edition_id`, `idx`, `title`, `src`, `front`, `word_count`, `sentence_count`, `text_sha256`; PK (`edition_id`,`idx`) | `text_sha256` over the normalised text drives re-alignment of changed chapters only. |
@@ -177,7 +177,7 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `/authors/{id}`, `/narrators/{id}`, `/series/{id}` | |
 | `/search?q=` | |
 | `/shelves`, `/shelves/{id}` | |
-| `/me` | Account, devices, playback preferences, downloads (P4), statistics (P4) |
+| `/me`, `/me/settings`, `/me/password`, `POST /me/sessions/{sid}/signout`, `POST /me/sessions/signout-others` | Profile (devices by the first 16 hex characters of the session hash), Settings (saved on change: `POST /me/settings` answers 204, with `HX-Refresh` when the theme changed; 303 without htmx; 422 when invalid), Change password (current password needed; limited 429; rotates this session and ends every other). Always the signed-in person only, any role. Downloads and statistics come in P4 |
 | `/invite/{token}`, `/s/{token}` | Accept an invite; anonymous share link |
 | `/books/{id}/text` (R1) | The book's text editions: upload, pairing, default edition, alignment status, export |
 | `/books/{id}/read?mode=readalong\|read\|focus&edition=&at=` (R4) | Reader inside the layout (player keeps playing) |
@@ -284,7 +284,9 @@ and its `/hx/dev/*` fragments; release builds do not register them.
 - Sessions: 32 random bytes in an `HttpOnly`, `SameSite=Lax` cookie `ts_session` (`Secure` when served over TLS
   or behind a trusted proxy that says `X-Forwarded-Proto: https`); only the SHA-256 is stored. 30-day sliding
   expiry, refreshed at most once an hour; signing in ends the browser's previous session and sweeps expired
-  ones. Device tokens for the API, revocable on `/me`, come later.
+  ones. Device tokens for the API, revocable on `/me`, come later. A forgotten password is reset on the
+  server with `tendshelf reset-password [-data DIR] <username>`: it prints a new generated password once,
+  signs the account out everywhere and writes an audit row; it works while the server runs.
 - Limits on failed attempts: 20 per client address per 15 minutes (shared by sign-in and setup; IPv6 counted
   per /64) and 10 per account per 15 minutes, in memory with a bounded table. A limited request answers 429
   with `Retry-After` before any hashing. Every sign-in failure (unknown name, wrong password, disabled

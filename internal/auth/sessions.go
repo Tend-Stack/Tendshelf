@@ -18,6 +18,7 @@ type Session struct {
 	CreatedAt  int64
 	ExpiresAt  int64
 	LastSeenAt int64
+	UserAgent  string
 }
 
 // Sessions reads and writes the sessions table. Only the SHA-256 of a token is
@@ -49,6 +50,7 @@ func (s *Sessions) Create(ctx context.Context, ex db.Execer, userID, ua string) 
 	if len(ua) > maxUserAgent {
 		ua = strings.ToValidUTF8(ua[:maxUserAgent], "")
 	}
+	sess.UserAgent = ua
 	_, err := ex.ExecContext(ctx, `INSERT INTO sessions (token_hash, user_id, created_at, expires_at, last_seen_at, user_agent)
 		VALUES (?, ?, ?, ?, ?, ?)`, sess.Hash[:], sess.UserID, sess.CreatedAt, sess.ExpiresAt, sess.LastSeenAt, ua)
 	if err != nil {
@@ -70,10 +72,10 @@ func (s *Sessions) Lookup(ctx context.Context, tok string) (Session, users.User,
 	var u users.User
 	var role string
 	var disabled int
-	err := s.st.Reader().QueryRowContext(ctx, `SELECT s.created_at, s.expires_at, s.last_seen_at,
+	err := s.st.Reader().QueryRowContext(ctx, `SELECT s.created_at, s.expires_at, s.last_seen_at, s.user_agent,
 			u.id, u.username, u.display_name, COALESCE(u.email, ''), u.role, u.disabled, u.created_at, COALESCE(u.last_seen_at, 0)
 		FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`, hash[:]).Scan(
-		&sess.CreatedAt, &sess.ExpiresAt, &sess.LastSeenAt,
+		&sess.CreatedAt, &sess.ExpiresAt, &sess.LastSeenAt, &sess.UserAgent,
 		&u.ID, &u.Username, &u.DisplayName, &u.Email, &role, &disabled, &u.CreatedAt, &u.LastSeenAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Session{}, users.User{}, false, ErrNoSession

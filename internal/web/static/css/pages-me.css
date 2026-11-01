@@ -1,0 +1,45 @@
+/* Profile, Settings, Change password. */
+.ts-me { display: flex; flex-direction: column; max-width: 640px; padding-bottom: var(--space-32); }
+.ts-me--narrow { max-width: 480px; }
+.ts-me__head { display: flex; align-items: center; gap: var(--space-16); }
+.ts-me__who { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.ts-me__name, .ts-me__lead, .ts-me__privacy-title { margin: 0; }
+.ts-me__title { margin: var(--space-4) 0 0; }
+.ts-me__lead, .ts-me__foot { color: var(--ink-muted); }
+.ts-me__sub { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; }
+.ts-me__banner { margin: var(--space-16) 0 0; }
+.ts-me__section { margin-top: var(--space-24); }
+.ts-me__section > .ts-overline { display: block; margin: 0 0 var(--space-4); }
+.ts-me__back { display: inline-flex; align-items: center; gap: var(--space-8); align-self: flex-start; min-height: 44px; color: var(--ink-muted); text-decoration: none; font-size: 15px; }
+.ts-me__row { display: flex; align-items: center; gap: 14px; min-height: 56px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+.ts-me__rowtext { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ts-me__chev { width: 8px; height: 8px; margin-right: 6px; border: solid var(--ink-muted); border-width: 2px 2px 0 0; transform: rotate(45deg); }
+.ts-me__device { min-height: 60px; }
+.ts-me__deviceicon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--raised); color: var(--ink-muted); }
+.ts-me__back .ts-icon, .ts-me__deviceicon .ts-icon { width: 20px; height: 20px; }
+.ts-me__others { margin-top: var(--space-8); }
+.ts-me__others .ts-btn { padding-inline: 0; }
+.ts-me__signout { margin-top: var(--space-24); }
+.ts-me__foot { margin: var(--space-12) 0 0; text-align: center; }
+.ts-me__line { border-bottom: 1px solid var(--line); }
+.ts-me__linetext { display: flex; flex-direction: column; justify-content: center; flex: 1; min-height: 56px; gap: 2px; cursor: pointer; }
+.ts-me__speed { width: auto; border: 0; background: transparent; font-weight: 600; text-align: right; }
+.ts-me__skips { display: flex; flex-direction: column; gap: var(--space-16); padding: 14px 0; border-bottom: 1px solid var(--line); }
+.ts-me__field { display: flex; flex-direction: column; gap: 10px; }
+.ts-me__seg { align-self: flex-start; }
+.ts-sr:checked + .ts-seg__item { background: var(--raised); color: var(--ink); font-weight: 600; }
+.ts-sr:focus-visible + .ts-seg__item, .ts-sr:focus-visible + .ts-me__tile .ts-me__swatch { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+input.ts-switch { appearance: none; margin: 0; }
+input.ts-switch:checked { background: var(--accent-fill); border-color: var(--accent-fill); }
+input.ts-switch:checked::after { transform: translateX(20px); background: var(--on-accent); }
+.ts-me__tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: var(--space-12) 0 var(--space-8); }
+.ts-me__tile { display: flex; flex-direction: column; align-items: center; gap: var(--space-8); cursor: pointer; color: var(--ink); }
+.ts-me__swatch { display: flex; flex-direction: column; gap: 5px; width: 100%; aspect-ratio: 3 / 4; box-sizing: border-box; padding: 10px 8px; border-radius: var(--radius-md); background: var(--ground); border: 1px solid var(--line-strong); }
+.ts-sr:checked + .ts-me__tile .ts-me__swatch { border: 2px solid var(--accent); }
+.ts-me__bar { display: block; height: 5px; width: 90%; border-radius: 2px; background: var(--ink-muted); }
+.ts-me__bar--head { height: 8px; width: 70%; background: var(--ink); }
+.ts-me__bar--btn { height: 14px; width: 100%; margin-top: auto; border-radius: 7px; background: var(--accent-fill); }
+.ts-me__privacy { display: flex; gap: var(--space-12); padding: var(--space-16); border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--line); }
+.ts-me__privacy-title { margin-bottom: 6px; font-weight: 500; }
+.ts-me__shield { flex: none; color: var(--success); }
+.ts-me__shield .ts-icon { width: 24px; height: 24px; }
