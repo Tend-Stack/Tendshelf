@@ -1,0 +1,41 @@
+package components
+
+// BookCard is one book in the grid view: the cover, the title, the authors. One link, to the book.
+// There is no Resume button yet: it arrives with the listening position (P1c), and then it is still
+// the only one for this book on the screen.
+templ BookCard(v CardView) {
+	<a class="ts-card" href={ templ.SafeURL(v.Href) }>
+		<span class="ts-card__cover">
+			@Cover(v, "fill")
+		</span>
+		<span class="ts-card__title ts-clamp-2">{ v.Title }</span>
+		if v.Byline != "" {
+			<span class="ts-card__author ts-truncate">{ v.Byline }</span>
+		}
+	</a>
+}
+
+// BookRow is one book in the list view: a 56 px cover, the title, "{authors} · {length}".
+templ BookRow(v CardView) {
+	<div class="ts-row">
+		<a class="ts-row__main" href={ templ.SafeURL(v.Href) }>
+			@Cover(v, "56")
+			<span class="ts-row__text">
+				<span class="ts-row__title">{ v.Title }</span>
+				if meta := rowMeta(v); meta != "" {
+					<span class="ts-row__meta ts-truncate">{ meta }</span>
+				}
+			</span>
+		</a>
+	</div>
+}
+
+func rowMeta(v CardView) string {
+	switch {
+	case v.Byline != "" && v.Duration != "":
+		return v.Byline + " · " + v.Duration
+	case v.Byline != "":
+		return v.Byline
+	}
+	return v.Duration
+}

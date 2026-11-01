@@ -1,0 +1,16 @@
+package components
+
+// SkeletonCards is a row of n loading cards (StateLoading): shimmering cover squares with two text
+// bars. It is decoration for the eyes; the one status line under it is for a screen reader.
+templ SkeletonCards(n int) {
+	<span class="ts-skeleton-cards" aria-hidden="true">
+		for i := 0; i < n; i++ {
+			<span class="ts-skeleton-card">
+				<span class="ts-skeleton ts-skeleton-card__cover"></span>
+				<span class="ts-skeleton ts-skeleton-card__line"></span>
+				<span class="ts-skeleton ts-skeleton-card__line ts-skeleton-card__line--short"></span>
+			</span>
+		}
+	</span>
+	<span class="ts-sr">Loading more books…</span>
+}

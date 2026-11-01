@@ -147,13 +147,11 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.csrf.Secure = s.proxies.Secure
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		s.page(w, r, http.StatusOK, "Home", "home", pages.HomePage())
-	})
 	registerDev(mux, s)
 	// register areas
 	s.registerAuth(mux)
 	s.registerCovers(mux)
+	s.registerBrowse(mux)
 	//
 	s.registerAdmin(mux)
 	//

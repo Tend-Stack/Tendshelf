@@ -1,10 +1,83 @@
 package pages
 
-// HomePage is the first screen. Until libraries exist it shows the empty state from the copy deck.
-templ HomePage() {
-	<h1 class="title-1">Home</h1>
-	<section aria-labelledby="home-empty-title">
-		<h2 id="home-empty-title" class="title-3">Your shelf is empty</h2>
-		<p class="body">Point Tendshelf at a folder of audiobooks and they'll appear here.</p>
-	</section>
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// EmptyView is an empty state: the words are copy from the handler, the action is optional. Kind is
+// "first-run" (owner, no books yet), "nothing-shared" (a member with nothing shared) or "no-match"
+// (the filters exclude everything).
+type EmptyView struct {
+	Kind, Title, Body string
+	// ActionLabel and ActionHref make the one button under the text; both empty means none.
+	ActionLabel, ActionHref string
+}
+
+// HomeView is what Home shows.
+type HomeView struct {
+	// Greeting is "Welcome back, Ana".
+	Greeting string
+	// New is the newest books, newest first.
+	New []components.CardView
+	// SeeAllURL opens the library sorted by recently added.
+	SeeAllURL string
+	// Empty is set when the person has no book to show.
+	Empty *EmptyView
+	// Scan is the running scan, for a person who manages libraries; otherwise nil.
+	Scan *components.ScanStatusView
+}
+
+// BrowseStyles are the stylesheets Home and Library link after the shared ones; the scan banner
+// reuses the status styles of the Libraries page.
+var BrowseStyles = []string{"css/pages-admin.css", "css/pages-home.css", "css/pages-library.css"}
+
+// emptyAction is the one link or button under an empty state's text.
+templ emptyAction(e EmptyView) {
+	if e.ActionHref != "" {
+		<a class="ts-btn ts-btn--primary ts-btn--lg" href={ templ.SafeURL(e.ActionHref) }>
+			if e.Kind == "first-run" {
+				@components.Icon("folder", false)
+			}
+			{ e.ActionLabel }
+		</a>
+	}
+}
+
+// Empty renders an empty state.
+templ Empty(e EmptyView) {
+	if e.ActionHref != "" {
+		@components.EmptyState(e.Title, e.Body, emptyAction(e))
+	} else {
+		@components.EmptyState(e.Title, e.Body, nil)
+	}
+}
+
+// Home is the first screen: the greeting and the newest books on a shelf. The listening hero, the
+// series, shared and because rows wait for the listening position (P1c) and sharing (P3); the first
+// of them is the one place on this screen that will carry the book's single Resume button. Until
+// there is progress no Resume button exists anywhere, so the one-resume rule has nothing to guard.
+templ Home(v HomeView) {
+	<div class="ts-home">
+		<h1 class="title-1 ts-home__title">{ v.Greeting }</h1>
+		if v.Scan != nil {
+			<div class="ts-browse-scan">
+				@components.ScanStatus(*v.Scan)
+			</div>
+		}
+		if v.Empty != nil {
+			@Empty(*v.Empty)
+		}
+		if len(v.New) > 0 {
+			<section id="row-recent" class="ts-home__row" aria-labelledby="row-recent-title">
+				<div class="ts-home__rowhead">
+					<h2 id="row-recent-title" class="section">New on the shelf</h2>
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SeeAllURL) }>See all</a>
+				</div>
+				<div class="ts-shelf ts-shelf--scroll" role="list">
+					for _, b := range v.New {
+						@components.Spine(b)
+					}
+				</div>
+				<div class="ts-shelf__plank"></div>
+			</section>
+		}
+	</div>
 }

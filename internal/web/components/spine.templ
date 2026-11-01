@@ -1,0 +1,33 @@
+package components
+
+func spineClass(v CardView) string {
+	c := "ts-spine"
+	if v.WidthClass != "" {
+		c += " " + v.WidthClass
+	}
+	if v.HeightClass != "" {
+		c += " " + v.HeightClass
+	}
+	if v.InkClass != "" {
+		c += " " + v.InkClass
+	}
+	return c
+}
+
+// Spine is one book standing on a shelf. It sits in an element with role="list" (listitem here), is
+// named like the board's ("{title} by {authors}") and links to the book. Its colour is the cover's
+// tint, applied by shell.js; without the tint (no JavaScript, no readable ink, or the contrast
+// theme) it is a surface-coloured spine with the ink colour.
+templ Spine(v CardView) {
+	<a
+		role="listitem"
+		class={ spineClass(v) }
+		href={ templ.SafeURL(v.Href) }
+		aria-label={ v.AriaLabel }
+		if v.Tint != "" {
+			data-ts-tint={ v.Tint }
+		}
+	>
+		<span class="ts-spine__title">{ v.Title }</span>
+	</a>
+}
