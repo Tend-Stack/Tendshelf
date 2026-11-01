@@ -1,0 +1,28 @@
+<!-- @dsCard group="Player" height=260 subtitle="Transport row and the settings bar, in the cover's accent" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Player controls</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="flex-direction: column; align-items: stretch; gap: 24px; width: 350px; --cover-accent: #9ccbc4">
+  <div class="ts-transport">
+    <button type="button" class="ts-iconbtn ts-iconbtn--md" aria-label="Previous chapter"><svg class="ts-icon" style="width: 26px; height: 26px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14"></path><path d="M18.5 6.5v11L10 12z"></path></svg></button>
+    <button type="button" class="ts-iconbtn ts-iconbtn--md ts-skip" aria-label="Back 30 seconds"><svg class="ts-icon" style="width: 38px; height: 38px; stroke-width: 1.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"></path><path d="M4.5 3.5v4h4"></path></svg><span class="ts-skip__num" aria-hidden="true">30</span></button>
+    <button type="button" class="ts-iconbtn ts-iconbtn--cover ts-iconbtn--xl" aria-label="Pause"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg></button>
+    <button type="button" class="ts-iconbtn ts-iconbtn--md ts-skip" aria-label="Forward 30 seconds"><svg class="ts-icon" style="width: 38px; height: 38px; stroke-width: 1.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.4-5.5"></path><path d="M19.5 3.5v4h-4"></path></svg><span class="ts-skip__num" aria-hidden="true">30</span></button>
+    <button type="button" class="ts-iconbtn ts-iconbtn--md" aria-label="Next chapter"><svg class="ts-icon" style="width: 26px; height: 26px" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14"></path><path d="M5.5 6.5v11L14 12z"></path></svg></button>
+  </div>
+  <div class="ts-player-bar">
+    <button type="button" class="ts-player-bar__item" aria-label="Playback speed, 1.2 times"><span class="ts-player-bar__value">1.2×</span><span class="ts-player-bar__label">Speed</span></button>
+    <button type="button" class="ts-player-bar__item is-active" aria-label="Sleep timer, 24 minutes left" aria-pressed="true"><span class="ts-player-bar__value ts-num">24:00</span><span class="ts-player-bar__label">Sleep</span></button>
+    <button type="button" class="ts-player-bar__item" aria-label="Chapters"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"></path></svg><span class="ts-player-bar__label">Chapters</span></button>
+    <button type="button" class="ts-player-bar__item is-hover" aria-label="Output device, earbuds"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"></path><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"></path></svg><span class="ts-player-bar__label">Earbuds</span></button>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!-- @dsCard group="Selection" height=260 subtitle="Settings that turn on and off" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switch</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="flex-direction: column; align-items: stretch; gap: 0; max-width: 460px">
+  <div class="ts-switch-row">
+    <span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw1">Download on Wi-Fi only</span><span class="ts-switch-row__hint">Saves your mobile data.</span></span>
+    <button type="button" role="switch" aria-checked="true" aria-labelledby="sw1" class="ts-switch"></button>
+  </div>
+  <div class="ts-switch-row">
+    <span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw2">Rewind a few seconds after a long pause</span><span class="ts-switch-row__hint">So you never lose the thread.</span></span>
+    <button type="button" role="switch" aria-checked="false" aria-labelledby="sw2" class="ts-switch is-focus"></button>
+  </div>
+  <div class="ts-switch-row">
+    <span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw3">Shake to add 10 minutes</span><span class="ts-switch-row__hint">Only on phones with motion sensors.</span></span>
+    <button type="button" role="switch" aria-checked="false" aria-labelledby="sw3" class="ts-switch" disabled></button>
+  </div>
+</div>
+</body>
+</html>

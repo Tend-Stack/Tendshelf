@@ -1,0 +1,40 @@
+<!-- @dsCard group="Player" height=250 subtitle="Ruler scrubber with chapter ticks · at rest and dragging" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scrubber</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="align-items: flex-start; gap: 48px; padding-top: 56px">
+  <div style="width: 340px; display: flex; flex-direction: column; gap: 6px; --cover-accent: #9ccbc4">
+    <div class="ts-scrub">
+      <div class="ts-scrub__line"></div>
+      <span class="ts-scrub__tick" style="left: 9.5%"></span><span class="ts-scrub__tick" style="left: 19.8%"></span><span class="ts-scrub__tick" style="left: 30.6%"></span><span class="ts-scrub__tick" style="left: 40.9%"></span><span class="ts-scrub__tick" style="left: 51.7%"></span><span class="ts-scrub__tick" style="left: 57.8%"></span><span class="ts-scrub__tick" style="left: 63.7%"></span><span class="ts-scrub__tick" style="left: 74.8%"></span><span class="ts-scrub__tick" style="left: 85.9%"></span><span class="ts-scrub__tick" style="left: 95.4%"></span>
+      <div class="ts-scrub__fill" style="width: 62%"></div>
+      <div class="ts-scrub__chapter" style="left: 57.8%; width: 5.9%"></div>
+      <div class="ts-scrub__needle" style="left: 62%"></div>
+      <input class="ts-scrub__input" type="range" min="0" max="63132" value="39108" aria-label="Position in book" aria-valuetext="10 hours 51 minutes elapsed, chapter 12, The Second Lamp">
+    </div>
+    <div class="ts-scrub__times"><span>10:51:48</span><span style="color: var(--cover-accent); font-weight: 500">18:12 left in chapter</span><span>−6:40:12</span></div>
+    <span class="ts-preview-label" style="margin-top: 8px">At rest, inside the player (cover accent)</span>
+  </div>
+  <div style="width: 340px; display: flex; flex-direction: column; gap: 6px; --cover-accent: #9ccbc4">
+    <div class="ts-scrub is-dragging">
+      <div class="ts-scrub__line"></div>
+      <span class="ts-scrub__tick" style="left: 9.5%"></span><span class="ts-scrub__tick" style="left: 19.8%"></span><span class="ts-scrub__tick" style="left: 30.6%"></span><span class="ts-scrub__tick" style="left: 40.9%"></span><span class="ts-scrub__tick" style="left: 51.7%"></span><span class="ts-scrub__tick" style="left: 57.8%"></span><span class="ts-scrub__tick" style="left: 63.7%"></span><span class="ts-scrub__tick" style="left: 74.8%"></span><span class="ts-scrub__tick" style="left: 85.9%"></span><span class="ts-scrub__tick" style="left: 95.4%"></span>
+      <div class="ts-scrub__fill" style="width: 69%"></div>
+      <div class="ts-scrub__chapter" style="left: 63.7%; width: 5.3%"></div>
+      <div class="ts-scrub__needle" style="left: 69%"></div>
+      <div class="ts-scrub__bubble ts-num" style="left: 69%">Chapter 13 · The Keeper's Log · 4:10</div>
+      <input class="ts-scrub__input" type="range" min="0" max="63132" value="43561" aria-label="Position in book">
+    </div>
+    <div class="ts-scrub__times"><span>12:06:01</span><span style="color: var(--ink-muted)">Drag up for fine control</span><span>−5:26:00</span></div>
+    <span class="ts-preview-label" style="margin-top: 8px">Dragging: chapter name in the bubble, ticks snap lightly</span>
+  </div>
+</div>
+</body>
+</html>

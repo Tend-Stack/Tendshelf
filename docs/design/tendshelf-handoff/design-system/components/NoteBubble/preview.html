@@ -1,0 +1,27 @@
+<!-- @dsCard group="Reader" height=320 subtitle="Reading a note · writing one" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Note bubble</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="padding-top: 40px; align-items: flex-start">
+  <div class="ts-note" role="dialog" aria-label="Note from Maya">
+    <p class="ts-note__quote">Nell found it where her father always said it would be</p>
+    <p class="ts-note__body">This is the lamp from chapter 3. He hid it before the storm.</p>
+    <div class="ts-note__meta"><span>Maya · Chapter 12 · 14:06 · p. 214</span><button type="button" class="ts-btn ts-btn--quiet" style="min-height: 44px; margin-right: -12px">Edit</button></div>
+  </div>
+
+  <div class="ts-note" role="dialog" aria-label="New note" style="margin-left: 32px">
+    <p class="ts-note__quote">At the top the wind was waiting.</p>
+    <label class="ts-sr" for="nb-t">Your note</label>
+    <textarea id="nb-t" class="ts-input is-focus" rows="3" style="margin-top: 8px; width: 100%; height: auto; padding: 10px 12px; font: inherit; font-size: 16px; line-height: 24px; resize: none">Same wind as the first chapter?</textarea>
+    <div class="ts-note__meta"><span>Saved for you · 14:09 · p. 214</span><span style="display: flex; gap: 4px"><button type="button" class="ts-btn ts-btn--quiet" style="min-height: 44px">Cancel</button><button type="button" class="ts-btn ts-btn--primary" style="min-height: 44px">Save note</button></span></div>
+  </div>
+</div>
+</body>
+</html>

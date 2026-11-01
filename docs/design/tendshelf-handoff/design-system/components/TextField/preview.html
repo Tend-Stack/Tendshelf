@@ -1,0 +1,54 @@
+<!-- @dsCard group="Inputs" height=380 subtitle="Text input, search field, select" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Text field</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="align-items: flex-start; gap: 32px">
+  <div style="display: flex; flex-direction: column; gap: 20px; width: 340px">
+    <div class="ts-field">
+      <label class="ts-field__label" for="f1">Name your server</label>
+      <input id="f1" class="ts-input" type="text" value="The Reyes family shelf">
+      <span class="ts-field__hint">People you invite will see this name.</span>
+    </div>
+    <div class="ts-field">
+      <label class="ts-field__label" for="f2">Audiobook folder</label>
+      <input id="f2" class="ts-input is-focus" type="text" placeholder="/srv/media/audiobooks">
+    </div>
+    <div class="ts-field">
+      <label class="ts-field__label" for="f3">Email</label>
+      <input id="f3" class="ts-input" type="email" value="rosa@" aria-invalid="true" aria-describedby="f3e">
+      <span class="ts-field__error" id="f3e"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19z"></path><path d="M12 10v4M12 17h.01"></path></svg>That email looks incomplete.</span>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 20px; width: 360px">
+    <div class="ts-search" role="search">
+      <svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <label class="ts-sr" for="s1">Search books, authors, narrators and notes</label>
+      <input id="s1" class="ts-input" type="search" placeholder="Books, authors, narrators, notes">
+      <span class="ts-search__end"><span class="ts-kbd" aria-hidden="true" style="margin-right: 12px">/</span></span>
+    </div>
+    <div class="ts-search" role="search">
+      <svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <label class="ts-sr" for="s2">Search</label>
+      <input id="s2" class="ts-input is-focus" type="search" value="lighthouse">
+      <span class="ts-search__end"><button type="button" class="ts-iconbtn" aria-label="Clear search"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></span>
+    </div>
+    <div class="ts-field">
+      <span class="ts-field__label" id="sel1">Sort by</span>
+      <button type="button" class="ts-select" aria-labelledby="sel1 sel1v" aria-haspopup="dialog"><span id="sel1v">Recently listened</span><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+    </div>
+    <div class="ts-field">
+      <label class="ts-field__label" for="f4">Publisher</label>
+      <input id="f4" class="ts-input" type="text" value="Harrow &amp; Finch" disabled>
+      <span class="ts-field__hint">Locked while a scan is running.</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

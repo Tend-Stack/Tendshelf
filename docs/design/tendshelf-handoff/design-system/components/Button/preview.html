@@ -1,0 +1,46 @@
+<!-- @dsCard group="Actions" height=300 subtitle="Primary, secondary, quiet · every state" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Button</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="flex-direction: column; align-items: stretch; gap: 20px">
+  <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+    <button type="button" class="ts-btn ts-btn--primary ts-btn--lg"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"></path></svg>Resume</button>
+    <button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>Download</button>
+    <button type="button" class="ts-btn ts-btn--quiet">See all</button>
+    <button type="button" class="ts-btn ts-btn--danger">Remove access</button>
+  </div>
+  <div style="display: grid; grid-template-columns: 96px repeat(6, max-content); gap: 12px 12px; align-items: center">
+    <span class="ts-preview-label"></span>
+    <span class="ts-preview-label">Default</span><span class="ts-preview-label">Hover</span><span class="ts-preview-label">Focus</span><span class="ts-preview-label">Pressed</span><span class="ts-preview-label">Disabled</span><span class="ts-preview-label">Loading</span>
+    <span class="ts-preview-label">Primary</span>
+    <button type="button" class="ts-btn ts-btn--primary">Start listening</button>
+    <button type="button" class="ts-btn ts-btn--primary is-hover">Start listening</button>
+    <button type="button" class="ts-btn ts-btn--primary is-focus">Start listening</button>
+    <button type="button" class="ts-btn ts-btn--primary is-pressed">Start listening</button>
+    <button type="button" class="ts-btn ts-btn--primary" disabled>Start listening</button>
+    <button type="button" class="ts-btn ts-btn--primary is-loading" aria-busy="true"><span class="ts-spinner" aria-hidden="true"></span>Saving…</button>
+    <span class="ts-preview-label">Secondary</span>
+    <button type="button" class="ts-btn ts-btn--secondary">Invite someone</button>
+    <button type="button" class="ts-btn ts-btn--secondary is-hover">Invite someone</button>
+    <button type="button" class="ts-btn ts-btn--secondary is-focus">Invite someone</button>
+    <button type="button" class="ts-btn ts-btn--secondary is-pressed">Invite someone</button>
+    <button type="button" class="ts-btn ts-btn--secondary" disabled>Invite someone</button>
+    <button type="button" class="ts-btn ts-btn--secondary is-loading" aria-busy="true"><span class="ts-spinner" aria-hidden="true"></span>Sending…</button>
+    <span class="ts-preview-label">Quiet</span>
+    <button type="button" class="ts-btn ts-btn--quiet">See all</button>
+    <button type="button" class="ts-btn ts-btn--quiet is-hover">See all</button>
+    <button type="button" class="ts-btn ts-btn--quiet is-focus">See all</button>
+    <button type="button" class="ts-btn ts-btn--quiet is-pressed">See all</button>
+    <button type="button" class="ts-btn ts-btn--quiet" disabled>See all</button>
+    <button type="button" class="ts-btn ts-btn--quiet is-loading" aria-busy="true"><span class="ts-spinner" aria-hidden="true"></span>Loading…</button>
+  </div>
+</div>
+</body>
+</html>

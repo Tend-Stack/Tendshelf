@@ -1,0 +1,33 @@
+<!-- @dsCard group="Feedback" height=420 subtitle="Empty library, no results, error" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Empty state</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="align-items: flex-start; gap: 16px; flex-wrap: nowrap">
+  <div class="ts-empty" style="padding: 32px 16px; width: 300px">
+    <svg class="ts-empty__art" viewBox="0 0 120 72" aria-hidden="true"><rect x="0" y="64" width="120" height="6" rx="2" fill="var(--brand-walnut)"></rect><rect x="22" y="22" width="14" height="42" rx="2" fill="none" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="4 4"></rect><rect x="40" y="12" width="16" height="52" rx="2" fill="none" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="4 4"></rect><rect x="60" y="28" width="12" height="36" rx="2" fill="var(--accent-fill)"></rect><path d="M72 46c3-8 5-8 8 0s5 8 8 0 4-5 6 0" fill="none" stroke="var(--accent-fill)" stroke-width="2.5" stroke-linecap="round"></path></svg>
+    <h2 class="ts-empty__title">Your shelf is empty</h2>
+    <p class="ts-empty__body">Point Tendshelf at a folder of audiobooks and they'll appear here, covers and all.</p>
+    <button type="button" class="ts-btn ts-btn--primary" style="margin-top: 8px">Add a folder</button>
+  </div>
+  <div class="ts-empty" style="padding: 32px 16px; width: 300px">
+    <svg class="ts-empty__art" viewBox="0 0 120 72" aria-hidden="true"><circle cx="54" cy="32" r="20" fill="none" stroke="var(--line-strong)" stroke-width="2"></circle><path d="m69 47 14 14" stroke="var(--line-strong)" stroke-width="2.5" stroke-linecap="round"></path><path d="M44 32h20" stroke="var(--accent-fill)" stroke-width="2.5" stroke-linecap="round"></path></svg>
+    <h2 class="ts-empty__title">Nothing for “lighthous”</h2>
+    <p class="ts-empty__body">Check the spelling, or try an author or narrator. Did you mean <a href="#">lighthouse</a>?</p>
+    <button type="button" class="ts-btn ts-btn--secondary" style="margin-top: 8px">Clear search</button>
+  </div>
+  <div class="ts-empty" style="padding: 32px 16px; width: 300px">
+    <svg class="ts-empty__art" viewBox="0 0 120 72" aria-hidden="true"><path d="M60 10 32 60h56z" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linejoin="round"></path><path d="M60 28v14M60 50h.01" stroke="var(--danger)" stroke-width="3" stroke-linecap="round"></path></svg>
+    <h2 class="ts-empty__title">Couldn't load your library</h2>
+    <p class="ts-empty__body">Your server didn't answer. It may be restarting. Downloaded books still play.</p>
+    <button type="button" class="ts-btn ts-btn--primary" style="margin-top: 8px">Try again</button>
+  </div>
+</div>
+</body>
+</html>

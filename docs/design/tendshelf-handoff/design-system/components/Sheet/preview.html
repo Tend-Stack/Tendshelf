@@ -1,0 +1,35 @@
+<!-- @dsCard group="Feedback" height=520 subtitle="Bottom sheet on phone, dialog on desktop" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sheet and dialog</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="align-items: flex-start; gap: 40px">
+  <div style="position: relative; width: 360px; height: 470px; overflow: hidden; border-radius: 20px; background: var(--ground); border: 1px solid var(--line)">
+    <div style="padding: 24px; display: flex; flex-direction: column; gap: 8px; opacity: 0.6" aria-hidden="true"><div class="ts-skeleton" style="width: 220px; height: 220px; margin: 0 auto"></div><div class="ts-skeleton" style="width: 240px; height: 18px; margin: 12px auto 0"></div></div>
+    <div class="ts-scrim"></div>
+    <div class="ts-sheet" role="dialog" aria-modal="true" aria-labelledby="sleep-title">
+      <div class="ts-sheet__grab" aria-hidden="true"></div>
+      <div class="ts-sheet__head"><h2 class="ts-sheet__title" id="sleep-title">Sleep timer</h2><button type="button" class="ts-iconbtn" aria-label="Close"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+      <ul class="ts-options" role="radiogroup" aria-labelledby="sleep-title">
+        <li><button type="button" role="radio" aria-checked="true" class="ts-option"><span>End of chapter</span><span style="display: flex; gap: 12px; align-items: center"><span class="ts-option__meta">in 18 min</span><svg class="ts-icon ts-option__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg></span></button></li>
+        <li><button type="button" role="radio" aria-checked="false" class="ts-option"><span>15 minutes</span><svg class="ts-icon ts-option__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg></button></li>
+        <li><button type="button" role="radio" aria-checked="false" class="ts-option is-hover"><span>30 minutes</span><svg class="ts-icon ts-option__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg></button></li>
+        <li><button type="button" role="radio" aria-checked="false" class="ts-option"><span>60 minutes</span><svg class="ts-icon ts-option__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg></button></li>
+        <li><button type="button" role="radio" aria-checked="false" class="ts-option"><span>Custom…</span><svg class="ts-icon ts-option__check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg></button></li>
+      </ul>
+    </div>
+  </div>
+  <div class="ts-dialog" role="dialog" aria-modal="true" aria-labelledby="revoke-title" style="margin-top: 60px">
+    <h2 class="ts-dialog__title" id="revoke-title">Stop sharing with Rosa?</h2>
+    <p class="ts-dialog__body">Rosa won't be able to listen to your books any more. Her progress and notes stay saved, in case you invite her again.</p>
+    <div class="ts-dialog__actions"><button type="button" class="ts-btn ts-btn--secondary">Keep sharing</button><button type="button" class="ts-btn ts-btn--danger">Stop sharing</button></div>
+  </div>
+</div>
+</body>
+</html>

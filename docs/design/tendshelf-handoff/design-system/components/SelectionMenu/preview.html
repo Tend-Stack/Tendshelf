@@ -1,0 +1,29 @@
+<!-- @dsCard group="Reader" height=300 subtitle="Highlight, note, listen from here, copy · on a highlight · focused · copy-protected book" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Selection menu</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="gap: 40px">
+  <div class="ts-selmenu" role="toolbar" aria-label="Selected text">
+    <button type="button" class="ts-selmenu__item"><span class="ts-selmenu__swatch" aria-hidden="true"></span>Highlight</button>
+    <button type="button" class="ts-selmenu__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H10l-4 4v-4H5z"></path></svg>Note</button>
+    <button type="button" class="ts-selmenu__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"></path></svg>Listen from here</button>
+    <button type="button" class="ts-selmenu__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2"></rect><path d="M5 15V5a1 1 0 0 1 1-1h9"></path></svg>Copy</button>
+  </div>
+  <div class="ts-selmenu" role="toolbar" aria-label="Highlighted text">
+    <button type="button" class="ts-selmenu__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H10l-4 4v-4H5z"></path></svg>Add note</button>
+    <button type="button" class="ts-selmenu__item is-hover">Remove highlight</button>
+  </div>
+
+<div class="ts-preview" style="gap: 40px; padding-top: 0">
+  <div class="ts-preview-col"><div class="ts-selmenu" role="toolbar" aria-label="Selected text"><button type="button" class="ts-selmenu__item"><span class="ts-selmenu__swatch" aria-hidden="true"></span>Highlight</button><button type="button" class="ts-selmenu__item is-focus"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H10l-4 4v-4H5z"></path></svg>Note</button><button type="button" class="ts-selmenu__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"></path></svg>Listen from here</button><button type="button" class="ts-selmenu__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2"></rect><path d="M5 15V5a1 1 0 0 1 1-1h9"></path></svg>Copy</button></div><span class="ts-preview-label">Keyboard focus moves with the arrow keys</span></div>
+  <div class="ts-preview-col"><div class="ts-selmenu" role="toolbar" aria-label="Selected text"><button type="button" class="ts-selmenu__item"><span class="ts-selmenu__swatch" aria-hidden="true"></span>Highlight</button><button type="button" class="ts-selmenu__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H10l-4 4v-4H5z"></path></svg>Note</button><button type="button" class="ts-selmenu__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"></path></svg>Listen from here</button></div><span class="ts-preview-label">Book where the owner turned copying off: Copy is left out</span></div>
+</div>
+</body>
+</html>

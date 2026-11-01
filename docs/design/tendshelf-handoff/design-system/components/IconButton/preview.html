@@ -1,0 +1,31 @@
+<!-- @dsCard group="Actions" height=220 subtitle="Plain, tonal, ember and cover-accent · sizes and states" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Icon button</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="flex-direction: column; align-items: flex-start; gap: 20px">
+  <div style="display: flex; gap: 16px; align-items: center">
+    <button type="button" class="ts-iconbtn" aria-label="Close player"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+    <button type="button" class="ts-iconbtn ts-iconbtn--tonal" aria-label="More options"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></button>
+    <button type="button" class="ts-iconbtn" aria-label="Bookmark" aria-pressed="true"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4h11v16.5L12 16.8l-5.5 3.7z"></path></svg></button>
+    <button type="button" class="ts-iconbtn ts-iconbtn--md ts-skip" aria-label="Back 30 seconds"><svg class="ts-icon" style="width: 36px; height: 36px; stroke-width: 1.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"></path><path d="M4.5 3.5v4h4"></path></svg><span class="ts-skip__num" aria-hidden="true">30</span></button>
+    <button type="button" class="ts-iconbtn ts-iconbtn--filled ts-iconbtn--lg" aria-label="Play"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"></path></svg></button>
+    <button type="button" class="ts-iconbtn ts-iconbtn--cover ts-iconbtn--xl" aria-label="Pause" style="--cover-accent: #9ccbc4"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg></button>
+  </div>
+  <div style="display: flex; gap: 20px; align-items: flex-start">
+    <div class="ts-preview-col"><button type="button" class="ts-iconbtn ts-iconbtn--tonal" aria-label="Share"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"></path></svg></button><span class="ts-preview-label">Default</span></div>
+    <div class="ts-preview-col"><button type="button" class="ts-iconbtn ts-iconbtn--tonal is-hover" aria-label="Share"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"></path></svg></button><span class="ts-preview-label">Hover</span></div>
+    <div class="ts-preview-col"><button type="button" class="ts-iconbtn ts-iconbtn--tonal is-focus" aria-label="Share"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"></path></svg></button><span class="ts-preview-label">Focus</span></div>
+    <div class="ts-preview-col"><button type="button" class="ts-iconbtn ts-iconbtn--tonal is-pressed" aria-label="Share"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"></path></svg></button><span class="ts-preview-label">Pressed</span></div>
+    <div class="ts-preview-col"><button type="button" class="ts-iconbtn" disabled aria-label="Share"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"></path></svg></button><span class="ts-preview-label">Disabled</span></div>
+    <div class="ts-preview-col"><button type="button" class="ts-iconbtn ts-iconbtn--tonal" aria-label="Downloading" aria-busy="true"><span class="ts-spinner" aria-hidden="true"></span></button><span class="ts-preview-label">Loading</span></div>
+  </div>
+</div>
+</body>
+</html>

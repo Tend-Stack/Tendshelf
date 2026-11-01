@@ -1,0 +1,40 @@
+<!-- @dsCard group="Reader" height=760 subtitle="Match found · no match · copy-protected file refused" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pairing card</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview">
+  <div class="ts-pair" style="width: 360px">
+    <div class="ts-pair__books">
+      <span class="ts-cover" style="width: 64px; height: 64px; background: linear-gradient(160deg, #1f4a52, #0f2a30)"></span>
+      <span class="ts-pair__link"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span>
+      <span class="ts-cover" style="width: 44px; height: 64px; background: linear-gradient(160deg, #2a5a62, #13363d)"></span>
+      <div style="display: flex; flex-direction: column; min-width: 0"><span class="body" style="font-weight: 500">The Lighthouse Keeper's Daughter</span><span class="caption" style="color: var(--ink-muted)">EPUB · 346 pages</span></div>
+    </div>
+    <ul class="ts-pair__checks">
+      <li><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg><span>Same title and author</span></li>
+      <li><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg><span>19 chapters in both, same names</span></li>
+      <li class="is-warn"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.8 19.5h18.4z"></path><path d="M12 10v4M12 17h.01"></path></svg><span>Ebook has a foreword the audio skips. Read along starts at chapter 1.</span></li>
+    </ul>
+    <div class="ts-pair__actions"><button type="button" class="ts-btn ts-btn--primary">Pair and prepare read-along</button><button type="button" class="ts-btn ts-btn--quiet">Not the same book</button></div>
+  </div>
+
+<div class="ts-preview" style="align-items: flex-start; gap: 32px; padding-top: 0">
+  <div class="ts-pair ts-pair--nomatch" role="status" style="width: 360px">
+    <div class="ts-pair__books"><span class="ts-cover" style="width: 64px; height: 64px; border: 2px dashed var(--line-strong); background: transparent; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg class="ts-icon" style="width: 26px; height: 26px;color: var(--ink-muted)" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"></path><rect x="3.5" y="14" width="4" height="6.5" rx="1.5"></rect><rect x="16.5" y="14" width="4" height="6.5" rx="1.5"></rect></svg></span><span class="ts-pair__link"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span><span class="ts-cover" style="width: 44px; height: 64px; background: linear-gradient(170deg, #3b4a5a, #1d2733)"></span><div style="display: flex; flex-direction: column"><span class="body" style="font-weight: 500">Harbour Notes</span><span class="caption" style="color: var(--ink-muted)">June Calloway · EPUB</span></div></div>
+    <p class="body" style="margin: 0; display: flex; gap: 10px"><svg class="ts-icon" style="width: 20px; height: 20px;color: var(--warning); flex-shrink: 0; margin-top: 2px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.8 19.5h18.4z"></path><path d="M12 10v4M12 17h.01"></path></svg><span>None of your audiobooks has this title and author.</span></p>
+    <div class="ts-pair__actions"><button type="button" class="ts-btn ts-btn--primary">Choose the audiobook</button><button type="button" class="ts-btn ts-btn--quiet">Keep it as an ebook</button></div>
+  </div>
+  <div class="ts-pair" role="alert" style="width: 360px; border-color: var(--danger)">
+    <div style="display: flex; gap: 12px"><svg class="ts-icon" style="width: 24px; height: 24px;color: var(--danger); flex-shrink: 0" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4.4 3.4 8 8 9 4.6-1 8-4.6 8-9V6z"></path></svg><div style="display: flex; flex-direction: column; gap: 4px"><span class="body" style="font-weight: 600">This ebook is copy-protected</span><span class="caption" style="color: var(--ink-muted)">Tendshelf can only open ebooks without copy protection. Nothing was changed.</span></div></div>
+    <div class="ts-pair__actions"><button type="button" class="ts-btn ts-btn--primary">Choose another file</button></div>
+  </div>
+</div>
+</body>
+</html>

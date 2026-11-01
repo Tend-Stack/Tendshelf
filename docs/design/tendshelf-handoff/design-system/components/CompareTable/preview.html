@@ -1,0 +1,50 @@
+<!-- @dsCard group="Metadata" height=440 subtitle="Look up details online · tick the values to keep" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Compare table</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="flex-direction: column; align-items: stretch; max-width: 760px">
+  <table class="ts-compare">
+    <caption class="ts-sr">Compare current details with details found online</caption>
+    <thead><tr><th scope="col">Field</th><th scope="col">Now</th><th scope="col">Found online</th><th scope="col"><span class="ts-sr">Use online value</span></th></tr></thead>
+    <tbody>
+      <tr>
+        <th scope="row" class="ts-compare__field" style="text-transform: none; letter-spacing: 0; font-size: 15px; border: 0; border-bottom: 1px solid var(--line); padding: 12px">Title</th>
+        <td><div class="ts-compare__val is-chosen">The Lighthouse Keeper's Daughter<span class="ts-source">From file</span></div></td>
+        <td><div class="ts-compare__val is-other">The Lighthouse Keeper's Daughter<span class="ts-source">Online · 31 Oct</span></div></td>
+        <td style="width: 44px"><input class="ts-check" type="checkbox" aria-label="Use online title" disabled></td>
+      </tr>
+      <tr class="is-diff">
+        <th scope="row" class="ts-compare__field" style="text-transform: none; letter-spacing: 0; font-size: 15px; border: 0; border-bottom: 1px solid var(--line); padding: 12px">Narrator</th>
+        <td><div class="ts-compare__val is-other">T. Marsh<span class="ts-source">From file</span></div></td>
+        <td><div class="ts-compare__val is-chosen">Theo Marsh<span class="ts-source">Online · 31 Oct</span></div></td>
+        <td><input class="ts-check" type="checkbox" checked aria-label="Use online narrator"></td>
+      </tr>
+      <tr class="is-diff">
+        <th scope="row" class="ts-compare__field" style="text-transform: none; letter-spacing: 0; font-size: 15px; border: 0; border-bottom: 1px solid var(--line); padding: 12px">Series</th>
+        <td><div class="ts-compare__val is-chosen">Harbour Lights, book 1<span class="ts-source ts-source--you">Edited by you</span></div></td>
+        <td><div class="ts-compare__val is-other">—<span class="ts-source">Online · 31 Oct</span></div></td>
+        <td><input class="ts-check" type="checkbox" aria-label="Use online series"></td>
+      </tr>
+      <tr class="is-diff">
+        <th scope="row" class="ts-compare__field" style="text-transform: none; letter-spacing: 0; font-size: 15px; border: 0; border-bottom: 1px solid var(--line); padding: 12px">Year</th>
+        <td><div class="ts-compare__val is-other">2021<span class="ts-source">From file</span></div></td>
+        <td><div class="ts-compare__val is-chosen">2019<span class="ts-source">Online · 31 Oct</span></div></td>
+        <td><input class="ts-check is-focus" type="checkbox" checked aria-label="Use online year"></td>
+      </tr>
+      <tr>
+        <th scope="row" class="ts-compare__field" style="text-transform: none; letter-spacing: 0; font-size: 15px; border: 0; border-bottom: 1px solid var(--line); padding: 12px">Rating</th>
+        <td colspan="3"><div style="display: flex; gap: 24px; color: var(--ink-muted); font-size: 15px" class="ts-num"><span>4.4 · Online catalog A · fetched 31 Oct</span><span>4.1 · Online catalog B · fetched 12 Oct</span></div></td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px"><button type="button" class="ts-btn ts-btn--secondary">Cancel</button><button type="button" class="ts-btn ts-btn--primary">Use 2 changes</button></div>
+</div>
+</body>
+</html>

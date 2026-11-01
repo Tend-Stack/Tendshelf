@@ -1,0 +1,36 @@
+<!-- @dsCard group="Reader" height=470 subtitle="Three styles for the sentence being spoken, with and without the word underline" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sentence highlight</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="align-items: flex-start; gap: 40px">
+  <div class="ts-preview-col" style="width: 300px">
+    <div class="ts-reader" data-hl="wash" style="--read-size: 18px"><div class="ts-reader__text">
+      <p><span class="ts-s">The second lamp had not been lit in eleven winters.</span> <span class="ts-s is-now">She carried it up the hundred and nine steps with both hands, the way you <span class="ts-w is-now">carry</span> something that might still be asleep.</span> <span class="ts-s">At the top the wind was waiting.</span></p>
+    </div></div>
+    <span class="ts-preview-label">Wash (default): a soft ember band</span>
+  </div>
+  <div class="ts-preview-col" style="width: 300px">
+    <div class="ts-reader" data-hl="underline" style="--read-size: 18px"><div class="ts-reader__text">
+      <p><span class="ts-s">The second lamp had not been lit in eleven winters.</span> <span class="ts-s is-now">She carried it up the hundred and nine steps with both hands, the way you <span class="ts-w is-now">carry</span> something that might still be asleep.</span> <span class="ts-s">At the top the wind was waiting.</span></p>
+    </div></div>
+    <span class="ts-preview-label">Underline: the sentence underlined, the word heavier</span>
+  </div>
+  <div class="ts-preview-col" style="width: 300px">
+    <div class="ts-reader" data-hl="brighten" style="--read-size: 18px"><div class="ts-reader__text">
+      <p><span class="ts-s">The second lamp had not been lit in eleven winters.</span> <span class="ts-s is-now">She carried it up the hundred and nine steps with both hands, the way you <span class="ts-w is-now">carry</span> something that might still be asleep.</span> <span class="ts-s">At the top the wind was waiting.</span></p>
+    </div></div>
+    <span class="ts-preview-label">Brighten: the rest steps back to read-rest</span>
+  </div>
+
+<div class="ts-preview" style="align-items: flex-start; gap: 40px; padding-top: 0">
+  <div class="ts-preview-col" style="width: 300px"><div class="ts-reader" data-hl="wash" data-word="off" style="--read-size: 18px"><div class="ts-reader__text"><p><span class="ts-s">The second lamp had not been lit in eleven winters.</span> <span class="ts-s is-now">She carried it up the hundred and nine steps with both hands, the way you <span class="ts-w is-now">carry</span> something that might still be asleep.</span></p></div></div><span class="ts-preview-label">Wash with the word underline turned off (a reader choice)</span></div>
+</div>
+</body>
+</html>

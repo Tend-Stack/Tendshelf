@@ -1,0 +1,33 @@
+<!-- @dsCard group="Player" height=210 subtitle="Docked above the tab bar · playing and paused" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mini-player</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="flex-direction: column; align-items: flex-start; gap: 16px">
+  <div class="ts-mini" style="width: 374px">
+    <div class="ts-mini__progress" style="width: 62%"></div>
+    <a class="ts-mini__open" href="#" aria-label="Open player: The Lighthouse Keeper's Daughter, chapter 12, 18 minutes left">
+      <span class="ts-cover" style="width: 48px; height: 48px; background: #1f4a52" aria-hidden="true"><span style="position: absolute; left: 56%; top: 30%; width: 4px; height: 55%; background: #e9ddbf"></span><span style="position: absolute; left: 0; right: 0; bottom: 0; height: 18%; background: #163a40"></span></span>
+      <span class="ts-mini__text"><span class="ts-mini__title">The Lighthouse Keeper's Daughter</span><span class="ts-mini__meta">Chapter 12 · 18 min left</span></span>
+    </a>
+    <button type="button" class="ts-iconbtn" aria-label="Back 30 seconds"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"></path><path d="M4.5 3.5v4h4"></path></svg></button>
+    <button type="button" class="ts-iconbtn ts-iconbtn--filled" aria-label="Pause"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg></button>
+  </div>
+  <div class="ts-mini" style="width: 374px">
+    <div class="ts-mini__progress" style="width: 35%"></div>
+    <a class="ts-mini__open" href="#" aria-label="Open player: Salt and Ember, paused">
+      <span class="ts-cover" style="width: 48px; height: 48px; background: #8c3b24" aria-hidden="true"><span style="position: absolute; right: 6px; top: 9px; width: 18px; height: 18px; border-radius: 50%; background: #e9a845"></span></span>
+      <span class="ts-mini__text"><span class="ts-mini__title">Salt and Ember</span><span class="ts-mini__meta">Paused · Chapter 4 · 31 min left</span></span>
+    </a>
+    <button type="button" class="ts-iconbtn" aria-label="Back 30 seconds"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"></path><path d="M4.5 3.5v4h4"></path></svg></button>
+    <button type="button" class="ts-iconbtn ts-iconbtn--filled" aria-label="Play"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"></path></svg></button>
+  </div>
+</div>
+</body>
+</html>

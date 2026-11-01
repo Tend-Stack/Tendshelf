@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Libraries & scanning — phone (full scroll)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Fira+Sans:wght@400;500;600&family=Fira+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../design-system/tokens.css">
+<link rel="stylesheet" href="../../design-system/components/bundle.css">
+<style>body{margin:0}</style>
+</head>
+<body>
+<!-- Static snapshot of the design board "LibrariesPhone" (390 x 1500). Reference markup, not production code. -->
+
+
+<div data-theme="dark" style="width: 390px; height: 1500px; position: relative; overflow: hidden; box-sizing: border-box; padding: 12px 20px 40px; background: var(--ground); color: var(--ink); font-family: var(--font-sans); display: flex; flex-direction: column">
+  <div style="display: flex; align-items: center; height: 48px; margin: 0 -8px">
+    <button type="button" class="ts-iconbtn" aria-label="Back to profile"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg></button>
+  </div>
+  <span class="ts-overline">Your server</span>
+  <h1 class="title-1" style="margin: 4px 0 0">Libraries &amp; scanning</h1>
+
+  <section role="status" aria-live="polite" style="margin-top: 18px; padding: 16px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 10px"><svg class="ts-icon" style="width: 20px; height: 20px; color: var(--success)" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg><span class="label">912 books ready to play</span></div>
+    <p class="caption ts-num" style="margin: 0; color: var(--ink-muted)">Last scan 2 hours ago found 2 new books. Next scan tonight at 03:00, or whenever a watched folder changes.</p>
+    <button type="button" class="ts-btn ts-btn--primary ts-btn--block"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"></path></svg>Scan now</button>
+  </section>
+
+  <div style="margin-top: 24px">
+    
+
+<section data-theme="dark" aria-labelledby="pr-h" style="width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; color: var(--ink); font-family: var(--font-sans); background: var(--ground)">
+  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+    <h2 id="pr-h" class="section" style="margin: 0">4 things need a look</h2>
+    <span class="caption" style="color: var(--ink-muted)">From today's scan</span>
+  </div>
+  
+    <article style="display: flex; gap: 14px; padding: 16px; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--line)">
+      <span aria-hidden="true" style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 18px; background: var(--raised); display: flex; align-items: center; justify-content: center; color: var(--warning)"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19zM12 10v4M12 17h.01"></path></svg></span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <h3 class="body" style="margin: 0; font-weight: 600">4 files are still copying</h3>
+        <p class="caption" style="margin: 0; color: var(--ink-muted)">They were still changing when Tendshelf looked, in "Inbox / Lantern Street". It will try again on its own in 10 minutes.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px">
+          <button type="button" class="ts-btn ts-btn--secondary" style="min-height: 40px">Try again now</button>
+          <button type="button" class="ts-btn ts-btn--quiet" style="min-height: 40px">Show files</button>
+        </div>
+      </div>
+    </article>
+  
+    <article style="display: flex; gap: 14px; padding: 16px; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--line)">
+      <span aria-hidden="true" style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 18px; background: var(--raised); display: flex; align-items: center; justify-content: center; color: var(--ink-muted)"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10h12v10H6zM9 10V7a3 3 0 0 1 6 0v3"></path></svg></span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <h3 class="body" style="margin: 0; font-weight: 600">1 protected file was skipped</h3>
+        <p class="caption" style="margin: 0; color: var(--ink-muted)">"The Glass Orchard, part 2" is copy-protected, so Tendshelf can’t open it. Nothing else is affected. A copy without protection will be picked up automatically.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px">
+          <button type="button" class="ts-btn ts-btn--secondary" style="min-height: 40px">Show the file</button>
+          <button type="button" class="ts-btn ts-btn--quiet" style="min-height: 40px">Why does this happen?</button>
+        </div>
+      </div>
+    </article>
+  
+    <article style="display: flex; gap: 14px; padding: 16px; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--line)">
+      <span aria-hidden="true" style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 18px; background: var(--raised); display: flex; align-items: center; justify-content: center; color: var(--accent)"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11v11H8zM5 16V5h11"></path></svg></span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <h3 class="body" style="margin: 0; font-weight: 600">Saltmarsh is here twice</h3>
+        <p class="caption" style="margin: 0; color: var(--ink-muted)">Two copies in different folders (Audiobooks and Inbox). Keep one and Tendshelf hides the other; your files stay where they are.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px">
+          <button type="button" class="ts-btn ts-btn--secondary" style="min-height: 40px">Choose which to keep</button>
+          <button type="button" class="ts-btn ts-btn--quiet" style="min-height: 40px">Keep both</button>
+        </div>
+      </div>
+    </article>
+  
+    <article style="display: flex; gap: 14px; padding: 16px; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--line)">
+      <span aria-hidden="true" style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 18px; background: var(--raised); display: flex; align-items: center; justify-content: center; color: var(--ink-muted)"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4"></path></svg></span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <h3 class="body" style="margin: 0; font-weight: 600">2 books have no cover</h3>
+        <p class="caption" style="margin: 0; color: var(--ink-muted)">"The Salt Road Letters" and "Weather for Beginners" had no picture in their files.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px">
+          <button type="button" class="ts-btn ts-btn--secondary" style="min-height: 40px">Look up covers online</button>
+          <button type="button" class="ts-btn ts-btn--quiet" style="min-height: 40px">Add my own</button>
+        </div>
+      </div>
+    </article>
+  
+</section>
+
+  </div>
+
+  <section aria-labelledby="lp-f" style="margin-top: 28px">
+    <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px">
+      <h2 id="lp-f" class="section" style="margin: 0">Folders</h2>
+      <button type="button" class="ts-btn ts-btn--quiet" style="margin-right: -12px">Add a folder</button>
+    </div>
+    
+      <a href="#" style="display: flex; align-items: center; gap: 14px; min-height: 68px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none">
+        <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--raised); display: flex; align-items: center; justify-content: center; color: var(--accent)"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></span>
+        <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span class="body" style="font-weight: 500">Audiobooks</span><span class="caption ts-num" style="color: var(--ink-muted)">848 books · 1.1 TB · watching</span></span>
+        <svg class="ts-icon" style="width: 20px; height: 20px; color: var(--ink-muted)" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+      </a>
+    
+      <a href="#" style="display: flex; align-items: center; gap: 14px; min-height: 68px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none">
+        <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--raised); display: flex; align-items: center; justify-content: center; color: var(--accent)"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></span>
+        <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span class="body" style="font-weight: 500">Kids</span><span class="caption ts-num" style="color: var(--ink-muted)">64 books · 61 GB · watching</span></span>
+        <svg class="ts-icon" style="width: 20px; height: 20px; color: var(--ink-muted)" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+      </a>
+    
+      <a href="#" style="display: flex; align-items: center; gap: 14px; min-height: 68px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none">
+        <span aria-hidden="true" style="width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--raised); display: flex; align-items: center; justify-content: center; color: var(--accent)"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></span>
+        <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span class="body" style="font-weight: 500">Inbox</span><span class="caption ts-num" style="color: var(--ink-muted)">4 files still copying</span></span>
+        <svg class="ts-icon" style="width: 20px; height: 20px; color: var(--ink-muted)" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+      </a>
+    
+  </section>
+  <a href="#" class="ts-btn ts-btn--quiet" style="margin-top: 12px; align-self: flex-start; margin-left: -12px">Scan history</a>
+</div>
+
+</body>
+</html>

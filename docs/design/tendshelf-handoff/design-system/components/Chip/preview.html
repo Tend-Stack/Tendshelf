@@ -1,0 +1,28 @@
+<!-- @dsCard group="Selection" height=200 subtitle="Filter chips and info chips" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chip</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="flex-direction: column; align-items: flex-start; gap: 18px">
+  <div class="ts-chip-set" role="group" aria-label="Filters">
+    <button type="button" class="ts-chip" aria-pressed="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg>Unfinished</button>
+    <button type="button" class="ts-chip">Downloaded</button>
+    <button type="button" class="ts-chip is-hover">Under 8 hours</button>
+    <button type="button" class="ts-chip is-focus">Mystery</button>
+    <button type="button" class="ts-chip" disabled>Read-along ready</button>
+    <button type="button" class="ts-chip"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>More filters</button>
+  </div>
+  <div class="ts-chip-set">
+    <span class="ts-chip ts-chip--static">11 h 50 m</span>
+    <span class="ts-chip ts-chip--static">Book 2 of 4</span>
+    <span class="ts-chip ts-chip--static">2019</span>
+  </div>
+</div>
+</body>
+</html>

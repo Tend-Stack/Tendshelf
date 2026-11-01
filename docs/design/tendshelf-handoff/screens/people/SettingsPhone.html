@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings — phone (full scroll)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Fira+Sans:wght@400;500;600&family=Fira+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../design-system/tokens.css">
+<link rel="stylesheet" href="../../design-system/components/bundle.css">
+<style>body{margin:0}</style>
+</head>
+<body>
+<!-- Static snapshot of the design board "SettingsPhone" (390 x 1780). Reference markup, not production code. -->
+
+
+<div data-theme="dark" style="width: 390px; height: 1780px; position: relative; overflow: hidden; box-sizing: border-box; padding: 12px 20px 40px; background: var(--ground); color: var(--ink); font-family: var(--font-sans); display: flex; flex-direction: column">
+  <div style="display: flex; align-items: center; height: 48px; margin: 0 -8px">
+    <button type="button" class="ts-iconbtn" aria-label="Back to profile"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg></button>
+  </div>
+  <h1 class="title-1" style="margin: 4px 0 0">Settings</h1>
+  <p class="caption" style="margin: 4px 0 0; color: var(--ink-muted)">Saved as you go, for you on every device.</p>
+
+  <section aria-labelledby="st-play" style="margin-top: 28px">
+    <h2 id="st-play" class="ts-overline" style="margin: 0 0 4px">Playback</h2>
+    <div style="display: flex; align-items: center; justify-content: space-between; min-height: 56px; border-bottom: 1px solid var(--line)">
+      <span class="ts-switch-row__label">Usual speed</span>
+      <button type="button" class="ts-btn ts-btn--quiet ts-num" aria-haspopup="dialog" style="color: var(--ink); margin-right: -12px">1.0×<svg class="ts-icon" style="width: 18px; height: 18px" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--line)">
+      <span class="ts-switch-row__label" id="sk-b">Skip back</span>
+      <div role="radiogroup" aria-labelledby="sk-b" class="ts-seg" style="align-self: flex-start">
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item ts-num">10 s</button>
+        <button type="button" role="radio" aria-checked="true" class="ts-seg__item ts-num">15 s</button>
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item ts-num">30 s</button>
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item ts-num">60 s</button>
+      </div>
+      <span class="ts-switch-row__label" id="sk-f" style="margin-top: 6px">Skip forward</span>
+      <div role="radiogroup" aria-labelledby="sk-f" class="ts-seg" style="align-self: flex-start">
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item ts-num">10 s</button>
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item ts-num">15 s</button>
+        <button type="button" role="radio" aria-checked="true" class="ts-seg__item ts-num">30 s</button>
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item ts-num">60 s</button>
+      </div>
+    </div>
+    <div class="ts-switch-row" style="border-bottom: 1px solid var(--line)"><span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw-rw">Rewind a little after a break</span><span class="ts-switch-row__hint">After 5 minutes or more, go back 5 s so you never lose the thread.</span></span><button type="button" role="switch" aria-checked="true" aria-labelledby="sw-rw" class="ts-switch"></button></div>
+    <div class="ts-switch-row" style="border-bottom: 1px solid var(--line)"><span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw-nx">Play the next book in a series</span><span class="ts-switch-row__hint">When a book ends.</span></span><button type="button" role="switch" aria-checked="true" aria-labelledby="sw-nx" class="ts-switch"></button></div>
+    <div class="ts-switch-row"><span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw-sh">Shake to add 10 minutes</span><span class="ts-switch-row__hint">While the sleep timer is fading out.</span></span><button type="button" role="switch" aria-checked="true" aria-labelledby="sw-sh" class="ts-switch"></button></div>
+  </section>
+
+  <section aria-labelledby="st-look" style="margin-top: 28px">
+    <h2 id="st-look" class="ts-overline" style="margin: 0 0 12px">Appearance</h2>
+    <div role="radiogroup" aria-label="Theme" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+      
+        <button type="button" role="radio" aria-checked="true" style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; color: var(--ink); cursor: pointer; font-family: var(--font-sans)">
+          <span aria-hidden="true" style="width: 100%; aspect-ratio: 3 / 4; box-sizing: border-box; border-radius: var(--radius-md); background: #14110e; border: 2px solid var(--accent); display: flex; flex-direction: column; gap: 5px; padding: 10px 8px">
+            <span style="height: 8px; width: 70%; border-radius: 2px; background: #f1e8da"></span>
+            <span style="height: 5px; width: 90%; border-radius: 2px; background: #b5a894"></span>
+            <span style="height: 5px; width: 80%; border-radius: 2px; background: #b5a894"></span>
+            <span style="margin-top: auto; height: 14px; width: 100%; border-radius: 7px; background: #e2703a"></span>
+          </span>
+          <span class="meta" style="font-weight: 600">Dark</span>
+        </button>
+      
+        <button type="button" role="radio" aria-checked="false" style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; color: var(--ink); cursor: pointer; font-family: var(--font-sans)">
+          <span aria-hidden="true" style="width: 100%; aspect-ratio: 3 / 4; box-sizing: border-box; border-radius: var(--radius-md); background: #f4eee3; border: 1px solid var(--line-strong); display: flex; flex-direction: column; gap: 5px; padding: 10px 8px">
+            <span style="height: 8px; width: 70%; border-radius: 2px; background: #1f1a14"></span>
+            <span style="height: 5px; width: 90%; border-radius: 2px; background: #8a7f70"></span>
+            <span style="height: 5px; width: 80%; border-radius: 2px; background: #8a7f70"></span>
+            <span style="margin-top: auto; height: 14px; width: 100%; border-radius: 7px; background: #e2703a"></span>
+          </span>
+          <span class="meta" style="font-weight: 500">Light</span>
+        </button>
+      
+        <button type="button" role="radio" aria-checked="false" style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; color: var(--ink); cursor: pointer; font-family: var(--font-sans)">
+          <span aria-hidden="true" style="width: 100%; aspect-ratio: 3 / 4; box-sizing: border-box; border-radius: var(--radius-md); background: #e6d7bc; border: 1px solid var(--line-strong); display: flex; flex-direction: column; gap: 5px; padding: 10px 8px">
+            <span style="height: 8px; width: 70%; border-radius: 2px; background: #33281b"></span>
+            <span style="height: 5px; width: 90%; border-radius: 2px; background: #7e6e58"></span>
+            <span style="height: 5px; width: 80%; border-radius: 2px; background: #7e6e58"></span>
+            <span style="margin-top: auto; height: 14px; width: 100%; border-radius: 7px; background: #d0632f"></span>
+          </span>
+          <span class="meta" style="font-weight: 500">Sepia</span>
+        </button>
+      
+        <button type="button" role="radio" aria-checked="false" style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; color: var(--ink); cursor: pointer; font-family: var(--font-sans)">
+          <span aria-hidden="true" style="width: 100%; aspect-ratio: 3 / 4; box-sizing: border-box; border-radius: var(--radius-md); background: #000000; border: 1px solid var(--line-strong); display: flex; flex-direction: column; gap: 5px; padding: 10px 8px">
+            <span style="height: 8px; width: 70%; border-radius: 2px; background: #ffffff"></span>
+            <span style="height: 5px; width: 90%; border-radius: 2px; background: #cccccc"></span>
+            <span style="height: 5px; width: 80%; border-radius: 2px; background: #cccccc"></span>
+            <span style="margin-top: auto; height: 14px; width: 100%; border-radius: 7px; background: #ff9a66"></span>
+          </span>
+          <span class="meta" style="font-weight: 500">Contrast</span>
+        </button>
+      
+    </div>
+    <div class="ts-switch-row" style="margin-top: 8px; border-bottom: 1px solid var(--line)"><span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw-auto">Match my phone</span><span class="ts-switch-row__hint">Dark at night, light by day.</span></span><button type="button" role="switch" aria-checked="false" aria-labelledby="sw-auto" class="ts-switch"></button></div>
+    <div class="ts-switch-row"><span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw-tint">Tint the player with the cover</span><span class="ts-switch-row__hint">Each book's colours, softly, behind its player.</span></span><button type="button" role="switch" aria-checked="true" aria-labelledby="sw-tint" class="ts-switch"></button></div>
+  </section>
+
+  <section aria-labelledby="st-a11y" style="margin-top: 28px">
+    <h2 id="st-a11y" class="ts-overline" style="margin: 0 0 4px">Easier to use</h2>
+    <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--line)">
+      <div style="display: flex; align-items: baseline; justify-content: space-between"><label class="ts-switch-row__label" for="txt">Text size</label><span class="caption" style="color: var(--ink-muted)">Larger</span></div>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span aria-hidden="true" style="font-size: 14px">A</span>
+        <input id="txt" type="range" min="1" max="5" value="3" aria-valuetext="Larger" style="flex: 1 1 0%; accent-color: var(--accent-fill); height: 44px; margin: 0px;">
+        <span aria-hidden="true" style="font-size: 24px">A</span>
+      </div>
+      <p class="caption" style="margin: 0; color: var(--ink-muted)">Follows your phone's text size too. At larger sizes, shelves show covers instead of spines.</p>
+    </div>
+    <div class="ts-switch-row" style="border-bottom: 1px solid var(--line)"><span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw-hc">High contrast</span><span class="ts-switch-row__hint">Stronger text and outlines on every screen.</span></span><button type="button" role="switch" aria-checked="false" aria-labelledby="sw-hc" class="ts-switch"></button></div>
+    <div class="ts-switch-row" style="border-bottom: 1px solid var(--line)"><span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw-rm">Reduce motion</span><span class="ts-switch-row__hint">Fades instead of slides. On automatically if your phone asks for it.</span></span><button type="button" role="switch" aria-checked="false" aria-labelledby="sw-rm" class="ts-switch"></button></div>
+    <div class="ts-switch-row"><span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw-big">Bigger player buttons</span><span class="ts-switch-row__hint">For driving, walking, or gloves.</span></span><button type="button" role="switch" aria-checked="false" aria-labelledby="sw-big" class="ts-switch"></button></div>
+  </section>
+
+  <section aria-labelledby="st-priv" style="margin-top: 28px">
+    <h2 id="st-priv" class="ts-overline" style="margin: 0 0 12px">Privacy</h2>
+    <div style="padding: 16px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--line); display: flex; gap: 12px">
+      <svg class="ts-icon" style="width: 24px; height: 24px; color: var(--success); flex-shrink: 0" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4.4 3.4 8 8 9 4.6-1 8-4.6 8-9V6z"></path><path d="m9 12 2 2 4-4"></path></svg>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <p class="body" style="margin: 0; font-weight: 500">Tendshelf sends nothing about you anywhere.</p>
+        <p class="caption" style="margin: 0; color: var(--ink-muted)">No telemetry, no tracking, no ads. Your listening history stays on this server, in your home. Book details are looked up online only when someone asks.</p>
+      </div>
+    </div>
+    <div class="ts-switch-row" style="border-bottom: 1px solid var(--line)"><span class="ts-switch-row__text"><span class="ts-switch-row__label" id="sw-st">Keep listening stats</span><span class="ts-switch-row__hint">Only you see them.</span></span><button type="button" role="switch" aria-checked="true" aria-labelledby="sw-st" class="ts-switch"></button></div>
+    <div style="display: flex; align-items: center; justify-content: space-between; min-height: 56px">
+      <span class="ts-switch-row__label">Your data</span>
+      <button type="button" class="ts-btn ts-btn--quiet" style="margin-right: -12px">Export or delete</button>
+    </div>
+  </section>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!-- @dsCard group="Reader" height=260 subtitle="Listen · Read along · Read: top bar, block, focused, no ebook yet" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mode switcher</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="flex-direction: column; align-items: flex-start; gap: 28px">
+  <div role="radiogroup" aria-label="How to follow this book" class="ts-mode">
+    <button type="button" role="radio" aria-checked="false" class="ts-mode__item">Listen</button>
+    <button type="button" role="radio" aria-checked="true" class="ts-mode__item">Read along</button>
+    <button type="button" role="radio" aria-checked="false" class="ts-mode__item is-hover">Read</button>
+  </div>
+  <div role="radiogroup" aria-label="How to follow this book" class="ts-mode ts-mode--block" style="width: 340px">
+    <button type="button" role="radio" aria-checked="true" class="ts-mode__item">Listen</button>
+    <button type="button" role="radio" aria-checked="false" class="ts-mode__item">Read along</button>
+    <button type="button" role="radio" aria-checked="false" class="ts-mode__item">Read</button>
+  </div>
+  <div role="radiogroup" aria-label="How to follow this book" class="ts-mode">
+    <button type="button" role="radio" aria-checked="true" class="ts-mode__item">Listen</button>
+    <button type="button" role="radio" aria-checked="false" class="ts-mode__item" disabled>Read along</button>
+    <button type="button" role="radio" aria-checked="false" class="ts-mode__item" disabled>Read</button>
+  </div>
+  <div role="radiogroup" aria-label="How to follow this book" class="ts-mode">
+    <button type="button" role="radio" aria-checked="true" class="ts-mode__item">Listen</button>
+    <button type="button" role="radio" aria-checked="false" class="ts-mode__item is-focus">Read along</button>
+    <button type="button" role="radio" aria-checked="false" class="ts-mode__item">Read</button>
+  </div>
+  <span class="ts-preview-label">Top bar · block on book pages · no ebook yet (disabled, with "Add an ebook" nearby) · keyboard focus</span>
+</div>
+</body>
+</html>

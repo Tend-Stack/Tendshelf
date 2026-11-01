@@ -1,0 +1,38 @@
+<!-- @dsCard group="Reader" height=330 subtitle="Playing · paused · loading the next chapter" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Read-along dock</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="align-items: flex-start">
+  <section class="ts-readdock" aria-label="Player" style="width: 390px; --cover-accent: #9ccbc4; --on-cover-accent: #14110e">
+    <div class="ts-scrub"><div class="ts-scrub__line"></div><div class="ts-scrub__fill" style="width: 62%"></div><div class="ts-scrub__needle" style="left: 62%"></div><input class="ts-scrub__input" type="range" min="0" max="100" value="62" aria-label="Position in book" aria-valuetext="Chapter 12, 18 minutes left in chapter"></div>
+    <div class="ts-readdock__times"><span>p. 214 of 346</span><span>18 min left in chapter</span></div>
+    <div class="ts-readdock__row">
+      <button type="button" class="ts-readdock__speed" aria-label="Playback speed, 1.2 times">1.2×</button>
+      <button type="button" class="ts-iconbtn ts-iconbtn--md" aria-label="Back one sentence"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14"></path><path d="M18.5 6.5v11L10 12z"></path></svg></button>
+      <button type="button" class="ts-iconbtn ts-iconbtn--cover ts-iconbtn--lg" aria-label="Pause"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg></button>
+      <button type="button" class="ts-iconbtn ts-iconbtn--md" aria-label="Forward one sentence"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14"></path><path d="M5.5 6.5v11L14 12z"></path></svg></button>
+      <button type="button" class="ts-readdock__speed" aria-label="Contents and notes"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"></path></svg></button>
+    </div>
+  </section>
+
+<div class="ts-preview" style="padding-top: 0; gap: 24px; align-items: flex-start">
+  <section class="ts-readdock" aria-label="Player" style="width: 390px; --cover-accent: #9ccbc4; --on-cover-accent: #14110e">
+    <div class="ts-readdock__times"><span>p. 214 of 346</span><span>Paused · 18 min left in chapter</span></div>
+    <div class="ts-readdock__row"><button type="button" class="ts-readdock__speed">1.2×</button><button type="button" class="ts-iconbtn ts-iconbtn--md" aria-label="Back one sentence"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14"></path><path d="M18.5 6.5v11L10 12z"></path></svg></button><button type="button" class="ts-iconbtn ts-iconbtn--cover ts-iconbtn--lg is-focus" aria-label="Play"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"></path></svg></button><button type="button" class="ts-iconbtn ts-iconbtn--md" aria-label="Forward one sentence"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14"></path><path d="M5.5 6.5v11L14 12z"></path></svg></button><button type="button" class="ts-readdock__speed" aria-label="Contents and notes"><svg class="ts-icon" style="width: 20px; height: 20px;" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"></path></svg></button></div>
+    <span class="ts-preview-label">Paused, play button focused</span>
+  </section>
+  <section class="ts-readdock" aria-label="Player" aria-busy="true" style="width: 390px; --cover-accent: #9ccbc4; --on-cover-accent: #14110e">
+    <div class="ts-readdock__times"><span>p. 224 of 346</span><span>Loading chapter 13…</span></div>
+    <div class="ts-readdock__row"><button type="button" class="ts-readdock__speed">1.2×</button><button type="button" class="ts-iconbtn ts-iconbtn--md" aria-label="Back one sentence" disabled style="opacity: .45"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14"></path><path d="M18.5 6.5v11L10 12z"></path></svg></button><button type="button" class="ts-iconbtn ts-iconbtn--cover ts-iconbtn--lg" aria-label="Loading" disabled><span class="ts-spinner" aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; border: 3px solid currentColor; border-right-color: transparent; display: block"></span></button><button type="button" class="ts-iconbtn ts-iconbtn--md" aria-label="Forward one sentence" disabled style="opacity: .45"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14"></path><path d="M5.5 6.5v11L14 12z"></path></svg></button><button type="button" class="ts-readdock__speed" aria-label="Contents and notes"><svg class="ts-icon" style="width: 20px; height: 20px;" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"></path></svg></button></div>
+    <span class="ts-preview-label">Loading: skip buttons wait, the page stays readable</span>
+  </section>
+</div>
+</body>
+</html>

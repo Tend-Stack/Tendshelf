@@ -1,0 +1,39 @@
+<!-- @dsCard group="Reader" height=840 subtitle="Live preview on top · keyboard focus · Highlight off in Read mode" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reading settings</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="align-items: flex-start">
+  <div style="width: 380px; padding: 16px 20px 24px; border-radius: 20px 20px 0 0; background: var(--surface); box-shadow: var(--shadow-sheet)" role="dialog" aria-label="Reading settings">
+    <div class="ts-sheet__grab" aria-hidden="true"></div>
+    <div class="ts-readset">
+      <div class="ts-readset__preview ts-reader" data-hl="wash" aria-hidden="true" style="--read-size: 20px"><div class="ts-reader__text"><span class="ts-s is-now">She carried it up the hundred and nine steps with both hands.</span></div></div>
+      <div class="ts-readset__row"><span class="ts-readset__label">Theme</span>
+        <div class="ts-themes" role="radiogroup" aria-label="Theme">
+          <button type="button" role="radio" aria-checked="true" class="ts-theme"><span class="ts-theme__swatch" style="background: #14110e; color: #f1e8da">Aa</span>Dark</button>
+          <button type="button" role="radio" aria-checked="false" class="ts-theme"><span class="ts-theme__swatch" style="background: #f4eee3; color: #1f1a14">Aa</span>Light</button>
+          <button type="button" role="radio" aria-checked="false" class="ts-theme"><span class="ts-theme__swatch" style="background: #e6d7bc; color: #33281b">Aa</span>Sepia</button>
+          <button type="button" role="radio" aria-checked="false" class="ts-theme"><span class="ts-theme__swatch" style="background: #000; color: #fff">Aa</span>Contrast</button>
+        </div></div>
+      <div class="ts-readset__row"><span class="ts-readset__label">Text size <span class="ts-readset__value">20 px</span></span>
+        <div class="ts-stepper"><button type="button" class="ts-iconbtn ts-iconbtn--tonal" aria-label="Smaller text" style="font: 500 15px var(--font-serif)">A</button><div class="ts-stepper__track" aria-hidden="true"><span class="ts-stepper__stop"></span><span class="ts-stepper__stop is-on"></span><span class="ts-stepper__stop"></span></div><button type="button" class="ts-iconbtn ts-iconbtn--tonal" aria-label="Larger text" style="font: 500 22px var(--font-serif)">A</button></div></div>
+      <div class="ts-readset__row"><span class="ts-readset__label">Line spacing</span>
+        <div class="ts-seg" role="radiogroup" aria-label="Line spacing" style="display: flex"><button type="button" role="radio" aria-checked="false" class="ts-seg__item" style="flex: 1">Compact</button><button type="button" role="radio" aria-checked="true" class="ts-seg__item" style="flex: 1">Normal</button><button type="button" role="radio" aria-checked="false" class="ts-seg__item" style="flex: 1">Airy</button></div></div>
+      <div class="ts-readset__row"><span class="ts-readset__label">Highlight</span>
+        <div class="ts-seg" role="radiogroup" aria-label="Highlight" style="display: flex"><button type="button" role="radio" aria-checked="true" class="ts-seg__item" style="flex: 1">Wash</button><button type="button" role="radio" aria-checked="false" class="ts-seg__item" style="flex: 1">Underline</button><button type="button" role="radio" aria-checked="false" class="ts-seg__item" style="flex: 1">Brighten</button></div></div>
+      <div class="ts-switch-row"><span class="ts-switch-row__text"><span class="ts-switch-row__label">Follow the voice</span><span class="ts-switch-row__hint">Scroll the page as the narrator reads</span></span><button type="button" role="switch" aria-checked="true" class="ts-switch" aria-label="Follow the voice"></button></div>
+    </div>
+  </div>
+
+<div class="ts-preview" style="padding-top: 0; gap: 32px; align-items: flex-start">
+  <div class="ts-preview-col" style="width: 340px"><div class="ts-themes" role="radiogroup" aria-label="Theme" style="width: 100%"><button type="button" role="radio" aria-checked="true" class="ts-theme"><span class="ts-theme__swatch" style="background: #14110e; color: #f1e8da">Aa</span>Dark</button><button type="button" role="radio" aria-checked="false" class="ts-theme is-focus"><span class="ts-theme__swatch" style="background: #f4eee3; color: #1f1a14">Aa</span>Light</button><button type="button" role="radio" aria-checked="false" class="ts-theme"><span class="ts-theme__swatch" style="background: #e6d7bc; color: #33281b">Aa</span>Sepia</button><button type="button" role="radio" aria-checked="false" class="ts-theme"><span class="ts-theme__swatch" style="background: #000; color: #fff">Aa</span>Contrast</button></div><span class="ts-preview-label">Keyboard focus on Light; arrows move, Space picks</span></div>
+  <div class="ts-preview-col" style="width: 340px"><span class="ts-readset__label" style="color: var(--ink-subtle)">Highlight</span><div class="ts-seg" role="radiogroup" aria-label="Highlight" aria-disabled="true" style="display: flex; width: 100%"><button type="button" role="radio" aria-checked="true" class="ts-seg__item" style="flex: 1" disabled>Wash</button><button type="button" role="radio" aria-checked="false" class="ts-seg__item" style="flex: 1" disabled>Underline</button><button type="button" role="radio" aria-checked="false" class="ts-seg__item" style="flex: 1" disabled>Brighten</button></div><span class="ts-preview-label">In Read mode there is no voice to follow, so Highlight is off and says why: "Used when reading along"</span></div>
+</div>
+</body>
+</html>

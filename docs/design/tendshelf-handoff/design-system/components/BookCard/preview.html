@@ -1,0 +1,76 @@
+<!-- @dsCard group="Books" height=470 subtitle="Hero, grid, list and spine sizes" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Book card</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="align-items: flex-start; gap: 40px">
+  <section class="ts-hero" aria-label="Continue listening" style="width: 350px">
+    <div class="ts-hero__top">
+      <span class="ts-book-block"><span class="ts-cover ts-cover--book" style="width: 124px; height: 124px; background: #1f4a52" aria-hidden="true"><span style="position: absolute; left: 57%; top: 34%; width: 9px; height: 52%; background: #e9ddbf"></span><span style="position: absolute; left: 0; right: 0; bottom: 0; height: 18%; background: #163a40"></span><span style="position: absolute; left: 10px; top: 10px; right: 30px; font: 400 12px/1.1 var(--font-serif); color: #f2e6cc">The Lighthouse Keeper's Daughter</span></span></span>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding-left: 8px">
+        <span class="ts-overline ts-overline--accent">Continue listening</span>
+        <h2 class="ts-hero__title">The Lighthouse Keeper's Daughter</h2>
+        <p class="ts-hero__byline">Imogen Hale<br>read by Theo Marsh</p>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div class="ts-ruler" role="progressbar" aria-label="Book progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="62"><div class="ts-ruler__line"></div><div class="ts-ruler__fill" style="width: 62%"></div><span class="ts-ruler__tick" style="left: 19.8%"></span><span class="ts-ruler__tick" style="left: 40.9%"></span><span class="ts-ruler__tick" style="left: 57.8%"></span><span class="ts-ruler__tick" style="left: 63.7%"></span><span class="ts-ruler__tick" style="left: 85.9%"></span></div>
+      <p class="ts-hero__where">Chapter 12 · 18 min left in chapter · 6 h 40 m left in book</p>
+    </div>
+    <button type="button" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"></path></svg>Resume</button>
+  </section>
+
+  <div style="display: flex; flex-direction: column; gap: 28px">
+    <div style="display: flex; gap: 16px">
+      <a class="ts-card" href="#" style="width: 112px">
+        <span class="ts-card__cover"><span class="ts-cover" style="width: 112px; height: 112px; background: #8c3b24" aria-hidden="true"><span style="position: absolute; right: 12px; top: 22px; width: 40px; height: 40px; border-radius: 50%; background: #e9a845"></span><span style="position: absolute; left: 0; right: 0; bottom: 0; height: 32px; background: #6e2d1b"></span></span>
+          <span class="ts-card__ring ts-ring-badge"><svg class="ts-ring" viewBox="0 0 28 28" role="img" aria-label="35% listened"><circle class="ts-ring__track" cx="14" cy="14" r="11"></circle><circle class="ts-ring__fill" cx="14" cy="14" r="11" stroke-dasharray="24.2 69.1"></circle></svg></span></span>
+        <span class="ts-card__title">Salt and Ember</span><span class="ts-card__author">Ruth Okafor</span>
+      </a>
+      <a class="ts-card is-focus" href="#" style="width: 112px">
+        <span class="ts-card__cover"><span class="ts-cover" style="width: 112px; height: 112px; background: #d9d4c7" aria-hidden="true"><svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="#2b3a4a" stroke-width="1.2" stroke-linecap="round" style="position: absolute; right: 10px; bottom: 12px"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"></path></svg></span></span>
+        <span class="ts-card__title">A Field Guide to Small Winters</span><span class="ts-card__author">Mara Lindqvist</span>
+      </a>
+      <a class="ts-card" href="#" style="width: 112px">
+        <span class="ts-card__cover"><span class="ts-cover" style="width: 112px; height: 112px; background: #3b2f4a" aria-hidden="true"><span style="position: absolute; left: 8px; bottom: 22px; width: 44px; height: 44px; border-radius: 50%; border: 2px solid #e7d6f066"></span></span>
+          <span class="ts-card__ring ts-ring-badge ts-ring-badge--done" role="img" aria-label="Finished"><svg class="ts-icon" style="width: 16px; height: 16px; stroke-width: 2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg></span></span>
+        <span class="ts-card__title">Nine Bridges Home</span><span class="ts-card__author">Tomás Reyes</span>
+      </a>
+    </div>
+
+    <div style="width: 380px">
+      <div class="ts-row">
+        <a class="ts-row__main" href="#">
+          <span class="ts-cover" style="width: 56px; height: 56px; background: #2e3a2a" aria-hidden="true"><span style="position: absolute; left: 12px; top: 10px; width: 50px; height: 38px; border-radius: 50%; border: 1.5px solid #d6e0be66"></span></span>
+          <span class="ts-row__text"><span class="ts-row__title">The Cartographer's Silence</span><span class="ts-row__meta">Elias Varn · 14 h 2 m · 8%</span></span>
+        </a>
+        <button type="button" class="ts-iconbtn ts-iconbtn--tonal" aria-label="Play The Cartographer's Silence"><svg class="ts-icon ts-icon--fill" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"></path></svg></button>
+      </div>
+      <div class="ts-row">
+        <a class="ts-row__main" href="#">
+          <span class="ts-cover" style="width: 56px; height: 56px; background: #c7894e" aria-hidden="true"><span style="position: absolute; left: 0; right: 0; top: 34px; height: 2px; background: #2a1a0c55"></span></span>
+          <span class="ts-row__text"><span class="ts-row__title">The Orchard at Low Tide</span><span class="ts-row__meta">Sana Iqbal · 9 h 18 m · Not started</span></span>
+        </a>
+        <button type="button" class="ts-iconbtn ts-iconbtn--tonal" aria-label="Play The Orchard at Low Tide"><svg class="ts-icon ts-icon--fill" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"></path></svg></button>
+      </div>
+    </div>
+
+    <div>
+      <div class="ts-shelf" role="list" aria-label="New on the shelf">
+        <a role="listitem" class="ts-spine" href="#" aria-label="Salt and Ember by Ruth Okafor" style="width: 46px; height: 150px; background: #8c3b24"><span class="ts-spine__title" style="color: #f7e7cf">Salt and Ember</span></a>
+        <a role="listitem" class="ts-spine" href="#" aria-label="Nine Bridges Home by Tomás Reyes" style="width: 50px; height: 166px; background: #3b2f4a"><span class="ts-spine__title" style="color: #e7d6f0">Nine Bridges Home</span></a>
+        <a role="listitem" class="ts-spine" href="#" aria-label="The Quiet Mechanic by Jonah Feld" style="width: 44px; height: 158px; background: #5a6b73"><span class="ts-spine__title" style="color: #eef2f3">The Quiet Mechanic</span></a>
+        <a role="listitem" class="ts-spine" href="#" aria-label="The Orchard at Low Tide by Sana Iqbal" style="width: 48px; height: 174px; background: #c7894e"><span class="ts-spine__title" style="color: #2a1a0c">The Orchard at Low Tide</span></a>
+      </div>
+      <div class="ts-shelf__plank" style="width: 212px"></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

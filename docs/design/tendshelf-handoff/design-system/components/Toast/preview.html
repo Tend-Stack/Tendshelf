@@ -1,0 +1,20 @@
+<!-- @dsCard group="Feedback" height=250 subtitle="Hints, confirmations with undo, warnings, errors, offline banner" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Toast</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="flex-direction: column; align-items: flex-start; gap: 14px">
+  <div role="status" class="ts-toast ts-toast--hint ts-num">Rewound 5 s after your break</div>
+  <div role="status" class="ts-toast"><svg class="ts-icon ts-toast__ok" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg>Bookmarked at 14:06<button type="button" class="ts-btn ts-btn--quiet">Add a note</button></div>
+  <div role="status" class="ts-toast"><svg class="ts-icon ts-toast__ok" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg>Rosa can no longer listen<button type="button" class="ts-btn ts-btn--quiet">Undo</button></div>
+  <div role="alert" class="ts-toast"><svg class="ts-icon ts-toast__err" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.5 20h19z"></path><path d="M12 10v4M12 17h.01"></path></svg>Couldn't reach your server<button type="button" class="ts-btn ts-btn--quiet">Try again</button></div>
+  <div role="status" class="ts-banner" style="width: 380px; box-sizing: border-box"><svg class="ts-icon" style="color: var(--warning)" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0M12 19h.01"></path><path d="M3 3l18 18"></path></svg><span>You're offline. Downloaded books still play.</span></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tendshelf</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--ground); color: var(--ink); font-family: var(--font-sans); overflow: hidden; }
+  .cover { position: relative; width: 960px; height: 288px; overflow: hidden; }
+  .art { position: absolute; top: 0; left: 480px; width: 480px; height: 288px; overflow: hidden; }
+  .art svg { display: block; width: 480px; height: 288px; }
+  .ember { fill: var(--accent-fill); }
+  .ink { fill: var(--ink); }
+  .soft { fill: var(--accent-soft); }
+  .walnut { fill: var(--brand-walnut); }
+  .book { rx: var(--radius-cover); }
+  .words { position: absolute; left: var(--space-32); bottom: var(--space-32); max-width: 440px; }
+  .name { margin: 0; font-family: var(--font-serif); font-size: 88px; line-height: 0.92; font-weight: 500; letter-spacing: -0.02em; color: var(--ink); }
+  .tag { margin: var(--space-12) 0 0 4px; font-size: 14px; line-height: 20px; color: var(--ink-muted); }
+</style>
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="cover">
+  <div class="art" aria-hidden="true">
+    <svg viewBox="0 0 480 288" width="480" height="288">
+      <!--
+        blocks      accent-fill 144×248 slab bled off the top (ember, the brand voice, largest) · ink 104×136 book (paper in dark, ink in light) · accent-soft 40×88 bled off the right · brand-walnut plank 16 tall across the whole box, bled right — ≈32% of 960×288
+        arrangement books standing on one shelf: every block's foot on the plank at y 232; space-16 gutters between the spine run, the ink book and the ember slab
+        pattern     spines, from "Books keep crisp corners; the library as a shelf": six 16-wide pills at a space-24 pitch whose heights rise and fall like the mark's fading wave (64→128→56), all ink but one ember
+        scales      pitch space-24, gutters space-16, plank 16 = space-16, books radius-cover, spine rx 8 (half of 16)
+      -->
+      <rect class="walnut" x="0" y="232" width="496" height="16"></rect>
+      <rect class="ink" x="24" y="168" width="16" height="64" rx="8"></rect>
+      <rect class="ink" x="48" y="136" width="16" height="96" rx="8"></rect>
+      <rect class="ember" x="72" y="104" width="16" height="128" rx="8"></rect>
+      <rect class="ink" x="96" y="120" width="16" height="112" rx="8"></rect>
+      <rect class="ink" x="120" y="152" width="16" height="80" rx="8"></rect>
+      <rect class="ink" x="144" y="176" width="16" height="56" rx="8"></rect>
+      <rect class="ink book" x="184" y="96" width="104" height="136" rx="4"></rect>
+      <rect class="ember book" x="304" y="-16" width="144" height="248" rx="4"></rect>
+      <rect class="soft book" x="456" y="144" width="40" height="88" rx="4"></rect>
+    </svg>
+  </div>
+  <div class="words">
+    <h1 class="name">Tendshelf</h1>
+    <p class="tag">Your family's audiobooks, on your own shelf.</p>
+  </div>
+</div>
+</body>
+</html>

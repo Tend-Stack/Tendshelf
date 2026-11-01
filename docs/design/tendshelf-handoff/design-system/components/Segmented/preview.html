@@ -1,0 +1,39 @@
+<!-- @dsCard group="Selection" height=170 subtitle="One choice among two to four" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Segmented control</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&amp;family=Fira+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../../tokens.css">
+<link rel="stylesheet" href="../bundle.css">
+</head>
+<body>
+<div class="ts-preview" style="flex-direction: column; align-items: flex-start; gap: 20px">
+  <div role="radiogroup" aria-label="Library view" class="ts-seg">
+    <button type="button" role="radio" aria-checked="true" class="ts-seg__item"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path></svg>Grid</button>
+    <button type="button" role="radio" aria-checked="false" class="ts-seg__item"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>List</button>
+  </div>
+  <div style="display: flex; gap: 24px; flex-wrap: wrap">
+    <div class="ts-preview-col">
+      <div role="radiogroup" aria-label="Skip interval" class="ts-seg">
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item">15 s</button>
+        <button type="button" role="radio" aria-checked="true" class="ts-seg__item">30 s</button>
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item is-hover">45 s</button>
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item is-focus">60 s</button>
+      </div>
+      <span class="ts-preview-label">Selected · hover · focus</span>
+    </div>
+    <div class="ts-preview-col">
+      <div role="radiogroup" aria-label="Theme" class="ts-seg">
+        <button type="button" role="radio" aria-checked="true" class="ts-seg__item">Dark</button>
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item">Light</button>
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item">Sepia</button>
+        <button type="button" role="radio" aria-checked="false" class="ts-seg__item" disabled>Auto</button>
+      </div>
+      <span class="ts-preview-label">With a disabled option</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

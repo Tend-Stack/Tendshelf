@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library — tablet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Fira+Sans:wght@400;500;600&family=Fira+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../design-system/tokens.css">
+<link rel="stylesheet" href="../../design-system/components/bundle.css">
+<style>body{margin:0}</style>
+</head>
+<body>
+<!-- Static snapshot of the design board "LibraryTablet" (1024 x 1000). Reference markup, not production code. -->
+
+
+<div style="width: 100%; min-height: 1000px">
+
+
+<div data-theme="dark" style="width: 100%; min-height: 1000px; position: relative; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--ground); color: var(--ink); font-family: var(--font-sans)">
+
+  
+  
+    <nav aria-label="Main" class="ts-rail" style="flex: 0 0 auto; padding-bottom: 96px">
+      <span class="ts-rail__brand"><svg width="34" height="34" viewBox="0 0 48 48" fill="none" stroke="var(--accent)" stroke-linecap="round" role="img" aria-label="Tendshelf"><rect x="7" y="8" width="11" height="32" rx="2.5" stroke-width="3"></rect><path d="M7 15h11M7 33h11" stroke-width="2.5"></path><path d="M18 24c2.6-9 4.6-9 7.2 0s4.6 9 7.2 0 3.4-5.5 5.3 0 2.6 3 4.3 0" stroke-width="3"></path></svg></span>
+      <a href="#" class="ts-rail__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"></path></svg>Home</a>
+      <a href="#" class="ts-rail__item" aria-current="page"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"></path></svg>Library</a>
+      <a href="#" class="ts-rail__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Search</a>
+      <a href="#" class="ts-rail__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>Downloads</a>
+      <a href="#" class="ts-rail__item" style="margin-top: auto"><span class="ts-avatar ts-avatar--sm" style="background: #5a4029">DR</span>Profile</a>
+    </nav>
+  
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 40px 128px">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+      <header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+        <div><h1 class="title-1" style="margin: 0">Library</h1><p class="caption ts-num" style="margin: 4px 0 0; color: var(--ink-muted)">912 books · 3 folders · 8,240 hours</p></div>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; flex: 1 1 420px; justify-content: flex-end">
+          <div class="ts-search" role="search" style="max-width: 300px">
+            <svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+            <label class="ts-sr" for="lib-q">Filter this library by title</label>
+            <input id="lib-q" class="ts-input" type="search" placeholder="Filter by title" style="">
+          </div>
+          <button type="button" class="ts-select" style="width: auto; gap: 12px" aria-haspopup="listbox" aria-label="Sort by, recently added"><span>Recently added</span><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+          <div role="radiogroup" aria-label="View" class="ts-seg">
+            <button type="button" role="radio" aria-checked="true" class="ts-seg__item"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path></svg>Grid</button>
+            <button type="button" role="radio" aria-checked="false" class="ts-seg__item"><svg class="ts-icon" style="width: 20px; height: 20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>List</button>
+          </div>
+        </div>
+      </header>
+
+      <div role="group" aria-label="Filters" class="ts-chip-set" style="align-items: center; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line)">
+        <button type="button" class="ts-chip" aria-haspopup="listbox">Author<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <button type="button" class="ts-chip" aria-haspopup="listbox">Narrator<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <button type="button" class="ts-chip" aria-haspopup="listbox">Series<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <button type="button" class="ts-chip" aria-pressed="true" aria-haspopup="listbox"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg>Genre: Mystery<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <button type="button" class="ts-chip" aria-haspopup="listbox">Length<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <button type="button" class="ts-chip" aria-pressed="true" aria-haspopup="listbox"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg>Unfinished<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <button type="button" class="ts-chip" aria-pressed="false">Downloaded</button>
+        <button type="button" class="ts-btn ts-btn--quiet" style="margin-left: auto">Clear filters</button>
+      </div>
+      <p class="caption ts-num" role="status" style="margin: 0; color: var(--ink-muted)">16 books match</p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 28px 24px">
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #2e3a2a; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+  
+  
+    <div style="position: absolute; left: 18%; top: 22%; width: 92%; height: 66%; border-radius: 50%; border: 0.15em solid rgba(214,224,190,0.32)"></div>
+    <div style="position: absolute; left: 32%; top: 34%; width: 62%; height: 44%; border-radius: 50%; border: 0.15em solid rgba(214,224,190,0.38)"></div>
+    <div style="position: absolute; left: 46%; top: 46%; width: 32%; height: 22%; border-radius: 50%; border: 0.15em solid rgba(214,224,190,0.5)"></div>
+  
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #e3e8d2">The Cartographer's Silence</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #e3e8d2">Elias Varn</span>
+  
+</div>
+</span>
+              <span class="ts-card__ring ts-ring-badge"><svg class="ts-ring" viewBox="0 0 28 28" role="img" aria-label="34% listened"><circle class="ts-ring__track" cx="14" cy="14" r="11"></circle><circle class="ts-ring__fill" cx="14" cy="14" r="11" stroke-dasharray="23.5 69.1"></circle></svg></span>
+            </span>
+            <span class="ts-card__title">The Cartographer's Silence</span><span class="ts-card__author">Elias Varn</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #1f4a52; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+    <div style="position: absolute; left: 62%; top: 34%; width: 150%; height: 40%; margin-top: -20%; background: rgba(240,221,170,0.22); clip-path: polygon(0 44%, 100% 0, 100% 100%, 0 56%)"></div>
+    <div style="position: absolute; left: 57%; top: 34%; width: 7%; height: 52%; background: #e9ddbf; clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%)"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 18%; background: #163a40"></div>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #f2e6cc">The Lighthouse Keeper's Daughter</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #f2e6cc">Imogen Hale</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">The Lighthouse Keeper's Daughter</span><span class="ts-card__author">Imogen Hale</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #3d4f5c; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+  
+  
+  
+  
+  
+  
+    <div style="position: absolute; left: 0; right: 0; top: 52%; height: 8%; background: rgba(232,238,240,0.16)"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 64%; height: 8%; background: rgba(232,238,240,0.24)"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 76%; height: 24%; background: rgba(232,238,240,0.32)"></div>
+    <div style="position: absolute; left: 66%; top: 30%; width: 5%; height: 46%; background: #e8eef0"></div>
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #e8eef0">The Fog Bell</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #e8eef0">Imogen Hale</span>
+  
+</div>
+</span>
+              <span class="ts-card__ring ts-ring-badge"><svg class="ts-ring" viewBox="0 0 28 28" role="img" aria-label="71% listened"><circle class="ts-ring__track" cx="14" cy="14" r="11"></circle><circle class="ts-ring__fill" cx="14" cy="14" r="11" stroke-dasharray="49.1 69.1"></circle></svg></span>
+            </span>
+            <span class="ts-card__title">The Fog Bell</span><span class="ts-card__author">Imogen Hale</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #40372a; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+  
+  
+    <div style="position: absolute; left: 18%; top: 22%; width: 92%; height: 66%; border-radius: 50%; border: 0.15em solid rgba(214,224,190,0.32)"></div>
+    <div style="position: absolute; left: 32%; top: 34%; width: 62%; height: 44%; border-radius: 50%; border: 0.15em solid rgba(214,224,190,0.38)"></div>
+    <div style="position: absolute; left: 46%; top: 46%; width: 32%; height: 22%; border-radius: 50%; border: 0.15em solid rgba(214,224,190,0.5)"></div>
+  
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #efe3cf">A Map of Small Hours</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #efe3cf">Ines Calder</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">A Map of Small Hours</span><span class="ts-card__author">Ines Calder</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #253845; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+    <div style="position: absolute; left: 62%; top: 34%; width: 150%; height: 40%; margin-top: -20%; background: rgba(240,221,170,0.22); clip-path: polygon(0 44%, 100% 0, 100% 100%, 0 56%)"></div>
+    <div style="position: absolute; left: 57%; top: 34%; width: 7%; height: 52%; background: #e9ddbf; clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%)"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 18%; background: #163a40"></div>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #e4edf2">The Last Ferry North</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #e4edf2">Kai Morgan</span>
+  
+</div>
+</span>
+              <span class="ts-card__ring ts-ring-badge"><svg class="ts-ring" viewBox="0 0 28 28" role="img" aria-label="12% listened"><circle class="ts-ring__track" cx="14" cy="14" r="11"></circle><circle class="ts-ring__fill" cx="14" cy="14" r="11" stroke-dasharray="8.3 69.1"></circle></svg></span>
+            </span>
+            <span class="ts-card__title">The Last Ferry North</span><span class="ts-card__author">Kai Morgan</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #2f4a44; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+  
+  
+  
+    <div style="position: absolute; left: -6%; bottom: -24%; width: 56%; height: 56%; border-radius: 50%; border: 0.2em solid rgba(231,214,240,0.35)"></div>
+    <div style="position: absolute; left: 34%; bottom: -24%; width: 56%; height: 56%; border-radius: 50%; border: 0.2em solid rgba(231,214,240,0.35)"></div>
+    <div style="position: absolute; left: 74%; bottom: -24%; width: 56%; height: 56%; border-radius: 50%; border: 0.2em solid rgba(231,214,240,0.35)"></div>
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #dceae6">The Glass Orchard</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #dceae6">Petra Lund</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">The Glass Orchard</span><span class="ts-card__author">Petra Lund</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #6b2f3a; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+    <div style="position: absolute; right: 11%; top: 20%; width: 36%; height: 36%; border-radius: 50%; background: #f0c9a0"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: #4f2129"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 20%; height: 2%; background: rgba(243,226,200,0.35)"></div>
+  
+  
+  
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #f3dfe2">Winter Signal</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #f3dfe2">Imogen Hale</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">Winter Signal</span><span class="ts-card__author">Imogen Hale</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #4a3a52; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+  
+  
+  
+  
+  
+  
+    <div style="position: absolute; left: 0; right: 0; top: 52%; height: 8%; background: rgba(232,238,240,0.16)"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 64%; height: 8%; background: rgba(232,238,240,0.24)"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 76%; height: 24%; background: rgba(232,238,240,0.32)"></div>
+    <div style="position: absolute; left: 66%; top: 30%; width: 5%; height: 46%; background: #e8eef0"></div>
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #ece1f1">Saltmarsh</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #ece1f1">Ruth Okafor</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">Saltmarsh</span><span class="ts-card__author">Ruth Okafor</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #3b2f4a; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+  
+  
+  
+    <div style="position: absolute; left: -6%; bottom: -24%; width: 56%; height: 56%; border-radius: 50%; border: 0.2em solid rgba(231,214,240,0.35)"></div>
+    <div style="position: absolute; left: 34%; bottom: -24%; width: 56%; height: 56%; border-radius: 50%; border: 0.2em solid rgba(231,214,240,0.35)"></div>
+    <div style="position: absolute; left: 74%; bottom: -24%; width: 56%; height: 56%; border-radius: 50%; border: 0.2em solid rgba(231,214,240,0.35)"></div>
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #e7d6f0">Nine Bridges Home</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #e7d6f0">Tomás Reyes</span>
+  
+</div>
+</span>
+              <span class="ts-card__ring ts-ring-badge"><svg class="ts-ring" viewBox="0 0 28 28" role="img" aria-label="48% listened"><circle class="ts-ring__track" cx="14" cy="14" r="11"></circle><circle class="ts-ring__fill" cx="14" cy="14" r="11" stroke-dasharray="33.2 69.1"></circle></svg></span>
+            </span>
+            <span class="ts-card__title">Nine Bridges Home</span><span class="ts-card__author">Tomás Reyes</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #5a6b73; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+  
+  
+  
+  
+  
+    <div style="position: absolute; right: 10%; bottom: 12%; width: 46%; height: 46%; border-radius: 50%; border: 0.5em dotted rgba(238,242,243,0.55); box-sizing: border-box"></div>
+    <div style="position: absolute; right: 25%; bottom: 27%; width: 16%; height: 16%; border-radius: 50%; background: rgba(238,242,243,0.55)"></div>
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #eef2f3">The Quiet Mechanic</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #eef2f3">Jonah Feld</span>
+  
+</div>
+</span>
+              <span class="ts-card__ring ts-ring-badge"><svg class="ts-ring" viewBox="0 0 28 28" role="img" aria-label="12% listened"><circle class="ts-ring__track" cx="14" cy="14" r="11"></circle><circle class="ts-ring__fill" cx="14" cy="14" r="11" stroke-dasharray="8.3 69.1"></circle></svg></span>
+            </span>
+            <span class="ts-card__title">The Quiet Mechanic</span><span class="ts-card__author">Jonah Feld</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #7a5a2e; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+    <div style="position: absolute; right: 11%; top: 20%; width: 36%; height: 36%; border-radius: 50%; background: #f2d49a"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: #5a4020"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 20%; height: 2%; background: rgba(243,226,200,0.35)"></div>
+  
+  
+  
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #f6ead6">Notes from the Lower Field</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #f6ead6">Abel Osei</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">Notes from the Lower Field</span><span class="ts-card__author">Abel Osei</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #c7894e; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+  
+  
+  
+  
+    <div style="position: absolute; left: 30%; top: 50%; width: 40%; height: 20%; border-radius: 999px 999px 0 0; background: #f3d9a8"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 70%; bottom: 0; background: #a96e3a"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 78%; height: 2%; background: rgba(42,26,12,0.3)"></div>
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #2a1a0c">The Orchard at Low Tide</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #2a1a0c">Sana Iqbal</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">The Orchard at Low Tide</span><span class="ts-card__author">Sana Iqbal</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #a5683a; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+    <div style="position: absolute; right: 11%; top: 20%; width: 36%; height: 36%; border-radius: 50%; background: #f6e3c4"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: #7d4a24"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 20%; height: 2%; background: rgba(243,226,200,0.35)"></div>
+  
+  
+  
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #2a1709">Of Bread and Weather</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #2a1709">June Abara</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">Of Bread and Weather</span><span class="ts-card__author">June Abara</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #8c3b24; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+    <div style="position: absolute; right: 11%; top: 20%; width: 36%; height: 36%; border-radius: 50%; background: #e9a845"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: #6e2d1b"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 20%; height: 2%; background: rgba(243,226,200,0.35)"></div>
+  
+  
+  
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #f7e7cf">Salt and Ember</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #f7e7cf">Ruth Okafor</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">Salt and Ember</span><span class="ts-card__author">Ruth Okafor</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #d9d4c7; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+  
+    <svg viewBox="0 0 24 24" fill="none" stroke="#2b3a4a" stroke-width="1.1" stroke-linecap="round" style="position: absolute; right: 9%; bottom: 12%; width: 48%; height: 48%"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 3.5 12 6l3-2.5M9 20.5 12 18l3 2.5"></path></svg>
+  
+  
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #22303d">A Field Guide to Small Winters</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #22303d">Mara Lindqvist</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">A Field Guide to Small Winters</span><span class="ts-card__author">Mara Lindqvist</span>
+          </a>
+        
+          <a class="ts-card" href="#">
+            <span class="ts-card__cover"><span class="ts-cover" style="width: 152px; height: 152px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 152px; height: 152px; font-size: 15.2px; border-radius: var(--radius-cover, 4px); background: #5b3a2a; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+    <div style="position: absolute; right: 11%; top: 20%; width: 36%; height: 36%; border-radius: 50%; background: #e9a845"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: #3e261a"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 20%; height: 2%; background: rgba(243,226,200,0.35)"></div>
+  
+  
+  
+  
+  
+  
+  
+  
+    <span style="position: absolute; left: 8%; top: 8%; right: 26%; font-size: 1.15em; line-height: 1.08; color: #f4e2d2">Brine Season</span>
+  
+  
+    <span style="position: absolute; left: 8%; bottom: 6%; font-family: 'Fira Sans', sans-serif; font-size: 0.5em; letter-spacing: 0.16em; text-transform: uppercase; color: #f4e2d2">Ruth Okafor</span>
+  
+</div>
+</span>
+              
+            </span>
+            <span class="ts-card__title">Brine Season</span><span class="ts-card__author">Ruth Okafor</span>
+          </a>
+        
+      </div>
+    </div>
+  </main>
+
+  <section aria-label="Now playing" style="position: absolute; left: 0; right: 0; bottom: 0; min-height: 84px; box-sizing: border-box; padding: 12px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; background: var(--raised); border-top: 1px solid var(--line); box-shadow: var(--shadow-float); z-index: 2">
+    <div aria-hidden="true" style="position: absolute; left: 0; top: 0; height: 2px; width: 34%; background: var(--accent-fill)"></div>
+    <a href="#" class="ts-mini__open" style="flex: 1 1 260px; max-width: 360px" aria-label="Open player: The Cartographer's Silence, chapter 6">
+      <span class="ts-cover" style="width: 56px; height: 56px">
+
+<div aria-hidden="true" style="position: relative; overflow: hidden; width: 56px; height: 56px; font-size: 5.6px; border-radius: var(--radius-cover, 4px); background: #2e3a2a; flex-shrink: 0; font-family: 'Fraunces', Georgia, serif">
+  
+  
+  
+  
+    <div style="position: absolute; left: 18%; top: 22%; width: 92%; height: 66%; border-radius: 50%; border: 0.15em solid rgba(214,224,190,0.32)"></div>
+    <div style="position: absolute; left: 32%; top: 34%; width: 62%; height: 44%; border-radius: 50%; border: 0.15em solid rgba(214,224,190,0.38)"></div>
+    <div style="position: absolute; left: 46%; top: 46%; width: 32%; height: 22%; border-radius: 50%; border: 0.15em solid rgba(214,224,190,0.5)"></div>
+  
+  
+  
+  
+  
+  
+  
+</div>
+</span>
+      <span class="ts-mini__text"><span class="ts-mini__title" style="font-size: 16px">The Cartographer's Silence</span><span class="ts-mini__meta">Chapter 6 · 22 min left</span></span>
+    </a>
+    <div style="flex: 2 1 380px; display: flex; align-items: center; gap: 16px">
+      <button type="button" class="ts-iconbtn" aria-label="Back 30 seconds"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"></path><path d="M4.5 3.5v4h4"></path></svg></button>
+      <button type="button" class="ts-iconbtn ts-iconbtn--filled" aria-label="Pause"><svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg></button>
+      <button type="button" class="ts-iconbtn" aria-label="Forward 30 seconds"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.4-5.5"></path><path d="M19.5 3.5v4h-4"></path></svg></button>
+      <span class="ts-num caption" style="color: var(--ink-muted)">5:57:20</span>
+      <div style="flex: 1; position: relative; height: 4px; border-radius: 2px; background: var(--line)"><div style="position: absolute; left: 0; top: 0; bottom: 0; width: 34%; border-radius: 2px; background: var(--accent-fill)"></div></div>
+      <span class="ts-num caption" style="color: var(--ink-muted)">−9:15:04</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 4px">
+      <button type="button" class="ts-iconbtn" aria-label="Open player as a side panel"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM14 5v14"></path></svg></button>
+      <button type="button" class="ts-iconbtn" aria-label="Open full player"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"></path></svg></button>
+    </div>
+  </section>
+</div>
+
+</div>
+
+</body>
+</html>
