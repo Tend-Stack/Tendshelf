@@ -104,12 +104,12 @@ func TestListeningContinueOrderAndScope(t *testing.T) {
 			t.Errorf("limit %d: %d rows, want %d", limit, len(l), want)
 		}
 	}
-	// "Listen again" (unfinished, position 0) is back in the list.
+	// "Mark as not started" (unfinished, position 0) stays off the shelf: no hero, no mini-player.
 	if _, err := svc.SetFinished(ctx, listenOwner, done.ID, false, 3_600_000); err != nil {
 		t.Fatal(err)
 	}
-	if l, _ := r.ContinueListening(ctx, allScope, listenOwner, 10); len(l) != 4 || l[0].Book.ID != done.ID {
-		t.Fatalf("after listen again: %v", listenTitles(l))
+	if l, _ := r.ContinueListening(ctx, allScope, listenOwner, 10); len(l) != 3 || l[0].Book.ID == done.ID {
+		t.Fatalf("after mark as not started: %v", listenTitles(l))
 	}
 }
 
