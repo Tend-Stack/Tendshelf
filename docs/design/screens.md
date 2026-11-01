@@ -11,8 +11,8 @@ dark and light × 4 widths in the full run. The nightly CI job runs `make visual
 
 | Board(s) | Width | Capturing test | Matrix | Declared differences |
 | --- | --- | --- | --- | --- |
-| HomePhone, HomeTablet, HomeDesktop (+ Light) | 390, 1024, 1440 | `TestVisualBrowsePages` `home` | main | No Continue listening hero, series or "Because you listened" rows (P1c, P3) |
-| BookPhone, BookDesktop (+ Light) | 390, 1440 | `TestVisualBookPages` `book-about` | main | No play, download or share (P1c, P4, P3); no Start series link or percentages; Add to shelf added; desktop uses two columns instead of the board's full-width tab row |
+| HomePhone, HomeTablet, HomeDesktop (+ Light) | 390, 1024, 1440 | `TestVisualBrowsePages` `home`; `TestHomeVisualListening` (hero, series, because) | main | No Shared with you row (P3); no "All series" link; the hero has no load trigger; series sits after New on the shelf on every width (the desktop board puts it beside the hero) |
+| BookPhone, BookDesktop (+ Light) | 390, 1440 | `TestVisualBookPages` `book-about`; `TestHomeVisualBookPlay` (play region, chapter links) | main | No download or share (P4, P3); no two-column player (P1c-8); no Start series link or percentages; Add to shelf added; desktop uses two columns instead of the board's full-width tab row |
 | BookTablet (+ Light) | 1024 | `book-details` | secondary | As BookDesktop |
 | BookmarksPhone | 390 (also 768, 1024, 1440) | `TestBookmarkVisual` `bookmarks-tab` | main | It is the book page's Bookmarks tab, so the board's small cover header is not repeated (the book header shows the cover); no Highlights chip and no quotes until R4; "Play from here" is in the markup but hidden until the player lands (P1c-5); the active chip carries a check as well as colour |
 | BookCover | 120 | kitchen sink `ks-cover`, every cover page | — | None |
