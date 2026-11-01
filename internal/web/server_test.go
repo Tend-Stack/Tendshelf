@@ -8,7 +8,7 @@ import (
 )
 
 func TestRoutes(t *testing.T) {
-	h := NewHandler(Options{Version: "test"})
+	h := newTestApp(t).signedIn(t)
 	cases := []struct {
 		method, path string
 		status       int
@@ -43,7 +43,7 @@ func TestRoutes(t *testing.T) {
 
 func TestHealthz(t *testing.T) {
 	rec := httptest.NewRecorder()
-	NewHandler(Options{Version: "1.2.3"}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	newTestApp(t, func(o *Options) { o.Version = "1.2.3" }).h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 	var body map[string]string
 	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
 		t.Fatal(err)

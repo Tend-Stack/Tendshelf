@@ -1,0 +1,42 @@
+package components
+
+import "strconv"
+
+// Brand is the Tendshelf mark and name at the top of the first-run and sign-in pages.
+templ Brand() {
+	<div class="ts-brand">
+		<span class="ts-brand__mark">@Mark()</span>
+		<span class="ts-brand__name">Tendshelf</span>
+	</div>
+}
+
+// SetupSteps is the first-run header: the brand, "Step n of t" and a progress bar with one segment
+// per step, filled up to the current one.
+templ SetupSteps(step, total int) {
+	<div class="ts-steps">
+		<div class="ts-steps__head">
+			@Brand()
+			<span class="ts-steps__count caption ts-num">Step { strconv.Itoa(step) } of { strconv.Itoa(total) }</span>
+		</div>
+		<div class="ts-steps__bar" role="progressbar" aria-label="Setup progress" aria-valuemin="1" aria-valuemax={ strconv.Itoa(total) } aria-valuenow={ strconv.Itoa(step) }>
+			for i := 1; i <= total; i++ {
+				<span class={ segmentClass(i, step) }></span>
+			}
+		</div>
+	</div>
+}
+
+func segmentClass(i, step int) string {
+	if i <= step {
+		return "ts-steps__seg is-done"
+	}
+	return "ts-steps__seg"
+}
+
+// PrivacyNote is the quiet reassurance at the foot of the first-run page.
+templ PrivacyNote() {
+	<div class="ts-privacy">
+		<span class="ts-privacy__icon">@Icon("shield", false)</span>
+		<p class="caption">Tendshelf sends nothing about you anywhere. No telemetry, no tracking, no ads.</p>
+	</div>
+}

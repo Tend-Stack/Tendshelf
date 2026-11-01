@@ -40,23 +40,7 @@ templ Layout(p Page, body templ.Component) {
 			data-theme={ p.Theme }
 		}
 	>
-		<head>
-			<meta charset="utf-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-			<meta name="color-scheme" content="dark light"/>
-			<meta name="htmx-config" content={ htmxConfig }/>
-			<title>{ p.Title } · Tendshelf</title>
-			<link rel="preload" href={ p.Assets.URL("fonts/Fraunces-Variable.woff2") } as="font" type="font/woff2" crossorigin/>
-			<link rel="preload" href={ p.Assets.URL("fonts/FiraSans-Regular.woff2") } as="font" type="font/woff2" crossorigin/>
-			<link rel="stylesheet" href={ p.Assets.URL("css/tokens.css") }/>
-			<link rel="stylesheet" href={ p.Assets.URL("css/fonts.css") }/>
-			<link rel="stylesheet" href={ p.Assets.URL("css/bundle.css") }/>
-			<link rel="stylesheet" href={ p.Assets.URL("css/utilities.css") }/>
-			<link rel="stylesheet" href={ p.Assets.URL("css/motion.css") }/>
-			<link rel="icon" type="image/svg+xml" href={ p.Assets.URL("img/tendshelf-app-icon.svg") }/>
-			<script src={ p.Assets.URL("vendor/htmx-4.0.0.min.js") } defer></script>
-			<script type="module" src={ p.Assets.URL("js/shell.js") }></script>
-		</head>
+		@Head(p)
 		<body hx-boost:inherited="target:#main select:#main swap:outerSync transition:true" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
 			<div class="ts-shell">
@@ -76,4 +60,29 @@ templ Layout(p Page, body templ.Component) {
 			</div>
 		</body>
 	</html>
+}
+
+// Head is the document head shared by Layout and Frame. extraCSS lists further stylesheets by
+// static path (for example "css/pages-onboard.css"), linked after the motion layer.
+templ Head(p Page, extraCSS ...string) {
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+		<meta name="color-scheme" content="dark light"/>
+		<meta name="htmx-config" content={ htmxConfig }/>
+		<title>{ p.Title } · Tendshelf</title>
+		<link rel="preload" href={ p.Assets.URL("fonts/Fraunces-Variable.woff2") } as="font" type="font/woff2" crossorigin/>
+		<link rel="preload" href={ p.Assets.URL("fonts/FiraSans-Regular.woff2") } as="font" type="font/woff2" crossorigin/>
+		<link rel="stylesheet" href={ p.Assets.URL("css/tokens.css") }/>
+		<link rel="stylesheet" href={ p.Assets.URL("css/fonts.css") }/>
+		<link rel="stylesheet" href={ p.Assets.URL("css/bundle.css") }/>
+		<link rel="stylesheet" href={ p.Assets.URL("css/utilities.css") }/>
+		<link rel="stylesheet" href={ p.Assets.URL("css/motion.css") }/>
+		for _, css := range extraCSS {
+			<link rel="stylesheet" href={ p.Assets.URL(css) }/>
+		}
+		<link rel="icon" type="image/svg+xml" href={ p.Assets.URL("img/tendshelf-app-icon.svg") }/>
+		<script src={ p.Assets.URL("vendor/htmx-4.0.0.min.js") } defer></script>
+		<script type="module" src={ p.Assets.URL("js/shell.js") }></script>
+	</head>
 }

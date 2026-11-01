@@ -1,0 +1,52 @@
+/* Pages for people who are not signed in: first-run setup and sign-in. Tokens only. */
+
+.ts-frame { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--font-sans); }
+
+.ts-frame__main {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  padding: var(--space-20) var(--space-24) var(--space-32);
+}
+.ts-frame__main:focus { outline: none; }
+
+@media (min-width: 768px) {
+  .ts-frame__main { max-width: 440px; margin: 0 auto; padding-top: var(--space-48); padding-bottom: var(--space-48); }
+}
+
+.ts-frame__title { margin: var(--space-32) 0 0; }
+.ts-frame__lead { margin: var(--space-12) 0 0; color: var(--ink-muted); }
+
+.ts-brand { display: flex; align-items: center; gap: var(--space-12); min-height: 44px; }
+.ts-brand__mark { display: inline-flex; color: var(--accent); }
+.ts-brand__mark .ts-icon { width: 28px; height: 28px; }
+.ts-brand__name { font-family: var(--font-serif); font-size: 20px; line-height: 28px; font-weight: 600; }
+
+.ts-steps { display: flex; flex-direction: column; gap: var(--space-12); }
+.ts-steps__head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.ts-steps__count { color: var(--ink-muted); }
+.ts-steps__bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ts-steps__seg { height: 4px; border-radius: 2px; background: var(--line); }
+.ts-steps__seg.is-done { background: var(--accent-fill); }
+
+.ts-form { display: flex; flex-direction: column; gap: var(--space-20); margin: var(--space-24) 0 var(--space-32); }
+.ts-form .ts-field { max-width: none; }
+.ts-form__error {
+  display: flex; align-items: flex-start; gap: var(--space-8); margin: 0;
+  font-size: 15px; line-height: 22px; color: var(--danger);
+}
+.ts-form__error .ts-icon { flex: none; width: 20px; height: 20px; margin-top: 1px; }
+.ts-form .ts-field__hint, .ts-form .ts-field__error { margin: 0; }
+.ts-field__optional { color: var(--ink-muted); font-weight: 400; }
+
+.ts-privacy {
+  display: flex; align-items: flex-start; gap: var(--space-12);
+  margin-top: auto; padding: var(--space-16); border: 1px solid var(--line);
+  border-radius: var(--radius-md); background: var(--surface);
+}
+.ts-privacy__icon { display: inline-flex; flex: none; color: var(--success); }
+.ts-privacy__icon .ts-icon { width: 20px; height: 20px; margin-top: 1px; }
+.ts-privacy p { margin: 0; }

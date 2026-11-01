@@ -27,7 +27,7 @@ func TestVisualShell(t *testing.T) {
 	if browser == "" {
 		t.Skip("TENDSHELF_TEST_BROWSER not set")
 	}
-	app := NewHandler(Options{Version: "visual"})
+	app := newTestApp(t).signedIn(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/__probe.js" {
 			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")

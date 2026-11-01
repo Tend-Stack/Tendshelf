@@ -1,7 +1,7 @@
 // Command tendshelf runs the Tendshelf audiobook server.
 //
 // It opens the database in the data folder, starts the job runner with the library scan and
-// probe jobs, and serves a placeholder page and /healthz on 127.0.0.1:8095 by
+// probe jobs, and serves the web interface and /healthz on 127.0.0.1:8095 by
 // default. See docs/architecture.md and docs/roadmap.md.
 package main
 
@@ -18,11 +18,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web"
 )
 
@@ -51,6 +53,7 @@ func run(ctx context.Context, args []string) error {
 	dataFlag := fs.String("data", envOr("TENDSHELF_DATA", ""), "data folder (database, backups); default is per user")
 	ffprobe := fs.String("ffprobe", envOr("TENDSHELF_FFPROBE", ""), "ffprobe program name or absolute path; default searches PATH")
 	ffmpeg := fs.String("ffmpeg", envOr("TENDSHELF_FFMPEG", ""), "ffmpeg program name or absolute path; default searches PATH")
+	proxyFlag := fs.String("trusted-proxy", envOr("TENDSHELF_TRUSTED_PROXY", ""), "comma-separated IPs or CIDR ranges of reverse proxies whose X-Forwarded-For and X-Forwarded-Proto are trusted; default none")
 	mf := addMediaFlags(fs)
 	showVersion := fs.Bool("version", false, "print the version and exit")
 	if err := fs.Parse(args); err != nil {
@@ -59,6 +62,11 @@ func run(ctx context.Context, args []string) error {
 	if *showVersion {
 		fmt.Println(version)
 		return nil
+	}
+
+	proxies, err := auth.ParseProxies(*proxyFlag)
+	if err != nil {
+		return fmt.Errorf("-trusted-proxy: %w", err)
 	}
 
 	dataDir := *dataFlag
@@ -96,6 +104,11 @@ func run(ctx context.Context, args []string) error {
 	if err := sc.Register(runner); err != nil {
 		return err
 	}
+	setupCode := auth.NewSetupCode()
+	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: proxies})
+	if err != nil {
+		return err
+	}
 	// Bind before the runner starts: a busy port fails here with nothing to stop, and once serving
 	// is called, start-up (migrations, registration, runner) is really finished.
 	ln, err := net.Listen("tcp", *addr)
@@ -109,7 +122,7 @@ func run(ctx context.Context, args []string) error {
 
 	srv := &http.Server{
 		Addr:              *addr,
-		Handler:           web.NewHandler(web.Options{Version: version}),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
 		// No WriteTimeout: audio streams are long-lived. Per-handler deadlines
@@ -118,6 +131,11 @@ func run(ctx context.Context, args []string) error {
 	}
 
 	logger.Info("listening", "addr", "http://"+ln.Addr().String(), "version", version)
+	if hasOwner, err := users.New(st, users.Options{}).OwnerExists(ctx); err == nil && !hasOwner {
+		// The one place a secret is logged on purpose: the owner needs it, and only the person who
+		// can read this log can open the setup page.
+		logger.Info("first run: open this link to create the owner account", "url", setupURL(ln.Addr(), setupCode))
+	}
 	serving(ln.Addr())
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()
@@ -142,6 +160,19 @@ func run(ctx context.Context, args []string) error {
 		logger.Warn("job runner did not stop in time; unfinished jobs are recovered at the next start", "err", err)
 	}
 	return serveErr // st.Close runs on return
+}
+
+// setupURL is the link the owner opens on first run, with the setup code filled in. An address
+// that listens everywhere is shown as localhost.
+func setupURL(a net.Addr, code string) string {
+	host, port, err := net.SplitHostPort(a.String())
+	if err != nil {
+		return "http://localhost/setup?code=" + code
+	}
+	if ip := net.ParseIP(host); host == "" || (ip != nil && ip.IsUnspecified()) {
+		host = "localhost"
+	}
+	return "http://" + net.JoinHostPort(host, port) + "/setup?code=" + code
 }
 
 // locateTools finds ffprobe and ffmpeg. Missing tools are not fatal: books are still listed from

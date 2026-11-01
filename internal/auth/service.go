@@ -1,0 +1,231 @@
+package auth
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"net/netip"
+	"strings"
+	"sync/atomic"
+	"time"
+
+	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/users"
+)
+
+// ServiceOptions configures a Service.
+type ServiceOptions struct {
+	SetupCode string           // the first-run code; empty means setup can never succeed
+	Now       func() time.Time // nil: time.Now
+}
+
+// Limits on failed attempts: per client address (shared by sign-in and setup)
+// and per account.
+const (
+	ipMaxFails    = 20
+	userMaxFails  = 10
+	limitWindow   = 15 * time.Minute
+	limiterKeys   = 4096
+	maxPasswordIn = 1024 // bytes; longer input is refused before any hashing
+	maxUsernameIn = 64
+)
+
+// Service is sign-in, sign-out and first-run setup.
+type Service struct {
+	st        *db.Store
+	users     *users.Repo
+	sessions  *Sessions
+	now       func() time.Time
+	setupCode string
+	ipLim     *Limiter
+	userLim   *Limiter
+	ownerSeen atomic.Bool
+}
+
+// NewService returns a Service.
+func NewService(st *db.Store, u *users.Repo, s *Sessions, o ServiceOptions) *Service {
+	if o.Now == nil {
+		o.Now = time.Now
+	}
+	return &Service{
+		st: st, users: u, sessions: s, now: o.Now, setupCode: o.SetupCode,
+		ipLim:   NewLimiter(ipMaxFails, limitWindow, limiterKeys, o.Now),
+		userLim: NewLimiter(userMaxFails, limitWindow, limiterKeys, o.Now),
+	}
+}
+
+// Login is a successful sign-in: the raw token for the cookie and the account.
+type Login struct {
+	Token string
+	User  users.User
+}
+
+func (a *Service) ms() int64 { return a.now().UnixMilli() }
+
+// OwnerExists reports whether setup is done. Once true it stays true without
+// asking the database again.
+func (a *Service) OwnerExists(ctx context.Context) (bool, error) {
+	if a.ownerSeen.Load() {
+		return true, nil
+	}
+	ok, err := a.users.OwnerExists(ctx)
+	if err == nil && ok {
+		a.ownerSeen.Store(true)
+	}
+	return ok, err
+}
+
+// audit writes a row best-effort: a failure to record a refused attempt must
+// not change the answer to it.
+func (a *Service) audit(ctx context.Context, e db.AuditEntry) {
+	e.At = a.ms()
+	_ = db.Audit(ctx, a.st.Writer(), e)
+}
+
+func limited(ok bool, wait time.Duration) error {
+	if ok {
+		return nil
+	}
+	if wait < time.Second {
+		wait = time.Second
+	}
+	return &RateLimitedError{RetryAfter: wait}
+}
+
+// Login checks the credentials and starts a session. prev, when not nil, is the
+// session the browser already had; it is ended so a new sign-in never reuses a
+// token. Every failure is ErrBadCredentials, whether the username exists or
+// not; limits answer with *RateLimitedError before any hashing happens.
+func (a *Service) Login(ctx context.Context, username, password string, ip netip.Addr, ua string, prev *Session) (Login, error) {
+	ipKey := IPKey(ip)
+	if err := limited(a.ipLim.Allow(ipKey)); err != nil {
+		return Login{}, err
+	}
+	username = strings.ToLower(strings.TrimSpace(username))
+	fail := func(reason, userID string) error {
+		a.ipLim.Fail(ipKey)
+		if userID != "" {
+			a.userLim.Fail("u:" + userID)
+		}
+		a.audit(ctx, db.AuditEntry{UserID: userID, Action: "auth.login_failed", Detail: map[string]string{"ip": ip.String(), "reason": reason}})
+		return ErrBadCredentials
+	}
+	if len(password) > maxPasswordIn || len(username) > maxUsernameIn {
+		return Login{}, fail("input_too_long", "")
+	}
+
+	u, hash, err := a.users.ByUsername(ctx, username)
+	if errors.Is(err, users.ErrNotFound) {
+		a.users.VerifyDummy(ctx, password)
+		if err := ctx.Err(); err != nil {
+			return Login{}, err
+		}
+		return Login{}, fail("unknown_user", "")
+	}
+	if err != nil {
+		return Login{}, err
+	}
+	lim := "u:" + u.ID
+	if err := limited(a.userLim.Allow(lim)); err != nil {
+		return Login{}, err
+	}
+	// Verify even for a disabled account, so its answer takes as long as any other.
+	ok, err := a.users.VerifyPassword(ctx, hash, password)
+	if errors.Is(err, users.ErrBadHash) {
+		a.users.VerifyDummy(ctx, password) // an account with no password costs the same time
+		ok, err = false, nil
+	}
+	if err != nil {
+		return Login{}, err
+	}
+	switch {
+	case u.Disabled:
+		return Login{}, fail("disabled", u.ID)
+	case !ok:
+		return Login{}, fail("bad_password", u.ID)
+	}
+
+	var out Login
+	err = a.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		if _, err := a.sessions.DeleteExpired(ctx, tx); err != nil {
+			return err
+		}
+		if prev != nil {
+			if err := a.sessions.Delete(ctx, tx, prev.Hash); err != nil {
+				return err
+			}
+		}
+		tok, _, err := a.sessions.Create(ctx, tx, u.ID, ua)
+		if err != nil {
+			return err
+		}
+		now := a.ms()
+		if err := a.users.TouchLastSeen(ctx, tx, u.ID, now); err != nil {
+			return err
+		}
+		u.LastSeenAt = now
+		out = Login{Token: tok, User: u}
+		return db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: u.ID, Action: "auth.login", Target: u.ID, Detail: map[string]string{"ip": ip.String()}})
+	})
+	if err != nil {
+		return Login{}, err
+	}
+	a.userLim.Reset(lim)
+	return out, nil
+}
+
+// Logout ends the session.
+func (a *Service) Logout(ctx context.Context, s Session) error {
+	return a.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		if err := a.sessions.Delete(ctx, tx, s.Hash); err != nil {
+			return err
+		}
+		return db.Audit(ctx, tx, db.AuditEntry{At: a.ms(), UserID: s.UserID, Action: "auth.logout", Target: s.UserID})
+	})
+}
+
+// Setup creates the owner account and signs it in, when the setup code is right
+// and there is no owner yet. Problems with the form come back as
+// users.FieldErrors; users.ErrOwnerExists means someone else got there first.
+func (a *Service) Setup(ctx context.Context, code string, n users.NewUser, ip netip.Addr, ua string) (Login, error) {
+	ipKey := IPKey(ip)
+	if err := limited(a.ipLim.Allow(ipKey)); err != nil {
+		return Login{}, err
+	}
+	if !SetupCodeOK(a.setupCode, code) {
+		a.ipLim.Fail(ipKey)
+		a.audit(ctx, db.AuditEntry{Action: "setup.code_failed", Detail: map[string]string{"ip": ip.String()}})
+		return Login{}, ErrSetupCode
+	}
+	n = users.Normalize(n)
+	if errs := users.Validate(n); errs != nil {
+		return Login{}, errs
+	}
+	hash, err := a.users.HashPassword(ctx, n.Password) // before the transaction: hashing is slow
+	if err != nil {
+		return Login{}, err
+	}
+	var out Login
+	err = a.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		u, err := a.users.CreateOwner(ctx, tx, n, hash)
+		if err != nil {
+			return err
+		}
+		tok, _, err := a.sessions.Create(ctx, tx, u.ID, ua)
+		if err != nil {
+			return err
+		}
+		now := a.ms()
+		if err := a.users.TouchLastSeen(ctx, tx, u.ID, now); err != nil {
+			return err
+		}
+		u.LastSeenAt = now
+		out = Login{Token: tok, User: u}
+		return db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: u.ID, Action: "setup.owner_created", Target: u.ID, Detail: map[string]string{"ip": ip.String()}})
+	})
+	if err != nil {
+		return Login{}, err
+	}
+	a.ownerSeen.Store(true)
+	return out, nil
+}

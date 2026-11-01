@@ -79,8 +79,10 @@ func TestKitchenSinkThemeCookie(t *testing.T) {
 }
 
 func TestDevToastNeedsCSRF(t *testing.T) {
-	h := NewHandler(Options{})
-	c, tok := session(t, h)
+	app := newTestApp(t)
+	h := app.signedIn(t)
+	var c *http.Cookie // the wrapper adds the session cookie
+	tok := app.tokenFor(t, app.owner(t))
 	hx := func(r *http.Request) { r.Header.Set("HX-Request", "true") }
 	if rec := send(h, http.MethodPost, "/hx/dev/toast?kind=ok", c, hx); rec.Code != http.StatusForbidden {
 		t.Fatalf("without the token: status %d, want 403", rec.Code)
@@ -92,8 +94,10 @@ func TestDevToastNeedsCSRF(t *testing.T) {
 }
 
 func TestDevToastKinds(t *testing.T) {
-	h := NewHandler(Options{})
-	c, tok := session(t, h)
+	app := newTestApp(t)
+	h := app.signedIn(t)
+	var c *http.Cookie // the wrapper adds the session cookie
+	tok := app.tokenFor(t, app.owner(t))
 	post := func(kind string) *httpResult {
 		rec := send(h, http.MethodPost, "/hx/dev/toast?kind="+kind, c, func(r *http.Request) {
 			r.Header.Set("HX-Request", "true")
@@ -126,7 +130,7 @@ type httpResult struct {
 }
 
 func TestDevProgressBounds(t *testing.T) {
-	h := NewHandler(Options{})
+	h := newTestApp(t).signedIn(t)
 	for _, v := range []string{"-1", "101", "x", ""} {
 		if rec := send(h, http.MethodGet, "/hx/dev/progress?v="+v, nil, nil); rec.Code != http.StatusBadRequest {
 			t.Errorf("v=%q: status %d, want 400", v, rec.Code)

@@ -223,6 +223,19 @@ cover is re-extracted to compare each time its book settles (no write when uncha
 Exit: every page's handler tests; boards matched side by side at the four widths in four themes;
 library page interactive in under 300 ms on a mid-range phone (measured).
 
+**P1b-1 Auth foundation done 2026-11-01** (not yet merged when written; see the merge commit). Scope:
+`internal/users` (argon2id, validation, owner creation), `internal/share` (`Can`, actions, listing filters),
+`internal/auth` (sessions, sign-in, setup, limits, trusted proxies, setup code, `SafeNext`), `internal/db`
+settings and audit helpers, session-bound CSRF with a persisted key, the default-deny gate, `/setup`
+(step 1 of 3, the owner account), `/login`, `POST /logout`, the sign-in frame, `TextField`, `SetupSteps`,
+`PrivacyNote`, flag `-trusted-proxy`, and the start-up setup link. No migration (0001 had the tables); new
+module `golang.org/x/crypto` v0.58.0. All existing page and route tests now run signed in. Checks:
+`make generate` (no diff), `make check`, `make build`, `CGO_ENABLED=0 go build ./...`, `make visual` (setup
+and login in four themes at four widths; the 204 + `HX-Redirect` answer to an unauthenticated htmx request
+works with the vendored htmx 4), `-race -count=3` on auth, users and web. Limits: no sign-out button yet and
+no account menu (P1b-7), theme still in the `ts_theme` cookie, setup steps 2 and 3 and the scan stream
+(P1b-4), no passkeys, no absolute session cap, the limiter state is per process.
+
 ### P1c Player and progress
 
 - Mini-player, full player (phone, tablet) and desktop player bar and panel; cover accent only on the

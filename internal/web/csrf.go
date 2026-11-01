@@ -26,7 +26,8 @@ type csrfContextKey struct{}
 var csrfBindingKey = csrfContextKey{}
 
 // BindingFunc returns the value a CSRF token is bound to for this request and whether there is one.
-// P1b: bind to session ID.
+// Values are prefixed by kind ("c:" for the ts_csrf cookie, "s:" for a session), so a token minted
+// for one kind can never be accepted for another.
 type BindingFunc func(*http.Request) (string, bool)
 
 // CSRF protects unsafe methods with a token (a keyed hash of a per-browser binding) and with the
@@ -36,11 +37,17 @@ type CSRF struct {
 	binding BindingFunc
 	// Deny writes the 403 response. The server replaces it with the HTML error page.
 	Deny http.Handler
+	// Secure says whether the ts_csrf cookie gets the Secure attribute. Nil means TLS on this connection.
+	Secure func(*http.Request) bool
 }
 
 // NewCSRF returns a CSRF guard. A nil key means 32 random bytes, so tokens are valid only for
-// this process. P1b passes a key kept in the settings table.
-func NewCSRF(key []byte) *CSRF {
+// this process; the server passes a key kept in the settings table. A nil binding means the
+// ts_csrf cookie; the server passes one that prefers the signed-in session.
+func NewCSRF(key []byte, binding BindingFunc) *CSRF {
+	if binding == nil {
+		binding = cookieBinding
+	}
 	if key == nil {
 		key = make([]byte, 32)
 		if _, err := rand.Read(key); err != nil {
@@ -49,7 +56,7 @@ func NewCSRF(key []byte) *CSRF {
 	}
 	return &CSRF{
 		key:     key,
-		binding: cookieBinding,
+		binding: binding,
 		Deny: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "This form expired. Reload the page and try again.", http.StatusForbidden)
 		}),
@@ -63,7 +70,7 @@ func (c *CSRF) Token(binding string) string {
 	return base64.RawURLEncoding.EncodeToString(m.Sum(nil))
 }
 
-// cookieBinding is the default binding: the value of the ts_csrf cookie, if well formed.
+// cookieBinding is the default binding: "c:" and the value of the ts_csrf cookie, if well formed.
 func cookieBinding(r *http.Request) (string, bool) {
 	ck, err := r.Cookie(csrfCookie)
 	if err != nil {
@@ -73,7 +80,7 @@ func cookieBinding(r *http.Request) (string, bool) {
 	if err != nil || len(raw) != 32 {
 		return "", false
 	}
-	return ck.Value, true
+	return "c:" + ck.Value, true
 }
 
 // TokenFrom returns the token for the request in ctx, or "" outside the middleware.
@@ -101,10 +108,17 @@ func (c *CSRF) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		binding, ok := c.binding(r)
 		if !ok {
-			binding = c.mint(w, r)
+			binding = "c:" + c.mint(w, r)
 		}
 		guarded.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), csrfBindingKey, binding)))
 	})
+}
+
+func (c *CSRF) secure(r *http.Request) bool {
+	if c.Secure != nil {
+		return c.Secure(r)
+	}
+	return r.TLS != nil
 }
 
 func safeMethod(m string) bool {
@@ -119,7 +133,7 @@ func (c *CSRF) mint(w http.ResponseWriter, r *http.Request) string {
 	v := base64.RawURLEncoding.EncodeToString(raw)
 	http.SetCookie(w, &http.Cookie{
 		Name: csrfCookie, Value: v, Path: "/", HttpOnly: true,
-		SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil,
+		SameSite: http.SameSiteLaxMode, Secure: c.secure(r),
 	})
 	return v
 }

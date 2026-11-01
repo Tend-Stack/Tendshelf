@@ -1,0 +1,22 @@
+package components
+
+// Frame is the page shell for people who are not signed in (setup and sign-in): a single centred
+// column with no navigation and no player. It is plain HTML forms with full page loads, so it
+// works without JavaScript.
+templ Frame(p Page, body templ.Component) {
+	<!DOCTYPE html>
+	<html
+		lang="en"
+		if p.Theme != "" {
+			data-theme={ p.Theme }
+		}
+	>
+		@Head(p, "css/pages-onboard.css")
+		<body class="ts-frame">
+			<a class="ts-sr-focusable" href="#main">Skip to content</a>
+			<main id="main" class="ts-frame__main" tabindex="-1">
+				@body
+			</main>
+		</body>
+	</html>
+}

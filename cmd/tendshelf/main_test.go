@@ -174,3 +174,27 @@ func TestDataFlagDefaultsToEnvironment(t *testing.T) {
 		}
 	}
 }
+
+func TestSetupURL(t *testing.T) {
+	for _, tc := range []struct{ addr, want string }{
+		{"127.0.0.1:8095", "http://127.0.0.1:8095/setup?code=ABCDE-FGHJK"},
+		{"0.0.0.0:8095", "http://localhost:8095/setup?code=ABCDE-FGHJK"},
+		{"[::]:8095", "http://localhost:8095/setup?code=ABCDE-FGHJK"},
+		{"[::1]:8095", "http://[::1]:8095/setup?code=ABCDE-FGHJK"},
+	} {
+		a, err := net.ResolveTCPAddr("tcp", tc.addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := setupURL(a, "ABCDE-FGHJK"); got != tc.want {
+			t.Errorf("setupURL(%s) = %s, want %s", tc.addr, got, tc.want)
+		}
+	}
+}
+
+func TestRunRejectsBadTrustedProxy(t *testing.T) {
+	err := run(context.Background(), []string{"-data", t.TempDir(), "-addr", "127.0.0.1:0", "-trusted-proxy", "not-an-ip"})
+	if err == nil || !strings.Contains(err.Error(), "-trusted-proxy") {
+		t.Fatalf("err = %v", err)
+	}
+}

@@ -16,7 +16,7 @@ import (
 
 func getPage(t *testing.T, path string, mod func(*http.Request)) (*httptest.ResponseRecorder, string) {
 	t.Helper()
-	rec := send(NewHandler(Options{}), http.MethodGet, path, nil, mod)
+	rec := send(newTestApp(t).signedIn(t), http.MethodGet, path, nil, mod)
 	return rec, rec.Body.String()
 }
 
@@ -88,7 +88,7 @@ func TestLayoutShell(t *testing.T) {
 	if len(urls) < 8 {
 		t.Fatalf("only %d asset URLs", len(urls))
 	}
-	h := NewHandler(Options{})
+	h := newTestApp(t).signedIn(t)
 	hashed := regexp.MustCompile(`\.[0-9a-f]{10}\.[a-z0-9]+$`)
 	for _, m := range urls {
 		if !hashed.MatchString(m[1]) {
@@ -192,7 +192,7 @@ func TestError404Page(t *testing.T) {
 }
 
 func TestErrorPagesPlainWords(t *testing.T) {
-	h := NewHandler(Options{})
+	h := newTestApp(t).signedIn(t)
 	rec := send(h, http.MethodPost, "/", nil, nil)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status %d", rec.Code)
@@ -210,7 +210,7 @@ func TestErrorPagesPlainWords(t *testing.T) {
 		{403, []string{"This form expired."}},
 	} {
 		rec := httptest.NewRecorder()
-		(&server{assets: mustAssets(t), csrf: NewCSRF(nil)}).errorPage(rec, httptest.NewRequest(http.MethodGet, "/x", nil), c.status)
+		(&server{assets: mustAssets(t), csrf: NewCSRF(nil, nil)}).errorPage(rec, httptest.NewRequest(http.MethodGet, "/x", nil), c.status)
 		if rec.Code != c.status {
 			t.Errorf("status %d, want %d", rec.Code, c.status)
 		}
@@ -258,8 +258,21 @@ func TestTemplatesCSPClean(t *testing.T) {
 		_, body := getPage(t, path, nil)
 		check("GET "+path, body)
 	}
+	// The setup and sign-in pages, with and without errors, are checked as rendered.
+	fresh := newTestApp(t)
+	c, tok := fresh.anon(t, "/setup")
+	check("GET /setup", fresh.do(http.MethodGet, "/setup", nil, nil).Body.String())
+	bad := setupForm(tok)
+	bad.Set("username", "x")
+	bad.Set("code", "nope")
+	check("POST /setup (errors)", fresh.do(http.MethodPost, "/setup", bad, nil, c).Body.String())
+	fresh.owner(t)
+	c, tok = fresh.anon(t, "/login")
+	check("GET /login", fresh.do(http.MethodGet, "/login", nil, nil).Body.String())
+	check("POST /login (error)", fresh.do(http.MethodPost, "/login", loginForm(tok, "ana", "wrong password!"), nil, c).Body.String())
+	check("GET /setup (taken)", fresh.do(http.MethodGet, "/setup", nil, nil).Body.String())
 	// The error fragments are checked too.
-	h := NewHandler(Options{})
+	h := newTestApp(t).signedIn(t)
 	rec := send(h, http.MethodPost, "/", nil, func(r *http.Request) { r.Header.Set("HX-Request", "true") })
 	check("403 toast", rec.Body.String())
 	rec = send(h, http.MethodPost, "/", nil, nil)

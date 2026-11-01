@@ -1,0 +1,80 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// SetupView is what the first-run page shows. It carries what the person typed (never the
+// password) and the problems, already in words.
+type SetupView struct {
+	CSRF        string
+	Code        string
+	DisplayName string
+	Email       string
+	Username    string
+	// FieldErrors maps a field (code, display_name, email, username, password) to its message.
+	FieldErrors map[string]string
+	FormError   string
+}
+
+// firstError returns the first field with an error, in page order, so it can take focus.
+func (v SetupView) firstError() string {
+	for _, f := range []string{"code", "display_name", "email", "username", "password"} {
+		if v.FieldErrors[f] != "" {
+			return f
+		}
+	}
+	return ""
+}
+
+// SetupAccount is step 1 of 3 of the first run: the setup code and the owner's account.
+templ SetupAccount(v SetupView) {
+	@components.SetupSteps(1, 3)
+	<h1 class="title-1 ts-frame__title">Create your account</h1>
+	<p class="body-lg ts-frame__lead">You're the owner. You decide who listens, and to what.</p>
+	<form class="ts-form" method="post" action="/setup">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		@formError(v.FormError)
+		@components.TextField(components.Field{
+			ID: "code", Name: "code", Label: "Setup code", Value: v.Code, Required: true, Plain: true,
+			Hint: "It's in the server's log, next to the setup link.", Error: v.FieldErrors["code"],
+			Autocomplete: "off", Autofocus: v.firstError() == "code",
+		})
+		@components.TextField(components.Field{
+			ID: "display_name", Name: "display_name", Label: "Your name", Value: v.DisplayName, Required: true,
+			Error: v.FieldErrors["display_name"], Autocomplete: "name", Autofocus: v.firstError() == "display_name",
+		})
+		@components.TextField(components.Field{
+			ID: "email", Name: "email", Label: "Email", Optional: "(optional, for invites)", Type: "email", Value: v.Email,
+			Error: v.FieldErrors["email"], Autocomplete: "email", Autofocus: v.firstError() == "email",
+		})
+		@components.TextField(components.Field{
+			ID: "username", Name: "username", Label: "Username", Value: v.Username, Required: true, Plain: true,
+			Hint: "You'll use this to sign in.", Error: v.FieldErrors["username"], Autocomplete: "username",
+			Autofocus: v.firstError() == "username",
+		})
+		@components.TextField(components.Field{
+			ID: "password", Name: "password", Label: "Password", Type: "password", Required: true,
+			Hint: "At least 10 characters.", Error: v.FieldErrors["password"], Autocomplete: "new-password",
+			Autofocus: v.firstError() == "password",
+		})
+		<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Create account</button>
+	</form>
+	@components.PrivacyNote()
+}
+
+// SetupTaken is the answer to a setup request once the server has an owner.
+templ SetupTaken() {
+	@components.Brand()
+	<h1 class="title-1 ts-frame__title">This server already has an owner</h1>
+	<p class="body-lg ts-frame__lead">Sign in instead.</p>
+	<p><a class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block" href="/login">Sign in</a></p>
+}
+
+// formError shows a problem with the form as a whole (not one field).
+templ formError(msg string) {
+	if msg != "" {
+		<p class="ts-form__error" role="alert">
+			@components.Icon("alert", false)
+			{ msg }
+		</p>
+	}
+}
