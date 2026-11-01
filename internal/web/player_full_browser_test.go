@@ -17,7 +17,8 @@ import (
 
 var fullpBrowsers = map[string]*cdp.Browser{} // one browser per test, shared by its tabs
 
-// fullpOpen opens the home page at w x h with the book loaded and returns the tab.
+// fullpOpen opens the Library at w x h with the book loaded and returns the tab. Not Home: there the
+// Continue listening hero's Resume is on screen, so the one-resume rule hides the bar (P1c-6).
 func fullpOpen(t *testing.T, e *playerEnv, w, h int, reduced bool) *cdp.Tab {
 	t.Helper()
 	b := fullpBrowsers[t.Name()]
@@ -27,7 +28,7 @@ func fullpOpen(t *testing.T, e *playerEnv, w, h int, reduced bool) *cdp.Tab {
 	}
 	e.store(t, 100_000, "fullpdevice01", "Other device", 0, false)
 	tab := b.NewTab(w, h, w < 768, reduced)
-	tab.Navigate(e.URL + "/")
+	tab.Navigate(e.URL + "/libraries")
 	tab.WaitFor(`window.tsPlayer && window.tsPlayer.state().bookId !== "" && !document.getElementById("player").hidden`, 10*time.Second)
 	return tab
 }
@@ -95,7 +96,7 @@ func TestFullPlayerBrowserOpenClose(t *testing.T) {
 		  MiniHidden: getComputedStyle(document.getElementById("player")).visibility === "hidden", Path: location.pathname}; })()`, &s)
 	}
 	read()
-	if !s.Modal || !s.FocusInside || !s.MiniHidden || s.Path != "/" {
+	if !s.Modal || !s.FocusInside || !s.MiniHidden || s.Path != "/libraries" {
 		t.Errorf("after opening at 390: %+v", s)
 	}
 
