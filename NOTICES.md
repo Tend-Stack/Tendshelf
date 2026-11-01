@@ -11,6 +11,10 @@ other projects. Every port, vendored file or third-party dependency adds a row h
 | `internal/scan/group.go` | Audiobookshelf `server/utils/scandir.js` (`groupFileItemsIntoLibraryItemDirs`); TendVox Extractor `extractor_details.py` (`book_layout`, `is_parts_set`) | GPL-3.0 | Method port, idiomatic Go |
 | `internal/scan/order.go` | Audiobookshelf `server/scanner/AudioFileScanner.js` (`runSmartTrackOrder`, `getTrackAndDiscNumberFromFilename`); TendVox Extractor `extractor_details.py` (`track_numbers`, `order_parts`, `natural_key`) | GPL-3.0 | Method port, idiomatic Go |
 | `internal/scan/chapters.go` | Audiobookshelf `server/scanner/AudioFileScanner.js` (`getBookChaptersFromAudioFiles`) | GPL-3.0 | Method port, idiomatic Go |
+| `internal/metadata/names.go` | Audiobookshelf `server/utils/parsers/parseNameString.js`, `parseSeriesString.js`; TendVox Extractor `extractor_details.py` (`parse_names`, `parse_series_string`) | GPL-3.0 | Method port (the Extractor's simplified name rules), idiomatic Go |
+| `internal/metadata/folder.go` | Audiobookshelf `server/utils/scandir.js` (`getBookDataFromDir`, `getSequence`, `getNarrator`, `getASIN`, `getPublishedYear`); TendVox Extractor `extractor_details.py` (`parse_folder_name`, `parse_book_name`, `clean_sequence`) | GPL-3.0 | Method port, idiomatic Go |
+| `internal/metadata/tags.go` | TendVox Extractor `extractor_details.py` (`meta_from_tags`, `clean_text`, `clean_asin`, `clean_isbn`, `clean_year`); Audiobookshelf `server/scanner/AudioFileScanner.js` (author tag order) | GPL-3.0 | Method port, idiomatic Go |
+| `internal/metadata/production.go` | TendVox Extractor `extractor_details.py` (`find_production`, `_FULL_CAST`, `_DRAMATIZED`) | GPL-3.0 | Method port, idiomatic Go |
 
 Expected first entries (fill in when the port lands; do not pre-credit code that does not exist):
 

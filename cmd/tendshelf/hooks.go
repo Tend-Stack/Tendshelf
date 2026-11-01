@@ -8,6 +8,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
+	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 )
 
@@ -23,7 +24,11 @@ type deps struct {
 }
 
 // registerDetails is the hook for the book details feature: its follower and job kinds.
-func registerDetails(d deps) error { return nil }
+func registerDetails(d deps) error {
+	svc := metadata.New(d.lib, d.runner, d.log)
+	d.scanner.OnBookSettled(svc.Follower())
+	return svc.Register(d.runner)
+}
 
 // mediaFlags holds the command-line flags of the media jobs.
 type mediaFlags struct{}

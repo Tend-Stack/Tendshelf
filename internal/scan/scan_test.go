@@ -31,7 +31,8 @@ func buildFixture(t *testing.T, root string) *fixture {
 	}
 	for i := 0; i < 30; i++ { // Author/Book
 		rel := fmt.Sprintf("Au%02d/Book%02d/b.m4b", i, i)
-		fx.file(rel, mediatest.FakeFile{})
+		fx.file(rel, mediatest.FakeFile{Tags: map[string]string{ // details tests read these; no track or disc tags
+			"album": fmt.Sprintf("Tagged %02d", i), "album_artist": fmt.Sprintf("Tag Author %02d", i), "composer": "Narr One & Narr Two"}})
 		one(filepath.ToSlash(filepath.Dir(rel)), "", rel)
 	}
 	for i := 0; i < 30; i++ { // Author/Series/Book N
