@@ -28,6 +28,7 @@ dark and light × 4 widths in the full run. The nightly CI job runs `make visual
 | OnboardDone | 390 | `TestVisualBrowsePages` `onboard-done`; `TestVisualAdminPages` `setup-done` | secondary | Zero counts left out of the summary line |
 | SettingsPhone | 390 | `TestVisualMePages` `settings` | main | Text size and Larger text mode go with P3; several rows wait for their features |
 | ProfilePhone | 390 | `me-profile` | secondary | No stats, bookmarks or finished rows; no Users, Metadata or Research entries |
+| The mini-player (component README MiniPlayer; on LibraryListPhone, SearchTablet, BookDesktop) | 390, 768, 1024, 1440 | `TestPlayerBrowserLayout` | own run (`make player`, dark and light) | Opens the book page until the full player (P1c-5); no long-press speed (P1c-5); the Back button carries its seconds as a number on the icon; Forward shows from 1280 px; hidden while a play control for the loaded book is on screen |
 | LibrariesPhone, LibrariesTablet, LibrariesPage, LibProblems | 390, 1024, 1440, 420 | `TestVisualAdminPages` `libraries` | main | No folder removal, watching or scan history |
 | StateLoading | 390 | `TestVisualLibraryInfiniteScroll`; kitchen sink `ks-skeleton` | 390 only | None |
 | StateNoResults | 390 | `book-search-none`, `library-nomatch` | secondary | None |
