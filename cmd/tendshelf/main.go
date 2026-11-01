@@ -48,7 +48,14 @@ func main() {
 }
 
 func run(ctx context.Context, args []string) error {
+	if len(args) > 0 && args[0] == "reset-password" {
+		return runResetPassword(ctx, args[1:], os.Stdout)
+	}
 	fs := flag.NewFlagSet("tendshelf", flag.ContinueOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "Usage:\n  tendshelf [flags]\n  %s\n\nFlags:\n", resetUsage[len("usage: "):])
+		fs.PrintDefaults()
+	}
 	addr := fs.String("addr", envOr("TENDSHELF_ADDR", defaultAddr), "listen address (host:port)")
 	dataFlag := fs.String("data", envOr("TENDSHELF_DATA", ""), "data folder (database, backups); default is per user")
 	ffprobe := fs.String("ffprobe", envOr("TENDSHELF_FFPROBE", ""), "ffprobe program name or absolute path; default searches PATH")
