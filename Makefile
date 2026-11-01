@@ -5,7 +5,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: app build generate test run run-dev check fmt vet clean visual visual-webkit test-media
+.PHONY: app build generate test run run-dev check fmt vet clean visual visual-webkit test-media test-scan-real
 
 generate:
 	$(GO) tool templ generate
@@ -57,6 +57,10 @@ visual-webkit:
 # Tests that run real ffmpeg and ffprobe (they skip without the variable). All output goes to temp directories.
 test-media:
 	TENDSHELF_TEST_FFMPEG=1 $(GO) test -count=1 -run 'Real' ./internal/media/...
+
+# The library scan over files made by real ffmpeg: books, offsets, chapters and refusals.
+test-scan-real:
+	TENDSHELF_TEST_FFMPEG=1 $(GO) test -count=1 -run 'Real' ./internal/scan/
 
 clean:
 	rm -rf bin
