@@ -19,3 +19,6 @@
 
 # Never expected here (no Node in this project); ignore so a stray install cannot be committed
 node_modules/
+
+# Agent worktrees (Claude Code); each is its own checkout
+/.claude/worktrees/
