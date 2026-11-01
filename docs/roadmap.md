@@ -14,7 +14,7 @@ themes.
 
 | Milestone | Phase | State | Evidence |
 | --- | --- | --- | --- |
-| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01. P0a and P0b in progress. | `make check` green 2026-11-01 (skeleton only). |
+| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 2.x, fonts and templ downloads approved). P0a, P0b, P0c in progress. | `make check` green 2026-11-01 (skeleton only). |
 | M1 It plays | P1a-P1c | Not started | |
 | M2 Family | P3 | Not started | |
 | M3 Pocket | P4 | Not started | |
@@ -56,6 +56,26 @@ database refused byte-identical (test); a job survives a restart (test); `CGO_EN
 Exit: a templ page served with htmx from `/static` under the strict CSP; each shell renders at 390,
 768, 1024 and 1440 in dark, light, sepia and contrast with no horizontal scroll (captures reviewed
 against `screens/core/Home*.png` for the frame only); CSRF rejects an unsafe request without the token.
+
+### P0c Utilities and motion layer
+
+Light but not boring: small touches that make the app feel native on every device and in the Wails
+v3 WebViews (WebKitGTK on Linux, WKWebView on macOS and iOS, WebView2 on Windows, Android WebView).
+
+- Layout utilities added to `bundle.css` as `ts-` classes on the design's spacing tokens (stack,
+  cluster, grid, center, switcher, visually-hidden, safe-area padding), replacing the boards' inline
+  layout styles.
+- The handoff motion spec as reusable CSS: page swap fade-and-rise (htmx swap/settle classes, View
+  Transitions where supported), sheets and toasts entering with `@starting-style`, press feedback,
+  progress easing, skeleton shimmer, the mini-player to full-player shared cover where supported.
+- Native feel: `100dvh` and `env(safe-area-inset-*)`, hover only under `(hover: hover)`, no tap
+  highlight, `overscroll-behavior` and `touch-action` where gestures live, 44 px targets.
+- Every newer feature behind `@supports` with a plain fallback; `prefers-reduced-motion` turns every
+  movement into a 150 ms fade. No JavaScript animation library; at most a few lines in the client module.
+
+Exit: a `/dev/kitchen-sink` page (registered only in development builds) shows every utility and
+motion state; captures in Chromium and WebKitGTK (MiniBrowser) at 390 and 1440 match in all four
+themes; reduced motion verified; no layout shift on swap.
 
 ## M1 It plays (single owner)
 

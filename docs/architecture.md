@@ -285,7 +285,7 @@ Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); 
 
 | Module / file | Why | Note |
 | --- | --- | --- |
-| `github.com/a-h/templ` (v0.3.1070, already in the local module cache) | templ runtime; the CLI at the same version for `make generate` | MIT |
+| `github.com/a-h/templ` (v0.3.1070, fetched through the Go module proxy; not in the local cache) | templ runtime; the CLI at the same version for `make generate` | MIT |
 | `modernc.org/sqlite` (v1.60.1, already in the local module cache; TendVox uses it) | SQLite driver | Chosen over `mattn/go-sqlite3`: pure Go, so `CGO_ENABLED=0` cross-compiles to ARM NAS boxes, Windows, macOS and scratch containers; FTS5 is compiled in (checked in `lib/sqlite_linux_amd64.go`). Cost: slower than the C driver on heavy writes (guess 1.5-2x); fine for this workload. BSD-3 |
 | `htmx.min.js` 2.x, vendored to `internal/web/static/vendor/` | Interactivity | Download once from the official release, record version and SHA-256 in `NOTICES.md`; licence 0BSD (guess, read it from the release) |
 | `golang.org/x/crypto` (argon2) | Password hashing in P1 | BSD-3 |
