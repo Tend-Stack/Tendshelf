@@ -177,8 +177,11 @@ func toMS(t time.Time) int64 {
 	return t.UnixMilli()
 }
 
-// Get returns a job by id, read from the reader pool.
-func (r *Runner) Get(ctx context.Context, id string) (Job, error) {
+// rowScanner is what scanJob reads: *sql.Row and *sql.Rows.
+type rowScanner interface{ Scan(dest ...any) error }
+
+// scanJob reads one jobs row in the column order of sqlGet.
+func scanJob(s rowScanner) (Job, error) {
 	var (
 		j                                      Job
 		state                                  string
@@ -186,11 +189,8 @@ func (r *Runner) Get(ctx context.Context, id string) (Job, error) {
 		code, text, createdBy                  sql.NullString
 		lease, notBefore, createdAt, updatedAt sql.NullInt64
 	)
-	err := r.st.Reader().QueryRowContext(ctx, sqlGet, id).Scan(&j.ID, &j.Kind, &state, &payload, &result, &progress,
+	err := s.Scan(&j.ID, &j.Kind, &state, &payload, &result, &progress,
 		&code, &text, &j.Attempts, &j.MaxAttempts, &lease, &notBefore, &createdBy, &createdAt, &updatedAt)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Job{}, ErrNotFound
-	}
 	if err != nil {
 		return Job{}, err
 	}
@@ -208,4 +208,13 @@ func (r *Runner) Get(ctx context.Context, id string) (Job, error) {
 	j.LeaseUntil, j.NotBefore = msToTime(lease), msToTime(notBefore)
 	j.CreatedAt, j.UpdatedAt = msToTime(createdAt), msToTime(updatedAt)
 	return j, nil
+}
+
+// Get returns a job by id, read from the reader pool.
+func (r *Runner) Get(ctx context.Context, id string) (Job, error) {
+	j, err := scanJob(r.st.Reader().QueryRowContext(ctx, sqlGet, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return Job{}, ErrNotFound
+	}
+	return j, err
 }
