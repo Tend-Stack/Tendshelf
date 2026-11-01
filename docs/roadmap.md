@@ -288,6 +288,10 @@ first sound under 1 s on localhost; the player is usable one-handed at 390 px (r
 - Invites by link and optional email (SMTP settings); share links for one book; Rosa's invite flow and
   large-text Home (`screens/people/Invite*`, `RosaHome`); Share & invite pages.
 - Device tokens and the JSON API v1; shared shelves; "Shared with you" Home row.
+- Larger text mode (operator, 2026-11-01): the in-app setting for Rosa's large-text design (bigger type,
+  spines become cards, the player's settings bar stacks). It first moves the design system's fixed pixel sizes
+  to scalable units across `bundle.css`, then adds the setting to `users.Settings`. Until then browser zoom
+  to 200 % is the supported path (WCAG 1.4.4).
 
 Exit: for every route, a test proves each role gets exactly the documented access, and forbidden books
 never appear in lists, counts, search or covers. First tagged release (v0.1) after this milestone.
