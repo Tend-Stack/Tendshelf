@@ -1,0 +1,47 @@
+/* Tendshelf web player (P1c-4): the mini-player's behaviour and the keyboard sheet. The mini-player's
+   look (.ts-mini*) and the slot's position are in bundle.css; this file adds what the live player
+   needs. Loaded on every page that has the app shell. Tokens only. */
+.ts-mini__cover { width: 48px; height: 48px; }
+.ts-mini__progress { right: 0; transform: scaleX(var(--ts-progress, 0)); transform-origin: left center; transition: transform var(--duration-base) linear; }
+.ts-mini__open:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); border-radius: var(--radius-md); }
+.ts-mini [hidden] { display: none; }
+.ts-player-slot:not(.is-playing) [data-ts-icon-pause], .ts-player-slot.is-playing [data-ts-icon-play] { display: none; }
+.ts-mini__forward { display: none; }
+
+/* Phone: the content ends above the floating bar */
+body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-24)); }
+
+/* One resume per screen: a [data-ts-play] control for the loaded book on screen hides the bar */
+.ts-player-slot { transition: translate var(--duration-slow) var(--easing-standard), opacity var(--duration-slow) var(--easing-standard), visibility 0s linear 0s; }
+.ts-player-slot.is-suppressed { translate: 0 calc(100% + var(--space-16)); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: translate var(--duration-slow) var(--easing-exit), opacity var(--duration-slow) var(--easing-exit), visibility 0s linear var(--duration-slow); }
+
+@media (min-width: 768px) {
+  body.has-player .ts-main { padding-bottom: calc(var(--size-mini-player) + var(--space-32)); }
+}
+
+/* Desktop: a full-width bar with the same controls plus Forward */
+@media (min-width: 1280px) {
+  .ts-mini { border-radius: 0; border-width: 1px 0 0; box-shadow: none; padding-inline: var(--space-24); }
+  .ts-mini__forward { display: inline-flex; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ts-player-slot, .ts-player-slot.is-suppressed { transition: opacity var(--duration-fast) linear, visibility 0s linear var(--duration-fast); translate: none; }
+  .ts-mini__progress { transition: none; }
+}
+
+/* Toasts with a choice (continue there, signed out) */
+.ts-toast__actions { display: inline-flex; gap: var(--space-4); }
+
+/* Keyboard shortcuts sheet */
+.ts-keys { box-sizing: border-box; width: min(420px, calc(100vw - var(--space-32))); padding: var(--space-24); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-float); }
+.ts-keys::backdrop { background: var(--scrim); }
+.ts-keys__title { margin: 0 0 var(--space-16); font: 500 22px/28px var(--font-serif); }
+.ts-keys__list { margin: 0 0 var(--space-24); display: flex; flex-direction: column; gap: var(--space-12); }
+.ts-keys__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); }
+.ts-keys__row dt { margin: 0; }
+.ts-keys__row dd { margin: 0; color: var(--ink-muted); }
+.ts-keys kbd { display: inline-block; min-width: 24px; padding: 2px 6px; box-sizing: border-box; border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--raised); font: 500 13px/18px var(--font-mono); text-align: center; }

@@ -117,5 +117,29 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+// Keys (P1c-4): "/" search, "g" then "l" or "h" libraries or home, "?" the shortcuts sheet. Space and
+// the arrows belong to player.js. Nothing fires with a modifier, in a field, or while a dialog or sheet is open.
+let chord = 0;
+function goTo(href) {
+  const link = [...document.querySelectorAll('nav a[href="' + href + '"]')].find((a) => a.offsetParent);
+  if (link) link.click();
+}
+document.addEventListener("keydown", (event) => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  const t = event.target instanceof Element ? event.target : document.body;
+  if (t.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])") || document.querySelector("dialog[open], #sheet .ts-sheet")) return;
+  const second = chord && performance.now() - chord < 1500;
+  chord = 0;
+  if (second && event.key === "l") goTo("/libraries");
+  else if (second && event.key === "h") goTo("/");
+  else if (event.key === "g") { chord = performance.now(); return; }
+  else if (event.key === "/") {
+    const field = document.querySelector("input[type=search]");
+    if (field) field.focus(); else goTo("/search");
+  } else if (event.key === "?") document.getElementById("keys-help").showModal();
+  else return;
+  event.preventDefault();
+});
+
 // Measurement only (make perf): the moment the shell script has run. No data leaves the browser.
 performance.mark("ts-ready");

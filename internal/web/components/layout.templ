@@ -24,6 +24,8 @@ type Page struct {
 	// Shelves are the person's shelves in the desktop sidebar ("Your shelves"), empty for people
 	// who may not use shelves.
 	Shelves []ShelfLink
+	// Player holds the words of the mini-player and the keyboard sheet (Layout only).
+	Player PlayerMsgs
 }
 
 // htmxConfig is the htmx 4 configuration meta content.
@@ -38,6 +40,11 @@ func csrfHeaders(token string) string {
 	return string(b)
 }
 
+// layoutStyles puts the player stylesheet in front of a page's own: only Layout has a player.
+func layoutStyles(styles []string) []string {
+	return append([]string{"css/player.css"}, styles...)
+}
+
 // Layout is the app shell. The navigation, the player slot, the audio element and the toasts sit
 // outside #main, so a boosted navigation swaps only the content.
 templ Layout(p Page, body templ.Component) {
@@ -48,7 +55,7 @@ templ Layout(p Page, body templ.Component) {
 			data-theme={ p.Theme }
 		}
 	>
-		@Head(p, p.Styles...)
+		@Head(p, layoutStyles(p.Styles)...)
 		<body hx-boost:inherited="target:#main select:#main swap:outerSync transition:true" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
 			<div class="ts-shell">
@@ -59,13 +66,15 @@ templ Layout(p Page, body templ.Component) {
 					@body
 				</main>
 			</div>
-			@PlayerSlot()
+			@PlayerSlot(p.Player)
 			@Toasts()
+			@KeysHelp(p.Player)
 			<div id="sheet" class="ts-sheet-region">
 				if p.Sheet != nil {
 					@p.Sheet
 				}
 			</div>
+			<script type="module" src={ p.Assets.URL("js/player.js") }></script>
 		</body>
 	</html>
 }

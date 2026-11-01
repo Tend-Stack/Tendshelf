@@ -9,9 +9,44 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-// PlayerSlot holds the mini-player. It and the audio element live outside #main, so a boosted
-// swap never re-creates them. P1c fills the slot.
-func PlayerSlot() templ.Component {
+// PlayerMsgs is every word the web player and the keyboard sheet show. The server owns the copy
+// (internal/web/copy.go); player.js reads these from data-ts-msg-* attributes and never hard-codes
+// a word. {name} marks a value the player fills in.
+type PlayerMsgs struct {
+	Open, PlayPrefix, PausePrefix, BackSeconds, ForwardSeconds, ChapterLeft string
+	Rewound, CompatWait, CompatFailed, SignedOut, SignIn                    string
+	ContinueAsk, OtherDevice, ContinueThere, StayHere                       string
+	KeysTitle, KeysPlay, KeysSkip, KeysSearch, KeysLibrary, KeysHome        string
+	KeysList, KeysClose, OpenBook, MinLeft                                  string
+}
+
+// Attrs are the data-ts-msg-* attributes of #player, one per string player.js uses.
+func (m PlayerMsgs) Attrs() templ.Attributes {
+	return templ.Attributes{
+		"data-ts-msg-open":            m.Open,
+		"data-ts-msg-open-book":       m.OpenBook,
+		"data-ts-msg-min-left":        m.MinLeft,
+		"data-ts-msg-play-prefix":     m.PlayPrefix,
+		"data-ts-msg-pause-prefix":    m.PausePrefix,
+		"data-ts-msg-back-seconds":    m.BackSeconds,
+		"data-ts-msg-forward-seconds": m.ForwardSeconds,
+		"data-ts-msg-chapter-left":    m.ChapterLeft,
+		"data-ts-msg-rewound":         m.Rewound,
+		"data-ts-msg-compat-wait":     m.CompatWait,
+		"data-ts-msg-compat-failed":   m.CompatFailed,
+		"data-ts-msg-signed-out":      m.SignedOut,
+		"data-ts-msg-sign-in":         m.SignIn,
+		"data-ts-msg-continue-ask":    m.ContinueAsk,
+		"data-ts-msg-other-device":    m.OtherDevice,
+		"data-ts-msg-continue-there":  m.ContinueThere,
+		"data-ts-msg-stay-here":       m.StayHere,
+	}
+}
+
+// PlayerSlot holds the mini-player and the one audio element. Both live outside #main, so a boosted
+// swap never re-creates them; player.js (P1c-4) fills the skeleton and shows it when a book is
+// loaded. The open link goes to the book page until the full player (P1c-5) replaces it.
+func PlayerSlot(m PlayerMsgs) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -28,7 +63,61 @@ func PlayerSlot() templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"player\" class=\"ts-player-slot\" aria-label=\"Now playing\" hx-preserve hidden></section><audio id=\"audio\" preload=\"none\" hx-preserve></audio>")
+		{
+			templ_7745c5c3_ElementWriter := templ_7745c5c3_Buffer
+			templ_7745c5c3_Buffer := templ.GetBuffer()
+			var templ_7745c5c3_ElementScripts []templ.ComponentScript
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"player\" class=\"ts-player-slot\" aria-label=\"Now playing\" hx-preserve hidden")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.RenderAttributes(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_ElementWriter, "section", m.Attrs())
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_ElementScripts...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteTo(templ_7745c5c3_ElementWriter)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ.ReleaseBuffer(templ_7745c5c3_Buffer)
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><div class=\"ts-mini\" id=\"mini-player\"><div class=\"ts-mini__progress\" data-ts-mini-progress></div><a class=\"ts-mini__open\" href=\"/\" data-ts-open><span class=\"ts-cover ts-mini__cover\"><img data-ts-cover alt=\"\" width=\"48\" height=\"48\"></span> <span class=\"ts-mini__text\"><span class=\"ts-mini__title\" data-ts-title></span> <span class=\"ts-mini__meta\" data-ts-meta></span></span></a> <button type=\"button\" class=\"ts-iconbtn ts-skip\" data-ts-back>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = Icon("skip-back", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span class=\"ts-skip__num\" data-ts-back-num aria-hidden=\"true\"></span></button> <button type=\"button\" class=\"ts-iconbtn ts-iconbtn--filled\" data-ts-toggle><span data-ts-icon-play>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = Icon("play", true).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span> <span data-ts-icon-pause>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = Icon("pause", true).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</span></button> <button type=\"button\" class=\"ts-iconbtn ts-skip ts-mini__forward\" data-ts-forward>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = Icon("skip-forward", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span class=\"ts-skip__num\" data-ts-forward-num aria-hidden=\"true\"></span></button></div></section><audio id=\"audio\" preload=\"none\" hx-preserve></audio>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

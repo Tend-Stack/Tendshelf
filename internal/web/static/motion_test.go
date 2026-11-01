@@ -78,7 +78,7 @@ func rules(css string) [][2]string {
 }
 
 // TestCSSBudget bounds what a page costs. A page loads the core (tokens, fonts, bundle, utilities,
-// motion) plus its own page files, so a core limit and a per-file limit on each pages-*.css bound
+// motion), the player's file (10 KB) plus its own page files (8 KB each), so a core limit and a per-file limit on each pages-*.css bound
 // every page without a total that grows with each new page.
 func TestCSSBudget(t *testing.T) {
 	entries, err := os.ReadDir("css")
@@ -96,6 +96,11 @@ func TestCSSBudget(t *testing.T) {
 		switch {
 		case core[name]:
 			coreTotal += n
+		case name == "player.css":
+			// The player's own file, loaded on every page that has the shell.
+			if n > 10*1024 {
+				t.Errorf("%s %d bytes, budget 10 KB", name, n)
+			}
 		case strings.HasPrefix(name, "pages-"):
 			if n > 8*1024 {
 				t.Errorf("%s %d bytes, budget 8 KB", name, n)
@@ -103,6 +108,9 @@ func TestCSSBudget(t *testing.T) {
 		default:
 			t.Errorf("%s is neither core nor a pages-*.css file; add it to the budget", name)
 		}
+	}
+	if n := len(readCSS(t, "player.css")); n == 0 {
+		t.Error("player.css is missing")
 	}
 	if coreTotal > 72*1024 {
 		t.Errorf("core CSS %d bytes, budget 72 KB", coreTotal)
@@ -234,6 +242,42 @@ func TestNoSkipCollision(t *testing.T) {
 	for _, r := range rules(readCSS(t, "bundle.css")) {
 		if strings.Contains(r[0], ".ts-skip") && strings.Contains(r[0], ":focus-visible") {
 			t.Errorf("a skip-link rule is back in bundle.css: %q", r[0])
+		}
+	}
+}
+
+// jsBudgets lists every script with its limit in raw bytes. A script that is not listed fails, so a
+// new file needs a deliberate budget. player.js may grow to 28 KB in P1c-5.
+var jsBudgets = map[string]int{"shell.js": 8 * 1024, "player.js": 20 * 1024}
+
+func TestJSBudget(t *testing.T) {
+	entries, err := os.ReadDir("js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, e := range entries {
+		name := e.Name()
+		if !strings.HasSuffix(name, ".js") {
+			continue
+		}
+		seen[name] = true
+		limit, ok := jsBudgets[name]
+		if !ok {
+			t.Errorf("js/%s has no budget; add it to jsBudgets", name)
+			continue
+		}
+		b, err := os.ReadFile("js/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(b) > limit {
+			t.Errorf("js/%s %d bytes, budget %d", name, len(b), limit)
+		}
+	}
+	for name := range jsBudgets {
+		if !seen[name] {
+			t.Errorf("js/%s is budgeted but missing", name)
 		}
 	}
 }

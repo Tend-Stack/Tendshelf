@@ -1,8 +1,66 @@
 package components
 
-// PlayerSlot holds the mini-player. It and the audio element live outside #main, so a boosted
-// swap never re-creates them. P1c fills the slot.
-templ PlayerSlot() {
-	<section id="player" class="ts-player-slot" aria-label="Now playing" hx-preserve hidden></section>
+// PlayerMsgs is every word the web player and the keyboard sheet show. The server owns the copy
+// (internal/web/copy.go); player.js reads these from data-ts-msg-* attributes and never hard-codes
+// a word. {name} marks a value the player fills in.
+type PlayerMsgs struct {
+	Open, PlayPrefix, PausePrefix, BackSeconds, ForwardSeconds, ChapterLeft string
+	Rewound, CompatWait, CompatFailed, SignedOut, SignIn                    string
+	ContinueAsk, OtherDevice, ContinueThere, StayHere                       string
+	KeysTitle, KeysPlay, KeysSkip, KeysSearch, KeysLibrary, KeysHome        string
+	KeysList, KeysClose, OpenBook, MinLeft                                  string
+}
+
+// Attrs are the data-ts-msg-* attributes of #player, one per string player.js uses.
+func (m PlayerMsgs) Attrs() templ.Attributes {
+	return templ.Attributes{
+		"data-ts-msg-open":            m.Open,
+		"data-ts-msg-open-book":       m.OpenBook,
+		"data-ts-msg-min-left":        m.MinLeft,
+		"data-ts-msg-play-prefix":     m.PlayPrefix,
+		"data-ts-msg-pause-prefix":    m.PausePrefix,
+		"data-ts-msg-back-seconds":    m.BackSeconds,
+		"data-ts-msg-forward-seconds": m.ForwardSeconds,
+		"data-ts-msg-chapter-left":    m.ChapterLeft,
+		"data-ts-msg-rewound":         m.Rewound,
+		"data-ts-msg-compat-wait":     m.CompatWait,
+		"data-ts-msg-compat-failed":   m.CompatFailed,
+		"data-ts-msg-signed-out":      m.SignedOut,
+		"data-ts-msg-sign-in":         m.SignIn,
+		"data-ts-msg-continue-ask":    m.ContinueAsk,
+		"data-ts-msg-other-device":    m.OtherDevice,
+		"data-ts-msg-continue-there":  m.ContinueThere,
+		"data-ts-msg-stay-here":       m.StayHere,
+	}
+}
+
+// PlayerSlot holds the mini-player and the one audio element. Both live outside #main, so a boosted
+// swap never re-creates them; player.js (P1c-4) fills the skeleton and shows it when a book is
+// loaded. The open link goes to the book page until the full player (P1c-5) replaces it.
+templ PlayerSlot(m PlayerMsgs) {
+	<section id="player" class="ts-player-slot" aria-label="Now playing" hx-preserve hidden { m.Attrs()... }>
+		<div class="ts-mini" id="mini-player">
+			<div class="ts-mini__progress" data-ts-mini-progress></div>
+			<a class="ts-mini__open" href="/" data-ts-open>
+				<span class="ts-cover ts-mini__cover"><img data-ts-cover alt="" width="48" height="48"/></span>
+				<span class="ts-mini__text">
+					<span class="ts-mini__title" data-ts-title></span>
+					<span class="ts-mini__meta" data-ts-meta></span>
+				</span>
+			</a>
+			<button type="button" class="ts-iconbtn ts-skip" data-ts-back>
+				@Icon("skip-back", false)
+				<span class="ts-skip__num" data-ts-back-num aria-hidden="true"></span>
+			</button>
+			<button type="button" class="ts-iconbtn ts-iconbtn--filled" data-ts-toggle>
+				<span data-ts-icon-play>@Icon("play", true)</span>
+				<span data-ts-icon-pause>@Icon("pause", true)</span>
+			</button>
+			<button type="button" class="ts-iconbtn ts-skip ts-mini__forward" data-ts-forward>
+				@Icon("skip-forward", false)
+				<span class="ts-skip__num" data-ts-forward-num aria-hidden="true"></span>
+			</button>
+		</div>
+	</section>
 	<audio id="audio" preload="none" hx-preserve></audio>
 }

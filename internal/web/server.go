@@ -227,6 +227,7 @@ func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, 
 		Styles:  styles,
 		Admin:   s.can.Can(r.Context(), currentUser(r), share.ManageLibraries, share.Target{Kind: share.TargetServer}),
 		Shelves: s.sidebarShelves(r),
+		Player:  playerMsgs(),
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render page", "path", r.URL.Path, "err", err)

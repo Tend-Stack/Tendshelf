@@ -235,6 +235,25 @@ the person's playback settings, optional per-theme accents, one `<li>` per audio
 whether `/stream` will serve it, one per chapter; no file path). `POST /hx/books/{id}/finished` (`finished=1|0`)
 marks a book finished or unfinished: htmx gets 204 and `HX-Trigger: progress-saved`, a plain form a 303 to a safe `next`.
 
+Web player (P1c-4, `internal/web/static/js/player.js`, one module, no imports): the one `<audio id="audio">` and the
+mini-player sit in `#player` outside `#main`, so a boosted swap never touches them; all state lives in the module.
+Click protocol: a control `[data-ts-play="{bookID}"]` carries `data-ts-file`, `data-ts-file-start-ms`,
+`data-ts-start-ms`, `data-ts-mime` and `data-ts-may-need-compat`; the click sets `/stream/{file}#t={sec}` and calls
+`play()` in the same task (the gesture is kept), then `GET /hx/player/{book}` hydrates chapters, files and settings.
+`[data-ts-play-at="{ms}"][data-ts-book]` seeks inside the loaded book or loads that book there. `window.tsPlayer` exposes
+`state load play pause toggle seek skip chapter setSpeed debug`; `ts:player:state` (kind: load, play, pause, seek,
+chapter, speed, error) and `ts:player:tick` (once a second) fire on `document`, `progress-saved` (detail
+`{bookId, positionMs, applied}`) bubbles from `<body>`. Saves go to `POST /progress/{book}` (form body, `X-CSRF-Token`
+header) every 10 s while playing, on pause, 2 s after a seek while paused, at the end of the last file
+(`finished=1`), and on hide through `sendBeacon` (`_csrf` field, once per hide). The last save is kept in
+`localStorage["ts.pending"]` until answered and re-sent at the next start; a redirected or non-JSON answer means signed
+out: saves stop and one toast says so. "Continue there?" asks when the stored row is from another device, not
+finished, and more than 60 s away from here; it is checked after a save answers `applied:false`, on play after a break
+of 60 s or more, and on becoming visible after 60 s hidden; "Stay here" saves with `force=1`. A file the browser
+cannot decode is requested as `?compat=1` (`HEAD`, polled at `Retry-After` for up to 10 minutes). Media Session
+carries the title, author, chapter and cover with eight action handlers. Keys: Space and the arrows in player.js; `/`,
+`g l`, `g h` and `?` in shell.js. Budgets (`TestJSBudget`): player.js 20 KB, shell.js 8 KB; `player.css` 10 KB.
+
 ## Design regions
 
 The design handoff (`docs/design/tendshelf-handoff/docs/HANDOFF.md`, "Server-rendered partials") names
