@@ -122,7 +122,7 @@ func TestCSSLayerWrap(t *testing.T) {
 }
 
 func TestSourcesHaveNoLayer(t *testing.T) {
-	for _, n := range []string{"css/tokens.css", "css/bundle.css", "css/fonts.css"} {
+	for _, n := range []string{"css/tokens.css", "css/bundle.css", "css/fonts.css", "css/utilities.css", "css/motion.css"} {
 		b, err := os.ReadFile(n)
 		if err != nil {
 			t.Fatal(err)

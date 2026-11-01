@@ -45,7 +45,7 @@ func TestLayoutShell(t *testing.T) {
 		`<meta name="color-scheme" content="dark light"`,
 		`<title>Home · Tendshelf</title>`,
 		`<main id="main" class="ts-main" tabindex="-1" hx-history-elt>`,
-		`<a class="ts-skip" href="#main">Skip to content</a>`,
+		`<a class="ts-sr-focusable" href="#main">Skip to content</a>`,
 	}
 	for _, m := range must {
 		if !strings.Contains(body, m) {
@@ -55,13 +55,13 @@ func TestLayoutShell(t *testing.T) {
 	if got := attrOf(t, body, `<meta name="htmx-config"`, "content"); got != `{"includeIndicatorCSS":false,"defaultTimeout":25000,"transitions":false}` {
 		t.Errorf("htmx-config = %s", got)
 	}
-	if got := attrOf(t, body, `<body`, "hx-boost:inherited"); got != "target:#main select:#main swap:outerSync" {
+	if got := attrOf(t, body, `<body`, "hx-boost:inherited"); got != "target:#main select:#main swap:outerSync transition:true" {
 		t.Errorf("hx-boost:inherited = %q", got)
 	}
 	if got := attrOf(t, body, `<body`, "hx-headers:inherited"); !regexp.MustCompile(`^\{"X-CSRF-Token":"[A-Za-z0-9_-]{43}"\}$`).MatchString(got) {
 		t.Errorf("hx-headers:inherited = %s", got)
 	}
-	for _, id := range []string{"main", "player", "audio", "toasts", "nav-tabbar", "nav-rail", "nav-side"} {
+	for _, id := range []string{"main", "player", "audio", "toasts", "sheet", "nav-tabbar", "nav-rail", "nav-side"} {
 		if !strings.Contains(body, `id="`+id+`"`) {
 			t.Errorf("missing id %s", id)
 		}
@@ -72,9 +72,13 @@ func TestLayoutShell(t *testing.T) {
 			t.Errorf("#%s lacks hx-preserve: %s", id, tag)
 		}
 	}
-	// Player, audio and toasts sit outside #main.
+	// The sheet region is empty without a sheet and is swapped into, so it is not preserved.
+	if !strings.Contains(body, `<div id="sheet" class="ts-sheet-region"></div>`) {
+		t.Error(`want an empty <div id="sheet" class="ts-sheet-region"></div>`)
+	}
+	// Player, audio, toasts and sheets sit outside #main.
 	mainStart, mainEnd := strings.Index(body, `<main `), strings.Index(body, `</main>`)
-	for _, id := range []string{"player", "audio", "toasts", "nav-tabbar", "nav-rail", "nav-side"} {
+	for _, id := range []string{"player", "audio", "toasts", "sheet", "nav-tabbar", "nav-rail", "nav-side"} {
 		if i := strings.Index(body, `id="`+id+`"`); i > mainStart && i < mainEnd {
 			t.Errorf("#%s is inside #main", id)
 		}
@@ -95,7 +99,7 @@ func TestLayoutShell(t *testing.T) {
 		}
 	}
 	// Stylesheet order.
-	order := []string{"css/tokens", "css/fonts", "css/bundle"}
+	order := []string{"css/tokens", "css/fonts", "css/bundle", "css/utilities", "css/motion"}
 	last := -1
 	for _, n := range order {
 		i := strings.Index(body, "/static/"+n+".")

@@ -105,6 +105,24 @@ Exit: a `/dev/kitchen-sink` page (registered only in development builds) shows e
 motion state; captures in Chromium and WebKitGTK (MiniBrowser) at 390 and 1440 match in all four
 themes; reduced motion verified; no layout shift on swap.
 
+Status 2026-11-01: built, pending the lead's review. Scope: `utilities.css` (4.3 KB) and `motion.css`
+(5.1 KB) in the `utilities` and `motion` layers; boosted navigation runs one View Transition
+(`transition:true` in the boost value, `#main` named `ts-main`, `outerSync` keeps the node) with a
+`ts-entering` keyframe where the API is missing; sheets and toasts enter with `@starting-style`;
+`@media (hover: none)` resets every `:hover` rule of `bundle.css` (a test keeps the list complete);
+reduced motion fades in 150 ms and stops shimmer, spinner and eq; `shell.js` (79 lines) turns
+`data-ts-value` into `--ts-value` through the CSSOM, replacing the handoff's inline widths; the
+P0b skip link moved to `.ts-sr-focusable` (it shared `.ts-skip` with the skip-back button). The
+kitchen sink and its fragments exist only under the `dev` build tag (`make run-dev`); a release
+build answers 404. Tests: `internal/testutil/cdp` (stdlib client over `--remote-debugging-pipe`)
+drives Chromium for `make visual`; `internal/testutil/webdriver` drives WebKitGTK for
+`make visual-webkit`. Limits: WebKit runs at 447 px, not 390 (GTK minimum window width), and shows a
+window unless run under `xvfb-run -a`; reduced motion and layout shift cannot be read in WebKit.
+Sheets render in `#sheet`, outside `#main` (a sibling of `#toasts`), because the `view-transition-name`
+on `#main` makes it a stacking context that would put a sheet under the tab bar; stacking order is player
+slot 9, tab bar 10, toasts 20, sheet layer 25, skip link 30. `shell.js` focuses a sheet when it opens,
+closes it on Escape or a close link after the exit motion, and returns focus to the opener.
+
 ## M1 It plays (single owner)
 
 Goal: the owner installs it, points it at a folder and listens on phone and laptop. Built in three

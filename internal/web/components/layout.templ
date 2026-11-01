@@ -13,6 +13,9 @@ type Page struct {
 	Theme   string // dark, light, sepia or contrast; "" follows the system
 	CSRF    string
 	Assets  *static.Set
+	// Sheet, when set, is rendered inside #sheet on a full-page load, so a canonical URL such as
+	// ?sheet=1 shows the sheet without JavaScript. Fragments swap sheets into #sheet.
+	Sheet templ.Component
 }
 
 // htmxConfig is the htmx 4 configuration meta content.
@@ -48,18 +51,14 @@ templ Layout(p Page, body templ.Component) {
 			<link rel="stylesheet" href={ p.Assets.URL("css/tokens.css") }/>
 			<link rel="stylesheet" href={ p.Assets.URL("css/fonts.css") }/>
 			<link rel="stylesheet" href={ p.Assets.URL("css/bundle.css") }/>
-			if p.Assets.Has("css/utilities.css") {
-				<link rel="stylesheet" href={ p.Assets.URL("css/utilities.css") }/>
-			}
-			if p.Assets.Has("css/motion.css") {
-				<link rel="stylesheet" href={ p.Assets.URL("css/motion.css") }/>
-			}
+			<link rel="stylesheet" href={ p.Assets.URL("css/utilities.css") }/>
+			<link rel="stylesheet" href={ p.Assets.URL("css/motion.css") }/>
 			<link rel="icon" type="image/svg+xml" href={ p.Assets.URL("img/tendshelf-app-icon.svg") }/>
 			<script src={ p.Assets.URL("vendor/htmx-4.0.0.min.js") } defer></script>
 			<script type="module" src={ p.Assets.URL("js/shell.js") }></script>
 		</head>
-		<body hx-boost:inherited="target:#main select:#main swap:outerSync" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
-			<a class="ts-skip" href="#main">Skip to content</a>
+		<body hx-boost:inherited="target:#main select:#main swap:outerSync transition:true" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
+			<a class="ts-sr-focusable" href="#main">Skip to content</a>
 			<div class="ts-shell">
 				@TabBar(p.Current)
 				@SideRail(p.Current)
@@ -70,6 +69,11 @@ templ Layout(p Page, body templ.Component) {
 			</div>
 			@PlayerSlot()
 			@Toasts()
+			<div id="sheet" class="ts-sheet-region">
+				if p.Sheet != nil {
+					@p.Sheet
+				}
+			</div>
 		</body>
 	</html>
 }

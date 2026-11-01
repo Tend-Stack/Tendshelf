@@ -505,9 +505,6 @@ body { margin: 0; font-family: var(--font-sans); background: var(--ground); colo
 .ts-toasts { position: fixed; left: var(--space-16); right: var(--space-16); z-index: 20; display: flex; flex-direction: column; align-items: center; gap: var(--space-8);
   bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-12) + var(--space-8)); pointer-events: none; }
 .ts-toasts > * { pointer-events: auto; }
-.ts-skip:not(:focus-visible) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.ts-skip:focus-visible { position: fixed; top: var(--space-8); left: var(--space-8); z-index: 30; padding: var(--space-12) var(--space-16);
-  border-radius: var(--radius-md); background: var(--raised); color: var(--ink); box-shadow: var(--shadow-float); }
 @media (min-width: 768px) {
   .ts-shell { grid-template-columns: var(--size-rail) minmax(0, 1fr); }
   .ts-nav-tabbar { display: none; }
