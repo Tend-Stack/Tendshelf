@@ -153,7 +153,8 @@ func TestVisualAuthRedirect(t *testing.T) {
 	}
 	tab.Eval(`({search: location.search, form: Boolean(document.querySelector('form[action="/login"]')),
 		frame: document.body.classList.contains("ts-frame")})`, &got)
-	if got.Search != "?next=%2Fdev%2Fkitchen-sink" {
+	// The clicked nav link (Library), not the page being left: a boosted click is a navigation.
+	if got.Search != "?next=%2Flibraries" {
 		t.Errorf("search = %q", got.Search)
 	}
 	if !got.Form || !got.Frame {
