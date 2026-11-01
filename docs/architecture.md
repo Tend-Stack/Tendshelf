@@ -168,10 +168,10 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 
 | Route | Page |
 | --- | --- |
-| `/` | Home: continue listening, recently added, shelves |
+| `/` | Home (P1b-5): greeting, "New on the shelf" (the 12 newest books as spines) and the first-run, nothing-shared and scanning states; the continue-listening hero and the series, shared and because rows arrive with P1c and P3 |
 | `/setup` | First run (only while no owner exists, 404 after; always needs the setup code from the server log): create the owner account first, then name the server and add the first folder ([decision 0002](decisions/0002-design-handoff.md)). The next steps are owner-only (404 for anyone else): `/setup/server`, `/setup/folder` (`?job=` shows the scan streaming in), `/setup/done`; once `setup.done` is set the first two redirect to `/` |
 | `/login`, `POST /logout` | Plain forms with full page loads (no hx-boost); 422 on a wrong answer, 429 when limited; `next` is checked by `auth.SafeNext` |
-| `/libraries/{id}` | Grid/list with sort and filter |
+| `/libraries`, `/libraries/{id}` | Library (P1b-5): every visible book, or one library (404 when not visible); `?view=grid\|list&sort=added\|title\|author\|duration&genre=` (up to five, all must match)`&cursor=&sheet=filters`, all in the address; a cursor page is a full page with "Back to the start"; phone and tablet filter in a sheet, from 1280 px in a bar |
 | `/books/{id}` | Book: cover, details, chapters, play, bookmarks, notes |
 | `/books/{id}/edit`, `/books/{id}/match` | Edit details; online lookup and field compare (P2) |
 | `/authors/{id}`, `/narrators/{id}`, `/series/{id}` | |
@@ -184,7 +184,7 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `/admin/users`, `/admin/libraries`, `/admin/jobs`, `/admin/settings`, `/admin/research` | Admin; research only when enabled. `/admin/libraries` (P1b-4) lists folders and problems, starts scans, and links to `/admin/libraries/folders/new` and `/admin/folders/{id}/emptied`; scan status is `GET /hx/jobs/{id}` |
 | `/admin/ebooks` (R2), `/admin/runtimes` (R3), `/about` (R3) | Unpaired and refused ebooks; word-timing runtime check and licences; credits and model licences |
 
-HTMX fragments (`/hx/...`): `GET /hx/libraries/{id}/items?cursor=&sort=&filter=` (infinite scroll),
+HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id}/items` with the same query as the page (infinite scroll; the sentinel is a link to the next page, so "Show more" works without JavaScript; a bad cursor is a 400 toast),
 `GET /hx/search/suggest?q=`, `GET /hx/books/{id}/bookmarks`, `POST /hx/books/{id}/bookmarks`,
 `DELETE /hx/bookmarks/{id}`, `POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}`,
 `POST /hx/books/{id}/match` (starts lookup job), `GET /hx/books/{id}/compare?candidate=`,
