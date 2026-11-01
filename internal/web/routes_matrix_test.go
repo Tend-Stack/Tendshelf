@@ -22,6 +22,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
 	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
+	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/testutil/wav"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
@@ -52,13 +53,14 @@ func sweepNotGuest(a, b int) [4]int  { return [4]int{a, a, a, b} }
 
 // sweepEnv is one seeded app and what the rows need to name its records.
 type sweepEnv struct {
-	t       *testing.T
-	a       *testApp
-	ck      [4]*http.Cookie
-	uid     [4]string
-	secondS [4]string // public id of a second session of each person
-	shelf   [3]string // the shelf of owner, admin and member; each holds the book
-	audio   [2]string // the seeded book's audio file ids, by idx (P1c-2)
+	t        *testing.T
+	a        *testApp
+	ck       [4]*http.Cookie
+	uid      [4]string
+	secondS  [4]string // public id of a second session of each person
+	shelf    [3]string // the shelf of owner, admin and member; each holds the book
+	audio    [2]string // the seeded book's audio file ids, by idx (P1c-2)
+	bookmark [3]string // a bookmark of owner, admin and member on the book (P1c-7a)
 
 	libID, folderID, folderDir string
 	book                       library.Book
@@ -203,6 +205,14 @@ func sweepSeed(t *testing.T) *sweepEnv {
 			t.Fatal(err)
 		}
 	}
+	// Bookmarks (P1c-7a).
+	for i := 0; i < 3; i++ {
+		b, err := progress.New(a.st, nil).AddBookmark(ctx, e.uid[i], e.book.ID, 2000, "Sweepnote private")
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.bookmark[i] = b.ID
+	}
 	return e
 }
 
@@ -323,6 +333,12 @@ func sweepRows() []sweepRow {
 		// Books and people
 		sweepGet("GET /books/{id}", sweepBookPath(""), sweepStaff(200, 404)),
 		{Pattern: "GET /books/{id}/{tab}", Label: "about", Method: http.MethodGet, Path: sweepBookPath("/about"), Want: sweepStaff(200, 404)},
+		// P1c-7a rows
+		{Pattern: "GET /books/{id}/{tab}", Label: "bookmarks", Method: http.MethodGet, Path: sweepBookPath("/bookmarks"), Want: sweepStaff(200, 404)},
+		{Pattern: "GET /books/{id}/{tab}", Label: "bookmarks sheet of someone else", Method: http.MethodGet, Path: func(e *sweepEnv, role int) string {
+			return "/books/" + e.book.ID + "/bookmarks?sheet=bookmark&bookmark=" + e.bookmark[(role+1)%3]
+		}, Want: sweepSame(404)},
+		sweepGet("GET /books/{id}/bookmarks/export", sweepBookPath("/bookmarks/export?format=md"), sweepStaff(200, 404)),
 		sweepGet("GET /authors/{id}", id(func(e *sweepEnv) string { return e.author }, "/authors/", ""), sweepStaff(200, 404)),
 		sweepGet("GET /narrators/{id}", id(func(e *sweepEnv) string { return e.narrator }, "/narrators/", ""), sweepStaff(200, 404)),
 		sweepGet("GET /series/{id}", id(func(e *sweepEnv) string { return e.series }, "/series/", ""), sweepStaff(200, 404)),
@@ -412,6 +428,34 @@ func sweepRows() []sweepRow {
 			return "/shelves/" + e.ownShelf(role) + "/items/" + e.book.ID + "/move"
 		}, sweepFormOf(url.Values{"dir": {"up"}}), shelfBookWant, ""),
 	}
+	// Bookmarks (P1c-7a): the owner and the admin use their own bookmark; the member owns one on a
+	// book they cannot listen to (404 proves the book check); the guest points at the owner's.
+	bookmarkOf := func(suffix string, other bool) func(*sweepEnv, int) string {
+		return func(e *sweepEnv, role int) string {
+			i := role
+			switch {
+			case other:
+				i = (role + 1) % 3
+			case role > sweepMember:
+				i = sweepOwner
+			}
+			return "/bookmarks/" + e.bookmark[i] + suffix
+		}
+	}
+	noteForm := sweepFormOf(url.Values{"note": {"x"}})
+	post = append(post,
+		sweepPost("POST /books/{id}/bookmarks", sweepBookPath("/bookmarks"), sweepFormOf(url.Values{"position_ms": {"1000"}}), sweepStaff(303, 404), ""),
+		sweepPost("POST /bookmarks/{id}/note", bookmarkOf("/note", false), noteForm, sweepStaff(303, 404), ""),
+		sweepPost("POST /bookmarks/{id}/delete", bookmarkOf("/delete", false), nil, sweepStaff(303, 404), ""),
+	)
+	for _, p := range []struct {
+		pattern, suffix string
+		form            func(*sweepEnv, int) url.Values
+	}{{"POST /bookmarks/{id}/note", "/note", noteForm}, {"POST /bookmarks/{id}/delete", "/delete", nil}} {
+		r := sweepPost(p.pattern, bookmarkOf(p.suffix, true), p.form, sweepSame(404), "")
+		r.Label = "someone else's bookmark"
+		post = append(post, r)
+	}
 	// Somebody else's session id and somebody else's shelf: 404 for everyone.
 	other := sweepPost("POST /me/sessions/{sid}/signout", func(e *sweepEnv, role int) string {
 		return "/me/sessions/" + e.secondS[(role+1)%4] + "/signout"
@@ -460,7 +504,7 @@ func sweepRows() []sweepRow {
 
 // sweepLeakWords are strings of the seeded book that nobody without access may ever see.
 func (e *sweepEnv) leakWords() []string {
-	return []string{"Sweepword", "Sweepauthor", "Sweepvoice", "Sweepseries", e.book.ID}
+	return []string{"Sweepword", "Sweepauthor", "Sweepvoice", "Sweepseries", "Sweepnote", e.book.ID}
 }
 
 // send makes the request of a row as a role (role -1 is the anonymous visitor) and returns the answer.
