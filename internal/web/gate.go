@@ -37,15 +37,19 @@ func (s *server) gate(next http.Handler) http.Handler {
 }
 
 // loginURL is /login with next set to where the person was going, when that is known and safe:
-// the request itself for a plain GET or HEAD, the page the browser was on for an htmx request.
+// the request itself for a plain or boosted GET or HEAD (a boosted link click is a navigation), the
+// page the browser was on for any other htmx request.
 func loginURL(r *http.Request) string {
 	var target string
+	isGet := r.Method == http.MethodGet || r.Method == http.MethodHead
 	switch {
+	case isGet && r.Header.Get("HX-Boosted") == "true":
+		target = r.URL.RequestURI()
 	case r.Header.Get("HX-Request") == "true":
 		if cur, err := url.Parse(r.Header.Get("HX-Current-URL")); err == nil && cur.Host == r.Host && cur.Host != "" {
 			target = cur.RequestURI()
 		}
-	case r.Method == http.MethodGet || r.Method == http.MethodHead:
+	case isGet:
 		target = r.URL.RequestURI()
 	}
 	if next := auth.SafeNext(target); next != "/" {

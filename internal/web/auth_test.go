@@ -91,6 +91,24 @@ func TestGateAnonymous(t *testing.T) {
 	if rec.Body.Len() != 0 {
 		t.Error("a 204 must have no body")
 	}
+	// A boosted link click is a navigation: next is the clicked page, not the page being left.
+	rec = a.do(http.MethodGet, "/series/sr_1?sort=seq", nil, func(r *http.Request) {
+		hx(r)
+		r.Header.Set("HX-Boosted", "true")
+		r.Header.Set("HX-Current-URL", "http://example.com/books/bk_1")
+	})
+	if rec.Code != http.StatusNoContent || rec.Header().Get("HX-Redirect") != "/login?next=%2Fseries%2Fsr_1%3Fsort%3Dseq" {
+		t.Errorf("boosted: %d HX-Redirect %q", rec.Code, rec.Header().Get("HX-Redirect"))
+	}
+	// A boosted form post is not a navigation to resend: next falls back to the current page.
+	rec = a.do(http.MethodPost, "/shelves", nil, func(r *http.Request) {
+		hx(r)
+		r.Header.Set("HX-Boosted", "true")
+		r.Header.Set("HX-Current-URL", "http://example.com/books/bk_1")
+	})
+	if got := rec.Header().Get("HX-Redirect"); rec.Code == http.StatusNoContent && got != "/login?next=%2Fbooks%2Fbk_1" {
+		t.Errorf("boosted post: HX-Redirect %q", got)
+	}
 	for name, cur := range map[string]string{"other host": "http://evil.example/steal", "none": "", "garbage": "::", "login page": "http://example.com/login"} {
 		rec := a.do(http.MethodGet, "/hx/x", nil, func(r *http.Request) {
 			hx(r)
