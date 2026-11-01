@@ -224,13 +224,14 @@ func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, 
 
 // frame renders body in the sign-in frame (no navigation, no player). Pages are per person, so
 // never cached.
-func (s *server) frame(w http.ResponseWriter, r *http.Request, status int, title string, body templ.Component) {
+func (s *server) frame(w http.ResponseWriter, r *http.Request, status int, title string, body templ.Component, styles ...string) {
 	var buf bytes.Buffer
 	err := components.Frame(components.Page{
 		Title:  title,
 		Theme:  themeFrom(r),
 		CSRF:   s.csrf.TokenFrom(r.Context()),
 		Assets: s.assets,
+		Styles: styles,
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render frame", "path", r.URL.Path, "err", err)

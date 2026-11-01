@@ -122,7 +122,7 @@ func (s *server) postSetupServer(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) folderStep(w http.ResponseWriter, r *http.Request, status int, v pages.SetupFolderView) {
 	v.CSRF = s.csrf.TokenFrom(r.Context())
-	s.frame(w, r, status, "Where are your audiobooks?", pages.SetupFolder(v))
+	s.frame(w, r, status, "Where are your audiobooks?", pages.SetupFolder(v), "css/pages-admin.css")
 }
 
 func (s *server) getSetupFolder(w http.ResponseWriter, r *http.Request) {

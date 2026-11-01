@@ -11,7 +11,7 @@ templ Frame(p Page, body templ.Component) {
 			data-theme={ p.Theme }
 		}
 	>
-		@Head(p, "css/pages-onboard.css")
+		@Head(p, frameStyles(p)...)
 		<body class="ts-frame">
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
 			<main id="main" class="ts-frame__main" tabindex="-1">
@@ -19,4 +19,9 @@ templ Frame(p Page, body templ.Component) {
 			</main>
 		</body>
 	</html>
+}
+
+// frameStyles is the onboarding sheet plus any page-specific ones.
+func frameStyles(p Page) []string {
+	return append([]string{"css/pages-onboard.css"}, p.Styles...)
 }

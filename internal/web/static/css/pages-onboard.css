@@ -75,3 +75,4 @@
 .ts-done__problems { margin: var(--space-8) 0 0; }
 .ts-done__problems a { color: var(--accent); }
 .ts-done__go { margin: var(--space-32) 0 0; }
+.ts-frame .ts-btn--block { box-sizing: border-box; }

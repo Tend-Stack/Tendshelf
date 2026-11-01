@@ -240,7 +240,21 @@ no account menu (P1b-7), theme still in the `ts_theme` cookie, setup steps 2 and
 
 **P1b-3 status**: in progress.
 
-**P1b-4 status**: in progress.
+**P1b-4 status**: done (Libraries admin and setup steps 2 and 3). Scope: `/admin/libraries` (folders with
+book counts and sizes, Scan now per library or for all, reusing a scan that is already waiting; "things need a
+look" for protected, damaged, unplayable, missing and cover-less books), `/admin/libraries/folders/new`
+(typed absolute path, checked for existence, readability, the data directory and overlap; library and folder
+created in one transaction), the "emptied on purpose" confirmation (marks books missing only when the folder
+and every subfolder were read and no audio is left, checked again on POST, 409 otherwise), the scan status
+fragment `GET /hx/jobs/{id}` (polls every 2 s until the scan is over and every file has been read), and the
+owner-only setup steps `/setup/server`, `/setup/folder`, `/setup/done`. Reused: access helpers,
+`library.Scope`, `jobs.Runner`, `scan` walk, Frame, SetupSteps, TextField. Extended: AddFolder and
+CreateLibrary (bodies shared), `components.Page` (Styles, Admin), Sidebar ("Your server" group), Frame
+(page styles). Checks: unit tests in library, jobs, scan and web; `make check`, `make build`, `make visual`
+at 390/768/1024/1440 in four themes, `make test-scan-real`. Limits: no Browse button (the next package adds a
+folder browser beside the path field, id `folder`), no folder removal, watching or scheduled scans, scan
+history, duplicate or "still copying" detection, cover lookup, or phone and tablet entry to the admin page
+(P1b-7); OnboardDone has no cover wall (P1b-5). Next: P1b-5.
 
 ### P1c Player and progress
 
