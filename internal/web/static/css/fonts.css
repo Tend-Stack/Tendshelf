@@ -1,0 +1,34 @@
+/* Tendshelf web fonts (P0b). Self-hosted woff2, no CDN. Licences: /static/fonts/OFL-*.txt.
+   The /static/fonts/ URLs are rewritten to content-hashed URLs at load time. */
+@font-face {
+  font-family: "Fraunces"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("/static/fonts/Fraunces-Variable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fraunces"; font-style: italic; font-weight: 100 900; font-display: swap;
+  src: url("/static/fonts/Fraunces-Italic-Variable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Sans"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/static/fonts/FiraSans-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Sans"; font-style: italic; font-weight: 400; font-display: swap;
+  src: url("/static/fonts/FiraSans-Italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Sans"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("/static/fonts/FiraSans-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Sans"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url("/static/fonts/FiraSans-SemiBold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/static/fonts/FiraMono-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Mono"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("/static/fonts/FiraMono-Medium.woff2") format("woff2");
+}

@@ -39,6 +39,8 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends make gcc libc6-dev
+      - name: Generated files are current
+        run: make generate && git diff --exit-code && test -z "$(git status --porcelain)"
       - name: Record toolchain and candidate identity
         run: |
           git rev-parse HEAD
