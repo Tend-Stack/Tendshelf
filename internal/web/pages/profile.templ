@@ -27,7 +27,9 @@ type ProfileView struct {
 	Others int
 	// Libraries is the "Your server" row for a person who manages libraries, or empty.
 	Libraries string
-	Version   string
+	// Shelves is the "Your shelves" row ("3 shelves"), empty for people who may not use shelves.
+	Shelves string
+	Version string
 }
 
 // meChevron is the trailing arrow of a row, drawn in CSS.
@@ -58,6 +60,15 @@ templ Profile(v ProfileView) {
 		}
 		<section aria-labelledby="pf-mine" class="ts-me__section">
 			<h2 id="pf-mine" class="ts-sr">Yours</h2>
+			if v.Shelves != "" {
+				<a class="ts-me__row" href="/shelves">
+					<span class="ts-me__rowtext">
+						<span class="body ts-me__rowtitle">Your shelves</span>
+						<span class="caption ts-me__lead">{ v.Shelves }</span>
+					</span>
+					@meChevron()
+				</a>
+			}
 			<a class="ts-me__row" href="/me/settings">
 				<span class="body ts-me__rowtext">Settings</span>
 				@meChevron()

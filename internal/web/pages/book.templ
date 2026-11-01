@@ -63,6 +63,9 @@ type BookView struct {
 	NoChaptersText string
 	// Rows are the Details lines.
 	Rows []DetailRow
+	// ShelfHref opens the "Add to shelf" sheet (the book page with ?sheet=shelves); empty for people
+	// who may not use shelves. It is not a play control: the book's one play button stays alone.
+	ShelfHref, ShelfLabel string
 }
 
 templ backIcon() {
@@ -120,6 +123,20 @@ templ Book(v BookView) {
 					</p>
 				}
 				// P1c: the book's single play button ("Start listening", "Resume" or "Listen again") goes here.
+				if v.ShelfHref != "" {
+					<p class="ts-book__shelf">
+						<a
+							class="ts-btn ts-btn--secondary"
+							href={ templ.SafeURL(v.ShelfHref) }
+							hx-get={ v.ShelfHref }
+							hx-target="#sheet"
+							hx-select="#sheet > *"
+							hx-swap="innerHTML"
+							hx-push-url="false"
+							aria-haspopup="dialog"
+						>{ v.ShelfLabel }</a>
+					</p>
+				}
 			</div>
 		</header>
 		<div class="ts-book__body">

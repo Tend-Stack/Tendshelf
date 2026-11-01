@@ -1,0 +1,181 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// ShelfStyles are the stylesheets the shelf pages and the book page's shelf sheet link after the
+// shared ones. pages-home.css carries the covers, pages-library.css the rows and "Show more".
+var ShelfStyles = []string{"css/pages-home.css", "css/pages-library.css", "css/pages-shelves.css"}
+
+// ShelfRowView is one shelf in the list: up to three covers, the name and "{n} books".
+type ShelfRowView struct {
+	Href, Name, Count string
+	Covers            []components.CardView
+}
+
+// ShelvesView is the list of the person's shelves with the "New shelf" form. The handler writes
+// every word; NameError comes back with a 422.
+type ShelvesView struct {
+	CSRF               string
+	Rows               []ShelfRowView
+	NameValue, NameErr string
+}
+
+// ShelfItemView is one book on a shelf with the labels of its three buttons.
+type ShelfItemView struct {
+	Card                                                 components.CardView
+	First, Last                                          bool
+	UpLabel, DownLabel, RemoveLabel                      string
+}
+
+// ShelfView is one shelf: its books in shelf order, the rename form and the way to delete it.
+type ShelfView struct {
+	CSRF, ID, Name, Count string
+	Items                 []ShelfItemView
+	// MoreHref pages on; StartHref goes back to the first page. Both are empty when not needed.
+	MoreHref, StartHref string
+	// RenameValue and RenameErr come back with a 422; the Rename disclosure then opens.
+	RenameValue, RenameErr string
+}
+
+// ShelfDeleteView is the confirmation before a shelf goes.
+type ShelfDeleteView struct {
+	CSRF, ID, Title, Body string
+}
+
+templ shelfArrow(up bool) {
+	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true">
+		if up {
+			<path d="m6 15 6-6 6 6"></path>
+		} else {
+			<path d="m6 9 6 6 6-6"></path>
+		}
+	</svg>
+}
+
+templ shelfBack(label string) {
+	<a class="ts-btn ts-btn--quiet ts-shelf-back" href="/shelves">
+		@backIcon()
+		{ label }
+	</a>
+}
+
+// Shelves is the list of the person's shelves.
+templ Shelves(v ShelvesView) {
+	<div class="ts-shelves">
+		<header class="ts-lib-head">
+			<h1 class="title-1 ts-lib-head__title">Your shelves</h1>
+		</header>
+		if len(v.Rows) == 0 {
+			@components.EmptyState("No shelves yet", "Make a shelf for a mood, a person or a trip.", nil)
+		} else {
+			<ul class="ts-shelf-list">
+				for _, r := range v.Rows {
+					<li>
+						<a class="ts-row ts-shelf-row" href={ templ.SafeURL(r.Href) }>
+							<span class="ts-shelf-row__stack">
+								for _, c := range r.Covers {
+									@components.Cover(c, "36")
+								}
+							</span>
+							<span class="ts-row__text">
+								<span class="ts-row__title">{ r.Name }</span>
+								<span class="ts-row__meta">{ r.Count }</span>
+							</span>
+						</a>
+					</li>
+				}
+			</ul>
+		}
+		<section class="ts-shelf-new" aria-labelledby="shelf-new-title">
+			<h2 id="shelf-new-title" class="ts-overline">New shelf</h2>
+			<form class="ts-shelf-form" method="post" action="/shelves" hx-boost="false">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				@components.TextField(components.Field{ID: "shelf-name", Name: "name", Label: "Shelf name", Value: v.NameValue, Error: v.NameErr, Autocomplete: "off"})
+				<button type="submit" class="ts-btn ts-btn--primary">Create shelf</button>
+			</form>
+		</section>
+	</div>
+}
+
+// Shelf is one shelf of the person.
+templ Shelf(v ShelfView) {
+	<div class="ts-shelves">
+		@shelfBack("Your shelves")
+		<header class="ts-lib-head">
+			<h1 class="title-1 ts-lib-head__title">{ v.Name }</h1>
+			<p class="caption ts-num ts-lib-head__count" role="status">{ v.Count }</p>
+		</header>
+		<div class="ts-shelf-tools">
+			<details class="ts-shelf-rename" open?={ v.RenameErr != "" }>
+				<summary class="ts-btn ts-btn--quiet">Rename</summary>
+				<form class="ts-shelf-form" method="post" action={ templ.URL("/shelves/" + v.ID + "/rename") } hx-boost="false">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					@components.TextField(components.Field{ID: "shelf-rename", Name: "name", Label: "Shelf name", Value: v.RenameValue, Error: v.RenameErr, Autocomplete: "off"})
+					<button type="submit" class="ts-btn ts-btn--secondary">Save</button>
+				</form>
+			</details>
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL("/shelves/" + v.ID + "/delete") } hx-boost="false">Delete shelf</a>
+		</div>
+		if len(v.Items) == 0 {
+			@components.EmptyState("This shelf is empty", "Open a book and choose Add to shelf.", nil)
+		} else {
+			<ul class="ts-shelf-items">
+				for _, it := range v.Items {
+					<li id={ "item-" + it.Card.ID } class="ts-shelf-item">
+						@components.BookRow(it.Card)
+						<div class="ts-shelf-item__tools">
+							if it.First {
+								<span class="ts-shelf-item__gap" aria-hidden="true"></span>
+							} else {
+								@shelfAction(v, it, "up", it.UpLabel)
+							}
+							if it.Last {
+								<span class="ts-shelf-item__gap" aria-hidden="true"></span>
+							} else {
+								@shelfAction(v, it, "down", it.DownLabel)
+							}
+							<form method="post" action={ templ.URL("/shelves/" + v.ID + "/items/" + it.Card.ID + "/remove") } hx-boost="false">
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<input type="hidden" name="next" value={ "/shelves/" + v.ID }/>
+								<button type="submit" class="ts-iconbtn" aria-label={ it.RemoveLabel }>
+									@components.Icon("close", false)
+								</button>
+							</form>
+						</div>
+					</li>
+				}
+			</ul>
+		}
+		if v.MoreHref != "" {
+			<a class="ts-more" href={ templ.SafeURL(v.MoreHref) }>
+				<span class="ts-more__label">Show more</span>
+			</a>
+		}
+		if v.StartHref != "" {
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.StartHref) }>Back to the start</a>
+		}
+	</div>
+}
+
+templ shelfAction(v ShelfView, it ShelfItemView, dir, label string) {
+	<form method="post" action={ templ.URL("/shelves/" + v.ID + "/items/" + it.Card.ID + "/move") } hx-boost="false">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		<input type="hidden" name="dir" value={ dir }/>
+		<button type="submit" class="ts-iconbtn" aria-label={ label }>
+			@shelfArrow(dir == "up")
+		</button>
+	</form>
+}
+
+// ShelfDelete asks before a shelf is deleted. The books stay in the library.
+templ ShelfDelete(v ShelfDeleteView) {
+	<div class="ts-shelves ts-shelves--narrow">
+		<h1 class="title-1">{ v.Title }</h1>
+		<p class="ts-shelf-lead">{ v.Body }</p>
+		<form class="ts-shelf-confirm" method="post" action={ templ.URL("/shelves/" + v.ID + "/delete") } hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<button type="submit" class="ts-btn ts-btn--danger">Delete shelf</button>
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL("/shelves/" + v.ID) }>Keep it</a>
+		</form>
+	</div>
+}

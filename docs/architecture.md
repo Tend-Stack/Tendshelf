@@ -82,7 +82,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `listening_sessions` | `id`, `user_id`, `book_id`, `device_id`, `started_at`, `ended_at`, `start_ms`, `end_ms`, `listened_ms`, `speed` | Statistics (P4). |
 | `bookmarks` | `id`, `user_id`, `book_id`, `position_ms`, `title`, `edition_id` NULL, `sid` NULL (R4), `created_at`, `updated_at`, `deleted_at` | Soft delete so offline clients sync deletions. `sid` set when made in the text. |
 | `notes` | `id`, `user_id`, `book_id`, `position_ms` NULL, `highlight_id` NULL (R4), `body`, `created_at`, `updated_at`, `deleted_at` | A note on a text passage hangs on its highlight. |
-| `shelves` / `shelf_items` | `id`, `owner_id`, `name`, `shared` (P3), `created_at` / `shelf_id`, `book_id`, `idx`, `added_at` | |
+| `shelves` / `shelf_items` | `id`, `owner_id`, `name` (1-80 characters, unique per owner ignoring case), `shared` (P3), `created_at`, `updated_at` / `shelf_id`, `book_id`, `idx`, `added_at`; PK (`shelf_id`,`book_id`) | Schema v5 (P1b-8). Cascade on the owner and on the book. At most 200 shelves per person and 5,000 books per shelf. Every read filters on `owner_id` and on the person's book scope; rows of a hidden or missing book stay and reappear with it. |
 | `jobs` | `id`, `kind`, `state` ('queued','running','done','failed','cancelled','held'), `payload_json`, `result_json`, `error_code`, `error_text`, `attempts`, `max_attempts`, `lease_until`, `not_before`, `progress_json`, `created_by`, `created_at`, `updated_at` | |
 | `file_writes` | `id`, `job_id`, `audio_file_id`, `state` ('copying','verifying','swapped','confirmed','undone','failed'), `original_path`, `backup_path`, `temp_path`, `before_sha256`, `after_sha256`, `audio_hash`, `created_at`, `updated_at` | The write-details ledger; drives restart recovery and Undo. |
 | `audit_log` | `id`, `at`, `user_id`, `action`, `target`, `detail_json` | Logins, invites, grants, file writes, research toggles. |
@@ -176,7 +176,7 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `/books/{id}/edit`, `/books/{id}/match` | Edit details; online lookup and field compare (P2) |
 | `/authors/{id}`, `/narrators/{id}`, `/series/{id}` | Person (books by title, `?cursor=`) and series (in order) pages (P1b-6); 404 unless the person can open a book of that role |
 | `/search?q=&only=books\|people\|series` | Search: books, people and series from scoped reads, did-you-mean, live results into `#search-results` (P1b-6) |
-| `/shelves`, `/shelves/{id}` | |
+| `/shelves`, `/shelves/{id}` | Personal shelves (P1b-8), the person's own only: a guest, another person's shelf and an unknown id are 404. `POST /shelves` (`name`, optional `book_id`, `next`), `POST /shelves/{id}/rename`, `GET\|POST /shelves/{id}/delete` (confirm page, then 303 `/shelves`), `POST /shelves/{id}/items` (`book_id`, `next`), `POST /shelves/{id}/items/{bookID}/remove`, `POST /shelves/{id}/items/{bookID}/move` (`dir=up\|down`). Plain forms with 303; `/books/{id}?sheet=shelves` opens the Add to shelf sheet, whose forms use `hx-post` and re-render the sheet. `?cursor=` pages a shelf. |
 | `/me`, `/me/settings`, `/me/password`, `POST /me/sessions/{sid}/signout`, `POST /me/sessions/signout-others` | Profile (devices by the first 16 hex characters of the session hash), Settings (saved on change: `POST /me/settings` answers 204, with `HX-Refresh` when the theme changed; 303 without htmx; 422 when invalid), Change password (current password needed; limited 429; rotates this session and ends every other). Always the signed-in person only, any role. Downloads and statistics come in P4 |
 | `/invite/{token}`, `/s/{token}` | Accept an invite; anonymous share link |
 | `/books/{id}/text` (R1) | The book's text editions: upload, pairing, default edition, alignment status, export |
@@ -188,7 +188,7 @@ HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id
 `GET /hx/search/suggest?q=`, `GET /hx/books/{id}/bookmarks`, `POST /hx/books/{id}/bookmarks`,
 `DELETE /hx/bookmarks/{id}`, `POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}`,
 `POST /hx/books/{id}/match` (starts lookup job), `GET /hx/books/{id}/compare?candidate=`,
-`POST /hx/books/{id}/apply`, `POST /hx/shelves/{id}/items`. Read-along: `POST /hx/books/{id}/editions`
+`POST /hx/books/{id}/apply`. Read-along: `POST /hx/books/{id}/editions`
 (upload), `POST /hx/editions/{id}/pair`, `POST /hx/editions/{id}/unpair`, `POST /hx/editions/{id}/default`,
 `DELETE /hx/editions/{id}` (forgets the edition; deletes only an uploaded copy), `POST /hx/editions/{id}/alignments`,
 `POST /hx/alignments/{id}/cancel|resume|discard`, `GET /hx/editions/{id}/alignment`,

@@ -160,6 +160,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	//
 	s.registerSetupSteps(mux)
 	s.registerMe(mux)
+	s.registerShelves(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})
@@ -211,6 +212,7 @@ func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, 
 		Sheet:   sheet,
 		Styles:  styles,
 		Admin:   s.can.Can(r.Context(), currentUser(r), share.ManageLibraries, share.Target{Kind: share.TargetServer}),
+		Shelves: s.sidebarShelves(r),
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render page", "path", r.URL.Path, "err", err)

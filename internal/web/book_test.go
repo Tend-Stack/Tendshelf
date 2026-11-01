@@ -190,7 +190,7 @@ func TestBookPageNoPlayControls(t *testing.T) {
 	bookSeedChapters(t, a, b.ID, 3)
 	for _, tab := range []string{"", "/chapters", "/details"} {
 		main := bookMain(browseGet(a, "/books/"+b.ID+tab, false, nil).Body.String())
-		for _, not := range []string{"Resume", "Start listening", "Listen again", "Download", "Add to shelf", "Share", "<button", "disabled"} {
+		for _, not := range []string{"Resume", "Start listening", "Listen again", "Download", "Share", "<button", "disabled"} {
 			if strings.Contains(main, not) {
 				t.Errorf("%q on the book page contains %q", tab, not)
 			}

@@ -76,6 +76,13 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 			return v, err
 		}
 	}
+	if s.canShelve(r) {
+		list, err := s.lib.ShelfCounts(ctx, s.scope(r), u.ID)
+		if err != nil {
+			return v, err
+		}
+		v.Shelves = countText(len(list), "1 shelf", "%d shelves")
+	}
 	return v, nil
 }
 
