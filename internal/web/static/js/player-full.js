@@ -801,7 +801,7 @@ document.addEventListener("htmx:after:settle", () => update("settle"));
 // ---- Long press on the bar: the speed sheet ----
 
 let pressTimer = 0;
-let pressAt = 0; // when a long press fired
+let pressAt = -Infinity; // when a long press fired
 let pressFrom = null;
 
 function endPress() {
