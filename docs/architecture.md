@@ -292,11 +292,11 @@ Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); 
 
 | Module / file | Why | Note |
 | --- | --- | --- |
-| `github.com/a-h/templ` (v0.3.1070, fetched through the Go module proxy; not in the local cache) | templ runtime; the CLI at the same version for `make generate` | MIT |
-| `modernc.org/sqlite` (v1.61.1, fetched through the module proxy; TendVox uses it) | SQLite driver | Chosen over `mattn/go-sqlite3`: pure Go, so `CGO_ENABLED=0` cross-compiles to ARM NAS boxes, Windows, macOS and scratch containers; FTS5 is compiled in (checked in `lib/sqlite_linux_amd64.go`). Cost: slower than the C driver on heavy writes (guess 1.5-2x); fine for this workload. BSD-3 |
-| `htmx.min.js` 2.x, vendored to `internal/web/static/vendor/` | Interactivity | Download once from the official release, record version and SHA-256 in `NOTICES.md`; licence 0BSD (guess, read it from the release) |
-| `golang.org/x/crypto` (argon2) | Password hashing in P1 | BSD-3 |
-| Fonts vendored to `internal/web/static/fonts/` (woff2): Fraunces, Fira Sans, Fira Mono | The design's type (P0b); Fira Mono only in the Research lab | SIL OFL 1.1 (read it from each release); self-hosted, never Google Fonts |
+| `github.com/a-h/templ` v0.3.1100 (**approved and added in P0b**) | templ runtime; the CLI runs through the `tool` directive in `go.mod` (`make generate`), so one version source | MIT |
+| `modernc.org/sqlite` v1.61.1 (**approved and added in P0a**) | SQLite driver | Chosen over `mattn/go-sqlite3`: pure Go, so `CGO_ENABLED=0` cross-compiles to ARM NAS boxes, Windows, macOS and scratch containers; FTS5 is compiled in (checked in `lib/sqlite_linux_amd64.go`). Cost: slower than the C driver on heavy writes (guess 1.5-2x); fine for this workload. BSD-3 |
+| `htmx.min.js` 4.0.0 (**vendored in P0b**) as `internal/web/static/vendor/htmx-4.0.0.min.js` | Interactivity | Official release file, version and SHA-256 in `NOTICES.md`; licence 0BSD, text beside it. htmx 4 inheritance is explicit (`:inherited`) and 4xx/5xx responses swap |
+| `golang.org/x/crypto` v0.58.0 (argon2) | Password hashing in P1b | BSD-3 |
+| Fonts **vendored in P0b** to `internal/web/static/fonts/` (woff2): Fraunces (variable roman and italic), Fira Sans (400, 400 italic, 500, 600), Fira Mono (400, 500); 1.23 MB in total, 361 KB preloaded | The design's type; Fira Mono only in the Research lab | SIL OFL 1.1, texts beside the files; upstream commits and SHA-256 in `NOTICES.md`; self-hosted, never Google Fonts |
 
 Read-along (phase R), each awaiting approval:
 

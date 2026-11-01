@@ -14,7 +14,7 @@ themes.
 
 | Milestone | Phase | State | Evidence |
 | --- | --- | --- | --- |
-| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 2.x, fonts and templ downloads approved). P0a (data and jobs) built 2026-11-01, see its note below; P0b, P0c in progress. | `make check` green 2026-11-01. |
+| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 4.0.0, fonts and templ v0.3.1100 downloads approved). P0a (data and jobs) built 2026-11-01, see its note below; P0b, P0c in progress. | `make check` green 2026-11-01. |
 | M1 It plays | P1a-P1c | Not started | |
 | M2 Family | P3 | Not started | |
 | M3 Pocket | P4 | Not started | |
@@ -27,7 +27,7 @@ themes.
 
 ### P0a Data and jobs
 
-- Add `modernc.org/sqlite` and `golang.org/x/crypto` with `NOTICES.md` rows.
+- Add `modernc.org/sqlite` v1.61.1 and `golang.org/x/crypto` v0.58.0 with `NOTICES.md` rows.
 - `internal/db`: open with read-only pre-check, `application_id`, `user_version`, embedded migrations,
   `VACUUM INTO` backups (newest three), typed refusal errors, migration test harness. Migration
   `0001_init.sql` creates `settings`, `users`, `sessions`, `user_settings`, `jobs`, `audit_log`.
@@ -52,8 +52,8 @@ no job list or pruning; `Enqueue` cannot join a caller's transaction. Next: P0b 
 
 ### P0b UI shell
 
-- Add `github.com/a-h/templ` (runtime; CLI pinned to the same version in `make generate`, CI fails on a
-  dirty tree) and vendor htmx 2.x with version and SHA-256 in `NOTICES.md`.
+- Add `github.com/a-h/templ` v0.3.1100 (runtime; CLI pinned to the same version in `make generate`, CI fails on a
+  dirty tree) and vendor htmx 4.0.0 with version and SHA-256 in `NOTICES.md`.
 - Static tree embedded with hashed, immutable names: `tokens.css` and `bundle.css` from the handoff,
   Fraunces, Fira Sans and Fira Mono woff2 (self-hosted, OFL rows in `NOTICES.md`), the logo SVGs and an
   inline SVG icon sprite.
@@ -67,6 +67,19 @@ no job list or pruning; `Enqueue` cannot join a caller's transaction. Next: P0b 
 Exit: a templ page served with htmx from `/static` under the strict CSP; each shell renders at 390,
 768, 1024 and 1440 in dark, light, sepia and contrast with no horizontal scroll (captures reviewed
 against `screens/core/Home*.png` for the frame only); CSRF rejects an unsafe request without the token.
+
+Status 2026-11-01: built. Scope: templ v0.3.1100 (runtime plus `go tool templ`, `make generate`, CI step
+that fails on a dirty tree), htmx 4.0.0 and eight woff2 fonts vendored with SHA-256 in `NOTICES.md`
+(fonts 1,226,212 B in total, 361,428 B preloaded), `internal/web/static` (embedded tree, content-hashed
+immutable URLs, load-time `@layer` wrapping, system light and contrast blocks, font URL rewrite),
+`internal/web/components` (24 icons, TabBar, SideRail, Sidebar, player slot, toasts, Layout), pages
+(Home empty state, plain-words error page), CSRF (HMAC token over a `ts_csrf` cookie plus
+`http.CrossOriginProtection`), `ts_theme` cookie, `static/js/shell.js`. Checks: `make generate` leaves
+a clean tree, `make check` and `CGO_ENABLED=0 make build` green, 34 top-level tests in `internal/web`,
+`components` and `static`; `TestVisualShell` passes 16 captures (4 widths by 4 themes, no horizontal
+overflow). Limits: WebKit (MiniBrowser at 390 and 1440) is a manual check recorded by the lead; the
+player, theme picker and sessions are P1; `style="width:..."` in handoff markup needs the P0c
+replacement under `style-src 'self'`; no compression or ETags. Next: P0c.
 
 ### P0c Utilities and motion layer
 

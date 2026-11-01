@@ -16,7 +16,9 @@ was reused, extended or replaced.
   the build, CI or development scripts. A change that needs `package.json` is rejected.
 - **Go standard library first.** `net/http` with Go 1.22+ method/path patterns for routing; no web
   framework. Every new Go module needs operator approval and a row in `NOTICES.md` in the same commit.
-  Approved so far: none (see "Dependencies awaiting approval" in `docs/architecture.md`).
+  Approved and in use: `modernc.org/sqlite` v1.61.1 and `github.com/a-h/templ` v0.3.1100 (runtime; the
+  CLI runs through the `tool` directive in `go.mod`, one version source). More are listed under
+  "Dependencies awaiting approval" in `docs/architecture.md`.
 - **One server binary**, pure Go (`CGO_ENABLED=0` must build). Static assets and migrations are embedded
   with `embed`. External programs: `ffmpeg` and `ffprobe` only, located via config or `PATH`, plus the
   optional owner-installed alignment worker for read-along, launched only by `internal/align/runtime`
@@ -36,13 +38,21 @@ was reused, extended or replaced.
 
 - Pages live in `internal/web/pages/`, reusable pieces in `internal/web/components/`. One templ
   component per file area; component names are nouns (`BookCard`, `ChapterList`).
-- Canonical page URLs always return a full page. Navigation uses `hx-boost` with
-  `hx-target="#main" hx-select="#main" hx-swap="outerHTML"` so the player in the layout keeps playing.
+- Canonical page URLs always return a full page. htmx 4 attribute inheritance is explicit: navigation
+  uses `hx-boost:inherited="target:#main select:#main swap:outerSync"` and `hx-headers:inherited` on
+  `<body>`, so the player in the layout keeps playing. `hx-target`, `hx-select` and `hx-swap` beside a
+  plain `hx-boost` are not inherited. Events use colon names (`htmx:after:swap`, `htmx:config:request`);
+  the request header `HX-Trigger` is now `HX-Source` (`tag#id`); `hx-delete` sends no form data.
+- htmx 4 swaps 4xx and 5xx responses (only 204 and 304 do not swap), so an error response must be safe to
+  swap: for an htmx request answer with an out-of-band toast fragment, not a full page.
 - Fragments that are not pages live under `/hx/...` and return only the fragment. Every `/hx/` handler
   is also reachable by a plain form or link fallback where the action matters without JavaScript
   (login, playback start, progress mark-as-finished).
-- No inline scripts, no `hx-on`, no `eval`. The CSP is `script-src 'self'`; htmx is configured with
-  `<meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false}'>`.
+- No inline scripts, no `style=""` attributes, no `eval`. The CSP is `script-src 'self'; style-src 'self'`;
+  htmx is configured with `<meta name="htmx-config" content='{"includeIndicatorCSS":false,...}'>`
+  (`includeIndicatorStyles` and `allowEval` no longer exist in htmx 4; the CSP alone blocks eval). Because
+  htmx 4 runs them through `Function`, the following are banned everywhere: `hx-on`, `js:` values and
+  trigger filters (`hx-trigger="x[cond]"`). `globalViewTransitions` is now `transitions`.
 - Unsafe methods (POST, PUT, PATCH, DELETE) carry the CSRF token in the `X-CSRF-Token` header (set once
   with `hx-headers` on `<body>`) or a hidden form field; the server checks it on every unsafe request.
 - Long work never blocks a request: start a job, return a fragment that polls `/hx/jobs/{id}` with
