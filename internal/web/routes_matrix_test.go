@@ -22,6 +22,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
 	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
+	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/testutil/wav"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
@@ -193,6 +194,14 @@ func sweepSeed(t *testing.T) *sweepEnv {
 		}
 		e.shelf[i] = sh.ID
 	}
+	// Progress for /progress and /hx/player (P1c-3). Member and guest hold a row for a book they
+	// cannot see: that proves nothing of it leaks.
+	for i := range sweepRoles {
+		if _, err := progress.New(a.st, nil).Save(ctx, progress.Update{UserID: e.uid[i], BookID: e.book.ID, PositionMs: 1500,
+			DurationMs: 6000, ClientUpdatedAt: 1_700_000_000_000, DeviceID: "sweepdevice01"}); err != nil {
+			t.Fatal(err)
+		}
+	}
 	for i := range sweepRoles {
 		err := a.st.WriteTx(ctx, func(tx *sql.Tx) error {
 			_, sess, err := auth.NewSessions(a.st, nil).Create(ctx, tx, e.uid[i], "Sweep second device")
@@ -332,7 +341,16 @@ func sweepRows() []sweepRow {
 		{Pattern: "GET /stream/{audioFileID}", Label: "second file", Method: http.MethodGet, Path: sweepAudioPath(1, ""), Want: sweepStaff(200, 404)},
 		{Pattern: "GET /stream/{audioFileID}", Label: "compat without the service", Method: http.MethodGet, Path: sweepAudioPath(0, "?compat=1"), Want: sweepSame(404)},
 		{Pattern: "GET /stream/{audioFileID}", Label: "unknown file", Method: http.MethodGet, Path: sweepStatic("/stream/af_unknown"), Want: sweepSame(404)},
-		// P1c-3 rows
+		// Progress and player (P1c-3)
+		sweepGet("GET /progress/{bookID}", id(bookID, "/progress/", ""), sweepStaff(200, 404)),
+		{Pattern: "GET /progress/{bookID}", Label: "unknown book", Method: http.MethodGet, Path: sweepStatic("/progress/bk_unknown"), Want: sweepSame(404)},
+		sweepGet("GET /hx/player", sweepStatic("/hx/player"), [4]int{200, 200, 204, 204}),
+		{Pattern: "GET /hx/player/{bookID}", Method: http.MethodGet, Path: id(bookID, "/hx/player/", ""), Want: sweepStaff(200, 404),
+			Body: func(t *testing.T, e *sweepEnv, role int, body string) {
+				if role <= sweepAdmin && (!strings.Contains(body, `data-book-id="`+e.book.ID+`"`) || strings.Count(body, "<li data-id=") != 2) {
+					t.Errorf("%s: the player data lacks the book or its two files", sweepRoleNames[role])
+				}
+			}},
 		// Admin
 		sweepGet("GET /admin/libraries", sweepStatic("/admin/libraries"), sweepStaff(200, 404)),
 		sweepGet("GET /admin/libraries/folders/new", sweepStatic("/admin/libraries/folders/new"), sweepStaff(200, 404)),
@@ -455,6 +473,12 @@ func sweepRows() []sweepRow {
 	stream := sweepPost("/stream/{audioFileID}", sweepAudioPath(0, ""), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, "")
 	stream.Label = "POST"
 	post = append(post, stream)
+	// Progress (P1c-3)
+	post = append(post,
+		sweepPost("POST /progress/{bookID}", id(bookID, "/progress/", ""), sweepFormOf(url.Values{
+			"position_ms": {"2000"}, "client_updated_at": {"1800000000000"}, "device_id": {"sweepdevice02"}}), sweepStaff(200, 404), ""),
+		sweepPost("POST /hx/books/{id}/finished", id(bookID, "/hx/books/", "/finished"), sweepFormOf(url.Values{
+			"finished": {"1"}, "next": {"/"}}), sweepStaff(303, 404), "/"))
 	return append(rows, post...)
 }
 
