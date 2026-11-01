@@ -1,0 +1,662 @@
+package web
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"image"
+	"image/color"
+	"image/png"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"testing"
+
+	"github.com/Tend-Stack/tendshelf/internal/auth"
+	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
+	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
+	"github.com/Tend-Stack/tendshelf/internal/users"
+)
+
+// The P1b exit audit. TestRouteMatrix sends every registered route (all but the dev-only ones)
+// as an anonymous visitor, the owner, an admin, a member and a guest, and as each of them without a
+// CSRF token for the unsafe methods. The expectations are the access contract written down:
+// a route that is registered but has no row here fails the test, so a new route cannot ship
+// unreviewed. Helpers start with "sweep".
+
+// The four signed-in roles, in the order of every [4]int below.
+var sweepRoles = [4]users.Role{users.RoleOwner, users.RoleAdmin, users.RoleMember, users.RoleGuest}
+
+var sweepRoleNames = [4]string{"owner", "admin", "member", "guest"}
+
+const (
+	sweepOwner = iota
+	sweepAdmin
+	sweepMember
+	sweepGuest
+)
+
+// Shorthand for the expected status of owner, admin, member and guest. A 0 asserts nothing.
+func sweepSame(c int) [4]int         { return [4]int{c, c, c, c} }
+func sweepStaff(a, b int) [4]int     { return [4]int{a, a, b, b} } // owner and admin / member and guest
+func sweepOwnerOnly(a, b int) [4]int { return [4]int{a, b, b, b} }
+func sweepNotGuest(a, b int) [4]int  { return [4]int{a, a, a, b} }
+
+// sweepEnv is one seeded app and what the rows need to name its records.
+type sweepEnv struct {
+	t       *testing.T
+	a       *testApp
+	ck      [4]*http.Cookie
+	uid     [4]string
+	secondS [4]string // public id of a second session of each person
+	shelf   [3]string // the shelf of owner, admin and member; each holds the book
+
+	libID, folderID, folderDir string
+	book                       library.Book
+	author, narrator, series   string
+	job                        string
+	tree                       string // a folder for the browse view, with a file name that must never be sent
+}
+
+func sweepUserID(t *testing.T, a *testApp, ck *http.Cookie) string {
+	t.Helper()
+	h, ok := auth.HashToken(ck.Value)
+	if !ok {
+		t.Fatal("bad session token")
+	}
+	var id string
+	if err := a.st.Reader().QueryRow(`SELECT user_id FROM sessions WHERE token_hash = ?`, h[:]).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+// sweepWriteCover writes a tiny PNG as the cover original and its three thumbnails.
+func sweepWriteCover(t *testing.T, dir, sha string) string {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 8, 8))
+	for i := 0; i < 8; i++ {
+		img.Set(i, i, color.RGBA{30, 90, 100, 255})
+	}
+	write := func(p string) {
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		f, err := os.Create(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		if err := png.Encode(f, img); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rel := filepath.Join("covers", sha+".png")
+	write(filepath.Join(dir, rel))
+	for _, box := range mediajobs.ThumbSizes {
+		write(mediajobs.ThumbPath(dir, sha, box))
+	}
+	return rel
+}
+
+// sweepSeed builds the app every row runs on: the four people, setup finished, one library with
+// one real folder holding audio, one book (author, narrator, series, chapters, cover and thumbnails),
+// a finished scan job, and a shelf holding the book for the owner, the admin and the member.
+func sweepSeed(t *testing.T) *sweepEnv {
+	t.Helper()
+	ctx := context.Background()
+	a := newTestApp(t)
+	e := &sweepEnv{t: t, a: a}
+	for i, r := range sweepRoles {
+		e.ck[i] = a.as(t, r)
+		e.uid[i] = sweepUserID(t, a, e.ck[i])
+	}
+
+	e.folderDir = adminAudioDir(t, true)
+	l, f := librarytest.NewLibrary(t, a.lib, "Sweep library", e.folderDir)
+	e.libID, e.folderID = l.ID, f.ID
+	e.book = librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{
+		Title: "Sweepword Lantern", Authors: []string{"Imogen Sweepauthor"}, Narrators: []string{"Theo Sweepvoice"},
+		Series: "Sweepseries Saga", Sequence: "1", DurationMs: 9 * sweepHourMs, AddedAt: 5, Files: 2,
+	})
+	bookSeedChapters(t, a, e.book.ID, 4)
+	sha := fmt.Sprintf("%064x", 0xc0ffee)
+	rel := sweepWriteCover(t, a.dir, sha)
+	cover := library.Cover{BookID: e.book.ID, Source: library.CoverFolder, Mime: "image/png", Width: 8, Height: 8, SHA256: sha, Path: rel, Tint: "#1f4a52"}
+	if err := a.lib.Update(ctx, func(tx *library.Tx) error {
+		if err := tx.PutCover(&cover); err != nil {
+			return err
+		}
+		return tx.SetBookCover(e.book.ID, cover.ID)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	people, err := a.lib.BookPeople(ctx, e.book.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range people {
+		if p.Role == library.RoleAuthor {
+			e.author = p.PersonID
+		} else {
+			e.narrator = p.PersonID
+		}
+	}
+	series, err := a.lib.BookSeries(ctx, e.book.ID)
+	if err != nil || len(series) == 0 {
+		t.Fatalf("series: %v %v", series, err)
+	}
+	e.series = series[0].SeriesID
+
+	e.job = a.adminEnqueueScan(t, l.ID)
+	a.adminSetJobState(t, e.job, "done")
+	if err := db.PutSetting(ctx, a.st.Writer(), settingSetupDone, true); err != nil {
+		t.Fatal(err)
+	}
+	e.tree = fbTree(t)
+
+	for i := 0; i < 3; i++ {
+		sh, err := a.lib.CreateShelf(ctx, e.uid[i], "Sweep shelf")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := a.lib.AddToShelf(ctx, e.uid[i], sh.ID, e.book.ID); err != nil {
+			t.Fatal(err)
+		}
+		e.shelf[i] = sh.ID
+	}
+	for i := range sweepRoles {
+		err := a.st.WriteTx(ctx, func(tx *sql.Tx) error {
+			_, sess, err := auth.NewSessions(a.st, nil).Create(ctx, tx, e.uid[i], "Sweep second device")
+			e.secondS[i] = auth.PublicID(sess.Hash)
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	return e
+}
+
+// ownShelf is the role's own shelf; the guest has none, so the guest is pointed at the owner's.
+func (e *sweepEnv) ownShelf(role int) string {
+	if role > sweepMember {
+		return e.shelf[sweepOwner]
+	}
+	return e.shelf[role]
+}
+
+// otherShelf belongs to somebody else.
+func (e *sweepEnv) otherShelf(role int) string {
+	if role > sweepMember {
+		return e.shelf[sweepOwner]
+	}
+	return e.shelf[(role+1)%3]
+}
+
+// sweepRow is one request and what each person must get back.
+type sweepRow struct {
+	Pattern string // the registered pattern this row covers
+	Label   string // names the variant when a pattern has several rows
+	Method  string
+	Path    func(e *sweepEnv, role int) string
+	Form    func(e *sweepEnv, role int) url.Values
+	Want    [4]int // owner, admin, member, guest
+	Loc     string // the Location of a 303 (all roles), when it is fixed
+	Anon    int    // the anonymous answer; 0 is the default: sign in
+	AnonLoc string // its Location; "" is the default
+	Body    func(t *testing.T, e *sweepEnv, role int, body string)
+}
+
+func (r sweepRow) name() string {
+	if r.Label != "" {
+		return r.Pattern + " " + r.Label
+	}
+	return r.Pattern
+}
+
+func sweepStatic(p string) func(*sweepEnv, int) string {
+	return func(*sweepEnv, int) string { return p }
+}
+
+func sweepFormOf(v url.Values) func(*sweepEnv, int) url.Values {
+	return func(*sweepEnv, int) url.Values { return v }
+}
+
+// sweepGet makes a row for a GET.
+func sweepGet(pattern string, path func(e *sweepEnv, role int) string, want [4]int) sweepRow {
+	return sweepRow{Pattern: pattern, Method: http.MethodGet, Path: path, Want: want}
+}
+
+func sweepPost(pattern string, path func(e *sweepEnv, role int) string, form func(e *sweepEnv, role int) url.Values, want [4]int, loc string) sweepRow {
+	return sweepRow{Pattern: pattern, Method: http.MethodPost, Path: path, Form: form, Want: want, Loc: loc}
+}
+
+func sweepBookPath(suffix string) func(*sweepEnv, int) string {
+	return func(e *sweepEnv, _ int) string { return "/books/" + e.book.ID + suffix }
+}
+
+func sweepNotContain(words ...string) func(*testing.T, *sweepEnv, int, string) {
+	return func(t *testing.T, _ *sweepEnv, _ int, body string) {
+		t.Helper()
+		for _, w := range words {
+			if strings.Contains(body, w) {
+				t.Errorf("the page leaks %q", w)
+			}
+		}
+	}
+}
+
+// sweepRows is the table. Rows for GET come first; the unsafe rows follow.
+func sweepRows() []sweepRow {
+	id := func(f func(e *sweepEnv) string, prefix, suffix string) func(*sweepEnv, int) string {
+		return func(e *sweepEnv, _ int) string { return prefix + f(e) + suffix }
+	}
+	libID := func(e *sweepEnv) string { return e.libID }
+	folderID := func(e *sweepEnv) string { return e.folderID }
+	job := func(e *sweepEnv) string { return e.job }
+	bookID := func(e *sweepEnv) string { return e.book.ID }
+	shelfOf := func(suffix string, other bool) func(*sweepEnv, int) string {
+		return func(e *sweepEnv, role int) string {
+			if other {
+				return "/shelves/" + e.otherShelf(role) + suffix
+			}
+			return "/shelves/" + e.ownShelf(role) + suffix
+		}
+	}
+	// The shelves routes: the owner, the admin and the member use their own shelf; nobody
+	// reaches another person's.
+	shelfWant := sweepNotGuest(http.StatusOK, http.StatusNotFound)
+	shelfPostWant := sweepNotGuest(http.StatusSeeOther, http.StatusNotFound)
+	// Adding or moving a book needs the book to be visible. The member has no grant here, so the
+	// book is not found for them (404, the same as an unknown id); the plan expected 303.
+	shelfBookWant := sweepStaff(http.StatusSeeOther, http.StatusNotFound)
+	seeSheet := func(marker string) func(*testing.T, *sweepEnv, int, string) {
+		return func(t *testing.T, _ *sweepEnv, role int, body string) {
+			t.Helper()
+			if role <= sweepAdmin && !strings.Contains(body, marker) {
+				t.Errorf("the page lacks %q", marker)
+			}
+		}
+	}
+
+	rows := []sweepRow{
+		// Browse
+		sweepGet("GET /{$}", sweepStatic("/"), sweepSame(200)),
+		sweepGet("GET /libraries", sweepStatic("/libraries"), sweepSame(200)),
+		sweepGet("GET /libraries/{id}", id(libID, "/libraries/", ""), sweepStaff(200, 404)),
+		sweepGet("GET /hx/libraries/items", sweepStatic("/hx/libraries/items"), sweepSame(200)),
+		sweepGet("GET /hx/libraries/{id}/items", id(libID, "/hx/libraries/", "/items"), sweepStaff(200, 404)),
+		sweepGet("GET /search", sweepStatic("/search?q=Lantern"), sweepSame(200)),
+		// Books and people
+		sweepGet("GET /books/{id}", sweepBookPath(""), sweepStaff(200, 404)),
+		{Pattern: "GET /books/{id}/{tab}", Label: "about", Method: http.MethodGet, Path: sweepBookPath("/about"), Want: sweepStaff(200, 404)},
+		sweepGet("GET /authors/{id}", id(func(e *sweepEnv) string { return e.author }, "/authors/", ""), sweepStaff(200, 404)),
+		sweepGet("GET /narrators/{id}", id(func(e *sweepEnv) string { return e.narrator }, "/narrators/", ""), sweepStaff(200, 404)),
+		sweepGet("GET /series/{id}", id(func(e *sweepEnv) string { return e.series }, "/series/", ""), sweepStaff(200, 404)),
+		sweepGet("GET /covers/{bookID}", id(bookID, "/covers/", "?w=320"), sweepStaff(200, 404)),
+		// Admin
+		sweepGet("GET /admin/libraries", sweepStatic("/admin/libraries"), sweepStaff(200, 404)),
+		sweepGet("GET /admin/libraries/folders/new", sweepStatic("/admin/libraries/folders/new"), sweepStaff(200, 404)),
+		sweepGet("GET /admin/folders/{id}/emptied", id(folderID, "/admin/folders/", "/emptied"), sweepStaff(200, 404)),
+		sweepGet("GET /hx/jobs/{id}", id(job, "/hx/jobs/", ""), sweepStaff(200, 404)),
+		// Setup after it is finished
+		{Pattern: "GET /setup/server", Method: http.MethodGet, Path: sweepStatic("/setup/server"), Want: sweepOwnerOnly(303, 404), Loc: "/"},
+		{Pattern: "GET /setup/folder", Method: http.MethodGet, Path: sweepStatic("/setup/folder"), Want: sweepOwnerOnly(303, 404), Loc: "/"},
+		sweepGet("GET /setup/done", sweepStatic("/setup/done"), sweepOwnerOnly(200, 404)),
+		{Pattern: "GET /setup", Method: http.MethodGet, Path: sweepStatic("/setup"), Want: sweepSame(404), Anon: 404},
+		{Pattern: "GET /login", Method: http.MethodGet, Path: sweepStatic("/login"), Want: sweepSame(303), Loc: "/", Anon: 200},
+		// Me
+		sweepGet("GET /me", sweepStatic("/me"), sweepSame(200)),
+		sweepGet("GET /me/settings", sweepStatic("/me/settings"), sweepSame(200)),
+		sweepGet("GET /me/password", sweepStatic("/me/password"), sweepSame(200)),
+		// Shelves
+		sweepGet("GET /shelves", sweepStatic("/shelves"), shelfWant),
+		sweepGet("GET /shelves/{id}", shelfOf("", false), shelfWant),
+		sweepGet("GET /shelves/{id}/delete", shelfOf("/delete", false), shelfWant),
+
+		// Query modes: the same expectations as their page
+		{Pattern: "GET /admin/libraries/folders/new", Label: "?browse=", Method: http.MethodGet, Want: sweepStaff(200, 404),
+			Path: func(e *sweepEnv, _ int) string {
+				return "/admin/libraries/folders/new?browse=" + url.QueryEscape(e.tree)
+			},
+			Body: sweepNotContain("secret-title.mp3", "notes.txt")},
+		{Pattern: "GET /books/{id}", Label: "?sheet=shelves", Method: http.MethodGet, Want: sweepStaff(200, 404),
+			Path: sweepBookPath("?sheet=shelves"), Body: seeSheet("ts-shelf-sheet")},
+		{Pattern: "GET /libraries", Label: "?sheet=filters", Method: http.MethodGet, Want: sweepSame(200),
+			Path: sweepStatic("/libraries?sheet=filters"), Body: seeSheet("Filter and sort")},
+		{Pattern: "GET /setup/folder", Label: "?job=", Method: http.MethodGet, Want: sweepOwnerOnly(200, 404),
+			Path: func(e *sweepEnv, _ int) string { return "/setup/folder?job=" + e.job }},
+		{Pattern: "GET /search", Label: "no query", Method: http.MethodGet, Want: sweepSame(200), Path: sweepStatic("/search")},
+		{Pattern: "GET /libraries/{id}", Label: "?view=list", Method: http.MethodGet, Want: sweepStaff(200, 404),
+			Path: id(libID, "/libraries/", "?view=list&sort=title")},
+	}
+	for _, tab := range []string{"chapters", "details"} {
+		r := sweepGet("GET /books/{id}/{tab}", sweepBookPath("/"+tab), sweepStaff(200, 404))
+		r.Label = tab
+		rows = append(rows, r)
+	}
+
+	post := []sweepRow{
+		// Admin
+		sweepPost("POST /admin/libraries/scan", sweepStatic("/admin/libraries/scan"), nil, sweepStaff(303, 404), ""),
+		sweepPost("POST /admin/libraries/{id}/scan", id(libID, "/admin/libraries/", "/scan"), nil, sweepStaff(303, 404), ""),
+		sweepPost("POST /admin/libraries/folders", sweepStatic("/admin/libraries/folders"), func(e *sweepEnv, _ int) url.Values {
+			return url.Values{"folder": {adminAudioDir(e.t, true)}, "library": {""}, "new_name": {"Sweep new library"}}
+		}, sweepStaff(303, 404), "/admin/libraries"),
+		sweepPost("POST /admin/folders/{id}/emptied", id(folderID, "/admin/folders/", "/emptied"), nil, sweepStaff(409, 404), ""),
+		// Setup
+		sweepPost("POST /setup/server", sweepStatic("/setup/server"), sweepFormOf(url.Values{"name": {"Sweep shelf"}}), sweepOwnerOnly(303, 404), "/"),
+		sweepPost("POST /setup/folder", sweepStatic("/setup/folder"), func(e *sweepEnv, _ int) url.Values {
+			return url.Values{"folder": {adminAudioDir(e.t, false)}}
+		}, sweepOwnerOnly(303, 404), "/"),
+		{Pattern: "POST /setup", Method: http.MethodPost, Path: sweepStatic("/setup"), Form: func(*sweepEnv, int) url.Values { return setupForm("") },
+			Want: sweepSame(409), Anon: 409},
+		{Pattern: "POST /login", Method: http.MethodPost, Path: sweepStatic("/login"),
+			Form: sweepFormOf(url.Values{"username": {"nobody"}, "password": {"wrong passphrase here"}}), Want: sweepSame(422), Anon: 422},
+		sweepPost("POST /logout", sweepStatic("/logout"), nil, sweepSame(303), "/login"),
+		// Me
+		sweepPost("POST /me/settings", sweepStatic("/me/settings"), sweepFormOf(url.Values{
+			"theme": {"dark"}, "theme_auto": {"0"}, "speed": {"1.25"}, "skip_back": {"10"}, "skip_forward": {"60"},
+			"auto_rewind": {"0", "1"}, "next_in_series": {"0"}, "player_tint": {"0", "1"}, "big_buttons": {"0", "1"}}), sweepSame(303), ""),
+		sweepPost("POST /me/password", sweepStatic("/me/password"), sweepFormOf(url.Values{"current": {"not the password at all"}, "password": {"a brand new passphrase"}}), sweepSame(422), ""),
+		sweepPost("POST /me/sessions/{sid}/signout", func(e *sweepEnv, role int) string { return "/me/sessions/" + e.secondS[role] + "/signout" }, nil, sweepSame(303), "/me"),
+		sweepPost("POST /me/sessions/signout-others", sweepStatic("/me/sessions/signout-others"), nil, sweepSame(303), ""),
+		// Shelves, the person's own
+		sweepPost("POST /shelves", sweepStatic("/shelves"), sweepFormOf(url.Values{"name": {"Sweep new shelf"}}), shelfPostWant, ""),
+		sweepPost("POST /shelves/{id}/rename", shelfOf("/rename", false), sweepFormOf(url.Values{"name": {"Renamed"}}), shelfPostWant, ""),
+		sweepPost("POST /shelves/{id}/delete", shelfOf("/delete", false), nil, shelfPostWant, ""),
+		sweepPost("POST /shelves/{id}/items", shelfOf("/items", false), func(e *sweepEnv, _ int) url.Values { return url.Values{"book_id": {e.book.ID}} }, shelfBookWant, ""),
+		sweepPost("POST /shelves/{id}/items/{bookID}/remove", func(e *sweepEnv, role int) string {
+			return "/shelves/" + e.ownShelf(role) + "/items/" + e.book.ID + "/remove"
+		}, nil, shelfPostWant, ""),
+		sweepPost("POST /shelves/{id}/items/{bookID}/move", func(e *sweepEnv, role int) string {
+			return "/shelves/" + e.ownShelf(role) + "/items/" + e.book.ID + "/move"
+		}, sweepFormOf(url.Values{"dir": {"up"}}), shelfBookWant, ""),
+	}
+	// Somebody else's session id and somebody else's shelf: 404 for everyone.
+	other := sweepPost("POST /me/sessions/{sid}/signout", func(e *sweepEnv, role int) string {
+		return "/me/sessions/" + e.secondS[(role+1)%4] + "/signout"
+	}, nil, sweepSame(404), "")
+	other.Label = "someone else's session"
+	post = append(post, other)
+	for _, p := range []struct {
+		pattern, suffix string
+		form            func(*sweepEnv, int) url.Values
+	}{
+		{"POST /shelves/{id}/rename", "/rename", sweepFormOf(url.Values{"name": {"Stolen"}})},
+		{"POST /shelves/{id}/delete", "/delete", nil},
+		{"POST /shelves/{id}/items", "/items", func(e *sweepEnv, _ int) url.Values { return url.Values{"book_id": {e.book.ID}} }},
+	} {
+		r := sweepPost(p.pattern, shelfOf(p.suffix, true), p.form, sweepSame(404), "")
+		r.Label = "someone else's shelf"
+		post = append(post, r)
+	}
+	for _, g := range []struct {
+		suffix string
+		form   func(*sweepEnv, int) url.Values
+	}{{"remove", nil}, {"move", sweepFormOf(url.Values{"dir": {"up"}})}} {
+		suffix := g.suffix
+		r := sweepPost("POST /shelves/{id}/items/{bookID}/"+suffix, func(e *sweepEnv, role int) string {
+			return "/shelves/" + e.otherShelf(role) + "/items/" + e.book.ID + "/" + suffix
+		}, g.form, sweepSame(404), "")
+		r.Label = "someone else's shelf"
+		post = append(post, r)
+	}
+	other = sweepGet("GET /shelves/{id}", shelfOf("", true), sweepSame(404))
+	other.Label = "someone else's shelf"
+	rows = append(rows, other)
+	other = sweepGet("GET /shelves/{id}/delete", shelfOf("/delete", true), sweepSame(404))
+	other.Label = "someone else's shelf"
+	rows = append(rows, other)
+
+	// The method guard of /covers/{bookID}: only the owner's answer is part of the contract.
+	cover := sweepPost("/covers/{bookID}", id(bookID, "/covers/", ""), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, "")
+	cover.Label = "POST"
+	post = append(post, cover)
+	return append(rows, post...)
+}
+
+// sweepLeakWords are strings of the seeded book that nobody without access may ever see.
+func (e *sweepEnv) leakWords() []string {
+	return []string{"Sweepword", "Sweepauthor", "Sweepvoice", "Sweepseries", e.book.ID}
+}
+
+// send makes the request of a row as a role (role -1 is the anonymous visitor) and returns the answer.
+func (e *sweepEnv) send(t *testing.T, row sweepRow, role int, token bool) *httptest.ResponseRecorder {
+	t.Helper()
+	pathRole := max(role, 0)
+	path := row.Path(e, pathRole)
+	if row.Method == http.MethodGet {
+		if role < 0 {
+			return e.a.do(http.MethodGet, path, nil, nil)
+		}
+		return e.a.do(http.MethodGet, path, nil, nil, e.ck[role])
+	}
+	form := url.Values{}
+	if row.Form != nil {
+		for k, v := range row.Form(e, pathRole) {
+			form[k] = v
+		}
+	}
+	if role < 0 {
+		c, tok := e.a.anon(t, "/login")
+		if token {
+			form.Set("_csrf", tok)
+		}
+		return e.a.do(row.Method, path, form, nil, c)
+	}
+	if token {
+		form.Set("_csrf", e.a.tokenFor(t, e.ck[role]))
+	}
+	return e.a.do(row.Method, path, form, nil, e.ck[role])
+}
+
+// check compares one answer with the row's expectation.
+func (e *sweepEnv) check(t *testing.T, row sweepRow, role int, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	who := "anonymous"
+	want, wantLoc := row.Anon, row.AnonLoc
+	if role >= 0 {
+		who, want, wantLoc = sweepRoleNames[role], row.Want[role], ""
+		if want == http.StatusSeeOther {
+			wantLoc = row.Loc
+		}
+	} else if want == 0 {
+		want = http.StatusSeeOther
+		if wantLoc == "" {
+			wantLoc = "/login"
+			if row.Method == http.MethodGet {
+				p := row.Path(e, 0)
+				if p != "/" && !strings.HasPrefix(p, "/setup") {
+					wantLoc = "/login?next=" + url.QueryEscape(p)
+				}
+			}
+		}
+	}
+	if want == 0 {
+		return
+	}
+	if rec.Code != want {
+		t.Errorf("%s %s %s: got %d, want %d", who, row.Method, row.Path(e, max(role, 0)), rec.Code, want)
+		return
+	}
+	if wantLoc != "" && location(rec) != wantLoc {
+		t.Errorf("%s %s %s: Location %q, want %q", who, row.Method, row.Path(e, max(role, 0)), location(rec), wantLoc)
+	}
+	if role >= sweepMember {
+		body := rec.Body.String()
+		for _, w := range e.leakWords() {
+			if strings.Contains(body, w) {
+				t.Errorf("%s %s %s: the answer contains %q", who, row.Method, row.Path(e, role), w)
+			}
+		}
+	}
+	if role >= 0 && row.Body != nil && rec.Code == http.StatusOK {
+		row.Body(t, e, role, rec.Body.String())
+	}
+}
+
+// sweepRegistered lists the patterns the server registers outside the dev tag.
+func sweepRegistered(t *testing.T) []string {
+	t.Helper()
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	re := regexp.MustCompile(`(?:HandleFunc|Handle)\("([^"]+)"`)
+	seen := map[string]bool{}
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") || strings.HasSuffix(f, "_templ.go") {
+			continue
+		}
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range re.FindAllStringSubmatch(string(src), -1) {
+			p := m[1]
+			path := p
+			if i := strings.IndexByte(p, ' '); i >= 0 {
+				path = p[i+1:]
+			}
+			switch {
+			case p == "/", p == "GET /static/", p == "GET /healthz",
+				strings.HasPrefix(path, "/dev/"), strings.HasPrefix(path, "/hx/dev/"):
+				continue
+			}
+			seen[p] = true
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for p := range seen {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func TestRouteMatrix(t *testing.T) {
+	rows := sweepRows()
+
+	// Completeness: a registered route without a row fails.
+	covered := map[string]bool{}
+	for _, r := range rows {
+		covered[r.Pattern] = true
+	}
+	registered := sweepRegistered(t)
+	var missing []string
+	for _, p := range registered {
+		if !covered[p] {
+			missing = append(missing, p)
+		}
+	}
+	if len(missing) > 0 {
+		t.Errorf("registered routes with no row in the route matrix: %s", strings.Join(missing, ", "))
+	}
+	for p := range covered {
+		if i := sort.SearchStrings(registered, p); i == len(registered) || registered[i] != p {
+			t.Errorf("the matrix has a row for %q, which is not registered", p)
+		}
+	}
+	gets := 0
+	for _, r := range rows {
+		if r.Method == http.MethodGet {
+			gets++
+		}
+	}
+	// Each GET row is sent 5 times (four people and a visitor); each unsafe row 10 times (also without a token).
+	t.Logf("%d registered patterns, %d rows (%d GET, %d unsafe), %d requests", len(registered), len(rows), gets, len(rows)-gets, gets*5+(len(rows)-gets)*10)
+
+	// Safe rows share one seeded app: nothing here writes.
+	shared := sweepSeed(t)
+	for _, row := range rows {
+		if row.Method != http.MethodGet {
+			continue
+		}
+		t.Run(row.name(), func(t *testing.T) {
+			for role := range sweepRoles {
+				shared.check(t, row, role, shared.send(t, row, role, true))
+			}
+			shared.check(t, row, -1, shared.send(t, row, -1, true))
+		})
+	}
+
+	// One htmx variant per area: a visitor who is not signed in is sent away without a swap.
+	for _, p := range []string{"/libraries", "/hx/libraries/items", "/admin/libraries"} {
+		rec := shared.a.do(http.MethodGet, p, nil, hx)
+		if rec.Code != http.StatusNoContent || !strings.HasPrefix(rec.Header().Get("HX-Redirect"), "/login") {
+			t.Errorf("anonymous htmx GET %s: %d, HX-Redirect %q", p, rec.Code, rec.Header().Get("HX-Redirect"))
+		}
+	}
+
+	// Unsafe rows: a fresh seeded app for every person and row, so no row sees another's effects.
+	for _, row := range rows {
+		if row.Method == http.MethodGet {
+			continue
+		}
+		t.Run(row.name(), func(t *testing.T) {
+			for role := range sweepRoles {
+				e := sweepSeed(t)
+				e.check(t, row, role, e.send(t, row, role, true))
+			}
+			shared.check(t, row, -1, shared.send(t, row, -1, true))
+			// Without the token nothing happens, whoever asks.
+			for role := range sweepRoles {
+				if rec := shared.send(t, row, role, false); rec.Code != http.StatusForbidden {
+					t.Errorf("%s %s without a token: %d, want 403", sweepRoleNames[role], row.Path(shared, role), rec.Code)
+				}
+			}
+			if rec := shared.send(t, row, -1, false); rec.Code != http.StatusForbidden {
+				t.Errorf("anonymous %s without a token: %d, want 403", row.Path(shared, 0), rec.Code)
+			}
+		})
+	}
+}
+
+func TestShelvesEmptyShelfPlaceholder(t *testing.T) {
+	a, _, books := shelfApp(t)
+	ck := a.session
+	empty := shelfMake(t, a, ck, "Nothing yet")
+	full := shelfMake(t, a, ck, "Has a book")
+	shelfAdd(t, a, ck, full, books[0].ID)
+	_ = empty
+
+	body := browseGet(a, "/shelves", false, ck).Body.String()
+	rowOf := func(name string) string {
+		for _, r := range strings.Split(body, `<a class="ts-row ts-shelf-row"`)[1:] {
+			r = r[:strings.Index(r, "</a>")]
+			if strings.Contains(r, ">"+name+"<") {
+				return r
+			}
+		}
+		t.Fatalf("no row for %q", name)
+		return ""
+	}
+	blank := `<span class="ts-shelf-row__blank" aria-hidden="true">`
+	e := rowOf("Nothing yet")
+	if !strings.Contains(e, `<span class="ts-shelf-row__stack">`+blank) || !strings.Contains(e, "<svg") || strings.Contains(e, `class="ts-cover`) {
+		t.Errorf("an empty shelf lacks the placeholder in the stack: %s", e)
+	}
+	if f := rowOf("Has a book"); strings.Contains(f, "ts-shelf-row__blank") || !strings.Contains(f, `class="ts-cover`) {
+		t.Errorf("a shelf with a book shows the placeholder: %s", f)
+	}
+	css, err := os.ReadFile("static/css/pages-shelves.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rule := string(css[strings.Index(string(css), ".ts-shelf-row__blank"):])
+	rule = rule[:strings.Index(rule, "}")]
+	for _, want := range []string{"inline-size: 36px", "block-size: 36px", "var(--surface)", "var(--line)", "var(--radius-cover)"} {
+		if !strings.Contains(rule, want) {
+			t.Errorf("the placeholder rule lacks %q", want)
+		}
+	}
+}
