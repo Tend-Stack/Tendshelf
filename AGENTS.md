@@ -156,6 +156,7 @@ get a row.
 - Page packages record a side-by-side check against their boards at 390, 768, 1024 and 1440 px using
   the opt-in capture helper (`TENDSHELF_TEST_BROWSER`, system Chromium driven from a Go test; no Node).
 - Gates: `make check` (gofmt, `go vet`, `go test -race ./...`) and `make build`. Run both before a commit.
+- Size budgets for CSS and JS measure the gzip bytes the server sends (static assets are precompressed at start-up). Write JS and CSS for reading: one statement per line, names that say what they do, and a comment wherever the reason is not obvious. Never minify, squeeze or strip comments to meet a budget; report the overrun instead.
 - Do not report a check you did not run.
 
 ## Where things live

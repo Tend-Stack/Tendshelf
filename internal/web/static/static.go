@@ -1,12 +1,16 @@
 // Package static embeds the web assets (CSS, JS, vendored htmx, fonts, images) and serves them
 // under content-hashed names, so every URL can be cached as immutable.
 //
-// Hashing happens once at startup in Load. CSS source files stay pristine copies of the design
-// handoff: the cascade-layer wrapping, the system-theme blocks and the font URL rewrite are
-// applied at load time.
+// Hashing and compression happen once at startup in Load. CSS source files stay pristine copies of
+// the design handoff: the cascade-layer wrapping, the system-theme blocks and the font URL rewrite
+// are applied at load time. Text assets (CSS, JS, SVG, TXT) are also stored gzipped and served to
+// clients that accept it, with a separate ETag per encoding. Range requests are ignored: the files
+// are small and immutable, so the answer is always the whole body.
 package static
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
@@ -16,6 +20,7 @@ import (
 	"path"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -28,6 +33,10 @@ type Asset struct {
 	Hashed string // served path, e.g. "css/tokens.3fa1c09b2e.css"
 	Body   []byte
 	Type   string // Content-Type
+	// Gzip is the compressed Body; nil when the type is not compressible or gzip is not smaller.
+	Gzip []byte
+	// ETag and GzipETag are the strong validators of the identity and the gzip body.
+	ETag, GzipETag string
 }
 
 // Set is the loaded, hashed asset collection.
@@ -62,6 +71,26 @@ var contentTypes = map[string]string{
 	".woff2": "font/woff2",
 	".svg":   "image/svg+xml",
 	".txt":   "text/plain; charset=utf-8",
+}
+
+// compressible lists the types worth gzipping. Fonts and images are already compressed.
+var compressible = map[string]bool{".css": true, ".js": true, ".svg": true, ".txt": true}
+
+// gzipBody compresses b the same way every time: no file name and a zero modification time, so two
+// starts of the server (and two builds) produce identical bytes.
+func gzipBody(b []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	zw, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := zw.Write(b); err != nil {
+		return nil, err
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // Load reads the embedded tree and builds the hashed set.
@@ -104,7 +133,9 @@ func load(fsys fs.FS) (*Set, error) {
 			cssNames = append(cssNames, name)
 			continue
 		}
-		s.add(name, body, typ)
+		if err := s.add(name, body, typ); err != nil {
+			return nil, err
+		}
 	}
 
 	// Fonts are hashed first, then the CSS that refers to them.
@@ -115,18 +146,31 @@ func load(fsys fs.FS) (*Set, error) {
 		if err != nil {
 			return nil, err
 		}
-		s.add(name, body, contentTypes[".css"])
+		if err := s.add(name, body, contentTypes[".css"]); err != nil {
+			return nil, err
+		}
 	}
 	return s, nil
 }
 
-func (s *Set) add(name string, body []byte, typ string) {
+func (s *Set) add(name string, body []byte, typ string) error {
 	sum := sha256.Sum256(body)
 	ext := path.Ext(name)
-	hashed := strings.TrimSuffix(name, ext) + "." + hex.EncodeToString(sum[:])[:10] + ext
-	a := &Asset{Name: name, Hashed: hashed, Body: body, Type: typ}
+	hash := hex.EncodeToString(sum[:])[:10]
+	hashed := strings.TrimSuffix(name, ext) + "." + hash + ext
+	a := &Asset{Name: name, Hashed: hashed, Body: body, Type: typ, ETag: `"` + hash + `"`, GzipETag: `"` + hash + `-gz"`}
+	if compressible[ext] {
+		gz, err := gzipBody(body)
+		if err != nil {
+			return fmt.Errorf("static: compress %s: %w", name, err)
+		}
+		if len(gz) < len(body) {
+			a.Gzip = gz
+		}
+	}
 	s.byName[name] = a
 	s.byHashed[hashed] = a
+	return nil
 }
 
 var fontURL = regexp.MustCompile(`url\("/static/(fonts/[^"]+)"\)`)
@@ -214,7 +258,49 @@ func (s *Set) Names() []string {
 	return names
 }
 
-// Handler serves GET /static/{path...} by hashed name only.
+// acceptsGzip reports whether an Accept-Encoding header allows a gzip answer. Codings are comma
+// separated, each "name[;q=value]" with a case-insensitive name. An explicit gzip (or x-gzip) entry
+// decides; without one, "*" decides; otherwise the answer is no. A quality of 0 or one that does
+// not parse refuses that entry.
+func acceptsGzip(header string) bool {
+	star, starSeen := false, false
+	for _, part := range strings.Split(header, ",") {
+		fields := strings.Split(part, ";")
+		name := strings.ToLower(strings.TrimSpace(fields[0]))
+		if name != "gzip" && name != "x-gzip" && name != "*" {
+			continue
+		}
+		ok := true
+		for _, param := range fields[1:] {
+			key, val, _ := strings.Cut(strings.TrimSpace(param), "=")
+			if strings.ToLower(strings.TrimSpace(key)) != "q" {
+				continue
+			}
+			q, err := strconv.ParseFloat(strings.TrimSpace(val), 64)
+			ok = err == nil && q > 0
+		}
+		if name == "*" {
+			star, starSeen = ok, true
+			continue
+		}
+		return ok
+	}
+	return starSeen && star
+}
+
+// matchesETag reports whether an If-None-Match header names etag (strong comparison) or is "*".
+func matchesETag(header, etag string) bool {
+	for _, tag := range strings.Split(header, ",") {
+		if tag = strings.TrimSpace(tag); tag == "*" || tag == etag {
+			return true
+		}
+	}
+	return false
+}
+
+// Handler serves GET and HEAD /static/{path...} by hashed name only. It answers with the gzip body
+// when the asset has one and the client accepts it. Range is ignored, so the answer is always 200
+// with the whole body (or 304 when If-None-Match matches).
 func (s *Set) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		a, ok := s.byHashed[strings.TrimPrefix(r.URL.Path, "/static/")]
@@ -223,9 +309,28 @@ func (s *Set) Handler() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		body, etag, gz := a.Body, a.ETag, false
+		if a.Gzip != nil && acceptsGzip(r.Header.Get("Accept-Encoding")) {
+			body, etag, gz = a.Gzip, a.GzipETag, true
+		}
 		h := w.Header()
 		h.Set("Content-Type", a.Type)
 		h.Set("Cache-Control", "public, max-age=31536000, immutable")
-		_, _ = w.Write(a.Body)
+		h.Set("ETag", etag)
+		if a.Gzip != nil {
+			h.Set("Vary", "Accept-Encoding")
+		}
+		if match := r.Header.Get("If-None-Match"); match != "" && matchesETag(match, etag) {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		if gz {
+			h.Set("Content-Encoding", "gzip")
+		}
+		h.Set("Content-Length", strconv.Itoa(len(body)))
+		if r.Method == http.MethodHead {
+			return
+		}
+		_, _ = w.Write(body)
 	})
 }
