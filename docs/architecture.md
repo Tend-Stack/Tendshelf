@@ -28,16 +28,16 @@ is not an audio file or a cached image. ffmpeg/ffprobe are child processes, and 
 | Package | Responsibility |
 | --- | --- |
 | `cmd/tendshelf` | Flags/env config, open the database, start jobs and the HTTP server, graceful shutdown. Subcommands later: `tendshelf migrate`, `tendshelf reset-password`, `tendshelf version`. |
-| `internal/db` | Open/check/migrate SQLite, `application_id`/`user_version`, pre-migration backups, ID generation, transactions helper. Owns `migrations/*.sql`. |
+| `internal/db` | Open/check/migrate SQLite, `application_id`/`user_version`, pre-migration backups, ID generation, transactions helper, settings (`GetSetting`/`PutSetting`) and audit-log (`Audit`) helpers. Owns `migrations/*.sql`. |
 | `internal/library` | Libraries, folders, books, files, chapters, people, series, labels, shelves: the read/write repository used by everything else. No HTTP, no ffmpeg. |
 | `internal/scan` | Walks library folders, groups files into books, detects new/changed/moved/missing files, refuses DRM, queues probe and metadata jobs. Ports ABS `scandir.js`/`BookScanner.js` behaviour. |
 | `internal/media` | ffprobe/ffmpeg runner (fixed args, protocol whitelist, deadlines, output caps); probe parsing (streams, tags, chapters, encryption); cover extraction and thumbnails; compatibility copies; stream-copy remux and verification. |
 | `internal/mediajobs` | Jobs `media.cover` (cover choice, stored picture, thumbnails, tint and accent colours) and `media.compat` (compatibility-copy cache with LRU cap). Imports library, media and jobs; never scan or metadata. Registered by `cmd/tendshelf/hooks.go`; the cover job follows the scanner's settled books. |
 | `internal/metadata` | Local sources (names, tags, sidecars), the field-provenance merge, abridged/dramatized detection. Ports `extractor_details.py`. |
 | `internal/metadata/online` | Provider clients (Audnexus, Audible catalogue, Google Books, Open Library, iTunes), scoring, per-site spacing, 10 s timeouts, 7-day cache, safe cover fetch (5 MB, magic-byte check). The only `http.Client` in the program. Ports `extractor_online.py`. |
-| `internal/users` | Accounts, roles, password hashing, devices, per-user settings. |
-| `internal/auth` | Sessions (cookie), device tokens (bearer), CSRF, login rate limiting, middleware that puts the user in the request context. Passkeys later. |
-| `internal/share` | Grants, invites, share links, `share.Can(user, action, target)`, the SQL grant filter, invite email (`mail.go`, `net/smtp`). |
+| `internal/users` | Accounts, roles, argon2id password hashing (at most 4 at once, never inside a write transaction), account validation, owner creation. Devices and per-user settings later. |
+| `internal/auth` | Sessions (cookie, hashed tokens), sign-in/sign-out/setup service, failed-attempt limits, trusted-proxy client address, setup code, safe `next` redirects, middleware that puts the user in the request context. Device tokens (bearer) and passkeys later. CSRF lives in `internal/web`. |
+| `internal/share` | `share.Can(user, action, target)`, the action names and the SQL listing filters (owner and admin only until P3); later grants, invites, share links, invite email (`mail.go`, `net/smtp`). |
 | `internal/progress` | Progress, listening sessions, bookmarks, notes; the newest-wins merge; offline batch apply. |
 | `internal/jobs` | Persisted job queue: leases, per-kind concurrency, cancellation, progress events, restart recovery. |
 | `internal/web` | templ pages/components, static assets (embedded), HTMX handlers, security headers, the page router. |
@@ -167,8 +167,8 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | Route | Page |
 | --- | --- |
 | `/` | Home: continue listening, recently added, shelves |
-| `/setup` | First run (only while no owner exists): create the owner account first, then name the server and add the first folder ([decision 0002](decisions/0002-design-handoff.md)) |
-| `/login`, `POST /logout` | |
+| `/setup` | First run (only while no owner exists, 404 after; always needs the setup code from the server log): create the owner account first, then name the server and add the first folder ([decision 0002](decisions/0002-design-handoff.md)) |
+| `/login`, `POST /logout` | Plain forms with full page loads (no hx-boost); 422 on a wrong answer, 429 when limited; `next` is checked by `auth.SafeNext` |
 | `/libraries/{id}` | Grid/list with sort and filter |
 | `/books/{id}` | Book: cover, details, chapters, play, bookmarks, notes |
 | `/books/{id}/edit`, `/books/{id}/match` | Edit details; online lookup and field compare (P2) |
@@ -268,10 +268,41 @@ and its `/hx/dev/*` fragments; release builds do not register them.
 
 ## Auth and sharing
 
-- Passwords: argon2id (OWASP: 19 MiB, t=2, p=1). Login rate limit per IP and per username.
-- Sessions: 32 random bytes in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` when served over TLS or
-  behind a configured trusted proxy); 30-day sliding expiry. Device tokens for the API, revocable on `/me`.
-- CSRF: per-session token required in `X-CSRF-Token` or `_csrf` for unsafe methods.
+- Passwords: argon2id (OWASP: 19 MiB, t=2, p=1); the hash string carries its own parameters, so the cost can
+  change later. At most four hashes run at once and never inside a write transaction. Minimum 10
+  characters, maximum 256.
+- First run (P1b-1): the server makes a **setup code** (10 Crockford characters, `XXXXX-XXXXX`, new on every
+  start, in memory only) and logs the link `http://<addr>/setup?code=...` while there is no owner. `/setup`
+  always asks for the code (no loopback exemption); compared without case, hyphen or spaces, in constant time.
+  Exactly one owner: the check and the insert share one write transaction and the `users_one_owner` index
+  backs it up; the loser of a race gets "This server already has an owner" (409). After setup `/setup` is a 404.
+- Default deny: every path except `/static/*`, `/healthz`, `/setup` and `/login` needs a signed-in, enabled
+  account. Anonymous visitors go to `/login?next=...` (303; for an htmx request, 204 with `HX-Redirect`, which
+  makes htmx navigate the whole window); with no owner they go to `/setup`.
+- Sessions: 32 random bytes in an `HttpOnly`, `SameSite=Lax` cookie `ts_session` (`Secure` when served over TLS
+  or behind a trusted proxy that says `X-Forwarded-Proto: https`); only the SHA-256 is stored. 30-day sliding
+  expiry, refreshed at most once an hour; signing in ends the browser's previous session and sweeps expired
+  ones. Device tokens for the API, revocable on `/me`, come later.
+- Limits on failed attempts: 20 per client address per 15 minutes (shared by sign-in and setup; IPv6 counted
+  per /64) and 10 per account per 15 minutes, in memory with a bounded table. A limited request answers 429
+  with `Retry-After` before any hashing. Every sign-in failure (unknown name, wrong password, disabled
+  account) gives the same answer and takes the same time (a dummy hash runs for unknown names).
+- `-trusted-proxy` (env `TENDSHELF_TRUSTED_PROXY`): comma-separated IPs or CIDR ranges of reverse proxies. Only
+  from those peers are `X-Forwarded-For` (the right-most entry that is not itself trusted) and
+  `X-Forwarded-Proto` believed. Default: none.
+- `next` after sign-in must be a same-origin path (`auth.SafeNext`); anything else becomes `/`.
+- Audit log rows: `auth.login`, `auth.login_failed`, `auth.logout`, `setup.owner_created`,
+  `setup.code_failed`. Tokens, passwords and the setup code never reach a log line or audit row; the one
+  deliberate exception is the start-up setup link.
+- Authorization: `share.Can(user, action, target)` with the actions `library.view`, `book.view`, `book.listen`,
+  `book.download`, `book.edit`, `text.read`, `text.download`, `libraries.manage`, `jobs.manage`, `users.manage`,
+  `server.manage`, `shelves.use`, `research.use`. Until grants exist (P3): owner everything; admin everything
+  except `server.manage`; members only `shelves.use` on their own shelves; guests nothing. A shelf is always
+  its owner's. `BookFilter` and `LibraryFilter` give the SQL fragment for listings.
+- CSRF: token required in `X-CSRF-Token` or `_csrf` for unsafe methods. It is an HMAC of the signed-in
+  session (`s:` + session hash) or, for anonymous visitors, of the `ts_csrf` cookie (`c:` + value), so a token
+  for one can never pass as the other. The HMAC key is kept in `settings` (`web.csrf_key`), so open forms
+  survive a restart. Cross-site browser requests are refused by the standard library's origin check first.
 - Roles: **owner** (everything, server settings, Research toggle, one per server), **admin** (users,
   libraries, metadata, jobs, invites, Research when enabled), **member** (granted libraries/books, own
   progress, bookmarks, notes, shelves, downloads if granted), **guest** (granted books or libraries,
@@ -334,7 +365,7 @@ Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); 
 | `github.com/a-h/templ` v0.3.1100 (**approved and added in P0b**) | templ runtime; the CLI runs through the `tool` directive in `go.mod` (`make generate`), so one version source | MIT |
 | `modernc.org/sqlite` v1.61.1 (**approved and added in P0a**) | SQLite driver | Chosen over `mattn/go-sqlite3`: pure Go, so `CGO_ENABLED=0` cross-compiles to ARM NAS boxes, Windows, macOS and scratch containers; FTS5 is compiled in (checked in `lib/sqlite_linux_amd64.go`). Cost: slower than the C driver on heavy writes (guess 1.5-2x); fine for this workload. BSD-3 |
 | `htmx.min.js` 4.0.0 (**vendored in P0b**) as `internal/web/static/vendor/htmx-4.0.0.min.js` | Interactivity | Official release file, version and SHA-256 in `NOTICES.md`; licence 0BSD, text beside it. htmx 4 inheritance is explicit (`:inherited`) and 4xx/5xx responses swap |
-| `golang.org/x/crypto` v0.58.0 (argon2) | Password hashing in P1b | BSD-3 |
+| `golang.org/x/crypto` v0.58.0 (argon2) (**added in P1b-1**) | Password hashing, `internal/users` only | BSD-3 |
 | Fonts **vendored in P0b** to `internal/web/static/fonts/` (woff2): Fraunces (variable roman and italic), Fira Sans (400, 400 italic, 500, 600), Fira Mono (400, 500); 1.23 MB in total, 361 KB preloaded | The design's type; Fira Mono only in the Research lab | SIL OFL 1.1, texts beside the files; upstream commits and SHA-256 in `NOTICES.md`; self-hosted, never Google Fonts |
 
 Read-along (phase R), each awaiting approval:
