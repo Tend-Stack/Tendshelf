@@ -27,6 +27,7 @@ var iconShapes = map[string]string{
 	"close":        `<path d="M6 6l12 12M18 6 6 18"/>`,
 	"alert":        `<path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/>`,
 	"folder":       `<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>`,
+	"shield":       `<path d="M12 3 4 6v6c0 4.4 3.4 8 8 9 4.6-1 8-4.6 8-9V6z"/>`,
 }
 
 // IconNames lists the available icon names.

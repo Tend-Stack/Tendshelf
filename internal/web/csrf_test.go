@@ -58,7 +58,7 @@ func send(h http.Handler, method, path string, c *http.Cookie, mod func(*http.Re
 }
 
 func TestCSRFMissingToken403(t *testing.T) {
-	h := NewHandler(Options{})
+	h := csrfApp(t, nil)
 	c, _ := session(t, h)
 	for _, m := range unsafeMethods {
 		for name, cookie := range map[string]*http.Cookie{"with cookie": c, "no cookie": nil} {
@@ -76,7 +76,7 @@ func TestCSRFMissingToken403(t *testing.T) {
 }
 
 func TestCSRFWrongToken403(t *testing.T) {
-	h := NewHandler(Options{})
+	h := csrfApp(t, nil)
 	c, tok := session(t, h)
 	other, otherTok := session(t, h)
 	cases := map[string]string{"garbage": "nope", "other session": otherTok, "truncated": tok[:len(tok)-1]}
@@ -94,7 +94,7 @@ func TestCSRFWrongToken403(t *testing.T) {
 }
 
 func TestCSRFHeaderOK(t *testing.T) {
-	h := NewHandler(Options{})
+	h := csrfApp(t, nil)
 	c, tok := session(t, h)
 	for _, m := range unsafeMethods {
 		t.Run(m, func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestCSRFHeaderOK(t *testing.T) {
 }
 
 func TestCSRFFormFieldOK(t *testing.T) {
-	h := NewHandler(Options{})
+	h := csrfApp(t, nil)
 	c, tok := session(t, h)
 	for _, m := range unsafeMethods {
 		t.Run(m, func(t *testing.T) {
@@ -133,7 +133,7 @@ func TestCSRFFormFieldOK(t *testing.T) {
 }
 
 func TestCSRFMultipartFieldOK(t *testing.T) {
-	h := NewHandler(Options{})
+	h := csrfApp(t, nil)
 	c, tok := session(t, h)
 	for token, want := range map[string]int{tok: http.StatusNotFound, "nope": http.StatusForbidden} {
 		var buf bytes.Buffer
@@ -155,7 +155,7 @@ type nopCloser struct{ *strings.Reader }
 func (nopCloser) Close() error { return nil }
 
 func TestCSRFCrossSite403(t *testing.T) {
-	h := NewHandler(Options{})
+	h := csrfApp(t, nil)
 	c, tok := session(t, h)
 	for _, m := range unsafeMethods {
 		t.Run(m, func(t *testing.T) {
@@ -171,7 +171,7 @@ func TestCSRFCrossSite403(t *testing.T) {
 }
 
 func TestCSRFCookieMintedOnGet(t *testing.T) {
-	rec := send(NewHandler(Options{}), http.MethodGet, "/", nil, nil)
+	rec := send(csrfApp(t, nil), http.MethodGet, "/", nil, nil)
 	var got *http.Cookie
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == csrfCookie {
@@ -188,12 +188,12 @@ func TestCSRFCookieMintedOnGet(t *testing.T) {
 		t.Fatalf("cookie value length %d, want 43 (32 bytes base64url)", len(got.Value))
 	}
 	// A malformed cookie is replaced.
-	rec = send(NewHandler(Options{}), http.MethodGet, "/", &http.Cookie{Name: csrfCookie, Value: "short"}, nil)
+	rec = send(csrfApp(t, nil), http.MethodGet, "/", &http.Cookie{Name: csrfCookie, Value: "short"}, nil)
 	if !strings.Contains(strings.Join(rec.Header().Values("Set-Cookie"), ";"), csrfCookie+"=") {
 		t.Fatal("malformed cookie was not replaced")
 	}
 	// A valid cookie is kept.
-	rec = send(NewHandler(Options{}), http.MethodGet, "/", got, nil)
+	rec = send(csrfApp(t, nil), http.MethodGet, "/", got, nil)
 	if len(rec.Header().Values("Set-Cookie")) != 0 {
 		t.Fatal("a valid cookie must not be re-minted")
 	}
@@ -202,7 +202,7 @@ func TestCSRFCookieMintedOnGet(t *testing.T) {
 func TestCSRFSecureCookieOnTLS(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "https://example.test/", nil)
 	rec := httptest.NewRecorder()
-	NewHandler(Options{}).ServeHTTP(rec, req)
+	csrfApp(t, nil).ServeHTTP(rec, req)
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == csrfCookie && !c.Secure {
 			t.Fatal("cookie over TLS must be Secure")
@@ -211,7 +211,7 @@ func TestCSRFSecureCookieOnTLS(t *testing.T) {
 }
 
 func TestCSRFTokenStable(t *testing.T) {
-	h := NewHandler(Options{})
+	h := csrfApp(t, nil)
 	c, tok := session(t, h)
 	if again := tokenFor(t, h, c); again != tok {
 		t.Fatalf("token changed for the same cookie: %q vs %q", tok, again)
@@ -222,15 +222,15 @@ func TestCSRFTokenStable(t *testing.T) {
 	}
 	// A fixed key makes tokens survive a restart.
 	key := []byte(strings.Repeat("k", 32))
-	a := NewHandler(Options{CSRFKey: key})
-	b := NewHandler(Options{CSRFKey: key})
+	a := csrfApp(t, key)
+	b := csrfApp(t, key)
 	if tokenFor(t, a, c) != tokenFor(t, b, c) {
 		t.Fatal("same key and cookie must give the same token")
 	}
 }
 
 func TestCSRFHXRequestGetsAlertToast(t *testing.T) {
-	h := NewHandler(Options{})
+	h := csrfApp(t, nil)
 	c, _ := session(t, h)
 	rec := send(h, http.MethodPost, "/", c, func(r *http.Request) { r.Header.Set("HX-Request", "true") })
 	if rec.Code != http.StatusForbidden {
@@ -240,5 +240,55 @@ func TestCSRFHXRequestGetsAlertToast(t *testing.T) {
 	want := `<div hx-swap-oob="beforeend:#toasts"><div role="alert" class="ts-toast">This form expired. Reload the page and try again.</div></div>`
 	if strings.TrimSpace(body) != want {
 		t.Fatalf("body = %q", body)
+	}
+}
+
+// csrfApp is the CSRF guard in front of a stub app: GET / shows the token in the same markup the
+// layout uses, and any other route is a 404 (so a request that passes the guard answers 404).
+// A nil key means a random key; the binding is the default, the ts_csrf cookie.
+func csrfApp(t *testing.T, key []byte) http.Handler {
+	t.Helper()
+	c := NewCSRF(key, nil)
+	s := &server{assets: mustAssets(t), csrf: c}
+	c.Deny = http.HandlerFunc(s.forbidden)
+	return c.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/" {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = w.Write([]byte(`<body hx-headers="{&#34;X-CSRF-Token&#34;:&#34;` + c.TokenFrom(r.Context()) + `&#34;}">`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+}
+
+// TestCSRFInjectableBinding checks the seam the server uses to bind tokens to a session.
+func TestCSRFInjectableBinding(t *testing.T) {
+	sess := func(r *http.Request) (string, bool) {
+		if v := r.Header.Get("X-Test-Session"); v != "" {
+			return "s:" + v, true
+		}
+		return cookieBinding(r)
+	}
+	c := NewCSRF([]byte(strings.Repeat("k", 32)), sess)
+	h := c.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	tok := c.Token("s:abc")
+	post := func(session, token string) int {
+		req := httptest.NewRequest(http.MethodPost, "/", nil)
+		if session != "" {
+			req.Header.Set("X-Test-Session", session)
+		}
+		req.Header.Set(csrfHeader, token)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if got := post("abc", tok); got != http.StatusNoContent {
+		t.Fatalf("matching session: %d", got)
+	}
+	if got := post("abd", tok); got != http.StatusForbidden {
+		t.Fatalf("other session: %d", got)
+	}
+	if c.Token("c:abc") == tok {
+		t.Fatal("binding kinds collide")
 	}
 }

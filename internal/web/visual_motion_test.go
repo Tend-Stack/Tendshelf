@@ -41,7 +41,7 @@ func chromium(t *testing.T) *cdp.Browser {
 
 func appServer(t *testing.T) string {
 	t.Helper()
-	srv := httptest.NewServer(NewHandler(Options{Version: "visual"}))
+	srv := httptest.NewServer(newTestApp(t).signedIn(t))
 	t.Cleanup(srv.Close)
 	return srv.URL
 }

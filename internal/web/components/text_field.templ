@@ -1,0 +1,89 @@
+package components
+
+// Field describes one labelled text input.
+type Field struct {
+	ID, Name, Label string
+	// Optional is the muted note after the label, such as "(optional, for invites)".
+	Optional     string
+	Type         string // text (default), email or password
+	Value        string // never rendered for a password
+	Hint         string
+	Error        string // already copy; empty when the field is fine
+	Autocomplete string
+	Required     bool
+	// Plain turns off capitalisation and spell checking, for usernames and codes.
+	Plain     bool
+	Autofocus bool
+}
+
+func fieldType(f Field) string {
+	switch f.Type {
+	case "email", "password":
+		return f.Type
+	}
+	return "text"
+}
+
+// describedBy lists the ids of the hint and the error, so a screen reader reads them with the label.
+func describedBy(f Field) string {
+	switch {
+	case f.Hint != "" && f.Error != "":
+		return f.ID + "-hint " + f.ID + "-error"
+	case f.Hint != "":
+		return f.ID + "-hint"
+	case f.Error != "":
+		return f.ID + "-error"
+	}
+	return ""
+}
+
+// TextField is the labelled input of the design system (ts-field), with an optional hint and an
+// error that carries an icon as well as colour.
+templ TextField(f Field) {
+	<div class="ts-field">
+		<label class="ts-field__label" for={ f.ID }>
+			{ f.Label }
+			if f.Optional != "" {
+				<span class="ts-field__optional">{ f.Optional }</span>
+			}
+		</label>
+		<input
+			id={ f.ID }
+			name={ f.Name }
+			class="ts-input"
+			type={ fieldType(f) }
+			if fieldType(f) != "password" && f.Value != "" {
+				value={ f.Value }
+			}
+			if f.Autocomplete != "" {
+				autocomplete={ f.Autocomplete }
+			}
+			if f.Required {
+				required
+			}
+			if f.Plain {
+				autocapitalize="off"
+				autocorrect="off"
+				spellcheck="false"
+			}
+			if f.Autofocus {
+				autofocus
+			}
+			if f.Error != "" {
+				aria-invalid="true"
+			}
+			if d := describedBy(f); d != "" {
+				aria-describedby={ d }
+			}
+		/>
+		if f.Hint != "" {
+			<p id={ f.ID + "-hint" } class="ts-field__hint">{ f.Hint }</p>
+		}
+		if f.Error != "" {
+			<p id={ f.ID + "-error" } class="ts-field__error">
+				@Icon("alert", false)
+				{ f.Error }
+			</p>
+		}
+	</div>
+}
