@@ -125,9 +125,10 @@ closes it on Escape or a close link after the exit motion, and returns focus to 
 Lead review: Chromium captures (kitchen sink in four themes, sheet over the tab bar, toasts) match the
 motion spec; `make visual-webkit` run by the lead passes 10 subtests (four themes at 447 and 1440 plus the
 swap check; WebKit reports View Transitions and `@starting-style`); it found `ts-scroll-x` wrapping when
-combined with `ts-cluster`, fixed (nowrap row, `flex: none` children). Not yet checked by hand: WebKit
-reduced motion (needs the desktop animation setting off), the WebKitGTK 6.0 MiniBrowser that Wails uses,
-and press feedback by finger; all three are on the kitchen sink (`make run-dev`). Next: M1 (P1a).
+combined with `ts-cluster`, fixed (nowrap row, `flex: none` children). Operator hand checks 2026-11-01 on
+the kitchen sink (`make run-dev`): press feedback, page swap, sheet, toasts, progress and themes in the
+operator's browser; the same with GNOME Reduce Animation on (fades only); and the WebKitGTK 6.0
+MiniBrowser that Wails uses (`make app`). All behaved as specified. Next: M1 (P1a).
 
 ## M1 It plays (single owner)
 

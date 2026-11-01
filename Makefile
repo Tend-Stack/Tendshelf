@@ -5,7 +5,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: build generate test run run-dev check fmt vet clean visual visual-webkit
+.PHONY: app build generate test run run-dev check fmt vet clean visual visual-webkit
 
 generate:
 	$(GO) tool templ generate
@@ -19,6 +19,12 @@ test:
 # The dev build tag adds the /dev pages (kitchen sink) and their fragments; release builds omit them.
 run-dev: generate
 	$(GO) run -tags dev ./cmd/tendshelf -addr $(ADDR)
+
+# Opens the running server (make run or make run-dev) in a WebKitGTK 6.0 window, the engine the Wails
+# desktop app uses on Linux. Linux only; development convenience, not part of the build.
+WEBKIT_APP ?= /usr/lib/x86_64-linux-gnu/webkitgtk-6.0/MiniBrowser
+app:
+	$(WEBKIT_APP) http://$(ADDR)/ >/dev/null 2>&1 &
 
 run: build
 	./$(BIN) -addr $(ADDR)
