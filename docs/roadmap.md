@@ -14,7 +14,7 @@ themes.
 
 | Milestone | Phase | State | Evidence |
 | --- | --- | --- | --- |
-| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 4.0.0, fonts and templ v0.3.1100 downloads approved). P0a (data and jobs) and P0b (UI shell) built and merged 2026-11-01, see their notes below; P0c in progress. | `make check` green 2026-11-01. |
+| M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 4.0.0, fonts and templ v0.3.1100 downloads approved). **Done 2026-11-01.** P0a (data and jobs), P0b (UI shell) and P0c (utilities and motion) built, reviewed and merged; see their notes below. | `make check` (with and without `-tags dev`), `make build` (CGO_ENABLED=0), `make visual` (Chromium) and `make visual-webkit` (WebKitGTK 2.52.6) green on main 2026-11-01; CI green. |
 | M1 It plays | P1a-P1c | Not started | |
 | M2 Family | P3 | Not started | |
 | M3 Pocket | P4 | Not started | |
@@ -105,7 +105,7 @@ Exit: a `/dev/kitchen-sink` page (registered only in development builds) shows e
 motion state; captures in Chromium and WebKitGTK (MiniBrowser) at 390 and 1440 match in all four
 themes; reduced motion verified; no layout shift on swap.
 
-Status 2026-11-01: built, pending the lead's review. Scope: `utilities.css` (4.3 KB) and `motion.css`
+Status 2026-11-01: built, reviewed and merged. Scope: `utilities.css` (4.3 KB) and `motion.css`
 (5.1 KB) in the `utilities` and `motion` layers; boosted navigation runs one View Transition
 (`transition:true` in the boost value, `#main` named `ts-main`, `outerSync` keeps the node) with a
 `ts-entering` keyframe where the API is missing; sheets and toasts enter with `@starting-style`;
@@ -122,6 +122,12 @@ Sheets render in `#sheet`, outside `#main` (a sibling of `#toasts`), because the
 on `#main` makes it a stacking context that would put a sheet under the tab bar; stacking order is player
 slot 9, tab bar 10, toasts 20, sheet layer 25, skip link 30. `shell.js` focuses a sheet when it opens,
 closes it on Escape or a close link after the exit motion, and returns focus to the opener.
+Lead review: Chromium captures (kitchen sink in four themes, sheet over the tab bar, toasts) match the
+motion spec; `make visual-webkit` run by the lead passes 10 subtests (four themes at 447 and 1440 plus the
+swap check; WebKit reports View Transitions and `@starting-style`); it found `ts-scroll-x` wrapping when
+combined with `ts-cluster`, fixed (nowrap row, `flex: none` children). Not yet checked by hand: WebKit
+reduced motion (needs the desktop animation setting off), the WebKitGTK 6.0 MiniBrowser that Wails uses,
+and press feedback by finger; all three are on the kitchen sink (`make run-dev`). Next: M1 (P1a).
 
 ## M1 It plays (single owner)
 

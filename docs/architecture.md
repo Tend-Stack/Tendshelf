@@ -213,7 +213,7 @@ so Back, reload and links without JavaScript all work.
 | Library grid `#library-grid` | change on filters, sort, view | Page + `hx-select`: `GET /libraries/{id}?view=&sort=&filter=` with `hx-push-url`; more rows from `/hx/libraries/{id}/items` |
 | Search results `#search-results` | `input changed delay:150ms` | Page + `hx-select`: `GET /search?q=` |
 | Book tab panels `#book-panel` | click on a tab | Page + `hx-select`: `GET /books/{id}/{tab}` (`about`, `chapters`, `bookmarks`, `details`) with `hx-push-url` |
-| Compare sheet `#sheet` (P2) | "Look up details online" | `POST /hx/books/{id}/match` then `GET /hx/books/{id}/compare?candidate=` |
+| Compare sheet (P2), in `#sheet` | "Look up details online" | `POST /hx/books/{id}/match` then `GET /hx/books/{id}/compare?candidate=` into `#sheet` (see the Sheets row) |
 | Scan progress `#scan` | while a scan runs | `GET /hx/jobs/{id}` |
 | Download rows | client only | Service worker and IndexedDB (P4); no server polling |
 | Users list `#users` | after invite, revoke, role change | `GET /hx/admin/users` |
