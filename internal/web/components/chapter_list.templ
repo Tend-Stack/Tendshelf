@@ -44,6 +44,7 @@ templ ChapterList(v ChapterListView) {
 					<a
 						class={ chapterClass(c) }
 						href={ templ.SafeURL(c.Href) }
+						hx-boost="false"
 						data-ts-play-at={ strconv.FormatInt(c.PlayAtMs, 10) }
 						data-ts-book={ v.BookID }
 						if c.Current {

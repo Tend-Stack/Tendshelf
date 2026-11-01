@@ -170,6 +170,14 @@ func TestListeningSeriesNext(t *testing.T) {
 				g.Series.Name != "Saga" || g.Series.Sequence != fmt.Sprint(c.wantNext) {
 				t.Fatalf("got %+v, want next %d started %v done %d total %d", g, c.wantNext, c.started, c.done, c.total)
 			}
+			// NextIndex counts the visible books: a hidden book before Next does not take a place.
+			wantIndex := c.wantNext
+			if c.hide > 0 && c.hide < c.wantNext {
+				wantIndex--
+			}
+			if g.NextIndex != wantIndex {
+				t.Fatalf("NextIndex = %d, want %d", g.NextIndex, wantIndex)
+			}
 			if c.started && g.PositionMs == 0 {
 				t.Fatal("started series has no position")
 			}

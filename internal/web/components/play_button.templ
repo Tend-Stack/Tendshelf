@@ -28,11 +28,13 @@ func playBtnCompat(v PlayButtonView) string {
 	return "0"
 }
 
-// PlayButton is the one control that plays or resumes a book on a screen.
+// PlayButton is the one control that plays or resumes a book on a screen. hx-boost is off for it:
+// a click before player.js has loaded must follow the plain /stream/ link, not be fetched by htmx.
 templ PlayButton(v PlayButtonView) {
 	<a
 		class={ playBtnClass(v) }
 		href={ templ.SafeURL(v.Href) }
+		hx-boost="false"
 		data-ts-play={ v.BookID }
 		data-ts-file={ v.FileID }
 		data-ts-file-start-ms={ strconv.FormatInt(v.FileStartMs, 10) }
