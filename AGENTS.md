@@ -86,8 +86,9 @@ was reused, extended or replaced.
 - Ebook files (read-along text editions, `docs/read-along.md`) follow the same rules: library ebooks are
   read-only, uploads are kept byte-identical, and copy-protected ebooks (Adobe ADEPT, Apple, Readium LCP,
   encrypted EPUB content, PDF `/Encrypt`, encrypted MOBI, any KFX) are refused, never decrypted.
-- ffmpeg/ffprobe run with `-protocol_whitelist file,pipe` (and `-nostdin`), fixed argument lists (never
-  a shell), a context deadline and output size limits.
+- ffmpeg/ffprobe run with `-protocol_whitelist file,pipe` (ffmpeg also `-nostdin`; ffprobe has no such
+  option and reads /dev/null), fixed argument lists (never a shell), a context deadline and output size
+  limits.
 
 ## Security and privacy
 

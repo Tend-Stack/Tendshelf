@@ -15,7 +15,7 @@ themes.
 | Milestone | Phase | State | Evidence |
 | --- | --- | --- | --- |
 | M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 4.0.0, fonts and templ v0.3.1100 downloads approved). **Done 2026-11-01.** P0a (data and jobs), P0b (UI shell) and P0c (utilities and motion) built, reviewed and merged; see their notes below. | `make check` (with and without `-tags dev`), `make build` (CGO_ENABLED=0), `make visual` (Chromium) and `make visual-webkit` (WebKitGTK 2.52.6) green on main 2026-11-01; CI green. |
-| M1 It plays | P1a-P1c | Not started | |
+| M1 It plays | P1a-P1c | In progress. P1a is split in four packages (P1a-1 schema, repository and media runner; P1a-2 scanner; P1a-3 local details; P1a-4 covers). **P1a-1 built 2026-11-01**, not yet merged. | `make check`, `make build`, `CGO_ENABLED=0 go build ./...` and `make test-media` green on the P1a-1 branch. |
 | M2 Family | P3 | Not started | |
 | M3 Pocket | P4 | Not started | |
 | M4 Details | P2 | Not started | |
@@ -147,6 +147,19 @@ packages; each page package uses the `screens/core`, `screens/browse`, `screens/
 
 Exit: on a synthetic 200-book fixture library, first scan groups every layout correctly; refused files
 are listed with a plain reason; accent contrast checks pass for the tested pairs in the handoff.
+
+**P1a-1 status (2026-11-01)**: migration `0002_library.sql` (12 STRICT tables: libraries, library_folders,
+books, audio_files, chapters, metadata_values, people, book_people, series, book_series, book_labels,
+covers; `books.folder_id` and `audio_files.missing_since` added to the architecture); `internal/library`
+(reads, `CreateLibrary`, `AddFolder` with overlap refusal, `Update`/`Tx` writers for books, audio files,
+missing marks and chapters); `internal/media` (`Locate`, `Classify`, `Probe` with DRM refusal by extension
+and by ffprobe signals, `QuickHash`) and `internal/media/mediatest` (helper-process fake ffprobe, ffmpeg
+fixtures); `make test-media`. Checks: `make check`, `make build`, `CGO_ENABLED=0 go build ./...`,
+`make test-media` (6 real-ffmpeg tests: M4B with chapters and cover, MP3 parts, FLAC, CENC refused, `.aax`
+refused, junk refused). Limits: `books_fts` waits for P1b (migration 0003); the DRM signals for `drms`
+and `aavd` codec tags are unverified guesses, only the CENC packet side data was checked on a real file;
+no MP4 box walk; ffprobe version is not checked. People, series, labels, metadata values and covers have
+tables but no writers yet. Next: P1a-2 (scanner and move detection on this repository).
 
 ### P1b Accounts and browse pages
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -48,7 +49,7 @@ func TestRunRefusesNewerDatabase(t *testing.T) {
 		t.Fatal("run must refuse a newer database")
 	}
 	msg := err.Error()
-	for _, want := range []string{path, "newer version of Tendshelf", "schema 2", "up to 1", "The file was not changed."} {
+	for _, want := range []string{path, "newer version of Tendshelf", fmt.Sprintf("schema %d", db.SchemaVersion+1), fmt.Sprintf("up to %d", db.SchemaVersion), "The file was not changed."} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("message %q lacks %q", msg, want)
 		}
