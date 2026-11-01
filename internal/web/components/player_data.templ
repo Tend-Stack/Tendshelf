@@ -1,0 +1,97 @@
+package components
+
+import "strconv"
+
+// PlayerFileView is one audio file of the book on the book's timeline. Playable is the same rule
+// /stream applies. No file path is ever carried: the player asks /stream/{ID}.
+type PlayerFileView struct {
+	ID                   string
+	OffsetMs, DurationMs int64
+	Mime                 string
+	MayNeedCompat        bool
+	Playable             bool
+}
+
+// PlayerChapterView is one chapter on the book's timeline.
+type PlayerChapterView struct {
+	Idx            int
+	StartMs, EndMs int64
+	Title          string
+}
+
+// PlayerDataView is everything the web player needs to start a book. The accents are empty when
+// the person turned the tint off or the cover has none for that theme.
+type PlayerDataView struct {
+	BookID, Title, Author, CoverURL string
+	DurationMs, PositionMs          int64
+	Finished                        bool
+	UpdatedAt                       int64 // the stored progress's client time; 0 = none
+	DeviceID, DeviceLabel           string
+	ServerNow                       int64
+	Speed                           string // "1.25"
+	SkipBackS, SkipForwardS         int
+	AutoRewind                      bool
+	AccentDark, AccentLight         string
+	AccentSepia                     string
+	Files                           []PlayerFileView
+	Chapters                        []PlayerChapterView
+}
+
+func flagStr(b bool) string {
+	if b {
+		return "1"
+	}
+	return "0"
+}
+
+// PlayerData is the data-only fragment the web player reads (player.js, P1c-4): hidden, no text of
+// its own, attributes only, so the CSP needs nothing special.
+templ PlayerData(v PlayerDataView) {
+	<div
+		id="player-data"
+		class="ts-player-data"
+		hidden
+		data-book-id={ v.BookID }
+		data-title={ v.Title }
+		data-author={ v.Author }
+		data-cover-url={ v.CoverURL }
+		data-duration-ms={ strconv.FormatInt(v.DurationMs, 10) }
+		data-position-ms={ strconv.FormatInt(v.PositionMs, 10) }
+		data-finished={ flagStr(v.Finished) }
+		data-updated-at={ strconv.FormatInt(v.UpdatedAt, 10) }
+		data-device-id={ v.DeviceID }
+		data-device-label={ v.DeviceLabel }
+		data-server-now={ strconv.FormatInt(v.ServerNow, 10) }
+		data-speed={ v.Speed }
+		data-skip-back-s={ strconv.Itoa(v.SkipBackS) }
+		data-skip-forward-s={ strconv.Itoa(v.SkipForwardS) }
+		data-auto-rewind={ flagStr(v.AutoRewind) }
+		if v.AccentDark != "" {
+			data-accent-dark={ v.AccentDark }
+		}
+		if v.AccentLight != "" {
+			data-accent-light={ v.AccentLight }
+		}
+		if v.AccentSepia != "" {
+			data-accent-sepia={ v.AccentSepia }
+		}
+	>
+		<ol data-ts-files>
+			for _, f := range v.Files {
+				<li
+					data-id={ f.ID }
+					data-offset-ms={ strconv.FormatInt(f.OffsetMs, 10) }
+					data-duration-ms={ strconv.FormatInt(f.DurationMs, 10) }
+					data-mime={ f.Mime }
+					data-may-need-compat={ flagStr(f.MayNeedCompat) }
+					data-playable={ flagStr(f.Playable) }
+				></li>
+			}
+		</ol>
+		<ol data-ts-chapters>
+			for _, c := range v.Chapters {
+				<li data-idx={ strconv.Itoa(c.Idx) } data-start-ms={ strconv.FormatInt(c.StartMs, 10) } data-end-ms={ strconv.FormatInt(c.EndMs, 10) }>{ c.Title }</li>
+			}
+		</ol>
+	</div>
+}
