@@ -141,7 +141,12 @@ func TestThemeAttribute(t *testing.T) {
 
 func TestAriaCurrentHome(t *testing.T) {
 	_, body := getPage(t, "/", nil)
-	links := regexp.MustCompile(`<a [^>]*data-nav="[^"]*"[^>]*>`).FindAllString(body, -1)
+	var links []string
+	for _, l := range regexp.MustCompile(`<a [^>]*data-nav="[^"]*"[^>]*>`).FindAllString(body, -1) {
+		if !strings.Contains(l, `data-nav="/admin/`) { // the owner's "Your server" group is not a main destination
+			links = append(links, l)
+		}
+	}
 	if len(links) != 15 {
 		t.Fatalf("%d nav links, want 15 (5 destinations in 3 navs)", len(links))
 	}

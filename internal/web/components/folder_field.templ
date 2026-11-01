@@ -1,0 +1,70 @@
+package components
+
+// FolderFieldView is the audiobook-folder input of the setup step and the Add a folder page.
+type FolderFieldView struct {
+	Value string
+	Error string // already copy; empty when the path is fine
+	// Added is true once the folder is saved: the field becomes read-only and the hint reassures.
+	Added     bool
+	Autofocus bool
+}
+
+const (
+	folderHintBefore = "Type the full path, like /srv/media/audiobooks."
+	folderHintAdded  = "Tendshelf can read this folder. It never changes your files."
+)
+
+func folderDescribedBy(v FolderFieldView) string {
+	if v.Error != "" {
+		return "folder-hint folder-error"
+	}
+	return "folder-hint"
+}
+
+// FolderField is one self-contained component (label, input, hint, error). The input is always
+// id and name "folder"; the row around it (ts-folderfield__row) has room for a Browse button
+// beside the input, so one can be added later without changing this markup.
+templ FolderField(v FolderFieldView) {
+	<div class="ts-field ts-folderfield">
+		<label class="ts-field__label" for="folder">Audiobook folder</label>
+		<div class="ts-folderfield__row">
+			<input
+				id="folder"
+				name="folder"
+				class="ts-input"
+				type="text"
+				value={ v.Value }
+				required
+				autocomplete="off"
+				autocapitalize="off"
+				autocorrect="off"
+				spellcheck="false"
+				placeholder="/srv/media/audiobooks"
+				aria-describedby={ folderDescribedBy(v) }
+				if v.Added {
+					readonly
+				}
+				if v.Error != "" {
+					aria-invalid="true"
+				}
+				if v.Autofocus && !v.Added {
+					autofocus
+				}
+			/>
+		</div>
+		if v.Added {
+			<p id="folder-hint" class="ts-field__hint ts-folderfield__ok">
+				@Icon("check", false)
+				{ folderHintAdded }
+			</p>
+		} else {
+			<p id="folder-hint" class="ts-field__hint">{ folderHintBefore }</p>
+		}
+		if v.Error != "" {
+			<p id="folder-error" class="ts-field__error">
+				@Icon("alert", false)
+				{ v.Error }
+			</p>
+		}
+	</div>
+}

@@ -1,0 +1,122 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// AdminFolder is one folder row on the Libraries page.
+type AdminFolder struct {
+	ID, LibraryID, LibraryName, Path string
+	// Summary is "{n} books · {size}".
+	Summary string
+	// Scan is the library's scan status while one is active, otherwise nil.
+	Scan *components.ScanStatusView
+}
+
+// ProblemCard is one group in "things need a look". The handler writes the sentences.
+type ProblemCard struct {
+	Kind   string // drm, damaged, unsupported, missing or nocover: picks the icon
+	Title  string
+	Body   string
+	Titles []string // book titles, shown as a list when present
+}
+
+// AdminLibrariesView is the Libraries & scanning page.
+type AdminLibrariesView struct {
+	CSRF string
+	// Banner is the status line after "Mark books missing", or empty.
+	Banner   string
+	Ready    string // "912 books ready to play"
+	LastScan string // "Last scan 2 hours ago found 2 new books." or "No scan yet."
+	Folders  []AdminFolder
+	Problems []ProblemCard
+	// ProblemsTitle is "{n} things need a look"; empty when nothing does.
+	ProblemsTitle string
+}
+
+func problemIcon(kind string) string {
+	switch kind {
+	case "drm":
+		return "shield"
+	case "nocover":
+		return "grid"
+	}
+	return "alert"
+}
+
+// AdminLibraries lists the folders, starts scans and shows what needs a look.
+templ AdminLibraries(v AdminLibrariesView) {
+	<div class="ts-admin">
+		<span class="ts-overline">Your server</span>
+		<h1 class="title-1 ts-admin__title">Libraries &amp; scanning</h1>
+		if v.Banner != "" {
+			<p class="ts-banner ts-admin__banner" role="status">
+				@components.Icon("check", false)
+				{ v.Banner }
+			</p>
+		}
+		<section class="ts-admin__summary" aria-label="Scanning">
+			<p class="label ts-admin__ready">
+				@components.Icon("check", false)
+				{ v.Ready }
+			</p>
+			<p class="caption ts-num ts-admin__last">{ v.LastScan }</p>
+			<div class="ts-admin__actions">
+				<form method="post" action="/admin/libraries/scan">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--primary">Scan now</button>
+				</form>
+				<a class="ts-btn ts-btn--secondary" href="/admin/libraries/folders/new">Add a folder</a>
+			</div>
+		</section>
+		if len(v.Problems) > 0 {
+			<section class="ts-admin__section" aria-labelledby="problems-h">
+				<h2 id="problems-h" class="section">{ v.ProblemsTitle }</h2>
+				for _, c := range v.Problems {
+					<article class="ts-problem">
+						<span class={ "ts-problem__icon ts-problem__icon--" + c.Kind } aria-hidden="true">
+							@components.Icon(problemIcon(c.Kind), false)
+						</span>
+						<div class="ts-problem__text">
+							<h3 class="body ts-problem__title">{ c.Title }</h3>
+							<p class="caption ts-problem__body">{ c.Body }</p>
+							if len(c.Titles) > 0 {
+								<ul class="caption ts-problem__list">
+									for _, t := range c.Titles {
+										<li>{ t }</li>
+									}
+								</ul>
+							}
+						</div>
+					</article>
+				}
+			</section>
+		}
+		<section class="ts-admin__section" aria-labelledby="folders-h">
+			<h2 id="folders-h" class="section">Folders</h2>
+			<ul class="ts-folders">
+				for _, f := range v.Folders {
+					<li class="ts-folder">
+						<span class="ts-folder__icon" aria-hidden="true">@components.Icon("folder", false)</span>
+						<div class="ts-folder__text">
+							<span class="body ts-folder__name">{ f.LibraryName }</span>
+							<span class="caption ts-folder__path">{ f.Path }</span>
+							<span class="caption ts-num ts-folder__meta">{ f.Summary }</span>
+							if f.Scan != nil {
+								@components.ScanStatus(*f.Scan)
+							}
+						</div>
+						<div class="ts-folder__actions">
+							<form method="post" action={ templ.SafeURL("/admin/libraries/" + f.LibraryID + "/scan") }>
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<button type="submit" class="ts-btn ts-btn--secondary">Scan</button>
+							</form>
+							<details class="ts-folder__more">
+								<summary class="ts-btn ts-btn--quiet">More</summary>
+								<a class="ts-folder__link" href={ templ.SafeURL("/admin/folders/" + f.ID + "/emptied") }>This folder was emptied on purpose</a>
+							</details>
+						</div>
+					</li>
+				}
+			</ul>
+		</section>
+	</div>
+}

@@ -4,10 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+
+	"github.com/Tend-Stack/tendshelf/internal/db"
 )
 
 // This file holds the queries and writes behind the Libraries admin page and the setup steps.
 // Every read takes a Scope: books are joined as b and libraries as l, and both filters apply.
+
+// Store returns the database the repository works on, so the admin handlers can write the audit
+// row and settings that belong with a library change.
+func (r *Repo) Store() *db.Store { return r.st }
 
 // FolderSummary is a folder with its library name and what it holds.
 type FolderSummary struct {

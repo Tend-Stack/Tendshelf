@@ -13,8 +13,8 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
 
-// setupNextURL is where a new owner lands after /setup. P1b-4 points it at the next setup step.
-const setupNextURL = "/"
+// setupNextURL is where a new owner lands after /setup: the next setup step.
+const setupNextURL = "/setup/server"
 
 // formLimit bounds the body of the sign-in and setup forms.
 const formLimit = 16 << 10

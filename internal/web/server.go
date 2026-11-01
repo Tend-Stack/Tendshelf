@@ -155,9 +155,9 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerAuth(mux)
 	// P1b-2: s.registerCovers(mux)
 	//
-	// P1b-4: s.registerAdmin(mux)
+	s.registerAdmin(mux)
 	//
-	// P1b-4: s.registerSetupSteps(mux)
+	s.registerSetupSteps(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})
@@ -193,6 +193,12 @@ func (s *server) page(w http.ResponseWriter, r *http.Request, status int, title,
 
 // pageSheet is page with a sheet (or nil) rendered into #sheet, outside #main.
 func (s *server) pageSheet(w http.ResponseWriter, r *http.Request, status int, title, current string, body, sheet templ.Component) {
+	s.pageStyled(w, r, status, title, current, body, sheet)
+}
+
+// pageStyled is pageSheet with extra stylesheets (static paths) linked in the head. The shell shows
+// the "Your server" group to people who may manage libraries.
+func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, title, current string, body, sheet templ.Component, styles ...string) {
 	var buf bytes.Buffer
 	err := components.Layout(components.Page{
 		Title:   title,
@@ -201,6 +207,8 @@ func (s *server) pageSheet(w http.ResponseWriter, r *http.Request, status int, t
 		CSRF:    s.csrf.TokenFrom(r.Context()),
 		Assets:  s.assets,
 		Sheet:   sheet,
+		Styles:  styles,
+		Admin:   s.can.Can(r.Context(), currentUser(r), share.ManageLibraries, share.Target{Kind: share.TargetServer}),
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render page", "path", r.URL.Path, "err", err)

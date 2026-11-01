@@ -59,7 +59,7 @@ templ SideRail(current string) {
 }
 
 // Sidebar is the desktop navigation (1280 px and up).
-templ Sidebar(current string) {
+templ Sidebar(current string, admin bool) {
 	<nav aria-label="Main" id="nav-side" hx-preserve class="ts-side ts-nav-side">
 		<span class="ts-side__brand ts-brand">
 			@Mark()
@@ -76,6 +76,20 @@ templ Sidebar(current string) {
 			>
 				@Icon(it.Icon, false)
 				{ it.Label }
+			</a>
+		}
+		if admin {
+			<span class="ts-side__group ts-overline">Your server</span>
+			<a
+				href="/admin/libraries"
+				class="ts-side__item"
+				data-nav="/admin/libraries"
+				if current == "admin-libraries" {
+					aria-current="page"
+				}
+			>
+				@Icon("folder", false)
+				Libraries
 			</a>
 		}
 	</nav>

@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	allScope  = library.Scope{Books: share.Filter{SQL: "1=1"}, Libraries: share.Filter{SQL: "1=1"}}
-	noneScope = library.Scope{Books: share.Filter{SQL: "0=1"}, Libraries: share.Filter{SQL: "0=1"}}
+	adminAllScope  = library.Scope{Books: share.Filter{SQL: "1=1"}, Libraries: share.Filter{SQL: "1=1"}}
+	adminNoneScope = library.Scope{Books: share.Filter{SQL: "0=1"}, Libraries: share.Filter{SQL: "0=1"}}
 )
 
 func TestFolderSummaries(t *testing.T) {
@@ -24,7 +24,7 @@ func TestFolderSummaries(t *testing.T) {
 	librarytest.AddBook(t, r, f1, librarytest.BookSpec{Title: "Gone", Files: 2, MissingSince: 5})
 	librarytest.AddBook(t, r, f1, librarytest.BookSpec{Title: "Drm", Refused: library.RefusedDRM})
 	librarytest.AddBook(t, r, f2, librarytest.BookSpec{Title: "Two", Files: 2}) // 0, 1000
-	got, err := r.FolderSummaries(ctx, allScope)
+	got, err := r.FolderSummaries(ctx, adminAllScope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestFolderSummaries(t *testing.T) {
 		}
 	}
 	_, _ = l1, l2
-	if none, err := r.FolderSummaries(ctx, noneScope); err != nil || len(none) != 0 {
+	if none, err := r.FolderSummaries(ctx, adminNoneScope); err != nil || len(none) != 0 {
 		t.Fatalf("none scope = %v, %v", none, err)
 	}
 }
@@ -59,7 +59,7 @@ func TestProblemsGroupsAndCaps(t *testing.T) {
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "Lost", MissingSince: 9})
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "Lost drm", MissingSince: 9, Refused: library.RefusedDRM})
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "Fine"})
-	p, err := r.Problems(ctx, allScope, 0)
+	p, err := r.Problems(ctx, adminAllScope, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,11 +78,11 @@ func TestProblemsGroupsAndCaps(t *testing.T) {
 	if p.NoCoverCount != 1 || len(p.NoCover) != 1 || p.NoCover[0].Title != "Fine" {
 		t.Errorf("no cover = %d %+v", p.NoCoverCount, p.NoCover)
 	}
-	small, err := r.Problems(ctx, allScope, 3)
+	small, err := r.Problems(ctx, adminAllScope, 3)
 	if err != nil || len(small.Refused[library.RefusedDRM]) != 3 || small.RefusedCount[library.RefusedDRM] != 25 {
 		t.Errorf("cap 3 = %v, %v", small.RefusedCount, err)
 	}
-	none, err := r.Problems(ctx, noneScope, 0)
+	none, err := r.Problems(ctx, adminNoneScope, 0)
 	if err != nil || len(none.RefusedCount) != 0 || none.MissingCount != 0 || none.NoCoverCount != 0 {
 		t.Errorf("none scope = %+v, %v", none, err)
 	}
@@ -92,7 +92,7 @@ func TestProblemTitleFallsBackToFolderName(t *testing.T) {
 	r, _ := newRepo(t)
 	_, f := librarytest.NewLibrary(t, r, "Books", "/b")
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "", Refused: library.RefusedDRM})
-	p, err := r.Problems(ctx, allScope, 0)
+	p, err := r.Problems(ctx, adminAllScope, 0)
 	if err != nil || len(p.Refused[library.RefusedDRM]) != 1 {
 		t.Fatalf("%+v %v", p, err)
 	}
@@ -106,7 +106,7 @@ func TestNoCoverSkipsUnsettled(t *testing.T) {
 	_, f := librarytest.NewLibrary(t, r, "Books", "/b")
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "Settled"})
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "Waiting", Unsettled: true})
-	p, err := r.Problems(ctx, allScope, 0)
+	p, err := r.Problems(ctx, adminAllScope, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestOverview(t *testing.T) {
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "C", DurationMs: 4000, Series: "S2", Narrators: []string{"N3"}, Authors: []string{"Au"}})
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "Gone", DurationMs: 9000, Series: "S9", Narrators: []string{"N9"}, MissingSince: 3})
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "Drm", DurationMs: 9000, Refused: library.RefusedDRM})
-	o, err := r.Overview(ctx, allScope)
+	o, err := r.Overview(ctx, adminAllScope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestOverview(t *testing.T) {
 	if o != want {
 		t.Fatalf("Overview = %+v, want %+v", o, want)
 	}
-	if z, err := r.Overview(ctx, noneScope); err != nil || z != (library.Overview{}) {
+	if z, err := r.Overview(ctx, adminNoneScope); err != nil || z != (library.Overview{}) {
 		t.Fatalf("none scope = %+v, %v", z, err)
 	}
 }
@@ -144,7 +144,7 @@ func TestScanProgress(t *testing.T) {
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "B", Files: 3, Unsettled: true})
 	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "Gone", Files: 2, MissingSince: 3, Unsettled: true})
 	librarytest.AddBook(t, r, f2, librarytest.BookSpec{Title: "Elsewhere", Files: 5, Unsettled: true})
-	p, err := r.ScanProgress(ctx, allScope, l.ID)
+	p, err := r.ScanProgress(ctx, adminAllScope, l.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestScanProgress(t *testing.T) {
 	if p.Files != 5 || p.FilesWaiting != 3 {
 		t.Errorf("Files %d waiting %d", p.Files, p.FilesWaiting)
 	}
-	if z, err := r.ScanProgress(ctx, noneScope, l.ID); err != nil || z != (library.ScanProgress{}) {
+	if z, err := r.ScanProgress(ctx, adminNoneScope, l.ID); err != nil || z != (library.ScanProgress{}) {
 		t.Fatalf("none scope = %+v, %v", z, err)
 	}
 }

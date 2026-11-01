@@ -16,6 +16,11 @@ type Page struct {
 	// Sheet, when set, is rendered inside #sheet on a full-page load, so a canonical URL such as
 	// ?sheet=1 shows the sheet without JavaScript. Fragments swap sheets into #sheet.
 	Sheet templ.Component
+	// Styles lists extra stylesheets by static path (for example "css/pages-admin.css"), linked
+	// after the shared ones.
+	Styles []string
+	// Admin shows the "Your server" group in the desktop sidebar.
+	Admin bool
 }
 
 // htmxConfig is the htmx 4 configuration meta content.
@@ -40,13 +45,13 @@ templ Layout(p Page, body templ.Component) {
 			data-theme={ p.Theme }
 		}
 	>
-		@Head(p)
+		@Head(p, p.Styles...)
 		<body hx-boost:inherited="target:#main select:#main swap:outerSync transition:true" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
 			<div class="ts-shell">
 				@TabBar(p.Current)
 				@SideRail(p.Current)
-				@Sidebar(p.Current)
+				@Sidebar(p.Current, p.Admin)
 				<main id="main" class="ts-main" tabindex="-1" hx-history-elt>
 					@body
 				</main>
