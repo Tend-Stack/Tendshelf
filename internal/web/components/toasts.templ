@@ -5,6 +5,28 @@ templ Toasts() {
 	<div id="toasts" class="ts-toasts" aria-live="polite"></div>
 }
 
+// ToastOOB is the out-of-band fragment that appends a toast of the given kind to #toasts: "ok"
+// (status, check icon), "hint" (status, a small pill without an icon) or "err" (alert, warning
+// icon). Any other kind renders as "ok".
+templ ToastOOB(kind, message string) {
+	<div hx-swap-oob="beforeend:#toasts">
+		switch kind {
+			case "err":
+				<div role="alert" class="ts-toast">
+					<span class="ts-toast__err">@Icon("alert", false)</span>
+					{ message }
+				</div>
+			case "hint":
+				<div role="status" class="ts-toast ts-toast--hint">{ message }</div>
+			default:
+				<div role="status" class="ts-toast">
+					<span class="ts-toast__ok">@Icon("check", false)</span>
+					{ message }
+				</div>
+		}
+	</div>
+}
+
 // ErrorToast is the out-of-band fragment that appends an error toast to #toasts. htmx 4 swaps 4xx
 // and 5xx responses, so error responses to htmx requests carry this instead of a full page.
 templ ErrorToast(message string) {
