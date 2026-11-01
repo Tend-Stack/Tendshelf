@@ -284,30 +284,24 @@ function closePlayer() {
   else morph("full", "mini", closeNow);
 }
 
-// A press that moves vertically becomes a swipe; onMove follows the finger, onEnd decides.
+// A press that moves vertically becomes a swipe; onMove follows the finger, onEnd decides. The
+// document listens while the press lasts, so a mouse that leaves el is still followed, and a
+// button inside el still gets its click when the press never became a swipe.
 function swipe(el, enabled, onMove, onEnd) {
-  let start = null;
   el.addEventListener("pointerdown", (event) => {
-    start = enabled() && (event.button === 0 || event.pointerType !== "mouse") ? { x: event.clientX, y: event.clientY, live: false } : null;
-  });
-  el.addEventListener("pointermove", (event) => {
-    if (!start) return;
-    const dy = event.clientY - start.y;
-    if (!start.live) {
-      if (Math.abs(dy) < SWIPE_MIN_PX || Math.abs(dy) < Math.abs(event.clientX - start.x)) return;
+    if (!enabled() || (event.pointerType === "mouse" && event.button)) return;
+    const start = { x: event.clientX, y: event.clientY, live: false };
+    const move = (e) => {
+      const dy = e.clientY - start.y;
+      if (!start.live && (Math.abs(dy) < SWIPE_MIN_PX || Math.abs(dy) < Math.abs(e.clientX - start.x))) return;
       start.live = true;
-      el.setPointerCapture(event.pointerId);
-    }
-    onMove(dy);
-  });
-  const finish = (event) => {
-    if (start && start.live) onEnd(event.clientY - start.y);
-    start = null;
-  };
-  el.addEventListener("pointerup", finish);
-  el.addEventListener("pointercancel", () => {
-    if (start && start.live) onEnd(0);
-    start = null;
+      onMove(dy);
+    };
+    const stop = (e) => {
+      for (const type of ["pointermove", "pointerup", "pointercancel"]) document.removeEventListener(type, type === "pointermove" ? move : stop);
+      if (start.live) onEnd(e.type === "pointercancel" ? 0 : e.clientY - start.y);
+    };
+    for (const type of ["pointermove", "pointerup", "pointercancel"]) document.addEventListener(type, type === "pointermove" ? move : stop);
   });
 }
 

@@ -68,7 +68,7 @@ templ PlayerSlot(m PlayerMsgs) {
 	<section id="player" class="ts-player-slot" aria-label="Now playing" hx-preserve hidden { m.Attrs()... }>
 		<div class="ts-mini" id="mini-player">
 			<div class="ts-mini__progress" data-ts-mini-progress></div>
-			<a class="ts-mini__open" href="/" data-ts-open>
+			<a class="ts-mini__open" href="/" hx-boost="false" data-ts-open>
 				<span class="ts-cover ts-mini__cover"><img data-ts-cover alt="" width="48" height="48"/></span>
 				<span class="ts-mini__text">
 					<span class="ts-mini__title" data-ts-title></span>

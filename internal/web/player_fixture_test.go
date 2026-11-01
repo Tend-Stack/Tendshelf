@@ -115,6 +115,8 @@ func playerApp(t *testing.T) *playerEnv {
 		Title: "Harbour Lamp", Authors: []string{"Imogen Hale"}, Narrators: []string{"Theo Marsh"}, DurationMs: 180_000, Files: 2,
 	})
 	bookVisualCover(t, a, book, 0)
+	// the cover's colours for the full player (P1c-5): tint #1f4a52 from the palette, teal accents
+	streamExec(t, a, `UPDATE covers SET accent_json=? WHERE book_id=?`, `{"dark":"#9ccbc4","light":"#2c6660","sepia":"#2c6660"}`, book.ID)
 	files, err := a.lib.AudioFiles(context.Background(), book.ID)
 	if err != nil || len(files) != 2 {
 		t.Fatalf("audio files = %d, %v", len(files), err)

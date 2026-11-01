@@ -112,7 +112,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 			}
 			templ.ReleaseBuffer(templ_7745c5c3_Buffer)
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><div class=\"ts-mini\" id=\"mini-player\"><div class=\"ts-mini__progress\" data-ts-mini-progress></div><a class=\"ts-mini__open\" href=\"/\" data-ts-open><span class=\"ts-cover ts-mini__cover\"><img data-ts-cover alt=\"\" width=\"48\" height=\"48\"></span> <span class=\"ts-mini__text\"><span class=\"ts-mini__title\" data-ts-title></span> <span class=\"ts-mini__meta\" data-ts-meta></span></span></a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><div class=\"ts-mini\" id=\"mini-player\"><div class=\"ts-mini__progress\" data-ts-mini-progress></div><a class=\"ts-mini__open\" href=\"/\" hx-boost=\"false\" data-ts-open><span class=\"ts-cover ts-mini__cover\"><img data-ts-cover alt=\"\" width=\"48\" height=\"48\"></span> <span class=\"ts-mini__text\"><span class=\"ts-mini__title\" data-ts-title></span> <span class=\"ts-mini__meta\" data-ts-meta></span></span></a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
