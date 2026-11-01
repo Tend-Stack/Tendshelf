@@ -331,15 +331,17 @@ func TestPlayerBrowserCompat(t *testing.T) {
 		t.Fatal(err)
 	}
 	tab.WaitFor(`document.getElementById("audio").currentSrc.includes("compat=1")`, 10*time.Second)
-	// Whether Chromium then plays WAV bytes served as audio/mp4 is recorded, not required.
-	time.Sleep(2 * time.Second)
+	// Chromium sniffs the WAV bytes served as audio/mp4 and plays them.
+	tab.WaitFor(`window.tsPlayer.state().positionMs > 1000`, 8*time.Second)
 	var st struct {
 		Paused bool    `json:"p"`
 		T      float64 `json:"t"`
 		Err    int     `json:"e"`
 	}
 	tab.Eval(`(() => { const a = document.getElementById("audio"); return {p: a.paused, t: a.currentTime, e: a.error ? a.error.code : 0}; })()`, &st)
-	t.Logf("compat source: paused %v, currentTime %.2f, media error %d", st.Paused, st.T, st.Err)
+	if st.Paused || st.T < 1 || st.Err != 0 {
+		t.Errorf("compat source: paused %v, currentTime %.2f, media error %d", st.Paused, st.T, st.Err)
+	}
 }
 
 func TestPlayerBrowserOneResume(t *testing.T) {
