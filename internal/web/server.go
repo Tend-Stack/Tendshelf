@@ -54,6 +54,7 @@ func NewHandler(opts Options) http.Handler {
 		})
 	})
 	// P0a follow-up: mux.Handle("GET /hx/jobs/{id}", jobsFragment(jobs.Get)) — polls every 2s; not in P0b.
+	registerDev(mux, s)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})
@@ -87,20 +88,28 @@ func (s *server) errorPage(w http.ResponseWriter, r *http.Request, status int) {
 	s.page(w, r, status, pages.ErrorTitle(status), "", pages.ErrorPage(status))
 }
 
+// fragment renders an HTMX fragment (never a full page) with the given status. Fragments are per
+// person, so never cached.
+func (s *server) fragment(w http.ResponseWriter, r *http.Request, status int, c templ.Component) {
+	var buf bytes.Buffer
+	if err := c.Render(r.Context(), &buf); err != nil {
+		slog.Error("render fragment", "path", r.URL.Path, "err", err)
+		http.Error(w, "Something went wrong on your server.", http.StatusInternalServerError)
+		return
+	}
+	h := w.Header()
+	h.Set("Content-Type", "text/html; charset=utf-8")
+	h.Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+	_, _ = w.Write(buf.Bytes())
+}
+
 // forbidden answers a refused unsafe request (bad or missing CSRF token, or cross-site origin).
 // An htmx request gets the error toast fragment, which htmx 4 swaps even on a 4xx; anything else
 // gets the full page.
 func (s *server) forbidden(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("HX-Request") == "true" {
-		var buf bytes.Buffer
-		if err := components.ErrorToast("This form expired. Reload the page and try again.").Render(r.Context(), &buf); err != nil {
-			slog.Error("render toast", "err", err)
-		}
-		h := w.Header()
-		h.Set("Content-Type", "text/html; charset=utf-8")
-		h.Set("Cache-Control", "no-store")
-		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write(buf.Bytes())
+		s.fragment(w, r, http.StatusForbidden, components.ErrorToast("This form expired. Reload the page and try again."))
 		return
 	}
 	s.errorPage(w, r, http.StatusForbidden)

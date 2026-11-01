@@ -1,0 +1,149 @@
+package pages
+
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// The kitchen sink is the developer page for the utilities and the motion layer. It is compiled in
+// every build but only routed under the dev build tag (internal/web/devroutes_dev.go).
+
+// KitchenBar is the progress bar fragment that /hx/dev/progress returns. The fill carries its value
+// in data-ts-value; shell.js turns it into --ts-value.
+templ KitchenBar(v int) {
+	<div id="ks-bar" class="ts-bar" role="progressbar" aria-label="Demo progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow={ strconv.Itoa(v) }>
+		<div class="ts-bar__fill ts-value" data-ts-value={ strconv.Itoa(v) }></div>
+	</div>
+}
+
+// KitchenSink shows every utility class, the press feedback, progress, skeletons, toasts, a sheet,
+// the shared cover and the theme switch.
+templ KitchenSink(sheet bool) {
+	if sheet {
+		<div class="ts-sheet-layer">
+			<a class="ts-scrim" href="/dev/kitchen-sink" aria-label="Close the sheet"></a>
+			<div class="ts-sheet" role="dialog" aria-modal="true" aria-labelledby="ks-sheet-title">
+				<div class="ts-sheet__grab"></div>
+				<div class="ts-sheet__head">
+					<h2 id="ks-sheet-title" class="ts-sheet__title">Sleep timer</h2>
+					<a class="ts-iconbtn" href="/dev/kitchen-sink" aria-label="Close">@components.Icon("close", false)</a>
+				</div>
+				<p class="body">The sheet slides up in 200 ms, or fades when motion is reduced.</p>
+			</div>
+		</div>
+	}
+	<div class="ts-stack ts-gap-32">
+		<h1 class="title-1">Kitchen sink</h1>
+		<section id="ks-utilities" class="ts-stack" aria-labelledby="ks-utilities-h">
+			<h2 id="ks-utilities-h" class="title-3">Utilities</h2>
+			<p class="body">ts-stack is this column. ts-center and ts-measure are on the paragraph below.</p>
+			<div class="ts-center ts-measure"><p class="body">ts-center ts-measure: a line of text kept to the reading width and centred in the content width.</p></div>
+			<div class="ts-cluster ts-gap-4"><span class="ts-chip">ts-cluster</span><span class="ts-chip">ts-gap-4</span></div>
+			<div class="ts-cluster ts-gap-8"><span class="ts-chip">ts-gap-8</span><span class="ts-chip">b</span></div>
+			<div class="ts-cluster ts-gap-12"><span class="ts-chip">ts-gap-12</span><span class="ts-chip">b</span></div>
+			<div class="ts-cluster ts-gap-16"><span class="ts-chip">ts-gap-16</span><span class="ts-chip">b</span></div>
+			<div class="ts-cluster ts-gap-24"><span class="ts-chip">ts-gap-24</span><span class="ts-chip">b</span></div>
+			<div class="ts-cluster ts-gap-32"><span class="ts-chip">ts-gap-32</span><span class="ts-chip">b</span></div>
+			<div class="ts-grid">
+				<span class="ts-chip">ts-grid</span><span class="ts-chip">two</span><span class="ts-chip">three</span><span class="ts-chip">four</span>
+			</div>
+			<div class="ts-grid ts-grid--covers">
+				for i := 1; i <= 8; i++ {
+					<div class="ts-cover ts-cover--fill" aria-label={ "ts-grid--covers ts-cover--fill " + strconv.Itoa(i) }></div>
+				}
+			</div>
+			<div class="ts-switcher">
+				<span class="ts-chip">ts-switcher one</span><span class="ts-chip">two</span><span class="ts-chip">three</span>
+			</div>
+			<div class="ts-with-aside">
+				<p class="body">ts-with-aside main column</p>
+				<p class="body">aside</p>
+			</div>
+			<div class="ts-full-height ts-safe-top ts-safe-bottom ts-safe-inline ts-tap">
+				<p class="body">ts-full-height ts-safe-top ts-safe-bottom ts-safe-inline ts-tap</p>
+			</div>
+			<a class="ts-sr-focusable" href="#ks-press">ts-sr-focusable: visible only on keyboard focus</a>
+			<p class="body ts-truncate">ts-truncate: one line that ends in an ellipsis when it runs out of room, however long the sentence becomes.</p>
+			<p class="body ts-clamp-2">ts-clamp-2: two lines at most. A long paragraph that keeps going so the clamp has something to cut. A long paragraph that keeps going so the clamp has something to cut. A long paragraph that keeps going so the clamp has something to cut.</p>
+			<p class="body ts-clamp-3">ts-clamp-3: three lines at most. A long paragraph that keeps going so the clamp has something to cut. A long paragraph that keeps going so the clamp has something to cut. A long paragraph that keeps going so the clamp has something to cut. A long paragraph that keeps going so the clamp has something to cut. A long paragraph that keeps going so the clamp has something to cut.</p>
+			<div class="ts-scroll-x ts-cluster">
+				<span class="ts-chip">ts-scroll-x</span><span class="ts-chip">one</span><span class="ts-chip">two</span><span class="ts-chip">three</span><span class="ts-chip">four</span><span class="ts-chip">five</span><span class="ts-chip">six</span><span class="ts-chip">seven</span>
+			</div>
+			<div class="ts-cluster">
+				<div class="ts-cover ts-cover--24" aria-label="ts-cover--24"></div>
+				<div class="ts-cover ts-cover--36" aria-label="ts-cover--36"></div>
+				<div class="ts-cover ts-cover--48" aria-label="ts-cover--48"></div>
+				<div class="ts-cover ts-cover--52" aria-label="ts-cover--52"></div>
+				<div class="ts-cover ts-cover--56" aria-label="ts-cover--56"></div>
+				<div class="ts-cover ts-cover--64" aria-label="ts-cover--64"></div>
+				<div class="ts-cover ts-cover--78" aria-label="ts-cover--78"></div>
+				<div class="ts-cover ts-cover--112" aria-label="ts-cover--112"></div>
+				<div class="ts-cover ts-cover--136" aria-label="ts-cover--136"></div>
+				<div class="ts-cover ts-cover--152" aria-label="ts-cover--152"></div>
+				<div class="ts-cover ts-cover--200" aria-label="ts-cover--200"></div>
+			</div>
+		</section>
+		<section id="ks-press" class="ts-stack" aria-labelledby="ks-press-h">
+			<h2 id="ks-press-h" class="title-3">Press feedback</h2>
+			<div class="ts-cluster">
+				<button type="button" class="ts-chip ts-press">ts-press chip</button>
+				<button type="button" class="ts-btn ts-btn--primary">Primary</button>
+				<button type="button" class="ts-btn ts-btn--secondary">Secondary</button>
+				<button type="button" class="ts-iconbtn" aria-label="Bookmark">@components.Icon("bookmark", false)</button>
+			</div>
+		</section>
+		<section id="ks-progress" class="ts-stack" aria-labelledby="ks-progress-h">
+			<h2 id="ks-progress-h" class="title-3">Progress</h2>
+			@KitchenBar(20)
+			<div class="ts-cluster">
+				<button type="button" class="ts-btn ts-btn--secondary" hx-get="/hx/dev/progress?v=0" hx-target="#ks-bar" hx-swap="outerMorph">0</button>
+				<button type="button" class="ts-btn ts-btn--secondary" hx-get="/hx/dev/progress?v=30" hx-target="#ks-bar" hx-swap="outerMorph">30</button>
+				<button type="button" class="ts-btn ts-btn--secondary" hx-get="/hx/dev/progress?v=100" hx-target="#ks-bar" hx-swap="outerMorph">100</button>
+			</div>
+		</section>
+		<section id="ks-skeleton" class="ts-stack" aria-labelledby="ks-skeleton-h">
+			<h2 id="ks-skeleton-h" class="title-3">Loading</h2>
+			<div class="ts-cluster">
+				<div class="ts-skeleton ts-cover--112" role="status" aria-label="Loading"></div>
+				<span class="ts-spinner" role="status" aria-label="Working"></span>
+				<span class="ts-eq" aria-hidden="true"><span></span><span></span><span></span></span>
+				<div class="ts-cover ts-cover--64 ts-appear" aria-label="ts-appear"></div>
+			</div>
+		</section>
+		<section id="ks-toasts" class="ts-stack" aria-labelledby="ks-toasts-h">
+			<h2 id="ks-toasts-h" class="title-3">Toasts</h2>
+			<div class="ts-cluster">
+				<button type="button" class="ts-btn ts-btn--secondary" hx-post="/hx/dev/toast?kind=ok" hx-swap="none">Saved</button>
+				<button type="button" class="ts-btn ts-btn--secondary" hx-post="/hx/dev/toast?kind=hint" hx-swap="none">Hint</button>
+				<button type="button" class="ts-btn ts-btn--secondary" hx-post="/hx/dev/toast?kind=err" hx-swap="none">Error</button>
+			</div>
+		</section>
+		<section id="ks-sheet" class="ts-stack" aria-labelledby="ks-sheet-h">
+			<h2 id="ks-sheet-h" class="title-3">Sheet</h2>
+			<div class="ts-cluster"><a class="ts-btn ts-btn--secondary" href="/dev/kitchen-sink?sheet=1">Open the sheet</a></div>
+		</section>
+		<section id="ks-cover" class="ts-stack" aria-labelledby="ks-cover-h">
+			<h2 id="ks-cover-h" class="title-3">Shared cover</h2>
+			<a class="ts-cover ts-cover--48 ts-vt-cover" href="/dev/kitchen-sink/b" data-probe-nav aria-label="Open the cover page"></a>
+		</section>
+		<section id="ks-themes" class="ts-stack" aria-labelledby="ks-themes-h">
+			<h2 id="ks-themes-h" class="title-3">Themes</h2>
+			<div class="ts-cluster">
+				<a class="ts-chip" hx-boost="false" href="/dev/kitchen-sink?theme=dark">Dark</a>
+				<a class="ts-chip" hx-boost="false" href="/dev/kitchen-sink?theme=light">Light</a>
+				<a class="ts-chip" hx-boost="false" href="/dev/kitchen-sink?theme=sepia">Sepia</a>
+				<a class="ts-chip" hx-boost="false" href="/dev/kitchen-sink?theme=contrast">Contrast</a>
+			</div>
+		</section>
+	</div>
+}
+
+// KitchenSinkB is the target of the shared-cover navigation.
+templ KitchenSinkB() {
+	<div class="ts-stack">
+		<h1 class="title-1">Kitchen sink, page B</h1>
+		<div class="ts-cover ts-cover--200 ts-vt-cover" aria-label="Cover"></div>
+		<p class="body"><a href="/dev/kitchen-sink">Back to the kitchen sink</a></p>
+	</div>
+}
