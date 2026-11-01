@@ -205,7 +205,8 @@ HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id
 `GET|POST /hx/books/{id}/highlights`, `PATCH|DELETE /hx/highlights/{id}`, `POST /hx/editions/{id}/exports/overlays`,
 `POST /hx/admin/runtimes/check`.
 
-Media and system: `GET /stream/{audioFileID}`, `GET /covers/{bookID}?w=320`,
+Media and system: `GET /stream/{audioFileID}`, `GET|POST /progress/{bookID}` (JSON, session + CSRF header or
+`_csrf` body field, 4 KiB, form-encoded), `GET /covers/{bookID}?w=320`,
 `GET /text/{editionID}/chapters/{idx}/timing.json` (ETag = chapter key), `GET /text/{editionID}/res/{resID}`
 (raster images only), `GET /text/{editionID}/original` and `GET /exports/{id}` (`download_text`), `GET /healthz`,
 `GET /sw.js`, `GET /manifest.webmanifest`, `GET /static/...` (embedded, immutable, hashed names).
@@ -227,6 +228,12 @@ non-admins (no existence leak).
 `"text":{"editionId","sentenceId","offset"}` and `"source":"audio"|"text"` (R5).
 `clientUpdatedAt` is clamped to server time + 60 s; the update applies only if it is newer than the
 stored one. Response: `{"applied":bool,"progress":{...}}` (200 either way, so offline batches never fail).
+
+Web player (P1c-3): `GET /hx/player` (the person's newest unfinished book, or 204) and `GET /hx/player/{bookID}`
+answer the data-only `PlayerData` fragment (`#player-data`, hidden, attributes only: the book, the stored position,
+the person's playback settings, optional per-theme accents, one `<li>` per audio file with offset, MIME and
+whether `/stream` will serve it, one per chapter; no file path). `POST /hx/books/{id}/finished` (`finished=1|0`)
+marks a book finished or unfinished: htmx gets 204 and `HX-Trigger: progress-saved`, a plain form a 303 to a safe `next`.
 
 ## Design regions
 
