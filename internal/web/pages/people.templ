@@ -1,0 +1,99 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// PersonView is the page of an author or a narrator: who, how much of their work the person can
+// open, and those books. Only books the person may see are counted and listed.
+type PersonView struct {
+	ID, Name string
+	// Role is the overline, "Author" or "Narrator"; Count is "14 books in your library · 182 h 4 m".
+	Role, Count, Description string
+	BackHref, BackLabel      string
+	Cards                    []components.CardView
+	// MoreHref and MoreLabel are the no-JavaScript "Show more"; empty on the last page.
+	MoreHref, MoreLabel string
+	// StartHref is "Back to the start", set only on a page reached by a cursor.
+	StartHref, StartLabel string
+	BooksTitle            string
+}
+
+// Person renders an author or narrator page.
+templ Person(v PersonView) {
+	<article class="ts-person">
+		<a class="ts-btn ts-btn--quiet ts-book__back" href={ templ.SafeURL(v.BackHref) }>
+			@backIcon()
+			{ v.BackLabel }
+		</a>
+		<header class="ts-person__head">
+			@components.Avatar(v.ID, v.Name, "lg")
+			<p class="ts-overline">{ v.Role }</p>
+			<h1 class="title-1 ts-person__name">{ v.Name }</h1>
+			<p class="caption ts-num ts-person__count">{ v.Count }</p>
+			if v.Description != "" {
+				<p class="ts-book__desc ts-person__desc">{ v.Description }</p>
+			}
+		</header>
+		<section aria-labelledby="person-books-title">
+			<h2 id="person-books-title" class="ts-sr">{ v.BooksTitle }</h2>
+			<div class="ts-grid ts-grid--covers ts-lib-items">
+				for _, c := range v.Cards {
+					@components.BookCard(c)
+				}
+			</div>
+			if v.MoreHref != "" {
+				<p class="ts-person__more"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.MoreHref) }>{ v.MoreLabel }</a></p>
+			}
+			if v.StartHref != "" {
+				<p class="ts-person__more"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.StartHref) }>{ v.StartLabel }</a></p>
+			}
+		</section>
+	</article>
+}
+
+// SeriesView is the page of a series: who wrote and read it, how long it is, and its books in
+// reading order.
+type SeriesView struct {
+	Overline, Name, Description string
+	ByLabel, ReadByLabel        string
+	Authors, Narrators          []Link
+	Total, OrderTitle           string
+	BackHref, BackLabel         string
+	Rows                        []components.CardView
+}
+
+// Series renders a series page.
+templ Series(v SeriesView) {
+	<article class="ts-person ts-series">
+		<a class="ts-btn ts-btn--quiet ts-book__back" href={ templ.SafeURL(v.BackHref) }>
+			@backIcon()
+			{ v.BackLabel }
+		</a>
+		<header class="ts-person__head">
+			<p class="ts-overline">{ v.Overline }</p>
+			<h1 class="title-1 ts-person__name">{ v.Name }</h1>
+			if len(v.Authors) > 0 || len(v.Narrators) > 0 {
+				<p class="ts-series__by">
+					@linkList(v.ByLabel+" ", v.Authors)
+					if len(v.Authors) > 0 && len(v.Narrators) > 0 {
+						&nbsp;·&nbsp;
+					}
+					@linkList(v.ReadByLabel+" ", v.Narrators)
+				</p>
+			}
+			if v.Total != "" {
+				<p class="caption ts-num ts-person__count">{ v.Total }</p>
+			}
+			if v.Description != "" {
+				<p class="ts-book__desc ts-person__desc">{ v.Description }</p>
+			}
+		</header>
+		<section aria-labelledby="series-order-title">
+			<h2 id="series-order-title" class="section">{ v.OrderTitle }</h2>
+			<div class="ts-lib-rows">
+				for _, c := range v.Rows {
+					@components.BookRow(c)
+				}
+			</div>
+		</section>
+	</article>
+}

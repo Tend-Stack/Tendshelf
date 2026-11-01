@@ -1,0 +1,231 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// BookStyles are the stylesheets the book, people and series pages link after the shared ones, and
+// SearchStyles those of search. pages-home.css carries the covers, pages-library.css the grid and
+// the rows.
+var (
+	BookStyles   = []string{"css/pages-home.css", "css/pages-library.css", "css/pages-book.css"}
+	SearchStyles = []string{"css/pages-home.css", "css/pages-library.css", "css/pages-search.css"}
+)
+
+// Link is a name that links somewhere: an author, a narrator, a series, a genre.
+type Link struct{ Name, Href string }
+
+// BookTab is one tab of the book page; every tab is its own address.
+type BookTab struct {
+	ID, Label, Href string
+	Current         bool
+}
+
+// SeriesRow is one line of "More in {series}": "Book 2" and the title, or "This book".
+type SeriesRow struct {
+	Label, Title, Href string
+	Current            bool
+}
+
+// DetailRow is one line of the Details tab: a label and plain text, or links (genres).
+type DetailRow struct {
+	Label, Value string
+	Links        []Link
+}
+
+// BookView is the book page. The handler writes every word and address; the template only lays
+// them out. Exactly one of the three panels is filled, by Tab.
+type BookView struct {
+	Title, Subtitle string
+	// Cover is drawn at its largest size (a 640 px source, no srcset).
+	Cover components.CardView
+	// BackHref and BackLabel are the link above the book ("Back to library").
+	BackHref, BackLabel string
+	Authors, Narrators  []Link
+	// ByLabel and NarratedLabel are the words in front of the names. SeriesLine is the whole line
+	// "Harbour Lights · Book 1" and SeriesHref its address; both are empty without a series.
+	ByLabel, NarratedLabel string
+	SeriesLine, SeriesHref string
+	// Meta and Meta2 are "17 h 32 m · 2019" and "Harrow & Finch · Abridged · 19 chapters".
+	Meta, Meta2 string
+	// Banner is the status line for a missing or refused book.
+	Banner string
+	Tabs   []BookTab
+	// Tab is "about", "chapters" or "details".
+	Tab string
+	// About: the description (Intro, then Rest behind MoreLabel), the series rows and the rail of
+	// other books by the narrator.
+	Intro, Rest, MoreLabel string
+	SeriesTitle, ThisBook  string
+	SeriesRows             []SeriesRow
+	NarratedTitle          string
+	Narrated               []components.CardView
+	// Chapters, or NoChaptersText when the book lists none.
+	Chapters       components.ChapterListView
+	NoChaptersText string
+	// Rows are the Details lines.
+	Rows []DetailRow
+}
+
+templ backIcon() {
+	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true">
+		<path d="m15 6-6 6 6 6"></path>
+	</svg>
+}
+
+templ linkList(prefix string, links []Link) {
+	if len(links) > 0 {
+		<span class="ts-book__people">
+			{ prefix }
+			for i, l := range links {
+				if i > 0 {
+					,&nbsp;
+				}
+				<a href={ templ.SafeURL(l.Href) }>{ l.Name }</a>
+			}
+		</span>
+	}
+}
+
+// Book is the page of one book: the header, then the About, Chapters and Details tabs. There is no
+// play, download, share or shelf control yet.
+templ Book(v BookView) {
+	<article class="ts-book">
+		<a class="ts-btn ts-btn--quiet ts-book__back" href={ templ.SafeURL(v.BackHref) }>
+			@backIcon()
+			{ v.BackLabel }
+		</a>
+		<header class="ts-book__head">
+			<div class="ts-book__cover">
+				@components.Cover(v.Cover, "fill")
+			</div>
+			<div class="ts-book__info">
+				<h1 class="title-1 ts-book__title">{ v.Title }</h1>
+				if v.Subtitle != "" {
+					<p class="ts-book__sub">{ v.Subtitle }</p>
+				}
+				@linkList(v.ByLabel+" ", v.Authors)
+				@linkList(v.NarratedLabel+" ", v.Narrators)
+				if v.SeriesLine != "" {
+					<p class="ts-book__series"><a class="ts-chip" href={ templ.SafeURL(v.SeriesHref) }>{ v.SeriesLine }</a></p>
+				}
+				if v.Meta != "" {
+					<p class="ts-book__meta ts-num">{ v.Meta }</p>
+				}
+				if v.Meta2 != "" {
+					<p class="ts-book__meta">{ v.Meta2 }</p>
+				}
+				if v.Banner != "" {
+					<p class="ts-banner" role="status">
+						@components.Icon("alert", false)
+						{ v.Banner }
+					</p>
+				}
+				// P1c: the book's single play button ("Start listening", "Resume" or "Listen again") goes here.
+			</div>
+		</header>
+		<div class="ts-book__body">
+			<nav id="book-tabs" class="ts-tabs" aria-label="Book">
+				for _, t := range v.Tabs {
+					<a
+						id={ "book-tab-" + t.ID }
+						class="ts-tabs__item"
+						href={ templ.SafeURL(t.Href) }
+						hx-get={ t.Href }
+						hx-target="#book-panel"
+						hx-select="#book-panel"
+						hx-select-oob="#book-tabs"
+						hx-swap="outerHTML"
+						hx-push-url="true"
+						if t.Current {
+							aria-current="page"
+						}
+					>{ t.Label }</a>
+				}
+			</nav>
+			<section id="book-panel" class="ts-book__panel" aria-labelledby={ "book-tab-" + v.Tab }>
+				switch v.Tab {
+					case "chapters":
+						@bookChapters(v)
+					case "details":
+						@bookDetails(v)
+					default:
+						@bookAbout(v)
+				}
+			</section>
+		</div>
+	</article>
+}
+
+templ bookAbout(v BookView) {
+	if v.Intro != "" {
+		<p class="ts-book__desc">{ v.Intro }</p>
+		if v.Rest != "" {
+			<details class="ts-book__more">
+				<summary class="ts-btn ts-btn--quiet">{ v.MoreLabel }</summary>
+				<p class="ts-book__desc">{ v.Rest }</p>
+			</details>
+		}
+	}
+	if len(v.SeriesRows) > 0 {
+		<section class="ts-book__rail" aria-labelledby="book-series-title">
+			<h2 id="book-series-title" class="section">{ v.SeriesTitle }</h2>
+			<ol class="ts-book__seriesrows">
+				for _, r := range v.SeriesRows {
+					<li>
+						if r.Current {
+							<span class="ts-book__seriesrow is-current" aria-current="true">
+								<span class="ts-book__seq">{ r.Label }</span>
+								<span class="ts-book__seqtitle">{ r.Title }</span>
+								<span class="ts-book__here">{ v.ThisBook }</span>
+							</span>
+						} else {
+							<a class="ts-book__seriesrow" href={ templ.SafeURL(r.Href) }>
+								<span class="ts-book__seq">{ r.Label }</span>
+								<span class="ts-book__seqtitle">{ r.Title }</span>
+							</a>
+						}
+					</li>
+				}
+			</ol>
+		</section>
+	}
+	if len(v.Narrated) > 0 {
+		<section class="ts-book__rail" aria-labelledby="book-narrated-title">
+			<h2 id="book-narrated-title" class="section">{ v.NarratedTitle }</h2>
+			<div class="ts-grid ts-grid--covers ts-book__cards">
+				for _, c := range v.Narrated {
+					@components.BookCard(c)
+				}
+			</div>
+		</section>
+	}
+}
+
+templ bookChapters(v BookView) {
+	if len(v.Chapters.Rows) > 0 {
+		@components.ChapterList(v.Chapters)
+	} else {
+		<p class="ts-book__desc">{ v.NoChaptersText }</p>
+	}
+}
+
+templ bookDetails(v BookView) {
+	<dl class="ts-book__details">
+		for _, r := range v.Rows {
+			<div class="ts-book__detail">
+				<dt>{ r.Label }</dt>
+				<dd>
+					if len(r.Links) > 0 {
+						for i, l := range r.Links {
+							if i > 0 {
+								,&nbsp;
+							}
+							<a href={ templ.SafeURL(l.Href) }>{ l.Name }</a>
+						}
+					} else {
+						{ r.Value }
+					}
+				</dd>
+			</div>
+		}
+	</dl>
+}

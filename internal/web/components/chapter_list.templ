@@ -1,0 +1,37 @@
+package components
+
+import "strconv"
+
+// ChapterRow is one chapter: its number, its title (already "Chapter {n}" when the file names
+// none) and its length as a clock ("48:10").
+type ChapterRow struct {
+	Num        int
+	Title, Dur string
+}
+
+// ChapterListView is the chapters of a book. When only the first rows are shown, ShowAllHref and
+// ShowAllLabel make the link to the full list; both are empty otherwise.
+type ChapterListView struct {
+	Rows                      []ChapterRow
+	ShowAllHref, ShowAllLabel string
+}
+
+// ChapterList draws the chapter rows of the book page. The rows are plain text for now: a chapter
+// becomes a link that starts playback there with the player (P1c), and then the row for the
+// chapter being heard carries aria-current.
+templ ChapterList(v ChapterListView) {
+	<ol class="ts-chapters">
+		for _, c := range v.Rows {
+			<li class="ts-chapter">
+				<span class="ts-chapter__num" aria-hidden="true">{ strconv.Itoa(c.Num) }</span>
+				<span class="ts-chapter__title">{ c.Title }</span>
+				<span class="ts-chapter__dur">{ c.Dur }</span>
+			</li>
+		}
+	</ol>
+	if v.ShowAllHref != "" {
+		<p class="ts-chapters__all">
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ShowAllHref) }>{ v.ShowAllLabel }</a>
+		</p>
+	}
+}

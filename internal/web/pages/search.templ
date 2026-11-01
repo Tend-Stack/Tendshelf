@@ -1,0 +1,184 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// SearchSegment is one of "Everything", "Books", "People", "Series"; each is an address that keeps
+// the query.
+type SearchSegment struct {
+	Label, Href string
+	Current     bool
+}
+
+// SearchPerson is an author or a narrator found by name; Role is the word under the name.
+type SearchPerson struct {
+	ID, Name, Role, Href string
+}
+
+// SearchView is the search page. The field, the segments and #search-results are always there; the
+// groups appear only when the person asked for them and have something to show. Every number and
+// name came from reads limited to what the person may open.
+type SearchView struct {
+	Q, Only                string
+	Heading, Placeholder   string
+	FieldLabel, ClearLabel string
+	SegmentsName           string
+	// ClearHref is the address of "Clear search"; empty while the field is empty.
+	ClearHref string
+	Segments  []SearchSegment
+	// Searched is true when Q has anything to look for.
+	Searched bool
+	// Status is "2 books found", read out by screen readers when the results change.
+	Status string
+	// Books, with the group heading "Books · 2", and the link to all of them from "Everything".
+	BooksHead    string
+	Books        []components.CardView
+	ShowAllHref  string
+	ShowAllLabel string
+	PeopleHead   string
+	People       []SearchPerson
+	SeriesHead   string
+	Series       []Link
+	// NothingFound shows the empty state: EmptyTitle and EmptyBody, "Did you mean {Suggestion}?"
+	// around the suggestion link, and the "Clear search" button.
+	NothingFound                bool
+	EmptyTitle, EmptyBody       string
+	DidYouMeanPrefix            string
+	Suggestion, SuggestionHref  string
+	DidYouMeanSuffix            string
+	ClearButtonLabel            string
+}
+
+templ searchIcon() {
+	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true">
+		<circle cx="11" cy="11" r="7"></circle>
+		<path d="m20 20-3.5-3.5"></path>
+	</svg>
+}
+
+templ didYouMean(v SearchView) {
+	if v.Suggestion != "" {
+		<p class="ts-sf__dym">
+			{ v.DidYouMeanPrefix }&nbsp;<a href={ templ.SafeURL(v.SuggestionHref) }>{ v.Suggestion }</a>{ v.DidYouMeanSuffix }
+		</p>
+	}
+	<a class="ts-btn ts-btn--primary" href="/search">{ v.ClearButtonLabel }</a>
+}
+
+// SearchResults is #search-results: the status line, the groups, or the empty state. A live
+// request swaps just this element; a plain request gets it inside the whole page.
+templ SearchResults(v SearchView) {
+	<div id="search-results" class="ts-sf__results">
+		if v.Searched {
+			<p class="ts-sr" role="status">{ v.Status }</p>
+			if v.NothingFound {
+				@components.EmptyState(v.EmptyTitle, v.EmptyBody, didYouMean(v))
+			}
+			if len(v.Books) > 0 {
+				<section class="ts-sf__group" aria-labelledby="sr-books">
+					<h2 id="sr-books" class="ts-overline">{ v.BooksHead }</h2>
+					<div class="ts-lib-rows">
+						for _, c := range v.Books {
+							@components.BookRow(c)
+						}
+					</div>
+					if v.ShowAllHref != "" {
+						<p class="ts-sf__all"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ShowAllHref) }>{ v.ShowAllLabel }</a></p>
+					}
+				</section>
+			}
+			if len(v.People) > 0 {
+				<section class="ts-sf__group" aria-labelledby="sr-people">
+					<h2 id="sr-people" class="ts-overline">{ v.PeopleHead }</h2>
+					<div class="ts-lib-rows">
+						for _, p := range v.People {
+							<div class="ts-row">
+								<a class="ts-row__main" href={ templ.SafeURL(p.Href) }>
+									@components.Avatar(p.ID, p.Name, "sm")
+									<span class="ts-row__text">
+										<span class="ts-row__title">{ p.Name }</span>
+										<span class="ts-row__meta">{ p.Role }</span>
+									</span>
+								</a>
+							</div>
+						}
+					</div>
+				</section>
+			}
+			if len(v.Series) > 0 {
+				<section class="ts-sf__group" aria-labelledby="sr-series">
+					<h2 id="sr-series" class="ts-overline">{ v.SeriesHead }</h2>
+					<div class="ts-lib-rows">
+						for _, s := range v.Series {
+							<div class="ts-row">
+								<a class="ts-row__main" href={ templ.SafeURL(s.Href) }>
+									<span class="ts-row__text"><span class="ts-row__title ts-sf__series">{ s.Name }</span></span>
+								</a>
+							</div>
+						}
+					</div>
+				</section>
+			}
+		}
+	</div>
+}
+
+// Search is the search page: a field that looks as you type (and works with Enter without
+// JavaScript), the four segments, and the results.
+templ Search(v SearchView) {
+	<div class="ts-sf">
+		<h1 class="ts-sr">{ v.Heading }</h1>
+		<form class="ts-sf__form" role="search" method="get" action="/search">
+			<div class="ts-search">
+				@searchIcon()
+				<label class="ts-sr" for="search-q">{ v.FieldLabel }</label>
+				<input
+					id="search-q"
+					class="ts-input"
+					type="search"
+					name="q"
+					value={ v.Q }
+					placeholder={ v.Placeholder }
+					maxlength="200"
+					autocomplete="off"
+					autocapitalize="none"
+					spellcheck="false"
+					hx-get="/search"
+					hx-trigger="input changed delay:150ms, search"
+					hx-target="#search-results"
+					hx-select="#search-results"
+					hx-swap="outerHTML"
+					hx-replace-url="true"
+					hx-select-oob="#search-segments, #search-clear"
+					hx-include="closest form"
+				/>
+				<span id="search-clear" class="ts-search__end">
+					if v.ClearHref != "" {
+						<a class="ts-iconbtn" href={ templ.SafeURL(v.ClearHref) } aria-label={ v.ClearLabel }>
+							@components.Icon("close", false)
+						</a>
+					}
+				</span>
+			</div>
+			if v.Only != "everything" {
+				<input type="hidden" name="only" value={ v.Only }/>
+			}
+		</form>
+		<nav id="search-segments" class="ts-chip-set ts-sf__segments" aria-label={ v.SegmentsName }>
+			for _, s := range v.Segments {
+				<a
+					class="ts-chip"
+					href={ templ.SafeURL(s.Href) }
+					if s.Current {
+						aria-current="true"
+					}
+				>
+					if s.Current {
+						@components.Icon("check", false)
+					}
+					{ s.Label }
+				</a>
+			}
+		</nav>
+		@SearchResults(v)
+	</div>
+}

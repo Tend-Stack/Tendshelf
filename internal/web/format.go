@@ -90,3 +90,28 @@ func durationText(ms int64) string {
 	}
 	return strconv.Itoa(h) + " h " + strconv.Itoa(m) + " m"
 }
+
+// clockText writes a span as a clock for the chapter list: "48:10", or "1:02:03" from an hour up.
+// Seconds are cut, not rounded, so a chapter never shows longer than it is. A negative span is 0:00.
+func clockText(ms int64) string {
+	s := max(ms, 0) / 1000
+	h, m, sec := s/3600, s/60%60, s%60
+	if h > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", h, m, sec)
+	}
+	return fmt.Sprintf("%d:%02d", m, sec)
+}
+
+// hoursMinutesText writes a total length in full: "182 h 4 m", "5 h 0 m", "48 m". Unlike
+// durationText it keeps a zero minute part so totals line up; hours get thousands separators.
+// A zero or negative total is "".
+func hoursMinutesText(ms int64) string {
+	if ms <= 0 {
+		return ""
+	}
+	mins := max((ms+30_000)/60_000, 1)
+	if mins < 60 {
+		return strconv.FormatInt(mins, 10) + " m"
+	}
+	return thousands(int(mins/60)) + " h " + strconv.FormatInt(mins%60, 10) + " m"
+}

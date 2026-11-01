@@ -1,0 +1,16 @@
+/* Search (P1b-6): the field, the segments and the grouped results. Tokens only. */
+
+.ts-sf { display: flex; flex-direction: column; gap: var(--space-12); }
+.ts-sf__form .ts-search { max-width: 560px; }
+.ts-sf input[type="search"] { appearance: none; -webkit-appearance: none; }
+.ts-sf input[type="search"]::-webkit-search-cancel-button { display: none; }
+.ts-sf .ts-chip { min-height: var(--size-tap); text-decoration: none; }
+.ts-sf__results { display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-sf__group .ts-overline { display: block; margin: var(--space-8) 0 var(--space-4); }
+.ts-sf__all { margin: var(--space-4) 0 0; }
+.ts-sf__series { font: 500 18px/24px var(--font-serif); }
+.ts-sf__dym { margin: 0; }
+.ts-sf__dym a { display: inline-flex; align-items: center; justify-content: center; min-height: var(--size-tap); min-width: var(--size-tap); color: var(--accent); text-underline-offset: 3px; }
+.ts-sf .ts-empty { max-width: 420px; }
+.ts-sf .ts-empty__title { overflow-wrap: anywhere; }
+.ts-sf .ts-empty .ts-sf__dym { color: var(--ink-muted); }

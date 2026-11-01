@@ -172,10 +172,10 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `/setup` | First run (only while no owner exists, 404 after; always needs the setup code from the server log): create the owner account first, then name the server and add the first folder ([decision 0002](decisions/0002-design-handoff.md)). The next steps are owner-only (404 for anyone else): `/setup/server`, `/setup/folder` (`?job=` shows the scan streaming in), `/setup/done`; once `setup.done` is set the first two redirect to `/` |
 | `/login`, `POST /logout` | Plain forms with full page loads (no hx-boost); 422 on a wrong answer, 429 when limited; `next` is checked by `auth.SafeNext` |
 | `/libraries`, `/libraries/{id}` | Library (P1b-5): every visible book, or one library (404 when not visible); `?view=grid\|list&sort=added\|title\|author\|duration&genre=` (up to five, all must match)`&cursor=&sheet=filters`, all in the address; a cursor page is a full page with "Back to the start"; phone and tablet filter in a sheet, from 1280 px in a bar |
-| `/books/{id}` | Book: cover, details, chapters, play, bookmarks, notes |
+| `/books/{id}`, `/books/{id}/{about\|chapters\|details}` | Book: cover, details, chapters (P1b-6; play, bookmarks and notes arrive with P1c); a book the person cannot open is a 404 |
 | `/books/{id}/edit`, `/books/{id}/match` | Edit details; online lookup and field compare (P2) |
-| `/authors/{id}`, `/narrators/{id}`, `/series/{id}` | |
-| `/search?q=` | |
+| `/authors/{id}`, `/narrators/{id}`, `/series/{id}` | Person (books by title, `?cursor=`) and series (in order) pages (P1b-6); 404 unless the person can open a book of that role |
+| `/search?q=&only=books\|people\|series` | Search: books, people and series from scoped reads, did-you-mean, live results into `#search-results` (P1b-6) |
 | `/shelves`, `/shelves/{id}` | |
 | `/me`, `/me/settings`, `/me/password`, `POST /me/sessions/{sid}/signout`, `POST /me/sessions/signout-others` | Profile (devices by the first 16 hex characters of the session hash), Settings (saved on change: `POST /me/settings` answers 204, with `HX-Refresh` when the theme changed; 303 without htmx; 422 when invalid), Change password (current password needed; limited 429; rotates this session and ends every other). Always the signed-in person only, any role. Downloads and statistics come in P4 |
 | `/invite/{token}`, `/s/{token}` | Accept an invite; anonymous share link |
