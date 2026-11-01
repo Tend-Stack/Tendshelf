@@ -297,6 +297,8 @@ first sound under 1 s on localhost; the player is usable one-handed at 390 px (r
 
 **P1c-7a status (bookmarks)**: done. The book page's Bookmarks tab (shown to people who can listen): add ("Bookmark this moment" at the saved position until the player lands), note, delete, txt/md export; every action checks the bookmark is the person's own and the book still listenable (anything else 404). Checks: `make check`, `make visual`, `visual-full` for the tab, route matrix with a note-leak word. Limits: day words use the server's time zone; "Play from here" and the live toast wait for P1c-5; no highlights or quotes until R4. Route matrix after both: 58 patterns, 82 rows, 580 requests.
 
+**P1c-4 status (player core)**: done. `static/js/player.js` (own module): the one `<audio>` outside `#main`, the `data-ts-play` click protocol (first sound inside the click), multi-file timeline with next-file warm-up, saves every 10 s / pause / seek / end and a `sendBeacon` on page hide with unsent saves kept in localStorage, signed-out stop, "Continue there?", auto-rewind after a break with its hint, compat polling, Media Session (8 actions, artwork), keys and the `?` sheet; the mini-player and desktop bar; `player.css` with its own budget. Measured with `make player` (Chromium over CDP, no Node): first sound 274 ms median, file switch 266 ms. Checks: `make check`, `make visual`, `make player`, `-race -count=3`. Review note: player.js was squeezed to fit a raw-size budget; prerequisite C moves budgets to gzip bytes and rewrites it for reading. Limits: no scrubber, speed, sleep or full player yet (P1c-5).
+
 ## M2 Family (P3 multi-user, invitations, sharing)
 
 - Roles owner/admin/member/guest; users admin page; grants per library and per book with expiry and
