@@ -18,6 +18,12 @@ type PlayerMsgs struct {
 	ContinueAsk, OtherDevice, ContinueThere, StayHere                       string
 	KeysTitle, KeysPlay, KeysSkip, KeysSearch, KeysLibrary, KeysHome        string
 	KeysList, KeysClose, OpenBook, MinLeft                                  string
+
+	// The full player (P1c-5a).
+	ChapterOf, LeftInChapter, LeftInBook, ScrubLabel, ScrubValue, FineScrub  string
+	ClosePlayer, PrevChapter, NextChapter, Speed, Sleep, Chapters            string
+	Bookmark, MoreActions, GoToBook, MarkFinished, ChapterPlayed, OpenPlayer string
+	ScrubBubble                                                              string
 }
 
 // Attrs are the data-ts-msg-* attributes of #player, one per string player.js uses.
@@ -40,12 +46,33 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 		"data-ts-msg-other-device":    m.OtherDevice,
 		"data-ts-msg-continue-there":  m.ContinueThere,
 		"data-ts-msg-stay-here":       m.StayHere,
+
+		"data-ts-msg-chapter-of":      m.ChapterOf,
+		"data-ts-msg-left-in-chapter": m.LeftInChapter,
+		"data-ts-msg-left-in-book":    m.LeftInBook,
+		"data-ts-msg-scrub-label":     m.ScrubLabel,
+		"data-ts-msg-scrub-value":     m.ScrubValue,
+		"data-ts-msg-fine-scrub":      m.FineScrub,
+		"data-ts-msg-close-player":    m.ClosePlayer,
+		"data-ts-msg-prev-chapter":    m.PrevChapter,
+		"data-ts-msg-next-chapter":    m.NextChapter,
+		"data-ts-msg-speed":           m.Speed,
+		"data-ts-msg-sleep":           m.Sleep,
+		"data-ts-msg-chapters":        m.Chapters,
+		"data-ts-msg-bookmark":        m.Bookmark,
+		"data-ts-msg-more-actions":    m.MoreActions,
+		"data-ts-msg-go-to-book":      m.GoToBook,
+		"data-ts-msg-mark-finished":   m.MarkFinished,
+		"data-ts-msg-chapter-played":  m.ChapterPlayed,
+		"data-ts-msg-open-player":     m.OpenPlayer,
+		"data-ts-msg-scrub-bubble":    m.ScrubBubble,
 	}
 }
 
 // PlayerSlot holds the mini-player and the one audio element. Both live outside #main, so a boosted
 // swap never re-creates them; player.js (P1c-4) fills the skeleton and shows it when a book is
-// loaded. The open link goes to the book page until the full player (P1c-5) replaces it.
+// loaded. The open link goes to the book page without script; with it, player-full.js opens the
+// full player instead (P1c-5). On desktop the bar carries a compact scrubber (ts-scrub--bar).
 func PlayerSlot(m PlayerMsgs) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -85,7 +112,15 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 			}
 			templ.ReleaseBuffer(templ_7745c5c3_Buffer)
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><div class=\"ts-mini\" id=\"mini-player\"><div class=\"ts-mini__progress\" data-ts-mini-progress></div><a class=\"ts-mini__open\" href=\"/\" data-ts-open><span class=\"ts-cover ts-mini__cover\"><img data-ts-cover alt=\"\" width=\"48\" height=\"48\"></span> <span class=\"ts-mini__text\"><span class=\"ts-mini__title\" data-ts-title></span> <span class=\"ts-mini__meta\" data-ts-meta></span></span></a> <button type=\"button\" class=\"ts-iconbtn ts-skip\" data-ts-back>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><div class=\"ts-mini\" id=\"mini-player\"><div class=\"ts-mini__progress\" data-ts-mini-progress></div><a class=\"ts-mini__open\" href=\"/\" data-ts-open><span class=\"ts-cover ts-mini__cover\"><img data-ts-cover alt=\"\" width=\"48\" height=\"48\"></span> <span class=\"ts-mini__text\"><span class=\"ts-mini__title\" data-ts-title></span> <span class=\"ts-mini__meta\" data-ts-meta></span></span></a>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = Scrubber(m, "ts-scrub--bar", "bar").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<button type=\"button\" class=\"ts-iconbtn ts-skip\" data-ts-back>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -93,7 +128,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span class=\"ts-skip__num\" data-ts-back-num aria-hidden=\"true\"></span></button> <button type=\"button\" class=\"ts-iconbtn ts-iconbtn--filled\" data-ts-toggle><span data-ts-icon-play>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<span class=\"ts-skip__num\" data-ts-back-num aria-hidden=\"true\"></span></button> <button type=\"button\" class=\"ts-iconbtn ts-iconbtn--filled\" data-ts-toggle><span data-ts-icon-play>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -101,7 +136,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span> <span data-ts-icon-pause>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</span> <span data-ts-icon-pause>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -109,7 +144,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</span></button> <button type=\"button\" class=\"ts-iconbtn ts-skip ts-mini__forward\" data-ts-forward>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</span></button> <button type=\"button\" class=\"ts-iconbtn ts-skip ts-mini__forward\" data-ts-forward>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -117,7 +152,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span class=\"ts-skip__num\" data-ts-forward-num aria-hidden=\"true\"></span></button></div></section><audio id=\"audio\" preload=\"none\" hx-preserve></audio>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span class=\"ts-skip__num\" data-ts-forward-num aria-hidden=\"true\"></span></button></div></section><audio id=\"audio\" preload=\"none\" hx-preserve></audio>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

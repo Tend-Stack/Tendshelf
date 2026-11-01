@@ -165,6 +165,8 @@ function parseBook(el) {
     skipBack: num(d.skipBackS) || 15,
     skipForward: num(d.skipForwardS) || 30,
     speed: clamp(num(d.speed) || 1, 0.5, 3),
+    accents: { dark: d.accentDark, light: d.accentLight, sepia: d.accentSepia }, // cover colours for the full player
+    tint: d.tint || "",
     // null when this book was never started
     stored: updatedAt > 0
       ? { positionMs: num(d.positionMs), updatedAt, deviceId: d.deviceId, deviceLabel: d.deviceLabel, finished: d.finished === "1" }
@@ -555,7 +557,7 @@ function render(force) {
   controls.title.textContent = book.title;
   controls.meta.textContent = fill(msg("chapterLeft"), { n: chapterIdx + 1, m: minutesLeft });
   controls.open.href = "/books/" + encode(book.id);
-  setLabel("open", fill(msg("open"), { title: book.title, n: chapterIdx + 1 }));
+  setLabel("open", fill(msg("openPlayer") || msg("open"), { title: book.title, n: chapterIdx + 1 }));
   if (book.cover && controls.cover.getAttribute("src") !== book.cover) controls.cover.src = book.cover;
   controls.cover.hidden = !book.cover;
   controls["back-num"].textContent = book.skipBack;
@@ -789,7 +791,7 @@ listen(document, "keydown", (event) => {
   if (!book || event.ctrlKey || event.metaKey || event.altKey) return;
   const target = event.target instanceof Element ? event.target : document.body;
   const inField = target.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
-  if (inField || document.querySelector("dialog[open], #sheet .ts-sheet")) return;
+  if (inField || document.querySelector("dialog[open]:not(.ts-player), #sheet .ts-sheet")) return; // the full player is not a blocker
   if (event.key === " " && !target.closest("button, a, summary, [role=button]")) toggle();
   else if (event.key === "ArrowLeft") skip(-1);
   else if (event.key === "ArrowRight") skip(1);
@@ -903,9 +905,17 @@ listen(document, "htmx:after:settle", () => {
   revealPlayAtButtons();
 });
 
+// The loaded book as player-full.js needs it (copies), or null.
+function info() {
+  if (!book) return null;
+  const { id, title, author, cover, durationMs, skipBack, skipForward, tint } = book;
+  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })) };
+}
+
 // The public surface; debug is for tests only.
 window.tsPlayer = {
   state,
+  info,
   load: loadBook,
   play,
   pause,
@@ -924,6 +934,7 @@ window.tsPlayer = {
   },
 };
 
+fire(document, "ts:player:ready"); // player-full.js is an async module and may have run first
 revealPlayAtButtons();
 flushPending();
 
