@@ -54,10 +54,13 @@ jobs:
           unzip -q chrome.zip
           # deb.deps lines look like "libnss3 (>= 2:3.35)" or "libasound2 | libasound2t64": keep the
           # first name, and on Ubuntu 24.04 use its t64 rename when the old name has no candidate.
+          # Capture apt-cache's output before searching it: with pipefail, `apt-cache | grep -q`
+          # fails when grep stops early and apt-cache dies of SIGPIPE.
+          has() { local out; out=$(apt-cache policy "$1"); grep -q 'Candidate: [0-9]' <<<"$out"; }
           pkgs=""
           for p in $(sed -e 's/ *|.*//' -e 's/ *(.*//' chrome-linux64/deb.deps); do
-            if apt-cache policy "$p" | grep -q 'Candidate: [0-9]'; then pkgs="$pkgs $p"
-            elif apt-cache policy "${p}t64" | grep -q 'Candidate: [0-9]'; then pkgs="$pkgs ${p}t64"
+            if has "$p"; then pkgs="$pkgs $p"
+            elif has "${p}t64"; then pkgs="$pkgs ${p}t64"
             else echo "no package for $p"; exit 1
             fi
           done
