@@ -1,0 +1,66 @@
+/* Tendshelf utilities (P0c): layout primitives, sizes and native feel. Tokens only, ts- prefix. */
+
+/* Native feel */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; scrollbar-gutter: stable; }
+a, button, [role="button"], input, label { touch-action: manipulation; }
+.ts-sheet, .ts-dialog { overscroll-behavior: contain; }
+.ts-sheet__grab { touch-action: none; }
+.ts-scrub { touch-action: pan-y; }
+.ts-tabbar__item, .ts-rail__item, .ts-side__item { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.ts-sheet-layer { position: fixed; inset: 0; z-index: 25; }
+
+/* Layout primitives */
+.ts-stack { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.ts-gap-4 { gap: var(--space-4); }
+.ts-gap-8 { gap: var(--space-8); }
+.ts-gap-12 { gap: var(--space-12); }
+.ts-gap-16 { gap: var(--space-16); }
+.ts-gap-24 { gap: var(--space-24); }
+.ts-gap-32 { gap: var(--space-32); }
+.ts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr)); gap: var(--space-16); }
+.ts-grid--covers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (min-width: 768px) { .ts-grid--covers { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .ts-grid--covers { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .ts-grid--covers { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+@media (min-width: 1600px) { .ts-grid--covers { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+.ts-center { max-inline-size: var(--size-content-max); margin-inline: auto; }
+.ts-measure { max-inline-size: var(--size-measure); }
+.ts-switcher { display: flex; flex-wrap: wrap; gap: var(--space-16); }
+.ts-switcher > * { flex-grow: 1; flex-basis: calc((30rem - 100%) * 999); }
+.ts-with-aside { display: flex; flex-wrap: wrap; gap: var(--space-16); }
+.ts-with-aside > :first-child { flex: 999 1 20rem; }
+.ts-with-aside > :last-child { flex: 1 1 16rem; }
+
+/* Accessibility and safe areas */
+.ts-sr-focusable:not(:focus-visible) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ts-sr-focusable:focus-visible { position: fixed; top: var(--space-8); left: var(--space-8); z-index: 30; padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-md); background: var(--raised); color: var(--ink); box-shadow: var(--shadow-float); }
+.ts-safe-top { padding-block-start: max(var(--space-16), env(safe-area-inset-top)); }
+.ts-safe-bottom { padding-block-end: max(var(--space-16), env(safe-area-inset-bottom)); }
+.ts-safe-inline { padding-inline: max(var(--space-16), env(safe-area-inset-left), env(safe-area-inset-right)); }
+.ts-full-height { min-block-size: 100vh; min-block-size: 100dvh; }
+.ts-tap { min-inline-size: var(--size-tap); min-block-size: var(--size-tap); }
+
+/* Text and scrolling */
+.ts-truncate { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ts-clamp-2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.ts-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.ts-scroll-x { overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; touch-action: pan-x pan-y; }
+
+/* Progress value (shell.js sets --ts-value, 0 to 100, through the CSSOM) */
+.ts-value { inline-size: calc(var(--ts-value, 0) * 1%); }
+
+/* Cover sizes, the handoff's list */
+.ts-cover--24 { inline-size: 24px; block-size: 24px; }
+.ts-cover--36 { inline-size: 36px; block-size: 36px; }
+.ts-cover--48 { inline-size: 48px; block-size: 48px; }
+.ts-cover--52 { inline-size: 52px; block-size: 52px; }
+.ts-cover--56 { inline-size: 56px; block-size: 56px; }
+.ts-cover--64 { inline-size: 64px; block-size: 64px; }
+.ts-cover--78 { inline-size: 78px; block-size: 78px; }
+.ts-cover--112 { inline-size: 112px; block-size: 112px; }
+.ts-cover--136 { inline-size: 136px; block-size: 136px; }
+.ts-cover--152 { inline-size: 152px; block-size: 152px; }
+.ts-cover--200 { inline-size: 200px; block-size: 200px; }
+.ts-cover--fill { inline-size: 100%; block-size: auto; aspect-ratio: 1; }

@@ -1,0 +1,74 @@
+/* Tendshelf motion (P0c): transitions, animations and reduced motion. CSS only; tokens only. */
+
+@keyframes ts-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ts-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes ts-rise-in { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+@keyframes ts-sink { to { translate: 0 100%; opacity: 0; } }
+@keyframes ts-toast-out { to { opacity: 0; translate: 0 8px; } }
+
+/* Page swap: View Transitions where supported, a keyframe on #main where not */
+#main { view-transition-name: ts-main; }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+::view-transition-old(ts-main) { animation: ts-fade-out var(--duration-base) var(--easing-standard) both; }
+::view-transition-new(ts-main) { animation: ts-rise-in var(--duration-base) var(--easing-standard) both; }
+.ts-main.ts-entering { animation: ts-rise-in var(--duration-base) var(--easing-standard) both; }
+
+/* Shared cover: exactly one element per page carries .ts-vt-cover */
+.ts-vt-cover { view-transition-name: ts-cover; }
+::view-transition-group(ts-cover) { animation-duration: var(--duration-slow); animation-timing-function: var(--easing-expand); }
+
+/* Sheets, scrims and dialogs */
+.ts-sheet { transition: translate var(--duration-base) var(--easing-enter); }
+@starting-style { .ts-sheet { translate: 0 100%; } }
+.ts-scrim, .ts-dialog { transition: opacity var(--duration-base) var(--easing-enter); }
+@starting-style { .ts-scrim, .ts-dialog { opacity: 0; } }
+.ts-sheet.is-leaving { animation: ts-sink var(--duration-base) var(--easing-exit) both; }
+
+/* Toasts */
+.ts-toast { transition: opacity var(--duration-base) var(--easing-enter), translate var(--duration-base) var(--easing-enter); }
+@starting-style { .ts-toast { opacity: 0; translate: 0 8px; } }
+.ts-toast--hint { transition: opacity var(--duration-base) var(--easing-enter); }
+@starting-style { .ts-toast--hint { translate: none; } }
+.ts-toast.is-leaving { animation: ts-toast-out var(--duration-base) var(--easing-exit) both; }
+
+/* Press feedback for cards, rows and chips */
+.ts-press { transition: transform var(--duration-instant) var(--easing-standard); }
+.ts-press:active { transform: scale(0.98); }
+
+/* Progress and scan covers */
+.ts-value { transition: inline-size var(--duration-ring) var(--easing-standard); }
+.ts-appear { animation: ts-fade-in var(--duration-ring) var(--easing-standard); }
+
+/* Touch screens keep :hover after a tap: put back the resting look of every bundle.css :hover rule.
+   Pressed, selected, disabled and invalid states keep their own look. */
+@media (hover: none) {
+  .ts-btn--primary:hover:not(:active, [disabled], .is-disabled) { background: var(--accent-fill); }
+  .ts-btn--secondary:hover:not(:active, [disabled], .is-disabled) { background: var(--raised); }
+  .ts-btn--quiet:hover:not(:active, [disabled], .is-disabled) { background: transparent; color: var(--accent); }
+  .ts-iconbtn:hover:not(:active, [disabled], .is-disabled) { background: transparent; }
+  .ts-iconbtn--filled:hover:not(:active, [disabled], .is-disabled) { background: var(--accent-fill); }
+  .ts-seg__item:hover:not([aria-pressed="true"], [aria-checked="true"], [disabled]) { color: var(--ink-muted); }
+  .ts-tabs__item:hover:not([aria-selected="true"], [aria-current="page"]) { color: var(--ink-muted); }
+  .ts-chip:hover:not(:active, [aria-pressed="true"], [disabled]) { background: transparent; }
+  .ts-input:hover:not(:focus-visible, [aria-invalid="true"], [disabled]) { border-color: var(--line-strong); }
+  .ts-option:hover, .ts-player-bar__item:hover, .ts-selmenu__item:hover { background: transparent; }
+  .ts-chapter:hover:not([aria-current="true"]) { background: transparent; }
+  .ts-rail__item:hover:not([aria-current="page"]) { background: transparent; color: var(--ink-muted); }
+  .ts-side__item:hover:not([aria-current="page"]) { background: transparent; color: var(--ink-muted); }
+  .ts-mode__item:hover:not([aria-checked="true"], [disabled]) { color: var(--ink-muted); }
+  .ts-voicepill:hover { background: var(--pill-voice); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: var(--duration-fast); }
+  ::view-transition-new(ts-main) { animation-name: ts-fade-in; }
+  .ts-main.ts-entering { animation-name: ts-fade-in; animation-duration: var(--duration-fast); }
+  ::view-transition-group(ts-cover) { animation: none; }
+  @starting-style { .ts-sheet, .ts-toast { translate: none; opacity: 0; } }
+  .ts-sheet, .ts-toast { transition: opacity var(--duration-fast) linear; }
+  .ts-sheet.is-leaving, .ts-toast.is-leaving { animation-name: ts-fade-out; animation-duration: var(--duration-fast); }
+  .ts-press:active, .ts-btn:active, .ts-iconbtn:active { transform: none; }
+  .ts-value { transition-duration: var(--duration-fast); }
+  .ts-appear { animation-duration: var(--duration-fast); }
+  .ts-spinner, .ts-skeleton::after, .ts-eq span { animation: none; }
+}
