@@ -211,6 +211,7 @@ func TestProbeFake(t *testing.T) {
 			{`{"error":{"code":-2,"string":"No such file or directory"}}`, 1, media.CodeFileMissing},
 			{`{"error":{"code":-13,"string":"Permission denied"}}`, 1, media.CodeFileUnreadable},
 			{`{"error":{"code":-1094995529,"string":"Invalid data"}}`, 1, media.CodeNotAudio},
+			{`{"error":{"code":-22,"string":"Invalid argument"}}`, 1, media.CodeNotAudio}, // ffprobe 6.1
 			{`{"error":{"code":-5,"string":"I/O error"}}`, 1, media.CodeProbeFailed},
 			{`{"error":{"code":-13,"string":"Permission denied"}}`, 0, media.CodeFileUnreadable},
 		} {

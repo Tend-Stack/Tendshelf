@@ -99,6 +99,10 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 
 ## Media handling
 
+- **ffmpeg versions**: developed against ffmpeg 8.0 (the version on the lead's machine, `make test-media`) and
+  tested nightly against ffmpeg 6.1 (Ubuntu 24.04's package, the nightly CI job). Where the two report the same
+  condition differently (a non-audio file is `AVERROR_INVALIDDATA` on 8, `EINVAL` on 6.1), `internal/media`
+  maps both.
 - **Supported**: m4b, m4a, mp4, mp3, flac, ogg, opus, wav, aac, webm. **Refused**: aax, aaxc, aa, m4p,
   and any stream ffprobe reports as encrypted. ffprobe has no `-nostdin`; it runs with stdin from
   /dev/null (ffmpeg gets `-nostdin`).

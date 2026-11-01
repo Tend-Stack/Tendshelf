@@ -172,7 +172,10 @@ func probeFailure(res runResult) *Error {
 			return newError(CodeFileMissing, detail, nil)
 		case -13: // AVERROR(EACCES)
 			return newError(CodeFileUnreadable, detail, nil)
-		case -1094995529: // AVERROR_INVALIDDATA
+		case -1094995529, // AVERROR_INVALIDDATA (ffprobe 7 and 8)
+			-22: // AVERROR(EINVAL): ffprobe 6.1 (Ubuntu 24.04) answers this for a non-audio file
+			// The file was already checked to exist and be regular, so either code means its
+			// contents are not audio.
 			return newError(CodeNotAudio, detail, nil)
 		}
 	}
