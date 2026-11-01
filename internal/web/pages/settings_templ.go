@@ -570,7 +570,7 @@ func Settings(v SettingsView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" aria-hidden=\"true\"><span class=\"ts-me__bar ts-me__bar--head\"></span> <span class=\"ts-me__bar\"></span> <span class=\"ts-me__bar ts-me__bar--short\"></span> <span class=\"ts-me__bar ts-me__bar--btn\"></span></span> <span class=\"meta ts-me__tilename\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "\" aria-hidden=\"true\"><span class=\"ts-me__bar ts-me__bar--head\"></span> <span class=\"ts-me__bar\"></span> <span class=\"ts-me__bar\"></span> <span class=\"ts-me__bar ts-me__bar--btn\"></span></span> <span class=\"meta ts-me__tilename\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
