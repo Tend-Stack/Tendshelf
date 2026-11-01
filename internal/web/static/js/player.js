@@ -1,441 +1,937 @@
-// Tendshelf web player (P1c-4): the one <audio> outside #main; see docs/architecture.md, Web player.
-// CSP: no inline style, no markup from data, no eval; custom properties only through style.setProperty.
-const doc = document;
-const audio = doc.getElementById("audio");
-const slot = doc.getElementById("player");
-const ui = {};
-for (const k of ["title", "meta", "open", "cover", "back", "forward", "toggle", "back-num", "forward-num", "mini-progress"]) ui[k] = slot.querySelector("[data-ts-" + k + "]");
-const BREAK = 60000; // a pause this long is a break
-const enc = encodeURIComponent;
-const now = () => performance.now();
-const FORM = "application/x-www-form-urlencoded";
-const on = (el, ev, fn) => el.addEventListener(ev, fn);
-const fire = (el, name, detail) => el.dispatchEvent(new CustomEvent(name, { bubbles: true, detail }));
+// Tendshelf web player (P1c-4; docs/architecture.md, Web player).
+//
+// The one media element lives in the layout outside #main, so htmx navigation never replaces it and
+// playback carries on across pages. A book's files play one after the other through it; there is
+// deliberately no second element. CSP: no inline style, no markup from data, no eval; custom
+// properties only through style.setProperty. Every word shown comes from server-rendered
+// data-ts-msg-* attributes.
 
-let book = null;
-let cur = { fileIdx: -1, startMs: 0, loaded: false, compat: false };
-let idleAt = 0; // Date.now() of the last pause or restored row; 0 = playing
-let heard = 0, since = 0, lastSaved = -1, lastRender = 0, hiddenAt = 0, firstSound = false;
-let stopped = false, prompting = false, beaconed = false, compatSeq = 0, seekTimer = 0, memId = "";
+const audio = document.getElementById("audio");
+const slot = document.getElementById("player");
 
-const msg = (k) => slot.dataset["tsMsg" + k[0].toUpperCase() + k.slice(1)] || "";
-const fill = (m, v) => m.replace(/\{(\w+)\}/g, (_, k) => (v[k] ?? ""));
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-const pad = (n) => String(n).padStart(2, "0");
+const BREAK_MS = 60000; // a pause this long counts as a break
+const REWIND_AFTER_BREAK_MS = 5000;
+const COMPAT_DEADLINE_MS = 600000; // how long to wait for a converted copy
+const SAVE_EVERY_MS = 10000;
+const FORM_TYPE = "application/x-www-form-urlencoded";
+
+const CONTROL_NAMES = ["title", "meta", "open", "cover", "back", "forward", "toggle", "back-num", "forward-num", "mini-progress"];
+const controls = {};
+for (const name of CONTROL_NAMES) {
+  controls[name] = slot.querySelector("[data-ts-" + name + "]");
+}
+
+// ---- State ----
+
+let book = null; // the loaded book (see parseBook), or null
+
+// The file being played: an index into book.files, the local start offset, and whether audio.src is
+// set. Also used: fileId (sound started from a link before the book arrived), compat (playing the
+// converted copy) and prefetched (the next file is warmed).
+let current = { fileIdx: -1, startMs: 0, loaded: false, compat: false };
+
+let idleAt = 0; // Date.now() of the last pause or restored position; 0 while playing
+let heardMs = 0; // listening time not yet reported
+let heardSince = 0; // performance.now() when this stretch of sound began; 0 when silent
+let lastSavedMs = -1; // book position of the last save
+let lastRenderAt = 0;
+let hiddenAt = 0;
+let wantsFirstSound = false; // a play click is waiting for its first audible sound
+let stopped = false; // signed out: stop saving
+let prompting = false; // the Continue there? question is on screen
+let beaconSent = false;
+let compatSeq = 0; // bumped to cancel a wait for a converted copy
+let seekSaveTimer = 0;
+let memoryDeviceId = ""; // used when localStorage is unavailable
+
+// ---- Small helpers ----
+
+const encode = encodeURIComponent;
+const perfNow = () => performance.now();
+
+function listen(target, type, handler) {
+  target.addEventListener(type, handler);
+}
+
+function fire(target, name, detail) {
+  target.dispatchEvent(new CustomEvent(name, { bubbles: true, detail }));
+}
+
+// A server-rendered message: msg("playPrefix") reads data-ts-msg-play-prefix.
+function msg(name) {
+  const attribute = "tsMsg" + name[0].toUpperCase() + name.slice(1);
+  return slot.dataset[attribute] || "";
+}
+
+function fill(message, values) {
+  return message.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? "");
+}
+
+function clamp(value, low, high) {
+  return Math.min(high, Math.max(low, value));
+}
+
+function twoDigits(n) {
+  return String(n).padStart(2, "0");
+}
+
 function clock(ms) {
-  const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-  return (h ? h + ":" + pad(m) : m) + ":" + pad(s % 60);
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const first = hours ? hours + ":" + twoDigits(minutes) : minutes;
+  return first + ":" + twoDigits(totalSeconds % 60);
 }
-function token() {
-  try { return JSON.parse(doc.body.getAttribute("hx-headers:inherited"))["X-CSRF-Token"] || ""; } catch { return ""; }
+
+// The CSRF token, from hx-headers on <body>.
+function csrfToken() {
+  try {
+    return JSON.parse(document.body.getAttribute("hx-headers:inherited"))["X-CSRF-Token"] || "";
+  } catch {
+    return "";
+  }
 }
-const rand = () => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+function randomId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// This browser's id, so the server can tell its saves from another device's.
 function deviceId() {
   try {
     let id = localStorage.getItem("ts.deviceId");
-    if (!id) localStorage.setItem("ts.deviceId", (id = rand()));
+    if (!id) {
+      id = randomId();
+      localStorage.setItem("ts.deviceId", id);
+    }
     return id;
-  } catch { return memId || (memId = rand()); }
+  } catch {
+    memoryDeviceId = memoryDeviceId || randomId();
+    return memoryDeviceId;
+  }
 }
 
-// Toasts: the #toasts markup, text through text nodes only.
+// ---- Toasts ----
+
+// A toast in #toasts. Text goes in as text nodes only. actions: optional { label, run } buttons.
 function toast(kind, text, actions) {
-  const el = doc.createElement("div");
+  const el = document.createElement("div");
   el.className = kind === "hint" ? "ts-toast ts-toast--hint" : "ts-toast";
   el.role = kind === "err" ? "alert" : "status";
   el.append(text);
   if (actions) {
-    const row = el.appendChild(doc.createElement("span"));
+    const row = el.appendChild(document.createElement("span"));
     row.className = "ts-toast__actions";
-    for (const a of actions) {
-      const b = row.appendChild(doc.createElement("button"));
-      b.className = "ts-btn ts-btn--quiet";
-      b.textContent = a.label;
-      b.type = "button";
-      on(b, "click", a.run);
+    for (const action of actions) {
+      const button = row.appendChild(document.createElement("button"));
+      button.className = "ts-btn ts-btn--quiet";
+      button.textContent = action.label;
+      button.type = "button";
+      listen(button, "click", action.run);
     }
   }
-  doc.getElementById("toasts").append(el);
+  document.getElementById("toasts").append(el);
   return el;
 }
-function leave(el) {
+
+function dismissToast(el) {
   if (!el) return;
   el.classList.add("is-leaving");
   setTimeout(() => el.remove(), 800); // shell.js usually removes it first
 }
-function hint(text) { const el = toast("hint", text); setTimeout(() => leave(el), 1600); }
 
-function parseData(el) {
-  const d = el.dataset, n = (v) => Number(v) || 0, u = n(d.updatedAt);
-  const list = (sel, f) => [...el.querySelectorAll(sel + " > li")].map((l) => f(l.dataset, l));
-  const b = {
-    id: d.bookId, title: d.title, author: d.author, cover: d.coverUrl, durationMs: n(d.durationMs), autoRewind: d.autoRewind === "1",
-    skipBack: n(d.skipBackS) || 15, skipForward: n(d.skipForwardS) || 30, speed: clamp(n(d.speed) || 1, 0.5, 3),
-    stored: u > 0 ? { positionMs: n(d.positionMs), updatedAt: u, deviceId: d.deviceId, deviceLabel: d.deviceLabel, finished: d.finished === "1" } : null,
-    files: list("[data-ts-files]", (x) => ({ id: x.id, offset: n(x.offsetMs), dur: n(x.durationMs), mime: x.mime, mayCompat: x.mayNeedCompat === "1", playable: x.playable === "1" })),
-    chapters: list("[data-ts-chapters]", (x, l) => ({ start: n(x.startMs), end: n(x.endMs), title: l.textContent })),
+function hint(text) {
+  const el = toast("hint", text);
+  setTimeout(() => dismissToast(el), 1600);
+}
+
+// ---- Data: the book description the server renders ----
+
+function parseBook(el) {
+  const d = el.dataset;
+  const num = (value) => Number(value) || 0;
+  const updatedAt = num(d.updatedAt);
+  // One object per <li> of a nested list, made from its data attributes.
+  const rows = (selector, make) => [...el.querySelectorAll(selector + " > li")].map((li) => make(li.dataset, li));
+
+  const parsed = {
+    id: d.bookId,
+    title: d.title,
+    author: d.author,
+    cover: d.coverUrl,
+    durationMs: num(d.durationMs),
+    autoRewind: d.autoRewind === "1",
+    skipBack: num(d.skipBackS) || 15,
+    skipForward: num(d.skipForwardS) || 30,
+    speed: clamp(num(d.speed) || 1, 0.5, 3),
+    // null when this book was never started
+    stored: updatedAt > 0
+      ? { positionMs: num(d.positionMs), updatedAt, deviceId: d.deviceId, deviceLabel: d.deviceLabel, finished: d.finished === "1" }
+      : null,
+    files: rows("[data-ts-files]", (x) => ({
+      id: x.id,
+      offset: num(x.offsetMs), // where this file starts in the whole book
+      dur: num(x.durationMs),
+      mime: x.mime,
+      mayCompat: x.mayNeedCompat === "1", // a converted copy can stand in
+      playable: x.playable === "1",
+    })),
+    chapters: rows("[data-ts-chapters]", (x, li) => ({ start: num(x.startMs), end: num(x.endMs), title: li.textContent })),
   };
-  if (!b.chapters.length) b.chapters.push({ start: 0, end: b.durationMs, title: "" }); // no chapters: the book is one
-  return b;
+  if (!parsed.chapters.length) {
+    parsed.chapters.push({ start: 0, end: parsed.durationMs, title: "" }); // no chapters: the book is one
+  }
+  return parsed;
 }
-async function hydrate(id) {
+
+// Fetches a book's fragment (the last played book when id is empty). Null when there is none, or
+// when redirected, which means signed out.
+async function fetchBook(id) {
   try {
-    const res = await fetch(id ? "/hx/player/" + enc(id) : "/hx/player");
+    const res = await fetch(id ? "/hx/player/" + encode(id) : "/hx/player");
     if (res.status !== 200 || res.redirected) return null;
-    const el = new DOMParser().parseFromString(await res.text(), "text/html").getElementById("player-data");
-    return el ? parseData(el) : null;
-  } catch { return null; }
+    const html = await res.text();
+    const el = new DOMParser().parseFromString(html, "text/html").getElementById("player-data");
+    return el ? parseBook(el) : null;
+  } catch {
+    return null;
+  }
 }
 
-const streamUrl = (f) => "/stream/" + enc(f.id);
-// The first playable file ending after ms: its holder, or the next one at 0 across a gap.
+// ---- Timeline: one position across all the files of a book ----
+
+function streamUrl(file) {
+  return "/stream/" + encode(file.id);
+}
+
+// The first playable file ending after ms: its index and the offset in it, or the next file at 0
+// when ms falls in a gap. Null when nothing is left.
 function locate(ms) {
-  const i = book ? book.files.findIndex((f) => f.playable && ms < f.offset + f.dur) : -1;
-  return i < 0 ? null : { fileIdx: i, offsetMs: Math.max(0, ms - book.files[i].offset) };
+  const idx = book ? book.files.findIndex((f) => f.playable && ms < f.offset + f.dur) : -1;
+  if (idx < 0) return null;
+  return { fileIdx: idx, offsetMs: Math.max(0, ms - book.files[idx].offset) };
 }
-const localMs = () => (cur.loaded && audio.readyState >= 1 ? audio.currentTime * 1000 : cur.startMs);
-const gpos = () => (book && cur.fileIdx >= 0 ? book.files[cur.fileIdx].offset + localMs() : 0);
-const nextPlayable = (i) => book.files.findIndex((f, j) => j > i && f.playable);
-const chapterIdx = (ms) => Math.max(0, book.chapters.findLastIndex((c) => c.start <= ms));
 
-function load(url, offsetMs, play) {
-  cur.loaded = true;
-  cur.startMs = offsetMs;
-  audio.defaultPlaybackRate = book.speed; // loading resets playbackRate to this
+// Position in the current file; before the media loads, the start offset we asked for.
+function localMs() {
+  const known = current.loaded && audio.readyState >= 1;
+  return known ? audio.currentTime * 1000 : current.startMs;
+}
+
+// Position in the whole book.
+function bookPosition() {
+  if (!book || current.fileIdx < 0) return 0;
+  return book.files[current.fileIdx].offset + localMs();
+}
+
+function nextPlayableIndex(after) {
+  return book.files.findIndex((f, i) => i > after && f.playable);
+}
+
+function chapterIndexAt(ms) {
+  return Math.max(0, book.chapters.findLastIndex((c) => c.start <= ms));
+}
+
+// ---- Controls: loading files, seeking, playing ----
+
+// Points the audio element at a file. The #t= fragment starts at the offset without a separate
+// seek. Loading resets playbackRate to defaultPlaybackRate, so that is set first.
+function loadSource(url, offsetMs, shouldPlay) {
+  current.loaded = true;
+  current.startMs = offsetMs;
+  audio.defaultPlaybackRate = book.speed;
   audio.src = url + "#t=" + (offsetMs / 1000).toFixed(3);
-  if (play) audio.play().catch(() => {});
+  if (shouldPlay) audio.play().catch(() => {});
 }
-function setSource(idx, offsetMs, play) {
-  const f = book.files[idx];
+
+// Switches to another file, or to its converted copy if the browser cannot decode it.
+function setSource(idx, offsetMs, shouldPlay) {
+  const file = book.files[idx];
   compatSeq++;
-  cur = { fileIdx: idx, startMs: offsetMs, loaded: false, compat: false };
-  if (f.mayCompat && f.mime && audio.canPlayType(f.mime) === "") useCompat(idx, offsetMs, play);
-  else load(streamUrl(f), offsetMs, play);
+  current = { fileIdx: idx, startMs: offsetMs, loaded: false, compat: false };
+  if (file.mayCompat && file.mime && audio.canPlayType(file.mime) === "") {
+    useCompatCopy(idx, offsetMs, shouldPlay);
+  } else {
+    loadSource(streamUrl(file), offsetMs, shouldPlay);
+  }
 }
-// A file the browser can't decode: poll for the converted copy while the server makes it.
-async function useCompat(idx, offsetMs, play) {
-  const url = streamUrl(book.files[idx]) + "?compat=1", mine = ++compatSeq, deadline = Date.now() + 600000;
-  let hinted = null, res;
+
+// Polls for the converted copy while the server is still making it (503), until it is ready,
+// fails or the deadline passes.
+async function useCompatCopy(idx, offsetMs, shouldPlay) {
+  const url = streamUrl(book.files[idx]) + "?compat=1";
+  const mine = ++compatSeq;
+  const deadline = Date.now() + COMPAT_DEADLINE_MS;
+  let waitingToast = null;
+  let res;
   for (;;) {
-    try { res = await fetch(url, { method: "HEAD" }); } catch { res = null; }
-    if (mine !== compatSeq) return leave(hinted);
+    try {
+      res = await fetch(url, { method: "HEAD" });
+    } catch {
+      res = null;
+    }
+    if (mine !== compatSeq) {
+      // the listener moved on: give up quietly
+      dismissToast(waitingToast);
+      return;
+    }
     if (res && res.ok) {
-      leave(hinted);
-      cur.compat = true;
-      return load(url, offsetMs, play);
+      dismissToast(waitingToast);
+      current.compat = true;
+      loadSource(url, offsetMs, shouldPlay);
+      return;
     }
     if (!res || res.status !== 503 || Date.now() > deadline) break;
-    hinted = hinted || toast("hint", msg("compatWait"));
-    await new Promise((r) => setTimeout(r, (Number(res.headers.get("Retry-After")) || 3) * 1000));
+    waitingToast = waitingToast || toast("hint", msg("compatWait"));
+    const retrySeconds = Number(res.headers.get("Retry-After")) || 3;
+    await new Promise((resolve) => setTimeout(resolve, retrySeconds * 1000));
   }
-  leave(hinted);
+  dismissToast(waitingToast);
   toast("err", msg("compatFailed"));
   emit("error");
 }
-function seek(ms, play) {
+
+// Moves to a book position. shouldPlay says whether a file change keeps playing (default: as now).
+function seek(ms, shouldPlay) {
   if (!book) return;
-  const t = locate(clamp(ms, 0, book.durationMs ? book.durationMs - 1 : Infinity));
-  if (!t) return;
-  if (!cur.loaded) { cur.fileIdx = t.fileIdx; cur.startMs = t.offsetMs; }
-  else if (t.fileIdx !== cur.fileIdx) setSource(t.fileIdx, t.offsetMs, play === undefined ? !audio.paused : play);
-  else { audio.currentTime = t.offsetMs / 1000; cur.startMs = t.offsetMs; }
-  if (audio.paused) { clearTimeout(seekTimer); seekTimer = setTimeout(() => save("seek"), 2000); }
+  const lastMs = book.durationMs ? book.durationMs - 1 : Infinity;
+  const target = locate(clamp(ms, 0, lastMs));
+  if (!target) return;
+
+  if (!current.loaded) {
+    // nothing loaded yet: only remember where to start
+    current.fileIdx = target.fileIdx;
+    current.startMs = target.offsetMs;
+  } else if (target.fileIdx !== current.fileIdx) {
+    setSource(target.fileIdx, target.offsetMs, shouldPlay === undefined ? !audio.paused : shouldPlay);
+  } else {
+    audio.currentTime = target.offsetMs / 1000;
+    current.startMs = target.offsetMs;
+  }
+
+  if (audio.paused) {
+    // no tick saves while paused, so save shortly after the last seek
+    clearTimeout(seekSaveTimer);
+    seekSaveTimer = setTimeout(() => save("seek"), 2000);
+  }
   emit("seek");
 }
-function chapter(delta) {
+
+// Previous chapter (delta < 0) or next. Previous restarts this chapter when more than 3 s in.
+function jumpChapter(delta) {
   if (!book) return;
-  const pos = gpos(), i = chapterIdx(pos), c = book.chapters;
-  if (delta < 0) seek(pos - c[i].start > 3000 || !i ? c[i].start : c[i - 1].start);
-  else if (c[i + 1]) seek(c[i + 1].start);
+  const position = bookPosition();
+  const idx = chapterIndexAt(position);
+  const chapters = book.chapters;
+  if (delta < 0) {
+    const restartThis = position - chapters[idx].start > 3000 || idx === 0;
+    seek(restartThis ? chapters[idx].start : chapters[idx - 1].start);
+  } else if (chapters[idx + 1]) {
+    seek(chapters[idx + 1].start);
+  }
   emit("chapter");
 }
 
-// After a break: rewind 5 s (setting) and look for a newer place on another device.
+// After a break: rewind a little (a setting) and look for a newer place on another device.
 function afterBreak() {
   const away = idleAt ? Date.now() - idleAt : 0;
   idleAt = 0;
-  if (away < BREAK) return;
-  if (book.autoRewind && gpos() > 0) { seek(Math.max(0, gpos() - 5000), false); hint(msg("rewound")); }
+  if (away < BREAK_MS) return;
+  if (book.autoRewind && bookPosition() > 0) {
+    seek(Math.max(0, bookPosition() - REWIND_AFTER_BREAK_MS), false);
+    hint(msg("rewound"));
+  }
   checkRemote();
 }
+
+// audio.play() must run synchronously inside the click or key press, or browsers refuse it, so
+// nothing here awaits before reaching it.
 function play() {
-  if (!book || cur.fileIdx < 0) return;
+  if (!book || current.fileIdx < 0) return;
   afterBreak();
-  if (!cur.loaded) setSource(cur.fileIdx, cur.startMs, true);
-  else audio.play().catch(() => {});
+  if (!current.loaded) {
+    setSource(current.fileIdx, current.startMs, true);
+  } else {
+    audio.play().catch(() => {});
+  }
 }
-function pause() { compatSeq++; audio.pause(); }
-const toggle = () => (audio.paused ? play() : pause());
-function skip(dir) { if (book) seek(gpos() + dir * (dir < 0 ? book.skipBack : book.skipForward) * 1000); }
-function setSpeed(v) {
+
+function pause() {
+  compatSeq++; // also cancels a wait for a converted copy
+  audio.pause();
+}
+
+function toggle() {
+  if (audio.paused) play();
+  else pause();
+}
+
+function skip(direction) {
   if (!book) return;
-  book.speed = clamp(Math.round(v * 20) / 20, 0.5, 3);
-  audio.defaultPlaybackRate = audio.playbackRate = book.speed;
+  const seconds = direction < 0 ? book.skipBack : book.skipForward;
+  seek(bookPosition() + direction * seconds * 1000);
+}
+
+function setSpeed(value) {
+  if (!book) return;
+  book.speed = clamp(Math.round(value * 20) / 20, 0.5, 3); // steps of 0.05
+  audio.defaultPlaybackRate = book.speed;
+  audio.playbackRate = book.speed;
   emit("speed");
 }
 
-// Saves go to localStorage first, cleared when answered; a lost one is re-sent at the next start.
-const pendingGet = () => { try { return JSON.parse(localStorage.getItem("ts.pending")) || {}; } catch { return {}; } };
-function pendingSet(id, body) {
-  const all = pendingGet();
-  if (body) all[id] = body; else delete all[id];
-  try { localStorage.setItem("ts.pending", JSON.stringify(all)); } catch { /* storage is optional */ }
+// ---- Saves: position goes to the server, safely ----
+
+// A save is written to localStorage first and cleared when the server answers, so one lost to a
+// closed tab or dead network is sent again at the next start (flushPending).
+function pendingSaves() {
+  try {
+    return JSON.parse(localStorage.getItem("ts.pending")) || {};
+  } catch {
+    return {};
+  }
 }
-function accrue(stop) { if (since) { heard += now() - since; since = stop ? 0 : now(); } }
-const payload = (extra) => new URLSearchParams({ position_ms: Math.round(gpos()), client_updated_at: Date.now(), device_id: deviceId(), speed: audio.playbackRate.toFixed(2), ...extra });
-const progressUrl = (id) => "/progress/" + enc(id);
-// api answers null when signed out: a redirect, or anything but JSON.
+
+function setPendingSave(bookId, body) {
+  const all = pendingSaves();
+  if (body) all[bookId] = body;
+  else delete all[bookId];
+  try {
+    localStorage.setItem("ts.pending", JSON.stringify(all));
+  } catch {
+    // storage is optional
+  }
+}
+
+function accrueHeard(stopping) {
+  if (!heardSince) return;
+  heardMs += perfNow() - heardSince;
+  heardSince = stopping ? 0 : perfNow();
+}
+
+function progressUrl(bookId) {
+  return "/progress/" + encode(bookId);
+}
+
+function savePayload(extra) {
+  return new URLSearchParams({
+    position_ms: Math.round(bookPosition()),
+    client_updated_at: Date.now(),
+    device_id: deviceId(),
+    speed: audio.playbackRate.toFixed(2),
+    ...extra,
+  });
+}
+
+// fetch that answers null when signed out: a redirect, or anything but JSON.
 async function api(url, init) {
   const res = await fetch(url, init);
-  return res.redirected || !(res.headers.get("Content-Type") || "").includes("json") ? null : res;
+  const isJson = (res.headers.get("Content-Type") || "").includes("json");
+  return res.redirected || !isJson ? null : res;
 }
-const post = (id, body) => api(progressUrl(id), { method: "POST", keepalive: true, body, headers: { "X-CSRF-Token": token(), "Content-Type": FORM } });
-const near = () => Math.abs(gpos() - lastSaved) < 1000;
+
+function postProgress(bookId, body) {
+  return api(progressUrl(bookId), {
+    method: "POST",
+    keepalive: true,
+    body,
+    headers: { "X-CSRF-Token": csrfToken(), "Content-Type": FORM_TYPE },
+  });
+}
+
+function nearLastSave() {
+  return Math.abs(bookPosition() - lastSavedMs) < 1000;
+}
+
+// Saves the position. kind: tick (every 10 s while playing), pause, seek, end (finished), force
+// (keep this place after the question), beacon (the page is being hidden).
 async function save(kind) {
-  if (!book || stopped || cur.fileIdx < 0 || (kind === "tick" && (prompting || near())) || (kind === "beacon" && (!cur.loaded || (audio.paused && near())))) return;
-  const id = book.id, pos = Math.round(gpos());
-  const p = payload(kind === "end" ? { finished: 1 } : kind === "force" ? { force: 1 } : {});
-  pendingSet(id, p.toString());
-  accrue();
-  const sent = Math.round(heard);
-  heard = 0;
-  lastSaved = pos;
-  p.set("listened_ms", sent);
+  if (!book || stopped || current.fileIdx < 0) return;
+  if (kind === "tick" && (prompting || nearLastSave())) return;
+  if (kind === "beacon" && (!current.loaded || (audio.paused && nearLastSave()))) return;
+
+  const id = book.id;
+  const position = Math.round(bookPosition());
+  const extra = kind === "end" ? { finished: 1 } : kind === "force" ? { force: 1 } : {};
+  const body = savePayload(extra);
+  setPendingSave(id, body.toString());
+
+  accrueHeard();
+  const reportedMs = Math.round(heardMs);
+  heardMs = 0;
+  lastSavedMs = position;
+  body.set("listened_ms", reportedMs);
+
   if (kind === "beacon") {
-    p.set("_csrf", token());
-    if (!navigator.sendBeacon(progressUrl(id), p)) heard += sent;
+    // The page is going away, so fetch may not finish; the browser queues sendBeacon. It cannot
+    // set headers, so the CSRF token goes in the body.
+    body.set("_csrf", csrfToken());
+    if (!navigator.sendBeacon(progressUrl(id), body)) heardMs += reportedMs;
     return;
   }
+
   let res;
-  try { res = await post(id, p.toString()); } catch { heard += sent; return; }
+  try {
+    res = await postProgress(id, body.toString());
+  } catch {
+    heardMs += reportedMs;
+    return;
+  }
   if (!res) return signedOut();
-  if (!res.ok) { heard += sent; return; }
-  pendingSet(id, null);
-  const j = await res.json();
-  fire(doc.body, "progress-saved", { bookId: id, positionMs: pos, applied: j.applied });
-  if (!j.applied && book && book.id === id) checkPrompt(j.progress);
+  if (!res.ok) {
+    heardMs += reportedMs;
+    return;
+  }
+  setPendingSave(id, null);
+  const answer = await res.json();
+  fire(document.body, "progress-saved", { bookId: id, positionMs: position, applied: answer.applied });
+  // the server kept a newer place from another device
+  if (!answer.applied && book && book.id === id) maybeAskContinue(answer.progress);
 }
+
+// Sends saves that never got an answer, stopping at the first failure.
 async function flushPending() {
-  for (const [id, body] of Object.entries(pendingGet())) {
-    try { if (!(await post(id, body))) return; } catch { return; }
-    pendingSet(id, null);
+  for (const [id, body] of Object.entries(pendingSaves())) {
+    try {
+      if (!(await postProgress(id, body))) return;
+    } catch {
+      return;
+    }
+    setPendingSave(id, null);
   }
 }
+
+// A redirect to sign-in means the session ended: say so once.
 function signedOut() {
   if (stopped) return;
   stopped = true;
   toast("err", msg("signedOut"), [{ label: msg("signIn"), run: () => location.assign("/login") }]);
 }
 
+// ---- Prompt: continue where another device left off ----
+
 async function checkRemote() {
   if (!book || stopped) return;
   try {
     const res = await api(progressUrl(book.id));
-    if (res) checkPrompt((await res.json()).progress);
-  } catch { /* the next check will do */ }
+    if (res) maybeAskContinue((await res.json()).progress);
+  } catch {
+    // the next check will do
+  }
 }
-function checkPrompt(p) {
-  if (!p || prompting || p.finished || p.deviceId === deviceId() || p.deviceId === "server" || Math.abs(p.positionMs - gpos()) <= BREAK) return;
+
+// Asks Continue there? when another device is over a break away. Nothing moves until a button is pressed.
+function maybeAskContinue(remote) {
+  if (!remote || prompting || remote.finished) return;
+  if (remote.deviceId === deviceId() || remote.deviceId === "server") return;
+  if (Math.abs(remote.positionMs - bookPosition()) <= BREAK_MS) return;
+
   prompting = true;
-  const close = () => { prompting = false; leave(el); };
-  const el = toast("status", fill(msg("continueAsk"), { time: clock(p.positionMs), device: p.deviceLabel || msg("otherDevice") }), [
-    { label: msg("continueThere"), run: () => { close(); seek(p.positionMs); } },
+  let question = null;
+  const close = () => {
+    prompting = false;
+    dismissToast(question);
+  };
+  const text = fill(msg("continueAsk"), { time: clock(remote.positionMs), device: remote.deviceLabel || msg("otherDevice") });
+  question = toast("status", text, [
+    { label: msg("continueThere"), run: () => { close(); seek(remote.positionMs); } },
     { label: msg("stayHere"), run: () => { close(); save("force"); } },
   ]);
 }
 
+// ---- Screen: the bar and its state event ----
+
+// Writes name, chapter, labels and progress into the bar. force also updates the Media Session.
 function render(force) {
   if (!book) return;
-  lastRender = now();
-  const pos = gpos(), ci = chapterIdx(pos), ch = book.chapters[ci], t = book.title, left = Math.max(1, Math.ceil((ch.end - pos) / 60000));
-  const label = (k, v) => ui[k].setAttribute("aria-label", v);
-  ui.title.textContent = t;
-  ui.meta.textContent = fill(msg("chapterLeft"), { n: ci + 1, m: left });
-  ui.open.href = "/books/" + enc(book.id);
-  label("open", fill(msg("open"), { title: t, n: ci + 1 }));
-  if (book.cover && ui.cover.getAttribute("src") !== book.cover) ui.cover.src = book.cover;
-  ui.cover.hidden = !book.cover;
-  ui["back-num"].textContent = book.skipBack;
-  ui["forward-num"].textContent = book.skipForward;
-  label("back", fill(msg("backSeconds"), { n: book.skipBack }));
-  label("forward", fill(msg("forwardSeconds"), { n: book.skipForward }));
-  label("toggle", (audio.paused ? msg("playPrefix") : msg("pausePrefix")) + " " + t);
+  lastRenderAt = perfNow();
+  const position = bookPosition();
+  const chapterIdx = chapterIndexAt(position);
+  const chapter = book.chapters[chapterIdx];
+  const minutesLeft = Math.max(1, Math.ceil((chapter.end - position) / 60000));
+  const setLabel = (name, text) => controls[name].setAttribute("aria-label", text);
+
+  controls.title.textContent = book.title;
+  controls.meta.textContent = fill(msg("chapterLeft"), { n: chapterIdx + 1, m: minutesLeft });
+  controls.open.href = "/books/" + encode(book.id);
+  setLabel("open", fill(msg("open"), { title: book.title, n: chapterIdx + 1 }));
+  if (book.cover && controls.cover.getAttribute("src") !== book.cover) controls.cover.src = book.cover;
+  controls.cover.hidden = !book.cover;
+  controls["back-num"].textContent = book.skipBack;
+  controls["forward-num"].textContent = book.skipForward;
+  setLabel("back", fill(msg("backSeconds"), { n: book.skipBack }));
+  setLabel("forward", fill(msg("forwardSeconds"), { n: book.skipForward }));
+  setLabel("toggle", (audio.paused ? msg("playPrefix") : msg("pausePrefix")) + " " + book.title);
   slot.classList.toggle("is-playing", !audio.paused);
-  ui["mini-progress"].style.setProperty("--ts-progress", book.durationMs ? clamp(pos / book.durationMs, 0, 1).toFixed(4) : "0");
-  if (force) session();
+  const fraction = book.durationMs ? clamp(position / book.durationMs, 0, 1).toFixed(4) : "0";
+  controls["mini-progress"].style.setProperty("--ts-progress", fraction);
+  if (force) updateMediaSession();
 }
+
 function state() {
-  return book ? { bookId: book.id, title: book.title, positionMs: Math.round(gpos()), durationMs: book.durationMs, playing: !audio.paused,
-    speed: book.speed, fileIdx: cur.fileIdx, chapterIdx: chapterIdx(gpos()) } : { bookId: "", playing: false };
+  if (!book) return { bookId: "", playing: false };
+  return {
+    bookId: book.id,
+    title: book.title,
+    positionMs: Math.round(bookPosition()),
+    durationMs: book.durationMs,
+    playing: !audio.paused,
+    speed: book.speed,
+    fileIdx: current.fileIdx,
+    chapterIdx: chapterIndexAt(bookPosition()),
+  };
 }
+
+// Redraws and tells the page (ts:player:state).
 function emit(kind) {
   render(true);
-  fire(doc, "ts:player:state", { kind, ...state() });
+  fire(document, "ts:player:state", { kind, ...state() });
 }
 
-// One resume per screen: a visible [data-ts-play] for the loaded book hides the bar.
-let watcher = null;
-const suppress = (yes) => { slot.classList.toggle("is-suppressed", yes); slot.inert = yes; };
-function scanResume() {
-  if (watcher) watcher.disconnect();
-  suppress(false);
+// ---- One resume per screen ----
+
+// A page showing its own resume button for the loaded book hides the bar, so a screen never has
+// two. An observer watches those buttons come into and leave view.
+let resumeWatcher = null;
+
+function setSuppressed(suppressed) {
+  slot.classList.toggle("is-suppressed", suppressed);
+  slot.inert = suppressed; // a hidden bar must not be reachable by keyboard either
+}
+
+function watchPageResumeButtons() {
+  if (resumeWatcher) resumeWatcher.disconnect();
+  setSuppressed(false);
   if (!book) return;
-  const seen = new Set();
-  watcher = new IntersectionObserver((entries) => {
-    for (const e of entries) if (e.isIntersecting) seen.add(e.target); else seen.delete(e.target);
-    suppress(seen.size > 0);
+  const visible = new Set();
+  resumeWatcher = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) visible.add(entry.target);
+      else visible.delete(entry.target);
+    }
+    setSuppressed(visible.size > 0);
   });
-  for (const el of doc.querySelectorAll("[data-ts-play]")) if (el.dataset.tsPlay === book.id) watcher.observe(el);
+  for (const el of document.querySelectorAll("[data-ts-play]")) {
+    if (el.dataset.tsPlay === book.id) resumeWatcher.observe(el);
+  }
 }
 
-const actions = [], hasSession = "mediaSession" in navigator;
-function session() {
-  if (!hasSession || !book) return;
-  const ch = book.chapters[chapterIdx(gpos())], sec = book.durationMs / 1000;
+// Buttons that play from a chosen time (bookmarks) stay hidden until this script runs.
+function revealPlayAtButtons() {
+  for (const el of document.querySelectorAll("[data-ts-play-at][hidden]")) {
+    el.hidden = false;
+  }
+}
+
+// ---- Media Session: lock screen and headset controls ----
+
+const hasMediaSession = "mediaSession" in navigator;
+const mediaSessionActions = []; // the actions the browser accepted; read by tests
+
+function updateMediaSession() {
+  if (!hasMediaSession || !book) return;
+  const chapter = book.chapters[chapterIndexAt(bookPosition())];
+  const durationSeconds = book.durationMs / 1000;
   try {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: book.title, artist: book.author, album: ch.title, artwork: book.cover ? [{ src: book.cover, sizes: "512x512" }] : [] });
-    if (sec) navigator.mediaSession.setPositionState({ duration: sec, position: clamp(gpos() / 1000, 0, sec), playbackRate: audio.playbackRate || 1 });
-  } catch { /* an unsupported field is skipped */ }
-}
-if (hasSession) {
-  const h = { play, pause, stop: pause, seekbackward: () => skip(-1), seekforward: () => skip(1), seekto: (d) => seek(d.seekTime * 1000), previoustrack: () => chapter(-1), nexttrack: () => chapter(1) };
-  for (const k in h) {
-    try { navigator.mediaSession.setActionHandler(k, h[k]); actions.push(k); } catch { /* unsupported here */ }
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: book.title,
+      artist: book.author,
+      album: chapter.title,
+      artwork: book.cover ? [{ src: book.cover, sizes: "512x512" }] : [],
+    });
+    if (durationSeconds) {
+      navigator.mediaSession.setPositionState({
+        duration: durationSeconds,
+        position: clamp(bookPosition() / 1000, 0, durationSeconds),
+        playbackRate: audio.playbackRate || 1,
+      });
+    }
+  } catch {
+    // an unsupported field is skipped
   }
 }
 
-function adopt(b, posMs) {
-  if (book && book.id !== b.id) { save("pause"); since = 0; cur.loaded = false; audio.removeAttribute("src"); audio.load(); }
-  book = b;
-  prompting = false;
-  if (cur.fileId) cur.fileIdx = b.files.findIndex((f) => f.id === cur.fileId);
-  else {
-    const t = locate(posMs) || locate(0);
-    if (!t) return false;
-    if (!cur.loaded || cur.fileIdx !== t.fileIdx) cur = { fileIdx: t.fileIdx, startMs: t.offsetMs, loaded: false, compat: false };
+if (hasMediaSession) {
+  const handlers = {
+    play,
+    pause,
+    stop: pause,
+    seekbackward: () => skip(-1),
+    seekforward: () => skip(1),
+    seekto: (details) => seek(details.seekTime * 1000),
+    previoustrack: () => jumpChapter(-1),
+    nexttrack: () => jumpChapter(1),
+  };
+  for (const action in handlers) {
+    try {
+      navigator.mediaSession.setActionHandler(action, handlers[action]);
+      mediaSessionActions.push(action);
+    } catch {
+      // not supported in this browser
+    }
   }
-  lastSaved = -1;
+}
+
+// ---- Loading a book ----
+
+// Makes newBook the loaded one and shows the bar. A switch saves the old book first. False when
+// no file is playable.
+function adopt(newBook, posMs) {
+  if (book && book.id !== newBook.id) {
+    save("pause");
+    heardSince = 0;
+    current.loaded = false;
+    audio.removeAttribute("src");
+    audio.load();
+  }
+  book = newBook;
+  prompting = false;
+
+  if (current.fileId) {
+    // sound already started from a link, which knew only the file's id
+    current.fileIdx = newBook.files.findIndex((f) => f.id === current.fileId);
+  } else {
+    const target = locate(posMs) || locate(0);
+    if (!target) return false;
+    if (!current.loaded || current.fileIdx !== target.fileIdx) {
+      current = { fileIdx: target.fileIdx, startMs: target.offsetMs, loaded: false, compat: false };
+    }
+  }
+
+  lastSavedMs = -1;
   slot.hidden = false;
-  doc.body.classList.add("has-player");
+  document.body.classList.add("has-player");
   emit("load");
-  scanResume();
+  watchPageResumeButtons();
   return true;
 }
-async function loadBook(id, o) {
-  const b = await hydrate(id), at = o && o.positionMs;
-  if (!b || !adopt(b, at !== undefined ? at : b.stored && !b.stored.finished ? b.stored.positionMs : 0)) return false;
-  idleAt = at === undefined && b.stored ? b.stored.updatedAt : 0;
-  if (cur.fileId) { // a click started sound: settings and the break rule catch up
-    delete cur.fileId;
-    audio.defaultPlaybackRate = b.speed;
-    if (!audio.paused) audio.playbackRate = b.speed;
-    if (!b.stored || Math.abs(gpos() - b.stored.positionMs) > 2000) idleAt = 0;
+
+// Fetches and adopts a book. options.positionMs overrides the saved place; options.play plays.
+async function loadBook(id, options) {
+  const fetched = await fetchBook(id);
+  const given = options && options.positionMs;
+  const savedStart = fetched && fetched.stored && !fetched.stored.finished ? fetched.stored.positionMs : 0;
+  if (!fetched || !adopt(fetched, given !== undefined ? given : savedStart)) return false;
+
+  idleAt = given === undefined && fetched.stored ? fetched.stored.updatedAt : 0;
+  if (current.fileId) {
+    // a click started sound before this data arrived: settings and the break rule catch up
+    delete current.fileId;
+    audio.defaultPlaybackRate = fetched.speed;
+    if (!audio.paused) audio.playbackRate = fetched.speed;
+    if (!fetched.stored || Math.abs(bookPosition() - fetched.stored.positionMs) > 2000) idleAt = 0;
     afterBreak();
-  } else if (o && o.play) play();
+  } else if (options && options.play) {
+    play();
+  }
   return true;
 }
-// The link names the file: sound starts inside the click, before the fragment arrives.
-function startFromLink(d) {
-  if (book) { save("pause"); book = null; }
-  const start = Number(d.tsStartMs) || 0, startMs = Math.max(0, start - (Number(d.tsFileStartMs) || 0));
-  if (d.tsMayNeedCompat === "1" && d.tsMime && audio.canPlayType(d.tsMime) === "") return loadBook(d.tsPlay, { positionMs: start, play: true });
-  cur = { fileIdx: -1, fileId: d.tsFile, startMs, loaded: true, compat: false };
+
+// The resume link names its file, so sound starts inside the click, before the fragment arrives.
+// The book data follows and takes over (loadBook).
+function startFromLink(data) {
+  if (book) {
+    save("pause");
+    book = null;
+  }
+  const startMs = Number(data.tsStartMs) || 0;
+  const localStartMs = Math.max(0, startMs - (Number(data.tsFileStartMs) || 0));
+  if (data.tsMayNeedCompat === "1" && data.tsMime && audio.canPlayType(data.tsMime) === "") {
+    // needs the converted copy, which setSource handles once the book is known
+    return loadBook(data.tsPlay, { positionMs: startMs, play: true });
+  }
+  current = { fileIdx: -1, fileId: data.tsFile, startMs: localStartMs, loaded: true, compat: false };
   audio.defaultPlaybackRate = 1;
-  audio.src = "/stream/" + enc(d.tsFile) + "#t=" + (startMs / 1000).toFixed(3);
+  audio.src = "/stream/" + encode(data.tsFile) + "#t=" + (localStartMs / 1000).toFixed(3);
   audio.play().catch(() => {});
-  return loadBook(d.tsPlay);
+  return loadBook(data.tsPlay);
 }
-on(doc, "click", (event) => {
+
+// ---- Clicks and keys ----
+
+// One listener for every play button, so buttons that htmx swaps in just work.
+listen(document, "click", (event) => {
   const el = event.target.closest("[data-ts-play], [data-ts-play-at]");
   if (!el) return;
-  const d = el.dataset;
+  const data = el.dataset;
   event.preventDefault();
-  performance.mark("ts-play-click");
-  if (d.tsPlayAt !== undefined) {
-    const ms = Number(d.tsPlayAt) || 0;
-    if (book && book.id === d.tsBook) { seek(ms, true); play(); } else loadBook(d.tsBook, { positionMs: ms, play: true });
+  performance.mark("ts-play-click"); // make perf and make player measure from here
+
+  if (data.tsPlayAt !== undefined) {
+    // a bookmark or note: play from a chosen time
+    const ms = Number(data.tsPlayAt) || 0;
+    if (book && book.id === data.tsBook) {
+      seek(ms, true);
+      play();
+    } else {
+      loadBook(data.tsBook, { positionMs: ms, play: true });
+    }
     return;
   }
-  firstSound = true;
-  if (book && book.id === d.tsPlay) play();
-  else if (d.tsFile) startFromLink(d);
-  else loadBook(d.tsPlay, { play: true });
-});
-const revealPlayAt = () => { for (const el of doc.querySelectorAll("[data-ts-play-at][hidden]")) el.hidden = false; };
 
-on(audio, "play", () => emit("play"));
-on(audio, "playing", () => { since = now(); idleAt = 0; render(true); });
-on(audio, "waiting", () => accrue(true));
-on(audio, "pause", () => {
-  if (audio.ended || !book) return;
-  accrue(true);
+  wantsFirstSound = true;
+  if (book && book.id === data.tsPlay) play();
+  else if (data.tsFile) startFromLink(data);
+  else loadBook(data.tsPlay, { play: true });
+});
+
+listen(slot, "click", (event) => {
+  const button = event.target.closest("button");
+  if (button === controls.toggle) toggle();
+  else if (button === controls.back) skip(-1);
+  else if (button === controls.forward) skip(1);
+});
+
+// Space and arrows (shell.js owns the navigation keys). Not in fields, dialogs or the sheet, and
+// Space not on a button or link, where it already means press.
+listen(document, "keydown", (event) => {
+  if (!book || event.ctrlKey || event.metaKey || event.altKey) return;
+  const target = event.target instanceof Element ? event.target : document.body;
+  const inField = target.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
+  if (inField || document.querySelector("dialog[open], #sheet .ts-sheet")) return;
+  if (event.key === " " && !target.closest("button, a, summary, [role=button]")) toggle();
+  else if (event.key === "ArrowLeft") skip(-1);
+  else if (event.key === "ArrowRight") skip(1);
+  else return;
+  event.preventDefault();
+});
+
+// ---- Audio events ----
+
+listen(audio, "play", () => emit("play"));
+
+listen(audio, "playing", () => {
+  heardSince = perfNow();
+  idleAt = 0;
+  render(true);
+});
+
+listen(audio, "waiting", () => accrueHeard(true)); // buffering is not listening
+
+listen(audio, "pause", () => {
+  if (audio.ended || !book) return; // the end has its own handler
+  accrueHeard(true);
   idleAt = Date.now();
   save("pause");
   emit("pause");
 });
-on(audio, "timeupdate", () => {
-  if (firstSound && !audio.paused && audio.currentTime * 1000 >= cur.startMs + 50) { firstSound = false; performance.mark("ts-first-sound"); }
-  if (now() - lastRender >= 1000) { render(); session(); if (!audio.paused) fire(doc, "ts:player:tick", state()); }
-  if (book && !cur.prefetched && audio.duration - audio.currentTime < 20) { // warm the next file's first bytes
-    cur.prefetched = true;
-    const n = nextPlayable(cur.fileIdx);
-    if (n >= 0 && !book.files[n].mayCompat) fetch(streamUrl(book.files[n]), { headers: { Range: "bytes=0-65535" } }).catch(() => {});
+
+listen(audio, "timeupdate", () => {
+  // first sound: the clock is 50 ms past the start, so something was audible
+  if (wantsFirstSound && !audio.paused && audio.currentTime * 1000 >= current.startMs + 50) {
+    wantsFirstSound = false;
+    performance.mark("ts-first-sound");
   }
+  if (perfNow() - lastRenderAt >= 1000) {
+    render();
+    updateMediaSession();
+    if (!audio.paused) fire(document, "ts:player:tick", state());
+  }
+  warmNextFile();
 });
-on(audio, "ended", () => {
+
+// Near the end of a file, fetch the next one's first bytes so the switch has no gap.
+function warmNextFile() {
+  if (!book || current.prefetched) return;
+  const secondsLeft = audio.duration - audio.currentTime; // NaN until the duration is known
+  if (!(secondsLeft < 20)) return;
+  current.prefetched = true;
+  const next = nextPlayableIndex(current.fileIdx);
+  if (next >= 0 && !book.files[next].mayCompat) {
+    fetch(streamUrl(book.files[next]), { headers: { Range: "bytes=0-65535" } }).catch(() => {});
+  }
+}
+
+listen(audio, "ended", () => {
   if (!book) return;
-  accrue(true);
-  const n = nextPlayable(cur.fileIdx);
-  if (n >= 0) { setSource(n, 0, true); emit("chapter"); return; }
+  accrueHeard(true);
+  const next = nextPlayableIndex(current.fileIdx);
+  if (next >= 0) {
+    setSource(next, 0, true);
+    emit("chapter");
+    return;
+  }
+  // the last file ended: the book is finished
   save("end");
   idleAt = Date.now();
   emit("pause");
 });
-on(audio, "error", () => {
-  if (!book || !cur.loaded) return;
-  const f = book.files[cur.fileIdx];
-  if (audio.error && audio.error.code === 4 && f && f.mayCompat && !cur.compat) { useCompat(cur.fileIdx, cur.startMs, true); return; }
+
+listen(audio, "error", () => {
+  if (!book || !current.loaded) return;
+  const file = book.files[current.fileIdx];
+  const unsupported = audio.error && audio.error.code === 4; // MEDIA_ERR_SRC_NOT_SUPPORTED
+  if (unsupported && file && file.mayCompat && !current.compat) {
+    useCompatCopy(current.fileIdx, current.startMs, true);
+    return;
+  }
   toast("err", msg("compatFailed"));
   emit("error");
 });
 
-on(slot, "click", (e) => {
-  const b = e.target.closest("button");
-  if (b === ui.toggle) toggle(); else if (b === ui.back) skip(-1); else if (b === ui.forward) skip(1);
-});
-// Keys: Space and arrows (shell.js has the navigation keys).
-on(doc, "keydown", (e) => {
-  if (!book || e.ctrlKey || e.metaKey || e.altKey) return;
-  const t = e.target instanceof Element ? e.target : doc.body;
-  if (t.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])") || doc.querySelector("dialog[open], #sheet .ts-sheet")) return;
-  if (e.key === " " && !t.closest("button, a, summary, [role=button]")) toggle();
-  else if (e.key === "ArrowLeft") skip(-1);
-  else if (e.key === "ArrowRight") skip(1);
-  else return;
-  e.preventDefault();
-});
+// ---- Leaving the page ----
 
-// Leaving the page: one beacon per hide.
-const hide = () => { if (!beaconed) { beaconed = true; save("beacon"); } };
-on(doc, "visibilitychange", () => {
-  if (doc.visibilityState === "hidden") { hiddenAt = Date.now(); hide(); return; }
-  beaconed = false;
-  if (hiddenAt && Date.now() - hiddenAt >= BREAK) checkRemote();
+// One beacon per hide: pagehide and visibilitychange can both fire for one departure.
+function sendBeaconOnce() {
+  if (beaconSent) return;
+  beaconSent = true;
+  save("beacon");
+}
+
+listen(document, "visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    hiddenAt = Date.now();
+    sendBeaconOnce();
+    return;
+  }
+  beaconSent = false;
+  if (hiddenAt && Date.now() - hiddenAt >= BREAK_MS) checkRemote();
   hiddenAt = 0;
 });
-on(window, "pagehide", hide);
-setInterval(() => { if (!audio.paused) save("tick"); }, 10000);
-on(doc, "htmx:after:settle", () => { scanResume(); revealPlayAt(); });
+listen(window, "pagehide", sendBeaconOnce);
 
-window.tsPlayer = {
-  state, load: loadBook, play, pause, toggle, seek: (ms) => seek(ms), skip, chapter, setSpeed,
-  debug: { setPausedAt: (ms) => { idleAt = ms; }, actions, locate, chapterIdx },
-};
-revealPlayAt();
-flushPending();
-hydrate("").then((b) => {
-  if (!b || book) return;
-  idleAt = b.stored ? b.stored.updatedAt : 0;
-  adopt(b, b.stored && !b.stored.finished ? b.stored.positionMs : 0);
+// ---- Start-up ----
+
+setInterval(() => {
+  if (!audio.paused) save("tick");
+}, SAVE_EVERY_MS);
+
+// htmx swapped in content: watch its resume buttons, show its bookmark buttons.
+listen(document, "htmx:after:settle", () => {
+  watchPageResumeButtons();
+  revealPlayAtButtons();
 });
+
+// The public surface; debug is for tests only.
+window.tsPlayer = {
+  state,
+  load: loadBook,
+  play,
+  pause,
+  toggle,
+  seek: (ms) => seek(ms),
+  skip,
+  chapter: jumpChapter,
+  setSpeed,
+  debug: {
+    setPausedAt: (ms) => {
+      idleAt = ms;
+    },
+    actions: mediaSessionActions,
+    locate,
+    chapterIdx: chapterIndexAt,
+  },
+};
+
+revealPlayAtButtons();
+flushPending();
+
+// Show the last played book in the bar, paused.
+fetchBook("").then((fetched) => {
+  if (!fetched || book) return;
+  idleAt = fetched.stored ? fetched.stored.updatedAt : 0;
+  adopt(fetched, fetched.stored && !fetched.stored.finished ? fetched.stored.positionMs : 0);
+});
+
 performance.mark("ts-player-ready");

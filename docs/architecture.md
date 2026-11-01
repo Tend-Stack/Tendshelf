@@ -209,7 +209,7 @@ Media and system: `GET /stream/{audioFileID}`, `GET|POST /progress/{bookID}` (JS
 `_csrf` body field, 4 KiB, form-encoded), `GET /covers/{bookID}?w=320`,
 `GET /text/{editionID}/chapters/{idx}/timing.json` (ETag = chapter key), `GET /text/{editionID}/res/{resID}`
 (raster images only), `GET /text/{editionID}/original` and `GET /exports/{id}` (`download_text`), `GET /healthz`,
-`GET /sw.js`, `GET /manifest.webmanifest`, `GET /static/...` (embedded, immutable, hashed names).
+`GET /sw.js`, `GET /manifest.webmanifest`, `GET /static/...` (embedded, immutable, hashed names; precompressed gzip served on `Accept-Encoding`, `Vary: Accept-Encoding`, ETag per encoding, Range ignored).
 
 JSON API v1 (`/api/v1`, bearer device token or session cookie + CSRF):
 `POST /auth/token`, `DELETE /auth/token`, `GET /me`, `GET /libraries`,
@@ -252,7 +252,7 @@ finished, and more than 60 s away from here; it is checked after a save answers 
 of 60 s or more, and on becoming visible after 60 s hidden; "Stay here" saves with `force=1`. A file the browser
 cannot decode is requested as `?compat=1` (`HEAD`, polled at `Retry-After` for up to 10 minutes). Media Session
 carries the title, author, chapter and cover with eight action handlers. Keys: Space and the arrows in player.js; `/`,
-`g l`, `g h` and `?` in shell.js. Budgets (`TestJSBudget`): player.js 20 KB, shell.js 8 KB; `player.css` 10 KB.
+`g l`, `g h` and `?` in shell.js. Budgets (`TestJSBudget`, gzip bytes): player.js 11 KB, shell.js 4 KB; `player.css` 4 KB.
 
 ## Design regions
 
@@ -291,13 +291,12 @@ Stylesheets are hand-written in `internal/web/static/css/` and wrapped at load t
 (the design handoff, verbatim, plus the P0b shell rules) is `components`, `utilities.css` holds layout
 primitives, safe-area and native-feel rules, `motion.css` holds every transition, animation and the
 reduced-motion overrides, and `pages-*.css` are per-page. Layer order lets `motion` and `utilities`
-win without specificity fights. Client code is one file, `static/js/shell.js` (hashed files cannot
-import each other): it only toggles classes and sets custom properties with `style.setProperty`, closes
+win without specificity fights. Client code is plain ES modules in `static/js/` (`shell.js`, `player.js`), loaded by separate script tags because hashed names rule out relative imports; budgets are gzip bytes (AGENTS.md). `shell.js` only toggles classes and sets custom properties with `style.setProperty`, closes
 filter chip menus (`<details data-ts-chipmenu>` works without it), and ends with
 `performance.mark("ts-ready")`, a measurement mark that nothing reads in production and no data leaves
 the browser; `make perf` (Chromium, 4x CPU throttle, 390 px, 2,000 books) reads it. A page loads the
-core files plus its own `pages-*.css`, so the CSS budgets are per load: core at most 72 KB, each
-`pages-*.css` at most 8 KB.
+core files plus its own `pages-*.css`, so the CSS budgets are per load: core at most 18 KB gzip, each
+`pages-*.css` at most 3 KB gzip.
 
 Browser baseline: current Chromium (WebView2, Android WebView), WebKit (WKWebView, WebKitGTK 2.52). View
 Transitions, `@starting-style`, `translate` and `dvh` are enhancements: where one is missing the page
