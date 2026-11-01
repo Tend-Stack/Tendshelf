@@ -298,4 +298,3 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 	}
 	return v
 }
-
