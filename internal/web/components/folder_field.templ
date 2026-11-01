@@ -7,6 +7,10 @@ type FolderFieldView struct {
 	// Added is true once the folder is saved: the field becomes read-only and the hint reassures.
 	Added     bool
 	Autofocus bool
+	// BrowseURL, when set, adds a Browse link beside the input that opens the folder browser.
+	// BrowseSheet adds the htmx attributes that load the browser into #sheet in place.
+	BrowseURL   string
+	BrowseSheet bool
 }
 
 const (
@@ -22,8 +26,7 @@ func folderDescribedBy(v FolderFieldView) string {
 }
 
 // FolderField is one self-contained component (label, input, hint, error). The input is always
-// id and name "folder"; the row around it (ts-folderfield__row) has room for a Browse button
-// beside the input, so one can be added later without changing this markup.
+// id and name "folder"; the row around it (ts-folderfield__row) holds the optional Browse link.
 templ FolderField(v FolderFieldView) {
 	<div class="ts-field ts-folderfield">
 		<label class="ts-field__label" for="folder">Audiobook folder</label>
@@ -51,6 +54,9 @@ templ FolderField(v FolderFieldView) {
 					autofocus
 				}
 			/>
+			if v.BrowseURL != "" && !v.Added {
+				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.BrowseURL) } { browseAttrs(v.BrowseSheet, v.BrowseURL)... }>Browse</a>
+			}
 		</div>
 		if v.Added {
 			<p id="folder-hint" class="ts-field__hint ts-folderfield__ok">

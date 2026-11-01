@@ -122,7 +122,10 @@ func (s *server) postSetupServer(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) folderStep(w http.ResponseWriter, r *http.Request, status int, v pages.SetupFolderView) {
 	v.CSRF = s.csrf.TokenFrom(r.Context())
-	s.frame(w, r, status, "Where are your audiobooks?", pages.SetupFolder(v), "css/pages-admin.css")
+	if !v.Added {
+		v.BrowseURL = browseFieldURL(setupFolderURL, v.Path)
+	}
+	s.frame(w, r, status, "Where are your audiobooks?", pages.SetupFolder(v), "css/pages-admin.css", "css/pages-folders.css")
 }
 
 func (s *server) getSetupFolder(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +165,11 @@ func (s *server) getSetupFolder(w http.ResponseWriter, r *http.Request) {
 		s.redirect(w, r, "/")
 		return
 	}
-	s.folderStep(w, r, http.StatusOK, pages.SetupFolderView{})
+	v := pages.SetupFolderView{Path: folderPrefill(r)}
+	if fb, ok := s.folderBrowser(r, setupFolderURL); ok {
+		v.Browser = &fb
+	}
+	s.folderStep(w, r, http.StatusOK, v)
 }
 
 func (s *server) postSetupFolder(w http.ResponseWriter, r *http.Request) {
