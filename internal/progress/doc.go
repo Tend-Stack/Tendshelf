@@ -1,5 +1,3 @@
-// Package progress: Listening progress (newest update wins), listening sessions, bookmarks
-// and notes, including offline batch sync.
-//
-// Not implemented yet; see docs/architecture.md and docs/roadmap.md.
+// Package progress stores listening progress (newest client update wins), the listening sessions
+// each save extends, and bookmarks with their notes. Callers authorize the book first.
 package progress

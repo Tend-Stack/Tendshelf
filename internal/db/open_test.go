@@ -112,6 +112,24 @@ var searchTables = []string{"books_fts_ids", "books_fts", "books_fts_vocab",
 // shelfTables are the tables migration 0005 adds.
 var shelfTables = []string{"shelves", "shelf_items"}
 
+// progressTables are the tables migration 0006 adds.
+var progressTables = []string{"progress", "bookmarks", "listening_sessions"}
+
+// seedProgress adds one progress row, one bookmark and one session of the seeded owner and book.
+func seedProgress(t *testing.T, st *Store) {
+	t.Helper()
+	stmts := []string{
+		`INSERT INTO progress(user_id, book_id, position_ms, duration_ms, client_updated_at, server_updated_at, device_id) VALUES ('us_1', 'bk_1', 5, 10, 1, 1, 'dev_test_1')`,
+		`INSERT INTO bookmarks(id, user_id, book_id, position_ms, note, created_at, updated_at) VALUES ('bm_1', 'us_1', 'bk_1', 5, 'n', 1, 1)`,
+		`INSERT INTO listening_sessions(id, user_id, book_id, device_id, started_at, ended_at, start_ms, end_ms, listened_ms, speed_pct) VALUES ('ls_1', 'us_1', 'bk_1', 'dev_test_1', 1, 2, 0, 5, 1, 100)`,
+	}
+	for _, s := range stmts {
+		if _, err := st.Writer().Exec(s); err != nil {
+			t.Fatalf("%s: %v", s, err)
+		}
+	}
+}
+
 // seedShelves adds one shelf of the seeded owner holding the seeded book.
 func seedShelves(t *testing.T, st *Store) {
 	t.Helper()
@@ -175,7 +193,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables) {
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables) {
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -230,6 +248,7 @@ var seeds = map[int]func(t *testing.T, st *Store){
 	3: seed3,
 	4: seed3,
 	5: func(t *testing.T, st *Store) { seed3(t, st); seedShelves(t, st) },
+	6: func(t *testing.T, st *Store) { seed3(t, st); seedShelves(t, st); seedProgress(t, st) },
 }
 
 // seed3 fills a version 3 database (version 4 adds only derived tables, so it seeds the same rows).
@@ -248,6 +267,7 @@ var tablesAt = map[int][]string{
 	3: append(append([]string{}, allTables...), libraryTables...),
 	4: append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"),
 	5: append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...),
+	6: append(append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...), progressTables...),
 }
 
 func TestMigrateFromPreviousFixtures(t *testing.T) {
@@ -293,6 +313,7 @@ func TestDataSurvivesReopen(t *testing.T) {
 	seedAll(t, st)
 	seedLibrary(t, st)
 	seedShelves(t, st)
+	seedProgress(t, st)
 	if err := st.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -529,6 +550,7 @@ var pinnedMigrations = map[int]string{
 	3: "8ebdf61fb5ed156385ecf3fea7a7f82ba0275c409a88e2824aec5a8c9f0f5a6a",
 	4: "c0424f4fb4e9c40d8863a0b1c3bcb634233f900f01e458733309816beec8e339",
 	5: "1578816fe1e33952a8c5b79a2d00152c989c1d31d618216f4fc56296f2b50c97",
+	6: "9d83b1c2c0c7c0a4f86f02e82cccb5f6d66cb1b016a9b01a2dedc5a25c25ac45",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
@@ -612,6 +634,53 @@ func TestLibrarySchema(t *testing.T) {
 		if _, err := st.Writer().Exec(stmt); err == nil {
 			t.Errorf("%s: statement succeeded", name)
 		}
+	}
+}
+
+func TestMigration0006Constraints(t *testing.T) {
+	st := mustOpen(t, t.TempDir())
+	defer st.Close()
+	seed3(t, st)
+	seedProgress(t, st)
+	bad := map[string]string{
+		"negative position":     `UPDATE progress SET position_ms = -1`,
+		"client time zero":      `UPDATE progress SET client_updated_at = 0`,
+		"long device id":        `UPDATE progress SET device_id = '` + strings.Repeat("d", 65) + `'`,
+		"empty device id":       `UPDATE progress SET device_id = ''`,
+		"long note":             `UPDATE bookmarks SET note = '` + strings.Repeat("n", 2001) + `'`,
+		"speed below range":     `UPDATE listening_sessions SET speed_pct = 40`,
+		"speed above range":     `UPDATE listening_sessions SET speed_pct = 301`,
+		"session ends early":    `UPDATE listening_sessions SET ended_at = 0`,
+		"negative listened":     `UPDATE listening_sessions SET listened_ms = -1`,
+		"finished at zero":      `UPDATE progress SET finished_at = 0`,
+		"progress unknown book": `INSERT INTO progress(user_id, book_id, position_ms, duration_ms, client_updated_at, server_updated_at, device_id) VALUES ('us_1', 'nope', 0, 0, 1, 1, 'dev_test_1')`,
+	}
+	for name, stmt := range bad {
+		if _, err := st.Writer().Exec(stmt); err == nil {
+			t.Errorf("%s: statement succeeded", name)
+		}
+	}
+	if _, err := st.Writer().Exec(`UPDATE listening_sessions SET speed_pct = 150`); err != nil {
+		t.Errorf("speed 150: %v", err)
+	}
+	for _, c := range []struct{ name, del string }{
+		{"book", `DELETE FROM books WHERE id = 'bk_1'`},
+		{"user", `DELETE FROM users WHERE id = 'us_1'`},
+	} {
+		t.Run("cascade "+c.name, func(t *testing.T) {
+			st := mustOpen(t, t.TempDir())
+			defer st.Close()
+			seed3(t, st)
+			seedProgress(t, st)
+			if _, err := st.Writer().Exec(c.del); err != nil {
+				t.Fatal(err)
+			}
+			for _, tbl := range progressTables {
+				if n := countRows(t, st.Reader(), tbl); n != 0 {
+					t.Errorf("%s: %d rows left after deleting the %s", tbl, n, c.name)
+				}
+			}
+		})
 	}
 }
 
