@@ -57,13 +57,17 @@ func envOrInt(key string, def int) int {
 }
 
 // registerMediaJobs is the hook for the media job kinds: cover pictures with thumbnails and
-// accent colours, and compatibility copies. Covers follow the scanner's settled books.
-func registerMediaJobs(d deps, mf *mediaFlags) error {
+// accent colours, and compatibility copies. Covers follow the scanner's settled books. It returns the
+// compatibility service so the web handler can request and serve copies.
+func registerMediaJobs(d deps, mf *mediaFlags) (*mediajobs.Compat, error) {
 	if *mf.compatGiB < 1 {
-		return fmt.Errorf("-compat-cache-gib must be at least 1, got %d", *mf.compatGiB)
+		return nil, fmt.Errorf("-compat-cache-gib must be at least 1, got %d", *mf.compatGiB)
 	}
 	covers := mediajobs.NewCovers(d.lib, d.tools, d.dataDir, d.runner, d.log)
 	compat := mediajobs.NewCompat(d.lib, d.tools, mediajobs.CompatDir(d.dataDir), int64(*mf.compatGiB)<<30, d.runner, d.log)
 	d.scanner.OnBookSettled(covers.Follower())
-	return mediajobs.Register(d.runner, covers, compat)
+	if err := mediajobs.Register(d.runner, covers, compat); err != nil {
+		return nil, err
+	}
+	return compat, nil
 }

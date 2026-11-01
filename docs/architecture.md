@@ -107,13 +107,18 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
   and any stream ffprobe reports as encrypted. ffprobe has no `-nostdin`; it runs with stdin from
   /dev/null (ffmpeg gets `-nostdin`).
 - **Streaming**: `GET /stream/{audioFileID}` uses `http.ServeContent` on the opened file (HTTP Range,
-  `If-Range`, `ETag` = quick hash, `Cache-Control: private`). Authorization is checked before opening.
+  `If-Range`, `Cache-Control: private, no-cache`). Authorization (`ListenBook` on the file's book) is
+  checked before opening; the path comes only from the row and must lie under the book's root;
+  refused, encrypted, unreadable, unprobed and missing files answer 404 like an unknown file. The
+  `ETag` is the quick hash while the file's size and mtime match the row (another tag otherwise).
   The player maps the global timeline to (file, offset) using `offset_ms`.
 - **Transcoding policy**: none by default (direct play). The player reports `audio.canPlayType()` for the
   book's codecs; if the browser cannot play a file, the server creates a **compatibility copy** (AAC-LC
   128 kbit/s in `.m4a`, faststart, stream-copied when the codec is already AAC) as a job, stored in
   `<data>/cache/compat/` keyed by `quick_hash` + recipe version, total size capped (default 5 GiB,
-  least recently used removed). `GET /stream/{audioFileID}?compat=1` serves it once ready. No live
+  least recently used removed). `GET /stream/{audioFileID}?compat=1`: a ready copy is served (ETag `<quick_hash>-c<recipe>`);
+  otherwise the job is requested and the answer is 503 with `Retry-After: 3` (the player polls with
+  HEAD). No live
   HLS; reconsider only with a measured need. Built by `internal/mediajobs` (job `media.compat`): the
   cache is the file system alone (`<quick_hash>-r<recipe>.m4a`, last use = file mtime, oldest evicted
   above the cap, other recipes removed; `-compat-cache-gib`, default 5), the result is probed (mp4,

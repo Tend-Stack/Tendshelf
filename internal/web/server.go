@@ -24,6 +24,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
@@ -54,6 +55,9 @@ type Options struct {
 	// Jobs is the job runner (scans and job status); required.
 	Jobs *jobs.Runner
 	// P1b-2..: add fields below this line.
+
+	// Compat makes and finds compatibility copies; nil means ?compat=1 answers 404.
+	Compat *mediajobs.Compat
 }
 
 type server struct {
@@ -68,6 +72,7 @@ type server struct {
 	dataDir  string
 	jobs     *jobs.Runner
 	version  string
+	compat   *mediajobs.Compat
 }
 
 // settingCSRFKey is the settings row that keeps the CSRF key between runs.
@@ -143,6 +148,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		dataDir:  opts.DataDir,
 		jobs:     opts.Jobs,
 		version:  opts.Version,
+		compat:   opts.Compat,
 	}
 	s.csrf = NewCSRF(key, sessionOrCookieBinding)
 	s.csrf.Deny = http.HandlerFunc(s.forbidden)
@@ -161,6 +167,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerSetupSteps(mux)
 	s.registerMe(mux)
 	s.registerShelves(mux)
+	s.registerStream(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})

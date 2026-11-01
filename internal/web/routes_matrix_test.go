@@ -22,6 +22,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
 	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
+	"github.com/Tend-Stack/tendshelf/internal/testutil/wav"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
@@ -57,6 +58,7 @@ type sweepEnv struct {
 	uid     [4]string
 	secondS [4]string // public id of a second session of each person
 	shelf   [3]string // the shelf of owner, admin and member; each holds the book
+	audio   [2]string // the seeded book's audio file ids, by idx (P1c-2)
 
 	libID, folderID, folderDir string
 	book                       library.Book
@@ -107,7 +109,7 @@ func sweepWriteCover(t *testing.T, dir, sha string) string {
 }
 
 // sweepSeed builds the app every row runs on: the four people, setup finished, one library with
-// one real folder holding audio, one book (author, narrator, series, chapters, cover and thumbnails),
+// one real folder holding audio, one book with two audio files on disk (author, narrator, series, chapters, cover and thumbnails),
 // a finished scan job, and a shelf holding the book for the owner, the admin and the member.
 func sweepSeed(t *testing.T) *sweepEnv {
 	t.Helper()
@@ -127,6 +129,25 @@ func sweepSeed(t *testing.T) *sweepEnv {
 		Series: "Sweepseries Saga", Sequence: "1", DurationMs: 9 * sweepHourMs, AddedAt: 5, Files: 2,
 	})
 	bookSeedChapters(t, a, e.book.ID, 4)
+	// Audio on disk for /stream (P1c-2).
+	files, err := a.lib.AudioFiles(ctx, e.book.ID)
+	if err != nil || len(files) != 2 {
+		t.Fatalf("seeded audio files = %d, %v", len(files), err)
+	}
+	for i, f := range files {
+		if err := wav.Write(f.Path, 3000, 440); err != nil {
+			t.Fatal(err)
+		}
+		fi, err := os.Stat(f.Path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := a.st.Writer().ExecContext(ctx, `UPDATE audio_files SET container='wav', codec='pcm_s16le', duration_ms=3000, offset_ms=?, size=?, mtime_ns=? WHERE id=?`,
+			i*3000, fi.Size(), fi.ModTime().UnixNano(), f.ID); err != nil {
+			t.Fatal(err)
+		}
+		e.audio[i] = f.ID
+	}
 	sha := fmt.Sprintf("%064x", 0xc0ffee)
 	rel := sweepWriteCover(t, a.dir, sha)
 	cover := library.Cover{BookID: e.book.ID, Source: library.CoverFolder, Mime: "image/png", Width: 8, Height: 8, SHA256: sha, Path: rel, Tint: "#1f4a52"}
@@ -239,6 +260,10 @@ func sweepPost(pattern string, path func(e *sweepEnv, role int) string, form fun
 	return sweepRow{Pattern: pattern, Method: http.MethodPost, Path: path, Form: form, Want: want, Loc: loc}
 }
 
+func sweepAudioPath(idx int, suffix string) func(*sweepEnv, int) string {
+	return func(e *sweepEnv, _ int) string { return "/stream/" + e.audio[idx] + suffix }
+}
+
 func sweepBookPath(suffix string) func(*sweepEnv, int) string {
 	return func(e *sweepEnv, _ int) string { return "/books/" + e.book.ID + suffix }
 }
@@ -302,6 +327,12 @@ func sweepRows() []sweepRow {
 		sweepGet("GET /narrators/{id}", id(func(e *sweepEnv) string { return e.narrator }, "/narrators/", ""), sweepStaff(200, 404)),
 		sweepGet("GET /series/{id}", id(func(e *sweepEnv) string { return e.series }, "/series/", ""), sweepStaff(200, 404)),
 		sweepGet("GET /covers/{bookID}", id(bookID, "/covers/", "?w=320"), sweepStaff(200, 404)),
+		// Stream (P1c-2)
+		sweepGet("GET /stream/{audioFileID}", sweepAudioPath(0, ""), sweepStaff(200, 404)),
+		{Pattern: "GET /stream/{audioFileID}", Label: "second file", Method: http.MethodGet, Path: sweepAudioPath(1, ""), Want: sweepStaff(200, 404)},
+		{Pattern: "GET /stream/{audioFileID}", Label: "compat without the service", Method: http.MethodGet, Path: sweepAudioPath(0, "?compat=1"), Want: sweepSame(404)},
+		{Pattern: "GET /stream/{audioFileID}", Label: "unknown file", Method: http.MethodGet, Path: sweepStatic("/stream/af_unknown"), Want: sweepSame(404)},
+		// P1c-3 rows
 		// Admin
 		sweepGet("GET /admin/libraries", sweepStatic("/admin/libraries"), sweepStaff(200, 404)),
 		sweepGet("GET /admin/libraries/folders/new", sweepStatic("/admin/libraries/folders/new"), sweepStaff(200, 404)),
@@ -421,6 +452,9 @@ func sweepRows() []sweepRow {
 	cover := sweepPost("/covers/{bookID}", id(bookID, "/covers/", ""), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, "")
 	cover.Label = "POST"
 	post = append(post, cover)
+	stream := sweepPost("/stream/{audioFileID}", sweepAudioPath(0, ""), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, "")
+	stream.Label = "POST"
+	post = append(post, stream)
 	return append(rows, post...)
 }
 
