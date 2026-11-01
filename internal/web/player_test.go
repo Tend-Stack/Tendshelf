@@ -93,9 +93,12 @@ func TestPlayerLayoutAssets(t *testing.T) {
 	if !css.MatchString(body) {
 		t.Error("the layout does not link player.css")
 	}
-	js := regexp.MustCompile(`<script type="module" src="[^"]*js/player[^"]*\.js"></script>`)
+	// async: a plain module script delays DOMContentLoaded on every page (make perf at 4x went
+	// from 64 to 135 ms); async lets pages become interactive while the player loads, and a
+	// click that arrives first follows the play link's plain /stream fallback.
+	js := regexp.MustCompile(`<script type="module" async src="[^"]*js/player[^"]*\.js"></script>`)
 	if !js.MatchString(body) {
-		t.Error("the layout does not load player.js as a module")
+		t.Error("the layout does not load player.js as an async module")
 	}
 	if strings.Index(body, "player") < 0 || strings.Count(body, "js/player") != 1 {
 		t.Errorf("player.js is loaded %d times", strings.Count(body, "js/player"))
