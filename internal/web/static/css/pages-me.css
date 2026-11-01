@@ -18,6 +18,7 @@
 .ts-me__deviceicon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: var(--raised); color: var(--ink-muted); }
 .ts-me__back .ts-icon, .ts-me__deviceicon .ts-icon { width: 20px; height: 20px; }
 .ts-me__others { margin-top: var(--space-8); }
+.ts-me__others .ts-btn { padding-inline: 0; }
 .ts-me__signout { margin-top: var(--space-24); }
 .ts-me__foot { margin: var(--space-12) 0 0; text-align: center; }
 .ts-me__line { border-bottom: 1px solid var(--line); }
