@@ -62,8 +62,9 @@ func Start(t testing.TB, chromePath string) *Browser {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(chromePath, "--headless", "--remote-debugging-pipe", "--no-first-run", "--disable-gpu",
-		"--hide-scrollbars", "--user-data-dir="+t.TempDir(), "about:blank")
+	args := append([]string{"--headless", "--remote-debugging-pipe", "--no-first-run", "--disable-gpu",
+		"--hide-scrollbars", "--user-data-dir=" + t.TempDir()}, SandboxArgs()...)
+	cmd := exec.Command(chromePath, append(args, "about:blank")...)
 	cmd.ExtraFiles = []*os.File{inR, outW}
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start %s: %v", chromePath, err)
@@ -307,4 +308,14 @@ func (t *Tab) ScreenshotFull(path string) {
 func Quote(s string) string {
 	b, _ := json.Marshal(s)
 	return strings.ReplaceAll(string(b), " ", ` `)
+}
+
+// SandboxArgs is "--no-sandbox" when the tests run as root (the nightly CI container), where
+// Chromium refuses to start with its sandbox, and nothing otherwise: a developer's own browser
+// keeps the sandbox.
+func SandboxArgs() []string {
+	if os.Geteuid() == 0 {
+		return []string{"--no-sandbox"}
+	}
+	return nil
 }
