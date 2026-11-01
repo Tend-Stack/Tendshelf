@@ -8,6 +8,7 @@ and plain CSS. The accepted design is **Walnut & Ember** ([decision 0002](../dec
 | Path | What | Owner |
 | --- | --- | --- |
 | `tendshelf-handoff/` | The accepted handoff (exported 2026-11-01): design system (`tokens.css`, `tokens.json`, `components/bundle.css`, 36 components with `README.md` and `preview.html`, logos), `screens/` (114 boards as PNG + reference HTML, listed in `screens/INDEX.md`), `docs/HANDOFF.md` (grid, persistent elements, motion, HTMX regions, accessibility, copy deck, cover accent, reader) and the original brief. Start with its `README.md`. | Replaced only by a new accepted round. |
+| `screens.md` | Boards against built pages: the capturing test, the screenshot matrix and the declared differences per board (P1b exit audit). | Updated by each page phase. |
 | `claude-design-prompt.md`, `claude-design-prompt-reader.md` | The briefs given to Claude Design. | The lead writes them; do not edit without the lead. |
 
 Live copies (owner access only): the design system at
