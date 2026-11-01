@@ -56,8 +56,7 @@ func (s *server) getStream(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if book.RefusedReason != "" || mediajobs.Refusal(&f) != nil || media.Classify(f.Path) == media.KindProtected ||
-		!(f.Path == book.RootPath || within(book.RootPath, f.Path)) {
+	if !streamable(book, f) {
 		s.notFound(w, r)
 		return
 	}
@@ -98,6 +97,14 @@ func (s *server) getStream(w http.ResponseWriter, r *http.Request) {
 	}
 	h.Set("Cache-Control", "private, no-cache")
 	http.ServeContent(w, r, "", fi.ModTime(), file)
+}
+
+// streamable reports whether /stream may serve the file: the book is not refused, the file is not
+// copy-protected or refused, and its path is the book's root or inside it. The player reads the same
+// rule, so what it offers is what the stream route accepts.
+func streamable(book library.Book, f library.AudioFile) bool {
+	return book.RefusedReason == "" && mediajobs.Refusal(&f) == nil && media.Classify(f.Path) != media.KindProtected &&
+		(f.Path == book.RootPath || within(book.RootPath, f.Path))
 }
 
 // streamCompat answers ?compat=1: a ready copy is served; otherwise one job is requested and the

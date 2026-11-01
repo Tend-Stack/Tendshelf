@@ -73,6 +73,7 @@ type server struct {
 	dataDir  string
 	jobs     *jobs.Runner
 	version  string
+	now      func() time.Time // the clock; never nil
 	compat   *mediajobs.Compat
 	progress *progress.Service
 }
@@ -150,6 +151,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		dataDir:  opts.DataDir,
 		jobs:     opts.Jobs,
 		version:  opts.Version,
+		now:      nowOrReal(opts.Now),
 		compat:   opts.Compat,
 		progress: progress.New(opts.Store, opts.Now),
 	}
@@ -171,6 +173,8 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerMe(mux)
 	s.registerShelves(mux)
 	s.registerStream(mux)
+	s.registerProgress(mux)
+	s.registerPlayer(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})
