@@ -48,7 +48,8 @@ a, button, [role="button"], input, label { touch-action: manipulation; }
 .ts-truncate { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ts-clamp-2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .ts-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.ts-scroll-x { overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; touch-action: pan-x pan-y; }
+.ts-scroll-x { display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; touch-action: pan-x pan-y; }
+.ts-scroll-x > * { flex: none; scroll-snap-align: start; }
 
 /* Progress value (shell.js sets --ts-value, 0 to 100, through the CSSOM) */
 .ts-value { inline-size: calc(var(--ts-value, 0) * 1%); }
