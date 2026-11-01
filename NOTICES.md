@@ -7,7 +7,7 @@ other projects. Every port, vendored file or third-party dependency adds a row h
 
 | Tendshelf file | Source project and file(s) | Licence | How |
 | --- | --- | --- | --- |
-| (none yet) | | | |
+| `internal/media/probe.go` | Audiobookshelf `server/libs/nodeFfprobe/index.js` (ffprobe argument set), `server/utils/prober.js` (stream, tag and chapter reading) | GPL-3.0 | Method port, idiomatic Go |
 
 Expected first entries (fill in when the port lands; do not pre-credit code that does not exist):
 

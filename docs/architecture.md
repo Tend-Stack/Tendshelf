@@ -67,8 +67,8 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `grants` | `id`, `user_id`, `library_id` NULL, `book_id` NULL, `can_download`, `can_read` (R5, default 0), `expires_at` NULL, `created_by`, `created_at` | CHECK exactly one of `library_id`/`book_id`. Owner/admin implicitly see all. |
 | `libraries` | `id`, `name`, `created_at`, `scan_interval_min` | |
 | `library_folders` | `id`, `library_id`, `path` UNIQUE, `created_at` | |
-| `books` | `id`, `library_id`, `root_path` UNIQUE, `title`, `sort_title`, `subtitle`, `description`, `publisher`, `published_year`, `language`, `isbn`, `asin`, `abridged`, `dramatized`, `explicit`, `duration_ms`, `cover_id`, `refused_reason` NULL, `added_at`, `updated_at`, `missing_since` NULL | Resolved values (cache of the merge). |
-| `audio_files` | `id`, `book_id`, `path` UNIQUE, `idx`, `size`, `mtime_ns`, `quick_hash`, `sha256` NULL, `container`, `codec`, `bitrate`, `channels`, `sample_rate`, `duration_ms`, `offset_ms`, `encrypted`, `probe_json`, `updated_at` | `offset_ms` places the file on the global timeline. `quick_hash` = SHA-256 of size + first and last 1 MiB. |
+| `books` | `id`, `library_id`, `folder_id` (cascade on folder removal; the scan works per folder), `root_path` UNIQUE, `title`, `sort_title`, `subtitle`, `description`, `publisher`, `published_year`, `language`, `isbn`, `asin`, `abridged`, `dramatized`, `explicit`, `duration_ms`, `cover_id`, `refused_reason` NULL, `added_at`, `updated_at`, `missing_since` NULL | Resolved values (cache of the merge). |
+| `audio_files` | `id`, `book_id`, `path` UNIQUE, `idx`, `size`, `mtime_ns`, `quick_hash`, `sha256` NULL, `container`, `codec`, `bitrate`, `channels`, `sample_rate`, `duration_ms`, `offset_ms`, `encrypted`, `probe_json`, `missing_since` NULL, `updated_at` | `offset_ms` places the file on the global timeline. `missing_since` flags a lost part of a multi-file book instead of dropping it. `quick_hash` = SHA-256 of size + first and last 1 MiB. |
 | `chapters` | `book_id`, `idx`, `start_ms`, `end_ms`, `title`, `source`; PK (`book_id`,`idx`) | Global timeline. Source: 'file','files','sidecar','online','user'. |
 | `metadata_values` | `book_id`, `field`, `source`, `value_json`, `observed_at`; PK (`book_id`,`field`,`source`) | Every candidate value with its source. |
 | `people` | `id`, `name`, `sort_name`, `description`, `image_id`, `asin` | Authors and narrators share one table. |
@@ -85,7 +85,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `jobs` | `id`, `kind`, `state` ('queued','running','done','failed','cancelled','held'), `payload_json`, `result_json`, `error_code`, `error_text`, `attempts`, `max_attempts`, `lease_until`, `not_before`, `progress_json`, `created_by`, `created_at`, `updated_at` | |
 | `file_writes` | `id`, `job_id`, `audio_file_id`, `state` ('copying','verifying','swapped','confirmed','undone','failed'), `original_path`, `backup_path`, `temp_path`, `before_sha256`, `after_sha256`, `audio_hash`, `created_at`, `updated_at` | The write-details ledger; drives restart recovery and Undo. |
 | `audit_log` | `id`, `at`, `user_id`, `action`, `target`, `detail_json` | Logins, invites, grants, file writes, research toggles. |
-| `books_fts` | FTS5 over title, subtitle, authors, narrators, series, description | Notes are per user: searched with a user filter, not in this index. |
+| `books_fts` | FTS5 over title, subtitle, authors, narrators, series, description (P1b, migration 0003 builds it from the book rows) | Notes are per user: searched with a user filter, not in this index. |
 | `user_settings` | `user_id`, `key`, `value_json`, `updated_at`; PK (`user_id`,`key`) | The one per-user settings store (playback preferences, `reader.v1`, chosen edition per book `edition.<bookID>`). |
 | `ebook_files` (R1) | `id` (`ebf_`), `sha256` UNIQUE, `size`, `format` CHECK IN ('epub','pdf','txt','md','docx','html','fb2','mobi','azw3'), `origin` ('library','upload'), `path` UNIQUE, `library_folder_id` NULL, `mtime_ns`, `quick_hash`, `refused_reason` NULL ('drm','unsupported','damaged','too_large','no_text'), `added_at`, `missing_since` NULL | Library ebooks read-only; uploads under `<data>/ebooks/`. |
 | `editions` (R1) | `id` (`ed_`), `ebook_file_id`, `book_id` NULL (NULL = unpaired), `doc_sha256`, `parse_recipe`, `title`, `authors_json`, `language`, `isbn`, `asin`, `layout` ('reflow','page'), `chapter_count`, `word_count`, `has_overlays`, `is_default`, `pair_source` ('folder','upload','identifier','title','user'), `pair_score` REAL, `paired_by` NULL, `paired_at`, `created_at`, `updated_at` | Partial unique index: one `is_default` per book. Document file `<data>/text/<doc_sha256>.json.gz`. |
@@ -99,7 +99,8 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 ## Media handling
 
 - **Supported**: m4b, m4a, mp4, mp3, flac, ogg, opus, wav, aac, webm. **Refused**: aax, aaxc, aa, m4p,
-  and any stream ffprobe reports as encrypted.
+  and any stream ffprobe reports as encrypted. ffprobe has no `-nostdin`; it runs with stdin from
+  /dev/null (ffmpeg gets `-nostdin`).
 - **Streaming**: `GET /stream/{audioFileID}` uses `http.ServeContent` on the opened file (HTTP Range,
   `If-Range`, `ETag` = quick hash, `Cache-Control: private`). Authorization is checked before opening.
   The player maps the global timeline to (file, offset) using `offset_ms`.
@@ -115,7 +116,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
   colour ignoring near-black, near-white and small areas becomes `tint`; converted to OKLCH, chroma
   capped at 0.10, lightness set per theme (dark 0.75-0.85, light and sepia 0.38-0.46), then checked
   (play-button text 4.5:1, scrubber fill 3:1 on its ground). Failing or grey covers fall back to ember.
-  Rules: handoff `docs/HANDOFF.md`, "Cover accent and theme rules". The contrast theme never uses it.
+  Rules: handoff `docs/design/tendshelf-handoff/docs/HANDOFF.md`, "Cover accent and theme rules". The contrast theme never uses it.
 - **Write details into the file** (P2): `ffmpeg -map 0 -c copy` with the new tags and chapters into a
   temp file in the same directory; verify the audio stream hash (`-map 0:a -c copy -f hash`) equals the
   original's, duration within 50 ms, chapter count and times equal, tags read back; check free space

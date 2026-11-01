@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -99,6 +100,35 @@ func seedAll(t *testing.T, st *Store) {
 
 var allTables = []string{"settings", "users", "sessions", "user_settings", "jobs", "audit_log"}
 
+// libraryTables are the tables migration 0002 adds.
+var libraryTables = []string{"libraries", "library_folders", "books", "audio_files", "chapters", "metadata_values",
+	"people", "book_people", "series", "book_series", "book_labels", "covers"}
+
+// seedLibrary adds one row to every library table, parents first, then points the book at its cover.
+func seedLibrary(t *testing.T, st *Store) {
+	t.Helper()
+	stmts := []string{
+		`INSERT INTO libraries(id, name, created_at) VALUES ('lib_1', 'Books', 1)`,
+		`INSERT INTO library_folders(id, library_id, path, created_at) VALUES ('lf_1', 'lib_1', '/audio', 1)`,
+		`INSERT INTO books(id, library_id, folder_id, root_path, title, added_at, updated_at) VALUES ('bk_1', 'lib_1', 'lf_1', '/audio/a', 'A', 1, 1)`,
+		`INSERT INTO audio_files(id, book_id, path, idx, size, mtime_ns, quick_hash, updated_at) VALUES ('af_1', 'bk_1', '/audio/a/1.m4b', 0, 10, 1, '` + strings.Repeat("a", 64) + `', 1)`,
+		`INSERT INTO chapters(book_id, idx, start_ms, end_ms, title, source) VALUES ('bk_1', 0, 0, 10, 'One', 'file')`,
+		`INSERT INTO metadata_values(book_id, field, source, value_json, observed_at) VALUES ('bk_1', 'title', 'tags', '"A"', 1)`,
+		`INSERT INTO people(id, name, created_at) VALUES ('ps_1', 'Ana', 1)`,
+		`INSERT INTO book_people(book_id, person_id, role) VALUES ('bk_1', 'ps_1', 'author')`,
+		`INSERT INTO series(id, name, created_at) VALUES ('sr_1', 'Saga', 1)`,
+		`INSERT INTO book_series(book_id, series_id, sequence) VALUES ('bk_1', 'sr_1', '1')`,
+		`INSERT INTO book_labels(book_id, kind, value) VALUES ('bk_1', 'genre', 'Fantasy')`,
+		`INSERT INTO covers(id, book_id, source, mime, width, height, sha256, path, created_at) VALUES ('cv_1', 'bk_1', 'embedded', 'image/jpeg', 64, 64, '` + strings.Repeat("b", 64) + `', 'cv_1.jpg', 1)`,
+		`UPDATE books SET cover_id = 'cv_1' WHERE id = 'bk_1'`,
+	}
+	for _, s := range stmts {
+		if _, err := st.Writer().Exec(s); err != nil {
+			t.Fatalf("%s: %v", s, err)
+		}
+	}
+}
+
 func TestOpenFresh(t *testing.T) {
 	dir := t.TempDir()
 	st := mustOpen(t, dir)
@@ -123,7 +153,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != 6 {
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables) {
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -174,6 +204,13 @@ func TestOpenZeroByteFile(t *testing.T) {
 // that is at version v.
 var seeds = map[int]func(t *testing.T, st *Store){
 	1: seedAll,
+	2: func(t *testing.T, st *Store) { seedAll(t, st); seedLibrary(t, st) },
+}
+
+// tablesAt lists the tables that exist, and hold one seeded row, at each version.
+var tablesAt = map[int][]string{
+	1: allTables,
+	2: append(append([]string{}, allTables...), libraryTables...),
 }
 
 func TestMigrateFromPreviousFixtures(t *testing.T) {
@@ -198,7 +235,7 @@ func TestMigrateFromPreviousFixtures(t *testing.T) {
 			}
 			if v-1 > 0 {
 				if seeds[v-1] != nil {
-					for _, tbl := range allTables {
+					for _, tbl := range tablesAt[v-1] {
 						if countRows(t, st.Reader(), tbl) == 0 {
 							t.Errorf("%s lost its rows", tbl)
 						}
@@ -217,12 +254,13 @@ func TestDataSurvivesReopen(t *testing.T) {
 	dir := t.TempDir()
 	st := mustOpen(t, dir)
 	seedAll(t, st)
+	seedLibrary(t, st)
 	if err := st.Close(); err != nil {
 		t.Fatal(err)
 	}
 	st = mustOpen(t, dir)
 	defer st.Close()
-	for _, tbl := range allTables {
+	for _, tbl := range tablesAt[SchemaVersion] {
 		if n := countRows(t, st.Reader(), tbl); n != 1 {
 			t.Errorf("%s has %d rows", tbl, n)
 		}
@@ -345,7 +383,7 @@ func TestOpenRefusesNonSQLiteFile(t *testing.T) {
 }
 
 func extraMigration() migration {
-	return migration{Version: 2, Name: "test", SQL: "CREATE TABLE extra (x INTEGER) STRICT;"}
+	return migration{Version: SchemaVersion + 1, Name: "test", SQL: "CREATE TABLE extra (x INTEGER) STRICT;"}
 }
 
 func TestBackupBeforeMigration(t *testing.T) {
@@ -355,24 +393,24 @@ func TestBackupBeforeMigration(t *testing.T) {
 	st.Close()
 
 	now := time.Date(2026, 11, 1, 10, 0, 0, 123_000_000, time.UTC)
-	cfg := openConfig{migrations: append(embedded(t), extraMigration()), supported: 2, now: func() time.Time { return now }}
+	cfg := openConfig{migrations: append(embedded(t), extraMigration()), supported: SchemaVersion + 1, now: func() time.Time { return now }}
 	st2, err := open(context.Background(), dir, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer st2.Close()
-	if st2.SchemaVersion() != 2 {
+	if st2.SchemaVersion() != SchemaVersion+1 {
 		t.Fatalf("version = %d", st2.SchemaVersion())
 	}
-	bk := filepath.Join(dir, "backups", "tendshelf-v1-20261101T100000.123Z.db")
+	bk := filepath.Join(dir, "backups", fmt.Sprintf("tendshelf-v%d-20261101T100000.123Z.db", SchemaVersion))
 	if !exists(bk) {
 		ents, _ := os.ReadDir(filepath.Join(dir, "backups"))
 		t.Fatalf("backup %s missing; have %v", bk, ents)
 	}
-	if h := rawHeader(t, bk); h != (Header{ApplicationID, 1}) {
+	if h := rawHeader(t, bk); h != (Header{ApplicationID, SchemaVersion}) {
 		t.Fatalf("backup header = %+v", h)
 	}
-	if err := verifyBackup(context.Background(), bk, 1); err != nil {
+	if err := verifyBackup(context.Background(), bk, SchemaVersion); err != nil {
 		t.Fatal(err)
 	}
 	d, err := sql.Open("sqlite", roDSN(bk))
@@ -394,10 +432,10 @@ func TestBackupRotationKeepsNewestThree(t *testing.T) {
 		t.Fatal(err)
 	}
 	fakes := []string{
-		"tendshelf-v1-20250101T000000.000Z.db",
-		"tendshelf-v1-20250102T000000.000Z.db",
-		"tendshelf-v1-20250103T000000.000Z.db",
-		"tendshelf-v1-20250104T000000.000Z.db",
+		fmt.Sprintf("tendshelf-v%d-20250101T000000.000Z.db", SchemaVersion),
+		fmt.Sprintf("tendshelf-v%d-20250102T000000.000Z.db", SchemaVersion),
+		fmt.Sprintf("tendshelf-v%d-20250103T000000.000Z.db", SchemaVersion),
+		fmt.Sprintf("tendshelf-v%d-20250104T000000.000Z.db", SchemaVersion),
 	}
 	for _, f := range append(fakes, "notes.txt") {
 		if err := os.WriteFile(filepath.Join(bdir, f), []byte("x"), 0o600); err != nil {
@@ -405,7 +443,7 @@ func TestBackupRotationKeepsNewestThree(t *testing.T) {
 		}
 	}
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	cfg := openConfig{migrations: append(embedded(t), extraMigration()), supported: 2, now: func() time.Time { return now }}
+	cfg := openConfig{migrations: append(embedded(t), extraMigration()), supported: SchemaVersion + 1, now: func() time.Time { return now }}
 	st, err := open(context.Background(), dir, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -418,9 +456,9 @@ func TestBackupRotationKeepsNewestThree(t *testing.T) {
 	}
 	want := []string{
 		"notes.txt",
-		"tendshelf-v1-20250103T000000.000Z.db",
-		"tendshelf-v1-20250104T000000.000Z.db",
-		"tendshelf-v1-20260101T000000.000Z.db",
+		fmt.Sprintf("tendshelf-v%d-20250103T000000.000Z.db", SchemaVersion),
+		fmt.Sprintf("tendshelf-v%d-20250104T000000.000Z.db", SchemaVersion),
+		fmt.Sprintf("tendshelf-v%d-20260101T000000.000Z.db", SchemaVersion),
 	}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("backups = %v, want %v", got, want)
@@ -433,14 +471,14 @@ func TestBackupFailureLeavesDatabaseUnmigrated(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "backups"), []byte("not a dir"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	cfg := openConfig{migrations: append(embedded(t), extraMigration()), supported: 2, now: time.Now}
+	cfg := openConfig{migrations: append(embedded(t), extraMigration()), supported: SchemaVersion + 1, now: time.Now}
 	if _, err := open(context.Background(), dir, cfg); err == nil {
 		t.Fatal("open must fail when the backup cannot be written")
 	}
 	// The same database still opens at its own version, unmigrated.
 	st := mustOpen(t, dir)
 	defer st.Close()
-	if st.SchemaVersion() != 1 || pragmaInt(t, st.Writer(), "user_version") != 1 {
+	if st.SchemaVersion() != SchemaVersion || pragmaInt(t, st.Writer(), "user_version") != SchemaVersion {
 		t.Fatalf("version = %d", st.SchemaVersion())
 	}
 }
@@ -449,6 +487,7 @@ func TestBackupFailureLeavesDatabaseUnmigrated(t *testing.T) {
 // migration is released; never edit an existing one.
 var pinnedMigrations = map[int]string{
 	1: "0e70eb5003c239205ad0afda87e019d8983e64fddce9100222314b1075bcfaaa",
+	2: "bf7ece0acfd14ae9dc766e8e4c10d4507ad8ea4b0a50ccf1db01d62ab2f5de60",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
@@ -494,6 +533,62 @@ func TestLoadMigrationsRejectsBadSets(t *testing.T) {
 		if _, err := loadMigrations(mk(names...)); err == nil {
 			t.Errorf("%s: want error", name)
 		}
+	}
+}
+
+func TestLibrarySchema(t *testing.T) {
+	st := mustOpen(t, t.TempDir())
+	defer st.Close()
+	for _, tbl := range libraryTables {
+		var strict int
+		if err := st.Reader().QueryRow("SELECT strict FROM pragma_table_list WHERE name = ?", tbl).Scan(&strict); err != nil {
+			t.Fatalf("%s: %v", tbl, err)
+		}
+		if strict != 1 {
+			t.Errorf("%s is not STRICT", tbl)
+		}
+	}
+	seedLibrary(t, st)
+	rows, err := st.Writer().Query("PRAGMA foreign_key_check")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rows.Next() {
+		t.Error("foreign_key_check reports a violation")
+	}
+	rows.Close()
+
+	bad := map[string]string{
+		"chapter end before start": `INSERT INTO chapters(book_id, idx, start_ms, end_ms, source) VALUES ('bk_1', 1, 10, 5, 'file')`,
+		"cover tint upper case":    `INSERT INTO covers(id, book_id, source, mime, width, height, sha256, path, tint, created_at) VALUES ('cv_2', 'bk_1', 'folder', 'image/png', 1, 1, '` + strings.Repeat("c", 64) + `', 'x', '#ABC', 1)`,
+		"book refused reason":      `UPDATE books SET refused_reason = 'x' WHERE id = 'bk_1'`,
+		"audio file encrypted 2":   `UPDATE audio_files SET encrypted = 2 WHERE id = 'af_1'`,
+		"person role":              `INSERT INTO book_people(book_id, person_id, role) VALUES ('bk_1', 'ps_1', 'editor')`,
+		"short quick hash":         `UPDATE audio_files SET quick_hash = 'short' WHERE id = 'af_1'`,
+	}
+	for name, stmt := range bad {
+		if _, err := st.Writer().Exec(stmt); err == nil {
+			t.Errorf("%s: statement succeeded", name)
+		}
+	}
+}
+
+func TestConstraintClassifiers(t *testing.T) {
+	st := mustOpen(t, t.TempDir())
+	defer st.Close()
+	if _, err := st.Writer().Exec(`INSERT INTO settings(key, value_json) VALUES ('k', '1')`); err != nil {
+		t.Fatal(err)
+	}
+	_, err := st.Writer().Exec(`INSERT INTO settings(key, value_json) VALUES ('k', '2')`)
+	if !IsUniqueViolation(err) || IsForeignKeyViolation(err) {
+		t.Fatalf("duplicate key: unique=%v fk=%v err=%v", IsUniqueViolation(err), IsForeignKeyViolation(err), err)
+	}
+	_, err = st.Writer().Exec(`INSERT INTO user_settings(user_id, key, value_json, updated_at) VALUES ('nobody', 'k', '1', 1)`)
+	if !IsForeignKeyViolation(err) || IsUniqueViolation(err) {
+		t.Fatalf("missing parent: unique=%v fk=%v err=%v", IsUniqueViolation(err), IsForeignKeyViolation(err), err)
+	}
+	if IsUniqueViolation(nil) || IsForeignKeyViolation(errors.New("x")) {
+		t.Fatal("non-SQLite errors must not match")
 	}
 }
 
