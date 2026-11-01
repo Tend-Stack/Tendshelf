@@ -199,7 +199,11 @@ func (fx *fixture) file(rel string, f mediatest.FakeFile) string {
 	if f.DurationMs == 0 {
 		f.DurationMs = int64(1000 + 10*(fx.n%97))
 	}
-	f.Tags = map[string]string{"comment": rel}
+	tags := map[string]string{"comment": rel}
+	for k, v := range f.Tags {
+		tags[k] = v
+	}
+	f.Tags = tags
 	mediatest.WriteFake(fx.t, path, f)
 	if !f.Encrypted && media.Classify(path) != media.KindProtected {
 		fx.dur[path] = f.DurationMs
