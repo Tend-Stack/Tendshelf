@@ -257,7 +257,12 @@ Stylesheets are hand-written in `internal/web/static/css/` and wrapped at load t
 primitives, safe-area and native-feel rules, `motion.css` holds every transition, animation and the
 reduced-motion overrides, and `pages-*.css` are per-page. Layer order lets `motion` and `utilities`
 win without specificity fights. Client code is one file, `static/js/shell.js` (hashed files cannot
-import each other): it only toggles classes and sets custom properties with `style.setProperty`.
+import each other): it only toggles classes and sets custom properties with `style.setProperty`, closes
+filter chip menus (`<details data-ts-chipmenu>` works without it), and ends with
+`performance.mark("ts-ready")`, a measurement mark that nothing reads in production and no data leaves
+the browser; `make perf` (Chromium, 4x CPU throttle, 390 px, 2,000 books) reads it. A page loads the
+core files plus its own `pages-*.css`, so the CSS budgets are per load: core at most 72 KB, each
+`pages-*.css` at most 8 KB.
 
 Browser baseline: current Chromium (WebView2, Android WebView), WebKit (WKWebView, WebKitGTK 2.52). View
 Transitions, `@starting-style`, `translate` and `dvh` are enhancements: where one is missing the page

@@ -57,8 +57,8 @@ type ListQuery struct {
 	MinDurationMs, MaxDurationMs int64
 	// HasCover keeps the books that have a cover file (the setup page's cover wall).
 	HasCover bool
-	Cursor                       string // opaque, from BookPage.Next
-	Limit                        int    // 0 = 48, clamped to 1..120
+	Cursor   string // opaque, from BookPage.Next
+	Limit    int    // 0 = 48, clamped to 1..120
 }
 
 // PersonRef names a person on a card.
