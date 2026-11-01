@@ -55,6 +55,8 @@ type ListQuery struct {
 	// literal). MinDurationMs is inclusive and MaxDurationMs exclusive; 0 leaves that side open.
 	Title                        string
 	MinDurationMs, MaxDurationMs int64
+	// HasCover keeps the books that have a cover file (the setup page's cover wall).
+	HasCover bool
 	Cursor                       string // opaque, from BookPage.Next
 	Limit                        int    // 0 = 48, clamped to 1..120
 }
@@ -222,6 +224,9 @@ func whereExcept(sc Scope, q ListQuery, skip string) *whereClause {
 	}
 	if t := cutRunes(strings.TrimSpace(q.Title), MaxTitleRunes); t != "" {
 		w.add("("+titleKey+") LIKE '%' || ? || '%' ESCAPE '\\'", likeEscape(t))
+	}
+	if q.HasCover {
+		w.add("b.cover_id IS NOT NULL")
 	}
 	if q.MinDurationMs > 0 {
 		w.add("b.duration_ms >= ?", q.MinDurationMs)

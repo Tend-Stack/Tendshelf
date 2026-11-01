@@ -22,6 +22,7 @@ const (
 	homeShelfSize  = 12
 	browseTopChips = 3  // genre chips in the row; the sheet lists them all
 	browseSheetMax = 40 // genres listed in the sheet
+	browseMenuMax  = 30 // people or series listed in a chip menu
 )
 
 func (s *server) registerBrowse(mux *http.ServeMux) {
@@ -146,7 +147,24 @@ func browseItems(q browseQuery, cur *library.LibrarySummary, page library.BookPa
 }
 
 func (s *server) listQuery(q browseQuery, cur *library.LibrarySummary) library.ListQuery {
-	return library.ListQuery{LibraryID: curID(cur), Sort: q.Sort, Genres: q.Genres, Cursor: q.Cursor, Limit: browsePageSize}
+	from, to := lengthRange(q.Length)
+	return library.ListQuery{LibraryID: curID(cur), Sort: q.Sort, Genres: q.Genres, Cursor: q.Cursor, Limit: browsePageSize,
+		AuthorID: q.Author, NarratorID: q.Narrator, SeriesID: q.Series, Title: q.Title, MinDurationMs: from, MaxDurationMs: to}
+}
+
+// libraryFacets are the choices the Author, Narrator and Series menus list.
+type libraryFacets struct{ Authors, Narrators, Series []library.NamedFacet }
+
+func (s *server) libraryFacets(r *http.Request, lq library.ListQuery) (f libraryFacets, err error) {
+	ctx, sc := r.Context(), s.scope(r)
+	if f.Authors, err = s.lib.PeopleFacet(ctx, sc, lq, library.RoleAuthor, browseMenuMax); err != nil {
+		return f, err
+	}
+	if f.Narrators, err = s.lib.PeopleFacet(ctx, sc, lq, library.RoleNarrator, browseMenuMax); err != nil {
+		return f, err
+	}
+	f.Series, err = s.lib.SeriesFacet(ctx, sc, lq, browseMenuMax)
+	return f, err
 }
 
 func (s *server) getLibraryItems(w http.ResponseWriter, r *http.Request) {
@@ -189,6 +207,16 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "library genres", err)
 		return
 	}
+	totals, err := s.lib.Totals(ctx, sc, curID(cur))
+	if err != nil {
+		s.serverError(w, r, "library totals", err)
+		return
+	}
+	facets, err := s.libraryFacets(r, s.listQuery(q, cur))
+	if err != nil {
+		s.serverError(w, r, "library facets", err)
+		return
+	}
 	shown := libs
 	if cur != nil {
 		shown = []library.LibrarySummary{*cur}
@@ -199,9 +227,11 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := s.libraryView(q, libs, cur, genres, page)
+	s.libraryFilters(&v, q, cur, facets)
+	v.HeaderLine = browseHeaderLine(totals, s.canManage(r))
 	v.Scan = scanStatus
 	if len(v.Cards) == 0 && q.Cursor == "" && v.Scan == nil {
-		if len(q.Genres) > 0 {
+		if q.filtered() {
 			v.Empty = browseEmpty("no-match", v.ClearHref)
 		} else {
 			v.Empty = browseEmpty(s.emptyKind(r), "")
@@ -227,7 +257,9 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 		v.Title = cur.Name
 	}
 	v.FormAction = pagePath
-	v.Count = browseCount(page.Total)
+	if q.filtered() {
+		v.Match = browseMatch(page.Total)
+	}
 	v.SortLabel = browseSortLabel(q.Sort)
 	for _, o := range browseSortLabels {
 		v.SortOptions = append(v.SortOptions, pages.SortOption{Value: string(o.Sort), Label: o.Label, On: o.Sort == q.Sort})
@@ -238,8 +270,8 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 	v.SheetHref = q.href(pagePath, func(q *browseQuery) { q.Sheet = true })
 	v.CloseHref = q.href(pagePath, func(q *browseQuery) { q.Sheet = false })
 	v.SelectedGenres = q.Genres
-	if len(q.Genres) > 0 {
-		v.ClearHref = q.href(pagePath, func(q *browseQuery) { reset(q); q.Genres = nil })
+	if q.filtered() {
+		v.ClearHref = q.href(pagePath, func(q *browseQuery) { reset(q); q.clearFilters() })
 	}
 	if q.Cursor != "" {
 		v.StartHref = q.href(pagePath, reset)
@@ -251,7 +283,7 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 			if id != "" {
 				path += "/" + id
 			}
-			return q.href(path, func(q *browseQuery) { reset(q); q.Genres = nil })
+			return q.href(path, func(q *browseQuery) { reset(q); q.clearFilters() })
 		}
 		v.Libraries = append(v.Libraries, pages.LibChip{Name: "All", Href: libHref(""), Current: cur == nil})
 		for _, l := range libs {
@@ -297,4 +329,53 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 		}
 	}
 	return v
+}
+
+// libraryFilters adds the Author, Narrator, Series and Length menus and the values the forms carry.
+// Every choice is an address; a menu's "Any ..." link drops its own filter and keeps the others.
+func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *library.LibrarySummary, f libraryFacets) {
+	pagePath, _ := browsePaths(cur)
+	set := func(apply func(*browseQuery)) string {
+		return q.href(pagePath, func(q *browseQuery) { q.Cursor, q.Sheet = "", false; apply(q) })
+	}
+	people := func(label, chip, any string, opts []library.NamedFacet, chosen string, assign func(*browseQuery, string)) pages.FilterMenu {
+		m := pages.FilterMenu{Label: label, Chip: label, AnyLabel: any, Counts: true, On: chosen != "",
+			AnyHref: set(func(q *browseQuery) { assign(q, "") })}
+		for _, o := range opts {
+			id := o.ID
+			m.Options = append(m.Options, pages.FilterOption{Name: o.Name, Count: o.Count, On: id == chosen,
+				Href: set(func(q *browseQuery) { assign(q, id) })})
+			if id == chosen {
+				m.Chip = chip + ": " + o.Name
+			}
+		}
+		return m
+	}
+	add := func(m pages.FilterMenu) {
+		if m.On || len(m.Options) > 0 {
+			v.Menus = append(v.Menus, m)
+		}
+	}
+	add(people("Author", "Author", "Any author", f.Authors, q.Author, func(q *browseQuery, id string) { q.Author = id }))
+	add(people("Narrator", "Narrator", "Any narrator", f.Narrators, q.Narrator, func(q *browseQuery, id string) { q.Narrator = id }))
+	add(people("Series", "Series", "Any series", f.Series, q.Series, func(q *browseQuery, id string) { q.Series = id }))
+
+	lm := pages.FilterMenu{Label: "Length", Chip: "Length", AnyLabel: "Any length", On: q.Length != "", End: true,
+		AnyHref: set(func(q *browseQuery) { q.Length = "" })}
+	for _, o := range browseLengthOptions {
+		val := o.Value
+		lm.Options = append(lm.Options, pages.FilterOption{Name: o.Label, Value: val, On: val == q.Length,
+			Href: set(func(q *browseQuery) { q.Length = val })})
+		if val == q.Length {
+			lm.Chip = "Length: " + o.Label
+		}
+	}
+	v.LengthMenu = lm
+
+	v.TitleFilter, v.LengthValue = q.Title, q.Length
+	for _, h := range [...]pages.HiddenField{{Name: "author", Value: q.Author}, {Name: "narrator", Value: q.Narrator}, {Name: "series", Value: q.Series}} {
+		if h.Value != "" {
+			v.Hidden = append(v.Hidden, h)
+		}
+	}
 }

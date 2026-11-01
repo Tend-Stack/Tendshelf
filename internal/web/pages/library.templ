@@ -24,6 +24,32 @@ type SortOption struct {
 	On           bool
 }
 
+// FilterOption is one choice in a filter menu: a link to the list with that choice made.
+type FilterOption struct {
+	Name, Href string
+	// Value is the form value of a length bucket (the sheet's radios); empty for people and series.
+	Value string
+	Count int
+	On    bool
+}
+
+// FilterMenu is one chip with its menu ("Author", "Series", "Length"). The chip reads "Author:
+// Imogen Hale" while a choice is made; AnyHref drops the choice. The menu is a <details> element and
+// its choices are links, so it works without JavaScript.
+type FilterMenu struct {
+	Label, Chip, AnyLabel, AnyHref string
+	Options                       []FilterOption
+	// Counts shows each option's number of books (people and series; not lengths).
+	Counts bool
+	// On is true while a choice is made.
+	On bool
+	// End opens the menu towards the left, for a chip near the right edge.
+	End bool
+}
+
+// HiddenField carries a filter the form does not edit across a submit.
+type HiddenField struct{ Name, Value string }
+
 // LibraryView is the Library page, its list fragment and its filter sheet. The handler builds every
 // address, so the template holds no URL logic: each filter, sort, view and page position is an
 // address a person can bookmark and go Back to.
@@ -34,8 +60,20 @@ type LibraryView struct {
 	FormAction string
 	// Libraries are the chips that switch between libraries; empty with a single library.
 	Libraries []LibChip
-	// Count is "412 books".
-	Count string
+	// HeaderLine is "912 books · 3 folders · 8,240 hours" (folders only for a person who manages libraries).
+	HeaderLine string
+	// Match is "16 books match", set only while a filter is on; it sits in the results region with
+	// the "Clear filters" link (ClearHref).
+	Match string
+	// Menus are the Author, Narrator and Series chips; LengthMenu is the Length chip after the genres.
+	Menus      []FilterMenu
+	LengthMenu FilterMenu
+	// TitleFilter is the text of the "Filter by title" field.
+	TitleFilter string
+	// Hidden are the person, narrator and series ids the forms carry; LengthValue is the chosen
+	// length bucket ("short", "medium", "long" or "").
+	Hidden      []HiddenField
+	LengthValue string
 	// SortLabel names the current sort for the sort chip; SortOptions are all four.
 	SortLabel   string
 	SortOptions []SortOption
@@ -48,7 +86,7 @@ type LibraryView struct {
 	SelectedGenres []string
 	// SheetHref opens the filter sheet; CloseHref is the page without it.
 	SheetHref, CloseHref string
-	// ClearHref drops the genre filters; it is set only while there are some.
+	// ClearHref drops every filter and keeps the sort and the view; it is set only while a filter is on.
 	ClearHref string
 	// StartHref is "Back to the start" and is set only on a page reached by a cursor.
 	StartHref string
@@ -66,14 +104,56 @@ type LibraryView struct {
 // apart. bar is the inline version from 1280 px: a select for the sort, the chosen genres carried
 // as hidden fields (the genre chips beside it toggle them).
 templ filterForm(v LibraryView, prefix string, bar bool) {
-	<form class="ts-filter-form" method="get" action={ templ.SafeURL(v.FormAction) } hx-select-oob="#sheet">
+	<form
+		class="ts-filter-form"
+		method="get"
+		action={ templ.SafeURL(v.FormAction) }
+		if bar {
+			hx-get={ v.FormAction }
+			hx-trigger="change target:select"
+			hx-target="#library-results"
+			hx-select="#library-results"
+			hx-swap="outerHTML"
+			hx-push-url="true"
+			hx-include="this"
+		} else {
+			hx-select-oob="#sheet"
+		}
+	>
 		if v.View == "list" {
 			<input type="hidden" name="view" value="list"/>
+		}
+		for _, h := range v.Hidden {
+			<input type="hidden" name={ h.Name } value={ h.Value }/>
 		}
 		if bar {
 			for _, g := range v.SelectedGenres {
 				<input type="hidden" name="genre" value={ g }/>
 			}
+			if v.LengthValue != "" {
+				<input type="hidden" name="length" value={ v.LengthValue }/>
+			}
+			<div class="ts-search ts-lib-title">
+				@components.Icon("search", false)
+				<label class="ts-sr" for={ prefix + "-title" }>Filter by title</label>
+				<input
+					class="ts-input"
+					type="search"
+					id={ prefix + "-title" }
+					name="title"
+					value={ v.TitleFilter }
+					placeholder="Filter this library by title"
+					maxlength="100"
+					autocomplete="off"
+					hx-get={ v.FormAction }
+					hx-trigger="input changed delay:300ms, search"
+					hx-target="#library-results"
+					hx-select="#library-results"
+					hx-swap="outerHTML"
+					hx-push-url="true"
+					hx-include="closest form"
+				/>
+			</div>
 			<label class="ts-sr" for={ prefix + "-sort" }>Sort by</label>
 			<select class="ts-select ts-select--native" id={ prefix + "-sort" } name="sort">
 				for _, o := range v.SortOptions {
@@ -81,12 +161,29 @@ templ filterForm(v LibraryView, prefix string, bar bool) {
 				}
 			</select>
 		} else {
+			<div class="ts-filter-group">
+				<label class="ts-field__label" for={ prefix + "-title" }>Filter by title</label>
+				<input class="ts-input" type="search" id={ prefix + "-title" } name="title" value={ v.TitleFilter } placeholder="Filter this library by title" maxlength="100" autocomplete="off"/>
+			</div>
 			<fieldset class="ts-filter-group">
 				<legend class="ts-field__label">Sort by</legend>
 				for _, o := range v.SortOptions {
 					<label class="ts-filter-option" for={ prefix + "-sort-" + o.Value }>
 						<input class="ts-filter-radio" type="radio" id={ prefix + "-sort-" + o.Value } name="sort" value={ o.Value } checked?={ o.On }/>
 						<span>{ o.Label }</span>
+					</label>
+				}
+			</fieldset>
+			<fieldset class="ts-filter-group">
+				<legend class="ts-field__label">Length</legend>
+				<label class="ts-filter-option" for={ prefix + "-length-any" }>
+					<input class="ts-filter-radio" type="radio" id={ prefix + "-length-any" } name="length" value="" checked?={ v.LengthValue == "" }/>
+					<span>{ v.LengthMenu.AnyLabel }</span>
+				</label>
+				for _, o := range v.LengthMenu.Options {
+					<label class="ts-filter-option" for={ prefix + "-length-" + o.Value }>
+						<input class="ts-filter-radio" type="radio" id={ prefix + "-length-" + o.Value } name="length" value={ o.Value } checked?={ o.On }/>
+						<span>{ o.Name }</span>
 					</label>
 				}
 			</fieldset>
@@ -104,8 +201,50 @@ templ filterForm(v LibraryView, prefix string, bar bool) {
 				</fieldset>
 			}
 		}
-		<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-filter-submit">Show books</button>
+		if bar {
+			<noscript>
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-filter-submit">Show books</button>
+			</noscript>
+		} else {
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-filter-submit">Show books</button>
+		}
 	</form>
+}
+
+// filterMenu is one filter chip with its menu of links. Opening it needs no script.
+templ filterMenu(m FilterMenu) {
+	<details class={ "ts-chipmenu", templ.KV("is-on", m.On), templ.KV("ts-chipmenu--end", m.End) } data-ts-chipmenu>
+		<summary class="ts-chip">
+			if m.On {
+				@components.Icon("check", false)
+			}
+			{ m.Chip }
+			@chevron()
+		</summary>
+		<div class="ts-chipmenu__body" role="group" aria-label={ m.Label }>
+			<a
+				class="ts-chipmenu__item"
+				href={ templ.SafeURL(m.AnyHref) }
+				if !m.On {
+					aria-current="true"
+				}
+			>{ m.AnyLabel }</a>
+			for _, o := range m.Options {
+				<a
+					class="ts-chipmenu__item"
+					href={ templ.SafeURL(o.Href) }
+					if o.On {
+						aria-current="true"
+					}
+				>
+					<span class="ts-chipmenu__name">{ o.Name }</span>
+					if m.Counts {
+						<span class="ts-chipmenu__count ts-num">{ strconv.Itoa(o.Count) }</span>
+					}
+				</a>
+			}
+		</div>
+	</details>
 }
 
 // LibraryFilterSheet is the "Filter and sort" sheet. It renders into #sheet, outside #main. From
@@ -158,7 +297,7 @@ templ Library(v LibraryView) {
 	<div class="ts-library">
 		<header class="ts-lib-head">
 			<h1 class="title-1 ts-lib-head__title">{ v.Title }</h1>
-			<p class="caption ts-num ts-lib-head__count" role="status">{ v.Count }</p>
+			<p class="caption ts-num ts-lib-head__count">{ v.HeaderLine }</p>
 		</header>
 		if v.Scan != nil {
 			<div class="ts-browse-scan">
@@ -223,53 +362,60 @@ templ Library(v LibraryView) {
 				</a>
 			</div>
 		</div>
-		if len(v.Genres) > 0 || v.ClearHref != "" {
-			<div class="ts-chip-set ts-lib-filters" role="group" aria-label="Filters">
-				for _, g := range v.Genres {
-					<a
-						class="ts-chip"
-						href={ templ.SafeURL(g.Href) }
-						if g.On {
-							aria-current="true"
-						}
-					>
-						if g.On {
-							@components.Icon("check", false)
-						}
-						{ g.Name }
-					</a>
-				}
+		<div class="ts-chip-set ts-lib-filters" role="group" aria-label="Filters">
+			for _, m := range v.Menus {
+				@filterMenu(m)
+			}
+			for _, g := range v.Genres {
 				<a
-					class="ts-chip ts-lib-morefilters"
-					href={ templ.SafeURL(v.SheetHref) }
-					hx-get={ v.SheetHref }
-					hx-target="#sheet"
-					hx-select="#sheet > *"
-					hx-swap="innerHTML"
-					hx-push-url="false"
-					aria-haspopup="dialog"
+					class="ts-chip"
+					href={ templ.SafeURL(g.Href) }
+					if g.On {
+						aria-current="true"
+					}
 				>
-					@components.Icon("filter", false)
-					More filters
+					if g.On {
+						@components.Icon("check", false)
+					}
+					{ g.Name }
 				</a>
-				if v.ClearHref != "" {
-					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ClearHref) }>Clear filters</a>
-				}
-			</div>
-		}
-		if v.StartHref != "" {
-			<p class="ts-lib-start"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.StartHref) }>Back to the start</a></p>
-		}
-		if v.Empty != nil {
-			@Empty(*v.Empty)
-		} else {
-			<div
-				id="library-grid"
-				class={ "ts-lib-items", templ.KV("ts-grid ts-grid--covers", v.View != "list"), templ.KV("ts-lib-rows", v.View == "list") }
+			}
+			@filterMenu(v.LengthMenu)
+			<a
+				class="ts-chip ts-lib-morefilters"
+				href={ templ.SafeURL(v.SheetHref) }
+				hx-get={ v.SheetHref }
+				hx-target="#sheet"
+				hx-select="#sheet > *"
+				hx-swap="innerHTML"
+				hx-push-url="false"
+				aria-haspopup="dialog"
 			>
-				@libraryItems(v)
-			</div>
-		}
+				@components.Icon("filter", false)
+				More filters
+			</a>
+		</div>
+		<div id="library-results" class="ts-lib-results">
+			if v.Match != "" {
+				<p class="ts-lib-match">
+					<span class="caption ts-num" role="status">{ v.Match }</span>
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ClearHref) }>Clear filters</a>
+				</p>
+			}
+			if v.StartHref != "" {
+				<p class="ts-lib-start"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.StartHref) }>Back to the start</a></p>
+			}
+			if v.Empty != nil {
+				@Empty(*v.Empty)
+			} else {
+				<div
+					id="library-grid"
+					class={ "ts-lib-items", templ.KV("ts-grid ts-grid--covers", v.View != "list"), templ.KV("ts-lib-rows", v.View == "list") }
+				>
+					@libraryItems(v)
+				</div>
+			}
+		</div>
 	</div>
 }
 

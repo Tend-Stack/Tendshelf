@@ -22,8 +22,7 @@ const (
 	browseNothingSharedBody = "When someone shares a book with you, it shows up here."
 	// New.
 	browseNoMatchTitle   = "No books match these filters"
-	browseNoMatchBody    = "Try a different genre, or clear the filters to see everything."
-	browseNoMatchAction  = "Clear filters"
+	browseNoMatchBody    = "Try different words, or clear the filters to see everything."
 	browseLibraryTitle   = "Library"
 	browseBadCursorToast = "This list changed. Reload the page to see it."
 )
@@ -65,6 +64,39 @@ func browseSortLabel(s library.Sort) string {
 	return "Recently added"
 }
 
+// browseHeaderLine is the line under the Library title, from the board: "912 books · 3 folders ·
+// 8,240 hours". Only a person who manages libraries sees the folders.
+func browseHeaderLine(t library.Totals, folders bool) string {
+	parts := []string{browseCount(t.Books)}
+	if folders {
+		if t.Folders == 1 {
+			parts = append(parts, "1 folder")
+		} else {
+			parts = append(parts, thousands(t.Folders)+" folders")
+		}
+	}
+	h := int((t.DurationMs + 1_800_000) / 3_600_000)
+	if h == 1 {
+		parts = append(parts, "1 hour")
+	} else {
+		parts = append(parts, thousands(h)+" hours")
+	}
+	return strings.Join(parts, " · ")
+}
+
+// browseMatch is the count of a filtered list, from the board: "16 books match".
+func browseMatch(n int) string {
+	if n == 1 {
+		return "1 book matches"
+	}
+	return thousands(n) + " books match"
+}
+
+// browseLengthOptions are the length buckets in the order the menu lists them.
+var browseLengthOptions = []struct{ Value, Label string }{
+	{"short", "Under 5 hours"}, {"medium", "5 to 15 hours"}, {"long", "Over 15 hours"},
+}
+
 func browseEmpty(kind, clearHref string) *pages.EmptyView {
 	switch kind {
 	case "first-run":
@@ -73,8 +105,8 @@ func browseEmpty(kind, clearHref string) *pages.EmptyView {
 	case "nothing-shared":
 		return &pages.EmptyView{Kind: kind, Title: browseNothingSharedHead, Body: browseNothingSharedBody}
 	case "no-match":
-		return &pages.EmptyView{Kind: kind, Title: browseNoMatchTitle, Body: browseNoMatchBody,
-			ActionLabel: browseNoMatchAction, ActionHref: clearHref}
+		// "Clear filters" sits right above, in the match line, so the empty state does not repeat it.
+		return &pages.EmptyView{Kind: kind, Title: browseNoMatchTitle, Body: browseNoMatchBody}
 	}
 	return nil
 }

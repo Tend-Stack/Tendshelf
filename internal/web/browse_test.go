@@ -211,7 +211,7 @@ func TestLibraryAccess(t *testing.T) {
 
 	rec := browseGet(a, "/libraries", false, nil)
 	body := rec.Body.String()
-	if rec.Code != http.StatusOK || !strings.Contains(body, ">3 books<") || !strings.Contains(body, `<title>Library · Tendshelf</title>`) {
+	if rec.Code != http.StatusOK || !strings.Contains(body, ">3 books · 1 folder · 1 hour<") || !strings.Contains(body, `<title>Library · Tendshelf</title>`) {
 		t.Fatalf("owner: %d, count line missing", rec.Code)
 	}
 	if rec := browseGet(a, "/libraries/"+f.LibraryID, false, nil); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), ">Audiobooks<") {
@@ -224,7 +224,7 @@ func TestLibraryAccess(t *testing.T) {
 	member := a.as(t, users.RoleMember)
 	mrec := browseGet(a, "/libraries", false, member)
 	mbody := mrec.Body.String()
-	if mrec.Code != http.StatusOK || !strings.Contains(mbody, "Nothing shared yet") || !strings.Contains(mbody, ">0 books<") || strings.Contains(mbody, "Book 001") {
+	if mrec.Code != http.StatusOK || !strings.Contains(mbody, "Nothing shared yet") || !strings.Contains(mbody, ">0 books · 0 hours<") || strings.Contains(mbody, "Book 001") {
 		t.Errorf("member: %d, want the empty state and zero count", mrec.Code)
 	}
 	if rec := browseGet(a, "/libraries/"+f.LibraryID, false, member); rec.Code != http.StatusNotFound {
@@ -252,13 +252,13 @@ func TestLibraryTwoLibraries(t *testing.T) {
 	librarytest.AddBook(t, a.lib, f2, librarytest.BookSpec{Title: "In Podcasts"})
 
 	all := browseGet(a, "/libraries", false, nil).Body.String()
-	for _, want := range []string{`aria-label="Libraries"`, `href="/libraries/` + f1.LibraryID + `"`, "Fiction", "Podcasts", "In Fiction", "In Podcasts", ">2 books<"} {
+	for _, want := range []string{`aria-label="Libraries"`, `href="/libraries/` + f1.LibraryID + `"`, "Fiction", "Podcasts", "In Fiction", "In Podcasts", ">2 books · 2 folders · 0 hours<"} {
 		if !strings.Contains(all, want) {
 			t.Errorf("all libraries lacks %q", want)
 		}
 	}
 	one := browseGet(a, "/libraries/"+f1.LibraryID, false, nil).Body.String()
-	if !strings.Contains(one, "In Fiction") || strings.Contains(one, "In Podcasts") || !strings.Contains(one, ">1 book<") {
+	if !strings.Contains(one, "In Fiction") || strings.Contains(one, "In Podcasts") || !strings.Contains(one, ">1 book · 1 folder · 0 hours<") {
 		t.Error("one library shows the other's books or the wrong count")
 	}
 	// A single library needs no chips.
@@ -353,7 +353,7 @@ func TestLibraryGenres(t *testing.T) {
 		t.Errorf("genre=Mystery shows %v", titles)
 	}
 	// The chosen chip toggles off: its address drops the genre, and it says it is on.
-	if !strings.Contains(sel, `aria-current="true"`) || !strings.Contains(sel, `href="/libraries"`) || !strings.Contains(sel, "Clear filters") || !strings.Contains(sel, ">3 books<") {
+	if !strings.Contains(sel, `aria-current="true"`) || !strings.Contains(sel, `href="/libraries"`) || !strings.Contains(sel, "Clear filters") || !strings.Contains(sel, ">3 books match<") {
 		t.Error("selected genre chip, toggle address, Clear filters or count missing")
 	}
 
@@ -375,7 +375,7 @@ func TestLibraryGenres(t *testing.T) {
 
 	none := browseGet(a, "/libraries?genre=Mystery&genre=Romance", false, nil)
 	nb := html.UnescapeString(none.Body.String())
-	if none.Code != http.StatusOK || !strings.Contains(nb, "No books match these filters") || !strings.Contains(nb, ">Clear filters<") || !strings.Contains(nb, ">0 books<") {
+	if none.Code != http.StatusOK || !strings.Contains(nb, "No books match these filters") || !strings.Contains(nb, ">Clear filters<") || !strings.Contains(nb, ">0 books match<") {
 		t.Errorf("no-match state missing: %d", none.Code)
 	}
 	if strings.Contains(nb, "Your shelf is empty") || strings.Contains(nb, `id="library-grid"`) {
@@ -537,7 +537,7 @@ func TestLibraryHidesRefusedAndMissing(t *testing.T) {
 			t.Errorf("%s offers the genre of hidden books", path)
 		}
 	}
-	if body := browseGet(a, "/libraries", false, nil).Body.String(); !strings.Contains(body, ">2 books<") {
+	if body := browseGet(a, "/libraries", false, nil).Body.String(); !strings.Contains(body, ">2 books · 1 folder · 0 hours<") {
 		t.Error("the count includes hidden books")
 	}
 }
