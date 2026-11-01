@@ -177,3 +177,41 @@ func audioHereText(n int) string {
 	}
 	return countText(n, "1 audio file here", "%d audio files here")
 }
+
+// P1c-7a bookmarks. "Bookmarks and notes", "Export", "Play from here", "No note", "Add a note", "Bookmark
+// this moment", the empty state, "Chapter {n}", "Tonight" and "Yesterday" are in the copy deck; the
+// rest follows the voice rules in BRAND.md.
+const (
+	bookTabBookmarks     = "Bookmarks"
+	bookmarkHeading      = "Bookmarks and notes"
+	bookmarkExport       = "Export"
+	bookmarkChipAll      = "All · %d"
+	bookmarkChipNotes    = "With notes · %d"
+	bookmarkChipsLabel   = "Show"
+	bookmarkPlayFrom     = "Play from here"
+	bookmarkNoNote       = "No note"
+	bookmarkAddNote      = "Add a note"
+	bookmarkEditNote     = "Edit note"
+	bookmarkAddButton    = "Bookmark this moment · %s"
+	bookmarkToast        = "Bookmarked at %s · "
+	bookmarkEmptyTitle   = "No bookmarks yet"
+	bookmarkEmptyBody    = "Tap the bookmark button while listening to save a moment."
+	bookmarkEmptyNotes   = "No bookmarks have a note yet."
+	bookmarkChapterN     = "Chapter %d"
+	bookmarkToday        = "Today"
+	bookmarkTonight      = "Tonight"
+	bookmarkYesterday    = "Yesterday"
+	bookmarkSheetTitle   = "Note"
+	bookmarkNoteLabel    = "Note"
+	bookmarkSave         = "Save"
+	bookmarkDelete       = "Delete bookmark"
+	bookmarkClose        = "Close"
+	bookmarkErrTooLong   = "Notes can be up to 2,000 characters."
+	bookmarkErrLimit     = "This book has 1,000 bookmarks, the most it can hold."
+	bookmarkErrPosition  = "That position is not a number of milliseconds."
+	bookmarkExportTitle  = "Export bookmarks"
+	bookmarkExportText   = "Plain text"
+	bookmarkExportMD     = "Markdown"
+	bookmarkExportGroup  = "Book"
+	bookmarkExportHeader = "Bookmarks and notes"
+)

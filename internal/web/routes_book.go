@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
@@ -54,6 +55,11 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 		return
 	}
 	v := bookHeader(d, tab)
+	target := share.Target{Kind: share.TargetBook, ID: d.Book.ID, LibraryID: d.Book.LibraryID}
+	listen := s.can.Can(ctx, currentUser(r), share.ListenBook, target)
+	if !listen {
+		v.Tabs = slices.DeleteFunc(v.Tabs, func(t pages.BookTab) bool { return t.ID == "bookmarks" })
+	}
 	shelves := s.canShelve(r)
 	var sheet templ.Component
 	styles := pages.BookStyles
@@ -96,6 +102,25 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 		bookAbout(&v, d, series, seqs, narrated)
 	case "chapters":
 		bookChapters(&v, d, r.URL.Query().Get("all") == "1")
+	case "bookmarks":
+		if !listen {
+			s.notFound(w, r)
+			return
+		}
+		var bsheet templ.Component
+		v.Bookmarks, bsheet, err = s.bookmarksPanel(r, d)
+		if errors.Is(err, errBookmarkNotFound) {
+			s.notFound(w, r)
+			return
+		}
+		if err != nil {
+			s.serverError(w, r, "bookmarks", err)
+			return
+		}
+		if bsheet != nil {
+			sheet = bsheet
+		}
+		styles = append(append([]string(nil), styles...), pages.BookmarkStyles...)
 	case "details":
 		v.Rows = bookDetailsView(d, s.canManage(r))
 	}

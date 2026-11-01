@@ -1,0 +1,183 @@
+package pages
+
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// BookmarkStyles are the stylesheets the Bookmarks tab links after the book page's own.
+var BookmarkStyles = []string{"css/pages-bookmarks.css"}
+
+// BookmarkChip is a link with a name: a filter chip of the tab or a choice in the export sheet.
+type BookmarkChip struct {
+	Label, Href string
+	Current     bool
+}
+
+// BookmarkAdd is the "Bookmark this moment" form: a plain POST with the CSRF field.
+type BookmarkAdd struct{ Action, CSRF, PositionMs, Label string }
+
+// BookmarkToast is the status line after a bookmark was added, with a link to its note sheet.
+type BookmarkToast struct{ Text, LinkHref, LinkLabel string }
+
+// BookmarksView is the Bookmarks tab of the book page. The handler writes every word and address.
+type BookmarksView struct {
+	Heading, ExportHref, ExportLabel, ChipsLabel string
+	Chips                                        []BookmarkChip
+	Rows                                         []components.BookmarkRowView
+	EmptyTitle, EmptyBody                        string
+	// Add is nil when the person has no stored place in the book (the player adds the button later).
+	Add   *BookmarkAdd
+	Toast *BookmarkToast
+}
+
+// BookmarkSheetView is the note sheet of one bookmark.
+type BookmarkSheetView struct {
+	CSRF, Title, When, Note, Error             string
+	NoteLabel, SaveLabel, DeleteLabel          string
+	NoteAction, DeleteAction                   string
+	CloseHref, CloseLabel                      string
+	MaxRunes                                   int
+}
+
+// BookmarkExportView is the export sheet: one download link per format.
+type BookmarkExportView struct {
+	Title, CloseHref, CloseLabel string
+	Links                        []BookmarkChip
+}
+
+// BookmarksPanel is the panel of the Bookmarks tab: heading with Export, the filter chips, the
+// bookmarks newest first, and the "Bookmark this moment" button at the bottom. It adds no play
+// control that resumes the book; "Play from here" (hidden for now) seeks to one saved moment.
+templ BookmarksPanel(v BookmarksView) {
+	<div id="bookmark-list" class="ts-bookmarks">
+		if v.Toast != nil {
+			<p class="ts-toast ts-bookmarks__toast" role="status">
+				<span class="ts-toast__ok">@components.Icon("check", false)</span>
+				<span>
+					{ v.Toast.Text }
+					<a href={ templ.SafeURL(v.Toast.LinkHref) } hx-boost="false">{ v.Toast.LinkLabel }</a>
+				</span>
+			</p>
+		}
+		<div class="ts-bookmarks__head">
+			<h2 class="ts-bookmarks__title">{ v.Heading }</h2>
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ExportHref) } hx-get={ v.ExportHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog">
+				@components.Icon("share", false)
+				{ v.ExportLabel }
+			</a>
+		</div>
+		<nav class="ts-seg ts-bookmarks__chips" aria-label={ v.ChipsLabel }>
+			for _, c := range v.Chips {
+				<a
+					class="ts-seg__item"
+					href={ templ.SafeURL(c.Href) }
+					if c.Current {
+						aria-current="page"
+					}
+				>
+					if c.Current {
+						@components.Icon("check", false)
+					}
+					{ c.Label }
+				</a>
+			}
+		</nav>
+		if len(v.Rows) > 0 {
+			<ol class="ts-bookmarks__list">
+				for _, r := range v.Rows {
+					<li>
+						@components.BookmarkRow(r)
+					</li>
+				}
+			</ol>
+		} else if v.EmptyBody != "" {
+			@components.EmptyState(v.EmptyTitle, v.EmptyBody, nil)
+		} else {
+			<p class="ts-book__desc">{ v.EmptyTitle }</p>
+		}
+		if v.Add != nil {
+			<form class="ts-bookmarks__add" method="post" action={ templ.URL(v.Add.Action) }>
+				<input type="hidden" name="_csrf" value={ v.Add.CSRF }/>
+				<input type="hidden" name="position_ms" value={ v.Add.PositionMs }/>
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">
+					@components.Icon("bookmark", false)
+					{ v.Add.Label }
+				</button>
+			</form>
+		}
+	</div>
+}
+
+// BookmarkSheet edits the note of one bookmark, or deletes the bookmark. Both are plain forms that
+// leave the sheet with a full page answer, so the list behind it is always current.
+templ BookmarkSheet(v BookmarkSheetView) {
+	<div class="ts-sheet-layer ts-sheet-layer--bookmarks">
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
+		<div class="ts-sheet ts-bookmark-sheet" role="dialog" aria-modal="true" aria-labelledby="bms-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="bms-title" class="ts-sheet__title">{ v.Title }</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel }>
+					@components.Icon("close", false)
+				</a>
+			</div>
+			<p class="ts-bookmark-sheet__when">{ v.When }</p>
+			<form class="ts-bookmark-sheet__form" method="post" action={ templ.URL(v.NoteAction) } hx-boost="false">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<div class="ts-field ts-bookmark-sheet__field">
+					<label class="ts-field__label" for="bms-note">{ v.NoteLabel }</label>
+					<textarea
+						id="bms-note"
+						name="note"
+						class="ts-input ts-bookmark-sheet__note"
+						rows="5"
+						maxlength={ strconv.Itoa(v.MaxRunes) }
+						if v.Error != "" {
+							aria-invalid="true"
+							aria-describedby="bms-note-error"
+						}
+					>{ v.Note }</textarea>
+					if v.Error != "" {
+						<p id="bms-note-error" class="ts-field__error">
+							@components.Icon("alert", false)
+							{ v.Error }
+						</p>
+					}
+				</div>
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ v.SaveLabel }</button>
+			</form>
+			<form class="ts-bookmark-sheet__form" method="post" action={ templ.URL(v.DeleteAction) } hx-boost="false">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<button type="submit" class="ts-btn ts-btn--danger ts-btn--block">{ v.DeleteLabel }</button>
+			</form>
+		</div>
+	</div>
+}
+
+// BookmarkExportSheet offers the two downloads. The links are plain downloads, not boosted.
+templ BookmarkExportSheet(v BookmarkExportView) {
+	<div class="ts-sheet-layer ts-sheet-layer--bookmarks">
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
+		<div class="ts-sheet ts-bookmark-sheet" role="dialog" aria-modal="true" aria-labelledby="bmx-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="bmx-title" class="ts-sheet__title">{ v.Title }</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel }>
+					@components.Icon("close", false)
+				</a>
+			</div>
+			<ul class="ts-bookmark-sheet__links">
+				for _, l := range v.Links {
+					<li>
+						<a class="ts-btn ts-btn--secondary ts-btn--block" href={ templ.SafeURL(l.Href) } download hx-boost="false">
+							@components.Icon("download", false)
+							{ l.Label }
+						</a>
+					</li>
+				}
+			</ul>
+		</div>
+	</div>
+}
