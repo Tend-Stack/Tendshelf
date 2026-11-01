@@ -258,6 +258,19 @@ func TestTemplatesCSPClean(t *testing.T) {
 		_, body := getPage(t, path, nil)
 		check("GET "+path, body)
 	}
+	// The setup and sign-in pages, with and without errors, are checked as rendered.
+	fresh := newTestApp(t)
+	c, tok := fresh.anon(t, "/setup")
+	check("GET /setup", fresh.do(http.MethodGet, "/setup", nil, nil).Body.String())
+	bad := setupForm(tok)
+	bad.Set("username", "x")
+	bad.Set("code", "nope")
+	check("POST /setup (errors)", fresh.do(http.MethodPost, "/setup", bad, nil, c).Body.String())
+	fresh.owner(t)
+	c, tok = fresh.anon(t, "/login")
+	check("GET /login", fresh.do(http.MethodGet, "/login", nil, nil).Body.String())
+	check("POST /login (error)", fresh.do(http.MethodPost, "/login", loginForm(tok, "ana", "wrong password!"), nil, c).Body.String())
+	check("GET /setup (taken)", fresh.do(http.MethodGet, "/setup", nil, nil).Body.String())
 	// The error fragments are checked too.
 	h := newTestApp(t).signedIn(t)
 	rec := send(h, http.MethodPost, "/", nil, func(r *http.Request) { r.Header.Set("HX-Request", "true") })

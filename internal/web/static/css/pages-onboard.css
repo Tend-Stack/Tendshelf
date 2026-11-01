@@ -39,6 +39,7 @@
   font-size: 15px; line-height: 22px; color: var(--danger);
 }
 .ts-form__error .ts-icon { flex: none; width: 20px; height: 20px; margin-top: 1px; }
+.ts-form .ts-field__hint, .ts-form .ts-field__error { margin: 0; }
 .ts-field__optional { color: var(--ink-muted); font-weight: 400; }
 
 .ts-privacy {
