@@ -4,7 +4,8 @@
 // scrubber of the desktop bar; it never touches #audio and drives playback only through
 // window.tsPlayer and its ts:player:* events. CSP: no inline style, no markup from data, no eval;
 // custom properties only through style.setProperty. Every word comes from the data-ts-msg-*
-// attributes of #player.
+// attributes of #player. P1c-5b adds the speed and sleep timer sheets, the sleep timer with its
+// fade, the volume slider of the desktop bar, the bookmark button and the B key.
 
 const slot = document.getElementById("player");
 const dialog = document.getElementById("player-full");
@@ -19,11 +20,24 @@ const SWIPE_MIN_PX = 8; // movement before a press becomes a swipe
 const SWIPE_OPEN_PX = 40; // swipe up on the bar opens the player
 const SWIPE_CLOSE_FRACTION = 0.3; // swipe down past this part of the screen closes it
 const SETTLE_MS = 250;
+const FORM_TYPE = "application/x-www-form-urlencoded";
+const SPEED_SAVE_MS = 1000; // a speed change is saved this long after the last one
+const LONG_PRESS_MS = 500; // a held press on the bar opens the speed sheet
+const SLEEP_STEP_MS = 250;
+const FADE_MS = 10000; // the last seconds of a sleep timer fade out
+const PLUS_MS = 600000; // "+10 min"
+const CHAPTER_MIN_LEFT_MS = 2000; // under this, "End of chapter" means the next chapter's end
+const SKIPPED_AHEAD_MS = 1500; // past a chapter timer's end by this much, the person skipped ahead
+const SHAKE_PEAK = 12; // m/s², above gravity's noise
+const SHAKE_GAP_MS = 150; // peaks closer than this are one jolt
+const SHAKE_WINDOW_MS = 1000; // two jolts within this are a shake
+const BOOKMARK_TOAST_MS = 4000;
 
 let player = null; // window.tsPlayer
 let book = null; // player.info() of the loaded book
 let opener = null; // what had focus when the player opened
-let sheetOpener = null;
+let sheetOpener = null; // what had focus when a sheet opened
+let openName = ""; // "chapters", "speed" or "sleep" while a sheet is open
 
 // ---- Elements and words ----
 
@@ -32,10 +46,19 @@ const ui = {};
 for (const name of ["close-player", "full-chapter", "full-cover", "full-title", "full-author", "full-clock", "full-left",
   "full-back", "full-forward", "full-back-num", "full-forward-num", "full-toggle", "full-elapsed", "full-fine",
   "full-book-left", "full-speed", "full-book", "full-finish", "full-menu", "full-body", "chapters-sheet", "chapter-list",
-  "chapter-row", "open-chapters"]) {
+  "chapter-row", "open-chapters", "speed-sheet", "sleep-sheet", "speed-range", "speed-out", "sleep-meta", "sleep-custom",
+  "sleep-minutes", "full-sleep-left", "full-toasts", "bookmark-toast", "open-speed", "open-sleep"]) {
   ui[name] = $(name);
 }
 const miniOpen = $("open", slot);
+const bar = { // the desktop bar's extras
+  speed: $("bar-speed", slot),
+  speedValue: $("bar-speed-value", slot),
+  sleep: $("bar-sleep", slot),
+  sleepLeft: $("bar-sleep-left", slot),
+  volumeWrap: $("volume-wrap", slot),
+  volume: $("volume", slot),
+};
 
 function msg(name) {
   return slot.dataset["tsMsg" + name[0].toUpperCase() + name.slice(1)] || "";
@@ -54,6 +77,14 @@ function clock(ms) {
   const hours = Math.floor(seconds / 3600);
   const pad = (n) => String(n).padStart(2, "0");
   return (hours ? hours + ":" + pad(Math.floor((seconds % 3600) / 60)) : Math.floor(seconds / 60)) + ":" + pad(seconds % 60);
+}
+
+function csrf() {
+  try {
+    return JSON.parse(document.body.getAttribute("hx-headers:inherited"))["X-CSRF-Token"] || "";
+  } catch {
+    return "";
+  }
 }
 
 function setText(name, text) {
@@ -117,16 +148,32 @@ function drawScrub(s, ms, force) {
   }
 }
 
+// "1.0×", "1.5×", "2.35×": one decimal, or two when the speed has them.
+function speedNumber(speed) {
+  return speed % 1 ? String(+speed.toFixed(2)) : speed.toFixed(1);
+}
+
+function speedText(speed) {
+  return fill(msg("speedValue"), { v: speedNumber(speed) });
+}
+
 function update(kind) {
   if (!book) return;
   const state = player.state();
   const ms = state.positionMs;
   for (const s of scrubs) if (!s.drag) drawScrub(s, ms, kind !== "tick");
+  const speedLabel = fill(msg("speedLabel"), { v: speedNumber(state.speed) });
+  bar.speedValue.textContent = speedText(state.speed);
+  bar.speed.setAttribute("aria-label", speedLabel);
+  if (document.activeElement !== bar.volume) bar.volume.value = Math.round(state.volume * 100);
+  syncAddForms(ms);
   if (!dialog.open) return;
   if (!fullScrub.drag) drawTimes(ms, state.speed);
   dialog.classList.toggle("is-playing", state.playing);
   ui["full-toggle"].setAttribute("aria-label", (state.playing ? msg("pausePrefix") : msg("playPrefix")) + " " + book.title);
-  setText("full-speed", (state.speed % 1 ? +state.speed.toFixed(2) : state.speed.toFixed(1)) + "×");
+  setText("full-speed", speedText(state.speed));
+  ui["open-speed"].setAttribute("aria-label", speedLabel);
+  if (!ui["speed-sheet"].hidden) drawSpeedSheet(state.speed);
 }
 
 // What changes only when another book loads.
@@ -257,7 +304,8 @@ function morph(from, to, change) {
   }).finished.finally(() => root.classList.remove("ts-vt-" + to, "ts-vt-" + from));
 }
 
-function openPlayer() {
+// after runs once the player is open (the phone opens it inside a view transition).
+function openPlayer(after) {
   if (!book || dialog.open) return;
   opener = document.activeElement;
   const show = () => {
@@ -265,6 +313,8 @@ function openPlayer() {
     else dialog.showModal();
     slot.classList.add("is-covered");
     update("open");
+    drawSleep();
+    if (after) after();
   };
   if (SIDE_PANEL.matches) show();
   else morph("mini", "full", show);
@@ -332,21 +382,25 @@ miniOpen.addEventListener("click", (event) => {
 
 dialog.addEventListener("cancel", (event) => {
   event.preventDefault(); // Escape: close the sheet, else the player, with the same motion as the button
-  if (sheetOpener) closeSheet(true);
+  if (openName) closeSheet(true);
   else closePlayer();
 });
 dialog.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && sheetOpener && !ui["full-menu"].open) {
+  if (event.key === "Escape" && openName && !ui["full-menu"].open) {
     event.preventDefault();
     closeSheet(true);
   }
 });
-dialog.addEventListener("close", () => slot.classList.remove("is-covered"));
+dialog.addEventListener("close", () => {
+  slot.classList.remove("is-covered");
+  drawSleep(); // the card moves from the player to the bar
+});
 
-// ---- Chapters sheet ----
+// ---- Sheets: chapters, speed, sleep timer ----
 
-function openSheet() {
-  if (!book || sheetOpener) return;
+const sheetWraps = { chapters: ui["chapters-sheet"], speed: ui["speed-sheet"], sleep: ui["sleep-sheet"] };
+
+function fillChapters() {
   const position = player.state();
   const rows = book.chapters.map((chapter, idx) => {
     const row = ui["chapter-row"].content.firstElementChild.cloneNode(true);
@@ -367,18 +421,417 @@ function openSheet() {
     return row;
   });
   ui["chapter-list"].replaceChildren(...rows);
-  sheetOpener = document.activeElement;
-  ui["chapters-sheet"].hidden = false;
+}
+
+// Opens a sheet over the player, opening the player first when it is closed. from is the control
+// that asked, so closing the sheet gives focus back to it.
+function openSheet(name, from = document.activeElement) {
+  if (!book || openName) return;
+  if (!dialog.open) {
+    openPlayer(() => openSheet(name, from));
+    return;
+  }
+  if (name === "chapters") fillChapters();
+  if (name === "speed") drawSpeedSheet(player.state().speed);
+  if (name === "sleep") drawSleep();
+  openName = name;
+  sheetOpener = from;
+  const wrap = sheetWraps[name];
+  wrap.hidden = false;
   ui["full-body"].inert = true;
-  (ui["chapter-list"].querySelector("[aria-current]") || ui["chapter-list"].firstElementChild.firstElementChild).focus();
+  // focus the current choice, else the first
+  (wrap.querySelector("[aria-current], [aria-checked=true]") || wrap.querySelector("ol button, [role=radio]:not([hidden])")).focus();
 }
 
 function closeSheet(restoreFocus) {
-  if (!sheetOpener) return;
-  ui["chapters-sheet"].hidden = true;
+  if (!openName) return;
+  sheetWraps[openName].hidden = true;
   ui["full-body"].inert = false;
-  if (restoreFocus) sheetOpener.focus();
+  if (restoreFocus && sheetOpener && sheetOpener.isConnected) sheetOpener.focus({ preventScroll: true });
+  openName = "";
   sheetOpener = null;
+}
+
+// Up and Down move between the choices of a sheet; Enter and Space choose (they are buttons).
+for (const group of dialog.querySelectorAll(".ts-options")) {
+  group.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const choices = [...group.querySelectorAll("[role=radio]:not([hidden])")];
+    const at = choices.indexOf(document.activeElement);
+    if (at < 0) return;
+    event.preventDefault();
+    choices[(at + (event.key === "ArrowDown" ? 1 : -1) + choices.length) % choices.length].focus();
+  });
+}
+
+// ---- Speed: presets and a fine slider; saved to the person's settings ----
+
+let speedTimer = 0;
+let speedUnsaved = false;
+
+function drawSpeedSheet(speed) {
+  for (const choice of ui["speed-sheet"].querySelectorAll("[data-ts-speed-choice]")) {
+    choice.setAttribute("aria-checked", String(Math.abs(Number(choice.dataset.tsSpeedChoice) - speed) < 0.001));
+  }
+  setText("speed-out", speedText(speed));
+  if (document.activeElement !== ui["speed-range"]) ui["speed-range"].value = speed;
+}
+
+// Speed follows the person to other devices: POST /me/settings, quietly. A failure changes nothing
+// this session. A change waits a second for the next one; leaving the page sends it at once.
+function saveSpeed(leaving) {
+  clearTimeout(speedTimer);
+  if (!speedUnsaved) return;
+  speedUnsaved = false;
+  fetch("/me/settings", {
+    method: "POST",
+    keepalive: leaving === true,
+    headers: { "X-CSRF-Token": csrf(), "HX-Request": "true", "Content-Type": FORM_TYPE },
+    body: "speed=" + player.state().speed.toFixed(2),
+  }).catch(() => {});
+}
+
+function changeSpeed(value) {
+  player.setSpeed(value);
+  speedUnsaved = true;
+  clearTimeout(speedTimer);
+  speedTimer = setTimeout(saveSpeed, SPEED_SAVE_MS);
+}
+
+ui["speed-sheet"].addEventListener("click", (event) => {
+  const choice = event.target.closest("[data-ts-speed-choice]");
+  if (!choice) return;
+  changeSpeed(Number(choice.dataset.tsSpeedChoice));
+  closeSheet(true);
+});
+ui["speed-range"].addEventListener("input", () => changeSpeed(Number(ui["speed-range"].value)));
+addEventListener("pagehide", () => saveSpeed(true));
+
+// ---- Sleep timer ----
+//
+// Counts only while sound plays, from performance.now() deltas (a throttled timer stays accurate),
+// and lives in memory: a reload clears it. "End of chapter" is the chapter's end position when it is
+// set; "minutes" is real minutes whatever the speed. The last ten seconds fade the volume out
+// (tsPlayer.setFade multiplies the person's level; it never replaces it).
+
+const sleepState = { choice: "", mode: "off", leftMs: 0, endMs: 0, lastAt: 0, fading: false, said: false, motion: false, peakAt: 0, peaks: 0 };
+let sleepTimer = 0;
+let motionAllowed = false;
+const cards = [...document.querySelectorAll("[data-ts-sleep-card]")].map((el) => ({
+  el,
+  count: $("sleep-count", el),
+  hint: $("sleep-hint", el),
+  said: $("sleep-said", el),
+}));
+const coarsePointer = matchMedia("(pointer: coarse)");
+
+// Where "End of chapter" ends: this chapter's end, or the next one's when almost there.
+function chapterEndNow() {
+  const state = player.state();
+  let idx = state.chapterIdx;
+  if (book.chapters[idx].end - state.positionMs < CHAPTER_MIN_LEFT_MS && book.chapters[idx + 1]) idx++;
+  return book.chapters[idx].end;
+}
+
+// Milliseconds of listening left; for a chapter, what is left of it at the current speed.
+function sleepLeft() {
+  if (sleepState.mode === "chapter") {
+    const state = player.state();
+    return Math.max(0, sleepState.endMs - state.positionMs) / state.speed;
+  }
+  return sleepState.leftMs;
+}
+
+// iOS asks the person before it shares motion; the question must come from a tap, so it is asked here.
+function askMotion() {
+  motionAllowed = false;
+  if (typeof DeviceMotionEvent === "undefined") return;
+  if (typeof DeviceMotionEvent.requestPermission === "function") {
+    DeviceMotionEvent.requestPermission().then((answer) => (motionAllowed = answer === "granted")).catch(() => {});
+  } else {
+    motionAllowed = true;
+  }
+}
+
+function setSleep(choice, minutes) {
+  clearInterval(sleepTimer);
+  sleepState.choice = choice;
+  stopFade();
+  if (choice === "off") {
+    sleepState.mode = "off";
+  } else {
+    sleepState.mode = choice === "chapter" ? "chapter" : "minutes";
+    sleepState.endMs = choice === "chapter" ? chapterEndNow() : 0;
+    sleepState.leftMs = minutes * 60000;
+    sleepState.lastAt = performance.now();
+    askMotion();
+    sleepTimer = setInterval(sleepTick, SLEEP_STEP_MS);
+  }
+  drawSleep();
+}
+
+function stopFade() {
+  sleepState.fading = false;
+  sleepState.said = false;
+  removeEventListener("devicemotion", onMotion);
+  sleepState.motion = false;
+  player.setFade(1);
+}
+
+function sleepTick() {
+  stepSleep(performance.now() - sleepState.lastAt);
+  drawSleep();
+}
+
+// Moves the timer on by deltaMs of wall time.
+function stepSleep(deltaMs) {
+  sleepState.lastAt = performance.now();
+  if (sleepState.mode === "off" || !player.state().playing) return;
+  const state = player.state();
+  if (sleepState.mode === "chapter" && state.positionMs > sleepState.endMs + SKIPPED_AHEAD_MS) {
+    sleepState.endMs = chapterEndNow(); // the person skipped ahead: the timer follows to that chapter's end
+  }
+  if (sleepState.mode === "minutes") sleepState.leftMs -= deltaMs;
+  const left = sleepLeft();
+  if (left <= 0) {
+    finishSleep();
+    return;
+  }
+  if (left <= FADE_MS) startFade(left);
+  else if (sleepState.fading) stopFade();
+}
+
+function startFade(left) {
+  if (!sleepState.fading) {
+    sleepState.fading = true;
+    if (motionAllowed && !sleepState.motion) {
+      addEventListener("devicemotion", onMotion);
+      sleepState.motion = true;
+    }
+  }
+  player.setFade(left / FADE_MS);
+}
+
+// The timer ran out: pause. For a chapter, rest at its end so Resume starts the next one.
+function finishSleep() {
+  const end = sleepState.mode === "chapter" ? sleepState.endMs : -1;
+  player.pause();
+  if (end >= 0) player.seek(end);
+  setSleep("off");
+}
+
+// "+10 min": minutes mode adds ten; a chapter timer turns into a ten-minute extension of what is left.
+function sleepPlus() {
+  if (sleepState.mode === "off") return;
+  sleepState.leftMs = sleepLeft() + PLUS_MS;
+  sleepState.mode = "minutes";
+  sleepState.choice = "";
+  stopFade();
+  drawSleep();
+}
+
+// Two jolts within a second are a shake. Gravity is taken out when the device reports it separately.
+function onMotion(event) {
+  const a = event.acceleration;
+  const g = event.accelerationIncludingGravity;
+  let size = 0;
+  if (a && a.x !== null && a.x !== undefined) size = Math.hypot(a.x, a.y || 0, a.z || 0);
+  else if (g) size = Math.abs(Math.hypot(g.x || 0, g.y || 0, g.z || 0) - 9.81);
+  const now = performance.now();
+  if (size <= SHAKE_PEAK || now - sleepState.peakAt < SHAKE_GAP_MS) return;
+  sleepState.peaks = now - sleepState.peakAt < SHAKE_WINDOW_MS ? sleepState.peaks + 1 : 1;
+  sleepState.peakAt = now;
+  if (sleepState.peaks >= 2) {
+    sleepState.peaks = 0;
+    sleepPlus();
+  }
+}
+
+// What the sleep timer shows: the two bar items, the choices, the card.
+function drawSleep() {
+  if (!book) return;
+  const active = sleepState.mode !== "off";
+  const left = active ? sleepLeft() : 0;
+  const text = clock(Math.ceil(left / 1000) * 1000);
+  // the spoken label changes once a minute, not every second
+  const label = active ? fill(msg("sleepOnLabel"), { t: clock(Math.ceil(left / 60000) * 60000) }) : msg("sleepOffLabel");
+  for (const [item, value] of [[ui["open-sleep"], ui["full-sleep-left"]], [bar.sleep, bar.sleepLeft]]) {
+    item.classList.toggle("is-active", active);
+    if (item.getAttribute("aria-label") !== label) item.setAttribute("aria-label", label);
+    value.hidden = !active;
+    if (active && value.textContent !== text) value.textContent = text;
+  }
+  for (const choice of ui["sleep-sheet"].querySelectorAll("[data-ts-sleep-choice]")) {
+    const name = choice.dataset.tsSleepChoice;
+    if (name === "off") choice.hidden = !active;
+    choice.setAttribute("aria-checked", String(active && name === sleepState.choice));
+  }
+  if (!ui["sleep-sheet"].hidden) {
+    const state = player.state();
+    const minutes = Math.ceil(Math.max(0, chapterEndNow() - state.positionMs) / state.speed / 60000);
+    setText("sleep-meta", fill(msg("sleepIn"), { m: minutes }));
+  }
+  const showing = active && sleepState.fading && player.state().playing;
+  for (const card of cards) {
+    card.el.hidden = !(showing && card.el.dataset.tsSleepCard === (dialog.open ? "full" : "bar"));
+  }
+  if (!showing) return;
+  const seconds = Math.ceil(left / 1000);
+  const shake = motionAllowed && coarsePointer.matches;
+  for (const card of cards) {
+    card.count.textContent = fill(msg("sleeping"), { n: seconds });
+    card.hint.textContent = msg(shake ? "sleepFadingShake" : "sleepFading");
+    if (!sleepState.said) card.said.textContent = fill(msg("sleeping"), { n: seconds }); // said once, at the start
+  }
+  sleepState.said = true;
+}
+
+ui["sleep-sheet"].addEventListener("click", (event) => {
+  const choice = event.target.closest("[data-ts-sleep-choice]");
+  if (choice) {
+    const name = choice.dataset.tsSleepChoice;
+    if (name === "custom") {
+      ui["sleep-custom"].hidden = false;
+      ui["sleep-minutes"].focus();
+      return;
+    }
+    setSleep(name, Number(name) || 0);
+    closeSheet(true);
+  } else if (event.target.closest("[data-ts-sleep-start]")) {
+    startCustomSleep();
+  }
+});
+ui["sleep-minutes"].addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  startCustomSleep();
+});
+
+function startCustomSleep() {
+  const input = ui["sleep-minutes"];
+  if (!input.value || !input.checkValidity()) {
+    input.reportValidity();
+    return;
+  }
+  setSleep("custom", Number(input.value));
+  closeSheet(true);
+}
+
+// ---- Volume: the desktop bar's slider (per device); not offered where the browser ignores it ----
+
+bar.volume.addEventListener("input", () => player.setVolume(Number(bar.volume.value) / 100));
+
+// ---- Bookmarks: the button, the B key, the Bookmarks tab's form ----
+
+let bookmarking = false; // one request at a time
+
+// Always the live position at the moment of the press, never the position saved earlier.
+async function addBookmark() {
+  if (!book || bookmarking) return;
+  bookmarking = true;
+  try {
+    const res = await fetch("/books/" + encodeURIComponent(book.id) + "/bookmarks", {
+      method: "POST",
+      headers: { Accept: "application/json", "X-CSRF-Token": csrf(), "Content-Type": FORM_TYPE },
+      body: "position_ms=" + player.state().positionMs,
+    });
+    if (res.status === 201) showBookmarkToast(await res.json());
+    else if (res.status === 409) player.toast("err", (await res.text()).trim()); // the limit, in plain words
+    else player.toast("err", msg("bookmarkFailed"));
+  } catch {
+    player.toast("err", msg("bookmarkFailed"));
+  } finally {
+    bookmarking = false;
+  }
+}
+
+// "Bookmarked at 12:31 · Add a note": a toast with a link that opens the note sheet like the
+// Bookmarks tab does (the same htmx attributes), after closing a full screen player.
+function showBookmarkToast(saved) {
+  const toast = ui["bookmark-toast"].content.firstElementChild.cloneNode(true);
+  const link = $("toast-link", toast);
+  $("toast-text", toast).textContent = fill(msg("bookmarked"), { time: saved.label });
+  link.href = saved.noteHref;
+  for (const [name, value] of [["hx-get", saved.noteHref], ["hx-target", "#sheet"], ["hx-select", "#sheet > *"], ["hx-swap", "innerHTML"],
+    ["hx-push-url", "false"], ["aria-haspopup", "dialog"]]) {
+    link.setAttribute(name, value);
+  }
+  const dismiss = () => {
+    toast.classList.add("is-leaving");
+    setTimeout(() => toast.remove(), 800); // shell.js usually removes it first
+  };
+  link.addEventListener("click", () => {
+    if (dialog.open && !SIDE_PANEL.matches) closeNow();
+    dismiss();
+  });
+  (document.querySelector("#player-full:modal [data-ts-full-toasts]") || document.getElementById("toasts")).append(toast);
+  if (window.htmx) window.htmx.process(link);
+  // leaves after a few seconds, but not while the pointer or focus is on it
+  const wait = () => (toast.matches(":hover, :focus-within") ? setTimeout(wait, 1000) : dismiss());
+  setTimeout(wait, BOOKMARK_TOAST_MS);
+}
+
+// The B key, unless a field, an open sheet or a dialog (keyboard list, note sheet) wants the key.
+document.addEventListener("keydown", (event) => {
+  if (event.ctrlKey || event.metaKey || event.altKey || event.repeat || event.key.toLowerCase() !== "b" || !book) return;
+  const target = event.target;
+  if (target.closest && target.closest("input, textarea, select, [contenteditable]")) return;
+  if (openName || document.querySelector("dialog[open]:not(.ts-player), #sheet .ts-sheet")) return;
+  event.preventDefault();
+  addBookmark();
+});
+
+// The Bookmarks tab of the loaded book: its "Bookmark this moment" button shows the live place
+// and saves it (the server's own number is the last saved place, which can be behind).
+function syncAddForms(ms) {
+  for (const form of document.querySelectorAll("form[data-ts-bookmark-add]")) {
+    if (form.dataset.tsBookmarkAdd !== book.id) continue;
+    form.hidden = false;
+    const label = $("bookmark-add-label", form);
+    const text = fill(msg("bookmarkMomentAt"), { time: clock(ms - book.chapters[chapterAt(ms)].start) });
+    if (label.textContent !== text) label.textContent = text;
+  }
+}
+
+document.addEventListener("submit", (event) => {
+  const form = event.target;
+  if (book && form.matches && form.matches("form[data-ts-bookmark-add]") && form.dataset.tsBookmarkAdd === book.id) {
+    form.elements.position_ms.value = player.state().positionMs;
+  }
+}, true); // before htmx serialises the form
+document.addEventListener("htmx:after:settle", () => update("settle"));
+
+// ---- Long press on the bar: the speed sheet ----
+
+let pressTimer = 0;
+let pressAt = 0; // when a long press fired
+let pressFrom = null;
+
+function endPress() {
+  clearTimeout(pressTimer);
+  pressFrom = null;
+}
+
+miniOpen.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0 || !book) return;
+  endPress();
+  pressFrom = { x: event.clientX, y: event.clientY };
+  pressTimer = setTimeout(() => {
+    pressAt = performance.now();
+    openSheet("speed", miniOpen);
+  }, LONG_PRESS_MS);
+});
+miniOpen.addEventListener("pointermove", (event) => {
+  if (pressFrom && Math.hypot(event.clientX - pressFrom.x, event.clientY - pressFrom.y) > SWIPE_MIN_PX) endPress();
+});
+for (const type of ["pointerup", "pointercancel", "pointerleave"]) miniOpen.addEventListener(type, endPress);
+// The click and the context menu that follow a long press must not also navigate or open a menu.
+for (const type of ["click", "contextmenu"]) {
+  miniOpen.addEventListener(type, (event) => {
+    if (performance.now() - pressAt > 1000) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
 }
 
 // ---- Clicks, menu ----
@@ -390,9 +843,20 @@ const actions = {
   "full-back": () => player.skip(-1),
   "full-forward": () => player.skip(1),
   "full-toggle": () => player.toggle(),
-  "open-chapters": openSheet,
+  "open-chapters": () => openSheet("chapters", ui["open-chapters"]),
+  "open-speed": () => openSheet("speed", ui["open-speed"]),
+  "open-sleep": () => openSheet("sleep", ui["open-sleep"]),
   "sheet-close": () => closeSheet(true),
+  "bookmark": addBookmark,
+  "sleep-plus": sleepPlus,
 };
+
+// The desktop bar sits outside the dialog: its speed and sleep buttons open the side panel's sheets.
+slot.addEventListener("click", (event) => {
+  if (event.target.closest("[data-ts-bar-speed]")) openSheet("speed", bar.speed);
+  else if (event.target.closest("[data-ts-bar-sleep]")) openSheet("sleep", bar.sleep);
+  else if (event.target.closest("[data-ts-sleep-plus]")) sleepPlus();
+});
 
 dialog.addEventListener("click", (event) => {
   for (const name in actions) {
@@ -409,11 +873,7 @@ ui["full-book"].addEventListener("click", () => {
 ui["full-finish"].addEventListener("submit", () => {
   const fields = ui["full-finish"].elements;
   fields.next.value = location.pathname + location.search;
-  try {
-    fields._csrf.value = JSON.parse(document.body.getAttribute("hx-headers:inherited"))["X-CSRF-Token"] || "";
-  } catch {
-    fields._csrf.value = "";
-  }
+  fields._csrf.value = csrf();
   ui["full-menu"].open = false;
 });
 
@@ -424,6 +884,7 @@ function start() {
   document.addEventListener("ts:player:tick", () => update("tick"));
   document.addEventListener("ts:player:state", (event) => {
     if (event.detail.kind === "load" || !book || event.detail.bookId !== book.id) {
+      if (book && event.detail.bookId !== book.id) setSleep("off"); // another book: the timer was for this one
       book = player.info();
       if (book) drawBook();
     }
@@ -431,12 +892,24 @@ function start() {
   });
   new MutationObserver(applyAccent).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
   for (const query of ["(prefers-color-scheme: light)", "(prefers-contrast: more)"]) matchMedia(query).addEventListener("change", applyAccent);
+  bar.volumeWrap.hidden = !player.canSetVolume;
   book = player.info();
   if (book) {
     drawBook();
     update("load");
   }
 }
+
+// For tests only (like tsPlayer.debug): move the sleep timer on without waiting.
+window.tsPlayerFull = {
+  debug: {
+    advanceSleep: (ms) => {
+      stepSleep(ms);
+      drawSleep();
+    },
+    sleep: () => ({ ...sleepState }),
+  },
+};
 
 // player.js is an async module too: it may not have run yet.
 if (window.tsPlayer) start();

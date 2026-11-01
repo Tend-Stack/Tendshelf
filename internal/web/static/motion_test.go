@@ -276,12 +276,14 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// The plan said 9 KB, sized from the squeezed file (7.2 KB). The version written for reading
 	// (one statement per line, comments for the why) is 10.2 KB, so the limit is 11 KB; see the
 	// AGENTS.md rule: report an overrun, never squeeze.
-	"player.js":      {11 * 1024, 64 * 1024},
-	"player-full.js": {8 * 1024, 64 * 1024},
+	// P1c-5b adds volume, fade and the toast host to player.js (12 KB), and the speed and sleep
+	// sheets, the sleep timer, the bookmark toast and the B key to player-full.js (12 KB).
+	"player.js":      {12 * 1024, 64 * 1024},
+	"player-full.js": {12 * 1024, 64 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
-const jsTotalGzip = 24 * 1024 // 11 (player.js) + 4 (shell.js) + 8 (player-full.js) + room
+const jsTotalGzip = 28 * 1024 // 12 (player.js) + 4 (shell.js) + 12 (player-full.js)
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()
