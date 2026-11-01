@@ -68,7 +68,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `libraries` | `id`, `name`, `created_at`, `scan_interval_min` | |
 | `library_folders` | `id`, `library_id`, `path` UNIQUE, `created_at` | |
 | `books` | `id`, `library_id`, `folder_id` (cascade on folder removal; the scan works per folder), `root_path` UNIQUE, `title`, `sort_title`, `subtitle`, `description`, `publisher`, `published_year`, `language`, `isbn`, `asin`, `abridged`, `dramatized`, `explicit`, `duration_ms`, `cover_id`, `refused_reason` NULL, `added_at`, `updated_at`, `missing_since` NULL | Resolved values (cache of the merge). |
-| `audio_files` | `id`, `book_id`, `path` UNIQUE, `idx`, `size`, `mtime_ns`, `quick_hash`, `sha256` NULL, `container`, `codec`, `bitrate`, `channels`, `sample_rate`, `duration_ms`, `offset_ms`, `encrypted`, `probe_json`, `missing_since` NULL, `updated_at` | `offset_ms` places the file on the global timeline. `missing_since` flags a lost part of a multi-file book instead of dropping it. `quick_hash` = SHA-256 of size + first and last 1 MiB. |
+| `audio_files` | `id`, `book_id`, `path` UNIQUE, `idx`, `size`, `mtime_ns`, `quick_hash`, `sha256` NULL, `container`, `codec`, `bitrate`, `channels`, `sample_rate`, `duration_ms`, `offset_ms`, `encrypted`, `probe_json`, `probe_error` NULL, `missing_since` NULL, `updated_at` | `probe_error` (migration 0003) holds the media error code of a file that could not be read; a file is settled when `probe_json` or `probe_error` is set, so a damaged file never blocks its book. `offset_ms` places the file on the global timeline. `missing_since` flags a lost part of a multi-file book instead of dropping it. `quick_hash` = SHA-256 of size + first and last 1 MiB. |
 | `chapters` | `book_id`, `idx`, `start_ms`, `end_ms`, `title`, `source`; PK (`book_id`,`idx`) | Global timeline. Source: 'file','files','sidecar','online','user'. |
 | `metadata_values` | `book_id`, `field`, `source`, `value_json`, `observed_at`; PK (`book_id`,`field`,`source`) | Every candidate value with its source. |
 | `people` | `id`, `name`, `sort_name`, `description`, `image_id`, `asin` | Authors and narrators share one table. |
@@ -85,7 +85,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `jobs` | `id`, `kind`, `state` ('queued','running','done','failed','cancelled','held'), `payload_json`, `result_json`, `error_code`, `error_text`, `attempts`, `max_attempts`, `lease_until`, `not_before`, `progress_json`, `created_by`, `created_at`, `updated_at` | |
 | `file_writes` | `id`, `job_id`, `audio_file_id`, `state` ('copying','verifying','swapped','confirmed','undone','failed'), `original_path`, `backup_path`, `temp_path`, `before_sha256`, `after_sha256`, `audio_hash`, `created_at`, `updated_at` | The write-details ledger; drives restart recovery and Undo. |
 | `audit_log` | `id`, `at`, `user_id`, `action`, `target`, `detail_json` | Logins, invites, grants, file writes, research toggles. |
-| `books_fts` | FTS5 over title, subtitle, authors, narrators, series, description (P1b, migration 0003 builds it from the book rows) | Notes are per user: searched with a user filter, not in this index. |
+| `books_fts` | FTS5 over title, subtitle, authors, narrators, series, description (P1b, migration 0004 builds it from the book rows) | Notes are per user: searched with a user filter, not in this index. |
 | `user_settings` | `user_id`, `key`, `value_json`, `updated_at`; PK (`user_id`,`key`) | The one per-user settings store (playback preferences, `reader.v1`, chosen edition per book `edition.<bookID>`). |
 | `ebook_files` (R1) | `id` (`ebf_`), `sha256` UNIQUE, `size`, `format` CHECK IN ('epub','pdf','txt','md','docx','html','fb2','mobi','azw3'), `origin` ('library','upload'), `path` UNIQUE, `library_folder_id` NULL, `mtime_ns`, `quick_hash`, `refused_reason` NULL ('drm','unsupported','damaged','too_large','no_text'), `added_at`, `missing_since` NULL | Library ebooks read-only; uploads under `<data>/ebooks/`. |
 | `editions` (R1) | `id` (`ed_`), `ebook_file_id`, `book_id` NULL (NULL = unpaired), `doc_sha256`, `parse_recipe`, `title`, `authors_json`, `language`, `isbn`, `asin`, `layout` ('reflow','page'), `chapter_count`, `word_count`, `has_overlays`, `is_default`, `pair_source` ('folder','upload','identifier','title','user'), `pair_score` REAL, `paired_by` NULL, `paired_at`, `created_at`, `updated_at` | Partial unique index: one `is_default` per book. Document file `<data>/text/<doc_sha256>.json.gz`. |
@@ -142,6 +142,12 @@ conditioned on `state='running' AND attempts=?`, so a handler that lost its leas
 whose kind is `HoldOnRecovery` or not registered goes to `held` (unknown work never re-runs on its own),
 and a row that used all its attempts goes to `failed` (`interrupted`). On shutdown, handlers are cancelled
 with `ErrShutdown` and their rows go back to `queued` without using an attempt (or to `held`).
+A handler that writes other tables begins its write transaction with `Task.Fence` (the same check as above,
+as a read inside the transaction), so a run that lost its lease writes nothing. Probe dedupe: after every
+scan, `scan.library` queues `media.probe` for each live unsettled file that has no queued, running or
+held probe, found with `Runner.ActiveKeys` (so a crash only costs a re-queue, with no jobs-table
+migration). Finalize in the settling tx: the probe that settles a book's last unread file finalises the
+book (play order, offsets, duration, chapters, refused reason) in that same write transaction.
 
 ## HTTP routes
 

@@ -15,7 +15,7 @@ themes.
 | Milestone | Phase | State | Evidence |
 | --- | --- | --- | --- |
 | M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 4.0.0, fonts and templ v0.3.1100 downloads approved). **Done 2026-11-01.** P0a (data and jobs), P0b (UI shell) and P0c (utilities and motion) built, reviewed and merged; see their notes below. | `make check` (with and without `-tags dev`), `make build` (CGO_ENABLED=0), `make visual` (Chromium) and `make visual-webkit` (WebKitGTK 2.52.6) green on main 2026-11-01; CI green. |
-| M1 It plays | P1a-P1c | In progress. P1a is split in four packages (P1a-1 schema, repository and media runner; P1a-2 scanner; P1a-3 local details; P1a-4 covers). **P1a-1 built 2026-11-01**, not yet merged. | `make check`, `make build`, `CGO_ENABLED=0 go build ./...` and `make test-media` green on the P1a-1 branch. |
+| M1 It plays | P1a-P1c | In progress. P1a is split in four packages (P1a-1 schema, repository and media runner; P1a-2 scanner (built 2026-11-01, not yet merged); P1a-3 local details; P1a-4 covers). **P1a-1 built 2026-11-01**, not yet merged. | `make check`, `make build`, `CGO_ENABLED=0 go build ./...` and `make test-media` green on the P1a-1 branch. |
 | M2 Family | P3 | Not started | |
 | M3 Pocket | P4 | Not started | |
 | M4 Details | P2 | Not started | |
@@ -161,6 +161,24 @@ refused, junk refused). Limits: `books_fts` waits for P1b (migration 0003); the 
 and `aavd` codec tags are unverified guesses, only the CENC packet side data was checked on a real file;
 no MP4 box walk; ffprobe version is not checked. People, series, labels, metadata values and covers have
 tables but no writers yet. Next: P1a-2 (scanner and move detection on this repository).
+
+**P1a-2 status (2026-11-01)**: scanner built on that repository. Migration `0003_probe_error.sql`
+(`audio_files.probe_error`: a settled-but-unreadable state; `books_fts` therefore becomes migration 0004).
+`internal/scan`: `walk` (never follows links, skips hidden, NAS and recycle folders, pipes and
+devices; an unreadable subtree changes nothing), `GroupFiles` (root singles, Author/Book, Author/Series/Book,
+numbered folders, CD/Disc folders, containers with loose files, split-part m4b), smart track order (ports of ABS
+`runSmartTrackOrder` and Extractor `order_parts`), chapters (embedded, whole-book list repeated in
+parts, or one per file), `finalize` (order, offsets, duration, chapters, refused reason as a pure function of
+the rows, inside the tx that settles the last file), `ScanLibrary` (one guarded write tx; moved and renamed files
+and folders keep their IDs; vanished files are marked missing, never deleted; a scan with nothing
+new writes and queues nothing), `ProbeFile`, and the `scan.library` and `media.probe` jobs. Added
+`Task.Fence`, `Runner.ActiveKeys`, `library.UpdateGuarded` and transaction reads, the `-ffprobe`
+and `-ffmpeg` flags, and `make test-scan-real`. A book whose every file is unreadable is
+`refused_reason='damaged'` (the file's `probe_error` keeps the exact code, such as `file_unreadable`).
+A folder that is unavailable or newly empty marks nothing missing. Deliberately emptied folders are handled
+by an explicit admin action in P1b. Checks: see the package report. Limits: no metadata beyond
+title = folder or file name (P1a-3), no covers (P1a-4), no periodic scan or file watching, no full SHA-256,
+no MP4 box walk. Next: P1a-3 (local details).
 
 ### P1b Accounts and browse pages
 
