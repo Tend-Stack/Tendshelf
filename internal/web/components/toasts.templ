@@ -1,0 +1,14 @@
+package components
+
+// Toasts is the live region that out-of-band swaps append toasts to.
+templ Toasts() {
+	<div id="toasts" class="ts-toasts" aria-live="polite"></div>
+}
+
+// ErrorToast is the out-of-band fragment that appends an error toast to #toasts. htmx 4 swaps 4xx
+// and 5xx responses, so error responses to htmx requests carry this instead of a full page.
+templ ErrorToast(message string) {
+	<div hx-swap-oob="beforeend:#toasts">
+		<div role="alert" class="ts-toast">{ message }</div>
+	</div>
+}

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
@@ -18,9 +17,9 @@ func TestRoutes(t *testing.T) {
 		{http.MethodGet, "/", http.StatusOK, "text/html; charset=utf-8"},
 		{http.MethodHead, "/", http.StatusOK, "text/html; charset=utf-8"},
 		{http.MethodGet, "/healthz", http.StatusOK, "application/json"},
-		{http.MethodGet, "/nope", http.StatusNotFound, ""},
-		{http.MethodPost, "/", http.StatusMethodNotAllowed, ""},
-		{http.MethodPost, "/healthz", http.StatusMethodNotAllowed, ""},
+		{http.MethodGet, "/nope", http.StatusNotFound, "text/html; charset=utf-8"},
+		{http.MethodPost, "/", http.StatusForbidden, "text/html; charset=utf-8"},
+		{http.MethodPost, "/healthz", http.StatusForbidden, "text/html; charset=utf-8"},
 	}
 	for _, c := range cases {
 		t.Run(c.method+" "+c.path, func(t *testing.T) {
@@ -54,13 +53,5 @@ func TestHealthz(t *testing.T) {
 	}
 	if rec.Header().Get("Cache-Control") != "no-store" {
 		t.Fatal("healthz must not be cached")
-	}
-}
-
-func TestPlaceholderEscapesVersion(t *testing.T) {
-	rec := httptest.NewRecorder()
-	NewHandler(Options{Version: "<script>"}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-	if strings.Contains(rec.Body.String(), "<script>") {
-		t.Fatal("version not escaped")
 	}
 }

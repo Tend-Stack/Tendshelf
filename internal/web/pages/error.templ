@@ -1,0 +1,45 @@
+package pages
+
+import "net/http"
+
+// ErrorTitle is the page title for an error status.
+func ErrorTitle(status int) string {
+	switch status {
+	case http.StatusNotFound:
+		return "Not found"
+	case http.StatusForbidden:
+		return "Form expired"
+	}
+	return "Something went wrong"
+}
+
+// ErrorPage shows an error in plain words. Details never appear here; they go to the server log.
+templ ErrorPage(status int) {
+	<h1 class="title-1">
+		switch status {
+			case http.StatusNotFound:
+				This page isn't here.
+			case http.StatusForbidden:
+				This form expired.
+			default:
+				Something went wrong on your server.
+		}
+	</h1>
+	<p class="body">
+		switch status {
+			case http.StatusNotFound:
+				Check the address, or go back to Home.
+			case http.StatusForbidden:
+				Reload the page and try again.
+			default:
+				Try again in a moment. Details are in the server log.
+		}
+	</p>
+	switch status {
+		case http.StatusNotFound:
+			<p><a class="ts-btn ts-btn--primary" href="/">Go to Home</a></p>
+		case http.StatusForbidden:
+		default:
+			<p><a class="ts-btn ts-btn--primary" href="">Try again</a></p>
+	}
+}

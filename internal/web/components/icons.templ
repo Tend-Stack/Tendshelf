@@ -1,0 +1,35 @@
+package components
+
+import "log/slog"
+
+// Icon renders one icon from the set by name; filled uses the solid variant. An unknown name
+// renders nothing and logs at debug level.
+templ Icon(name string, filled bool) {
+	if shapes, ok := iconShapes[name]; ok {
+		<svg class={ iconClass(filled) } viewBox="0 0 24 24" aria-hidden="true">
+			@templ.Raw(shapes)
+		</svg>
+	} else {
+		@logUnknownIcon(name)
+	}
+}
+
+templ logUnknownIcon(name string) {
+	{{ slog.Debug("unknown icon", "name", name) }}
+}
+
+func iconClass(filled bool) string {
+	if filled {
+		return "ts-icon ts-icon--fill"
+	}
+	return "ts-icon"
+}
+
+// Mark is the Tendshelf logo mark, drawn in the current colour.
+templ Mark() {
+	<svg class="ts-icon" viewBox="0 0 48 48" aria-hidden="true">
+		@templ.Raw(markShapes)
+	</svg>
+}
+
+const markShapes = `<rect x="7" y="8" width="11" height="32" rx="2.5" stroke-width="3"/><path d="M7 15h11M7 33h11" stroke-width="2.5"/><path d="M18 24c2.6-9 4.6-9 7.2 0s4.6 9 7.2 0 3.4-5.5 5.3 0 2.6 3 4.3 0" stroke-width="3"/>`

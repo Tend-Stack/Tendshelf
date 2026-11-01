@@ -1,0 +1,75 @@
+package components
+
+import (
+	"encoding/json"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/static"
+)
+
+// Page is what the layout needs to render any page.
+type Page struct {
+	Title   string
+	Current string // key of the current MainNav item, "" for none
+	Theme   string // dark, light, sepia or contrast; "" follows the system
+	CSRF    string
+	Assets  *static.Set
+}
+
+// htmxConfig is the htmx 4 configuration meta content.
+const htmxConfig = `{"includeIndicatorCSS":false,"defaultTimeout":25000,"transitions":false}`
+
+// csrfHeaders is the JSON for hx-headers: every htmx request carries the CSRF token.
+func csrfHeaders(token string) string {
+	b, err := json.Marshal(map[string]string{"X-CSRF-Token": token})
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
+}
+
+// Layout is the app shell. The navigation, the player slot, the audio element and the toasts sit
+// outside #main, so a boosted navigation swaps only the content.
+templ Layout(p Page, body templ.Component) {
+	<!DOCTYPE html>
+	<html
+		lang="en"
+		if p.Theme != "" {
+			data-theme={ p.Theme }
+		}
+	>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+			<meta name="color-scheme" content="dark light"/>
+			<meta name="htmx-config" content={ htmxConfig }/>
+			<title>{ p.Title } · Tendshelf</title>
+			<link rel="preload" href={ p.Assets.URL("fonts/Fraunces-Variable.woff2") } as="font" type="font/woff2" crossorigin/>
+			<link rel="preload" href={ p.Assets.URL("fonts/FiraSans-Regular.woff2") } as="font" type="font/woff2" crossorigin/>
+			<link rel="stylesheet" href={ p.Assets.URL("css/tokens.css") }/>
+			<link rel="stylesheet" href={ p.Assets.URL("css/fonts.css") }/>
+			<link rel="stylesheet" href={ p.Assets.URL("css/bundle.css") }/>
+			if p.Assets.Has("css/utilities.css") {
+				<link rel="stylesheet" href={ p.Assets.URL("css/utilities.css") }/>
+			}
+			if p.Assets.Has("css/motion.css") {
+				<link rel="stylesheet" href={ p.Assets.URL("css/motion.css") }/>
+			}
+			<link rel="icon" type="image/svg+xml" href={ p.Assets.URL("img/tendshelf-app-icon.svg") }/>
+			<script src={ p.Assets.URL("vendor/htmx-4.0.0.min.js") } defer></script>
+			<script type="module" src={ p.Assets.URL("js/shell.js") }></script>
+		</head>
+		<body hx-boost:inherited="target:#main select:#main swap:outerSync" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
+			<a class="ts-skip" href="#main">Skip to content</a>
+			<div class="ts-shell">
+				@TabBar(p.Current)
+				@SideRail(p.Current)
+				@Sidebar(p.Current)
+				<main id="main" class="ts-main" tabindex="-1" hx-history-elt>
+					@body
+				</main>
+			</div>
+			@PlayerSlot()
+			@Toasts()
+		</body>
+	</html>
+}
