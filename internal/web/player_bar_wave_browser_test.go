@@ -339,7 +339,7 @@ func TestPlayerBarBrowserWaveKeys(t *testing.T) {
 	if !f.OnWave || f.Knob != "1" || f.Ring == "none" || f.Label != "Position in chapter 1" || f.Max != "30" || f.Val != "10" {
 		t.Errorf("after Tab: %+v", f)
 	}
-	if want := "10 seconds of 30 seconds, chapter 1, Chapter 1"; f.Text != want {
+	if want := "10 seconds of 30 seconds, chapter 1"; f.Text != want {
 		t.Errorf("aria-valuetext %q, want %q", f.Text, want)
 	}
 	steps := []struct {
@@ -360,7 +360,7 @@ func TestPlayerBarBrowserWaveKeys(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 	var text string
 	tab.Eval(`document.querySelector(".ts-wave__input").getAttribute("aria-valuetext")`, &text)
-	if text != "5 seconds of 30 seconds, chapter 1, Chapter 1" {
+	if text != "5 seconds of 30 seconds, chapter 1" {
 		t.Errorf("aria-valuetext after a key: %q", text)
 	}
 	tab.Eval(`window.tsPlayer.play()`, nil)
@@ -376,7 +376,7 @@ func TestPlayerBarBrowserWaveKeys(t *testing.T) {
 	var times struct{ Elapsed, Chapter, Left, Meta string }
 	tab.Eval(`({Elapsed: document.querySelector('[data-pbar="elapsed"]').textContent, Chapter: document.querySelector('[data-pbar="chapter"]').textContent,
 	  Left: document.querySelector('[data-pbar="left"]').textContent, Meta: document.querySelector("[data-ts-bar-meta]").textContent})`, &times)
-	if !regexp.MustCompile(`^0:\d\d$`).MatchString(times.Elapsed) || times.Chapter != "Chapter 1 · Chapter 1" || !regexp.MustCompile(`^\x{2212}0:\d\d$`).MatchString(times.Left) ||
+	if !regexp.MustCompile(`^0:\d\d$`).MatchString(times.Elapsed) || times.Chapter != "Chapter 1" || !regexp.MustCompile(`^\x{2212}0:\d\d$`).MatchString(times.Left) ||
 		!strings.HasPrefix(times.Meta, "Imogen Hale · ") || !strings.HasSuffix(times.Meta, " left in book") {
 		t.Errorf("times %+v", times)
 	}
@@ -419,7 +419,7 @@ func TestPlayerBarBrowserWaveLoading(t *testing.T) {
 		}
 	}
 	tab.Eval(`document.querySelector('[data-pbar="chapter"]').textContent`, &chapter)
-	if r.Loading || !shaped || r.N != int(r.Width)/4 || chapter != "Chapter 4 · Chapter 4" {
+	if r.Loading || !shaped || r.N != int(r.Width)/4 || chapter != "Chapter 4" {
 		t.Errorf("filled in: loading %v shaped %v bars %d chapter text %q", r.Loading, shaped, r.N, chapter)
 	}
 
@@ -443,7 +443,7 @@ func TestPlayerBarBrowserWaveNoPeaks(t *testing.T) {
 	r := pbwRead(tab)
 	var chapter string
 	tab.Eval(`document.querySelector('[data-pbar="chapter"]').textContent`, &chapter)
-	if r.Loading || r.Animation != "none" || chapter != "Chapter 4 · Chapter 4" || r.N != int(r.Width)/4 {
+	if r.Loading || r.Animation != "none" || chapter != "Chapter 4" || r.N != int(r.Width)/4 {
 		t.Errorf("no peaks: %+v chapter text %q", r, chapter)
 	}
 	box := barBox(tab, pbwWave)
@@ -463,7 +463,7 @@ func TestPlayerBarBrowserWaveChapterChange(t *testing.T) {
 	var d1, d2, chapter string
 	tab.Eval(`document.querySelector(".ts-wave__rest path").getAttribute("d")`, &d1)
 	pbwSeek(t, tab, 40_000)
-	tab.WaitFor(`document.querySelector('[data-pbar="chapter"]').textContent === "Chapter 2 · Chapter 2"`, 3*time.Second)
+	tab.WaitFor(`document.querySelector('[data-pbar="chapter"]').textContent === "Chapter 2"`, 3*time.Second)
 	tab.Eval(`document.querySelector(".ts-wave__rest path").getAttribute("d")`, &d2)
 	tab.Eval(`document.querySelector(".ts-wave--bar .ts-wave__input").getAttribute("aria-label")`, &chapter)
 	if d1 == d2 || chapter != "Position in chapter 2" {
