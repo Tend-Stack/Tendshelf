@@ -12,7 +12,6 @@ it happens to run on their own machine.
 | **The invited guest** | A friend the owner lends one book to, for a month. | A link that works on their phone without creating anything complicated, and stops working when the loan ends. |
 | **The commuter / runner / sleeper** | Any of the above, listening in a car, on a run, in bed. | Big controls, lock-screen controls, offline downloads, a sleep timer that fades out, never losing their place. |
 | **The reader-listener** | Reads on the train, listens while walking or cooking; a language learner; a reader with dyslexia or low vision. | Add the ebook beside the audiobook, see the words light up as they are spoken, and switch between reading and listening without hunting for the place. |
-| **The researcher** (admin, opt-in) | Studies narration style for TendVox calibration. | Measure pace, pauses, pitch and loudness of owned books, keep the numbers, delete the clips. |
 
 ## Jobs to be done
 

@@ -24,8 +24,7 @@ highlighted while listening, using a model for the timing, and one position acro
    them from the official sources shown on `/admin/runtimes`; Tendshelf verifies hashes and records the
    licence. A one-click installer would need a second `http.Client` package and its own decision.
 5. **Model output is local data**: the coarse transcript lives only in the reconstructible emissions
-   cache, is never shown or exported, and is excluded from backups. (The Research rule "transcripts
-   used for counts only and never stored" stays as it is for the Research module.)
+   cache, is never shown or exported, and is excluded from backups. (The Research module is dropped, decision 0007.)
 
 ## Consequences
 

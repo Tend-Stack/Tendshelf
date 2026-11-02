@@ -88,6 +88,6 @@ from general knowledge. Cells marked `?` are unverified guesses; check before qu
 | OPDS catalogue | No (not in server source) | No | Later |
 | Backups of the database | Yes | n/a | P1 (pre-migration copies), P4 (scheduled) |
 | Notifications (Apprise) | Yes | Push | Not planned |
-| **Research (Tendshelf only)** | | | |
-| Clip extraction and calibration measurements for TendVox (off by default, admin-only, fair-practice rules) | No | No | P6 |
-| Reference-numbers export (`tendvox-reference-styles` v1) | No | No | P6 |
+| **Research (dropped, decision 0007)** | | | |
+| Clip extraction and calibration measurements for TendVox | No | No | Dropped (not built, not planned) |
+| Reference-numbers export (`tendvox-reference-styles` v1) | No | No | Dropped (not built, not planned) |

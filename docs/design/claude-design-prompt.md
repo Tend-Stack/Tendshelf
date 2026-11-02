@@ -14,7 +14,6 @@ The people using it:
 - **Maya, 34**, listens on her commute and while cooking. Her phone is in her pocket and earbuds are in. She wants to resume in one tap, skip back 30 s, set a sleep timer, and see how much of the chapter is left.
 - **Daniel, 52**, owns 900 audiobooks and runs the server. He wants to find any book in seconds, fix wrong details, see series in order, and invite his kids.
 - **Rosa, 71**, Daniel's mother, was invited by link. She has never used an audiobook app. She must be able to press play without help: big targets, plain words, no jargon.
-- **A researcher (optional, hidden by default)** uses an admin-only "Research" area to cut short clips from owned books and measure narration (pace, pauses, pitch). It must feel like a lab tucked away behind a door, never in the way of listening.
 
 ## Design principles
 
@@ -64,7 +63,7 @@ The people using it:
    - listening stats (time this week, streaks, finished books — tasteful, not gamey);
    - devices;
    - settings;
-   - for admins: Server, Users & invites, Libraries, Metadata, Research (off by default).
+   - for admins: Server, Users & invites, Libraries, Metadata.
 
 **Persistent elements:**
 - a **mini-player** docked above the bottom tabs on phones and at the bottom of the window on desktop: cover, title, chapter, play/pause, a thin progress line;
@@ -127,20 +126,7 @@ Phone at 390 × 844 for all. Tablet at 1024 × 768 and desktop at 1440 × 900 fo
     Make sharing feel generous and safe.
 12. **Users & devices (admin)*:** list with role, last active, listening stats, invites pending.
 13. **Libraries & scanning (admin)*:** folders, scan now, scan history, problems found (e.g. "4 files still copying", "1 protected file skipped") explained in plain words with a fix.
-14. **Research (admin-only, off by default)*** — a lab space, visually distinct (cooler, technical), that never leaks into the listening UI:
-    - pick books from the library;
-    - a waveform player with chapter marks;
-    - Set start / Set end, clip length presets (5 min recommended);
-    - random, range or by-chapter cutting;
-    - a calibration-set helper;
-    - mark moments with notes;
-    - categories (narration type, voice, point of view, genre, tempo) with "auto" suggestions and evidence;
-    - a measurements table (pace, pauses, pitch, loudness range);
-    - a coverage matrix showing which styles still need samples;
-    - export.
-
-    It must carry a fair-practice note: owned files only, analysis only, protected files refused.
-15. **Settings:** playback defaults, themes, skip intervals, auto-rewind after pause, accessibility (larger text, high contrast, reduced motion), and privacy (no telemetry, stated plainly).
+14. **Settings:** playback defaults, themes, skip intervals, auto-rewind after pause, accessibility (larger text, high contrast, reduced motion), and privacy (no telemetry, stated plainly).
 
 Also design **states**: empty library, no results, offline (cached books still playable, a gentle banner), error (plain words + retry), loading skeletons, and the first-scan celebration.
 

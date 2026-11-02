@@ -21,7 +21,7 @@ themes.
 | M4 Details | P2 | Not started | |
 | M5 Read along | R1-R6 | Designed 2026-10-31 ([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)); UI designed in the handoff (`screens/reader/`). Dependencies await approval. | Design only. |
 | M6 Desktop | P5 | Not started | |
-| M7 Research | P6 | Not started; lab designed (`screens/admin/Research*`). | |
+| M7 Research | P6 | Dropped (decision 0007) | |
 
 ## M0 Foundation
 
@@ -271,7 +271,7 @@ history, duplicate or "still copying" detection, cover lookup, or phone and tabl
 
 **P1b-6 status (book, people and search pages)**: done. The book page has About, Chapters and Details tabs, each a canonical URL swapped into `#book-panel`, the series list and "Also narrated by"; author, narrator and series pages show visible books only; Search shows books, people and series with live results, an Everything/Books/People/Series filter, "Did you mean …?" and the "Nothing for …" state. Every read goes through the person's scope, and a book, person or series they cannot see answers 404 like an unknown id. Checks: `make check`, `make build`, `make visual` (about 17 s added), `-race -count=3`. Limits: no play, download, share or shelf controls (P1c, P4, P3, P1b-8; the play button's single slot is marked in `book.templ`); desktop uses a two-column layout rather than the board's full-width tab row; search totals cap at 1,000; no "Start series" link, per-book percentages or stacked series covers (need progress, P1c); person pages have no sort.
 
-**P1b-7 status (Settings and Profile)**: done. Profile (avatar, role, devices with per-device sign out and "Sign out everywhere else", Libraries entry for owner and admin, sign out), Settings (typed `users.Settings` in `user_settings`, saved as you change it and without JavaScript; theme from `ui.theme`, which beats the `ts_theme` cookie, which beats the system; playback values stored for P1c), Change password (needs the current password, rotates this browser's session and signs out the others) and `tendshelf reset-password [-data DIR] <username>` (prints a generated password once, signs the account out everywhere, audit row). Checks: `make check`, `make build`, `make visual`, `-race -count=3` on users, auth, web and cmd. Lead fix: "Sign out everywhere else" aligned with the device rows. Limits: no stats, bookmarks or finished rows, no Users, Metadata or Research entries (P1c, P2, P3, P6), device rows share one icon; text size and the Larger text mode go with P3.
+**P1b-7 status (Settings and Profile)**: done. Profile (avatar, role, devices with per-device sign out and "Sign out everywhere else", Libraries entry for owner and admin, sign out), Settings (typed `users.Settings` in `user_settings`, saved as you change it and without JavaScript; theme from `ui.theme`, which beats the `ts_theme` cookie, which beats the system; playback values stored for P1c), Change password (needs the current password, rotates this browser's session and signs out the others) and `tendshelf reset-password [-data DIR] <username>` (prints a generated password once, signs the account out everywhere, audit row). Checks: `make check`, `make build`, `make visual`, `-race -count=3` on users, auth, web and cmd. Lead fix: "Sign out everywhere else" aligned with the device rows. Limits: no stats, bookmarks or finished rows, no Users, Metadata or Research entries (P1c, P2, P3; Research dropped, decision 0007), device rows share one icon; text size and the Larger text mode go with P3.
 
 **P1b-8 status (personal shelves)**: done. Migration 0005 (`shelves`, `shelf_items`, names unique per person); `/shelves` (list and create) and `/shelves/{id}` (paging, rename, delete with a confirm, remove, move up and down with buttons); an "Add to shelf" sheet on the book page after the P1c play slot (not a play control, so the one-resume rule holds); the "Your shelves" sidebar group and a Profile row on phone. Every query filters on the owner and the person's book scope; guests, other people's shelves and unknown ids answer 404; at most 200 shelves and 5,000 books per shelf. Checks: `make check`, `make build`, `-race -count=3`, `make visual` (52 s) and `visual-full` for the shelf pages. Limits: sidebar counts refresh on the next full load; shared shelves (P3), drag ordering and adding from cards are out of scope; an empty shelf shows no cover placeholder (sweep).
 
@@ -427,14 +427,7 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
 
 Exit: Linux build runs both modes in an isolated session; other platforms recorded as not verified.
 
-## M7 Research (P6 module port)
-
-- Port the TendVox Extractor: clip extraction, categories, measurements, coverage, keep-numbers/delete-
-  clips, `tendvox-reference-styles` v1 export; off by default, admin-only, fair-practice rules; the
-  Research door and lab from `screens/admin/Research*` with the `lab-*` tokens.
-
-Exit: the Go export matches the Extractor's export for the same synthetic fixture within stated
-tolerances; disabled module returns 404 for every research route.
+## M7 Research — dropped (decision 0007, 2026-11-02)
 
 ## Later
 

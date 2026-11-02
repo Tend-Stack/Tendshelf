@@ -125,18 +125,6 @@ was reused, extended or replaced.
   listed in the report. 13 px is the smallest text. One resume button per book on any screen.
 - No TV layouts and nothing from `screens/directions/`.
 
-## Research module (fair practice, hard rules)
-
-The Research module is off by default, owner-enabled, admin-only. When disabled, its routes are not
-registered (404) and nothing in the interface mentions it. When enabled:
-
-- Owned files only, local analysis only. Copy-protected files are refused, as everywhere.
-- Keep the numbers, delete the clips. Clips are deleted after measuring unless an admin explicitly keeps
-  them for listening, for at most 30 days. Clips are never served to non-admins, never included in
-  downloads, feeds, backups or exports, and never used to train or clone a voice.
-- Transcripts from optional speech-to-text are used for counts only and never stored.
-- Exports contain numbers and categories only (`tendvox-reference-styles` v1), never audio or text.
-
 ## NOTICES discipline
 
 When you port logic closely from another project (Audiobookshelf is GPL-3.0, compatible with

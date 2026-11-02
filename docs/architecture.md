@@ -45,11 +45,10 @@ is not an audio file or a cached image. ffmpeg/ffprobe are child processes, and 
 | `internal/ebook` | Ebook ingestion (R1): format detection, copy-protection check, one parser per format (EPUB 2/3 with SMIL, PDF text layer, TXT/Markdown, DOCX, HTML, FB2, DRM-free MOBI/AZW3), the canonical document `tendshelf-doc-v1` with stable IDs and source offsets, sentence segmenter, pairing scores. No HTTP, no model. |
 | `internal/align` | Read-along alignment (R3): normaliser, emissions cache, greedy CTC transcript, block mapping and anchors, CTC forced alignment, confidence, timing files, the `align.book` job; Media Overlays import/export (R6). Pure Go. |
 | `internal/align/runtime` | Checks runtime components (hashes, `--describe`, licence), launches and owns the loopback emissions worker (`tendshelf-emissions-v1`), idle stop, parent-death cleanup. The only code that starts it. |
-| `internal/research` | Optional Research module (P6): clip extraction, measurements, export. Registered only when enabled. |
 | `desktop/` (P5) | Separate Go module: Wails v3 shell. Not imported by the server. |
 
 Dependency direction: `web`, `api` → services (`library`, `progress`, `share`, `users`, `metadata`,
-`scan`, `jobs`, `research`, `ebook`, `align`) → `db`, `media`. `align` uses `ebook` (documents) and
+`scan`, `jobs`, `ebook`, `align`) → `db`, `media`. `align` uses `ebook` (documents) and
 `media` (ffmpeg decode); `ebook` imports neither. Services never import `web` or `api`.
 
 ## Data model
@@ -59,7 +58,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 
 | Table | Columns (key ones) | Notes |
 | --- | --- | --- |
-| `settings` | `key` PK, `value_json` | Server settings (`research.enabled`, `online.enabled`, `smtp.*`, `listen.addr`, `server.name` (JSON string), `setup.done` (JSON true, set when the setup folder is added)). |
+| `settings` | `key` PK, `value_json` | Server settings (`online.enabled`, `smtp.*`, `listen.addr`, `server.name` (JSON string), `setup.done` (JSON true, set when the setup folder is added)). |
 | `users` | `id`, `username` UNIQUE NOCASE, `display_name`, `email`, `role` CHECK IN ('owner','admin','member','guest'), `password_hash`, `disabled`, `created_at`, `last_seen_at` | Exactly one owner (partial unique index on `role='owner'`). |
 | `sessions` | `token_hash` PK, `user_id`, `created_at`, `expires_at`, `last_seen_at`, `user_agent` | Cookie sessions. |
 | `devices` | `id`, `user_id`, `name`, `kind` ('web','pwa','desktop','mobile'), `token_hash` UNIQUE NULL (32 bytes), `created_at`, `last_seen_at`, `revoked_at` | Device tokens for the API (migration 0007). A revoked device keeps no token. |
@@ -85,7 +84,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `shelves` / `shelf_items` | `id`, `owner_id`, `name` (1-80 characters, unique per owner ignoring case), `shared` (P3-6a: 1 = visible to members and staff, effective only while the owner is an enabled owner or admin), `created_at`, `updated_at` / `shelf_id`, `book_id`, `idx`, `added_at`; PK (`shelf_id`,`book_id`) | Schema v5 (P1b-8). Cascade on the owner and on the book. At most 200 shelves per person and 5,000 books per shelf. Every read filters on `owner_id` and on the person's book scope; rows of a hidden or missing book stay and reappear with it. |
 | `jobs` | `id`, `kind`, `state` ('queued','running','done','failed','cancelled','held'), `payload_json`, `result_json`, `error_code`, `error_text`, `attempts`, `max_attempts`, `lease_until`, `not_before`, `progress_json`, `created_by`, `created_at`, `updated_at` | |
 | `file_writes` | `id`, `job_id`, `audio_file_id`, `state` ('copying','verifying','swapped','confirmed','undone','failed'), `original_path`, `backup_path`, `temp_path`, `before_sha256`, `after_sha256`, `audio_hash`, `created_at`, `updated_at` | The write-details ledger; drives restart recovery and Undo. |
-| `audit_log` | `id`, `at`, `user_id`, `action`, `target`, `detail_json` | Logins, invites, grants, file writes, research toggles. |
+| `audit_log` | `id`, `at`, `user_id`, `action`, `target`, `detail_json` | Logins, invites, grants, file writes. |
 | `books_fts` | FTS5, contentless with delete, over title, subtitle, authors, narrators, series, description; rowid from `books_fts_ids`; kept by triggers on books, book_people, book_series, people and series names (migration 0004); `books_fts_vocab` feeds did-you-mean. | Notes are per user: searched with a user filter, not in this index. |
 | `user_settings` | `user_id`, `key`, `value_json`, `updated_at`; PK (`user_id`,`key`) | The one per-user settings store: typed in `users.Settings` (`ui.theme`, `ui.player_tint`, `ui.big_buttons`, `playback.speed`, `playback.skip_back_s`, `playback.skip_forward_s`, `playback.auto_rewind`, `playback.next_in_series`; the player reads them with `LoadSettings`), `reader.v1`, chosen edition per book `edition.<bookID>`. |
 | `ebook_files` (R1) | `id` (`ebf_`), `sha256` UNIQUE, `size`, `format` CHECK IN ('epub','pdf','txt','md','docx','html','fb2','mobi','azw3'), `origin` ('library','upload'), `path` UNIQUE, `library_folder_id` NULL, `mtime_ns`, `quick_hash`, `refused_reason` NULL ('drm','unsupported','damaged','too_large','no_text'), `added_at`, `missing_since` NULL | Library ebooks read-only; uploads under `<data>/ebooks/`. |
@@ -95,7 +94,6 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `alignments` (R3) | `id` (`al_`), `edition_id`, `book_id`, `source` ('model','overlay'), `recipe`, `runtime_id` NULL, `model_sha256` NULL, `audio_key`, `doc_sha256`, `state` CHECK IN ('queued','emitting','aligning','done','partial','failed','cancelled','held'), `labels_json` (`abridged`, `different_edition`), `job_id`, `coverage` REAL, `sentences_total`, `sentences_timed`, `error_code` NULL, `created_at`, `finished_at` NULL, `superseded_by` NULL | `audio_key` = SHA-256 of the ordered audio `quick_hash` list. The newest `done`/`partial` row per edition is used. |
 | `alignment_chapters` (R3) | `alignment_id`, `chapter_idx`, `state` ('pending','aligned','unmatched','failed'), `chapter_key`, `start_ms` NULL, `end_ms` NULL, `sentences_total`, `sentences_timed`, `mean_confidence` REAL; PK (`alignment_id`,`chapter_idx`) | Timing file `<data>/align/<chapter_key>.json.gz`, shared by every alignment with the same key. |
 | `highlights` (R4) | `id` (`hl_`), `user_id`, `book_id`, `edition_id`, `start_sid`, `start_off`, `end_sid`, `end_off`, `quote`, `quote_prefix`, `quote_suffix`, `start_ms` NULL, `end_ms` NULL, `alignment_id` NULL, `colour` ('yellow','green','blue','pink'), `created_at`, `updated_at`, `deleted_at` | Text range and time range. Private to `user_id`. Soft delete for offline sync. |
-| `research_*` (P6) | `research_sources`, `research_clips`, `research_measurements` | Created by the P6 migration. |
 
 ## Media handling
 
@@ -169,7 +167,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 ## Background jobs
 
 Kinds: `scan.library`, `media.probe`, `media.cover`, `media.compat`, `metadata.local`,
-`metadata.online` (only user-triggered), `media.write_details`, `research.extract`, `research.measure`,
+`metadata.online` (only user-triggered), `media.write_details`,
 `ebook.ingest` (R1), `align.book` (R3, states and resume in [read-along.md](read-along.md) section 2),
 `align.export_overlays` (R6).
 A job runner per kind with bounded concurrency (probe 2, compat 1, write_details 1, ingest 1, align 1, export 1). Leases of 60 s
@@ -212,7 +210,7 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `POST /books/{id}/share/link`, `POST /share/links/{id}/stop` | Make and stop a link (owner and admin) |
 | `/books/{id}/text` (R1) | The book's text editions: upload, pairing, default edition, alignment status, export |
 | `/books/{id}/read?mode=readalong\|read\|focus&edition=&at=` (R4) | Reader inside the layout (player keeps playing) |
-| `/admin/users`, `/admin/libraries`, `/admin/jobs`, `/admin/settings`, `/admin/research` | Admin; research only when enabled. `/admin/libraries` (P1b-4) lists folders and problems, starts scans, and links to `/admin/libraries/folders/new` and `/admin/folders/{id}/emptied`; scan status is `GET /hx/jobs/{id}`. The folder browser is the `?browse=<path>` mode of `/admin/libraries/folders/new` (sheet) and `/setup/folder` (inline); picking links back with `?folder=<path>`, and the submit still runs the add-folder checks |
+| `/admin/users`, `/admin/libraries`, `/admin/jobs`, `/admin/settings` | Admin. `/admin/libraries` (P1b-4) lists folders and problems, starts scans, and links to `/admin/libraries/folders/new` and `/admin/folders/{id}/emptied`; scan status is `GET /hx/jobs/{id}`. The folder browser is the `?browse=<path>` mode of `/admin/libraries/folders/new` (sheet) and `/setup/folder` (inline); picking links back with `?folder=<path>`, and the submit still runs the add-folder checks |
 | `/admin/ebooks` (R2), `/admin/runtimes` (R3), `/about` (R3) | Unpaired and refused ebooks; word-timing runtime check and licences; credits and model licences |
 
 HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id}/items` with the same query as the page (infinite scroll; the sentinel is a link to the next page, so "Show more" works without JavaScript; a bad cursor is a 400 toast),
@@ -407,7 +405,7 @@ and its `/hx/dev/*` fragments; release builds do not register them.
   deliberate exception is the start-up setup link.
 - Authorization: `share.Can(user, action, target)` with the actions `library.view`, `book.view`, `book.listen`,
   `book.download`, `book.edit`, `text.read`, `text.download`, `libraries.manage`, `jobs.manage`, `users.manage`,
-  `server.manage`, `shelves.use`, `research.use`, `shelf.view`. Owner everything; admin everything except
+  `server.manage`, `shelves.use`, `shelf.view`. Owner everything; admin everything except
   `server.manage`; a disabled person nothing. Members and guests act only through an active grant (table
   `grants`, scopes all, library, shelf, book): `library.view` on a library holding a covered book;
   `book.view` and `book.listen` on a covered book; `book.download` needs `can_download`, `text.read` needs
@@ -428,8 +426,8 @@ and its `/hx/dev/*` fragments; release builds do not register them.
   session (`s:` + session hash) or, for anonymous visitors, of the `ts_csrf` cookie (`c:` + value), so a token
   for one can never pass as the other. The HMAC key is kept in `settings` (`web.csrf_key`), so open forms
   survive a restart. Cross-site browser requests are refused by the standard library's origin check first.
-- Roles: **owner** (everything, server settings, Research toggle, one per server), **admin** (users,
-  libraries, metadata, jobs, invites, Research when enabled), **member** (granted libraries/books, own
+- Roles: **owner** (everything, server settings, one per server), **admin** (users,
+  libraries, metadata, jobs, invites), **member** (granted libraries/books, own
   progress, bookmarks, notes, shelves, downloads if granted), **guest** (granted books or libraries,
   listen-only by default, own progress and bookmarks, no shelves shared, no downloads unless granted).
 - Invites: link `/invite/{token}`, default expiry 7 days, default one use, optional email via SMTP.
@@ -472,14 +470,6 @@ modes: connect to a Tendshelf server (the window loads the server's pages; nativ
 or personal mode running the same core in-process on a local library. See TendVox `docs/wails-v3.md`
 for origin guards and the audio gateway pattern.
 
-## Research module (P6)
-
-Port of the TendVox Extractor behind `research.enabled` (owner toggle, default off, admin-only routes).
-Clip extraction (random, ranges, by chapter, seeded), measurements (pace, pause types, F0 IQR, LUFS/LRA,
-pause noise floor; Go port of `extractor_pitch.py`, ffmpeg `ebur128` and `silencedetect`), categories
-from `categories.json` semantics, coverage, and the `tendvox-reference-styles` v1 export. Fair-practice
-rules are in `AGENTS.md`.
-
 ## Dependencies awaiting approval
 
 Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); each gets its
@@ -491,7 +481,7 @@ Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); 
 | `modernc.org/sqlite` v1.61.1 (**approved and added in P0a**) | SQLite driver | Chosen over `mattn/go-sqlite3`: pure Go, so `CGO_ENABLED=0` cross-compiles to ARM NAS boxes, Windows, macOS and scratch containers; FTS5 is compiled in (checked in `lib/sqlite_linux_amd64.go`). Cost: slower than the C driver on heavy writes (guess 1.5-2x); fine for this workload. BSD-3 |
 | `htmx.min.js` 4.0.0 (**vendored in P0b**) as `internal/web/static/vendor/htmx-4.0.0.min.js` | Interactivity | Official release file, version and SHA-256 in `NOTICES.md`; licence 0BSD, text beside it. htmx 4 inheritance is explicit (`:inherited`) and 4xx/5xx responses swap |
 | `golang.org/x/crypto` v0.58.0 (argon2) (**added in P1b-1**) | Password hashing, `internal/users` only | BSD-3 |
-| Fonts **vendored in P0b** to `internal/web/static/fonts/` (woff2): Fraunces (variable roman and italic), Fira Sans (400, 400 italic, 500, 600), Fira Mono (400, 500); 1.23 MB in total, 361 KB preloaded | The design's type; Fira Mono only in the Research lab | SIL OFL 1.1, texts beside the files; upstream commits and SHA-256 in `NOTICES.md`; self-hosted, never Google Fonts |
+| Fonts **vendored in P0b** to `internal/web/static/fonts/` (woff2): Fraunces (variable roman and italic), Fira Sans (400, 400 italic, 500, 600), Fira Mono (400, 500); 1.23 MB in total, 361 KB preloaded | The design's type; Fira Mono for mono text only (the Research lab is dropped, decision 0007) | SIL OFL 1.1, texts beside the files; upstream commits and SHA-256 in `NOTICES.md`; self-hosted, never Google Fonts |
 
 Read-along (phase R), each awaiting approval:
 

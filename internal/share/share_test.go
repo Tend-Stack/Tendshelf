@@ -10,7 +10,7 @@ import (
 
 var allActions = []Action{
 	ViewLibrary, ViewBook, ListenBook, DownloadBook, EditBook, ReadText, DownloadText,
-	ManageLibraries, ManageJobs, ManageUsers, ManageServer, UseShelves, UseResearch, ViewShelf,
+	ManageLibraries, ManageJobs, ManageUsers, ManageServer, UseShelves, ViewShelf,
 }
 
 // roleWant states what an owner or admin may do with an action on a target kind. Shelves of
