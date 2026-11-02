@@ -186,11 +186,10 @@ templ InvitesList(v UsersView) {
 	if len(v.Invites) == 0 && v.NewLink == nil {
 		<div id="users-invites"></div>
 	} else {
-		<section id="users-invites" class="ts-invite__card" aria-labelledby="users-invites-h">
-			<h2 id="users-invites-h" class="ts-overline">{ v.TabInvites }</h2>
+		<section id="users-invites" class="ts-invite__card" aria-label={ v.TabInvites }>
 			if v.NewLink != nil {
 				<div class="ts-invite__link" role="status">
-					<h3 class="body ts-invite__linktitle">New link for { v.NewLink.Name }</h3>
+					<h2 class="body ts-invite__linktitle">New link for { v.NewLink.Name }</h2>
 					<p class="caption">The old link no longer works.</p>
 					<label class="caption" for="invite-link">Invite link</label>
 					<input class="ts-input" id="invite-link" type="text" readonly value={ v.NewLink.URL }/>
@@ -199,7 +198,7 @@ templ InvitesList(v UsersView) {
 			<ul class="ts-users__list">
 				for _, r := range v.Invites {
 					<li class="ts-invite__item">
-						@components.Avatar(r.ID, r.Name, "md")
+						<span class="ts-invite__icon">@components.Icon("link", false)</span>
 						<span class="ts-users__text">
 							<span class="body ts-users__name">{ r.Line }</span>
 							<span class="caption ts-users__meta">{ r.Meta }</span>

@@ -104,17 +104,27 @@ func (s *server) serverName(ctx context.Context) string {
 	return name
 }
 
-// inviteLine is the sentence under "From {name}".
-func inviteLine(inviter, server, title string, others int) string {
+// inviteSentence is the headline in two parts: the words before the title (the title is set in
+// italics between them) and the words after it. An invite that opens no book has the first part
+// only. The board's sentence has no full stop.
+func inviteSentence(first, server, title string, others int) (lead, tail string) {
 	switch {
 	case title == "":
-		return fmt.Sprintf(inviteLineServer, inviter, server)
+		return fmt.Sprintf(inviteLineServer, first, server), ""
 	case others <= 0:
-		return fmt.Sprintf(inviteLineOne, inviter, title)
+		return fmt.Sprintf(inviteLead, first), ""
 	case others == 1:
-		return fmt.Sprintf(inviteLineOther, inviter, title)
+		return fmt.Sprintf(inviteLead, first), inviteTailOther
 	}
-	return fmt.Sprintf(inviteLineOthers, inviter, title, others)
+	return fmt.Sprintf(inviteLead, first), fmt.Sprintf(inviteTailOthers, others)
+}
+
+// firstWord is the first word of a display name ("Daniel Reyes" gives "Daniel").
+func firstWord(name string) string {
+	if f := strings.Fields(name); len(f) > 0 {
+		return f[0]
+	}
+	return name
 }
 
 // lookupInvite finds the invite a request names, or has answered. It checks the limiter first and
@@ -169,16 +179,18 @@ func (s *server) getInvite(w http.ResponseWriter, r *http.Request) {
 	tok := r.PathValue("token")
 	v := pages.InviteView{
 		CSRF: s.csrf.TokenFrom(r.Context()), Token: tok, ServerName: s.serverName(r.Context()),
-		InviterName: inv.InviterName, Note: inv.Note,
+		InviterName: inv.InviterName, InviterID: inv.CreatedBy, InviterFirst: firstWord(inv.InviterName), Note: inv.Note,
 	}
 	if feat.Ok {
 		cv := cardView(feat.Card)
-		v.Title, v.Tint = cv.Title, cv.Tint
 		if cv.CoverSrc != "" {
-			v.CoverSrc = "/invite/" + tok + "/cover?w=320"
+			cv.CoverSrc = "/invite/" + tok + "/cover?w=640"
 		}
+		cv.CoverSrcset = ""
+		v.Cover, v.Title = cv, cv.Title
+		v.BandTint, v.BandClass = bandClasses(cv.Tint)
 	}
-	v.Line = inviteLine(inv.InviterName, v.ServerName, v.Title, feat.Others)
+	v.Lead, v.Tail = inviteSentence(v.InviterFirst, v.ServerName, v.Title, feat.Others)
 	if u, signedIn := auth.UserFrom(r.Context()); signedIn {
 		v.SignedInAs = personName(u)
 	}

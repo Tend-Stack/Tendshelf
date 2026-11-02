@@ -114,17 +114,33 @@ func Welcome(v WelcomeView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "> <span class=\"body ts-invite__choice-title\">A name and password</span> <span class=\"caption ts-invite__choice-hint\">Works on any device.</span></label> <label class=\"ts-invite__choice\" for=\"keep-phone\"><input type=\"radio\" id=\"keep-phone\" name=\"keep\" value=\"phone\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "> <span class=\"ts-invite__choice-icon\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = components.Icon("lock", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</span> <span class=\"body ts-invite__choice-title\">A name and password</span> <span class=\"caption ts-invite__choice-hint\">Works on any device.</span></label> <label class=\"ts-invite__choice\" for=\"keep-phone\"><input type=\"radio\" id=\"keep-phone\" name=\"keep\" value=\"phone\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if v.Keep != "password" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, " checked")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " checked")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "> <span class=\"body ts-invite__choice-title\">Just this phone for now</span> <span class=\"caption ts-invite__choice-hint\">You can choose later in Profile.</span></label></fieldset><div class=\"ts-invite__fields\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "> <span class=\"ts-invite__choice-icon\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = components.Icon("phone", false).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span> <span class=\"body ts-invite__choice-title\">Just this phone for now</span> <span class=\"caption ts-invite__choice-hint\">You can choose later in Profile.</span></label></fieldset><div class=\"ts-invite__fields\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -142,7 +158,7 @@ func Welcome(v WelcomeView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><button type=\"submit\" class=\"ts-btn ts-btn--primary ts-btn--lg ts-btn--block\">Continue</button></form></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div><button type=\"submit\" class=\"ts-btn ts-btn--primary ts-btn--lg ts-btn--block\">Continue</button></form><p class=\"caption ts-invite__fine\">Listening keeps going while you choose.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

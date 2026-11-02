@@ -27,6 +27,7 @@ func TestVisualInvitePages(t *testing.T) {
 	e := inviteNewWeb(t)
 	e.coverBook(e.books[0])
 	e.exec(`UPDATE users SET display_name = 'Daniel Reyes' WHERE id = ?`, e.ownerID)
+	e.exec(`INSERT OR REPLACE INTO settings(key, value_json) VALUES ('server.name', '"The Reyes family shelf"')`)
 
 	for _, c := range []struct{ dir, name string }{{"people", "Invite"}, {"people", "InviteKeep"}, {"admin", "UsersPage"}} {
 		src, err := os.Open(filepath.Join("..", "..", "docs", "design", "tendshelf-handoff", "screens", c.dir, c.name+".png"))

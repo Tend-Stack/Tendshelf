@@ -34,11 +34,13 @@ templ Welcome(v WelcomeView) {
 				<legend class="ts-sr">How to come back</legend>
 				<label class="ts-invite__choice" for="keep-password">
 					<input type="radio" id="keep-password" name="keep" value="password" checked?={ v.Keep == "password" }/>
+					<span class="ts-invite__choice-icon">@components.Icon("lock", false)</span>
 					<span class="body ts-invite__choice-title">A name and password</span>
 					<span class="caption ts-invite__choice-hint">Works on any device.</span>
 				</label>
 				<label class="ts-invite__choice" for="keep-phone">
 					<input type="radio" id="keep-phone" name="keep" value="phone" checked?={ v.Keep != "password" }/>
+					<span class="ts-invite__choice-icon">@components.Icon("phone", false)</span>
 					<span class="body ts-invite__choice-title">Just this phone for now</span>
 					<span class="caption ts-invite__choice-hint">You can choose later in Profile.</span>
 				</label>
@@ -55,5 +57,6 @@ templ Welcome(v WelcomeView) {
 			</div>
 			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Continue</button>
 		</form>
+		<p class="caption ts-invite__fine">Listening keeps going while you choose.</p>
 	</div>
 }

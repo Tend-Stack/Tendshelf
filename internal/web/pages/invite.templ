@@ -2,7 +2,7 @@ package pages
 
 import "github.com/Tend-Stack/tendshelf/internal/web/components"
 
-// InviteStyles are the stylesheets the invite and welcome pages link (P3-3b writes the file).
+// InviteStyles are the stylesheets the invite and welcome pages link.
 var InviteStyles = []string{"css/pages-invite.css"}
 
 // InviteView is the page behind an invite link. The handler writes every sentence.
@@ -10,14 +10,17 @@ type InviteView struct {
 	CSRF  string
 	Token string // the raw token, only to build the form address and the cover address
 	// ServerName is the name of this server ("Tendshelf" when none is set).
-	ServerName  string
-	InviterName string
-	// Line is "{name} invited you to listen to {title} and {n} other books." or, for an invite
-	// that opens no book, "{name} invited you to {server}."
-	Line string
-	// Title, CoverSrc and Tint describe the featured book; all are empty for an admin invite.
-	Title, CoverSrc, Tint string
-	Note                  string
+	ServerName string
+	// InviterName is the full name, InviterID picks the avatar colour and InviterFirst is the first word.
+	InviterName, InviterID, InviterFirst string
+	// Lead, Title and Tail make the headline: "{first} invited you to listen to ", the book title in
+	// italics, " and 120 other books". An invite that opens no book has Lead only.
+	Lead, Title, Tail string
+	// Cover is the featured book's cover; BandTint and BandClass tint the page ground the way the
+	// book page's band does (both empty when the tint is unusable). All are empty without a book.
+	Cover               components.CardView
+	BandTint, BandClass string
+	Note                string
 	// SignedInAs is the name of the person already signed in on this browser, or empty.
 	SignedInAs string
 }
@@ -25,25 +28,30 @@ type InviteView struct {
 // Invite is the invite page: who sent it, what it opens and one button.
 templ Invite(v InviteView) {
 	<div class="ts-invite">
+		if v.BandClass != "" {
+			<div class={ "ts-invite__band " + v.BandClass } data-ts-tint={ v.BandTint } aria-hidden="true"></div>
+		}
 		<div class="ts-invite__brand">
-			@components.Brand()
+			@components.ServerBrand(v.ServerName)
 		</div>
 		if v.Title != "" {
-			<span
-				class="ts-invite__cover"
-				if v.Tint != "" {
-					data-ts-tint={ v.Tint }
-				}
-			>
-				if v.CoverSrc != "" {
-					<img class="ts-invite__img" src={ v.CoverSrc } alt=""/>
-				} else {
-					<span class="ts-invite__covertitle" aria-hidden="true">{ v.Title }</span>
-				}
-			</span>
+			<div class="ts-invite__cover">
+				<span class="ts-book-block">
+					@components.Cover(v.Cover, "fill")
+				</span>
+			</div>
 		}
-		<p class="overline ts-invite__from">From { v.InviterName }</p>
-		<h1 class="title-1 ts-invite__line">{ v.Line }</h1>
+		<p class="ts-invite__from">
+			@components.Avatar(v.InviterID, v.InviterName, "md")
+			<span class="body">From { v.InviterFirst }</span>
+		</p>
+		<h1 class="title-1 ts-invite__line">
+			{ v.Lead }
+			if v.Title != "" {
+				<em>{ v.Title }</em>
+			}
+			{ v.Tail }
+		</h1>
 		if v.Note != "" {
 			<blockquote class="body-lg ts-invite__note">“{ v.Note }”</blockquote>
 		}
@@ -55,7 +63,10 @@ templ Invite(v InviteView) {
 			if v.SignedInAs != "" {
 				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Sign out and use this invite</button>
 			} else {
-				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Start listening</button>
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">
+					@components.Icon("play", true)
+					Start listening
+				</button>
 			}
 		</form>
 		if v.SignedInAs != "" {

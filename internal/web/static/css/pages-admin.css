@@ -209,8 +209,9 @@ a.ts-users__item:hover { background: var(--surface); }
 
 /* Pending invites on the Users page (P3-3): a bordered card of rows at every width. The rows reuse
    the phone list, which the table hides from 768 px, so the card brings it back. */
-.ts-invite__card { margin-top: var(--space-24); padding: var(--space-16) var(--space-16) 0; border: 1px dashed var(--line-strong); border-radius: var(--radius-lg); }
-.ts-invite__card > .ts-overline { margin: 0 0 var(--space-8); }
+.ts-invite__card { margin-top: var(--space-24); padding: var(--space-8) var(--space-16) 0; border: 1px dashed var(--line-strong); border-radius: var(--radius-lg); }
+.ts-invite__icon { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem; border-radius: var(--radius-pill); background: var(--raised); color: var(--ink); }
+.ts-invite__icon .ts-icon { width: 1.25rem; height: 1.25rem; }
 .ts-invite__card .ts-users__list { display: block; }
 .ts-invite__card .ts-users__list > li:last-child { border-bottom: 0; }
 .ts-invite__item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); padding: var(--space-12) 0; }

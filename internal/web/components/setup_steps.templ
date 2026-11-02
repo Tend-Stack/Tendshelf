@@ -10,6 +10,14 @@ templ Brand() {
 	</div>
 }
 
+// ServerBrand is the mark with this server's own name beside it (the invite page's top line).
+templ ServerBrand(name string) {
+	<div class="ts-brand">
+		<span class="ts-brand__mark">@Mark()</span>
+		<span class="ts-brand__name">{ name }</span>
+	</div>
+}
+
 // SetupSteps is the first-run header: the brand, "Step n of t" and a progress bar with one segment
 // per step, filled up to the current one.
 templ SetupSteps(step, total int) {

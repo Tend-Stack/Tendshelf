@@ -4,10 +4,10 @@ package web
 // and are listed in the P3-3 report.
 const (
 	inviteServerFall  = "Tendshelf"
-	inviteLineOne     = "%s invited you to listen to %s."
-	inviteLineOther   = "%s invited you to listen to %s and 1 other book." // NEW
-	inviteLineOthers  = "%s invited you to listen to %s and %d other books."
-	inviteLineServer  = "%s invited you to %s."                      // NEW
+	inviteLead        = "%s invited you to listen to " // the title follows, in italics
+	inviteTailOther   = " and 1 other book"            // NEW
+	inviteTailOthers  = " and %d other books"
+	inviteLineServer  = "%s invited you to %s"                       // NEW
 	inviteBrokenTitle = "This invite link doesn't work"              // NEW
 	inviteBrokenBody  = "Ask the person who sent it for a new link." // NEW
 	inviteEndedTitle  = "This invite has ended"                      // NEW

@@ -100,7 +100,7 @@ func TestInvitePage(t *testing.T) {
 	rec := e.anonGet("/invite/"+tok, nil)
 	usersWant(t, rec, http.StatusOK, "valid invite")
 	body := rec.Body.String()
-	for _, want := range []string{"From Ana Reyes", "invited you to listen to Usersword", "and 2 other books", "“Hope you enjoy these.”", "Start listening",
+	for _, want := range []string{"From Ana", "Ana invited you to listen to", "<em>Usersword One</em>", "and 2 other books", "“Hope you enjoy these.”", "Start listening",
 		"No sign-up needed. Free, and private to your family."} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
@@ -118,7 +118,7 @@ func TestInvitePage(t *testing.T) {
 	// an admin invite names the server and shows no book
 	_, atok := e.adminInvite()
 	body = e.anonGet("/invite/"+atok, nil).Body.String()
-	if !strings.Contains(body, "Ana Reyes invited you to Tendshelf.") || strings.Contains(body, "Usersword") {
+	if !strings.Contains(body, "Ana invited you to Tendshelf") || strings.Contains(body, "Usersword") {
 		t.Errorf("admin invite page: %s", body)
 	}
 }
@@ -291,7 +291,7 @@ func TestInviteCover(t *testing.T) {
 	_, tok := e.create(e.ownerID, share.InviteSpec{Name: "Rosa", Role: users.RoleMember,
 		Grants: []share.InviteGrant{{Scope: share.GrantBook, Target: e.books[0].ID}}})
 	page := e.anonGet("/invite/"+tok, nil).Body.String()
-	if !strings.Contains(page, "/invite/"+tok+"/cover?w=320") {
+	if !strings.Contains(page, "/invite/"+tok+"/cover?w=640") {
 		t.Fatalf("page lacks the cover address: %s", page)
 	}
 	rec := e.anonGet("/invite/"+tok+"/cover?w=320", nil)

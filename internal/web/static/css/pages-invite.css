@@ -1,25 +1,40 @@
 /* The invite page, its state pages and "Keep your place" (/welcome). Tokens only, sizes in rem.
    The page sits in the plain frame (pages-onboard.css), so it only shapes its own content. */
 
-.ts-invite { display: flex; flex-direction: column; gap: var(--space-16); flex: 1 1 auto; }
-.ts-invite__brand { color: var(--ink-muted); }
-.ts-invite__brand .ts-brand__name { font-size: 1rem; line-height: 1.5rem; font-weight: 500; font-family: var(--font-sans); }
+.ts-invite { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: var(--space-16); flex: 1 1 auto; }
 
-/* The featured cover: the tint (set by shell.js from data-ts-tint) fills it when there is no image. */
-.ts-invite__cover {
-  position: relative; display: block; align-self: center; box-sizing: border-box;
-  width: 12.5rem; aspect-ratio: 1 / 1; margin: var(--space-24) 0 var(--space-8);
-  overflow: hidden; border-radius: var(--radius-cover); background: var(--cover-tint, var(--raised));
-  box-shadow: var(--shadow-cover);
-}
-.ts-invite__img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.ts-invite__covertitle {
-  display: block; padding: var(--space-16); font-family: var(--font-serif); font-size: 1.375rem;
-  line-height: 1.75rem; font-weight: 500; overflow-wrap: anywhere; color: var(--ink);
-}
+/* Band: the page ground takes the cover's tint, fading to the ground, exactly as the book page's band
+   does (levels per theme from media.BandLevels; the contrast theme stays plain). It is fixed to the
+   top of the window so it spans the page on a wide screen too. */
+.ts-invite__band { position: fixed; z-index: -1; top: 0; inset-inline: 0; height: 35rem; background: none; border: 0; pointer-events: none; --ts-band-max: 0%; --ts-band-k: 0; }
+.ts-invite__band.is-tinted { background: linear-gradient(180deg,
+  color-mix(in srgb, var(--cover-tint) calc(var(--ts-band-max) * var(--ts-band-k)), transparent) 0,
+  color-mix(in srgb, var(--cover-tint) calc(var(--ts-band-max) * var(--ts-band-k) * 0.35), transparent) 58%,
+  transparent 100%); }
+:root:not([data-theme]) .ts-invite__band.ts-band-dark-1, [data-theme="dark"] .ts-invite__band.ts-band-dark-1 { --ts-band-max: 85%; --ts-band-k: 1; }
+:root:not([data-theme]) .ts-invite__band.ts-band-dark-2, [data-theme="dark"] .ts-invite__band.ts-band-dark-2 { --ts-band-max: 85%; --ts-band-k: 0.66; }
+:root:not([data-theme]) .ts-invite__band.ts-band-dark-3, [data-theme="dark"] .ts-invite__band.ts-band-dark-3 { --ts-band-max: 85%; --ts-band-k: 0.33; }
+[data-theme="light"] .ts-invite__band.ts-band-light-1, [data-theme="sepia"] .ts-invite__band.ts-band-sepia-1 { --ts-band-max: 28%; --ts-band-k: 1; }
+[data-theme="light"] .ts-invite__band.ts-band-light-2, [data-theme="sepia"] .ts-invite__band.ts-band-sepia-2 { --ts-band-max: 28%; --ts-band-k: 0.66; }
+[data-theme="light"] .ts-invite__band.ts-band-light-3, [data-theme="sepia"] .ts-invite__band.ts-band-sepia-3 { --ts-band-max: 28%; --ts-band-k: 0.33; }
+html[data-theme="contrast"] .ts-invite__band.is-tinted { background: none; }
 
-.ts-invite__from { margin: 0; color: var(--ink-muted); font-size: 1rem; line-height: 1.5rem; font-weight: 400; letter-spacing: 0; }
+/* The top line: the mark in accent, the server's name muted. */
+.ts-invite__brand .ts-brand__name { font-family: var(--font-sans); font-size: 1rem; line-height: 1.5rem; font-weight: 500; color: var(--ink-muted); }
+
+/* The featured cover with its page edges (ts-book-block). The edges reach 0.75rem to the right. */
+.ts-invite__cover { align-self: center; width: 12.5rem; margin: var(--space-16) 0 var(--space-8); padding-right: 0.75rem; box-sizing: content-box; }
+.ts-invite__cover .ts-book-block { display: block; }
+.ts-invite__cover .ts-cover { box-shadow: var(--shadow-cover); }
+.ts-invite__cover .ts-cover--blank {
+  display: flex; align-items: flex-start; box-sizing: border-box; padding: var(--space-16);
+  background: var(--cover-tint, var(--surface)); color: var(--ink); border: 1px solid var(--line);
+}
+.ts-invite__cover .ts-cover__title { font: 500 1.375rem/1.75rem var(--font-serif); overflow-wrap: anywhere; }
+
+.ts-invite__from { display: flex; align-items: center; gap: var(--space-12); margin: 0; color: var(--ink-muted); }
 .ts-invite__line { margin: 0; font-family: var(--font-serif); overflow-wrap: anywhere; }
+.ts-invite__line em { font-style: italic; }
 .ts-invite__note {
   margin: 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--line);
   border-radius: var(--radius-md); background: var(--surface); color: var(--ink);
@@ -42,20 +57,24 @@
 /* Keep your place. */
 .ts-invite__keep h1 { margin: var(--space-32) 0 0; font-family: var(--font-serif); }
 .ts-invite__keep > p { margin: 0; color: var(--ink-muted); }
+.ts-invite__keep > .ts-invite__fine { margin-top: calc(var(--space-4) * -1); }
 .ts-invite__options { display: flex; flex-direction: column; gap: var(--space-12); margin: 0; padding: 0; border: 0; min-width: 0; }
 .ts-invite__choice {
-  display: grid; grid-template-columns: auto 1fr; column-gap: var(--space-12); align-items: center;
+  display: grid; grid-template-columns: auto 1fr auto; column-gap: var(--space-12); align-items: center;
   box-sizing: border-box; min-height: 3.5rem; padding: var(--space-12) var(--space-16);
   border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); cursor: pointer;
 }
 .ts-invite__choice input {
-  appearance: none; grid-row: 1 / span 2; box-sizing: border-box; width: 1.375rem; height: 1.375rem; margin: 0;
+  appearance: none; grid-column: 3; grid-row: 1 / span 2; box-sizing: border-box; width: 1.375rem; height: 1.375rem; margin: 0;
   border: 2px solid var(--ink-muted); border-radius: var(--radius-pill); background: transparent;
 }
 .ts-invite__choice input:checked { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0 38%, transparent 42%); }
-.ts-invite__choice-title { font-weight: 600; }
+.ts-invite__choice-icon { grid-column: 1; grid-row: 1 / span 2; display: inline-flex; color: var(--ink-muted); }
+.ts-invite__choice-icon .ts-icon { width: 1.5rem; height: 1.5rem; }
+.ts-invite__choice-title { grid-column: 2; font-weight: 600; }
 .ts-invite__choice-hint { grid-column: 2; color: var(--ink-muted); }
 .ts-invite__choice:has(:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.ts-invite__choice:has(:checked) .ts-invite__choice-icon { color: var(--accent); }
 .ts-invite__choice:has(:focus-visible) { box-shadow: var(--focus-ring); }
 .ts-invite__fields { display: flex; flex-direction: column; gap: var(--space-20); }
 .ts-invite__keep .ts-form { margin-bottom: 0; }
@@ -64,6 +83,6 @@
 .ts-invite__keep:has(#keep-phone:checked) .ts-invite__fields { display: none; }
 
 @media (min-width: 768px) {
-  .ts-invite__cover { width: 15rem; }
+  .ts-invite__cover { width: 16rem; }
   .ts-invite__cta { margin-top: 0; }
 }
