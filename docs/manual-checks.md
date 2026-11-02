@@ -12,6 +12,8 @@ Run a check, write what you saw in the Result column, and date it under the tabl
 can, one that spans more than one audio file. Hold the phone in one hand at its normal 390 px-wide
 portrait layout, and reach with the thumb only.
 
+**Plain http on the LAN.** Phone browsers give motion sensors only to secure pages (HTTPS or localhost), so over `http://<address>:8095` shake (step 9) cannot work: write "skipped (http)" there, or reach the server through HTTPS (for example a reverse proxy you already run) to check it. The other steps work over http.
+
 **Browsers.** Run the whole table on Android Chrome and again on iOS Safari. Note the browser and
 version next to the result. Some steps are known to differ: iOS ignores volume changes from the page, and
 shake needs a motion permission prompt on iOS.
