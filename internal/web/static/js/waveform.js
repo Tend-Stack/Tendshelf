@@ -68,10 +68,9 @@ function heights(sources, start, end, n) {
 
 // The two stacked pictures in wave, or nothing when hs is empty.
 function paint(wave, hs) {
-  if (!hs.length) {
-    wave.replaceChildren();
-    return;
-  }
+  // The bar's wave also holds the needle, the hover line, the tip and the input: only the pictures are replaced.
+  for (const old of wave.querySelectorAll(":scope > svg")) old.remove();
+  if (!hs.length) return;
   let d = "";
   hs.forEach((h, j) => {
     d += "M" + j * BAR_PX + " " + (50 - 50 * h).toFixed(1) + "h2v" + (100 * h).toFixed(1) + "h-2z";
@@ -80,12 +79,13 @@ function paint(wave, hs) {
   muted.setAttribute("viewBox", "0 0 " + hs.length * BAR_PX + " 100");
   muted.setAttribute("preserveAspectRatio", "none");
   muted.setAttribute("class", "ts-wave__muted");
+  muted.setAttribute("aria-hidden", "true"); // the picture is decoration; the bar's wave also holds the real slider
   const path = document.createElementNS(SVG_NS, "path");
   path.setAttribute("d", d);
   muted.append(path);
   const played = muted.cloneNode(true);
   played.setAttribute("class", "ts-wave__played");
-  wave.replaceChildren(muted, played);
+  wave.prepend(muted, played);
 }
 
 // The loaded book; a different book forgets every file and drops answers still on the way.

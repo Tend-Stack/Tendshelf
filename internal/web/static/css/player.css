@@ -6,7 +6,7 @@
 .ts-mini__open:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); border-radius: var(--radius-md); }
 .ts-mini [hidden] { display: none; }
 .ts-player-slot:not(.is-playing) [data-ts-icon-pause], .ts-player-slot.is-playing [data-ts-icon-play] { display: none; }
-.ts-mini__forward, .ts-mini__speed, .ts-mini__sleep, .ts-mini__volume { display: none; }
+.ts-mini__forward { display: none; }
 
 /* Phone: the content ends above the floating bar */
 body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-24)); }
@@ -22,10 +22,7 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 
 /* Desktop: a full-width bar with the same controls plus Forward */
 @media (min-width: 1280px) {
-  .ts-mini { border-radius: 0; border-width: 1px 0 0; box-shadow: none; padding-inline: var(--space-24); }
   .ts-mini__forward { display: inline-flex; }
-  .ts-mini__speed, .ts-mini__sleep { display: inline-flex; }
-  .ts-mini__volume { display: flex; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -98,7 +95,6 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 .ts-scrub__input { inset: -0.375rem 0; height: auto; touch-action: none; }
 .ts-scrub:has(.ts-scrub__input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--radius-sm); }
 .ts-scrub__times { min-height: 1.125rem; }
-.ts-scrub--bar { display: none; }
 
 /* Menu and chapters sheet */
 .ts-player__menu > summary { list-style: none; cursor: pointer; }
@@ -139,11 +135,9 @@ html:not(.ts-vt-mini, .ts-vt-full) .ts-player-slot { view-transition-name: ts-ba
   .ts-player__body { max-width: none; padding-inline: var(--space-24); }
   .ts-player__mark { display: none; }
   .ts-player__barmark { display: flex; }
-  .ts-scrub--bar { display: block; flex: 0 1 22.5rem; margin-inline: var(--space-8); }
   /* The side panel shows the book's chapter ruler only; the bar below it carries the chapter slider
      (operator, 2026-11-02: the two players stay distinct). */
   .ts-player [data-ts-scrub="full"] { display: none; }
-  .ts-scrub--bar.is-dragging .ts-scrub__bubble { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ts-player.is-settling { transition: none; }
@@ -182,11 +176,8 @@ html:not(.ts-vt-mini, .ts-vt-full) .ts-player-slot { view-transition-name: ts-ba
 .ts-toast a { color: var(--accent); font-weight: 600; text-decoration: underline; }
 .ts-mini__speed .ts-num { font-weight: 600; }
 .ts-mini__sleep.is-active { color: var(--accent); }
-.ts-mini__volume { align-items: center; gap: var(--space-4); }
-.ts-mini__range { width: 6rem; min-height: var(--size-tap); margin: 0; accent-color: var(--accent); }
 @media (min-width: 1280px) {
   .ts-sleepcard[data-ts-sleep-card="bar"] { left: auto; right: var(--space-24); width: 23.75rem; bottom: calc(var(--size-mini-player) + var(--space-8)); }
   .ts-player-slot.is-suppressed ~ .ts-sleepcard[data-ts-sleep-card="bar"] { bottom: var(--space-24); }
 }
-.ts-mini__volume[hidden] { display: none; }
 .ts-player-bar__item.is-active > .ts-icon { display: none; }

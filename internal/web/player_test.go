@@ -43,7 +43,7 @@ func TestPlayerSlotMarkup(t *testing.T) {
 	}
 	for _, want := range []string{
 		`<section id="player" class="ts-player-slot" aria-label="Now playing" hx-preserve hidden`,
-		`<div class="ts-mini" id="mini-player">`, `data-ts-mini-progress`, `data-ts-open`, `data-ts-cover`, `data-ts-title`, `data-ts-meta`,
+		`<div class="ts-mini ts-pbar" id="mini-player">`, `data-ts-mini-progress`, `data-ts-open`, `data-ts-cover`, `data-ts-title`, `data-ts-meta`,
 		`data-ts-back`, `data-ts-back-num`, `data-ts-toggle`, `data-ts-icon-play`, `data-ts-icon-pause`, `data-ts-forward`, `data-ts-forward-num`,
 		`<audio id="audio" preload="none" hx-preserve></audio>`,
 	} {

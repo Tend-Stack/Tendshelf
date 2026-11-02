@@ -55,7 +55,11 @@ const bar = { // the desktop bar's extras
   speedValue: $("bar-speed-value", slot),
   sleep: $("bar-sleep", slot),
   sleepLeft: $("bar-sleep-left", slot),
+  chapters: $("bar-chapters", slot),
+  expand: $("bar-expand", slot),
   volumeWrap: $("volume-wrap", slot),
+  volumeButton: $("bar-volume", slot),
+  volumePop: slot.querySelector("#ts-volume-pop"),
   volume: $("volume", slot),
 };
 
@@ -187,6 +191,7 @@ function update(kind) {
   bar.speed.setAttribute("aria-label", speedLabel);
   if (document.activeElement !== bar.volume) bar.volume.value = Math.round(state.volume * 100);
   syncAddForms(ms);
+  syncExpand();
   if (!dialog.open) return;
   if (!fullScrub.drag) drawTimes(ms, state.speed);
   dialog.classList.toggle("is-playing", state.playing);
@@ -194,6 +199,13 @@ function update(kind) {
   setText("full-speed", speedText(state.speed));
   ui["open-speed"].setAttribute("aria-label", speedLabel);
   if (!ui["speed-sheet"].hidden) drawSpeedSheet(state.speed);
+}
+
+// The bar's "open the player" button: open or closed, and what pressing it would do.
+function syncExpand() {
+  if (!book) return;
+  bar.expand.setAttribute("aria-expanded", String(dialog.open));
+  bar.expand.setAttribute("aria-label", dialog.open ? msg("closePlayer") : fill(msg("openPlayer"), { title: book.title, n: chapterAt(player.state().positionMs) + 1 }));
 }
 
 // What changes only when another book loads.
@@ -346,6 +358,7 @@ function closeNow() {
   closeSheet(false);
   slot.classList.remove("is-covered");
   dialog.close();
+  syncExpand();
   const back = opener && opener.isConnected && opener !== document.body ? opener : miniOpen;
   back.focus({ preventScroll: true });
 }
@@ -753,6 +766,26 @@ function startCustomSleep() {
 
 bar.volume.addEventListener("input", () => player.setVolume(Number(bar.volume.value) / 100));
 
+// The slider sits in a small pop above the bar's volume button. Escape, a press outside it and focus
+// leaving it close it; Escape returns the focus to the button.
+function setVolumePop(open) {
+  bar.volumePop.hidden = !open;
+  bar.volumeButton.setAttribute("aria-expanded", String(open));
+}
+
+document.addEventListener("pointerdown", (event) => {
+  if (!bar.volumePop.hidden && !bar.volumeWrap.contains(event.target)) setVolumePop(false);
+});
+bar.volumeWrap.addEventListener("focusout", (event) => {
+  if (!bar.volumePop.hidden && !bar.volumeWrap.contains(event.relatedTarget)) setVolumePop(false);
+});
+bar.volumeWrap.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || bar.volumePop.hidden) return;
+  event.preventDefault();
+  setVolumePop(false);
+  bar.volumeButton.focus();
+});
+
 // ---- Bookmarks: the button, the B key, the Bookmarks tab's form ----
 
 let bookmarking = false; // one request at a time
@@ -880,10 +913,16 @@ const actions = {
   "sleep-plus": sleepPlus,
 };
 
-// The desktop bar sits outside the dialog: its speed and sleep buttons open the side panel's sheets.
+// The desktop bar sits outside the dialog: its tools open the side panel's sheets (speed, sleep,
+// chapters), add a bookmark, toggle the panel and open the volume slider.
 slot.addEventListener("click", (event) => {
-  if (event.target.closest("[data-ts-bar-speed]")) openSheet("speed", bar.speed);
-  else if (event.target.closest("[data-ts-bar-sleep]")) openSheet("sleep", bar.sleep);
+  const hit = (name) => event.target.closest("[data-ts-bar-" + name + "]");
+  if (hit("speed")) openSheet("speed", bar.speed);
+  else if (hit("sleep")) openSheet("sleep", bar.sleep);
+  else if (hit("chapters")) openSheet("chapters", bar.chapters);
+  else if (hit("bookmark")) addBookmark();
+  else if (hit("expand")) (dialog.open ? closePlayer : openPlayer)();
+  else if (hit("volume")) setVolumePop(bar.volumePop.hidden);
 });
 
 // The bar's sleep card sits beside the slot (so the hero hiding the bar does not hide it): it answers itself.
