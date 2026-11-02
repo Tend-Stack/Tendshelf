@@ -194,5 +194,8 @@ func sharedFrom(names []string) string {
 	case 2:
 		return fmt.Sprintf(homeSharedFrom, fmt.Sprintf(homeSharedTwo, names[0], names[1]))
 	}
+	if len(names) == 3 {
+		return fmt.Sprintf(homeSharedFrom, fmt.Sprintf(homeSharedOne, names[0], names[1]))
+	}
 	return fmt.Sprintf(homeSharedFrom, fmt.Sprintf(homeSharedMany, names[0], names[1], len(names)-2))
 }

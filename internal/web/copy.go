@@ -204,6 +204,7 @@ const (
 	homeShared       = "Shared with you"
 	homeSharedFrom   = "from %s"
 	homeSharedTwo    = "%s and %s"
+	homeSharedOne    = "%s, %s and 1 other"
 	homeSharedMany   = "%s, %s and %d others"
 	playMarkFinished = "Mark as finished"
 	playMarkNot      = "Mark as not started"

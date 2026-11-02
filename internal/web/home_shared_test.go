@@ -76,7 +76,7 @@ func TestSharedFrom(t *testing.T) {
 		want  string
 	}{
 		{nil, ""}, {[]string{"Daniel"}, "from Daniel"}, {[]string{"Lena", "Daniel"}, "from Lena and Daniel"},
-		{[]string{"A", "B", "C"}, "from A, B and 1 others"}, {[]string{"A", "B", "C", "D", "E"}, "from A, B and 3 others"},
+		{[]string{"A", "B", "C"}, "from A, B and 1 other"}, {[]string{"A", "B", "C", "D", "E"}, "from A, B and 3 others"},
 	} {
 		if got := sharedFrom(c.names); got != c.want {
 			t.Errorf("sharedFrom(%v) = %q, want %q", c.names, got, c.want)
