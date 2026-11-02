@@ -49,6 +49,8 @@ type InviteRow struct {
 // InviteLink is the panel that shows the new address of an invite, once.
 type InviteLink struct {
 	Name, URL string
+	// Title and Note are the panel's two sentences; the handler writes both.
+	Title, Note string
 }
 
 // usersLiveBars is the "Listening now" mark: three bars the stylesheet animates.
@@ -158,14 +160,18 @@ templ usersChevron() {
 	<span class="ts-users__chev" aria-hidden="true"></span>
 }
 
-// AdminUsers is the Users & invites page. Invites and the pending-invite card land in
-// #users-invites (P3-3); the "Invite someone" button comes with the invite form (P3-4).
+// AdminUsers is the Users & invites page. Pending invites land in #users-invites; "Invite someone"
+// opens the Share & invite page.
 templ AdminUsers(v UsersView) {
 	<div class="ts-admin ts-users">
 		<header class="ts-users__head">
 			<span class="ts-overline">Server</span>
 			<h1 class="title-1 ts-admin__title">Users &amp; invites</h1>
 			<p class="caption ts-users__sub">{ v.Subtitle }</p>
+			<a class="ts-btn ts-btn--primary ts-btn--lg ts-users__invite" href="/share">
+				@components.Icon("invite", false)
+				Invite someone
+			</a>
 		</header>
 		<nav class="ts-tabs ts-users__tabs" aria-label="Users and invites">
 			<a class="ts-tabs__item" href="/admin/users" aria-current="page">{ v.TabPeople }</a>
@@ -179,6 +185,17 @@ templ AdminUsers(v UsersView) {
 	</div>
 }
 
+// InviteLinkPanel shows an invite's address, once: a status region with a read-only field. The
+// Users page and the Share & invite page both use it.
+templ InviteLinkPanel(l InviteLink) {
+	<div class="ts-invite__link" role="status">
+		<h2 class="body ts-invite__linktitle">{ l.Title }</h2>
+		<p class="caption">{ l.Note }</p>
+		<label class="caption" for="invite-link">Invite link</label>
+		<input class="ts-input" id="invite-link" type="text" readonly autofocus value={ l.URL }/>
+	</div>
+}
+
 // InvitesList is the pending-invite card inside #users-invites: one row per invite with "Copy link
 // again" and "Cancel invite", and the new-link panel after a link was replaced. With nothing to
 // show it is the empty anchor the tab points at.
@@ -188,12 +205,7 @@ templ InvitesList(v UsersView) {
 	} else {
 		<section id="users-invites" class="ts-invite__card" aria-label={ v.TabInvites }>
 			if v.NewLink != nil {
-				<div class="ts-invite__link" role="status">
-					<h2 class="body ts-invite__linktitle">New link for { v.NewLink.Name }</h2>
-					<p class="caption">The old link no longer works.</p>
-					<label class="caption" for="invite-link">Invite link</label>
-					<input class="ts-input" id="invite-link" type="text" readonly value={ v.NewLink.URL }/>
-				</div>
+				@InviteLinkPanel(*v.NewLink)
 			}
 			<ul class="ts-users__list">
 				for _, r := range v.Invites {

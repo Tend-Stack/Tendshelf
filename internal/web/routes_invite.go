@@ -431,8 +431,9 @@ func (s *server) inviteActionError(w http.ResponseWriter, r *http.Request, err e
 	s.serverError(w, r, "invite change", err)
 }
 
-// postInviteLink replaces an invite's link and answers with the Users page and the new address in
-// a panel. It does not redirect: the token must not enter a Location header or the history.
+// postInviteLink replaces an invite's link and answers with a page that shows the new address in
+// a panel: the Users page, or the Share & invite page it was asked from (a valid "back"). It does
+// not redirect: the token must not enter a Location header or the history.
 func (s *server) postInviteLink(w http.ResponseWriter, r *http.Request) {
 	if !s.inviteAdminAction(w, r) {
 		return
@@ -449,6 +450,14 @@ func (s *server) postInviteLink(w http.ResponseWriter, r *http.Request) {
 		s.inviteActionError(w, r, err)
 		return
 	}
+	inviteHeaders(w)
+	link := func(name string) *pages.InviteLink {
+		return &pages.InviteLink{Name: name, URL: s.inviteURL(r, tok), Title: fmt.Sprintf(shareNewLink, name), Note: shareOldLink}
+	}
+	if _, bookID, ok := validShareBack(r.PostForm.Get("back")); ok {
+		s.shareWithNewLink(w, r, bookID, id, link)
+		return
+	}
 	v, err := s.usersPageView(r)
 	if err != nil {
 		s.serverError(w, r, "users page", err)
@@ -456,11 +465,7 @@ func (s *server) postInviteLink(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, row := range v.Invites {
 		if row.ID == id {
-			scheme := "http://"
-			if s.proxies.Secure(r) {
-				scheme = "https://"
-			}
-			v.NewLink = &pages.InviteLink{Name: row.Name, URL: scheme + r.Host + "/invite/" + tok}
+			v.NewLink = link(row.Name)
 		}
 	}
 	s.pageStyled(w, r, http.StatusOK, usersTitle, "admin-users", pages.AdminUsers(v), nil, adminStyles...)
@@ -476,6 +481,10 @@ func (s *server) postInviteCancel(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		s.inviteActionError(w, r, err)
+		return
+	}
+	if back, _, ok := validShareBack(r.PostForm.Get("back")); ok {
+		s.redirect(w, r, back)
 		return
 	}
 	s.redirect(w, r, "/admin/users")

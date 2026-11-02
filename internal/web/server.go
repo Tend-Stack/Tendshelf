@@ -181,6 +181,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerAdmin(mux)
 	s.registerUsers(mux)
 	s.registerInvites(mux)
+	s.registerShare(mux)
 	//
 	s.registerSetupSteps(mux)
 	s.registerMe(mux)

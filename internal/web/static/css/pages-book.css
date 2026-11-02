@@ -114,8 +114,8 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   .ts-book__narr { display: inline; }
   .ts-book__sep { display: inline; color: var(--ink-muted); }
   .ts-book__acts { justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--space-8) var(--space-12); }
-  .ts-book__shelf { width: var(--size-tap); min-height: var(--size-tap); padding: 0; border: 0; border-radius: 50%; background: var(--raised); }
-  .ts-book__shelf .ts-book__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ts-book__shelf, .ts-book__share { width: var(--size-tap); min-height: var(--size-tap); padding: 0; border: 0; border-radius: 50%; background: var(--raised); }
+  .ts-book__shelf .ts-book__label, .ts-book__share .ts-book__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .ts-book__tiles { justify-content: start; }
   .ts-book__acts form { display: flex; align-items: center; }
 }
@@ -141,8 +141,8 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   .ts-book__chips { display: flex; justify-content: flex-start; }
   .ts-book__acts { display: contents; }
   #book-play [data-ts-play] { width: auto; }
-  .ts-book__shelf { width: auto; box-sizing: border-box; padding: 0 var(--space-32); min-height: 3.5rem; border: 1px solid var(--line); border-radius: var(--radius-control); }
-  .ts-book__shelf .ts-book__label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  .ts-book__shelf, .ts-book__share { width: auto; box-sizing: border-box; padding: 0 var(--space-32); min-height: 3.5rem; border: 1px solid var(--line); border-radius: var(--radius-control); }
+  .ts-book__shelf .ts-book__label, .ts-book__share .ts-book__label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   #book-tab-about, .ts-book__aboutdesc { display: none; }
   .ts-book__aboutchapters { display: block; }
   .ts-tabs__item.is-home { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }

@@ -3,6 +3,7 @@ package share
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
@@ -108,13 +109,13 @@ func (r *Grants) ForUserNamed(ctx context.Context, userID string) ([]NamedGrant,
 
 // ShelfTarget is a shelf that can be shared: one of an enabled owner or admin.
 type ShelfTarget struct {
-	ID, Name, OwnerName string
-	Books               int
+	ID, Name, OwnerName, OwnerID string
+	Books                        int
 }
 
 // ShelfTargets lists the shelves a grant may point at, by owner then name.
 func (r *Grants) ShelfTargets(ctx context.Context) ([]ShelfTarget, error) {
-	rows, err := r.st.Reader().QueryContext(ctx, `SELECT s.id, s.name, coalesce(nullif(o.display_name, ''), o.username),
+	rows, err := r.st.Reader().QueryContext(ctx, `SELECT s.id, s.name, coalesce(nullif(o.display_name, ''), o.username), o.id,
 		(SELECT count(*) FROM shelf_items si WHERE si.shelf_id = s.id)
 		FROM shelves s JOIN users o ON o.id = s.owner_id
 		WHERE o.role IN ('owner','admin') AND o.disabled = 0
@@ -126,12 +127,101 @@ func (r *Grants) ShelfTargets(ctx context.Context) ([]ShelfTarget, error) {
 	var out []ShelfTarget
 	for rows.Next() {
 		var t ShelfTarget
-		if err := rows.Scan(&t.ID, &t.Name, &t.OwnerName, &t.Books); err != nil {
+		if err := rows.Scan(&t.ID, &t.Name, &t.OwnerName, &t.OwnerID, &t.Books); err != nil {
 			return nil, err
 		}
 		out = append(out, t)
 	}
 	return out, rows.Err()
+}
+
+// BookCover is one active grant that opens a book: whose it is, which grant, and what it points at.
+type BookCover struct {
+	UserID, GrantID string
+	Scope           GrantScope
+	Name            string // library, shelf or book name; empty for "all"
+}
+
+// CoveringGrants lists the active grants that cover bookID at nowMs, oldest first, with the name of
+// what each points at. It is one query, however many people there are. Disabled accounts are
+// included: the caller decides.
+func (r *Grants) CoveringGrants(ctx context.Context, bookID string, nowMs int64) ([]BookCover, error) {
+	rows, err := r.st.Reader().QueryContext(ctx, `SELECT share_g.user_id, share_g.id, share_g.scope,
+		coalesce((SELECT name FROM libraries WHERE id = share_g.library_id), (SELECT name FROM shelves WHERE id = share_g.shelf_id),
+			(SELECT title FROM books WHERE id = share_g.book_id), '')
+		FROM grants share_g JOIN books b ON b.id = ?
+		WHERE (share_g.expires_at IS NULL OR share_g.expires_at > ?) AND `+coversSQL("share_g", "b")+`
+		ORDER BY share_g.created_at, share_g.id`, bookID, nowMs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []BookCover
+	for rows.Next() {
+		var c BookCover
+		var scope string
+		if err := rows.Scan(&c.UserID, &c.GrantID, &scope, &c.Name); err != nil {
+			return nil, err
+		}
+		c.Scope = GrantScope(scope)
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// CoveringBook returns the ids of the people whose active grants cover bookID at nowMs.
+func (r *Grants) CoveringBook(ctx context.Context, bookID string, nowMs int64) (map[string]bool, error) {
+	list, err := r.CoveringGrants(ctx, bookID, nowMs)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]bool{}
+	for _, c := range list {
+		out[c.UserID] = true
+	}
+	return out, nil
+}
+
+// TargetNames looks up the names of the libraries, shelves and books an invite's grants point at,
+// with at most three queries. The key is scope + ":" + target; "all" and missing targets are absent.
+func (r *Grants) TargetNames(ctx context.Context, gs []InviteGrant) (map[string]string, error) {
+	ids := map[GrantScope][]any{}
+	for _, g := range gs {
+		if g.Target != "" {
+			ids[g.Scope] = append(ids[g.Scope], g.Target)
+		}
+	}
+	out := map[string]string{}
+	for _, q := range []struct {
+		scope GrantScope
+		sql   string
+	}{
+		{GrantLibrary, `SELECT id, name FROM libraries WHERE id IN (`},
+		{GrantShelf, `SELECT id, name FROM shelves WHERE id IN (`},
+		{GrantBook, `SELECT id, title FROM books WHERE id IN (`},
+	} {
+		args := ids[q.scope]
+		if len(args) == 0 {
+			continue
+		}
+		marks := strings.TrimSuffix(strings.Repeat("?,", len(args)), ",")
+		rows, err := r.st.Reader().QueryContext(ctx, q.sql+marks+`)`, args...)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			var id, name string
+			if err := rows.Scan(&id, &name); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			out[string(q.scope)+":"+id] = name
+		}
+		if err := rows.Close(); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 // RevokeAll removes every grant of userID inside tx, oldest first, each with its own audit row,
