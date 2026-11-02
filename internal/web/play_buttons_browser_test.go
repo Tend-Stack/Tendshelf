@@ -186,10 +186,14 @@ func TestHomeHeroBrowserOneResume(t *testing.T) {
 	tab.WaitFor(`!document.getElementById("player").classList.contains("is-suppressed") && !document.getElementById("player").inert`, 5*time.Second)
 	tab.Eval(`window.scrollTo(0, 0)`, nil)
 	tab.WaitFor(`document.getElementById("player").classList.contains("is-suppressed")`, 5*time.Second)
-	// Play from the hero, pause: the save refreshes the hero's Resume to the new place.
+	// Play from the hero: while the book plays the bar stays (the hero button is a Pause control, see
+	// TestPlayerBrowserPersistentWhilePlaying). Pause: the bar hides again beside the hero's Resume, and
+	// the save refreshes that Resume to the new place.
 	playerClickSel(t, tab, "#home-hero [data-ts-play]")
 	tab.WaitFor(`window.tsPlayer.state().playing && window.tsPlayer.state().positionMs > 14000`, 10*time.Second)
+	tab.WaitFor(`!document.getElementById("player").classList.contains("is-suppressed") && !document.getElementById("player").inert`, 5*time.Second)
 	tab.Eval(`window.tsPlayer.pause(); window.__marker = "same page"`, nil)
+	tab.WaitFor(`document.getElementById("player").classList.contains("is-suppressed") && document.getElementById("player").inert`, 5*time.Second)
 	tab.WaitFor(`Number(document.querySelector("#home-hero [data-ts-play]").dataset.tsStartMs) >= 13000`, 8*time.Second)
 	var same string
 	tab.Eval(`window.__marker || ""`, &same)
