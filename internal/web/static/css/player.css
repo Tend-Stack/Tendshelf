@@ -50,7 +50,9 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 
 /* P1c-5 full player: a dialog, full screen below 1280 px and a 400 px side panel from there. The
    cover's colours reach it only through --cover-accent and --cover-tint on #player-full (player-full.js). */
-.ts-player { --ts-tint: 70%; position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
+/* width is 100vw, not 100%: html reserves a scrollbar gutter (utilities.css) and a percentage stops short of the
+   screen's edge by that gutter where scrollbars take room (desktop browsers at 768 to 1279 px). */
+.ts-player { --ts-tint: 70%; position: fixed; inset: 0; width: 100vw; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
   box-sizing: border-box; overflow: hidden; color: var(--ink); font-family: var(--font-sans); z-index: 8; touch-action: pan-y;
   background: linear-gradient(180deg, color-mix(in srgb, var(--cover-tint) var(--ts-tint), transparent) 0, color-mix(in srgb, var(--cover-tint) calc(var(--ts-tint) * 0.43), transparent) 33%, transparent 60%), var(--ground);
   transform: translateY(var(--ts-drag, 0px)); }

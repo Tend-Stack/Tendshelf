@@ -49,7 +49,7 @@ func TestFullPlayerBrowserSleepCardOnHome(t *testing.T) {
 
 			var got struct {
 				Shown, Inside, Big, ResumeFree, PlusFree bool
-				Text                                      string
+				Text                                     string
 			}
 			tab.Eval(`(() => {
 			  const card = document.querySelector('[data-ts-sleep-card="bar"]'), plus = card.querySelector("[data-ts-sleep-plus]");
