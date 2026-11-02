@@ -116,6 +116,7 @@ func TestRouteMatrixGranted(t *testing.T) {
 			continue
 		}
 		t.Run(row.name(), func(t *testing.T) {
+			t.Parallel() // every person gets an app of their own, so rows share nothing
 			for role := range sweepRoles {
 				e := sweepSeedGranted(t)
 				e.check(t, row, role, e.send(t, row, role, true))

@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 //go:embed css js vendor fonts img
@@ -93,9 +94,17 @@ func gzipBody(b []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Load reads the embedded tree and builds the hashed set.
+var (
+	loadOnce sync.Once
+	loaded   *Set
+	loadErr  error
+)
+
+// Load reads the embedded tree and builds the hashed set. The tree is embedded and a Set is
+// read-only once built, so it is built once per process and shared.
 func Load() (*Set, error) {
-	return load(files)
+	loadOnce.Do(func() { loaded, loadErr = load(files) })
+	return loaded, loadErr
 }
 
 func load(fsys fs.FS) (*Set, error) {

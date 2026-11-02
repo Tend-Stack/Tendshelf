@@ -3,12 +3,14 @@ package web
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -45,11 +47,53 @@ type testApp struct {
 	session *http.Cookie
 }
 
+var (
+	templateOnce sync.Once
+	templateDB   []byte
+	templateErr  error
+)
+
+// seedMigratedDB puts a freshly migrated, empty database file into dir. Migrating takes most of a
+// second under -race, so it happens once per test binary (through db.Open, the real path) and every
+// test gets a byte copy. db.Open then finds a current-version file and has nothing left to migrate.
+func seedMigratedDB(t *testing.T, dir string) {
+	t.Helper()
+	templateOnce.Do(func() {
+		tdir, err := os.MkdirTemp("", "tendshelf-dbtemplate-")
+		if err != nil {
+			templateErr = err
+			return
+		}
+		defer os.RemoveAll(tdir)
+		st, err := db.Open(context.Background(), tdir)
+		if err != nil {
+			templateErr = err
+			return
+		}
+		if err := st.Close(); err != nil {
+			templateErr = err
+			return
+		}
+		if _, err := os.Stat(db.FilePath(tdir) + "-wal"); err == nil {
+			templateErr = errors.New("template database left a WAL file behind")
+			return
+		}
+		templateDB, templateErr = os.ReadFile(db.FilePath(tdir))
+	})
+	if templateErr != nil {
+		t.Fatal(templateErr)
+	}
+	if err := os.WriteFile(db.FilePath(dir), templateDB, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // newTestApp builds the handler on a fresh database. mods change the options first.
 func newTestApp(t *testing.T, mods ...func(*Options)) *testApp {
 	t.Helper()
 	seedVisualIDs(t)
 	dir := t.TempDir()
+	seedMigratedDB(t, dir)
 	st, err := db.Open(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
