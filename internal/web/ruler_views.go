@@ -1,0 +1,46 @@
+package web
+
+import (
+	"fmt"
+	"math"
+
+	"github.com/Tend-Stack/tendshelf/internal/library"
+)
+
+// listenRuler is a book's progress as the ruler and its where-lines show it: Home's hero and the
+// book page's play region both build it here.
+type listenRuler struct {
+	Label, Now string
+	Ticks      []string
+	// Where is the long line ("Chapter 12 · 18 min left in chapter · 6 h 40 m left in book");
+	// WhereShort is the tablet's short one ("Chapter 12 · 18 min left", or "6 h 40 m left").
+	Where, WhereShort string
+}
+
+// listenRulerFor builds the ruler for a position in a book of durMs, at the person's speed. Chapter
+// words appear only when the book has chapters.
+func listenRulerFor(chs []library.Chapter, posMs, durMs int64, speed float64) listenRuler {
+	dur, pos := durMs, min(posMs, durMs)
+	v := listenRuler{Now: percentText(pos, dur)}
+	for _, c := range chs {
+		if c.StartMs > 0 && dur > 0 && c.StartMs < dur {
+			v.Ticks = append(v.Ticks, percentText(c.StartMs, dur))
+		}
+	}
+	if speed <= 0 {
+		speed = 1
+	}
+	bookLeft := durationText(int64(float64(max(dur-pos, 0)) / speed))
+	if bookLeft == "" {
+		bookLeft = "0 m"
+	}
+	v.Label, v.Where = homeBookProgress, fmt.Sprintf(homeWhereBook, bookLeft)
+	v.WhereShort = fmt.Sprintf(bookWhereShortBook, bookLeft)
+	if cur := currentChapter(chs, pos); cur >= 0 {
+		left := int64(math.Ceil(float64(max(chs[cur].EndMs-pos, 0)) / speed / 60_000))
+		v.Label = fmt.Sprintf(homeRulerChapter, cur+1, len(chs))
+		v.Where = fmt.Sprintf(homeWhere, cur+1, max(left, 1), bookLeft)
+		v.WhereShort = fmt.Sprintf(bookWhereShort, cur+1, fmt.Sprintf("%d min", max(left, 1)))
+	}
+	return v
+}

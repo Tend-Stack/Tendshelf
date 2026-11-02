@@ -18,6 +18,9 @@ type CardView struct {
 	SpineTitle string
 	// AriaLabel is "{title} by {authors}", or the title alone.
 	AriaLabel string
+	// Current marks the card as the page the person is on (a series tile for the open book); the
+	// card gets aria-current="page".
+	Current bool
 }
 
 // coverSizes is the sizes attribute for a cover drawn at size: "fill" is the grid cell, any other

@@ -19,6 +19,15 @@ const (
 	bookSeriesPrefix   = "More in "
 	bookAlsoNarrated   = "Also narrated by "
 	bookThisBook       = "This book"
+	// Board: BookPhone, BookTablet, BookDesktop (series tiles, overline, short progress line).
+	bookStartSeries    = "Start series"
+	bookSeriesOf       = "Book %s of %d"
+	bookFinishedIn     = "finished in %s"
+	bookTilePercent    = "%d%%"
+	bookTileUpNext     = "Up next"
+	bookTileNotStarted = "Not started"
+	bookWhereShort     = "Chapter %d · %s left"
+	bookBylineSep      = " · "
 	// Board: SearchPhone and the copy deck (empty states, search).
 	searchFieldLabel    = "Search"
 	searchPlaceholder   = "Search books, authors, narrators and series"
@@ -36,6 +45,10 @@ const (
 	bookRoleNarrator = "Narrator"
 
 	// New.
+	bookFinishedInYear  = "finished in %s %d"
+	bookTileFinished    = "Finished"
+	bookTileStarted     = "Started"
+	bookWhereShortBook  = "%s left"
 	bookBack            = "Back to library"
 	bookBanner          = "This book's files are missing. It comes back when they do."
 	bookRefusedFallback = "Tendshelf can't play this book."

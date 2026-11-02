@@ -63,13 +63,7 @@ templ HomeHero(v *HomeHeroView) {
 							</p>
 						</div>
 						<div class="ts-hero__progress">
-							<div class="ts-ruler" role="progressbar" aria-label={ v.RulerLabel } aria-valuemin="0" aria-valuemax="100" aria-valuenow={ v.RulerNow }>
-								<div class="ts-ruler__line"></div>
-								<div class="ts-ruler__fill ts-value" data-ts-value={ v.RulerNow }></div>
-								for _, t := range v.Ticks {
-									<span class="ts-ruler__tick" data-ts-value={ t }></span>
-								}
-							</div>
+							@components.Ruler(components.RulerView{Label: v.RulerLabel, Now: v.RulerNow, Ticks: v.Ticks})
 							<p class="ts-hero__where">{ v.Where }</p>
 						</div>
 						<div class="ts-hero__actions">

@@ -2,7 +2,9 @@ package web
 
 import (
 	"fmt"
+	"math"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
@@ -22,8 +25,8 @@ import (
 const (
 	bookIntroRunes   = 320 // the description shows this much before "More"
 	bookChaptersHead = 12  // chapters listed before "Show all"
-	bookSeriesMax    = 10  // lines of "More in {series}"
-	bookRailBooks    = 6   // cards of "Also narrated by"
+	bookSeriesTiles  = 6   // tiles of "More in {series}", windowed around the open book
+	bookRailBooks    = 3   // cards of "Also narrated by"
 	bookPersonPage   = 48  // books on a person's page
 )
 
@@ -120,23 +123,25 @@ func bookHeader(d library.BookDetail, tab string) pages.BookView {
 		Title: b.Title, Subtitle: b.Subtitle, Cover: cover, Tab: tab,
 		BackHref: "/libraries", BackLabel: bookBack,
 		Authors: bookLinks(c.Authors, "authors"), Narrators: bookLinks(c.Narrators, "narrators"),
-		ByLabel: bookBy, NarratedLabel: bookNarratedBy,
+		ByLabel: bookBy, NarratedLabel: bookNarratedBy, BylineSep: bookBylineSep,
+		MoreLabel: bookMore,
 	}
+	v.Intro, v.Rest = bookIntro(b.Description)
 	if len(d.Series) > 0 {
 		s := d.Series[0]
-		v.SeriesLine = joinNonEmpty(" · ", s.Name, bookSeqLabel(s.Sequence))
-		v.SeriesHref = "/series/" + s.ID
+		v.ChipSeries = joinNonEmpty(" · ", s.Name, bookSeqLabel(s.Sequence))
+		v.ChipSeriesHref = "/series/" + s.ID
+		v.SeriesHref = v.ChipSeriesHref
 	}
-	year := ""
+	v.ChipDuration = durationText(b.DurationMs)
 	if b.PublishedYear > 0 {
-		year = fmt.Sprint(b.PublishedYear)
+		v.ChipYear = fmt.Sprint(b.PublishedYear)
 	}
-	v.Meta = joinNonEmpty(" · ", durationText(b.DurationMs), year)
-	chapters := ""
+	v.ChipPublisher = b.Publisher
 	if n := len(d.Chapters); n > 0 {
-		chapters = countText(n, "1 chapter", "%d chapters")
+		v.ChipChapters = countText(n, "1 chapter", "%d chapters")
 	}
-	v.Meta2 = joinNonEmpty(" · ", b.Publisher, strings.Join(editionKinds(b), ", "), chapters)
+	v.Caption = joinNonEmpty(" · ", b.Publisher, strings.Join(editionKinds(b), ", "), v.ChipChapters)
 	switch {
 	case b.MissingSince != 0:
 		v.Banner = bookBanner
@@ -145,13 +150,35 @@ func bookHeader(d library.BookDetail, tab string) pages.BookView {
 			v.Banner = bookRefusedFallback
 		}
 	}
+	if c.Cover != nil {
+		v.BandTint, v.BandClass = bandClasses(c.Cover.Tint)
+	}
 	for _, t := range bookTabs {
-		v.Tabs = append(v.Tabs, pages.BookTab{ID: t.ID, Label: t.Label, Href: bookTabHref(b.ID, t.ID), Current: t.ID == tab})
+		v.Tabs = append(v.Tabs, pages.BookTab{
+			ID: t.ID, Label: t.Label, Href: bookTabHref(b.ID, t.ID), Current: t.ID == tab,
+			Home: t.ID == "chapters" && tab == "about",
+		})
 	}
 	return v
 }
 
-// editionKinds is the meta line's part: only "Abridged" and "Dramatized" (Explicit is in Details).
+// bandClasses returns the tint for the band and its theme classes ("ts-band-dark-1 ts-band-light-2"),
+// or nothing when no theme keeps the text readable on it: the band is then plain.
+func bandClasses(tint string) (string, string) {
+	levels := media.BandLevels(tint)
+	var classes []string
+	for _, th := range media.Themes {
+		if lv, ok := levels[th.Name]; ok {
+			classes = append(classes, fmt.Sprintf("ts-band-%s-%d", th.Name, lv))
+		}
+	}
+	if len(classes) == 0 {
+		return "", ""
+	}
+	return tint, strings.Join(classes, " ")
+}
+
+// editionKinds is the caption's part: only "Abridged" and "Dramatized" (Explicit is in Details).
 func editionKinds(b library.Book) []string {
 	var out []string
 	for _, k := range bookEdition(b) {
@@ -162,28 +189,112 @@ func editionKinds(b library.Book) []string {
 	return out
 }
 
-// bookAbout fills the About panel. series are the visible books of the book's first series in
-// reading order, seqs their places; narrated are cards by the first narrator.
-func bookAbout(v *pages.BookView, d library.BookDetail, series []library.BookCard, seqs map[string]string, narrated []library.BookCard) {
-	v.Intro, v.Rest = bookIntro(d.Book.Description)
-	v.MoreLabel = bookMore
+// bookSeriesPlace is "Book 2 of 3" when the visible places of the series are exactly the whole
+// numbers 1 to m, else "Book 2" (a gap or a fraction means the "of m" would be a guess, and a count
+// of hidden books must never show). It is empty when the book has no place.
+func bookSeriesPlace(seq string, seqs map[string]string) string {
+	label := bookSeqLabel(seq)
+	if label == "" || len(seqs) == 0 {
+		return label
+	}
+	seen := make(map[int]bool, len(seqs))
+	for _, q := range seqs {
+		n, err := strconv.Atoi(strings.TrimSpace(q))
+		if err != nil || n < 1 || n > len(seqs) {
+			return label
+		}
+		seen[n] = true
+	}
+	if len(seen) != len(seqs) {
+		return label
+	}
+	return fmt.Sprintf(bookSeriesOf, strings.TrimSpace(seq), len(seqs))
+}
+
+// bookOverline is the line above the title: "Harbour Lights · Book 2 of 3 · finished in March"
+// (the year follows when it is not this one). A book with no series has only the finished part,
+// started with a capital; a book with nothing to say has none.
+func bookOverline(d library.BookDetail, place string, p *progress.Progress, now time.Time) string {
+	var parts []string
+	if len(d.Series) > 0 {
+		parts = append(parts, d.Series[0].Name, place)
+	}
+	if p != nil && p.Finished() {
+		t := time.UnixMilli(p.FinishedAt).UTC()
+		part := fmt.Sprintf(bookFinishedIn, t.Month().String())
+		if t.Year() != now.UTC().Year() {
+			part = fmt.Sprintf(bookFinishedInYear, t.Month().String(), t.Year())
+		}
+		if len(parts) == 0 {
+			part = strings.ToUpper(part[:1]) + part[1:]
+		}
+		parts = append(parts, part)
+	}
+	return joinNonEmpty(bookBylineSep, parts...)
+}
+
+// seriesTileState is the line under a tile of the series rail. The first match wins: the open book,
+// finished, started (a rounded share of 1 to 99, or "Started" when the length is unknown), the book
+// right after the open one ("Up next"), else "Not started".
+func seriesTileState(i, at int, books []library.BookCard, prog map[string]progress.Progress) string {
+	if i == at {
+		return bookThisBook
+	}
+	p, ok := prog[books[i].ID]
+	switch {
+	case ok && p.Finished():
+		return bookTileFinished
+	case ok && p.PositionMs > 0:
+		if p.DurationMs <= 0 {
+			return bookTileStarted
+		}
+		pct := int(math.Round(float64(p.PositionMs) * 100 / float64(p.DurationMs)))
+		return fmt.Sprintf(bookTilePercent, min(max(pct, 1), 99))
+	case i == at+1 && at >= 0:
+		return bookTileUpNext
+	}
+	return bookTileNotStarted
+}
+
+// bookRails fills the two rails under the tabs: the tiles of the book's first series (series are the
+// visible books in reading order, seqs their places, prog the person's progress on them) and the
+// other books by the first narrator. Everything passed in was read with the person's scope.
+func bookRails(v *pages.BookView, d library.BookDetail, series []library.BookCard, seqs map[string]string, prog map[string]progress.Progress, narrated []library.BookCard) {
 	if len(d.Series) > 0 && len(series) > 1 {
-		v.SeriesTitle, v.ThisBook = bookSeriesPrefix+d.Series[0].Name, bookThisBook
+		v.SeriesTitle = bookSeriesPrefix + d.Series[0].Name
+		v.SeriesHref = "/series/" + d.Series[0].ID
+		at := slices.IndexFunc(series, func(c library.BookCard) bool { return c.ID == d.Book.ID })
 		start, end := 0, len(series)
-		if end > bookSeriesMax {
-			at := 0
-			for i, s := range series {
-				if s.ID == d.Book.ID {
-					at = i
+		if end > bookSeriesTiles {
+			start = min(max(max(at, 0)-bookSeriesTiles/2, 0), end-bookSeriesTiles)
+			end = start + bookSeriesTiles
+		}
+		for i := start; i < end; i++ {
+			c := series[i]
+			tile := cardView(c)
+			label := bookSeqLabel(seqs[c.ID])
+			tile.Title = joinNonEmpty(" · ", label, c.Title)
+			tile.AriaLabel = tile.Title
+			tile.Byline = seriesTileState(i, at, series, prog)
+			if i == at {
+				tile.Current = true
+				if label != "" {
+					tile.Title = label
+				} else {
+					tile.Title = c.Title
 				}
 			}
-			start = min(max(at-bookSeriesMax/2, 0), end-bookSeriesMax)
-			end = start + bookSeriesMax
+			v.SeriesTiles = append(v.SeriesTiles, tile)
 		}
-		for _, s := range series[start:end] {
-			v.SeriesRows = append(v.SeriesRows, pages.SeriesRow{
-				Label: bookSeqLabel(seqs[s.ID]), Title: s.Title, Href: "/books/" + s.ID, Current: s.ID == d.Book.ID,
-			})
+		// Start series: the first visible book not yet finished, unless that is the open book.
+		for _, c := range series {
+			if p, ok := prog[c.ID]; ok && p.Finished() {
+				continue
+			}
+			if c.ID != d.Book.ID {
+				v.StartHref, v.StartLabel = "/books/"+c.ID, bookStartSeries
+			}
+			break
 		}
 	}
 	if len(d.Card.Narrators) > 0 {

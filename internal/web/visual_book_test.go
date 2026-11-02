@@ -78,7 +78,8 @@ const bookProbeJS = `(() => {
   const r = ` + browseProbeJS + `;
   const levels = [...document.querySelectorAll("main h1, main h2, main h3")].map(h => +h.tagName[1]);
   r.skip = levels.some((l, i) => i > 0 && l - levels[i - 1] > 1);
-  r.styled = document.querySelectorAll("[style]").length;
+  // shell.js sets --ts-value (ruler fill and ticks) and --cover-tint on elements; any other inline property is a style.
+  r.styled = [...document.querySelectorAll("[style]")].filter(e => [...e.style].some(p => p !== "--ts-value" && p !== "--cover-tint")).length;
   return r;
 })()`
 
@@ -201,7 +202,7 @@ func TestVisualBookTabsAndSearchLive(t *testing.T) {
 		t.Errorf("after the Chapters tab: %+v", got)
 	}
 	tab.Eval(`history.back()`, nil)
-	tab.WaitFor(`!location.pathname.endsWith("/chapters") && document.querySelectorAll(".ts-chapter").length === 0 && document.querySelector('#book-tabs [aria-current="page"]').id === "book-tab-about"`, 5*time.Second)
+	tab.WaitFor(`!location.pathname.endsWith("/chapters") && Boolean(document.querySelector("#book-panel .ts-book__aboutdesc")) && document.querySelector('#book-tabs [aria-current="page"]').id === "book-tab-about"`, 5*time.Second)
 
 	tab.Navigate(srv.URL + "/search")
 	tab.WaitFor(`window.htmx !== undefined`, 5*time.Second)
