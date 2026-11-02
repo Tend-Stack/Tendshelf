@@ -14,31 +14,31 @@
 .ts-frame__main:focus { outline: none; }
 
 @media (min-width: 768px) {
-  .ts-frame__main { max-width: 440px; margin: 0 auto; padding-top: var(--space-48); padding-bottom: var(--space-48); }
+  .ts-frame__main { max-width: 27.5rem; margin: 0 auto; padding-top: var(--space-48); padding-bottom: var(--space-48); }
 }
 
 .ts-frame__title { margin: var(--space-32) 0 0; }
 .ts-frame__lead { margin: var(--space-12) 0 0; color: var(--ink-muted); }
 
-.ts-brand { display: flex; align-items: center; gap: var(--space-12); min-height: 44px; }
+.ts-brand { display: flex; align-items: center; gap: var(--space-12); min-height: 2.75rem; }
 .ts-brand__mark { display: inline-flex; color: var(--accent); }
-.ts-brand__mark .ts-icon { width: 28px; height: 28px; }
-.ts-brand__name { font-family: var(--font-serif); font-size: 20px; line-height: 28px; font-weight: 600; }
+.ts-brand__mark .ts-icon { width: 1.75rem; height: 1.75rem; }
+.ts-brand__name { font-family: var(--font-serif); font-size: 1.25rem; line-height: 1.75rem; font-weight: 600; }
 
 .ts-steps { display: flex; flex-direction: column; gap: var(--space-12); }
-.ts-steps__head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.ts-steps__head { display: flex; align-items: center; justify-content: space-between; min-height: 2.75rem; }
 .ts-steps__count { color: var(--ink-muted); }
-.ts-steps__bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.ts-steps__seg { height: 4px; border-radius: 2px; background: var(--line); }
+.ts-steps__bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.375rem; }
+.ts-steps__seg { height: 0.25rem; border-radius: 2px; background: var(--line); }
 .ts-steps__seg.is-done { background: var(--accent-fill); }
 
 .ts-form { display: flex; flex-direction: column; gap: var(--space-20); margin: var(--space-24) 0 var(--space-32); }
 .ts-form .ts-field { max-width: none; }
 .ts-form__error {
   display: flex; align-items: flex-start; gap: var(--space-8); margin: 0;
-  font-size: 15px; line-height: 22px; color: var(--danger);
+  font-size: 0.9375rem; line-height: 1.375rem; color: var(--danger);
 }
-.ts-form__error .ts-icon { flex: none; width: 20px; height: 20px; margin-top: 1px; }
+.ts-form__error .ts-icon { flex: none; width: 1.25rem; height: 1.25rem; margin-top: 1px; }
 .ts-form .ts-field__hint, .ts-form .ts-field__error { margin: 0; }
 .ts-field__optional { color: var(--ink-muted); font-weight: 400; }
 
@@ -48,14 +48,14 @@
   border-radius: var(--radius-md); background: var(--surface);
 }
 .ts-privacy__icon { display: inline-flex; flex: none; color: var(--success); }
-.ts-privacy__icon .ts-icon { width: 20px; height: 20px; margin-top: 1px; }
+.ts-privacy__icon .ts-icon { width: 1.25rem; height: 1.25rem; margin-top: 1px; }
 .ts-privacy p { margin: 0; }
 
 /* Setup steps 2 and 3 (P1b-4): the folder field, the scan progress and the finished page. */
 .ts-folderfield__row { display: flex; align-items: center; gap: var(--space-8); }
 .ts-folderfield__row .ts-input { flex: 1 1 auto; min-width: 0; font-family: var(--font-mono); }
 .ts-folderfield__ok { display: flex; align-items: flex-start; gap: var(--space-8); }
-.ts-folderfield__ok .ts-icon { flex: none; width: 20px; height: 20px; color: var(--success); }
+.ts-folderfield__ok .ts-icon { flex: none; width: 1.25rem; height: 1.25rem; color: var(--success); }
 .ts-input[readonly] { background: var(--raised); }
 
 .ts-setup-scan {
@@ -65,10 +65,10 @@
 
 .ts-done { display: flex; flex-direction: column; gap: var(--space-8); }
 .ts-done__mark {
-  display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px;
-  margin-top: var(--space-32); border-radius: 28px; background: var(--raised); color: var(--success);
+  display: inline-flex; align-items: center; justify-content: center; width: 3.5rem; height: 3.5rem;
+  margin-top: var(--space-32); border-radius: 1.75rem; background: var(--raised); color: var(--success);
 }
-.ts-done__mark .ts-icon { width: 28px; height: 28px; }
+.ts-done__mark .ts-icon { width: 1.75rem; height: 1.75rem; }
 .ts-done .ts-frame__title { margin-top: var(--space-12); }
 .ts-done__books { margin: var(--space-8) 0 0; }
 .ts-done__stats { margin: 0; color: var(--ink-muted); }
@@ -78,15 +78,15 @@
 .ts-frame .ts-btn--block { box-sizing: border-box; }
 
 /* The cover wall behind the finished page's headline: decoration, tilted and faded (board OnboardDone). */
-.ts-wall { position: relative; height: 232px; margin: var(--space-8) calc(var(--space-24) * -1) 0; overflow: hidden; pointer-events: none; color: var(--ink);
+.ts-wall { position: relative; height: 14.5rem; margin: var(--space-8) calc(var(--space-24) * -1) 0; overflow: hidden; pointer-events: none; color: var(--ink);
   -webkit-mask-image: linear-gradient(currentColor 45%, transparent); mask-image: linear-gradient(currentColor 45%, transparent); }
 .ts-wall__grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-8); width: 124%; margin: var(--space-4) 0 0 -12%; transform: rotate(-8deg); }
 .ts-wall__tile { display: block; opacity: 0.8; }
 .ts-wall__tile--0 { opacity: 0.55; }
-.ts-wall__tile--1 { opacity: 0.92; transform: translateY(10px); }
-.ts-wall__tile--2 { opacity: 0.84; transform: translateY(20px); }
-.ts-wall__tile--3 { opacity: 0.66; transform: translateY(6px); }
-.ts-wall__tile--4 { opacity: 0.92; transform: translateY(16px); }
-.ts-wall__tile--5 { opacity: 0.7; transform: translateY(26px); }
+.ts-wall__tile--1 { opacity: 0.92; transform: translateY(0.625rem); }
+.ts-wall__tile--2 { opacity: 0.84; transform: translateY(1.25rem); }
+.ts-wall__tile--3 { opacity: 0.66; transform: translateY(0.375rem); }
+.ts-wall__tile--4 { opacity: 0.92; transform: translateY(1rem); }
+.ts-wall__tile--5 { opacity: 0.7; transform: translateY(1.625rem); }
 .ts-wall .ts-cover { display: block; box-shadow: var(--shadow-cover); }
 .ts-wall + .ts-done__mark { margin-top: 0; }

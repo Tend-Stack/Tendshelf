@@ -14,10 +14,10 @@
    card with the words, ruler and buttons beside the cover. Ticks and the fill take their place from
    --ts-value (shell.js sets it from data-ts-value). */
 .ts-home__hero { margin-top: var(--space-16); padding-bottom: var(--space-24); border-bottom: 1px solid var(--line); }
-.ts-hero__top { display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: var(--space-16); align-items: start; }
+.ts-hero__top { display: grid; grid-template-columns: 7.75rem minmax(0, 1fr); gap: var(--space-16); align-items: start; }
 .ts-hero__text { display: contents; }
 .ts-hero__cover { display: block; box-shadow: var(--shadow-cover); border-radius: var(--radius-cover); }
-.ts-hero__head { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ts-hero__head { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; }
 .ts-hero__title a { display: flex; align-items: center; min-height: var(--size-tap); color: inherit; text-decoration: none; }
 .ts-hero__progress, .ts-hero__actions { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--space-8); }
 .ts-hero__actions { flex-direction: row; gap: var(--space-12); }
@@ -25,32 +25,32 @@
 .ts-hero__chapters { display: none; text-decoration: none; }
 .ts-ruler__tick[data-ts-value] { left: calc(var(--ts-value, 0) * 1%); }
 
-.ts-home__rowtitle { margin: 0; min-height: var(--size-tap); display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; }
+.ts-home__rowtitle { margin: 0; min-height: var(--size-tap); display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.375rem; }
 #row-series, #row-because { margin-top: var(--space-24); }
 #row-series .ts-row .ts-iconbtn { flex: none; text-decoration: none; color: var(--ink); }
 .ts-home__cards { display: flex; gap: var(--space-16); margin-top: var(--space-8); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-bottom: var(--space-8); }
-.ts-home__cards > .ts-card { flex: 0 0 106px; min-width: 0; }
+.ts-home__cards > .ts-card { flex: 0 0 6.625rem; min-width: 0; }
 
 /* The shelf scrolls sideways when there are more spines than the width holds; the plank stays put. */
-.ts-shelf--scroll { margin-top: 6px; height: 180px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-inline: 1px; }
+.ts-shelf--scroll { margin-top: 0.375rem; height: 11.25rem; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding-inline: 1px; }
 
 /* Spines */
 .ts-spine { box-sizing: border-box; flex: none; overflow: hidden; background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); }
 .ts-spine:focus-visible { outline-offset: 2px; }
 .ts-spine__title { max-height: calc(100% - var(--space-16)); overflow: hidden; text-overflow: ellipsis; }
-.ts-spine--ws { width: 44px; }
-.ts-spine--wm { width: 50px; }
-.ts-spine--wl { width: 56px; }
-.ts-spine--h1 { height: 140px; }
-.ts-spine--h2 { height: 156px; }
-.ts-spine--h3 { height: 172px; }
+.ts-spine--ws { width: 2.75rem; }
+.ts-spine--wm { width: 3.125rem; }
+.ts-spine--wl { width: 3.5rem; }
+.ts-spine--h1 { height: 8.75rem; }
+.ts-spine--h2 { height: 9.75rem; }
+.ts-spine--h3 { height: 10.75rem; }
 
 /* Covers drawn by components.Cover */
 .ts-cover { display: block; }
 .ts-cover--fill { display: block; }
 .ts-cover__img { display: block; }
 .ts-cover--blank { display: flex; align-items: flex-start; box-sizing: border-box; padding: var(--space-8); background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
-.ts-cover__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; font: 500 13px/16px var(--font-serif); }
+.ts-cover__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; font: 500 0.8125rem/1rem var(--font-serif); }
 .ts-cover--56 .ts-cover__title, .ts-cover--48 .ts-cover__title { display: none; }
 .ts-card__cover { display: block; }
 
@@ -64,21 +64,21 @@ html[data-theme="contrast"] .is-tinted.ts-ink-walnut { background: var(--surface
 
 @media (min-width: 768px) {
   .ts-home__hero { margin-bottom: var(--space-8); padding: var(--space-24); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
-  .ts-hero__top { grid-template-columns: 152px minmax(0, 1fr); gap: 0 var(--space-32); }
+  .ts-hero__top { grid-template-columns: 9.5rem minmax(0, 1fr); gap: 0 var(--space-32); }
   .ts-hero__text { display: flex; flex-direction: column; gap: var(--space-16); min-width: 0; }
   .ts-hero__actions .ts-btn--primary { flex: none; }
   .ts-hero__chapters { display: inline-flex; }
-  .ts-home__cards > .ts-card { flex-basis: 140px; }
+  .ts-home__cards > .ts-card { flex-basis: 8.75rem; }
 }
 @media (min-width: 1280px) {
-  .ts-hero__top { grid-template-columns: 220px minmax(0, 1fr); }
-  .ts-hero__title { font-size: 32px; line-height: 38px; }
-  .ts-home__cards > .ts-card { flex-basis: 160px; }
-  .ts-shelf--scroll { height: 200px; }
-  .ts-spine--ws { width: 48px; }
-  .ts-spine--wm { width: 54px; }
-  .ts-spine--wl { width: 60px; }
-  .ts-spine--h1 { height: 152px; }
-  .ts-spine--h2 { height: 170px; }
-  .ts-spine--h3 { height: 188px; }
+  .ts-hero__top { grid-template-columns: 13.75rem minmax(0, 1fr); }
+  .ts-hero__title { font-size: 2rem; line-height: 2.375rem; }
+  .ts-home__cards > .ts-card { flex-basis: 10rem; }
+  .ts-shelf--scroll { height: 12.5rem; }
+  .ts-spine--ws { width: 3rem; }
+  .ts-spine--wm { width: 3.375rem; }
+  .ts-spine--wl { width: 3.75rem; }
+  .ts-spine--h1 { height: 9.5rem; }
+  .ts-spine--h2 { height: 10.625rem; }
+  .ts-spine--h3 { height: 11.75rem; }
 }

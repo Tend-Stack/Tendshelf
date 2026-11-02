@@ -1,4 +1,9 @@
 /* Tendshelf Design System — generated from tokens.json */
+/* Units rule (all stylesheets in this folder): sizes are rem (1rem = 16px at the default root size),
+   so a larger root font size, the "Larger text" setting, scales type, spacing, controls and icons together.
+   Stays px: 1px and 2px hairlines and borders; outline and box-shadow values (focus rings, drop shadows);
+   the pill radius (9999px, meaning "fully round"); and media-query breakpoints, which are CSS pixels by
+   design (phone 360-767, tablet 768-1279, desktop 1280+). TestRemUnits in internal/web enforces this. */
 :root, [data-theme="dark"] {
   --ground: #14110e;
   --surface: #1e1a15;
@@ -159,19 +164,19 @@
   --focus-ring: 0 0 0 2px #000000, 0 0 0 4px #ffffff;
 }
 :root {
-  --space-4: 4px;
-  --space-8: 8px;
-  --space-12: 12px;
-  --space-16: 16px;
-  --space-20: 20px;
-  --space-24: 24px;
-  --space-32: 32px;
-  --space-48: 48px;
-  --space-64: 64px;
-  --radius-cover: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --space-4: 0.25rem;
+  --space-8: 0.5rem;
+  --space-12: 0.75rem;
+  --space-16: 1rem;
+  --space-20: 1.25rem;
+  --space-24: 1.5rem;
+  --space-32: 2rem;
+  --space-48: 3rem;
+  --space-64: 4rem;
+  --radius-cover: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
   --radius-pill: 9999px;
   --duration-instant: 100ms;
   --duration-highlight: 120ms;
@@ -185,17 +190,17 @@
   --easing-enter: cubic-bezier(0, 0, 0.2, 1);
   --easing-exit: cubic-bezier(0.4, 0, 1, 1);
   --easing-expand: cubic-bezier(0.2, 0.9, 0.1, 1);
-  --size-tap: 44px;
-  --size-tab-bar: 72px;
-  --size-mini-player: 64px;
-  --size-rail: 88px;
-  --size-sidebar: 264px;
-  --size-player-panel: 400px;
-  --size-content-max: 1200px;
+  --size-tap: 2.75rem;
+  --size-tab-bar: 4.5rem;
+  --size-mini-player: 4rem;
+  --size-rail: 5.5rem;
+  --size-sidebar: 16.5rem;
+  --size-player-panel: 25rem;
+  --size-content-max: 75rem;
   --size-measure: 68ch;
   --size-read-measure: 68ch;
   --size-read-measure-min: 45ch;
-  --size-pill: 48px;
+  --size-pill: 3rem;
   --leading-compact: 1.45;
   --leading-normal: 1.6;
   --leading-airy: 1.8;
@@ -203,23 +208,23 @@
   --font-sans: "Fira Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Fira Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
-.display { font-family: var(--font-serif); font-size: 40px; line-height: 44px; font-weight: 500; letter-spacing: -0.01em; }
-.title-1 { font-family: var(--font-serif); font-size: 32px; line-height: 36px; font-weight: 500; letter-spacing: -0.01em; }
-.title-2 { font-family: var(--font-serif); font-size: 26px; line-height: 30px; font-weight: 500; letter-spacing: -0.01em; }
-.title-3 { font-family: var(--font-serif); font-size: 22px; line-height: 26px; font-weight: 500; }
-.section { font-family: var(--font-serif); font-size: 20px; line-height: 26px; font-weight: 500; }
-.chapter { font-family: var(--font-serif); font-size: 30px; line-height: 34px; font-weight: 400; font-style: italic; }
-.body-lg { font-family: var(--font-sans); font-size: 17px; line-height: 26px; font-weight: 400; }
-.body { font-family: var(--font-sans); font-size: 16px; line-height: 24px; font-weight: 400; }
-.button-lg { font-family: var(--font-sans); font-size: 18px; line-height: 24px; font-weight: 600; }
-.label { font-family: var(--font-sans); font-size: 15px; line-height: 20px; font-weight: 500; }
-.caption { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 400; }
-.meta { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 500; }
-.overline { font-family: var(--font-sans); font-size: 13px; line-height: 16px; font-weight: 600; letter-spacing: 0.14em; }
-.time-display { font-family: var(--font-sans); font-size: 44px; line-height: 48px; font-weight: 500; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.time { font-family: var(--font-sans); font-size: 15px; line-height: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.time-sm { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 400; font-variant-numeric: tabular-nums; }
-.read-sm { font-family: var(--font-serif); font-size: 18px; line-height: 29px; font-weight: 400; }
-.read-md { font-family: var(--font-serif); font-size: 20px; line-height: 32px; font-weight: 400; }
-.read-lg { font-family: var(--font-serif); font-size: 22px; line-height: 36px; font-weight: 400; }
-.read-focus { font-family: var(--font-serif); font-size: 24px; line-height: 36px; font-weight: 400; }
+.display { font-family: var(--font-serif); font-size: 2.5rem; line-height: 2.75rem; font-weight: 500; letter-spacing: -0.01em; }
+.title-1 { font-family: var(--font-serif); font-size: 2rem; line-height: 2.25rem; font-weight: 500; letter-spacing: -0.01em; }
+.title-2 { font-family: var(--font-serif); font-size: 1.625rem; line-height: 1.875rem; font-weight: 500; letter-spacing: -0.01em; }
+.title-3 { font-family: var(--font-serif); font-size: 1.375rem; line-height: 1.625rem; font-weight: 500; }
+.section { font-family: var(--font-serif); font-size: 1.25rem; line-height: 1.625rem; font-weight: 500; }
+.chapter { font-family: var(--font-serif); font-size: 1.875rem; line-height: 2.125rem; font-weight: 400; font-style: italic; }
+.body-lg { font-family: var(--font-sans); font-size: 1.0625rem; line-height: 1.625rem; font-weight: 400; }
+.body { font-family: var(--font-sans); font-size: 1rem; line-height: 1.5rem; font-weight: 400; }
+.button-lg { font-family: var(--font-sans); font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
+.label { font-family: var(--font-sans); font-size: 0.9375rem; line-height: 1.25rem; font-weight: 500; }
+.caption { font-family: var(--font-sans); font-size: 0.875rem; line-height: 1.25rem; font-weight: 400; }
+.meta { font-family: var(--font-sans); font-size: 0.8125rem; line-height: 1.125rem; font-weight: 500; }
+.overline { font-family: var(--font-sans); font-size: 0.8125rem; line-height: 1rem; font-weight: 600; letter-spacing: 0.14em; }
+.time-display { font-family: var(--font-sans); font-size: 2.75rem; line-height: 3rem; font-weight: 500; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.time { font-family: var(--font-sans); font-size: 0.9375rem; line-height: 1.25rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.time-sm { font-family: var(--font-sans); font-size: 0.8125rem; line-height: 1.125rem; font-weight: 400; font-variant-numeric: tabular-nums; }
+.read-sm { font-family: var(--font-serif); font-size: 1.125rem; line-height: 1.8125rem; font-weight: 400; }
+.read-md { font-family: var(--font-serif); font-size: 1.25rem; line-height: 2rem; font-weight: 400; }
+.read-lg { font-family: var(--font-serif); font-size: 1.375rem; line-height: 2.25rem; font-weight: 400; }
+.read-focus { font-family: var(--font-serif); font-size: 1.5rem; line-height: 2.25rem; font-weight: 400; }
