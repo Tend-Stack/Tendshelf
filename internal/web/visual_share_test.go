@@ -109,12 +109,14 @@ func TestVisualSharePages(t *testing.T) {
 
 	// People: Rosa on one book with a shelf-less grant, Maya on everything, Lena on the library, and
 	// one invite waiting for the first book.
-	for name, spec := range map[string]struct {
+	// A slice, not a map: map order is random and would hand each person a different id per run.
+	for _, spec := range []struct {
+		name  string
 		role  users.Role
 		scope string
-	}{"Rosa Reyes": {users.RoleGuest, "book"}, "Maya Chen": {users.RoleMember, "all"}, "Lena Reyes": {users.RoleGuest, "library"}} {
+	}{{"Rosa Reyes", users.RoleGuest, "book"}, {"Maya Chen", users.RoleMember, "all"}, {"Lena Reyes", users.RoleGuest, "library"}} {
 		id, _ := e.person(spec.role)
-		e.exec(`UPDATE users SET display_name = ? WHERE id = ?`, name, id)
+		e.exec(`UPDATE users SET display_name = ? WHERE id = ?`, spec.name, id)
 		switch spec.scope {
 		case "all":
 			e.exec(`INSERT INTO grants(id, user_id, scope, created_at, updated_at) VALUES ('g-'||?, ?, 'all', 1, 1)`, id, id)

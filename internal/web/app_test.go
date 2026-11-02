@@ -48,6 +48,7 @@ type testApp struct {
 // newTestApp builds the handler on a fresh database. mods change the options first.
 func newTestApp(t *testing.T, mods ...func(*Options)) *testApp {
 	t.Helper()
+	seedVisualIDs(t)
 	dir := t.TempDir()
 	st, err := db.Open(context.Background(), dir)
 	if err != nil {

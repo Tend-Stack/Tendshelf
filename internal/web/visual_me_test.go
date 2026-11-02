@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/db"
@@ -34,6 +35,18 @@ func TestVisualMePages(t *testing.T) {
 	settingsLogin(t, app, "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36")
 	settingsLogin(t, app, "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0")
 	deviceFor(t, app, sweepUserID(t, app, app.owner(t)), "Living room speaker", auth.KindMobile)
+	// Pin the order of the three rows: they were made within a millisecond or two of each other and
+	// the list sorts by that time, so the order would otherwise change between runs.
+	nowMs := time.Now().UnixMilli()
+	for _, q := range []string{
+		`UPDATE sessions SET created_at = ?1 - 3000, last_seen_at = ?1 - 3000 WHERE user_agent LIKE '%Android%'`,
+		`UPDATE sessions SET created_at = ?1 - 2000, last_seen_at = ?1 - 2000 WHERE user_agent LIKE '%Firefox%'`,
+		`UPDATE devices SET created_at = ?1 - 1000 WHERE name = 'Living room speaker'`,
+	} {
+		if _, err := app.st.Writer().Exec(q, nowMs); err != nil {
+			t.Fatal(err)
+		}
+	}
 	base := themedServer(t, app.signedIn(t))
 
 	for _, name := range []string{"ProfilePhone", "SettingsPhone"} {

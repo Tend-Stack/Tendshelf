@@ -6,7 +6,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell git describe --tags --long --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: app build generate test run run-dev check fmt vet clean visual visual-full visual-webkit player perf test-media test-scan-real
+.PHONY: app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
 
 generate:
 	$(GO) tool templ generate
@@ -53,6 +53,15 @@ VISUAL_RUN ?= Visual
 
 visual:
 	$(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
+
+# Runs the capture set twice into separate folders and fails, naming them, on any PNG that differs.
+# To prove a change is pixel-identical: capture before (TENDSHELF_VISUAL_OUT=/tmp/before make visual),
+# change, capture after, then `go run ./internal/testutil/capturediff /tmp/before /tmp/after`.
+visual-compare:
+	rm -rf .local/tests/visual-compare
+	TENDSHELF_VISUAL_OUT=$(CURDIR)/.local/tests/visual-compare/a $(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
+	TENDSHELF_VISUAL_OUT=$(CURDIR)/.local/tests/visual-compare/b $(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
+	$(GO) run ./internal/testutil/capturediff .local/tests/visual-compare/a .local/tests/visual-compare/b
 
 visual-full:
 	TENDSHELF_VISUAL_FULL=1 $(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
