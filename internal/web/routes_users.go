@@ -101,6 +101,9 @@ func (s *server) usersPageView(r *http.Request) (pages.UsersView, error) {
 		v.TabInvites = fmt.Sprintf(inviteTabLabel, len(pending))
 		v.Invites = s.inviteRows(pending)
 	}
+	if err := s.addDevices(ctx, &v, list, actor, manage); err != nil {
+		return pages.UsersView{}, err
+	}
 	return v, nil
 }
 

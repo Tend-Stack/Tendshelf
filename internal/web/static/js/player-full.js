@@ -12,6 +12,8 @@ const dialog = document.getElementById("player-full");
 const root = document.documentElement;
 const LINK = document.body.dataset.tsLink; // link mode: no account, so no settings or bookmark requests
 const SIDE_PANEL = matchMedia("(min-width: 1280px)"); // from here the player is a side panel
+// Larger text never uses the side panel: the desktop shell does not fit at the bigger size.
+function sidePanel() { return SIDE_PANEL.matches && document.documentElement.dataset.textSize !== "large"; }
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)");
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -344,14 +346,14 @@ function openPlayer(after) {
   if (!book || dialog.open) return;
   opener = document.activeElement;
   const show = () => {
-    if (SIDE_PANEL.matches) dialog.show();
+    if (sidePanel()) dialog.show();
     else dialog.showModal();
     slot.classList.add("is-covered");
     update("open");
     drawSleep();
     if (after) after();
   };
-  if (SIDE_PANEL.matches) show();
+  if (sidePanel()) show();
   else morph("mini", "full", show);
 }
 
@@ -366,7 +368,7 @@ function closeNow() {
 
 function closePlayer() {
   if (!dialog.open) return;
-  if (SIDE_PANEL.matches) closeNow();
+  if (sidePanel()) closeNow();
   else morph("full", "mini", closeNow);
 }
 
@@ -402,10 +404,10 @@ function settle(px, closing) {
   }, REDUCED.matches ? 0 : SETTLE_MS);
 }
 
-swipe(dialog.querySelector(".ts-player__head"), () => !SIDE_PANEL.matches,
+swipe(dialog.querySelector(".ts-player__head"), () => !sidePanel(),
   (dy) => dialog.style.setProperty("--ts-drag", Math.max(0, dy) + "px"),
   (dy) => (dy > dialog.offsetHeight * SWIPE_CLOSE_FRACTION ? settle(dialog.offsetHeight, true) : settle(0, false)));
-swipe(slot.querySelector(".ts-mini"), () => !SIDE_PANEL.matches && !dialog.open, () => {}, (dy) => {
+swipe(slot.querySelector(".ts-mini"), () => !sidePanel() && !dialog.open, () => {}, (dy) => {
   if (dy < -SWIPE_OPEN_PX) openPlayer();
 });
 
@@ -804,7 +806,7 @@ function showBookmarkToast(saved) {
     setTimeout(() => toast.remove(), 800); // shell.js usually removes it first
   };
   link.addEventListener("click", () => {
-    if (dialog.open && !SIDE_PANEL.matches) closeNow();
+    if (dialog.open && !sidePanel()) closeNow();
     dismiss();
   });
   (document.querySelector("#player-full:modal [data-ts-full-toasts]") || document.getElementById("toasts")).append(toast);
@@ -918,7 +920,7 @@ dialog.addEventListener("click", (event) => {
 
 ui["full-book"].addEventListener("click", () => {
   ui["full-menu"].open = false;
-  if (!SIDE_PANEL.matches) closeNow(); // the page behind the full screen player is the destination
+  if (!sidePanel()) closeNow(); // the page behind the full screen player is the destination
 });
 
 // A plain form to the finished endpoint; htmx sends it without leaving the page.

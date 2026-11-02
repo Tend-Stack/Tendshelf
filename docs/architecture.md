@@ -322,7 +322,7 @@ minutes where `devicemotion` is allowed; iOS asks inside the tap that sets the t
 `position_ms` of the live position to `POST /books/{id}/bookmarks` (JSON answer with `noteHref`) and show a toast with an "Add a
 note" link that uses the Bookmarks tab's htmx attributes; while the modal player is open toasts go into its own
 `[data-ts-full-toasts]` region. The Bookmarks tab's form is always rendered (hidden when there is no stored place) and the player
-fills in the live position. JS budgets (gzip): player.js 12 KB, player-full.js 12 KB, waveform.js 7 KB, all app JS 36 KB (raised from 28 KB for the waveform, the desktop bar and the Now playing panel, operator 2026-11-02); `player.css` 4 KB; `now-panel.css` 3 KB.
+fills in the live position. JS budgets (gzip): player.js 12.5 KB, player-full.js 12.5 KB, shell.js 4.5 KB, waveform.js 7 KB, now-panel.js 1 KB, all app JS 38 KB (operator, 2026-11-02) (raised from 28 KB for the waveform, the desktop bar and the Now playing panel, operator 2026-11-02); `player.css` 4 KB; `now-panel.css` 3 KB.
 
 ## Design regions
 

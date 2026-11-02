@@ -2,15 +2,17 @@ package pages
 
 import "github.com/Tend-Stack/tendshelf/internal/web/components"
 
-// ProfileDevice is one signed-in browser of the person.
+// ProfileDevice is one signed-in browser or app of the person.
 type ProfileDevice struct {
 	// ID is the first 16 hex characters of the stored session hash; never the token.
 	ID string
-	// Title is "This browser" for the current one, otherwise the device label.
+	// Title is "This device" for the current one, otherwise the device label.
 	Title string
 	// Meta is the device label for the current browser, otherwise when it was last seen.
 	Meta    string
 	Current bool
+	// Icon is "phone" or "laptop"; Action is the sign-out form's URL (a browser session or an app).
+	Icon, Action string
 }
 
 // ProfileView is what Profile shows. The handler writes every sentence.
@@ -99,14 +101,14 @@ templ Profile(v ProfileView) {
 			for _, d := range v.Devices {
 				<div class="ts-me__row ts-me__device">
 					<span class="ts-me__deviceicon" aria-hidden="true">
-						@components.Icon("output", false)
+						@components.Icon(d.Icon, false)
 					</span>
 					<span class="ts-me__rowtext">
 						<span class="body ts-me__rowtitle">{ d.Title }</span>
 						<span class="caption ts-me__lead">{ d.Meta }</span>
 					</span>
 					if !d.Current {
-						<form method="post" action={ templ.URL("/me/sessions/" + d.ID + "/signout") }>
+						<form method="post" action={ templ.URL(d.Action) }>
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>
 							<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ "Sign out " + d.Title }>Sign out</button>
 						</form>

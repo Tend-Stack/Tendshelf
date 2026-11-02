@@ -180,7 +180,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 			}
 			templ.ReleaseBuffer(templ_7745c5c3_Buffer)
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><div class=\"ts-mini ts-pbar\" id=\"mini-player\"><div class=\"ts-pbar__book\" data-ts-bar-book><span class=\"ts-pbar__booktip\" data-ts-bar-booktip aria-hidden=\"true\"></span></div><div class=\"ts-mini__progress\" data-ts-mini-progress></div><a class=\"ts-mini__open\" href=\"/\" hx-boost=\"false\" data-ts-open><span class=\"ts-cover ts-mini__cover\"><img data-ts-cover alt=\"\" width=\"48\" height=\"48\"></span> <span class=\"ts-mini__text\"><span class=\"ts-mini__title\" data-ts-title></span> <span class=\"ts-mini__meta\" data-ts-meta></span> <span class=\"ts-mini__meta ts-pbar__meta\" data-ts-bar-meta></span></span></a><div class=\"ts-pbar__transport\"><button type=\"button\" class=\"ts-iconbtn ts-skip\" data-ts-back>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><div class=\"ts-mini ts-pbar\" id=\"mini-player\"><div class=\"ts-pbar__book\" data-ts-bar-book><span class=\"ts-pbar__booktip\" data-ts-bar-booktip aria-hidden=\"true\"></span></div><div class=\"ts-mini__progress\" data-ts-mini-progress></div><a class=\"ts-mini__open\" href=\"/\" hx-boost=\"false\" data-ts-open><span class=\"ts-cover ts-mini__cover\"><img data-ts-cover alt=\"\" width=\"48\" height=\"48\"></span> <span class=\"ts-mini__text\"><span class=\"ts-mini__title\" data-ts-title></span> <span class=\"ts-mini__meta\" data-ts-meta></span> <span class=\"ts-mini__meta ts-pbar__meta\" data-ts-bar-meta><span class=\"ts-pbar__author\" data-ts-bar-author></span> <span class=\"ts-pbar__metaleft\" data-ts-bar-left></span></span></span></a><div class=\"ts-pbar__transport\"><button type=\"button\" class=\"ts-iconbtn ts-skip\" data-ts-back>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -219,7 +219,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(m.WaveLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 172, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 175, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -232,7 +232,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.Speed).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 182, Col: 121}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 185, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -245,7 +245,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.SleepOffLabel).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 185, Col: 129}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 188, Col: 129}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -266,7 +266,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.Chapters).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 189, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 192, Col: 112}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -287,7 +287,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.BookmarkMoment).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 192, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 195, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -318,7 +318,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.Volume).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 196, Col: 138}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 199, Col: 138}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -339,7 +339,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(m.Volume)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 200, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 203, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -352,7 +352,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.OpenPlayer).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 204, Col: 111}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 207, Col: 111}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {

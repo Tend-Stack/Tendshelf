@@ -1,11 +1,13 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
@@ -184,6 +186,58 @@ func usersView(csrf string, now time.Time, actor users.User, list []share.Person
 		TabPeople: fmt.Sprintf("People · %d", len(list)),
 		Rows:      rows,
 	}
+}
+
+// addDevices fills the Devices tab: the count is the sum of every person's live browsers and apps,
+// the rows follow the People order, and a row carries a sign-out only for a person the viewer may
+// manage (never themself: their own are on their Profile).
+func (s *server) addDevices(ctx context.Context, v *pages.UsersView, list []share.Person, actor users.User, manage func(users.User) bool) error {
+	sessions, err := s.sessions.ListAll(ctx, [32]byte{})
+	if err != nil {
+		return err
+	}
+	apps, err := s.devices.ListAll(ctx)
+	if err != nil {
+		return err
+	}
+	bySession := map[string][]auth.SessionInfo{}
+	for _, si := range sessions {
+		bySession[si.UserID] = append(bySession[si.UserID], si)
+	}
+	byApp := map[string][]auth.Device{}
+	for _, d := range apps {
+		byApp[d.UserID] = append(byApp[d.UserID], d)
+	}
+	now := s.now()
+	total := 0
+	for _, p := range list {
+		id := p.User.ID
+		if len(bySession[id])+len(byApp[id]) == 0 {
+			continue
+		}
+		base := "/admin/users/" + id
+		rows, _ := deviceRows(now, bySession[id], byApp[id], base, true)
+		g := pages.UsersDevices{Name: personName(p.User)}
+		switch {
+		case id == actor.ID:
+			g.Name += " (you)"
+			g.Note = usersDevicesOwn
+			for i := range rows {
+				rows[i].Action = ""
+			}
+		case !manage(p.User):
+			for i := range rows {
+				rows[i].Action = ""
+			}
+		}
+		g.Rows = rows
+		total += len(rows)
+		v.DeviceGroups = append(v.DeviceGroups, g)
+	}
+	if total > 0 {
+		v.TabDevices = fmt.Sprintf(usersTabDevices, total)
+	}
+	return nil
 }
 
 // grantRows turns a person's grants into the editor rows.

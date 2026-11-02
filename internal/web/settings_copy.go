@@ -6,7 +6,8 @@ const (
 	msgNotCurrentPassword = "That's not your current password."
 	msgPasswordChanged    = "Your password is changed. Your other devices are signed out."
 	msgSettingInvalid     = "Tendshelf can't save that setting. Reload the page and try again."
-	msgThisBrowser        = "This browser"
+	msgThisBrowser        = "This device"
+	msgNotUsedYet         = "Not used yet"
 	msgUnknownDevice      = "A web browser"
 )
 

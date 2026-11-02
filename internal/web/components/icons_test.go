@@ -18,8 +18,8 @@ func render(t *testing.T, name string, filled bool) string {
 
 func TestIconSet(t *testing.T) {
 	names := IconNames()
-	if len(names) != 31 {
-		t.Fatalf("%d icons, want 31", len(names))
+	if len(names) != 32 {
+		t.Fatalf("%d icons, want 32", len(names))
 	}
 	for _, n := range names {
 		out := render(t, n, false)

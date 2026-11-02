@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
@@ -32,6 +33,7 @@ func TestVisualMePages(t *testing.T) {
 	}
 	settingsLogin(t, app, "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36")
 	settingsLogin(t, app, "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0")
+	deviceFor(t, app, sweepUserID(t, app, app.owner(t)), "Living room speaker", auth.KindMobile)
 	base := themedServer(t, app.signedIn(t))
 
 	for _, name := range []string{"ProfilePhone", "SettingsPhone"} {

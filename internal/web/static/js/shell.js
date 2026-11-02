@@ -97,6 +97,18 @@ function fitShelves(root) {
 fitShelves(document);
 document.addEventListener("htmx:after:settle", () => fitShelves(document));
 
+// Text size (P3-11): choosing Standard or Larger on the Settings page applies at once; the form's own
+// hx-post saves it. A failed save is not reverted (its toast says so, and the next full load
+// reconciles the page), and the plain form post redirects with the attribute rendered by the server.
+document.addEventListener("change", (event) => {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || input.name !== "text_size" || !input.checked) return;
+  if (!input.closest('form[action="/me/settings"]')) return;
+  if (input.value === "large") document.documentElement.dataset.textSize = "large";
+  else delete document.documentElement.dataset.textSize;
+  fitShelves(document);
+});
+
 // Page enter without View Transitions: outerSync resets the class of #main to the response's, so
 // adding ts-entering after each swap of #main restarts the keyframe every time.
 document.addEventListener("htmx:after:swap", (event) => {
