@@ -354,10 +354,15 @@ the table in [`docs/manual-checks.md`](manual-checks.md)).
 - Invites by link and optional email (SMTP settings); share links for one book; Rosa's invite flow and
   large-text Home (`screens/people/Invite*`, `RosaHome`); Share & invite pages.
 - Device tokens and the JSON API v1; shared shelves; "Shared with you" Home row.
-- Larger text mode (operator, 2026-11-01): the in-app setting for Rosa's large-text design (bigger type,
-  spines become cards, the player's settings bar stacks). It first moves the design system's fixed pixel sizes
-  to scalable units across `bundle.css`, then adds the setting to `users.Settings`. Until then browser zoom
-  to 200 % is the supported path (WCAG 1.4.4).
+- Larger text mode (operator, 2026-11-01): **P3-11 done** (11a and 11b). Settings, Easier to use, Text size: Standard or
+  Larger (`ui.text_size`, root 125 %, stacks on the browser's own size). Larger uses the tablet shell from 960 px at every
+  width (no sidebar, no desktop bar, no Now playing panel: its 1280 px block is guarded too), shows covers instead of
+  spines on Home, a two-row player settings bar, fewer cover columns, wrapping tab strip and library toolbar.
+  Checks (`TestVisualLargeText*`, 390/768/1024/1440, dark and light): no overflow, 44 px targets, the time left never cut
+  (bar, mini player, hero, full player); Home and a book also at 640 and 720 px in both sizes (200 % zoom). Standard text
+  proved unchanged by capturediff. Limits: browser-only large text on 1280-1599 px windows keeps the desktop bar
+  (recorded risk, no detection script); the board's five-step slider is a declared difference (two choices); signed-out,
+  invite and link pages follow the browser's text size only.
 
 Exit: for every route, a test proves each role gets exactly the documented access, and forbidden books
 never appear in lists, counts, search or covers. First tagged release (v2026.1.0, [decision 0006](decisions/0006-version-numbers.md)) after this milestone.

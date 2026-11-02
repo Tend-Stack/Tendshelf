@@ -8,6 +8,8 @@
 
 .ts-lib-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); }
 .ts-lib-sort { color: var(--ink); margin-left: calc(var(--space-12) * -1); }
+/* Larger text (P3-11): the sort button and the Grid/List switch do not fit one 390 px row, so the row wraps. */
+html[data-text-size="large"] .ts-lib-controls { flex-wrap: wrap; }
 .ts-lib-sort .ts-icon, .ts-icon--sm { width: 1.125rem; height: 1.125rem; }
 .ts-lib-bar { display: none; }
 .ts-seg__item { text-decoration: none; }
