@@ -111,7 +111,7 @@ func TestFullPlayerMarkup(t *testing.T) {
 // TestFullPlayerCopy: the words of the HANDOFF and the board, exactly.
 func TestFullPlayerCopy(t *testing.T) {
 	for got, want := range map[string]string{
-		msgChapterOf: "Chapter {n} of {total}", msgLeftInChapter: "{t} left in chapter", msgLeftInBook: "{h} h {m} m left in book",
+		msgChapterOf: "Chapter {n} of {total}", msgLeftInChapter: "{t} left in chapter", msgLeftInBookMinutes: "{m} m left in book", msgLeftInBookHours: "{h} h left in book", msgLeftInBookBoth: "{h} h {m} m left in book", msgSubtitleSep: " · ",
 		msgScrubValue: "{h} hours {m} minutes elapsed, chapter {n}", msgFineScrub: "Drag up for fine control", msgClosePlayer: "Close player",
 		msgOpenPlayer: "Open player: {title}, chapter {n}", msgMarkFinished: "Mark as finished", msgGoToBook: "Go to book",
 	} {

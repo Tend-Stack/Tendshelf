@@ -274,7 +274,7 @@ func TestFullPlayerBrowserTimesAndChapters(t *testing.T) {
 	}
 	// 100 s in: chapter 4 runs 90 s to 120 s; 80 s of the book are left.
 	got := texts()
-	want := map[string]string{"chapter": "Chapter 4 of 6", "clock": "0:10", "left": "0:20 left in chapter", "elapsed": "1:40", "book-left": "0 h 2 m left in book", "speed": "1.0×"}
+	want := map[string]string{"chapter": "Chapter 4 of 6", "clock": "0:10", "left": "0:20 left in chapter", "elapsed": "1:40", "book-left": "2 m left in book", "speed": "1.0×"}
 	for k, v := range want {
 		if got[k] != v {
 			t.Errorf("speed 1: %s = %q, want %q", k, got[k], v)
@@ -284,7 +284,7 @@ func TestFullPlayerBrowserTimesAndChapters(t *testing.T) {
 	tab.Eval(`window.tsPlayer.setSpeed(2)`, nil)
 	time.Sleep(300 * time.Millisecond)
 	got = texts()
-	if got["book-left"] != "0 h 1 m left in book" || got["speed"] != "2.0×" || got["left"] != "0:20 left in chapter" {
+	if got["book-left"] != "1 m left in book" || got["speed"] != "2.0×" || got["left"] != "0:20 left in chapter" {
 		t.Errorf("speed 2: %+v", got)
 	}
 	tab.Eval(`window.tsPlayer.setSpeed(1)`, nil)

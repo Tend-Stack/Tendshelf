@@ -16,7 +16,7 @@ type PlayerMsgs struct {
 	KeysList, KeysClose, OpenBook, MinLeft                                  string
 
 	// The full player (P1c-5a).
-	ChapterOf, LeftInChapter, LeftInBook, ScrubLabel, ScrubValue, FineScrub string
+	ChapterOf, LeftInChapter, LeftInBookMinutes, LeftInBookHours, LeftInBookBoth, SubtitleSep, ScrubLabel, ScrubValue, FineScrub string
 	ClosePlayer, PrevChapter, NextChapter, Speed, Sleep, Chapters           string
 	Bookmark, MoreActions, GoToBook, MarkFinished, ChapterPlayed, OpenPlayer string
 	ScrubBubble                                                              string
@@ -57,7 +57,10 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 
 		"data-ts-msg-chapter-of":      m.ChapterOf,
 		"data-ts-msg-left-in-chapter": m.LeftInChapter,
-		"data-ts-msg-left-in-book":    m.LeftInBook,
+		"data-ts-msg-left-in-book-minutes": m.LeftInBookMinutes,
+		"data-ts-msg-left-in-book-hours":   m.LeftInBookHours,
+		"data-ts-msg-left-in-book-both":    m.LeftInBookBoth,
+		"data-ts-msg-subtitle-sep":         m.SubtitleSep,
 		"data-ts-msg-scrub-label":     m.ScrubLabel,
 		"data-ts-msg-scrub-value":     m.ScrubValue,
 		"data-ts-msg-fine-scrub":      m.FineScrub,

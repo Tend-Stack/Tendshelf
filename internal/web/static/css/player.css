@@ -69,6 +69,7 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 .ts-player__cover { width: 256px; height: 256px; }
 .ts-player__cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .ts-player__title { margin: 22px 0 0; text-align: center; }
+.ts-player__chapter-title { font-family: var(--font-serif); font-style: italic; }
 .ts-player__author { margin: var(--space-4) 0 0; text-align: center; color: var(--ink-muted); }
 .ts-player__times { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 14px; }
 .ts-player__left { color: var(--cover-accent); }

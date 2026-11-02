@@ -274,23 +274,32 @@ const (
 	// P1c-5a full player: the board and the HANDOFF words; the rest follows the voice rules.
 	msgChapterOf     = "Chapter {n} of {total}"
 	msgLeftInChapter = "{t} left in chapter"
-	msgLeftInBook    = "{h} h {m} m left in book"
-	msgScrubLabel    = "Position in book"
-	msgScrubValue    = "{h} hours {m} minutes elapsed, chapter {n}"
-	msgFineScrub     = "Drag up for fine control"
-	msgScrubBubble   = "Chapter {n} · {title} · {t}"
-	msgClosePlayer   = "Close player"
-	msgPrevChapter   = "Previous chapter"
-	msgNextChapter   = "Next chapter"
-	msgSpeed         = "Speed"
-	msgSleep         = "Sleep"
-	msgChapters      = "Chapters"
-	msgBookmark      = "Bookmark"
-	msgMoreActions   = "More"
-	msgGoToBook      = "Go to book"
-	msgMarkFinished  = "Mark as finished"
-	msgChapterPlayed = "{title}, played"
-	msgOpenPlayer    = "Open player: {title}, chapter {n}"
+	// A length of time in plain words, one source for the cards (durationText) and the full player's
+	// "left in book" line, so the two cannot drift. {h} is hours, {m} is minutes.
+	msgDurationMinutes      = "{m} m"
+	msgDurationHours        = "{h} h"
+	msgDurationHoursMinutes = "{h} h {m} m"
+	msgLeftInBookSuffix     = " left in book"
+	msgLeftInBookMinutes    = msgDurationMinutes + msgLeftInBookSuffix
+	msgLeftInBookHours      = msgDurationHours + msgLeftInBookSuffix
+	msgLeftInBookBoth       = msgDurationHoursMinutes + msgLeftInBookSuffix
+	msgSubtitleSep          = " · " // between the chapter title and the author under the book's title
+	msgScrubLabel           = "Position in book"
+	msgScrubValue           = "{h} hours {m} minutes elapsed, chapter {n}"
+	msgFineScrub            = "Drag up for fine control"
+	msgScrubBubble          = "Chapter {n} · {title} · {t}"
+	msgClosePlayer          = "Close player"
+	msgPrevChapter          = "Previous chapter"
+	msgNextChapter          = "Next chapter"
+	msgSpeed                = "Speed"
+	msgSleep                = "Sleep"
+	msgChapters             = "Chapters"
+	msgBookmark             = "Bookmark"
+	msgMoreActions          = "More"
+	msgGoToBook             = "Go to book"
+	msgMarkFinished         = "Mark as finished"
+	msgChapterPlayed        = "{title}, played"
+	msgOpenPlayer           = "Open player: {title}, chapter {n}"
 
 	msgKeysTitle   = "Keyboard shortcuts"
 	msgKeysPlay    = "Play or pause"
@@ -336,7 +345,8 @@ func playerMsgs() components.PlayerMsgs {
 		ContinueThere: msgContinueThere, StayHere: msgStayHere,
 		KeysTitle: msgKeysTitle, KeysPlay: msgKeysPlay, KeysSkip: msgKeysSkip, KeysSearch: msgKeysSearch,
 		KeysLibrary: msgKeysLibrary, KeysHome: msgKeysHome, KeysList: msgKeysList, KeysClose: msgKeysClose,
-		ChapterOf: msgChapterOf, LeftInChapter: msgLeftInChapter, LeftInBook: msgLeftInBook, ScrubLabel: msgScrubLabel,
+		ChapterOf: msgChapterOf, LeftInChapter: msgLeftInChapter, LeftInBookMinutes: msgLeftInBookMinutes,
+		LeftInBookHours: msgLeftInBookHours, LeftInBookBoth: msgLeftInBookBoth, SubtitleSep: msgSubtitleSep, ScrubLabel: msgScrubLabel,
 		ScrubValue: msgScrubValue, FineScrub: msgFineScrub, ClosePlayer: msgClosePlayer, PrevChapter: msgPrevChapter,
 		NextChapter: msgNextChapter, Speed: msgSpeed, Sleep: msgSleep, Chapters: msgChapters, Bookmark: msgBookmark,
 		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
