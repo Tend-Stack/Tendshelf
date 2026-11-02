@@ -20,7 +20,7 @@ import (
 // "Show more") and a fragment second.
 
 const (
-	homeShelfSize  = 12
+	homeShelfMax   = 40 // newest books sent for the row; shell.js shows as many as fit
 	browseTopChips = 3  // genre chips in the row; the sheet lists them all
 	browseSheetMax = 40 // genres listed in the sheet
 	browseMenuMax  = 30 // people or series listed in a chip menu
@@ -70,7 +70,7 @@ func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "home libraries", err)
 		return
 	}
-	page, err := s.lib.ListBooks(ctx, sc, library.ListQuery{Sort: library.SortAdded, Limit: homeShelfSize})
+	page, err := s.lib.ListBooks(ctx, sc, library.ListQuery{Sort: library.SortAdded, Limit: homeShelfMax})
 	if err != nil {
 		s.serverError(w, r, "home books", err)
 		return

@@ -29,7 +29,7 @@ type HomeView struct {
 	Hero    *HomeHeroView
 	Series  HomeSeriesView
 	Because *HomeBecauseView
-	// New is the newest books, newest first.
+	// New is up to 40 newest books, newest first; shell.js hides the ones that do not fit the row.
 	New []components.CardView
 	// SeeAllURL opens the library sorted by recently added.
 	SeeAllURL string
@@ -216,7 +216,7 @@ func Home(v HomeView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\">See all</a></div><div class=\"ts-shelf ts-shelf--scroll\" role=\"list\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\">See all</a></div><div class=\"ts-shelf ts-shelf--scroll\" role=\"list\" data-ts-fit>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
