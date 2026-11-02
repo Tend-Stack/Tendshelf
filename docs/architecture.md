@@ -62,10 +62,10 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `settings` | `key` PK, `value_json` | Server settings (`research.enabled`, `online.enabled`, `smtp.*`, `listen.addr`, `server.name` (JSON string), `setup.done` (JSON true, set when the setup folder is added)). |
 | `users` | `id`, `username` UNIQUE NOCASE, `display_name`, `email`, `role` CHECK IN ('owner','admin','member','guest'), `password_hash`, `disabled`, `created_at`, `last_seen_at` | Exactly one owner (partial unique index on `role='owner'`). |
 | `sessions` | `token_hash` PK, `user_id`, `created_at`, `expires_at`, `last_seen_at`, `user_agent` | Cookie sessions. |
-| `devices` | `id`, `user_id`, `name`, `kind` ('web','pwa','desktop','mobile'), `token_hash` UNIQUE NULL, `created_at`, `last_seen_at`, `revoked_at` | Device tokens for the API. |
-| `invites` | `id`, `token_hash` UNIQUE, `created_by`, `email` NULL, `role` ('member','guest'), `grants_json`, `expires_at`, `max_uses`, `use_count`, `revoked_at`, `created_at` | Accepting creates a user and its grants in one transaction. |
-| `share_links` | `id`, `token_hash` UNIQUE, `book_id`, `created_by`, `expires_at` NOT NULL, `password_hash` NULL, `can_read` (R5, default 0), `revoked_at`, `created_at` | Anonymous listen-only link for one book; progress kept per browser in local storage only. |
-| `grants` | `id`, `user_id`, `library_id` NULL, `book_id` NULL, `can_download`, `can_read` (R5, default 0), `expires_at` NULL, `created_by`, `created_at` | CHECK exactly one of `library_id`/`book_id`. Owner/admin implicitly see all. |
+| `devices` | `id`, `user_id`, `name`, `kind` ('web','pwa','desktop','mobile'), `token_hash` UNIQUE NULL (32 bytes), `created_at`, `last_seen_at`, `revoked_at` | Device tokens for the API (migration 0007). A revoked device keeps no token. |
+| `invites` | `id`, `token_hash` UNIQUE (32 bytes), `created_by`, `name`, `email` NULL, `note`, `role` ('admin','member','guest'; only the owner may offer admin), `grants_json` (array), `expires_at` NULL ("Until I stop it"), `max_uses` 1-50, `use_count` <= `max_uses`, `revoked_at`, `created_at`, `updated_at` | Accepting creates a user and its grants in one transaction (migration 0007). |
+| `share_links` | `id`, `token_hash` UNIQUE (32 bytes), `book_id`, `created_by`, `label`, `expires_at` NOT NULL (at most 90 days after `created_at`), `password_hash` NULL, `can_read` (R5, default 0), `revoked_at`, `created_at` | Anonymous listen-only link for one book; progress kept per browser in local storage only (migration 0007). |
+| `grants` | `id`, `user_id`, `scope` ('all','library','shelf','book'), `library_id` / `shelf_id` / `book_id` (only the one the scope names), `can_download`, `can_read` (R5, default 0), `expires_at` NULL, `created_by`, `created_at`, `updated_at` | One grant per (user, scope, target). Active while `expires_at` is NULL or later than now and the person is not disabled. A shelf grant covers a book only while it is on the shelf and the shelf's owner is an enabled owner or admin. Deleted with the person, library, shelf or book. Owner/admin implicitly see all (migration 0007). |
 | `libraries` | `id`, `name`, `created_at`, `scan_interval_min` | |
 | `library_folders` | `id`, `library_id`, `path` UNIQUE, `created_at` | |
 | `books` | `id`, `library_id`, `folder_id` (cascade on folder removal; the scan works per folder), `root_path` UNIQUE, `title`, `sort_title`, `subtitle`, `description`, `publisher`, `published_year`, `language`, `isbn`, `asin`, `abridged`, `dramatized`, `explicit`, `duration_ms`, `cover_id`, `refused_reason` NULL, `added_at`, `updated_at`, `missing_since` NULL | Resolved values (cache of the merge). |
@@ -375,9 +375,19 @@ and its `/hx/dev/*` fragments; release builds do not register them.
   deliberate exception is the start-up setup link.
 - Authorization: `share.Can(user, action, target)` with the actions `library.view`, `book.view`, `book.listen`,
   `book.download`, `book.edit`, `text.read`, `text.download`, `libraries.manage`, `jobs.manage`, `users.manage`,
-  `server.manage`, `shelves.use`, `research.use`. Until grants exist (P3): owner everything; admin everything
-  except `server.manage`; members only `shelves.use` on their own shelves; guests nothing. A shelf is always
-  its owner's. `BookFilter` and `LibraryFilter` give the SQL fragment for listings.
+  `server.manage`, `shelves.use`, `research.use`, `shelf.view`. Owner everything; admin everything except
+  `server.manage`; a disabled person nothing. Members and guests act only through an active grant (table
+  `grants`, scopes all, library, shelf, book): `library.view` on a library holding a covered book;
+  `book.view` and `book.listen` on a covered book; `book.download` needs `can_download`, `text.read` needs
+  `can_read`, `text.download` both; nothing else. `Can` reads the book's library from the database and
+  ignores `Target.LibraryID`; a database error is a refusal. Members also have `shelves.use` on their own
+  shelves; a shelf is always its owner's, and `shelf.view` lets an owner, admin or member read a shelf that
+  is shared. `users.manage` on a person: the owner for anyone, an admin for members and guests only.
+  `BookFilter` and `LibraryFilter` give the SQL fragment for listings: one `EXISTS` subquery on `grants`
+  with two positional arguments (person, now), built from the same SQL as `Can`, so a book is listed if and
+  only if `Can(book.view)` is true. Inner aliases start with `share_`, which callers may not use. The
+  `share.Grants` repository (`Put`, `Revoke`, `Get`, `ForUser`) writes grants and the audit log; it does
+  not authorize its caller.
 - CSRF: token required in `X-CSRF-Token` or `_csrf` for unsafe methods. It is an HMAC of the signed-in
   session (`s:` + session hash) or, for anonymous visitors, of the `ts_csrf` cookie (`c:` + value), so a token
   for one can never pass as the other. The HMAC key is kept in `settings` (`web.csrf_key`), so open forms

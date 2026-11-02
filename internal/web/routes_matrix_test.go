@@ -67,6 +67,10 @@ type sweepEnv struct {
 	author, narrator, series   string
 	job                        string
 	tree                       string // a folder for the browse view, with a file name that must never be sent
+
+	// granted marks the app of TestRouteMatrixGranted: the member and the guest hold a library
+	// grant on libID, so rows answer with Granted and the leak scan is off.
+	granted bool
 }
 
 func sweepUserID(t *testing.T, a *testApp, ck *http.Cookie) string {
@@ -248,6 +252,9 @@ type sweepRow struct {
 	Path    func(e *sweepEnv, role int) string
 	Form    func(e *sweepEnv, role int) url.Values
 	Want    [4]int // owner, admin, member, guest
+	// Granted replaces Want, per person, when the member and the guest hold a grant on the library
+	// (TestRouteMatrixGranted). A 0 means the grant changes nothing for that person.
+	Granted [4]int
 	Loc     string // the Location of a 303 (all roles), when it is fixed
 	Anon    int    // the anonymous answer; 0 is the default: sign in
 	AnonLoc string // its Location; "" is the default
@@ -570,6 +577,9 @@ func (e *sweepEnv) check(t *testing.T, row sweepRow, role int, rec *httptest.Res
 	want, wantLoc := row.Anon, row.AnonLoc
 	if role >= 0 {
 		who, want, wantLoc = sweepRoleNames[role], row.Want[role], ""
+		if e.granted && row.Granted[role] != 0 {
+			want = row.Granted[role]
+		}
 		if want == http.StatusSeeOther {
 			wantLoc = row.Loc
 		}
@@ -595,7 +605,7 @@ func (e *sweepEnv) check(t *testing.T, row sweepRow, role int, rec *httptest.Res
 	if wantLoc != "" && location(rec) != wantLoc {
 		t.Errorf("%s %s %s: Location %q, want %q", who, row.Method, row.Path(e, max(role, 0)), location(rec), wantLoc)
 	}
-	if role >= sweepMember {
+	if role >= sweepMember && !e.granted {
 		body := rec.Body.String()
 		for _, w := range e.leakWords() {
 			if strings.Contains(body, w) {
@@ -603,7 +613,7 @@ func (e *sweepEnv) check(t *testing.T, row sweepRow, role int, rec *httptest.Res
 			}
 		}
 	}
-	if role >= 0 && row.Body != nil && rec.Code == http.StatusOK {
+	if role >= 0 && row.Body != nil && rec.Code == http.StatusOK && !e.granted {
 		row.Body(t, e, role, rec.Body.String())
 	}
 }
