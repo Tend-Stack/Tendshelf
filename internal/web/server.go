@@ -314,3 +314,12 @@ func securityHeaders(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// sheetStyles resolves stylesheet source names to the hashed addresses a sheet links inside itself.
+func (s *server) sheetStyles(names ...string) []string {
+	hrefs := make([]string, 0, len(names))
+	for _, n := range names {
+		hrefs = append(hrefs, s.assets.URL(n))
+	}
+	return hrefs
+}

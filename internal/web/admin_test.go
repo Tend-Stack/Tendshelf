@@ -562,7 +562,7 @@ func TestSidebarAdminLink(t *testing.T) {
 	if !strings.Contains(body, `data-nav="/admin/libraries" aria-current="page"`) {
 		t.Error("Libraries is not the current page on its own page")
 	}
-	if !strings.Contains(body, "pages-admin") {
-		t.Error("the admin stylesheet is not linked")
+	if !strings.Contains(bookMain(body), "pages-admin") {
+		t.Error("the admin stylesheet is not linked inside #main")
 	}
 }

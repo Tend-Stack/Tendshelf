@@ -83,6 +83,10 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 			}
 		}
 	}
+	if listen {
+		// The Bookmarks tab swaps only #book-panel, so its stylesheet is linked whatever tab opens.
+		styles = append(append([]string(nil), styles...), pages.BookmarkStyles...)
+	}
 	switch tab {
 	case "about":
 		var series, narrated []library.BookCard
@@ -134,7 +138,6 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 		if bsheet != nil {
 			sheet = bsheet
 		}
-		styles = append(append([]string(nil), styles...), pages.BookmarkStyles...)
 	case "details":
 		v.Rows = bookDetailsView(d, s.canManage(r))
 	}

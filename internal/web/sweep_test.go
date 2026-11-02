@@ -223,7 +223,7 @@ func TestLibraryHeaderLine(t *testing.T) {
 	}
 	member := a.as(t, users.RoleMember)
 	mb := browseGet(a, "/libraries", false, member).Body.String()
-	if !strings.Contains(mb, ">0 books · 0 hours<") || strings.Contains(mb, "folder") {
+	if !strings.Contains(mb, ">0 books · 0 hours<") || strings.Contains(regexp.MustCompile(`ts-lib-head__count[^>]*>[^<]*`).FindString(mb), "folder") {
 		t.Errorf("member header line shows folders or books: %s", regexp.MustCompile(`ts-lib-head__count[^>]*>[^<]*`).FindString(mb))
 	}
 	// The line counts the library, not the filter: a filter shows its own match line instead.

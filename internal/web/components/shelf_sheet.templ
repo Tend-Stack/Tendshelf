@@ -19,6 +19,8 @@ type ShelfSheetView struct {
 	// NewAction is where the "New shelf" form posts; NewName and Error come back after a refusal.
 	NewAction, NewName, Error                         string
 	Title, NewLabel, NewButton, CloseLabel, NameLabel string
+	// Styles are the stylesheet addresses the sheet carries (see SheetStyles).
+	Styles []string
 }
 
 func pressed(on bool) string {
@@ -32,6 +34,7 @@ func pressed(on bool) string {
 // form: a toggle button that adds or removes the book, then the sheet re-renders in place.
 templ ShelfSheet(v ShelfSheetView) {
 	<div class="ts-sheet-layer ts-sheet-layer--shelves">
+		@SheetStyles(v.Styles)
 		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
 		<div class="ts-sheet ts-shelf-sheet" role="dialog" aria-modal="true" aria-labelledby="shs-title" tabindex="-1">
 			<div class="ts-sheet__grab" aria-hidden="true"></div>

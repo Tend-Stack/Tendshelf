@@ -27,6 +27,8 @@ type FolderBrowserView struct {
 	PickURL, UpURL, PlacesURL string
 	// Sheet is true when the browser renders in #sheet and its links swap the sheet in place.
 	Sheet bool
+	// Styles are the stylesheet addresses the sheet carries (see SheetStyles).
+	Styles []string
 }
 
 // BrowseLink is the link that opens path in this browser.
@@ -46,6 +48,7 @@ func browseAttrs(sheet bool, href string) templ.Attributes {
 // form page; shell.js plays the exit motion and returns focus.
 templ FolderBrowserSheet(v FolderBrowserView) {
 	<div class="ts-sheet-layer">
+		@SheetStyles(v.Styles)
 		<a class="ts-scrim" href={ templ.SafeURL(v.FormURL) } hx-boost="false" data-ts-close aria-label="Close" tabindex="-1"></a>
 		<div class="ts-sheet ts-sheet--folders" role="dialog" aria-modal="true" aria-labelledby="folders-title" tabindex="-1">
 			<div class="ts-sheet__grab"></div>

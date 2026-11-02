@@ -250,8 +250,8 @@ func TestShelfSheet(t *testing.T) {
 	if strings.Contains(bookMain(page), "ts-shelf-sheet") {
 		t.Error("the sheet is open without ?sheet=shelves")
 	}
-	if !strings.Contains(page, "pages-shelves") {
-		t.Error("the book page does not link the shelves stylesheet")
+	if !strings.Contains(bookMain(page), "pages-shelves") {
+		t.Error("the book page does not link the shelves stylesheet inside #main")
 	}
 
 	sheet := browseGet(a, "/books/"+books[0].ID+"?sheet=shelves", false, ck).Body.String()

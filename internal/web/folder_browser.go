@@ -26,6 +26,9 @@ const (
 // folderStyles are the stylesheets of the Add a folder page, which carries the Browse link.
 var folderStyles = append(append([]string{}, adminStyles...), "css/pages-folders.css")
 
+// folderSheetStyles are what the folder browser sheet links inside itself.
+var folderSheetStyles = []string{"css/pages-folders.css"}
+
 // browseFieldURL is the link behind the Browse button: it opens the browser at the typed path when
 // that is absolute, and at the starting places otherwise.
 func browseFieldURL(formURL, typed string) string {

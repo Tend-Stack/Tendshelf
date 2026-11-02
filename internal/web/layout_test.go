@@ -108,6 +108,15 @@ func TestLayoutShell(t *testing.T) {
 		}
 		last = i
 	}
+	// The player sheet is in the head; the page's own sheets are inside #main, where a boosted swap
+	// keeps them (htmx drops the head of a boosted answer).
+	head, main := body[:strings.Index(body, "<body")], bookMain(body)
+	if !strings.Contains(head, "/static/css/player.") || strings.Contains(head, "/static/css/pages-admin.") {
+		t.Error("the head must hold the player sheet and no page sheet")
+	}
+	if !strings.Contains(main, `<link rel="stylesheet" href="/static/css/pages-home.`) {
+		t.Error("Home does not link its stylesheets inside #main")
+	}
 	if strings.Count(body, `rel="preload"`) != 2 {
 		t.Error("want exactly two font preloads")
 	}

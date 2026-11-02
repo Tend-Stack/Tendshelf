@@ -166,6 +166,7 @@ func (s *server) bookmarksPanel(r *http.Request, d library.BookDetail) (pages.Bo
 			NoteLabel: bookmarkNoteLabel, SaveLabel: bookmarkSave, DeleteLabel: bookmarkDelete,
 			NoteAction: "/bookmarks/" + b.ID + "/note", DeleteAction: "/bookmarks/" + b.ID + "/delete",
 			CloseHref: base, CloseLabel: bookmarkClose, MaxRunes: progress.MaxNoteRunes,
+			Styles: s.sheetStyles(pages.BookmarkStyles...),
 		}
 		if q.Get("error") == "note_too_long" {
 			sv.Error = bookmarkErrTooLong
@@ -174,6 +175,7 @@ func (s *server) bookmarksPanel(r *http.Request, d library.BookDetail) (pages.Bo
 	case "export":
 		ev := pages.BookmarkExportView{
 			Title: bookmarkExportTitle, CloseHref: base, CloseLabel: bookmarkClose,
+			Styles: s.sheetStyles(pages.BookmarkStyles...),
 			Links: []pages.BookmarkChip{
 				{Label: bookmarkExportText, Href: base + "/export?format=txt"},
 				{Label: bookmarkExportMD, Href: base + "/export?format=md"},

@@ -2,6 +2,8 @@ package components
 
 import (
 	"encoding/json"
+	"slices"
+	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/web/static"
 )
@@ -16,8 +18,10 @@ type Page struct {
 	// Sheet, when set, is rendered inside #sheet on a full-page load, so a canonical URL such as
 	// ?sheet=1 shows the sheet without JavaScript. Fragments swap sheets into #sheet.
 	Sheet templ.Component
-	// Styles lists extra stylesheets by static path (for example "css/pages-admin.css"), linked
-	// after the shared ones.
+	// Styles lists extra stylesheets by static path (for example "css/pages-admin.css"). Layout
+	// links them at the top of #main, not in the head: htmx drops the head of a boosted answer, so
+	// a link inside the swapped content is the only way a page keeps its own look after a swap.
+	// Frame pages (no boosting) link theirs in the head.
 	Styles []string
 	// Admin shows the "Your server" group in the desktop sidebar.
 	Admin bool
@@ -26,6 +30,26 @@ type Page struct {
 	Shelves []ShelfLink
 	// Player holds the words of the mini-player and the keyboard sheet (Layout only).
 	Player PlayerMsgs
+
+	// prefetch is set by Layout: the page stylesheets this page does not link itself.
+	prefetch []string
+}
+
+// pagePrefix starts the static path of every per-page stylesheet.
+const pagePrefix = "css/pages-"
+
+// withPrefetch returns p with the page stylesheets it does not link itself, so the head can ask the
+// browser to fetch them early: the first boosted visit to another page then finds them cached.
+func (p Page) withPrefetch() Page {
+	if p.Assets == nil {
+		return p
+	}
+	for _, name := range p.Assets.Names() {
+		if strings.HasPrefix(name, pagePrefix) && !slices.Contains(p.Styles, name) {
+			p.prefetch = append(p.prefetch, name)
+		}
+	}
+	return p
 }
 
 // htmxConfig is the htmx 4 configuration meta content.
@@ -40,9 +64,10 @@ func csrfHeaders(token string) string {
 	return string(b)
 }
 
-// layoutStyles puts the player stylesheet in front of a page's own: only Layout has a player.
-func layoutStyles(styles []string) []string {
-	return append([]string{"css/player.css"}, styles...)
+// layoutStyles is what Layout adds to the head: the player stylesheet, because every Layout page
+// has the player. A page's own stylesheets go inside #main (see Page.Styles).
+func layoutStyles() []string {
+	return []string{"css/player.css"}
 }
 
 // Layout is the app shell. The navigation, the player slot, the audio element and the toasts sit
@@ -55,7 +80,7 @@ templ Layout(p Page, body templ.Component) {
 			data-theme={ p.Theme }
 		}
 	>
-		@Head(p, layoutStyles(p.Styles)...)
+		@Head(p.withPrefetch(), layoutStyles()...)
 		<body hx-boost:inherited="target:#main select:#main swap:outerSync transition:true" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
 			<div class="ts-shell">
@@ -63,6 +88,9 @@ templ Layout(p Page, body templ.Component) {
 				@SideRail(p.Current)
 				@Sidebar(p.Current, p.Admin, p.Shelves)
 				<main id="main" class="ts-main" tabindex="-1" hx-history-elt>
+					for _, css := range p.Styles {
+						<link rel="stylesheet" href={ p.Assets.URL(css) }/>
+					}
 					@body
 				</main>
 			</div>
@@ -100,8 +128,20 @@ templ Head(p Page, extraCSS ...string) {
 		for _, css := range extraCSS {
 			<link rel="stylesheet" href={ p.Assets.URL(css) }/>
 		}
+		for _, css := range p.prefetch {
+			<link rel="prefetch" as="style" href={ p.Assets.URL(css) }/>
+		}
 		<link rel="icon" type="image/svg+xml" href={ p.Assets.URL("img/tendshelf-app-icon.svg") }/>
 		<script src={ p.Assets.URL("vendor/htmx-4.0.0.min.js") } defer></script>
 		<script type="module" src={ p.Assets.URL("js/shell.js") }></script>
 	</head>
+}
+
+// SheetStyles links the stylesheets a sheet needs, from inside the sheet's own root element. A sheet
+// is swapped into #sheet from any page (hx-select="#sheet > *"), and htmx drops the head of that
+// answer, so the sheet carries what styles it. A link to a stylesheet that is already loaded is free.
+templ SheetStyles(hrefs []string) {
+	for _, href := range hrefs {
+		<link rel="stylesheet" href={ href }/>
+	}
 }
