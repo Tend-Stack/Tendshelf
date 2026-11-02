@@ -60,6 +60,28 @@ func (r *Repo) CoversBySHA(ctx context.Context, sha string) ([]Cover, error) {
 	return many(ctx, r.st.Reader(), scanCover, `SELECT `+coverCols+` FROM covers WHERE sha256 = ? ORDER BY created_at, id`, sha)
 }
 
+// BooksWithUntintedCover returns the ids of the library's present books whose current cover came
+// from the scan (a folder picture or an embedded one) and has no tint. The cover job fills the tint
+// again for them, so a better colour counter reaches covers that are already stored.
+func (r *Repo) BooksWithUntintedCover(ctx context.Context, libraryID string) ([]string, error) {
+	rows, err := r.st.Reader().QueryContext(ctx, `SELECT b.id FROM books b JOIN covers c ON c.id = b.cover_id
+  WHERE b.library_id = ? AND COALESCE(b.missing_since, 0) = 0 AND c.tint IS NULL AND c.source IN (?, ?)
+  ORDER BY b.id`, libraryID, CoverFolder, CoverEmbedded)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // Covers returns a book's cover rows, oldest first.
 func (t *Tx) Covers(bookID string) ([]Cover, error) {
 	return many(t.ctx, t.tx, scanCover, `SELECT `+coverCols+` FROM covers WHERE book_id = ? ORDER BY created_at, id`, bookID)

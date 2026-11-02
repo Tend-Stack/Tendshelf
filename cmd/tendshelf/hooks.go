@@ -66,6 +66,7 @@ func registerMediaJobs(d deps, mf *mediaFlags) (*mediajobs.Compat, error) {
 	covers := mediajobs.NewCovers(d.lib, d.tools, d.dataDir, d.runner, d.log)
 	compat := mediajobs.NewCompat(d.lib, d.tools, mediajobs.CompatDir(d.dataDir), int64(*mf.compatGiB)<<30, d.runner, d.log)
 	d.scanner.OnBookSettled(covers.Follower())
+	d.scanner.OnScanFinished(covers.Finisher())
 	if err := mediajobs.Register(d.runner, covers, compat); err != nil {
 		return nil, err
 	}

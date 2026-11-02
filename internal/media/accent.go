@@ -34,18 +34,56 @@ const (
 	minGraphic  = 3.0  // the accent against its ground and surface
 )
 
+// tintBucket is the pixels of one colour bucket: their count and channel sums.
+type tintBucket struct{ n, r, g, b int }
+
+// tintBuckets counts kept pixels per bucket, the bucket key being the top bits of each channel.
+type tintBuckets map[int]*tintBucket
+
+// add counts one pixel in the bucket of its top bits per channel.
+func (tb tintBuckets) add(r, g, b, bits int) {
+	shift := 8 - bits
+	key := r>>shift<<(2*bits) | g>>shift<<bits | b>>shift
+	bk := tb[key]
+	if bk == nil {
+		bk = &tintBucket{}
+		tb[key] = bk
+	}
+	bk.n++
+	bk.r += r
+	bk.g += g
+	bk.b += b
+}
+
+// winner returns the mean colour of the biggest bucket (a tie goes to the smaller key) when it holds
+// at least 5 % of the cover's pixels.
+func (tb tintBuckets) winner(total int) (hex string, ok bool) {
+	best, bestKey := (*tintBucket)(nil), 0
+	for key, bk := range tb {
+		if best == nil || bk.n > best.n || (bk.n == best.n && key < bestKey) {
+			best, bestKey = bk, key
+		}
+	}
+	if best == nil || best.n*20 < total {
+		return "", false
+	}
+	mean := func(sum int) int { return (sum + best.n/2) / best.n }
+	return fmt.Sprintf("#%02x%02x%02x", mean(best.r), mean(best.g), mean(best.b)), true
+}
+
 // Tint returns the dominant colour of a cover as "#rrggbb". Near-black and near-white pixels are
 // ignored. Colours are counted in 4-bit-per-channel buckets; the biggest bucket wins (a tie goes to
-// the smaller bucket key) and its pixels' mean is the tint. A cover with no usable colour (under
-// 10 % of its pixels kept, or a winner under 5 %) has none.
+// the smaller bucket key) and its pixels' mean is the tint. A cover of busy artwork, such as a
+// gradient, spreads over too many fine buckets for any to reach 5 %; it gets a second count in
+// coarser 3-bit buckets under the same rules. A cover with no usable colour (under 10 % of its
+// pixels kept, or no winner of 5 % in either count) has none.
 func Tint(img image.Image) (hex string, ok bool) {
 	b := img.Bounds()
 	total := b.Dx() * b.Dy()
 	if total <= 0 {
 		return "", false
 	}
-	type bucket struct{ n, r, g, b int }
-	buckets := map[int]*bucket{}
+	fine, coarse := tintBuckets{}, tintBuckets{}
 	kept := 0
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
@@ -56,32 +94,17 @@ func Tint(img image.Image) (hex string, ok bool) {
 				continue
 			}
 			kept++
-			key := r>>4<<8 | g>>4<<4 | bl>>4
-			bk := buckets[key]
-			if bk == nil {
-				bk = &bucket{}
-				buckets[key] = bk
-			}
-			bk.n++
-			bk.r += r
-			bk.g += g
-			bk.b += bl
+			fine.add(r, g, bl, 4)
+			coarse.add(r, g, bl, 3)
 		}
 	}
 	if kept*10 < total {
 		return "", false
 	}
-	best, bestKey := (*bucket)(nil), 0
-	for key, bk := range buckets {
-		if best == nil || bk.n > best.n || (bk.n == best.n && key < bestKey) {
-			best, bestKey = bk, key
-		}
+	if hex, ok := fine.winner(total); ok {
+		return hex, true
 	}
-	if best == nil || best.n*20 < total {
-		return "", false
-	}
-	mean := func(sum int) int { return (sum + best.n/2) / best.n }
-	return fmt.Sprintf("#%02x%02x%02x", mean(best.r), mean(best.g), mean(best.b)), true
+	return coarse.winner(total)
 }
 
 // Accents derives the accent colour of each theme from a tint: the tint's hue, chroma capped at
