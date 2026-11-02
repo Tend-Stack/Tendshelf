@@ -217,6 +217,12 @@ a.ts-users__item:hover { background: var(--surface); }
 .ts-invite__item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); padding: var(--space-12) 0; }
 .ts-invite__item .ts-users__text { flex: 1 1 12rem; }
 .ts-invite__item form { margin: 0; }
+/* Devices tab (P3-7b): one card, a small heading per person, rows like the invite rows. */
+.ts-users__devname { margin: var(--space-16) 0 var(--space-4); color: var(--ink-muted); }
+.ts-users__devname:first-child { margin-top: var(--space-8); }
+.ts-users__devnote { margin: 0; color: var(--ink-muted); }
+.ts-users__devices .ts-users__list + .ts-users__devname { margin-top: var(--space-12); }
+
 .ts-invite__link { display: flex; flex-direction: column; gap: var(--space-8); margin: var(--space-8) 0 var(--space-16); padding: var(--space-16); border: 1px solid var(--accent); border-radius: var(--radius-md); background: var(--surface); }
 .ts-invite__link p { margin: 0; color: var(--ink-muted); }
 .ts-invite__linktitle { margin: 0; font-weight: 600; }

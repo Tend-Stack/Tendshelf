@@ -2,9 +2,12 @@ package web
 
 import (
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
@@ -55,6 +58,70 @@ func deviceLabel(ua string) string {
 		return system
 	}
 	return msgUnknownDevice
+}
+
+// deviceIcon is "phone" for a phone or tablet User-Agent and "laptop" for anything else.
+func deviceIcon(ua string) string {
+	if strings.Contains(ua, "iPhone") || strings.Contains(ua, "Android") || strings.Contains(ua, "iPad") {
+		return "phone"
+	}
+	return "laptop"
+}
+
+// appIcon is the icon of a device token by its kind.
+func appIcon(k auth.DeviceKind) string {
+	if k == auth.KindMobile {
+		return "phone"
+	}
+	return "laptop"
+}
+
+// deviceRows merges signed-in browsers and device tokens into rows, the current browser first and
+// the rest by last activity, newest first. base is "/me" or "/admin/users/{id}"; the sign-out form
+// of a row is base + "/devices/{id}/signout" for an app, and for a browser "/me/sessions/{id}/signout"
+// on /me or the same devices path on an admin page (it takes either id). others counts the rows that
+// are not the current browser. Admin rows never carry a current browser.
+func deviceRows(now time.Time, sessions []auth.SessionInfo, apps []auth.Device, base string, forAdmin bool) ([]pages.ProfileDevice, int) {
+	type entry struct {
+		row  pages.ProfileDevice
+		last int64
+	}
+	var cur *pages.ProfileDevice
+	var rest []entry
+	for _, si := range sessions {
+		label := deviceLabel(si.UserAgent)
+		d := pages.ProfileDevice{ID: si.PublicID, Icon: deviceIcon(si.UserAgent)}
+		if forAdmin {
+			d.Action = base + "/devices/" + si.PublicID + "/signout"
+		} else {
+			d.Action = "/me/sessions/" + si.PublicID + "/signout"
+		}
+		if si.Current {
+			d.Title, d.Meta, d.Current = msgThisBrowser, label, true
+			cur = &d
+			continue
+		}
+		d.Title, d.Meta = label, agoText(now, time.UnixMilli(si.LastSeenAt))
+		rest = append(rest, entry{d, si.LastSeenAt})
+	}
+	for _, a := range apps {
+		kind := auth.KindLabel(a.Kind)
+		meta := kind + " · " + msgNotUsedYet
+		if a.LastSeenAt > 0 {
+			meta = kind + " · " + agoText(now, time.UnixMilli(a.LastSeenAt))
+		}
+		rest = append(rest, entry{pages.ProfileDevice{ID: a.ID, Title: a.Name, Meta: meta, Icon: appIcon(a.Kind),
+			Action: base + "/devices/" + a.ID + "/signout"}, max(a.LastSeenAt, a.CreatedAt)})
+	}
+	sort.SliceStable(rest, func(i, j int) bool { return rest[i].last > rest[j].last })
+	var out []pages.ProfileDevice
+	if cur != nil {
+		out = append(out, *cur)
+	}
+	for _, e := range rest {
+		out = append(out, e.row)
+	}
+	return out, len(rest)
 }
 
 // settingsView maps stored settings to the page.

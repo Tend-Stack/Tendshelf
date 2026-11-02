@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
@@ -104,6 +105,8 @@ func TestVisualUsersPages(t *testing.T) {
 	out := visualDir(t, "chromium")
 	app := newTestApp(t)
 	rosa := usersBoardSeed(t, app)
+	deviceFor(t, app, rosa, "Living room speaker", auth.KindMobile)
+	deviceFor(t, app, rosa, "Reading tablet", auth.KindPWA)
 	base := themedServer(t, app.signedIn(t))
 
 	for _, name := range []string{"UsersPage", "UsersTablet", "UsersPhone"} {
