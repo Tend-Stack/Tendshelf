@@ -103,6 +103,36 @@ templ HomeSeries(v HomeSeriesView) {
 	}
 }
 
+// HomeSharedView is the "Shared with you" row: the heading, the "from ..." caption (empty when no
+// sharer is named), the link to the whole list and up to three book cards.
+type HomeSharedView struct {
+	Title, From, SeeAllURL string
+	Cards                  []components.CardView
+}
+
+// HomeShared is the "Shared with you" row. Its markup hooks (row-shared, ts-home__rowsub,
+// ts-home__rowsep, ts-home__cards--three) are styled by pages-home.css.
+templ HomeShared(v *HomeSharedView) {
+	if v != nil && len(v.Cards) > 0 {
+		<section id="row-shared" class="ts-home__row" aria-labelledby="row-shared-title">
+			<div class="ts-home__rowhead">
+				<h2 id="row-shared-title" class="section">
+					{ v.Title }
+					if v.From != "" {
+						<span class="caption ts-home__rowsub"><span class="ts-home__rowsep" aria-hidden="true">· </span>{ v.From }</span>
+					}
+				</h2>
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SeeAllURL) }>See all</a>
+			</div>
+			<div class="ts-home__cards ts-home__cards--three">
+				for _, c := range v.Cards {
+					@components.BookCard(c)
+				}
+			</div>
+		</section>
+	}
+}
+
 // HomeBecause is "Because you listened to {seed}" with plain book cards (cards never resume).
 templ HomeBecause(v *HomeBecauseView) {
 	if v != nil && len(v.Cards) > 0 {

@@ -9,6 +9,9 @@ import (
 // (internal/web/copy.go); player.js reads these from data-ts-msg-* attributes and never hard-codes
 // a word. {name} marks a value the player fills in.
 type PlayerMsgs struct {
+	// Link is set on a share-link page: the controls that need an account are rendered hidden.
+	Link bool
+
 	Open, PlayPrefix, PausePrefix, BackSeconds, ForwardSeconds, ChapterLeft string
 	Rewound, CompatWait, CompatFailed, SignedOut, SignIn                    string
 	ContinueAsk, OtherDevice, ContinueThere, StayHere                       string
@@ -18,7 +21,7 @@ type PlayerMsgs struct {
 	// The full player (P1c-5a).
 	ChapterOf, LeftInChapter, LeftInBookMinutes, LeftInBookHours, LeftInBookBoth, SubtitleSep, ScrubLabel, ScrubValue, FineScrub string
 	ClosePlayer, PrevChapter, NextChapter, Speed, Sleep, Chapters           string
-	Bookmark, MoreActions, GoToBook, MarkFinished, ChapterPlayed, OpenPlayer string
+	Bookmark, MoreActions, GoToBook, MarkFinished, ChapterPlayed, OpenPlayer, Resume string
 	ScrubBubble                                                              string
 
 	// Speed, sleep timer, volume and the bookmark key (P1c-5b).
@@ -83,6 +86,7 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 		"data-ts-msg-mark-finished":   m.MarkFinished,
 		"data-ts-msg-chapter-played":  m.ChapterPlayed,
 		"data-ts-msg-open-player":     m.OpenPlayer,
+		"data-ts-msg-resume":          m.Resume,
 		"data-ts-msg-scrub-bubble":    m.ScrubBubble,
 
 		"data-ts-msg-speed-value":         m.SpeedValue,
@@ -185,7 +189,7 @@ templ PlayerSlot(m PlayerMsgs) {
 				<button type="button" class="ts-iconbtn" data-ts-bar-chapters aria-haspopup="dialog" aria-label={ m.Chapters }>
 					@Icon("chapters", false)
 				</button>
-				<button type="button" class="ts-iconbtn" data-ts-bar-bookmark aria-label={ m.BookmarkMoment }>
+				<button type="button" class="ts-iconbtn" data-ts-bar-bookmark aria-label={ m.BookmarkMoment } if m.Link { hidden }>
 					@Icon("bookmark", false)
 				</button>
 				<div class="ts-pbar__volume" data-ts-volume-wrap>

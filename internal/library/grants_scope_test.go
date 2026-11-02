@@ -48,11 +48,18 @@ func TestGrantScopeHidesEverything(t *testing.T) {
 		exec(`INSERT INTO shelf_items(shelf_id, book_id, idx, added_at) VALUES ('sh_1', ?, ?, 1)`, b.ID, i)
 	}
 
+	// An admin shares a shelf holding the visible book, a hidden sibling and a hidden book elsewhere.
+	exec(`INSERT INTO users(id, username, role, created_at) VALUES ('us_adm', 'adm', 'admin', 1)`)
+	exec(`INSERT INTO shelves(id, owner_id, name, shared, created_at, updated_at) VALUES ('sh_adm', 'us_adm', 'Admin picks', 1, 1, 1)`)
+	for i, b := range []library.Book{visible, sibling, elsewhere, refused, missing} {
+		exec(`INSERT INTO shelf_items(shelf_id, book_id, idx, added_at) VALUES ('sh_adm', ?, ?, 1)`, b.ID, i)
+	}
+
 	checker := share.New(st)
 	member := users.User{ID: "us_mem", Role: users.RoleMember}
 	owner := users.User{ID: "us_own", Role: users.RoleOwner}
 	scopeOf := func(u users.User) library.Scope {
-		return library.Scope{Books: checker.BookFilter(u, "b"), Libraries: checker.LibraryFilter(u, "l")}
+		return library.Scope{Books: checker.BookFilter(u, "b"), Libraries: checker.LibraryFilter(u, "l"), Shared: checker.SharedBooks(u)}
 	}
 	sc, full := scopeOf(member), scopeOf(owner)
 
@@ -101,6 +108,11 @@ func TestGrantScopeHidesEverything(t *testing.T) {
 	checkAs("Shelves", func(s library.Scope) (any, error) { return wrap(r.Shelves(ctx, s, "us_mem")) })
 	checkAs("ShelfCounts", func(s library.Scope) (any, error) { return wrap(r.ShelfCounts(ctx, s, "us_mem")) })
 	checkAs("ShelfBooks", func(s library.Scope) (any, error) { return wrap(r.ShelfBooks(ctx, s, "us_mem", "sh_1", "", 20)) })
+	checkAs("SharedWithYou", func(s library.Scope) (any, error) { return wrap(r.SharedWithYou(ctx, s, 10)) })
+	checkAs("SharedShelves", func(s library.Scope) (any, error) { return wrap(r.SharedShelves(ctx, s, "us_mem")) })
+	checkAs("ListBooks shared", func(s library.Scope) (any, error) {
+		return wrap(r.ListBooks(ctx, s, library.ListQuery{Show: library.ShowShared}))
+	})
 	checkAs("ListBooks", func(s library.Scope) (any, error) { return wrap(r.ListBooks(ctx, s, library.ListQuery{})) })
 	checkAs("ListBooks in the closed library", func(s library.Scope) (any, error) {
 		return wrap(r.ListBooks(ctx, s, library.ListQuery{LibraryID: lh.ID}))
@@ -185,6 +197,15 @@ func TestGrantScopeHidesEverything(t *testing.T) {
 	}
 	if page, err := r.ListBooks(ctx, sc, library.ListQuery{}); err != nil || page.Total != 1 || len(page.Books) != 1 || page.Books[0].ID != visible.ID {
 		t.Errorf("ListBooks = %+v, %v", page, err)
+	}
+	if row, err := r.SharedWithYou(ctx, sc, 10); err != nil || row.Total != 1 || len(row.Books) != 1 || row.Books[0].Book.ID != visible.ID || len(row.Sharers) != 1 {
+		t.Errorf("SharedWithYou = %+v, %v", row, err)
+	}
+	if page, err := r.ListBooks(ctx, sc, library.ListQuery{Show: library.ShowShared}); err != nil || page.Total != 1 || len(page.Books) != 1 {
+		t.Errorf("ListBooks shared = %+v, %v", page, err)
+	}
+	if got, err := r.SharedShelves(ctx, sc, "us_mem"); err != nil || len(got) != 1 || got[0].Books != 1 || got[0].OwnerName != "adm" {
+		t.Errorf("SharedShelves = %+v, %v", got, err)
 	}
 	if shelves, err := r.Shelves(ctx, sc, "us_mem"); err != nil || len(shelves) != 1 || shelves[0].Books != 1 {
 		t.Errorf("Shelves = %+v, %v", shelves, err)

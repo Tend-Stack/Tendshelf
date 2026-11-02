@@ -20,6 +20,7 @@ import (
 const (
 	homeSeriesRows  = 3
 	homeBecauseRows = 12
+	homeSharedCards = 3
 )
 
 // homeHeroView builds the hero for the person's newest unfinished book, or nil when there is none.
@@ -167,4 +168,35 @@ func (s *server) getHomeHero(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.fragment(w, r, http.StatusOK, pages.HomeHero(v))
+}
+
+// homeSharedView builds "Shared with you": the newest three visible shared books and who shared
+// them. It returns nil when nothing visible is shared, and the total number of shared books.
+func (s *server) homeSharedView(ctx context.Context, r *http.Request) (*pages.HomeSharedView, int, error) {
+	row, err := s.lib.SharedWithYou(ctx, s.scope(r), homeSharedCards)
+	if err != nil || row.Total == 0 || len(row.Books) == 0 {
+		return nil, 0, err
+	}
+	v := &pages.HomeSharedView{Title: homeShared, From: sharedFrom(row.Sharers), SeeAllURL: "/libraries?show=" + library.ShowShared}
+	for _, b := range row.Books {
+		v.Cards = append(v.Cards, cardView(b.Book))
+	}
+	return v, row.Total, nil
+}
+
+// sharedFrom is the caption after "Shared with you": "from A", "from A and B" or
+// "from A, B and 3 others", newest sharer first. No names gives "".
+func sharedFrom(names []string) string {
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return fmt.Sprintf(homeSharedFrom, names[0])
+	case 2:
+		return fmt.Sprintf(homeSharedFrom, fmt.Sprintf(homeSharedTwo, names[0], names[1]))
+	}
+	if len(names) == 3 {
+		return fmt.Sprintf(homeSharedFrom, fmt.Sprintf(homeSharedOne, names[0], names[1]))
+	}
+	return fmt.Sprintf(homeSharedFrom, fmt.Sprintf(homeSharedMany, names[0], names[1], len(names)-2))
 }

@@ -34,6 +34,14 @@ const (
 	shelfMore          = "Show more"
 	shelfStart         = "Back to the start"
 
+	// New (P3-6).
+	shelfSharedBy      = "Shared by %s"
+	shelfShare         = "Share this shelf"
+	shelfStopSharing   = "Stop sharing"
+	shelfSharedNote    = "Members and admins can see this shelf, but only the books they already have."
+	shelfNotSharedNote = "Only you can see this shelf."
+	shelvesSharedTitle = "Shared with you"
+
 	shelfErrEmpty    = "Give the shelf a name."
 	shelfErrLong     = "Use 80 characters or fewer."
 	shelfErrTaken    = "You already have a shelf with that name."

@@ -53,6 +53,13 @@ func (s *server) getPeaks(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
+	s.servePeaks(w, r, f, "private, no-cache")
+}
+
+// servePeaks sends the peaks of a file the caller has already authorized and checked with
+// streamable, building them in the background when they are not there yet. It is shared by /peaks
+// and /s/{token}/peaks.
+func (s *server) servePeaks(w http.ResponseWriter, r *http.Request, f library.AudioFile, cacheControl string) {
 	path, ready, err := s.peaks.Lookup(f)
 	if err != nil {
 		slog.Warn("peaks lookup", "file", f.ID, "err", err)
@@ -101,7 +108,7 @@ func (s *server) getPeaks(w http.ResponseWriter, r *http.Request) {
 	h.Set("Content-Type", "application/octet-stream")
 	// The cache name carries the quick hash and the format, so the tag changes with either.
 	h.Set("ETag", `"pk`+strconv.Itoa(media.PeaksFormat)+`-`+f.QuickHash+`"`)
-	h.Set("Cache-Control", "private, no-cache")
+	h.Set("Cache-Control", cacheControl)
 	http.ServeContent(w, r, "", fi.ModTime(), file)
 }
 

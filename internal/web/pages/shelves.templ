@@ -9,7 +9,9 @@ var ShelfStyles = []string{"css/pages-home.css", "css/pages-library.css", "css/p
 // ShelfRowView is one shelf in the list: up to three covers, the name and "{n} books".
 type ShelfRowView struct {
 	Href, Name, Count string
-	Covers            []components.CardView
+	// By is "Shared by Lena" on a shelf another person shares; Count then starts with it.
+	By     string
+	Covers []components.CardView
 }
 
 // ShelvesView is the list of the person's shelves with the "New shelf" form. The handler writes
@@ -18,6 +20,9 @@ type ShelvesView struct {
 	CSRF               string
 	Rows               []ShelfRowView
 	NameValue, NameErr string
+	// Shared are the shelves other people share with this person; SharedTitle heads them.
+	Shared      []ShelfRowView
+	SharedTitle string
 }
 
 // ShelfItemView is one book on a shelf with the labels of its three buttons.
@@ -35,6 +40,11 @@ type ShelfView struct {
 	MoreHref, StartHref string
 	// RenameValue and RenameErr come back with a 422; the Rename disclosure then opens.
 	RenameValue, RenameErr string
+	// ReadOnly is a shelf shared by someone else: no rename, delete, move or remove, and By names
+	// the owner. CanShare shows the share form to the owner (staff); Shared is the current state and
+	// ShareNote and ShareLabel are the words of the note and the one button.
+	ReadOnly, CanShare, Shared bool
+	By, ShareNote, ShareLabel  string
 }
 
 // ShelfDeleteView is the confirmation before a shelf goes.
@@ -89,6 +99,31 @@ templ Shelves(v ShelvesView) {
 				}
 			</ul>
 		}
+		if len(v.Shared) > 0 {
+			<section class="ts-shelves-shared" aria-labelledby="shelves-shared-title">
+				<h2 id="shelves-shared-title" class="section">{ v.SharedTitle }</h2>
+				<ul class="ts-shelf-list">
+					for _, r := range v.Shared {
+						<li>
+							<a class="ts-row ts-shelf-row" href={ templ.SafeURL(r.Href) }>
+								<span class="ts-shelf-row__stack">
+									if len(r.Covers) == 0 {
+										<span class="ts-shelf-row__blank" aria-hidden="true">@components.Icon("library", false)</span>
+									}
+									for _, c := range r.Covers {
+										@components.Cover(c, "36")
+									}
+								</span>
+								<span class="ts-row__text">
+									<span class="ts-row__title">{ r.Name }</span>
+									<span class="ts-row__meta">{ r.Count }</span>
+								</span>
+							</a>
+						</li>
+					}
+				</ul>
+			</section>
+		}
 		<section class="ts-shelf-new" aria-labelledby="shelf-new-title">
 			<h2 id="shelf-new-title" class="ts-overline">New shelf</h2>
 			<form class="ts-shelf-form" method="post" action="/shelves" hx-boost="false">
@@ -108,6 +143,10 @@ templ Shelf(v ShelfView) {
 			<h1 class="title-1 ts-lib-head__title">{ v.Name }</h1>
 			<p class="caption ts-num ts-lib-head__count" role="status">{ v.Count }</p>
 		</header>
+		if v.ReadOnly {
+			<p class="caption ts-shelf-by">{ v.By }</p>
+		}
+		if !v.ReadOnly {
 		<div class="ts-shelf-tools">
 			<details class="ts-shelf-rename" open?={ v.RenameErr != "" }>
 				<summary class="ts-btn ts-btn--quiet">Rename</summary>
@@ -119,6 +158,18 @@ templ Shelf(v ShelfView) {
 			</details>
 			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL("/shelves/" + v.ID + "/delete") } hx-boost="false">Delete shelf</a>
 		</div>
+		}
+		if v.CanShare {
+			<form class="ts-shelf-share" method="post" action={ templ.URL("/shelves/" + v.ID + "/share") } hx-boost="false">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<p class="caption">{ v.ShareNote }</p>
+				if v.Shared {
+					<button type="submit" name="shared" value="0" class="ts-btn ts-btn--quiet">{ v.ShareLabel }</button>
+				} else {
+					<button type="submit" name="shared" value="1" class="ts-btn ts-btn--secondary">{ v.ShareLabel }</button>
+				}
+			</form>
+		}
 		if len(v.Items) == 0 {
 			@components.EmptyState("This shelf is empty", "Open a book and choose Add to shelf.", nil)
 		} else {
@@ -126,6 +177,7 @@ templ Shelf(v ShelfView) {
 				for _, it := range v.Items {
 					<li id={ "item-" + it.Card.ID } class="ts-shelf-item">
 						@components.BookRow(it.Card)
+						if !v.ReadOnly {
 						<div class="ts-shelf-item__tools">
 							if it.First {
 								<span class="ts-shelf-item__gap" aria-hidden="true"></span>
@@ -145,6 +197,7 @@ templ Shelf(v ShelfView) {
 								</button>
 							</form>
 						</div>
+						}
 					</li>
 				}
 			</ul>

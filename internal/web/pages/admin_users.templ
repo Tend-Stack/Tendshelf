@@ -51,6 +51,9 @@ type InviteLink struct {
 	Name, URL string
 	// Title and Note are the panel's two sentences; the handler writes both.
 	Title, Note string
+	// Label and FieldID name the field; empty means "Invite link" and "invite-link" (a share link
+	// sets both).
+	Label, FieldID string
 }
 
 // usersLiveBars is the "Listening now" mark: three bars the stylesheet animates.
@@ -185,14 +188,28 @@ templ AdminUsers(v UsersView) {
 	</div>
 }
 
+func inviteFieldID(l InviteLink) string {
+	if l.FieldID != "" {
+		return l.FieldID
+	}
+	return "invite-link"
+}
+
+func inviteFieldLabel(l InviteLink) string {
+	if l.Label != "" {
+		return l.Label
+	}
+	return "Invite link"
+}
+
 // InviteLinkPanel shows an invite's address, once: a status region with a read-only field. The
 // Users page and the Share & invite page both use it.
 templ InviteLinkPanel(l InviteLink) {
 	<div class="ts-invite__link" role="status">
 		<h2 class="body ts-invite__linktitle">{ l.Title }</h2>
 		<p class="caption">{ l.Note }</p>
-		<label class="caption" for="invite-link">Invite link</label>
-		<input class="ts-input" id="invite-link" type="text" readonly autofocus value={ l.URL }/>
+		<label class="caption" for={ inviteFieldID(l) }>{ inviteFieldLabel(l) }</label>
+		<input class="ts-input" id={ inviteFieldID(l) } type="text" readonly autofocus value={ l.URL }/>
 	</div>
 }
 

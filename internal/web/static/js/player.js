@@ -38,6 +38,9 @@ let lastRenderAt = 0;
 let hiddenAt = 0;
 let wantsFirstSound = false; // a play click is waiting for its first audible sound
 let stopped = false; // signed out: stop saving
+// A share link page (/s/{token}) puts the player in link mode: its media come from the link's own
+// address, the book from the inline #player-data, and the place stays in this browser only.
+const LINK = document.body.dataset.tsLink || "";
 let prompting = false; // the Continue there? question is on screen
 let beaconSent = false;
 let compatSeq = 0; // bumped to cancel a wait for a converted copy
@@ -194,6 +197,7 @@ function parseBook(el) {
 // Fetches a book's fragment (the last played book when id is empty). Null when there is none, or
 // when redirected, which means signed out.
 async function fetchBook(id) {
+  if (LINK) return linkBook(id);
   try {
     const res = await fetch(id ? "/hx/player/" + encode(id) : "/hx/player");
     if (res.status !== 200 || res.redirected) return null;
@@ -205,10 +209,56 @@ async function fetchBook(id) {
   }
 }
 
+// ---- Link mode: the book is on the page and the place is kept in this browser ----
+
+function linkPlaceKey(bookId) {
+  return "ts.link.place." + bookId;
+}
+
+function readLinkPlace(bookId) {
+  try {
+    return JSON.parse(localStorage.getItem(linkPlaceKey(bookId)));
+  } catch {
+    return null;
+  }
+}
+
+function saveLinkPlace(bookId, positionMs, finished) {
+  lastSavedMs = positionMs;
+  try {
+    localStorage.setItem(linkPlaceKey(bookId), JSON.stringify({ positionMs, updatedAt: Date.now(), finished }));
+  } catch {
+    // storage is optional
+  }
+}
+
+// The book of a link page, with the place this browser kept. Null for any other book.
+function linkBook(id) {
+  const el = document.getElementById("player-data");
+  const parsed = el ? parseBook(el) : null;
+  if (!parsed || (id && id !== parsed.id)) return null;
+  const place = readLinkPlace(parsed.id);
+  parsed.stored = place && place.updatedAt > 0 ? { positionMs: Number(place.positionMs) || 0, updatedAt: place.updatedAt, deviceId: "", deviceLabel: "", finished: !!place.finished } : null;
+  return parsed;
+}
+
+// The page's Play button becomes Resume when a place is kept, and starts from the loaded book
+// (not from the server's first file) so a click always goes to that place.
+function showLinkResume(bookId) {
+  const place = readLinkPlace(bookId);
+  if (!place || place.finished || !(place.positionMs > 0)) return;
+  for (const el of document.querySelectorAll("[data-ts-play]")) {
+    const label = el.querySelector("[data-ts-play-label]");
+    if (label && msg("resume")) label.textContent = msg("resume");
+    delete el.dataset.tsFile;
+    el.dataset.tsStartMs = Math.round(place.positionMs);
+  }
+}
+
 // ---- Timeline: one position across all the files of a book ----
 
 function streamUrl(file) {
-  return "/stream/" + encode(file.id);
+  return LINK + "/stream/" + encode(file.id);
 }
 
 // The first playable file ending after ms: its index and the offset in it, or the next file at 0
@@ -501,6 +551,7 @@ async function save(kind) {
 
   const id = book.id;
   const position = Math.round(bookPosition());
+  if (LINK) return saveLinkPlace(id, position, kind === "end");
   const extra = kind === "end" ? { finished: 1 } : kind === "force" ? { force: 1 } : {};
   const body = savePayload(extra);
   setPendingSave(id, body.toString());
@@ -540,6 +591,7 @@ async function save(kind) {
 
 // Sends saves that never got an answer, stopping at the first failure.
 async function flushPending() {
+  if (LINK) return; // another page of this browser may have left saves for the signed-in account
   for (const [id, body] of Object.entries(pendingSaves())) {
     try {
       if (!(await postProgress(id, body))) return;
@@ -560,7 +612,7 @@ function signedOut() {
 // ---- Prompt: continue where another device left off ----
 
 async function checkRemote() {
-  if (!book || stopped) return;
+  if (!book || stopped || LINK) return;
   try {
     const res = await api(progressUrl(book.id));
     if (res) maybeAskContinue((await res.json()).progress);
@@ -602,7 +654,7 @@ function render(force) {
 
   controls.title.textContent = book.title;
   controls.meta.textContent = fill(msg("chapterLeft"), { n: chapterIdx + 1, m: minutesLeft });
-  controls.open.href = "/books/" + encode(book.id);
+  controls.open.href = LINK || "/books/" + encode(book.id);
   setLabel("open", fill(msg("openPlayer") || msg("open"), { title: book.title, n: chapterIdx + 1 }));
   if (book.cover && controls.cover.getAttribute("src") !== book.cover) controls.cover.src = book.cover;
   controls.cover.hidden = !book.cover;
@@ -840,7 +892,7 @@ function startFromLink(data) {
   }
   current = { fileIdx: -1, fileId: data.tsFile, startMs: localStartMs, loaded: true, compat: false };
   audio.defaultPlaybackRate = 1;
-  audio.src = "/stream/" + encode(data.tsFile) + "#t=" + (localStartMs / 1000).toFixed(3);
+  audio.src = LINK + "/stream/" + encode(data.tsFile) + "#t=" + (localStartMs / 1000).toFixed(3);
   audio.play().catch(() => {});
   return loadBook(data.tsPlay);
 }
@@ -1057,6 +1109,7 @@ fetchBook("").then((fetched) => {
   if (!fetched || book) return;
   idleAt = fetched.stored ? fetched.stored.updatedAt : 0;
   adopt(fetched, fetched.stored && !fetched.stored.finished ? fetched.stored.positionMs : 0);
+  if (LINK) showLinkResume(fetched.id);
 });
 
 performance.mark("ts-player-ready");

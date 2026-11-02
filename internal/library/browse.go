@@ -71,12 +71,14 @@ const (
 	ShowUnfinished = "unfinished"
 	ShowNotStarted = "not_started"
 	ShowFinished   = "finished"
+	// ShowShared keeps the books shared with the person (Scope.Shared); it needs no user.
+	ShowShared = "shared"
 )
 
 // checkShow is the ErrInvalid a Show filter without a user or with an unknown value earns.
 func checkShow(q ListQuery) error {
 	switch q.Show {
-	case "":
+	case "", ShowShared:
 		return nil
 	case ShowUnfinished, ShowNotStarted, ShowFinished:
 		if q.UserID == "" {
@@ -262,6 +264,10 @@ func whereExcept(sc Scope, q ListQuery, skip string) *whereClause {
 	}
 	switch {
 	case q.Show == "":
+	case q.Show == ShowShared && sc.Shared.SQL == "":
+		w.add("0")
+	case q.Show == ShowShared:
+		w.add("b.id IN (SELECT book_id FROM ("+sc.Shared.SQL+"))", sc.Shared.Args...)
 	case q.UserID == "":
 		w.add("0") // checkShow refuses this; fail closed if a caller skips it
 	case q.Show == ShowUnfinished:

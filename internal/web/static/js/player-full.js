@@ -10,6 +10,7 @@
 const slot = document.getElementById("player");
 const dialog = document.getElementById("player-full");
 const root = document.documentElement;
+const LINK = document.body.dataset.tsLink; // link mode: no account, so no settings or bookmark requests
 const SIDE_PANEL = matchMedia("(min-width: 1280px)"); // from here the player is a side panel
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -526,7 +527,7 @@ function drawSpeedSheet(speed) {
 // this session. A change waits a second for the next one; leaving the page sends it at once.
 function saveSpeed(leaving) {
   clearTimeout(speedTimer);
-  if (!speedUnsaved) return;
+  if (!speedUnsaved || LINK) return;
   speedUnsaved = false;
   fetch("/me/settings", {
     method: "POST",
@@ -772,7 +773,7 @@ let bookmarking = false; // one request at a time
 
 // Always the live position at the moment of the press, never the position saved earlier.
 async function addBookmark() {
-  if (!book || bookmarking) return;
+  if (!book || bookmarking || LINK) return;
   bookmarking = true;
   try {
     const res = await fetch("/books/" + encodeURIComponent(book.id) + "/bookmarks", {

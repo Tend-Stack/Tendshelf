@@ -105,7 +105,7 @@ var browseLengthOptions = []struct{ Value, Label string }{
 
 // browseShowOptions are the listening-state choices of the Show filter ("Downloaded" waits for P4).
 var browseShowOptions = []struct{ Value, Label string }{
-	{library.ShowUnfinished, showUnfinished}, {library.ShowNotStarted, showNotStarted}, {library.ShowFinished, showFinished},
+	{library.ShowUnfinished, showUnfinished}, {library.ShowNotStarted, showNotStarted}, {library.ShowFinished, showFinished}, {library.ShowShared, showShared},
 }
 
 func browseEmpty(kind, clearHref string) *pages.EmptyView {

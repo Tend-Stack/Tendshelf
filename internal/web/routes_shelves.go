@@ -37,6 +37,7 @@ func (s *server) registerShelves(mux *http.ServeMux) {
 	mux.HandleFunc("POST /shelves", s.postShelf)
 	mux.HandleFunc("GET /shelves/{id}", s.getShelf)
 	mux.HandleFunc("POST /shelves/{id}/rename", s.postShelfRename)
+	mux.HandleFunc("POST /shelves/{id}/share", s.postShelfShare)
 	mux.HandleFunc("GET /shelves/{id}/delete", s.getShelfDelete)
 	mux.HandleFunc("POST /shelves/{id}/delete", s.postShelfDelete)
 	mux.HandleFunc("POST /shelves/{id}/items", s.postShelfAdd)
@@ -75,6 +76,29 @@ func (s *server) loadShelf(w http.ResponseWriter, r *http.Request) (users.User, 
 		return u, sh, false
 	}
 	return u, sh, true
+}
+
+// viewShelf authorizes reading a shelf, the person's own or one shared with them, and loads it. own
+// is true for the person's own shelf. An unknown shelf and one the person may not read both answer
+// 404, so a shelf's existence does not leak.
+func (s *server) viewShelf(w http.ResponseWriter, r *http.Request) (u users.User, sh library.Shelf, own, ok bool) {
+	u = currentUser(r)
+	sh, err := s.lib.ShelfByID(r.Context(), r.PathValue("id"))
+	if errors.Is(err, library.ErrNotFound) {
+		s.notFound(w, r)
+		return u, sh, false, false
+	}
+	if err != nil {
+		s.serverError(w, r, "load shelf", err)
+		return u, sh, false, false
+	}
+	if sh.OwnerID == u.ID && s.can.Can(r.Context(), u, share.UseShelves, share.Target{Kind: share.TargetShelf, ID: sh.ID, OwnerID: u.ID}) {
+		return u, sh, true, true
+	}
+	if !s.allow(w, r, share.ViewShelf, share.Target{Kind: share.TargetShelf, ID: sh.ID, OwnerID: sh.OwnerID, Shared: sh.Shared}) {
+		return u, sh, false, false
+	}
+	return u, sh, false, true
 }
 
 // shelfNext is where a form returns to: the same-origin address in next, else def.
@@ -153,18 +177,37 @@ func (s *server) shelvesPage(w http.ResponseWriter, r *http.Request, status int,
 	}
 	v := pages.ShelvesView{CSRF: s.csrf.TokenFrom(r.Context()), NameValue: name, NameErr: nameErr}
 	for _, sh := range list {
-		row := pages.ShelfRowView{Href: "/shelves/" + sh.ID, Name: sh.Name, Count: countText(sh.Books, "1 book", "%d books")}
-		for _, c := range sh.Covers {
-			bc := library.BookCard{ID: c.BookID, Title: c.Title}
-			if c.SHA != "" {
-				ref := c.CoverRef
-				bc.Cover = &ref
-			}
-			row.Covers = append(row.Covers, cardView(bc))
+		v.Rows = append(v.Rows, shelfRow(sh))
+	}
+	if s.can.Can(r.Context(), u, share.ViewShelf, share.Target{Kind: share.TargetShelf, Shared: true}) {
+		others, err := s.lib.SharedShelves(r.Context(), s.scope(r), u.ID)
+		if err != nil {
+			s.serverError(w, r, "list shared shelves", err)
+			return
 		}
-		v.Rows = append(v.Rows, row)
+		v.SharedTitle = shelvesSharedTitle
+		for _, sh := range others {
+			row := shelfRow(sh)
+			row.By = fmt.Sprintf(shelfSharedBy, sh.OwnerName)
+			row.Count = row.By + " · " + row.Count
+			v.Shared = append(v.Shared, row)
+		}
 	}
 	s.pageStyled(w, r, status, shelfTitle, "shelves", pages.Shelves(v), nil, pages.ShelfStyles...)
+}
+
+// shelfRow is a shelf's line in a list: link, name, visible-book count and covers.
+func shelfRow(sh library.ShelfSummary) pages.ShelfRowView {
+	row := pages.ShelfRowView{Href: "/shelves/" + sh.ID, Name: sh.Name, Count: countText(sh.Books, "1 book", "%d books")}
+	for _, c := range sh.Covers {
+		bc := library.BookCard{ID: c.BookID, Title: c.Title}
+		if c.SHA != "" {
+			ref := c.CoverRef
+			bc.Cover = &ref
+		}
+		row.Covers = append(row.Covers, cardView(bc))
+	}
+	return row
 }
 
 func (s *server) postShelf(w http.ResponseWriter, r *http.Request) {
@@ -217,12 +260,12 @@ func (s *server) getShelf(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) shelfPage(w http.ResponseWriter, r *http.Request, status int, renameValue, renameErr string) {
-	u, sh, ok := s.loadShelf(w, r)
+	u, sh, own, ok := s.viewShelf(w, r)
 	if !ok {
 		return
 	}
 	cursor := r.URL.Query().Get("cursor")
-	page, err := s.lib.ShelfBooks(r.Context(), s.scope(r), u.ID, sh.ID, cursor, shelfPageSize)
+	page, err := s.lib.ShelfBooks(r.Context(), s.scope(r), sh.OwnerID, sh.ID, cursor, shelfPageSize)
 	if errors.Is(err, library.ErrInvalid) {
 		s.errorPage(w, r, http.StatusBadRequest)
 		return
@@ -239,8 +282,21 @@ func (s *server) shelfPage(w http.ResponseWriter, r *http.Request, status int, r
 	if renameErr != "" {
 		v.RenameValue = renameValue
 	}
+	if !own {
+		v.ReadOnly, v.By = true, fmt.Sprintf(shelfSharedBy, sh.OwnerName)
+	} else if s.can.Can(r.Context(), u, share.ManageUsers, share.Target{Kind: share.TargetServer}) {
+		v.CanShare, v.Shared = true, sh.Shared
+		v.ShareNote, v.ShareLabel = shelfNotSharedNote, shelfShare
+		if sh.Shared {
+			v.ShareNote, v.ShareLabel = shelfSharedNote, shelfStopSharing
+		}
+	}
 	for i, b := range page.Books {
 		c := cardView(b)
+		if !own {
+			v.Items = append(v.Items, pages.ShelfItemView{Card: c})
+			continue
+		}
 		v.Items = append(v.Items, pages.ShelfItemView{
 			Card: c, First: cursor == "" && i == 0, Last: page.Next == "" && i == len(page.Books)-1,
 			UpLabel: fmt.Sprintf(shelfMoveUp, b.Title), DownLabel: fmt.Sprintf(shelfMoveDown, b.Title),
@@ -255,6 +311,37 @@ func (s *server) shelfPage(w http.ResponseWriter, r *http.Request, status int, r
 		v.StartHref = path
 	}
 	s.pageStyled(w, r, status, sh.Name, "shelf-"+sh.ID, pages.Shelf(v), nil, pages.ShelfStyles...)
+}
+
+// postShelfShare turns sharing of the person's own shelf on or off. Only staff share; anyone else,
+// and anyone who does not own the shelf, gets 404.
+func (s *server) postShelfShare(w http.ResponseWriter, r *http.Request) {
+	if !s.parseForm(w, r) {
+		return
+	}
+	u, sh, ok := s.loadShelf(w, r)
+	if !ok || !s.allow(w, r, share.ManageUsers, share.Target{Kind: share.TargetServer}) {
+		return
+	}
+	var on bool
+	switch r.PostFormValue("shared") {
+	case "1":
+		on = true
+	case "0":
+	default:
+		s.errorPage(w, r, http.StatusBadRequest)
+		return
+	}
+	err := s.lib.SetShelfShared(r.Context(), u.ID, sh.ID, on)
+	if errors.Is(err, library.ErrNotFound) {
+		s.notFound(w, r)
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "share shelf", err)
+		return
+	}
+	s.shelfSeeOther(w, r, "/shelves/"+sh.ID)
 }
 
 func (s *server) postShelfRename(w http.ResponseWriter, r *http.Request) {

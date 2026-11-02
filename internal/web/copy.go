@@ -201,6 +201,11 @@ const (
 	homeSeriesCont   = "Continue series %s"
 	homeSeriesStart  = "Start series %s"
 	homeBecause      = "Because you listened to"
+	homeShared       = "Shared with you"
+	homeSharedFrom   = "from %s"
+	homeSharedTwo    = "%s and %s"
+	homeSharedOne    = "%s, %s and 1 other"
+	homeSharedMany   = "%s, %s and %d others"
 	playMarkFinished = "Mark as finished"
 	playMarkNot      = "Mark as not started"
 	chapterPlayed    = "%s, played"
@@ -209,6 +214,7 @@ const (
 	showUnfinished   = "Unfinished"
 	showNotStarted   = "Not started"
 	showFinished     = "Finished"
+	showShared       = "Shared with you"
 )
 
 // P1c-7a bookmarks. "Bookmarks and notes", "Export", "Play from here", "No note", "Add a note", "Bookmark
@@ -372,7 +378,7 @@ func playerMsgs() components.PlayerMsgs {
 		ScrubValue: msgScrubValue, FineScrub: msgFineScrub, ClosePlayer: msgClosePlayer, PrevChapter: msgPrevChapter,
 		NextChapter: msgNextChapter, Speed: msgSpeed, Sleep: msgSleep, Chapters: msgChapters, Bookmark: msgBookmark,
 		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
-		OpenPlayer: msgOpenPlayer, ScrubBubble: msgScrubBubble,
+		OpenPlayer: msgOpenPlayer, Resume: playResume, ScrubBubble: msgScrubBubble,
 		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SleepTitle: msgSleepTitle,
 		SleepEndOfChapter: msgSleepEndOfChapter, SleepMinutes: msgSleepMinutes, SleepIn: msgSleepIn,
 		SleepCustom: msgSleepCustom, SleepCustomLabel: msgSleepCustomLabel, SleepStart: msgSleepStart,

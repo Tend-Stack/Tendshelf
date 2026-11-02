@@ -8,3 +8,9 @@ Operator's adjustment when handing it over: keep the panel to **About and Bookma
 tab is left out on desktop, because the player bar already opens its own chapters list (it may make
 sense on mobile). How the design maps onto the app, and the declared differences, are in
 `docs/design/screens.md`.
+
+Second adjustment (same day): the panel's **top part stays as the current player top** (chapter
+header, cover, title, subtitle, the big clock, time left in chapter, the chapter ruler and times);
+"read by {narrator}" is added to the subtitle. Only the transport row goes on desktop. The design's
+new hero (larger cover, Book page and Share buttons, compact scrolled header) is not used; Book page
+and Share move into the ⋯ menu.
