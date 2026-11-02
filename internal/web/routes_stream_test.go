@@ -208,7 +208,7 @@ func TestStreamAccess(t *testing.T) {
 		if code != http.StatusNotFound {
 			t.Errorf("%s: %d, want 404", name, code)
 		}
-		for _, w := range []string{book.Title, files[0].ID, files[0].Path, "wav"} {
+		for _, w := range []string{book.Title, files[0].ID, files[0].Path, ".wav", "audio/wav"} {
 			if strings.Contains(string(body), w) {
 				t.Errorf("%s: the answer leaks %q", name, w)
 			}

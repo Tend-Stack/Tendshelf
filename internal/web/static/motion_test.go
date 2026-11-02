@@ -280,10 +280,13 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// sheets, the sleep timer, the bookmark toast and the B key to player-full.js (12 KB).
 	"player.js":      {12 * 1024, 64 * 1024},
 	"player-full.js": {12 * 1024, 64 * 1024},
+	// W2: the waveform drawing. The plan said 2 KB; the version written for reading (comments, one
+	// statement per line) is 3.0 KB, so the limit is 3.5 KB; see the AGENTS.md rule: report, never squeeze.
+	"waveform.js": {3584, 16 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
-const jsTotalGzip = 28 * 1024 // 12 (player.js) + 4 (shell.js) + 12 (player-full.js)
+const jsTotalGzip = 30 * 1024 // 12 (player.js) + 4 (shell.js) + 12 (player-full.js) + 3 (waveform.js)
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

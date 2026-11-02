@@ -158,6 +158,41 @@ body { margin: 0; font-family: var(--font-sans); background: var(--ground); colo
 /* Scrubber: a ruler with chapter ticks */
 .ts-scrub { position: relative; height: 2rem; --scrub-fill: var(--cover-accent); }
 .ts-scrub__line { position: absolute; left: 0; right: 0; top: 1.125rem; height: 1px; background: var(--line-strong); }
+/* The waveform sits under the chapter scrubber (W2). Two stacked SVGs: the muted one, and the played
+   one clipped to the scrubber's position. It is a picture only, so it takes no pointer. */
+.ts-wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0.375rem;
+  height: 1.5rem;
+  pointer-events: none;
+}
+.ts-wave svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ts-wave__muted {
+  fill: var(--line-strong);
+  opacity: 0.5;
+}
+.ts-wave__played {
+  fill: var(--scrub-fill);
+  opacity: 0.55;
+  clip-path: inset(0 calc((1 - var(--ts-pos, 0)) * 100%) 0 0);
+}
+/* Contrast: no accent, the played part is plain ink against the strong line. */
+[data-theme="contrast"] .ts-wave__muted { opacity: 1; }
+[data-theme="contrast"] .ts-wave__played {
+  fill: var(--ink);
+  opacity: 1;
+}
+@media (forced-colors: active) {
+  .ts-wave { display: none; }
+}
 .ts-scrub__tick { position: absolute; top: 0.6875rem; width: 1px; height: 0.5rem; background: var(--line-strong); }
 .ts-scrub__chapter { position: absolute; top: 1.4375rem; height: 2px; border-radius: 1px; background: var(--scrub-fill); opacity: 0.55; }
 .ts-scrub__fill { position: absolute; left: 0; top: 1.0625rem; height: 0.1875rem; background: var(--scrub-fill); }

@@ -11,6 +11,7 @@ import (
 // semantics. which is "full" or "bar".
 templ Scrubber(m PlayerMsgs, class, which string) {
 	<div class={ "ts-scrub", class } data-ts-scrub={ which }>
+		<div class="ts-wave" aria-hidden="true" data-ts-wave></div>
 		<div class="ts-scrub__line"></div>
 		<div class="ts-scrub__fill"></div>
 		<div class="ts-scrub__needle"></div>
