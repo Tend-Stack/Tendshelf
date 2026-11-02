@@ -102,6 +102,10 @@ html[data-theme="contrast"] .is-tinted.ts-ink-deep { background: var(--surface);
 .ts-home__pair > #row-shared { margin-top: var(--space-24); }
 .ts-home__cards--three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
 .ts-home__cards--three > .ts-card { flex: initial; }
+/* Larger text (P3-11): "New on the shelf" is a grid of covers, two across on a phone, three from 768, four
+   from 1280; the extra cards the server sends are hidden so the row never ends in a gap. */
+.ts-home__cards--grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+.ts-home__cards--grid > .ts-card { flex: initial; }
 .ts-home__rowsub { margin: 0; color: var(--ink-muted); font-family: var(--font-sans); }
 @media (max-width: 767.98px) {
   /* Phone: the sharer sits under the title, with its first letter capital ("From Daniel") */
@@ -109,10 +113,15 @@ html[data-theme="contrast"] .is-tinted.ts-ink-deep { background: var(--surface);
   .ts-home__rowsub { display: block; }
   .ts-home__rowsep { display: none; }
   .ts-home__rowsub::first-letter { text-transform: uppercase; }
+  .ts-home__cards--grid > :nth-child(n+3) { display: none; }
+}
+@media (min-width: 768px) and (max-width: 1279.98px) {
+  .ts-home__cards--grid > :nth-child(n+4) { display: none; }
 }
 @media (min-width: 768px) {
   .ts-home__rowsub { display: inline; }
   .ts-home__cards--three { grid-template-columns: repeat(3, minmax(0, 10rem)); }
+  .ts-home__cards--grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 /* From 1024 the two rows sit side by side (the Home tablet board is drawn at 1024); at 768 the content
    is too narrow for two columns of three covers, so they stack. */
@@ -122,4 +131,5 @@ html[data-theme="contrast"] .is-tinted.ts-ink-deep { background: var(--surface);
 }
 @media (min-width: 1280px) {
   .ts-home__pair { grid-template-columns: repeat(auto-fit, minmax(26.25rem, 1fr)); }
+  .ts-home__cards--grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }

@@ -62,6 +62,7 @@ func settingsView(csrf string, s users.Settings) pages.SettingsView {
 	return pages.SettingsView{
 		CSRF: csrf, Theme: s.Theme, Speed: s.Speed, SkipBackS: s.SkipBackS, SkipForwardS: s.SkipForwardS,
 		AutoRewind: s.AutoRewind, NextInSeries: s.NextInSeries, PlayerTint: s.PlayerTint, BigButtons: s.BigButtons,
+		TextSize: s.TextSize,
 	}
 }
 
@@ -110,6 +111,9 @@ func settingsFromForm(f url.Values, cur users.Settings) (next users.Settings, ok
 			}
 			*dst = n
 		}
+	}
+	if v, has := last("text_size"); has {
+		next.TextSize = v // Validate refuses anything but standard and large
 	}
 	skip("skip_back", &next.SkipBackS)
 	skip("skip_forward", &next.SkipForwardS)

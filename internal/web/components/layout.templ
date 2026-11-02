@@ -13,6 +13,8 @@ type Page struct {
 	Title   string
 	Current string // key of the current MainNav item, "" for none
 	Theme   string // dark, light, sepia or contrast; "" follows the system
+	// TextSize is "large" for a person who chose Larger text in Settings; "" renders the standard size.
+	TextSize string
 	CSRF    string
 	Assets  *static.Set
 	// Sheet, when set, is rendered inside #sheet on a full-page load, so a canonical URL such as
@@ -81,6 +83,9 @@ templ Layout(p Page, body templ.Component) {
 		lang="en"
 		if p.Theme != "" {
 			data-theme={ p.Theme }
+		}
+		if p.TextSize == "large" {
+			data-text-size="large"
 		}
 	>
 		@Head(p.withPrefetch(), layoutStyles()...)

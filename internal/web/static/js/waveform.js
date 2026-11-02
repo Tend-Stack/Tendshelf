@@ -138,7 +138,8 @@ const bar = barWave && {
   elapsed: document.querySelector('[data-pbar="elapsed"]'),
   title: document.querySelector('[data-pbar="chapter"]'),
   left: document.querySelector('[data-pbar="left"]'),
-  meta: document.querySelector("[data-ts-bar-meta]"),
+  author: document.querySelector("[data-ts-bar-author]"),
+  metaLeft: document.querySelector("[data-ts-bar-left]"),
   tip: barBook && barBook.querySelector("[data-ts-bar-booktip]"),
 };
 let loadingNow = false; // values of the shown chapter are still on their way
@@ -296,7 +297,9 @@ function drawBar(state, info, chapter, force) {
   bar.input.setAttribute("aria-label", fill(msg("waveLabel"), { n }));
   setText(bar.label, fill(msg("waveLabel"), { n }));
   const left = leftInBook(Math.ceil(Math.max(0, state.durationMs - state.positionMs) / state.speed / 60000));
-  setText(bar.meta, info.author ? fill(msg("barMeta"), { author: info.author, left }) : left);
+  // "{author} · {left}" is two spans: the author may be cut short, the time left never is.
+  setText(bar.author, info.author ? fill(msg("barMeta").split("{left}")[0], { author: info.author }) : "");
+  setText(bar.metaLeft, left);
   if (!drag && (force || Date.now() - textAt >= VALUE_TEXT_EVERY_MS)) {
     textAt = Date.now();
     const length = chapter.end - chapter.start;

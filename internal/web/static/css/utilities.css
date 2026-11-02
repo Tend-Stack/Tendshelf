@@ -2,6 +2,8 @@
 
 /* Native feel */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; scrollbar-gutter: stable; }
+/* Larger text (P3-11): a percentage, so it stacks on the browser's own text size and every rem grows with it. */
+html[data-text-size="large"] { font-size: 125%; }
 a, button, [role="button"], input, label { touch-action: manipulation; }
 .ts-sheet, .ts-dialog { overscroll-behavior: contain; }
 .ts-sheet__grab { touch-action: none; }
