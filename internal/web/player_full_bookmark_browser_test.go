@@ -81,7 +81,8 @@ func TestFullPlayerBrowserBookmark(t *testing.T) {
 
 	// The Bookmarks tab of the playing book shows the live place and saves it.
 	playerClickSel(t, wide, `a[href="/books/`+e.book.ID+`"]`)
-	wide.WaitFor(`location.pathname === "/books/`+e.book.ID+`"`, 5*time.Second)
+	// The address changes before the swap lands: wait for the tab itself, not only the path.
+	wide.WaitFor(`location.pathname === "/books/`+e.book.ID+`" && document.getElementById("book-tab-bookmarks") !== null`, 5*time.Second)
 	wide.Eval(`document.getElementById("book-tab-bookmarks").click()`, nil)
 	wide.WaitFor(`document.querySelector("form[data-ts-bookmark-add]") !== null`, 5*time.Second)
 	wide.WaitFor(`document.querySelector("[data-ts-bookmark-add-label]").textContent !== "Bookmark this moment · 0:10"`, 2*time.Second)

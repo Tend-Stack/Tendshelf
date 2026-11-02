@@ -187,7 +187,10 @@ func TestVisualBookTabsAndSearchLive(t *testing.T) {
 	tab.Navigate(srv.URL + "/books/" + bookID)
 	tab.WaitFor(`window.htmx !== undefined`, 5*time.Second)
 	tab.Eval(`document.getElementById("book-tab-chapters").click()`, nil)
-	tab.WaitFor(`location.pathname.endsWith("/chapters") && document.querySelectorAll(".ts-chapter").length === 12`, 5*time.Second)
+	// Wait for everything checked below, not only the chapters: the tab list and the panel's label land in the same
+	// swap, and on a slow run (the full package) the check could read them a moment early.
+	tab.WaitFor(`location.pathname.endsWith("/chapters") && document.querySelectorAll(".ts-chapter").length === 12 &&
+	  (document.querySelector('#book-tabs [aria-current="page"]') || {}).id === "book-tab-chapters"`, 5*time.Second)
 	var got struct {
 		Current, Labelled string
 		Hero              bool
@@ -203,7 +206,8 @@ func TestVisualBookTabsAndSearchLive(t *testing.T) {
 	tab.Navigate(srv.URL + "/search")
 	tab.WaitFor(`window.htmx !== undefined`, 5*time.Second)
 	tab.Eval(`(() => { const i = document.getElementById("search-q"); i.focus(); i.value = "harbour"; i.dispatchEvent(new Event("input", {bubbles: true})); })()`, nil)
-	tab.WaitFor(`document.querySelectorAll("#search-results .ts-row").length > 0 && location.search.includes("q=harbour")`, 5*time.Second)
+	tab.WaitFor(`document.querySelectorAll("#search-results .ts-row").length > 0 && location.search.includes("q=harbour") &&
+	  Boolean(document.querySelector("#search-clear a")) && Boolean(document.querySelector('#search-segments a[aria-current="true"][href="/search?q=harbour"]'))`, 5*time.Second)
 	var live struct {
 		Focus, Clear bool
 		Seg          string

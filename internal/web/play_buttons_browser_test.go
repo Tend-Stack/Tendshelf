@@ -97,14 +97,32 @@ func TestPlayButtonBrowserEarlyClick(t *testing.T) {
 	if err := tab.Call("Page.navigate", map[string]any{"url": srv.URL + "/books/" + e.book.ID}, nil); err != nil { // Navigate would wait for the module
 		t.Fatal(err)
 	}
-	tab.WaitFor(`document.querySelector("#book-play [data-ts-play]") !== null`, 10*time.Second)
+	// Wait for a settled layout, not just the element: under load (make check runs this with -race) the
+	// stylesheets and fonts can still move the button between measuring it and clicking. Not the load
+	// event: the gated player script holds it back.
+	tab.WaitFor(`document.querySelector("#book-play [data-ts-play]") !== null && document.readyState !== "loading" &&
+	  document.fonts.status === "loaded"`, 10*time.Second)
 	var hasPlayer bool
 	tab.Eval(`window.tsPlayer !== undefined`, &hasPlayer)
 	if hasPlayer {
 		t.Fatal("the player loaded before the click: the test proves nothing")
 	}
 	playerClickSel(t, tab, "#book-play [data-ts-play]")
-	tab.WaitFor(`location.pathname === "/stream/`+e.files[1].ID+`"`, 10*time.Second)
+	// Poll by hand so a timeout says what the page was doing (this failed once under make check -race).
+	want := "/stream/" + e.files[1].ID
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(50 * time.Millisecond) {
+		var path string
+		if tab.TryEval(`location.pathname`, &path) == nil && path == want {
+			break
+		}
+		if time.Now().After(deadline) {
+			var diag string
+			tab.TryEval(`JSON.stringify({href: location.href, ready: document.readyState, htmx: !!window.htmx,
+			  player: !!window.tsPlayer, link: (document.querySelector("#book-play [data-ts-play]") || {}).outerHTML,
+			  active: document.activeElement && document.activeElement.outerHTML.slice(0, 120)})`, &diag)
+			t.Fatalf("the early click did not open %s: %s", want, diag)
+		}
+	}
 	var hash string
 	tab.Eval(`location.hash`, &hash)
 	if hash != "#t=5.000" {
