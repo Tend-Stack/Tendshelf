@@ -94,6 +94,14 @@ func certificate(t testing.TB) (tls.Certificate, *x509.CertPool) {
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key, Leaf: leaf}, pool
 }
 
+// SetFail changes, while the server runs, the steps that fail (the same map as Options.Fail), always.
+func (s *Server) SetFail(steps map[string]int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.opts.Fail = steps
+	s.opts.FailTimes = 0
+}
+
 // Addr is host:port.
 func (s *Server) Addr() string { return s.ln.Addr().String() }
 
@@ -135,12 +143,12 @@ func (s *Server) serve() {
 
 // fail reports the code to refuse step with, or 0 to let it pass.
 func (s *Server) fail(step string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	code, ok := s.opts.Fail[step]
 	if !ok {
 		return 0
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.opts.FailTimes > 0 && s.injected >= s.opts.FailTimes {
 		return 0
 	}

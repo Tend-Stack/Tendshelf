@@ -13,7 +13,7 @@ import "github.com/Tend-Stack/tendshelf/internal/web/components"
 
 // ShareStyles are the sheets of the Share & invite page: the form and invite pieces it borrows,
 // the Users page pieces for the people list, and its own.
-var ShareStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-share.css"}
+var ShareStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-share.css", "css/pages-email.css"}
 
 // ShareChoice is one radio card of the form (what they can listen to, what they can do, how long
 // the link works). The handler writes every word.
@@ -758,14 +758,14 @@ func shareForm(v ShareView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else if v.EmailSetup != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<p class=\"caption ts-share__tabhint\">To have Tendshelf send it, <a href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<p class=\"caption ts-share__setup\">To have Tendshelf send it, <a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var32 string
 				templ_7745c5c3_Var32, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.EmailSetup)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/share.templ`, Line: 241, Col: 106}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/share.templ`, Line: 241, Col: 104}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
 				if templ_7745c5c3_Err != nil {
@@ -1811,7 +1811,7 @@ func shareMailPanel(m ShareMail) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 167, "\"> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" data-copy=\"#share-link\">Copy link</button> <label class=\"caption\" for=\"share-message\">Message</label> <textarea class=\"ts-input\" id=\"share-message\" readonly rows=\"10\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 167, "\" autocomplete=\"off\"> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" data-copy=\"#share-link\" hidden>Copy link</button> <label class=\"caption\" for=\"share-message\">Message</label> <textarea class=\"ts-input\" id=\"share-message\" readonly rows=\"10\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1824,7 +1824,7 @@ func shareMailPanel(m ShareMail) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 168, "</textarea> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" data-copy=\"#share-message\">Copy message</button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 168, "</textarea> <button type=\"button\" class=\"ts-btn ts-btn--secondary\" data-copy=\"#share-message\" hidden>Copy message</button><p class=\"ts-sr\" aria-live=\"polite\" data-copy-status></p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -227,6 +227,8 @@ templ InviteLinkPanel(l InviteLink) {
 		<p class="caption">{ l.Note }</p>
 		<label class="caption" for={ inviteFieldID(l) }>{ inviteFieldLabel(l) }</label>
 		<input class="ts-input" id={ inviteFieldID(l) } type="text" readonly autofocus value={ l.URL }/>
+		<button type="button" class="ts-btn ts-btn--secondary" data-copy={ "#" + inviteFieldID(l) } hidden>Copy link</button>
+		<p class="ts-sr" aria-live="polite" data-copy-status></p>
 	</div>
 }
 

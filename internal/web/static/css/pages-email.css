@@ -1,0 +1,46 @@
+/* Email: the Share page's "Email it" tab (the answer panel, sent and failed lines) and the owner's
+   Email settings page. Tokens only; every rule works in all four themes. */
+
+/* The tabs are links now. */
+a.ts-share__tab { text-decoration: none; }
+a.ts-share__tab:hover { background: var(--surface); }
+a.ts-share__tab[aria-current="true"]:hover { background: var(--raised); }
+a.ts-share__tab:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+.ts-share__setup { margin: 0; color: var(--ink-muted); }
+.ts-share__setup a, .ts-email a { color: var(--ink); text-decoration: underline; }
+
+/* The answer to "Send invitation": the email-app button, the link and the message, to copy. */
+.ts-share__mailpanel [hidden] { display: none; }
+.ts-share__mailpanel .ts-btn { align-self: flex-start; }
+.ts-share__mailpanel .ts-input { max-width: none; }
+.ts-share__mailpanel textarea { min-height: 11rem; resize: vertical; font: 400 0.9375rem/1.5rem var(--font-sans); }
+.ts-share__mailpanel label { margin-top: var(--space-4); }
+
+/* Pending invites: "Link created for …", "Sent to …", "Couldn't send …". */
+.ts-share__mail { color: var(--ink-muted); }
+.ts-share__mail--failed { color: var(--danger); font-weight: 600; }
+
+/* Email settings */
+.ts-email { max-width: 35rem; }
+.ts-email .body, .ts-email__status, .ts-email__hint { margin: 0; }
+.ts-email__status, .ts-email__hint { color: var(--ink-muted); }
+.ts-email__fill, .ts-email__form, .ts-email__testbox form { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-email__fill, .ts-email__form, .ts-email__testbox { padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-email__testbox { display: flex; flex-direction: column; gap: var(--space-12); }
+.ts-email__testbox h2, .ts-email__testbox p { margin: 0; }
+.ts-email .ts-select, .ts-email .ts-input { max-width: none; }
+.ts-email .ts-btn { align-self: flex-start; }
+.ts-email__test { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-12) var(--space-16); border-radius: var(--radius-md); background: var(--raised); }
+.ts-email__test p { margin: 0; }
+.ts-email__test--failed { color: var(--danger); font-weight: 600; }
+.ts-email__off { padding: var(--space-8) 0; }
+.ts-email__off summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; color: var(--ink-muted); }
+.ts-email__off p { margin: var(--space-8) 0; color: var(--ink-muted); }
+@media (min-width: 768px) {
+  .ts-email__fill, .ts-email__form, .ts-email__testbox { padding: var(--space-24); }
+}
+
+/* A pending row now can carry three actions (Send again, Copy link, Cancel): on a phone they wrap
+   under the text instead of squeezing it to a word per line. */
+.ts-share__pending { flex-wrap: wrap; }
+.ts-share__pending .ts-users__text { flex: 1 1 11rem; }

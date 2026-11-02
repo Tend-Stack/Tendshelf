@@ -4,7 +4,7 @@ import "github.com/Tend-Stack/tendshelf/internal/web/components"
 
 // ShareStyles are the sheets of the Share & invite page: the form and invite pieces it borrows,
 // the Users page pieces for the people list, and its own.
-var ShareStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-share.css"}
+var ShareStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-share.css", "css/pages-email.css"}
 
 // ShareChoice is one radio card of the form (what they can listen to, what they can do, how long
 // the link works). The handler writes every word.
@@ -238,7 +238,7 @@ templ shareForm(v ShareView) {
 				if v.EmailRelay {
 					<button type="submit" class="ts-btn ts-btn--secondary ts-btn--block" name="how" value="relay">Send it for me</button>
 				} else if v.EmailSetup != "" {
-					<p class="caption ts-share__tabhint">To have Tendshelf send it, <a href={ templ.SafeURL(v.EmailSetup) }>set up email</a>.</p>
+					<p class="caption ts-share__setup">To have Tendshelf send it, <a href={ templ.SafeURL(v.EmailSetup) }>set up email</a>.</p>
 				}
 			} else {
 				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">
@@ -449,10 +449,11 @@ templ shareMailPanel(m ShareMail) {
 			</a>
 		}
 		<label class="caption" for="share-link">Invite link</label>
-		<input class="ts-input" id="share-link" type="text" readonly value={ m.URL }/>
-		<button type="button" class="ts-btn ts-btn--secondary" data-copy="#share-link">Copy link</button>
+		<input class="ts-input" id="share-link" type="text" readonly value={ m.URL } autocomplete="off"/>
+		<button type="button" class="ts-btn ts-btn--secondary" data-copy="#share-link" hidden>Copy link</button>
 		<label class="caption" for="share-message">Message</label>
 		<textarea class="ts-input" id="share-message" readonly rows="10">{ m.Message }</textarea>
-		<button type="button" class="ts-btn ts-btn--secondary" data-copy="#share-message">Copy message</button>
+		<button type="button" class="ts-btn ts-btn--secondary" data-copy="#share-message" hidden>Copy message</button>
+		<p class="ts-sr" aria-live="polite" data-copy-status></p>
 	</div>
 }

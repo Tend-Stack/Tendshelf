@@ -15,8 +15,8 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
-// EmailStyles are the sheets of the Email settings page (P3-8b adds its own).
-var EmailStyles = []string{"css/pages-onboard.css", "css/pages-admin.css"}
+// EmailStyles are the sheets of the Email settings page.
+var EmailStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-email.css"}
 
 // EmailTestView is the answer to "Send a test email": a line that polls until the job ends.
 type EmailTestView struct {
