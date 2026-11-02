@@ -14,6 +14,11 @@ var (
 	// ErrBadCredentials is the one answer to every failed sign-in: unknown
 	// username, wrong password, disabled account.
 	ErrBadCredentials = errors.New("auth: wrong username or password")
+	// ErrNoDevice means no live device token: malformed, unknown, revoked, idle too long, or the
+	// account is disabled.
+	ErrNoDevice = errors.New("auth: no valid device token")
+	// ErrTooManyDevices means the person already has MaxLiveDevices device tokens.
+	ErrTooManyDevices = errors.New("auth: too many devices")
 	// ErrSetupCode means the first-run setup code did not match.
 	ErrSetupCode = errors.New("auth: wrong setup code")
 )

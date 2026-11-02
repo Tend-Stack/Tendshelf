@@ -22,6 +22,7 @@ import (
 
 	"github.com/a-h/templ"
 
+	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
@@ -70,6 +71,7 @@ type server struct {
 	csrf     *CSRF
 	auth     *auth.Service
 	sessions *auth.Sessions
+	devices  *auth.Devices
 	users    *users.Repo
 	can      *share.Checker
 	grants   *share.Grants
@@ -149,6 +151,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	}
 	ur := users.New(opts.Store, users.Options{Hash: opts.Hash, Now: opts.Now})
 	ss := auth.NewSessions(opts.Store, opts.Now)
+	dv := auth.NewDevices(opts.Store, opts.Now)
 	checker := share.New(opts.Store)
 	grants := share.NewGrants(opts.Store)
 	invites := share.NewInvites(opts.Store, checker, grants, ur, opts.Now)
@@ -156,8 +159,9 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	lk.Write([]byte("tendshelf share-link unlock v1"))
 	s := &server{
 		assets:   assets,
-		auth:     auth.NewService(opts.Store, ur, ss, auth.ServiceOptions{SetupCode: opts.SetupCode, Now: opts.Now, Invites: invites}),
+		auth:     auth.NewService(opts.Store, ur, ss, auth.ServiceOptions{SetupCode: opts.SetupCode, Now: opts.Now, Invites: invites, Devices: dv}),
 		sessions: ss,
+		devices:  dv,
 		users:    ur,
 		can:      checker,
 		grants:   grants,
@@ -177,6 +181,12 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.csrf = NewCSRF(key, sessionOrCookieBinding)
 	s.csrf.Deny = http.HandlerFunc(s.forbidden)
 	s.csrf.Secure = s.proxies.Secure
+	s.csrf.Exempt = func(r *http.Request) bool {
+		if _, ok := auth.DeviceFrom(r.Context()); ok {
+			return true
+		}
+		return r.Method == http.MethodPost && r.URL.Path == apiTokenPath
+	}
 
 	mux := http.NewServeMux()
 	registerDev(mux, s)
@@ -199,11 +209,12 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerPeaks(mux)
 	s.registerProgress(mux)
 	s.registerPlayer(mux)
+	s.registerAPI(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})
 
-	guarded := auth.Middleware(ss, s.proxies)(s.csrf.Middleware(s.gate(mux)))
+	guarded := s.refuseMixed(s.bearer(auth.Middleware(ss, s.proxies)(s.csrf.Middleware(s.gate(mux)))))
 	outer := http.NewServeMux()
 	outer.Handle("GET /static/", assets.Handler())
 	outer.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -321,6 +332,10 @@ func (s *server) fragment(w http.ResponseWriter, r *http.Request, status int, c 
 // An htmx request gets the error toast fragment, which htmx 4 swaps even on a 4xx; anything else
 // gets the full page.
 func (s *server) forbidden(w http.ResponseWriter, r *http.Request) {
+	if isAPIPath(r.URL.Path) {
+		api.Error(w, http.StatusForbidden, api.CodeForbidden, "This request was refused.")
+		return
+	}
 	if r.Header.Get("HX-Request") == "true" {
 		s.fragment(w, r, http.StatusForbidden, components.ErrorToast("This form expired. Reload the page and try again."))
 		return

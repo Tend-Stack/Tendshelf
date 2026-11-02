@@ -14,12 +14,26 @@ type ctxKey int
 const (
 	userKey ctxKey = iota
 	sessionKey
+	deviceKey
 )
 
 // WithSession returns ctx carrying the signed-in session and user.
 func WithSession(ctx context.Context, s Session, u users.User) context.Context {
 	ctx = context.WithValue(ctx, sessionKey, s)
 	return context.WithValue(ctx, userKey, u)
+}
+
+// WithDevice returns ctx carrying the device a bearer token named and its user. It sets the same
+// user key as WithSession, so handlers and share.Can see one kind of signed-in person.
+func WithDevice(ctx context.Context, d Device, u users.User) context.Context {
+	ctx = context.WithValue(ctx, deviceKey, d)
+	return context.WithValue(ctx, userKey, u)
+}
+
+// DeviceFrom returns the device a bearer token authenticated, if any.
+func DeviceFrom(ctx context.Context) (Device, bool) {
+	d, ok := ctx.Value(deviceKey).(Device)
+	return d, ok
 }
 
 // UserFrom returns the signed-in user, if any.

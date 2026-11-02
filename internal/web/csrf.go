@@ -39,6 +39,10 @@ type CSRF struct {
 	Deny http.Handler
 	// Secure says whether the ts_csrf cookie gets the Secure attribute. Nil means TLS on this connection.
 	Secure func(*http.Request) bool
+	// Exempt, when it returns true for a request, skips the token check and the ts_csrf cookie: the
+	// request carries no ambient credential (a bearer token, or the public token sign-in). The
+	// cross-origin check still runs. Nil means no request is exempt.
+	Exempt func(*http.Request) bool
 }
 
 // NewCSRF returns a CSRF guard. A nil key means 32 random bytes, so tokens are valid only for
@@ -105,7 +109,12 @@ func (c *CSRF) Middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	}))
+	crossOriginOnly := cop.Handler(next)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if c.Exempt != nil && c.Exempt(r) {
+			crossOriginOnly.ServeHTTP(w, r)
+			return
+		}
 		binding, ok := c.binding(r)
 		if !ok {
 			binding = "c:" + c.mint(w, r)
