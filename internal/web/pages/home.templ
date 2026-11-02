@@ -20,6 +20,8 @@ type HomeView struct {
 	Hero    *HomeHeroView
 	Series  HomeSeriesView
 	Because *HomeBecauseView
+	// Shared is the "Shared with you" row (nil when nothing is shared with the person).
+	Shared *HomeSharedView
 	// New is up to 40 newest books, newest first; shell.js hides the ones that do not fit the row.
 	New []components.CardView
 	// SeeAllURL opens the library sorted by recently added.
@@ -58,7 +60,7 @@ templ Empty(e EmptyView) {
 // Home is the first screen: the greeting, the listening hero, the newest books on a shelf, the series
 // in progress and "Because you listened to". The hero is the one place on this screen that carries a
 // book's Resume button; the series row leaves its play link out for the hero's book. The "Shared with
-// you" row waits for sharing (P3).
+// you" row sits beside the series row (they share one wrapper).
 templ Home(v HomeView) {
 	<div class="ts-home">
 		<h1 class="title-1 ts-home__title">{ v.Greeting }</h1>
@@ -85,7 +87,12 @@ templ Home(v HomeView) {
 				<div class="ts-shelf__plank"></div>
 			</section>
 		}
-		@HomeSeries(v.Series)
+		if len(v.Series.Rows) > 0 || v.Shared != nil {
+			<div class="ts-home__pair">
+				@HomeSeries(v.Series)
+				@HomeShared(v.Shared)
+			</div>
+		}
 		@HomeBecause(v.Because)
 	</div>
 }

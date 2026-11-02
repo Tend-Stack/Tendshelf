@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/share"
 )
 
 // Personal shelves (P1b-8). A shelf belongs to one person: every read and write names the owner and
@@ -37,6 +38,10 @@ const (
 type Shelf struct {
 	ID, OwnerID, Name    string
 	CreatedAt, UpdatedAt int64
+	// Shared is true when the shelf's flag is set and its owner is an enabled owner or admin.
+	Shared bool
+	// OwnerName is the owner's display name (username when none).
+	OwnerName string
 }
 
 // ShelfCover is the cover of one book on a shelf. The book id and title are there so a page can draw
@@ -141,25 +146,110 @@ func (r *Repo) DeleteShelf(ctx context.Context, ownerID, id string) error {
 	})
 }
 
-// Shelf returns a shelf of ownerID, or ErrNotFound (also for another person's shelf).
-func (r *Repo) Shelf(ctx context.Context, ownerID, id string) (Shelf, error) {
+// ShelfByID returns any shelf, with its owner's name and whether it is effectively shared (the flag
+// is set and the owner is an enabled owner or admin). The caller decides who may read it
+// (share.Can); ErrNotFound only when the id is unknown.
+func (r *Repo) ShelfByID(ctx context.Context, id string) (Shelf, error) {
 	return one(r.st.Reader().QueryRowContext(ctx,
-		`SELECT id, owner_id, name, created_at, updated_at FROM shelves WHERE id = ? AND owner_id = ?`, id, ownerID),
+		`SELECT s.id, s.owner_id, s.name, s.created_at, s.updated_at, (s.shared = 1 AND `+share.SharerSQL("o")+`),
+  coalesce(nullif(o.display_name, ''), o.username) FROM shelves s JOIN users o ON o.id = s.owner_id WHERE s.id = ?`, id),
 		func(s scanner) (Shelf, error) {
 			var x Shelf
-			return x, s.Scan(&x.ID, &x.OwnerID, &x.Name, &x.CreatedAt, &x.UpdatedAt)
+			return x, s.Scan(&x.ID, &x.OwnerID, &x.Name, &x.CreatedAt, &x.UpdatedAt, &x.Shared, &x.OwnerName)
 		}, "shelf")
+}
+
+// Shelf returns a shelf of ownerID, or ErrNotFound (also for another person's shelf).
+func (r *Repo) Shelf(ctx context.Context, ownerID, id string) (Shelf, error) {
+	sh, err := r.ShelfByID(ctx, id)
+	if err != nil {
+		return Shelf{}, err
+	}
+	if sh.OwnerID != ownerID {
+		return Shelf{}, fmt.Errorf("%w: shelf", ErrNotFound)
+	}
+	return sh, nil
+}
+
+// SetShelfShared sets the shared flag of a shelf of ownerID and records it in the audit log. It does
+// not change the shelf's updated_at. Whether the person may share at all is the caller's check.
+func (r *Repo) SetShelfShared(ctx context.Context, ownerID, id string, shared bool) error {
+	flag := 0
+	if shared {
+		flag = 1
+	}
+	now := r.nowMs()
+	return r.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `UPDATE shelves SET shared = ? WHERE id = ? AND owner_id = ?`, flag, id, ownerID)
+		if err != nil {
+			return err
+		}
+		if err := needRow(res, "shelf"); err != nil {
+			return err
+		}
+		return db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: ownerID, Action: "shelf.share",
+			Target: "shelf:" + id, Detail: map[string]bool{"shared": shared}})
+	})
 }
 
 // Shelves returns every shelf of ownerID by name (ignoring case), then id, with the count of
 // visible books and up to three covers.
 func (r *Repo) Shelves(ctx context.Context, sc Scope, ownerID string) ([]ShelfSummary, error) {
-	out, err := r.ShelfCounts(ctx, sc, ownerID)
+	return r.shelfSummaries(ctx, sc, true, `s.owner_id = ?`, []any{ownerID})
+}
+
+// ShelfCounts is Shelves without the covers: the sidebar needs names and counts on every page.
+func (r *Repo) ShelfCounts(ctx context.Context, sc Scope, ownerID string) ([]ShelfSummary, error) {
+	return r.shelfSummaries(ctx, sc, false, `s.owner_id = ?`, []any{ownerID})
+}
+
+// SharedShelves lists the shelves other enabled owners and admins share, each with at least one
+// book the scope may open, counting and covering visible books only. Shelves with no visible
+// book are left out, so a count or a name never reveals what the viewer cannot open.
+func (r *Repo) SharedShelves(ctx context.Context, sc Scope, viewerID string) ([]ShelfSummary, error) {
+	w := visible(sc, true)
+	cond := `s.shared = 1 AND s.owner_id <> ? AND ` + share.SharerSQL("o") + ` AND EXISTS (SELECT 1 FROM shelf_items si
+  JOIN books b ON b.id = si.book_id JOIN libraries l ON l.id = b.library_id WHERE si.shelf_id = s.id AND ` + w.sql() + `)`
+	return r.shelfSummaries(ctx, sc, true, cond, append([]any{viewerID}, w.args...))
+}
+
+// shelfSummaries lists the shelves matching cond (over aliases s = shelves, o = owner) by name, with
+// visible-book counts and, when covers is set, up to three covers. cond's arguments come first.
+func (r *Repo) shelfSummaries(ctx context.Context, sc Scope, covers bool, cond string, condArgs []any) ([]ShelfSummary, error) {
+	out, err := many(ctx, r.st.Reader(), func(x scanner) (ShelfSummary, error) {
+		var v ShelfSummary
+		return v, x.Scan(&v.ID, &v.OwnerID, &v.Name, &v.CreatedAt, &v.UpdatedAt, &v.Shared, &v.OwnerName)
+	}, `SELECT s.id, s.owner_id, s.name, s.created_at, s.updated_at, (s.shared = 1 AND `+share.SharerSQL("o")+`),
+  coalesce(nullif(o.display_name, ''), o.username) FROM shelves s JOIN users o ON o.id = s.owner_id
+  WHERE `+cond+` ORDER BY s.name COLLATE NOCASE, s.id`, condArgs...)
 	if err != nil || len(out) == 0 {
 		return out, err
 	}
 	w := visible(sc, true)
-	args := append([]any{ownerID}, w.args...)
+	args := append(append([]any(nil), condArgs...), w.args...)
+	type count struct {
+		shelf string
+		n     int
+	}
+	counts, err := many(ctx, r.st.Reader(), func(s scanner) (count, error) {
+		var c count
+		return c, s.Scan(&c.shelf, &c.n)
+	}, `SELECT si.shelf_id, COUNT(*) FROM shelf_items si JOIN shelves s ON s.id = si.shelf_id
+  JOIN users o ON o.id = s.owner_id JOIN books b ON b.id = si.book_id JOIN libraries l ON l.id = b.library_id
+  WHERE (`+cond+`) AND `+w.sql()+` GROUP BY si.shelf_id`, args...)
+	if err != nil {
+		return nil, err
+	}
+	n := make(map[string]int, len(counts))
+	for _, c := range counts {
+		n[c.shelf] = c.n
+	}
+	for i := range out {
+		out[i].Books = n[out[i].ID]
+	}
+	if !covers {
+		return out, nil
+	}
 	type pick struct{ shelf, book string }
 	picks, err := many(ctx, r.st.Reader(), func(s scanner) (pick, error) {
 		var p pick
@@ -167,8 +257,8 @@ func (r *Repo) Shelves(ctx context.Context, sc Scope, ownerID string) ([]ShelfSu
 	}, `SELECT shelf_id, book_id FROM (
   SELECT si.shelf_id AS shelf_id, si.book_id AS book_id,
     ROW_NUMBER() OVER (PARTITION BY si.shelf_id ORDER BY si.idx, si.book_id) AS rn
-  FROM shelf_items si JOIN shelves s ON s.id = si.shelf_id AND s.owner_id = ?
-  JOIN books b ON b.id = si.book_id JOIN libraries l ON l.id = b.library_id WHERE `+w.sql()+`)
+  FROM shelf_items si JOIN shelves s ON s.id = si.shelf_id JOIN users o ON o.id = s.owner_id
+  JOIN books b ON b.id = si.book_id JOIN libraries l ON l.id = b.library_id WHERE (`+cond+`) AND `+w.sql()+`)
   WHERE rn <= `+fmt.Sprint(shelfCovers)+` ORDER BY shelf_id, rn`, args...)
 	if err != nil {
 		return nil, err
@@ -198,39 +288,6 @@ func (r *Repo) Shelves(ctx context.Context, sc Scope, ownerID string) ([]ShelfSu
 			i := at[p.shelf]
 			out[i].Covers = append(out[i].Covers, sc)
 		}
-	}
-	return out, nil
-}
-
-// ShelfCounts is Shelves without the covers: the sidebar needs names and counts on every page.
-func (r *Repo) ShelfCounts(ctx context.Context, sc Scope, ownerID string) ([]ShelfSummary, error) {
-	out, err := many(ctx, r.st.Reader(), func(s scanner) (ShelfSummary, error) {
-		var x ShelfSummary
-		return x, s.Scan(&x.ID, &x.OwnerID, &x.Name, &x.CreatedAt, &x.UpdatedAt)
-	}, `SELECT id, owner_id, name, created_at, updated_at FROM shelves WHERE owner_id = ? ORDER BY name COLLATE NOCASE, id`, ownerID)
-	if err != nil || len(out) == 0 {
-		return out, err
-	}
-	w := visible(sc, true)
-	args := append([]any{ownerID}, w.args...)
-	type count struct {
-		shelf string
-		n     int
-	}
-	counts, err := many(ctx, r.st.Reader(), func(s scanner) (count, error) {
-		var c count
-		return c, s.Scan(&c.shelf, &c.n)
-	}, `SELECT si.shelf_id, COUNT(*) FROM shelf_items si JOIN shelves s ON s.id = si.shelf_id AND s.owner_id = ?
-  JOIN books b ON b.id = si.book_id JOIN libraries l ON l.id = b.library_id WHERE `+w.sql()+` GROUP BY si.shelf_id`, args...)
-	if err != nil {
-		return nil, err
-	}
-	n := make(map[string]int, len(counts))
-	for _, c := range counts {
-		n[c.shelf] = c.n
-	}
-	for i := range out {
-		out[i].Books = n[out[i].ID]
 	}
 	return out, nil
 }

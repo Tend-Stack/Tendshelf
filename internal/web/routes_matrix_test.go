@@ -475,6 +475,8 @@ func sweepRows() []sweepRow {
 		// Shelves, the person's own
 		sweepPost("POST /shelves", sweepStatic("/shelves"), sweepFormOf(url.Values{"name": {"Sweep new shelf"}}), shelfPostWant, ""),
 		sweepPost("POST /shelves/{id}/rename", shelfOf("/rename", false), sweepFormOf(url.Values{"name": {"Renamed"}}), shelfPostWant, ""),
+		// Only staff share their own shelf; a member's own shelf and a guest's are 404.
+		sweepPost("POST /shelves/{id}/share", shelfOf("/share", false), sweepFormOf(url.Values{"shared": {"1"}}), sweepStaff(http.StatusSeeOther, http.StatusNotFound), ""),
 		sweepPost("POST /shelves/{id}/delete", shelfOf("/delete", false), nil, shelfPostWant, ""),
 		sweepPost("POST /shelves/{id}/items", shelfOf("/items", false), func(e *sweepEnv, _ int) url.Values { return url.Values{"book_id": {e.book.ID}} }, shelfBookWant, ""),
 		sweepPost("POST /shelves/{id}/items/{bookID}/remove", func(e *sweepEnv, role int) string {
@@ -523,6 +525,7 @@ func sweepRows() []sweepRow {
 		form            func(*sweepEnv, int) url.Values
 	}{
 		{"POST /shelves/{id}/rename", "/rename", sweepFormOf(url.Values{"name": {"Stolen"}})},
+		{"POST /shelves/{id}/share", "/share", sweepFormOf(url.Values{"shared": {"1"}})},
 		{"POST /shelves/{id}/delete", "/delete", nil},
 		{"POST /shelves/{id}/items", "/items", func(e *sweepEnv, _ int) url.Values { return url.Values{"book_id": {e.book.ID}} }},
 	} {

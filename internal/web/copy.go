@@ -201,6 +201,11 @@ const (
 	homeSeriesCont   = "Continue series %s"
 	homeSeriesStart  = "Start series %s"
 	homeBecause      = "Because you listened to"
+	homeShared       = "Shared with you"
+	homeSharedFrom   = "from %s"
+	homeSharedTwo    = "%s and %s"
+	homeSharedOne    = "%s, %s and 1 other"
+	homeSharedMany   = "%s, %s and %d others"
 	playMarkFinished = "Mark as finished"
 	playMarkNot      = "Mark as not started"
 	chapterPlayed    = "%s, played"
@@ -209,6 +214,7 @@ const (
 	showUnfinished   = "Unfinished"
 	showNotStarted   = "Not started"
 	showFinished     = "Finished"
+	showShared       = "Shared with you"
 )
 
 // P1c-7a bookmarks. "Bookmarks and notes", "Export", "Play from here", "No note", "Add a note", "Bookmark

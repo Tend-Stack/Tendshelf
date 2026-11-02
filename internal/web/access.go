@@ -25,7 +25,7 @@ func currentUser(r *http.Request) users.User {
 // scope returns the grant filters for listing queries: Books with alias b, Libraries with alias l.
 func (s *server) scope(r *http.Request) library.Scope {
 	u := currentUser(r)
-	return library.Scope{Books: s.can.BookFilter(u, "b"), Libraries: s.can.LibraryFilter(u, "l")}
+	return library.Scope{Books: s.can.BookFilter(u, "b"), Libraries: s.can.LibraryFilter(u, "l"), Shared: s.can.SharedBooks(u)}
 }
 
 // notFound answers 404: a toast fragment for htmx, the error page otherwise.
