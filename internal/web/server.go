@@ -71,6 +71,7 @@ type server struct {
 	users    *users.Repo
 	can      *share.Checker
 	grants   *share.Grants
+	invites  *share.Invites
 	proxies  auth.Proxies
 	lib      *library.Repo
 	dataDir  string
@@ -144,13 +145,17 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	}
 	ur := users.New(opts.Store, users.Options{Hash: opts.Hash, Now: opts.Now})
 	ss := auth.NewSessions(opts.Store, opts.Now)
+	checker := share.New(opts.Store)
+	grants := share.NewGrants(opts.Store)
+	invites := share.NewInvites(opts.Store, checker, grants, ur, opts.Now)
 	s := &server{
 		assets:   assets,
-		auth:     auth.NewService(opts.Store, ur, ss, auth.ServiceOptions{SetupCode: opts.SetupCode, Now: opts.Now}),
+		auth:     auth.NewService(opts.Store, ur, ss, auth.ServiceOptions{SetupCode: opts.SetupCode, Now: opts.Now, Invites: invites}),
 		sessions: ss,
 		users:    ur,
-		can:      share.New(opts.Store),
-		grants:   share.NewGrants(opts.Store),
+		can:      checker,
+		grants:   grants,
+		invites:  invites,
 		proxies:  opts.TrustedProxies,
 		lib:      opts.Library,
 		dataDir:  opts.DataDir,
@@ -175,6 +180,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerBookmarks(mux)
 	s.registerAdmin(mux)
 	s.registerUsers(mux)
+	s.registerInvites(mux)
 	//
 	s.registerSetupSteps(mux)
 	s.registerMe(mux)
@@ -241,7 +247,7 @@ func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, 
 		Player:       playerMsgs(),
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
-		slog.Error("render page", "path", r.URL.Path, "err", err)
+		slog.Error("render page", "path", logPath(r), "err", err)
 		http.Error(w, "Something went wrong on your server.", http.StatusInternalServerError)
 		return
 	}
@@ -264,7 +270,7 @@ func (s *server) frame(w http.ResponseWriter, r *http.Request, status int, title
 		Styles: styles,
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
-		slog.Error("render frame", "path", r.URL.Path, "err", err)
+		slog.Error("render frame", "path", logPath(r), "err", err)
 		http.Error(w, "Something went wrong on your server.", http.StatusInternalServerError)
 		return
 	}
@@ -290,7 +296,7 @@ func (s *server) errorPage(w http.ResponseWriter, r *http.Request, status int) {
 func (s *server) fragment(w http.ResponseWriter, r *http.Request, status int, c templ.Component) {
 	var buf bytes.Buffer
 	if err := c.Render(r.Context(), &buf); err != nil {
-		slog.Error("render fragment", "path", r.URL.Path, "err", err)
+		slog.Error("render fragment", "path", logPath(r), "err", err)
 		http.Error(w, "Something went wrong on your server.", http.StatusInternalServerError)
 		return
 	}

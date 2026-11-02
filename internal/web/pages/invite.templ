@@ -1,0 +1,88 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// InviteStyles are the stylesheets the invite and welcome pages link (P3-3b writes the file).
+var InviteStyles = []string{"css/pages-invite.css"}
+
+// InviteView is the page behind an invite link. The handler writes every sentence.
+type InviteView struct {
+	CSRF  string
+	Token string // the raw token, only to build the form address and the cover address
+	// ServerName is the name of this server ("Tendshelf" when none is set).
+	ServerName  string
+	InviterName string
+	// Line is "{name} invited you to listen to {title} and {n} other books." or, for an invite
+	// that opens no book, "{name} invited you to {server}."
+	Line string
+	// Title, CoverSrc and Tint describe the featured book; all are empty for an admin invite.
+	Title, CoverSrc, Tint string
+	Note                  string
+	// SignedInAs is the name of the person already signed in on this browser, or empty.
+	SignedInAs string
+}
+
+// Invite is the invite page: who sent it, what it opens and one button.
+templ Invite(v InviteView) {
+	<div class="ts-invite">
+		<div class="ts-invite__brand">
+			@components.Brand()
+		</div>
+		if v.Title != "" {
+			<span
+				class="ts-invite__cover"
+				if v.Tint != "" {
+					data-ts-tint={ v.Tint }
+				}
+			>
+				if v.CoverSrc != "" {
+					<img class="ts-invite__img" src={ v.CoverSrc } alt=""/>
+				} else {
+					<span class="ts-invite__covertitle" aria-hidden="true">{ v.Title }</span>
+				}
+			</span>
+		}
+		<p class="overline ts-invite__from">From { v.InviterName }</p>
+		<h1 class="title-1 ts-invite__line">{ v.Line }</h1>
+		if v.Note != "" {
+			<blockquote class="body-lg ts-invite__note">“{ v.Note }”</blockquote>
+		}
+		if v.SignedInAs != "" {
+			<p class="body ts-invite__signedin" role="status">You're signed in as { v.SignedInAs }. This invite is for someone new.</p>
+		}
+		<form class="ts-invite__cta" method="post" action={ templ.URL("/invite/" + v.Token) } hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			if v.SignedInAs != "" {
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Sign out and use this invite</button>
+			} else {
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Start listening</button>
+			}
+		</form>
+		if v.SignedInAs != "" {
+			<a class="ts-btn ts-btn--ghost ts-btn--lg ts-btn--block" href="/">Back to your books</a>
+		} else {
+			<p class="caption ts-invite__fine">No sign-up needed. Free, and private to your family.</p>
+		}
+	</div>
+}
+
+// InviteStateView is a page that says an invite link does not work, and why in plain words.
+type InviteStateView struct {
+	Title, Body string
+	// Link and LinkText are an optional button under the text ("Sign in").
+	Link, LinkText string
+}
+
+// InviteState is the page for a link that does not work: unknown, ended, used or too many tries.
+templ InviteState(v InviteStateView) {
+	<div class="ts-invite ts-invite__state">
+		<div class="ts-invite__brand">
+			@components.Brand()
+		</div>
+		<h1 class="title-1">{ v.Title }</h1>
+		<p class="body-lg">{ v.Body }</p>
+		if v.Link != "" {
+			<a class="ts-btn ts-btn--primary ts-btn--lg" href={ templ.URL(v.Link) }>{ v.LinkText }</a>
+		}
+	</div>
+}

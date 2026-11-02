@@ -304,7 +304,10 @@ func TestInviteInviterDemoted(t *testing.T) {
 		// rotating or cancelling it as the demoted inviter is refused as well
 		var id string
 		_ = e.f.st.Reader().QueryRow(`SELECT id FROM invites`).Scan(&id)
-		err = e.write(func(tx *sql.Tx) error { _, err := e.inv.Rotate(context.Background(), tx, e.f.users["u_adm"], id); return err })
+		err = e.write(func(tx *sql.Tx) error {
+			_, err := e.inv.Rotate(context.Background(), tx, e.f.users["u_adm"], id)
+			return err
+		})
 		if !errors.Is(err, ErrInviteRefused) {
 			t.Errorf("rotate by the demoted: %v", err)
 		}
