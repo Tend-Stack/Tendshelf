@@ -57,3 +57,21 @@ func TestAuditInsert(t *testing.T) {
 		t.Fatalf("detail %q err %v", detail, err)
 	}
 }
+
+func TestDeleteSetting(t *testing.T) {
+	st := mustOpen(t, t.TempDir())
+	t.Cleanup(func() { _ = st.Close() })
+	ctx := context.Background()
+	if err := PutSetting(ctx, st.Writer(), "web.d", "x"); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 { // the second delete finds nothing and is still fine
+		if err := DeleteSetting(ctx, st.Writer(), "web.d"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var s string
+	if ok, err := GetSetting(ctx, st.Reader(), "web.d", &s); err != nil || ok {
+		t.Fatalf("after delete: ok=%v err=%v", ok, err)
+	}
+}
