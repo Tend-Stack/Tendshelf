@@ -3,7 +3,7 @@ GO       ?= go
 BIN      ?= bin/tendshelf
 ADDR     ?= 127.0.0.1:8095
 # Version tags are vYEAR.RELEASE.BUGFIX, e.g. v2026.1.0 (docs/decisions/0006-version-numbers.md).
-VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+VERSION  ?= $(shell git describe --tags --long --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
 .PHONY: app build generate test run run-dev check fmt vet clean visual visual-full visual-webkit player perf test-media test-scan-real
