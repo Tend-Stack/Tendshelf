@@ -87,11 +87,13 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 .ts-player-bar__item:focus-visible, .ts-player__menuitem:focus-visible, .ts-player__chrow:focus-visible, .ts-player__menu > summary:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 
 /* Scrubber: drawn from custom properties set by player-full.js */
-.ts-scrub__ticks { position: absolute; inset: 0; pointer-events: none; }
-.ts-scrub__tick { left: var(--at); }
+/* The book ruler above the chapter scrubber: not interactive, ticks at the chapter starts. */
+.ts-player__ruler { --scrub-fill: var(--cover-accent); }
+.ts-player__ruler-ticks { position: absolute; inset: 0; pointer-events: none; }
+.ts-player__ruler .ts-ruler__tick { left: var(--at); }
+.ts-player__ruler .ts-ruler__fill { width: calc(var(--ts-pos, 0) * 100%); background: var(--scrub-fill); }
 .ts-scrub__fill { width: calc(var(--ts-pos, 0) * 100%); }
 .ts-scrub__needle { left: calc(var(--ts-pos, 0) * 100%); }
-.ts-scrub__chapter { left: calc(var(--ts-ch-at, 0) * 100%); width: calc(var(--ts-ch-w, 0) * 100%); }
 .ts-scrub__bubble { left: clamp(4.375rem, calc(var(--ts-pos, 0) * 100%), calc(100% - 4.375rem)); }
 .ts-scrub__input { inset: -0.375rem 0; height: auto; touch-action: none; }
 .ts-scrub:has(.ts-scrub__input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: var(--radius-sm); }
