@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
@@ -26,7 +27,7 @@ func (s *server) registerStream(mux *http.ServeMux) {
 	// Without this the catch-all answers every other method with 404.
 	mux.HandleFunc("/stream/{audioFileID}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, HEAD")
-		http.Error(w, "Method not allowed.", http.StatusMethodNotAllowed)
+		s.plainError(w, r, http.StatusMethodNotAllowed, "Method not allowed.")
 	})
 }
 
@@ -63,7 +64,7 @@ func (s *server) getStream(w http.ResponseWriter, r *http.Request) {
 func compatParam(w http.ResponseWriter, r *http.Request) (compat, ok bool) {
 	if q := r.URL.Query(); q.Has("compat") {
 		if q.Get("compat") != "1" {
-			http.Error(w, "Bad compat value.", http.StatusBadRequest)
+			plainError(w, r, http.StatusBadRequest, "Bad compat value.")
 			return false, false
 		}
 		return true, true
@@ -166,6 +167,11 @@ func (s *server) streamCompat(w http.ResponseWriter, r *http.Request, f library.
 			return
 		}
 		s.serverError(w, r, "request compat copy", err)
+		return
+	}
+	if isAPIPath(r.URL.Path) {
+		w.Header().Set("Retry-After", "3")
+		api.StatusError(w, http.StatusServiceUnavailable)
 		return
 	}
 	h := w.Header()

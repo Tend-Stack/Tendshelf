@@ -41,7 +41,7 @@ is not an audio file or a cached image. ffmpeg/ffprobe are child processes, and 
 | `internal/progress` | Progress (newest wins) and bookmarks; no access decisions. |
 | `internal/jobs` | Persisted job queue: leases, per-kind concurrency, cancellation, progress events, restart recovery. |
 | `internal/web` | templ pages/components, static assets (embedded), HTMX handlers, security headers, the page router. |
-| `internal/api` | JSON API v1 for native/mobile clients and the player's sync calls. Same services as `web`. |
+| `internal/api` | JSON helpers of API v1 (envelope, errors, lists, ETag); the routes live in `internal/web` (`routes_api*.go`) and reuse the pages' library and share functions. |
 | `internal/ebook` | Ebook ingestion (R1): format detection, copy-protection check, one parser per format (EPUB 2/3 with SMIL, PDF text layer, TXT/Markdown, DOCX, HTML, FB2, DRM-free MOBI/AZW3), the canonical document `tendshelf-doc-v1` with stable IDs and source offsets, sentence segmenter, pairing scores. No HTTP, no model. |
 | `internal/align` | Read-along alignment (R3): normaliser, emissions cache, greedy CTC transcript, block mapping and anchors, CTC forced alignment, confidence, timing files, the `align.book` job; Media Overlays import/export (R6). Pure Go. |
 | `internal/align/runtime` | Checks runtime components (hashes, `--describe`, licence), launches and owns the loopback emissions worker (`tendshelf-emissions-v1`), idle stop, parent-death cleanup. The only code that starts it. |
@@ -243,17 +243,21 @@ revoking, disabling or a password change work on the next call. A request with b
 cross-origin check still runs) and never get a `ts_csrf` cookie; cookie requests keep session + CSRF. A token dies
 after 180 days unused, a person holds at most 50, and rows revoked over 30 days ago are pruned on the next issue.
 Anonymous `/api/` requests get JSON 401, never a redirect.
-`POST /auth/token`, `DELETE /auth/token`, `GET /me`, `GET /libraries`,
-`GET /libraries/{id}/books?cursor=&sort=`, `GET /books/{id}` (files, chapters, cover URLs),
-`GET /progress?since=`, `PUT /progress/{bookID}`, `POST /progress/batch`, `GET|POST /books/{id}/bookmarks`,
-`PATCH|DELETE /bookmarks/{id}`, `GET|POST /books/{id}/notes`, `PATCH|DELETE /notes/{id}`,
-`GET /search?q=`, `POST /sessions`, `GET /books/{id}/editions`, `GET /editions/{id}/chapters/{idx}` (text
-model JSON), `GET /editions/{id}/chapters/{idx}/timing`, `GET|POST /books/{id}/highlights`,
-`PATCH|DELETE /highlights/{id}`. Errors: `{"error":{"code":"...","message":"..."}}` with codes
-`unauthorized` 401, `forbidden` 403, `not_found` 404, `invalid` 400, `conflict` 409, `too_large` 413,
-`rate_limited` 429, `drm_refused` 422 (audio and ebooks), `unsupported` 415 (ebook format), `not_ready` 409
-(no usable alignment yet), `unavailable` 503 (word-timing runtime missing). A forbidden book returns `not_found` to
-non-admins (no existence leak).
+The reference is `docs/api.md`. Shipped in P3-9a (read side): `POST|DELETE /auth/token`, `GET /me`, `GET /libraries`,
+`GET /books?...` and `GET /libraries/{id}/books?...` (the Library page's filters, keyset cursor, `limit` 1..120),
+`GET /books/{id}` (details, chapters, files with alias URLs, permissions, own progress), `GET /search?q=`,
+`GET /shelves`, `GET /shelves/{id}`, `GET /shared`, and the media aliases `GET /covers/{bookID}`,
+`/stream/{audioFileID}`, `/peaks/{audioFileID}` (the same handlers as the page routes, reachable with a token).
+Planned in P3-9b (sync): `GET /progress?since=`, `GET|PUT /progress/{bookID}`, `POST /progress/batch`,
+`GET|POST /books/{id}/bookmarks`, `GET /bookmarks?since=`, `PATCH|DELETE /bookmarks/{id}`. Trimmed from the earlier
+list on 2026-11-02: notes are bookmarks with a note (`?notes=1`), so there are no `/notes` routes; `POST /sessions`
+is folded into the progress body (`speed`, `listenedMs`); editions, chapter text, timing and highlights move to the
+read-along phases. Under `/api/` every error, including those of the reused page helpers, is JSON:
+`{"error":{"code","message","field"?}}` with codes `unauthorized` 401, `forbidden` 403, `not_found` 404, `invalid` 400,
+`conflict` 409, `too_large` 413, `unsupported` 415, `rate_limited` 429, `unavailable` 503 (`drm_refused`, `not_ready`
+come with read-along). A book the person may not see, and one that does not exist, give the same `not_found` body.
+Bearer requests are limited to 600 a minute per device (429 with `Retry-After`); sessions are not limited. There are
+no CORS headers: the PWA is same-origin and native clients do not need them.
 
 **Progress update** body: `{"positionMs","durationMs","finished","clientUpdatedAt","deviceId"}`, plus optional
 `"text":{"editionId","sentenceId","offset"}` and `"source":"audio"|"text"` (R5).

@@ -67,26 +67,27 @@ type Options struct {
 }
 
 type server struct {
-	assets   *static.Set
-	csrf     *CSRF
-	auth     *auth.Service
-	sessions *auth.Sessions
-	devices  *auth.Devices
-	users    *users.Repo
-	can      *share.Checker
-	grants   *share.Grants
-	invites  *share.Invites
-	links    *share.Links
-	linkKey  []byte // signs the share-link unlock cookie; derived from the CSRF key, never the same bytes
-	proxies  auth.Proxies
-	lib      *library.Repo
-	dataDir  string
-	jobs     *jobs.Runner
-	version  string
-	now      func() time.Time // the clock; never nil
-	compat   *mediajobs.Compat
-	peaks    *mediajobs.Peaks
-	progress *progress.Service
+	assets     *static.Set
+	csrf       *CSRF
+	auth       *auth.Service
+	sessions   *auth.Sessions
+	devices    *auth.Devices
+	apiLimiter *auth.Limiter // per device id: every bearer request counts, see bearer
+	users      *users.Repo
+	can        *share.Checker
+	grants     *share.Grants
+	invites    *share.Invites
+	links      *share.Links
+	linkKey    []byte // signs the share-link unlock cookie; derived from the CSRF key, never the same bytes
+	proxies    auth.Proxies
+	lib        *library.Repo
+	dataDir    string
+	jobs       *jobs.Runner
+	version    string
+	now        func() time.Time // the clock; never nil
+	compat     *mediajobs.Compat
+	peaks      *mediajobs.Peaks
+	progress   *progress.Service
 }
 
 // settingCSRFKey is the settings row that keeps the CSRF key between runs.
@@ -158,25 +159,26 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	lk := hmac.New(sha256.New, key)
 	lk.Write([]byte("tendshelf share-link unlock v1"))
 	s := &server{
-		assets:   assets,
-		auth:     auth.NewService(opts.Store, ur, ss, auth.ServiceOptions{SetupCode: opts.SetupCode, Now: opts.Now, Invites: invites, Devices: dv}),
-		sessions: ss,
-		devices:  dv,
-		users:    ur,
-		can:      checker,
-		grants:   grants,
-		invites:  invites,
-		links:    share.NewLinks(opts.Store, checker, opts.Now),
-		linkKey:  lk.Sum(nil),
-		proxies:  opts.TrustedProxies,
-		lib:      opts.Library,
-		dataDir:  opts.DataDir,
-		jobs:     opts.Jobs,
-		version:  opts.Version,
-		now:      nowOrReal(opts.Now),
-		compat:   opts.Compat,
-		peaks:    opts.Peaks,
-		progress: progress.New(opts.Store, opts.Now),
+		assets:     assets,
+		auth:       auth.NewService(opts.Store, ur, ss, auth.ServiceOptions{SetupCode: opts.SetupCode, Now: opts.Now, Invites: invites, Devices: dv}),
+		sessions:   ss,
+		devices:    dv,
+		apiLimiter: auth.NewLimiter(apiRateMax, apiRateWindow, apiRateKeys, opts.Now),
+		users:      ur,
+		can:        checker,
+		grants:     grants,
+		invites:    invites,
+		links:      share.NewLinks(opts.Store, checker, opts.Now),
+		linkKey:    lk.Sum(nil),
+		proxies:    opts.TrustedProxies,
+		lib:        opts.Library,
+		dataDir:    opts.DataDir,
+		jobs:       opts.Jobs,
+		version:    opts.Version,
+		now:        nowOrReal(opts.Now),
+		compat:     opts.Compat,
+		peaks:      opts.Peaks,
+		progress:   progress.New(opts.Store, opts.Now),
 	}
 	s.csrf = NewCSRF(key, sessionOrCookieBinding)
 	s.csrf.Deny = http.HandlerFunc(s.forbidden)
@@ -305,6 +307,10 @@ func (s *server) frame(w http.ResponseWriter, r *http.Request, status int, title
 // errorPage renders the plain-words error page with the given status: inside the app shell for a
 // signed-in person, inside the plain frame for anyone else.
 func (s *server) errorPage(w http.ResponseWriter, r *http.Request, status int) {
+	if isAPIPath(r.URL.Path) {
+		api.StatusError(w, status)
+		return
+	}
 	if _, ok := auth.UserFrom(r.Context()); !ok {
 		s.frame(w, r, status, pages.ErrorTitle(status), pages.ErrorPage(status))
 		return

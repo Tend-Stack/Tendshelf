@@ -617,6 +617,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, invitesSweepRows()...)
 	rows = append(rows, shareSweepRows()...)
 	rows = append(rows, devicesSweepRows()...)
+	rows = append(rows, apiSweepRows()...)
 	return append(rows, linksSweepRows()...)
 }
 

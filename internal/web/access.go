@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
@@ -30,11 +31,29 @@ func (s *server) scope(r *http.Request) library.Scope {
 
 // notFound answers 404: a toast fragment for htmx, the error page otherwise.
 func (s *server) notFound(w http.ResponseWriter, r *http.Request) {
+	if isAPIPath(r.URL.Path) {
+		api.StatusError(w, http.StatusNotFound)
+		return
+	}
 	if r.Header.Get("HX-Request") == "true" {
 		s.fragment(w, r, http.StatusNotFound, components.ErrorToast("We couldn't find that."))
 		return
 	}
 	s.errorPage(w, r, http.StatusNotFound)
+}
+
+// plainError answers a short plain-text error for the media routes (covers, stream, peaks): the
+// JSON shape under /api/, http.Error elsewhere so the link routes keep their exact bytes.
+func (s *server) plainError(w http.ResponseWriter, r *http.Request, status int, msg string) {
+	plainError(w, r, status, msg)
+}
+
+func plainError(w http.ResponseWriter, r *http.Request, status int, msg string) {
+	if isAPIPath(r.URL.Path) {
+		api.StatusError(w, status)
+		return
+	}
+	http.Error(w, msg, status)
 }
 
 // allow reports whether the signed-in person may do a to t. When not, it has already answered 404.

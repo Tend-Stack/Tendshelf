@@ -24,6 +24,7 @@ func (s *server) registerAPI(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/auth/token", s.postAPIToken)
 	mux.HandleFunc("DELETE /api/v1/auth/token", s.deleteAPIToken)
 	mux.HandleFunc("GET /api/v1/me", s.getAPIMe)
+	s.registerAPIRead(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		api.Error(w, http.StatusNotFound, api.CodeNotFound, "There is nothing at this address.")
 	})

@@ -28,7 +28,7 @@ func (s *server) registerCovers(mux *http.ServeMux) {
 	// Without this the catch-all answers every other method with 404.
 	mux.HandleFunc("/covers/{bookID}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, HEAD")
-		http.Error(w, "Method not allowed.", http.StatusMethodNotAllowed)
+		s.plainError(w, r, http.StatusMethodNotAllowed, "Method not allowed.")
 	})
 }
 
@@ -44,7 +44,7 @@ func (s *server) getCover(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("w"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil || n < 1 || n > maxCoverWidth {
-			http.Error(w, "Bad width.", http.StatusBadRequest)
+			s.plainError(w, r, http.StatusBadRequest, "Bad width.")
 			return
 		}
 		width = n
@@ -61,12 +61,12 @@ func (s *server) getCover(w http.ResponseWriter, r *http.Request) {
 // same 404. A non-empty cacheControl replaces the default caching headers.
 func (s *server) serveCoverFile(w http.ResponseWriter, r *http.Request, coverID string, width int, cacheControl string) {
 	if coverID == "" {
-		http.Error(w, "Not found.", http.StatusNotFound)
+		s.plainError(w, r, http.StatusNotFound, "Not found.")
 		return
 	}
 	cover, err := s.lib.Cover(r.Context(), coverID)
 	if errors.Is(err, library.ErrNotFound) {
-		http.Error(w, "Not found.", http.StatusNotFound)
+		s.plainError(w, r, http.StatusNotFound, "Not found.")
 		return
 	}
 	if err != nil {
@@ -74,7 +74,7 @@ func (s *server) serveCoverFile(w http.ResponseWriter, r *http.Request, coverID 
 		return
 	}
 	if !sha256Hex.MatchString(cover.SHA256) {
-		http.Error(w, "Not found.", http.StatusNotFound)
+		s.plainError(w, r, http.StatusNotFound, "Not found.")
 		return
 	}
 	for _, c := range s.coverCandidates(cover, width) {
@@ -101,7 +101,7 @@ func (s *server) serveCoverFile(w http.ResponseWriter, r *http.Request, coverID 
 		f.Close()
 		return
 	}
-	http.Error(w, "Not found.", http.StatusNotFound)
+	s.plainError(w, r, http.StatusNotFound, "Not found.")
 }
 
 // coverCandidates lists the files that may answer, best first: for a width, the smallest thumbnail
