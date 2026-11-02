@@ -331,7 +331,7 @@ func (s *server) getLinkPeaks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.peaks.Enabled() {
-		s.peaksNotFound(w, "")
+		s.peaksNotFound(w, r, "")
 		return
 	}
 	s.servePeaks(w, r, f, "private, no-store")

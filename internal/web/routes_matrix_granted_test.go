@@ -61,6 +61,11 @@ var sweepGrantedWant = func() map[string][4]int {
 		"POST /hx/books/{id}/finished":                  redirect,
 		"POST /shelves/{id}/items":                      ownRow,
 		"POST /shelves/{id}/items/{bookID}/move":        ownRow,
+		"GET /api/v1/libraries/{id}/books":              ok,
+		"GET /api/v1/books/{id}":                        ok,
+		"GET /api/v1/covers/{bookID}":                   ok,
+		"GET /api/v1/stream/{audioFileID}":              ok,
+		"GET /api/v1/peaks/{audioFileID}":               ok,
 	}
 }()
 

@@ -4,7 +4,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/auth"
@@ -12,6 +14,13 @@ import (
 
 // apiPrefix is the only area where a device token is accepted.
 const apiPrefix = "/api/v1/"
+
+// The per-device request limit for bearer calls: 600 a minute, up to 4096 devices tracked.
+const (
+	apiRateMax    = 600
+	apiRateWindow = time.Minute
+	apiRateKeys   = 4096
+)
 
 // bearerToken returns the token of an "Authorization: Bearer <token>" header (scheme in any case)
 // and whether the header uses the Bearer scheme at all. An empty or malformed token is still
@@ -64,6 +73,13 @@ func (s *server) bearer(next http.Handler) http.Handler {
 			api.Error(w, http.StatusServiceUnavailable, api.CodeUnavailable, "Something went wrong on our side. Try again in a moment.")
 			return
 		}
+		// Every request counts, so Allow then Fail turns the failure-window limiter into a rate limit.
+		if ok, wait := s.apiLimiter.Allow(dev.ID); !ok {
+			w.Header().Set("Retry-After", strconv.Itoa(max(1, int((wait+time.Second-1)/time.Second))))
+			api.Error(w, http.StatusTooManyRequests, api.CodeRateLimited, "Too many requests from this device. Wait a little and try again.")
+			return
+		}
+		s.apiLimiter.Fail(dev.ID)
 		next.ServeHTTP(w, r.WithContext(auth.WithDevice(r.Context(), dev, u)))
 	})
 }

@@ -21,7 +21,7 @@ func (s *server) registerPeaks(mux *http.ServeMux) {
 	// Without this the catch-all answers every other method with 404.
 	mux.HandleFunc("/peaks/{audioFileID}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, HEAD")
-		http.Error(w, "Method not allowed.", http.StatusMethodNotAllowed)
+		s.plainError(w, r, http.StatusMethodNotAllowed, "Method not allowed.")
 	})
 }
 
@@ -33,7 +33,7 @@ func (s *server) registerPeaks(mux *http.ServeMux) {
 // for the decoding.
 func (s *server) getPeaks(w http.ResponseWriter, r *http.Request) {
 	if !s.peaks.Enabled() {
-		s.peaksNotFound(w, "")
+		s.peaksNotFound(w, r, "")
 		return
 	}
 	f, err := s.lib.AudioFile(r.Context(), r.PathValue("audioFileID"))
@@ -63,7 +63,7 @@ func (s *server) servePeaks(w http.ResponseWriter, r *http.Request, f library.Au
 	path, ready, err := s.peaks.Lookup(f)
 	if err != nil {
 		slog.Warn("peaks lookup", "file", f.ID, "err", err)
-		s.peaksNotFound(w, "")
+		s.peaksNotFound(w, r, "")
 		return
 	}
 	if !ready {
@@ -73,21 +73,21 @@ func (s *server) servePeaks(w http.ResponseWriter, r *http.Request, f library.Au
 			if !errors.As(err, &me) {
 				slog.Warn("peaks request", "file", f.ID, "err", err)
 			}
-			s.peaksNotFound(w, "")
+			s.peaksNotFound(w, r, "")
 			return
 		}
 		if wait {
-			s.peaksNotFound(w, peaksRetryAfter)
+			s.peaksNotFound(w, r, peaksRetryAfter)
 			return
 		}
 		// Built between the lookup and the request.
 		if path, ready, err = s.peaks.Lookup(f); err != nil || !ready {
-			s.peaksNotFound(w, "")
+			s.peaksNotFound(w, r, "")
 			return
 		}
 	}
 	if !within(mediajobs.PeaksDir(s.dataDir), path) {
-		s.peaksNotFound(w, "")
+		s.peaksNotFound(w, r, "")
 		return
 	}
 	file, err := os.Open(path)
@@ -95,13 +95,13 @@ func (s *server) servePeaks(w http.ResponseWriter, r *http.Request, f library.Au
 		if !errors.Is(err, os.ErrNotExist) {
 			slog.Warn("peaks: cannot open file", "file", f.ID, "err", err)
 		}
-		s.peaksNotFound(w, "")
+		s.peaksNotFound(w, r, "")
 		return
 	}
 	defer file.Close()
 	fi, err := file.Stat()
 	if err != nil || !fi.Mode().IsRegular() {
-		s.peaksNotFound(w, "")
+		s.peaksNotFound(w, r, "")
 		return
 	}
 	h := w.Header()
@@ -114,11 +114,11 @@ func (s *server) servePeaks(w http.ResponseWriter, r *http.Request, f library.Au
 
 // peaksNotFound is the bare 404 of the peaks route. retryAfter, when set, says the peaks are on
 // their way.
-func (s *server) peaksNotFound(w http.ResponseWriter, retryAfter string) {
+func (s *server) peaksNotFound(w http.ResponseWriter, r *http.Request, retryAfter string) {
 	h := w.Header()
 	h.Set("Cache-Control", "no-store")
 	if retryAfter != "" {
 		h.Set("Retry-After", retryAfter)
 	}
-	http.Error(w, "Not found.", http.StatusNotFound)
+	plainError(w, r, http.StatusNotFound, "Not found.")
 }
