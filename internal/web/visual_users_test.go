@@ -73,7 +73,9 @@ func usersBoardSeed(t *testing.T, a *testApp) string {
 	nowMs := now.UnixMilli()
 	end := now.AddDate(0, 0, 20).UnixMilli()
 	exec(`INSERT INTO grants(id, user_id, scope, shelf_id, can_download, created_at, updated_at) VALUES ('gv1', ?, 'shelf', ?, 1, 1, 1)`, ids["Rosa Reyes"], sh.ID)
-	exec(`INSERT INTO grants(id, user_id, scope, library_id, expires_at, created_at, updated_at) VALUES ('gv2', ?, 'library', ?, 2, 1, 1)`, ids["Rosa Reyes"], l.ID)
+	// An ended grant: it ran out three days ago (a real date, so the date field shows one).
+	ended := now.AddDate(0, 0, -3).UnixMilli()
+	exec(`INSERT INTO grants(id, user_id, scope, library_id, expires_at, created_at, updated_at) VALUES ('gv2', ?, 'library', ?, ?, 1, 1)`, ids["Rosa Reyes"], l.ID, ended)
 	exec(`INSERT INTO grants(id, user_id, scope, book_id, can_read, expires_at, created_at, updated_at) VALUES ('gv3', ?, 'book', ?, 1, ?, 3, 3)`, ids["Rosa Reyes"], bookIDs[3], end)
 	exec(`INSERT INTO grants(id, user_id, scope, created_at, updated_at) VALUES ('gv4', ?, 'all', 1, 1)`, ids["Maya Chen"])
 	exec(`INSERT INTO grants(id, user_id, scope, created_at, updated_at) VALUES ('gv5', ?, 'all', 1, 1)`, ids["Lena Reyes"])
