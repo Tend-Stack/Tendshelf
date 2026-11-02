@@ -69,7 +69,7 @@ func TestFullPlayerBrowserBookmark(t *testing.T) {
 		t.Errorf("requests after B = %d, want 1", n)
 	}
 	// Not while a field has focus, nor while the keys list is open.
-	wide.Eval(`document.querySelector('#player [data-ts-scrub="bar"] input').focus()`, nil)
+	wide.Eval(`document.querySelector('#player .ts-wave--bar .ts-wave__input').focus()`, nil)
 	fullpKey(t, wide, "b", 66)
 	wide.Eval(`document.activeElement.blur(); document.getElementById("keys-help").showModal()`, nil)
 	fullpKey(t, wide, "b", 66)

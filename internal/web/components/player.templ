@@ -153,15 +153,15 @@ templ PlayerSlot(m PlayerMsgs) {
 				</button>
 			</div>
 			<div class="ts-pbar__seek">
-				<div class="ts-wave ts-wave--bar" data-ts-wave="bar" data-ts-scrub="bar">
+				<div class="ts-wave ts-wave--bar" data-ts-wave="bar">
 					<div class="ts-wave__needle"></div>
 					<div class="ts-wave__hoverline"></div>
-					<div class="ts-wave__tip" aria-hidden="true" data-ts-bubble>
+					<div class="ts-wave__tip" aria-hidden="true">
 						<span data-ts-tip-time></span>
 						<small data-ts-tip-rel></small>
 					</div>
 					<label class="ts-sr" for="ts-scrub-bar">{ m.WaveLabel }</label>
-					<input id="ts-scrub-bar" class="ts-wave__input" type="range" min="0" max="0" step="1" value="0" data-ts-range/>
+					<input id="ts-scrub-bar" class="ts-wave__input" type="range" min="0" max="0" step="1" value="0"/>
 				</div>
 				<div class="ts-pbar__times">
 					<span data-pbar="elapsed"></span>

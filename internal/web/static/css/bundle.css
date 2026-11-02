@@ -619,11 +619,8 @@ body { margin: 0; font-family: var(--font-sans); background: var(--ground); colo
   /* The waveform: one SVG per layer, the position in --ts-pos and the hovered point in --ts-hover (0..1). */
   .ts-wave--bar { --ts-pos: 0; --ts-hover: 0; position: relative; inset: auto; height: 2.25rem; cursor: pointer; touch-action: none; pointer-events: auto; }
   .ts-wave--bar svg { overflow: visible; pointer-events: none; }
-  .ts-wave--bar .ts-wave__muted, .ts-wave--bar .ts-wave__played { opacity: 1; }
-  .ts-wave--bar .ts-wave__muted { fill: var(--wave-rest); }
-  .ts-wave--bar .ts-wave__played { fill: var(--wave-played); clip-path: inset(-0.25rem calc((1 - var(--ts-pos)) * 100%) -0.25rem 0); }
+  .ts-wave--bar .ts-wave__played { opacity: 1; clip-path: inset(-0.25rem calc((1 - var(--ts-pos)) * 100%) -0.25rem 0); }
   .ts-wave--bar path { fill: none; stroke-width: 2; stroke-linecap: round; }
-  .ts-wave--bar .ts-wave__muted path, .ts-wave--bar .ts-wave__played path { fill: inherit; stroke: none; }
   .ts-wave__rest path, .ts-wave__behind path { stroke: var(--wave-rest); }
   .ts-wave__played path { stroke: var(--wave-played); }
   .ts-wave__ahead path { stroke: var(--wave-ahead); }
@@ -641,11 +638,12 @@ body { margin: 0; font-family: var(--font-sans); background: var(--ground); colo
   .ts-wave__tip { position: absolute; z-index: 3; bottom: calc(100% + 0.875rem); left: clamp(4.5rem, calc(var(--ts-hover) * 100%), calc(100% - 4.5rem)); transform: translateX(-50%);
     white-space: nowrap; padding: 0.375rem 0.625rem; border-radius: var(--radius-sm); background: var(--raised); border: 1px solid var(--line); box-shadow: var(--shadow-float);
     font: 600 0.8125rem/1.125rem var(--font-sans); font-variant-numeric: tabular-nums; color: var(--ink); opacity: 0; pointer-events: none; transition: opacity var(--duration-fast) var(--easing-standard); }
+  .ts-wave__tip small:not(:empty)::before { content: "\00b7"; margin-right: 0.375rem; }
   .ts-wave__tip small { margin-left: 0.375rem; font-size: 0.8125rem; font-weight: 400; color: var(--ink-muted); }
   .ts-wave--bar.is-hover .ts-wave__tip, .ts-wave--bar.is-dragging .ts-wave__tip { opacity: 1; }
   .ts-wave__input { position: absolute; inset: -0.625rem 0; width: 100%; height: calc(100% + 1.25rem); margin: 0; opacity: 0; cursor: pointer; touch-action: none; }
   .ts-wave--bar:has(.ts-wave__input:focus-visible) { outline: 2px solid transparent; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
-  .ts-wave--loading .ts-wave__rest, .ts-wave--loading .ts-wave__muted { animation: ts-wave-pulse 1.6s ease-in-out infinite; }
+  .ts-wave--loading .ts-wave__rest { animation: ts-wave-pulse 1.6s ease-in-out infinite; }
   @keyframes ts-wave-pulse { 50% { opacity: 0.45; } }
 
   /* The side panel keeps the cover, the title, the clock, the book ruler and the transport; the bar carries the tools. */
@@ -655,7 +653,7 @@ body { margin: 0; font-family: var(--font-sans); background: var(--ground); colo
   .ts-pbar { column-gap: var(--space-16); grid-template-columns: minmax(11.25rem, 15rem) auto minmax(20rem, 1fr) auto; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ts-wave--loading .ts-wave__rest, .ts-wave--loading .ts-wave__muted { animation: none; }
+  .ts-wave--loading .ts-wave__rest { animation: none; }
   .ts-wave__needle::after, .ts-wave__tip, .ts-wave__ahead, .ts-wave__behind, .ts-pbar__booktip { transition: none; }
 }
 /* Forced colours: the picture is dropped, the needle and the times carry the position. */

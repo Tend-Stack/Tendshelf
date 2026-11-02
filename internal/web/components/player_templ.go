@@ -203,7 +203,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span class=\"ts-skip__num\" data-ts-forward-num aria-hidden=\"true\"></span></button></div><div class=\"ts-pbar__seek\"><div class=\"ts-wave ts-wave--bar\" data-ts-wave=\"bar\" data-ts-scrub=\"bar\"><div class=\"ts-wave__needle\"></div><div class=\"ts-wave__hoverline\"></div><div class=\"ts-wave__tip\" aria-hidden=\"true\" data-ts-bubble><span data-ts-tip-time></span> <small data-ts-tip-rel></small></div><label class=\"ts-sr\" for=\"ts-scrub-bar\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span class=\"ts-skip__num\" data-ts-forward-num aria-hidden=\"true\"></span></button></div><div class=\"ts-pbar__seek\"><div class=\"ts-wave ts-wave--bar\" data-ts-wave=\"bar\"><div class=\"ts-wave__needle\"></div><div class=\"ts-wave__hoverline\"></div><div class=\"ts-wave__tip\" aria-hidden=\"true\"><span data-ts-tip-time></span> <small data-ts-tip-rel></small></div><label class=\"ts-sr\" for=\"ts-scrub-bar\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -216,7 +216,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</label> <input id=\"ts-scrub-bar\" class=\"ts-wave__input\" type=\"range\" min=\"0\" max=\"0\" step=\"1\" value=\"0\" data-ts-range></div><div class=\"ts-pbar__times\"><span data-pbar=\"elapsed\"></span> <span data-pbar=\"chapter\"></span> <span class=\"ts-pbar__left\" data-pbar=\"left\"></span></div></div><div class=\"ts-pbar__tools\"><button type=\"button\" class=\"ts-iconbtn ts-mini__speed\" data-ts-bar-speed aria-haspopup=\"dialog\" aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</label> <input id=\"ts-scrub-bar\" class=\"ts-wave__input\" type=\"range\" min=\"0\" max=\"0\" step=\"1\" value=\"0\"></div><div class=\"ts-pbar__times\"><span data-pbar=\"elapsed\"></span> <span data-pbar=\"chapter\"></span> <span class=\"ts-pbar__left\" data-pbar=\"left\"></span></div></div><div class=\"ts-pbar__tools\"><button type=\"button\" class=\"ts-iconbtn ts-mini__speed\" data-ts-bar-speed aria-haspopup=\"dialog\" aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -92,12 +92,16 @@ func TestFullPlayerMarkup(t *testing.T) {
 	}
 	// The mini-player carries the desktop bar (PB1): the chapter waveform, its times, the tools.
 	mini := body[strings.Index(body, `id="mini-player"`):start]
-	if strings.Contains(mini, `ts-scrub--bar`) {
-		t.Error("the mini-player still carries the old compact scrubber")
+	if strings.Contains(mini, `ts-scrub--bar`) || strings.Contains(mini, `data-ts-scrub=`) || strings.Contains(mini, `data-ts-range`) {
+		t.Error("the mini-player still carries the old compact scrubber (the bar's wave is waveform.js's)")
+	}
+	// The hairline's chapter gaps get --at from script (CSSOM); the markup never carries style="" (CSP style-src 'self').
+	if strings.Contains(mini, "style=") {
+		t.Error("the bar markup carries a style attribute")
 	}
 	for _, want := range []string{`data-ts-bar-book`, `data-ts-bar-booktip`, `data-ts-bar-meta`, `ts-pbar__transport`, `ts-pbar__seek`,
-		`ts-pbar__tools`, `ts-wave ts-wave--bar`, `data-ts-wave="bar"`, `data-ts-scrub="bar"`, `ts-wave__needle`, `ts-wave__hoverline`, `ts-wave__tip`, `data-ts-bubble`,
-		`data-ts-tip-time`, `data-ts-tip-rel`, `id="ts-scrub-bar"`, `ts-wave__input`, `data-ts-range`, `data-pbar="elapsed"`, `data-pbar="chapter"`, `data-pbar="left"`,
+		`ts-pbar__tools`, `ts-wave ts-wave--bar`, `data-ts-wave="bar"`, `ts-wave__needle`, `ts-wave__hoverline`, `ts-wave__tip`,
+		`data-ts-tip-time`, `data-ts-tip-rel`, `id="ts-scrub-bar"`, `ts-wave__input`, `data-pbar="elapsed"`, `data-pbar="chapter"`, `data-pbar="left"`,
 		`data-ts-bar-chapters`, `data-ts-bar-bookmark`, `data-ts-bar-volume`, `aria-controls="ts-volume-pop"`, `id="ts-volume-pop"`, `data-ts-bar-expand`} {
 		if !strings.Contains(mini, want) {
 			t.Errorf("the mini-player lacks %s", want)
