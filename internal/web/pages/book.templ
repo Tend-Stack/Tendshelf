@@ -43,6 +43,8 @@ type BookPlayView struct {
 	Where, WhereShort string
 	// ShelfHref and ShelfLabel open the "Add to shelf" sheet; empty for people who may not shelve.
 	ShelfHref, ShelfLabel string
+	// ShareHref opens the book's Share & invite page; empty unless the person manages users.
+	ShareHref string
 }
 
 // BookView is the book page. The handler writes every word and address; the template only lays
@@ -94,6 +96,8 @@ type BookView struct {
 	// ShelfHref opens the "Add to shelf" sheet (the book page with ?sheet=shelves); empty for people
 	// who may not use shelves. It is not a play control: the book's one play button stays alone.
 	ShelfHref, ShelfLabel string
+	// ShareHref opens the book's Share & invite page; empty unless the person manages users.
+	ShareHref string
 }
 
 templ backIcon() {
@@ -143,6 +147,9 @@ templ BookPlay(v *BookPlayView) {
 				if v.ShelfHref != "" {
 					@bookShelfLink(v.ShelfHref, v.ShelfLabel)
 				}
+				if v.ShareHref != "" {
+					@bookShareLink(v.ShareHref)
+				}
 				<form method="post" action={ templ.SafeURL(v.Action) } hx-post={ v.Action } hx-swap="none">
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
 					<input type="hidden" name="finished" value={ v.MarkValue }/>
@@ -159,6 +166,14 @@ templ BookPlay(v *BookPlayView) {
 
 // bookShelfLink opens the "Add to shelf" sheet. It is not a play control: the book's one play button
 // stays alone.
+// bookShareLink opens the Share & invite page for this book. A plain link: the page is a full page.
+templ bookShareLink(href string) {
+	<a class="ts-btn ts-btn--quiet ts-book__share" href={ templ.SafeURL(href) }>
+		@components.Icon("share", false)
+		Share
+	</a>
+}
+
 templ bookShelfLink(href, label string) {
 	<a
 		class="ts-btn ts-btn--secondary ts-btn--lg ts-book__shelf"
@@ -239,10 +254,15 @@ templ Book(v BookView) {
 			</div>
 			if v.Play != nil {
 				@BookPlay(v.Play)
-			} else if v.ShelfHref != "" {
+			} else if v.ShelfHref != "" || v.ShareHref != "" {
 				<div class="ts-book__play">
 					<div class="ts-book__acts">
-						@bookShelfLink(v.ShelfHref, v.ShelfLabel)
+						if v.ShelfHref != "" {
+							@bookShelfLink(v.ShelfHref, v.ShelfLabel)
+						}
+						if v.ShareHref != "" {
+							@bookShareLink(v.ShareHref)
+						}
 					</div>
 				</div>
 			}

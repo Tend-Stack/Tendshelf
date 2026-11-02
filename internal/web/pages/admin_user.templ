@@ -49,6 +49,8 @@ type AdminUserView struct {
 // ConfirmView is a confirmation page (turn off an account, stop sharing).
 type ConfirmView struct {
 	CSRF, Title, Body, Action, Confirm, Keep, Back string
+	// Return, when set, is sent back with the confirmation so the action returns to that page.
+	Return string
 }
 
 // AdminUserConfirm asks before turning off an account or removing every grant. Both are one click
@@ -59,6 +61,9 @@ templ AdminUserConfirm(v ConfirmView) {
 		<p class="ts-users__lead">{ v.Body }</p>
 		<form class="ts-users__confirm" method="post" action={ templ.URL(v.Action) } hx-boost="false">
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			if v.Return != "" {
+				<input type="hidden" name="back" value={ v.Return }/>
+			}
 			<button type="submit" class="ts-btn ts-btn--danger">{ v.Confirm }</button>
 			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.Back) }>{ v.Keep }</a>
 		</form>

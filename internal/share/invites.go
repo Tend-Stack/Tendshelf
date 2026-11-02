@@ -375,6 +375,50 @@ func (r *Invites) Pending(ctx context.Context, nowMs int64, roles []users.Role) 
 	return out, rows.Err()
 }
 
+// PendingCovering lists the pending invites (as Pending) whose access list opens bookID: an "all"
+// grant, the book's library, a shelf holding it, or the book itself. Admin invites carry no grants
+// and never match. Two small queries find the book's library and shelves; the match is in Go.
+func (r *Invites) PendingCovering(ctx context.Context, nowMs int64, roles []users.Role, bookID string) ([]Invite, error) {
+	list, err := r.Pending(ctx, nowMs, roles)
+	if err != nil || len(list) == 0 {
+		return nil, err
+	}
+	var lib string
+	if err := r.st.Reader().QueryRowContext(ctx, `SELECT library_id FROM books WHERE id = ?`, bookID).Scan(&lib); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	rows, err := r.st.Reader().QueryContext(ctx, `SELECT shelf_id FROM shelf_items WHERE book_id = ?`, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	shelves := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		shelves[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	var out []Invite
+	for _, inv := range list {
+		for _, g := range inv.Grants {
+			if g.Scope == GrantAll || (g.Scope == GrantLibrary && g.Target == lib) ||
+				(g.Scope == GrantShelf && shelves[g.Target]) || (g.Scope == GrantBook && g.Target == bookID) {
+				out = append(out, inv)
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
 // WaitingInvites counts the invites that can still be used at nowMs and whose role is in roles.
 // No roles, 0.
 func WaitingInvites(ctx context.Context, st *db.Store, nowMs int64, roles []users.Role) (int, error) {

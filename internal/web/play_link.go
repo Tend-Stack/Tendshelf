@@ -144,6 +144,9 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	if s.canShelve(r) {
 		v.ShelfHref, v.ShelfLabel = shelfSheetHref(book.ID), shelfAddLabel
 	}
+	if s.canManageServerUsers(r) {
+		v.ShareHref = "/books/" + book.ID + "/share"
+	}
 	return v, nil
 }
 

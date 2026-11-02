@@ -93,6 +93,9 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 	shelves := s.canShelve(r)
 	var sheet templ.Component
 	styles := pages.BookStyles
+	if s.canManageServerUsers(r) {
+		v.ShareHref = "/books/" + id + "/share"
+	}
 	if shelves {
 		v.ShelfHref, v.ShelfLabel = shelfSheetHref(id), shelfAddLabel
 		styles = append(append([]string(nil), styles...), pages.ShelfStyles[2])

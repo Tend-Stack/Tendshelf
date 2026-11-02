@@ -1,0 +1,41 @@
+/* Share & invite page (/share, /books/{id}/share). P3-4a ships the plain layout so the page is usable;
+   P3-4b brings the board's finish (radio cards, chips, themes, captures). */
+.ts-share { display: flex; flex-direction: column; gap: var(--space-24); max-width: 75rem; }
+.ts-share__bar { display: flex; align-items: center; gap: var(--space-12); }
+.ts-share__head { display: none; flex-direction: column; gap: var(--space-4); }
+.ts-share__head p { margin: 0; color: var(--ink-muted); }
+.ts-share__grid { display: flex; flex-direction: column; gap: var(--space-24); }
+.ts-share__side { display: flex; flex-direction: column; gap: var(--space-24); }
+.ts-share__card, .ts-share__people, .ts-share__safe {
+  display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-16);
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface);
+}
+.ts-share__form, .ts-share__field { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
+.ts-share__field { margin: 0; padding: 0; border: 0; }
+.ts-share__tabs { display: flex; gap: var(--space-8); }
+.ts-share__tab { display: inline-flex; align-items: center; gap: var(--space-8); min-height: 2.75rem; padding: 0 var(--space-16); color: var(--ink); background: none; border: 1px solid var(--line); border-radius: var(--radius-md); font: inherit; }
+.ts-share__tab[disabled] { color: var(--ink-muted); }
+.ts-share__tabhint, .ts-share__fine { margin: 0; color: var(--ink-muted); }
+.ts-share__choices { display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-share__choice { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: var(--space-8) var(--space-12); }
+.ts-share__choice > :not(input[type="radio"]):not(label) { grid-column: 2; }
+.ts-share__choice-title, .ts-share__choice-hint { display: block; }
+.ts-share__choice-hint { color: var(--ink-muted); }
+.ts-share__chips { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.ts-share__chip { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.ts-share__chip:has(:checked) { border-color: var(--accent); }
+.ts-share__find { display: flex; gap: var(--space-8); }
+.ts-share__list { display: flex; flex-direction: column; gap: var(--space-12); margin: 0; padding: 0; list-style: none; }
+.ts-share__person, .ts-share__pending { display: flex; align-items: center; gap: var(--space-12); }
+.ts-share__person .ts-users__text, .ts-share__pending .ts-users__text { flex: 1; min-width: 0; }
+.ts-share__peoplehead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-12); }
+.ts-share__error { margin: 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--danger); border-radius: var(--radius-md); color: var(--danger); }
+.ts-share__safe { display: none; }
+.ts-share__safe h2 { margin: 0; }
+.ts-share__safe ul { margin: 0; padding-left: var(--space-16); color: var(--ink-muted); }
+@media (min-width: 768px) {
+  .ts-share__bar { display: none; }
+  .ts-share__head { display: flex; }
+  .ts-share__grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+  .ts-share__safe { display: flex; }
+}

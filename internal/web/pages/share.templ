@@ -1,0 +1,286 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// ShareStyles are the sheets of the Share & invite page: the form and invite pieces it borrows,
+// the Users page pieces for the people list, and its own.
+var ShareStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-share.css"}
+
+// ShareChoice is one radio card of the form (what they can listen to, what they can do, how long
+// the link works). The handler writes every word.
+type ShareChoice struct {
+	Value, Title, Hint string
+	On                 bool
+	// Options, when there are several, become a native select inside the card; one option is
+	// named in the card and sent as a hidden field. Hidden is the field's name; Selected the
+	// option chosen now.
+	Options  []Option
+	Hidden   string
+	Selected string
+}
+
+// ShareListener is one person on the "Who's listening" list. Line reads "For Mamá · listening now".
+type ShareListener struct {
+	ID, Name, RolePill, RoleKind, Line string
+	// StopHref opens the "Stop sharing" confirmation. When it is empty the person has this book
+	// through a wider share: Via says where from and ViaHref opens their page.
+	StopHref, Via, ViaHref string
+}
+
+// SharePending is one invite waiting to be opened. Line reads "Inés · hasn't opened it yet".
+type SharePending struct {
+	ID, Name, Line, Meta string
+}
+
+// ShareView is the Share & invite page.
+type ShareView struct {
+	CSRF, Action, FindAction string
+	// Back is the page's own path, sent with every action so it returns here; BackHref is where
+	// the phone's back link goes.
+	Back, BackHref string
+	Error          string
+	Name, Note, Q  string
+	Scopes, Roles  []ShareChoice
+	Expires        []ShareChoice
+	Read           bool
+	// BookTitle and BookID are set on a book's own page; Found are the books a search found.
+	BookTitle, BookID string
+	Found             []Option
+	// BookChosen is the found book that is selected (kept after a form error).
+	BookChosen string
+	// Created is the link panel shown instead of the form once an invite exists.
+	Created   *InviteLink
+	Listening string
+	People    []ShareListener
+	Pending   []SharePending
+	// NewLink is the panel for a replaced link ("Copy link").
+	NewLink *InviteLink
+}
+
+// SharePage is the Share & invite page: the form on the left, who is listening and the reassurance
+// on the right (one column on a phone).
+templ SharePage(v ShareView) {
+	<div class="ts-share">
+		<div class="ts-share__bar">
+			<a class="ts-admin__back" href={ templ.SafeURL(v.BackHref) }>Back</a>
+			<span class="body">Share &amp; invite</span>
+		</div>
+		<header class="ts-share__head">
+			<h1 class="title-1">Share &amp; invite</h1>
+			<p class="body">Everyone gets their own place, progress and bookmarks. You decide what each person can see.</p>
+		</header>
+		<div class="ts-share__grid">
+			<section class="ts-share__card" aria-labelledby="inv-h">
+				<h2 id="inv-h" class="section">Invite someone</h2>
+				if v.Created != nil {
+					@InviteLinkPanel(*v.Created)
+					<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.Back) }>Invite someone else</a>
+				} else {
+					@shareForm(v)
+				}
+			</section>
+			<div class="ts-share__side">
+				@shareListening(v)
+				@shareSafe()
+			</div>
+		</div>
+	</div>
+}
+
+// shareForm is the invite form. It posts to its own page; the book search is a second, separate
+// form (id share-find) whose fields sit inside this one's card.
+templ shareForm(v ShareView) {
+	<form class="ts-share__form" method="post" action={ templ.URL(v.Action) } hx-push-url="false" aria-label="Invite someone">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		if v.Error != "" {
+			<p class="ts-share__error" role="alert">{ v.Error }</p>
+		}
+		<div class="ts-share__tabs" role="group" aria-label="How to invite">
+			<span class="ts-share__tab" aria-current="true">
+				@components.Icon("link", false)
+				Send a link
+			</span>
+			<button type="button" class="ts-share__tab" disabled aria-describedby="share-mail-hint">
+				@components.Icon("mail", false)
+				Email it
+			</button>
+		</div>
+		<p class="caption ts-share__tabhint" id="share-mail-hint">Email isn't set up on this server yet. Copy the link and send it however you like.</p>
+		<div class="ts-field ts-share__field">
+			<label class="ts-field__label" for="who">Who is it for?</label>
+			<input id="who" class="ts-input" type="text" name="name" value={ v.Name } maxlength="80" autocomplete="off" required/>
+			<span class="ts-field__hint">Just so you know which link is whose. They can change their name.</span>
+		</div>
+		<fieldset class="ts-share__field">
+			<legend class="ts-field__label">What can they listen to?</legend>
+			<div class="ts-share__choices">
+				for _, c := range v.Scopes {
+					<div class="ts-share__choice">
+						<input type="radio" class="ts-check" id={ "scope-" + c.Value } name="scope" value={ c.Value } checked?={ c.On }/>
+						<label for={ "scope-" + c.Value }>
+							<span class="body ts-share__choice-title">{ c.Title }</span>
+							<span class="caption ts-share__choice-hint">{ c.Hint }</span>
+						</label>
+						if len(c.Options) == 1 {
+							<input type="hidden" name={ c.Hidden } value={ c.Options[0].Value }/>
+						}
+						if len(c.Options) > 1 {
+							<select class="ts-select ts-share__select" name={ c.Hidden } aria-label={ c.Title }>
+								for _, o := range c.Options {
+									<option value={ o.Value } selected?={ o.Value == c.Selected }>{ o.Label }</option>
+								}
+							</select>
+						}
+						if c.Value == "book" {
+							@shareBookChoice(v)
+						}
+					</div>
+				}
+			</div>
+		</fieldset>
+		<fieldset class="ts-share__field">
+			<legend class="ts-field__label">What can they do?</legend>
+			<div class="ts-share__choices">
+				for _, c := range v.Roles {
+					<label class="ts-share__choice">
+						<input type="radio" class="ts-check" name="role" value={ c.Value } checked?={ c.On }/>
+						<span>
+							<span class="body ts-share__choice-title">{ c.Title }</span>
+							<span class="caption ts-share__choice-hint">{ c.Hint }</span>
+						</span>
+					</label>
+				}
+			</div>
+		</fieldset>
+		<div class="ts-switch-row ts-share__read">
+			<span class="ts-switch-row__text">
+				<label class="ts-switch-row__label" for="share-read">Also let them read along</label>
+				<span class="ts-switch-row__hint">For books that have an ebook too. Their highlights and notes stay their own.</span>
+			</span>
+			<input type="checkbox" role="switch" class="ts-switch" id="share-read" name="read" value="1" checked?={ v.Read }/>
+		</div>
+		<fieldset class="ts-share__field">
+			<legend class="ts-field__label">The link works for</legend>
+			<div class="ts-share__chips">
+				for _, c := range v.Expires {
+					<label class="ts-share__chip">
+						<input type="radio" name="expires" value={ c.Value } checked?={ c.On }/>
+						<span>{ c.Title }</span>
+					</label>
+				}
+			</div>
+			<span class="ts-field__hint">Once they open it, they keep access until you stop sharing.</span>
+		</fieldset>
+		<div class="ts-field ts-share__field">
+			<label class="ts-field__label" for="msg">A note for them <span class="ts-field__hint">(optional)</span></label>
+			<textarea id="msg" class="ts-input" name="note" rows="3">{ v.Note }</textarea>
+		</div>
+		<div class="ts-share__create">
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">
+				@components.Icon("link", false)
+				Create invite link
+			</button>
+			<p class="caption ts-share__fine">
+				@components.Icon("shield", false)
+				<span>They see only what you choose here. They can't see your other books, your listening, or anyone else on the server. You can stop sharing any time.</span>
+			</p>
+		</div>
+	</form>
+	if v.BookID == "" {
+		<form id="share-find" method="get" action={ templ.URL(v.FindAction) }></form>
+	}
+}
+
+// shareBookChoice is the inside of the "Just one book" card: the book itself on a book's page, or a
+// search whose results are radios. The search field belongs to the separate share-find form so
+// forms are never nested.
+templ shareBookChoice(v ShareView) {
+	if v.BookID != "" {
+		<input type="hidden" name="book" value={ v.BookID }/>
+	} else {
+		<span class="ts-share__find">
+			<label class="ts-sr" for="share-q">Find a book</label>
+			<input id="share-q" class="ts-input" type="search" name="q" value={ v.Q } form="share-find" placeholder="Find a book"/>
+			<button type="submit" class="ts-btn ts-btn--secondary" form="share-find">Search</button>
+		</span>
+		for _, o := range v.Found {
+			<label class="ts-share__found">
+				<input type="radio" class="ts-check" name="book" value={ o.Value } checked?={ o.Value == v.BookChosen }/>
+				{ o.Label }
+			</label>
+		}
+	}
+}
+
+// shareListening is "Who's listening": the people the page's scope reaches, then invites waiting.
+templ shareListening(v ShareView) {
+	<section class="ts-share__people" aria-labelledby="ppl-h">
+		<div class="ts-share__peoplehead">
+			<h2 id="ppl-h" class="section">Who's listening</h2>
+			<span class="caption ts-num">{ v.Listening }</span>
+		</div>
+		if v.NewLink != nil {
+			@InviteLinkPanel(*v.NewLink)
+		}
+		if len(v.People) == 0 && len(v.Pending) == 0 {
+			<p class="caption">Nobody yet. People you invite show up here.</p>
+		} else {
+			<ul class="ts-share__list">
+				for _, p := range v.People {
+					<li class="ts-share__person">
+						@components.Avatar(p.ID, p.Name, "md")
+						<span class="ts-users__text">
+							<span class="ts-users__line">
+								<span class="body ts-users__name">{ p.Name }</span>
+								<span class="ts-role">{ p.RolePill }</span>
+							</span>
+							<span class="caption ts-users__meta">{ p.Line }</span>
+							if p.Via != "" {
+								<span class="caption ts-users__meta">{ p.Via }</span>
+							}
+						</span>
+						if p.StopHref != "" {
+							<a class="ts-btn ts-btn--quiet ts-share__stop" href={ templ.SafeURL(p.StopHref) } aria-label={ "Stop sharing with " + p.Name }>Stop sharing</a>
+						} else if p.ViaHref != "" {
+							<a class="ts-btn ts-btn--quiet ts-share__stop" href={ templ.SafeURL(p.ViaHref) } aria-label={ "Manage " + p.Name }>Manage</a>
+						}
+					</li>
+				}
+				for _, p := range v.Pending {
+					<li class="ts-share__pending">
+						<span class="ts-invite__icon">@components.Icon("link", false)</span>
+						<span class="ts-users__text">
+							<span class="body ts-users__name">{ p.Line }</span>
+							<span class="caption ts-users__meta ts-num">{ p.Meta }</span>
+						</span>
+						<form method="post" action={ templ.URL("/admin/invites/" + p.ID + "/link") } hx-push-url="false">
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<input type="hidden" name="back" value={ v.Back }/>
+							<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ "Copy link for " + p.Name }>Copy link</button>
+						</form>
+						<form method="post" action={ templ.URL("/admin/invites/" + p.ID + "/cancel") }>
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<input type="hidden" name="back" value={ v.Back }/>
+							<button type="submit" class="ts-iconbtn" aria-label={ "Cancel " + p.Name + "'s invite" }>
+								@components.Icon("close", false)
+							</button>
+						</form>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}
+
+// shareSafe is the reassurance card. It is hidden on a phone, as on the board.
+templ shareSafe() {
+	<section class="ts-share__safe" aria-label="What sharing means">
+		<h2 class="label">Safe by default</h2>
+		<ul class="caption">
+			<li>People only see what you share with them.</li>
+			<li>Nobody sees anyone else's listening, notes or bookmarks.</li>
+			<li>Stopping sharing takes effect at once, on every device. Their progress is kept in case you invite them again.</li>
+			<li>Invite links stop working when they expire, even if nobody used them.</li>
+		</ul>
+	</section>
+}

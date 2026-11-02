@@ -385,12 +385,17 @@ func (s *server) getPersonDisable(w http.ResponseWriter, r *http.Request) {
 	}
 	name := personName(t)
 	s.confirmPage(w, r, t.ID, fmt.Sprintf(usersOffTitle, name), fmt.Sprintf(usersOffBody, name),
-		"/admin/users/"+t.ID+"/disable", usersOffConfirm, usersOffKeep)
+		"/admin/users/"+t.ID+"/disable", usersOffConfirm, usersOffKeep, "")
 }
 
-func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, id, title, body, action, confirm, keep string) {
+// confirmPage shows a confirmation. ret, when it is a valid Share & invite address, is where "keep"
+// goes and where the action returns to afterwards; otherwise both use the person's page.
+func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, id, title, body, action, confirm, keep, ret string) {
 	v := pages.ConfirmView{CSRF: s.csrf.TokenFrom(r.Context()), Title: title, Body: body, Action: action,
 		Confirm: confirm, Keep: keep, Back: "/admin/users/" + id}
+	if ret != "" {
+		v.Back, v.Return = ret, ret
+	}
 	s.pageStyled(w, r, http.StatusOK, title, "admin-users", pages.AdminUserConfirm(v), nil, adminStyles...)
 }
 
@@ -537,7 +542,7 @@ func (s *server) postGrantRemove(w http.ResponseWriter, r *http.Request) {
 		return s.grants.Revoke(ctx, tx, actor, g.ID)
 	})
 	if done {
-		s.backToPerson(w, r, id)
+		s.afterChange(w, r, id)
 	}
 }
 
@@ -547,8 +552,45 @@ func (s *server) getPersonStop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := personName(t)
+	ret, bookID, ok := validShareBack(r.URL.Query().Get("back"))
+	if !ok {
+		ret = ""
+	}
+	if bookID != "" {
+		// From a book's page, stopping removes only the share that gives that book.
+		if gid, title := s.bookGrantOf(r, t.ID, bookID); gid != "" {
+			s.confirmPage(w, r, t.ID, fmt.Sprintf(shareStopBookTitle, title, name), fmt.Sprintf(shareStopBookBody, name),
+				"/admin/users/"+t.ID+"/grants/"+gid+"/remove", usersStopConfirm, usersStopKeep, ret)
+			return
+		}
+	}
 	s.confirmPage(w, r, t.ID, fmt.Sprintf(usersStopTitle, name), fmt.Sprintf(usersStopBody, name),
-		"/admin/users/"+t.ID+"/stop", usersStopConfirm, usersStopKeep)
+		"/admin/users/"+t.ID+"/stop", usersStopConfirm, usersStopKeep, ret)
+}
+
+// bookGrantOf finds the grant that gives userID the book itself, and the book's title; the id is
+// empty when there is none.
+func (s *server) bookGrantOf(r *http.Request, userID, bookID string) (gid, title string) {
+	list, err := s.grants.ForUserNamed(r.Context(), userID)
+	if err != nil {
+		return "", ""
+	}
+	for _, g := range list {
+		if g.Scope == share.GrantBook && g.TargetID == bookID {
+			return g.ID, g.Name
+		}
+	}
+	return "", ""
+}
+
+// afterChange answers a finished change: back to the Share & invite page it came from (a valid
+// "back"), else the person's page.
+func (s *server) afterChange(w http.ResponseWriter, r *http.Request, id string) {
+	if back, _, ok := validShareBack(r.PostForm.Get("back")); ok {
+		s.redirect(w, r, back)
+		return
+	}
+	s.backToPerson(w, r, id)
 }
 
 func (s *server) postPersonStop(w http.ResponseWriter, r *http.Request) {
@@ -565,6 +607,6 @@ func (s *server) postPersonStop(w http.ResponseWriter, r *http.Request) {
 			Target: "user:" + id, Detail: map[string]any{"grants": n}})
 	})
 	if done {
-		s.backToPerson(w, r, id)
+		s.afterChange(w, r, id)
 	}
 }

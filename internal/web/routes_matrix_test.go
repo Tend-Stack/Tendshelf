@@ -566,7 +566,8 @@ func sweepRows() []sweepRow {
 			"finished": {"1"}, "next": {"/"}}), sweepStaff(303, 404), "/"))
 	rows = append(rows, post...)
 	rows = append(rows, usersSweepRows()...)
-	return append(rows, invitesSweepRows()...)
+	rows = append(rows, invitesSweepRows()...)
+	return append(rows, shareSweepRows()...)
 }
 
 // sweepLeakWords are strings of the seeded book that nobody without access may ever see.
