@@ -31,14 +31,13 @@ const (
 	ManageUsers     Action = "users.manage"
 	ManageServer    Action = "server.manage"
 	UseShelves      Action = "shelves.use"
-	UseResearch     Action = "research.use"
 	ViewShelf       Action = "shelf.view" // reading a shelf that is not one's own
 )
 
 var knownActions = map[Action]bool{
 	ViewLibrary: true, ViewBook: true, ListenBook: true, DownloadBook: true, EditBook: true,
 	ReadText: true, DownloadText: true, ManageLibraries: true, ManageJobs: true,
-	ManageUsers: true, ManageServer: true, UseShelves: true, UseResearch: true, ViewShelf: true,
+	ManageUsers: true, ManageServer: true, UseShelves: true, ViewShelf: true,
 }
 
 // TargetKind is what an action is aimed at.
