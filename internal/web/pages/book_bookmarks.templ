@@ -76,6 +76,31 @@ templ BookmarksPanel(v BookmarksView) {
 				{ v.ExportLabel }
 			</a>
 		</div>
+		@BookmarkItems(v, false)
+		if v.Add != nil {
+			<form class="ts-bookmarks__add" method="post" action={ templ.URL(v.Add.Action) } data-ts-bookmark-add={ v.Add.BookID } hidden?={ v.Add.Hidden }>
+				<input type="hidden" name="_csrf" value={ v.Add.CSRF }/>
+				<input type="hidden" name="position_ms" value={ v.Add.PositionMs }/>
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">
+					@components.Icon("bookmark", false)
+					<span data-ts-bookmark-add-label>{ v.Add.Label }</span>
+				</button>
+			</form>
+		}
+	</div>
+}
+
+// BookmarkItems are the filter chips and the bookmarks themselves: the part of the tab that changes
+// when a note is saved or a bookmark is deleted. With oob it answers an out-of-band swap that
+// replaces the same region on the page, so the sheet's htmx answer refreshes the list behind it.
+templ BookmarkItems(v BookmarksView, oob bool) {
+	<div
+		id="bookmark-items"
+		class="ts-bookmarks__items"
+		if oob {
+			hx-swap-oob="outerHTML"
+		}
+	>
 		<nav class="ts-seg ts-bookmarks__chips" aria-label={ v.ChipsLabel }>
 			for _, c := range v.Chips {
 				<a
@@ -105,21 +130,12 @@ templ BookmarksPanel(v BookmarksView) {
 		} else {
 			<p class="ts-book__desc">{ v.EmptyTitle }</p>
 		}
-		if v.Add != nil {
-			<form class="ts-bookmarks__add" method="post" action={ templ.URL(v.Add.Action) } data-ts-bookmark-add={ v.Add.BookID } hidden?={ v.Add.Hidden }>
-				<input type="hidden" name="_csrf" value={ v.Add.CSRF }/>
-				<input type="hidden" name="position_ms" value={ v.Add.PositionMs }/>
-				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">
-					@components.Icon("bookmark", false)
-					<span data-ts-bookmark-add-label>{ v.Add.Label }</span>
-				</button>
-			</form>
-		}
 	</div>
 }
 
-// BookmarkSheet edits the note of one bookmark, or deletes the bookmark. Both are plain forms that
-// leave the sheet with a full page answer, so the list behind it is always current.
+// BookmarkSheet edits the note of one bookmark, or deletes the bookmark. Both forms post through
+// htmx so the book keeps playing: the answer empties the sheet out of band, adds a toast and refreshes the list
+// behind it. Without JavaScript they are plain forms that answer with a redirect.
 templ BookmarkSheet(v BookmarkSheetView) {
 	<div class="ts-sheet-layer ts-sheet-layer--bookmarks">
 		@components.SheetStyles(v.Styles)
@@ -133,7 +149,7 @@ templ BookmarkSheet(v BookmarkSheetView) {
 				</a>
 			</div>
 			<p class="ts-bookmark-sheet__when">{ v.When }</p>
-			<form class="ts-bookmark-sheet__form" method="post" action={ templ.URL(v.NoteAction) } hx-boost="false">
+			<form class="ts-bookmark-sheet__form" method="post" action={ templ.URL(v.NoteAction) } hx-post={ v.NoteAction } hx-swap="none">
 				<input type="hidden" name="_csrf" value={ v.CSRF }/>
 				<div class="ts-field ts-bookmark-sheet__field">
 					<label class="ts-field__label" for="bms-note">{ v.NoteLabel }</label>
@@ -157,7 +173,7 @@ templ BookmarkSheet(v BookmarkSheetView) {
 				</div>
 				<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ v.SaveLabel }</button>
 			</form>
-			<form class="ts-bookmark-sheet__form" method="post" action={ templ.URL(v.DeleteAction) } hx-boost="false">
+			<form class="ts-bookmark-sheet__form" method="post" action={ templ.URL(v.DeleteAction) } hx-post={ v.DeleteAction } hx-swap="none">
 				<input type="hidden" name="_csrf" value={ v.CSRF }/>
 				<button type="submit" class="ts-btn ts-btn--danger ts-btn--block">{ v.DeleteLabel }</button>
 			</form>

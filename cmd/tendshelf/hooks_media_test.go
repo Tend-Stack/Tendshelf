@@ -31,8 +31,34 @@ func TestCompatCacheFlag(t *testing.T) {
 		t.Errorf("bad environment value = %d, want the default 5", got)
 	}
 
-	_, err := registerMediaJobs(deps{}, parse("-compat-cache-gib", "0"))
+	_, _, err := registerMediaJobs(deps{}, parse("-compat-cache-gib", "0"))
 	if err == nil || !strings.Contains(err.Error(), "at least 1") {
 		t.Errorf("a cap below 1 GiB: err = %v", err)
+	}
+}
+
+func TestWaveformsFlag(t *testing.T) {
+	parse := func(args ...string) bool {
+		fs := flag.NewFlagSet("t", flag.ContinueOnError)
+		mf := addMediaFlags(fs)
+		if err := fs.Parse(args); err != nil {
+			t.Fatal(err)
+		}
+		return *mf.waveforms
+	}
+	t.Setenv("TENDSHELF_WAVEFORMS", "")
+	if !parse() {
+		t.Error("waveforms should be on by default")
+	}
+	t.Setenv("TENDSHELF_WAVEFORMS", "false")
+	if parse() {
+		t.Error("TENDSHELF_WAVEFORMS=false should turn waveforms off")
+	}
+	if !parse("-waveforms") || parse("-waveforms=false") {
+		t.Error("the flag should override the environment")
+	}
+	t.Setenv("TENDSHELF_WAVEFORMS", "maybe")
+	if !parse() {
+		t.Error("a bad environment value should leave the default (on)")
 	}
 }

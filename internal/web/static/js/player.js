@@ -1017,7 +1017,9 @@ applyVolume();
 function info() {
   if (!book) return null;
   const { id, title, author, cover, durationMs, skipBack, skipForward, tint } = book;
-  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })) };
+  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
+    files: book.files.map(({ id, offset, dur, playable }) => ({ id, offset, dur, playable })), // for the waveform
+  };
 }
 
 // The public surface; debug is for tests only.

@@ -190,10 +190,12 @@ func TestFullPlayerBrowserScrubber(t *testing.T) {
 	e := playerApp(t)
 	tab := fullpOpen(t, e, 390, 844, false)
 	fullpOpenPlayer(t, tab)
-	var ticks int
-	tab.Eval(`document.querySelectorAll("#player-full .ts-scrub__tick").length`, &ticks)
-	if ticks != 5 {
-		t.Errorf("%d ticks, want 5 (six chapters)", ticks)
+	// The book ruler carries the chapter ticks; the scrubber itself is one chapter wide and has none.
+	var ticks, scrubTicks int
+	tab.Eval(`document.querySelectorAll("#player-full .ts-ruler__tick").length`, &ticks)
+	tab.Eval(`document.querySelectorAll("#player-full .ts-scrub__tick").length`, &scrubTicks)
+	if ticks != 5 || scrubTicks != 0 {
+		t.Errorf("%d ruler ticks, %d scrubber ticks, want 5 and 0 (six chapters)", ticks, scrubTicks)
 	}
 	tab.Eval(`document.querySelector("#player-full [data-ts-range]").focus()`, nil)
 	fullpNear(t, "start", fullpPos(tab), 100_000, 400)
@@ -207,10 +209,10 @@ func TestFullPlayerBrowserScrubber(t *testing.T) {
 	tab.WaitFor(`window.tsPlayer.state().positionMs >= 119000`, 2*time.Second)
 	fullpNear(t, "after PageDown", fullpPos(tab), 120_000, 400)
 	fullpKey(t, tab, "End", 35)
-	tab.WaitFor(`window.tsPlayer.state().positionMs > 170000`, 2*time.Second)
-	fullpNear(t, "after End", fullpPos(tab), 179_999, 1500)
+	tab.WaitFor(`window.tsPlayer.state().positionMs > 149000`, 2*time.Second)
+	fullpNear(t, "after End (the end of chapter 5)", fullpPos(tab), 150_000, 1500)
 
-	// A drag from the middle to 75 % of the ruler seeks there on release.
+	// A drag from the middle to 75 % of the line (chapter 6, 150 s to 180 s) seeks there on release.
 	var box struct{ L, W, Y float64 }
 	tab.Eval(`(() => { const r = document.querySelector("#player-full [data-ts-range]").getBoundingClientRect(); return {L: r.left, W: r.width, Y: r.top + r.height / 2}; })()`, &box)
 	fullpMouse(t, tab, "mousePressed", box.L+0.5*box.W, box.Y)
@@ -224,12 +226,12 @@ func TestFullPlayerBrowserScrubber(t *testing.T) {
 	}
 	tab.Eval(`({Dragging: !!document.querySelector("#player-full .ts-scrub.is-dragging"), Bubble: document.querySelector("#player-full [data-ts-bubble]").textContent,
 	  Fine: document.querySelector("#player-full [data-ts-full-fine]").textContent})`, &mid)
-	if !mid.Dragging || !strings.HasPrefix(mid.Bubble, "Chapter 5 · Chapter 5 · ") || mid.Fine != "Drag up for fine control" {
+	if !mid.Dragging || !strings.HasPrefix(mid.Bubble, "Chapter 6 · Chapter 6 · ") || mid.Fine != "Drag up for fine control" {
 		t.Errorf("while dragging: %+v", mid)
 	}
 	fullpMouse(t, tab, "mouseReleased", box.L+0.75*box.W, box.Y)
-	tab.WaitFor(`window.tsPlayer.state().positionMs > 130000 && window.tsPlayer.state().positionMs < 140000`, 2*time.Second)
-	fullpNear(t, "after the drag", fullpPos(tab), 135_000, 1000)
+	tab.WaitFor(`window.tsPlayer.state().positionMs > 170000 && window.tsPlayer.state().positionMs < 175000`, 2*time.Second)
+	fullpNear(t, "after the drag", fullpPos(tab), 172_500, 1000)
 
 	// Fine control: the same horizontal travel 100 px above the bar moves a quarter as far.
 	tab.Eval(`window.tsPlayer.seek(30000)`, nil)
@@ -241,8 +243,9 @@ func TestFullPlayerBrowserScrubber(t *testing.T) {
 	}
 	fullpMouse(t, tab, "mouseReleased", box.L+0.5*box.W, box.Y-100)
 	tab.WaitFor(`window.tsPlayer.state().positionMs > 30000`, 2*time.Second)
-	// pressed at 20 % (36 s), moved 30 % of the width at a quarter rate: 36 s + 0.3 * 180 s / 4 = 49.5 s
-	fullpNear(t, "after the fine drag", fullpPos(tab), 49_500, 1500)
+	// chapter 2 (30 s to 60 s): pressed at 20 % (36 s), moved 30 % of the width at a quarter rate:
+	// 36 s + 0.3 * 30 s / 4 = 38.25 s
+	fullpNear(t, "after the fine drag", fullpPos(tab), 38_250, 1000)
 
 	// aria-valuetext changes at most once per 10 s while playing.
 	tab.Eval(`window.tsPlayer.seek(10000); window.__vt = 0; new MutationObserver((l) => { window.__vt += l.length; }).observe(
@@ -258,7 +261,7 @@ func TestFullPlayerBrowserScrubber(t *testing.T) {
 	}
 	var text string
 	tab.Eval(`document.querySelector("#player-full [data-ts-range]").getAttribute("aria-valuetext")`, &text)
-	if !strings.HasPrefix(text, "0 hours 0 minutes elapsed, chapter ") {
+	if !strings.HasPrefix(text, "Chapter 1, 0 minutes ") {
 		t.Errorf("aria-valuetext %q", text)
 	}
 }
@@ -274,7 +277,7 @@ func TestFullPlayerBrowserTimesAndChapters(t *testing.T) {
 	}
 	// 100 s in: chapter 4 runs 90 s to 120 s; 80 s of the book are left.
 	got := texts()
-	want := map[string]string{"chapter": "Chapter 4 of 6", "clock": "0:10", "left": "0:20 left in chapter", "elapsed": "1:40", "book-left": "2 m left in book", "speed": "1.0×"}
+	want := map[string]string{"chapter": "Chapter 4 of 6", "clock": "0:10", "left": "0:20 left in chapter", "elapsed": "0:10", "book-left": "2 m left in book", "speed": "1.0×"}
 	for k, v := range want {
 		if got[k] != v {
 			t.Errorf("speed 1: %s = %q, want %q", k, got[k], v)

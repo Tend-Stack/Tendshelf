@@ -5,15 +5,15 @@ import (
 	"strings"
 )
 
-// Scrubber is the ruler across the whole book (design-system Scrubber): ticks, the fill, the
-// current-chapter line and the needle are drawn by player-full.js through custom properties, and the
-// range input on top carries the keyboard and screen reader semantics. which is "full" or "bar".
+// Scrubber is one chapter wide (decision 0005, a declared difference from the design-system Scrubber):
+// its ends are the chapter's start and end. The fill and the needle are drawn by player-full.js
+// through custom properties, and the range input on top carries the keyboard and screen reader
+// semantics. which is "full" or "bar".
 templ Scrubber(m PlayerMsgs, class, which string) {
 	<div class={ "ts-scrub", class } data-ts-scrub={ which }>
+		<div class="ts-wave" aria-hidden="true" data-ts-wave></div>
 		<div class="ts-scrub__line"></div>
-		<span class="ts-scrub__ticks" data-ts-ticks></span>
 		<div class="ts-scrub__fill"></div>
-		<div class="ts-scrub__chapter"></div>
 		<div class="ts-scrub__needle"></div>
 		<div class="ts-scrub__bubble" aria-hidden="true" data-ts-bubble></div>
 		<label class="ts-sr" for={ "ts-scrub-" + which }>{ m.ScrubLabel }</label>
@@ -88,6 +88,11 @@ templ PlayerFull(m PlayerMsgs) {
 				</button>
 			</div>
 			<div class="ts-player__scrub">
+				<div class="ts-ruler ts-player__ruler" aria-hidden="true" data-ts-ruler>
+					<div class="ts-ruler__line"></div>
+					<span class="ts-player__ruler-ticks" data-ts-ruler-ticks></span>
+					<div class="ts-ruler__fill"></div>
+				</div>
 				@Scrubber(m, "", "full")
 				<div class="ts-scrub__times">
 					<span data-ts-full-elapsed></span>

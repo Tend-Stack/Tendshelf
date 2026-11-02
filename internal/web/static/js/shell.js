@@ -133,6 +133,41 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && closeSheet()) event.preventDefault();
 });
 
+// A sheet can also be closed by the server: a saved note answers with an empty #sheet (out of band),
+// so no exit animation runs. When the region empties while focus was inside it (focus falls back to
+// the body), focus returns to the opener, as it does after the animation below; an opener that is
+// gone or cannot take focus leaves it at the start of the page content.
+// The answer may replace #sheet itself (an out-of-band swap) or empty it, so the body's own children
+// and the current #sheet's children are both watched.
+function returnFocusIfSheetGone() {
+  const region = document.getElementById("sheet");
+  if (region && region.childElementCount > 0) return;
+  // htmx finishes its own swap work (settling, restoring focus by id) after the mutation, so the
+  // check waits a moment rather than racing it.
+  setTimeout(() => {
+    const focusLost = !document.activeElement || document.activeElement === document.body;
+    if (!focusLost) return;
+    // An opener can still be in the document yet unfocusable (a toast link inside the closed full
+    // player), so the page content takes focus whenever the opener does not.
+    if (opener && opener.isConnected) opener.focus();
+    const main = document.getElementById("main");
+    if (document.activeElement !== opener && main) main.focus();
+  }, 60);
+}
+let watchedSheet = null;
+const sheetWatcher = new MutationObserver(returnFocusIfSheetGone);
+function watchSheetRegion() {
+  const region = document.getElementById("sheet");
+  if (!region || region === watchedSheet) return;
+  watchedSheet = region;
+  sheetWatcher.observe(region, { childList: true });
+}
+watchSheetRegion();
+new MutationObserver(() => {
+  watchSheetRegion();
+  returnFocusIfSheetGone();
+}).observe(document.body, { childList: true });
+
 // Leaving sheets and toasts are removed when their exit animation ends (a sheet takes its layer along).
 document.addEventListener("animationend", (event) => {
   const el = event.target;

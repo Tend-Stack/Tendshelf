@@ -32,7 +32,7 @@ is not an audio file or a cached image. ffmpeg/ffprobe are child processes, and 
 | `internal/library` | Libraries, folders, books, files, chapters, people, series, labels, shelves: the read/write repository used by everything else. `Scope` (grant filters with aliases `b` and `l`) and `Listable`. No HTTP, no ffmpeg. |
 | `internal/scan` | Walks library folders, groups files into books, detects new/changed/moved/missing files, refuses DRM, queues probe and metadata jobs. Ports ABS `scandir.js`/`BookScanner.js` behaviour. `ListFolders` and `Places` feed the folder browser: folder names only, never a file name, links never followed, 5,000 entries / 500 folders / 3 s. |
 | `internal/media` | ffprobe/ffmpeg runner (fixed args, protocol whitelist, deadlines, output caps); probe parsing (streams, tags, chapters, encryption); cover extraction and thumbnails; compatibility copies; stream-copy remux and verification. |
-| `internal/mediajobs` | Jobs `media.cover` (cover choice, stored picture, thumbnails, tint and accent colours) and `media.compat` (compatibility-copy cache with LRU cap). Imports library, media and jobs; never scan or metadata. Registered by `cmd/tendshelf/hooks.go`; the cover job follows the scanner's settled books. |
+| `internal/mediajobs` | Jobs `media.cover` (cover choice, stored picture, thumbnails, tint and accent colours), `media.compat` (compatibility-copy cache with LRU cap) and `media.peaks` (waveform peaks cache). Imports library, media and jobs; never scan or metadata. Registered by `cmd/tendshelf/hooks.go`; the cover job follows the scanner's settled books. |
 | `internal/metadata` | Local sources (names, tags, sidecars), the field-provenance merge, abridged/dramatized detection. Ports `extractor_details.py`. |
 | `internal/metadata/online` | Provider clients (Audnexus, Audible catalogue, Google Books, Open Library, iTunes), scoring, per-site spacing, 10 s timeouts, 7-day cache, safe cover fetch (5 MB, magic-byte check). The only `http.Client` in the program. Ports `extractor_online.py`. |
 | `internal/users` | Accounts, roles, argon2id password hashing (at most 4 at once, never inside a write transaction), account validation, owner creation. Devices and per-user settings later. |
@@ -125,6 +125,25 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
   AAC, length within 1 %) before it is renamed into place, and no database row exists for it.
   `media.MayNeedCompat` names the formats browsers always play; the player's `canPlayType` decides
   when to ask (P1c). No free-space check before converting: the cap bounds the cache.
+- **Waveform peaks**: the loudness of each audio file, decoded once by a background job and drawn
+  behind the chapter scrubber. `media.Peaks` runs ffmpeg (mono, 8 kHz, signed 16 bit PCM to a pipe, one
+  decoder thread, reniced to 10; the library file is only read) and a streaming reducer turns it into
+  one byte per 500 ms: the RMS level in dBFS mapped linearly from -60..0 dB to 0..255 (RMS on a dB scale
+  shows the pauses of speech; peak values give a flat wall on mastered audio). A 17 hour book is about 120 KiB.
+  File format: 16 byte header (`TSPK`, format 1, bin length in ms, value count, floor in dB) and the values.
+  Stored as `<data>/cache/peaks/<quick_hash>-v1.peaks` and nowhere else: no table, no migration, no backup
+  growth, and losing the directory loses nothing. A changed file has a new quick hash, so stale peaks are
+  never served; `Peaks.Sweep` removes other format versions and hashes no `audio_files` row carries (rows of
+  missing files keep theirs). Jobs `media.peaks` (concurrency 1) are queued by a scan follower for settled
+  books, by `Backfill` once after start (files scanned before), and by the first request for a file with
+  none; a request queues with no delay and `jobs.Runner.Expedite` moves an already queued job to now, so the
+  book being played goes first. A refused, encrypted, copy-protected, missing or unprobed file is never decoded.
+  The flag `-waveforms` (env `TENDSHELF_WAVEFORMS`, default on) turns the feature off for weak hardware:
+  nothing is queued and the route answers 404; so does a missing ffmpeg. `GET /peaks/{audioFileID}` is
+  authorised exactly like `/stream/` (`share.ListenBook`, same refusals, same 404), answers the binary with
+  `ETag "pk1-<quick_hash>"` and `Cache-Control: private, no-cache` (304 on a match), and answers 404 with
+  `Retry-After: 30` while the job is queued or running. Measured with ffmpeg 8.0.1: 30 minutes of AAC take about
+  2 s of CPU, so a 17 hour book is about 70 s (a guess of 8 to 10 times that on a Raspberry Pi 4).
 - **Covers**: job `media.cover` (`internal/mediajobs`), queued for each book the scanner settles. A
   folder image the owner placed wins: `cover.*`, then `folder.*` (folder books only; jpg, jpeg, png,
   webp, regular files, at most 20 MiB); otherwise the embedded picture of the first playable file that
@@ -205,7 +224,7 @@ HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id
 `GET|POST /hx/books/{id}/highlights`, `PATCH|DELETE /hx/highlights/{id}`, `POST /hx/editions/{id}/exports/overlays`,
 `POST /hx/admin/runtimes/check`.
 
-Media and system: `GET /stream/{audioFileID}`, `GET|POST /progress/{bookID}` (JSON, session + CSRF header or
+Media and system: `GET /stream/{audioFileID}`, `GET /peaks/{audioFileID}` (waveform peaks, binary, 404 while being made), `GET|POST /progress/{bookID}` (JSON, session + CSRF header or
 `_csrf` body field, 4 KiB, form-encoded), `GET /covers/{bookID}?w=320`,
 `GET /text/{editionID}/chapters/{idx}/timing.json` (ETag = chapter key), `GET /text/{editionID}/res/{resID}`
 (raster images only), `GET /text/{editionID}/original` and `GET /exports/{id}` (`download_text`), `GET /healthz`,
@@ -253,7 +272,7 @@ of 60 s or more, and on becoming visible after 60 s hidden; "Stay here" saves wi
 cannot decode is requested as `?compat=1` (`HEAD`, polled at `Retry-After` for up to 10 minutes). Media Session
 carries the title, author, chapter and cover with eight action handlers. Keys: Space and the arrows in player.js; `/`,
 `g l`, `g h` and `?` in shell.js. Budgets (`TestJSBudget`, gzip bytes): player.js 12 KB, shell.js 4 KB, player-full.js 12 KB,
-28 KB in all; `player.css` 4 KB.
+waveform.js 3.5 KB, 30 KB in all (28 KB until the waveform; operator 2026-11-02); `player.css` 4 KB.
 
 Full player (P1c-5a, `static/js/player-full.js`, a second async module, no imports; `components/player_full.templ`): one
 `<dialog id="player-full" class="ts-player" hx-preserve>` in `Layout` after `#player`. It never touches `#audio`: it reads
@@ -287,7 +306,7 @@ minutes where `devicemotion` is allowed; iOS asks inside the tap that sets the t
 `position_ms` of the live position to `POST /books/{id}/bookmarks` (JSON answer with `noteHref`) and show a toast with an "Add a
 note" link that uses the Bookmarks tab's htmx attributes; while the modal player is open toasts go into its own
 `[data-ts-full-toasts]` region. The Bookmarks tab's form is always rendered (hidden when there is no stored place) and the player
-fills in the live position. JS budgets (gzip): player.js 12 KB, player-full.js 12 KB, all app JS 28 KB; `player.css` 4 KB.
+fills in the live position. JS budgets (gzip): player.js 12 KB, player-full.js 12 KB, waveform.js 3.5 KB, all app JS 30 KB (raised from 28 KB for the waveform, operator 2026-11-02); `player.css` 4 KB.
 
 ## Design regions
 

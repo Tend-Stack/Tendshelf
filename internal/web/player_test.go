@@ -112,6 +112,10 @@ func TestPlayerLayoutAssets(t *testing.T) {
 	if n := len(full.FindAllString(body, -1)); n != 1 || strings.Index(body, "js/player-full") < strings.Index(body, "js/player.") {
 		t.Errorf("player-full.js is loaded %d times as an async module after player.js", n)
 	}
+	wave := regexp.MustCompile(`<script type="module" async src="[^"]*js/waveform[^"]*\.js"></script>`)
+	if n := len(wave.FindAllString(body, -1)); n != 1 || strings.Index(body, "js/waveform") < strings.Index(body, "js/player-full") {
+		t.Errorf("waveform.js is loaded %d times as an async module after player-full.js", n)
+	}
 	// Player CSS comes before a page's own sheet and after the shared ones.
 	if i, j := strings.Index(body, "css/motion"), strings.Index(body, "css/player"); i < 0 || j < i {
 		t.Error("player.css is not linked after motion.css")
@@ -149,7 +153,7 @@ func TestPlayerKeysHelp(t *testing.T) {
 func TestPlayerJSRules(t *testing.T) {
 	banned := []string{"innerHTML", "outerHTML", "insertAdjacentHTML", "eval(", "new Function", "new Audio", "document.write", "createElement(\"audio\")", "createElement(\"video\")", "setAttribute(\"style\""}
 	style := regexp.MustCompile(`\.style\.(\w+)`)
-	for _, name := range []string{"player.js", "player-full.js", "shell.js"} {
+	for _, name := range []string{"player.js", "player-full.js", "shell.js", "waveform.js"} {
 		b, err := os.ReadFile("static/js/" + name)
 		if err != nil {
 			t.Fatal(err)

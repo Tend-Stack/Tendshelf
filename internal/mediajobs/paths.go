@@ -1,5 +1,6 @@
 // Package mediajobs runs the media jobs that follow a scan: cover pictures with their thumbnails and
-// accent colours (media.cover), and browser-friendly compatibility copies (media.compat).
+// accent colours (media.cover), browser-friendly compatibility copies (media.compat), and waveform
+// peaks (media.peaks).
 //
 // Library files are only read. ffmpeg writes under the data directory alone, into a ".tmp-*" file
 // in the target directory that is renamed into place:
@@ -7,6 +8,7 @@
 //	<data>/covers/<sha256>.<jpg|png>        the stored cover (the bytes of the embedded or folder picture)
 //	<data>/cache/thumbs/<sha256>-<box>.jpg  thumbnails of 160, 320 and 640 px
 //	<data>/cache/compat/<quick_hash>-r<recipe>.m4a  compatibility copies (a disposable cache)
+//	<data>/cache/peaks/<quick_hash>-v<format>.peaks  waveform peaks (a disposable cache, media.Peaks)
 //
 // The package imports library, media and jobs; it never imports scan or metadata. The scanner
 // reaches it through a follower (Covers.Follower) that cmd/tendshelf registers.
@@ -49,6 +51,9 @@ func ThumbsDir(data string) string { return filepath.Join(data, "cache", "thumbs
 
 // CompatDir is where compatibility copies live.
 func CompatDir(data string) string { return filepath.Join(data, "cache", "compat") }
+
+// PeaksDir is where waveform peaks live.
+func PeaksDir(data string) string { return filepath.Join(data, "cache", "peaks") }
 
 // ThumbPath is the thumbnail of the cover with this hash, fitted in box by box pixels.
 func ThumbPath(data, sha string, box int) string {

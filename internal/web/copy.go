@@ -242,6 +242,8 @@ const (
 	bookmarkErrTooLong   = "Notes can be up to 2,000 characters."
 	bookmarkErrLimit     = "This book has 1,000 bookmarks, the most it can hold."
 	bookmarkErrPosition  = "That position is not a number of milliseconds."
+	bookmarkNoteSaved    = "Note saved."
+	bookmarkDeleted      = "Bookmark deleted."
 	bookmarkExportTitle  = "Export bookmarks"
 	bookmarkExportText   = "Plain text"
 	bookmarkExportMD     = "Markdown"
@@ -284,8 +286,8 @@ const (
 	msgLeftInBookHours      = msgDurationHours + msgLeftInBookSuffix
 	msgLeftInBookBoth       = msgDurationHoursMinutes + msgLeftInBookSuffix
 	msgSubtitleSep          = " · " // between the chapter title and the author under the book's title
-	msgScrubLabel           = "Position in book"
-	msgScrubValue           = "{h} hours {m} minutes elapsed, chapter {n}"
+	msgScrubLabel           = "Position in chapter"
+	msgScrubValue           = "Chapter {n}, {m} minutes {s} seconds elapsed"
 	msgFineScrub            = "Drag up for fine control"
 	msgScrubBubble          = "Chapter {n} · {title} · {t}"
 	msgClosePlayer          = "Close player"

@@ -12,6 +12,9 @@ VALUES (?, ?, 'queued', ?, ?, ?, ?, ?, ?)`
 	sqlGet = `SELECT id, kind, state, payload_json, result_json, progress_json, error_code, error_text,
 attempts, max_attempts, lease_until, not_before, created_by, created_at, updated_at FROM jobs WHERE id=?`
 
+	// args: updated_at, job id
+	sqlExpedite = `UPDATE jobs SET not_before=0, updated_at=? WHERE id=? AND state='queued' AND not_before>0`
+
 	// args: lease_until, now, kind, now
 	sqlClaim = `UPDATE jobs SET state='running', attempts=attempts+1, lease_until=?, updated_at=?
 WHERE id=(SELECT id FROM jobs WHERE state='queued' AND kind=? AND not_before<=? ORDER BY not_before, created_at, id LIMIT 1)

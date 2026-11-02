@@ -15,7 +15,6 @@ const REDUCED = matchMedia("(prefers-reduced-motion: reduce)");
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const VALUE_TEXT_EVERY_MS = 10000; // aria-valuetext changes at most this often while playing
-const SNAP_FRACTION = 0.015; // a drag within 1.5 % of a chapter start settles on it
 const SWIPE_MIN_PX = 8; // movement before a press becomes a swipe
 const SWIPE_OPEN_PX = 40; // swipe up on the bar opens the player
 const SWIPE_CLOSE_FRACTION = 0.3; // swipe down past this part of the screen closes it
@@ -130,7 +129,7 @@ function drawTimes(ms, speed) {
   setText("full-chapter", fill(msg("chapterOf"), { n: idx + 1, total: book.chapters.length }));
   setText("full-clock", clock(ms - chapter.start));
   setText("full-left", fill(msg("leftInChapter"), { t: clock(chapter.end - ms) }));
-  setText("full-elapsed", clock(ms));
+  setText("full-elapsed", clock(ms - chapter.start));
   setText("full-book-left", leftInBookText(minutes));
   // The board: the chapter's name in serif italic, then the author. A chapter without a title, or a
   // book of one chapter, shows the author alone.
@@ -148,18 +147,24 @@ function leftInBookText(minutes) {
   return fill(msg(form), { h: hours, m: rest });
 }
 
-function drawScrub(s, ms, force) {
-  const idx = chapterAt(ms);
-  const chapter = book.chapters[idx];
-  const fraction = (value) => clamp(value / (book.durationMs || 1), 0, 1).toFixed(4);
-  setVars(s.root, { "--ts-pos": fraction(ms), "--ts-ch-at": fraction(chapter.start), "--ts-ch-w": fraction(chapter.end - chapter.start) });
-  s.input.value = Math.floor(ms / 1000);
+// The scrubber is one chapter wide: its left end is the chapter's start, its right end the chapter's
+// end (decision 0005). chapter is fixed while a drag lasts, so the line does not change under the finger.
+function drawScrub(s, ms, force, chapter = book.chapters[chapterAt(ms)]) {
+  const into = clamp(ms - chapter.start, 0, chapter.end - chapter.start);
+  setVars(s.root, { "--ts-pos": (into / Math.max(1, chapter.end - chapter.start)).toFixed(4) });
+  s.input.max = Math.floor((chapter.end - chapter.start) / 1000);
+  s.input.value = Math.floor(into / 1000);
   const now = performance.now();
   if (force || !s.input.hasAttribute("aria-valuetext") || now - s.textAt >= VALUE_TEXT_EVERY_MS) {
     s.textAt = now;
-    const hours = Math.floor(ms / 3600000);
-    s.input.setAttribute("aria-valuetext", fill(msg("scrubValue"), { h: hours, m: Math.floor(ms / 60000) % 60, n: idx + 1 }));
+    const seconds = Math.floor(into / 1000);
+    s.input.setAttribute("aria-valuetext", fill(msg("scrubValue"), { n: book.chapters.indexOf(chapter) + 1, m: Math.floor(seconds / 60), s: seconds % 60 }));
   }
+}
+
+// The slim ruler across the whole book: the fill follows the position, not interactive.
+function drawRuler(ms) {
+  setVars(ruler, { "--ts-pos": clamp(ms / (book.durationMs || 1), 0, 1).toFixed(4) });
 }
 
 // "1.0×", "1.5×", "2.35×": one decimal, or two when the speed has them.
@@ -176,6 +181,7 @@ function update(kind) {
   const state = player.state();
   const ms = state.positionMs;
   for (const s of scrubs) if (!s.drag) drawScrub(s, ms, kind !== "tick");
+  if (!fullScrub.drag) drawRuler(ms);
   const speedLabel = fill(msg("speedLabel"), { v: speedNumber(state.speed) });
   bar.speedValue.textContent = speedText(state.speed);
   bar.speed.setAttribute("aria-label", speedLabel);
@@ -203,51 +209,47 @@ function drawBook() {
   }
   ui["full-book"].href = "/books/" + encodeURIComponent(book.id);
   ui["full-finish"].action = "/hx/books/" + encodeURIComponent(book.id) + "/finished";
-  for (const s of scrubs) {
-    s.input.max = Math.floor(book.durationMs / 1000);
-    s.input.removeAttribute("aria-valuetext");
-    // a tick at every chapter start but the first
-    s.ticks.replaceChildren(...book.chapters.filter((c) => c.start > 0).map((c) => {
-      const tick = document.createElement("span");
-      tick.className = "ts-scrub__tick";
-      tick.style.setProperty("--at", (c.start / book.durationMs * 100).toFixed(2) + "%");
-      return tick;
-    }));
-  }
+  for (const s of scrubs) s.input.removeAttribute("aria-valuetext");
+  // a ruler tick at every chapter start but the first
+  ruler.ticks.replaceChildren(...book.chapters.filter((c) => c.start > 0).map((c) => {
+    const tick = document.createElement("span");
+    tick.className = "ts-ruler__tick";
+    tick.style.setProperty("--at", (c.start / book.durationMs * 100).toFixed(2) + "%");
+    return tick;
+  }));
   applyAccent();
 }
 
-// ---- Scrubbers: drag with fine control, snap to chapter starts, keys ----
+// ---- Scrubbers: a chapter wide; click or drag anywhere in it, fine control, keys ----
 
 const scrubs = [...document.querySelectorAll("[data-ts-scrub]")].map((el) => ({
   root: el,
   input: $("range", el),
   bubble: $("bubble", el),
-  ticks: $("ticks", el),
   textAt: 0,
   drag: null, // { rect, x, y, raw, ms } while a pointer is down
 }));
 
 const fullScrub = scrubs.find((s) => s.root.dataset.tsScrub === "full"); // the other is the desktop bar's
 
-function snap(ms) {
-  const near = book.chapters.find((c) => c.start > 0 && Math.abs(c.start - ms) <= book.durationMs * SNAP_FRACTION);
-  return near ? near.start : ms;
-}
+const ruler = document.querySelector("[data-ts-ruler]");
+ruler.ticks = $("ruler-ticks", ruler);
 
-// The finger moves the position; the further it is from the bar vertically, the finer the scrub.
+// The finger moves the position inside the chapter the drag began in (the line is that chapter's
+// length); the further it is from the bar vertically, the finer the scrub.
 function dragTo(s, x, y) {
   const d = s.drag;
+  const chapter = d.chapter;
   const away = Math.abs(y - (d.rect.top + d.rect.height / 2));
   const rate = away > 80 ? 0.25 : away > 40 ? 0.5 : 1;
-  d.raw = clamp(d.raw + (x - d.x) / d.rect.width * book.durationMs * rate, 0, book.durationMs);
+  d.ms = clamp(d.ms + (x - d.x) / d.rect.width * (chapter.end - chapter.start) * rate, chapter.start, chapter.end);
   d.x = x;
-  d.ms = snap(d.raw);
-  const idx = chapterAt(d.ms);
-  const chapter = book.chapters[idx];
-  drawScrub(s, d.ms, false);
-  s.bubble.textContent = fill(msg("scrubBubble"), { n: idx + 1, title: chapter.title, t: clock(d.ms - chapter.start) }).replace(" ·  ·", " ·");
-  if (s === fullScrub) drawTimes(d.ms, player.state().speed);
+  drawScrub(s, d.ms, false, chapter);
+  s.bubble.textContent = fill(msg("scrubBubble"), { n: book.chapters.indexOf(chapter) + 1, title: chapter.title, t: clock(d.ms - chapter.start) }).replace(" ·  ·", " ·");
+  if (s === fullScrub) {
+    drawTimes(d.ms, player.state().speed);
+    drawRuler(d.ms);
+  }
 }
 
 function endDrag(s, apply) {
@@ -260,6 +262,11 @@ function endDrag(s, apply) {
   else update("seek");
 }
 
+// The chapter the scrubber shows: the one that holds the position.
+function chapterNow() {
+  return book.chapters[chapterAt(player.state().positionMs)];
+}
+
 const scrubKeys = {
   ArrowLeft: () => player.skip(-1),
   ArrowDown: () => player.skip(-1),
@@ -267,8 +274,8 @@ const scrubKeys = {
   ArrowUp: () => player.skip(1),
   PageUp: () => player.chapter(-1),
   PageDown: () => player.chapter(1),
-  Home: () => player.seek(0),
-  End: () => player.seek(book.durationMs),
+  Home: () => player.seek(chapterNow().start),
+  End: () => player.seek(chapterNow().end),
 };
 
 for (const s of scrubs) {
@@ -279,8 +286,9 @@ for (const s of scrubs) {
     input.focus({ preventScroll: true });
     input.setPointerCapture(event.pointerId);
     const rect = input.getBoundingClientRect();
-    const raw = clamp((event.clientX - rect.left) / rect.width, 0, 1) * book.durationMs;
-    s.drag = { rect, x: event.clientX, raw, ms: raw };
+    const chapter = chapterNow();
+    const ms = chapter.start + clamp((event.clientX - rect.left) / rect.width, 0, 1) * (chapter.end - chapter.start);
+    s.drag = { rect, chapter, x: event.clientX, ms };
     s.root.classList.add("is-dragging");
     if (s === fullScrub) ui["full-fine"].textContent = msg("fineScrub");
     dragTo(s, event.clientX, event.clientY);
@@ -298,7 +306,7 @@ for (const s of scrubs) {
   });
   // a screen reader's own adjust gesture changes the value without keys
   input.addEventListener("change", () => {
-    if (!s.drag && book) player.seek(Number(input.value) * 1000);
+    if (!s.drag && book) player.seek(chapterNow().start + Number(input.value) * 1000);
   });
 }
 

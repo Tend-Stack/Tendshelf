@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -147,15 +148,30 @@ func run(ctx context.Context, bin string, args []string, extraEnv []string) runR
 
 // runCapped is run with its own stdout cap, for ffmpeg writing a picture to a pipe.
 func runCapped(ctx context.Context, bin string, args []string, extraEnv []string, outCap int) runResult {
+	out := &limitedBuffer{max: outCap}
+	res := runTo(ctx, bin, args, extraEnv, out, false)
+	res.stdout, res.capped = out.bytes(), out.wasTruncated()
+	return res
+}
+
+// runTo is the one place a child is started. stdout goes to the writer the caller supplies (which
+// may fail to stop the child early), stderr is capped. With low set the child is reniced right after
+// it starts, so a long background decode yields the CPU to the foreground probes.
+func runTo(ctx context.Context, bin string, args []string, extraEnv []string, stdout io.Writer, low bool) runResult {
 	cmd := exec.CommandContext(ctx, bin, args...)
 	cmd.Stdin = nil // /dev/null
 	cmd.Env = append([]string{"LC_ALL=C"}, extraEnv...)
 	cmd.WaitDelay = waitDelay
-	out := &limitedBuffer{max: outCap}
 	errb := &limitedBuffer{max: stderrCap}
-	cmd.Stdout, cmd.Stderr = out, errb
-	err := cmd.Run()
-	return runResult{stdout: out.bytes(), stderr: errb.bytes(), capped: out.wasTruncated(), err: err}
+	cmd.Stdout, cmd.Stderr = stdout, errb
+	err := cmd.Start()
+	if err == nil {
+		if low {
+			lowerPriority(cmd.Process.Pid)
+		}
+		err = cmd.Wait()
+	}
+	return runResult{stderr: errb.bytes(), err: err}
 }
 
 func describe(r runResult, fallback error) string {

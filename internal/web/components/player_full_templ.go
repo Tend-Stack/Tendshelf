@@ -14,9 +14,10 @@ import (
 	"strings"
 )
 
-// Scrubber is the ruler across the whole book (design-system Scrubber): ticks, the fill, the
-// current-chapter line and the needle are drawn by player-full.js through custom properties, and the
-// range input on top carries the keyboard and screen reader semantics. which is "full" or "bar".
+// Scrubber is one chapter wide (decision 0005, a declared difference from the design-system Scrubber):
+// its ends are the chapter's start and end. The fill and the needle are drawn by player-full.js
+// through custom properties, and the range input on top carries the keyboard and screen reader
+// semantics. which is "full" or "bar".
 func Scrubber(m PlayerMsgs, class, which string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -63,7 +64,7 @@ func Scrubber(m PlayerMsgs, class, which string) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression(which).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 12, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 13, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
@@ -83,7 +84,7 @@ func Scrubber(m PlayerMsgs, class, which string) templ.Component {
 			}
 			templ.ReleaseBuffer(templ_7745c5c3_Buffer)
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "><div class=\"ts-scrub__line\"></div><span class=\"ts-scrub__ticks\" data-ts-ticks></span><div class=\"ts-scrub__fill\"></div><div class=\"ts-scrub__chapter\"></div><div class=\"ts-scrub__needle\"></div><div class=\"ts-scrub__bubble\" aria-hidden=\"true\" data-ts-bubble></div><label class=\"ts-sr\" for=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "><div class=\"ts-wave\" aria-hidden=\"true\" data-ts-wave></div><div class=\"ts-scrub__line\"></div><div class=\"ts-scrub__fill\"></div><div class=\"ts-scrub__needle\"></div><div class=\"ts-scrub__bubble\" aria-hidden=\"true\" data-ts-bubble></div><label class=\"ts-sr\" for=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -322,7 +323,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</button></div><div class=\"ts-player__scrub\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</button></div><div class=\"ts-player__scrub\"><div class=\"ts-ruler ts-player__ruler\" aria-hidden=\"true\" data-ts-ruler><div class=\"ts-ruler__line\"></div><span class=\"ts-player__ruler-ticks\" data-ts-ruler-ticks></span><div class=\"ts-ruler__fill\"></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -337,7 +338,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.Speed).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 99, Col: 116}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 104, Col: 116}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
@@ -350,7 +351,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(m.Speed)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 101, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 106, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -363,7 +364,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.SleepOffLabel).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 103, Col: 124}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 108, Col: 124}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
@@ -384,7 +385,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(m.Sleep)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 106, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 111, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -405,7 +406,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(m.Chapters)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 110, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 115, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -418,7 +419,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.BookmarkMoment).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 112, Col: 141}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 117, Col: 141}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
 		if templ_7745c5c3_Err != nil {
@@ -439,7 +440,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(m.Bookmark)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 114, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 119, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -460,7 +461,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(m.Chapters)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 125, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 130, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -473,7 +474,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.KeysClose).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 126, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 131, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 		if templ_7745c5c3_Err != nil {
@@ -494,7 +495,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(m.Speed)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 138, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 143, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -507,7 +508,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.KeysClose).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 139, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 144, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 		if templ_7745c5c3_Err != nil {
@@ -533,7 +534,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 146, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 151, Col: 106}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 			if templ_7745c5c3_Err != nil {
@@ -546,7 +547,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(fillValue(m.SpeedValue, v))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 147, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 152, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -572,7 +573,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(m.SpeedFine)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 154, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 159, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -585,7 +586,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(m.SleepTitle)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 165, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 170, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -598,7 +599,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.KeysClose).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 166, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 171, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
 		if templ_7745c5c3_Err != nil {
@@ -619,7 +620,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var33 string
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(m.SleepEndOfChapter)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 173, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 178, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -645,7 +646,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templruntime.NewAttributeExpression(strconv.Itoa(n)).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 180, Col: 120}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 185, Col: 120}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
 			if templ_7745c5c3_Err != nil {
@@ -658,7 +659,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(fillN(m.SleepMinutes, n))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 181, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 186, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -684,7 +685,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(m.SleepCustom)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 188, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 193, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -705,7 +706,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(m.SleepTurnOff)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 194, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 199, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {
@@ -726,7 +727,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(m.SleepCustomLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 200, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 205, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
@@ -739,7 +740,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var39 string
 		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(m.SleepStart)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 202, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 207, Col: 93}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
@@ -760,7 +761,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(m.AddNote)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 213, Col: 152}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 218, Col: 152}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 		if templ_7745c5c3_Err != nil {
@@ -841,7 +842,7 @@ func SleepCard(m PlayerMsgs, where string) templ.Component {
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templruntime.NewAttributeExpression(where).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 247, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 252, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
 		if templ_7745c5c3_Err != nil {
@@ -872,7 +873,7 @@ func SleepCard(m PlayerMsgs, where string) templ.Component {
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(m.PlusTen)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 254, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 259, Col: 87}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
