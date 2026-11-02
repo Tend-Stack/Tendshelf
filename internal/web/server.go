@@ -64,6 +64,10 @@ type Options struct {
 	Compat *mediajobs.Compat
 	// Peaks makes and finds waveform peaks; nil means GET /peaks/{id} answers 404.
 	Peaks *mediajobs.Peaks
+	// MailOptions changes how the optional email relay dials (tests give it the fake server's
+	// certificate); the zero value is production. The handler builds the mailer and registers its
+	// job kinds on Jobs, so Jobs must not be started yet.
+	MailOptions share.MailOptions
 }
 
 type server struct {
@@ -88,6 +92,14 @@ type server struct {
 	compat     *mediajobs.Compat
 	peaks      *mediajobs.Peaks
 	progress   *progress.Service
+	mail       *share.Mail
+	mailLim    mailLimits
+}
+
+// mailLimits are the in-memory rate limits of the email relay. A restart resets them (only the owner
+// can restart). Each Allow is followed by Fail, so a limiter counts one send.
+type mailLimits struct {
+	inviter, address, test *auth.Limiter
 }
 
 // settingCSRFKey is the settings row that keeps the CSRF key between runs.
@@ -156,6 +168,10 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	checker := share.New(opts.Store)
 	grants := share.NewGrants(opts.Store)
 	invites := share.NewInvites(opts.Store, checker, grants, ur, opts.Now)
+	mailer := share.NewMail(opts.Store, opts.Jobs, opts.MailOptions)
+	if err := mailer.Register(); err != nil && !errors.Is(err, jobs.ErrDuplicateKind) { // tests build several handlers on one runner
+		return nil, nil, fmt.Errorf("web: email jobs: %w", err)
+	}
 	lk := hmac.New(sha256.New, key)
 	lk.Write([]byte("tendshelf share-link unlock v1"))
 	s := &server{
@@ -179,6 +195,12 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		compat:     opts.Compat,
 		peaks:      opts.Peaks,
 		progress:   progress.New(opts.Store, opts.Now),
+		mail:       mailer,
+		mailLim: mailLimits{
+			inviter: auth.NewLimiter(20, time.Hour, 1024, opts.Now),
+			address: auth.NewLimiter(3, 24*time.Hour, 1024, opts.Now),
+			test:    auth.NewLimiter(5, 10*time.Minute, 64, opts.Now),
+		},
 	}
 	s.csrf = NewCSRF(key, sessionOrCookieBinding)
 	s.csrf.Deny = http.HandlerFunc(s.forbidden)
@@ -203,6 +225,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerInvites(mux)
 	s.registerShare(mux)
 	s.registerLinks(mux)
+	s.registerEmail(mux)
 	//
 	s.registerSetupSteps(mux)
 	s.registerMe(mux)

@@ -55,4 +55,29 @@ const (
 
 	shareStopBookTitle = "Stop sharing %s with %s?"                                                                                        // NEW
 	shareStopBookBody  = "%s won't be able to open this book through this share any more. Their place in it and their bookmarks are kept." // NEW
+
+	// Emailed invitations (P3-8). NEW unless noted.
+	shareErrEmail        = "Enter their email."
+	shareErrEmailBad     = "That email looks incomplete."
+	shareErrRelayOff     = "Sending from Tendshelf isn't set up yet. Use Send invitation to send it from your own email app."
+	shareErrNoEmail      = "That invite has no email address."
+	shareErrStillSending = "It's still sending."
+	shareErrQueue        = "Tendshelf couldn't queue the email. Copy the link and send it yourself."
+	shareErrMailBusy     = "You've sent a lot of invites for now. Try again in an hour, or copy a link instead."
+	shareErrMailAgain    = "Tendshelf has emailed that address three times today. Copy the link instead."
+
+	shareMailReadyTitle = "Invitation for %s is ready"
+	shareMailReadyNote  = "Open your email app to send it to %s. The link below also works, once, if you'd rather send it another way."
+	shareMailSentTitle  = "Invite on its way to %s"
+	shareMailSentNote   = "Tendshelf is emailing it to %s. The link below also works, once, if you'd rather send it yourself."
+
+	shareMailCreated     = "Link created for %s"
+	shareMailSending     = "Sending to %s…"
+	shareMailSent        = "Sent to %s"
+	shareMailBadAddress  = "Couldn't send to %s. Check the address."
+	shareMailLinkLost    = "Couldn't send to %s. Send it again."
+	shareMailUnconfirmed = "Tendshelf couldn't confirm the email to %s went out."
+	shareMailSettings    = "Couldn't send: check the email settings"
+	shareMailSendForMe   = "Send it for me"
+	shareMailSendAgain   = "Send again"
 )

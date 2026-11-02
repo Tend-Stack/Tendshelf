@@ -107,6 +107,14 @@ func (s *server) sharePageView(r *http.Request, bookID string) (pages.ShareView,
 	v := pages.ShareView{
 		CSRF: s.csrf.TokenFrom(ctx), Action: "/share", FindAction: "/share", Back: "/share", BackHref: "/admin/users",
 		Name: formValue(r, "name"), Note: formValue(r, "note"), Read: r.Method != http.MethodPost || formValue(r, "read") == "1",
+		Email: formValue(r, "email"),
+	}
+	if (r.Method == http.MethodPost && r.PostForm.Get("via") == "email") || (r.Method == http.MethodGet && r.URL.Query().Get("via") == "email") {
+		v.Via = "email"
+	}
+	v.EmailRelay = s.emailRelayReady(r)
+	if s.can.Can(ctx, actor, share.ManageServer, share.Target{Kind: share.TargetServer}) {
+		v.EmailSetup = "/admin/email"
 	}
 	sc := s.scope(r)
 	in := shareScopeInput{Selected: formValue(r, "scope"), Library: formValue(r, "library"), Shelf: formValue(r, "shelf"), ActorID: actor.ID}
@@ -143,6 +151,7 @@ func (s *server) sharePageView(r *http.Request, bookID string) (pages.ShareView,
 			v.BookChosen = book.ID
 		}
 	}
+	v.LinkTab, v.EmailTab = v.Back, v.Back+"?via=email"
 	var err error
 	if in.Libraries, err = s.lib.VisibleLibraries(ctx, sc); err != nil {
 		return v, err
@@ -226,8 +235,11 @@ func (s *server) shareLists(r *http.Request, v *pages.ShareView, bookID string) 
 		return err
 	}
 	for _, inv := range pending {
-		v.Pending = append(v.Pending, pages.SharePending{ID: inv.ID, Name: inv.Name, Line: fmt.Sprintf(sharePendingLine, inv.Name),
-			Meta: sharePendingMeta(inv, names, now)})
+		row := pages.SharePending{ID: inv.ID, Name: inv.Name, Line: fmt.Sprintf(sharePendingLine, inv.Name),
+			Meta: sharePendingMeta(inv, names, now)}
+		row.Mail, row.MailFailed = sharePendingMail(inv)
+		row.Resend, row.ResendLabel = sharePendingResend(inv, v.EmailRelay)
+		v.Pending = append(v.Pending, row)
 	}
 	v.Listening = subtitleText(len(v.People), len(v.Pending), 0)
 	return nil
@@ -282,6 +294,15 @@ func shareVia(c share.BookCover) string {
 func (s *server) inviteSpec(r *http.Request, bookID string) (share.InviteSpec, string, error) {
 	f := r.PostForm
 	spec := share.InviteSpec{Name: f.Get("name"), Note: f.Get("note")}
+	if f.Get("via") == "email" {
+		spec.Email = strings.TrimSpace(f.Get("email"))
+		switch {
+		case spec.Email == "":
+			return spec, "", shareFormError(shareErrEmail)
+		case !users.ValidEmail(spec.Email):
+			return spec, "", shareFormError(shareErrEmailBad)
+		}
+	}
 	switch role := users.Role(f.Get("role")); role {
 	case "", users.RoleGuest:
 		spec.Role = users.RoleGuest
@@ -330,6 +351,10 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request, bookID stri
 	}
 	ctx := r.Context()
 	spec, words, err := s.inviteSpec(r, bookID)
+	relay := r.PostForm.Get("via") == "email" && r.PostForm.Get("how") == "relay"
+	if err == nil && relay {
+		err = s.relayChecks(r, spec.Email)
+	}
 	var inv share.Invite
 	var tok string
 	if err == nil {
@@ -341,6 +366,10 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request, bookID stri
 	}
 	if err != nil {
 		s.shareError(w, r, bookID, err)
+		return
+	}
+	if r.PostForm.Get("via") == "email" {
+		s.renderShareMail(w, r, bookID, inv, tok, relay)
 		return
 	}
 	v, err := s.sharePageView(r, bookID)
@@ -363,6 +392,7 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request, bookID stri
 // shareError answers a failed create: 404 for anything the person may not do, 422 with plain words
 // for a form to fix (a toast for htmx, the page again otherwise), 500 for the rest.
 func (s *server) shareError(w http.ResponseWriter, r *http.Request, bookID string, err error) {
+	status := http.StatusUnprocessableEntity
 	var msg string
 	var fe users.FieldErrors
 	var sf shareFormError
@@ -374,6 +404,10 @@ func (s *server) shareError(w http.ResponseWriter, r *http.Request, bookID strin
 		msg = shareFieldMessage(fe)
 	case errors.As(err, &sf):
 		msg = string(sf)
+		if sf == shareErrMailBusy || sf == shareErrMailAgain {
+			w.Header().Set("Retry-After", "3600")
+			status = http.StatusTooManyRequests
+		}
 	case errors.Is(err, share.ErrInviteGrants), errors.Is(err, share.ErrGrantTarget), errors.Is(err, share.ErrGrantScope):
 		msg = shareErrScope
 	default:
@@ -381,7 +415,7 @@ func (s *server) shareError(w http.ResponseWriter, r *http.Request, bookID strin
 		return
 	}
 	if r.Header.Get("HX-Request") == "true" {
-		s.fragment(w, r, http.StatusUnprocessableEntity, components.ErrorToast(msg))
+		s.fragment(w, r, status, components.ErrorToast(msg))
 		return
 	}
 	v, verr := s.sharePageView(r, bookID)
@@ -394,7 +428,7 @@ func (s *server) shareError(w http.ResponseWriter, r *http.Request, bookID strin
 		return
 	}
 	v.Error = msg
-	s.renderShare(w, r, http.StatusUnprocessableEntity, v)
+	s.renderShare(w, r, status, v)
 }
 
 func shareFieldMessage(fe users.FieldErrors) string {
@@ -405,6 +439,8 @@ func shareFieldMessage(fe users.FieldErrors) string {
 		return shareErrName
 	case fe["note"] != "":
 		return shareErrNoteLen
+	case fe["email"] != "":
+		return shareErrEmailBad
 	}
 	return shareErrExpires
 }

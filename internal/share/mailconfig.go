@@ -219,3 +219,12 @@ func ClearMailConfig(ctx context.Context, tx db.Execer, by users.User, now time.
 	}
 	return db.Audit(ctx, tx, db.AuditEntry{At: now.UnixMilli(), UserID: by.ID, Action: "smtp.off", Target: "server"})
 }
+
+// MailTested reports whether a test email succeeded after the settings were last saved. The relay
+// ("Send it for me") is offered only then, so a typo in the settings never turns into failed invites.
+func MailTested(ctx context.Context, q db.RowQueryer) (bool, error) {
+	var ok bool
+	err := q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM jobs WHERE kind = 'smtp.test' AND state = 'done'
+		AND created_at >= coalesce((SELECT max(at) FROM audit_log WHERE action = 'smtp.update'), 0))`).Scan(&ok)
+	return ok, err
+}
