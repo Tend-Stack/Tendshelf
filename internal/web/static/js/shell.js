@@ -229,3 +229,20 @@ document.addEventListener("keydown", (event) => {
 
 // Measurement only (make perf): the moment the shell script has run. No data leaves the browser.
 performance.mark("ts-ready");
+
+// A click during a page change's view transition reaches <html>, not the link under the pointer
+// (the browser hit-tests the transition, whatever CSS says), so a quick second click was lost. Such
+// a click ends the transition at once and is replayed on the element that is really there.
+document.addEventListener("click", (event) => {
+  const transition = document.activeViewTransition;
+  if (!transition || event.target !== document.documentElement) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const x = event.clientX;
+  const y = event.clientY;
+  transition.skipTransition();
+  transition.finished.finally(() => {
+    const target = document.elementFromPoint(x, y);
+    if (target && target !== document.documentElement) target.click();
+  });
+}, true);

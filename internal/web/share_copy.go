@@ -49,9 +49,9 @@ const (
 	shareMetaDay     = " · works for 1 more day"    // NEW
 	shareMetaNoEnd   = " · works until you stop it" // NEW
 
-	shareViaAll     = "Has this through everything"     // NEW
-	shareViaLibrary = "Has this through the library %s" // NEW
-	shareViaShelf   = "Has this through the shelf %s"   // NEW
+	shareViaAll     = "Has this through everything"       // NEW
+	shareViaLibrary = "Has this through the library “%s”" // NEW; quoted, so a name ending in "library" still reads
+	shareViaShelf   = "Has this through the shelf “%s”"   // NEW
 
 	shareStopBookTitle = "Stop sharing %s with %s?"                                                                                        // NEW
 	shareStopBookBody  = "%s won't be able to open this book through this share any more. Their place in it and their bookmarks are kept." // NEW

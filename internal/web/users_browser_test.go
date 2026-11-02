@@ -105,9 +105,11 @@ func TestUsersGrantEditorBrowser(t *testing.T) {
 				t.Error("renewed grant does not open the book")
 			}
 
-			// Add a library grant with an end date.
+			// Add a library grant with an end date. The renewal's answer replaces the page: wait until it has
+			// (no Renew button left, no page change running), or the new page would wipe the fields set here.
 			until := time.Now().AddDate(0, 0, 10).Format("2006-01-02")
-			tab.WaitFor(`document.querySelector("#us-until") !== null`, 10*time.Second)
+			tab.WaitFor(`document.querySelector('form[action$="/grants/old/renew"]') === null && !document.activeViewTransition &&
+			  document.querySelector("#us-until") !== null`, 10*time.Second)
 			tab.Eval(`document.querySelector('select[name=library]').value = `+cdp.Quote(wide.ID), nil)
 			click(`input[name=scope][value=library]`)
 			tab.Eval(`document.querySelector("#us-until").value = `+cdp.Quote(until), nil)

@@ -288,7 +288,7 @@ func TestSharePageLists(t *testing.T) {
 		t.Error("the book is not chosen")
 	}
 	// the person with a library grant has the book through it: no stop button, a way to their page
-	if !strings.Contains(page, "Has this through the library Family library") || strings.Contains(page, `aria-label="Stop sharing with `+e.sharepageName(c)+`"`) ||
+	if !strings.Contains(page, "Has this through the library “Family library”") || strings.Contains(page, `aria-label="Stop sharing with `+e.sharepageName(c)+`"`) ||
 		!strings.Contains(page, `aria-label="Manage `+e.sharepageName(c)+`"`) {
 		t.Error("a wider share is not explained")
 	}
