@@ -121,9 +121,15 @@ func TestWaveformBrowser(t *testing.T) {
 		tab := fullpOpen(t, e, vp.w, vp.h, false)
 		tab.Eval(`document.documentElement.setAttribute("data-theme", "dark")`, nil)
 		fullpOpenPlayer(t, tab)
+		// On a desktop the side panel hides its chapter slider (only the book ruler shows there), so the
+		// waveform and the click are on the bar's compact scrubber.
 		sels := []string{wavedrawFull}
+		sel0 := wavedrawFull
+		slider := `#player-full [data-ts-range]`
 		if vp.w >= 1280 {
-			sels = append(sels, wavedrawBar)
+			sels = []string{wavedrawBar}
+			sel0 = wavedrawBar
+			slider = `#player [data-ts-scrub="bar"] input`
 		}
 
 		// The stored position is in chapter 4 (file 2, no peaks yet): a 404 draws nothing, and the
@@ -134,7 +140,7 @@ func TestWaveformBrowser(t *testing.T) {
 				t.Errorf("%dpx %s: %d svgs drawn while /peaks/ answers 404", vp.w, sel, r.Svgs)
 			}
 		}
-		box := chapscrubMeasure(tab, `#player-full [data-ts-range]`)
+		box := chapscrubMeasure(tab, slider)
 		fullpMouse(t, tab, "mousePressed", box.L+0.9*box.W, box.Y)
 		fullpMouse(t, tab, "mouseReleased", box.L+0.9*box.W, box.Y)
 		tab.WaitFor(`Math.abs(window.tsPlayer.state().positionMs - 117000) < 1000`, 2*time.Second)
@@ -158,37 +164,57 @@ func TestWaveformBrowser(t *testing.T) {
 			chapter3[sel] = r
 		}
 
+		// The side panel: the desktop shows the book ruler and no slider; a phone keeps the slider.
+		var panel struct{ Slider, Ruler string }
+		tab.Eval(`(() => {
+		  const show = (s) => getComputedStyle(document.querySelector(s)).display;
+		  const wave = document.querySelector(`+cdp.Quote(sel0)+`);
+		  return {Slider: show('#player-full [data-ts-scrub="full"]'), Ruler: show("#player-full [data-ts-ruler]")};
+		})()`, &panel)
+		if vp.w >= 1280 {
+			if panel.Slider != "none" || panel.Ruler == "none" {
+				t.Errorf("%dpx: side panel slider display %q, ruler %q; want the slider hidden and the ruler shown", vp.w, panel.Slider, panel.Ruler)
+			}
+		} else if panel.Slider == "none" {
+			t.Errorf("%dpx: the full player's slider is hidden", vp.w)
+		}
+
 		// The position moves inside the chapter: the clip follows, the bars do not change.
 		wavedrawSeek(t, tab, 84_000)
-		r := wavedrawState(tab, wavedrawFull)
-		if f := wavedrawClipFraction(t, r); f < 0.75 || f > 0.85 || r.D != chapter3[wavedrawFull].D {
-			t.Errorf("%dpx: after a seek inside the chapter: played %.2f (want about 0.8), paths equal %v", vp.w, f, r.D == chapter3[wavedrawFull].D)
+		r := wavedrawState(tab, sel0)
+		if f := wavedrawClipFraction(t, r); f < 0.75 || f > 0.85 || r.D != chapter3[sel0].D {
+			t.Errorf("%dpx: after a seek inside the chapter: played %.2f (want about 0.8), paths equal %v", vp.w, f, r.D == chapter3[sel0].D)
 		}
 
 		// Another chapter of the same file redraws.
 		wavedrawSeek(t, tab, 10_000)
-		tab.WaitFor(`document.querySelector(`+cdp.Quote(wavedrawFull)+`).querySelector("path").getAttribute("d") !== `+cdp.Quote(chapter3[wavedrawFull].D), 3*time.Second)
+		tab.WaitFor(`document.querySelector(`+cdp.Quote(sel0)+`).querySelector("path").getAttribute("d") !== `+cdp.Quote(chapter3[sel0].D), 3*time.Second)
 
 		// Themes switch by CSS alone: no new fetch, same bars; contrast uses ink with no accent.
 		var before, after int
 		tab.Eval(`performance.getEntriesByType("resource").filter((e) => e.name.includes("/peaks/")).length`, &before)
-		d1 := wavedrawState(tab, wavedrawFull).D
+		d1 := wavedrawState(tab, sel0).D
 		for _, theme := range []string{"light", "sepia", "contrast", "dark"} {
 			tab.Eval(`document.documentElement.setAttribute("data-theme", `+cdp.Quote(theme)+`)`, nil)
 			time.Sleep(100 * time.Millisecond)
 			if theme == "light" {
-				if got := wavedrawState(tab, wavedrawFull).Fill; got != "rgb(44, 102, 96)" {
-					t.Errorf("%dpx light: played fill %q, want the light accent", vp.w, got)
+				// The full player uses the cover's light accent; the bar's scrubber its own fill colour.
+				want := "rgb(44, 102, 96)"
+				if sel0 == wavedrawBar {
+					tab.Eval(`getComputedStyle(document.querySelector("#player [data-ts-scrub=bar] .ts-scrub__fill")).backgroundColor`, &want)
+				}
+				if got := wavedrawState(tab, sel0).Fill; got != want {
+					t.Errorf("%dpx light: played fill %q, want %q", vp.w, got, want)
 				}
 			}
 			if theme == "contrast" {
-				if got := wavedrawState(tab, wavedrawFull).Fill; got != "rgb(255, 255, 255)" {
+				if got := wavedrawState(tab, sel0).Fill; got != "rgb(255, 255, 255)" {
 					t.Errorf("%dpx contrast: played fill %q, want ink", vp.w, got)
 				}
 			}
 		}
 		tab.Eval(`performance.getEntriesByType("resource").filter((e) => e.name.includes("/peaks/")).length`, &after)
-		if before != after || wavedrawState(tab, wavedrawFull).D != d1 {
+		if before != after || wavedrawState(tab, sel0).D != d1 {
 			t.Errorf("%dpx: a theme change fetched %d new peaks or redrew", vp.w, after-before)
 		}
 		tab.Eval(`window.tsPlayer.pause()`, nil)

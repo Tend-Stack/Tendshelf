@@ -96,9 +96,15 @@ func TestFullPlayerBrowserChapterScrub(t *testing.T) {
 		t.Errorf("book ruler: %+v", ruler)
 	}
 
-	// Desktop: the same on the full player's side panel, and on the bar's compact scrubber.
+	// Desktop: the side panel shows only the book's chapter ruler (operator, 2026-11-02); the chapter
+	// slider is the bar's compact one, which stays visible beside the open panel.
 	wide := fullpOpen(t, e, 1440, 900, false)
 	fullpOpenPlayer(t, wide)
-	chapscrubLine(t, wide, full)
+	var hidden bool
+	wide.Eval(`getComputedStyle(document.querySelector('#player-full [data-ts-scrub="full"]')).display === "none" &&
+	  getComputedStyle(document.querySelector('#player-full [data-ts-ruler]')).display !== "none"`, &hidden)
+	if !hidden {
+		t.Error("desktop side panel: the chapter slider is shown or the book ruler is hidden")
+	}
 	chapscrubLine(t, wide, `#player [data-ts-scrub="bar"] input`)
 }
