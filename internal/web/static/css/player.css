@@ -120,6 +120,14 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 /* The shared cover glides between the bar and the player (view transition, see player-full.js) */
 .ts-vt-mini .ts-mini__cover, .ts-vt-full .ts-player__cover { view-transition-name: ts-now-cover; }
 ::view-transition-group(ts-now-cover) { animation-duration: var(--duration-slow); animation-timing-function: var(--easing-expand); }
+/* A page swap must not paint over the player: the swap's cross-fade group of #main sits above the
+   page snapshot, so the bar and the side panel get groups of their own, which paint after it. They
+   are unchanged, so nothing visibly animates. Not while the player opens or closes (the cover's
+   own transition runs then). */
+html:not(.ts-vt-mini, .ts-vt-full) .ts-player-slot { view-transition-name: ts-bar; }
+@media (min-width: 1280px) {
+  html:not(.ts-vt-mini, .ts-vt-full) dialog.ts-player[open] { view-transition-name: ts-panel; }
+}
 .ts-mini { touch-action: none; }
 
 /* The bar stays visible under the full screen player only where there is a side panel */

@@ -445,6 +445,13 @@ function fillChapters() {
   ui["chapter-list"].replaceChildren(...rows);
 }
 
+// Scrolls only the chapter list so the current chapter sits in the middle of it.
+function centreCurrentChapter(row) {
+  const list = ui["chapter-list"];
+  const above = row.getBoundingClientRect().top - list.getBoundingClientRect().top;
+  list.scrollTop += above - (list.clientHeight - row.offsetHeight) / 2;
+}
+
 // Opens a sheet over the player, opening the player first when it is closed. from is the control
 // that asked, so closing the sheet gives focus back to it.
 function openSheet(name, from = document.activeElement) {
@@ -461,8 +468,11 @@ function openSheet(name, from = document.activeElement) {
   const wrap = sheetWraps[name];
   wrap.hidden = false;
   ui["full-body"].inert = true;
-  // focus the current choice, else the first
-  (wrap.querySelector("[aria-current], [aria-checked=true]") || wrap.querySelector("ol button, [role=radio]:not([hidden])")).focus();
+  // Focus the current choice, else the first. preventScroll: a focus that scrolls would also scroll
+  // the player body behind the sheet (the whole panel jumped); the chapter list scrolls itself.
+  const choice = wrap.querySelector("[aria-current], [aria-checked=true]") || wrap.querySelector("ol button, [role=radio]:not([hidden])");
+  choice.focus({ preventScroll: true });
+  if (name === "chapters") centreCurrentChapter(choice);
 }
 
 function closeSheet(restoreFocus) {
