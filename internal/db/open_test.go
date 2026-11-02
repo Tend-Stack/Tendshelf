@@ -115,6 +115,25 @@ var shelfTables = []string{"shelves", "shelf_items"}
 // progressTables are the tables migration 0006 adds.
 var progressTables = []string{"progress", "bookmarks", "listening_sessions"}
 
+// familyTables are the tables migration 0007 adds.
+var familyTables = []string{"grants", "invites", "share_links", "devices"}
+
+// seedFamily adds one row to every family table: a library grant, an invite, a share link and a device.
+func seedFamily(t *testing.T, st *Store) {
+	t.Helper()
+	stmts := []string{
+		`INSERT INTO grants(id, user_id, scope, library_id, created_by, created_at, updated_at, expires_at) VALUES ('gr_1', 'us_1', 'library', 'lib_1', 'us_1', 1, 1, 2)`,
+		`INSERT INTO invites(id, token_hash, created_by, name, role, created_at, updated_at, expires_at) VALUES ('in_1', randomblob(32), 'us_1', 'Rosa', 'member', 1, 1, 2)`,
+		`INSERT INTO share_links(id, token_hash, book_id, created_by, created_at, expires_at) VALUES ('sl_1', randomblob(32), 'bk_1', 'us_1', 1, 2)`,
+		`INSERT INTO devices(id, user_id, name, kind, token_hash, created_at) VALUES ('dv_1', 'us_1', 'Phone', 'mobile', randomblob(32), 1)`,
+	}
+	for _, s := range stmts {
+		if _, err := st.Writer().Exec(s); err != nil {
+			t.Fatalf("%s: %v", s, err)
+		}
+	}
+}
+
 // seedProgress adds one progress row, one bookmark and one session of the seeded owner and book.
 func seedProgress(t *testing.T, st *Store) {
 	t.Helper()
@@ -193,7 +212,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables) {
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables) {
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -249,6 +268,12 @@ var seeds = map[int]func(t *testing.T, st *Store){
 	4: seed3,
 	5: func(t *testing.T, st *Store) { seed3(t, st); seedShelves(t, st) },
 	6: func(t *testing.T, st *Store) { seed3(t, st); seedShelves(t, st); seedProgress(t, st) },
+	7: func(t *testing.T, st *Store) {
+		seed3(t, st)
+		seedShelves(t, st)
+		seedProgress(t, st)
+		seedFamily(t, st)
+	},
 }
 
 // seed3 fills a version 3 database (version 4 adds only derived tables, so it seeds the same rows).
@@ -268,6 +293,7 @@ var tablesAt = map[int][]string{
 	4: append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"),
 	5: append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...),
 	6: append(append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...), progressTables...),
+	7: append(append(append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...), progressTables...), familyTables...),
 }
 
 func TestMigrateFromPreviousFixtures(t *testing.T) {
@@ -314,6 +340,7 @@ func TestDataSurvivesReopen(t *testing.T) {
 	seedLibrary(t, st)
 	seedShelves(t, st)
 	seedProgress(t, st)
+	seedFamily(t, st)
 	if err := st.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -551,6 +578,7 @@ var pinnedMigrations = map[int]string{
 	4: "c0424f4fb4e9c40d8863a0b1c3bcb634233f900f01e458733309816beec8e339",
 	5: "1578816fe1e33952a8c5b79a2d00152c989c1d31d618216f4fc56296f2b50c97",
 	6: "9d83b1c2c0c7c0a4f86f02e82cccb5f6d66cb1b016a9b01a2dedc5a25c25ac45",
+	7: "94d2e5b344c393f29dbaafd56c9c5885e263f80e9f84d4f04184c91f473fd046",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
@@ -678,6 +706,83 @@ func TestMigration0006Constraints(t *testing.T) {
 			for _, tbl := range progressTables {
 				if n := countRows(t, st.Reader(), tbl); n != 0 {
 					t.Errorf("%s: %d rows left after deleting the %s", tbl, n, c.name)
+				}
+			}
+		})
+	}
+}
+
+func TestMigration0007Constraints(t *testing.T) {
+	st := mustOpen(t, t.TempDir())
+	defer st.Close()
+	seed3(t, st)
+	seedFamily(t, st)
+	bad := map[string]string{
+		"library scope without library": `INSERT INTO grants(id, user_id, scope, created_at, updated_at) VALUES ('gr_x', 'us_1', 'library', 1, 1)`,
+		"all scope with a library":      `INSERT INTO grants(id, user_id, scope, library_id, created_at, updated_at) VALUES ('gr_x', 'us_1', 'all', 'lib_1', 1, 1)`,
+		"library and book both set":     `INSERT INTO grants(id, user_id, scope, library_id, book_id, created_at, updated_at) VALUES ('gr_x', 'us_1', 'library', 'lib_1', 'bk_1', 1, 1)`,
+		"book scope with a library":     `INSERT INTO grants(id, user_id, scope, library_id, created_at, updated_at) VALUES ('gr_x', 'us_1', 'book', 'lib_1', 1, 1)`,
+		"unknown scope":                 `INSERT INTO grants(id, user_id, scope, created_at, updated_at) VALUES ('gr_x', 'us_1', 'galaxy', 1, 1)`,
+		"grant expires at creation":     `INSERT INTO grants(id, user_id, scope, created_at, updated_at, expires_at) VALUES ('gr_x', 'us_1', 'all', 5, 5, 5)`,
+		"duplicate grant target":        `INSERT INTO grants(id, user_id, scope, library_id, created_at, updated_at) VALUES ('gr_x', 'us_1', 'library', 'lib_1', 1, 1)`,
+		"second all grant":              `INSERT INTO grants(id, user_id, scope, created_at, updated_at) VALUES ('gr_a', 'us_1', 'all', 1, 1), ('gr_b', 'us_1', 'all', 1, 1)`,
+		"grant for a missing user":      `INSERT INTO grants(id, user_id, scope, created_at, updated_at) VALUES ('gr_x', 'nobody', 'all', 1, 1)`,
+		"31 byte invite token":          `INSERT INTO invites(id, token_hash, created_by, name, role, created_at, updated_at) VALUES ('in_x', randomblob(31), 'us_1', 'Rosa', 'member', 1, 1)`,
+		"owner invite":                  `INSERT INTO invites(id, token_hash, created_by, name, role, created_at, updated_at) VALUES ('in_x', randomblob(32), 'us_1', 'Rosa', 'owner', 1, 1)`,
+		"use count above max uses":      `UPDATE invites SET use_count = 2`,
+		"invite grants not an array":    `UPDATE invites SET grants_json = '{}'`,
+		"invite grants not json":        `UPDATE invites SET grants_json = 'x'`,
+		"blank invite name":             `UPDATE invites SET name = '  '`,
+		"share link over 90 days":       `UPDATE share_links SET expires_at = created_at + 7776000001`,
+		"share link already expired":    `UPDATE share_links SET expires_at = created_at`,
+		"31 byte share token":           `INSERT INTO share_links(id, token_hash, book_id, created_by, created_at, expires_at) VALUES ('sl_x', randomblob(31), 'bk_1', 'us_1', 1, 2)`,
+		"revoked device keeps token":    `UPDATE devices SET revoked_at = 5`,
+		"unknown device kind":           `UPDATE devices SET kind = 'toaster'`,
+	}
+	for name, stmt := range bad {
+		if _, err := st.Writer().Exec(stmt); err == nil {
+			t.Errorf("%s: statement succeeded", name)
+		}
+	}
+	good := map[string]string{
+		"share link at 90 days":   `UPDATE share_links SET expires_at = created_at + 7776000000`,
+		"revoked device no token": `UPDATE devices SET token_hash = NULL, revoked_at = 5`,
+		"admin invite never ends": `INSERT INTO invites(id, token_hash, created_by, name, role, created_at, updated_at) VALUES ('in_2', randomblob(32), 'us_1', 'Pia', 'admin', 1, 1)`,
+		"all scope grant":         `INSERT INTO grants(id, user_id, scope, created_at, updated_at) VALUES ('gr_2', 'us_1', 'all', 1, 1)`,
+		"book scope grant":        `INSERT INTO grants(id, user_id, scope, book_id, created_at, updated_at) VALUES ('gr_3', 'us_1', 'book', 'bk_1', 1, 1)`,
+	}
+	for name, stmt := range good {
+		if _, err := st.Writer().Exec(stmt); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	for _, c := range []struct {
+		name, del string
+		left      int // grants left of the library grant and a book grant
+	}{
+		{"user", `DELETE FROM users WHERE id = 'us_1'`, 0},
+		{"library", `DELETE FROM libraries WHERE id = 'lib_1'`, 0},
+		{"book", `DELETE FROM books WHERE id = 'bk_1'`, 1},
+	} {
+		t.Run("cascade "+c.name, func(t *testing.T) {
+			st := mustOpen(t, t.TempDir())
+			defer st.Close()
+			seed3(t, st)
+			seedFamily(t, st)
+			if _, err := st.Writer().Exec(`INSERT INTO grants(id, user_id, scope, book_id, created_at, updated_at) VALUES ('gr_b', 'us_1', 'book', 'bk_1', 1, 1)`); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := st.Writer().Exec(c.del); err != nil {
+				t.Fatal(err)
+			}
+			if n := countRows(t, st.Reader(), "grants"); n != c.left {
+				t.Errorf("%d grants left after deleting the %s, want %d", n, c.name, c.left)
+			}
+			if c.name == "user" {
+				for _, tbl := range familyTables {
+					if n := countRows(t, st.Reader(), tbl); n != 0 {
+						t.Errorf("%s: %d rows left after deleting the user", tbl, n)
+					}
 				}
 			}
 		})
