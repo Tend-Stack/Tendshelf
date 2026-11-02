@@ -3,8 +3,13 @@ package db
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"sync/atomic"
 	"time"
 )
+
+// idHook replaces NewID when set. Only a dev-tagged test helper (id_dev.go) ever sets it, so a
+// release binary always takes the random path; the visual tests use it for repeatable captures.
+var idHook atomic.Pointer[func(prefix string) string]
 
 // crockford is the Crockford base32 alphabet used by ULIDs.
 const crockford = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -13,6 +18,9 @@ const crockford = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 // milliseconds then 80 random bits, in 26 Crockford base32 characters, so
 // IDs sort by creation time. Example: "bk_01JBX3Q8ZK5V9T2M4N6P8R0S2T".
 func NewID(prefix string) string {
+	if h := idHook.Load(); h != nil {
+		return (*h)(prefix)
+	}
 	return newID(prefix, time.Now())
 }
 

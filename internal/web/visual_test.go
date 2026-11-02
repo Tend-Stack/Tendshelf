@@ -54,8 +54,10 @@ func TestVisualShell(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	runID := time.Now().UTC().Format("20060102T150405Z")
-	out := filepath.Join("..", "..", ".local", "tests", "visual", runID)
+	out := os.Getenv("TENDSHELF_VISUAL_OUT") // set by make visual-compare
+	if out == "" {
+		out = filepath.Join("..", "..", ".local", "tests", "visual", time.Now().UTC().Format("20060102T150405Z"))
+	}
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		t.Fatal(err)
 	}
