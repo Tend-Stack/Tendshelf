@@ -287,7 +287,8 @@ history, duplicate or "still copying" detection, cover lookup, or phone and tabl
   finished, "continue on the other device?" prompt, bookmarks and notes.
 
 Exit: play, seek across a file boundary, speed, sleep timer and resume on a second browser all work;
-first sound under 1 s on localhost; the player is usable one-handed at 390 px (recorded manual check).
+first sound under 1 s on localhost; the player is usable one-handed at 390 px (recorded manual check,
+the table in [`docs/manual-checks.md`](manual-checks.md)).
 
 **P1c-1 status (progress data)**: done. Migration 0006 (`progress`, `bookmarks`, `listening_sessions`) and `internal/progress`: newest-wins compare-and-write in one SQL statement inside the single-writer transaction, client time clamped to server now + 60 s, explicit server acts (mark finished) always win, the listening session extended in the same transaction (operator: record sessions from P1c); scoped Home reads in `library/listening.go` (Continue listening, Your series in progress, Because you listened). Checks: `make check`, `-race -count=3`, `TestProgressConcurrentDevices` (2 devices × 50 goroutines); 55.8 µs per save on the lead's machine. Limit: no HTTP yet.
 
@@ -329,6 +330,9 @@ never appear in lists, counts, search or covers. First tagged release (v0.1) aft
 - Listening statistics, Eyes-free (car) mode, shake to extend sleep (where permitted), scheduled
   database backups.
 - Accessibility audit (WCAG 2.2 AA, contrast theme 7:1) and performance budget checks at the four widths.
+- Deferred from P1c: the two-column full player on the book's own page at tablet and desktop. It has no
+  board, only a line in `HANDOFF.md`; P1c ships the 400-wide side panel from 1280 px and the full-screen
+  player below it. Design a board first, then build it.
 
 Exit: a downloaded book plays in airplane mode on Android Chrome and iOS Safari (recorded manual
 check), and offline progress syncs on reconnect.
