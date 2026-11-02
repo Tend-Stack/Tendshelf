@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
+	"github.com/Tend-Stack/tendshelf/internal/progress"
 )
 
 // bookVisualCover gives a book a solid-colour cover from the board palette.
@@ -52,6 +53,7 @@ func bookVisualSeed(t *testing.T, a *testApp) (bookID, authorID, narratorID, ser
 		if i == 0 {
 			first = bookSetDetails(t, a, b.ID, func(b *library.Book) { b.Publisher, b.Language, b.Abridged = "Harrow & Finch", "en", false })
 			bookSeedChapters(t, a, b.ID, 19)
+			bookSeedProgress(t, a, b)
 		}
 	}
 	others := []string{"The Quiet Mechanic", "A Field Guide to Small Winters", "The Orchard at Low Tide", "Notes from the Lower Field", "Salt and Ember", "Nine Bridges Home", "Saltmarsh"}
@@ -63,6 +65,8 @@ func bookVisualSeed(t *testing.T, a *testApp) (bookID, authorID, narratorID, ser
 		b := librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: title, Authors: []string{author}, Narrators: []string{"Theo Marsh"}, DurationMs: int64(5+i) * 3_600_000, AddedAt: int64(50 - i)})
 		bookVisualCover(t, a, b, i+3)
 	}
+	// playable files (mp3), so the page shows its Resume button
+	streamExec(t, a, `UPDATE audio_files SET container='mp3', codec='mp3', duration_ms=(SELECT duration_ms FROM books b WHERE b.id = audio_files.book_id)`)
 	sc := bookAllScope
 	ctx := context.Background()
 	card, err := a.lib.BookDetail(ctx, sc, first.ID)
@@ -72,21 +76,47 @@ func bookVisualSeed(t *testing.T, a *testApp) (bookID, authorID, narratorID, ser
 	return first.ID, card.Card.Authors[0].ID, card.Card.Narrators[0].ID, card.Series[0].ID
 }
 
+// bookSeedProgress spreads the 19 chapters over the whole book and puts the owner at 62 %, in chapter
+// 12, so the page shows a progress ruler and a where-line like the boards (books 2 and 3 stay untouched).
+func bookSeedProgress(t *testing.T, a *testApp, b library.Book) {
+	t.Helper()
+	ctx := context.Background()
+	const n = 19
+	var chs []library.Chapter
+	for i := int64(0); i < n; i++ {
+		c := library.Chapter{StartMs: i * b.DurationMs / n, EndMs: (i + 1) * b.DurationMs / n, Title: fmt.Sprintf("Part %d", i+1), Source: library.ChapterFile}
+		if i == 2 {
+			c.Title = ""
+		}
+		chs = append(chs, c)
+	}
+	if err := a.lib.Update(ctx, func(tx *library.Tx) error { return tx.ReplaceChapters(b.ID, chs) }); err != nil {
+		t.Fatal(err)
+	}
+	uid := sweepUserID(t, a, a.owner(t))
+	if _, err := a.srv.progress.Save(ctx, progress.Update{UserID: uid, BookID: b.ID, PositionMs: b.DurationMs * 62 / 100, DurationMs: b.DurationMs,
+		ClientUpdatedAt: time.Now().UnixMilli(), DeviceID: "bookvisual0001", DeviceLabel: "Test"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // bookProbeJS is browseProbeJS plus what these pages promise: one h1, a labelled field, no inline
 // style, and a visible heading order that never skips a level.
 const bookProbeJS = `(() => {
   const r = ` + browseProbeJS + `;
   const levels = [...document.querySelectorAll("main h1, main h2, main h3")].map(h => +h.tagName[1]);
   r.skip = levels.some((l, i) => i > 0 && l - levels[i - 1] > 1);
-  // shell.js sets --ts-value (ruler fill and ticks) and --cover-tint on elements; any other inline property is a style.
-  r.styled = [...document.querySelectorAll("[style]")].filter(e => [...e.style].some(p => p !== "--ts-value" && p !== "--cover-tint")).length;
+  // shell.js and the player set custom properties (--ts-value, --cover-tint, --ts-progress, ...) through the CSSOM; any other inline property is a style.
+  r.styledProps = [...new Set([...document.querySelectorAll("[style]")].flatMap(e => [...e.style]))].join(",");
+  r.styled = [...document.querySelectorAll("[style]")].filter(e => [...e.style].some(p => !p.startsWith("--"))).length;
   return r;
 })()`
 
 type bookProbeResult struct {
 	browseProbe
-	Skip   bool `json:"skip"`
-	Styled int  `json:"styled"`
+	Skip        bool   `json:"skip"`
+	Styled      int    `json:"styled"`
+	StyledProps string `json:"styledProps"`
 }
 
 // TestVisualBookPages captures the book (About, Chapters, Details), author, narrator, series and
@@ -166,7 +196,7 @@ func TestVisualBookPages(t *testing.T) {
 				t.Errorf("a heading level is skipped")
 			}
 			if m.Styled > 0 {
-				t.Errorf("%d elements with a style attribute", m.Styled)
+				t.Errorf("%d elements with a style attribute (%s)", m.Styled, m.StyledProps)
 			}
 			tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("book-%s-%s-%d.png", j.pg.name, j.theme, w)))
 		})
