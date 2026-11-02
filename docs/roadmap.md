@@ -336,7 +336,7 @@ the table in [`docs/manual-checks.md`](manual-checks.md)).
   to 200 % is the supported path (WCAG 1.4.4).
 
 Exit: for every route, a test proves each role gets exactly the documented access, and forbidden books
-never appear in lists, counts, search or covers. First tagged release (v0.1) after this milestone.
+never appear in lists, counts, search or covers. First tagged release (v26.0.0, [decision 0006](decisions/0006-version-numbers.md)) after this milestone.
 
 ## M3 Pocket (P4 PWA offline and polish)
 

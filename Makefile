@@ -2,6 +2,7 @@
 GO       ?= go
 BIN      ?= bin/tendshelf
 ADDR     ?= 127.0.0.1:8095
+# Version tags are vYY.MINOR.PATCH with the release year as MAJOR (docs/decisions/0006-version-numbers.md).
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
