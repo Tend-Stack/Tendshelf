@@ -86,3 +86,23 @@ html[data-theme="contrast"] .ts-invite__band.is-tinted { background: none; }
   .ts-invite__cover { width: 16rem; }
   .ts-invite__cta { margin-top: 0; }
 }
+
+/* A share link page (/s/{token}): the invite page's parts with a Play button. There is no tab bar,
+   so the bar sits at the foot of the window and the page keeps clear of it. */
+.ts-linkshell .ts-frame__main { padding-bottom: calc(var(--size-pbar) + var(--space-32) + env(safe-area-inset-bottom)); }
+.ts-link { align-items: stretch; }
+.ts-link__title { margin: var(--space-8) 0 0; font-family: var(--font-serif); text-align: center; overflow-wrap: anywhere; }
+.ts-link__author, .ts-link__length { margin: 0; text-align: center; color: var(--ink-muted); overflow-wrap: anywhere; }
+.ts-link__ends { margin: 0; text-align: center; color: var(--ink-muted); }
+.ts-link__fine { margin-top: calc(var(--space-8) * -1); }
+.ts-link .ts-invite__cta { display: flex; flex-direction: column; gap: var(--space-12); }
+.ts-link .ts-invite__cta .ts-btn { width: 100%; box-sizing: border-box; justify-content: center; }
+.ts-link--locked h1 { margin: var(--space-32) 0 0; font-family: var(--font-serif); }
+.ts-link--locked .ts-link__form { margin-top: var(--space-24); padding-top: 0; }
+.ts-link--locked .ts-field { max-width: none; }
+.ts-link--locked .ts-input { width: 100%; max-width: none; box-sizing: border-box; border-radius: var(--radius-control); }
+.ts-link .ts-share__error { margin: 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--danger); border-radius: var(--radius-control); color: var(--danger); }
+@media (max-width: 767px) {
+  .ts-linkshell .ts-player-slot { bottom: calc(env(safe-area-inset-bottom) + var(--space-8)); }
+  .ts-linkshell .ts-frame__main { padding-bottom: calc(var(--size-mini-player) + var(--space-32) + env(safe-area-inset-bottom)); }
+}
