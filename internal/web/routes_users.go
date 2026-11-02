@@ -54,7 +54,7 @@ func (s *server) usersLink(r *http.Request) (show bool, waiting string) {
 	if !s.canManageServerUsers(r) {
 		return false, ""
 	}
-	n, err := share.WaitingInvites(r.Context(), s.lib.Store(), s.now().UnixMilli())
+	n, err := share.WaitingInvites(r.Context(), s.lib.Store(), s.now().UnixMilli(), share.ManageableInviteRoles(currentUser(r)))
 	if err == nil && n > 0 {
 		waiting = fmt.Sprintf("%d waiting", n)
 	}
@@ -62,12 +62,12 @@ func (s *server) usersLink(r *http.Request) (show bool, waiting string) {
 }
 
 // usersRow is the profile row: "{n} people · {k} invite(s) waiting".
-func (s *server) usersRow(ctx context.Context) (string, error) {
+func (s *server) usersRow(ctx context.Context, actor users.User) (string, error) {
 	var people int
 	if err := s.lib.Store().Reader().QueryRowContext(ctx, `SELECT count(*) FROM users`).Scan(&people); err != nil {
 		return "", err
 	}
-	n, err := share.WaitingInvites(ctx, s.lib.Store(), s.now().UnixMilli())
+	n, err := share.WaitingInvites(ctx, s.lib.Store(), s.now().UnixMilli(), share.ManageableInviteRoles(actor))
 	if err != nil {
 		return "", err
 	}
@@ -86,15 +86,20 @@ func (s *server) usersPageView(r *http.Request) (pages.UsersView, error) {
 	if err != nil {
 		return pages.UsersView{}, err
 	}
-	waiting, err := share.WaitingInvites(ctx, s.lib.Store(), now.UnixMilli())
+	actor := currentUser(r)
+	pending, err := s.invites.Pending(ctx, now.UnixMilli(), share.ManageableInviteRoles(actor))
 	if err != nil {
 		return pages.UsersView{}, err
 	}
-	actor := currentUser(r)
 	manage := func(u users.User) bool {
 		return s.can.Can(ctx, actor, share.ManageUsers, share.Target{Kind: share.TargetUser, ID: u.ID, Role: u.Role})
 	}
-	return usersView(s.csrf.TokenFrom(ctx), now, actor, list, waiting, manage), nil
+	v := usersView(s.csrf.TokenFrom(ctx), now, actor, list, len(pending), manage)
+	if len(pending) > 0 {
+		v.TabInvites = fmt.Sprintf(inviteTabLabel, len(pending))
+		v.Invites = s.inviteRows(pending)
+	}
+	return v, nil
 }
 
 func (s *server) getUsers(w http.ResponseWriter, r *http.Request) {

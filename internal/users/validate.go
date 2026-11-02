@@ -59,11 +59,8 @@ func Validate(n NewUser) FieldErrors {
 	if !usernameRE.MatchString(n.Username) {
 		errs["username"] = "invalid"
 	}
-	if n.Email != "" {
-		a, err := mail.ParseAddress(n.Email)
-		if err != nil || a.Address != n.Email || len(n.Email) > 254 {
-			errs["email"] = "invalid"
-		}
+	if n.Email != "" && !ValidEmail(n.Email) {
+		errs["email"] = "invalid"
 	}
 	switch pl := utf8.RuneCountInString(n.Password); {
 	case pl < 10:
@@ -77,4 +74,10 @@ func Validate(n NewUser) FieldErrors {
 		return nil
 	}
 	return errs
+}
+
+// ValidEmail reports whether s (already trimmed) is a plain address of at most 254 bytes.
+func ValidEmail(s string) bool {
+	a, err := mail.ParseAddress(s)
+	return err == nil && a.Address == s && len(s) <= 254
 }

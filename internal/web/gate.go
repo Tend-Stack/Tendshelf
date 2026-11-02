@@ -4,17 +4,18 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 )
 
-// gate is default deny: every path except /setup and /login (the static files and /healthz never get
+// gate is default deny: every path except /setup, /login and the invite links (the static files and /healthz never get
 // here) needs a signed-in, non-disabled person. The auth middleware already dropped sessions of
 // disabled accounts, so "signed in" is just "has a user in the context". With no owner yet,
 // everyone is sent to /setup; otherwise anonymous visitors go to /login with a way back.
 func (s *server) gate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/setup" || r.URL.Path == "/login" {
+		if r.URL.Path == "/setup" || r.URL.Path == "/login" || isInvitePath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -69,4 +70,35 @@ func (s *server) redirect(w http.ResponseWriter, r *http.Request, loc string) {
 		return
 	}
 	http.Redirect(w, r, loc, http.StatusSeeOther)
+}
+
+// invitePrefix starts the only other public paths: /invite/{token} and /invite/{token}/cover.
+const invitePrefix = "/invite/"
+
+// isInvitePath reports whether p is /invite/{token} or /invite/{token}/cover, with one non-empty
+// token segment. Anything else under /invite/ stays behind the gate.
+func isInvitePath(p string) bool {
+	rest, ok := strings.CutPrefix(p, invitePrefix)
+	if !ok || rest == "" {
+		return false
+	}
+	tok, tail, more := strings.Cut(rest, "/")
+	if tok == "" {
+		return false
+	}
+	return !more || tail == "cover"
+}
+
+// logPath is the request path for a log line, with an invite token replaced by an ellipsis: the
+// token is the secret, so it must never reach a log.
+func logPath(r *http.Request) string {
+	rest, ok := strings.CutPrefix(r.URL.Path, invitePrefix)
+	if !ok {
+		return r.URL.Path
+	}
+	_, tail, more := strings.Cut(rest, "/")
+	if more {
+		return invitePrefix + "…/" + tail
+	}
+	return invitePrefix + "…"
 }
