@@ -154,6 +154,9 @@ func sweepSeed(t *testing.T) *sweepEnv {
 		}
 		e.audio[i] = f.ID
 	}
+	// Waveform peaks: the first file has its peaks, the second does not (W1).
+	peaksAttach(t, a)
+	peaksWrite(t, a, files[0])
 	sha := fmt.Sprintf("%064x", 0xc0ffee)
 	rel := sweepWriteCover(t, a.dir, sha)
 	cover := library.Cover{BookID: e.book.ID, Source: library.CoverFolder, Mime: "image/png", Width: 8, Height: 8, SHA256: sha, Path: rel, Tint: "#1f4a52"}
@@ -289,6 +292,10 @@ func sweepAudioPath(idx int, suffix string) func(*sweepEnv, int) string {
 	return func(e *sweepEnv, _ int) string { return "/stream/" + e.audio[idx] + suffix }
 }
 
+func sweepPeaksPath(idx int) func(*sweepEnv, int) string {
+	return func(e *sweepEnv, _ int) string { return "/peaks/" + e.audio[idx] }
+}
+
 func sweepBookPath(suffix string) func(*sweepEnv, int) string {
 	return func(e *sweepEnv, _ int) string { return "/books/" + e.book.ID + suffix }
 }
@@ -366,6 +373,10 @@ func sweepRows() []sweepRow {
 		{Pattern: "GET /stream/{audioFileID}", Label: "second file", Method: http.MethodGet, Path: sweepAudioPath(1, ""), Want: sweepStaff(200, 404)},
 		{Pattern: "GET /stream/{audioFileID}", Label: "compat without the service", Method: http.MethodGet, Path: sweepAudioPath(0, "?compat=1"), Want: sweepSame(404)},
 		{Pattern: "GET /stream/{audioFileID}", Label: "unknown file", Method: http.MethodGet, Path: sweepStatic("/stream/af_unknown"), Want: sweepSame(404)},
+		// Waveform peaks (W1): ready, being made, unknown
+		sweepGet("GET /peaks/{audioFileID}", sweepPeaksPath(0), sweepStaff(200, 404)),
+		{Pattern: "GET /peaks/{audioFileID}", Label: "not built yet", Method: http.MethodGet, Path: sweepPeaksPath(1), Want: sweepSame(404)},
+		{Pattern: "GET /peaks/{audioFileID}", Label: "unknown file", Method: http.MethodGet, Path: sweepStatic("/peaks/af_unknown"), Want: sweepSame(404)},
 		// Progress and player (P1c-3)
 		sweepGet("GET /progress/{bookID}", id(bookID, "/progress/", ""), sweepStaff(200, 404)),
 		{Pattern: "GET /progress/{bookID}", Label: "unknown book", Method: http.MethodGet, Path: sweepStatic("/progress/bk_unknown"), Want: sweepSame(404)},
@@ -526,6 +537,9 @@ func sweepRows() []sweepRow {
 	stream := sweepPost("/stream/{audioFileID}", sweepAudioPath(0, ""), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, "")
 	stream.Label = "POST"
 	post = append(post, stream)
+	peaks := sweepPost("/peaks/{audioFileID}", sweepPeaksPath(0), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, "")
+	peaks.Label = "POST"
+	post = append(post, peaks)
 	// Progress (P1c-3)
 	post = append(post,
 		sweepPost("POST /progress/{bookID}", id(bookID, "/progress/", ""), sweepFormOf(url.Values{

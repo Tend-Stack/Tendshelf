@@ -41,6 +41,7 @@ var sweepGrantedWant = func() map[string][4]int {
 		"GET /covers/{bookID}":                   ok,
 		"GET /stream/{audioFileID}":              ok,
 		"GET /stream/{audioFileID} second file":  ok,
+		"GET /peaks/{audioFileID}":               ok,
 		"GET /progress/{bookID}":                 ok,
 		"GET /hx/player":                         ok, // the seeded progress now points at a visible book
 		"GET /hx/player/{bookID}":                ok,
