@@ -57,10 +57,10 @@
 /* The tint, applied by shell.js. Walnut and paper are the two inks the server picked from (4.5:1). */
 .is-tinted { background: var(--cover-tint); border-color: transparent; }
 .is-tinted.ts-ink-paper { color: var(--brand-paper); }
-.is-tinted.ts-ink-walnut { color: var(--brand-walnut); }
+.is-tinted.ts-ink-deep { color: var(--spine-ink); }
 html[data-theme="contrast"] .is-tinted,
 html[data-theme="contrast"] .is-tinted.ts-ink-paper,
-html[data-theme="contrast"] .is-tinted.ts-ink-walnut { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
+html[data-theme="contrast"] .is-tinted.ts-ink-deep { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
 
 @media (min-width: 768px) {
   .ts-home__hero { margin-bottom: var(--space-8); padding: var(--space-24); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
@@ -89,3 +89,7 @@ html[data-theme="contrast"] .is-tinted.ts-ink-walnut { background: var(--surface
   .ts-spine--h2 { height: 11.5rem; }
   .ts-spine--h3 { height: 12.375rem; }
 }
+
+/* The shelf fitter (shell.js) hides the spines that do not fit whole; .ts-spine sets display, which
+   would beat the browser's own [hidden] rule. */
+.ts-spine[hidden] { display: none; }

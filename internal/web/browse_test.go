@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
+	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
@@ -633,23 +634,36 @@ func TestSpineInk(t *testing.T) {
 		tint, class string
 		ok          bool
 	}{
-		{"#1f4a52", "ts-ink-paper", true},  // dark teal
-		{"#8c3b24", "ts-ink-paper", true},  // rust
-		{"#d9d4c7", "ts-ink-walnut", true}, // pale
-		{"#efe3c8", "ts-ink-walnut", true}, // cream
-		{"#c7894e", "", false},             // amber: walnut reaches only about 3:1, so the tint is not used
-		{"#808080", "", false},             // mid grey: neither ink reaches 4.5:1
+		{"#1f4a52", "ts-ink-paper", true}, // dark teal
+		{"#8c3b24", "ts-ink-paper", true}, // rust
+		{"#d9d4c7", "ts-ink-deep", true},  // pale
+		{"#efe3c8", "ts-ink-deep", true},  // cream
+		{"#c7894e", "ts-ink-deep", true},  // amber: walnut reached only about 3:1, the deep brown passes
+		{"#f15786", "ts-ink-deep", true},  // mid pink (a real cover that stayed plain with walnut)
+		{"#0ab5dc", "ts-ink-deep", true},  // cyan
+		{"#18b89b", "ts-ink-deep", true},  // teal green
 		{"", "", false},
 		{"red", "", false},
 	} {
-		class, ok := spineInk(c.tint)
-		if class != c.class || ok != c.ok {
-			t.Errorf("spineInk(%q) = %q, %v; want %q, %v", c.tint, class, ok, c.class, c.ok)
+		shown, class, ok := spineInk(c.tint)
+		if class != c.class || ok != c.ok || (ok && shown != c.tint) {
+			t.Errorf("spineInk(%q) = %q, %q, %v; want %q, %v", c.tint, shown, class, ok, c.class, c.ok)
 		}
 	}
-	// A tint with no readable ink is not used by the card either.
-	if v := cardView(library.BookCard{ID: "bk_1", Title: "T", Cover: &library.CoverRef{Tint: "#808080"}}); v.Tint != "" || v.InkClass != "" {
-		t.Errorf("unreadable tint kept: %+v", v)
+	// A bright magenta reaches 4.5:1 with neither ink: it is darkened until paper does, keeping its hue.
+	shown, class, ok := spineInk("#dc3398")
+	if !ok || class != "ts-ink-paper" || shown == "#dc3398" || media.Contrast(shown, spinePaper) < minInkContrast {
+		t.Errorf("spineInk(#dc3398) = %q, %q, %v; want a darker magenta with paper", shown, class, ok)
+	}
+	if r, g, b := shown[1:3], shown[3:5], shown[5:7]; !(r > b && b > g) {
+		t.Errorf("darkened magenta %s changed hue", shown)
+	}
+	// A mid grey is darkened like the magenta; a tint that is not a colour is not used by the card.
+	if shown, class, ok := spineInk("#808080"); !ok || class != "ts-ink-paper" || media.Contrast(shown, spinePaper) < minInkContrast {
+		t.Errorf("spineInk(#808080) = %q, %q, %v", shown, class, ok)
+	}
+	if v := cardView(library.BookCard{ID: "bk_1", Title: "T", Cover: &library.CoverRef{Tint: "grey"}}); v.Tint != "" || v.InkClass != "" {
+		t.Errorf("a tint that is not a colour was kept: %+v", v)
 	}
 
 	// The two inks are the brand tokens, so the contrast decided here is the contrast on screen.
@@ -657,7 +671,7 @@ func TestSpineInk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, want := range map[string]string{"--brand-paper": spinePaper, "--brand-walnut": spineWalnut} {
+	for name, want := range map[string]string{"--brand-paper": spinePaper, "--spine-ink": spineDeep} {
 		m := regexp.MustCompile(regexp.QuoteMeta(name) + `:\s*(#[0-9a-fA-F]{6})`).FindSubmatch(css)
 		if m == nil || strings.ToLower(string(m[1])) != want {
 			t.Errorf("%s in tokens.css is %q, the Go constant is %q", name, m, want)

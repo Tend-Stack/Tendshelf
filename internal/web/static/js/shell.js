@@ -48,16 +48,14 @@ document.addEventListener("htmx:after:settle", () => applyTints(document));
 
 // Shelf fit: the server sends the newest 40 books; a shelf marked data-ts-fit shows only the spines
 // that fit whole on one row and hides the rest. "hidden" takes the others out of the tab order and
-// the accessibility tree. The spine's own CSS sets display, which beats the browser's rule for
-// [hidden], so display is set through the CSSOM too (allowed by style-src 'self'). Without JS the
-// row keeps its sideways scroll.
+// the accessibility tree (pages-home.css makes .ts-spine[hidden] display: none). Without JS the row
+// keeps its sideways scroll.
 function fitShelf(shelf) {
   const spines = Array.from(shelf.children);
   if (spines.length === 0) return;
   // Show everything first, so every spine has a real width to measure.
   for (const spine of spines) {
     spine.hidden = false;
-    spine.style.setProperty("display", "");
   }
   const style = getComputedStyle(shelf);
   const gap = parseFloat(style.columnGap) || 0;
@@ -76,7 +74,6 @@ function fitShelf(shelf) {
   spines.forEach((spine, i) => {
     if (i < shown) return;
     spine.hidden = true;
-    spine.style.setProperty("display", "none");
   });
 }
 

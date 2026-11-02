@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,27 +16,52 @@ import (
 // Views for Home and the Library: a library.BookCard becomes a components.CardView, and the query
 // string becomes a browseQuery that can write itself back as an address.
 
-// The two inks a tinted spine or blank cover can carry. They equal --brand-paper and --brand-walnut
-// in tokens.css (a test keeps them equal), so the contrast decided here is the contrast on screen.
+// The two inks a tinted spine or blank cover can carry. They equal --brand-paper and --spine-ink in
+// tokens.css (a test keeps them equal), so the contrast decided here is the contrast on screen. The
+// dark one is the boards' deep brown, not --brand-walnut: walnut is too light for mid-tone covers.
 const (
-	spinePaper  = "#e9e0d0"
-	spineWalnut = "#5a4029"
+	spinePaper = "#e9e0d0"
+	spineDeep  = "#2a1a0c"
 	// minInkContrast is WCAG AA for text.
 	minInkContrast = 4.5
 )
 
-// spineInk picks the ink for a tint: paper or walnut, whichever contrasts more, if that reaches 4.5:1.
-// With neither, the tint is not used and the spine keeps the surface and ink colours.
-func spineInk(tint string) (class string, ok bool) {
-	paper, walnut := media.Contrast(tint, spinePaper), media.Contrast(tint, spineWalnut)
-	best, class := paper, "ts-ink-paper"
-	if walnut > paper {
-		best, class = walnut, "ts-ink-walnut"
+// spineInk picks the colours of a tinted spine or blank cover: the cover's tint with paper or the
+// deep brown, whichever contrasts more, if that reaches 4.5:1. A mid-tone tint that reaches it with
+// neither (a bright magenta) is darkened in small steps, at most by 40 %, until paper does, so the
+// spine keeps its hue. With no such step the tint is not used and the spine keeps the surface and
+// ink colours.
+func spineInk(tint string) (shown, class string, ok bool) {
+	paper, deep := media.Contrast(tint, spinePaper), media.Contrast(tint, spineDeep)
+	switch {
+	case deep >= paper && deep >= minInkContrast:
+		return tint, "ts-ink-deep", true
+	case paper >= minInkContrast:
+		return tint, "ts-ink-paper", true
+	case paper == 0 && deep == 0:
+		return "", "", false // not a colour
 	}
-	if best < minInkContrast {
+	for step := 1; step <= 8; step++ {
+		dark, ok := darkenHex(tint, float64(step)*0.05)
+		if ok && media.Contrast(dark, spinePaper) >= minInkContrast {
+			return dark, "ts-ink-paper", true
+		}
+	}
+	return "", "", false
+}
+
+// darkenHex mixes a "#rrggbb" colour with black by the fraction f.
+func darkenHex(hex string, f float64) (string, bool) {
+	if len(hex) != 7 || hex[0] != '#' {
 		return "", false
 	}
-	return class, true
+	v, err := strconv.ParseUint(hex[1:], 16, 32)
+	if err != nil {
+		return "", false
+	}
+	scale := func(c uint64) uint64 { return uint64(float64(c)*(1-f) + 0.5) }
+	r, g, b := scale(v>>16&0xff), scale(v>>8&0xff), scale(v&0xff)
+	return fmt.Sprintf("#%02x%02x%02x", r, g, b), true
 }
 
 // spineWidth is the spine width class for a length: under 5 hours narrow, under 15 medium, else wide.
@@ -149,8 +175,8 @@ func cardView(c library.BookCard) components.CardView {
 		v.CoverSrcset = coverURL(c.ID, c.Cover.SHA, 160) + " 160w, " + v.CoverSrc + " 320w, " + coverURL(c.ID, c.Cover.SHA, 640) + " 640w"
 		v.CoverW, v.CoverH = c.Cover.Width, c.Cover.Height
 	}
-	if ink, ok := spineInk(c.Cover.Tint); ok {
-		v.Tint, v.InkClass = c.Cover.Tint, ink
+	if shown, ink, ok := spineInk(c.Cover.Tint); ok {
+		v.Tint, v.InkClass = shown, ink
 	}
 	return v
 }

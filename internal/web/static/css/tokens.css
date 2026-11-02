@@ -164,6 +164,9 @@
   --focus-ring: 0 0 0 2px #000000, 0 0 0 4px #ffffff;
 }
 :root {
+  /* The dark ink on a tinted spine or blank cover: the boards' spine text colour. Deeper than
+     --brand-walnut, so mid-tone covers (pinks, blues, ambers) reach 4.5:1 and keep their colour. */
+  --spine-ink: #2a1a0c;
   --space-4: 0.25rem;
   --space-8: 0.5rem;
   --space-12: 0.75rem;
