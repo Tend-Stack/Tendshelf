@@ -288,7 +288,10 @@ function place(chapter, ms) {
 function drawBar(state, info, chapter, force) {
   const n = state.chapterIdx + 1;
   if (!drag) place(chapter, state.positionMs);
-  const name = fill(msg("waveChapter"), { n, title: chapter.title || "" }).replace(/ · $/, "");
+  // Many books name their chapters only "Chapter 12": that would read "Chapter 12 · Chapter 12".
+  const plainTitle = /^(chapter|ch\.?|part)?\s*0*\d+\s*$/i.test(chapter.title || "");
+  const title = plainTitle ? "" : chapter.title || "";
+  const name = fill(msg("waveChapter"), { n, title }).replace(/ · $/, "");
   setText(bar.title, loadingNow ? fill(msg("waveDrawing"), { n }) : name);
   bar.input.setAttribute("aria-label", fill(msg("waveLabel"), { n }));
   setText(bar.label, fill(msg("waveLabel"), { n }));
@@ -297,7 +300,7 @@ function drawBar(state, info, chapter, force) {
   if (!drag && (force || Date.now() - textAt >= VALUE_TEXT_EVERY_MS)) {
     textAt = Date.now();
     const length = chapter.end - chapter.start;
-    bar.input.setAttribute("aria-valuetext", fill(msg("waveValue"), { t: spoken(state.positionMs - chapter.start), total: spoken(length), n, title: chapter.title || "" }).replace(/, $/, ""));
+    bar.input.setAttribute("aria-valuetext", fill(msg("waveValue"), { t: spoken(state.positionMs - chapter.start), total: spoken(length), n, title }).replace(/, $/, ""));
   }
   if (barBook && hairlineFor !== info.id + info.chapters.length) {
     hairlineFor = info.id + info.chapters.length;
