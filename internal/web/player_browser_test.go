@@ -81,10 +81,26 @@ func playerClickAt(t *testing.T, tab *cdp.Tab, x, y float64) {
 }
 
 // playerClickSel clicks the centre of the first element matching sel.
+// It clicks once the element has stopped moving: the page-enter motion, late stylesheets and fonts
+// can move it between measuring and clicking, and a click that lands beside the element is lost
+// (TestPlayButtonBrowserEarlyClick failed that way on the nightly run of 2026-11-02).
 func playerClickSel(t *testing.T, tab *cdp.Tab, sel string) {
 	t.Helper()
-	var r struct{ X, Y float64 }
-	tab.Eval(`(() => { const r = document.querySelector(`+cdp.Quote(sel)+`).getBoundingClientRect(); return {X: r.x + r.width / 2, Y: r.y + r.height / 2}; })()`, &r)
+	type point struct{ X, Y float64 }
+	measure := func() point {
+		var r point
+		tab.Eval(`(() => { const r = document.querySelector(`+cdp.Quote(sel)+`).getBoundingClientRect(); return {X: r.x + r.width / 2, Y: r.y + r.height / 2}; })()`, &r)
+		return r
+	}
+	r := measure()
+	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); {
+		time.Sleep(80 * time.Millisecond)
+		next := measure()
+		if next == r {
+			break
+		}
+		r = next
+	}
 	playerClickAt(t, tab, r.X, r.Y)
 }
 
