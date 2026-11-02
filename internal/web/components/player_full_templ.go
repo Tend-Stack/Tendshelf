@@ -813,7 +813,8 @@ func fillValue(message, v string) string {
 }
 
 // SleepCard is the "Sleeping in N seconds" card with its "+10 min" button. It is rendered twice:
-// inside the full player (where="full") and above the bar (where="bar"); player-full.js shows the
+// inside the full player (where="full") and beside the bar (where="bar", a layout sibling of #player so
+// it shows even while the hero hides the bar); player-full.js shows the
 // one that matches whether the full player is open. The per-second count is aria-hidden; a polite
 // status line says it once at the start of the fade.
 func SleepCard(m PlayerMsgs, where string) templ.Component {
@@ -840,13 +841,23 @@ func SleepCard(m PlayerMsgs, where string) templ.Component {
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templruntime.NewAttributeExpression(where).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 246, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 247, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\" hidden>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if where == "bar" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, " id=\"sleep-card-bar\" hx-preserve")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, " hidden>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -854,20 +865,20 @@ func SleepCard(m PlayerMsgs, where string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "<div class=\"ts-sleepcard__text\"><p class=\"body ts-sleepcard__title\" aria-hidden=\"true\" data-ts-sleep-count></p><p class=\"caption ts-sleepcard__hint\" aria-hidden=\"true\" data-ts-sleep-hint></p><p class=\"ts-sr\" role=\"status\" data-ts-sleep-said></p></div><button type=\"button\" class=\"ts-btn ts-btn--secondary\" data-ts-sleep-plus>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "<div class=\"ts-sleepcard__text\"><p class=\"body ts-sleepcard__title\" aria-hidden=\"true\" data-ts-sleep-count></p><p class=\"caption ts-sleepcard__hint\" aria-hidden=\"true\" data-ts-sleep-hint></p><p class=\"ts-sr\" role=\"status\" data-ts-sleep-said></p></div><button type=\"button\" class=\"ts-btn ts-btn--secondary\" data-ts-sleep-plus>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(m.PlusTen)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 253, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player_full.templ`, Line: 254, Col: 87}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "</button></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "</button></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

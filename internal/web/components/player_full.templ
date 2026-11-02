@@ -239,11 +239,12 @@ func fillValue(message, v string) string {
 }
 
 // SleepCard is the "Sleeping in N seconds" card with its "+10 min" button. It is rendered twice:
-// inside the full player (where="full") and above the bar (where="bar"); player-full.js shows the
+// inside the full player (where="full") and beside the bar (where="bar", a layout sibling of #player so
+// it shows even while the hero hides the bar); player-full.js shows the
 // one that matches whether the full player is open. The per-second count is aria-hidden; a polite
 // status line says it once at the start of the fade.
 templ SleepCard(m PlayerMsgs, where string) {
-	<section class="ts-sleepcard" data-ts-sleep-card={ where } hidden>
+	<section class="ts-sleepcard" data-ts-sleep-card={ where } if where == "bar" { id="sleep-card-bar" hx-preserve } hidden>
 		@Icon("sleep", false)
 		<div class="ts-sleepcard__text">
 			<p class="body ts-sleepcard__title" aria-hidden="true" data-ts-sleep-count></p>

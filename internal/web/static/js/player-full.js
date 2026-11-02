@@ -866,7 +866,11 @@ const actions = {
 slot.addEventListener("click", (event) => {
   if (event.target.closest("[data-ts-bar-speed]")) openSheet("speed", bar.speed);
   else if (event.target.closest("[data-ts-bar-sleep]")) openSheet("sleep", bar.sleep);
-  else if (event.target.closest("[data-ts-sleep-plus]")) sleepPlus();
+});
+
+// The bar's sleep card sits beside the slot (so the hero hiding the bar does not hide it): it answers itself.
+cards.find((card) => card.el.dataset.tsSleepCard === "bar").el.addEventListener("click", (event) => {
+  if (event.target.closest("[data-ts-sleep-plus]")) sleepPlus();
 });
 
 dialog.addEventListener("click", (event) => {
