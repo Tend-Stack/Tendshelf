@@ -211,3 +211,50 @@ func TestTxReads(t *testing.T) {
 		t.Fatalf("empty book survived: %v", err)
 	}
 }
+
+func TestQuickHashesAndPeaksCandidates(t *testing.T) {
+	r, _ := newRepo(t)
+	lib, f := fixture(t, r)
+	ok := addBook(t, r, lib, f, "/audio/ok")
+	refused := library.Book{LibraryID: lib.ID, FolderID: f.ID, RootPath: "/audio/drm", Title: "T", RefusedReason: library.RefusedDRM}
+	if err := r.Update(ctx, func(tx *library.Tx) error { return tx.InsertBook(&refused) }); err != nil {
+		t.Fatal(err)
+	}
+
+	probed := []byte(`{"v":1}`)
+	live := file(ok.ID, "/audio/ok/b.mp3", 1)
+	live.ProbeJSON, live.QuickHash = probed, hash('1')
+	first := file(ok.ID, "/audio/ok/a.mp3", 0)
+	first.ProbeJSON, first.QuickHash = probed, hash('2')
+	unprobed := file(ok.ID, "/audio/ok/c.mp3", 2)
+	unprobed.QuickHash = hash('3')
+	failed := file(ok.ID, "/audio/ok/d.mp3", 3)
+	failed.ProbeError, failed.QuickHash = "not_audio", hash('4')
+	gone := file(ok.ID, "/audio/ok/e.mp3", 4)
+	gone.ProbeJSON, gone.MissingSince, gone.QuickHash = probed, 5, hash('5')
+	inRefused := file(refused.ID, "/audio/drm/1.mp3", 0)
+	inRefused.ProbeJSON, inRefused.QuickHash = probed, hash('6')
+	for _, a := range []*library.AudioFile{live, first, unprobed, failed, gone, inRefused} {
+		put(t, r, a)
+	}
+
+	got, err := r.PeaksCandidates(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ID != first.ID || got[1].ID != live.ID {
+		t.Fatalf("candidates = %+v", got)
+	}
+	hashes, err := r.QuickHashes(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []byte("123456") {
+		if !hashes[hash(c)] {
+			t.Errorf("hash %c missing from the set", c)
+		}
+	}
+	if len(hashes) != 6 {
+		t.Errorf("%d hashes, want 6", len(hashes))
+	}
+}

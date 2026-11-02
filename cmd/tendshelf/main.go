@@ -105,7 +105,7 @@ func run(ctx context.Context, args []string) error {
 	if err := registerDetails(d); err != nil {
 		return err
 	}
-	compat, err := registerMediaJobs(d, mf)
+	compat, peaks, err := registerMediaJobs(d, mf)
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func run(ctx context.Context, args []string) error {
 	}
 	setupCode := auth.NewSetupCode()
 	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: proxies,
-		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat})
+		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks})
 	if err != nil {
 		return err
 	}
@@ -127,6 +127,13 @@ func run(ctx context.Context, args []string) error {
 	if err := runner.Start(ctx); err != nil {
 		ln.Close()
 		return err
+	}
+	// Files scanned before waveforms existed (or while they were off) get their peaks in the
+	// background; a failure here costs only the waveform, never the start.
+	if n, err := peaks.Backfill(ctx); err != nil {
+		logger.Warn("waveforms: backfill failed", "err", err)
+	} else if n > 0 {
+		logger.Info("waveforms: queued missing peaks", "files", n)
 	}
 
 	srv := &http.Server{

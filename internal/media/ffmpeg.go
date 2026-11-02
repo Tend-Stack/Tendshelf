@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os/exec"
 	"path/filepath"
@@ -39,38 +40,48 @@ func ffmpegArgs(in string, rest ...string) []string {
 // deadline is code ffmpeg_timeout, and a failing exit or a flooded stdout is ffmpeg_failed with the
 // capped stderr as Detail. If the parent ctx ends first, its cause is returned.
 func (t Tools) ffmpeg(ctx context.Context, in string, timeout time.Duration, outCap int, args []string) ([]byte, error) {
+	out := &limitedBuffer{max: outCap}
+	if err := t.ffmpegTo(ctx, in, timeout, args, out, false); err != nil {
+		return nil, err
+	}
+	if out.wasTruncated() {
+		return nil, newError(CodeFFmpegFailed, fmt.Sprintf("ffmpeg wrote more than %d bytes", outCap), nil)
+	}
+	return out.bytes(), nil
+}
+
+// ffmpegTo is ffmpeg with the stdout writer chosen by the caller (the waveform reducer reads a long
+// decode as it streams). The checks are the same. With low set ffmpeg runs at a lower priority.
+func (t Tools) ffmpegTo(ctx context.Context, in string, timeout time.Duration, args []string, stdout io.Writer, low bool) error {
 	if Classify(in) == KindProtected {
-		return nil, newError(CodeDRM, "protected file extension", ErrProtected)
+		return newError(CodeDRM, "protected file extension", ErrProtected)
 	}
 	if t.FFmpeg == "" {
-		return nil, newError(CodeFFmpegMissing, "no ffmpeg configured", ErrNotFound)
+		return newError(CodeFFmpegMissing, "no ffmpeg configured", ErrNotFound)
 	}
 	if !filepath.IsAbs(in) {
-		return nil, fmt.Errorf("media: ffmpeg input path must be absolute: %q", in)
+		return fmt.Errorf("media: ffmpeg input path must be absolute: %q", in)
 	}
 	if t.FFmpegTimeout > 0 {
 		timeout = t.FFmpegTimeout
 	}
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	res := runCapped(runCtx, t.FFmpeg, args, t.Env, outCap)
+	res := runTo(runCtx, t.FFmpeg, args, t.Env, stdout, low)
 	if res.err != nil {
 		if ctx.Err() != nil {
-			return nil, context.Cause(ctx)
+			return context.Cause(ctx)
 		}
 		if runCtx.Err() != nil {
-			return nil, newError(CodeFFmpegTimeout, fmt.Sprintf("no answer within %s", timeout), runCtx.Err())
+			return newError(CodeFFmpegTimeout, fmt.Sprintf("no answer within %s", timeout), runCtx.Err())
 		}
 		var exit *exec.ExitError
 		if !errors.As(res.err, &exit) && (errors.Is(res.err, fs.ErrNotExist) || errors.Is(res.err, exec.ErrNotFound)) {
-			return nil, newError(CodeFFmpegMissing, res.err.Error(), ErrNotFound)
+			return newError(CodeFFmpegMissing, res.err.Error(), ErrNotFound)
 		}
-		return nil, newError(CodeFFmpegFailed, describe(res, res.err), res.err)
+		return newError(CodeFFmpegFailed, describe(res, res.err), res.err)
 	}
-	if res.capped {
-		return nil, newError(CodeFFmpegFailed, fmt.Sprintf("ffmpeg wrote more than %d bytes", outCap), nil)
-	}
-	return res.stdout, nil
+	return nil
 }
 
 // ExtractPicture reads one attached picture (an embedded cover) out of an audio file. mjpeg and png

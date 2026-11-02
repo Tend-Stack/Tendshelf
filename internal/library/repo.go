@@ -191,6 +191,33 @@ func (r *Repo) UnsettledAudioFileIDs(ctx context.Context, libraryID string) ([]s
   ORDER BY a.path`, libraryID)
 }
 
+// QuickHashes returns every quick hash an audio file row carries, missing files included, so a
+// cache keyed by quick hash can tell its stale entries from the live ones.
+func (r *Repo) QuickHashes(ctx context.Context) (map[string]bool, error) {
+	hashes, err := many(ctx, r.st.Reader(), func(s scanner) (string, error) {
+		var h string
+		return h, s.Scan(&h)
+	}, `SELECT DISTINCT quick_hash FROM audio_files`)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]bool, len(hashes))
+	for _, h := range hashes {
+		out[h] = true
+	}
+	return out, nil
+}
+
+// PeaksCandidates returns the live, probed files of books that are not refused, by book and path:
+// the files whose waveform may be computed.
+func (r *Repo) PeaksCandidates(ctx context.Context) ([]AudioFile, error) {
+	return many(ctx, r.st.Reader(), scanAudio,
+		`SELECT `+audioColsA+`
+  FROM audio_files a JOIN books b ON b.id = a.book_id
+  WHERE a.missing_since IS NULL AND a.probe_json IS NOT NULL AND a.probe_error IS NULL AND b.refused_reason IS NULL
+  ORDER BY b.id, a.path`)
+}
+
 // RefusedBooks returns the library's books with a refused reason, by root path.
 func (r *Repo) RefusedBooks(ctx context.Context, libraryID string) ([]Book, error) {
 	return many(ctx, r.st.Reader(), scanBook,

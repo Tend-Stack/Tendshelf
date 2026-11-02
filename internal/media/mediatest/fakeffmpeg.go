@@ -27,6 +27,9 @@ const (
 	FakeFFmpegSleepEnv = "TENDSHELF_FAKE_FFMPEG_SLEEP_MS"
 	// FakeFFmpegFloodEnv makes every run write this many bytes of junk to stdout first.
 	FakeFFmpegFloodEnv = "TENDSHELF_FAKE_FFMPEG_FLOOD"
+	// FakeFFmpegPCMEnv shapes the 8 kHz mono PCM the fake writes for a waveform decode: a list
+	// "<ms>:<amplitude>,<ms>:<amplitude>" of square-wave stretches. The default is 6000:8192.
+	FakeFFmpegPCMEnv = "TENDSHELF_FAKE_FFMPEG_PCM"
 )
 
 const defaultCoverColor = "#2c6660"
@@ -149,6 +152,14 @@ func runFakeFFmpeg(args []string, stdout, stderr io.Writer) int {
 			return exitFor(err, stderr)
 		}
 		return exitFor(os.WriteFile(out, buf.Bytes(), 0o600), stderr)
+	case hasArg(args, "s16le"): // waveform decode, before d because it also carries -c:a
+		pcm, err := fakePCM(os.Getenv(FakeFFmpegPCMEnv))
+		if err != nil {
+			fmt.Fprintln(stderr, "fake ffmpeg: "+err.Error())
+			return 65
+		}
+		_, err = stdout.Write(pcm)
+		return exitFor(err, stderr)
 	case hasArg(args, "-c:a"): // d
 		out, ok := outputArg(args)
 		if !ok || !isFake {
@@ -167,6 +178,31 @@ func runFakeFFmpeg(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintln(stderr, "fake ffmpeg: unexpected arguments")
 	return 64
+}
+
+// fakePCM renders the stretches of spec as little-endian s16 samples at 8 kHz: a 1 kHz square wave
+// of +-amplitude, whose RMS is the amplitude.
+func fakePCM(spec string) ([]byte, error) {
+	if spec == "" {
+		spec = "6000:8192"
+	}
+	var out []byte
+	for _, part := range strings.Split(spec, ",") {
+		msText, ampText, ok := strings.Cut(strings.TrimSpace(part), ":")
+		ms, err1 := strconv.Atoi(msText)
+		amp, err2 := strconv.Atoi(ampText)
+		if !ok || err1 != nil || err2 != nil || ms < 0 || amp < 0 || amp > 32767 {
+			return nil, fmt.Errorf("bad %s %q", FakeFFmpegPCMEnv, spec)
+		}
+		for i := 0; i < ms*8; i++ {
+			v := int16(amp)
+			if (i/4)%2 == 1 {
+				v = -v
+			}
+			out = append(out, byte(v), byte(uint16(v)>>8))
+		}
+	}
+	return out, nil
 }
 
 func exitFor(err error, stderr io.Writer) int {

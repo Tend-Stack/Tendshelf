@@ -220,6 +220,19 @@ func (r *Runner) Enqueue(ctx context.Context, kind string, payload any, o Enqueu
 	return id, nil
 }
 
+// Expedite makes a queued job that waits for a future time due now, so a job that is wanted at once
+// (the waveform of the book being played) is claimed before the ones queued at leisure: the claim
+// order is not_before, then created_at. It returns nil when no row changed (the job is running,
+// finished, unknown, or already due).
+func (r *Runner) Expedite(ctx context.Context, id string) error {
+	_, err := r.st.Writer().ExecContext(ctx, sqlExpedite, time.Now().UnixMilli(), id)
+	if err != nil {
+		return err
+	}
+	r.signal()
+	return nil
+}
+
 // Cancel marks a queued, held or running job cancelled. A running handler's
 // context is cancelled with ErrCancelled and its result is never written.
 func (r *Runner) Cancel(ctx context.Context, id string) error {

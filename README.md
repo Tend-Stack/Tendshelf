@@ -38,6 +38,19 @@ make test
 make run     # http://127.0.0.1:8095 and /healthz
 ```
 
+## Flags
+
+Every flag has an environment variable; `tendshelf -h` prints them all. The ones most people touch:
+
+- `-addr` (`TENDSHELF_ADDR`): listen address, default `127.0.0.1:8095`.
+- `-data` (`TENDSHELF_DATA`): data folder (database, backups, covers, caches).
+- `-ffmpeg`, `-ffprobe` (`TENDSHELF_FFMPEG`, `TENDSHELF_FFPROBE`): program names or absolute paths; default searches `PATH`.
+- `-trusted-proxy` (`TENDSHELF_TRUSTED_PROXY`): reverse proxies whose `X-Forwarded-*` headers are believed.
+- `-compat-cache-gib` (`TENDSHELF_COMPAT_CACHE_GIB`): size cap of the compatibility-copy cache, default 5.
+- `-waveforms` (`TENDSHELF_WAVEFORMS`): draw waveforms behind the scrubber, default on. Each audio file is
+  decoded once in the background (about 4 seconds of CPU per hour of audio); `-waveforms=false` turns it
+  off on weak hardware, and nothing is decoded.
+
 ## Developer setup (Ubuntu 26.04)
 
 The server needs only Go, plus `ffmpeg`/`ffprobe` at run time. The extra packages below are for

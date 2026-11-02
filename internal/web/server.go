@@ -59,6 +59,8 @@ type Options struct {
 
 	// Compat makes and finds compatibility copies; nil means ?compat=1 answers 404.
 	Compat *mediajobs.Compat
+	// Peaks makes and finds waveform peaks; nil means GET /peaks/{id} answers 404.
+	Peaks *mediajobs.Peaks
 }
 
 type server struct {
@@ -75,6 +77,7 @@ type server struct {
 	version  string
 	now      func() time.Time // the clock; never nil
 	compat   *mediajobs.Compat
+	peaks    *mediajobs.Peaks
 	progress *progress.Service
 }
 
@@ -153,6 +156,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		version:  opts.Version,
 		now:      nowOrReal(opts.Now),
 		compat:   opts.Compat,
+		peaks:    opts.Peaks,
 		progress: progress.New(opts.Store, opts.Now),
 	}
 	s.csrf = NewCSRF(key, sessionOrCookieBinding)
@@ -173,6 +177,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerMe(mux)
 	s.registerShelves(mux)
 	s.registerStream(mux)
+	s.registerPeaks(mux)
 	s.registerProgress(mux)
 	s.registerPlayer(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
