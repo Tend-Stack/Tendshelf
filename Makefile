@@ -62,7 +62,7 @@ visual-full:
 # plays without an audio device after a real click). Needs TENDSHELF_TEST_BROWSER. Numbers and captures:
 # .local/tests/player/<run>/. About three minutes.
 player:
-	$(GO) test -count=1 -tags dev -timeout 10m -run 'TestPlayerBrowser|TestFullPlayerBrowser|TestPlayButtonBrowser|TestHomeHeroBrowser|TestPlayChaptersBrowser|TestBookmarkNoteKeepsPlaying|TestWaveformBrowser|TestBookPageBrowser|TestSwapPlayerBrowser|TestPlayerBarBrowser|TestShareLinkBrowser' -v ./internal/web/
+	$(GO) test -count=1 -tags dev -timeout 10m -run 'TestPlayerBrowser|TestFullPlayerBrowser|TestPlayButtonBrowser|TestHomeHeroBrowser|TestPlayChaptersBrowser|TestBookmarkNoteKeepsPlaying|TestWaveformBrowser|TestBookPageBrowser|TestSwapPlayerBrowser|TestPlayerBarBrowser|TestShareLinkBrowser|TestNowPanelBrowser' -v ./internal/web/
 
 # The Library page on 2,000 books at 390 px with the CPU throttled 4x: median time to interactive must
 # be 300 ms or less (one warm-up load, then five). Needs TENDSHELF_TEST_BROWSER. Numbers and the CPU

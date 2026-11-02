@@ -71,7 +71,7 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 .ts-player__chapter-title { font-family: var(--font-serif); font-style: italic; }
 .ts-player__author { margin: var(--space-4) 0 0; text-align: center; color: var(--ink-muted); }
 .ts-player__times { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 0.875rem; }
-.ts-player__left { color: var(--cover-accent); }
+.ts-player__left { color: var(--accent); }
 .ts-player__scrub { margin-top: var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); }
 .ts-player__transport { order: 1; margin: var(--space-16) 0 var(--space-24); }
 .ts-player__transport [data-ts-full-prev] { order: 1; }
@@ -111,7 +111,7 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
   padding: 0 var(--space-16); border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink); font: 400 1rem/1.5rem var(--font-sans); text-align: left; cursor: pointer; }
 .ts-player__chrow[aria-current="true"] { background: var(--accent-soft); font-weight: 600; }
 .ts-player__chnum, .ts-player__chtime { color: var(--ink-muted); font-size: 0.875rem; }
-.ts-player__chdone { display: flex; color: var(--cover-accent); }
+.ts-player__chdone { display: flex; color: var(--accent); }
 
 /* The shared cover glides between the bar and the player (view transition, see player-full.js) */
 .ts-vt-mini .ts-mini__cover, .ts-vt-full .ts-player__cover { view-transition-name: ts-now-cover; }

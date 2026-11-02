@@ -52,6 +52,7 @@ templ PlayerFull(m PlayerMsgs) {
 								<input type="hidden" name="next" value=""/>
 								<button type="submit" class="ts-player__menuitem">{ m.MarkFinished }</button>
 							</form>
+							<div class="ts-player__menuextra" data-ts-full-extra></div>
 						</div>
 					</details>
 				</div>
@@ -61,7 +62,7 @@ templ PlayerFull(m PlayerMsgs) {
 			</span>
 			<h2 id="player-full-title" class="title-2 ts-player__title" data-ts-full-title></h2>
 			<p class="body ts-player__author">
-				<span class="ts-player__chapter-title" data-ts-full-chapter-title></span><span data-ts-full-sep></span><span data-ts-full-author></span>
+				<span class="ts-player__chapter-title" data-ts-full-chapter-title></span><span data-ts-full-sep></span><span data-ts-full-author></span><span data-ts-full-by></span>
 			</p>
 			<span class="ts-overline ts-num ts-player__chapter" data-ts-full-chapter></span>
 			<div class="ts-player__times">

@@ -33,6 +33,7 @@ type playerEnv struct {
 	srv     *httptest.Server
 	URL     string
 	ownerID string
+	folder  library.Folder
 }
 
 // playerReq is one request the spy saw on /progress or /stream.
@@ -105,15 +106,26 @@ func (s *playerSpy) setSignedIn(v bool) {
 // playerApp builds the fixture.
 func playerApp(t *testing.T) *playerEnv {
 	t.Helper()
+	return playerAppWith(t, nil)
+}
+
+// playerAppWith is playerApp with the book's spec changed first (the Now playing panel tests give it a
+// summary, a series and genres).
+func playerAppWith(t *testing.T, tweak func(*librarytest.BookSpec)) *playerEnv {
+	t.Helper()
 	enq := &streamEnq{}
 	a := newTestApp(t, func(o *Options) {
 		o.Compat = mediajobs.NewCompat(o.Library, media.Tools{}, mediajobs.CompatDir(o.DataDir), 1<<30, enq, nil)
 	})
 	owner := a.owner(t)
 	_, f := librarytest.NewLibrary(t, a.lib, "Player library", t.TempDir())
-	book := librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{
+	spec := librarytest.BookSpec{
 		Title: "Harbour Lamp", Authors: []string{"Imogen Hale"}, Narrators: []string{"Theo Marsh"}, DurationMs: 180_000, Files: 2,
-	})
+	}
+	if tweak != nil {
+		tweak(&spec)
+	}
+	book := librarytest.AddBook(t, a.lib, f, spec)
 	bookVisualCover(t, a, book, 0)
 	// the cover's colours for the full player (P1c-5): tint #1f4a52 from the palette, teal accents
 	streamExec(t, a, `UPDATE covers SET accent_json=? WHERE book_id=?`, `{"dark":"#9ccbc4","light":"#2c6660","sepia":"#2c6660"}`, book.ID)
@@ -143,7 +155,7 @@ func playerApp(t *testing.T) *playerEnv {
 	spy := &playerSpy{next: a.h, signedIn: true, cookie: owner}
 	srv := httptest.NewServer(spy)
 	t.Cleanup(srv.Close)
-	return &playerEnv{a: a, book: book, files: files, enq: enq, spy: spy, srv: srv, URL: srv.URL, ownerID: sweepUserID(t, a, owner)}
+	return &playerEnv{folder: f, a: a, book: book, files: files, enq: enq, spy: spy, srv: srv, URL: srv.URL, ownerID: sweepUserID(t, a, owner)}
 }
 
 // store writes the owner's progress for the book as another device would have: at is the save's

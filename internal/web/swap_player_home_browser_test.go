@@ -23,7 +23,7 @@ func swapPlayerWatchHome(t *testing.T, tab *cdp.Tab, where string) {
 	    const btn = document.querySelector("#home-hero [data-ts-play]");
 	    const shown = !p.classList.contains("is-suppressed") && !p.inert && b.height > 0;
 	    const word = btn ? btn.textContent.trim() : "";
-	    if (window.tsPlayer.state().playing && (!shown || (btn && !word.startsWith("Pause")))) probe.bad.push([Math.round(performance.now() - started), shown, word]);
+	    if (window.tsPlayer.state().playing && (!shown || (btn && !word.startsWith("Pause") && word !== "Show player"))) probe.bad.push([Math.round(performance.now() - started), shown, word]);
 	    if (performance.now() - started < 13000) setTimeout(tick, 50); else probe.done = true;
 	  };
 	  tick();
@@ -51,7 +51,7 @@ func TestPlayerBrowserHomeHeroRefreshWhilePlaying(t *testing.T) {
 	    const btn = document.querySelector("#home-hero [data-ts-play]");
 	    const shown = !p.classList.contains("is-suppressed") && !p.inert && p.getBoundingClientRect().height > 0;
 	    const word = btn ? btn.textContent.trim() : "";
-	    if (window.tsPlayer.state().playing && (!shown || (btn && !word.startsWith("Pause")))) probe.bad.push([Math.round(performance.now() - started), shown, word]);
+	    if (window.tsPlayer.state().playing && (!shown || (btn && !word.startsWith("Pause") && word !== "Show player"))) probe.bad.push([Math.round(performance.now() - started), shown, word]);
 	    if (performance.now() - started < 4000) setTimeout(tick, 16); else probe.done = true;
 	  };
 	  tick();

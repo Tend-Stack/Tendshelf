@@ -106,6 +106,8 @@ func TestCSSBudget(t *testing.T) {
 		"css/motion.css":    {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
 		"css/player.css": {4 * 1024, 24 * 1024},
+		// The desktop Now playing panel; loaded on every page like player.css (operator, 2026-11-02: about 3 KB).
+		"css/now-panel.css": {3 * 1024, 24 * 1024},
 		// The Users and invite pages share this file (list, person page, pending invites, the Invite someone
 		// header); P3-4b's header rules took it past 3 KB, so it gets 4 KB rather than being squeezed.
 		"css/pages-admin.css": {4 * 1024, 24 * 1024},
@@ -281,18 +283,22 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// AGENTS.md rule: report an overrun, never squeeze.
 	// P1c-5b adds volume, fade and the toast host to player.js (12 KB), and the speed and sleep
 	// sheets, the sleep timer, the bookmark toast and the B key to player-full.js (12 KB).
-	"player.js": {12 * 1024, 64 * 1024},
+	// NP2 adds the hero's Show player to player.js (about 0.2 KB), so its share is 12.5 KB; the all-JS total stays 36 KB.
+	"player.js": {12*1024 + 512, 64 * 1024},
 	// PB2 moved the desktop bar's wave seek and the volume pop into waveform.js: back to 12 KB (12.2 KB measured by gzip -c).
 	"player-full.js": {12 * 1024, 64 * 1024},
 	// W2: the waveform drawing (3.0 KB). PB2 folds in the desktop bar's wave (four layers, times, hover,
 	// drag, keys, retry backoff, hairline, volume pop): 7 KB, approved by the operator on 2026-11-02; 7.0 KB measured.
 	"waveform.js": {7 * 1024, 24 * 1024},
+	// NP2: the desktop Now playing panel's loading, tabs and slots; 1 KB, approved by the operator on 2026-11-02.
+	"now-panel.js": {1 * 1024, 16 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
 // The operator approved 34 KB on 2026-11-02 for the desktop bar's waveform (PB1 to PB3; waveform.js grows to 7 KB in PB2).
 // P3-5b adds the share-link mode (about 0.65 KB: the place in localStorage, the inline book, the prefixed media paths), so the total is 35 KB; to be approved by the operator.
-const jsTotalGzip = 35 * 1024 // 12 (player.js) + 4 (shell.js) + 12 (player-full.js) + 7 (waveform.js), with the link mode on top
+// NP2 (the Now playing panel: now-panel.js 1 KB, the hero's Show player in player.js) makes it 36 KB; approved by the operator on 2026-11-02.
+const jsTotalGzip = 36 * 1024 // 12 (player.js) + 4 (shell.js) + 12 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

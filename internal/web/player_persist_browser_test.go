@@ -47,6 +47,15 @@ func persistExpectPausing(t *testing.T, tab *cdp.Tab, sel, where string) {
 	t.Helper()
 	tab.WaitFor(`document.querySelector(`+cdp.Quote(sel)+`).dataset.tsPausing === "1"`, 5*time.Second)
 	s := persistButton(tab, sel)
+	// The hero's button of the playing book shows the player (NP2): its word, and no play or pause icon.
+	var shows bool
+	tab.Eval(`document.querySelector(`+cdp.Quote(sel)+`).hasAttribute("data-ts-show-player")`, &shows)
+	if shows {
+		if s.Label != "Show player" || s.PauseIcon || s.PlayIcon {
+			t.Errorf("%s: the hero button while playing is %+v, want Show player and no icon", where, s)
+		}
+		return
+	}
 	if s.Label != "Pause" || !s.PauseIcon || s.PlayIcon {
 		t.Errorf("%s: the button while playing is %+v", where, s)
 	}

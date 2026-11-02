@@ -726,23 +726,32 @@ function syncPageButtons() {
     const label = el.querySelector("[data-ts-play-label]");
     const pauseIcon = el.querySelector("[data-ts-pause-icon]");
     const playIcon = el.querySelector("svg");
+    // The hero's button of the playing book shows the player instead of pausing (one Pause per screen).
+    const shows = pauses && el.hasAttribute("data-ts-show-player");
+    const eyebrow = el.closest(".ts-hero")?.querySelector("[data-ts-hero-eyebrow]");
     if (pauses) {
+      const verb = msg(shows ? "showPlayer" : "pausePrefix");
       if (label) {
         el.dataset.tsOwnLabel = label.textContent;
-        label.textContent = msg("pausePrefix");
+        label.textContent = verb;
       }
       if (el.hasAttribute("aria-label")) {
         el.dataset.tsOwnAria = el.getAttribute("aria-label");
-        el.setAttribute("aria-label", msg("pausePrefix") + " " + book.title);
+        el.setAttribute("aria-label", shows ? verb : verb + " " + book.title);
+      }
+      if (shows && eyebrow) {
+        eyebrow.dataset.tsOwnEyebrow = eyebrow.textContent;
+        eyebrow.textContent = msg("nowPlaying");
       }
     } else {
       if (label) label.textContent = el.dataset.tsOwnLabel;
       if (el.dataset.tsOwnAria !== undefined) el.setAttribute("aria-label", el.dataset.tsOwnAria);
+      if (eyebrow && eyebrow.dataset.tsOwnEyebrow) eyebrow.textContent = eyebrow.dataset.tsOwnEyebrow;
     }
     if (playIcon) setDisplay(playIcon, pauses ? "none" : "");
     if (pauseIcon) {
-      pauseIcon.hidden = !pauses;
-      setDisplay(pauseIcon, pauses ? "contents" : "");
+      pauseIcon.hidden = !pauses || shows;
+      setDisplay(pauseIcon, pauses && !shows ? "contents" : "");
     }
     el.dataset.tsPausing = pauses ? "1" : "0";
   }
@@ -920,6 +929,11 @@ listen(document, "click", (event) => {
   }
 
   if (book && book.id === data.tsPlay && !audio.paused) {
+    // the hero's button of the playing book shows the player (the panel on a desktop)
+    if (el.hasAttribute("data-ts-show-player")) {
+      if (!document.getElementById("player-full").open) slot.querySelector("[data-ts-open]").click();
+      return;
+    }
     // the page button of the playing book is a Pause control
     pause();
     return;

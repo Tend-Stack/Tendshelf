@@ -70,7 +70,7 @@ func csrfHeaders(token string) string {
 // layoutStyles is what Layout adds to the head: the player stylesheet, because every Layout page
 // has the player. A page's own stylesheets go inside #main (see Page.Styles).
 func layoutStyles() []string {
-	return []string{"css/player.css"}
+	return []string{"css/player.css", "css/now-panel.css"}
 }
 
 // Layout is the app shell. The navigation, the player slot, the audio element and the toasts sit
@@ -109,6 +109,7 @@ templ Layout(p Page, body templ.Component) {
 			<script type="module" async src={ p.Assets.URL("js/player.js") }></script>
 			<script type="module" async src={ p.Assets.URL("js/player-full.js") }></script>
 			<script type="module" async src={ p.Assets.URL("js/waveform.js") }></script>
+			<script type="module" async src={ p.Assets.URL("js/now-panel.js") }></script>
 		</body>
 	</html>
 }
