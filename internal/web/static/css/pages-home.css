@@ -102,6 +102,11 @@ html[data-theme="contrast"] .is-tinted.ts-ink-deep { background: var(--surface);
 .ts-home__pair > #row-shared { margin-top: var(--space-24); }
 .ts-home__cards--three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
 .ts-home__cards--three > .ts-card { flex: initial; }
+/* Larger text (P3-11): below 768 the "Shared with you" row is two covers wide; the third is hidden. */
+@media (max-width: 767.98px) {
+  html[data-text-size="large"] .ts-home__cards--three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-text-size="large"] .ts-home__cards--three > :nth-child(n+3) { display: none; }
+}
 /* Larger text (P3-11): "New on the shelf" is a grid of covers, two across on a phone, three from 768, four
    from 1280; the extra cards the server sends are hidden so the row never ends in a gap. */
 .ts-home__cards--grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }

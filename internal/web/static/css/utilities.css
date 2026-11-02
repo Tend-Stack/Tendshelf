@@ -28,6 +28,12 @@ a, button, [role="button"], input, label { touch-action: manipulation; }
 @media (min-width: 900px) { .ts-grid--covers { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 @media (min-width: 1280px) { .ts-grid--covers { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 @media (min-width: 1600px) { .ts-grid--covers { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+/* Larger text (P3-11): fewer, larger covers: 2, 3 (768), 4 (900), 5 (1280), 6 (1600) across. */
+html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 768px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1600px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .ts-center { max-inline-size: var(--size-content-max); margin-inline: auto; }
 .ts-measure { max-inline-size: var(--size-measure); }
 .ts-switcher { display: flex; flex-wrap: wrap; gap: var(--space-16); }

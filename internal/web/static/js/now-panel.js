@@ -6,7 +6,7 @@ const dialog = $("#player-full");
 // Loads the loaded book's panel when the player opens wide.
 function load() {
   const id = tsPlayer?.state().bookId;
-  if (!WIDE.matches || !dialog.open || !id || $("#now-panel").dataset.bookId === id) return;
+  if (!WIDE.matches || document.documentElement.dataset.textSize === "large" || !dialog.open || !id || $("#now-panel").dataset.bookId === id) return;
   htmx.ajax("GET", "/hx/player/panel/" + id, { target: "#now-panel", swap: "outerHTML" });
 }
 new MutationObserver(load).observe(dialog, { attributes: true, attributeFilter: ["open"] });

@@ -2,13 +2,17 @@
    scroll area, so there is one scroll and no empty space. Below 1280 px it does not exist. */
 .ts-np { display: none; }
 @media (min-width: 1280px) {
-  /* The transport and the toolbar are the bar's job here (the two players stay distinct). */
-  .ts-player__transport, .ts-player__bar { display: none; }
-  .ts-player__menuextra { display: contents; }
-  /* One solid surface from the tabs to the end of the scroll area, so the cover's tint stays behind the top. */
-  .ts-np { display: block; order: 1; flex: none; margin: var(--space-16) calc(var(--space-24) * -1) calc((var(--space-24) + env(safe-area-inset-bottom)) * -1);
-    padding: 0 var(--space-24) calc(var(--space-24) + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); }
-  .ts-np[hidden] { display: none; }
+  /* Larger text (P3-11) uses the tablet layout up to any width, so the panel does not exist there: the
+     transport and the settings bar stay in the full player. */
+  :where(html:not([data-text-size="large"])) {
+    /* The transport and the toolbar are the bar's job here (the two players stay distinct). */
+    .ts-player__transport, .ts-player__bar { display: none; }
+    .ts-player__menuextra { display: contents; }
+    /* One solid surface from the tabs to the end of the scroll area, so the cover's tint stays behind the top. */
+    .ts-np { display: block; order: 1; flex: none; margin: var(--space-16) calc(var(--space-24) * -1) calc((var(--space-24) + env(safe-area-inset-bottom)) * -1);
+      padding: 0 var(--space-24) calc(var(--space-24) + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); }
+    .ts-np[hidden] { display: none; }
+  }
 }
 
 .ts-np__tabs { position: sticky; top: calc(var(--space-12) * -1); z-index: 1; margin-inline: calc(var(--space-24) * -1); padding-inline: var(--space-16); border-bottom: 1px solid var(--line); background: var(--surface); }
