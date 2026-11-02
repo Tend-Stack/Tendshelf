@@ -113,7 +113,7 @@ was reused, extended or replaced.
 
 ## Design
 
-- The visual source of truth is `docs/design/tendshelf-handoff/` ([decision 0002](docs/decisions/0002-design-handoff.md)).
+- The visual source of truth is `docs/design/tendshelf-handoff/` ([decision 0002](docs/decisions/0002-design-handoff.md)). Buttons, chips, segmented controls and fields use the shared 12 px corner `--radius-control`, not pills ([decision 0004](docs/decisions/0004-control-corners.md)).
   Read its `README.md` and `docs/HANDOFF.md` before building a page; inside it, `HANDOFF.md` >
   component `README.md` > `BRAND.md` > board PNG > board HTML. This file and `docs/architecture.md`
   still win on stack, routes, security and privacy.

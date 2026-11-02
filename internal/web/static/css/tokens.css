@@ -177,7 +177,8 @@
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
-  --radius-pill: 9999px;
+  --radius-pill: 9999px; /* fully round: circles by design (avatars, switch, icon-only buttons) */
+  --radius-control: var(--radius-md); /* every button, chip, segmented control and text field shares this corner */
   --duration-instant: 100ms;
   --duration-highlight: 120ms;
   --duration-fast: 150ms;
