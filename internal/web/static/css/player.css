@@ -140,6 +140,9 @@ html:not(.ts-vt-mini, .ts-vt-full) .ts-player-slot { view-transition-name: ts-ba
   .ts-player__mark { display: none; }
   .ts-player__barmark { display: flex; }
   .ts-scrub--bar { display: block; flex: 0 1 22.5rem; margin-inline: var(--space-8); }
+  /* The side panel shows the book's chapter ruler only; the bar below it carries the chapter slider
+     (operator, 2026-11-02: the two players stay distinct). */
+  .ts-player [data-ts-scrub="full"] { display: none; }
   .ts-scrub--bar.is-dragging .ts-scrub__bubble { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
