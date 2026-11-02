@@ -62,6 +62,13 @@ func TestBookmarkNoteKeepsPlaying(t *testing.T) {
 	tab.Eval(`(() => { const n = document.getElementById("bms-note"); n.value = "Check the lamp"; n.dispatchEvent(new Event("input", {bubbles: true})); })()`, nil)
 	playerClickSel(t, tab, `#sheet form[action$="/note"] button[type="submit"]`)
 	notekeepAfter(t, tab, "saving a note", "Note saved.", before)
+	// The server closed the sheet: focus does not fall to the page body (the toast that opened the
+	// sheet is gone, so it goes to the page content).
+	var focus string
+	tab.Eval(`document.activeElement ? document.activeElement.tagName + "#" + document.activeElement.id : "none"`, &focus)
+	if focus != "MAIN#main" {
+		t.Errorf("focus after the save is on %s, want the page content", focus)
+	}
 	list := stored()
 	if len(list) != 1 || list[0].Note != "Check the lamp" {
 		t.Fatalf("stored bookmarks after the save: %+v", list)
