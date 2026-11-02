@@ -107,6 +107,10 @@ func TestVisualUsersPages(t *testing.T) {
 	rosa := usersBoardSeed(t, app)
 	deviceFor(t, app, rosa, "Living room speaker", auth.KindMobile)
 	deviceFor(t, app, rosa, "Reading tablet", auth.KindPWA)
+	// The list sorts by creation time; two devices made a millisecond apart would swap places between runs.
+	if _, err := app.st.Writer().Exec(`UPDATE devices SET created_at = created_at - CASE name WHEN 'Living room speaker' THEN 2000 ELSE 1000 END WHERE user_id = ?`, rosa); err != nil {
+		t.Fatal(err)
+	}
 	base := themedServer(t, app.signedIn(t))
 
 	for _, name := range []string{"UsersPage", "UsersTablet", "UsersPhone"} {

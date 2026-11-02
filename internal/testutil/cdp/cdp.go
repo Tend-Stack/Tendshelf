@@ -263,9 +263,104 @@ func (t *Tab) WaitFor(cond string, d time.Duration) {
 	}
 }
 
+// settleJS makes a capture repeatable: it waits for fonts and every image, then jumps each running
+// animation and transition to its end (an endless one is cancelled), and hides the text caret,
+// which blinks. It lives here, not in the app's CSS, so users see no change.
+const settleJS = `(async () => {
+	await document.fonts.ready;
+	// Every image loaded and decoded (a blurred cover behind a button changes a pixel or two until then),
+	// but never more than 3 s: a lazy image far below the fold may not load at all.
+	const timeout = new Promise((r) => setTimeout(r, 3000));
+	await Promise.race([timeout, Promise.all([...document.images].map(async (i) => {
+		if (!i.complete) await new Promise((r) => { i.onload = i.onerror = r; });
+		try { await i.decode(); } catch (e) { /* broken image: captured as it is */ }
+	}))]);
+	// The player bar appears only after the module has fetched the last played book (/hx/player), so a
+	// capture taken earlier misses it. Wait for that fetch, at most 5 s; public link pages never make it.
+	if (document.querySelector('script[src*="js/player.js"]') && !document.body.dataset.tsLink) {
+		const fetched = () => performance.getEntriesByType('resource').some((e) => new URL(e.name).pathname === '/hx/player');
+		for (let i = 0; i < 100 && !fetched(); i++) await new Promise((r) => setTimeout(r, 50));
+		// then up to 0.5 s for the bar to be adopted (a book to show) or to be known not to come
+		for (let i = 0; i < 10 && !document.body.classList.contains('has-player'); i++) await new Promise((r) => setTimeout(r, 50));
+		// The bar hides while the page's own Resume button is in view, decided by an observer that
+		// reports a frame or more later. Wait until the bar's state and the page height have stayed the same for 250 ms.
+		const bar = document.getElementById('player');
+		const sig = () => (bar ? bar.className + '|' + bar.hidden + '|' + bar.inert : '') + '|' + document.documentElement.scrollHeight;
+		for (let same = 0, last = sig(), i = 0; same < 5 && i < 60; i++) {
+			await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 50)));
+			const now = sig();
+			same = now === last ? same + 1 : 0;
+			last = now;
+		}
+	}
+	// Text that holds a random port or token (a share or invite link, shown to be copied) is rewritten
+	// to a fixed text of the same length; the page itself is untouched.
+	const link = /(https?:\/\/127\.0\.0\.1:)\d+(\/(?:s|invite)\/)([A-Za-z0-9_-]+)/g;
+	const fixed = (m, host, path, token) => host + '40000' + path + 'x'.repeat(token.length);
+	const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+	for (let n = walker.nextNode(); n; n = walker.nextNode()) n.nodeValue = n.nodeValue.replace(link, fixed);
+	for (const i of document.querySelectorAll('input, textarea')) if (typeof i.value === 'string') i.value = i.value.replace(link, fixed);
+	// CSS animations and transitions (the listening bars, spinners, a colour fading after a late
+	// state change) and the caret blink are switched off for the capture only; unsettle removes the
+	// sheet again, because the app waits for transitionend in normal use. Whatever still runs is
+	// jumped to its end below.
+	if (!document.__tsFreeze) {
+		const sheet = new CSSStyleSheet();
+		sheet.replaceSync('*,*::before,*::after{caret-color:transparent !important;animation:none !important;transition:none !important}');
+		document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+		document.__tsFreeze = sheet;
+	}
+	for (const a of document.getAnimations()) {
+		try { a.finish(); } catch (e) { a.cancel(); }
+	}
+	// Scrolling and menus that position themselves in script: wait until the scroll offset and every
+	// element's box have been the same for 4 frames in a row (at most 2 s).
+	const layout = () => {
+		let out = scrollX + ',' + scrollY;
+		let n = 0;
+		for (const el of document.body.querySelectorAll('*')) {
+			if (++n > 3000) break;
+			const r = el.getBoundingClientRect();
+			out += '|' + r.left.toFixed(2) + ',' + r.top.toFixed(2) + ',' + r.width.toFixed(2) + ',' + r.height.toFixed(2);
+		}
+		return out;
+	};
+	for (let same = 0, last = layout(), i = 0; same < 4 && i < 120; i++) {
+		await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 16)));
+		const now = layout();
+		same = now === last ? same + 1 : 0;
+		last = now;
+	}
+	// let style, layout and raster of the final state finish before the pixels are read
+	await new Promise((r) => setTimeout(r, 150));
+	await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+	return true;
+})()`
+
+// unsettleJS removes the sheet settleJS added, so the page behaves normally after the capture.
+const unsettleJS = `(() => {
+	const sheet = document.__tsFreeze;
+	if (sheet) document.adoptedStyleSheets = document.adoptedStyleSheets.filter((s) => s !== sheet);
+	document.__tsFreeze = null;
+	return true;
+})()`
+
+// settle runs settleJS; a page that is mid-navigation is captured as it is.
+func (t *Tab) settle() {
+	var ok bool
+	_ = t.TryEval(settleJS, &ok)
+}
+
+func (t *Tab) unsettle() {
+	var ok bool
+	_ = t.TryEval(unsettleJS, &ok)
+}
+
 // Screenshot writes a PNG of the viewport to path.
 func (t *Tab) Screenshot(path string) {
 	t.t.Helper()
+	t.settle()
+	defer t.unsettle()
 	var shot struct {
 		Data string `json:"data"`
 	}
@@ -284,6 +379,8 @@ func (t *Tab) Screenshot(path string) {
 // ScreenshotFull writes a PNG of the whole scrollable page to path.
 func (t *Tab) ScreenshotFull(path string) {
 	t.t.Helper()
+	t.settle()
+	defer t.unsettle()
 	var size struct {
 		W float64 `json:"w"`
 		H float64 `json:"h"`

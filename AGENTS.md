@@ -155,6 +155,7 @@ get a row.
   (ignored) and is removed when the run is recorded.
 - Page packages record a side-by-side check against their boards at 390, 768, 1024 and 1440 px using
   the opt-in capture helper (`TENDSHELF_TEST_BROWSER`, system Chromium driven from a Go test; no Node).
+- Captures are repeatable: to prove a change is pixel-identical, run `TENDSHELF_VISUAL_OUT=/tmp/before make visual`, make the change, run it again into `/tmp/after`, then `go run ./internal/testutil/capturediff /tmp/before /tmp/after` (prints the names that differ and "N of M identical"); `make visual-compare` runs the set twice and does the same. New visual tests must not put random values on screen (map order, `t.TempDir()` paths, random ids, tokens): use the `visualTempDir`/seeded-id helpers in `internal/web/visual_ids_dev_test.go`.
 - Gates: `make check` (gofmt, `go vet`, `go test -race ./...`) and `make build`. Run both before a commit.
 - Size budgets for CSS and JS measure the gzip bytes the server sends (static assets are precompressed at start-up). Write JS and CSS for reading: one statement per line, names that say what they do, and a comment wherever the reason is not obvious. Never minify, squeeze or strip comments to meet a budget; report the overrun instead.
 - Do not report a check you did not run.

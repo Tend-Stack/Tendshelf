@@ -34,7 +34,7 @@ func TestVisualFolderBrowser(t *testing.T) {
 	b := chromium(t)
 	out := visualDir(t, "chromium")
 
-	root := t.TempDir()
+	root := visualTempDir(t)
 	for _, d := range []string{"Audiobooks", "Podcasts", "Kids", "Radio plays", "Courses", "Archive 2019", "Downloads"} {
 		if err := os.Mkdir(filepath.Join(root, d), 0o755); err != nil {
 			t.Fatal(err)

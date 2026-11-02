@@ -19,11 +19,21 @@ var (
 	runID   string
 )
 
-// visualDir returns .local/tests/visual/<run>/<engine>/ (git-ignored), one run id per test process.
+// visualRoot is where this process writes its captures: TENDSHELF_VISUAL_OUT when set (make
+// visual-compare gives each of its two runs a folder), else .local/tests/visual/<run>, one run id
+// per test process.
+func visualRoot() string {
+	if out := os.Getenv("TENDSHELF_VISUAL_OUT"); out != "" {
+		return out
+	}
+	runOnce.Do(func() { runID = time.Now().UTC().Format("20060102T150405Z") })
+	return filepath.Join("..", "..", ".local", "tests", "visual", runID)
+}
+
+// visualDir returns <visualRoot>/<engine>/ (git-ignored).
 func visualDir(t *testing.T, engine string) string {
 	t.Helper()
-	runOnce.Do(func() { runID = time.Now().UTC().Format("20060102T150405Z") })
-	dir := filepath.Join("..", "..", ".local", "tests", "visual", runID, engine)
+	dir := filepath.Join(visualRoot(), engine)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
