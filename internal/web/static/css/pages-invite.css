@@ -1,7 +1,69 @@
-/* The invite page, its state pages and "Keep your place" (/welcome). The markup ships with P3-3a;
-   the look is P3-3b. Only the rule the page needs to work comes first. */
+/* The invite page, its state pages and "Keep your place" (/welcome). Tokens only, sizes in rem.
+   The page sits in the plain frame (pages-onboard.css), so it only shapes its own content. */
+
+.ts-invite { display: flex; flex-direction: column; gap: var(--space-16); flex: 1 1 auto; }
+.ts-invite__brand { color: var(--ink-muted); }
+.ts-invite__brand .ts-brand__name { font-size: 1rem; line-height: 1.5rem; font-weight: 500; font-family: var(--font-sans); }
+
+/* The featured cover: the tint (set by shell.js from data-ts-tint) fills it when there is no image. */
+.ts-invite__cover {
+  position: relative; display: block; align-self: center; box-sizing: border-box;
+  width: 12.5rem; aspect-ratio: 1 / 1; margin: var(--space-24) 0 var(--space-8);
+  overflow: hidden; border-radius: var(--radius-cover); background: var(--cover-tint, var(--raised));
+  box-shadow: var(--shadow-cover);
+}
+.ts-invite__img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ts-invite__covertitle {
+  display: block; padding: var(--space-16); font-family: var(--font-serif); font-size: 1.375rem;
+  line-height: 1.75rem; font-weight: 500; overflow-wrap: anywhere; color: var(--ink);
+}
+
+.ts-invite__from { margin: 0; color: var(--ink-muted); font-size: 1rem; line-height: 1.5rem; font-weight: 400; letter-spacing: 0; }
+.ts-invite__line { margin: 0; font-family: var(--font-serif); overflow-wrap: anywhere; }
+.ts-invite__note {
+  margin: 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--line);
+  border-radius: var(--radius-md); background: var(--surface); color: var(--ink);
+}
+.ts-invite__signedin {
+  margin: 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md); background: var(--surface);
+}
+
+/* The button sits at the foot of the phone page, with the fine print under it. */
+.ts-invite__cta { margin: auto 0 0; padding-top: var(--space-24); }
+.ts-invite__fine { margin: 0; text-align: center; color: var(--ink-muted); }
+.ts-invite > .ts-btn { box-sizing: border-box; }
+
+/* A page that says the link does not work. */
+.ts-invite__state .ts-btn { align-self: flex-start; }
+.ts-invite__state h1 { margin: var(--space-32) 0 0; font-family: var(--font-serif); }
+.ts-invite__state p { margin: 0; color: var(--ink-muted); }
+
+/* Keep your place. */
+.ts-invite__keep h1 { margin: var(--space-32) 0 0; font-family: var(--font-serif); }
+.ts-invite__keep > p { margin: 0; color: var(--ink-muted); }
+.ts-invite__options { display: flex; flex-direction: column; gap: var(--space-12); margin: 0; padding: 0; border: 0; min-width: 0; }
+.ts-invite__choice {
+  display: grid; grid-template-columns: auto 1fr; column-gap: var(--space-12); align-items: center;
+  box-sizing: border-box; min-height: 3.5rem; padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); cursor: pointer;
+}
+.ts-invite__choice input {
+  appearance: none; grid-row: 1 / span 2; box-sizing: border-box; width: 1.375rem; height: 1.375rem; margin: 0;
+  border: 2px solid var(--ink-muted); border-radius: var(--radius-pill); background: transparent;
+}
+.ts-invite__choice input:checked { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 0 38%, transparent 42%); }
+.ts-invite__choice-title { font-weight: 600; }
+.ts-invite__choice-hint { grid-column: 2; color: var(--ink-muted); }
+.ts-invite__choice:has(:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.ts-invite__choice:has(:focus-visible) { box-shadow: var(--focus-ring); }
+.ts-invite__fields { display: flex; flex-direction: column; gap: var(--space-20); }
+.ts-invite__keep .ts-form { margin-bottom: 0; }
 
 /* The name and password fields show only while "A name and password" is chosen. */
-.ts-invite__keep:has(#keep-phone:checked) .ts-invite__fields {
-  display: none;
+.ts-invite__keep:has(#keep-phone:checked) .ts-invite__fields { display: none; }
+
+@media (min-width: 768px) {
+  .ts-invite__cover { width: 15rem; }
+  .ts-invite__cta { margin-top: 0; }
 }

@@ -173,8 +173,8 @@ templ AdminUsers(v UsersView) {
 				<a class="ts-tabs__item" href="#users-invites">{ v.TabInvites }</a>
 			}
 		</nav>
-		@InvitesList(v)
 		@UsersList(v)
+		@InvitesList(v)
 		<p class="caption ts-users__note">Listening time is shown so you can see the shelf is being used. Nobody, including you, can see what someone else is listening to unless they share it.</p>
 	</div>
 }
@@ -210,7 +210,7 @@ templ InvitesList(v UsersView) {
 						</form>
 						<form method="post" action={ templ.URL("/admin/invites/" + r.ID + "/cancel") }>
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>
-							<button type="submit" class="ts-btn ts-btn--ghost" aria-label={ "Cancel invite for " + r.Name }>Cancel invite</button>
+							<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ "Cancel invite for " + r.Name }>Cancel invite</button>
 						</form>
 					</li>
 				}

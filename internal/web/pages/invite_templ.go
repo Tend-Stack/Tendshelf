@@ -245,7 +245,7 @@ func Invite(v InviteView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if v.SignedInAs != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<a class=\"ts-btn ts-btn--ghost ts-btn--lg ts-btn--block\" href=\"/\">Back to your books</a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<a class=\"ts-btn ts-btn--quiet ts-btn--lg ts-btn--block\" href=\"/\">Back to your books</a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
