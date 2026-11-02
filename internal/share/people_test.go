@@ -137,7 +137,7 @@ func TestWaitingInvites(t *testing.T) {
 	ins("revoked", nil, 1, 0, 7)
 	ins("used", nil, 1, 1, nil)
 	ins("expired", now-1, 1, 0, nil)
-	n, err := WaitingInvites(context.Background(), f.st, now)
+	n, err := WaitingInvites(context.Background(), f.st, now, []users.Role{users.RoleMember})
 	if err != nil || n != 2 {
 		t.Fatalf("n=%d err=%v", n, err)
 	}
