@@ -2,9 +2,9 @@
 
 @keyframes ts-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ts-fade-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes ts-rise-in { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+@keyframes ts-rise-in { from { opacity: 0; translate: 0 0.25rem; } to { opacity: 1; translate: 0 0; } }
 @keyframes ts-sink { to { translate: 0 100%; opacity: 0; } }
-@keyframes ts-toast-out { to { opacity: 0; translate: 0 8px; } }
+@keyframes ts-toast-out { to { opacity: 0; translate: 0 0.5rem; } }
 
 /* Page swap: View Transitions where supported, a keyframe on #main where not */
 #main { view-transition-name: ts-main; }
@@ -27,7 +27,7 @@
 
 /* Toasts */
 .ts-toast { transition: opacity var(--duration-base) var(--easing-enter), translate var(--duration-base) var(--easing-enter); }
-@starting-style { .ts-toast { opacity: 0; translate: 0 8px; } }
+@starting-style { .ts-toast { opacity: 0; translate: 0 0.5rem; } }
 .ts-toast--hint { transition: opacity var(--duration-base) var(--easing-enter); }
 @starting-style { .ts-toast--hint { translate: none; } }
 .ts-toast.is-leaving { animation: ts-toast-out var(--duration-base) var(--easing-exit) both; }

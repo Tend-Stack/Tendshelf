@@ -768,7 +768,7 @@ func TestShelvesEmptyShelfPlaceholder(t *testing.T) {
 	}
 	rule := string(css[strings.Index(string(css), ".ts-shelf-row__blank"):])
 	rule = rule[:strings.Index(rule, "}")]
-	for _, want := range []string{"inline-size: 36px", "block-size: 36px", "var(--surface)", "var(--line)", "var(--radius-cover)"} {
+	for _, want := range []string{"inline-size: 2.25rem", "block-size: 2.25rem", "var(--surface)", "var(--line)", "var(--radius-cover)"} {
 		if !strings.Contains(rule, want) {
 			t.Errorf("the placeholder rule lacks %q", want)
 		}

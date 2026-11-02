@@ -1,23 +1,23 @@
 /* Libraries admin, Add a folder, Folder emptied, and the scan status. Tokens only. */
 
 .ts-admin { display: flex; flex-direction: column; gap: var(--space-16); padding-bottom: var(--space-32); }
-.ts-admin--narrow { max-width: 560px; }
+.ts-admin--narrow { max-width: 35rem; }
 .ts-admin__title { margin: var(--space-4) 0 0; }
 .ts-admin__lead { margin: 0; color: var(--ink-muted); }
 .ts-admin__back {
-  display: inline-flex; align-items: center; gap: var(--space-8); min-height: 44px;
-  color: var(--ink-muted); text-decoration: none; font-size: 15px; line-height: 20px;
+  display: inline-flex; align-items: center; gap: var(--space-8); min-height: 2.75rem;
+  color: var(--ink-muted); text-decoration: none; font-size: 0.9375rem; line-height: 1.25rem;
 }
 .ts-admin__back:hover { color: var(--ink); }
 .ts-admin__banner { margin: 0; }
-.ts-admin__banner .ts-icon { flex: none; width: 20px; height: 20px; color: var(--success); }
+.ts-admin__banner .ts-icon { flex: none; width: 1.25rem; height: 1.25rem; color: var(--success); }
 
 .ts-admin__summary {
   display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16);
   border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--line);
 }
 .ts-admin__ready { display: flex; align-items: center; gap: var(--space-8); margin: 0; }
-.ts-admin__ready .ts-icon { flex: none; width: 20px; height: 20px; color: var(--success); }
+.ts-admin__ready .ts-icon { flex: none; width: 1.25rem; height: 1.25rem; color: var(--success); }
 .ts-admin__last { margin: 0; color: var(--ink-muted); }
 .ts-admin__actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .ts-admin__actions form { display: contents; }
@@ -34,9 +34,9 @@
 }
 .ts-problem__icon {
   display: flex; flex: none; align-items: center; justify-content: center;
-  width: 36px; height: 36px; border-radius: 18px; background: var(--raised); color: var(--ink-muted);
+  width: 2.25rem; height: 2.25rem; border-radius: 1.125rem; background: var(--raised); color: var(--ink-muted);
 }
-.ts-problem__icon .ts-icon { width: 20px; height: 20px; }
+.ts-problem__icon .ts-icon { width: 1.25rem; height: 1.25rem; }
 .ts-problem__icon--missing, .ts-problem__icon--damaged { color: var(--warning); }
 .ts-problem__text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: var(--space-4); }
 .ts-problem__title { margin: 0; font-weight: 600; }
@@ -50,7 +50,7 @@
   padding: var(--space-16) 0; border-bottom: 1px solid var(--line);
 }
 .ts-folder__icon {
-  display: flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center; width: 2.75rem; height: 2.75rem;
   border-radius: var(--radius-md); background: var(--raised); color: var(--ink-muted);
 }
 .ts-folder__text { display: flex; min-width: 0; flex-direction: column; gap: var(--space-4); }
@@ -61,8 +61,8 @@
 .ts-folder__more > summary { list-style: none; cursor: pointer; }
 .ts-folder__more > summary::-webkit-details-marker { display: none; }
 .ts-folder__link {
-  display: inline-flex; align-items: center; min-height: 44px; color: var(--accent);
-  text-decoration: none; font-size: 15px; line-height: 20px; font-weight: 500;
+  display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--accent);
+  text-decoration: none; font-size: 0.9375rem; line-height: 1.25rem; font-weight: 500;
 }
 .ts-folder__link:hover { text-decoration: underline; }
 
@@ -80,7 +80,7 @@
 .ts-scan__title { margin: 0; }
 .ts-scan__pct { color: var(--ink-muted); }
 .ts-scan__bar {
-  display: block; width: 100%; height: 4px; border: 0; border-radius: 2px; overflow: hidden;
+  display: block; width: 100%; height: 0.25rem; border: 0; border-radius: 2px; overflow: hidden;
   appearance: none; -webkit-appearance: none; background: var(--line); color: var(--accent-fill);
 }
 .ts-scan__bar::-webkit-progress-bar { background: var(--line); border-radius: 2px; }
@@ -88,7 +88,7 @@
 .ts-scan__bar::-moz-progress-bar { background: var(--accent-fill); border-radius: 2px; }
 .ts-scan__note { margin: 0; color: var(--ink-muted); }
 .ts-scan__done { display: flex; align-items: center; gap: var(--space-8); margin: 0; color: var(--ink); }
-.ts-scan__done .ts-icon { flex: none; width: 20px; height: 20px; color: var(--success); }
+.ts-scan__done .ts-icon { flex: none; width: 1.25rem; height: 1.25rem; color: var(--success); }
 .ts-scan__done--failed .ts-icon { color: var(--danger); }
 
 .ts-input--select { appearance: auto; }
