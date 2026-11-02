@@ -85,6 +85,19 @@ const innerPrefix = "share_"
 // ended. Args: user id, now in Unix milliseconds. A grant ending exactly now is over.
 const activeSQL = `share_g.user_id = ? AND (share_g.expires_at IS NULL OR share_g.expires_at > ?)`
 
+// sharerSQL is true when the user aliased o may share: an enabled owner or
+// admin. A shelf grant or a shared flag counts only while its owner passes.
+func sharerSQL(o string) string {
+	return o + ".disabled = 0 AND " + o + ".role IN ('owner','admin')"
+}
+
+// SharerSQL is sharerSQL for other packages (the shared-shelf flag is read in
+// the library package's queries); the alias is checked like a Filter alias.
+func SharerSQL(alias string) string {
+	checkAlias(alias)
+	return sharerSQL(alias)
+}
+
 // coversSQL is true when the grant aliased g gives access to the book aliased
 // b. A shelf grant counts only while the shelf's owner is an enabled owner or admin.
 func coversSQL(g, b string) string {
@@ -95,7 +108,7 @@ func coversSQL(g, b string) string {
 		JOIN shelves share_s ON share_s.id = share_si.shelf_id
 		JOIN users share_o ON share_o.id = share_s.owner_id
 		WHERE share_si.shelf_id = $g.shelf_id AND share_si.book_id = $b.id
-		AND share_o.disabled = 0 AND share_o.role IN ('owner','admin'))))`)
+		AND ` + sharerSQL("share_o") + `)))`)
 }
 
 // libraryCoversSQL is true when grant share_g gives access to at least one
@@ -110,7 +123,7 @@ func libraryCoversSQL(a string) string {
 		JOIN shelves share_s ON share_s.id = share_si.shelf_id
 		JOIN users share_o ON share_o.id = share_s.owner_id
 		WHERE share_si.shelf_id = share_g.shelf_id AND share_b.library_id = $a.id
-		AND share_o.disabled = 0 AND share_o.role IN ('owner','admin'))))`, "$a", a)
+		AND `+sharerSQL("share_o")+`)))`, "$a", a)
 }
 
 // Can reports whether u may perform a on t. Any database error is a refusal.

@@ -249,7 +249,7 @@ func parseBrowseQuery(r *http.Request) browseQuery {
 		q.Length = l
 	}
 	switch sh := v.Get("show"); sh {
-	case library.ShowUnfinished, library.ShowNotStarted, library.ShowFinished:
+	case library.ShowUnfinished, library.ShowNotStarted, library.ShowFinished, library.ShowShared:
 		q.Show = sh
 	}
 	q.Title = strings.TrimSpace(v.Get("title"))

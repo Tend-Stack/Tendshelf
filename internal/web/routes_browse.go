@@ -92,6 +92,11 @@ func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "home because", err)
 		return
 	}
+	var sharedTotal int
+	if v.Shared, sharedTotal, err = s.homeSharedView(ctx, r); err != nil {
+		s.serverError(w, r, "home shared", err)
+		return
+	}
 	if v.Scan, err = s.activeScan(r, libs); err != nil {
 		s.serverError(w, r, "home scan", err)
 		return
@@ -101,6 +106,11 @@ func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, "home empty", err)
 			return
 		}
+	}
+	// Everything the person can see was shared with them (a guest with a shelf): "New on the shelf"
+	// would repeat the shared row.
+	if v.Shared != nil && sharedTotal >= page.Total {
+		v.New = nil
 	}
 	s.pageStyled(w, r, http.StatusOK, "Home", "home", pages.Home(v), nil, pages.BrowseStyles...)
 }
