@@ -272,7 +272,7 @@ of 60 s or more, and on becoming visible after 60 s hidden; "Stay here" saves wi
 cannot decode is requested as `?compat=1` (`HEAD`, polled at `Retry-After` for up to 10 minutes). Media Session
 carries the title, author, chapter and cover with eight action handlers. Keys: Space and the arrows in player.js; `/`,
 `g l`, `g h` and `?` in shell.js. Budgets (`TestJSBudget`, gzip bytes): player.js 12 KB, shell.js 4 KB, player-full.js 12 KB,
-waveform.js 3.5 KB, 30 KB in all (28 KB until the waveform; operator 2026-11-02); `player.css` 4 KB.
+waveform.js 7 KB (it also runs the desktop bar's wave: bars, hover, drag, keys, times, hairline, volume pop; 7.0 KB measured), 34 KB in all (operator 2026-11-02: 28, then 30, then 34 KB); `player.css` 4 KB.
 
 Full player (P1c-5a, `static/js/player-full.js`, a second async module, no imports; `components/player_full.templ`): one
 `<dialog id="player-full" class="ts-player" hx-preserve>` in `Layout` after `#player`. It never touches `#audio`: it reads
@@ -306,7 +306,7 @@ minutes where `devicemotion` is allowed; iOS asks inside the tap that sets the t
 `position_ms` of the live position to `POST /books/{id}/bookmarks` (JSON answer with `noteHref`) and show a toast with an "Add a
 note" link that uses the Bookmarks tab's htmx attributes; while the modal player is open toasts go into its own
 `[data-ts-full-toasts]` region. The Bookmarks tab's form is always rendered (hidden when there is no stored place) and the player
-fills in the live position. JS budgets (gzip): player.js 12 KB, player-full.js 12 KB, waveform.js 3.5 KB, all app JS 30 KB (raised from 28 KB for the waveform, operator 2026-11-02); `player.css` 4 KB.
+fills in the live position. JS budgets (gzip): player.js 12 KB, player-full.js 12 KB, waveform.js 7 KB, all app JS 34 KB (raised from 28 KB for the waveform and the desktop bar, operator 2026-11-02); `player.css` 4 KB.
 
 ## Design regions
 

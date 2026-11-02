@@ -59,12 +59,12 @@ func barNear(t *testing.T, what string, got, want, tol float64) {
 	}
 }
 
-// TestPlayerBarBrowserGeometry: at 1280, 1440 and 1920 the waveform column starts one column gap after the
+// TestPlayerBarBrowserGeometry: at 1280, 1440, 1920 and 2560 the waveform column starts one column gap after the
 // transport and ends one column gap before the tools, so no empty band is left in the bar; the bar is 88 px
 // tall; the waveform is at least 320 px wide; the waveform and the times do not move while the clock ticks.
 func TestPlayerBarBrowserGeometry(t *testing.T) {
 	e := playerApp(t)
-	for _, w := range []int{1280, 1440, 1920} {
+	for _, w := range []int{1280, 1440, 1920, 2560} {
 		tab := fullpOpen(t, e, w, 900, true)
 		time.Sleep(500 * time.Millisecond)
 		var gap float64

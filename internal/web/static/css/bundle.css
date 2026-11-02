@@ -584,7 +584,7 @@ body { margin: 0; font-family: var(--font-sans); background: var(--ground); colo
   .ts-pbar .ts-mini__title { font: 500 1rem/1.375rem var(--font-serif); }
   .ts-pbar__meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ts-pbar__meta:empty { display: none; }
-  .ts-pbar__text:has(.ts-pbar__meta:not(:empty)) [data-ts-meta] { display: none; }
+  .ts-mini__text:has(.ts-pbar__meta:not(:empty)) [data-ts-meta] { display: none; }
 
   /* Book progress: a 3 px hairline on the bar's top edge, a gap at each chapter start, a tip on hover. */
   .ts-pbar__book { position: absolute; left: 0; right: 0; top: -1px; height: 0.1875rem; background: var(--line); }
