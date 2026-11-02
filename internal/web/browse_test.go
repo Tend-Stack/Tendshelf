@@ -90,35 +90,39 @@ func browseAddMany(t *testing.T, a *testApp, f library.Folder, n int) []library.
 func TestHomeNewOnShelf(t *testing.T) {
 	a := browseOwnerApp(t)
 	f := browseLibrary(t, a, "Audiobooks")
-	books := browseAddMany(t, a, f, 15)
+	books := browseAddMany(t, a, f, 45)
 
 	rec := browseGet(a, "/", false, nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d", rec.Code)
 	}
 	body := rec.Body.String()
-	if got := strings.Count(body, `role="listitem"`); got != 12 {
-		t.Fatalf("%d spines, want 12", got)
+	if got := strings.Count(body, `role="listitem"`); got != homeShelfMax {
+		t.Fatalf("%d spines, want %d", got, homeShelfMax)
 	}
-	// Newest first: books 15 down to 4.
+	// The row is marked for shell.js, which hides the spines that do not fit.
+	if !strings.Contains(body, `class="ts-shelf ts-shelf--scroll" role="list" data-ts-fit`) {
+		t.Errorf("the shelf lacks data-ts-fit")
+	}
+	// Newest first: books 45 down to 6.
 	ids := browseIDs(body)
-	if len(ids) != 12 {
-		t.Fatalf("%d book links, want 12", len(ids))
+	if len(ids) != homeShelfMax {
+		t.Fatalf("%d book links, want %d", len(ids), homeShelfMax)
 	}
 	for i, id := range ids {
-		if want := books[14-i].ID; id != want {
+		if want := books[44-i].ID; id != want {
 			t.Fatalf("spine %d is %s, want %s", i, id, want)
 		}
 	}
 	for _, want := range []string{
-		`aria-label="Book 015 by Imogen Hale"`, `aria-label="Book 004 by Imogen Hale"`,
+		`aria-label="Book 045 by Imogen Hale"`, `aria-label="Book 006 by Imogen Hale"`,
 		`id="row-recent"`, `New on the shelf`, `href="/libraries?sort=added"`, `See all`, `Welcome back, Ana`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
 		}
 	}
-	for _, not := range []string{`Book 003`, `Book 001`, `Your shelf is empty`} {
+	for _, not := range []string{`Book 005`, `Book 001`, `Your shelf is empty`} {
 		if strings.Contains(body, not) {
 			t.Errorf("page has %q", not)
 		}

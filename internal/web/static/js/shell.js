@@ -46,6 +46,60 @@ function applyTints(root) {
 applyTints(document);
 document.addEventListener("htmx:after:settle", () => applyTints(document));
 
+// Shelf fit: the server sends the newest 40 books; a shelf marked data-ts-fit shows only the spines
+// that fit whole on one row and hides the rest. "hidden" takes the others out of the tab order and
+// the accessibility tree. The spine's own CSS sets display, which beats the browser's rule for
+// [hidden], so display is set through the CSSOM too (allowed by style-src 'self'). Without JS the
+// row keeps its sideways scroll.
+function fitShelf(shelf) {
+  const spines = Array.from(shelf.children);
+  if (spines.length === 0) return;
+  // Show everything first, so every spine has a real width to measure.
+  for (const spine of spines) {
+    spine.hidden = false;
+    spine.style.setProperty("display", "");
+  }
+  const style = getComputedStyle(shelf);
+  const gap = parseFloat(style.columnGap) || 0;
+  const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+  const room = shelf.clientWidth - padding;
+  let used = 0;
+  let shown = 0;
+  for (const spine of spines) {
+    const width = spine.getBoundingClientRect().width;
+    const next = shown === 0 ? width : used + gap + width;
+    // At least one spine always stays, however narrow the shelf is.
+    if (next > room && shown > 0) break;
+    used = next;
+    shown++;
+  }
+  spines.forEach((spine, i) => {
+    if (i < shown) return;
+    spine.hidden = true;
+    spine.style.setProperty("display", "none");
+  });
+}
+
+// A shelf is re-fitted when its width changes (a rotated phone, a resized window), not when its
+// content does: fitting never changes the shelf's width, so the observer cannot loop.
+const shelfWidths = new WeakMap();
+const shelfObserver = new ResizeObserver((entries) => {
+  for (const entry of entries) {
+    const width = entry.contentRect.width;
+    if (shelfWidths.get(entry.target) === width) continue;
+    shelfWidths.set(entry.target, width);
+    fitShelf(entry.target);
+  }
+});
+function fitShelves(root) {
+  for (const shelf of root.querySelectorAll("[data-ts-fit]")) {
+    fitShelf(shelf);
+    shelfObserver.observe(shelf);
+  }
+}
+fitShelves(document);
+document.addEventListener("htmx:after:settle", () => fitShelves(document));
+
 // Page enter without View Transitions: outerSync resets the class of #main to the response's, so
 // adding ts-entering after each swap of #main restarts the keyframe every time.
 document.addEventListener("htmx:after:swap", (event) => {

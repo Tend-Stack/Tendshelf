@@ -451,19 +451,37 @@ func (c *Covers) removeIfUnreferenced(ctx context.Context, r library.Cover) {
 // Follower returns the scan follower: it queues a media.cover job for each settled book that has
 // none waiting.
 func (c *Covers) Follower() func(context.Context, []string) {
-	return func(ctx context.Context, bookIDs []string) {
-		active, err := c.jobs.ActiveKeys(ctx, KindCover, "book_id")
+	return c.enqueue
+}
+
+// enqueue queues a media.cover job for each book that has none waiting.
+func (c *Covers) enqueue(ctx context.Context, bookIDs []string) {
+	active, err := c.jobs.ActiveKeys(ctx, KindCover, "book_id")
+	if err != nil {
+		c.log.Error("cover jobs: cannot list waiting jobs", "err", err)
+		return
+	}
+	for _, id := range bookIDs {
+		if active[id] {
+			continue
+		}
+		if _, err := c.jobs.Enqueue(ctx, KindCover, CoverPayload{BookID: id}, jobs.EnqueueOptions{}); err != nil {
+			c.log.Error("cover jobs: cannot queue", "book", id, "err", err)
+		}
+	}
+}
+
+// Finisher returns the scan finisher: after a scan it queues a media.cover job for each present book
+// of the library whose scanned cover has no tint, so covers stored before the colour counter learned
+// busy artwork get their tint and accent without a rescan of the files. The job is idempotent: a
+// cover that really has no colour stays as it is, and is looked at again by the next scan.
+func (c *Covers) Finisher() func(context.Context, string) {
+	return func(ctx context.Context, libraryID string) {
+		ids, err := c.repo.BooksWithUntintedCover(ctx, libraryID)
 		if err != nil {
-			c.log.Error("cover jobs: cannot list waiting jobs", "err", err)
+			c.log.Error("cover jobs: cannot list covers without a tint", "library", libraryID, "err", err)
 			return
 		}
-		for _, id := range bookIDs {
-			if active[id] {
-				continue
-			}
-			if _, err := c.jobs.Enqueue(ctx, KindCover, CoverPayload{BookID: id}, jobs.EnqueueOptions{}); err != nil {
-				c.log.Error("cover jobs: cannot queue", "book", id, "err", err)
-			}
-		}
+		c.enqueue(ctx, ids)
 	}
 }

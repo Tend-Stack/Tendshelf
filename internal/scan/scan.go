@@ -31,6 +31,7 @@ type Scanner struct {
 	now   func() time.Time
 
 	followers []Follower
+	finishers []Finisher
 
 	afterProbe func() // test hook: runs between ffprobe and the write transaction
 }
@@ -51,6 +52,14 @@ type Follower func(ctx context.Context, bookIDs []string)
 
 // OnBookSettled adds a follower. Call it only before Register.
 func (s *Scanner) OnBookSettled(f Follower) { s.followers = append(s.followers, f) }
+
+// Finisher is told which library a scan has just finished, after the followers. It is how a feature
+// catches up on books the scan found unchanged (so no follower heard of them), for example covers
+// stored before a better colour counter existed. Finishers log their own errors.
+type Finisher func(ctx context.Context, libraryID string)
+
+// OnScanFinished adds a finisher. Call it only before Register.
+func (s *Scanner) OnScanFinished(f Finisher) { s.finishers = append(s.finishers, f) }
 
 // notify tells every follower, in registration order, about the sorted, distinct book ids.
 func (s *Scanner) notify(ctx context.Context, ids []string) {
@@ -222,6 +231,9 @@ func (s *Scanner) ScanLibrary(ctx context.Context, libraryID string, guard func(
 	}
 	res.BooksSettled = len(p.settled)
 	s.notify(ctx, p.settled)
+	for _, f := range s.finishers {
+		f(ctx, libraryID)
+	}
 	s.log.Info("scan finished", "library", libraryID, "files", res.FilesSeen, "added", res.FilesAdded,
 		"moved", res.FilesMoved, "changed", res.FilesChanged, "missing", res.FilesMissing,
 		"books_added", res.BooksAdded, "probes", res.ProbesEnqueued)

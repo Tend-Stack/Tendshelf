@@ -20,7 +20,7 @@ type HomeView struct {
 	Hero    *HomeHeroView
 	Series  HomeSeriesView
 	Because *HomeBecauseView
-	// New is the newest books, newest first.
+	// New is up to 40 newest books, newest first; shell.js hides the ones that do not fit the row.
 	New []components.CardView
 	// SeeAllURL opens the library sorted by recently added.
 	SeeAllURL string
@@ -77,7 +77,7 @@ templ Home(v HomeView) {
 					<h2 id="row-recent-title" class="section">New on the shelf</h2>
 					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SeeAllURL) }>See all</a>
 				</div>
-				<div class="ts-shelf ts-shelf--scroll" role="list">
+				<div class="ts-shelf ts-shelf--scroll" role="list" data-ts-fit>
 					for _, b := range v.New {
 						@components.Spine(b)
 					}

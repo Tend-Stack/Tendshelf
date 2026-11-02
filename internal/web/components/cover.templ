@@ -14,6 +14,8 @@ type CardView struct {
 	// when the book has none, or when no readable ink exists on it. InkClass is the matching text
 	// class, WidthClass and HeightClass size a spine.
 	Tint, InkClass, WidthClass, HeightClass string
+	// SpineTitle is Title without its trailing bracketed groups; only a spine's visible text uses it.
+	SpineTitle string
 	// AriaLabel is "{title} by {authors}", or the title alone.
 	AriaLabel string
 }
