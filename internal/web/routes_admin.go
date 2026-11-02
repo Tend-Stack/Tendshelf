@@ -284,6 +284,7 @@ func (s *server) getAddFolder(w http.ResponseWriter, r *http.Request) {
 	}
 	if fb, ok := s.folderBrowser(r, addFolderURL); ok {
 		fb.Sheet = true
+		fb.Styles = s.sheetStyles(folderSheetStyles...)
 		s.addFolderPageSheet(w, r, http.StatusOK, v, components.FolderBrowserSheet(fb))
 		return
 	}

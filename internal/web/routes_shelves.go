@@ -412,6 +412,7 @@ func (s *server) shelfSheet(r *http.Request, bookID string, f *shelfForm) (templ
 		CSRF: s.csrf.TokenFrom(ctx), BookID: bookID, Back: shelfSheetHref(bookID), CloseHref: back,
 		NewAction: "/shelves", Title: shelfSheetTitle, NewLabel: shelfNewTitle, NewButton: shelfSheetNew,
 		CloseLabel: shelfSheetClose, NameLabel: shelfNameLabel,
+		Styles: s.sheetStyles(pages.ShelfStyles[2]),
 	}
 	if f != nil {
 		v.NewName, v.Error = f.name, f.err

@@ -44,12 +44,15 @@ type BookmarkSheetView struct {
 	NoteAction, DeleteAction                   string
 	CloseHref, CloseLabel                      string
 	MaxRunes                                   int
+	// Styles are the stylesheet addresses the sheet carries (see components.SheetStyles).
+	Styles []string
 }
 
 // BookmarkExportView is the export sheet: one download link per format.
 type BookmarkExportView struct {
 	Title, CloseHref, CloseLabel string
 	Links                        []BookmarkChip
+	Styles                       []string // as BookmarkSheetView.Styles
 }
 
 // BookmarksPanel is the panel of the Bookmarks tab: heading with Export, the filter chips, the
@@ -119,6 +122,7 @@ templ BookmarksPanel(v BookmarksView) {
 // leave the sheet with a full page answer, so the list behind it is always current.
 templ BookmarkSheet(v BookmarkSheetView) {
 	<div class="ts-sheet-layer ts-sheet-layer--bookmarks">
+		@components.SheetStyles(v.Styles)
 		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
 		<div class="ts-sheet ts-bookmark-sheet" role="dialog" aria-modal="true" aria-labelledby="bms-title" tabindex="-1">
 			<div class="ts-sheet__grab" aria-hidden="true"></div>
@@ -164,6 +168,7 @@ templ BookmarkSheet(v BookmarkSheetView) {
 // BookmarkExportSheet offers the two downloads. The links are plain downloads, not boosted.
 templ BookmarkExportSheet(v BookmarkExportView) {
 	<div class="ts-sheet-layer ts-sheet-layer--bookmarks">
+		@components.SheetStyles(v.Styles)
 		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
 		<div class="ts-sheet ts-bookmark-sheet" role="dialog" aria-modal="true" aria-labelledby="bmx-title" tabindex="-1">
 			<div class="ts-sheet__grab" aria-hidden="true"></div>
