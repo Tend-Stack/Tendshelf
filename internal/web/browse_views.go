@@ -74,10 +74,67 @@ func bylineOf(authors []library.PersonRef) string {
 	return out
 }
 
+// spineTitle is the title as a spine prints it: the trailing bracketed groups of a catalogue title
+// ("(Unabridged)", "(The Vancouver Agitators #1)", "[128k]") are dropped, with the space before each,
+// so the words that name the book fit the spine. A bracket in the middle stays, and a title that
+// would be left empty is kept whole. Only the spine's text uses it; the label and every other place
+// keep the full title.
+func spineTitle(title string) string {
+	short := strings.TrimSpace(title)
+	for {
+		runes := []rune(short)
+		open := trailingGroupStart(runes)
+		if open < 0 {
+			break
+		}
+		rest := strings.TrimSpace(string(runes[:open]))
+		if rest == "" {
+			break
+		}
+		short = rest
+	}
+	if short == "" {
+		return title
+	}
+	return short
+}
+
+// trailingGroupStart returns the index of the bracket that opens the "(...)" or "[...]" group the
+// text ends with (groups of the same kind may nest), or -1 when the text does not end with a
+// balanced group.
+func trailingGroupStart(text []rune) int {
+	if len(text) == 0 {
+		return -1
+	}
+	closer := text[len(text)-1]
+	var opener rune
+	switch closer {
+	case ')':
+		opener = '('
+	case ']':
+		opener = '['
+	default:
+		return -1
+	}
+	depth := 0
+	for i := len(text) - 1; i >= 0; i-- {
+		switch text[i] {
+		case closer:
+			depth++
+		case opener:
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
 // cardView turns a book into what the cards, rows and spines draw.
 func cardView(c library.BookCard) components.CardView {
 	v := components.CardView{
-		ID: c.ID, Href: "/books/" + c.ID, Title: c.Title, Byline: bylineOf(c.Authors),
+		ID: c.ID, Href: "/books/" + c.ID, Title: c.Title, SpineTitle: spineTitle(c.Title), Byline: bylineOf(c.Authors),
 		Duration: durationText(c.DurationMs), AriaLabel: c.Title,
 		WidthClass: spineWidth(c.DurationMs), HeightClass: spineHeight(c.ID),
 	}
