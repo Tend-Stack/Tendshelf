@@ -17,13 +17,15 @@ type Theme struct {
 	Ground   string // page background
 	Surface  string // card and player background
 	OnAccent string // text on the accent (the play button's label)
+	Ink      string // body text (--ink)
+	InkMuted string // quiet text (--ink-muted)
 }
 
 // Themes are the themes that take a cover accent.
 var Themes = []Theme{
-	{"dark", "#14110e", "#1e1a15", "#14110e"},
-	{"light", "#f4eee3", "#fbf7f0", "#ffffff"},
-	{"sepia", "#e6d7bc", "#eee2cb", "#ffffff"},
+	{"dark", "#14110e", "#1e1a15", "#14110e", "#f1e8da", "#b5a894"},
+	{"light", "#f4eee3", "#fbf7f0", "#ffffff", "#1f1a14", "#5e5448"},
+	{"sepia", "#e6d7bc", "#eee2cb", "#ffffff", "#33281b", "#55452f"},
 }
 
 // Accent colour rules (docs/design/tendshelf-handoff/docs/HANDOFF.md, "Cover accent and theme rules").

@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 	"github.com/a-h/templ"
@@ -68,8 +70,26 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 		return
 	}
 	if canPlay {
-		v.Play = s.bookPlayView(r, book, files, prog)
+		if v.Play, err = s.bookPlayView(r, book, files, prog, d.Chapters); err != nil {
+			s.serverError(w, r, "book play", err)
+			return
+		}
 	}
+	var play *chapterPlay
+	if canPlay && len(files) > 0 {
+		play = &chapterPlay{book: book, files: files, p: prog}
+	}
+	rails, err := s.bookRailData(r, d)
+	if err != nil {
+		s.serverError(w, r, "book rails", err)
+		return
+	}
+	bookRails(&v, d, rails.series, rails.seqs, rails.prog, rails.narrated)
+	var overlineP *progress.Progress
+	if p, ok := rails.prog[d.Book.ID]; ok {
+		overlineP = &p
+	}
+	v.Overline = bookOverline(d, bookSeriesPlace(bookFirstSequence(d), rails.seqs), overlineP, time.Now())
 	shelves := s.canShelve(r)
 	var sheet templ.Component
 	styles := pages.BookStyles
@@ -89,36 +109,8 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 	}
 	switch tab {
 	case "about":
-		var series, narrated []library.BookCard
-		var seqs map[string]string
-		if len(d.Series) > 0 {
-			sp, err := s.lib.SeriesInfo(ctx, sc, d.Series[0].ID)
-			if err != nil && !errors.Is(err, library.ErrNotFound) {
-				s.serverError(w, r, "book series", err)
-				return
-			}
-			series = sp.Books
-			if len(series) > 0 {
-				if seqs, err = s.lib.SeriesSequences(ctx, sc, d.Series[0].ID); err != nil {
-					s.serverError(w, r, "book series places", err)
-					return
-				}
-			}
-		}
-		if len(d.Card.Narrators) > 0 {
-			page, err := s.lib.ListBooks(ctx, sc, library.ListQuery{NarratorID: d.Card.Narrators[0].ID, Limit: bookRailBooks + 1})
-			if err != nil {
-				s.serverError(w, r, "book narrator rail", err)
-				return
-			}
-			narrated = page.Books
-		}
-		bookAbout(&v, d, series, seqs, narrated)
+		bookChapters(&v, d, false, play)
 	case "chapters":
-		var play *chapterPlay
-		if canPlay && len(files) > 0 {
-			play = &chapterPlay{book: book, files: files, p: prog}
-		}
 		bookChapters(&v, d, r.URL.Query().Get("all") == "1", play)
 	case "bookmarks":
 		if !listen {
@@ -142,6 +134,59 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 		v.Rows = bookDetailsView(d, s.canManage(r))
 	}
 	s.pageStyled(w, r, status, d.Book.Title, "library", pages.Book(v), sheet, styles...)
+}
+
+// bookRailReads is what the rails under the tabs read, all with the person's scope.
+type bookRailReads struct {
+	series, narrated []library.BookCard
+	seqs             map[string]string
+	prog             map[string]progress.Progress
+}
+
+// bookRailData reads the visible books of the book's first series (with their places), the person's
+// progress on them and on the open book, and the first narrator's books.
+func (s *server) bookRailData(r *http.Request, d library.BookDetail) (bookRailReads, error) {
+	ctx, sc := r.Context(), s.scope(r)
+	var out bookRailReads
+	ids := []string{d.Book.ID}
+	if len(d.Series) > 0 {
+		sp, err := s.lib.SeriesInfo(ctx, sc, d.Series[0].ID)
+		if err != nil && !errors.Is(err, library.ErrNotFound) {
+			return out, err
+		}
+		out.series = sp.Books
+		if len(out.series) > 0 {
+			if out.seqs, err = s.lib.SeriesSequences(ctx, sc, d.Series[0].ID); err != nil {
+				return out, err
+			}
+		}
+		for _, b := range out.series {
+			if b.ID != d.Book.ID {
+				ids = append(ids, b.ID)
+			}
+		}
+	}
+	prog, err := s.progress.ForBooks(ctx, currentUser(r).ID, ids)
+	if err != nil {
+		return out, err
+	}
+	out.prog = prog
+	if len(d.Card.Narrators) > 0 {
+		page, err := s.lib.ListBooks(ctx, sc, library.ListQuery{NarratorID: d.Card.Narrators[0].ID, Limit: bookRailBooks + 1})
+		if err != nil {
+			return out, err
+		}
+		out.narrated = page.Books
+	}
+	return out, nil
+}
+
+// bookFirstSequence is the open book's place in its first series, or "".
+func bookFirstSequence(d library.BookDetail) string {
+	if len(d.Series) == 0 {
+		return ""
+	}
+	return d.Series[0].Sequence
 }
 
 // getPerson serves an author or a narrator page. A person with no visible listable book in this

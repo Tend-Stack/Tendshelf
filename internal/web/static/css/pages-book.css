@@ -1,41 +1,81 @@
-/* Book, author, narrator and series pages (P1b-6). Tokens only. Phone: one centred column. From
-   768 px the cover sits beside the title; from 1280 px the cover and title take a left column and
-   the tabs and panel the right one. Every link is 44 px (inline ones too). */
+/* Book, author, narrator and series pages. Tokens only. Phone (390): one centred column on a tinted
+   band. 768-1279: cover and play column float left, text and tabs on the right. 1280+: cover left,
+   title, play and description right, tabs below with the rails beside the panel. The band colour is
+   the cover's tint (--cover-tint, set by shell.js from data-ts-tint) at a strength the server
+   verified for readable text in each theme (ts-band-{theme}-{1..3}); the contrast theme is plain. */
 
-.ts-book, .ts-person { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-person { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-book { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: var(--space-16); --ts-book-pad: var(--space-20); }
+
+/* Band: the tint fades from the top; --ts-band-max is the theme's strongest alpha, --ts-band-k the
+   verified fraction of it. */
+.ts-book__band { position: absolute; z-index: -1; top: calc(var(--space-24) * -1); inset-inline: calc(var(--ts-book-pad) * -1);
+  height: 35rem; background: none; border: 0; pointer-events: none; --ts-band-max: 0%; --ts-band-k: 0; }
+.ts-book__band.is-tinted { background: linear-gradient(180deg,
+  color-mix(in srgb, var(--cover-tint) calc(var(--ts-band-max) * var(--ts-band-k)), transparent) 0,
+  color-mix(in srgb, var(--cover-tint) calc(var(--ts-band-max) * var(--ts-band-k) * 0.35), transparent) 58%,
+  transparent 100%); }
+:root:not([data-theme]) .ts-book__band.ts-band-dark-1, [data-theme="dark"] .ts-book__band.ts-band-dark-1 { --ts-band-max: 85%; --ts-band-k: 1; }
+:root:not([data-theme]) .ts-book__band.ts-band-dark-2, [data-theme="dark"] .ts-book__band.ts-band-dark-2 { --ts-band-max: 85%; --ts-band-k: 0.66; }
+:root:not([data-theme]) .ts-book__band.ts-band-dark-3, [data-theme="dark"] .ts-book__band.ts-band-dark-3 { --ts-band-max: 85%; --ts-band-k: 0.33; }
+[data-theme="light"] .ts-book__band.ts-band-light-1, [data-theme="sepia"] .ts-book__band.ts-band-sepia-1 { --ts-band-max: 28%; --ts-band-k: 1; }
+[data-theme="light"] .ts-book__band.ts-band-light-2, [data-theme="sepia"] .ts-book__band.ts-band-sepia-2 { --ts-band-max: 28%; --ts-band-k: 0.66; }
+[data-theme="light"] .ts-book__band.ts-band-light-3, [data-theme="sepia"] .ts-book__band.ts-band-sepia-3 { --ts-band-max: 28%; --ts-band-k: 0.33; }
+html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
+
+/* Head: phone. Text on the band is ink or muted ink, never accent. */
 .ts-book__back { align-self: flex-start; justify-self: start; margin-left: calc(var(--space-12) * -1); color: var(--ink); }
-.ts-book__head { display: flex; flex-direction: column; align-items: center; gap: var(--space-16); text-align: center; }
-.ts-book__cover { width: min(70%, 17.5rem); }
+.ts-book__head { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-16); text-align: center; }
+.ts-book__cover { width: 13rem; align-self: center; }
+.ts-book-block { display: block; }
 .ts-book__cover .ts-cover { box-shadow: var(--shadow-cover); }
-.ts-book__info { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); min-width: 0; }
+.ts-book__info { display: flex; flex-direction: column; align-items: center; gap: var(--space-8); min-width: 0; }
 .ts-book__info p, .ts-book__title, .ts-person__head > *, .ts-series__by { margin: 0; }
 .ts-book__title, .ts-person__name { overflow-wrap: anywhere; }
-.ts-book__sub, .ts-book__meta, .ts-person__count { color: var(--ink-muted); }
-.ts-book__people { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 0.3em; }
-.ts-book__people a, .ts-book__detail a { display: inline-flex; align-items: center; justify-content: center;
-  min-height: var(--size-tap); min-width: var(--size-tap); color: var(--accent); text-underline-offset: 0.1875rem; }
+.ts-book__sub, .ts-book__meta, .ts-person__count, .ts-book__narr { color: var(--ink-muted); }
+.ts-book__overline, .ts-book__sep { display: none; }
+.ts-book__narr { display: block; }
+.ts-book__people { display: inline; }
+.ts-book__byline a, .ts-book__people a, .ts-book__detail a { display: inline-flex; align-items: center; justify-content: center;
+  min-height: var(--size-tap); min-width: var(--size-tap); color: var(--ink); text-underline-offset: 0.1875rem; }
+.ts-book__head .ts-btn--quiet { color: var(--ink); }
+.ts-book__chips { justify-content: center; margin: 0; padding: 0; list-style: none; }
 .ts-book .ts-chip { min-height: var(--size-tap); text-decoration: none; }
+.ts-book__chip--wide { display: none; }
+.ts-book__caption { color: var(--ink-muted); }
 .ts-book .ts-banner { margin-top: var(--space-8); text-align: left; }
 
+/* Play region: the one resume button, the progress ruler, then the actions */
+.ts-book__play { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-16); }
+.ts-book__play form { margin: 0; }
+.ts-book__play .ts-btn { text-decoration: none; }
+#book-play [data-ts-play] { display: flex; width: 100%; box-sizing: border-box; }
+.ts-book__progress { display: flex; flex-direction: column; gap: 0.625rem; }
+.ts-book__where, .ts-book__whereshort { text-align: center; margin: 0; }
+.ts-book__whereshort { display: none; color: var(--ink-muted); }
+.ts-book__acts { display: flex; }
+.ts-book__lede { display: none; }
+
+/* Tabs and panel */
 .ts-book__panel { padding-top: var(--space-16); }
+.ts-book__tabbody { min-width: 0; }
 .ts-book__desc { margin: 0; font-size: 1.0625rem; line-height: 1.625rem; white-space: pre-line; }
 .ts-book__more summary { margin-left: calc(var(--space-12) * -1); display: inline-flex; list-style: none; cursor: pointer; }
 .ts-book__more summary::-webkit-details-marker { display: none; }
-.ts-book__rail { margin-top: var(--space-24); }
-.ts-book__rail .section { margin: 0 0 var(--space-8); }
-.ts-book__cards.ts-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-16); }
+.ts-book__aboutchapters { display: none; }
 
-.ts-book__play { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-8) var(--space-12); margin-top: var(--space-8); }
-.ts-book__play form { margin: 0; }
-.ts-book__play .ts-btn { text-decoration: none; }
+/* Rails: below 1280 only under About */
+.ts-book__rails { display: none; flex-direction: column; gap: 1.75rem; margin-top: var(--space-24); min-width: 0; }
+.ts-book__panel.is-about .ts-book__rails { display: flex; }
+.ts-book__rail { min-width: 0; }
+.ts-book__rail .section { margin: 0; }
+.ts-book__railhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); min-height: var(--size-tap); margin-bottom: var(--space-8); }
+.ts-book__railhead .section a { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--ink); text-decoration: none; }
+.ts-book__start { margin-right: -0.75rem; flex-shrink: 0; }
+.ts-book__tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 7rem)); gap: var(--space-16); justify-content: space-between; }
+.ts-card[aria-current] .ts-cover { outline: 2px solid var(--accent); outline-offset: 3px; }
 
-.ts-book__seriesrows, .ts-chapters { list-style: none; margin: 0; padding: 0; }
-.ts-book__seriesrow { display: flex; align-items: center; gap: var(--space-12); min-height: 3.5rem; padding: 0 var(--space-12);
-  border-radius: var(--radius-md); color: var(--ink); text-decoration: none; }
-a.ts-book__seriesrow:hover { background: var(--raised-hover); }
-.ts-book__seriesrow.is-current { background: var(--accent-soft); }
-.ts-book__seq, .ts-book__here { font-size: 0.875rem; color: var(--ink-muted); flex-shrink: 0; }
-.ts-book__seqtitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-chapters { list-style: none; margin: 0; padding: 0; }
 .ts-chapters__all { margin: var(--space-8) 0 0; }
 
 .ts-book__details { margin: 0; }
@@ -48,17 +88,65 @@ a.ts-book__seriesrow:hover { background: var(--raised-hover); }
 .ts-person__more { margin: var(--space-16) 0 0; text-align: center; }
 .ts-series__by { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; }
 
-@media (min-width: 768px) {
-  .ts-book__head { flex-direction: row; align-items: flex-start; text-align: left; gap: var(--space-24); }
-  .ts-book__cover { flex: 0 0 13.75rem; width: 13.75rem; }
-  .ts-book__info { align-items: flex-start; }
-  .ts-book__play { justify-content: flex-start; }
-  .ts-book__people { justify-content: flex-start; }
-  .ts-book__cards.ts-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+/* Phone: the actions are one bar, like the player's */
+@media (max-width: 767.98px) {
+  .ts-book__acts { border: 1px solid var(--line-strong); border-radius: var(--radius-md); overflow: hidden; }
+  .ts-book__acts > * { flex: 1; display: flex; }
+  .ts-book__acts > * + * { border-left: 1px solid var(--line-strong); }
+  .ts-book__acts .ts-btn { flex: 1; flex-direction: column; gap: var(--space-4); min-height: 3.75rem; padding: 0 var(--space-8); border: 0; border-radius: 0;
+    background: transparent; color: var(--ink); font-size: 0.8125rem; line-height: 1.125rem; font-weight: 500; }
+  .ts-book__acts .ts-btn:hover { background: var(--raised-hover); }
 }
+
+@media (min-width: 768px) {
+  .ts-book { --ts-book-pad: var(--space-24); display: flow-root; }
+  .ts-book__band { height: 26.25rem; }
+  .ts-book__band.ts-band-dark-1, .ts-book__band.ts-band-dark-2, .ts-book__band.ts-band-dark-3 { --ts-band-max: 70%; }
+  .ts-book__head { display: block; text-align: left; }
+  .ts-book__back { margin-bottom: var(--space-16); }
+  .ts-book__cover { float: left; width: 15.5rem; margin-right: calc(var(--space-32) + var(--space-8) + 0.75rem); }
+  #book-play, .ts-book__play { float: left; clear: left; width: 16.25rem; margin-top: var(--space-16); }
+  .ts-book__info, .ts-book__body { margin-left: calc(16.25rem + var(--space-32) + var(--space-8)); }
+  .ts-book__info { align-items: flex-start; }
+  .ts-book__chips, .ts-book__caption, .ts-book__progress .ts-ruler, .ts-book__where { display: none; }
+  .ts-book__whereshort { display: block; }
+  .ts-book__byline { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.3em; text-align: left; }
+  .ts-book__narr { display: inline; }
+  .ts-book__sep { display: inline; color: var(--ink-muted); }
+  .ts-book__acts { justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--space-8) var(--space-12); }
+  .ts-book__shelf { width: var(--size-tap); min-height: var(--size-tap); padding: 0; border: 0; border-radius: 50%; background: var(--raised); }
+  .ts-book__shelf .ts-book__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ts-book__tiles { justify-content: start; }
+  .ts-book__acts form { display: flex; align-items: center; }
+}
+
 @media (min-width: 1280px) {
-  .ts-book { display: grid; grid-template-columns: 20rem minmax(0, 1fr); gap: var(--space-16) var(--space-48); align-items: start; }
-  .ts-book__back { grid-column: 1 / -1; }
-  .ts-book__head { flex-direction: column; gap: var(--space-24); }
-  .ts-book__cover { flex: none; width: 100%; }
+  .ts-book { --ts-book-pad: var(--space-32); display: flex; flex-direction: column; }
+  .ts-book__band { height: 32.5rem; }
+  .ts-book > :not(.ts-book__band) { width: 100%; max-width: 62.5rem; align-self: center; }
+  .ts-book > .ts-book__back { width: auto; align-self: flex-start; }
+  .ts-book__head { display: grid; grid-template-columns: 18.75rem minmax(0, 1fr); grid-template-rows: auto auto 1fr; gap: 0 var(--space-48);
+    grid-template-areas: "cover info" "cover play" "cover lede"; }
+  .ts-book__cover { grid-area: cover; align-self: start; float: none; width: 100%; margin: 0; }
+  .ts-book__info, .ts-book__body { margin-left: 0; }
+  .ts-book__info { grid-area: info; }
+  #book-play, .ts-book__play { grid-area: play; float: none; clear: none; width: auto; margin: var(--space-16) 0 0;
+    flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
+  .ts-book__lede { display: block; grid-area: lede; margin-top: var(--space-24); font-size: 1.0625rem; line-height: 1.625rem; max-width: var(--size-measure); }
+  .ts-book__lede p { margin: 0; }
+  .ts-book__overline { display: block; }
+  .ts-book__title { font-size: 2.5rem; line-height: 2.75rem; }
+  .ts-book__chip--wide { display: inline-flex; }
+  .ts-book__chip--series, .ts-book__caption, .ts-book__progress, .ts-book__whereshort { display: none; }
+  .ts-book__chips { display: flex; justify-content: flex-start; }
+  .ts-book__acts { display: contents; }
+  #book-play [data-ts-play] { width: auto; }
+  .ts-book__shelf { width: auto; padding: 0 var(--space-32); min-height: 3.5rem; border: 1px solid var(--line); border-radius: var(--radius-control); }
+  .ts-book__shelf .ts-book__label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  #book-tab-about, .ts-book__aboutdesc { display: none; }
+  .ts-book__aboutchapters { display: block; }
+  .ts-tabs__item.is-home { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+  .ts-book__panel { display: grid; grid-template-columns: minmax(0, 1fr) 23rem; gap: var(--space-48); }
+  .ts-book__rails, .ts-book__panel.is-about .ts-book__rails { display: flex; margin-top: 0; }
+  .ts-book__tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

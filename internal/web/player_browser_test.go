@@ -89,7 +89,7 @@ func playerClickSel(t *testing.T, tab *cdp.Tab, sel string) {
 	type point struct{ X, Y float64 }
 	measure := func() point {
 		var r point
-		tab.Eval(`(() => { const r = document.querySelector(`+cdp.Quote(sel)+`).getBoundingClientRect(); return {X: r.x + r.width / 2, Y: r.y + r.height / 2}; })()`, &r)
+		tab.Eval(`(() => { const el = document.querySelector(`+cdp.Quote(sel)+`); el.scrollIntoView({block: "center"}); const r = el.getBoundingClientRect(); return {X: r.x + r.width / 2, Y: r.y + r.height / 2}; })()`, &r)
 		return r
 	}
 	r := measure()

@@ -46,27 +46,8 @@ func (s *server) homeHeroView(ctx context.Context, r *http.Request) (*pages.Home
 	if n := bylineOf(l.Book.Narrators); n != "" {
 		v.Narrator = fmt.Sprintf(homeReadBy, n)
 	}
-	dur, pos := l.DurationMs, min(l.PositionMs, l.DurationMs)
-	v.RulerNow = percentText(pos, dur)
-	for _, c := range chs {
-		if c.StartMs > 0 && dur > 0 && c.StartMs < dur {
-			v.Ticks = append(v.Ticks, percentText(c.StartMs, dur))
-		}
-	}
-	speed := set.Speed
-	if speed <= 0 {
-		speed = 1
-	}
-	bookLeft := durationText(int64(float64(max(dur-pos, 0)) / speed))
-	if bookLeft == "" {
-		bookLeft = "0 m"
-	}
-	v.RulerLabel, v.Where = homeBookProgress, fmt.Sprintf(homeWhereBook, bookLeft)
-	if cur := currentChapter(chs, pos); cur >= 0 {
-		left := int64(math.Ceil(float64(max(chs[cur].EndMs-pos, 0)) / speed / 60_000))
-		v.RulerLabel = fmt.Sprintf(homeRulerChapter, cur+1, len(chs))
-		v.Where = fmt.Sprintf(homeWhere, cur+1, max(left, 1), bookLeft)
-	}
+	lr := listenRulerFor(chs, l.PositionMs, l.DurationMs, set.Speed)
+	v.RulerLabel, v.RulerNow, v.Ticks, v.Where = lr.Label, lr.Now, lr.Ticks, lr.Where
 	book, err := s.lib.Book(ctx, l.Book.ID)
 	if errors.Is(err, library.ErrNotFound) {
 		return nil, "", nil

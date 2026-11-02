@@ -24,6 +24,7 @@ var iconShapes = map[string]string{
 	"filter":       `<path d="M4 6h16M7 12h10M10 18h4"/>`,
 	"grid":         `<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>`,
 	"check":        `<path d="m5 12.5 4.5 4.5L19 7.5"/>`,
+	"plus":         `<path d="M12 5v14M5 12h14"/>`,
 	"close":        `<path d="M6 6l12 12M18 6 6 18"/>`,
 	"alert":        `<path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/>`,
 	"folder":       `<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>`,

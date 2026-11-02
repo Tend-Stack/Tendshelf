@@ -4,7 +4,7 @@ package components
 // There is no Resume button yet: it arrives with the listening position (P1c), and then it is still
 // the only one for this book on the screen.
 templ BookCard(v CardView) {
-	<a class="ts-card" href={ templ.SafeURL(v.Href) }>
+	<a class="ts-card" href={ templ.SafeURL(v.Href) } if v.Current { aria-current="page" }>
 		<span class="ts-card__cover">
 			@Cover(v, "fill")
 		</span>

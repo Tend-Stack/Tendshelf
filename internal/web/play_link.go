@@ -117,9 +117,10 @@ func (s *server) bookPlayData(r *http.Request, book library.Book) (files []libra
 	return files, p, true, nil
 }
 
-// bookPlayView is the #book-play region for a book: the play button (when a file can play) and the
-// mark control.
-func (s *server) bookPlayView(r *http.Request, book library.Book, files []library.AudioFile, p *progress.Progress) *pages.BookPlayView {
+// bookPlayView is the #book-play region for a book: the play button (when a file can play), the
+// progress ruler and where-lines of a book that is under way, the shelf link and the mark control.
+// chs are the book's chapters (for the ruler's ticks and the chapter words).
+func (s *server) bookPlayView(r *http.Request, book library.Book, files []library.AudioFile, p *progress.Progress, chs []library.Chapter) (*pages.BookPlayView, error) {
 	v := &pages.BookPlayView{
 		Action: "/hx/books/" + book.ID + "/finished", Refresh: "/hx/books/" + book.ID + "/play",
 		Next: "/books/" + book.ID, CSRF: s.csrf.TokenFrom(r.Context()),
@@ -131,7 +132,19 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	if l := playLinkIn(book, files, p); l != nil {
 		v.Button = l.button("", false)
 	}
-	return v
+	if p != nil && !p.Finished() && p.PositionMs > 0 && book.DurationMs > 0 {
+		set, err := s.users.LoadSettings(r.Context(), currentUser(r).ID)
+		if err != nil {
+			return nil, err
+		}
+		lr := listenRulerFor(chs, p.PositionMs, book.DurationMs, set.Speed)
+		v.Ruler = &components.RulerView{Label: lr.Label, Now: lr.Now, Ticks: lr.Ticks}
+		v.Where, v.WhereShort = lr.Where, lr.WhereShort
+	}
+	if s.canShelve(r) {
+		v.ShelfHref, v.ShelfLabel = shelfSheetHref(book.ID), shelfAddLabel
+	}
+	return v, nil
 }
 
 // getBookPlay answers GET /hx/books/{id}/play: only the #book-play region, so it follows a mark or
@@ -149,7 +162,14 @@ func (s *server) getBookPlay(w http.ResponseWriter, r *http.Request) {
 	}
 	var v *pages.BookPlayView
 	if can {
-		v = s.bookPlayView(r, b, files, p)
+		chs, err := s.lib.Chapters(r.Context(), b.ID)
+		if err == nil {
+			v, err = s.bookPlayView(r, b, files, p, chs)
+		}
+		if err != nil {
+			s.serverError(w, r, "book play", err)
+			return
+		}
 	}
 	s.fragment(w, r, http.StatusOK, pages.BookPlay(v))
 }
