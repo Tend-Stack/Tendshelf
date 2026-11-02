@@ -46,15 +46,23 @@ func TestFullPlayerBrowserHints(t *testing.T) {
 				Hint         string
 				HintInPlayer bool
 				Text         string
+				ToggleBg     string
+				CoverBg      string
 			}
 			tab.Eval(`(() => {
 			  const card = document.querySelector('#player-full [data-ts-sleep-card="full"]'), plus = card.querySelector("[data-ts-sleep-plus]");
 			  const c = card.getBoundingClientRect(), p = plus.getBoundingClientRect();
 			  const hint = [...document.querySelectorAll(".ts-toast--hint")].pop();
+			  // The pointer is still on the play button after the click: it must keep its cover-coloured circle.
+			  const toggle = document.querySelector("[data-ts-full-toggle]"), probe = document.createElement("span");
+			  probe.style.setProperty("background-color", "var(--cover-accent)");
+			  toggle.parentNode.append(probe);
+			  const toggleBg = getComputedStyle(toggle).backgroundColor, coverBg = getComputedStyle(probe).backgroundColor;
+			  probe.remove();
 			  return {Over: document.documentElement.scrollWidth > innerWidth || document.getElementById("player-full").scrollWidth > document.getElementById("player-full").clientWidth,
 			    CardW: c.width, CardH: c.height, PlusW: p.width, PlusH: p.height,
 			    Inside: c.left >= 0 && c.right <= innerWidth && c.top >= 0 && c.bottom <= innerHeight && p.right <= innerWidth && p.bottom <= innerHeight,
-			    Hint: hint ? hint.textContent : "", HintInPlayer: hint ? !!hint.closest("[data-ts-full-toasts]") : false, Text: card.textContent};
+			    Hint: hint ? hint.textContent : "", HintInPlayer: hint ? !!hint.closest("[data-ts-full-toasts]") : false, Text: card.textContent, ToggleBg: toggleBg, CoverBg: coverBg};
 			})()`, &r)
 			name := fmt.Sprintf("%s/hints-%s-%d", out, theme, w)
 			if r.Over {
@@ -65,6 +73,9 @@ func TestFullPlayerBrowserHints(t *testing.T) {
 			}
 			if !r.Inside {
 				t.Errorf("%s: the sleep card is outside the viewport", name)
+			}
+			if r.ToggleBg != r.CoverBg {
+				t.Errorf("%s: play button background %s under the pointer, want the cover accent %s", name, r.ToggleBg, r.CoverBg)
 			}
 			if r.Hint != msgRewound {
 				t.Errorf("%s: hint %q, want %q", name, r.Hint, msgRewound)

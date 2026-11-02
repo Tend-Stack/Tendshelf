@@ -58,6 +58,10 @@ body { margin: 0; font-family: var(--font-sans); background: var(--ground); colo
 .ts-iconbtn--filled { background: var(--accent-fill); color: var(--on-accent); }
 .ts-iconbtn--filled:hover, .ts-iconbtn--filled.is-hover { background: var(--accent-fill-hover); }
 .ts-iconbtn--cover { background: var(--cover-accent); color: var(--on-cover-accent); }
+/* .ts-iconbtn:hover and :active outrank the one-class modifier and would drop the circle under the
+   pointer (and after every tap on a phone): the cover button keeps its fill and shows a ring instead. */
+.ts-iconbtn--cover:hover, .ts-iconbtn--cover.is-hover, .ts-iconbtn--cover:active, .ts-iconbtn--cover.is-pressed {
+  background: var(--cover-accent); box-shadow: 0 0 0 4px var(--raised-hover); }
 .ts-iconbtn--md { width: 56px; height: 56px; }
 .ts-iconbtn--lg { width: 64px; height: 64px; }
 .ts-iconbtn--xl { width: 80px; height: 80px; }

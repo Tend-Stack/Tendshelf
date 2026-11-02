@@ -48,6 +48,8 @@
   .ts-btn--quiet:hover:not(:active, [disabled], .is-disabled) { background: transparent; color: var(--accent); }
   .ts-iconbtn:hover:not(:active, [disabled], .is-disabled) { background: transparent; }
   .ts-iconbtn--filled:hover:not(:active, [disabled], .is-disabled) { background: var(--accent-fill); }
+  .ts-iconbtn--cover:hover:not(:active, [disabled], .is-disabled) { background: var(--cover-accent); box-shadow: none; }
+  .ts-iconbtn--tonal:hover:not(:active, [disabled], .is-disabled) { background: var(--raised); }
   .ts-seg__item:hover:not([aria-pressed="true"], [aria-checked="true"], [disabled]) { color: var(--ink-muted); }
   .ts-tabs__item:hover:not([aria-selected="true"], [aria-current="page"]) { color: var(--ink-muted); }
   .ts-chip:hover:not(:active, [aria-pressed="true"], [disabled]) { background: transparent; }
