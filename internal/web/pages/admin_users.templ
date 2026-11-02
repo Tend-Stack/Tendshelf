@@ -29,6 +29,26 @@ type UsersView struct {
 	// TabPeople is "People · 5".
 	TabPeople string
 	Rows      []UserRow
+	// TabInvites is "Invites · 2", or empty when the viewer manages no invites; the tab links to
+	// the #users-invites section.
+	TabInvites string
+	// Invites are the pending invites the viewer may manage, oldest first.
+	Invites []InviteRow
+	// NewLink, when set, shows the address of an invite whose link was just replaced.
+	NewLink *InviteLink
+}
+
+// InviteRow is one pending invite on the Users page. The handler writes every sentence.
+type InviteRow struct {
+	ID string
+	// Name is who the invite is for; Line is "{name} hasn't opened the invite yet" and Meta is
+	// "Member · Until 2 Jan" or "Member · No end date".
+	Name, Line, Meta string
+}
+
+// InviteLink is the panel that shows the new address of an invite, once.
+type InviteLink struct {
+	Name, URL string
 }
 
 // usersLiveBars is the "Listening now" mark: three bars the stylesheet animates.
@@ -149,9 +169,51 @@ templ AdminUsers(v UsersView) {
 		</header>
 		<nav class="ts-tabs ts-users__tabs" aria-label="Users and invites">
 			<a class="ts-tabs__item" href="/admin/users" aria-current="page">{ v.TabPeople }</a>
+			if v.TabInvites != "" {
+				<a class="ts-tabs__item" href="#users-invites">{ v.TabInvites }</a>
+			}
 		</nav>
-		<div id="users-invites"></div>
 		@UsersList(v)
+		@InvitesList(v)
 		<p class="caption ts-users__note">Listening time is shown so you can see the shelf is being used. Nobody, including you, can see what someone else is listening to unless they share it.</p>
 	</div>
+}
+
+// InvitesList is the pending-invite card inside #users-invites: one row per invite with "Copy link
+// again" and "Cancel invite", and the new-link panel after a link was replaced. With nothing to
+// show it is the empty anchor the tab points at.
+templ InvitesList(v UsersView) {
+	if len(v.Invites) == 0 && v.NewLink == nil {
+		<div id="users-invites"></div>
+	} else {
+		<section id="users-invites" class="ts-invite__card" aria-label={ v.TabInvites }>
+			if v.NewLink != nil {
+				<div class="ts-invite__link" role="status">
+					<h2 class="body ts-invite__linktitle">New link for { v.NewLink.Name }</h2>
+					<p class="caption">The old link no longer works.</p>
+					<label class="caption" for="invite-link">Invite link</label>
+					<input class="ts-input" id="invite-link" type="text" readonly value={ v.NewLink.URL }/>
+				</div>
+			}
+			<ul class="ts-users__list">
+				for _, r := range v.Invites {
+					<li class="ts-invite__item">
+						<span class="ts-invite__icon">@components.Icon("link", false)</span>
+						<span class="ts-users__text">
+							<span class="body ts-users__name">{ r.Line }</span>
+							<span class="caption ts-users__meta">{ r.Meta }</span>
+						</span>
+						<form method="post" action={ templ.URL("/admin/invites/" + r.ID + "/link") }>
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ "Copy link again for " + r.Name }>Copy link again</button>
+						</form>
+						<form method="post" action={ templ.URL("/admin/invites/" + r.ID + "/cancel") }>
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ "Cancel invite for " + r.Name }>Cancel invite</button>
+						</form>
+					</li>
+				}
+			</ul>
+		</section>
+	}
 }

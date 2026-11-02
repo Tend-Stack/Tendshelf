@@ -53,6 +53,11 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 		return v, err
 	}
 	v.ServerName = name
+	has, err := s.users.HasPassword(ctx, u.ID)
+	if err != nil {
+		return v, err
+	}
+	v.NoPassword = !has
 
 	list, err := s.sessions.ListForUser(ctx, u.ID, sess.Hash)
 	if err != nil {
@@ -77,7 +82,7 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 		}
 	}
 	if s.can.Can(ctx, u, share.ManageUsers, share.Target{Kind: share.TargetServer}) {
-		if v.UsersRow, err = s.usersRow(ctx); err != nil {
+		if v.UsersRow, err = s.usersRow(ctx, u); err != nil {
 			return v, err
 		}
 	}

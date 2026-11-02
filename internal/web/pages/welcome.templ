@@ -1,0 +1,62 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// WelcomeView is "Keep your place": the page after an invite is accepted, where a person can add a
+// name and password so they can sign in on another device.
+type WelcomeView struct {
+	CSRF string
+	Name string
+	// Book is the id of the book to continue to (already checked), or empty.
+	Book string
+	// Username is the username in the field. Keep is "phone" or "password": the option that is on.
+	Username, Keep string
+	// Errors are field messages by field name (username, password) and "form" for the whole form.
+	Errors map[string]string
+}
+
+// Welcome asks whether to add a name and password, or just carry on on this phone. The two options
+// are radio buttons; the fields show only while "A name and password" is on (CSS :has).
+templ Welcome(v WelcomeView) {
+	<div class="ts-invite ts-invite__keep">
+		<div class="ts-invite__brand">
+			@components.Brand()
+		</div>
+		<h1 class="title-1">Keep your place, { v.Name }?</h1>
+		<p class="body-lg">Then you can pick up on your tablet, or on a new phone, right where you stopped.</p>
+		<form class="ts-form" method="post" action="/welcome" hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			if v.Book != "" {
+				<input type="hidden" name="book" value={ v.Book }/>
+			}
+			@formError(v.Errors["form"])
+			<fieldset class="ts-invite__options">
+				<legend class="ts-sr">How to come back</legend>
+				<label class="ts-invite__choice" for="keep-password">
+					<input type="radio" id="keep-password" name="keep" value="password" checked?={ v.Keep == "password" }/>
+					<span class="ts-invite__choice-icon">@components.Icon("lock", false)</span>
+					<span class="body ts-invite__choice-title">A name and password</span>
+					<span class="caption ts-invite__choice-hint">Works on any device.</span>
+				</label>
+				<label class="ts-invite__choice" for="keep-phone">
+					<input type="radio" id="keep-phone" name="keep" value="phone" checked?={ v.Keep != "password" }/>
+					<span class="ts-invite__choice-icon">@components.Icon("phone", false)</span>
+					<span class="body ts-invite__choice-title">Just this phone for now</span>
+					<span class="caption ts-invite__choice-hint">You can choose later in Profile.</span>
+				</label>
+			</fieldset>
+			<div class="ts-invite__fields">
+				@components.TextField(components.Field{
+					ID: "username", Name: "username", Label: "Name you'll sign in with", Value: v.Username,
+					Plain: true, Autocomplete: "username", Error: v.Errors["username"],
+				})
+				@components.TextField(components.Field{
+					ID: "password", Name: "password", Label: "Password", Type: "password",
+					Autocomplete: "new-password", Hint: "At least 10 characters.", Error: v.Errors["password"],
+				})
+			</div>
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Continue</button>
+		</form>
+		<p class="caption ts-invite__fine">Listening keeps going while you choose.</p>
+	</div>
+}

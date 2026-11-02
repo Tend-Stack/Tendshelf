@@ -53,11 +53,18 @@ func (s *server) getCover(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if book.CoverID == "" {
+	s.serveCoverFile(w, r, book.CoverID, width, "")
+}
+
+// serveCoverFile writes the cover image coverID (a width of 0 means the original) after the caller
+// has decided the person may see it. An empty id, a missing row and a missing file all answer the
+// same 404. A non-empty cacheControl replaces the default caching headers.
+func (s *server) serveCoverFile(w http.ResponseWriter, r *http.Request, coverID string, width int, cacheControl string) {
+	if coverID == "" {
 		http.Error(w, "Not found.", http.StatusNotFound)
 		return
 	}
-	cover, err := s.lib.Cover(r.Context(), book.CoverID)
+	cover, err := s.lib.Cover(r.Context(), coverID)
 	if errors.Is(err, library.ErrNotFound) {
 		http.Error(w, "Not found.", http.StatusNotFound)
 		return
@@ -83,7 +90,9 @@ func (s *server) getCover(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("Content-Type", c.mime)
 		h.Set("ETag", `"`+cover.SHA256+"-"+c.tag+`"`)
-		if r.URL.Query().Get("v") == cover.SHA256[:8] {
+		if cacheControl != "" {
+			h.Set("Cache-Control", cacheControl)
+		} else if r.URL.Query().Get("v") == cover.SHA256[:8] {
 			h.Set("Cache-Control", "private, max-age=31536000, immutable")
 		} else {
 			h.Set("Cache-Control", "private, no-cache")

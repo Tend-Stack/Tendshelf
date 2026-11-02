@@ -65,11 +65,16 @@ type sweepEnv struct {
 	libID, folderID, folderDir string
 	// extra is a member with no session who holds the library grant extraGrant: the person the
 	// Users rows act on (P3-2a).
-	extra, extraGrant        string
-	book                     library.Book
-	author, narrator, series string
-	job                      string
-	tree                     string // a folder for the browse view, with a file name that must never be sent
+	extra, extraGrant string
+	// inviteTok is the token of a valid admin invite (it shows no book, so no seeded word leaks);
+	// inviteRot and inviteCancel are the ids of member invites and inviteAdmin the id of an admin
+	// invite, all made by the owner (P3-3a).
+	inviteTok                            string
+	inviteRot, inviteCancel, inviteAdmin string
+	book                                 library.Book
+	author, narrator, series             string
+	job                                  string
+	tree                                 string // a folder for the browse view, with a file name that must never be sent
 
 	// granted marks the app of TestRouteMatrixGranted: the member and the guest hold a library
 	// grant on libID, so rows answer with Granted and the leak scan is off.
@@ -196,6 +201,7 @@ func sweepSeed(t *testing.T) *sweepEnv {
 		VALUES (?, ?, 'library', ?, 0, 0, 1, 1)`, e.extraGrant, e.extra, e.libID); err != nil {
 		t.Fatal(err)
 	}
+	inviteSeed(t, e)
 	e.job = a.adminEnqueueScan(t, l.ID)
 	a.adminSetJobState(t, e.job, "done")
 	if err := db.PutSetting(ctx, a.st.Writer(), settingSetupDone, true); err != nil {
@@ -559,7 +565,8 @@ func sweepRows() []sweepRow {
 		sweepPost("POST /hx/books/{id}/finished", id(bookID, "/hx/books/", "/finished"), sweepFormOf(url.Values{
 			"finished": {"1"}, "next": {"/"}}), sweepStaff(303, 404), "/"))
 	rows = append(rows, post...)
-	return append(rows, usersSweepRows()...)
+	rows = append(rows, usersSweepRows()...)
+	return append(rows, invitesSweepRows()...)
 }
 
 // sweepLeakWords are strings of the seeded book that nobody without access may ever see.

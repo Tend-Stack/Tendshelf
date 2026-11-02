@@ -32,7 +32,10 @@ type ProfileView struct {
 	UsersRow string
 	// Shelves is the "Your shelves" row ("3 shelves"), empty for people who may not use shelves.
 	Shelves string
-	Version string
+	// NoPassword is true for an account made from an invite that never added a password: Profile
+	// then offers "Keep your place" instead of "Change password".
+	NoPassword bool
+	Version    string
 }
 
 // meChevron is the trailing arrow of a row, drawn in CSS.
@@ -76,10 +79,20 @@ templ Profile(v ProfileView) {
 				<span class="body ts-me__rowtext">Settings</span>
 				@meChevron()
 			</a>
-			<a class="ts-me__row" href="/me/password">
-				<span class="body ts-me__rowtext">Change password</span>
-				@meChevron()
-			</a>
+			if v.NoPassword {
+				<a class="ts-me__row" href="/welcome">
+					<span class="ts-me__rowtext">
+						<span class="body ts-me__rowtitle">Keep your place</span>
+						<span class="caption ts-me__lead">Add a password so you can sign in elsewhere</span>
+					</span>
+					@meChevron()
+				</a>
+			} else {
+				<a class="ts-me__row" href="/me/password">
+					<span class="body ts-me__rowtext">Change password</span>
+					@meChevron()
+				</a>
+			}
 		</section>
 		<section aria-labelledby="pf-dev" class="ts-me__section">
 			<h2 id="pf-dev" class="ts-overline">Your devices</h2>

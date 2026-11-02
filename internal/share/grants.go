@@ -132,17 +132,8 @@ func (r *Grants) Put(ctx context.Context, tx *sql.Tx, by users.User, s GrantSpec
 
 // validate checks a spec against the scope rules and the rows it points at.
 func (r *Grants) validate(ctx context.Context, tx *sql.Tx, s GrantSpec, now int64) error {
-	switch s.Scope {
-	case GrantAll:
-		if s.TargetID != "" {
-			return ErrGrantScope
-		}
-	case GrantLibrary, GrantShelf, GrantBook:
-		if s.TargetID == "" {
-			return ErrGrantScope
-		}
-	default:
-		return ErrGrantScope
+	if err := checkScopeShape(s.Scope, s.TargetID); err != nil {
+		return err
 	}
 	if s.ExpiresAt != 0 && s.ExpiresAt <= now {
 		return ErrGrantExpiry
@@ -157,8 +148,38 @@ func (r *Grants) validate(ctx context.Context, tx *sql.Tx, s GrantSpec, now int6
 	if role != string(users.RoleMember) && role != string(users.RoleGuest) {
 		return ErrGrantRole
 	}
+	return targetExists(ctx, tx, s.Scope, s.TargetID)
+}
+
+// validateTarget checks only the target half of a grant: the scope and target fit together and
+// the row exists (and a shelf belongs to an owner or admin). Invites use it at creation and again
+// at acceptance.
+func validateTarget(ctx context.Context, tx *sql.Tx, scope GrantScope, target string) error {
+	if err := checkScopeShape(scope, target); err != nil {
+		return err
+	}
+	return targetExists(ctx, tx, scope, target)
+}
+
+func checkScopeShape(scope GrantScope, target string) error {
+	switch scope {
+	case GrantAll:
+		if target != "" {
+			return ErrGrantScope
+		}
+	case GrantLibrary, GrantShelf, GrantBook:
+		if target == "" {
+			return ErrGrantScope
+		}
+	default:
+		return ErrGrantScope
+	}
+	return nil
+}
+
+func targetExists(ctx context.Context, tx *sql.Tx, scope GrantScope, target string) error {
 	var q string
-	switch s.Scope {
+	switch scope {
 	case GrantLibrary:
 		q = `SELECT 1 FROM libraries WHERE id = ?`
 	case GrantBook:
@@ -169,7 +190,7 @@ func (r *Grants) validate(ctx context.Context, tx *sql.Tx, s GrantSpec, now int6
 		return nil
 	}
 	var one int
-	if err := tx.QueryRowContext(ctx, q, s.TargetID).Scan(&one); err != nil {
+	if err := tx.QueryRowContext(ctx, q, target).Scan(&one); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrGrantTarget
 		}
