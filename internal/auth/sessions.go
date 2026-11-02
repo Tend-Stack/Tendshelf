@@ -145,6 +145,6 @@ func (s *Sessions) EndAllForUser(ctx context.Context, ex db.Execer, userID strin
 	if err != nil {
 		return 0, err
 	}
-	_, err = ex.ExecContext(ctx, `UPDATE devices SET revoked_at = ?, token_hash = NULL WHERE user_id = ? AND revoked_at IS NULL`, nowMs, userID)
+	_, err = revokeAllDevices(ctx, ex, userID, nowMs)
 	return n, err
 }

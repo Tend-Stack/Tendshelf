@@ -49,6 +49,7 @@ type env struct {
 	st    *db.Store
 	users *users.Repo
 	sess  *Sessions
+	dev   *Devices
 	svc   *Service
 	clk   *clock
 	owner users.User
@@ -64,8 +65,9 @@ func newEnv(t *testing.T) *env {
 	clk := &clock{t: time.UnixMilli(1_700_000_000_000)}
 	ur := users.New(st, users.Options{Hash: cheap, Now: clk.Now})
 	ss := NewSessions(st, clk.Now)
-	return &env{st: st, users: ur, sess: ss, clk: clk,
-		svc: NewService(st, ur, ss, ServiceOptions{SetupCode: testCode, Now: clk.Now})}
+	dv := NewDevices(st, clk.Now)
+	return &env{st: st, users: ur, sess: ss, dev: dv, clk: clk,
+		svc: NewService(st, ur, ss, ServiceOptions{SetupCode: testCode, Now: clk.Now, Devices: dv})}
 }
 
 var ip1 = netip.MustParseAddr("203.0.113.7")

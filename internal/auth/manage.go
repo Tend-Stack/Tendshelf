@@ -22,6 +22,7 @@ func PublicID(hash [32]byte) string { return hex.EncodeToString(hash[:])[:Public
 
 // SessionInfo is one signed-in browser of a person, for the Profile page.
 type SessionInfo struct {
+	UserID    string
 	PublicID  string
 	UserAgent string
 	CreatedAt int64 // Unix milliseconds UTC
@@ -33,9 +34,18 @@ type SessionInfo struct {
 // ListForUser lists the person's live sessions, the most recently seen first. current marks the
 // one the request came from.
 func (s *Sessions) ListForUser(ctx context.Context, userID string, current [32]byte) ([]SessionInfo, error) {
-	rows, err := s.st.Reader().QueryContext(ctx, `SELECT token_hash, user_agent, created_at, last_seen_at
-		FROM sessions WHERE user_id = ? AND expires_at >= ? ORDER BY last_seen_at DESC, created_at DESC`,
-		userID, s.now().UnixMilli())
+	return s.list(ctx, current, ` AND user_id = ?`, userID)
+}
+
+// ListAll lists every live session of every person, in the same order as ListForUser.
+func (s *Sessions) ListAll(ctx context.Context, current [32]byte) ([]SessionInfo, error) {
+	return s.list(ctx, current, "")
+}
+
+func (s *Sessions) list(ctx context.Context, current [32]byte, where string, args ...any) ([]SessionInfo, error) {
+	args = append([]any{s.now().UnixMilli()}, args...)
+	rows, err := s.st.Reader().QueryContext(ctx, `SELECT token_hash, user_id, user_agent, created_at, last_seen_at
+		FROM sessions WHERE expires_at >= ?`+where+` ORDER BY last_seen_at DESC, created_at DESC`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +54,7 @@ func (s *Sessions) ListForUser(ctx context.Context, userID string, current [32]b
 	for rows.Next() {
 		var raw []byte
 		var si SessionInfo
-		if err := rows.Scan(&raw, &si.UserAgent, &si.CreatedAt, &si.LastSeenAt); err != nil {
+		if err := rows.Scan(&raw, &si.UserID, &si.UserAgent, &si.CreatedAt, &si.LastSeenAt); err != nil {
 			return nil, err
 		}
 		if len(raw) != 32 {
@@ -59,7 +69,9 @@ func (s *Sessions) ListForUser(ctx context.Context, userID string, current [32]b
 	return out, rows.Err()
 }
 
-func validPublicID(id string) bool {
+// IsSessionPublicID reports whether id has the shape of a session public id (16 lowercase hex).
+// Device ids start with "dev_", so the two never collide.
+func IsSessionPublicID(id string) bool {
 	if len(id) != PublicIDLen {
 		return false
 	}
@@ -76,7 +88,7 @@ func validPublicID(id string) bool {
 // matches. deleted is the stored hash of the ended session, so the caller can tell whether it was
 // the current one.
 func (s *Sessions) DeleteByPublicID(ctx context.Context, userID, publicID string) (deleted [32]byte, ok bool, err error) {
-	if !validPublicID(publicID) {
+	if !IsSessionPublicID(publicID) {
 		return deleted, false, nil
 	}
 	err = s.st.WriteTx(ctx, func(tx *sql.Tx) error {
@@ -123,7 +135,8 @@ func (s *Sessions) DeleteOthers(ctx context.Context, ex db.Execer, userID string
 	return res.RowsAffected()
 }
 
-// SignOutOthers ends every other session of the signed-in person and records it.
+// SignOutOthers ends every other session of the signed-in person, revokes all their device
+// tokens (a token belongs to no browser, so none is "this one"), and records it.
 func (a *Service) SignOutOthers(ctx context.Context, sess Session) (int64, error) {
 	var n int64
 	err := a.st.WriteTx(ctx, func(tx *sql.Tx) error {
@@ -131,8 +144,12 @@ func (a *Service) SignOutOthers(ctx context.Context, sess Session) (int64, error
 		if n, err = a.sessions.DeleteOthers(ctx, tx, sess.UserID, sess.Hash); err != nil {
 			return err
 		}
+		devices, err := revokeAllDevices(ctx, tx, sess.UserID, a.ms())
+		if err != nil {
+			return err
+		}
 		return db.Audit(ctx, tx, db.AuditEntry{At: a.ms(), UserID: sess.UserID, Action: "auth.sessions_signed_out",
-			Target: sess.UserID, Detail: map[string]int64{"count": n}})
+			Target: sess.UserID, Detail: map[string]int64{"count": n, "devices": devices}})
 	})
 	return n, err
 }
@@ -191,7 +208,7 @@ func (a *Service) ChangePassword(ctx context.Context, sess Session, current, nex
 		if err := a.users.SetPassword(ctx, tx, u.ID, newHash); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, u.ID); err != nil {
+		if _, err := a.sessions.EndAllForUser(ctx, tx, u.ID, a.ms()); err != nil {
 			return err
 		}
 		var err error
@@ -244,7 +261,7 @@ func (a *Service) ResetPassword(ctx context.Context, username string) (string, e
 		if err := a.users.SetPassword(ctx, tx, u.ID, hash); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, u.ID); err != nil {
+		if _, err := a.sessions.EndAllForUser(ctx, tx, u.ID, a.ms()); err != nil {
 			return err
 		}
 		return db.Audit(ctx, tx, db.AuditEntry{At: a.ms(), UserID: u.ID, Action: "auth.password_reset", Target: u.ID,
