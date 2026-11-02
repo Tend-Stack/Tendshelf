@@ -111,7 +111,7 @@ func TestPlayButtonStates(t *testing.T) {
 		`id="book-play"`, `hx-get="/hx/books/` + e.book.ID + `/play"`, `hx-trigger="progress-saved from:body"`,
 		`href="/stream/` + f2 + `#t=5.000"`, `data-ts-play="` + e.book.ID + `"`, `data-ts-file="` + f2 + `"`,
 		`data-ts-file-start-ms="90000"`, `data-ts-start-ms="95000"`, `data-ts-mime="audio/mpeg"`, `data-ts-may-need-compat="0"`,
-		`>Resume</a>`, `Mark as finished`,
+		`>Resume</span>`, `Mark as finished`,
 	} {
 		if !strings.Contains(body, w) {
 			t.Errorf("book page lacks %s", w)
@@ -122,7 +122,7 @@ func TestPlayButtonStates(t *testing.T) {
 	}
 	playBtnProgress(t, e, e.ownerID, e.book.ID, 179_000, now, now)
 	body = bookMain(playBtnGet(e, "/books/"+e.book.ID))
-	for _, w := range []string{`>Listen again</a>`, `data-ts-from-start="1"`, `data-ts-start-ms="0"`, `href="/stream/` + f1 + `#t=0.000"`, "Mark as not started"} {
+	for _, w := range []string{`>Listen again</span>`, `data-ts-from-start="1"`, `data-ts-start-ms="0"`, `href="/stream/` + f1 + `#t=0.000"`, "Mark as not started"} {
 		if !strings.Contains(body, w) {
 			t.Errorf("finished book page lacks %s", w)
 		}
@@ -325,7 +325,7 @@ func TestHomeHeroAndRows(t *testing.T) {
 		"Chapter 2 · 1 min left in chapter · 1 m left in book",
 		`aria-label="Book progress, chapter 2 of 3"`, `aria-valuenow="38.9"`, `class="ts-ruler__fill ts-value" data-ts-value="38.9"`,
 		`class="ts-ruler__tick" data-ts-value="33.3"`, `class="ts-ruler__tick" data-ts-value="66.7"`,
-		`>Resume</a>`, `href="/books/` + e.book.ID + `/chapters"`,
+		`>Resume</span>`, `href="/books/` + e.book.ID + `/chapters"`,
 	} {
 		if !strings.Contains(home, w) {
 			t.Errorf("Home lacks %s", w)

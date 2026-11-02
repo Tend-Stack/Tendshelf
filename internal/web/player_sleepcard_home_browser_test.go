@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-// TestFullPlayerBrowserSleepCardOnHome: on Home the hero's Resume hides the bar (one resume per
-// screen), yet a sleep fade must still show its card with a +10 min button that is on screen, at
-// least 44 px, and does not cover the hero's Resume.
+// TestFullPlayerBrowserSleepCardOnHome: on Home, with the bar showing (the book plays, so the hero
+// button is a Pause control), a sleep fade must show its card with a +10 min button that is on
+// screen, at least 44 px, and does not cover the hero's button.
 func TestFullPlayerBrowserSleepCardOnHome(t *testing.T) {
 	for _, size := range []struct {
 		name string
@@ -41,9 +41,11 @@ func TestFullPlayerBrowserSleepCardOnHome(t *testing.T) {
 			}
 			playerClickSel(t, tab, `[data-ts-sleep-card="bar"] [data-ts-sleep-plus]`)
 
-			// Back at the top the hero hides the bar again; the fade must still show.
+			// Back at the top the book is still playing, so the bar stays beside the hero's Pause
+			// button; the fade must show without covering either.
 			tab.Eval(`window.scrollTo(0, 0)`, nil)
-			tab.WaitFor(`document.getElementById("player").classList.contains("is-suppressed")`, 5*time.Second)
+			time.Sleep(400 * time.Millisecond) // the observer's report
+			tab.WaitFor(`!document.getElementById("player").classList.contains("is-suppressed") && window.tsPlayer.state().playing`, 5*time.Second)
 			tab.Eval(`window.tsPlayerFull.debug.advanceSleep(window.tsPlayerFull.debug.sleep().leftMs - 9000)`, nil)
 			time.Sleep(400 * time.Millisecond) // the slot's slide
 

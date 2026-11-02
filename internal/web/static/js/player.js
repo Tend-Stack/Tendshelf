@@ -635,31 +635,79 @@ function state() {
 // Redraws and tells the page (ts:player:state).
 function emit(kind) {
   render(true);
+  syncPageButtons();
+  updateSuppression();
   fire(document, "ts:player:state", { kind, ...state() });
 }
 
 // ---- One resume per screen ----
 
 // A page showing its own resume button for the loaded book hides the bar, so a screen never has
-// two. An observer watches those buttons come into and leave view.
+// two. An observer watches those buttons come into and leave view. While the book plays the bar
+// stays on every page instead, and those buttons become Pause controls (syncPageButtons).
 let resumeWatcher = null;
+const visibleResumeButtons = new Set();
 
 function setSuppressed(suppressed) {
   slot.classList.toggle("is-suppressed", suppressed);
   slot.inert = suppressed; // a hidden bar must not be reachable by keyboard either
 }
 
+// Hides the bar while a resume button for the paused book is in view; never while it plays.
+function updateSuppression() {
+  setSuppressed(!!book && audio.paused && visibleResumeButtons.size > 0);
+}
+
+// The loaded book's buttons on this page: Pause while it plays, their own words otherwise. The
+// server's label and aria-label are kept in data attributes so pausing restores them. The play
+// icon is hidden with CSSOM (an SVG ignores the hidden attribute); the pause icon sits in a span
+// that is hidden without JavaScript, shown here as display: contents so layout is unchanged.
+function setDisplay(el, value) {
+  el.style.setProperty("display", value); // an empty value removes the declaration
+}
+
+function syncPageButtons() {
+  const playing = !!book && !audio.paused;
+  for (const el of document.querySelectorAll("[data-ts-play]")) {
+    const pauses = playing && el.dataset.tsPlay === book.id;
+    if ((el.dataset.tsPausing === "1") === pauses) continue;
+    const label = el.querySelector("[data-ts-play-label]");
+    const pauseIcon = el.querySelector("[data-ts-pause-icon]");
+    const playIcon = el.querySelector("svg");
+    if (pauses) {
+      if (label) {
+        el.dataset.tsOwnLabel = label.textContent;
+        label.textContent = msg("pausePrefix");
+      }
+      if (el.hasAttribute("aria-label")) {
+        el.dataset.tsOwnAria = el.getAttribute("aria-label");
+        el.setAttribute("aria-label", msg("pausePrefix") + " " + book.title);
+      }
+    } else {
+      if (label) label.textContent = el.dataset.tsOwnLabel;
+      if (el.dataset.tsOwnAria !== undefined) el.setAttribute("aria-label", el.dataset.tsOwnAria);
+    }
+    if (playIcon) setDisplay(playIcon, pauses ? "none" : "");
+    if (pauseIcon) {
+      pauseIcon.hidden = !pauses;
+      setDisplay(pauseIcon, pauses ? "contents" : "");
+    }
+    el.dataset.tsPausing = pauses ? "1" : "0";
+  }
+}
+
 function watchPageResumeButtons() {
   if (resumeWatcher) resumeWatcher.disconnect();
-  setSuppressed(false);
+  visibleResumeButtons.clear();
+  syncPageButtons();
+  updateSuppression();
   if (!book) return;
-  const visible = new Set();
   resumeWatcher = new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      if (entry.isIntersecting) visible.add(entry.target);
-      else visible.delete(entry.target);
+      if (entry.isIntersecting) visibleResumeButtons.add(entry.target);
+      else visibleResumeButtons.delete(entry.target);
     }
-    setSuppressed(visible.size > 0);
+    updateSuppression();
   });
   for (const el of document.querySelectorAll("[data-ts-play]")) {
     if (el.dataset.tsPlay === book.id) resumeWatcher.observe(el);
@@ -819,6 +867,11 @@ listen(document, "click", (event) => {
     return;
   }
 
+  if (book && book.id === data.tsPlay && !audio.paused) {
+    // the page button of the playing book is a Pause control
+    pause();
+    return;
+  }
   wantsFirstSound = true;
   if (book && book.id === data.tsPlay) {
     // a finished book that is still loaded (the Listen again link) starts at the beginning of the book

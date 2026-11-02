@@ -49,8 +49,14 @@ templ PlayButton(v PlayButtonView) {
 		}
 	>
 		@Icon("play", true)
+		// The pause icon and the label span are for the player script. While this book plays the button
+		// pauses it. The span carries the hidden attribute (an SVG ignores it), so without
+		// JavaScript only the play icon shows.
+		<span hidden data-ts-pause-icon>
+			@Icon("pause", true)
+		</span>
 		if !v.Round {
-			{ v.Label }
+			<span data-ts-play-label>{ v.Label }</span>
 		}
 	</a>
 }
