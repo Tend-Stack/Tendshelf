@@ -242,6 +242,8 @@ const (
 	bookmarkErrTooLong   = "Notes can be up to 2,000 characters."
 	bookmarkErrLimit     = "This book has 1,000 bookmarks, the most it can hold."
 	bookmarkErrPosition  = "That position is not a number of milliseconds."
+	bookmarkNoteSaved    = "Note saved."
+	bookmarkDeleted      = "Bookmark deleted."
 	bookmarkExportTitle  = "Export bookmarks"
 	bookmarkExportText   = "Plain text"
 	bookmarkExportMD     = "Markdown"

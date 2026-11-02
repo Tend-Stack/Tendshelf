@@ -1,0 +1,9 @@
+package components
+
+// SheetClosedOOB is the out-of-band fragment that empties #sheet. A form inside a sheet posts with
+// hx-swap="none" and answers with this, a toast and whatever else changed, so the sheet closes
+// without the page being replaced (the book keeps playing). On an error answer it is left out, so the
+// sheet stays open with what the person typed.
+templ SheetClosedOOB() {
+	<div id="sheet" hx-swap-oob="innerHTML"></div>
+}
