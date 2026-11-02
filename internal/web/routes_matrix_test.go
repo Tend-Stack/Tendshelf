@@ -65,11 +65,11 @@ type sweepEnv struct {
 	libID, folderID, folderDir string
 	// extra is a member with no session who holds the library grant extraGrant: the person the
 	// Users rows act on (P3-2a).
-	extra, extraGrant string
-	book                       library.Book
-	author, narrator, series   string
-	job                        string
-	tree                       string // a folder for the browse view, with a file name that must never be sent
+	extra, extraGrant        string
+	book                     library.Book
+	author, narrator, series string
+	job                      string
+	tree                     string // a folder for the browse view, with a file name that must never be sent
 
 	// granted marks the app of TestRouteMatrixGranted: the member and the guest hold a library
 	// grant on libID, so rows answer with Granted and the leak scan is off.
@@ -269,10 +269,10 @@ type sweepRow struct {
 	// Granted replaces Want, per person, when the member and the guest hold a grant on the library
 	// (TestRouteMatrixGranted). A 0 means the grant changes nothing for that person.
 	Granted [4]int
-	Loc     string // the Location of a 303 (all roles), when it is fixed
+	Loc     string                   // the Location of a 303 (all roles), when it is fixed
 	LocOf   func(e *sweepEnv) string // the same, for a Location that holds a seeded id; wins over Loc
-	Anon    int    // the anonymous answer; 0 is the default: sign in
-	AnonLoc string // its Location; "" is the default
+	Anon    int                      // the anonymous answer; 0 is the default: sign in
+	AnonLoc string                   // its Location; "" is the default
 	Body    func(t *testing.T, e *sweepEnv, role int, body string)
 }
 
