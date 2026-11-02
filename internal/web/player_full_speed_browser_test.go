@@ -160,6 +160,9 @@ func TestFullPlayerBrowserSleep(t *testing.T) {
 		tab.Eval(`window.tsPlayerFull.debug.advanceSleep(`+strconv.Itoa(ms)+`)`, nil)
 	}
 
+	// Motion needs the person's permission on iOS; answer it as a phone would, inside the tap.
+	tab.Eval(`DeviceMotionEvent.requestPermission = () => Promise.resolve("granted")`, nil)
+
 	// 15 minutes: the item shows the time left and is active.
 	sleepChoose(t, tab, "15")
 	active, value := sleepItem(tab)
