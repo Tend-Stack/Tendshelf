@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
@@ -801,15 +802,21 @@ func TestRouteMatrix(t *testing.T) {
 	}
 
 	// Unsafe rows: a fresh seeded app for every person and row, so no row sees another's effects.
+	// Seeding is the slow part and touches only the row's own apps, so the rows run in parallel; the
+	// requests to the one shared app go one at a time, as they did when the rows ran in sequence.
+	var sharedMu sync.Mutex
 	for _, row := range rows {
 		if row.Method == http.MethodGet {
 			continue
 		}
 		t.Run(row.name(), func(t *testing.T) {
+			t.Parallel()
 			for role := range sweepRoles {
 				e := sweepSeed(t)
 				e.check(t, row, role, e.send(t, row, role, true))
 			}
+			sharedMu.Lock()
+			defer sharedMu.Unlock()
 			shared.check(t, row, -1, shared.send(t, row, -1, true))
 			// Without the token nothing happens, whoever asks.
 			if row.NoCSRF {
