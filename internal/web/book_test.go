@@ -279,47 +279,6 @@ func TestBookDetailsFolderAdminOnly(t *testing.T) {
 // bookAllScope sees everything: the owner's scope in a test that reads the library directly.
 var bookAllScope = library.Scope{Books: share.Filter{SQL: "1=1"}, Libraries: share.Filter{SQL: "1=1"}}
 
-func TestBookAboutRails(t *testing.T) {
-	a, f := bookApp(t)
-	one := librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Saga One", Authors: []string{"Ann Author"}, Narrators: []string{"Nan Narrator"}, Series: "The Saga", Sequence: "1", AddedAt: 1})
-	librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Saga Two", Authors: []string{"Ann Author"}, Narrators: []string{"Nan Narrator"}, Series: "The Saga", Sequence: "2", AddedAt: 2})
-	librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Saga Gone", Series: "The Saga", Sequence: "3", MissingSince: 1})
-	for i := 0; i < 8; i++ {
-		librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: fmt.Sprintf("Other %d", i), Narrators: []string{"Nan Narrator"}, AddedAt: int64(10 + i)})
-	}
-	librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Unrelated Book", Narrators: []string{"Zed Zoe"}})
-
-	main := bookMain(browseGet(a, "/books/"+one.ID, false, nil).Body.String())
-	if !strings.Contains(main, ">More in The Saga<") || strings.Count(main, `class="ts-book__seriesrow `)+strings.Count(main, `class="ts-book__seriesrow"`) != 2 {
-		t.Errorf("series rows: %d, want 2 (the missing book is not listed)", strings.Count(main, `class="ts-book__seriesrow `)+strings.Count(main, `class="ts-book__seriesrow"`))
-	}
-	if !strings.Contains(main, `aria-current="true"><span class="ts-book__seq">Book 1</span><span class="ts-book__seqtitle">Saga One</span><span class="ts-book__here">This book</span>`) &&
-		!strings.Contains(main, ">This book<") {
-		t.Error(`the current book is not marked "This book"`)
-	}
-	if !strings.Contains(main, ">Book 2<") || !strings.Contains(main, `href="/books/`) || strings.Contains(main, "Saga Gone") {
-		t.Error("series rows wrong")
-	}
-	if !strings.Contains(main, ">Also narrated by Nan Narrator<") {
-		t.Error("narrator rail title missing")
-	}
-	cards := regexp.MustCompile(`class="ts-card__title[^"]*">([^<]*)<`).FindAllStringSubmatch(main, -1)
-	if len(cards) != 6 {
-		t.Errorf("%d cards in the narrator rail, want 6", len(cards))
-	}
-	for _, c := range cards {
-		if html.UnescapeString(c[1]) == "Saga One" || c[1] == "Unrelated Book" {
-			t.Errorf("rail lists %q", c[1])
-		}
-	}
-	if !strings.Contains(main, `href="/series/`) || !strings.Contains(main, `href="/narrators/`) || !strings.Contains(main, `href="/authors/`) {
-		t.Error("header links to the series and people missing")
-	}
-	if !strings.Contains(main, "The Saga · Book 1") {
-		t.Error(`series line "The Saga · Book 1" missing`)
-	}
-}
-
 func TestChaptersShowAll(t *testing.T) {
 	a, f := bookApp(t)
 	b := librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Long Book"})

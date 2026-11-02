@@ -218,7 +218,7 @@ func TestThemeTokens(t *testing.T) {
 		rest := string(css)[i:]
 		end := strings.Index(rest, "}")
 		block := rest[:end]
-		for prop, want := range map[string]string{"--ground": th.Ground, "--surface": th.Surface, "--on-cover-accent": th.OnAccent} {
+		for prop, want := range map[string]string{"--ground": th.Ground, "--surface": th.Surface, "--on-cover-accent": th.OnAccent, "--ink": th.Ink, "--ink-muted": th.InkMuted} {
 			m := regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(prop) + `:\s*(#[0-9a-fA-F]{6})\s*;`).FindStringSubmatch(block)
 			if m == nil {
 				t.Errorf("%s: no %s in tokens.css", th.Name, prop)

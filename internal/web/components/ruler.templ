@@ -1,0 +1,20 @@
+package components
+
+// RulerView is the book progress ruler: Label names it, Now is 0 to 100 as text, Ticks are the
+// chapter starts as 0 to 100 percentages (text, for data-ts-value).
+type RulerView struct {
+	Label, Now string
+	Ticks      []string
+}
+
+// Ruler is the thin progress line with a tick at each chapter start. Home's hero and the book page's
+// play region draw it; its fill and ticks are placed by shell.js from data-ts-value.
+templ Ruler(v RulerView) {
+	<div class="ts-ruler" role="progressbar" aria-label={ v.Label } aria-valuemin="0" aria-valuemax="100" aria-valuenow={ v.Now }>
+		<div class="ts-ruler__line"></div>
+		<div class="ts-ruler__fill ts-value" data-ts-value={ v.Now }></div>
+		for _, t := range v.Ticks {
+			<span class="ts-ruler__tick" data-ts-value={ t }></span>
+		}
+	</div>
+}
