@@ -28,7 +28,13 @@ func TestFullPlayerBrowserHints(t *testing.T) {
 		// The sleep timer first (the sound is not playing yet), then the break rule and the play click.
 		sleepChoose(t, tab, "15")
 		tab.Eval(`window.tsPlayer.debug.setPausedAt(Date.now() - 61000)`, nil)
-		playerClickSel(t, tab, "[data-ts-full-toggle]")
+		// From 1280 px the side panel has no transport of its own (the bar holds play/pause), so the
+		// play click goes to the bar there.
+		toggle := "[data-ts-full-toggle]"
+		if w >= 1280 {
+			toggle = "#player [data-ts-toggle]"
+		}
+		playerClickSel(t, tab, toggle)
 		tab.WaitFor(`window.tsPlayer.state().playing`, 5*time.Second)
 		tab.Eval(`window.tsPlayerFull.debug.advanceSleep(15 * 60000 - 8000)`, nil)
 		tab.WaitFor(`document.querySelector('#player-full [data-ts-sleep-card="full"]') && !document.querySelector('#player-full [data-ts-sleep-card="full"]').hidden`, 3*time.Second)
