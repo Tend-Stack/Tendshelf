@@ -1,13 +1,18 @@
 package web
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
@@ -26,6 +31,8 @@ func (s *server) registerShare(mux *http.ServeMux) {
 	mux.HandleFunc("POST /share", s.postShare)
 	mux.HandleFunc("GET /books/{id}/share", s.getBookShare)
 	mux.HandleFunc("POST /books/{id}/share", s.postBookShare)
+	mux.HandleFunc("POST /books/{id}/share/link", s.postBookShareLink)
+	mux.HandleFunc("POST /share/links/{id}/stop", s.postShareLinkStop)
 }
 
 var shareBackRe = regexp.MustCompile(`^(?:/share|/books/([A-Za-z0-9_-]{1,80})/share)$`)
@@ -146,6 +153,16 @@ func (s *server) sharePageView(r *http.Request, bookID string) (pages.ShareView,
 	v.Scopes = shareScopeChoices(in)
 	v.Roles = shareRoleChoices(actor, formValue(r, "role"))
 	v.Expires = shareExpiryChoices(formValue(r, "expires"))
+	typed := url.Values{}
+	if r.Method == http.MethodPost {
+		typed = r.PostForm
+	}
+	if bookID != "" {
+		v.LinkForm = linkFormFor(bookID, typed)
+	}
+	if v.Links, err = s.shareLinkRows(ctx, bookID); err != nil {
+		return v, err
+	}
 	return v, s.shareLists(r, &v, bookID)
 }
 
@@ -390,4 +407,205 @@ func shareFieldMessage(fe users.FieldErrors) string {
 		return shareErrNoteLen
 	}
 	return shareErrExpires
+}
+
+// ---- Share links: made and stopped from the Share & invite pages ----
+
+const linkMinPW = 8
+
+// linkForm is the "Make a link" form of a book's page. typed is what the person last sent (label
+// and length); the password is never carried back.
+func linkFormFor(bookID string, typed url.Values) *pages.ShareLinkForm {
+	days := typed.Get("link_days")
+	if days == "" {
+		days = strconv.Itoa(share.LinkDefaultDays)
+	}
+	f := &pages.ShareLinkForm{Action: "/books/" + bookID + "/share/link", Label: typed.Get("link_label")}
+	for _, d := range share.LinkDays {
+		title := fmt.Sprintf(linkDaysN, d)
+		if d == 1 {
+			title = linkDay1
+		}
+		f.Days = append(f.Days, pages.ShareChoice{Value: strconv.Itoa(d), Title: title, On: strconv.Itoa(d) == days})
+	}
+	return f
+}
+
+// shareLinkRows lists the links that still work: the book's own on its page, every book's on /share
+// (where each line starts with the title).
+func (s *server) shareLinkRows(ctx context.Context, bookID string) ([]pages.ShareLinkRow, error) {
+	rows, err := s.links.Active(ctx, s.now().UnixMilli(), bookID, 50)
+	if err != nil {
+		return nil, err
+	}
+	loc := s.now().Location()
+	var out []pages.ShareLinkRow
+	for _, l := range rows {
+		name := l.Label
+		line := name
+		if line == "" {
+			line = fmt.Sprintf(linkMade, time.UnixMilli(l.CreatedAt).In(loc).Format("2 Jan"))
+		}
+		if name == "" {
+			name = l.BookTitle
+		}
+		if bookID == "" {
+			line = l.BookTitle + " · " + line
+		}
+		ends := time.UnixMilli(l.ExpiresAt).In(loc).Format("2 Jan")
+		meta := fmt.Sprintf(linkEndsShort, ends)
+		if l.HasPassword() {
+			meta = fmt.Sprintf(linkEndsPassword, ends)
+		}
+		out = append(out, pages.ShareLinkRow{ID: l.ID, Line: line, Meta: meta, StopLabel: fmt.Sprintf(linkStopFor, name)})
+	}
+	return out, nil
+}
+
+// linkSpec reads the share-link form. The password is returned apart from the spec because it is
+// hashed before the write transaction opens. Problems the person must fix are shareFormError.
+func linkSpec(r *http.Request, bookID string) (share.LinkSpec, string, error) {
+	f := r.PostForm
+	spec := share.LinkSpec{BookID: bookID, Label: strings.TrimSpace(f.Get("link_label"))}
+	days, err := strconv.Atoi(f.Get("link_days"))
+	if f.Get("link_days") == "" {
+		days, err = share.LinkDefaultDays, nil
+	}
+	if err != nil || !slices.Contains(share.LinkDays, days) {
+		return spec, "", shareFormError(linkErrDays)
+	}
+	spec.Days = days
+	if utf8.RuneCountInString(spec.Label) > 80 {
+		return spec, "", shareFormError(linkErrLabel)
+	}
+	pw := f.Get("link_password")
+	switch {
+	case pw == "":
+	case utf8.RuneCountInString(pw) < linkMinPW:
+		return spec, "", shareFormError(linkErrPassword)
+	case len(pw) > linkMaxPW:
+		return spec, "", shareFormError(linkErrPasswordLong)
+	}
+	return spec, pw, nil
+}
+
+func (s *server) linkURL(r *http.Request, tok string) string {
+	scheme := "http://"
+	if s.proxies.Secure(r) {
+		scheme = "https://"
+	}
+	return scheme + r.Host + linkPrefix + tok
+}
+
+// freshShareView is the page again with the invite form in its starting state: the link form's own
+// fields are not the invite form's.
+func (s *server) freshShareView(r *http.Request, bookID string) (pages.ShareView, error) {
+	page := r.Clone(r.Context())
+	page.Method = http.MethodGet
+	return s.sharePageView(page, bookID)
+}
+
+func (s *server) postBookShareLink(w http.ResponseWriter, r *http.Request) {
+	if !s.shareGate(w, r) || !s.parseForm(w, r) {
+		return
+	}
+	ctx := r.Context()
+	bookID := r.PathValue("id")
+	spec, pw, err := linkSpec(r, bookID)
+	hash := ""
+	if err == nil && pw != "" {
+		hash, err = s.users.HashPassword(ctx, pw) // before the transaction: hashing is slow
+	}
+	var l share.Link
+	var tok string
+	if err == nil {
+		err = s.lib.Store().WriteTx(ctx, func(tx *sql.Tx) error {
+			var cerr error
+			l, tok, cerr = s.links.Create(ctx, tx, currentUser(r), spec, hash)
+			return cerr
+		})
+	}
+	if err != nil {
+		s.shareLinkError(w, r, bookID, err)
+		return
+	}
+	v, err := s.freshShareView(r, bookID)
+	if errors.Is(err, library.ErrNotFound) {
+		s.notFound(w, r)
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "share page", err)
+		return
+	}
+	title := ""
+	if b, berr := s.lib.Book(ctx, bookID); berr == nil {
+		title = b.Title
+	}
+	end := time.UnixMilli(l.ExpiresAt).In(s.now().Location()).Format("2 January")
+	v.LinkCreated = &pages.InviteLink{URL: s.linkURL(r, tok), Title: linkReadyTitle, Label: linkFieldLabel, FieldID: "share-link",
+		Note: fmt.Sprintf(linkReadyNote, title, end)}
+	s.renderShare(w, r, http.StatusOK, v)
+}
+
+// shareLinkError answers a failed link create: 404 for anything the person may not do or a book
+// that is not there, 422 with plain words for a form to fix, 500 for the rest.
+func (s *server) shareLinkError(w http.ResponseWriter, r *http.Request, bookID string, err error) {
+	var msg string
+	var sf shareFormError
+	switch {
+	case errors.As(err, &sf):
+		msg = string(sf)
+	case errors.Is(err, share.ErrLinkSpec):
+		msg = linkErrDays
+	case errors.Is(err, share.ErrLinkRefused):
+		if _, berr := s.lib.Book(r.Context(), bookID); berr == nil && s.can.Can(r.Context(), currentUser(r), share.ManageUsers, share.Target{Kind: share.TargetServer}) {
+			msg = linkErrRefused // staff, a real book that cannot be shared (refused, missing)
+			break
+		}
+		s.notFound(w, r)
+		return
+	default:
+		s.serverError(w, r, "create link", err)
+		return
+	}
+	if r.Header.Get("HX-Request") == "true" {
+		s.fragment(w, r, http.StatusUnprocessableEntity, components.ErrorToast(msg))
+		return
+	}
+	v, verr := s.freshShareView(r, bookID)
+	if errors.Is(verr, library.ErrNotFound) {
+		s.notFound(w, r)
+		return
+	}
+	if verr != nil {
+		s.serverError(w, r, "share page", verr)
+		return
+	}
+	v.LinkForm = linkFormFor(bookID, r.PostForm)
+	v.LinkError = msg
+	s.renderShare(w, r, http.StatusUnprocessableEntity, v)
+}
+
+func (s *server) postShareLinkStop(w http.ResponseWriter, r *http.Request) {
+	if !s.shareGate(w, r) || !s.parseForm(w, r) {
+		return
+	}
+	ctx := r.Context()
+	err := s.lib.Store().WriteTx(ctx, func(tx *sql.Tx) error {
+		return s.links.Revoke(ctx, tx, currentUser(r), r.PathValue("id"))
+	})
+	switch {
+	case errors.Is(err, share.ErrLinkUnknown), errors.Is(err, share.ErrLinkRefused):
+		s.notFound(w, r)
+		return
+	case err != nil:
+		s.serverError(w, r, "stop link", err)
+		return
+	}
+	back := "/share"
+	if b, _, ok := validShareBack(r.PostForm.Get("back")); ok {
+		back = b
+	}
+	s.redirect(w, r, back)
 }

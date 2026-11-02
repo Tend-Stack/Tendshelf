@@ -1,0 +1,84 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// LinkView is the page behind a share link: the book and one Play button. It names no person: links
+// get forwarded. The handler writes every sentence.
+type LinkView struct {
+	ServerName, Title, Author, Length string
+	// Cover is the book's cover (its address already under the link's prefix); BandTint and
+	// BandClass tint the page ground like the book page's band.
+	Cover               components.CardView
+	BandTint, BandClass string
+	Play                components.PlayButtonView
+	// Ends is "This link works until 9 November." and Fine is the note about the saved place.
+	Ends, Fine string
+}
+
+// LinkPage is the listen page of a share link.
+templ LinkPage(v LinkView) {
+	<div class="ts-invite ts-link">
+		if v.BandClass != "" {
+			<div class={ "ts-invite__band " + v.BandClass } data-ts-tint={ v.BandTint } aria-hidden="true"></div>
+		}
+		<div class="ts-invite__brand">
+			@components.ServerBrand(v.ServerName)
+		</div>
+		<div class="ts-invite__cover">
+			<span class="ts-book-block">
+				@components.Cover(v.Cover, "fill")
+			</span>
+		</div>
+		<h1 class="title-1 ts-link__title">{ v.Title }</h1>
+		if v.Author != "" {
+			<p class="body-lg ts-link__author">{ v.Author }</p>
+		}
+		if v.Length != "" {
+			<p class="body ts-num ts-link__length">{ v.Length }</p>
+		}
+		<div class="ts-invite__cta" id="link-play">
+			@components.PlayButton(v.Play)
+		</div>
+		<p class="caption ts-link__ends">{ v.Ends }</p>
+		<p class="caption ts-invite__fine ts-link__fine">{ v.Fine }</p>
+	</div>
+}
+
+// LinkLockedView is the password form of a link that has one.
+type LinkLockedView struct {
+	CSRF, Action, ServerName, Heading, Label, Submit, Error string
+}
+
+// LinkLocked is the page of a password link before it is unlocked: the server's name and a
+// password field. Nothing about the book is on it.
+templ LinkLocked(v LinkLockedView) {
+	<div class="ts-invite ts-link ts-link--locked">
+		<div class="ts-invite__brand">
+			@components.ServerBrand(v.ServerName)
+		</div>
+		<h1 class="title-1">{ v.Heading }</h1>
+		<form class="ts-invite__cta ts-link__form" method="post" action={ templ.URL(v.Action) } hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			if v.Error != "" {
+				<p class="ts-share__error" role="alert" id="link-error">{ v.Error }</p>
+			}
+			<div class="ts-field">
+				<label class="ts-field__label" for="link-password">{ v.Label }</label>
+				<input
+					id="link-password"
+					class="ts-input"
+					type="password"
+					name="password"
+					autocomplete="current-password"
+					required
+					autofocus
+					if v.Error != "" {
+						aria-invalid="true"
+						aria-describedby="link-error"
+					}
+				/>
+			</div>
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">{ v.Submit }</button>
+		</form>
+	</div>
+}

@@ -9,6 +9,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
+	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
@@ -77,6 +78,36 @@ func playTarget(book library.Book, files []library.AudioFile, posMs int64) (file
 
 // playerView gathers what the person's player needs for a book they may listen to.
 func (s *server) playerView(ctx context.Context, u users.User, sc library.Scope, book library.Book) (components.PlayerDataView, error) {
+	set, err := s.users.LoadSettings(ctx, u.ID)
+	if err != nil {
+		return components.PlayerDataView{}, err
+	}
+	v, err := s.bookPlayerView(ctx, sc, book, set, func(sha string) string { return coverURL(book.ID, sha, 512) })
+	if err != nil {
+		return v, err
+	}
+	p, err := s.progress.Get(ctx, u.ID, book.ID)
+	if err != nil && !errors.Is(err, progress.ErrNotFound) {
+		return components.PlayerDataView{}, err
+	}
+	v.PositionMs, v.Finished, v.UpdatedAt = p.PositionMs, p.Finished(), p.ClientUpdatedAt
+	v.DeviceID, v.DeviceLabel = p.DeviceID, p.DeviceLabel
+	return v, nil
+}
+
+// linkPlayerView gathers what the player needs on a share link's page: the one book of the link,
+// default settings, a cover under the link's own prefix and no place (the browser keeps it). It
+// reads nothing about any person.
+func (s *server) linkPlayerView(ctx context.Context, l share.Link, book library.Book, base string) (components.PlayerDataView, error) {
+	books, libs := share.LinkScope(l)
+	return s.bookPlayerView(ctx, library.Scope{Books: books, Libraries: libs}, book, users.DefaultSettings, func(sha string) string {
+		return base + "/cover?w=512&v=" + sha[:min(8, len(sha))]
+	})
+}
+
+// bookPlayerView is the part of the player's data that depends on the book and the settings only:
+// title, files, chapters, cover and tint. The caller adds the place.
+func (s *server) bookPlayerView(ctx context.Context, sc library.Scope, book library.Book, set users.Settings, cover func(sha string) string) (components.PlayerDataView, error) {
 	d, err := s.lib.BookDetail(ctx, sc, book.ID)
 	if err != nil {
 		return components.PlayerDataView{}, err
@@ -85,35 +116,22 @@ func (s *server) playerView(ctx context.Context, u users.User, sc library.Scope,
 	if err != nil {
 		return components.PlayerDataView{}, err
 	}
-	set, err := s.users.LoadSettings(ctx, u.ID)
-	if err != nil {
-		return components.PlayerDataView{}, err
-	}
-	p, err := s.progress.Get(ctx, u.ID, book.ID)
-	if err != nil && !errors.Is(err, progress.ErrNotFound) {
-		return components.PlayerDataView{}, err
-	}
 	names := make([]string, 0, len(d.Card.Authors))
 	for _, a := range d.Card.Authors {
 		names = append(names, a.Name)
 	}
 	v := components.PlayerDataView{
-		BookID:      book.ID,
-		Title:       d.Book.Title,
-		Author:      strings.Join(names, ", "),
-		DurationMs:  book.DurationMs,
-		PositionMs:  p.PositionMs,
-		Finished:    p.Finished(),
-		UpdatedAt:   p.ClientUpdatedAt,
-		DeviceID:    p.DeviceID,
-		DeviceLabel: p.DeviceLabel,
-		ServerNow:   s.now().UnixMilli(),
-		Speed:       strconv.FormatFloat(set.Speed, 'f', 2, 64),
-		SkipBackS:   set.SkipBackS, SkipForwardS: set.SkipForwardS,
+		BookID:     book.ID,
+		Title:      d.Book.Title,
+		Author:     strings.Join(names, ", "),
+		DurationMs: book.DurationMs,
+		ServerNow:  s.now().UnixMilli(),
+		Speed:      strconv.FormatFloat(set.Speed, 'f', 2, 64),
+		SkipBackS:  set.SkipBackS, SkipForwardS: set.SkipForwardS,
 		AutoRewind: set.AutoRewind,
 	}
 	if c := d.Card.Cover; c != nil {
-		v.CoverURL = coverURL(book.ID, c.SHA, 512)
+		v.CoverURL = cover(c.SHA)
 		if set.PlayerTint {
 			v.AccentDark, v.AccentLight, v.AccentSepia = c.Accent["dark"], c.Accent["light"], c.Accent["sepia"]
 			v.Tint = c.Tint

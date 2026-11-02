@@ -55,6 +55,26 @@ type ShareView struct {
 	Pending   []SharePending
 	// NewLink is the panel for a replaced link ("Copy link").
 	NewLink *InviteLink
+	// LinkForm is the share-link form, on a book's page only. Links are the active share links (a
+	// book's own on its page, all of them on /share). LinkCreated is the panel with the new
+	// address, shown once. LinkError is the form's error in plain words.
+	LinkForm    *ShareLinkForm
+	Links       []ShareLinkRow
+	LinkCreated *InviteLink
+	LinkError   string
+}
+
+// ShareLinkForm is the "Make a link" form of a book's page. Label is what was typed (kept after an
+// error), Days the lengths of life (one On). The password is never sent back.
+type ShareLinkForm struct {
+	Action, Label string
+	Days          []ShareChoice
+}
+
+// ShareLinkRow is one active share link. Line is its name, Meta says when it ends, StopLabel is the
+// button's accessible name.
+type ShareLinkRow struct {
+	ID, Line, Meta, StopLabel string
 }
 
 // SharePage is the Share & invite page: the form on the left, who is listening and the reassurance
@@ -70,15 +90,18 @@ templ SharePage(v ShareView) {
 			<p class="body">Everyone gets their own place, progress and bookmarks. You decide what each person can see.</p>
 		</header>
 		<div class="ts-share__grid">
-			<section class="ts-share__card" aria-labelledby="inv-h">
-				<h2 id="inv-h" class="section">Invite someone</h2>
-				if v.Created != nil {
-					@InviteLinkPanel(*v.Created)
-					<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.Back) }>Invite someone else</a>
-				} else {
-					@shareForm(v)
-				}
-			</section>
+			<div class="ts-share__main">
+				<section class="ts-share__card" aria-labelledby="inv-h">
+					<h2 id="inv-h" class="section">Invite someone</h2>
+					if v.Created != nil {
+						@InviteLinkPanel(*v.Created)
+						<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.Back) }>Invite someone else</a>
+					} else {
+						@shareForm(v)
+					}
+				</section>
+				@shareLinks(v)
+			</div>
 			<div class="ts-share__side">
 				@shareListening(v)
 				@shareSafe()
@@ -282,5 +305,72 @@ templ shareSafe() {
 			<li>Stopping sharing takes effect at once, on every device. Their progress is kept in case you invite them again.</li>
 			<li>Invite links stop working when they expire, even if nobody used them.</li>
 		</ul>
+	</section>
+}
+
+// shareLinks is "Share a link anyone can open": on a book's page the form that makes one, on /share
+// a hint to open a book, then the links that still work with a Stop button each. A new link's
+// address is shown once, in the panel at the top.
+templ shareLinks(v ShareView) {
+	<section class="ts-share__card ts-share__links" aria-labelledby="lnk-h">
+		<h2 id="lnk-h" class="section">Share a link anyone can open</h2>
+		<p class="caption ts-share__linkhint">No account needed. They can listen, nothing else.</p>
+		if v.LinkCreated != nil {
+			@InviteLinkPanel(*v.LinkCreated)
+		}
+		if v.LinkForm != nil {
+			<form class="ts-share__form ts-share__linkform" method="post" action={ templ.URL(v.LinkForm.Action) } hx-push-url="false" aria-label="Make a link">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				if v.LinkError != "" {
+					<p class="ts-share__error" role="alert">{ v.LinkError }</p>
+				}
+				<div class="ts-field ts-share__field">
+					<label class="ts-field__label" for="link-label">Who is it for? (optional)</label>
+					<input id="link-label" class="ts-input" type="text" name="link_label" value={ v.LinkForm.Label } maxlength="80" autocomplete="off"/>
+				</div>
+				<details class="ts-share__linkpw">
+					<summary>Add a password</summary>
+					<div class="ts-field ts-share__field">
+						<label class="ts-field__label" for="link-pw">Password</label>
+						<input id="link-pw" class="ts-input" type="password" name="link_password" autocomplete="new-password" minlength="8"/>
+					</div>
+				</details>
+				<fieldset class="ts-share__field">
+					<legend class="ts-field__label">The link works for</legend>
+					<div class="ts-share__chips">
+						for _, c := range v.LinkForm.Days {
+							<label class="ts-share__chip">
+								<input type="radio" name="link_days" value={ c.Value } checked?={ c.On }/>
+								<span>{ c.Title }</span>
+							</label>
+						}
+					</div>
+				</fieldset>
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">
+					@components.Icon("link", false)
+					Make a link
+				</button>
+			</form>
+		} else {
+			<p class="caption ts-share__linkhint">To make a link, open a book and choose Share.</p>
+		}
+		if len(v.Links) > 0 {
+			<ul class="ts-share__list ts-share__linklist">
+				for _, l := range v.Links {
+					<li class="ts-share__pending ts-share__linkrow">
+						<span class="ts-invite__icon">@components.Icon("link", false)</span>
+						<span class="ts-users__text">
+							<span class="body ts-users__name">{ l.Line }</span>
+							<span class="caption ts-users__meta ts-num">{ l.Meta }</span>
+						</span>
+						<form method="post" action={ templ.URL("/share/links/" + l.ID + "/stop") }>
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<input type="hidden" name="back" value={ v.Back }/>
+							<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ l.StopLabel }>Stop</button>
+						</form>
+					</li>
+				}
+			</ul>
+		}
 	</section>
 }

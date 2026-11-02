@@ -377,7 +377,7 @@ func playerMsgs() components.PlayerMsgs {
 		ScrubValue: msgScrubValue, FineScrub: msgFineScrub, ClosePlayer: msgClosePlayer, PrevChapter: msgPrevChapter,
 		NextChapter: msgNextChapter, Speed: msgSpeed, Sleep: msgSleep, Chapters: msgChapters, Bookmark: msgBookmark,
 		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
-		OpenPlayer: msgOpenPlayer, ScrubBubble: msgScrubBubble,
+		OpenPlayer: msgOpenPlayer, Resume: playResume, ScrubBubble: msgScrubBubble,
 		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SleepTitle: msgSleepTitle,
 		SleepEndOfChapter: msgSleepEndOfChapter, SleepMinutes: msgSleepMinutes, SleepIn: msgSleepIn,
 		SleepCustom: msgSleepCustom, SleepCustomLabel: msgSleepCustomLabel, SleepStart: msgSleepStart,

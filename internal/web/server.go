@@ -8,7 +8,9 @@ package web
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -72,6 +74,8 @@ type server struct {
 	can      *share.Checker
 	grants   *share.Grants
 	invites  *share.Invites
+	links    *share.Links
+	linkKey  []byte // signs the share-link unlock cookie; derived from the CSRF key, never the same bytes
 	proxies  auth.Proxies
 	lib      *library.Repo
 	dataDir  string
@@ -148,6 +152,8 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	checker := share.New(opts.Store)
 	grants := share.NewGrants(opts.Store)
 	invites := share.NewInvites(opts.Store, checker, grants, ur, opts.Now)
+	lk := hmac.New(sha256.New, key)
+	lk.Write([]byte("tendshelf share-link unlock v1"))
 	s := &server{
 		assets:   assets,
 		auth:     auth.NewService(opts.Store, ur, ss, auth.ServiceOptions{SetupCode: opts.SetupCode, Now: opts.Now, Invites: invites}),
@@ -156,6 +162,8 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		can:      checker,
 		grants:   grants,
 		invites:  invites,
+		links:    share.NewLinks(opts.Store, checker, opts.Now),
+		linkKey:  lk.Sum(nil),
 		proxies:  opts.TrustedProxies,
 		lib:      opts.Library,
 		dataDir:  opts.DataDir,
@@ -182,6 +190,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerUsers(mux)
 	s.registerInvites(mux)
 	s.registerShare(mux)
+	s.registerLinks(mux)
 	//
 	s.registerSetupSteps(mux)
 	s.registerMe(mux)

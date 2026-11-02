@@ -8,10 +8,10 @@ templ KeysHelp(m PlayerMsgs) {
 		<dl class="ts-keys__list">
 			<div class="ts-keys__row"><dt><kbd>Space</kbd></dt><dd>{ m.KeysPlay }</dd></div>
 			<div class="ts-keys__row"><dt><kbd>←</kbd> / <kbd>→</kbd></dt><dd>{ m.KeysSkip }</dd></div>
-			<div class="ts-keys__row"><dt><kbd>B</kbd></dt><dd>{ m.KeysBookmark }</dd></div>
-			<div class="ts-keys__row"><dt><kbd>/</kbd></dt><dd>{ m.KeysSearch }</dd></div>
-			<div class="ts-keys__row"><dt><kbd>G</kbd> then <kbd>L</kbd></dt><dd>{ m.KeysLibrary }</dd></div>
-			<div class="ts-keys__row"><dt><kbd>G</kbd> then <kbd>H</kbd></dt><dd>{ m.KeysHome }</dd></div>
+			<div class="ts-keys__row" if m.Link { hidden }><dt><kbd>B</kbd></dt><dd>{ m.KeysBookmark }</dd></div>
+			<div class="ts-keys__row" if m.Link { hidden }><dt><kbd>/</kbd></dt><dd>{ m.KeysSearch }</dd></div>
+			<div class="ts-keys__row" if m.Link { hidden }><dt><kbd>G</kbd> then <kbd>L</kbd></dt><dd>{ m.KeysLibrary }</dd></div>
+			<div class="ts-keys__row" if m.Link { hidden }><dt><kbd>G</kbd> then <kbd>H</kbd></dt><dd>{ m.KeysHome }</dd></div>
 			<div class="ts-keys__row"><dt><kbd>?</kbd></dt><dd>{ m.KeysList }</dd></div>
 		</dl>
 		<form method="dialog"><button class="ts-btn">{ m.KeysClose }</button></form>

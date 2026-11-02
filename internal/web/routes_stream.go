@@ -35,13 +35,9 @@ func (s *server) registerStream(mux *http.ServeMux) {
 // file is opened; an unknown file, an unknown or hidden book and a refused file all answer the same
 // 404. The path comes only from the database row. Library files are only read.
 func (s *server) getStream(w http.ResponseWriter, r *http.Request) {
-	compat := false
-	if q := r.URL.Query(); q.Has("compat") {
-		if q.Get("compat") != "1" {
-			http.Error(w, "Bad compat value.", http.StatusBadRequest)
-			return
-		}
-		compat = true
+	compat, ok := compatParam(w, r)
+	if !ok {
+		return
 	}
 	f, err := s.lib.AudioFile(r.Context(), r.PathValue("audioFileID"))
 	if errors.Is(err, library.ErrNotFound) {
@@ -60,8 +56,27 @@ func (s *server) getStream(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
+	s.serveAudio(w, r, f, compat, "private, no-cache")
+}
+
+// compatParam reads ?compat=1. Any other value is answered 400 here and ok is false.
+func compatParam(w http.ResponseWriter, r *http.Request) (compat, ok bool) {
+	if q := r.URL.Query(); q.Has("compat") {
+		if q.Get("compat") != "1" {
+			http.Error(w, "Bad compat value.", http.StatusBadRequest)
+			return false, false
+		}
+		return true, true
+	}
+	return false, true
+}
+
+// serveAudio sends a file the caller has already authorized and checked with streamable: the
+// original with byte ranges, or with compat the browser-friendly copy. cacheControl is the header
+// value (a link listener gets "private, no-store"). It is shared by /stream and /s/{token}/stream.
+func (s *server) serveAudio(w http.ResponseWriter, r *http.Request, f library.AudioFile, compat bool, cacheControl string) {
 	if compat {
-		s.streamCompat(w, r, f)
+		s.streamCompat(w, r, f, cacheControl)
 		return
 	}
 	// The scanner never records symlinks, but a file can be swapped for one after a scan, and a
@@ -95,7 +110,7 @@ func (s *server) getStream(w http.ResponseWriter, r *http.Request) {
 		// The file changed since the scan: a tag that cannot match an old copy of its bytes.
 		h.Set("ETag", `"m-`+strconv.FormatInt(fi.Size(), 10)+"-"+strconv.FormatInt(fi.ModTime().UnixNano(), 10)+`"`)
 	}
-	h.Set("Cache-Control", "private, no-cache")
+	h.Set("Cache-Control", cacheControl)
 	http.ServeContent(w, r, "", fi.ModTime(), file)
 }
 
@@ -109,7 +124,7 @@ func streamable(book library.Book, f library.AudioFile) bool {
 
 // streamCompat answers ?compat=1: a ready copy is served; otherwise one job is requested and the
 // answer is 503 with Retry-After. It never waits for the conversion.
-func (s *server) streamCompat(w http.ResponseWriter, r *http.Request, f library.AudioFile) {
+func (s *server) streamCompat(w http.ResponseWriter, r *http.Request, f library.AudioFile, cacheControl string) {
 	if s.compat == nil {
 		s.notFound(w, r)
 		return
@@ -140,7 +155,7 @@ func (s *server) streamCompat(w http.ResponseWriter, r *http.Request, f library.
 		h := w.Header()
 		h.Set("Content-Type", "audio/mp4")
 		h.Set("ETag", `"`+f.QuickHash+"-c"+strconv.Itoa(media.CompatRecipe)+`"`)
-		h.Set("Cache-Control", "private, no-cache")
+		h.Set("Cache-Control", cacheControl)
 		http.ServeContent(w, r, "", fi.ModTime(), file)
 		return
 	}

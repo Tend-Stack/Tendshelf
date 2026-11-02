@@ -157,7 +157,7 @@ async function load(file, gen) {
   files.set(file.id, { status: "loading", firstAt: first, wait: last });
   let after = 0;
   try {
-    const res = await fetch("/peaks/" + encodeURIComponent(file.id), { credentials: "same-origin" });
+    const res = await fetch((document.body.dataset.tsLink || "") + "/peaks/" + encodeURIComponent(file.id), { credentials: "same-origin" });
     if (res.ok) {
       const peaks = parse(await res.arrayBuffer());
       if (gen !== generation) return;
