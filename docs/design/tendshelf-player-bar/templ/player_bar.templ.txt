@@ -1,0 +1,176 @@
+package ui
+
+import "fmt"
+
+// PlayerBarProps is what the server knows when it renders the bar. The client module
+// (js/player-bar.js) takes over from here: it draws the waveform, moves the needle and
+// updates the times from the <audio> element.
+type PlayerBarProps struct {
+	BookID         string
+	Title          string
+	Author         string
+	CoverURL       string
+	LeftInBook     string  // "6 h 40 m left in book"
+	ChapterIndex   int     // 12
+	ChapterTitle   string  // "The Second Lamp"
+	ChapterStart   float64 // seconds into the book
+	ChapterEnd     float64
+	Position       float64 // seconds into the book
+	BookDuration   float64
+	ChapterStarts  []float64 // every chapter's start, for the hairline gaps
+	Speed          string    // "1.0×"
+	SleepMinutes   int       // 0 = off
+	Playing        bool
+}
+
+func pct(a, b float64) string {
+	if b <= 0 {
+		return "0%"
+	}
+	return fmt.Sprintf("%.2f%%", a/b*100)
+}
+
+func clock(sec float64) string {
+	s := int(sec + 0.5)
+	if s < 0 {
+		s = 0
+	}
+	h, m, r := s/3600, (s%3600)/60, s%60
+	if h > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", h, m, r)
+	}
+	return fmt.Sprintf("%d:%02d", m, r)
+}
+
+templ PlayerBar(p PlayerBarProps) {
+	<section
+		id="player-bar"
+		class="ts-pbar"
+		aria-label="Now playing"
+		hx-preserve="true"
+		data-book={ p.BookID }
+		data-chapter-index={ fmt.Sprint(p.ChapterIndex) }
+		data-chapter-title={ p.ChapterTitle }
+		data-chapter-start={ fmt.Sprint(p.ChapterStart) }
+		data-chapter-end={ fmt.Sprint(p.ChapterEnd) }
+		data-book-duration={ fmt.Sprint(p.BookDuration) }
+	>
+		<div
+			class="ts-pbar__book-progress"
+			role="progressbar"
+			aria-label="Book progress"
+			aria-valuemin="0"
+			aria-valuemax="100"
+			aria-valuenow={ fmt.Sprintf("%.0f", p.Position/p.BookDuration*100) }
+			aria-valuetext={ fmt.Sprintf("%.0f percent of the book, chapter %d", p.Position/p.BookDuration*100, p.ChapterIndex) }
+		>
+			<span style={ "width: " + pct(p.Position, p.BookDuration) }></span>
+			for _, s := range p.ChapterStarts {
+				<i style={ "left: " + pct(s, p.BookDuration) }></i>
+			}
+		</div>
+		<a href={ templ.SafeURL("/books/" + p.BookID + "/player") } class="ts-pbar__now" aria-label={ "Open player: " + p.Title + ", chapter " + fmt.Sprint(p.ChapterIndex) }>
+			<span class="ts-cover" style="width: 56px; height: 56px"><img src={ p.CoverURL } alt=""/></span>
+			<span class="ts-pbar__text">
+				<span class="ts-pbar__title">{ p.Title }</span>
+				<span class="ts-pbar__meta">{ p.Author } · { p.LeftInBook }</span>
+			</span>
+		</a>
+		<div class="ts-pbar__transport">
+			<button type="button" class="ts-iconbtn" aria-label="Back 15 seconds" data-skip="-15">@iconBack15()</button>
+			<button type="button" class="ts-pbar__play" aria-label={ playLabel(p.Playing) }>
+				if p.Playing {
+					@iconPause()
+				} else {
+					@iconPlay()
+				}
+			</button>
+			<button type="button" class="ts-iconbtn" aria-label="Forward 30 seconds" data-skip="30">@iconForward30()</button>
+		</div>
+		<div class="ts-pbar__seek">
+			<div class="ts-wave ts-wave--loading" style={ "--p: " + pct(p.Position-p.ChapterStart, p.ChapterEnd-p.ChapterStart) }>
+				<svg class="ts-wave__rest" viewBox="0 0 400 36" preserveAspectRatio="none" aria-hidden="true"><path></path></svg>
+				<svg class="ts-wave__played" viewBox="0 0 400 36" preserveAspectRatio="none" aria-hidden="true"><path></path></svg>
+				<svg class="ts-wave__ahead" viewBox="0 0 400 36" preserveAspectRatio="none" aria-hidden="true"><path></path></svg>
+				<svg class="ts-wave__behind" viewBox="0 0 400 36" preserveAspectRatio="none" aria-hidden="true"><path></path></svg>
+				<span class="ts-wave__hoverline"></span>
+				<span class="ts-wave__needle"></span>
+				<div class="ts-wave__tip"></div>
+				<input
+					class="ts-wave__input"
+					type="range"
+					min="0"
+					max={ fmt.Sprintf("%.0f", p.ChapterEnd-p.ChapterStart) }
+					step="1"
+					value={ fmt.Sprintf("%.0f", p.Position-p.ChapterStart) }
+					aria-label={ fmt.Sprintf("Position in chapter %d", p.ChapterIndex) }
+				/>
+			</div>
+			<div class="ts-pbar__times">
+				<span data-pbar="elapsed">{ clock(p.Position - p.ChapterStart) }</span>
+				<span data-pbar="chapter">Chapter { fmt.Sprint(p.ChapterIndex) } · { p.ChapterTitle }</span>
+				<span data-pbar="left" class="ts-pbar__left">−{ clock(p.ChapterEnd - p.Position) }</span>
+			</div>
+		</div>
+		<div class="ts-pbar__tools">
+			<button type="button" class="ts-pbar__speed" aria-label={ "Playback speed, " + p.Speed }>{ p.Speed }</button>
+			if p.SleepMinutes > 0 {
+				<button type="button" class="ts-iconbtn ts-pbar__tool is-on" aria-pressed="true" aria-label={ fmt.Sprintf("Sleep timer, %d minutes left", p.SleepMinutes) } style="width: auto; padding: 0 10px">
+					@iconMoon()
+					<span class="ts-pbar__sleep-left">{ fmt.Sprintf("%dm", p.SleepMinutes) }</span>
+				</button>
+			} else {
+				<button type="button" class="ts-iconbtn ts-pbar__tool" aria-pressed="false" aria-label="Sleep timer, off">@iconMoon()</button>
+			}
+			<button type="button" class="ts-iconbtn ts-pbar__tool" aria-label="Chapters" hx-get={ "/books/" + p.BookID + "/chapters?sheet=1" } hx-target="#sheet">@iconList()</button>
+			<button type="button" class="ts-iconbtn ts-pbar__tool" aria-label="Add a bookmark" hx-post={ "/books/" + p.BookID + "/bookmarks" } hx-vals="js:{at: document.getElementById('audio').currentTime}" hx-swap="none">@iconBookmark()</button>
+			<div class="ts-pbar__volume">
+				<button type="button" class="ts-iconbtn" aria-label="Volume" aria-haspopup="true" aria-expanded="false">@iconVolume()</button>
+			</div>
+			<a href={ templ.SafeURL("/books/" + p.BookID + "/player") } class="ts-iconbtn ts-pbar__tool" aria-label="Open the full player">@iconExpand()</a>
+		</div>
+	</section>
+}
+
+func playLabel(playing bool) string {
+	if playing {
+		return "Pause"
+	}
+	return "Play"
+}
+
+templ iconPlay() {
+	<svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"></path></svg>
+}
+
+templ iconPause() {
+	<svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>
+}
+
+templ iconBack15() {
+	<svg class="ts-icon" style="width: 30px; height: 30px; stroke-width: 1.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"></path><path d="M4.5 3.5v4h4"></path></svg>
+}
+
+templ iconForward30() {
+	<svg class="ts-icon" style="width: 30px; height: 30px; stroke-width: 1.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.4-5.5"></path><path d="M19.5 3.5v4h-4"></path></svg>
+}
+
+templ iconMoon() {
+	<svg class="ts-icon" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"></path></svg>
+}
+
+templ iconList() {
+	<svg class="ts-icon" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"></path></svg>
+}
+
+templ iconBookmark() {
+	<svg class="ts-icon" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4h11v16.5L12 16.8l-5.5 3.7z"></path></svg>
+}
+
+templ iconVolume() {
+	<svg class="ts-icon" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"></path><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"></path></svg>
+}
+
+templ iconExpand() {
+	<svg class="ts-icon" style="width: 22px; height: 22px" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"></path></svg>
+}
