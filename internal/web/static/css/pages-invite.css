@@ -1,0 +1,7 @@
+/* The invite page, its state pages and "Keep your place" (/welcome). The markup ships with P3-3a;
+   the look is P3-3b. Only the rule the page needs to work comes first. */
+
+/* The name and password fields show only while "A name and password" is chosen. */
+.ts-invite__keep:has(#keep-phone:checked) .ts-invite__fields {
+  display: none;
+}
