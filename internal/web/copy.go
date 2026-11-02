@@ -286,8 +286,8 @@ const (
 	msgLeftInBookHours      = msgDurationHours + msgLeftInBookSuffix
 	msgLeftInBookBoth       = msgDurationHoursMinutes + msgLeftInBookSuffix
 	msgSubtitleSep          = " · " // between the chapter title and the author under the book's title
-	msgScrubLabel           = "Position in book"
-	msgScrubValue           = "{h} hours {m} minutes elapsed, chapter {n}"
+	msgScrubLabel           = "Position in chapter"
+	msgScrubValue           = "Chapter {n}, {m} minutes {s} seconds elapsed"
 	msgFineScrub            = "Drag up for fine control"
 	msgScrubBubble          = "Chapter {n} · {title} · {t}"
 	msgClosePlayer          = "Close player"

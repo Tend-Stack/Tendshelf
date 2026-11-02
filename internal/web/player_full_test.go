@@ -42,8 +42,8 @@ func TestFullPlayerMarkup(t *testing.T) {
 		`data-ts-full-cover`, `id="player-full-title"`, `data-ts-full-title`, `data-ts-full-author`, `data-ts-full-clock`, `data-ts-full-left`,
 		`data-ts-full-prev`, `aria-label="Previous chapter"`, `data-ts-full-back`, `data-ts-full-back-num`, `data-ts-full-toggle`,
 		`ts-iconbtn ts-iconbtn--cover ts-iconbtn--xl`, `data-ts-full-forward`, `data-ts-full-forward-num`, `data-ts-full-next`, `aria-label="Next chapter"`,
-		`data-ts-scrub="full"`, `data-ts-ticks`, `ts-scrub__fill`, `ts-scrub__chapter`, `ts-scrub__needle`, `ts-scrub__bubble`,
-		`type="range"`, `<label class="ts-sr" for="ts-scrub-full">Position in book</label>`, `data-ts-full-elapsed`, `data-ts-full-fine`, `data-ts-full-book-left`,
+		`data-ts-scrub="full"`, `data-ts-ruler`, `data-ts-ruler-ticks`, `ts-scrub__fill`, `ts-scrub__needle`, `ts-scrub__bubble`,
+		`type="range"`, `<label class="ts-sr" for="ts-scrub-full">Position in chapter</label>`, `data-ts-full-elapsed`, `data-ts-full-fine`, `data-ts-full-book-left`,
 		`class="ts-player-bar ts-player__bar"`, `data-ts-open-speed`, `data-ts-open-sleep`, `data-ts-open-chapters`,
 		`data-ts-full-sheet`, `data-ts-chapters-sheet`, `data-ts-chapter-list`, `data-ts-chapter-row`,
 		`data-ts-full-book`, `data-ts-full-finish`, `Go to book`, `Mark as finished`,
@@ -112,7 +112,7 @@ func TestFullPlayerMarkup(t *testing.T) {
 func TestFullPlayerCopy(t *testing.T) {
 	for got, want := range map[string]string{
 		msgChapterOf: "Chapter {n} of {total}", msgLeftInChapter: "{t} left in chapter", msgLeftInBookMinutes: "{m} m left in book", msgLeftInBookHours: "{h} h left in book", msgLeftInBookBoth: "{h} h {m} m left in book", msgSubtitleSep: " · ",
-		msgScrubValue: "{h} hours {m} minutes elapsed, chapter {n}", msgFineScrub: "Drag up for fine control", msgClosePlayer: "Close player",
+		msgScrubValue: "Chapter {n}, {m} minutes {s} seconds elapsed", msgFineScrub: "Drag up for fine control", msgClosePlayer: "Close player",
 		msgOpenPlayer: "Open player: {title}, chapter {n}", msgMarkFinished: "Mark as finished", msgGoToBook: "Go to book",
 	} {
 		if got != want {
