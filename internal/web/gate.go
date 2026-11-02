@@ -9,13 +9,13 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 )
 
-// gate is default deny: every path except /setup, /login and the invite links (the static files and /healthz never get
+// gate is default deny: every path except /setup, /login and the invite and share links (the static files and /healthz never get
 // here) needs a signed-in, non-disabled person. The auth middleware already dropped sessions of
 // disabled accounts, so "signed in" is just "has a user in the context". With no owner yet,
 // everyone is sent to /setup; otherwise anonymous visitors go to /login with a way back.
 func (s *server) gate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/setup" || r.URL.Path == "/login" || isInvitePath(r.URL.Path) {
+		if r.URL.Path == "/setup" || r.URL.Path == "/login" || isInvitePath(r.URL.Path) || isLinkPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -89,9 +89,45 @@ func isInvitePath(p string) bool {
 	return !more || tail == "cover"
 }
 
-// logPath is the request path for a log line, with an invite token replaced by an ellipsis: the
-// token is the secret, so it must never reach a log.
+// linkPrefix starts the share-link paths, public like the invite pages and for the same reason: the
+// token in the path is the credential.
+const linkPrefix = "/s/"
+
+// isLinkPath reports whether p is /s/{token}, /s/{token}/cover, /s/{token}/stream/{id} or
+// /s/{token}/peaks/{id}, every segment non-empty and nothing after. Anything else under /s/ stays
+// behind the gate.
+func isLinkPath(p string) bool {
+	rest, ok := strings.CutPrefix(p, linkPrefix)
+	if !ok || rest == "" {
+		return false
+	}
+	parts := strings.Split(rest, "/")
+	for _, seg := range parts {
+		if seg == "" {
+			return false
+		}
+	}
+	switch len(parts) {
+	case 1:
+		return true
+	case 2:
+		return parts[1] == "cover"
+	case 3:
+		return parts[1] == "stream" || parts[1] == "peaks"
+	}
+	return false
+}
+
+// logPath is the request path for a log line, with an invite or share-link token replaced by an
+// ellipsis: the token is the secret, so it must never reach a log.
 func logPath(r *http.Request) string {
+	if rest, ok := strings.CutPrefix(r.URL.Path, linkPrefix); ok {
+		_, tail, more := strings.Cut(rest, "/")
+		if more {
+			return linkPrefix + "…/" + tail
+		}
+		return linkPrefix + "…"
+	}
 	rest, ok := strings.CutPrefix(r.URL.Path, invitePrefix)
 	if !ok {
 		return r.URL.Path

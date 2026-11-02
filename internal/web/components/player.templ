@@ -9,6 +9,9 @@ import (
 // (internal/web/copy.go); player.js reads these from data-ts-msg-* attributes and never hard-codes
 // a word. {name} marks a value the player fills in.
 type PlayerMsgs struct {
+	// Link is set on a share-link page: the controls that need an account are rendered hidden.
+	Link bool
+
 	Open, PlayPrefix, PausePrefix, BackSeconds, ForwardSeconds, ChapterLeft string
 	Rewound, CompatWait, CompatFailed, SignedOut, SignIn                    string
 	ContinueAsk, OtherDevice, ContinueThere, StayHere                       string

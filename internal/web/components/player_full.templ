@@ -36,7 +36,7 @@ templ PlayerFull(m PlayerMsgs) {
 					@playerChevron()
 				</button>
 				<div class="ts-player__tools">
-					<button type="button" class="ts-iconbtn ts-player__mark" data-ts-bookmark aria-label={ m.BookmarkMoment }>
+					<button type="button" class="ts-iconbtn ts-player__mark" data-ts-bookmark aria-label={ m.BookmarkMoment } if m.Link { hidden }>
 						@Icon("bookmark", false)
 					</button>
 					<details class="ts-player__menu" data-ts-chipmenu data-ts-full-menu>
@@ -44,8 +44,8 @@ templ PlayerFull(m PlayerMsgs) {
 							<svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg>
 						</summary>
 						<div class="ts-player__menubody" role="group" aria-label={ m.MoreActions }>
-							<a class="ts-player__menuitem" href="/" data-ts-full-book>{ m.GoToBook }</a>
-							<form method="post" action="/" data-ts-full-finish>
+							<a class="ts-player__menuitem" href="/" data-ts-full-book if m.Link { hidden }>{ m.GoToBook }</a>
+							<form method="post" action="/" data-ts-full-finish if m.Link { hidden }>
 								<input type="hidden" name="_csrf" value=""/>
 								<input type="hidden" name="finished" value="1"/>
 								<input type="hidden" name="next" value=""/>
@@ -114,7 +114,7 @@ templ PlayerFull(m PlayerMsgs) {
 					@Icon("chapters", false)
 					<span class="ts-player-bar__label">{ m.Chapters }</span>
 				</button>
-				<button type="button" class="ts-player-bar__item ts-player__barmark" data-ts-bookmark aria-keyshortcuts="B" aria-label={ m.BookmarkMoment }>
+				<button type="button" class="ts-player-bar__item ts-player__barmark" data-ts-bookmark aria-keyshortcuts="B" aria-label={ m.BookmarkMoment } if m.Link { hidden }>
 					@Icon("bookmark", false)
 					<span class="ts-player-bar__label">{ m.Bookmark }</span>
 				</button>
