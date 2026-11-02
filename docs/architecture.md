@@ -13,7 +13,7 @@ is not an audio file or a cached image. ffmpeg/ffprobe are child processes, and 
 3. Every read of a book, file, cover, progress row or search result passes one authorization function
    (`share.Can`), and list/search queries filter by grants in SQL.
 4. An older binary never opens a newer database writable; it refuses and leaves the file byte-identical.
-5. No outbound network traffic except explicit metadata lookups/cover fetches and configured SMTP.
+5. No outbound network traffic except explicit metadata lookups/cover fetches and configured SMTP. Email is optional: invitations open the person's own email app by default, and the admin-configured SMTP relay (any provider; `internal/share/mail.go` is the only dialler) is used only for "Send it for me" and the test email.
 6. Positions are milliseconds on the book's global timeline (all files concatenated); the newest
    client update wins per user and book.
 7. Background work is a persisted job; a restart resumes or re-queues it, never silently repeats a
@@ -58,7 +58,7 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 
 | Table | Columns (key ones) | Notes |
 | --- | --- | --- |
-| `settings` | `key` PK, `value_json` | Server settings (`online.enabled`, `smtp.*`, `listen.addr`, `server.name` (JSON string), `setup.done` (JSON true, set when the setup folder is added)). |
+| `settings` | `key` PK, `value_json` | Server settings (`online.enabled`, `smtp.host`, `smtp.port`, `smtp.tls`, `smtp.username`, `smtp.password`, `smtp.from_name`, `smtp.from_address` (optional relay; `invites.mail_job_id` links an invite to its send job), `listen.addr`, `server.name` (JSON string), `setup.done` (JSON true, set when the setup folder is added)). |
 | `users` | `id`, `username` UNIQUE NOCASE, `display_name`, `email`, `role` CHECK IN ('owner','admin','member','guest'), `password_hash`, `disabled`, `created_at`, `last_seen_at` | Exactly one owner (partial unique index on `role='owner'`). |
 | `sessions` | `token_hash` PK, `user_id`, `created_at`, `expires_at`, `last_seen_at`, `user_agent` | Cookie sessions. |
 | `devices` | `id`, `user_id`, `name`, `kind` ('web','pwa','desktop','mobile'), `token_hash` UNIQUE NULL (32 bytes), `created_at`, `last_seen_at`, `revoked_at` | Device tokens for the API (migration 0007). A revoked device keeps no token. |

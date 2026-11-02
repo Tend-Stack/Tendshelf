@@ -75,3 +75,9 @@ func Audit(ctx context.Context, ex Execer, e AuditEntry) error {
 		VALUES (?, ?, ?, ?, ?, ?)`, NewID("aud"), e.At, uid, e.Action, e.Target, detail)
 	return err
 }
+
+// DeleteSetting removes the server setting key; an absent key is not an error.
+func DeleteSetting(ctx context.Context, ex Execer, key string) error {
+	_, err := ex.ExecContext(ctx, `DELETE FROM settings WHERE key = ?`, key)
+	return err
+}

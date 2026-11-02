@@ -1,0 +1,187 @@
+package pages
+
+import (
+	"net/url"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// EmailStyles are the sheets of the Email settings page.
+var EmailStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-email.css"}
+
+// EmailTestView is the answer to "Send a test email": a line that polls until the job ends.
+type EmailTestView struct {
+	JobID, To, Line string
+	Pending, Failed bool
+}
+
+// AdminEmailView is the Email settings page. Errors maps a field name to its message; the password
+// is never part of the view, only whether one is saved.
+type AdminEmailView struct {
+	CSRF                                     string
+	Host, Port, TLS, Username                string
+	FromName, FromAddress                    string
+	PasswordSaved                            bool
+	Errors                                   map[string]string
+	Saved, Dropped                           bool
+	Ready, Tested                            bool
+	TestTo                                   string
+	Test                                     *EmailTestView
+	Providers                                []Option
+	Provider, Region, ProviderHint           string
+	Regions                                  []string
+	TLSChoices                               []Option
+	Intro, StatusLine, SESHelp, DropNotice   string
+	SavedNotice, OffLabel, OffHint, TestHint string
+}
+
+// emailTestPath is the polling address; the address the test went to travels in it so the line can name it
+// (the database never keeps it).
+func emailTestPath(prefix string, v EmailTestView) string {
+	return prefix + url.PathEscape(v.JobID) + "?to=" + url.QueryEscape(v.To)
+}
+
+func emailTestQuery(v EmailTestView) string {
+	return "/admin/email?test=" + url.QueryEscape(v.JobID) + "&to=" + url.QueryEscape(v.To)
+}
+
+// EmailTestPanel is the test result line. While the job runs it asks for itself again every 2 seconds
+// and swaps itself out; without JavaScript the link checks the result.
+templ EmailTestPanel(v EmailTestView) {
+	<div
+		id="email-test"
+		class="ts-email__test"
+		role="status"
+		if v.Pending {
+			hx-get={ emailTestPath("/hx/admin/email/test/", v) }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		<p class={ "body", templ.KV("ts-email__test--failed", v.Failed) }>{ v.Line }</p>
+		if v.Pending {
+			<a class="caption" href={ templ.SafeURL(emailTestQuery(v)) }>Check the result</a>
+		}
+	</div>
+}
+
+templ emailFieldError(msg string, id string) {
+	if msg != "" {
+		<span class="ts-field__hint ts-field__error" id={ id } role="alert">{ msg }</span>
+	}
+}
+
+// AdminEmail is the optional email relay: Tendshelf sends invitations itself when it is set up.
+templ AdminEmail(v AdminEmailView) {
+	<div class="ts-admin ts-email">
+		<span class="ts-overline">Your server</span>
+		<h1 class="title-1 ts-admin__title">Email</h1>
+		<p class="body">{ v.Intro }</p>
+		if v.Saved {
+			<p class="ts-banner ts-admin__banner" role="status">
+				@components.Icon("check", false)
+				{ v.SavedNotice }
+			</p>
+		}
+		if v.Dropped {
+			<p class="ts-banner ts-admin__banner" role="status">{ v.DropNotice }</p>
+		}
+		<p class="caption ts-email__status" role="status">{ v.StatusLine }</p>
+		<form class="ts-email__fill" method="get" action="/admin/email" aria-label="Pick your email provider">
+			<div class="ts-field">
+				<label class="ts-field__label" for="email-provider">Your email provider</label>
+				<select id="email-provider" class="ts-select" name="preset">
+					for _, p := range v.Providers {
+						<option value={ p.Value } selected?={ p.Value == v.Provider }>{ p.Label }</option>
+					}
+				</select>
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="email-region">Amazon SES region</label>
+				<select id="email-region" class="ts-select" name="region">
+					for _, r := range v.Regions {
+						<option value={ r } selected?={ r == v.Region }>{ r }</option>
+					}
+				</select>
+			</div>
+			<button type="submit" class="ts-btn ts-btn--secondary">Fill in the settings</button>
+			if v.ProviderHint != "" {
+				<p class="caption ts-email__hint">{ v.ProviderHint }</p>
+			}
+		</form>
+		<form class="ts-email__form" method="post" action="/admin/email" aria-label="Email settings">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<div class="ts-field">
+				<label class="ts-field__label" for="email-host">Server</label>
+				<input id="email-host" class="ts-input" type="text" name="host" value={ v.Host } maxlength="253" autocomplete="off" autocapitalize="none" spellcheck="false" required/>
+				<span class="ts-field__hint">{ v.SESHelp }</span>
+				@emailFieldError(v.Errors["host"], "email-host-err")
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="email-port">Port</label>
+				<input id="email-port" class="ts-input" type="text" inputmode="numeric" name="port" value={ v.Port } maxlength="5" autocomplete="off" required/>
+				@emailFieldError(v.Errors["port"], "email-port-err")
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="email-tls">Security</label>
+				<select id="email-tls" class="ts-select" name="tls">
+					for _, o := range v.TLSChoices {
+						<option value={ o.Value } selected?={ o.Value == v.TLS }>{ o.Label }</option>
+					}
+				</select>
+				@emailFieldError(v.Errors["tls"], "email-tls-err")
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="email-user">Username</label>
+				<input id="email-user" class="ts-input" type="text" name="username" value={ v.Username } maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false"/>
+				@emailFieldError(v.Errors["username"], "email-user-err")
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="email-pass">Password</label>
+				<input id="email-pass" class="ts-input" type="password" name="password" value="" maxlength="256" autocomplete="new-password"/>
+				if v.PasswordSaved {
+					<span class="ts-field__hint">A password is saved. Leave this empty to keep it.</span>
+				}
+				@emailFieldError(v.Errors["password"], "email-pass-err")
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="email-from-name">From name</label>
+				<input id="email-from-name" class="ts-input" type="text" name="from_name" value={ v.FromName } maxlength="80" autocomplete="off"/>
+				<span class="ts-field__hint">Usually the server's name.</span>
+				@emailFieldError(v.Errors["from_name"], "email-from-name-err")
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="email-from">From address</label>
+				<input id="email-from" class="ts-input" type="email" name="from_address" value={ v.FromAddress } maxlength="254" autocomplete="off" autocapitalize="none" spellcheck="false" required/>
+				@emailFieldError(v.Errors["from_address"], "email-from-err")
+			</div>
+			<button type="submit" class="ts-btn ts-btn--primary">Save</button>
+		</form>
+		if v.Ready {
+			<section class="ts-email__testbox" aria-labelledby="email-test-h">
+				<h2 id="email-test-h" class="section">Send a test email</h2>
+				<p class="caption">{ v.TestHint }</p>
+				<form method="post" action="/admin/email/test" aria-label="Send a test email">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<div class="ts-field">
+						<label class="ts-field__label" for="email-test-to">Send it to</label>
+						<input id="email-test-to" class="ts-input" type="email" name="to" value={ v.TestTo } maxlength="254" autocomplete="off" required/>
+						@emailFieldError(v.Errors["to"], "email-test-to-err")
+					</div>
+					<button type="submit" class="ts-btn ts-btn--secondary">Send a test email</button>
+				</form>
+				if v.Test != nil {
+					@EmailTestPanel(*v.Test)
+				}
+			</section>
+			<details class="ts-email__off">
+				<summary>{ v.OffLabel }</summary>
+				<p class="caption">{ v.OffHint }</p>
+				<form method="post" action="/admin/email/off">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--quiet">{ v.OffLabel }</button>
+				</form>
+			</details>
+		}
+	</div>
+}

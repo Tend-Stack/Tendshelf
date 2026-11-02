@@ -4,7 +4,7 @@ import "github.com/Tend-Stack/tendshelf/internal/web/components"
 
 // ShareStyles are the sheets of the Share & invite page: the form and invite pieces it borrows,
 // the Users page pieces for the people list, and its own.
-var ShareStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-share.css"}
+var ShareStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-share.css", "css/pages-email.css"}
 
 // ShareChoice is one radio card of the form (what they can listen to, what they can do, how long
 // the link works). The handler writes every word.
@@ -30,6 +30,19 @@ type ShareListener struct {
 // SharePending is one invite waiting to be opened. Line reads "Inés · hasn't opened it yet".
 type SharePending struct {
 	ID, Name, Line, Meta string
+	// Mail is the line about the email ("Link created for rosa@example.org", "Sent to ..."); empty when
+	// the invite has no address. MailFailed marks a problem. Resend is the action that has Tendshelf
+	// send it (empty when it can't), ResendLabel its button.
+	Mail, Resend, ResendLabel string
+	MailFailed                bool
+}
+
+// ShareMail is the answer to an emailed invitation: the message, the link (shown once) and, when the
+// person's own email app sends it, the mailto: address that opens the app with the message ready.
+// Mailto is empty when Tendshelf itself is sending. The hooks for the page's scripts are
+// data-mailto-auto (open the email app once the answer lands) and data-copy (copy the field named).
+type ShareMail struct {
+	Title, Note, URL, Mailto, Message string
 }
 
 // ShareView is the Share & invite page.
@@ -40,6 +53,13 @@ type ShareView struct {
 	Back, BackHref string
 	Error          string
 	Name, Note, Q  string
+	// Via is "link" or "email" (the tab); LinkTab and EmailTab are the tabs' addresses. Email is what
+	// was typed. EmailRelay says "Send it for me" is on (set up and tested); EmailSetup is the address
+	// of the Email settings, for the owner only.
+	Via, LinkTab, EmailTab, Email, EmailSetup string
+	EmailRelay                                bool
+	// Mail is the panel shown instead of the form once an emailed invitation exists.
+	Mail *ShareMail
 	Scopes, Roles  []ShareChoice
 	Expires        []ShareChoice
 	Read           bool
@@ -93,7 +113,10 @@ templ SharePage(v ShareView) {
 			<div class="ts-share__main">
 				<section class="ts-share__card" aria-labelledby="inv-h">
 					<h2 id="inv-h" class="section">Invite someone</h2>
-					if v.Created != nil {
+					if v.Mail != nil {
+						@shareMailPanel(*v.Mail)
+						<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.Back + "?via=email") }>Invite someone else</a>
+					} else if v.Created != nil {
 						@InviteLinkPanel(*v.Created)
 						<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.Back) }>Invite someone else</a>
 					} else {
@@ -118,22 +141,30 @@ templ shareForm(v ShareView) {
 		if v.Error != "" {
 			<p class="ts-share__error" role="alert">{ v.Error }</p>
 		}
-		<div class="ts-share__tabs" role="group" aria-label="How to invite">
-			<span class="ts-share__tab" aria-current="true">
+		<nav class="ts-share__tabs" aria-label="How to invite">
+			<a class="ts-share__tab" href={ templ.SafeURL(v.LinkTab) } aria-current={ shareTabCurrent(v.Via != "email") }>
 				@components.Icon("link", false)
 				Send a link
-			</span>
-			<button type="button" class="ts-share__tab" disabled aria-describedby="share-mail-hint">
+			</a>
+			<a class="ts-share__tab" href={ templ.SafeURL(v.EmailTab) } aria-current={ shareTabCurrent(v.Via == "email") }>
 				@components.Icon("mail", false)
 				Email it
-			</button>
-		</div>
-		<p class="caption ts-share__tabhint" id="share-mail-hint">Email isn't set up on this server yet. Copy the link and send it however you like.</p>
+			</a>
+		</nav>
+		if v.Via == "email" {
+			<input type="hidden" name="via" value="email"/>
+		}
 		<div class="ts-field ts-share__field">
 			<label class="ts-field__label" for="who">Who is it for?</label>
 			<input id="who" class="ts-input" type="text" name="name" value={ v.Name } maxlength="80" autocomplete="off" required/>
 			<span class="ts-field__hint">Just so you know which link is whose. They can change their name.</span>
 		</div>
+		if v.Via == "email" {
+			<div class="ts-field ts-share__field">
+				<label class="ts-field__label" for="share-email">Their email</label>
+				<input id="share-email" class="ts-input" type="email" name="email" value={ v.Email } maxlength="254" autocomplete="off" required/>
+			</div>
+		}
 		<fieldset class="ts-share__field">
 			<legend class="ts-field__label">What can they listen to?</legend>
 			<div class="ts-share__choices">
@@ -199,10 +230,22 @@ templ shareForm(v ShareView) {
 			<textarea id="msg" class="ts-input" name="note" rows="3">{ v.Note }</textarea>
 		</div>
 		<div class="ts-share__create">
-			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">
-				@components.Icon("link", false)
-				Create invite link
-			</button>
+			if v.Via == "email" {
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block" name="how" value="app">
+					@components.Icon("mail", false)
+					Send invitation
+				</button>
+				if v.EmailRelay {
+					<button type="submit" class="ts-btn ts-btn--secondary ts-btn--block" name="how" value="relay">Send it for me</button>
+				} else if v.EmailSetup != "" {
+					<p class="caption ts-share__setup">To have Tendshelf send it, <a href={ templ.SafeURL(v.EmailSetup) }>set up email</a>.</p>
+				}
+			} else {
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">
+					@components.Icon("link", false)
+					Create invite link
+				</button>
+			}
 			<p class="caption ts-share__fine">
 				@components.Icon("shield", false)
 				<span>They see only what you choose here. They can't see your other books, your listening, or anyone else on the server. You can stop sharing any time.</span>
@@ -275,7 +318,17 @@ templ shareListening(v ShareView) {
 						<span class="ts-users__text">
 							<span class="body ts-users__name">{ p.Line }</span>
 							<span class="caption ts-users__meta ts-num">{ p.Meta }</span>
+							if p.Mail != "" {
+								<span class={ "caption", "ts-users__meta", "ts-share__mail", templ.KV("ts-share__mail--failed", p.MailFailed) }>{ p.Mail }</span>
+							}
 						</span>
+						if p.Resend != "" {
+							<form method="post" action={ templ.URL(p.Resend) } hx-push-url="false">
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<input type="hidden" name="back" value={ v.Back }/>
+								<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ p.ResendLabel + " to " + p.Name }>{ p.ResendLabel }</button>
+							</form>
+						}
 						<form method="post" action={ templ.URL("/admin/invites/" + p.ID + "/link") } hx-push-url="false">
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>
 							<input type="hidden" name="back" value={ v.Back }/>
@@ -373,4 +426,34 @@ templ shareLinks(v ShareView) {
 			</ul>
 		}
 	</section>
+}
+
+func shareTabCurrent(on bool) string {
+	if on {
+		return "true"
+	}
+	return "false"
+}
+
+// shareMailPanel is the answer to "Send invitation": the email app's button (the next step without
+// JavaScript), the link, shown once, and the message, both to copy. Showing both lets the person
+// send it another way when no email app opens.
+templ shareMailPanel(m ShareMail) {
+	<div class="ts-invite__link ts-share__mailpanel" role="status">
+		<h2 class="body ts-invite__linktitle">{ m.Title }</h2>
+		<p class="caption">{ m.Note }</p>
+		if m.Mailto != "" {
+			<a class="ts-btn ts-btn--primary" id="share-mailto" href={ templ.SafeURL(m.Mailto) } data-mailto-auto>
+				@components.Icon("mail", false)
+				Open in my email app
+			</a>
+		}
+		<label class="caption" for="share-link">Invite link</label>
+		<input class="ts-input" id="share-link" type="text" readonly value={ m.URL } autocomplete="off"/>
+		<button type="button" class="ts-btn ts-btn--secondary" data-copy="#share-link" hidden>Copy link</button>
+		<label class="caption" for="share-message">Message</label>
+		<textarea class="ts-input" id="share-message" readonly rows="10">{ m.Message }</textarea>
+		<button type="button" class="ts-btn ts-btn--secondary" data-copy="#share-message" hidden>Copy message</button>
+		<p class="ts-sr" aria-live="polite" data-copy-status></p>
+	</div>
 }

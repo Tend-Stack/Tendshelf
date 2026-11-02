@@ -54,15 +54,11 @@ func TestShareBrowser(t *testing.T) {
 			if m.Over || len(m.Small) > 0 || len(m.Unlabelled) > 0 || m.H1 != 1 {
 				t.Errorf("share page: overflow %v, small %v, unlabelled %v, h1 %d", m.Over, m.Small, m.Unlabelled, m.H1)
 			}
-			// Email it is disabled and says why.
-			var mail struct {
-				Disabled bool   `json:"disabled"`
-				Hint     string `json:"hint"`
-			}
-			tab.Eval(`(() => { const b = document.querySelector("button.ts-share__tab");
-			  return {disabled: b.disabled, hint: document.getElementById(b.getAttribute("aria-describedby")).textContent}; })()`, &mail)
-			if !mail.Disabled || mail.Hint == "" {
-				t.Errorf("Email it: disabled %v, hint %q", mail.Disabled, mail.Hint)
+			// Email it is a link to the email tab (it works with no mail server set up).
+			var href string
+			tab.Eval(`document.querySelectorAll("a.ts-share__tab")[1].getAttribute("href")`, &href)
+			if !strings.HasSuffix(href, "/share?via=email") {
+				t.Errorf("Email it links to %q", href)
 			}
 
 			// Tab order: from the name field every control takes focus, each with a visible ring.

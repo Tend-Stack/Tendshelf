@@ -144,6 +144,7 @@ templ Head(p Page, extraCSS ...string) {
 		<link rel="icon" type="image/svg+xml" href={ p.Assets.URL("img/tendshelf-app-icon.svg") }/>
 		<script src={ p.Assets.URL("vendor/htmx-4.0.0.min.js") } defer></script>
 		<script type="module" src={ p.Assets.URL("js/shell.js") }></script>
+		<script type="module" src={ p.Assets.URL("js/copy.js") }></script>
 	</head>
 }
 

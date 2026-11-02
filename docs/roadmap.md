@@ -438,6 +438,10 @@ Exit: Linux build runs both modes in an isolated session; other platforms record
 
 ## M7 Research — dropped (decision 0007, 2026-11-02)
 
+**P3-8 status (Email invites: P3-8a Go and markup, P3-8b styles, browser tests, captures)**: built. The Share page's "Email it" tab works with no server setup: "Send invitation" creates the invite and opens the person's own email app (`mailto:`), and the answer always shows the link and the message with "Copy link" and "Copy message". An optional SMTP relay (provider presets, owner-only `/admin/email`, "Send a test email") adds "Send it for me". `pages-email.css` holds the styles (tab links, answer panel, sent/failed lines, settings page; 3 KB budget). Checks: `TestShareEmailOwnAppBrowser` (mailto subject and body, clipboard text, no-JS answer), `TestShareEmailRelayBrowser` (preset, test, "Sent to"), `TestShareEmailRelayFailureBrowser` ("Couldn't send"), `TestVisualEmailPages` (four themes, four widths). Limits: no board exists for `/admin/email`; the settings page is built from existing form parts. Next: password-reset email on the same relay.
+
+**P3-12 status (small client scripts)**: built. `js/copy.js` (about 1 KB gzip) shows the Copy buttons (hidden in the markup, because they do nothing without script), copies with the Clipboard API or a selection fallback and says "Copied" in a polite live region, and opens the email app once when the answer to "Send invitation" lands. The `/s/` place in `localStorage` was done in P3-5b. M3 note: when the service worker arrives it must never cache or intercept `/invite/` and `/s/` (invite tokens and share links are secrets and one-time).
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), native mobile

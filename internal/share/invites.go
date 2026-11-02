@@ -57,6 +57,9 @@ type Invite struct {
 	ExpiresAt                                     int64
 	MaxUses, UseCount                             int
 	RevokedAt, CreatedAt, UpdatedAt               int64
+	// MailJobID is the job that emails this invite ("" if none); MailState and MailCode are that job's
+	// state and error code, read with the invite so a page shows Sending, Sent or Couldn't send.
+	MailJobID, MailState, MailCode string
 }
 
 // InviteState is where an invite stands at a moment.
@@ -139,15 +142,17 @@ func (r *Invites) mayInvite(ctx context.Context, tx *sql.Tx, inviterID string, r
 }
 
 const inviteColumns = `i.id, i.created_by, coalesce(nullif(u.display_name, ''), u.username), i.name, coalesce(i.email, ''), i.note, i.role,
-	i.grants_json, coalesce(i.expires_at, 0), i.max_uses, i.use_count, coalesce(i.revoked_at, 0), i.created_at, i.updated_at`
+	i.grants_json, coalesce(i.expires_at, 0), i.max_uses, i.use_count, coalesce(i.revoked_at, 0), i.created_at, i.updated_at,
+	coalesce(i.mail_job_id, ''), coalesce(j.state, ''), coalesce(j.error_code, '')`
 
-const inviteFrom = ` FROM invites i JOIN users u ON u.id = i.created_by`
+const inviteFrom = ` FROM invites i JOIN users u ON u.id = i.created_by LEFT JOIN jobs j ON j.id = i.mail_job_id`
 
 func scanInvite(row rowScanner) (Invite, error) {
 	var inv Invite
 	var role, grantsJSON string
 	err := row.Scan(&inv.ID, &inv.CreatedBy, &inv.InviterName, &inv.Name, &inv.Email, &inv.Note, &role, &grantsJSON,
-		&inv.ExpiresAt, &inv.MaxUses, &inv.UseCount, &inv.RevokedAt, &inv.CreatedAt, &inv.UpdatedAt)
+		&inv.ExpiresAt, &inv.MaxUses, &inv.UseCount, &inv.RevokedAt, &inv.CreatedAt, &inv.UpdatedAt,
+		&inv.MailJobID, &inv.MailState, &inv.MailCode)
 	if err != nil {
 		return Invite{}, err
 	}
@@ -288,6 +293,15 @@ func (r *Invites) Lookup(ctx context.Context, tok string) (Invite, error) {
 	return inv, nil
 }
 
+// Get reads an invite by id. ErrInviteUnknown when there is none.
+func (r *Invites) Get(ctx context.Context, id string) (Invite, error) {
+	inv, err := scanInvite(r.st.Reader().QueryRowContext(ctx, `SELECT `+inviteColumns+inviteFrom+` WHERE i.id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return Invite{}, ErrInviteUnknown
+	}
+	return inv, err
+}
+
 // get reads an invite by id inside tx.
 func (r *Invites) get(ctx context.Context, tx *sql.Tx, id string) (Invite, error) {
 	inv, err := scanInvite(tx.QueryRowContext(ctx, `SELECT `+inviteColumns+inviteFrom+` WHERE i.id = ?`, id))
@@ -310,7 +324,7 @@ func (r *Invites) Rotate(ctx context.Context, tx *sql.Tx, by users.User, id stri
 	}
 	now := r.now().UnixMilli()
 	tok, hash := token.New()
-	res, err := tx.ExecContext(ctx, `UPDATE invites SET token_hash = ?, updated_at = ? WHERE id = ? AND `+pendingSQL, hash[:], now, id, now)
+	res, err := tx.ExecContext(ctx, `UPDATE invites SET token_hash = ?, mail_job_id = NULL, updated_at = ? WHERE id = ? AND `+pendingSQL, hash[:], now, id, now)
 	if err != nil {
 		return "", err
 	}

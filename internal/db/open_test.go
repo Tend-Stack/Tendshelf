@@ -270,6 +270,7 @@ var seeds = map[int]func(t *testing.T, st *Store){
 	6: func(t *testing.T, st *Store) { seed3(t, st); seedShelves(t, st); seedProgress(t, st) },
 	7: seed7,
 	8: seed7,
+	9: seed7,
 }
 
 // seed7 fills a version 7 (and 8) database.
@@ -299,6 +300,7 @@ var tablesAt = map[int][]string{
 	6: append(append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...), progressTables...),
 	7: append(append(append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...), progressTables...), familyTables...),
 	8: nil, // 0008 adds a column and an index only; filled in init below
+	9: nil, // 0009 adds a column only; filled in init below
 }
 
 func TestMigrateFromPreviousFixtures(t *testing.T) {
@@ -585,6 +587,7 @@ var pinnedMigrations = map[int]string{
 	6: "9d83b1c2c0c7c0a4f86f02e82cccb5f6d66cb1b016a9b01a2dedc5a25c25ac45",
 	7: "94d2e5b344c393f29dbaafd56c9c5885e263f80e9f84d4f04184c91f473fd046",
 	8: "bcbac9ebb7f522de507ae72a6f6ebd31b21214d43444f3b0ee6f9c81033e5c16",
+	9: "88ed2c5d9c91bc5eb0f2aed1092d38bf866660c082ebb17ea9bd543c9c43be84",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
@@ -940,7 +943,7 @@ func TestMigration0004BuildsIndex(t *testing.T) {
 	}
 }
 
-func init() { tablesAt[8] = tablesAt[7] }
+func init() { tablesAt[8] = tablesAt[7]; tablesAt[9] = tablesAt[7] }
 
 // TestMigration0008BookmarkClientID: bookmarks saved before 0008 survive with a NULL client id, and the
 // client id is unique per person (not across people), several NULLs are fine.
@@ -974,5 +977,29 @@ func TestMigration0008BookmarkClientID(t *testing.T) {
 		if _, err := st.Writer().Exec(ins, c.id, c.user, c.cid); (err == nil) != c.ok {
 			t.Errorf("%s: err = %v, want ok=%v", c.id, err, c.ok)
 		}
+	}
+}
+
+// TestMigration0009InviteMail: invites made before 0009 survive with a NULL mail job.
+func TestMigration0009InviteMail(t *testing.T) {
+	ms := embedded(t)
+	dir := t.TempDir()
+	prev, err := open(context.Background(), dir, openConfig{migrations: ms[:8], supported: 8, now: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	seed7(t, prev)
+	prev.Close()
+	st := mustOpen(t, dir)
+	defer st.Close()
+	var job sql.NullString
+	if err := st.Reader().QueryRow(`SELECT mail_job_id FROM invites WHERE id = 'in_1'`).Scan(&job); err != nil || job.Valid {
+		t.Fatalf("old invite mail_job_id = %v, %v", job, err)
+	}
+	if _, err := st.Writer().Exec(`UPDATE invites SET mail_job_id = 'job_1' WHERE id = 'in_1'`); err != nil {
+		t.Fatal(err)
+	}
+	if got := countRows(t, st.Reader(), "invites"); got != 1 {
+		t.Fatalf("invites = %d, want 1", got)
 	}
 }

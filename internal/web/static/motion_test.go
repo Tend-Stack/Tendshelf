@@ -294,6 +294,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"waveform.js": {7 * 1024, 24 * 1024},
 	// NP2: the desktop Now playing panel's loading, tabs and slots; 1 KB, approved by the operator on 2026-11-02.
 	"now-panel.js": {1 * 1024, 16 * 1024},
+	// P3-12: the Copy buttons and the "Open in my email app" hand-off of invitations; 1 KB, inside the 38 KB total.
+	"copy.js": {1 * 1024, 16 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.

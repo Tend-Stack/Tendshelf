@@ -73,6 +73,9 @@ type sweepEnv struct {
 	// invite, all made by the owner (P3-3a).
 	inviteTok                            string
 	inviteRot, inviteCancel, inviteAdmin string
+	// emailJob is a finished test email of the owner; inviteMail and inviteMailAdmin are invites with an
+	// address, for the email rows (P3-8a).
+	emailJob, inviteMail, inviteMailAdmin string
 	// link holds the share links and the link book of the link rows (P3-5a).
 	link                     linkSweep
 	book                     library.Book
@@ -207,6 +210,7 @@ func sweepSeed(t *testing.T) *sweepEnv {
 	}
 	deviceSeed(t, e)
 	inviteSeed(t, e)
+	emailSeed(t, e)
 	linkSeed(t, e)
 	e.job = a.adminEnqueueScan(t, l.ID)
 	a.adminSetJobState(t, e.job, "done")
@@ -617,6 +621,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, invitesSweepRows()...)
 	rows = append(rows, shareSweepRows()...)
 	rows = append(rows, devicesSweepRows()...)
+	rows = append(rows, emailSweepRows()...)
 	rows = append(rows, apiSweepRows()...)
 	return append(rows, linksSweepRows()...)
 }

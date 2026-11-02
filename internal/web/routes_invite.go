@@ -31,6 +31,7 @@ func (s *server) registerInvites(mux *http.ServeMux) {
 	mux.HandleFunc("GET /welcome", s.getWelcome)
 	mux.HandleFunc("POST /welcome", s.postWelcome)
 	mux.HandleFunc("POST /admin/invites/{id}/link", s.postInviteLink)
+	mux.HandleFunc("POST /admin/invites/{id}/email", s.postInviteEmail)
 	mux.HandleFunc("POST /admin/invites/{id}/cancel", s.postInviteCancel)
 }
 
