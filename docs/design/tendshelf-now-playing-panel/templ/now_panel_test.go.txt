@@ -1,0 +1,28 @@
+package ui
+
+import (
+	"bytes"
+	"context"
+	"strings"
+	"testing"
+)
+
+func TestNowPanel(t *testing.T) {
+	p := NowPanelProps{BookID: "42", Title: "The Lighthouse Keeper's Daughter",
+		Authors: []Person{{"Imogen Hale", "IH", "/authors/1"}}, Narrators: []Person{{"Theo Marsh", "TM", "/narrators/2"}, {"Ada Brennan", "AB", "/narrators/3"}},
+		ChapterIndex: 13, ChapterCount: 27, ChapterTitle: "Chapter 13", Summary: "On a storm-worn island…",
+		Series: &Series{Name: "Harbour Lights", URL: "/series/7", Position: 1, Books: []SeriesBook{{1, "The Lighthouse Keeper's Daughter", "/books/42", "", "You're here · 62%", true}, {2, "The Fog Bell", "/books/43", "", "Up next", false}}},
+		Publisher: "Harrow & Finch", Year: 2019, Length: "17 h 32 m", Language: "English", BookmarkCount: 6}
+	var b bytes.Buffer
+	if err := NowPanel(p).Render(context.Background(), &b); err != nil { t.Fatal(err) }
+	s := b.String()
+	for _, w := range []string{"Chapter 13 of 27", "Harbour Lights", "Book 1 of 2", "Theo Marsh", "Ada Brennan", "Harrow &amp; Finch · 2019", "Bookmarks · 6"} {
+		if !strings.Contains(s, w) { t.Errorf("missing %q", w) }
+	}
+	if strings.Contains(s, "<em>Chapter 13</em>") { t.Error("chapter title printed twice") }
+	if strings.Contains(s, "Formats") { t.Error("empty row shown") }
+	p.Summary = ""; p.CanEditDetails = true; b.Reset()
+	_ = NowPanel(p).Render(context.Background(), &b)
+	if !strings.Contains(b.String(), "Look up details online") { t.Error("missing empty-summary action") }
+	t.Log(s[strings.Index(s, "ts-nowpanel__byline"):][:400])
+}

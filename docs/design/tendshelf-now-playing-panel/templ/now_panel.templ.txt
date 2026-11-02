@@ -1,0 +1,295 @@
+package ui
+
+import "fmt"
+
+// NowPanelProps is everything the panel shows. Leave a field empty and its row disappears.
+type NowPanelProps struct {
+	BookID        string
+	Title         string
+	CoverURL      string
+	Authors       []Person
+	Narrators     []Person
+	ChapterIndex  int
+	ChapterCount  int
+	ChapterTitle  string // the chapter's own title; see ChapterLine for the "Chapter 13" fallback
+	Summary       string
+	Series        *Series
+	Publisher     string
+	Year          int
+	Abridged      bool
+	Length        string // "17 h 32 m"
+	Formats       string // "Audiobook and ebook"
+	FormatsNote   string // "Read along is ready"
+	Language      string
+	AddedOn       string // "12 September 2026"
+	AddedNote     string // "by Daniel, from Audiobooks / Hale"
+	Genres        []Link
+	MoreTitle     string // "Also read by Theo Marsh" or "More by Ruth Okafor"
+	More          []BookLink
+	BookmarkCount int
+	Tint          string // cover tint as a CSS colour with alpha for this theme, "" for none
+	CanEditDetails bool  // admins: show "Look up details online" when the summary is missing
+}
+
+type Person struct {
+	Name     string
+	Initials string
+	URL      string
+}
+
+type Link struct {
+	Label string
+	URL   string
+}
+
+type Series struct {
+	Name     string
+	URL      string
+	Position int // this book's place, 1-based
+	Books    []SeriesBook
+}
+
+type SeriesBook struct {
+	Number   int
+	Title    string
+	URL      string
+	CoverURL string
+	State    string // "You're here · 62%", "Up next · 15 h 10 m", "Finished", "Not started · 16 h 02 m"
+	Current  bool
+}
+
+type BookLink struct {
+	Title    string
+	URL      string
+	CoverURL string
+}
+
+// ChapterLine reads "Chapter 12 of 19 · The Second Lamp", or just "Chapter 13 of 27" when the
+// chapter has no real title (many files name chapters "Chapter 13", which would print twice).
+func ChapterLine(index, count int, title string) (string, string) {
+	lead := fmt.Sprintf("Chapter %d of %d", index, count)
+	if title == "" || title == fmt.Sprintf("Chapter %d", index) || title == fmt.Sprint(index) {
+		return lead, ""
+	}
+	return lead, title
+}
+
+templ NowPanel(p NowPanelProps) {
+	<aside id="now-panel" class="ts-nowpanel" aria-label="Now playing: about this book" style={ "--np-tint: " + p.Tint }>
+		<div class="ts-nowpanel__tint" aria-hidden="true"></div>
+		<div class="ts-nowpanel__head">
+			<button type="button" class="ts-iconbtn" aria-label="Close panel" data-now-panel-close>
+				<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+			</button>
+			<span class="ts-overline ts-nowpanel__label" style="color: var(--ink)">Now playing</span>
+			<span class="ts-nowpanel__headtitle"><span class="ts-cover" style="width: 32px; height: 32px"><img src={ p.CoverURL } alt=""/></span><span>{ p.Title }</span></span>
+			<button type="button" class="ts-iconbtn" aria-label="More: add to shelf, mark as finished, download" hx-get={ "/books/" + p.BookID + "/menu" } hx-target="#sheet">
+				<svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg>
+			</button>
+		</div>
+		<div class="ts-nowpanel__scroll" data-now-panel-scroll>
+			<div class="ts-nowpanel__hero" data-now-panel-hero>
+				<span class="ts-book-block"><span class="ts-cover ts-cover--book" style="width: 176px; height: 176px"><img src={ p.CoverURL } alt={ p.Title }/></span></span>
+				<h2 class="ts-nowpanel__title">{ p.Title }</h2>
+				<p class="ts-nowpanel__byline">
+					@byline(p.Authors, p.Narrators)
+				</p>
+				{{ lead, chTitle := ChapterLine(p.ChapterIndex, p.ChapterCount, p.ChapterTitle) }}
+				<p class="ts-nowpanel__where">
+					{ lead }
+					if chTitle != "" {
+						· <em>{ chTitle }</em>
+					}
+				</p>
+				<div class="ts-nowpanel__actions">
+					<a href={ templ.SafeURL("/books/" + p.BookID) } class="ts-btn ts-btn--secondary">Book page</a>
+					<button type="button" class="ts-btn ts-btn--secondary" hx-get={ "/books/" + p.BookID + "/share" } hx-target="#sheet">Share</button>
+				</div>
+			</div>
+			<div class="ts-nowpanel__tabs">
+				<div role="tablist" aria-label="About this book" class="ts-tabs" style="border: 0">
+					@panelTab(p.BookID, "about", "About", true)
+					@panelTab(p.BookID, "chapters", fmt.Sprintf("Chapters · %d", p.ChapterCount), false)
+					@panelTab(p.BookID, "bookmarks", fmt.Sprintf("Bookmarks · %d", p.BookmarkCount), false)
+				</div>
+			</div>
+			<div id="now-panel-tab" class="ts-nowpanel__body" role="tabpanel" aria-label="About">
+				@NowPanelAbout(p)
+			</div>
+		</div>
+	</aside>
+}
+
+templ panelTab(bookID, key, label string, selected bool) {
+	<button
+		type="button"
+		role="tab"
+		class="ts-tabs__item"
+		aria-selected={ fmt.Sprint(selected) }
+		hx-get={ "/player/panel/" + bookID + "/" + key }
+		hx-target="#now-panel-tab"
+		hx-swap="innerHTML"
+	>{ label }</button>
+}
+
+templ byline(authors, narrators []Person) {
+	if len(authors) > 0 {
+		by
+		for i, a := range authors {
+			if i > 0 {
+				,
+			}
+			<a href={ templ.SafeURL(a.URL) }>{ a.Name }</a>
+		}
+	}
+	if len(narrators) > 0 {
+		· read by
+		for i, n := range narrators {
+			if i > 0 {
+				,
+			}
+			<a href={ templ.SafeURL(n.URL) }>{ n.Name }</a>
+		}
+	}
+}
+
+// NowPanelAbout is also served alone for the About tab: GET /player/panel/{id}/about
+templ NowPanelAbout(p NowPanelProps) {
+	<section aria-labelledby="np-sum">
+		<h3 class="ts-np-h" id="np-sum">Summary</h3>
+		if p.Summary != "" {
+			<p class="ts-np-summary" id="np-sum-text">{ p.Summary }</p>
+			<button type="button" class="ts-btn ts-btn--quiet" aria-expanded="false" aria-controls="np-sum-text" data-now-panel-more style="margin-left: -12px">Read more</button>
+		} else {
+			<div class="ts-np-empty">
+				<span>No description for this book yet.</span>
+				if p.CanEditDetails {
+					<button type="button" class="ts-btn ts-btn--secondary" style="min-height: 40px" hx-get={ "/books/" + p.BookID + "/compare" } hx-target="#sheet">Look up details online</button>
+				}
+			</div>
+		}
+	</section>
+	if p.Series != nil {
+		<section aria-labelledby="np-series">
+			<h3 class="ts-np-h" id="np-series">Series</h3>
+			<div class="ts-np-series">
+				<div class="ts-np-series__head">
+					<a href={ templ.SafeURL(p.Series.URL) } class="ts-np-series__name">{ p.Series.Name }</a>
+					<span class="ts-np-series__count">Book { fmt.Sprint(p.Series.Position) } of { fmt.Sprint(len(p.Series.Books)) }</span>
+				</div>
+				for _, b := range p.Series.Books {
+					<a href={ templ.SafeURL(b.URL) } class="ts-np-series__item" aria-current={ currentAttr(b.Current) }>
+						<span class="ts-np-series__num">{ fmt.Sprint(b.Number) }</span>
+						<span class="ts-cover" style="width: 44px; height: 44px"><img src={ b.CoverURL } alt=""/></span>
+						<span class="ts-np-series__text">
+							<span class="ts-np-series__title">{ b.Title }</span>
+							<span class="ts-np-series__state">{ b.State }</span>
+						</span>
+					</a>
+				}
+			</div>
+		</section>
+	}
+	<section aria-labelledby="np-cred">
+		<h3 class="ts-np-h" id="np-cred">Details</h3>
+		<dl class="ts-np-credits">
+			@people("Written by", p.Authors)
+			@people("Read by", p.Narrators)
+			if p.Publisher != "" || p.Year > 0 {
+				<dt>Published</dt>
+				<dd>
+					{ joinDot(p.Publisher, yearString(p.Year)) }
+					<small>{ abridgedLabel(p.Abridged) }</small>
+				</dd>
+			}
+			if p.Length != "" {
+				<dt>Length</dt>
+				<dd class="ts-num">{ p.Length } · { fmt.Sprint(p.ChapterCount) } chapters</dd>
+			}
+			if p.Formats != "" {
+				<dt>Formats</dt>
+				<dd>
+					{ p.Formats }
+					if p.FormatsNote != "" {
+						<small>{ p.FormatsNote }</small>
+					}
+				</dd>
+			}
+			if p.Language != "" {
+				<dt>Language</dt>
+				<dd>{ p.Language }</dd>
+			}
+			if p.AddedOn != "" {
+				<dt>On the shelf</dt>
+				<dd>
+					Added { p.AddedOn }
+					if p.AddedNote != "" {
+						<small>{ p.AddedNote }</small>
+					}
+				</dd>
+			}
+		</dl>
+		if len(p.Genres) > 0 {
+			<div class="ts-chip-set" style="margin-top: 14px">
+				for _, g := range p.Genres {
+					<a href={ templ.SafeURL(g.URL) } class="ts-chip">{ g.Label }</a>
+				}
+			</div>
+		}
+	</section>
+	if len(p.More) > 0 {
+		<section aria-labelledby="np-also">
+			<h3 class="ts-np-h" id="np-also">{ p.MoreTitle }</h3>
+			<div class="ts-np-covers">
+				for _, b := range p.More {
+					<a class="ts-card" href={ templ.SafeURL(b.URL) }>
+						<span class="ts-cover" style="width: 104px; height: 104px"><img src={ b.CoverURL } alt=""/></span>
+						<span class="ts-card__title">{ b.Title }</span>
+					</a>
+				}
+			</div>
+		</section>
+	}
+}
+
+templ people(label string, ps []Person) {
+	if len(ps) > 0 {
+		<dt>{ label }</dt>
+		<dd>
+			for _, x := range ps {
+				<div><a href={ templ.SafeURL(x.URL) } class="ts-np-person"><span class="ts-avatar">{ x.Initials }</span>{ x.Name }</a></div>
+			}
+		</dd>
+	}
+}
+
+func currentAttr(c bool) string {
+	if c {
+		return "true"
+	}
+	return "false"
+}
+
+func yearString(y int) string {
+	if y <= 0 {
+		return ""
+	}
+	return fmt.Sprint(y)
+}
+
+func joinDot(a, b string) string {
+	switch {
+	case a == "":
+		return b
+	case b == "":
+		return a
+	}
+	return a + " · " + b
+}
+
+func abridgedLabel(abridged bool) string {
+	if abridged {
+		return "Abridged"
+	}
+	return "Unabridged"
+}
