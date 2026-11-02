@@ -33,8 +33,7 @@
 .ts-shelf-item__tools { display: flex; flex: none; align-items: center; }
 .ts-shelf-item__tools .ts-icon { width: 1.25rem; height: 1.25rem; }
 
-/* The sheet on the book page */
-.ts-book__shelf { margin: var(--space-16) 0 0; }
+/* The sheet on the book page (its "Add to shelf" button is laid out by pages-book.css) */
 .ts-sheet-layer--shelves .ts-sheet { max-height: 85vh; max-height: 85dvh; overflow-y: auto; max-width: 35rem; margin: 0 auto; }
 .ts-shelf-sheet__toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); width: 100%; min-height: var(--size-tap);
   padding: 0 var(--space-16); border: 0; border-radius: var(--radius-md); background: transparent; color: var(--ink); font: 500 1rem/1.375rem var(--font-sans); text-align: left; cursor: pointer; }

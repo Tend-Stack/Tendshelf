@@ -141,7 +141,7 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   .ts-book__chips { display: flex; justify-content: flex-start; }
   .ts-book__acts { display: contents; }
   #book-play [data-ts-play] { width: auto; }
-  .ts-book__shelf { width: auto; padding: 0 var(--space-32); min-height: 3.5rem; border: 1px solid var(--line); border-radius: var(--radius-control); }
+  .ts-book__shelf { width: auto; box-sizing: border-box; padding: 0 var(--space-32); min-height: 3.5rem; border: 1px solid var(--line); border-radius: var(--radius-control); }
   .ts-book__shelf .ts-book__label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   #book-tab-about, .ts-book__aboutdesc { display: none; }
   .ts-book__aboutchapters { display: block; }
