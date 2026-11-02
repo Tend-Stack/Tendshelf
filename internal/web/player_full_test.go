@@ -96,7 +96,7 @@ func TestFullPlayerMarkup(t *testing.T) {
 		t.Error("the mini-player lacks the compact scrubber")
 	}
 	// Words come from the one copy deck, set once on #player.
-	for _, attr := range []string{"data-ts-msg-chapter-of", "data-ts-msg-left-in-chapter", "data-ts-msg-left-in-book", "data-ts-msg-scrub-value",
+	for _, attr := range []string{"data-ts-msg-chapter-of", "data-ts-msg-left-in-chapter", "data-ts-msg-left-in-book-minutes", "data-ts-msg-left-in-book-hours", "data-ts-msg-left-in-book-both", "data-ts-msg-subtitle-sep", "data-ts-msg-scrub-value",
 		"data-ts-msg-scrub-bubble", "data-ts-msg-fine-scrub", "data-ts-msg-chapter-played", "data-ts-msg-open-player"} {
 		if !strings.Contains(body, attr+`="`) {
 			t.Errorf("#player lacks %s", attr)
@@ -111,7 +111,7 @@ func TestFullPlayerMarkup(t *testing.T) {
 // TestFullPlayerCopy: the words of the HANDOFF and the board, exactly.
 func TestFullPlayerCopy(t *testing.T) {
 	for got, want := range map[string]string{
-		msgChapterOf: "Chapter {n} of {total}", msgLeftInChapter: "{t} left in chapter", msgLeftInBook: "{h} h {m} m left in book",
+		msgChapterOf: "Chapter {n} of {total}", msgLeftInChapter: "{t} left in chapter", msgLeftInBookMinutes: "{m} m left in book", msgLeftInBookHours: "{h} h left in book", msgLeftInBookBoth: "{h} h {m} m left in book", msgSubtitleSep: " · ",
 		msgScrubValue: "{h} hours {m} minutes elapsed, chapter {n}", msgFineScrub: "Drag up for fine control", msgClosePlayer: "Close player",
 		msgOpenPlayer: "Open player: {title}, chapter {n}", msgMarkFinished: "Mark as finished", msgGoToBook: "Go to book",
 	} {

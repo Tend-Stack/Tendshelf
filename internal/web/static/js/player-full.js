@@ -43,7 +43,7 @@ let openName = ""; // "chapters", "speed" or "sleep" while a sheet is open
 
 const $ = (name, scope = dialog) => scope.querySelector("[data-ts-" + name + "]");
 const ui = {};
-for (const name of ["close-player", "full-chapter", "full-cover", "full-title", "full-author", "full-clock", "full-left",
+for (const name of ["close-player", "full-chapter", "full-cover", "full-title", "full-chapter-title", "full-sep", "full-author", "full-clock", "full-left",
   "full-back", "full-forward", "full-back-num", "full-forward-num", "full-toggle", "full-elapsed", "full-fine",
   "full-book-left", "full-speed", "full-book", "full-finish", "full-menu", "full-body", "chapters-sheet", "chapter-list",
   "chapter-row", "open-chapters", "speed-sheet", "sleep-sheet", "speed-range", "speed-out", "sleep-meta", "sleep-custom",
@@ -131,7 +131,21 @@ function drawTimes(ms, speed) {
   setText("full-clock", clock(ms - chapter.start));
   setText("full-left", fill(msg("leftInChapter"), { t: clock(chapter.end - ms) }));
   setText("full-elapsed", clock(ms));
-  setText("full-book-left", fill(msg("leftInBook"), { h: Math.floor(minutes / 60), m: minutes % 60 }));
+  setText("full-book-left", leftInBookText(minutes));
+  // The board: the chapter's name in serif italic, then the author. A chapter without a title, or a
+  // book of one chapter, shows the author alone.
+  const named = book.chapters.length > 1 && chapter.title;
+  setText("full-chapter-title", named ? chapter.title : "");
+  setText("full-sep", named ? msg("subtitleSep") : "");
+}
+
+// "2 m", "2 h" or "1 h 5 m" left in book, in the words the cards use (the server owns them). The live
+// count rounds up so it never says "0 m" while sound remains; 0 m shows only when nothing is left.
+function leftInBookText(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const form = hours === 0 ? "leftInBookMinutes" : rest === 0 ? "leftInBookHours" : "leftInBookBoth";
+  return fill(msg(form), { h: hours, m: rest });
 }
 
 function drawScrub(s, ms, force) {
@@ -852,7 +866,11 @@ const actions = {
 slot.addEventListener("click", (event) => {
   if (event.target.closest("[data-ts-bar-speed]")) openSheet("speed", bar.speed);
   else if (event.target.closest("[data-ts-bar-sleep]")) openSheet("sleep", bar.sleep);
-  else if (event.target.closest("[data-ts-sleep-plus]")) sleepPlus();
+});
+
+// The bar's sleep card sits beside the slot (so the hero hiding the bar does not hide it): it answers itself.
+cards.find((card) => card.el.dataset.tsSleepCard === "bar").el.addEventListener("click", (event) => {
+  if (event.target.closest("[data-ts-sleep-plus]")) sleepPlus();
 });
 
 dialog.addEventListener("click", (event) => {
@@ -905,6 +923,7 @@ window.tsPlayerFull = {
       drawSleep();
     },
     sleep: () => ({ ...sleepState }),
+    leftInBook: leftInBookText,
   },
 };
 

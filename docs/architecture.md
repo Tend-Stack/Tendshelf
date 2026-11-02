@@ -252,8 +252,8 @@ finished, and more than 60 s away from here; it is checked after a save answers 
 of 60 s or more, and on becoming visible after 60 s hidden; "Stay here" saves with `force=1`. A file the browser
 cannot decode is requested as `?compat=1` (`HEAD`, polled at `Retry-After` for up to 10 minutes). Media Session
 carries the title, author, chapter and cover with eight action handlers. Keys: Space and the arrows in player.js; `/`,
-`g l`, `g h` and `?` in shell.js. Budgets (`TestJSBudget`, gzip bytes): player.js 11 KB, shell.js 4 KB, player-full.js 8 KB,
-24 KB in all; `player.css` 4 KB.
+`g l`, `g h` and `?` in shell.js. Budgets (`TestJSBudget`, gzip bytes): player.js 12 KB, shell.js 4 KB, player-full.js 12 KB,
+28 KB in all; `player.css` 4 KB.
 
 Full player (P1c-5a, `static/js/player-full.js`, a second async module, no imports; `components/player_full.templ`): one
 `<dialog id="player-full" class="ts-player" hx-preserve>` in `Layout` after `#player`. It never touches `#audio`: it reads

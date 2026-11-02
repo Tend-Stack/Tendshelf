@@ -82,13 +82,14 @@ func durationText(ms int64) string {
 		mins = 1
 	}
 	h, m := mins/60, mins%60
+	form := msgDurationHoursMinutes
 	switch {
 	case h == 0:
-		return strconv.Itoa(m) + " m"
+		form = msgDurationMinutes
 	case m == 0:
-		return strconv.Itoa(h) + " h"
+		form = msgDurationHours
 	}
-	return strconv.Itoa(h) + " h " + strconv.Itoa(m) + " m"
+	return strings.NewReplacer("{h}", strconv.Itoa(h), "{m}", strconv.Itoa(m)).Replace(form)
 }
 
 // clockText writes a span as a clock for the chapter list: "48:10", or "1:02:03" from an hour up.

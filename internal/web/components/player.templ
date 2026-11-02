@@ -16,7 +16,7 @@ type PlayerMsgs struct {
 	KeysList, KeysClose, OpenBook, MinLeft                                  string
 
 	// The full player (P1c-5a).
-	ChapterOf, LeftInChapter, LeftInBook, ScrubLabel, ScrubValue, FineScrub string
+	ChapterOf, LeftInChapter, LeftInBookMinutes, LeftInBookHours, LeftInBookBoth, SubtitleSep, ScrubLabel, ScrubValue, FineScrub string
 	ClosePlayer, PrevChapter, NextChapter, Speed, Sleep, Chapters           string
 	Bookmark, MoreActions, GoToBook, MarkFinished, ChapterPlayed, OpenPlayer string
 	ScrubBubble                                                              string
@@ -57,7 +57,10 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 
 		"data-ts-msg-chapter-of":      m.ChapterOf,
 		"data-ts-msg-left-in-chapter": m.LeftInChapter,
-		"data-ts-msg-left-in-book":    m.LeftInBook,
+		"data-ts-msg-left-in-book-minutes": m.LeftInBookMinutes,
+		"data-ts-msg-left-in-book-hours":   m.LeftInBookHours,
+		"data-ts-msg-left-in-book-both":    m.LeftInBookBoth,
+		"data-ts-msg-subtitle-sep":         m.SubtitleSep,
 		"data-ts-msg-scrub-label":     m.ScrubLabel,
 		"data-ts-msg-scrub-value":     m.ScrubValue,
 		"data-ts-msg-fine-scrub":      m.FineScrub,
@@ -92,7 +95,9 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 // PlayerSlot holds the mini-player and the one audio element. Both live outside #main, so a boosted
 // swap never re-creates them; player.js (P1c-4) fills the skeleton and shows it when a book is
 // loaded. The open link goes to the book page without script; with it, player-full.js opens the
-// full player instead (P1c-5). On desktop the bar carries a compact scrubber (ts-scrub--bar).
+// full player instead (P1c-5). On desktop the bar carries a compact scrubber (ts-scrub--bar). The bar's
+// sleep card is a sibling of #player, not inside it: the hero's Resume button hides the slot (P1c-4),
+// and a fade must still be seen and answered with "+10 min" on every page.
 templ PlayerSlot(m PlayerMsgs) {
 	<section id="player" class="ts-player-slot" aria-label="Now playing" hx-preserve hidden { m.Attrs()... }>
 		<div class="ts-mini" id="mini-player">
@@ -130,7 +135,7 @@ templ PlayerSlot(m PlayerMsgs) {
 				<input id="ts-volume" class="ts-mini__range" type="range" min="0" max="100" step="5" value="100" data-ts-volume/>
 			</div>
 		</div>
-		@SleepCard(m, "bar")
 	</section>
 	<audio id="audio" preload="none" hx-preserve></audio>
+	@SleepCard(m, "bar")
 }
