@@ -128,14 +128,17 @@ func (s *server) bookmarksPanel(r *http.Request, d library.BookDetail) (pages.Bo
 	for _, b := range list {
 		v.Rows = append(v.Rows, bookmarkRow(b, d.Chapters, now))
 	}
-	// Without the player the button saves the person's stored place; no place, no button.
+	// Without the player the button saves the person's stored place; no place, a hidden form the
+	// player shows once it has a live position.
 	if p, err := s.progress.Get(ctx, u.ID, id); err == nil {
 		_, clock := bookmarkWhere(d.Chapters, p.PositionMs)
 		v.Add = &pages.BookmarkAdd{
 			Action: "/books/" + id + "/bookmarks", CSRF: csrf, PositionMs: strconv.FormatInt(p.PositionMs, 10),
-			Label: fmt.Sprintf(bookmarkAddButton, clock),
+			Label: fmt.Sprintf(bookmarkAddButton, clock), BookID: id,
 		}
-	} else if !errors.Is(err, progress.ErrNotFound) {
+	} else if errors.Is(err, progress.ErrNotFound) {
+		v.Add = &pages.BookmarkAdd{Action: "/books/" + id + "/bookmarks", CSRF: csrf, PositionMs: "0", BookID: id, Hidden: true}
+	} else {
 		return v, nil, err
 	}
 	if added := q.Get("added"); added != "" {

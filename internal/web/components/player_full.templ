@@ -1,5 +1,10 @@
 package components
 
+import (
+	"strconv"
+	"strings"
+)
+
 // Scrubber is the ruler across the whole book (design-system Scrubber): ticks, the fill, the
 // current-chapter line and the needle are drawn by player-full.js through custom properties, and the
 // range input on top carries the keyboard and screen reader semantics. which is "full" or "bar".
@@ -20,7 +25,9 @@ templ Scrubber(m PlayerMsgs, class, which string) {
 // screen below 1280 px and as a side panel from there. player-full.js fills it from window.tsPlayer.
 // The markup order is the screen reader order of the HANDOFF: title, chapter, time left, play and
 // pause, skip, scrubber, settings; the stylesheet puts the scrubber above the transport, the
-// chapter label in the header and the transport buttons in their visual row. Speed, Sleep and Bookmark are inert until P1c-5b.
+// chapter label in the header and the transport buttons in their visual row. The Speed, Sleep and Chapters
+// sheets slide over the body; the sleep card and the toasts sit inside the dialog so a modal player
+// still shows them (P1c-5b).
 templ PlayerFull(m PlayerMsgs) {
 	<dialog id="player-full" class="ts-player" aria-labelledby="player-full-title" hx-preserve>
 		<div class="ts-player__body" data-ts-full-body>
@@ -29,7 +36,7 @@ templ PlayerFull(m PlayerMsgs) {
 					@playerChevron()
 				</button>
 				<div class="ts-player__tools">
-					<button type="button" class="ts-iconbtn ts-player__mark" data-ts-bookmark aria-label={ m.Bookmark } disabled>
+					<button type="button" class="ts-iconbtn ts-player__mark" data-ts-bookmark aria-label={ m.BookmarkMoment }>
 						@Icon("bookmark", false)
 					</button>
 					<details class="ts-player__menu" data-ts-chipmenu data-ts-full-menu>
@@ -87,11 +94,12 @@ templ PlayerFull(m PlayerMsgs) {
 				</div>
 			</div>
 			<div class="ts-player-bar ts-player__bar">
-				<button type="button" class="ts-player-bar__item" data-ts-open-speed disabled>
+				<button type="button" class="ts-player-bar__item" data-ts-open-speed aria-haspopup="dialog" aria-label={ m.Speed }>
 					<span class="ts-player-bar__value" data-ts-full-speed></span>
 					<span class="ts-player-bar__label">{ m.Speed }</span>
 				</button>
-				<button type="button" class="ts-player-bar__item" data-ts-open-sleep disabled>
+				<button type="button" class="ts-player-bar__item" data-ts-open-sleep aria-haspopup="dialog" aria-label={ m.SleepOffLabel }>
+					<span class="ts-player-bar__value" data-ts-full-sleep-left hidden></span>
 					@Icon("sleep", false)
 					<span class="ts-player-bar__label">{ m.Sleep }</span>
 				</button>
@@ -99,11 +107,12 @@ templ PlayerFull(m PlayerMsgs) {
 					@Icon("chapters", false)
 					<span class="ts-player-bar__label">{ m.Chapters }</span>
 				</button>
-				<button type="button" class="ts-player-bar__item ts-player__barmark" data-ts-bookmark disabled>
+				<button type="button" class="ts-player-bar__item ts-player__barmark" data-ts-bookmark aria-keyshortcuts="B" aria-label={ m.BookmarkMoment }>
 					@Icon("bookmark", false)
 					<span class="ts-player-bar__label">{ m.Bookmark }</span>
 				</button>
 			</div>
+			@SleepCard(m, "full")
 		</div>
 		<div class="ts-player__sheet" data-ts-full-sheet>
 			<div class="ts-player__sheetwrap" data-ts-chapters-sheet hidden>
@@ -119,7 +128,90 @@ templ PlayerFull(m PlayerMsgs) {
 					<ol class="ts-player__chapters" data-ts-chapter-list></ol>
 				</section>
 			</div>
+			<div class="ts-player__sheetwrap" data-ts-speed-sheet hidden>
+				<div class="ts-scrim" data-ts-sheet-close></div>
+				<section class="ts-sheet" role="dialog" aria-labelledby="player-full-speed-title">
+					<div class="ts-sheet__grab"></div>
+					<div class="ts-sheet__head">
+						<h3 id="player-full-speed-title" class="ts-sheet__title">{ m.Speed }</h3>
+						<button type="button" class="ts-iconbtn" data-ts-sheet-close aria-label={ m.KeysClose }>
+							@Icon("close", false)
+						</button>
+					</div>
+					<ul class="ts-options" role="radiogroup" aria-labelledby="player-full-speed-title">
+						for _, v := range []string{"0.8", "1.0", "1.2", "1.5", "2.0"} {
+							<li>
+								<button type="button" class="ts-option" role="radio" aria-checked="false" data-ts-speed-choice={ v }>
+									<span>{ fillValue(m.SpeedValue, v) }</span>
+									<span class="ts-option__check">@Icon("check", false)</span>
+								</button>
+							</li>
+						}
+					</ul>
+					<div class="ts-player__fine">
+						<label for="ts-speed-fine">{ m.SpeedFine }</label>
+						<output for="ts-speed-fine" class="ts-num" data-ts-speed-out></output>
+						<input id="ts-speed-fine" type="range" min="0.5" max="3" step="0.05" data-ts-speed-range/>
+					</div>
+				</section>
+			</div>
+			<div class="ts-player__sheetwrap" data-ts-sleep-sheet hidden>
+				<div class="ts-scrim" data-ts-sheet-close></div>
+				<section class="ts-sheet" role="dialog" aria-labelledby="player-full-sleep-title">
+					<div class="ts-sheet__grab"></div>
+					<div class="ts-sheet__head">
+						<h3 id="player-full-sleep-title" class="ts-sheet__title">{ m.SleepTitle }</h3>
+						<button type="button" class="ts-iconbtn" data-ts-sheet-close aria-label={ m.KeysClose }>
+							@Icon("close", false)
+						</button>
+					</div>
+					<ul class="ts-options" role="radiogroup" aria-labelledby="player-full-sleep-title">
+						<li>
+							<button type="button" class="ts-option" role="radio" aria-checked="false" data-ts-sleep-choice="chapter">
+								<span>{ m.SleepEndOfChapter }</span>
+								<span class="ts-option__meta" data-ts-sleep-meta></span>
+								<span class="ts-option__check">@Icon("check", false)</span>
+							</button>
+						</li>
+						for _, n := range []int{15, 30, 60} {
+							<li>
+								<button type="button" class="ts-option" role="radio" aria-checked="false" data-ts-sleep-choice={ strconv.Itoa(n) }>
+									<span>{ fillN(m.SleepMinutes, n) }</span>
+									<span class="ts-option__check">@Icon("check", false)</span>
+								</button>
+							</li>
+						}
+						<li>
+							<button type="button" class="ts-option" role="radio" aria-checked="false" data-ts-sleep-choice="custom">
+								<span>{ m.SleepCustom }</span>
+								<span class="ts-option__check">@Icon("check", false)</span>
+							</button>
+						</li>
+						<li>
+							<button type="button" class="ts-option" role="radio" aria-checked="false" data-ts-sleep-choice="off" hidden>
+								<span>{ m.SleepTurnOff }</span>
+								<span class="ts-option__check">@Icon("check", false)</span>
+							</button>
+						</li>
+					</ul>
+					<div class="ts-player__custom" data-ts-sleep-custom hidden>
+						<label for="ts-sleep-minutes">{ m.SleepCustomLabel }</label>
+						<input id="ts-sleep-minutes" class="ts-input" type="number" min="1" max="240" step="1" inputmode="numeric" data-ts-sleep-minutes/>
+						<button type="button" class="ts-btn ts-btn--primary" data-ts-sleep-start>{ m.SleepStart }</button>
+					</div>
+				</section>
+			</div>
 		</div>
+		<div class="ts-toasts ts-player__toasts" data-ts-full-toasts aria-live="polite"></div>
+		<template data-ts-bookmark-toast>
+			<div class="ts-toast" role="status">
+				<span class="ts-toast__ok">@Icon("check", false)</span>
+				<span>
+					<span data-ts-toast-text></span>
+					<a data-ts-toast-link href="/" hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog">{ m.AddNote }</a>
+				</span>
+			</div>
+		</template>
 		<template data-ts-chapter-row>
 			<li>
 				<button type="button" class="ts-player__chrow">
@@ -137,4 +229,25 @@ templ PlayerFull(m PlayerMsgs) {
 
 templ playerChevron() {
 	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+}
+
+// fillValue puts v where a message has {v} (the speed choices).
+func fillValue(message, v string) string {
+	return strings.Replace(message, "{v}", v, 1)
+}
+
+// SleepCard is the "Sleeping in N seconds" card with its "+10 min" button. It is rendered twice:
+// inside the full player (where="full") and above the bar (where="bar"); player-full.js shows the
+// one that matches whether the full player is open. The per-second count is aria-hidden; a polite
+// status line says it once at the start of the fade.
+templ SleepCard(m PlayerMsgs, where string) {
+	<section class="ts-sleepcard" data-ts-sleep-card={ where } hidden>
+		@Icon("sleep", false)
+		<div class="ts-sleepcard__text">
+			<p class="body ts-sleepcard__title" aria-hidden="true" data-ts-sleep-count></p>
+			<p class="caption ts-sleepcard__hint" aria-hidden="true" data-ts-sleep-hint></p>
+			<p class="ts-sr" role="status" data-ts-sleep-said></p>
+		</div>
+		<button type="button" class="ts-btn ts-btn--secondary" data-ts-sleep-plus>{ m.PlusTen }</button>
+	</section>
 }

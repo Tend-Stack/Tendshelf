@@ -271,6 +271,24 @@ The scrubber covers the whole book: ticks at chapter starts, fill, needle and ch
 ours, halved past 40 px and quartered past 80 px from the bar, snapping within 1.5 % of a chapter start, seek on release;
 `aria-valuetext` at most every 10 s while playing). The chapters sheet is built with DOM APIs from a `<template>`.
 
+Speed, sleep timer, volume, bookmark key (P1c-5b). The Speed, Sleep and Chapters sheets share one `openSheet(name)` (the body goes
+`inert`, focus lands on the current choice, Up/Down move between choices, Escape closes the sheet before the player). Speed: presets
+and a 0.05 slider call `tsPlayer.setSpeed`; the change is saved to the person's settings with `POST /me/settings` (`speed=` alone,
+debounced one second, sent with `keepalive` on `pagehide`, failures silent), so it follows them to other devices; `preservesPitch`
+is set in player.js. Volume is per device (`localStorage["ts.volume"]`); iOS ignores `audio.volume`, so there
+`tsPlayer.canSetVolume` is false: the desktop bar's slider is hidden and the sleep timer pauses without a fade. The sleep timer
+lives in memory (a reload clears it) and counts only while sound plays, from `performance.now()` deltas. "End of chapter" ends at
+the chapter end when it is chosen (the next chapter's when under 2 s are left) and, at that end, pauses and seeks there so Resume
+starts the next chapter; minutes are real minutes whatever the speed. The last ten seconds ramp `audio.volume = userVolume * fade`
+in 250 ms steps; the fade never overwrites the person's level, and every timer end, "+10 min", shake or turn-off restores it. The
+sleep card shows while fading and playing, in the dialog when it is open and above the bar otherwise; a polite status line says
+"Sleeping in N seconds" once and the per-second count is `aria-hidden`. A shake (two jolts over 12 m/s² within a second) adds ten
+minutes where `devicemotion` is allowed; iOS asks inside the tap that sets the timer. The bookmark button and the `B` key post
+`position_ms` of the live position to `POST /books/{id}/bookmarks` (JSON answer with `noteHref`) and show a toast with an "Add a
+note" link that uses the Bookmarks tab's htmx attributes; while the modal player is open toasts go into its own
+`[data-ts-full-toasts]` region. The Bookmarks tab's form is always rendered (hidden when there is no stored place) and the player
+fills in the live position. JS budgets (gzip): player.js 12 KB, player-full.js 12 KB, all app JS 28 KB; `player.css` 4 KB.
+
 ## Design regions
 
 The design handoff (`docs/design/tendshelf-handoff/docs/HANDOFF.md`, "Server-rendered partials") names

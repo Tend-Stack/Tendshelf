@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
@@ -299,6 +300,30 @@ const (
 	msgKeysHome    = "Home"
 	msgKeysList    = "This list"
 	msgKeysClose   = "Close"
+
+	// P1c-5b speed, sleep timer, volume, bookmark key. The board and the deck give the words marked
+	// there; the rest follows the voice rules.
+	msgSpeedValue        = "{v}×"
+	msgSpeedLabel        = "Playback speed, {v} times"
+	msgSpeedFine         = "Fine-tune"
+	msgSleepTitle        = "Sleep timer"
+	msgSleepEndOfChapter = "End of chapter"
+	msgSleepMinutes      = "{n} min"
+	msgSleepIn           = "in {m} min"
+	msgSleepCustom       = "Custom"
+	msgSleepCustomLabel  = "Minutes"
+	msgSleepStart        = "Start timer"
+	msgSleepTurnOff      = "Turn off"
+	msgSleepOffLabel     = "Sleep timer, off"
+	msgSleepOnLabel      = "Sleep timer, {t} left"
+	msgSleeping          = "Sleeping in {n} seconds"
+	msgSleepFading       = "Fading out."
+	msgSleepFadingShake  = "Fading out. Shake your phone to add 10 minutes."
+	msgPlusTen           = "+10 min"
+	msgVolume            = "Volume"
+	msgBookmarkMoment    = "Bookmark this moment"
+	msgBookmarkFailed    = "That bookmark didn't save. Try again."
+	msgKeysBookmark      = "Bookmark"
 )
 
 // playerMsgs fills the strings the layout hands to the player (data-ts-msg-* on #player).
@@ -316,5 +341,16 @@ func playerMsgs() components.PlayerMsgs {
 		NextChapter: msgNextChapter, Speed: msgSpeed, Sleep: msgSleep, Chapters: msgChapters, Bookmark: msgBookmark,
 		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
 		OpenPlayer: msgOpenPlayer, ScrubBubble: msgScrubBubble,
+		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SleepTitle: msgSleepTitle,
+		SleepEndOfChapter: msgSleepEndOfChapter, SleepMinutes: msgSleepMinutes, SleepIn: msgSleepIn,
+		SleepCustom: msgSleepCustom, SleepCustomLabel: msgSleepCustomLabel, SleepStart: msgSleepStart,
+		SleepTurnOff: msgSleepTurnOff, SleepOffLabel: msgSleepOffLabel, SleepOnLabel: msgSleepOnLabel,
+		Sleeping: msgSleeping, SleepFading: msgSleepFading, SleepFadingShake: msgSleepFadingShake,
+		PlusTen: msgPlusTen, Volume: msgVolume, BookmarkMoment: msgBookmarkMoment, BookmarkFailed: msgBookmarkFailed,
+		KeysBookmark: msgKeysBookmark,
+		// one source with the Bookmarks tab (P1c-7a): its %s becomes the player's {time}
+		Bookmarked:       strings.Replace(bookmarkToast, "%s", "{time}", 1),
+		BookmarkMomentAt: strings.Replace(bookmarkAddButton, "%s", "{time}", 1),
+		AddNote:          bookmarkAddNote,
 	}
 }

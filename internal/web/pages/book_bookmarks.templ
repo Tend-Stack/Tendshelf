@@ -15,8 +15,13 @@ type BookmarkChip struct {
 	Current     bool
 }
 
-// BookmarkAdd is the "Bookmark this moment" form: a plain POST with the CSRF field.
-type BookmarkAdd struct{ Action, CSRF, PositionMs, Label string }
+// BookmarkAdd is the "Bookmark this moment" form: a plain POST with the CSRF field. Hidden is set
+// when the person has no stored place: the form is still there, so the player can show it and fill
+// the live position (BookID names the book it belongs to).
+type BookmarkAdd struct {
+	Action, CSRF, PositionMs, Label, BookID string
+	Hidden                                  bool
+}
 
 // BookmarkToast is the status line after a bookmark was added, with a link to its note sheet.
 type BookmarkToast struct{ Text, LinkHref, LinkLabel string }
@@ -27,7 +32,7 @@ type BookmarksView struct {
 	Chips                                        []BookmarkChip
 	Rows                                         []components.BookmarkRowView
 	EmptyTitle, EmptyBody                        string
-	// Add is nil when the person has no stored place in the book (the player adds the button later).
+	// Add is hidden when the person has no stored place in the book (the player shows it later).
 	Add   *BookmarkAdd
 	Toast *BookmarkToast
 }
@@ -98,12 +103,12 @@ templ BookmarksPanel(v BookmarksView) {
 			<p class="ts-book__desc">{ v.EmptyTitle }</p>
 		}
 		if v.Add != nil {
-			<form class="ts-bookmarks__add" method="post" action={ templ.URL(v.Add.Action) }>
+			<form class="ts-bookmarks__add" method="post" action={ templ.URL(v.Add.Action) } data-ts-bookmark-add={ v.Add.BookID } hidden?={ v.Add.Hidden }>
 				<input type="hidden" name="_csrf" value={ v.Add.CSRF }/>
 				<input type="hidden" name="position_ms" value={ v.Add.PositionMs }/>
 				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">
 					@components.Icon("bookmark", false)
-					{ v.Add.Label }
+					<span data-ts-bookmark-add-label>{ v.Add.Label }</span>
 				</button>
 			</form>
 		}
