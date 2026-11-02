@@ -13,6 +13,7 @@ import (
 const (
 	KindCover  = "media.cover"
 	KindCompat = "media.compat"
+	KindPeaks  = "media.peaks"
 )
 
 // CoverPayload is the payload of a media.cover job.
@@ -25,14 +26,22 @@ type CompatPayload struct {
 	AudioFileID string `json:"audio_file_id"`
 }
 
-// Register adds the cover and compatibility-copy job kinds to the runner. Both run one at a time:
-// ffmpeg work is heavy, and a cover or copy is never urgent. Each handler's writes begin with the
-// job's fence check.
-func Register(r *jobs.Runner, covers *Covers, compat *Compat) error {
+// PeaksPayload is the payload of a media.peaks job.
+type PeaksPayload struct {
+	AudioFileID string `json:"audio_file_id"`
+}
+
+// Register adds the cover, compatibility-copy and waveform job kinds to the runner. Each runs one at
+// a time: ffmpeg work is heavy, and a cover, copy or waveform is never urgent. Each handler's
+// writes begin with the job's fence check.
+func Register(r *jobs.Runner, covers *Covers, compat *Compat, peaks *Peaks) error {
 	if err := r.Register(jobs.Kind{Name: KindCover, Concurrency: 1, MaxAttempts: 2, Handler: covers.handle}); err != nil {
 		return err
 	}
-	return r.Register(jobs.Kind{Name: KindCompat, Concurrency: 1, MaxAttempts: 2, Handler: compat.handle})
+	if err := r.Register(jobs.Kind{Name: KindCompat, Concurrency: 1, MaxAttempts: 2, Handler: compat.handle}); err != nil {
+		return err
+	}
+	return r.Register(jobs.Kind{Name: KindPeaks, Concurrency: 1, MaxAttempts: 2, Handler: peaks.handle})
 }
 
 func badPayload(err error) error {
@@ -57,6 +66,21 @@ func (c *Compat) handle(ctx context.Context, t *jobs.Task) (any, error) {
 		return nil, badPayload(err)
 	}
 	out, err := c.Run(ctx, p.AudioFileID, t.Fence)
+	if err != nil {
+		return nil, jobError(err)
+	}
+	return map[string]string{"outcome": out}, nil
+}
+
+func (p *Peaks) handle(ctx context.Context, t *jobs.Task) (any, error) {
+	var pl PeaksPayload
+	if err := json.Unmarshal(t.Payload, &pl); err != nil || pl.AudioFileID == "" {
+		return nil, badPayload(err)
+	}
+	if !p.Enabled() {
+		return nil, &jobs.Error{Code: "disabled", Text: "Waveforms are turned off.", Permanent: true}
+	}
+	out, err := p.Run(ctx, pl.AudioFileID, t.Fence)
 	if err != nil {
 		return nil, jobError(err)
 	}

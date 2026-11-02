@@ -37,9 +37,12 @@ type fakeEnq struct {
 	kinds  []string
 	ids    []string
 	active map[string]map[string]bool // kind -> payload value -> waiting
+	// opts holds the options of each Enqueue, expedited the ids Expedite was called with.
+	opts      []jobs.EnqueueOptions
+	expedited []string
 }
 
-func (e *fakeEnq) Enqueue(_ context.Context, kind string, payload any, _ jobs.EnqueueOptions) (string, error) {
+func (e *fakeEnq) Enqueue(_ context.Context, kind string, payload any, o jobs.EnqueueOptions) (string, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	var id string
@@ -48,11 +51,14 @@ func (e *fakeEnq) Enqueue(_ context.Context, kind string, payload any, _ jobs.En
 		id = p.BookID
 	case CompatPayload:
 		id = p.AudioFileID
+	case PeaksPayload:
+		id = p.AudioFileID
 	case scan.ProbePayload:
 		id = p.AudioFileID
 	}
 	e.kinds = append(e.kinds, kind)
 	e.ids = append(e.ids, id)
+	e.opts = append(e.opts, o)
 	if e.active == nil {
 		e.active = map[string]map[string]bool{}
 	}
@@ -71,6 +77,24 @@ func (e *fakeEnq) ActiveKeys(_ context.Context, kind, _ string) (map[string]bool
 		out[k] = true
 	}
 	return out, nil
+}
+
+// ActiveFor and Expedite make the fake a PeaksQueue: a waiting job is queued and has the id
+// "jb_" plus its payload value.
+func (e *fakeEnq) ActiveFor(_ context.Context, kind, _, value string) (jobs.Job, bool, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if !e.active[kind][value] {
+		return jobs.Job{}, false, nil
+	}
+	return jobs.Job{ID: "jb_" + value, Kind: kind, State: jobs.StateQueued}, true, nil
+}
+
+func (e *fakeEnq) Expedite(_ context.Context, id string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.expedited = append(e.expedited, id)
+	return nil
 }
 
 func (e *fakeEnq) count(kind string) int {
@@ -99,6 +123,7 @@ type env struct {
 	data   string
 	ffLog  string
 	enq    *fakeEnq
+	peaks  *Peaks // set by the helper that starts a real runner
 }
 
 func newEnv(t *testing.T) *env {
