@@ -3,6 +3,8 @@ package progress
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"strings"
 	"unicode"
@@ -19,6 +21,7 @@ type Bookmark struct {
 	CreatedAt          int64
 	UpdatedAt          int64
 	DeletedAt          int64
+	ClientID           string // the id the app chose when it created the bookmark, "" if none
 }
 
 // cleanNote trims space, turns CRLF into LF and refuses other control characters (newline and tab are fine)
@@ -39,12 +42,12 @@ func cleanNote(s string) (string, error) {
 	return s, nil
 }
 
-const selectBookmark = `SELECT id, user_id, book_id, position_ms, note, created_at, updated_at, deleted_at FROM bookmarks`
+const selectBookmark = `SELECT id, user_id, book_id, position_ms, note, created_at, updated_at, deleted_at, coalesce(client_id, '') FROM bookmarks`
 
 func scanBookmark(r rowScanner) (Bookmark, error) {
 	var b Bookmark
 	var del sql.NullInt64
-	err := r.Scan(&b.ID, &b.UserID, &b.BookID, &b.PositionMs, &b.Note, &b.CreatedAt, &b.UpdatedAt, &del)
+	err := r.Scan(&b.ID, &b.UserID, &b.BookID, &b.PositionMs, &b.Note, &b.CreatedAt, &b.UpdatedAt, &del, &b.ClientID)
 	b.DeletedAt = del.Int64
 	if errors.Is(err, sql.ErrNoRows) {
 		return Bookmark{}, ErrNotFound
@@ -54,21 +57,57 @@ func scanBookmark(r rowScanner) (Bookmark, error) {
 
 // AddBookmark saves a moment of the book for the person, with an optional note.
 func (s *Service) AddBookmark(ctx context.Context, userID, bookID string, positionMs int64, note string) (Bookmark, error) {
+	b, _, err := s.AddBookmarkWithClientID(ctx, userID, bookID, positionMs, note, "")
+	return b, err
+}
+
+// ValidClientID reports whether id is usable as a client chosen bookmark id: 1 to 64 of letters, digits, "-" and "_".
+func ValidClientID(id string) bool {
+	if id == "" || len(id) > 64 {
+		return false
+	}
+	for _, r := range id {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_') {
+			return false
+		}
+	}
+	return true
+}
+
+// AddBookmarkWithClientID is AddBookmark with an optional client id that makes a retry safe: the same
+// person sending the same id for the same book gets the existing bookmark back (created false) and nothing
+// is written. An id already used by another person or for another book is ErrClientIDTaken.
+func (s *Service) AddBookmarkWithClientID(ctx context.Context, userID, bookID string, positionMs int64, note, clientID string) (b Bookmark, created bool, err error) {
 	switch {
 	case userID == "":
-		return Bookmark{}, &InvalidError{"user_id"}
+		return Bookmark{}, false, &InvalidError{"user_id"}
 	case bookID == "":
-		return Bookmark{}, &InvalidError{"book_id"}
+		return Bookmark{}, false, &InvalidError{"book_id"}
 	case positionMs < 0:
-		return Bookmark{}, &InvalidError{"position_ms"}
+		return Bookmark{}, false, &InvalidError{"position_ms"}
+	case clientID != "" && !ValidClientID(clientID):
+		return Bookmark{}, false, &InvalidError{"client_id"}
 	}
-	note, err := cleanNote(note)
+	note, err = cleanNote(note)
 	if err != nil {
-		return Bookmark{}, err
+		return Bookmark{}, false, err
 	}
 	now := s.nowMs()
-	b := Bookmark{ID: db.NewID("bm"), UserID: userID, BookID: bookID, PositionMs: positionMs, Note: note, CreatedAt: now, UpdatedAt: now}
+	b = Bookmark{ID: db.NewID("bm"), UserID: userID, BookID: bookID, PositionMs: positionMs, Note: note, CreatedAt: now, UpdatedAt: now, ClientID: clientID}
 	err = s.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		created = false
+		if clientID != "" {
+			old, err := scanBookmark(tx.QueryRowContext(ctx, selectBookmark+` WHERE client_id = ? ORDER BY (user_id = ?) DESC LIMIT 1`, clientID, userID))
+			switch {
+			case err == nil && old.UserID == userID && old.BookID == bookID:
+				b = old
+				return nil
+			case err == nil:
+				return ErrClientIDTaken
+			case !errors.Is(err, ErrNotFound):
+				return err
+			}
+		}
 		var n int
 		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM bookmarks WHERE user_id = ? AND book_id = ? AND deleted_at IS NULL`,
 			userID, bookID).Scan(&n); err != nil {
@@ -77,17 +116,105 @@ func (s *Service) AddBookmark(ctx context.Context, userID, bookID string, positi
 		if n >= MaxBookmarksPerBook {
 			return ErrLimit
 		}
-		_, err := tx.ExecContext(ctx, `INSERT INTO bookmarks(id, user_id, book_id, position_ms, note, created_at, updated_at) VALUES (?,?,?,?,?,?,?)`,
-			b.ID, userID, bookID, positionMs, note, now, now)
+		var cid any
+		if clientID != "" {
+			cid = clientID
+		}
+		_, err := tx.ExecContext(ctx, `INSERT INTO bookmarks(id, user_id, book_id, position_ms, note, created_at, updated_at, client_id) VALUES (?,?,?,?,?,?,?,?)`,
+			b.ID, userID, bookID, positionMs, note, now, now, cid)
+		created = err == nil
 		return err
 	})
 	if db.IsForeignKeyViolation(err) {
-		return Bookmark{}, ErrNotFound
+		return Bookmark{}, false, ErrNotFound
 	}
 	if err != nil {
-		return Bookmark{}, err
+		return Bookmark{}, false, err
 	}
-	return b, nil
+	return b, created, nil
+}
+
+const bookmarksChangedMax = 1000
+
+type changeCursor struct {
+	U int64  `json:"u"`
+	I string `json:"i"`
+}
+
+func (c changeCursor) encode() string {
+	raw, _ := json.Marshal(c)
+	return base64.RawURLEncoding.EncodeToString(raw)
+}
+
+// BookmarksChanged lists the person's bookmarks on one book changed after since, tombstones included,
+// oldest change first, with a cursor for the next page ("" at the end). A bad cursor is ErrInvalid.
+func (s *Service) BookmarksChanged(ctx context.Context, userID, bookID string, since int64, cursor string, limit int) ([]Bookmark, string, error) {
+	if limit <= 0 {
+		limit = bookmarksChangedMax
+	}
+	limit = min(limit, bookmarksChangedMax)
+	q := selectBookmark + ` WHERE user_id = ? AND book_id = ? AND updated_at > ?`
+	args := []any{userID, bookID, since}
+	if cursor != "" {
+		raw, err := base64.RawURLEncoding.DecodeString(cursor)
+		var c changeCursor
+		if err != nil || json.Unmarshal(raw, &c) != nil || c.I == "" || c.U < 0 {
+			return nil, "", ErrInvalid
+		}
+		q += ` AND (updated_at, id) > (?, ?)`
+		args = append(args, c.U, c.I)
+	}
+	rows, err := s.st.Reader().QueryContext(ctx, q+` ORDER BY updated_at, id LIMIT ?`, append(args, limit+1)...)
+	if err != nil {
+		return nil, "", err
+	}
+	var out []Bookmark
+	for rows.Next() {
+		b, err := scanBookmark(rows)
+		if err != nil {
+			rows.Close()
+			return nil, "", err
+		}
+		out = append(out, b)
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return nil, "", err
+	}
+	next := ""
+	if len(out) > limit {
+		out = out[:limit]
+		next = changeCursor{out[limit-1].UpdatedAt, out[limit-1].ID}.encode()
+	}
+	return out, next, nil
+}
+
+// BookmarksByIDs returns the person's bookmarks (tombstones included) with the given ids, keyed by id.
+func (s *Service) BookmarksByIDs(ctx context.Context, userID string, ids []string) (map[string]Bookmark, error) {
+	out := make(map[string]Bookmark, len(ids))
+	for len(ids) > 0 {
+		n := min(len(ids), forBooksChunk)
+		args := []any{userID}
+		for _, id := range ids[:n] {
+			args = append(args, id)
+		}
+		ids = ids[n:]
+		rows, err := s.st.Reader().QueryContext(ctx, selectBookmark+` WHERE user_id = ? AND id IN (?`+strings.Repeat(",?", n-1)+`)`, args...)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			b, err := scanBookmark(rows)
+			if err != nil {
+				rows.Close()
+				return nil, err
+			}
+			out[b.ID] = b
+		}
+		if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 // Bookmarks lists the person's live bookmarks on a book, newest first; withNotes keeps only those with a note.

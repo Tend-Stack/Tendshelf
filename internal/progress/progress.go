@@ -36,6 +36,8 @@ var (
 	ErrNotFound = errors.New("progress: not found")
 	// ErrLimit is returned when a person already keeps the most bookmarks one book allows.
 	ErrLimit = errors.New("progress: limit reached")
+	// ErrClientIDTaken means a bookmark client id already belongs to another person or another book.
+	ErrClientIDTaken = errors.New("progress: client id already used")
 	// ErrInvalid is wrapped by every InvalidError.
 	ErrInvalid = errors.New("progress: invalid input")
 )
