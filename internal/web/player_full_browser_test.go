@@ -226,7 +226,7 @@ func TestFullPlayerBrowserScrubber(t *testing.T) {
 	}
 	tab.Eval(`({Dragging: !!document.querySelector("#player-full .ts-scrub.is-dragging"), Bubble: document.querySelector("#player-full [data-ts-bubble]").textContent,
 	  Fine: document.querySelector("#player-full [data-ts-full-fine]").textContent})`, &mid)
-	if !mid.Dragging || !strings.HasPrefix(mid.Bubble, "Chapter 6 · Chapter 6 · ") || mid.Fine != "Drag up for fine control" {
+	if !mid.Dragging || !strings.HasPrefix(mid.Bubble, "Chapter 6 · ") || strings.Contains(mid.Bubble, "Chapter 6 · Chapter 6") || mid.Fine != "Drag up for fine control" {
 		t.Errorf("while dragging: %+v", mid)
 	}
 	fullpMouse(t, tab, "mouseReleased", box.L+0.75*box.W, box.Y)

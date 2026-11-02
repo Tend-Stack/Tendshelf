@@ -256,7 +256,9 @@ function dragTo(s, x, y) {
   d.ms = clamp(d.ms + (x - d.x) / d.rect.width * (chapter.end - chapter.start) * rate, chapter.start, chapter.end);
   d.x = x;
   drawScrub(s, d.ms, false, chapter);
-  s.bubble.textContent = fill(msg("scrubBubble"), { n: book.chapters.indexOf(chapter) + 1, title: chapter.title, t: clock(d.ms - chapter.start) }).replace(" ·  ·", " ·");
+  // A title that is only "Chapter 6" would repeat the number the bubble already shows.
+  const title = /^\D*\d+$/.test(chapter.title) ? "" : chapter.title;
+  s.bubble.textContent = fill(msg("scrubBubble"), { n: book.chapters.indexOf(chapter) + 1, title, t: clock(d.ms - chapter.start) }).replace(" ·  ·", " ·");
   drawTimes(d.ms, player.state().speed);
   drawRuler(d.ms);
 }
