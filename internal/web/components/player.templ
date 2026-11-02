@@ -27,6 +27,10 @@ type PlayerMsgs struct {
 	SleepOnLabel, Sleeping, SleepFading, SleepFadingShake, PlusTen, Volume         string
 	BookmarkMoment, BookmarkFailed, KeysBookmark, Bookmarked, BookmarkMomentAt     string
 	AddNote                                                                        string
+
+	// The desktop bar's chapter waveform (PB1).
+	WaveLabel, WaveValue, Hour, Hours, Minute, Minutes, Second, Seconds, WaveDrawing, WaveChapter string
+	WaveLeft, WaveAhead, WaveBack, WaveDragChapter, DeltaMin, DeltaSec, BookTip, BarMeta         string
 }
 
 // fillN puts n where a message has {n}; the templates use it for the sleep timer choices.
@@ -89,50 +93,108 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 		"data-ts-msg-bookmark-failed":     m.BookmarkFailed,
 		"data-ts-msg-bookmarked":          m.Bookmarked,
 		"data-ts-msg-bookmark-moment-at":  m.BookmarkMomentAt,
+
+		"data-ts-msg-wave-label":        m.WaveLabel,
+		"data-ts-msg-wave-value":        m.WaveValue,
+		"data-ts-msg-hour":              m.Hour,
+		"data-ts-msg-hours":             m.Hours,
+		"data-ts-msg-minute":            m.Minute,
+		"data-ts-msg-minutes":           m.Minutes,
+		"data-ts-msg-second":            m.Second,
+		"data-ts-msg-seconds":           m.Seconds,
+		"data-ts-msg-wave-drawing":      m.WaveDrawing,
+		"data-ts-msg-wave-chapter":      m.WaveChapter,
+		"data-ts-msg-wave-left":         m.WaveLeft,
+		"data-ts-msg-wave-ahead":        m.WaveAhead,
+		"data-ts-msg-wave-back":         m.WaveBack,
+		"data-ts-msg-wave-drag-chapter": m.WaveDragChapter,
+		"data-ts-msg-delta-min":         m.DeltaMin,
+		"data-ts-msg-delta-sec":         m.DeltaSec,
+		"data-ts-msg-book-tip":          m.BookTip,
+		"data-ts-msg-bar-meta":          m.BarMeta,
 	}
 }
 
 // PlayerSlot holds the mini-player and the one audio element. Both live outside #main, so a boosted
 // swap never re-creates them; player.js (P1c-4) fills the skeleton and shows it when a book is
 // loaded. The open link goes to the book page without script; with it, player-full.js opens the
-// full player instead (P1c-5). On desktop the bar carries a compact scrubber (ts-scrub--bar). The bar's
+// full player instead (P1c-5). From 1280 px the bar is a grid (now playing, transport, the chapter waveform, tools;
+// docs/design/tendshelf-player-bar); the wrappers are display: contents below that, so the phone and
+// tablet mini-player keeps its flat row. The waveform is data-ts-wave="bar" (waveform.js). The bar's
 // sleep card is a sibling of #player, not inside it: the hero's Resume button hides the slot (P1c-4),
 // and a fade must still be seen and answered with "+10 min" on every page.
 templ PlayerSlot(m PlayerMsgs) {
 	<section id="player" class="ts-player-slot" aria-label="Now playing" hx-preserve hidden { m.Attrs()... }>
-		<div class="ts-mini" id="mini-player">
+		<div class="ts-mini ts-pbar" id="mini-player">
+			<div class="ts-pbar__book" data-ts-bar-book>
+				<span class="ts-pbar__booktip" data-ts-bar-booktip aria-hidden="true"></span>
+			</div>
 			<div class="ts-mini__progress" data-ts-mini-progress></div>
 			<a class="ts-mini__open" href="/" hx-boost="false" data-ts-open>
 				<span class="ts-cover ts-mini__cover"><img data-ts-cover alt="" width="48" height="48"/></span>
 				<span class="ts-mini__text">
 					<span class="ts-mini__title" data-ts-title></span>
 					<span class="ts-mini__meta" data-ts-meta></span>
+					<span class="ts-mini__meta ts-pbar__meta" data-ts-bar-meta></span>
 				</span>
 			</a>
-			@Scrubber(m, "ts-scrub--bar", "bar")
-			<button type="button" class="ts-iconbtn ts-skip" data-ts-back>
-				@Icon("skip-back", false)
-				<span class="ts-skip__num" data-ts-back-num aria-hidden="true"></span>
-			</button>
-			<button type="button" class="ts-iconbtn ts-iconbtn--filled" data-ts-toggle>
-				<span data-ts-icon-play>@Icon("play", true)</span>
-				<span data-ts-icon-pause>@Icon("pause", true)</span>
-			</button>
-			<button type="button" class="ts-iconbtn ts-skip ts-mini__forward" data-ts-forward>
-				@Icon("skip-forward", false)
-				<span class="ts-skip__num" data-ts-forward-num aria-hidden="true"></span>
-			</button>
-			<button type="button" class="ts-iconbtn ts-mini__speed" data-ts-bar-speed aria-haspopup="dialog" aria-label={ m.Speed }>
-				<span class="ts-num" data-ts-bar-speed-value></span>
-			</button>
-			<button type="button" class="ts-iconbtn ts-mini__sleep" data-ts-bar-sleep aria-haspopup="dialog" aria-label={ m.SleepOffLabel }>
-				@Icon("sleep", false)
-				<span class="ts-num" data-ts-bar-sleep-left hidden></span>
-			</button>
-			<div class="ts-mini__volume" data-ts-volume-wrap>
-				@Icon("output", false)
-				<label class="ts-sr" for="ts-volume">{ m.Volume }</label>
-				<input id="ts-volume" class="ts-mini__range" type="range" min="0" max="100" step="5" value="100" data-ts-volume/>
+			<div class="ts-pbar__transport">
+				<button type="button" class="ts-iconbtn ts-skip" data-ts-back>
+					@Icon("skip-back", false)
+					<span class="ts-skip__num" data-ts-back-num aria-hidden="true"></span>
+				</button>
+				<button type="button" class="ts-iconbtn ts-iconbtn--filled" data-ts-toggle>
+					<span data-ts-icon-play>@Icon("play", true)</span>
+					<span data-ts-icon-pause>@Icon("pause", true)</span>
+				</button>
+				<button type="button" class="ts-iconbtn ts-skip ts-mini__forward" data-ts-forward>
+					@Icon("skip-forward", false)
+					<span class="ts-skip__num" data-ts-forward-num aria-hidden="true"></span>
+				</button>
+			</div>
+			<div class="ts-pbar__seek">
+				<div class="ts-wave ts-wave--bar" data-ts-wave="bar">
+					<div class="ts-wave__needle"></div>
+					<div class="ts-wave__hoverline"></div>
+					<div class="ts-wave__tip" aria-hidden="true">
+						<span data-ts-tip-time></span>
+						<small data-ts-tip-rel></small>
+					</div>
+					<label class="ts-sr" for="ts-scrub-bar">{ m.WaveLabel }</label>
+					<input id="ts-scrub-bar" class="ts-wave__input" type="range" min="0" max="0" step="1" value="0"/>
+				</div>
+				<div class="ts-pbar__times">
+					<span data-pbar="elapsed"></span>
+					<span data-pbar="chapter"></span>
+					<span class="ts-pbar__left" data-pbar="left"></span>
+				</div>
+			</div>
+			<div class="ts-pbar__tools">
+				<button type="button" class="ts-iconbtn ts-mini__speed" data-ts-bar-speed aria-haspopup="dialog" aria-label={ m.Speed }>
+					<span class="ts-num" data-ts-bar-speed-value></span>
+				</button>
+				<button type="button" class="ts-iconbtn ts-mini__sleep" data-ts-bar-sleep aria-haspopup="dialog" aria-label={ m.SleepOffLabel }>
+					@Icon("sleep", false)
+					<span class="ts-num" data-ts-bar-sleep-left hidden></span>
+				</button>
+				<button type="button" class="ts-iconbtn" data-ts-bar-chapters aria-haspopup="dialog" aria-label={ m.Chapters }>
+					@Icon("chapters", false)
+				</button>
+				<button type="button" class="ts-iconbtn" data-ts-bar-bookmark aria-label={ m.BookmarkMoment }>
+					@Icon("bookmark", false)
+				</button>
+				<div class="ts-pbar__volume" data-ts-volume-wrap>
+					<button type="button" class="ts-iconbtn" data-ts-bar-volume aria-expanded="false" aria-controls="ts-volume-pop" aria-label={ m.Volume }>
+						@Icon("output", false)
+					</button>
+					<div id="ts-volume-pop" class="ts-pbar__volume-pop" hidden>
+						<label class="ts-sr" for="ts-volume">{ m.Volume }</label>
+						<input id="ts-volume" class="ts-pbar__range" type="range" min="0" max="100" step="5" value="100" data-ts-volume/>
+					</div>
+				</div>
+				<button type="button" class="ts-iconbtn" data-ts-bar-expand aria-expanded="false" aria-label={ m.OpenPlayer }>
+					@Icon("expand", false)
+				</button>
 			</div>
 		</div>
 	</section>

@@ -106,5 +106,5 @@ func TestFullPlayerBrowserChapterScrub(t *testing.T) {
 	if !hidden {
 		t.Error("desktop side panel: the chapter slider is shown or the book ruler is hidden")
 	}
-	chapscrubLine(t, wide, `#player [data-ts-scrub="bar"] input`)
+	chapscrubLine(t, wide, `#player .ts-wave--bar .ts-wave__input`)
 }

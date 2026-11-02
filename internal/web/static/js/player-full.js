@@ -1,7 +1,7 @@
 // Tendshelf full player (P1c-5a; docs/architecture.md, Web player).
 //
 // A second module next to player.js. It owns the full player dialog (#player-full) and the compact
-// scrubber of the desktop bar; it never touches #audio and drives playback only through
+// scrubber of the full player; it never touches #audio and drives playback only through
 // window.tsPlayer and its ts:player:* events. CSP: no inline style, no markup from data, no eval;
 // custom properties only through style.setProperty. Every word comes from the data-ts-msg-*
 // attributes of #player. P1c-5b adds the speed and sleep timer sheets, the sleep timer with its
@@ -55,6 +55,8 @@ const bar = { // the desktop bar's extras
   speedValue: $("bar-speed-value", slot),
   sleep: $("bar-sleep", slot),
   sleepLeft: $("bar-sleep-left", slot),
+  chapters: $("bar-chapters", slot),
+  expand: $("bar-expand", slot),
   volumeWrap: $("volume-wrap", slot),
   volume: $("volume", slot),
 };
@@ -180,20 +182,30 @@ function update(kind) {
   if (!book) return;
   const state = player.state();
   const ms = state.positionMs;
-  for (const s of scrubs) if (!s.drag) drawScrub(s, ms, kind !== "tick");
-  if (!fullScrub.drag) drawRuler(ms);
+  if (!scrub.drag) {
+    drawScrub(scrub, ms, kind !== "tick");
+    drawRuler(ms);
+  }
   const speedLabel = fill(msg("speedLabel"), { v: speedNumber(state.speed) });
   bar.speedValue.textContent = speedText(state.speed);
   bar.speed.setAttribute("aria-label", speedLabel);
   if (document.activeElement !== bar.volume) bar.volume.value = Math.round(state.volume * 100);
   syncAddForms(ms);
+  syncExpand();
   if (!dialog.open) return;
-  if (!fullScrub.drag) drawTimes(ms, state.speed);
+  if (!scrub.drag) drawTimes(ms, state.speed);
   dialog.classList.toggle("is-playing", state.playing);
   ui["full-toggle"].setAttribute("aria-label", (state.playing ? msg("pausePrefix") : msg("playPrefix")) + " " + book.title);
   setText("full-speed", speedText(state.speed));
   ui["open-speed"].setAttribute("aria-label", speedLabel);
   if (!ui["speed-sheet"].hidden) drawSpeedSheet(state.speed);
+}
+
+// The bar's "open the player" button: open or closed, and what pressing it would do.
+function syncExpand() {
+  if (!book) return;
+  bar.expand.setAttribute("aria-expanded", String(dialog.open));
+  bar.expand.setAttribute("aria-label", dialog.open ? msg("closePlayer") : fill(msg("openPlayer"), { title: book.title, n: chapterAt(player.state().positionMs) + 1 }));
 }
 
 // What changes only when another book loads.
@@ -209,7 +221,7 @@ function drawBook() {
   }
   ui["full-book"].href = "/books/" + encodeURIComponent(book.id);
   ui["full-finish"].action = "/hx/books/" + encodeURIComponent(book.id) + "/finished";
-  for (const s of scrubs) s.input.removeAttribute("aria-valuetext");
+  scrub.input.removeAttribute("aria-valuetext");
   // a ruler tick at every chapter start but the first
   ruler.ticks.replaceChildren(...book.chapters.filter((c) => c.start > 0).map((c) => {
     const tick = document.createElement("span");
@@ -222,15 +234,14 @@ function drawBook() {
 
 // ---- Scrubbers: a chapter wide; click or drag anywhere in it, fine control, keys ----
 
-const scrubs = [...document.querySelectorAll("[data-ts-scrub]")].map((el) => ({
-  root: el,
-  input: $("range", el),
-  bubble: $("bubble", el),
+const scrub = { // the full player's chapter slider; the desktop bar's wave is waveform.js
+  root: $("scrub"),
+  input: $("range"),
+  bubble: $("bubble"),
   textAt: 0,
   drag: null, // { rect, x, y, raw, ms } while a pointer is down
-}));
+};
 
-const fullScrub = scrubs.find((s) => s.root.dataset.tsScrub === "full"); // the other is the desktop bar's
 
 const ruler = document.querySelector("[data-ts-ruler]");
 ruler.ticks = $("ruler-ticks", ruler);
@@ -246,10 +257,8 @@ function dragTo(s, x, y) {
   d.x = x;
   drawScrub(s, d.ms, false, chapter);
   s.bubble.textContent = fill(msg("scrubBubble"), { n: book.chapters.indexOf(chapter) + 1, title: chapter.title, t: clock(d.ms - chapter.start) }).replace(" ·  ·", " ·");
-  if (s === fullScrub) {
-    drawTimes(d.ms, player.state().speed);
-    drawRuler(d.ms);
-  }
+  drawTimes(d.ms, player.state().speed);
+  drawRuler(d.ms);
 }
 
 function endDrag(s, apply) {
@@ -278,7 +287,8 @@ const scrubKeys = {
   End: () => player.seek(chapterNow().end),
 };
 
-for (const s of scrubs) {
+{
+  const s = scrub;
   const input = s.input;
   input.addEventListener("pointerdown", (event) => {
     if (!book || event.button > 0) return;
@@ -290,7 +300,7 @@ for (const s of scrubs) {
     const ms = chapter.start + clamp((event.clientX - rect.left) / rect.width, 0, 1) * (chapter.end - chapter.start);
     s.drag = { rect, chapter, x: event.clientX, ms };
     s.root.classList.add("is-dragging");
-    if (s === fullScrub) ui["full-fine"].textContent = msg("fineScrub");
+    ui["full-fine"].textContent = msg("fineScrub");
     dragTo(s, event.clientX, event.clientY);
   });
   input.addEventListener("pointermove", (event) => {
@@ -346,6 +356,7 @@ function closeNow() {
   closeSheet(false);
   slot.classList.remove("is-covered");
   dialog.close();
+  syncExpand();
   const back = opener && opener.isConnected && opener !== document.body ? opener : miniOpen;
   back.focus({ preventScroll: true });
 }
@@ -880,10 +891,15 @@ const actions = {
   "sleep-plus": sleepPlus,
 };
 
-// The desktop bar sits outside the dialog: its speed and sleep buttons open the side panel's sheets.
+// The desktop bar sits outside the dialog: its tools open the side panel's sheets (speed, sleep,
+// chapters), add a bookmark, toggle the panel and open the volume slider.
 slot.addEventListener("click", (event) => {
-  if (event.target.closest("[data-ts-bar-speed]")) openSheet("speed", bar.speed);
-  else if (event.target.closest("[data-ts-bar-sleep]")) openSheet("sleep", bar.sleep);
+  const hit = (name) => event.target.closest("[data-ts-bar-" + name + "]");
+  if (hit("speed")) openSheet("speed", bar.speed);
+  else if (hit("sleep")) openSheet("sleep", bar.sleep);
+  else if (hit("chapters")) openSheet("chapters", bar.chapters);
+  else if (hit("bookmark")) addBookmark();
+  else if (hit("expand")) (dialog.open ? closePlayer : openPlayer)();
 });
 
 // The bar's sleep card sits beside the slot (so the hero hiding the bar does not hide it): it answers itself.

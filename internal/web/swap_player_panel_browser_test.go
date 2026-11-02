@@ -153,7 +153,7 @@ const swapSheetProbeJS = `(() => {
 func TestSwapPlayerBrowserSheetsStay(t *testing.T) {
 	for _, w := range []struct{ w, h int }{{1440, 900}, {1920, 1240}} {
 		for _, sheet := range []struct{ name, open string }{
-			{"chapters", "[data-ts-open-chapters]"},
+			{"chapters", "[data-ts-bar-chapters]"},
 			{"speed", "[data-ts-bar-speed]"},
 			{"sleep", "[data-ts-bar-sleep]"},
 		} {

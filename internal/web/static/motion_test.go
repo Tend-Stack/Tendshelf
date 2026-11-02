@@ -278,15 +278,17 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// AGENTS.md rule: report an overrun, never squeeze.
 	// P1c-5b adds volume, fade and the toast host to player.js (12 KB), and the speed and sleep
 	// sheets, the sleep timer, the bookmark toast and the B key to player-full.js (12 KB).
-	"player.js":      {12 * 1024, 64 * 1024},
+	"player.js": {12 * 1024, 64 * 1024},
+	// PB2 moved the desktop bar's wave seek and the volume pop into waveform.js: back to 12 KB (12.2 KB measured by gzip -c).
 	"player-full.js": {12 * 1024, 64 * 1024},
-	// W2: the waveform drawing. The plan said 2 KB; the version written for reading (comments, one
-	// statement per line) is 3.0 KB, so the limit is 3.5 KB; see the AGENTS.md rule: report, never squeeze.
-	"waveform.js": {3584, 16 * 1024},
+	// W2: the waveform drawing (3.0 KB). PB2 folds in the desktop bar's wave (four layers, times, hover,
+	// drag, keys, retry backoff, hairline, volume pop): 7 KB, approved by the operator on 2026-11-02; 7.0 KB measured.
+	"waveform.js": {7 * 1024, 24 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
-const jsTotalGzip = 30 * 1024 // 12 (player.js) + 4 (shell.js) + 12 (player-full.js) + 3 (waveform.js)
+// The operator approved 34 KB on 2026-11-02 for the desktop bar's waveform (PB1 to PB3; waveform.js grows to 7 KB in PB2).
+const jsTotalGzip = 34 * 1024 // 12 (player.js) + 4 (shell.js) + 12 (player-full.js) + 7 (waveform.js)
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

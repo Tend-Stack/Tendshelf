@@ -54,6 +54,9 @@
   --shadow-float: 0 10px 30px #00000080, 0 2px 8px #00000059;
   --shadow-sheet: 0 -12px 40px #00000099;
   --focus-ring: 0 0 0 2px #14110e, 0 0 0 4px #f0956a;
+  --wave-played: #e2703a;
+  --wave-rest: #665b4e;
+  --wave-ahead: #e2703ae0;
 }
 [data-theme="light"] {
   --ground: #f4eee3;
@@ -90,6 +93,9 @@
   --shadow-float: 0 8px 24px #1f1a1426, 0 1px 4px #1f1a141a;
   --shadow-sheet: 0 -8px 32px #1f1a1433;
   --focus-ring: 0 0 0 2px #f4eee3, 0 0 0 4px #a2441a;
+  --wave-played: #a2441a;
+  --wave-rest: #b5a892;
+  --wave-ahead: #a2441ad0;
 }
 [data-theme="sepia"] {
   --ground: #e6d7bc;
@@ -126,6 +132,9 @@
   --shadow-float: 0 8px 24px #33281b26, 0 1px 4px #33281b1a;
   --shadow-sheet: 0 -8px 32px #33281b33;
   --focus-ring: 0 0 0 2px #e6d7bc, 0 0 0 4px #8e3b15;
+  --wave-played: #8e3b15;
+  --wave-rest: #a99676;
+  --wave-ahead: #8e3b15d0;
 }
 [data-theme="contrast"] {
   --ground: #000000;
@@ -162,6 +171,9 @@
   --shadow-float: 0 0 0 1px #ffffff;
   --shadow-sheet: 0 0 0 1px #ffffff;
   --focus-ring: 0 0 0 2px #000000, 0 0 0 4px #ffffff;
+  --wave-played: #ff9a66;
+  --wave-rest: #7a7a7a;
+  --wave-ahead: #ff9a66e0;
 }
 :root {
   /* The dark ink on a tinted spine or blank cover: the boards' spine text colour. Deeper than
@@ -197,6 +209,7 @@
   --size-tap: 2.75rem;
   --size-tab-bar: 4.5rem;
   --size-mini-player: 4rem;
+  --size-pbar: 5.5rem;
   --size-rail: 5.5rem;
   --size-sidebar: 16.5rem;
   --size-player-panel: 25rem;

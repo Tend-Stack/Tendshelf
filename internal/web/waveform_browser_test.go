@@ -23,7 +23,12 @@ import (
 
 const (
 	wavedrawFull = `#player-full [data-ts-wave]`
-	wavedrawBar  = `#player [data-ts-scrub="bar"] [data-ts-wave]`
+	wavedrawBar  = `#player [data-ts-wave="bar"]`
+
+	// The bar's played colour is --wave-played of the theme (tokens.css), as the browser reports it.
+	wavedrawBarDark     = "rgb(226, 112, 58)"
+	wavedrawBarLight    = "rgb(162, 68, 26)"
+	wavedrawBarContrast = "rgb(255, 154, 102)"
 )
 
 // wavedrawWrite stores a 180-bin peaks file (90 s of 500 ms bins) for f, in the on-disk format.
@@ -58,11 +63,13 @@ func wavedrawState(tab *cdp.Tab, sel string) wavedrawRead {
 	var r wavedrawRead
 	tab.Eval(`(() => {
 	  const w = document.querySelector(`+cdp.Quote(sel)+`);
-	  const m = w.querySelector(".ts-wave__muted"), p = w.querySelector(".ts-wave__played");
+	  const m = w.querySelector(".ts-wave__muted, .ts-wave__rest"), p = w.querySelector(".ts-wave__played");
+	  const bar = w.dataset.tsWave === "bar";
+	  const paint = (s) => bar ? getComputedStyle(s.querySelector("path")).stroke : getComputedStyle(s).fill;
 	  const d = (s) => s ? s.querySelector("path").getAttribute("d") : "";
 	  return {Svgs: w.querySelectorAll("svg").length, Bars: (d(m).match(/M/g) || []).length,
-	    Hidden: w.getAttribute("aria-hidden") === "true", D: d(m), PlayedD: d(p),
-	    Muted: m ? getComputedStyle(m).fill : "", Fill: p ? getComputedStyle(p).fill : "",
+	    Hidden: w.getAttribute("aria-hidden") === "true" || [...w.querySelectorAll("svg")].every((s) => s.getAttribute("aria-hidden") === "true"), D: d(m), PlayedD: d(p),
+	    Muted: m ? paint(m) : "", Fill: p ? paint(p) : "",
 	    MutedOpacity: m ? getComputedStyle(m).opacity : "", Clip: p ? getComputedStyle(p).clipPath : "",
 	    Width: w.getBoundingClientRect().width, Display: getComputedStyle(w).display};
 	})()`, &r)
@@ -97,16 +104,24 @@ func wavedrawClipFraction(t *testing.T, r wavedrawRead) float64 {
 
 func wavedrawCheckDrawn(t *testing.T, what string, tab *cdp.Tab, sel string) wavedrawRead {
 	t.Helper()
-	tab.WaitFor(`document.querySelector(`+cdp.Quote(sel)+`).querySelectorAll("svg").length === 2`, 5*time.Second)
+	tab.WaitFor(`document.querySelector(`+cdp.Quote(sel)+`).querySelectorAll("svg").length > 0 && !document.querySelector(`+cdp.Quote(sel)+`).classList.contains("ts-wave--loading")`, 5*time.Second)
 	r := wavedrawState(tab, sel)
+	layers := 2
+	if sel == wavedrawBar {
+		layers = 4 // rest, played, ahead, behind
+	}
 	want := int(r.Width) / 4
 	if want < 8 {
 		want = 8
 	}
-	if r.Svgs != 2 || r.Bars != want || !r.Hidden || r.D != r.PlayedD || r.Display == "none" {
-		t.Errorf("%s: %+v (want 2 svgs, %d bars, aria-hidden, equal paths)", what, r, want)
+	if r.Svgs != layers || r.Bars != want || !r.Hidden || r.D != r.PlayedD || r.Display == "none" {
+		t.Errorf("%s: %+v (want %d svgs, %d bars, aria-hidden, equal paths)", what, r, layers, want)
 	}
-	if r.Fill == r.Muted || r.MutedOpacity != "0.5" {
+	wantOpacity := "0.5" // the full player's rest layer is a faded line; the bar's is its own colour, token --wave-rest
+	if sel == wavedrawBar {
+		wantOpacity = "1"
+	}
+	if r.Fill == r.Muted || r.MutedOpacity != wantOpacity {
 		t.Errorf("%s: played %q and muted %q (opacity %s) must differ", what, r.Fill, r.Muted, r.MutedOpacity)
 	}
 	return r
@@ -129,15 +144,20 @@ func TestWaveformBrowser(t *testing.T) {
 		if vp.w >= 1280 {
 			sels = []string{wavedrawBar}
 			sel0 = wavedrawBar
-			slider = `#player [data-ts-scrub="bar"] input`
+			slider = `#player .ts-wave--bar .ts-wave__input`
 		}
 
 		// The stored position is in chapter 4 (file 2, no peaks yet): a 404 draws nothing, and the
 		// scrubber still works: a click at 90 % of the line lands at 90 % of chapter 4.
 		time.Sleep(500 * time.Millisecond)
 		for _, sel := range sels {
-			if r := wavedrawState(tab, sel); r.Svgs != 0 {
-				t.Errorf("%dpx %s: %d svgs drawn while /peaks/ answers 404", vp.w, sel, r.Svgs)
+			// The bar draws flat bars (pulsing) while the values are on their way; the full player draws nothing.
+			want := 0
+			if sel == wavedrawBar {
+				want = 4
+			}
+			if r := wavedrawState(tab, sel); r.Svgs != want {
+				t.Errorf("%dpx %s: %d svgs drawn while /peaks/ answers 404, want %d", vp.w, sel, r.Svgs, want)
 			}
 		}
 		box := chapscrubMeasure(tab, slider)
@@ -153,7 +173,7 @@ func TestWaveformBrowser(t *testing.T) {
 			// The full player uses the cover's dark accent #9ccbc4; the bar's scrubber its own fill colour.
 			want := "rgb(156, 203, 196)"
 			if sel == wavedrawBar {
-				tab.Eval(`getComputedStyle(document.querySelector("#player [data-ts-scrub=bar] .ts-scrub__fill")).backgroundColor`, &want)
+				want = wavedrawBarDark
 			}
 			if r.Fill != want {
 				t.Errorf("%dpx %s: played fill %q, want %q (the scrubber's own colour)", vp.w, sel, r.Fill, want)
@@ -201,15 +221,19 @@ func TestWaveformBrowser(t *testing.T) {
 				// The full player uses the cover's light accent; the bar's scrubber its own fill colour.
 				want := "rgb(44, 102, 96)"
 				if sel0 == wavedrawBar {
-					tab.Eval(`getComputedStyle(document.querySelector("#player [data-ts-scrub=bar] .ts-scrub__fill")).backgroundColor`, &want)
+					want = wavedrawBarLight
 				}
 				if got := wavedrawState(tab, sel0).Fill; got != want {
 					t.Errorf("%dpx light: played fill %q, want %q", vp.w, got, want)
 				}
 			}
 			if theme == "contrast" {
-				if got := wavedrawState(tab, sel0).Fill; got != "rgb(255, 255, 255)" {
-					t.Errorf("%dpx contrast: played fill %q, want ink", vp.w, got)
+				want := "rgb(255, 255, 255)"
+				if sel0 == wavedrawBar {
+					want = wavedrawBarContrast
+				}
+				if got := wavedrawState(tab, sel0).Fill; got != want {
+					t.Errorf("%dpx contrast: played fill %q, want %q", vp.w, got, want)
 				}
 			}
 		}

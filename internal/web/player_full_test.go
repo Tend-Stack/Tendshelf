@@ -90,10 +90,28 @@ func TestFullPlayerMarkup(t *testing.T) {
 	if strings.Contains(body, "style=") {
 		t.Error("the page carries a style attribute")
 	}
-	// The mini-player carries the desktop bar's scrubber.
+	// The mini-player carries the desktop bar (PB1): the chapter waveform, its times, the tools.
 	mini := body[strings.Index(body, `id="mini-player"`):start]
-	if !strings.Contains(mini, `ts-scrub ts-scrub--bar`) || !strings.Contains(mini, `data-ts-scrub="bar"`) {
-		t.Error("the mini-player lacks the compact scrubber")
+	if strings.Contains(mini, `ts-scrub--bar`) || strings.Contains(mini, `data-ts-scrub=`) || strings.Contains(mini, `data-ts-range`) {
+		t.Error("the mini-player still carries the old compact scrubber (the bar's wave is waveform.js's)")
+	}
+	// The hairline's chapter gaps get --at from script (CSSOM); the markup never carries style="" (CSP style-src 'self').
+	if strings.Contains(mini, "style=") {
+		t.Error("the bar markup carries a style attribute")
+	}
+	for _, want := range []string{`data-ts-bar-book`, `data-ts-bar-booktip`, `data-ts-bar-meta`, `ts-pbar__transport`, `ts-pbar__seek`,
+		`ts-pbar__tools`, `ts-wave ts-wave--bar`, `data-ts-wave="bar"`, `ts-wave__needle`, `ts-wave__hoverline`, `ts-wave__tip`,
+		`data-ts-tip-time`, `data-ts-tip-rel`, `id="ts-scrub-bar"`, `ts-wave__input`, `data-pbar="elapsed"`, `data-pbar="chapter"`, `data-pbar="left"`,
+		`data-ts-bar-chapters`, `data-ts-bar-bookmark`, `data-ts-bar-volume`, `aria-controls="ts-volume-pop"`, `id="ts-volume-pop"`, `data-ts-bar-expand`} {
+		if !strings.Contains(mini, want) {
+			t.Errorf("the mini-player lacks %s", want)
+		}
+	}
+	for _, name := range []string{"wave-label", "wave-value", "hour", "hours", "minute", "minutes", "second", "seconds", "wave-drawing", "wave-chapter", "wave-left",
+		"wave-ahead", "wave-back", "wave-drag-chapter", "delta-min", "delta-sec", "book-tip", "bar-meta"} {
+		if !strings.Contains(body, `data-ts-msg-`+name+`="`) {
+			t.Errorf("#player lacks data-ts-msg-%s", name)
+		}
 	}
 	// Words come from the one copy deck, set once on #player.
 	for _, attr := range []string{"data-ts-msg-chapter-of", "data-ts-msg-left-in-chapter", "data-ts-msg-left-in-book-minutes", "data-ts-msg-left-in-book-hours", "data-ts-msg-left-in-book-both", "data-ts-msg-subtitle-sep", "data-ts-msg-scrub-value",

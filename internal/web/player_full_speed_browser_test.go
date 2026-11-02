@@ -143,7 +143,7 @@ func sleepNear(t *testing.T, what string, got, want, tol float64) {
 // sleepChoose opens the sleep sheet and picks a choice with real clicks.
 func sleepChoose(t *testing.T, tab *cdp.Tab, choice string) {
 	t.Helper()
-	playerClickSel(t, tab, "[data-ts-open-sleep]")
+	playerClickSel(t, tab, sleepOpenSel(tab))
 	speedWaitSheet(tab, sleepSheetSel)
 	playerClickSel(t, tab, `[data-ts-sleep-choice="`+choice+`"]`)
 	speedWaitSheetClosed(tab, sleepSheetSel)
@@ -249,7 +249,7 @@ func TestFullPlayerBrowserSleep(t *testing.T) {
 	}
 
 	// Escape closes the sheet first, then the player.
-	playerClickSel(t, tab, "[data-ts-open-sleep]")
+	playerClickSel(t, tab, sleepOpenSel(tab))
 	speedWaitSheet(tab, sleepSheetSel)
 	fullpKey(t, tab, "Escape", 27)
 	speedWaitSheetClosed(tab, sleepSheetSel)
@@ -290,4 +290,15 @@ func TestFullPlayerBrowserVolume(t *testing.T) {
 	if !hidden {
 		t.Error("the volume slider shows on the phone")
 	}
+}
+
+// sleepOpenSel is the control that opens the sleep sheet where the test runs: from 1280 px the bar's (the
+// side panel's own row of tools is hidden, PB1), below it the full player's.
+func sleepOpenSel(tab *cdp.Tab) string {
+	var wide bool
+	tab.Eval(`innerWidth >= 1280`, &wide)
+	if wide {
+		return "[data-ts-bar-sleep]"
+	}
+	return "[data-ts-open-sleep]"
 }

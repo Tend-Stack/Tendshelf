@@ -290,18 +290,37 @@ const (
 	msgScrubValue           = "Chapter {n}, {m} minutes {s} seconds elapsed"
 	msgFineScrub            = "Drag up for fine control"
 	msgScrubBubble          = "Chapter {n} · {title} · {t}"
-	msgClosePlayer          = "Close player"
-	msgPrevChapter          = "Previous chapter"
-	msgNextChapter          = "Next chapter"
-	msgSpeed                = "Speed"
-	msgSleep                = "Sleep"
-	msgChapters             = "Chapters"
-	msgBookmark             = "Bookmark"
-	msgMoreActions          = "More"
-	msgGoToBook             = "Go to book"
-	msgMarkFinished         = "Mark as finished"
-	msgChapterPlayed        = "{title}, played"
-	msgOpenPlayer           = "Open player: {title}, chapter {n}"
+	// The desktop bar's chapter waveform (PB1); {t} is a clock, {d} a spoken-short distance. U+2212 is a true minus.
+	msgWaveLabel       = "Position in chapter {n}"
+	msgWaveValue       = "{t} of {total}, chapter {n}, {title}"
+	msgHour            = "{n} hour"
+	msgHours           = "{n} hours"
+	msgMinute          = "{n} minute"
+	msgMinutes         = "{n} minutes"
+	msgSecond          = "{n} second"
+	msgSeconds         = "{n} seconds"
+	msgWaveDrawing     = "Drawing the waveform for chapter {n}…"
+	msgWaveChapter     = "Chapter {n} · {title}"
+	msgWaveLeft        = "−{t}"
+	msgWaveAhead       = "{d} ahead"
+	msgWaveBack        = "{d} back"
+	msgWaveDragChapter = "chapter {n}"
+	msgDeltaMin        = "{m} min"
+	msgDeltaSec        = "{s} s"
+	msgBookTip         = "Chapter {n} of {total} · {p}% of the book"
+	msgBarMeta         = "{author} · {left}"
+	msgClosePlayer     = "Close player"
+	msgPrevChapter     = "Previous chapter"
+	msgNextChapter     = "Next chapter"
+	msgSpeed           = "Speed"
+	msgSleep           = "Sleep"
+	msgChapters        = "Chapters"
+	msgBookmark        = "Bookmark"
+	msgMoreActions     = "More"
+	msgGoToBook        = "Go to book"
+	msgMarkFinished    = "Mark as finished"
+	msgChapterPlayed   = "{title}, played"
+	msgOpenPlayer      = "Open player: {title}, chapter {n}"
 
 	msgKeysTitle   = "Keyboard shortcuts"
 	msgKeysPlay    = "Play or pause"
@@ -364,5 +383,9 @@ func playerMsgs() components.PlayerMsgs {
 		Bookmarked:       strings.Replace(bookmarkToast, "%s", "{time}", 1),
 		BookmarkMomentAt: strings.Replace(bookmarkAddButton, "%s", "{time}", 1),
 		AddNote:          bookmarkAddNote,
+		WaveLabel:        msgWaveLabel, WaveValue: msgWaveValue, Hour: msgHour, Hours: msgHours, Minute: msgMinute, Minutes: msgMinutes,
+		Second: msgSecond, Seconds: msgSeconds, WaveDrawing: msgWaveDrawing, WaveChapter: msgWaveChapter, WaveLeft: msgWaveLeft,
+		WaveAhead: msgWaveAhead, WaveBack: msgWaveBack, WaveDragChapter: msgWaveDragChapter, DeltaMin: msgDeltaMin,
+		DeltaSec: msgDeltaSec, BookTip: msgBookTip, BarMeta: msgBarMeta,
 	}
 }

@@ -567,3 +567,98 @@ body { margin: 0; font-family: var(--font-sans); background: var(--ground); colo
   .ts-player-slot { left: 0; right: 0; padding: 0; bottom: 0; }
   .ts-toasts { left: var(--space-24); right: auto; align-items: flex-start; bottom: calc(var(--size-mini-player) + var(--space-24)); }
 }
+
+/* Desktop player bar (PB1; docs/design/tendshelf-player-bar). Below 1280 px the groups dissolve
+   (display: contents), the desktop-only parts are hidden, and the mini-player is the flat row it was. */
+.ts-pbar__transport { display: contents; }
+.ts-pbar__seek, .ts-pbar__tools, .ts-pbar__book, .ts-pbar__meta { display: none; }
+@media (min-width: 1280px) {
+  :root { --size-mini-player: var(--size-pbar); }
+  /* Four columns, the third takes every free pixel: now playing | transport | waveform | tools. */
+  .ts-pbar { display: grid; grid-template-columns: minmax(12.5rem, 17.5rem) auto minmax(20rem, 1fr) auto; column-gap: var(--space-24); align-items: center;
+    padding: 0 var(--space-24); background: var(--surface); border-radius: 0; border-width: 1px 0 0; box-shadow: none; overflow: visible; }
+  .ts-pbar__transport, .ts-pbar__seek, .ts-pbar__tools { display: flex; }
+  .ts-pbar__book, .ts-pbar__meta { display: block; }
+  .ts-pbar .ts-mini__open { min-width: 0; flex: none; }
+  .ts-pbar .ts-mini__cover { width: 3.5rem; height: 3.5rem; }
+  .ts-pbar .ts-mini__title { font: 500 1rem/1.375rem var(--font-serif); }
+  .ts-pbar__meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ts-pbar__meta:empty { display: none; }
+  .ts-mini__text:has(.ts-pbar__meta:not(:empty)) [data-ts-meta] { display: none; }
+
+  /* Book progress: a 3 px hairline on the bar's top edge, a gap at each chapter start, a tip on hover. */
+  .ts-pbar__book { position: absolute; left: 0; right: 0; top: -1px; height: 0.1875rem; background: var(--line); }
+  .ts-pbar__book::before { content: ""; position: absolute; inset: -0.75rem 0 -0.25rem; }
+  .ts-pbar__book > i { position: absolute; z-index: 2; top: 0; bottom: 0; left: var(--at); width: 2px; background: var(--surface); }
+  .ts-pbar__booktip { position: absolute; z-index: 3; bottom: calc(100% + 0.5rem); left: clamp(5rem, var(--ts-hover, 50%), calc(100% - 5rem)); transform: translateX(-50%);
+    white-space: nowrap; padding: 0.375rem 0.625rem; border-radius: var(--radius-sm); background: var(--raised); border: 1px solid var(--line); box-shadow: var(--shadow-float);
+    font: 600 0.8125rem/1.125rem var(--font-sans); color: var(--ink); opacity: 0; pointer-events: none; transition: opacity var(--duration-fast) var(--easing-standard); }
+  .ts-pbar__book:hover .ts-pbar__booktip:not(:empty) { opacity: 1; }
+  .ts-pbar .ts-mini__progress { z-index: 1; top: -1px; height: 0.1875rem; }
+
+  .ts-pbar__transport { align-items: center; gap: var(--space-4); }
+  .ts-pbar__transport .ts-iconbtn--filled { width: 3.25rem; height: 3.25rem; border-radius: 50%; }
+  .ts-pbar__transport .ts-iconbtn--filled .ts-icon { width: 1.5rem; height: 1.5rem; }
+  .ts-pbar__seek { flex-direction: column; gap: var(--space-4); min-width: 0; padding-top: 0.25rem; }
+  .ts-pbar__times { display: grid; grid-template-columns: 4rem minmax(0, 1fr) 4rem; align-items: center; gap: var(--space-8); min-height: 1.125rem;
+    font-size: 0.8125rem; line-height: 1.125rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  .ts-pbar__times > :nth-child(2) { text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ts-pbar__times > :last-child { text-align: right; }
+  .ts-pbar__left { color: var(--accent); font-weight: 500; }
+
+  .ts-pbar__tools { align-items: center; gap: var(--space-4); }
+  .ts-pbar__tools .ts-mini__speed { width: auto; min-width: 3.5rem; border-radius: var(--radius-pill); font: 600 0.9375rem/1.25rem var(--font-sans); font-variant-numeric: tabular-nums; }
+  .ts-pbar__tools .ts-mini__sleep { width: auto; min-width: var(--size-tap); padding: 0 var(--space-8); gap: 0.125rem; border-radius: var(--radius-pill); }
+  .ts-pbar__tools .ts-mini__sleep .ts-num { font: 600 0.8125rem/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+  .ts-pbar__volume { position: relative; display: flex; }
+  .ts-pbar__volume-pop { position: absolute; z-index: 2; bottom: calc(100% + 0.75rem); right: 0; padding: var(--space-16) var(--space-12); border-radius: var(--radius-md);
+    background: var(--raised); border: 1px solid var(--line); box-shadow: var(--shadow-float); }
+  .ts-pbar__range { display: block; width: 7.5rem; min-height: var(--size-tap); margin: 0; accent-color: var(--accent); }
+  .ts-pbar__tools [aria-expanded="true"] { color: var(--accent); }
+
+  /* The waveform: one SVG per layer, the position in --ts-pos and the hovered point in --ts-hover (0..1). */
+  .ts-wave--bar { --ts-pos: 0; --ts-hover: 0; position: relative; inset: auto; height: 2.25rem; cursor: pointer; touch-action: none; pointer-events: auto; }
+  .ts-wave--bar svg { overflow: visible; pointer-events: none; }
+  .ts-wave--bar .ts-wave__played { opacity: 1; clip-path: inset(-0.25rem calc((1 - var(--ts-pos)) * 100%) -0.25rem 0); }
+  .ts-wave--bar path { fill: none; stroke-width: 2; stroke-linecap: round; }
+  .ts-wave__rest path, .ts-wave__behind path { stroke: var(--wave-rest); }
+  .ts-wave__played path { stroke: var(--wave-played); }
+  .ts-wave__ahead path { stroke: var(--wave-ahead); }
+  .ts-wave__ahead, .ts-wave__behind { opacity: 0; transition: opacity var(--duration-fast) var(--easing-standard); }
+  .ts-wave__ahead { clip-path: inset(-0.25rem calc((1 - var(--ts-hover)) * 100%) -0.25rem calc(var(--ts-pos) * 100%)); }
+  .ts-wave__behind { clip-path: inset(-0.25rem calc((1 - var(--ts-pos)) * 100%) -0.25rem calc(var(--ts-hover) * 100%)); }
+  .ts-wave--bar.is-hover .ts-wave__ahead, .ts-wave--bar.is-hover .ts-wave__behind { opacity: 1; }
+  .ts-wave--bar.is-dragging { --ts-hover: var(--ts-pos); }
+  .ts-wave__needle { position: absolute; top: -0.375rem; bottom: -0.375rem; left: calc(var(--ts-pos) * 100%); width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); pointer-events: none; }
+  .ts-wave__needle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 0.875rem; height: 0.875rem; margin: -0.4375rem 0 0 -0.4375rem; border-radius: 50%;
+    background: var(--ink); box-shadow: 0 0 0 3px var(--surface); transform: scale(0); transition: transform var(--duration-fast) var(--easing-standard); }
+  .ts-wave--bar.is-hover .ts-wave__needle::after, .ts-wave--bar.is-dragging .ts-wave__needle::after, .ts-wave--bar:has(.ts-wave__input:focus-visible) .ts-wave__needle::after { transform: scale(1); }
+  .ts-wave__hoverline { position: absolute; top: 0.125rem; bottom: 0.125rem; left: calc(var(--ts-hover) * 100%); width: 1px; background: var(--ink-muted); opacity: 0; pointer-events: none; }
+  .ts-wave--bar.is-hover .ts-wave__hoverline { opacity: 1; }
+  .ts-wave__tip { position: absolute; z-index: 3; bottom: calc(100% + 0.875rem); left: clamp(4.5rem, calc(var(--ts-hover) * 100%), calc(100% - 4.5rem)); transform: translateX(-50%);
+    white-space: nowrap; padding: 0.375rem 0.625rem; border-radius: var(--radius-sm); background: var(--raised); border: 1px solid var(--line); box-shadow: var(--shadow-float);
+    font: 600 0.8125rem/1.125rem var(--font-sans); font-variant-numeric: tabular-nums; color: var(--ink); opacity: 0; pointer-events: none; transition: opacity var(--duration-fast) var(--easing-standard); }
+  .ts-wave__tip small:not(:empty)::before { content: "\00b7"; margin-right: 0.375rem; }
+  .ts-wave__tip small { margin-left: 0.375rem; font-size: 0.8125rem; font-weight: 400; color: var(--ink-muted); }
+  .ts-wave--bar.is-hover .ts-wave__tip, .ts-wave--bar.is-dragging .ts-wave__tip { opacity: 1; }
+  .ts-wave__input { position: absolute; inset: -0.625rem 0; width: 100%; height: calc(100% + 1.25rem); margin: 0; opacity: 0; cursor: pointer; touch-action: none; }
+  .ts-wave--bar:has(.ts-wave__input:focus-visible) { outline: 2px solid transparent; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+  .ts-wave--loading .ts-wave__rest { animation: ts-wave-pulse 1.6s ease-in-out infinite; }
+  @keyframes ts-wave-pulse { 50% { opacity: 0.45; } }
+
+  /* The side panel keeps the cover, the title, the clock, the book ruler and the transport; the bar carries the tools. */
+  .ts-player .ts-player__bar { display: none; }
+}
+@media (min-width: 1280px) and (max-width: 1365px) {
+  .ts-pbar { column-gap: var(--space-16); grid-template-columns: minmax(11.25rem, 15rem) auto minmax(20rem, 1fr) auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ts-wave--loading .ts-wave__rest { animation: none; }
+  .ts-wave__needle::after, .ts-wave__tip, .ts-wave__ahead, .ts-wave__behind, .ts-pbar__booktip { transition: none; }
+}
+/* Forced colours: the picture is dropped, the needle and the times carry the position. */
+@media (min-width: 1280px) and (forced-colors: active) {
+  .ts-wave--bar { display: block; }
+  .ts-wave--bar svg { display: none; }
+  .ts-wave__needle { forced-color-adjust: none; background: CanvasText; }
+}
