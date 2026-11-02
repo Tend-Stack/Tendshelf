@@ -1,0 +1,270 @@
+package components
+
+import "strconv"
+
+// The desktop "Now playing" panel (NP1). On a wide screen it fills the full player dialog's body
+// beside the page: the book's cover, who wrote and read it, the chapter that plays now, and two
+// tabs, About and Bookmarks. It has no transport; the player bar is the only place that plays.
+// Every string is written by the handler (internal/web/now_panel_views.go). A part with nothing to
+// say is left out: there is never an empty row, "Unknown" or a dash.
+
+// NowLink is a name that links to a page: a person, a genre.
+type NowLink struct{ ID, Name, Href string }
+
+// NowMenu is the extra menu items. ShelfHref is empty when the person may not use shelves.
+type NowMenu struct{ ShelfHref, ShelfLabel string }
+
+// NowTab is one tab. Key is "about" or "bookmarks"; Count is empty for About.
+type NowTab struct {
+	Key, Label, Count, Href string
+	Selected                bool
+}
+
+// NowSeriesBook is one row of the series list. State is the words ("You're here · 62%").
+type NowSeriesBook struct {
+	Number, Title, Href, State string
+	Cover                      CardView
+	Current                    bool
+}
+
+// NowSeries is the book's first series. Place is "Book 2 of 3" (or "Book 2").
+type NowSeries struct {
+	Name, Href, Place string
+	Books             []NowSeriesBook
+}
+
+// NowDetail is one row of the Details list: a value, a quiet line under it, or people.
+type NowDetail struct {
+	Label, Value, Sub string
+	People            []NowLink
+}
+
+// NowAboutView is the About tab. EmptyText is set only when there is no description.
+type NowAboutView struct {
+	Intro, Rest, EmptyText                                   string
+	Heading, SummaryLabel, SeriesLabel, DetailsLabel          string
+	ReadMore, ShowLess                                        string
+	Series                                                    *NowSeries
+	Details                                                   []NowDetail
+	Genres                                                    []NowLink
+	MoreTitle                                                 string
+	More                                                      []CardView
+}
+
+// NowPanelView is the whole panel. On a wide screen the top of the full player (clock, chapter,
+// ruler, times) stays as it is; the panel is only what comes under it. The few things that belong
+// in that top (the narrator in the subtitle, Share and Add to shelf in the menu) are server
+// rendered here as hidden hooks for the page script. ShareHref is empty unless the person may share.
+type NowPanelView struct {
+	BookID, BookHref, ShareHref, ShareLabel string
+	AriaLabel, TabsLabel                    string
+	// ReadBy is "read by Nan Narrator, Theo Marsh", or empty without a narrator.
+	ReadBy string
+	Menu   NowMenu
+	Tabs   []NowTab
+	About  *NowAboutView
+}
+
+// NowBookmarksView is the Bookmarks tab: the newest few, then a link to all of them.
+type NowBookmarksView struct {
+	Rows                                []BookmarkRowView
+	AllHref, AllLabel, EmptyText, Count string
+}
+
+// NowPanel is the aside, with About selected and filled in.
+templ NowPanel(v NowPanelView) {
+	<aside
+		id="now-panel"
+		class="ts-np"
+		aria-label={ v.AriaLabel }
+		data-book-id={ v.BookID }
+		data-book-href={ v.BookHref }
+	>
+		@nowPanelHooks(v)
+		@nowPanelTabs(v)
+		<div id="now-panel-tab" class="ts-np__tab" role="tabpanel" aria-labelledby="now-tab-about">
+			if v.About != nil {
+				@NowPanelAbout(*v.About)
+			}
+		</div>
+	</aside>
+}
+
+// nowPanelHooks holds what the page script moves into the full player's top: the narrator for the
+// subtitle line (data-ts-now-by) and the extra menu items (data-ts-now-menu). It is hidden, so
+// nothing shows twice.
+templ nowPanelHooks(v NowPanelView) {
+	if v.ReadBy != "" {
+		<span hidden data-ts-now-by>{ v.ReadBy }</span>
+	}
+	if v.Menu.ShelfHref != "" || v.ShareHref != "" {
+		<div hidden data-ts-now-menu>
+			if v.Menu.ShelfHref != "" {
+				<a class="ts-player__menuitem" href={ templ.SafeURL(v.Menu.ShelfHref) }>{ v.Menu.ShelfLabel }</a>
+			}
+			if v.ShareHref != "" {
+				<a class="ts-player__menuitem" href={ templ.SafeURL(v.ShareHref) }>{ v.ShareLabel }</a>
+			}
+		</div>
+	}
+}
+
+// NowChapter is the line "Chapter 12 of 19 · The Second Lamp". Empty (and hidden by CSS) for a book
+// of one chapter. It is also served alone so the page can refresh it when the chapter changes.
+templ NowChapter(lead, title string) {
+	<p id="now-panel-chapter" class="ts-np__where">
+		if lead != "" {
+			{ lead }
+			if title != "" {
+				<span aria-hidden="true">·</span>
+				<em>{ title }</em>
+			}
+		}
+	</p>
+}
+
+// NowCount is the number on the Bookmarks tab, served alone when a bookmark is added.
+templ NowCount(n string) {
+	<span id="now-panel-count">{ n }</span>
+}
+
+templ nowPanelTabs(v NowPanelView) {
+	<div class="ts-np__tabs">
+		<div class="ts-np__tablist" role="tablist" aria-label={ v.TabsLabel }>
+			for _, t := range v.Tabs {
+				<button
+					type="button"
+					role="tab"
+					id={ "now-tab-" + t.Key }
+					class="ts-np__tabbtn"
+					aria-selected={ strconv.FormatBool(t.Selected) }
+					aria-controls="now-panel-tab"
+					if !t.Selected {
+						tabindex="-1"
+					}
+					hx-get={ t.Href }
+					hx-target="#now-panel-tab"
+					hx-swap="innerHTML"
+				>
+					{ t.Label }
+					if t.Count != "" {
+						<span aria-hidden="true">·</span>
+						@NowCount(t.Count)
+					}
+				</button>
+			}
+		</div>
+	</div>
+}
+
+// NowPanelAbout is the About tab: the summary, the series, the details, the genres and more books.
+templ NowPanelAbout(v NowAboutView) {
+	<section class="ts-np__section" aria-labelledby="now-sum">
+		<h3 class="ts-np__h" id="now-sum">{ v.SummaryLabel }</h3>
+		if v.Intro != "" {
+			<div class="ts-np__summary">
+				<p class="ts-np__desc">{ v.Intro }</p>
+				if v.Rest != "" {
+					<details class="ts-np__more">
+						<summary class="ts-btn ts-btn--quiet">
+							<span class="ts-np__more-closed">{ v.ReadMore }</span>
+							<span class="ts-np__more-open">{ v.ShowLess }</span>
+						</summary>
+						<p class="ts-np__desc">{ v.Rest }</p>
+					</details>
+				}
+			</div>
+		} else {
+			<div class="ts-np__empty"><span>{ v.EmptyText }</span></div>
+		}
+	</section>
+	if v.Series != nil {
+		<section class="ts-np__section" aria-labelledby="now-series">
+			<h3 class="ts-np__h" id="now-series">{ v.SeriesLabel }</h3>
+			<div class="ts-np__series">
+				<div class="ts-np__serieshead">
+					<a class="ts-np__seriesname" href={ templ.SafeURL(v.Series.Href) }>{ v.Series.Name }</a>
+					if v.Series.Place != "" {
+						<span class="ts-np__seriesplace">{ v.Series.Place }</span>
+					}
+				</div>
+				for _, b := range v.Series.Books {
+					<a class="ts-np__seriesitem" href={ templ.SafeURL(b.Href) } if b.Current {
+						aria-current="true"
+					}>
+						if b.Number != "" {
+							<span class="ts-np__seriesnum ts-num">{ b.Number }</span>
+						}
+						<span class="ts-np__seriescover">@Cover(b.Cover, "fill")</span>
+						<span class="ts-np__seriestext">
+							<span class="ts-np__seriestitle">{ b.Title }</span>
+							<span class="ts-np__seriesstate">{ b.State }</span>
+						</span>
+					</a>
+				}
+			</div>
+		</section>
+	}
+	if len(v.Details) > 0 || len(v.Genres) > 0 {
+		<section class="ts-np__section" aria-labelledby="now-details">
+			<h3 class="ts-np__h" id="now-details">{ v.DetailsLabel }</h3>
+			if len(v.Details) > 0 {
+				<dl class="ts-np__credits">
+					for _, d := range v.Details {
+						<dt>{ d.Label }</dt>
+						<dd>
+							if len(d.People) > 0 {
+								for _, p := range d.People {
+									<div><a class="ts-np__person" href={ templ.SafeURL(p.Href) }>@Avatar(p.ID, p.Name, "sm")<span>{ p.Name }</span></a></div>
+								}
+							} else {
+								{ d.Value }
+							}
+							if d.Sub != "" {
+								<small>{ d.Sub }</small>
+							}
+						</dd>
+					}
+				</dl>
+			}
+			if len(v.Genres) > 0 {
+				<ul class="ts-chip-set ts-np__genres">
+					for _, g := range v.Genres {
+						<li><a class="ts-chip" href={ templ.SafeURL(g.Href) }>{ g.Name }</a></li>
+					}
+				</ul>
+			}
+		</section>
+	}
+	if len(v.More) > 0 {
+		<section class="ts-np__section" aria-labelledby="now-more">
+			<h3 class="ts-np__h" id="now-more">{ v.MoreTitle }</h3>
+			<div class="ts-np__covers">
+				for _, c := range v.More {
+					<a class="ts-np__morebook" href={ templ.SafeURL(c.Href) } aria-label={ c.AriaLabel }>
+						<span class="ts-np__morecover">@Cover(c, "fill")</span>
+						<span class="ts-np__moretitle">{ c.Title }</span>
+					</a>
+				}
+			</div>
+		</section>
+	}
+}
+
+// NowPanelBookmarks is the Bookmarks tab. It also carries the tab's count out of band, so the
+// number on the tab is always the number of the list below it.
+templ NowPanelBookmarks(v NowBookmarksView) {
+	<section class="ts-np__section">
+		if len(v.Rows) == 0 {
+			<div class="ts-np__empty"><span>{ v.EmptyText }</span></div>
+		} else {
+			<div class="ts-np__marks">
+				for _, r := range v.Rows {
+					@BookmarkRow(r)
+				}
+			</div>
+			<a class="ts-btn ts-btn--quiet ts-np__all" href={ templ.SafeURL(v.AllHref) }>{ v.AllLabel }</a>
+		}
+	</section>
+	<span id="now-panel-count" hx-swap-oob="outerHTML">{ v.Count }</span>
+}

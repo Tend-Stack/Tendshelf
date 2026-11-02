@@ -315,6 +315,7 @@ const (
 	msgDeltaSec        = "{s} s"
 	msgBookTip         = "Chapter {n} of {total} · {p}% of the book"
 	msgBarMeta         = "{author} · {left}"
+	msgShowPlayer      = "Show player"
 	msgClosePlayer     = "Close player"
 	msgPrevChapter     = "Previous chapter"
 	msgNextChapter     = "Next chapter"
@@ -393,5 +394,6 @@ func playerMsgs() components.PlayerMsgs {
 		Second: msgSecond, Seconds: msgSeconds, WaveDrawing: msgWaveDrawing, WaveChapter: msgWaveChapter, WaveLeft: msgWaveLeft,
 		WaveAhead: msgWaveAhead, WaveBack: msgWaveBack, WaveDragChapter: msgWaveDragChapter, DeltaMin: msgDeltaMin,
 		DeltaSec: msgDeltaSec, BookTip: msgBookTip, BarMeta: msgBarMeta,
+		ShowPlayer: msgShowPlayer, NowPlaying: nowPanelTitle,
 	}
 }

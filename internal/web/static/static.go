@@ -59,7 +59,7 @@ func layerOf(name string) (string, bool) {
 		return "utilities", true
 	case base == "motion.css":
 		return "motion", true
-	case strings.HasPrefix(base, "pages-") && strings.HasSuffix(base, ".css"), base == "player.css":
+	case strings.HasPrefix(base, "pages-") && strings.HasSuffix(base, ".css"), base == "player.css", base == "now-panel.css":
 		return "pages", true
 	}
 	return "", false

@@ -34,6 +34,9 @@ type PlayerMsgs struct {
 	// The desktop bar's chapter waveform (PB1).
 	WaveLabel, WaveValue, Hour, Hours, Minute, Minutes, Second, Seconds, WaveDrawing, WaveChapter string
 	WaveLeft, WaveAhead, WaveBack, WaveDragChapter, DeltaMin, DeltaSec, BookTip, BarMeta         string
+
+	// The Now playing panel and the Home hero while its book plays (NP1).
+	ShowPlayer, NowPlaying string
 }
 
 // fillN puts n where a message has {n}; the templates use it for the sleep timer choices.
@@ -116,6 +119,8 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 		"data-ts-msg-delta-sec":         m.DeltaSec,
 		"data-ts-msg-book-tip":          m.BookTip,
 		"data-ts-msg-bar-meta":          m.BarMeta,
+		"data-ts-msg-show-player":       m.ShowPlayer,
+		"data-ts-msg-now-playing":       m.NowPlaying,
 	}
 }
 

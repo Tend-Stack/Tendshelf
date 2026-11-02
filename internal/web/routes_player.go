@@ -3,6 +3,9 @@ package web
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
@@ -12,6 +15,11 @@ import (
 func (s *server) registerPlayer(mux *http.ServeMux) {
 	mux.HandleFunc("GET /hx/player", s.getCurrentPlayer)
 	mux.HandleFunc("GET /hx/player/{bookID}", s.getPlayer)
+	mux.HandleFunc("GET /hx/player/panel/{bookID}", s.getNowPanel)
+	mux.HandleFunc("GET /hx/player/panel/{bookID}/about", s.getNowPanelAbout)
+	mux.HandleFunc("GET /hx/player/panel/{bookID}/bookmarks", s.getNowPanelBookmarks)
+	mux.HandleFunc("GET /hx/player/panel/{bookID}/count", s.getNowPanelCount)
+	mux.HandleFunc("GET /hx/player/panel/{bookID}/chapter/{index}", s.getNowPanelChapter)
 }
 
 // getPlayer answers GET /hx/player/{bookID}: the data-only PlayerData fragment for a book the
@@ -65,4 +73,147 @@ func (s *server) getCurrentPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.renderPlayer(w, r, b)
+}
+
+// The Now playing panel (NP1): fragments for the desktop side panel. Each one loads the book with
+// ViewBook, so a hidden or unknown book is a 404; the bookmark parts also need ListenBook.
+
+// nowPanelBook loads the book and its detail for a panel fragment; listen reports ListenBook.
+func (s *server) nowPanelBook(w http.ResponseWriter, r *http.Request) (d library.BookDetail, listen, ok bool) {
+	id := r.PathValue("bookID")
+	book, ok := s.loadBook(w, r, id, share.ViewBook)
+	if !ok {
+		return d, false, false
+	}
+	d, err := s.lib.BookDetail(r.Context(), s.scope(r), id)
+	if errors.Is(err, library.ErrNotFound) {
+		s.notFound(w, r)
+		return d, false, false
+	}
+	if err != nil {
+		s.serverError(w, r, "now panel", err)
+		return d, false, false
+	}
+	listen = s.can.Can(r.Context(), currentUser(r), share.ListenBook, share.Target{Kind: share.TargetBook, ID: book.ID, LibraryID: book.LibraryID})
+	return d, listen, true
+}
+
+// nowPanelListenBook is nowPanelBook for the parts that need ListenBook: without it, a 404.
+func (s *server) nowPanelListenBook(w http.ResponseWriter, r *http.Request) (library.BookDetail, bool) {
+	d, listen, ok := s.nowPanelBook(w, r)
+	if !ok {
+		return d, false
+	}
+	if !listen {
+		s.notFound(w, r)
+		return d, false
+	}
+	return d, true
+}
+
+// getNowPanel answers GET /hx/player/panel/{bookID}: the whole panel with About open. ?chapter=N
+// is ignored: the chapter that plays now is drawn by the full player's own top.
+func (s *server) getNowPanel(w http.ResponseWriter, r *http.Request) {
+	d, listen, ok := s.nowPanelBook(w, r)
+	if !ok {
+		return
+	}
+	ctx, u := r.Context(), currentUser(r)
+	marks := 0
+	if listen {
+		var err error
+		if marks, _, err = s.progress.BookmarkCounts(ctx, u.ID, d.Book.ID); err != nil {
+			s.serverError(w, r, "now panel bookmarks", err)
+			return
+		}
+	}
+	rails, err := s.bookRailData(r, d)
+	if err != nil {
+		s.serverError(w, r, "now panel rails", err)
+		return
+	}
+	about, err := s.nowAboutView(r, d, rails)
+	if err != nil {
+		s.serverError(w, r, "now panel about", err)
+		return
+	}
+	v := nowPanelView(d, listen, marks)
+	v.About = &about
+	if s.canManageServerUsers(r) {
+		v.ShareHref = "/books/" + d.Book.ID + "/share"
+	}
+	if s.canShelve(r) {
+		v.Menu.ShelfHref, v.Menu.ShelfLabel = shelfSheetHref(d.Book.ID), shelfAddLabel
+	}
+	s.fragment(w, r, http.StatusOK, components.NowPanel(v))
+}
+
+// getNowPanelAbout answers GET /hx/player/panel/{bookID}/about: the About tab alone.
+func (s *server) getNowPanelAbout(w http.ResponseWriter, r *http.Request) {
+	d, _, ok := s.nowPanelBook(w, r)
+	if !ok {
+		return
+	}
+	rails, err := s.bookRailData(r, d)
+	if err != nil {
+		s.serverError(w, r, "now panel rails", err)
+		return
+	}
+	about, err := s.nowAboutView(r, d, rails)
+	if err != nil {
+		s.serverError(w, r, "now panel about", err)
+		return
+	}
+	s.fragment(w, r, http.StatusOK, components.NowPanelAbout(about))
+}
+
+// getNowPanelBookmarks answers GET /hx/player/panel/{bookID}/bookmarks: the newest bookmarks of the
+// signed-in person, with the tab's count out of band.
+func (s *server) getNowPanelBookmarks(w http.ResponseWriter, r *http.Request) {
+	d, ok := s.nowPanelListenBook(w, r)
+	if !ok {
+		return
+	}
+	ctx, u := r.Context(), currentUser(r)
+	list, err := s.progress.Bookmarks(ctx, u.ID, d.Book.ID, false)
+	if err != nil {
+		s.serverError(w, r, "now panel bookmarks", err)
+		return
+	}
+	total, _, err := s.progress.BookmarkCounts(ctx, u.ID, d.Book.ID)
+	if err != nil {
+		s.serverError(w, r, "now panel bookmarks", err)
+		return
+	}
+	s.fragment(w, r, http.StatusOK, components.NowPanelBookmarks(nowBookmarksView(d, list, total, time.Now())))
+}
+
+// getNowPanelCount answers GET /hx/player/panel/{bookID}/count: the number on the Bookmarks tab.
+func (s *server) getNowPanelCount(w http.ResponseWriter, r *http.Request) {
+	d, ok := s.nowPanelListenBook(w, r)
+	if !ok {
+		return
+	}
+	total, _, err := s.progress.BookmarkCounts(r.Context(), currentUser(r).ID, d.Book.ID)
+	if err != nil {
+		s.serverError(w, r, "now panel count", err)
+		return
+	}
+	s.fragment(w, r, http.StatusOK, components.NowCount(strconv.Itoa(total)))
+}
+
+// getNowPanelChapter answers GET /hx/player/panel/{bookID}/chapter/{index}: the chapter line for the
+// 0-based chapter. An index that is not a whole number, or past the last chapter, is a 404.
+func (s *server) getNowPanelChapter(w http.ResponseWriter, r *http.Request) {
+	d, _, ok := s.nowPanelBook(w, r)
+	if !ok {
+		return
+	}
+	idx, err := strconv.Atoi(strings.TrimSpace(r.PathValue("index")))
+	if err != nil || idx < 0 || idx >= len(d.Chapters) {
+		s.notFound(w, r)
+		return
+	}
+	lead, rest := nowChapterLine(d.Chapters, idx)
+	s.fragment(w, r, http.StatusOK, components.NowChapter(lead, rest))
 }
