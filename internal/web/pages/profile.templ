@@ -27,6 +27,9 @@ type ProfileView struct {
 	Others int
 	// Libraries is the "Your server" row for a person who manages libraries, or empty.
 	Libraries string
+	// UsersRow is the "Users & invites" row ("3 people · 1 invite waiting") for a person who may
+	// manage users, or empty.
+	UsersRow string
 	// Shelves is the "Your shelves" row ("3 shelves"), empty for people who may not use shelves.
 	Shelves string
 	Version string
@@ -104,16 +107,27 @@ templ Profile(v ProfileView) {
 				</form>
 			}
 		</section>
-		if v.Libraries != "" {
+		if v.Libraries != "" || v.UsersRow != "" {
 			<section aria-labelledby="pf-srv" class="ts-me__section">
 				<h2 id="pf-srv" class="ts-overline">Your server</h2>
-				<a class="ts-me__row" href="/admin/libraries">
-					<span class="ts-me__rowtext">
-						<span class="body ts-me__rowtitle">Libraries</span>
-						<span class="caption ts-me__lead">{ v.Libraries }</span>
-					</span>
-					@meChevron()
-				</a>
+				if v.UsersRow != "" {
+					<a class="ts-me__row" href="/admin/users">
+						<span class="ts-me__rowtext">
+							<span class="body ts-me__rowtitle">Users &amp; invites</span>
+							<span class="caption ts-me__lead">{ v.UsersRow }</span>
+						</span>
+						@meChevron()
+					</a>
+				}
+				if v.Libraries != "" {
+					<a class="ts-me__row" href="/admin/libraries">
+						<span class="ts-me__rowtext">
+							<span class="body ts-me__rowtitle">Libraries</span>
+							<span class="caption ts-me__lead">{ v.Libraries }</span>
+						</span>
+						@meChevron()
+					</a>
+				}
 			</section>
 		}
 		<form method="post" action="/logout" class="ts-me__signout" hx-boost="false">

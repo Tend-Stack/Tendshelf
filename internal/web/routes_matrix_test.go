@@ -63,6 +63,9 @@ type sweepEnv struct {
 	bookmark [3]string // a bookmark of owner, admin and member on the book (P1c-7a)
 
 	libID, folderID, folderDir string
+	// extra is a member with no session who holds the library grant extraGrant: the person the
+	// Users rows act on (P3-2a).
+	extra, extraGrant string
 	book                       library.Book
 	author, narrator, series   string
 	job                        string
@@ -185,6 +188,14 @@ func sweepSeed(t *testing.T) *sweepEnv {
 	}
 	e.series = series[0].SeriesID
 
+	e.extra, e.extraGrant = "usr_sweep_extra", "gr_sweep_extra"
+	if _, err := a.st.Writer().Exec(`INSERT INTO users(id, username, display_name, role, disabled, created_at) VALUES (?, 'sweepextra', 'Sweep Extra', 'member', 0, 1)`, e.extra); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.st.Writer().Exec(`INSERT INTO grants(id, user_id, scope, library_id, can_download, can_read, created_at, updated_at)
+		VALUES (?, ?, 'library', ?, 0, 0, 1, 1)`, e.extraGrant, e.extra, e.libID); err != nil {
+		t.Fatal(err)
+	}
 	e.job = a.adminEnqueueScan(t, l.ID)
 	a.adminSetJobState(t, e.job, "done")
 	if err := db.PutSetting(ctx, a.st.Writer(), settingSetupDone, true); err != nil {
@@ -259,6 +270,7 @@ type sweepRow struct {
 	// (TestRouteMatrixGranted). A 0 means the grant changes nothing for that person.
 	Granted [4]int
 	Loc     string // the Location of a 303 (all roles), when it is fixed
+	LocOf   func(e *sweepEnv) string // the same, for a Location that holds a seeded id; wins over Loc
 	Anon    int    // the anonymous answer; 0 is the default: sign in
 	AnonLoc string // its Location; "" is the default
 	Body    func(t *testing.T, e *sweepEnv, role int, body string)
@@ -546,7 +558,8 @@ func sweepRows() []sweepRow {
 			"position_ms": {"2000"}, "client_updated_at": {"1800000000000"}, "device_id": {"sweepdevice02"}}), sweepStaff(200, 404), ""),
 		sweepPost("POST /hx/books/{id}/finished", id(bookID, "/hx/books/", "/finished"), sweepFormOf(url.Values{
 			"finished": {"1"}, "next": {"/"}}), sweepStaff(303, 404), "/"))
-	return append(rows, post...)
+	rows = append(rows, post...)
+	return append(rows, usersSweepRows()...)
 }
 
 // sweepLeakWords are strings of the seeded book that nobody without access may ever see.
@@ -596,6 +609,9 @@ func (e *sweepEnv) check(t *testing.T, row sweepRow, role int, rec *httptest.Res
 		}
 		if want == http.StatusSeeOther {
 			wantLoc = row.Loc
+			if row.LocOf != nil {
+				wantLoc = row.LocOf(e)
+			}
 		}
 	} else if want == 0 {
 		want = http.StatusSeeOther

@@ -70,6 +70,7 @@ type server struct {
 	sessions *auth.Sessions
 	users    *users.Repo
 	can      *share.Checker
+	grants   *share.Grants
 	proxies  auth.Proxies
 	lib      *library.Repo
 	dataDir  string
@@ -149,6 +150,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		sessions: ss,
 		users:    ur,
 		can:      share.New(opts.Store),
+		grants:   share.NewGrants(opts.Store),
 		proxies:  opts.TrustedProxies,
 		lib:      opts.Library,
 		dataDir:  opts.DataDir,
@@ -172,6 +174,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerBook(mux)
 	s.registerBookmarks(mux)
 	s.registerAdmin(mux)
+	s.registerUsers(mux)
 	//
 	s.registerSetupSteps(mux)
 	s.registerMe(mux)
@@ -222,17 +225,20 @@ func (s *server) pageSheet(w http.ResponseWriter, r *http.Request, status int, t
 // the "Your server" group to people who may manage libraries.
 func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, title, current string, body, sheet templ.Component, styles ...string) {
 	var buf bytes.Buffer
+	showUsers, usersWaiting := s.usersLink(r)
 	err := components.Layout(components.Page{
-		Title:   title,
-		Current: current,
-		Theme:   s.themeFor(r),
-		CSRF:    s.csrf.TokenFrom(r.Context()),
-		Assets:  s.assets,
-		Sheet:   sheet,
-		Styles:  styles,
-		Admin:   s.can.Can(r.Context(), currentUser(r), share.ManageLibraries, share.Target{Kind: share.TargetServer}),
-		Shelves: s.sidebarShelves(r),
-		Player:  playerMsgs(),
+		Title:        title,
+		Current:      current,
+		Theme:        s.themeFor(r),
+		CSRF:         s.csrf.TokenFrom(r.Context()),
+		Assets:       s.assets,
+		Sheet:        sheet,
+		Styles:       styles,
+		Admin:        s.can.Can(r.Context(), currentUser(r), share.ManageLibraries, share.Target{Kind: share.TargetServer}),
+		Users:        showUsers,
+		UsersWaiting: usersWaiting,
+		Shelves:      s.sidebarShelves(r),
+		Player:       playerMsgs(),
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render page", "path", r.URL.Path, "err", err)

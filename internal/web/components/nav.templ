@@ -75,8 +75,15 @@ templ SideRail(current string) {
 	</nav>
 }
 
+// UsersLink says whether the sidebar shows "Users & invites" and what its count reads
+// (for example "1 waiting"; empty hides the count).
+type UsersLink struct {
+	Show    bool
+	Waiting string
+}
+
 // Sidebar is the desktop navigation (1280 px and up).
-templ Sidebar(current string, admin bool, shelves []ShelfLink) {
+templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink) {
 	<nav aria-label="Main" id="nav-side" hx-preserve class="ts-side ts-nav-side">
 		<span class="ts-side__brand ts-brand">
 			@Mark()
@@ -112,8 +119,26 @@ templ Sidebar(current string, admin bool, shelves []ShelfLink) {
 				</a>
 			}
 		}
-		if admin {
+		if admin || users.Show {
 			<span class="ts-side__group ts-overline">Your server</span>
+		}
+		if users.Show {
+			<a
+				href="/admin/users"
+				class="ts-side__item"
+				data-nav="/admin/users"
+				if current == "admin-users" {
+					aria-current="page"
+				}
+			>
+				@Icon("invite", false)
+				Users &amp; invites
+				if users.Waiting != "" {
+					<span class="ts-side__count">{ users.Waiting }</span>
+				}
+			</a>
+		}
+		if admin {
 			<a
 				href="/admin/libraries"
 				class="ts-side__item"

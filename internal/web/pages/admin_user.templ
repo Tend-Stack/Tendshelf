@@ -1,0 +1,243 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// RoleChoice is one radio of "Change role".
+type RoleChoice struct {
+	Value, Label, Hint string
+	On                 bool
+}
+
+// GrantRow is one thing a person can listen to, with its controls.
+type GrantRow struct {
+	ID, Name string
+	// Kind is "Library · 3 books", "Rosa's shelf · 2 books", "Book" or "Everything on this server".
+	Kind string
+	// Ends is "Until 2 Jan", "Ended 2 Jan" or "No end date"; Until is the form value (YYYY-MM-DD) or "".
+	Ends, Until string
+	Expired     bool
+	Download    bool
+	Read        bool
+}
+
+// Option is one choice of a select or a radio list.
+type Option struct {
+	Value, Label string
+}
+
+// AdminUserView is the page of one person: role, what they can listen to, and the account.
+type AdminUserView struct {
+	CSRF, ID, Name, RolePill, RoleKind string
+	// Meta is "Last active Today · 12 h this month"; never what they listen to.
+	Meta string
+	// Error is the plain-words message of a refused form, or empty.
+	Error string
+	Roles []RoleChoice
+	// CanGrant is true for members and listeners (admins see everything by role).
+	CanGrant bool
+	Off      bool
+	Grants   []GrantRow
+	// Libraries and Shelves are the targets of "Share more"; Q is the book search, Found its results.
+	Libraries []Option
+	Shelves   []Option
+	Q         string
+	Found     []Option
+	// Today is the earliest day the "Ends on" field takes (YYYY-MM-DD).
+	Today string
+}
+
+// ConfirmView is a confirmation page (turn off an account, stop sharing).
+type ConfirmView struct {
+	CSRF, Title, Body, Action, Confirm, Keep, Back string
+}
+
+// AdminUserConfirm asks before turning off an account or removing every grant. Both are one click
+// to undo (turn on, share again), but the person is signed out or loses their books first.
+templ AdminUserConfirm(v ConfirmView) {
+	<div class="ts-admin ts-admin--narrow">
+		<h1 class="title-1">{ v.Title }</h1>
+		<p class="ts-users__lead">{ v.Body }</p>
+		<form class="ts-users__confirm" method="post" action={ templ.URL(v.Action) } hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<button type="submit" class="ts-btn ts-btn--danger">{ v.Confirm }</button>
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.Back) }>{ v.Keep }</a>
+		</form>
+	</div>
+}
+
+templ userGrantRow(v AdminUserView, g GrantRow) {
+	<li class={ "ts-users__grant", templ.KV("ts-users__grant--ended", g.Expired) }>
+		<div class="ts-users__granthead">
+			<span class="body ts-users__name">{ g.Name }</span>
+			<span class="caption ts-users__meta">{ g.Kind }</span>
+			<span class="caption ts-users__meta">{ g.Ends }</span>
+		</div>
+		<form method="post" action={ templ.URL("/admin/users/" + v.ID + "/grants/" + g.ID) } class="ts-users__grantform">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<div class="ts-switch-row">
+				<span class="ts-switch-row__text">
+					<label class="ts-switch-row__label" for={ "dl-" + g.ID }>Can download</label>
+				</span>
+				<input type="checkbox" role="switch" class="ts-switch" id={ "dl-" + g.ID } name="download" value="1" checked?={ g.Download }/>
+			</div>
+			<div class="ts-switch-row">
+				<span class="ts-switch-row__text">
+					<label class="ts-switch-row__label" for={ "rd-" + g.ID }>Can read along</label>
+				</span>
+				<input type="checkbox" role="switch" class="ts-switch" id={ "rd-" + g.ID } name="read" value="1" checked?={ g.Read }/>
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for={ "until-" + g.ID }>Ends on (optional)</label>
+				<input class="ts-input" type="date" id={ "until-" + g.ID } name="until" value={ g.Until } min={ v.Today }/>
+			</div>
+			<button type="submit" class="ts-btn ts-btn--secondary">Save</button>
+		</form>
+		<div class="ts-users__grantactions">
+			if g.Expired {
+				<form method="post" action={ templ.URL("/admin/users/" + v.ID + "/grants/" + g.ID + "/renew") }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--secondary">Renew for 30 days</button>
+				</form>
+			}
+			<form method="post" action={ templ.URL("/admin/users/" + v.ID + "/grants/" + g.ID + "/remove") }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ "Remove " + g.Name }>Remove</button>
+			</form>
+		</div>
+	</li>
+}
+
+// userShareForm is "Share more": a scope, its target, the two switches and an end date. The book
+// search is a plain GET form, so it works without JavaScript.
+templ userShareForm(v AdminUserView) {
+	<section class="ts-users__add" aria-labelledby="us-add">
+		<h2 id="us-add" class="section">Share more</h2>
+		<form method="get" action={ templ.URL("/admin/users/" + v.ID) } class="ts-users__find" role="search">
+			<label class="ts-field__label" for="us-q">Find a book</label>
+			<input class="ts-input" type="search" id="us-q" name="q" value={ v.Q }/>
+			<button type="submit" class="ts-btn ts-btn--secondary">Search</button>
+		</form>
+		<form method="post" action={ templ.URL("/admin/users/" + v.ID + "/grants") } class="ts-users__addform">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<fieldset class="ts-users__scopes">
+				<legend class="ts-field__label">Can listen to</legend>
+				<label class="ts-users__scope">
+					<input type="radio" class="ts-check" name="scope" value="all"/>
+					Everything on this server
+				</label>
+				<label class="ts-users__scope">
+					<input type="radio" class="ts-check" name="scope" value="library"/>
+					A library
+				</label>
+				<select class="ts-select" name="library" aria-label="A library">
+					<option value="">-</option>
+					for _, o := range v.Libraries {
+						<option value={ o.Value }>{ o.Label }</option>
+					}
+				</select>
+				<label class="ts-users__scope">
+					<input type="radio" class="ts-check" name="scope" value="shelf"/>
+					A shelf
+				</label>
+				<select class="ts-select" name="shelf" aria-label="A shelf">
+					<option value="">-</option>
+					for _, o := range v.Shelves {
+						<option value={ o.Value }>{ o.Label }</option>
+					}
+				</select>
+				<label class="ts-users__scope">
+					<input type="radio" class="ts-check" name="scope" value="book" checked?={ len(v.Found) > 0 }/>
+					A book
+				</label>
+				for _, o := range v.Found {
+					<label class="ts-users__scope ts-users__found">
+						<input type="radio" class="ts-check" name="book" value={ o.Value }/>
+						{ o.Label }
+					</label>
+				}
+			</fieldset>
+			<div class="ts-switch-row">
+				<span class="ts-switch-row__text">
+					<label class="ts-switch-row__label" for="us-dl">Can download</label>
+				</span>
+				<input type="checkbox" role="switch" class="ts-switch" id="us-dl" name="download" value="1" checked/>
+			</div>
+			<div class="ts-switch-row">
+				<span class="ts-switch-row__text">
+					<label class="ts-switch-row__label" for="us-rd">Can read along</label>
+				</span>
+				<input type="checkbox" role="switch" class="ts-switch" id="us-rd" name="read" value="1"/>
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="us-until">Ends on (optional)</label>
+				<input class="ts-input" type="date" id="us-until" name="until" min={ v.Today }/>
+			</div>
+			<button type="submit" class="ts-btn ts-btn--primary">Share</button>
+		</form>
+	</section>
+}
+
+// AdminUser is the page of one person.
+templ AdminUser(v AdminUserView) {
+	<div class="ts-admin ts-admin--narrow ts-users">
+		<a class="ts-admin__back" href="/admin/users">
+			@components.Icon("invite", false)
+			Users &amp; invites
+		</a>
+		<header class="ts-users__head">
+			@components.Avatar(v.ID, v.Name, "lg")
+			<h1 class="title-1 ts-admin__title">{ v.Name }</h1>
+			<span class={ "ts-role", templ.KV("ts-role--owner", v.RoleKind == "owner") }>{ v.RolePill }</span>
+			<p class="caption ts-users__sub">{ v.Meta }</p>
+		</header>
+		if v.Error != "" {
+			<p class="ts-users__error" role="alert">{ v.Error }</p>
+		}
+		<section class="ts-users__roles" aria-labelledby="us-role">
+			<h2 id="us-role" class="section">Change role</h2>
+			<form method="post" action={ templ.URL("/admin/users/" + v.ID + "/role") }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<fieldset class="ts-users__scopes">
+					<legend class="ts-sr">Change role</legend>
+					for _, c := range v.Roles {
+						<label class="ts-users__scope">
+							<input type="radio" class="ts-check" name="role" value={ c.Value } checked?={ c.On }/>
+							<span class="ts-users__scopetext">
+								<span class="body">{ c.Label }</span>
+								<span class="caption ts-users__meta">{ c.Hint }</span>
+							</span>
+						</label>
+					}
+				</fieldset>
+				<button type="submit" class="ts-btn ts-btn--secondary">Save</button>
+			</form>
+		</section>
+		if v.CanGrant {
+			<section class="ts-users__grants" aria-labelledby="us-grants">
+				<h2 id="us-grants" class="section">Can listen to</h2>
+				if len(v.Grants) == 0 {
+					<p class="caption">Nothing shared yet</p>
+				} else {
+					<ul class="ts-users__grantlist">
+						for _, g := range v.Grants {
+							@userGrantRow(v, g)
+						}
+					</ul>
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL("/admin/users/" + v.ID + "/stop") }>Stop sharing</a>
+				}
+			</section>
+			@userShareForm(v)
+		}
+		<section class="ts-users__account" aria-labelledby="us-acct">
+			<h2 id="us-acct" class="section">Account</h2>
+			if v.Off {
+				<form method="post" action={ templ.URL("/admin/users/" + v.ID + "/enable") }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--secondary">Turn account back on</button>
+				</form>
+			} else {
+				<a class="ts-btn ts-btn--danger" href={ templ.SafeURL("/admin/users/" + v.ID + "/disable") }>Turn off account</a>
+			}
+		</section>
+	</div>
+}

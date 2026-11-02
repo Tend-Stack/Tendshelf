@@ -76,6 +76,11 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 			return v, err
 		}
 	}
+	if s.can.Can(ctx, u, share.ManageUsers, share.Target{Kind: share.TargetServer}) {
+		if v.UsersRow, err = s.usersRow(ctx); err != nil {
+			return v, err
+		}
+	}
 	if s.canShelve(r) {
 		list, err := s.lib.ShelfCounts(ctx, s.scope(r), u.ID)
 		if err != nil {

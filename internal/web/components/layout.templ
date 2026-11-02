@@ -25,6 +25,9 @@ type Page struct {
 	Styles []string
 	// Admin shows the "Your server" group in the desktop sidebar.
 	Admin bool
+	// Users shows "Users & invites" in the sidebar; UsersWaiting is its count text ("" hides it).
+	Users        bool
+	UsersWaiting string
 	// Shelves are the person's shelves in the desktop sidebar ("Your shelves"), empty for people
 	// who may not use shelves.
 	Shelves []ShelfLink
@@ -86,7 +89,7 @@ templ Layout(p Page, body templ.Component) {
 			<div class="ts-shell">
 				@TabBar(p.Current)
 				@SideRail(p.Current)
-				@Sidebar(p.Current, p.Admin, p.Shelves)
+				@Sidebar(p.Current, p.Admin, UsersLink{Show: p.Users, Waiting: p.UsersWaiting}, p.Shelves)
 				<main id="main" class="ts-main" tabindex="-1" hx-history-elt>
 					for _, css := range p.Styles {
 						<link rel="stylesheet" href={ p.Assets.URL(css) }/>
