@@ -157,6 +157,38 @@ func TestHomeEmptyStates(t *testing.T) {
 	}
 }
 
+// TestHomeEmptyFolders: once a folder exists but held nothing playable, Home and the Library name it
+// (or count the folders) instead of offering to add a folder; a member still sees "Nothing shared yet".
+func TestHomeEmptyFolders(t *testing.T) {
+	a := browseOwnerApp(t)
+	f := browseLibrary(t, a, "Audiobooks")
+	for _, path := range []string{"/", "/libraries", "/libraries/" + f.LibraryID} {
+		body := browseGet(a, path, false, nil).Body.String()
+		for _, want := range []string{"No audiobooks found yet", "Tendshelf looked in " + f.Path + " and found nothing it can play.",
+			"Open Libraries", `href="/admin/libraries"`} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s lacks %q", path, want)
+			}
+		}
+		if strings.Contains(body, "Your shelf is empty") || strings.Contains(body, "/admin/libraries/folders/new") {
+			t.Errorf("%s still offers to add a folder", path)
+		}
+	}
+	// A second empty folder: Home counts them; the first library's page still names its own one.
+	g := browseLibrary(t, a, "Podcasts")
+	if body := browseGet(a, "/", false, nil).Body.String(); !strings.Contains(body, "Tendshelf looked in 2 folders and found nothing it can play.") {
+		t.Error("Home does not count the two empty folders")
+	}
+	if body := browseGet(a, "/libraries/"+g.LibraryID, false, nil).Body.String(); !strings.Contains(body, "Tendshelf looked in "+g.Path+" ") {
+		t.Error("a library's page does not name its own folder")
+	}
+	member := a.as(t, users.RoleMember)
+	body := browseGet(a, "/", false, member).Body.String()
+	if !strings.Contains(body, "Nothing shared yet") || strings.Contains(body, f.Path) || strings.Contains(body, "Open Libraries") {
+		t.Error("a member sees the folder state")
+	}
+}
+
 func TestHomeScanBanner(t *testing.T) {
 	a := browseOwnerApp(t)
 	f := browseLibrary(t, a, "Audiobooks")

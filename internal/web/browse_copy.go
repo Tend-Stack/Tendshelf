@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
@@ -15,9 +16,14 @@ const (
 	// Board: HomePhone ("Welcome back, Maya").
 	browseGreeting = "Welcome back"
 	// Copy deck: empty states.
-	browseEmptyShelfTitle   = "Your shelf is empty"
-	browseEmptyShelfBody    = "Point Tendshelf at a folder of audiobooks and they'll appear here."
-	browseEmptyShelfAction  = "Add a folder"
+	browseEmptyShelfTitle  = "Your shelf is empty"
+	browseEmptyShelfBody   = "Point Tendshelf at a folder of audiobooks and they'll appear here."
+	browseEmptyShelfAction = "Add a folder"
+	// New (operator, 2026-11-02): folders exist but hold nothing playable, so "Add a folder" would mislead.
+	browseNoBooksTitle      = "No audiobooks found yet"
+	browseNoBooksOneFolder  = "Tendshelf looked in %s and found nothing it can play. Add audiobooks there, then scan again."
+	browseNoBooksFolders    = "Tendshelf looked in %d folders and found nothing it can play. Add audiobooks to one of them, then scan again."
+	browseNoBooksAction     = "Open Libraries"
 	browseNothingSharedHead = "Nothing shared yet"
 	browseNothingSharedBody = "When someone shares a book with you, it shows up here."
 	// New.
@@ -107,6 +113,9 @@ func browseEmpty(kind, clearHref string) *pages.EmptyView {
 	case "first-run":
 		return &pages.EmptyView{Kind: kind, Title: browseEmptyShelfTitle, Body: browseEmptyShelfBody,
 			ActionLabel: browseEmptyShelfAction, ActionHref: "/admin/libraries/folders/new"}
+	case "no-books":
+		// emptyFor fills in the folder path or count.
+		return &pages.EmptyView{Kind: kind, Title: browseNoBooksTitle, ActionLabel: browseNoBooksAction, ActionHref: "/admin/libraries"}
 	case "nothing-shared":
 		return &pages.EmptyView{Kind: kind, Title: browseNothingSharedHead, Body: browseNothingSharedBody}
 	case "no-match":
@@ -114,4 +123,12 @@ func browseEmpty(kind, clearHref string) *pages.EmptyView {
 		return &pages.EmptyView{Kind: kind, Title: browseNoMatchTitle, Body: browseNoMatchBody}
 	}
 	return nil
+}
+
+// browseNoBooksBody names the one folder that held nothing playable, or counts them.
+func browseNoBooksBody(folders []library.FolderSummary) string {
+	if len(folders) == 1 {
+		return fmt.Sprintf(browseNoBooksOneFolder, folders[0].Path)
+	}
+	return fmt.Sprintf(browseNoBooksFolders, len(folders))
 }

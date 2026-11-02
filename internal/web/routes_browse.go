@@ -97,7 +97,10 @@ func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(v.New) == 0 && v.Scan == nil {
-		v.Empty = browseEmpty(s.emptyKind(r), "")
+		if v.Empty, err = s.emptyFor(r, ""); err != nil {
+			s.serverError(w, r, "home empty", err)
+			return
+		}
 	}
 	s.pageStyled(w, r, http.StatusOK, "Home", "home", pages.Home(v), nil, pages.BrowseStyles...)
 }
@@ -108,6 +111,32 @@ func (s *server) emptyKind(r *http.Request) string {
 		return "first-run"
 	}
 	return "nothing-shared"
+}
+
+// emptyFor is the empty state of Home and the Library when nothing is listed and no scan runs. For
+// staff whose folders (in libraryID, or anywhere when it is "") held nothing playable, it names them
+// instead of offering to add a folder.
+func (s *server) emptyFor(r *http.Request, libraryID string) (*pages.EmptyView, error) {
+	kind := s.emptyKind(r)
+	if kind != "first-run" {
+		return browseEmpty(kind, ""), nil
+	}
+	all, err := s.lib.FolderSummaries(r.Context(), s.scope(r))
+	if err != nil {
+		return nil, err
+	}
+	var folders []library.FolderSummary
+	for _, f := range all {
+		if libraryID == "" || f.LibraryID == libraryID {
+			folders = append(folders, f)
+		}
+	}
+	if len(folders) == 0 {
+		return browseEmpty(kind, ""), nil
+	}
+	v := browseEmpty("no-books", "")
+	v.Body = browseNoBooksBody(folders)
+	return v, nil
 }
 
 // browseTarget resolves the library the address names ("" for all of them) among the libraries the
@@ -249,8 +278,9 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 	if len(v.Cards) == 0 && q.Cursor == "" && v.Scan == nil {
 		if q.filtered() {
 			v.Empty = browseEmpty("no-match", v.ClearHref)
-		} else {
-			v.Empty = browseEmpty(s.emptyKind(r), "")
+		} else if v.Empty, err = s.emptyFor(r, curID(cur)); err != nil {
+			s.serverError(w, r, "library empty", err)
+			return
 		}
 	}
 	title := "Library"
