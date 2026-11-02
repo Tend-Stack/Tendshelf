@@ -58,6 +58,7 @@ type sweepEnv struct {
 	ck       [4]*http.Cookie
 	uid      [4]string
 	secondS  [4]string // public id of a second session of each person
+	devices  [4]string // a live device token row of each person (P3-7a)
 	shelf    [3]string // the shelf of owner, admin and member; each holds the book
 	audio    [2]string // the seeded book's audio file ids, by idx (P1c-2)
 	bookmark [3]string // a bookmark of owner, admin and member on the book (P1c-7a)
@@ -66,6 +67,7 @@ type sweepEnv struct {
 	// extra is a member with no session who holds the library grant extraGrant: the person the
 	// Users rows act on (P3-2a).
 	extra, extraGrant string
+	extraDevice       string // a live device of extra
 	// inviteTok is the token of a valid admin invite (it shows no book, so no seeded word leaks);
 	// inviteRot and inviteCancel are the ids of member invites and inviteAdmin the id of an admin
 	// invite, all made by the owner (P3-3a).
@@ -203,6 +205,7 @@ func sweepSeed(t *testing.T) *sweepEnv {
 		VALUES (?, ?, 'library', ?, 0, 0, 1, 1)`, e.extraGrant, e.extra, e.libID); err != nil {
 		t.Fatal(err)
 	}
+	deviceSeed(t, e)
 	inviteSeed(t, e)
 	linkSeed(t, e)
 	e.job = a.adminEnqueueScan(t, l.ID)
@@ -283,6 +286,9 @@ type sweepRow struct {
 	Anon    int                      // the anonymous answer; 0 is the default: sign in
 	AnonLoc string                   // its Location; "" is the default
 	Body    func(t *testing.T, e *sweepEnv, role int, body string)
+	// NoCSRF marks an unsafe row that needs no CSRF token (the public token sign-in): sent without
+	// one it gets the same answer as with one, not 403.
+	NoCSRF bool
 }
 
 func (r sweepRow) name() string {
@@ -574,6 +580,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, usersSweepRows()...)
 	rows = append(rows, invitesSweepRows()...)
 	rows = append(rows, shareSweepRows()...)
+	rows = append(rows, devicesSweepRows()...)
 	return append(rows, linksSweepRows()...)
 }
 
@@ -768,6 +775,13 @@ func TestRouteMatrix(t *testing.T) {
 			}
 			shared.check(t, row, -1, shared.send(t, row, -1, true))
 			// Without the token nothing happens, whoever asks.
+			if row.NoCSRF {
+				for role := range sweepRoles {
+					shared.check(t, row, role, shared.send(t, row, role, false))
+				}
+				shared.check(t, row, -1, shared.send(t, row, -1, false))
+				return
+			}
 			for role := range sweepRoles {
 				if rec := shared.send(t, row, role, false); rec.Code != http.StatusForbidden {
 					t.Errorf("%s %s without a token: %d, want 403", sweepRoleNames[role], row.Path(shared, role), rec.Code)

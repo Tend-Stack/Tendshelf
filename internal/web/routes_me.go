@@ -24,6 +24,7 @@ func (s *server) registerMe(mux *http.ServeMux) {
 	mux.HandleFunc("POST /me/password", s.postPassword)
 	mux.HandleFunc("POST /me/sessions/{sid}/signout", s.postSessionSignOut)
 	mux.HandleFunc("POST /me/sessions/signout-others", s.postSignOutOthers)
+	mux.HandleFunc("POST /me/devices/{did}/signout", s.postDeviceSignOut)
 }
 
 // ---- Profile ----
@@ -222,6 +223,21 @@ func (s *server) postSessionSignOut(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, "sign out device", err)
 	case !found: // unknown, malformed, or someone else's
+		s.notFound(w, r)
+	default:
+		http.Redirect(w, r, "/me", http.StatusSeeOther)
+	}
+}
+
+// postDeviceSignOut revokes one of the signed-in person's own device tokens. An unknown, revoked or
+// someone else's id is a 404 page, so ids reveal nothing.
+func (s *server) postDeviceSignOut(w http.ResponseWriter, r *http.Request) {
+	u := currentUser(r)
+	ok, err := s.auth.RevokeDevice(r.Context(), u.ID, r.PathValue("did"), u.ID)
+	switch {
+	case err != nil:
+		s.serverError(w, r, "sign out app", err)
+	case !ok:
 		s.notFound(w, r)
 	default:
 		http.Redirect(w, r, "/me", http.StatusSeeOther)

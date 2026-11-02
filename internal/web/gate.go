@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 )
 
@@ -19,8 +20,16 @@ func (s *server) gate(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		if r.Method == http.MethodPost && r.URL.Path == apiTokenPath {
+			next.ServeHTTP(w, r) // token sign-in: the password in the body is the credential
+			return
+		}
 		if _, ok := auth.UserFrom(r.Context()); ok {
 			next.ServeHTTP(w, r)
+			return
+		}
+		if isAPIPath(r.URL.Path) {
+			api.Unauthorized(w, "Sign in first.") // JSON clients never get a redirect to /login
 			return
 		}
 		exists, err := s.auth.OwnerExists(r.Context())
@@ -36,6 +45,9 @@ func (s *server) gate(next http.Handler) http.Handler {
 		s.redirect(w, r, loginURL(r))
 	})
 }
+
+// isAPIPath reports whether p is under /api/, the JSON area.
+func isAPIPath(p string) bool { return strings.HasPrefix(p, "/api/") }
 
 // loginURL is /login with next set to where the person was going, when that is known and safe:
 // the request itself for a plain or boosted GET or HEAD (a boosted link click is a navigation), the

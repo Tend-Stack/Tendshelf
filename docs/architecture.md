@@ -234,6 +234,15 @@ Media and system: `GET /stream/{audioFileID}`, `GET /peaks/{audioFileID}` (wavef
 `GET /sw.js`, `GET /manifest.webmanifest`, `GET /static/...` (embedded, immutable, hashed names; precompressed gzip served on `Accept-Encoding`, `Vary: Accept-Encoding`, ETag per encoding, Range ignored).
 
 JSON API v1 (`/api/v1`, bearer device token or session cookie + CSRF):
+Device tokens (P3-7a): `POST /api/v1/auth/token` takes JSON `{username, password, name, kind}` (kind `web`, `pwa`,
+`desktop` or `mobile`; body at most 4 KiB) with the same limits and failure path as the sign-in form, and answers 201
+with the 32-random-byte token once (only its SHA-256 is stored, never logged), the device and the person.
+`Authorization: Bearer` is accepted only under `/api/v1/` and is looked up in the database on every request, so
+revoking, disabling or a password change work on the next call. A request with both a bearer token and a
+`ts_session` cookie is refused (400). Bearer requests carry no ambient credential, so they skip the CSRF token (the
+cross-origin check still runs) and never get a `ts_csrf` cookie; cookie requests keep session + CSRF. A token dies
+after 180 days unused, a person holds at most 50, and rows revoked over 30 days ago are pruned on the next issue.
+Anonymous `/api/` requests get JSON 401, never a redirect.
 `POST /auth/token`, `DELETE /auth/token`, `GET /me`, `GET /libraries`,
 `GET /libraries/{id}/books?cursor=&sort=`, `GET /books/{id}` (files, chapters, cover URLs),
 `GET /progress?since=`, `PUT /progress/{bookID}`, `POST /progress/batch`, `GET|POST /books/{id}/bookmarks`,
@@ -381,7 +390,8 @@ and its `/hx/dev/*` fragments; release builds do not register them.
 - Sessions: 32 random bytes in an `HttpOnly`, `SameSite=Lax` cookie `ts_session` (`Secure` when served over TLS
   or behind a trusted proxy that says `X-Forwarded-Proto: https`); only the SHA-256 is stored. 30-day sliding
   expiry, refreshed at most once an hour; signing in ends the browser's previous session and sweeps expired
-  ones. Device tokens for the API, revocable on `/me`, come later. A forgotten password is reset on the
+  ones. Device tokens for the API (below) are revoked
+  when a person signs out everywhere else, changes the password, is disabled or has the password reset. A forgotten password is reset on the
   server with `tendshelf reset-password [-data DIR] <username>`: it prints a new generated password once,
   signs the account out everywhere and writes an audit row; it works while the server runs.
 - Limits on failed attempts: 20 per client address per 15 minutes (shared by sign-in and setup; IPv6 counted

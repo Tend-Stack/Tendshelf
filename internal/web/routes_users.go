@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
@@ -29,6 +30,7 @@ func (s *server) registerUsers(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/users/{id}/disable", s.getPersonDisable)
 	mux.HandleFunc("POST /admin/users/{id}/disable", s.postPersonDisable)
 	mux.HandleFunc("POST /admin/users/{id}/enable", s.postPersonEnable)
+	mux.HandleFunc("POST /admin/users/{id}/devices/{did}/signout", s.postPersonDeviceSignOut)
 	mux.HandleFunc("POST /admin/users/{id}/grants", s.postGrantAdd)
 	mux.HandleFunc("POST /admin/users/{id}/grants/{gid}", s.postGrantUpdate)
 	mux.HandleFunc("POST /admin/users/{id}/grants/{gid}/renew", s.postGrantRenew)
@@ -417,6 +419,47 @@ func (s *server) postPersonDisable(w http.ResponseWriter, r *http.Request) {
 	})
 	if done {
 		s.backToPerson(w, r, id)
+	}
+}
+
+// postPersonDeviceSignOut ends one signed-in browser or app of another person: did is a session
+// public id (16 hex) or a device id. The same re-check as every change to a person runs inside the
+// transaction, so self, the owner (for an admin) and members all answer 404.
+func (s *server) postPersonDeviceSignOut(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.personForm(w, r)
+	if !ok {
+		return
+	}
+	did := r.PathValue("did")
+	done := s.changePerson(w, r, id, "", func(ctx context.Context, tx *sql.Tx, actor, t users.User) error {
+		now := s.now().UnixMilli()
+		kind := "device"
+		if auth.IsSessionPublicID(did) {
+			kind = "session"
+			res, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND substr(lower(hex(token_hash)), 1, ?) = ?`,
+				id, auth.PublicIDLen, did)
+			if err != nil {
+				return err
+			}
+			if n, err := res.RowsAffected(); err != nil {
+				return err
+			} else if n == 0 {
+				return users.ErrNotFound
+			}
+		} else {
+			found, err := s.devices.Revoke(ctx, tx, id, did, now)
+			if err != nil {
+				return err
+			}
+			if !found {
+				return users.ErrNotFound
+			}
+		}
+		return db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: actor.ID, Action: "user.device_signout",
+			Target: "user:" + id, Detail: map[string]string{"kind": kind}})
+	})
+	if done {
+		s.redirect(w, r, "/admin/users#users-devices")
 	}
 }
 
