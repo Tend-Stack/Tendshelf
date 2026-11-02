@@ -2,6 +2,8 @@ package library
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"sort"
 )
 
@@ -298,4 +300,83 @@ func (r *Repo) ChapterAt(ctx context.Context, bookID string, positionMs int64) (
 		}
 	}
 	return best, len(chs), true, nil
+}
+
+// Sync feeds. Both walk one person's own rows changed after a time, in (time, id) order, and keep only
+// rows of books the person may list (the scope SQL), so a hidden book never shows up in a sync.
+
+const (
+	syncDefaultLimit = 100
+	syncMaxLimit     = 500
+)
+
+// SyncRef names one changed row and when it changed.
+type SyncRef struct {
+	ID        string
+	UpdatedAt int64
+}
+
+type syncCursor struct {
+	U int64  `json:"u"`
+	I string `json:"i"`
+}
+
+func decodeSyncCursor(s string) (syncCursor, error) {
+	var c syncCursor
+	raw, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return c, ErrInvalid
+	}
+	if err := json.Unmarshal(raw, &c); err != nil || c.I == "" || c.U < 0 {
+		return syncCursor{}, ErrInvalid
+	}
+	return c, nil
+}
+
+// syncChanges runs the shared keyset query. table/idCol/timeCol are fixed names from this file.
+func (r *Repo) syncChanges(ctx context.Context, sc Scope, table, idCol, timeCol, userID string, since int64, cursor string, limit int) ([]SyncRef, string, error) {
+	if limit <= 0 {
+		limit = syncDefaultLimit
+	}
+	limit = min(limit, syncMaxLimit)
+	w := visible(sc, true)
+	w.add("x.user_id = ?", userID)
+	w.add("x."+timeCol+" > ?", since)
+	if cursor != "" {
+		c, err := decodeSyncCursor(cursor)
+		if err != nil {
+			return nil, "", err
+		}
+		w.add("(x."+timeCol+", x."+idCol+") > (?, ?)", c.U, c.I)
+	}
+	rows, err := many(ctx, r.st.Reader(), func(s scanner) (SyncRef, error) {
+		var x SyncRef
+		err := s.Scan(&x.ID, &x.UpdatedAt)
+		return x, err
+	}, `SELECT x.`+idCol+`, x.`+timeCol+` FROM `+table+` x JOIN books b ON b.id = x.book_id
+  JOIN libraries l ON l.id = b.library_id WHERE `+w.sql()+` ORDER BY x.`+timeCol+`, x.`+idCol+` LIMIT ?`,
+		append(append([]any(nil), w.args...), limit+1)...)
+	if err != nil {
+		return nil, "", err
+	}
+	next := ""
+	if len(rows) > limit {
+		rows = rows[:limit]
+		last := rows[limit-1]
+		raw, _ := json.Marshal(syncCursor{U: last.UpdatedAt, I: last.ID})
+		next = base64.RawURLEncoding.EncodeToString(raw)
+	}
+	return rows, next, nil
+}
+
+// ProgressChanges lists the book ids whose progress for the person changed on the server after since,
+// oldest change first, with a cursor for the next page ("" at the end). A bad cursor is ErrInvalid.
+func (r *Repo) ProgressChanges(ctx context.Context, sc Scope, userID string, since int64, cursor string, limit int) ([]SyncRef, string, error) {
+	return r.syncChanges(ctx, sc, "progress", "book_id", "server_updated_at", userID, since, cursor, limit)
+}
+
+// BookmarkChanges lists the ids of the person's bookmarks (deleted ones too) changed after since, on
+// books the person may list, oldest change first. A bad cursor is ErrInvalid.
+func (r *Repo) BookmarkChanges(ctx context.Context, sc Scope, userID string, since int64, cursor string, limit int) ([]SyncRef, string, error) {
+	return r.syncChanges(ctx, sc, "bookmarks", "id", "updated_at", userID, since, cursor, limit)
 }

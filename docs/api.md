@@ -94,3 +94,54 @@ Books shared with the person. Query `limit` (1..50, default 24). `{"items":[{"bo
 The page routes `/covers`, `/stream` and `/peaks` under the one prefix where a token works; same handlers, same
 parameters (`w` for covers, `compat` for stream), same visibility. Errors are JSON. Other methods: 405 with
 `Allow: GET, HEAD`.
+
+## Sync endpoints (progress and bookmarks)
+
+A person's own rows only. Every row is filtered to books the person may list, so a book that is hidden, unknown,
+refused or missing never shows and answers the same 404. Times are Unix milliseconds. Unsafe requests take a JSON
+body (`Content-Type: application/json`, else 415; too large 413; unreadable 400); unknown fields are ignored. For
+a browser session send `X-CSRF-Token`; a device token needs none. Order of checks: sign-in, access to the book, 415, 413, 400.
+
+**Change feeds** (`GET /progress`, `GET /bookmarks`, `GET /books/{id}/bookmarks?since=`) return
+`{"items":[...],"next":string|null,"serverNow":ms}`, oldest change first, keyset-paged: follow `next` until it is
+null. Keep `serverNow` (less a few seconds for clock drift) as the next `since`. `since` is exclusive, default 0;
+a negative or non-numeric value is 400 `since`; a bad `cursor` is 400 `cursor`; `limit` 1..500, default 100.
+
+### GET /api/v1/progress?since=&cursor=&limit=
+Progress rows whose server time is after `since`. Item shape as `progress` under the book endpoint (with `bookId`).
+
+### GET /api/v1/progress/{bookID}
+`{"progress":{...}|null,"serverNow"}`. The same handler as the player's `GET /progress/{bookID}`.
+
+### PUT /api/v1/progress/{bookID}
+Body `{"positionMs"*,"clientUpdatedAt"*,"deviceId","finished","force","speed","listenedMs","durationMs"}` (* required;
+`positionMs` >= 0, `clientUpdatedAt` > 0; `durationMs` is ignored, the book's own is used). A device token defaults
+`deviceId` to its own id and labels the row with the device's name; a session must send `deviceId`. The rules are the
+player's: a client time later than the server clock plus 60 s is clamped, the newest `clientUpdatedAt` wins, `force`
+makes this write win. 200 `{"applied":bool,"progress":{...},"serverNow"}`, applied or not. Errors: 400 with `field`, 404, 413, 415.
+
+### POST /api/v1/progress/batch
+Body `{"updates":[{"bookId"*, ...as PUT}]}`, 1 to 100 updates (else 400 `updates`), at most 64 KiB (413). Items run in
+order, so a repeated book is applied in sequence. 200 `{"results":[{"bookId","applied","progress":{...}|null,"error":{"code","message","field"?}|null}],"serverNow"}`
+in request order; a failed item does not stop the others; a hidden or unknown book is `not_found`.
+
+### GET /api/v1/books/{id}/bookmarks?notes=1&since=&cursor=
+Without `since` and `cursor`: the live bookmarks, newest first (`notes=1` keeps those with a note), `next` null.
+With either: the changes of this book after `since`, deleted ones included, up to 1000 a page.
+Bookmark: `{"id","clientId"?,"bookId","positionMs","note","createdAt","updatedAt","deletedAt":ms|null}`. A deleted one
+has `deletedAt` set and an empty note.
+
+### POST /api/v1/books/{id}/bookmarks
+Body `{"positionMs"*,"note","clientId"}`. `positionMs` past the end is clamped to the book's length. 201 with the bookmark.
+`clientId` (1 to 64 of letters, digits, `-`, `_`; the app's own ULID) makes a retry safe: the same person sending the same
+id for the same book gets the existing bookmark back with 200 and nothing new is saved. An id already used by another
+person or another book is 409 `conflict` (field `clientId`). 409 `conflict` also when the book holds its most bookmarks; 400 `note`, `clientId`, `positionMs`.
+
+### GET /api/v1/bookmarks?since=&cursor=&limit=
+Every bookmark of the person on any listable book changed or deleted after `since`, in a change feed (limit 1..500).
+
+### PATCH /api/v1/bookmarks/{id}
+Body `{"note"*}` (empty clears it). 200 with the bookmark. Another person's, unknown or deleted bookmark: 404.
+
+### DELETE /api/v1/bookmarks/{id}
+Soft delete: 204; the id lives on as a tombstone in the feeds. 404 as for PATCH.

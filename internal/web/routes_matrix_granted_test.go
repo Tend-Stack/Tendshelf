@@ -66,6 +66,12 @@ var sweepGrantedWant = func() map[string][4]int {
 		"GET /api/v1/covers/{bookID}":                   ok,
 		"GET /api/v1/stream/{audioFileID}":              ok,
 		"GET /api/v1/peaks/{audioFileID}":               ok,
+		"GET /api/v1/progress/{bookID}":                 ok,
+		"PUT /api/v1/progress/{bookID}":                 sweepSame(415),
+		"GET /api/v1/books/{id}/bookmarks":              ok,
+		"POST /api/v1/books/{id}/bookmarks":             sweepSame(415),
+		"PATCH /api/v1/bookmarks/{id}":                  {415, 415, 415, 404},
+		"DELETE /api/v1/bookmarks/{id}":                 {204, 204, 204, 404},
 	}
 }()
 

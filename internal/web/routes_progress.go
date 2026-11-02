@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"math"
@@ -13,6 +14,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
@@ -49,6 +51,20 @@ func jsonError(w http.ResponseWriter, status int, code, field string) {
 		e["field"] = field
 	}
 	writeJSON(w, status, map[string]any{"error": e})
+}
+
+// playableFor loads a book the person may listen to. A hidden, unknown, refused or missing book is
+// library.ErrNotFound, whatever the reason, so a caller can answer the same 404 for all of them.
+func (s *server) playableFor(ctx context.Context, u users.User, id string) (library.Book, error) {
+	b, err := s.lib.Book(ctx, id)
+	if err != nil {
+		return library.Book{}, err
+	}
+	if !s.can.Can(ctx, u, share.ListenBook, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) ||
+		b.RefusedReason != "" || b.MissingSince != 0 {
+		return library.Book{}, library.ErrNotFound
+	}
+	return b, nil
 }
 
 // playableBook loads a book the person may listen to. A hidden, unknown, refused or missing book
@@ -106,6 +122,29 @@ func flag(v string) (val, ok bool) {
 		return true, true
 	}
 	return false, false
+}
+
+// progressInput is one parsed progress save, from the form or the JSON API.
+type progressInput struct {
+	PositionMs, ClientUpdatedAt, ListenedMs int64
+	DeviceID                                string
+	Finished, Force                         bool
+	Speed                                   float64
+}
+
+// saveProgress hands a parsed save for the signed-in person to progress.Service, which holds the clamp
+// and the newest-wins rule. The label is the device's name for a token client, else read from the
+// browser's user agent.
+func (s *server) saveProgress(r *http.Request, b library.Book, in progressInput) (progress.Result, error) {
+	label := deviceLabel(r.UserAgent())
+	if d, ok := auth.DeviceFrom(r.Context()); ok {
+		label = d.Name
+	}
+	return s.progress.Save(r.Context(), progress.Update{
+		UserID: currentUser(r).ID, BookID: b.ID, PositionMs: in.PositionMs, DurationMs: b.DurationMs, Finished: in.Finished,
+		ClientUpdatedAt: in.ClientUpdatedAt, DeviceID: in.DeviceID, DeviceLabel: label,
+		Force: in.Force, Speed: in.Speed, ListenedMs: in.ListenedMs,
+	})
 }
 
 // postProgress answers POST /progress/{bookID}. The person comes from the session and the duration
@@ -172,10 +211,8 @@ func (s *server) postProgress(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	u := currentUser(r)
-	res, err := s.progress.Save(r.Context(), progress.Update{
-		UserID: u.ID, BookID: b.ID, PositionMs: pos, DurationMs: b.DurationMs, Finished: finished,
-		ClientUpdatedAt: cu, DeviceID: f.Get("device_id"), DeviceLabel: deviceLabel(r.UserAgent()),
+	res, err := s.saveProgress(r, b, progressInput{
+		PositionMs: pos, ClientUpdatedAt: cu, DeviceID: f.Get("device_id"), Finished: finished,
 		Force: force, Speed: speed, ListenedMs: listened,
 	})
 	var inv *progress.InvalidError
