@@ -60,6 +60,7 @@ func (s *server) homeHeroView(ctx context.Context, r *http.Request) (*pages.Home
 		return nil, "", err
 	} else if link != nil {
 		v.Play = link.button("", false)
+		v.Play.ShowsPlayer = true
 	}
 	return v, l.Book.ID, nil
 }

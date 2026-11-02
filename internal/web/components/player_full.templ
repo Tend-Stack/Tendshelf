@@ -31,6 +31,7 @@ templ Scrubber(m PlayerMsgs, class, which string) {
 templ PlayerFull(m PlayerMsgs) {
 	<dialog id="player-full" class="ts-player" aria-labelledby="player-full-title" hx-preserve>
 		<div class="ts-player__body" data-ts-full-body>
+			<div id="now-panel" class="ts-np" hidden></div>
 			<header class="ts-player__head">
 				<button type="button" class="ts-iconbtn" data-ts-close-player aria-label={ m.ClosePlayer }>
 					@playerChevron()

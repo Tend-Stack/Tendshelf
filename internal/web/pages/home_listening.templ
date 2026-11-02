@@ -52,7 +52,7 @@ templ HomeHero(v *HomeHeroView) {
 					</a>
 					<div class="ts-hero__text">
 						<div class="ts-hero__head">
-							<span class="ts-overline ts-overline--accent">{ v.Eyebrow }</span>
+							<span class="ts-overline ts-overline--accent" data-ts-hero-eyebrow>{ v.Eyebrow }</span>
 							<h2 class="ts-hero__title"><a href={ templ.SafeURL(v.BookHref) }>{ v.Title }</a></h2>
 							<p class="ts-hero__byline">
 								{ v.Byline }

@@ -12,6 +12,9 @@ type PlayButtonView struct {
 	FileStartMs, StartMs                         int64
 	MayNeedCompat, FromStart                     bool
 	Round                                        bool
+	// ShowsPlayer marks the Home hero's button: while its book plays it reads "Show player" and
+	// opens the player instead of pausing (the script reads data-ts-show-player).
+	ShowsPlayer bool
 }
 
 func playBtnClass(v PlayButtonView) string {
@@ -46,6 +49,9 @@ templ PlayButton(v PlayButtonView) {
 		}
 		if v.AriaLabel != "" {
 			aria-label={ v.AriaLabel }
+		}
+		if v.ShowsPlayer {
+			data-ts-show-player
 		}
 	>
 		@Icon("play", true)

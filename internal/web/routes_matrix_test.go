@@ -405,6 +405,42 @@ func sweepRows() []sweepRow {
 					t.Errorf("%s: the player data lacks the book or its two files", sweepRoleNames[role])
 				}
 			}},
+		// The Now playing panel (NP1): every part needs the book to be visible; the bookmark parts also listen.
+		{Pattern: "GET /hx/player/panel/{bookID}", Method: http.MethodGet, Path: id(bookID, "/hx/player/panel/", ""), Want: sweepStaff(200, 404),
+			Body: func(t *testing.T, e *sweepEnv, role int, body string) {
+				if role <= sweepAdmin && (!strings.Contains(body, `id="now-panel"`) || !strings.Contains(body, `data-book-id="`+e.book.ID+`"`) || strings.Contains(body, "data-ts-play")) {
+					t.Errorf("%s: the panel is missing or has transport", sweepRoleNames[role])
+				}
+			}},
+		{Pattern: "GET /hx/player/panel/{bookID}", Label: "unknown book", Method: http.MethodGet, Path: sweepStatic("/hx/player/panel/bk_unknown"), Want: sweepSame(404)},
+		{Pattern: "GET /hx/player/panel/{bookID}/about", Method: http.MethodGet, Path: id(bookID, "/hx/player/panel/", "/about"), Want: sweepStaff(200, 404),
+			Body: func(t *testing.T, e *sweepEnv, role int, body string) {
+				if role <= sweepAdmin && !strings.Contains(body, "Summary") {
+					t.Errorf("%s: the About tab lacks its summary", sweepRoleNames[role])
+				}
+			}},
+		{Pattern: "GET /hx/player/panel/{bookID}/about", Label: "unknown book", Method: http.MethodGet, Path: sweepStatic("/hx/player/panel/bk_unknown/about"), Want: sweepSame(404)},
+		{Pattern: "GET /hx/player/panel/{bookID}/bookmarks", Method: http.MethodGet, Path: id(bookID, "/hx/player/panel/", "/bookmarks"), Want: sweepStaff(200, 404),
+			Body: func(t *testing.T, e *sweepEnv, role int, body string) {
+				if role <= sweepAdmin && !strings.Contains(body, `id="now-panel-count"`) {
+					t.Errorf("%s: the Bookmarks tab lacks its count", sweepRoleNames[role])
+				}
+			}},
+		{Pattern: "GET /hx/player/panel/{bookID}/bookmarks", Label: "unknown book", Method: http.MethodGet, Path: sweepStatic("/hx/player/panel/bk_unknown/bookmarks"), Want: sweepSame(404)},
+		{Pattern: "GET /hx/player/panel/{bookID}/count", Method: http.MethodGet, Path: id(bookID, "/hx/player/panel/", "/count"), Want: sweepStaff(200, 404),
+			Body: func(t *testing.T, e *sweepEnv, role int, body string) {
+				if role <= sweepAdmin && !strings.Contains(body, `<span id="now-panel-count">`) {
+					t.Errorf("%s: the count is missing", sweepRoleNames[role])
+				}
+			}},
+		{Pattern: "GET /hx/player/panel/{bookID}/count", Label: "unknown book", Method: http.MethodGet, Path: sweepStatic("/hx/player/panel/bk_unknown/count"), Want: sweepSame(404)},
+		{Pattern: "GET /hx/player/panel/{bookID}/chapter/{index}", Method: http.MethodGet, Path: id(bookID, "/hx/player/panel/", "/chapter/1"), Want: sweepStaff(200, 404),
+			Body: func(t *testing.T, e *sweepEnv, role int, body string) {
+				if role <= sweepAdmin && !strings.Contains(body, `id="now-panel-chapter"`) {
+					t.Errorf("%s: the chapter line is missing", sweepRoleNames[role])
+				}
+			}},
+		{Pattern: "GET /hx/player/panel/{bookID}/chapter/{index}", Label: "unknown book", Method: http.MethodGet, Path: sweepStatic("/hx/player/panel/bk_unknown/chapter/0"), Want: sweepSame(404)},
 		// Admin
 		sweepGet("GET /admin/libraries", sweepStatic("/admin/libraries"), sweepStaff(200, 404)),
 		sweepGet("GET /admin/libraries/folders/new", sweepStatic("/admin/libraries/folders/new"), sweepStaff(200, 404)),
