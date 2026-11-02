@@ -1,0 +1,157 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// UserRow is one person on the Users page. The handler writes every sentence.
+type UserRow struct {
+	ID, Name string
+	// RolePill is the role word ("Owner", "Admin", "Member", "Listener"); RoleKind is owner, admin,
+	// member or guest and picks the pill colour.
+	RolePill, RoleKind string
+	// Access is the "Can listen to" cell, for example "For Mamá · 2 books" or "Everything".
+	Access string
+	// LastActive is "Today", "3 days ago", "Never"... ; Live shows the three bars of "Listening now".
+	LastActive string
+	Live       bool
+	// Month is the hours listened this month ("12 h"); Devices is the count as text.
+	Month, Devices string
+	// Href opens the person's page; empty when the signed-in person may not manage them.
+	Href string
+	You  bool
+	Off  bool
+}
+
+// UsersView is the Users & invites page (People tab).
+type UsersView struct {
+	CSRF string
+	// Subtitle is "5 people · 1 invite waiting · 3 listening this week", zero segments dropped.
+	Subtitle string
+	// TabPeople is "People · 5".
+	TabPeople string
+	Rows      []UserRow
+}
+
+// usersLiveBars is the "Listening now" mark: three bars the stylesheet animates.
+templ usersLiveBars() {
+	<span class="ts-users__live" aria-hidden="true"><i></i><i></i><i></i></span>
+}
+
+// usersRoleBadge is the role pill of a row.
+templ usersRoleBadge(r UserRow) {
+	<span class={ "ts-role", templ.KV("ts-role--owner", r.RoleKind == "owner") }>{ r.RolePill }</span>
+}
+
+// usersName is the name of a row with "(you)" and "Turned off" when they apply.
+templ usersName(r UserRow) {
+	<span class="body ts-users__name">{ r.Name }</span>
+	if r.You {
+		<span class="caption ts-users__you">(you)</span>
+	}
+	if r.Off {
+		<span class="caption ts-users__off">Turned off</span>
+	}
+}
+
+// UsersList is the table (768 px and up) and the list (phone) of people. It is its own fragment,
+// <section id="users">, so GET /hx/admin/users can refresh it alone.
+templ UsersList(v UsersView) {
+	<section id="users" aria-label="People">
+		<table class="ts-users__table">
+			<thead>
+				<tr>
+					<th scope="col">Person</th>
+					<th scope="col">Role</th>
+					<th scope="col">Can listen to</th>
+					<th scope="col">Last active</th>
+					<th scope="col">This month</th>
+					<th scope="col">Devices</th>
+					<th scope="col"><span class="ts-sr">Actions</span></th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, r := range v.Rows {
+					<tr class="ts-users__row">
+						<th scope="row">
+							@components.Avatar(r.ID, r.Name, "md")
+							@usersName(r)
+						</th>
+						<td>@usersRoleBadge(r)</td>
+						<td class="ts-users__access">{ r.Access }</td>
+						<td class="ts-users__active">
+							if r.Live {
+								@usersLiveBars()
+							}
+							{ r.LastActive }
+						</td>
+						<td class="ts-num">{ r.Month }</td>
+						<td class="ts-num ts-users__devices">{ r.Devices }</td>
+						<td>
+							if r.Href != "" {
+								<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(r.Href) } aria-label={ "Manage " + r.Name }>
+									Manage
+									@usersChevron()
+								</a>
+							}
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+		<ul class="ts-users__list">
+			for _, r := range v.Rows {
+				<li>
+					if r.Href != "" {
+						<a class="ts-users__item" href={ templ.SafeURL(r.Href) }>
+							@usersListItem(r)
+							@usersChevron()
+						</a>
+					} else {
+						<div class="ts-users__item">
+							@usersListItem(r)
+						</div>
+					}
+				</li>
+			}
+		</ul>
+	</section>
+}
+
+// usersListItem is the inside of one phone row: avatar, name, role, access, last active, month.
+templ usersListItem(r UserRow) {
+	@components.Avatar(r.ID, r.Name, "md")
+	<span class="ts-users__text">
+		<span class="ts-users__line">
+			@usersName(r)
+			@usersRoleBadge(r)
+		</span>
+		<span class="caption ts-users__meta">{ r.Access }</span>
+		<span class="caption ts-users__meta">
+			if r.Live {
+				@usersLiveBars()
+			}
+			{ r.LastActive } · { r.Month } this month
+		</span>
+	</span>
+}
+
+templ usersChevron() {
+	<span class="ts-users__chev" aria-hidden="true"></span>
+}
+
+// AdminUsers is the Users & invites page. Invites and the pending-invite card land in
+// #users-invites (P3-3); the "Invite someone" button comes with the invite form (P3-4).
+templ AdminUsers(v UsersView) {
+	<div class="ts-admin ts-users">
+		<header class="ts-users__head">
+			<span class="ts-overline">Server</span>
+			<h1 class="title-1 ts-admin__title">Users &amp; invites</h1>
+			<p class="caption ts-users__sub">{ v.Subtitle }</p>
+		</header>
+		<nav class="ts-tabs ts-users__tabs" aria-label="Users and invites">
+			<a class="ts-tabs__item" href="/admin/users" aria-current="page">{ v.TabPeople }</a>
+		</nav>
+		<div id="users-invites"></div>
+		@UsersList(v)
+		<p class="caption ts-users__note">Listening time is shown so you can see the shelf is being used. Nobody, including you, can see what someone else is listening to unless they share it.</p>
+	</div>
+}

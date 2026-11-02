@@ -132,3 +132,19 @@ func (s *Sessions) DeleteExpired(ctx context.Context, ex db.Execer) (int64, erro
 	}
 	return res.RowsAffected()
 }
+
+// EndAllForUser signs the person out everywhere inside the caller's transaction: it deletes
+// every session and revokes every device token (the row stays, the token is gone). It returns
+// how many sessions it deleted.
+func (s *Sessions) EndAllForUser(ctx context.Context, ex db.Execer, userID string, nowMs int64) (int64, error) {
+	res, err := ex.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID)
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	_, err = ex.ExecContext(ctx, `UPDATE devices SET revoked_at = ?, token_hash = NULL WHERE user_id = ? AND revoked_at IS NULL`, nowMs, userID)
+	return n, err
+}

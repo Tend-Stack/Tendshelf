@@ -38,6 +38,9 @@ type User struct {
 var (
 	ErrNotFound    = errors.New("users: not found")
 	ErrOwnerExists = errors.New("users: the server already has an owner")
+	ErrOwnerFixed  = errors.New("users: the owner's role and account cannot change")
+	ErrSelf        = errors.New("users: nobody changes their own role or account here")
+	ErrRole        = errors.New("users: a role must be admin, member or guest")
 )
 
 // Options configures a Repo. The zero value is production-ready.
@@ -168,4 +171,76 @@ func (r *Repo) SetPassword(ctx context.Context, ex db.Execer, userID, hash strin
 		return ErrNotFound
 	}
 	return nil
+}
+
+// ByIDTx finds an account by id inside the caller's transaction, so a decision made on the
+// row cannot be overtaken by another write.
+func (r *Repo) ByIDTx(ctx context.Context, tx *sql.Tx, id string) (User, error) {
+	u, err := scanUser(tx.QueryRowContext(ctx, `SELECT `+userColumns+` FROM users WHERE id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return User{}, ErrNotFound
+	}
+	return u, err
+}
+
+// SetRole moves the account id to the role to, inside tx, and writes a "user.role" audit row.
+// to must be admin, member or guest (ErrRole); the owner is never changed and never made
+// (ErrOwnerFixed); byID cannot change itself (ErrSelf). An unchanged role writes nothing.
+// It returns the role the account had. Authorization is the caller's.
+func (r *Repo) SetRole(ctx context.Context, tx *sql.Tx, byID, id string, to Role) (Role, error) {
+	switch to {
+	case RoleAdmin, RoleMember, RoleGuest:
+	case RoleOwner:
+		return "", ErrOwnerFixed
+	default:
+		return "", ErrRole
+	}
+	if id == byID {
+		return "", ErrSelf
+	}
+	u, err := r.ByIDTx(ctx, tx, id)
+	if err != nil {
+		return "", err
+	}
+	if u.Role == RoleOwner {
+		return "", ErrOwnerFixed
+	}
+	if u.Role == to {
+		return u.Role, nil
+	}
+	now := r.nowMs()
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET role = ? WHERE id = ?`, string(to), id); err != nil {
+		return "", err
+	}
+	err = db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: byID, Action: "user.role", Target: "user:" + id,
+		Detail: map[string]any{"from": u.Role, "to": to}})
+	return u.Role, err
+}
+
+// SetDisabled turns the account id off or back on inside tx and writes a "user.disable" or
+// "user.enable" audit row. The owner cannot be turned off (ErrOwnerFixed) and byID cannot
+// change itself (ErrSelf). An unchanged flag writes nothing. Ending the person's sessions is
+// the caller's job (auth.Sessions.EndAllForUser) in the same transaction.
+func (r *Repo) SetDisabled(ctx context.Context, tx *sql.Tx, byID, id string, off bool) error {
+	if id == byID {
+		return ErrSelf
+	}
+	u, err := r.ByIDTx(ctx, tx, id)
+	if err != nil {
+		return err
+	}
+	if u.Role == RoleOwner {
+		return ErrOwnerFixed
+	}
+	if u.Disabled == off {
+		return nil
+	}
+	v, action := 0, "user.enable"
+	if off {
+		v, action = 1, "user.disable"
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET disabled = ? WHERE id = ?`, v, id); err != nil {
+		return err
+	}
+	return db.Audit(ctx, tx, db.AuditEntry{At: r.nowMs(), UserID: byID, Action: action, Target: "user:" + id})
 }
