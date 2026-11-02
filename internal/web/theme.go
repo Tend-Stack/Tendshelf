@@ -31,18 +31,32 @@ func themeFrom(r *http.Request) string {
 // the ts_theme cookie applies; without that, the system. A failed read is logged and falls back to
 // the cookie, so a database hiccup never breaks a page.
 func (s *server) themeFor(r *http.Request) string {
+	th, _ := s.lookFor(r)
+	return th
+}
+
+// lookFor is the theme (as themeFor) and the text size a page renders with. The text size is
+// "large" or "", and only a signed-in person has one: sign-in, frame and link pages render the
+// standard size. One read covers both.
+func (s *server) lookFor(r *http.Request) (theme, textSize string) {
 	if u, ok := auth.UserFrom(r.Context()); ok {
-		th, err := s.users.Theme(r.Context(), u.ID)
+		l, err := s.users.Look(r.Context(), u.ID)
+		if err != nil {
+			slog.Error("read theme", "err", err)
+		}
+		if l.TextSize == "large" {
+			textSize = "large"
+		}
 		switch {
 		case err != nil:
-			slog.Error("read theme", "err", err)
-		case th == "system":
-			return ""
-		case th != "":
-			return th
+		case l.Theme == "system":
+			return "", textSize
+		case l.Theme != "":
+			return l.Theme, textSize
 		}
+		return themeFrom(r), textSize
 	}
-	return themeFrom(r)
+	return themeFrom(r), ""
 }
 
 // setThemeCookie mirrors the saved theme into the cookie, so the sign-in pages match the person's

@@ -24,6 +24,8 @@ type SettingsView struct {
 	NextInSeries bool
 	PlayerTint   bool
 	BigButtons   bool
+	// TextSize is standard or large.
+	TextSize string
 }
 
 // skipChoices are the allowed skip lengths, in seconds.
@@ -89,6 +91,21 @@ templ skipGroup(id, label, name string, cur int) {
 	</div>
 }
 
+// textSizeChoices are the two text sizes, in the order the segmented control shows them.
+var textSizeChoices = []themeChoice{{"standard", "Standard"}, {"large", "Larger"}}
+
+templ textSizeGroup(id, label, name, cur string) {
+	<div class="ts-me__field">
+		<span class="ts-switch-row__label" id={ id }>{ label }</span>
+		<div role="radiogroup" aria-labelledby={ id } class="ts-seg ts-me__seg">
+			for _, c := range textSizeChoices {
+				<input type="radio" class="ts-sr" id={ id + "-" + c.Value } name={ name } value={ c.Value } checked?={ c.Value == cur }/>
+				<label class="ts-seg__item" for={ id + "-" + c.Value }>{ c.Label }</label>
+			}
+		</div>
+	</div>
+}
+
 // Settings is the person's own preferences, saved as they change.
 templ Settings(v SettingsView) {
 	<div class="ts-me">
@@ -141,6 +158,11 @@ templ Settings(v SettingsView) {
 				</div>
 				@switchRow("st-auto", "theme_auto", "Match my phone", "Dark at night, light by day.", v.Theme == "system")
 				@switchRow("st-tint", "player_tint", "Tint the player with the cover", "Each book's colours, softly, behind its player.", v.PlayerTint)
+			</section>
+			<section aria-labelledby="st-a11y" class="ts-me__section">
+				<h2 id="st-a11y" class="ts-overline">Easier to use</h2>
+				@textSizeGroup("st-text", "Text size", "text_size", v.TextSize)
+				<p class="caption ts-me__lead">Follows your phone's text size too. At larger sizes, shelves show covers instead of spines.</p>
 				@switchRow("st-big", "big_buttons", "Bigger player buttons", "For driving, walking, or gloves.", v.BigButtons)
 			</section>
 			<noscript>

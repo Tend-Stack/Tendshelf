@@ -19,7 +19,7 @@ func TestSettingsDefaultsAndRoundTrip(t *testing.T) {
 	if err != nil || got != DefaultSettings {
 		t.Fatalf("defaults = %+v, %v", got, err)
 	}
-	want := Settings{Theme: "sepia", Speed: 1.25, SkipBackS: 10, SkipForwardS: 60, AutoRewind: false, NextInSeries: false, PlayerTint: false, BigButtons: true}
+	want := Settings{Theme: "sepia", Speed: 1.25, SkipBackS: 10, SkipForwardS: 60, AutoRewind: false, NextInSeries: false, PlayerTint: false, BigButtons: true, TextSize: "large"}
 	if err := r.SaveSettings(ctx, u.ID, want); err != nil {
 		t.Fatal(err)
 	}
@@ -47,6 +47,8 @@ func TestSettingsValidate(t *testing.T) {
 		{"skip forward 20", mod(func(s *Settings) { s.SkipForwardS = 20 }), false},
 		{"theme unknown", mod(func(s *Settings) { s.Theme = "neon" }), false},
 		{"theme empty", mod(func(s *Settings) { s.Theme = "" }), false},
+		{"text size huge", mod(func(s *Settings) { s.TextSize = "huge" }), false},
+		{"text size large", mod(func(s *Settings) { s.TextSize = "large" }), true},
 	}
 	for _, tc := range tests {
 		err := tc.s.Validate()

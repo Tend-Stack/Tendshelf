@@ -24,6 +24,9 @@ type HomeView struct {
 	Shared *HomeSharedView
 	// New is up to 40 newest books, newest first; shell.js hides the ones that do not fit the row.
 	New []components.CardView
+	// Large is set for a person who chose Larger text: "New on the shelf" is then a grid of covers
+	// (at most four) instead of the spine shelf, whose spines are too small to read at that size.
+	Large bool
 	// SeeAllURL opens the library sorted by recently added.
 	SeeAllURL string
 	// Empty is set when the person has no book to show.
@@ -79,12 +82,20 @@ templ Home(v HomeView) {
 					<h2 id="row-recent-title" class="section">New on the shelf</h2>
 					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SeeAllURL) }>See all</a>
 				</div>
-				<div class="ts-shelf ts-shelf--scroll" role="list" data-ts-fit>
-					for _, b := range v.New {
-						@components.Spine(b)
-					}
-				</div>
-				<div class="ts-shelf__plank"></div>
+				if v.Large {
+					<div class="ts-home__cards ts-home__cards--grid">
+						for _, b := range v.New[:min(4, len(v.New))] {
+							@components.BookCard(b)
+						}
+					</div>
+				} else {
+					<div class="ts-shelf ts-shelf--scroll" role="list" data-ts-fit>
+						for _, b := range v.New {
+							@components.Spine(b)
+						}
+					</div>
+					<div class="ts-shelf__plank"></div>
+				}
 			</section>
 		}
 		if len(v.Series.Rows) > 0 || v.Shared != nil {
