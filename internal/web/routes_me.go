@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/db"
@@ -64,18 +63,11 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 	if err != nil {
 		return v, err
 	}
-	now := time.Now()
-	var others []pages.ProfileDevice
-	for _, si := range list {
-		label := deviceLabel(si.UserAgent)
-		if si.Current {
-			v.Devices = append(v.Devices, pages.ProfileDevice{ID: si.PublicID, Title: msgThisBrowser, Meta: label, Current: true})
-			continue
-		}
-		others = append(others, pages.ProfileDevice{ID: si.PublicID, Title: label, Meta: agoText(now, time.UnixMilli(si.LastSeenAt))})
+	apps, err := s.devices.ListForUser(ctx, u.ID)
+	if err != nil {
+		return v, err
 	}
-	v.Devices = append(v.Devices, others...)
-	v.Others = len(others)
+	v.Devices, v.Others = deviceRows(s.now(), list, apps, "/me", false)
 
 	if s.can.Can(ctx, u, share.ManageLibraries, share.Target{Kind: share.TargetServer}) {
 		if v.Libraries, err = s.librariesRow(ctx, r); err != nil {

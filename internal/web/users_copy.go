@@ -4,6 +4,8 @@ package web
 // UsersPhone); the ones marked NEW follow the voice rules in BRAND.md and are listed in the report.
 
 const (
+	usersTabDevices    = "Devices · %d"
+	usersDevicesOwn    = "Manage your own on your Profile."
 	usersTitle         = "Users & invites"
 	usersEveryone      = "Everything"
 	usersListeningNow  = "Listening now"

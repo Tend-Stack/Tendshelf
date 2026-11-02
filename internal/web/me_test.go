@@ -309,7 +309,7 @@ func TestSessionSignOut(t *testing.T) {
 
 	page := a.do(http.MethodGet, "/me", nil, nil, owner).Body.String()
 	id2 := settingsDeviceID(t, d2)
-	for _, frag := range []string{"/me/sessions/" + id2 + "/signout", `aria-label="Sign out Chrome on Linux"`, "This browser", "Sign out everywhere else", "A web browser"} {
+	for _, frag := range []string{"/me/sessions/" + id2 + "/signout", `aria-label="Sign out Chrome on Linux"`, "This device", "Sign out everywhere else", "A web browser"} {
 		if !strings.Contains(page, frag) {
 			t.Errorf("Profile lacks %q", frag)
 		}

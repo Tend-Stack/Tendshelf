@@ -34,8 +34,21 @@ type UsersView struct {
 	TabInvites string
 	// Invites are the pending invites the viewer may manage, oldest first.
 	Invites []InviteRow
+	// TabDevices is "Devices · 4", or empty when nobody is signed in anywhere; the tab links to the
+	// #users-devices section.
+	TabDevices string
+	// DeviceGroups are the people with a signed-in browser or app, in the order of the People tab.
+	DeviceGroups []UsersDevices
 	// NewLink, when set, shows the address of an invite whose link was just replaced.
 	NewLink *InviteLink
+}
+
+// UsersDevices is one person's signed-in browsers and apps on the Devices tab. Rows carry an Action
+// only where the viewer may sign them out; Note explains a group with none ("Manage your own...").
+type UsersDevices struct {
+	Name string
+	Note string
+	Rows []ProfileDevice
 }
 
 // InviteRow is one pending invite on the Users page. The handler writes every sentence.
@@ -181,9 +194,13 @@ templ AdminUsers(v UsersView) {
 			if v.TabInvites != "" {
 				<a class="ts-tabs__item" href="#users-invites">{ v.TabInvites }</a>
 			}
+			if v.TabDevices != "" {
+				<a class="ts-tabs__item" href="#users-devices">{ v.TabDevices }</a>
+			}
 		</nav>
 		@UsersList(v)
 		@InvitesList(v)
+		@UsersDevicesList(v)
 		<p class="caption ts-users__note">Listening time is shown so you can see the shelf is being used. Nobody, including you, can see what someone else is listening to unless they share it.</p>
 	</div>
 }
@@ -243,6 +260,41 @@ templ InvitesList(v UsersView) {
 					</li>
 				}
 			</ul>
+		</section>
+	}
+}
+
+// UsersDevicesList is the Devices card inside #users-devices: per person, the browsers and apps
+// signed in, each with "Sign out" where the viewer may. With nothing to show it is the empty
+// anchor the tab points at.
+templ UsersDevicesList(v UsersView) {
+	if len(v.DeviceGroups) == 0 {
+		<div id="users-devices"></div>
+	} else {
+		<section id="users-devices" class="ts-invite__card ts-users__devices" aria-label={ v.TabDevices }>
+			for _, g := range v.DeviceGroups {
+				<h3 class="ts-overline ts-users__devname">{ g.Name }</h3>
+				if g.Note != "" {
+					<p class="caption ts-users__devnote">{ g.Note }</p>
+				}
+				<ul class="ts-users__list">
+					for _, d := range g.Rows {
+						<li class="ts-invite__item">
+							<span class="ts-invite__icon">@components.Icon(d.Icon, false)</span>
+							<span class="ts-users__text">
+								<span class="body ts-users__name">{ d.Title }</span>
+								<span class="caption ts-users__meta">{ d.Meta }</span>
+							</span>
+							if d.Action != "" {
+								<form method="post" action={ templ.URL(d.Action) }>
+									<input type="hidden" name="_csrf" value={ v.CSRF }/>
+									<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ "Sign out " + d.Title + " for " + g.Name }>Sign out</button>
+								</form>
+							}
+						</li>
+					}
+				</ul>
+			}
 		</section>
 	}
 }
