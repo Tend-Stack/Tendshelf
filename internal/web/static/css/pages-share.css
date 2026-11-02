@@ -1,41 +1,117 @@
-/* Share & invite page (/share, /books/{id}/share). P3-4a ships the plain layout so the page is usable;
-   P3-4b brings the board's finish (radio cards, chips, themes, captures). */
+/* Share & invite page (/share, /books/{id}/share). Phone is one column with a top bar; from 768 px the
+   form card sits left and "Who's listening" plus "Safe by default" right. Radio cards, chips and the
+   switch are real inputs; :has(:checked) paints the chosen state, so no script is needed. */
 .ts-share { display: flex; flex-direction: column; gap: var(--space-24); max-width: 75rem; }
-.ts-share__bar { display: flex; align-items: center; gap: var(--space-12); }
+.ts-share__bar { display: flex; align-items: center; gap: var(--space-12); min-height: var(--size-tap); }
+.ts-share__bar .body { flex: 1; text-align: center; font-weight: 600; margin-right: 5.5rem; }
 .ts-share__head { display: none; flex-direction: column; gap: var(--space-4); }
+.ts-share__head h1 { margin: 0; }
 .ts-share__head p { margin: 0; color: var(--ink-muted); }
-.ts-share__grid { display: flex; flex-direction: column; gap: var(--space-24); }
-.ts-share__side { display: flex; flex-direction: column; gap: var(--space-24); }
-.ts-share__card, .ts-share__people, .ts-share__safe {
-  display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-16);
-  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface);
-}
+.ts-share__grid { display: flex; flex-direction: column; gap: var(--space-32); }
+.ts-share__side { display: flex; flex-direction: column; gap: var(--space-24); min-width: 0; }
+.ts-share__card { display: flex; flex-direction: column; gap: var(--space-16); min-width: 0; }
+.ts-share__card > h2 { margin: 0; display: none; }
 .ts-share__form, .ts-share__field { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
-.ts-share__field { margin: 0; padding: 0; border: 0; }
-.ts-share__tabs { display: flex; gap: var(--space-8); }
-.ts-share__tab { display: inline-flex; align-items: center; gap: var(--space-8); min-height: 2.75rem; padding: 0 var(--space-16); color: var(--ink); background: none; border: 1px solid var(--line); border-radius: var(--radius-md); font: inherit; }
-.ts-share__tab[disabled] { color: var(--ink-muted); }
+.ts-share__form { gap: var(--space-20); }
+.ts-share__field { margin: 0; padding: 0; border: 0; gap: var(--space-8); }
+.ts-share__field > .ts-field__hint { margin-top: var(--space-4); }
+.ts-share textarea.ts-input { height: auto; min-height: 5.5rem; padding: var(--space-12) var(--space-16); resize: vertical; }
+.ts-share .ts-input, .ts-share .ts-select, .ts-share__card { border-radius: var(--radius-control); }
+.ts-share__card .ts-input, .ts-share__card .ts-select { max-width: none; }
+
+/* Send a link | Email it */
+.ts-share__tabs { display: inline-flex; align-self: flex-start; padding: var(--space-4); gap: var(--space-4); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); }
+.ts-share__tab { display: inline-flex; align-items: center; gap: var(--space-8); min-height: 2.75rem; padding: 0 var(--space-16); color: var(--ink); background: none; border: 0; border-radius: var(--radius-pill); font: 600 1rem/1.25rem var(--font-sans); }
+.ts-share__tab[aria-current="true"] { background: var(--raised); }
+.ts-share__tab[disabled] { color: var(--ink-muted); cursor: not-allowed; }
+.ts-share__tab .ts-icon { width: 1.125rem; height: 1.125rem; }
 .ts-share__tabhint, .ts-share__fine { margin: 0; color: var(--ink-muted); }
+.ts-share__tabhint { margin-top: calc(var(--space-8) * -1); }
+
+/* Radio cards: the whole card is the target. The label's ::after stretches over it, so a tap anywhere
+   chooses; the select and the book search sit above that layer. */
 .ts-share__choices { display: flex; flex-direction: column; gap: var(--space-8); }
-.ts-share__choice { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: var(--space-8) var(--space-12); }
-.ts-share__choice > :not(input[type="radio"]):not(label) { grid-column: 2; }
-.ts-share__choice-title, .ts-share__choice-hint { display: block; }
-.ts-share__choice-hint { color: var(--ink-muted); }
+.ts-share__choice { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: var(--space-4); row-gap: var(--space-8); min-height: 2.75rem; padding: var(--space-8) var(--space-16) var(--space-8) var(--space-8); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); }
+.ts-share__choice:hover { border-color: var(--ink-muted); }
+.ts-share__choice:has(:checked) { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.ts-share__choice:has(:focus-visible) { box-shadow: var(--focus-ring); }
+.ts-share__choice > .ts-check, .ts-share__found > .ts-check { margin: var(--space-8); border-radius: 50%; }
+.ts-share__choice > .ts-check:checked, .ts-share__found > .ts-check:checked { border-color: var(--accent); background: var(--surface); }
+.ts-share__choice > .ts-check:checked::after, .ts-share__found > .ts-check:checked::after { width: 0.75rem; height: 0.75rem; border: 0; border-radius: 50%; background: var(--accent); transform: none; }
+.ts-share__choice > .ts-check:focus-visible { box-shadow: none; }
+.ts-share__choice > label { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--space-4) 0; }
+.ts-share__choice > label::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.ts-share__choice > :not(input[type="radio"]):not(label) { position: relative; z-index: 1; grid-column: 2; }
+.ts-share__choice-title { display: block; font-weight: 600; color: var(--ink); }
+.ts-share__choice-hint { display: block; color: var(--ink-muted); }
+.ts-share__choice:has(:checked) .ts-share__choice-hint { color: var(--ink); }
+.ts-share__find { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: center; }
+.ts-share__find .ts-input { flex: 1 1 10rem; min-width: 0; }
+.ts-share__found { display: flex; align-items: center; gap: var(--space-4); min-height: 2.75rem; }
+.ts-share__select { margin-bottom: var(--space-4); }
+.ts-share__read { padding: var(--space-8) var(--space-16); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); }
+.ts-share__read .ts-switch-row__label { font-weight: 500; }
+.ts-share .ts-switch { appearance: none; -webkit-appearance: none; margin: 0; flex: none; }
+.ts-share .ts-switch:checked { background: var(--accent-fill); border-color: var(--accent-fill); }
+.ts-share .ts-switch:checked::after { transform: translateX(1.25rem); background: var(--on-accent); }
+
+/* Expiry chips: a radio hidden inside its label; the check shows the chosen one by shape, not colour alone. */
 .ts-share__chips { display: flex; flex-wrap: wrap; gap: var(--space-8); }
-.ts-share__chip { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-md); }
-.ts-share__chip:has(:checked) { border-color: var(--accent); }
-.ts-share__find { display: flex; gap: var(--space-8); }
-.ts-share__list { display: flex; flex-direction: column; gap: var(--space-12); margin: 0; padding: 0; list-style: none; }
-.ts-share__person, .ts-share__pending { display: flex; align-items: center; gap: var(--space-12); }
+.ts-share__chip { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-8); min-height: 2.75rem; padding: 0 var(--space-16); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); font-weight: 500; cursor: pointer; }
+.ts-share__chip input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.ts-share__chip:hover { border-color: var(--ink-muted); }
+.ts-share__chip:has(:checked) { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.ts-share__chip:has(:checked)::before { content: ""; width: 0.375rem; height: 0.75rem; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: translateY(-1px) rotate(45deg); }
+.ts-share__chip:has(:focus-visible) { box-shadow: var(--focus-ring); }
+
+.ts-share__create { display: flex; flex-direction: column; gap: var(--space-12); }
+.ts-share__fine { display: flex; gap: var(--space-8); align-items: flex-start; }
+.ts-share__fine .ts-icon { flex: none; width: 1.125rem; height: 1.125rem; color: var(--success); margin-top: 1px; }
+.ts-share__error { margin: 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--danger); border-radius: var(--radius-control); color: var(--danger); }
+
+/* Who's listening: rows on the ground, divided by hairlines. */
+.ts-share__people { display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-share__peoplehead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-12); flex-wrap: wrap; }
+.ts-share__peoplehead h2 { margin: 0; }
+.ts-share__peoplehead .caption { color: var(--ink-muted); }
+.ts-share__list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.ts-share__person, .ts-share__pending { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-16) 0; border-top: 1px solid var(--line); }
+.ts-share__list > :first-child { border-top: 0; }
 .ts-share__person .ts-users__text, .ts-share__pending .ts-users__text { flex: 1; min-width: 0; }
-.ts-share__peoplehead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-12); }
-.ts-share__error { margin: 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--danger); border-radius: var(--radius-md); color: var(--danger); }
-.ts-share__safe { display: none; }
+.ts-share__stop { flex: none; font-weight: 600; }
+.ts-share__pending form { display: flex; flex: none; }
+.ts-share__pending .ts-invite__icon { border: 1px dashed var(--line-strong); background: transparent; color: var(--ink-muted); }
+.ts-share__pending .ts-iconbtn { color: var(--ink); }
+.ts-share__people > .caption { margin: 0; color: var(--ink-muted); }
+
+.ts-share__safe { display: none; flex-direction: column; gap: var(--space-8); padding: var(--space-20); border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); }
 .ts-share__safe h2 { margin: 0; }
-.ts-share__safe ul { margin: 0; padding-left: var(--space-16); color: var(--ink-muted); }
+.ts-share__safe ul { display: flex; flex-direction: column; gap: var(--space-8); margin: 0; padding-left: var(--space-16); color: var(--ink-muted); }
+
+@media (max-width: 767px) {
+  .ts-share__tabhint { display: none; }
+  .ts-share__card > h2 { display: block; }
+}
 @media (min-width: 768px) {
   .ts-share__bar { display: none; }
   .ts-share__head { display: flex; }
-  .ts-share__grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+  .ts-share__card { padding: var(--space-24); border: 1px solid var(--line); background: var(--surface); }
+  .ts-share__card > h2 { display: block; }
   .ts-share__safe { display: flex; }
 }
+/* Two columns from 1024 px (ShareTablet is drawn at 1024); a narrow tablet keeps one. */
+@media (min-width: 1024px) {
+  .ts-share__grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--space-24) var(--space-32); align-items: start; }
+}
+@media (min-width: 1280px) {
+  .ts-share__grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-32) var(--space-48); }
+}
+
+/* Fields fill the card (the bundle caps .ts-field at 22.5rem); legends sit clear of their cards. */
+.ts-share .ts-field .ts-input, .ts-share .ts-share__field .ts-select { width: 100%; max-width: none; box-sizing: border-box; }
+.ts-share__field > legend { float: none; padding: 0; margin-bottom: var(--space-8); }
+@media (max-width: 767px) {
+  .ts-share__card > h2 { font-size: 1.75rem; line-height: 2.25rem; }
+}
+
+.ts-share .ts-field { max-width: none; }

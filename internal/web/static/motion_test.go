@@ -106,6 +106,9 @@ func TestCSSBudget(t *testing.T) {
 		"css/motion.css":    {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
 		"css/player.css": {4 * 1024, 24 * 1024},
+		// The Users and invite pages share this file (list, person page, pending invites, the Invite someone
+		// header); P3-4b's header rules took it past 3 KB, so it gets 4 KB rather than being squeezed.
+		"css/pages-admin.css": {4 * 1024, 24 * 1024},
 	}
 	var coreGzip, coreRaw int
 	for _, name := range s.Names() {

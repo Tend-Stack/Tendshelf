@@ -170,7 +170,7 @@ templ BookPlay(v *BookPlayView) {
 templ bookShareLink(href string) {
 	<a class="ts-btn ts-btn--quiet ts-book__share" href={ templ.SafeURL(href) }>
 		@components.Icon("share", false)
-		Share
+		<span class="ts-book__label">Share</span>
 	</a>
 }
 
