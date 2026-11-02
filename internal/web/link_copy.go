@@ -1,7 +1,9 @@
 package web
 
 // Share-link copy. Words marked NEW are not in the copy deck; they follow the voice rules in
-// BRAND.md and are listed in the P3-5a report.
+// BRAND.md and are listed in the P3-5a report. The fixed headings of the Share page section ("Share
+// a link anyone can open", "Make a link", "Add a password", "The link works for", "Stop") are
+// written in pages/share.templ, like the rest of that page.
 const (
 	linkBrokenTitle   = "This link doesn't work"                     // NEW
 	linkBrokenBody    = "Ask the person who sent it for a new link." // NEW
@@ -14,21 +16,13 @@ const (
 	linkUnlock        = "Listen"                                   // NEW
 	linkWrongPassword = "That password isn't right."               // NEW
 
-	linkSection      = "Share a link anyone can open"                                                           // NEW
-	linkSectionHint  = "No account needed. They can listen, nothing else."                                      // NEW
-	linkMake         = "Make a link"                                                                            // NEW
-	linkMakeHint     = "To make a link, open a book and choose Share."                                          // NEW
 	linkMade         = "Link made %s"                                                                           // NEW
 	linkEndsShort    = "Ends %s"                                                                                // NEW
 	linkEndsPassword = "Ends %s · Password"                                                                     // NEW
 	linkStopFor      = "Stop the link for %s"                                                                   // NEW
-	linkStop         = "Stop"                                                                                   // NEW
 	linkReadyTitle   = "Your link is ready"                                                                     // NEW
 	linkReadyNote    = "Anyone with this link can listen to %s until %s. Copy it now: it won't be shown again." // NEW
 	linkFieldLabel   = "Link"                                                                                   // NEW
-	linkWhoLabel     = "Who is it for? (optional)"                                                              // NEW
-	linkAddPassword  = "Add a password"                                                                         // NEW
-	linkWorksFor     = "The link works for"                                                                     // NEW
 	linkDay1         = "1 day"                                                                                  // NEW
 	linkDaysN        = "%d days"                                                                                // NEW
 

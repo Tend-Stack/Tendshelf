@@ -71,10 +71,12 @@ type sweepEnv struct {
 	// invite, all made by the owner (P3-3a).
 	inviteTok                            string
 	inviteRot, inviteCancel, inviteAdmin string
-	book                                 library.Book
-	author, narrator, series             string
-	job                                  string
-	tree                                 string // a folder for the browse view, with a file name that must never be sent
+	// link holds the share links and the link book of the link rows (P3-5a).
+	link                     linkSweep
+	book                     library.Book
+	author, narrator, series string
+	job                      string
+	tree                     string // a folder for the browse view, with a file name that must never be sent
 
 	// granted marks the app of TestRouteMatrixGranted: the member and the guest hold a library
 	// grant on libID, so rows answer with Granted and the leak scan is off.
@@ -202,6 +204,7 @@ func sweepSeed(t *testing.T) *sweepEnv {
 		t.Fatal(err)
 	}
 	inviteSeed(t, e)
+	linkSeed(t, e)
 	e.job = a.adminEnqueueScan(t, l.ID)
 	a.adminSetJobState(t, e.job, "done")
 	if err := db.PutSetting(ctx, a.st.Writer(), settingSetupDone, true); err != nil {
@@ -567,7 +570,8 @@ func sweepRows() []sweepRow {
 	rows = append(rows, post...)
 	rows = append(rows, usersSweepRows()...)
 	rows = append(rows, invitesSweepRows()...)
-	return append(rows, shareSweepRows()...)
+	rows = append(rows, shareSweepRows()...)
+	return append(rows, linksSweepRows()...)
 }
 
 // sweepLeakWords are strings of the seeded book that nobody without access may ever see.
