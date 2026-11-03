@@ -102,37 +102,36 @@ func TestVisualLookups(t *testing.T) {
 	for _, st := range states {
 		st.setup()
 		for _, pg := range st.pages {
-			for _, theme := range []string{"dark", "light"} {
-				for _, w := range []int{390, 768, 1024, 1440} {
-					t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
-						tab := b.NewTab(w, 900, w == 390, false)
-						tab.Navigate(base + pg.path + "?theme=" + theme)
-						var m struct {
-							Over       bool     `json:"over"`
-							Theme      string   `json:"theme"`
-							Small      []string `json:"small"`
-							Unlabelled []string `json:"unlabelled"`
-							H1         int      `json:"h1"`
-						}
-						tab.Eval(lookupsProbeJS, &m)
-						if m.Over {
-							t.Errorf("horizontal overflow")
-						}
-						if m.Theme != theme {
-							t.Errorf("data-theme = %q, want %q", m.Theme, theme)
-						}
-						if len(m.Small) > 0 {
-							t.Errorf("targets under 44 px: %v", m.Small)
-						}
-						if len(m.Unlabelled) > 0 {
-							t.Errorf("inputs without a label: %v", m.Unlabelled)
-						}
-						if m.H1 != 1 {
-							t.Errorf("%d h1 elements", m.H1)
-						}
-						tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("lookups-%s-%s-%d.png", pg.name, theme, w)))
-					})
-				}
+			for _, sh := range visualMatrix(false) {
+				theme, w := sh.Theme, sh.Width
+				t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
+					tab := b.NewTab(w, 900, w == 390, false)
+					tab.Navigate(base + pg.path + "?theme=" + theme)
+					var m struct {
+						Over       bool     `json:"over"`
+						Theme      string   `json:"theme"`
+						Small      []string `json:"small"`
+						Unlabelled []string `json:"unlabelled"`
+						H1         int      `json:"h1"`
+					}
+					tab.Eval(lookupsProbeJS, &m)
+					if m.Over {
+						t.Errorf("horizontal overflow")
+					}
+					if m.Theme != theme {
+						t.Errorf("data-theme = %q, want %q", m.Theme, theme)
+					}
+					if len(m.Small) > 0 {
+						t.Errorf("targets under 44 px: %v", m.Small)
+					}
+					if len(m.Unlabelled) > 0 {
+						t.Errorf("inputs without a label: %v", m.Unlabelled)
+					}
+					if m.H1 != 1 {
+						t.Errorf("%d h1 elements", m.H1)
+					}
+					tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("lookups-%s-%s-%d.png", pg.name, theme, w)))
+				})
 			}
 		}
 	}
