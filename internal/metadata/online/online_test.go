@@ -600,3 +600,24 @@ func TestOnlineNoOtherClient(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestOnlineCoverHosts(t *testing.T) {
+	cases := []struct {
+		host string
+		want bool
+	}{
+		{"m.media-amazon.com", true},
+		{"images-na.ssl-images-amazon.com", true},
+		{"is1-ssl.mzstatic.com", true},
+		{"covers.openlibrary.org", true},
+		{"books.google.com", true},
+		{"media-amazon.com.evil.example", false},
+		{"evilmedia-amazon.com", false},
+		{"example.com", false},
+	}
+	for _, c := range cases {
+		if got := isCoverHost(c.host); got != c.want {
+			t.Errorf("isCoverHost(%q) = %v, want %v", c.host, got, c.want)
+		}
+	}
+}

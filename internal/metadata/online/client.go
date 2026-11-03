@@ -41,8 +41,9 @@ var apiHosts = map[string]string{
 }
 
 // coverHostSuffixes and coverHostsExact are the sites a cover picture may come from.
+// Audnexus author photos come from images-na.ssl-images-amazon.com (checked live 2026-11-03).
 var (
-	coverHostSuffixes = []string{".media-amazon.com", ".mzstatic.com", ".googleusercontent.com", ".gstatic.com", ".archive.org"}
+	coverHostSuffixes = []string{".media-amazon.com", ".ssl-images-amazon.com", ".mzstatic.com", ".googleusercontent.com", ".gstatic.com", ".archive.org"}
 	coverHostsExact   = []string{"covers.openlibrary.org", "books.google.com", "archive.org"}
 )
 
