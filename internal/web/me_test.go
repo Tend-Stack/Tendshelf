@@ -149,7 +149,7 @@ func TestSettingsSavePlain(t *testing.T) {
 		t.Fatalf("stored %+v, want %+v (unchecked switches are false)", got, want)
 	}
 	// The saved values show on the page.
-	body := a.do(http.MethodGet, "/me/settings", nil, nil, ck).Body.String()
+	body := a.do(http.MethodGet, "/me/settings", nil, nil, ck).Body.String() + a.do(http.MethodGet, "/me/settings/appearance", nil, nil, ck).Body.String()
 	for _, frag := range []string{`value="2.00" selected`, `id="st-skipb-30" name="skip_back" value="30" checked`, `id="st-theme-light" name="theme" value="light" checked`} {
 		if !strings.Contains(body, frag) {
 			t.Errorf("page lacks %q", frag)

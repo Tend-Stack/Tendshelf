@@ -18,6 +18,7 @@ import (
 func (s *server) registerMe(mux *http.ServeMux) {
 	mux.HandleFunc("GET /me", s.getMe)
 	mux.HandleFunc("GET /me/settings", s.getSettings)
+	mux.HandleFunc("GET /me/settings/{section}", s.getSettingsSection)
 	mux.HandleFunc("POST /me/settings", s.postSettings)
 	mux.HandleFunc("GET /me/password", s.getPassword)
 	mux.HandleFunc("POST /me/password", s.postPassword)
@@ -35,7 +36,7 @@ func (s *server) getMe(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "profile", err)
 		return
 	}
-	s.pageStyled(w, r, http.StatusOK, "Profile", "profile", pages.Profile(v), nil, pages.MeStyles...)
+	s.prefsPage(w, r, http.StatusOK, "Profile", "profile", "account", false, pages.Profile(v), nil, pages.MeStyles...)
 }
 
 func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
@@ -80,6 +81,9 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 			return v, err
 		}
 	}
+	if s.can.Can(ctx, u, share.ManageServer, share.Target{Kind: share.TargetServer}) {
+		v.Email = true
+	}
 	if s.canShelve(r) {
 		list, err := s.lib.ShelfCounts(ctx, s.scope(r), u.ID)
 		if err != nil {
@@ -109,14 +113,39 @@ func (s *server) librariesRow(ctx context.Context, r *http.Request) (string, err
 
 // ---- Settings ----
 
+// settingsSections are the personal categories of /me/settings/{section} and their titles.
+var settingsSections = map[string]string{
+	"playback": "Playback", "appearance": "Appearance", "accessibility": "Easier to use", "privacy": "Privacy",
+}
+
+// getSettings is the category list; beside it (when there is room) the Playback pane.
 func (s *server) getSettings(w http.ResponseWriter, r *http.Request) {
+	s.settingsPage(w, r, http.StatusOK, "playback", true, "")
+}
+
+func (s *server) getSettingsSection(w http.ResponseWriter, r *http.Request) {
+	section := r.PathValue("section")
+	if _, ok := settingsSections[section]; !ok {
+		s.errorPage(w, r, http.StatusNotFound)
+		return
+	}
+	s.settingsPage(w, r, http.StatusOK, section, false, "")
+}
+
+// settingsPage renders one category of Settings; refusal is the line a failed plain post shows.
+func (s *server) settingsPage(w http.ResponseWriter, r *http.Request, status int, section string, index bool, refusal string) {
 	cur, err := s.users.LoadSettings(r.Context(), currentUser(r).ID)
 	if err != nil {
 		s.serverError(w, r, "load settings", err)
 		return
 	}
-	s.pageStyled(w, r, http.StatusOK, "Settings", "profile",
-		pages.Settings(settingsView(s.csrf.TokenFrom(r.Context()), cur)), nil, pages.MeStyles...)
+	v := settingsView(s.csrf.TokenFrom(r.Context()), cur)
+	v.Section, v.Index, v.Error = section, index, refusal
+	title := "Settings"
+	if !index {
+		title = settingsSections[section]
+	}
+	s.prefsPage(w, r, status, title, "profile", section, index, pages.SettingsPane(v), nil, pages.MeStyles...)
 }
 
 func (s *server) postSettings(w http.ResponseWriter, r *http.Request) {
@@ -130,15 +159,23 @@ func (s *server) postSettings(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "load settings", err)
 		return
 	}
+	// section says which category the form came from, so a plain post goes back to it. Anything
+	// that is not one of the four names is ignored, never echoed into the redirect.
+	section := r.PostFormValue("section")
+	if _, known := settingsSections[section]; !known {
+		section = ""
+	}
 	next, ok := settingsFromForm(r.PostForm, cur)
 	if !ok {
 		if r.Header.Get("HX-Request") == "true" {
 			s.fragment(w, r, http.StatusUnprocessableEntity, components.ErrorToast(msgSettingInvalid))
 			return
 		}
-		v := settingsView(s.csrf.TokenFrom(ctx), cur)
-		v.Error = msgSettingInvalid
-		s.pageStyled(w, r, http.StatusUnprocessableEntity, "Settings", "profile", pages.Settings(v), nil, pages.MeStyles...)
+		if section == "" {
+			s.settingsPage(w, r, http.StatusUnprocessableEntity, "playback", true, msgSettingInvalid)
+			return
+		}
+		s.settingsPage(w, r, http.StatusUnprocessableEntity, section, false, msgSettingInvalid)
 		return
 	}
 	if err := s.users.SaveSettings(ctx, u.ID, next); err != nil {
@@ -155,7 +192,11 @@ func (s *server) postSettings(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	http.Redirect(w, r, "/me/settings", http.StatusSeeOther)
+	back := "/me/settings"
+	if section != "" {
+		back += "/" + section
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
 // ---- Change password ----
@@ -166,7 +207,7 @@ func (s *server) getPassword(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) passwordPage(w http.ResponseWriter, r *http.Request, status int, v pages.PasswordView) {
 	v.CSRF = s.csrf.TokenFrom(r.Context())
-	s.pageStyled(w, r, status, "Change password", "profile", pages.Password(v), nil, pages.PasswordStyles...)
+	s.prefsPage(w, r, status, "Change password", "profile", "account", false, pages.Password(v), nil, pages.PasswordStyles...)
 }
 
 func (s *server) postPassword(w http.ResponseWriter, r *http.Request) {

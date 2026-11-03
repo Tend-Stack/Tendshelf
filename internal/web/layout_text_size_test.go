@@ -60,7 +60,7 @@ func TestLayoutTextSize(t *testing.T) {
 	}
 
 	// The Settings page shows the control with the saved choice.
-	body := browseGet(a, "/me/settings", false, nil).Body.String()
+	body := browseGet(a, "/me/settings/accessibility", false, nil).Body.String()
 	for _, frag := range []string{`id="st-text-large" name="text_size" value="large" checked`, `id="st-text-standard" name="text_size" value="standard"`, `Text size`, `Larger`} {
 		if !strings.Contains(body, frag) {
 			t.Errorf("settings page lacks %q", frag)

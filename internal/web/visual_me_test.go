@@ -16,7 +16,8 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
-// TestVisualMePages captures Profile and Settings in dark and light at four widths, the Password
+// TestVisualMePages captures Profile and Settings (the list and its four sections; the wide, large-text
+// and panel-open shots are in TestVisualPrefs) in dark and light at four widths, the Password
 // form in dark at 390 and 1440, and Settings in sepia and contrast at 390 and 1440. It fails on
 // horizontal overflow, a target under 44 px, an unlabelled input or a page without exactly one h1.
 // One more capture checks that the person's saved theme, not the cookie, sets data-theme. The
@@ -70,6 +71,9 @@ func TestVisualMePages(t *testing.T) {
 		caps = append(caps, capture{"settings", "/me/settings", sh.Theme, sh.Width})
 	}
 	for _, sh := range visualMatrix(false) {
+		for _, sec := range prefsSections {
+			caps = append(caps, capture{"settings-" + sec, "/me/settings/" + sec, sh.Theme, sh.Width})
+		}
 		caps = append(caps, capture{"profile", "/me", sh.Theme, sh.Width}, capture{"password", "/me/password", sh.Theme, sh.Width})
 	}
 	for _, c := range caps {

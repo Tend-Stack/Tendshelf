@@ -32,6 +32,8 @@ type ProfileView struct {
 	// UsersRow is the "Users & invites" row ("3 people · 1 invite waiting") for a person who may
 	// manage users, or empty.
 	UsersRow string
+	// Email shows the "Email" row of "Your server", for the owner only.
+	Email bool
 	// Shelves is the "Your shelves" row ("3 shelves"), empty for people who may not use shelves.
 	Shelves string
 	// NoPassword is true for an account made from an invite that never added a password: Profile
@@ -66,7 +68,8 @@ templ Profile(v ProfileView) {
 				{ v.Banner }
 			</p>
 		}
-		<section aria-labelledby="pf-mine" class="ts-me__section">
+		<div class="ts-groups">
+		<section aria-labelledby="pf-mine" class="ts-me__section ts-group">
 			<h2 id="pf-mine" class="ts-sr">Yours</h2>
 			if v.Shelves != "" {
 				<a class="ts-me__row" href="/shelves">
@@ -77,7 +80,7 @@ templ Profile(v ProfileView) {
 					@meChevron()
 				</a>
 			}
-			<a class="ts-me__row" href="/me/settings">
+			<a class="ts-me__row ts-me__hub" href="/me/settings">
 				<span class="body ts-me__rowtext">Settings</span>
 				@meChevron()
 			</a>
@@ -96,7 +99,7 @@ templ Profile(v ProfileView) {
 				</a>
 			}
 		</section>
-		<section aria-labelledby="pf-dev" class="ts-me__section">
+		<section aria-labelledby="pf-dev" class="ts-me__section ts-group">
 			<h2 id="pf-dev" class="ts-overline">Your devices</h2>
 			for _, d := range v.Devices {
 				<div class="ts-me__row ts-me__device">
@@ -122,8 +125,8 @@ templ Profile(v ProfileView) {
 				</form>
 			}
 		</section>
-		if v.Libraries != "" || v.UsersRow != "" {
-			<section aria-labelledby="pf-srv" class="ts-me__section">
+		if v.Libraries != "" || v.UsersRow != "" || v.Email {
+			<section aria-labelledby="pf-srv" class="ts-me__section ts-group ts-me__hub">
 				<h2 id="pf-srv" class="ts-overline">Your server</h2>
 				if v.UsersRow != "" {
 					<a class="ts-me__row" href="/admin/users">
@@ -143,8 +146,18 @@ templ Profile(v ProfileView) {
 						@meChevron()
 					</a>
 				}
+				if v.Email {
+					<a class="ts-me__row" href="/admin/email">
+						<span class="ts-me__rowtext">
+							<span class="body ts-me__rowtitle">Email</span>
+							<span class="caption ts-me__lead">Send invitations from Tendshelf</span>
+						</span>
+						@meChevron()
+					</a>
+				}
 			</section>
 		}
+		</div>
 		<form method="post" action="/logout" class="ts-me__signout" hx-boost="false">
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			<button type="submit" class="ts-btn ts-btn--secondary ts-btn--block">Sign out</button>

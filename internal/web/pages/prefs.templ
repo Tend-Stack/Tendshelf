@@ -1,0 +1,123 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// PrefsStyles is the stylesheet of the preferences shell; every page inside it links it.
+var PrefsStyles = []string{"css/pages-settings.css"}
+
+// PrefsNav is what the shell needs to draw the category list. The handler fills the flags from
+// the same permission checks the sidebar uses, so the list only hides links and grants nothing.
+type PrefsNav struct {
+	// Current is the key of the category the page belongs to: account, playback, appearance,
+	// accessibility, privacy, users, libraries or email.
+	Current string
+	// Index is true on /me/settings itself: the list is the page on a phone, and Playback is the
+	// selected item beside it on a wide screen.
+	Index              bool
+	UserID, Name, Role string
+	Users              bool
+	UsersWaiting       string
+	Libraries, Email   bool
+}
+
+type prefsItem struct{ Key, Label, Href string }
+
+var prefsPersonal = []prefsItem{
+	{"playback", "Playback", "/me/settings/playback"},
+	{"appearance", "Appearance", "/me/settings/appearance"},
+	{"accessibility", "Easier to use", "/me/settings/accessibility"},
+	{"privacy", "Privacy", "/me/settings/privacy"},
+}
+
+// prefsCurrent is the aria-current value of an item: "page" on its own page, "true" for the
+// selected item of the index (the list is the page there), and empty otherwise.
+func prefsCurrent(n PrefsNav, key string) string {
+	switch {
+	case n.Current != key:
+		return ""
+	case n.Index:
+		return "true"
+	}
+	return "page"
+}
+
+// prefsLink is one item of the list.
+templ prefsLink(n PrefsNav, key, label, href string) {
+	<a
+		class="ts-prefs__item"
+		href={ templ.URL(href) }
+		if c := prefsCurrent(n, key); c != "" {
+			aria-current={ c }
+		}
+	>
+		<span>{ label }</span>
+		if key == "users" && n.UsersWaiting != "" {
+			<span class="ts-prefs__count">{ n.UsersWaiting }</span>
+		}
+	</a>
+}
+
+// PrefsShell is the preferences window: the category list beside the pane when there is room,
+// the list or the pane alone on a phone. Every category stays a page of its own.
+templ PrefsShell(n PrefsNav, pane templ.Component) {
+	<div class="ts-prefs">
+		<div class={ "ts-prefs__frame", templ.KV("ts-prefs--index", n.Index) }>
+			<nav class="ts-prefs__nav" aria-label="Settings">
+				<a
+					class="ts-prefs__who"
+					href="/me"
+					if n.Current == "account" {
+						aria-current="page"
+					}
+				>
+					@components.Avatar(n.UserID, n.Name, "md")
+					<span class="ts-prefs__whotext">
+						<span class="ts-prefs__name">{ n.Name }</span>
+						<span class="caption ts-prefs__role">{ n.Role }</span>
+					</span>
+				</a>
+				if n.Index {
+					<h1 class="title-2 ts-prefs__title">Settings</h1>
+				} else {
+					<h2 class="ts-overline ts-prefs__heading">Settings</h2>
+				}
+				<ul class="ts-prefs__list">
+					for _, it := range prefsPersonal {
+						<li>
+							@prefsLink(n, it.Key, it.Label, it.Href)
+						</li>
+					}
+				</ul>
+				if n.Users || n.Libraries || n.Email {
+					<h2 class="ts-overline ts-prefs__heading">Your server</h2>
+					<ul class="ts-prefs__list">
+						if n.Users {
+							<li>
+								@prefsLink(n, "users", "Users & invites", "/admin/users")
+							</li>
+						}
+						if n.Libraries {
+							<li>
+								@prefsLink(n, "libraries", "Libraries", "/admin/libraries")
+							</li>
+						}
+						if n.Email {
+							<li>
+								@prefsLink(n, "email", "Email", "/admin/email")
+							</li>
+						}
+					</ul>
+				}
+			</nav>
+			<div class="ts-prefs__pane">
+				if n.Current != "account" {
+					<a class="ts-btn ts-btn--quiet ts-prefs__back" href="/me/settings">
+						@backIcon()
+						Settings
+					</a>
+				}
+				@pane
+			</div>
+		</div>
+	</div>
+}
