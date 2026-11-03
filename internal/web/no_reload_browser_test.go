@@ -55,7 +55,7 @@ func TestAdminActionsKeepPlayingBrowser(t *testing.T) {
 				tab.Eval(`(() => { const a = document.createElement("a"); a.id = "go"; a.href = "`+href+`"; a.textContent = "go";
 				  a.style.cssText = "position:fixed;left:8px;top:80px;width:120px;height:60px;z-index:50;background:white;color:black";
 				  document.getElementById("main").append(a); htmx.process(a); })()`, nil)
-				playerClickSel(t, tab, "#go")
+				tab.Eval(`document.getElementById("go").click()`, nil) // a sheet may cover the link
 				tab.WaitFor(`location.pathname + location.search === "`+href+`" && (`+ready+`)`, 8*time.Second)
 				check("open " + href)
 			}
@@ -104,6 +104,32 @@ func TestAdminActionsKeepPlayingBrowser(t *testing.T) {
 			tab.Eval(`(() => { const s = document.querySelector("#st-speed"); s.selectedIndex = s.options.length - 1; s.dispatchEvent(new Event("change", {bubbles: true})); })()`, nil)
 			time.Sleep(700 * time.Millisecond)
 			check("settings saved")
+
+			// Shelves: put the playing book on a new shelf from its "Add to shelf" sheet, rename the
+			// shelf, take the book off it.
+			goBoosted("/books/"+e.book.ID, `document.querySelector(".ts-book__shelf") !== null`)
+			playerClickSel(t, tab, ".ts-book__shelf")
+			tab.WaitFor(`document.querySelector("#sheet form.ts-shelf-sheet__new") !== null`, 8*time.Second)
+			check("shelf sheet open")
+			tab.Eval(`document.querySelector("#shs-name").value = "Evening listens"`, nil)
+			submit(`#sheet form.ts-shelf-sheet__new`)
+			var shelfID string
+			for i := 0; i < 80 && shelfID == ""; i++ {
+				_ = e.a.st.Reader().QueryRow(`SELECT id FROM shelves WHERE name = 'Evening listens'`).Scan(&shelfID)
+				time.Sleep(50 * time.Millisecond)
+			}
+			if shelfID == "" {
+				t.Fatal("the shelf was not made")
+			}
+			check("shelf made")
+			goBoosted("/shelves/"+shelfID, `document.querySelector("#shelf-rename") !== null`)
+			tab.Eval(`document.querySelector("#shelf-rename").value = "Late listens"`, nil)
+			submit(`form[action$="/rename"]`)
+			tab.WaitFor(`document.body.textContent.includes("Late listens")`, 8*time.Second)
+			check("shelf renamed")
+			submit(`form[action$="/remove"]`)
+			tab.WaitFor(`document.body.textContent.includes("This shelf is empty")`, 8*time.Second)
+			check("book taken off the shelf")
 		})
 	}
 }
