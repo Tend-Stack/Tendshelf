@@ -213,10 +213,10 @@ function parseBook(el) {
 
 // Fetches a book's fragment (the last played book when id is empty). Null when there is none, or
 // when redirected, which means signed out.
-async function fetchBook(id) {
+async function fetchBook(id, init) {
   if (LINK) return linkBook(id);
   try {
-    const res = await fetch(id ? "/hx/player/" + encode(id) : "/hx/player");
+    const res = await fetch(id ? "/hx/player/" + encode(id) : "/hx/player", init);
     if (res.status !== 200 || res.redirected) return null;
     const html = await res.text();
     const el = new DOMParser().parseFromString(html, "text/html").getElementById("player-data");
@@ -563,6 +563,7 @@ function nearLastSave() {
 // (keep this place after the question), beacon (the page is being hidden).
 async function save(kind) {
   if (!book || stopped || current.fileIdx < 0) return;
+  if (audio.ended && kind !== "end") return; // a book that ended keeps its finished mark
   if (kind === "tick" && (prompting || nearLastSave())) return;
   if (kind === "beacon" && (!current.loaded || (audio.paused && nearLastSave()))) return;
 
@@ -885,7 +886,7 @@ function adopt(newBook, posMs) {
 
 // Fetches and adopts a book. options.positionMs overrides the saved place; options.play plays.
 async function loadBook(id, options) {
-  const fetched = await fetchBook(id);
+  const fetched = await fetchBook(id, options && options.init);
   const given = options && options.positionMs;
   const savedStart = fetched && fetched.stored && !fetched.stored.finished ? fetched.stored.positionMs : 0;
   if (!fetched || !adopt(fetched, given !== undefined ? given : savedStart)) return false;
@@ -1041,11 +1042,26 @@ listen(audio, "ended", () => {
     emit("chapter");
     return;
   }
-  // the last file ended: the book is finished
-  save("end");
+  // the last file ended: the book is finished, then Up next plays its first book
+  save("end").then(playNext);
   idleAt = Date.now();
   emit("pause");
 });
+
+// The server pops the first book of Up next and drops the ended one from it (204 when empty).
+// Nothing happens in link mode, or when the person already started something else while the
+// place was being saved (then the audio is no longer ended).
+function playNext() {
+  if (LINK || !audio.ended || !book) return;
+  loadBook("next", {
+    play: true,
+    init: {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken(), "Content-Type": FORM_TYPE },
+      body: "ended=" + encode(book.id),
+    },
+  });
+}
 
 listen(audio, "error", () => {
   if (!book || !current.loaded) return;
