@@ -609,7 +609,7 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
     .ts-shell:has(~ .ts-player-slot:not([hidden], .is-suppressed)) .ts-nav-side { padding-bottom: calc(var(--space-24) + var(--size-pbar)); }
     .ts-nav-rail { display: none; }
     .ts-nav-side { display: flex; position: sticky; top: 0; height: 100vh; height: 100dvh; align-self: start; }
-    .ts-main { padding-inline: var(--space-32); }
+    .ts-main { padding-inline: var(--space-20); } /* tight, native spacing beside the rail and the panel (operator, 2026-11-03) */
     .ts-player-slot { left: 0; right: var(--app-gutter-end); padding: 0; bottom: 0; }
     .ts-toasts { left: var(--space-24); right: auto; align-items: flex-start; bottom: calc(var(--size-mini-player) + var(--space-24)); }
   }
