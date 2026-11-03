@@ -542,10 +542,10 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 
 
 /* Tendshelf additions (P0b): app shell. Tokens only. */
-.ts-shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+.ts-shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; min-height: 100svh; }
 .ts-main { box-sizing: border-box; min-width: 0; max-width: var(--size-content-max); padding-inline: var(--space-20); padding-top: var(--space-24);
   padding-bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--space-16)); outline: none; }
-.ts-nav-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; height: calc(var(--size-tab-bar) + env(safe-area-inset-bottom)); padding-bottom: calc(0.625rem + env(safe-area-inset-bottom)); }
+.ts-nav-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; will-change: transform; height: calc(var(--size-tab-bar) + env(safe-area-inset-bottom)); padding-bottom: calc(0.625rem + env(safe-area-inset-bottom)); }
 .ts-nav-rail, .ts-nav-side { display: none; }
 .ts-brand { color: var(--accent); }
 .ts-brand .ts-icon { width: 3rem; height: 3rem; stroke: currentColor; }
@@ -554,6 +554,8 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-player-slot { position: fixed; left: var(--space-8); right: var(--space-8); z-index: 9;
   bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--space-8)); }
 .ts-player-slot[hidden] { display: none; }
+/* Phones: both bars get their own compositor layer so the address bar collapsing mid-scroll cannot leave them behind. */
+@media (max-width: 767px) { .ts-player-slot { will-change: transform; } }
 .ts-toasts { position: fixed; left: var(--space-16); right: var(--space-16); z-index: 20; display: flex; flex-direction: column; align-items: center; gap: var(--space-8);
   bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-12) + var(--space-8)); pointer-events: none; }
 .ts-toasts > * { pointer-events: auto; }
