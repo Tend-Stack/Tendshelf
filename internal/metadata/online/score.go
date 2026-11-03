@@ -126,6 +126,34 @@ func splitNames(s string) []string {
 	return out
 }
 
+// confidentTitleRatio is how alike two titles must be, when they are not equal, to count as one.
+const confidentTitleRatio = 0.95
+
+// Confident says whether a candidate is safe to apply without a person looking: the title is the
+// same (or the same with its subtitle, or nearly) and an author name matches. Score alone is not
+// enough, since "Dune Messiah" scores high for "Dune". False when the title or author is blank.
+func Confident(b Book, title, author string) bool {
+	nt := norm(title)
+	if nt == "" || norm(author) == "" {
+		return false
+	}
+	ct := norm(b.Title)
+	sameTitle := ct == nt || (b.Subtitle != "" && norm(b.Title+" "+b.Subtitle) == nt) || ratio(nt, ct) >= confidentTitleRatio
+	if !sameTitle {
+		return false
+	}
+	have := map[string]bool{}
+	for _, p := range b.Authors {
+		have[norm(p.Name)] = true
+	}
+	for _, w := range splitNames(author) {
+		if have[w] {
+			return true
+		}
+	}
+	return false
+}
+
 // Score rates how well a candidate matches the wanted title and author, from 0 to 1.
 func Score(b Book, title, author string) float64 {
 	nt, ct := norm(title), norm(b.Title)
