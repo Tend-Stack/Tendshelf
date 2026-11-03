@@ -31,6 +31,7 @@ func (s *server) registerDetails(mux *http.ServeMux) {
 	mux.HandleFunc("GET /books/{id}/match/{job}/cover/{n}", s.getMatchCover)
 	mux.HandleFunc("POST /books/{id}/details/reset", s.postDetailsReset)
 	mux.HandleFunc("POST /admin/online", s.postAdminOnline)
+	s.registerLookups(mux)
 }
 
 // lookupFieldRunes caps each query field, so a form cannot send a book's worth of text to a site.

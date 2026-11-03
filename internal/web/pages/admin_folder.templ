@@ -17,6 +17,10 @@ type AdminAddFolderView struct {
 	NameError string
 	// BrowseURL opens the folder browser in a sheet; empty hides the Browse link.
 	BrowseURL string
+	// Auto is the "look up details online for new books" checkbox; nil when lookups are off. AutoOn
+	// is whether the person ticked it.
+	Auto   *components.AutoLookupView
+	AutoOn bool
 }
 
 // AdminAddFolder adds a folder to a library or to a new one.
@@ -43,6 +47,9 @@ templ AdminAddFolder(v AdminAddFolderView) {
 				ID: "new-name", Name: "new_name", Label: "New library name", Value: v.NewName,
 				Hint: "Used when you choose A new library.", Error: v.NameError,
 			})
+			if v.Auto != nil {
+				@components.AutoLookupField(*v.Auto)
+			}
 			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Add a folder</button>
 		</form>
 	</div>

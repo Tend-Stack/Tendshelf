@@ -1,0 +1,94 @@
+package components
+
+import "strconv"
+
+// LookupBulkView is what LookupBulkStatus shows for one bulk lookup job. The handler writes every
+// word.
+type LookupBulkView struct {
+	JobID string
+	// Active is true while the job waits or runs (a pause is still active). An active status polls
+	// its own address every 2 seconds; a finished one renders without any polling attributes.
+	Active bool
+	// Progress is the visible count line while active. It is not a live region: it changes every
+	// book.
+	Progress string
+	Percent  int
+	// Status is the one line a screen reader hears: a pause, or how the job ended. It changes only on
+	// those states, so the reader is not interrupted every two seconds. Empty while simply running.
+	Status string
+	Failed bool
+	// Stop is the form that ends the job; an empty StopAction hides it.
+	StopAction, StopLabel, CSRF string
+}
+
+// LookupBulkStatus is the fragment served at /hx/jobs/{id} for a bulk lookup: a progress bar and
+// counts while the job runs, a plain sentence once it is over.
+templ LookupBulkStatus(v LookupBulkView) {
+	<div
+		id={ "lookups-" + v.JobID }
+		class="ts-scan ts-lookups"
+		if v.Active {
+			hx-get={ "/hx/jobs/" + v.JobID }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		if v.Active {
+			<p class="label ts-scan__title">{ v.Progress }</p>
+			<progress
+				class="ts-scan__bar"
+				role="progressbar"
+				aria-label={ v.Progress }
+				aria-valuemin="0"
+				aria-valuemax="100"
+				aria-valuenow={ strconv.Itoa(v.Percent) }
+				max="100"
+				value={ strconv.Itoa(v.Percent) }
+			>{ strconv.Itoa(v.Percent) }%</progress>
+		}
+		if v.Status != "" {
+			<p class={ lookupBulkClass(v) } role="status">
+				if v.Failed {
+					@Icon("alert", false)
+				} else if !v.Active {
+					@Icon("check", false)
+				}
+				{ v.Status }
+			</p>
+		}
+		if v.Active && v.StopAction != "" {
+			<form method="post" action={ templ.SafeURL(v.StopAction) }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<button type="submit" class="ts-btn ts-btn--secondary">{ v.StopLabel }</button>
+			</form>
+		}
+	</div>
+}
+
+func lookupBulkClass(v LookupBulkView) string {
+	switch {
+	case v.Failed:
+		return "ts-scan__done ts-scan__done--failed label"
+	case v.Active:
+		return "caption ts-scan__note"
+	}
+	return "ts-scan__done label"
+}
+
+// AutoLookupView is the checkbox "Look up details online for new books" with its hint, used by Add a
+// folder and the setup step. Unticked sends nothing, and never turns a library's setting off.
+type AutoLookupView struct {
+	ID, Label, Hint string
+	On              bool
+}
+
+// AutoLookupField is the checkbox with its hint under it.
+templ AutoLookupField(v AutoLookupView) {
+	<div class="ts-autolookup">
+		<label class="ts-admin__choice" for={ v.ID }>
+			<input type="checkbox" class="ts-check" id={ v.ID } name="auto_lookup" value="1" aria-describedby={ v.ID + "-hint" } checked?={ v.On }/>
+			<span>{ v.Label }</span>
+		</label>
+		<p id={ v.ID + "-hint" } class="caption ts-autolookup__hint">{ v.Hint }</p>
+	</div>
+}

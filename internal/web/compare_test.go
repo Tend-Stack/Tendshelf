@@ -291,7 +291,7 @@ func TestCompareOnlineSwitch(t *testing.T) {
 	if rec := e.comparePost(t, sweepAdmin, "/admin/online", url.Values{"on": {"0"}}); rec.Code != http.StatusNotFound {
 		t.Fatalf("admin switch: %d, want 404", rec.Code)
 	}
-	if body := e.compareGet(sweepAdmin, "/admin/libraries", nil).Body.String(); strings.Contains(body, "Book details from the internet") {
+	if body := e.compareGet(sweepAdmin, "/admin/libraries", nil).Body.String(); strings.Contains(body, "Never go online") {
 		t.Errorf("the admin sees the owner's switch")
 	}
 	if rec := e.comparePost(t, sweepOwner, "/admin/online", url.Values{"on": {"maybe"}}); rec.Code != http.StatusUnprocessableEntity {

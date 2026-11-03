@@ -50,6 +50,7 @@ var jobViews = map[string]func(s *server, w http.ResponseWriter, r *http.Request
 	metadata.KindAuthor:        (*server).getAuthorJob,
 	mediajobs.KindCoverAdopt:   (*server).getCoverAdoptJob,
 	mediajobs.KindWriteDetails: (*server).getWriteJob,
+	metadata.KindOnlineBulk:    (*server).getBulkJob,
 }
 
 // getJob answers GET /hx/jobs/{id}. An unknown id and an unknown kind are both "no such job".

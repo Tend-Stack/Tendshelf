@@ -32,6 +32,28 @@ type AdminLibrariesView struct {
 	ProblemsTitle string
 	// Online is the owner-only "Book details from the internet" section; nil for everyone else.
 	Online *AdminOnlineView
+	// Lookups is the per-library part of that section (automatic lookups, "Look up all books");
+	// nil when lookups are off. OnlineTitle and OnlineBody head the section for an admin, who
+	// does not see the owner's switch.
+	Lookups                 *AdminLookupsView
+	OnlineTitle, OnlineBody string
+}
+
+// AdminLookupsView is the library rows of "Book details from the internet". The handler writes
+// every word.
+type AdminLookupsView struct {
+	AutoLabel, AutoHint, Save, StartLabel, MoreLabel string
+	Libraries                                        []AdminLookupLibrary
+}
+
+// AdminLookupLibrary is one library's row: the automatic setting, the start button or the running
+// status, and the link to the books that need a look (empty when none do).
+type AdminLookupLibrary struct {
+	ID, Name   string
+	Auto       bool
+	Status     *components.LookupBulkView
+	NeedsHref  string
+	NeedsLabel string
 }
 
 // AdminOnlineView is the switch that allows online lookups. The handler writes every word.
@@ -126,10 +148,23 @@ templ AdminLibraries(v AdminLibrariesView) {
 				}
 			</ul>
 		</section>
-		if v.Online != nil {
+		if v.Online != nil || v.Lookups != nil {
 			<section class="ts-admin__section ts-admin__online" aria-labelledby="online-h">
-				<h2 id="online-h" class="section">{ v.Online.Title }</h2>
-				<p class="caption">{ v.Online.Body }</p>
+				<h2 id="online-h" class="section">{ v.OnlineTitle }</h2>
+				<p class="caption">{ v.OnlineBody }</p>
+				if v.Online != nil {
+					@adminOnlineSwitch(v)
+				}
+				if v.Lookups != nil {
+					@adminLookupRows(v)
+				}
+			</section>
+		}
+	</div>
+}
+
+// adminOnlineSwitch is the owner's on/off choice.
+templ adminOnlineSwitch(v AdminLibrariesView) {
 				<form method="post" action="/admin/online">
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
 					<fieldset class="ts-admin__choices">
@@ -145,7 +180,42 @@ templ AdminLibraries(v AdminLibrariesView) {
 					</fieldset>
 					<button type="submit" class="ts-btn ts-btn--secondary">{ v.Online.Save }</button>
 				</form>
-			</section>
+}
+
+// adminLookupRows is one row per library: the automatic setting, "Look up all books" or the running
+// status, and the link to the books that need a look.
+templ adminLookupRows(v AdminLibrariesView) {
+	<ul class="ts-lookuplibs">
+		for _, l := range v.Lookups.Libraries {
+			<li class="ts-lookuplib">
+				<span class="body ts-lookuplib__name">{ l.Name }</span>
+				<form class="ts-lookuplib__form" method="post" action={ templ.SafeURL("/admin/libraries/" + l.ID + "/auto-lookup") }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<input type="hidden" name="on" value="0"/>
+					<label class="ts-admin__choice" for={ "auto-" + l.ID }>
+						<input type="checkbox" class="ts-check" id={ "auto-" + l.ID } name="on" value="1" aria-describedby={ "auto-hint-" + l.ID } checked?={ l.Auto }/>
+						<span>{ v.Lookups.AutoLabel }</span>
+					</label>
+					<p id={ "auto-hint-" + l.ID } class="caption ts-autolookup__hint">{ v.Lookups.AutoHint }</p>
+					<button type="submit" class="ts-btn ts-btn--secondary">{ v.Lookups.Save }</button>
+				</form>
+				if l.Status != nil {
+					@components.LookupBulkStatus(*l.Status)
+				}
+				if l.Status == nil || !l.Status.Active {
+					<form class="ts-lookuplib__form" method="post" action={ templ.SafeURL("/admin/libraries/" + l.ID + "/lookups") }>
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<label class="ts-admin__choice" for={ "more-" + l.ID }>
+							<input type="checkbox" class="ts-check" id={ "more-" + l.ID } name="more" value="1"/>
+							<span>{ v.Lookups.MoreLabel }</span>
+						</label>
+						<button type="submit" class="ts-btn ts-btn--secondary">{ v.Lookups.StartLabel }</button>
+					</form>
+				}
+				if l.NeedsHref != "" {
+					<a class="ts-lookuplib__needs" href={ templ.SafeURL(l.NeedsHref) }>{ l.NeedsLabel }</a>
+				}
+			</li>
 		}
-	</div>
+	</ul>
 }

@@ -138,7 +138,20 @@ func (s *server) getAdminLibraries(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "libraries page", err)
 		return
 	}
+	libs, err := s.lib.Libraries(ctx)
+	if err != nil {
+		s.serverError(w, r, "libraries", err)
+		return
+	}
+	if view.Lookups, err = s.lookupsView(ctx, r, libs); err != nil {
+		s.serverError(w, r, "lookups", err)
+		return
+	}
+	if view.Lookups != nil {
+		view.OnlineTitle, view.OnlineBody = adminOnlineTitle, adminOnlineBody
+	}
 	if s.details != nil && s.can.Can(ctx, currentUser(r), share.ManageServer, share.Target{Kind: share.TargetServer}) {
+		view.OnlineTitle, view.OnlineBody = adminOnlineTitle, adminOnlineBody
 		on, err := metadata.OnlineEnabled(ctx, s.lib.Store().Reader())
 		if err != nil {
 			s.serverError(w, r, "online setting", err)
@@ -278,6 +291,10 @@ func (s *server) addFolderPageSheet(w http.ResponseWriter, r *http.Request, stat
 	for _, l := range libs {
 		v.Libraries = append(v.Libraries, pages.AdminLibraryOption{ID: l.ID, Name: l.Name})
 	}
+	if v.Auto, err = s.autoLookupField(r, "auto-lookup", v.AutoOn); err != nil {
+		s.serverError(w, r, "online setting", err)
+		return
+	}
 	s.pageStyled(w, r, status, "Add a folder", "admin-libraries", pages.AdminAddFolder(v), sheet, folderStyles...)
 }
 
@@ -326,6 +343,7 @@ func (s *server) postAddFolder(w http.ResponseWriter, r *http.Request) {
 	v := pages.AdminAddFolderView{
 		Path: strings.TrimSpace(r.PostFormValue("folder")), Library: r.PostFormValue("library"),
 		NewName: strings.TrimSpace(r.PostFormValue("new_name")),
+		AutoOn:  r.PostFormValue("auto_lookup") == "1",
 	}
 	invalid := func(code string) {
 		if code == "name_required" {
@@ -376,6 +394,10 @@ func (s *server) postAddFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(ctx, u.ID, "library.folder_added", folder.ID, map[string]any{"library_id": lib.ID, "new_library": newLibrary})
+	if err := s.applyAutoLookup(r, lib.ID); err != nil {
+		s.serverError(w, r, "auto lookup", err)
+		return
+	}
 	if _, err := s.startScan(ctx, u.ID, lib.ID); err != nil {
 		s.serverError(w, r, "queue scan", err)
 		return

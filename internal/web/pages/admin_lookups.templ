@@ -1,0 +1,61 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// LookupBookRow is one book on "Books that need a look". Outcome is "Several possible matches" or
+// "Nothing found".
+type LookupBookRow struct {
+	Title, Author, Outcome string
+	CompareHref            string
+	CompareLabel           string
+	DismissAction          string
+	DismissLabel           string
+}
+
+// AdminLookupsPageView is the list of one library's books that need a look. The handler writes every
+// word.
+type AdminLookupsPageView struct {
+	CSRF, Title, LibraryName, BackLabel string
+	Rows                                []LookupBookRow
+	// More is "and {n} more" when the list is cut; Empty is said when nothing needs a look.
+	More, Empty string
+}
+
+// AdminLookups lists the books an automatic lookup could not settle.
+templ AdminLookups(v AdminLookupsPageView) {
+	<div class="ts-admin ts-admin--narrow">
+		<a class="ts-admin__back" href="/admin/libraries">
+			@components.Icon("folder", false)
+			{ v.BackLabel }
+		</a>
+		<span class="ts-overline">{ v.LibraryName }</span>
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		if len(v.Rows) == 0 {
+			<p class="body-lg ts-admin__lead">{ v.Empty }</p>
+		} else {
+			<ul class="ts-needs">
+				for _, r := range v.Rows {
+					<li class="ts-needs__row">
+						<div class="ts-needs__text">
+							<span class="body ts-needs__title">{ r.Title }</span>
+							if r.Author != "" {
+								<span class="caption ts-needs__author">{ r.Author }</span>
+							}
+							<span class="caption ts-needs__outcome">{ r.Outcome }</span>
+						</div>
+						<div class="ts-needs__actions">
+							<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(r.CompareHref) }>{ r.CompareLabel }</a>
+							<form method="post" action={ templ.SafeURL(r.DismissAction) }>
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<button type="submit" class="ts-btn ts-btn--quiet">{ r.DismissLabel }</button>
+							</form>
+						</div>
+					</li>
+				}
+			</ul>
+			if v.More != "" {
+				<p class="caption ts-needs__more">{ v.More }</p>
+			}
+		}
+	</div>
+}
