@@ -1,0 +1,204 @@
+# Copy additions for review
+
+Strings in the interface that are not in the copy deck (`docs/design/tendshelf-handoff/docs/HANDOFF.md`,
+"Copy deck") or on the boards. Each follows the voice rules in `design-system/BRAND.md`: sentence case, a
+verb on every button, no exclamation marks, no emoji, "book", "chapter", "folder" and "invite" and never
+"item", "track" or "token". The operator reviews this list; a change is made in the named constant and the
+tests that quote it. 187 strings, generated from the `// NEW` marks and the "new" blocks in
+`internal/web/*copy*.go` on 2026-11-02.
+
+Not listed: strings that are the deck's or a board's words, and the placeholders `%s` and `%d` are filled in
+by the server. The deck's "Research door" lines are not used (Research was dropped, decision 0007).
+
+Terms: the interface says **Listener** for the guest role (Users page, role picker, Profile chip). The word
+"guest" appears only in code.
+
+| String | Constant | File | Why it is new |
+| --- | --- | --- | --- |
+| This link doesn't work | `linkBrokenTitle` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Ask the person who sent it for a new link. | `linkBrokenBody` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Play | `linkPlayLabel` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| This link works until %s. | `linkEnds` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Your place is kept in this browser only. | `linkFine` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| This book has a password | `linkLockedTitle` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Password | `linkPasswordLabel` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Listen | `linkUnlock` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| That password isn't right. | `linkWrongPassword` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Link made %s | `linkMade` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Ends %s | `linkEndsShort` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Ends %s · Password | `linkEndsPassword` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Stop the link for %s | `linkStopFor` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Your link is ready | `linkReadyTitle` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Anyone with this link can listen to %s until %s. Copy it now: it won't be shown again. | `linkReadyNote` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Link | `linkFieldLabel` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| 1 day | `linkDay1` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| %d days | `linkDaysN` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Choose how long the link works. | `linkErrDays` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Keep the name under 80 characters. | `linkErrLabel` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| Use at least 8 characters for the password. | `linkErrPassword` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+| This book can't be shared with a link. | `linkErrRefused` | `link_copy.go` | Share links have no deck wording; plain words that say what the link does |
+|  and 1 other book | `inviteTailOther` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| %s invited you to %s | `inviteLineServer` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| This invite link doesn't work | `inviteBrokenTitle` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| Ask the person who sent it for a new link. | `inviteBrokenBody` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| This invite has ended | `inviteEndedTitle` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| Ask %s for a new link. | `inviteEndedBody` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| This invite was already used | `inviteUsedTitle` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| If it was you, sign in. | `inviteUsedBody` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| Sign in | `inviteSignIn` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| %s hasn't opened the invite yet | `inviteWaiting` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| %s · Until %s | `inviteUntil` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| %s · No end date | `inviteNoEnd` | `invite_copy.go` | The invite page and its broken, ended and used states are not in the deck |
+| Which library | `shareWhichLib` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| A shelf | `shareAShelf` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Which shelf | `shareWhichShelf` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Find a book | `shareFindBook` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Add a name so you know whose link it is. | `shareErrName` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Keep the name under 80 characters. | `shareErrNameLen` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Keep the note under 500 characters. | `shareErrNoteLen` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Choose what they can listen to. | `shareErrScope` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Choose what they can do. | `shareErrRole` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Choose how long the link works. | `shareErrExpires` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Invite link for %s | `shareLinkTitle` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Copy it and send it to %s. It works once, for %s. | `shareLinkNoteFor` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Copy it and send it to %s. It works once, until you stop it. | `shareLinkNoteEnd` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| New link for %s | `shareNewLink` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| The old link no longer works. | `shareOldLink` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Link to everything | `shareLinkAll` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Link to "%s" | `shareLinkOne` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Link to "%s" and %d more | `shareLinkMore` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Admin link | `shareLinkAdmin` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+|  · works for %d more days | `shareMetaDays` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+|  · works for 1 more day | `shareMetaDay` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+|  · works until you stop it | `shareMetaNoEnd` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Has this through everything | `shareViaAll` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Has this through the library “%s” | `shareViaLibrary` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Has this through the shelf “%s” | `shareViaShelf` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Stop sharing %s with %s? | `shareStopBookTitle` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| %s won't be able to open this book through this share any more. Their place in it and their bookmarks are kept. | `shareStopBookBody` | `share_copy.go` | Share and invite page: form errors, link notes, access lines; the board shows layout, not these words |
+| Enter their email. | `shareErrEmail` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| That email looks incomplete. | `shareErrEmailBad` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Sending from Tendshelf isn't set up yet. Use Send invitation to send it from your own email app. | `shareErrRelayOff` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| That invite has no email address. | `shareErrNoEmail` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| It's still sending. | `shareErrStillSending` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Tendshelf couldn't queue the email. Copy the link and send it yourself. | `shareErrQueue` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| You've sent a lot of invites for now. Try again in an hour, or copy a link instead. | `shareErrMailBusy` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Tendshelf has emailed that address three times today. Copy the link instead. | `shareErrMailAgain` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Invitation for %s is ready | `shareMailReadyTitle` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Open your email app to send it to %s. The link below also works, once, if you'd rather send it another way. | `shareMailReadyNote` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Invite on its way to %s | `shareMailSentTitle` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Tendshelf is emailing it to %s. The link below also works, once, if you'd rather send it yourself. | `shareMailSentNote` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Link created for %s | `shareMailCreated` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Sending to %s… | `shareMailSending` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Sent to %s | `shareMailSent` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Couldn't send to %s. Check the address. | `shareMailBadAddress` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Couldn't send to %s. Send it again. | `shareMailLinkLost` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Tendshelf couldn't confirm the email to %s went out. | `shareMailUnconfirmed` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Couldn't send: check the email settings | `shareMailSettings` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Send it for me | `shareMailSendForMe` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Send again | `shareMailSendAgain` | `share_copy.go` | Emailed invitations (P3-8): no deck wording; says what happened and what to do next |
+| Email | `emailTitle` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Tendshelf can send invitations for you. It is optional: without it, you send each invitation from your own email app. | `emailIntro` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Email is not set up. Invitations open in your own email app. | `emailStatusOff` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Email is saved but not tested yet. Send a test email to turn on "Send it for me". | `emailStatusNoTest` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Email is set up and tested. Invitations can be sent from Tendshelf. | `emailStatusOn` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Email settings saved. | `emailSaved` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| The server or username changed, so enter the password again. | `emailDropped` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Send yourself a message to check the settings. Until a test works, invitations are not sent from Tendshelf. | `emailTestHint` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Turn off email | `emailOff` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Tendshelf forgets the server, the username and the password. Invitations still open in your own email app. | `emailOffHint` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Using Amazon SES? Server email-smtp.<region>.amazonaws.com, port 587 with STARTTLS, and the SMTP username and password from the SES console (not your AWS sign-in). The From address must be verified in SES. While your SES account is in the sandbox, it only sends to verified addresses. | `emailSESHelp` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Enter the server name, like email-smtp.eu-west-1.amazonaws.com. | `emailErrHost` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Tendshelf only sends without encryption to a server on this computer. | `emailErrInsecure` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| That email looks incomplete. | `emailErrAddress` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Enter a port from 1 to 65535. | `emailErrPort` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Remove line breaks and keep it shorter. | `emailErrOther` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Save the email settings first. | `emailErrNotReady` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| That's a lot of test emails. Try again in a few minutes. | `emailErrBusy` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Sending a test email to %s… | `emailTestSending` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Sent. Check the inbox of %s. | `emailTestDone` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| The email server didn't accept the username or password. With SES, use the SMTP credentials, not your AWS sign-in. | `emailTestAuth` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| The email server won't send from %s. With Amazon SES, verify that address first. | `emailTestSender` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| The email server refused %s. In the SES sandbox, it only sends to verified addresses. | `emailTestRecipient` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| That server doesn't offer a secure connection, so Tendshelf won't send through it. | `emailTestNoTLS` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Tendshelf couldn't check the server's certificate. Check the server name. | `emailTestTLS` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Tendshelf couldn't reach %s on port %d. Check the server and the port. | `emailTestReach` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| The email server refused the message. Check the email settings. | `emailTestOther` | `email_copy.go` | Email settings tab (optional mail server): no deck wording |
+| Yesterday | `usersYesterday` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| Over a month ago | `usersOverMonth` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| Never | `usersNever` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| Access ended | `usersAccessEnded` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| Nothing shared yet | `usersNothingShared` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| Choose a library, shelf or book. | `usersErrTarget` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| Pick a day after today. | `usersErrDay` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| Choose a role. | `usersErrRole` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| Everything on this server | `usersEverythingKind` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| Book | `usersBookKind` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| No end date | `usersNoEnd` | `users_copy.go` | Users page: words the boards leave out (dates, empty and error states) |
+| Your shelves | `shelfTitle` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Shelves | `shelfSideNone` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| All shelves | `shelfSideAll` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| New shelf | `shelfNewTitle` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Shelf name | `shelfNameLabel` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Create shelf | `shelfCreate` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| No shelves yet | `shelfEmptyListHead` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Make a shelf for a mood, a person or a trip. | `shelfEmptyListBody` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| This shelf is empty | `shelfEmptyHead` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Open a book and choose Add to shelf. | `shelfEmptyBody` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Rename | `shelfRename` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Save | `shelfSave` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Delete shelf | `shelfDeleteLink` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Delete %s? | `shelfDeleteHead` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| The books stay in your library. | `shelfDeleteBody` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Keep it | `shelfKeep` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Move %s up | `shelfMoveUp` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Move %s down | `shelfMoveDown` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Remove %s from this shelf | `shelfRemove` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Add to shelf | `shelfSheetTitle` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Create and add | `shelfSheetNew` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Close | `shelfSheetClose` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Show more | `shelfMore` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Back to the start | `shelfStart` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Shared by %s | `shelfSharedBy` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Share this shelf | `shelfShare` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Stop sharing | `shelfStopSharing` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Members and admins can see this shelf, but only the books they already have. | `shelfSharedNote` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Only you can see this shelf. | `shelfNotSharedNote` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Shared with you | `shelvesSharedTitle` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Give the shelf a name. | `shelfErrEmpty` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Use 80 characters or fewer. | `shelfErrLong` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| You already have a shelf with that name. | `shelfErrTaken` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| You have reached the limit of 200 shelves. | `shelfErrShelves` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| This shelf is full (5,000 books). | `shelfErrFull` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Use letters, numbers and punctuation only. | `shelfErrControls` | `shelf_copy.go` | Shelves: the boards show only the sidebar group and the Add to shelf action |
+| Now playing | `nowPanelTitle` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Now playing: about this book | `nowPanelAriaLabel` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Close | `nowPanelClose` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| More actions | `nowPanelMenu` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Book page | `nowPanelBookPage` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Share | `nowPanelShare` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| About this book | `nowPanelTabsLabel` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| About | `nowPanelAbout` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Bookmarks | `nowPanelBookmarks` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Summary | `nowPanelSummary` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Series | `nowPanelSeries` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Details | `nowPanelDetails` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Read more | `nowPanelReadMore` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Show less | `nowPanelShowLess` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| No description for this book yet. | `nowPanelNoSummary` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Written by | `nowPanelWrittenBy` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Read by | `nowPanelReadBy` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| On the shelf | `nowPanelOnShelf` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Added %s | `nowPanelAddedOn` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Unabridged | `nowPanelUnabridged` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Abridged | `nowPanelAbridged` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| You're here | `nowPanelYoureHere` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| You're here · %d%% | `nowPanelYoureHereN` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Also read by %s | `nowPanelAlsoReadBy` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| More by %s | `nowPanelMoreBy` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| All %d bookmarks and notes | `nowPanelAllMarks` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| No bookmarks yet. | `nowPanelNoMarks` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| Chapter %d of %d | `nowPanelChapterOf` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| read by %s | `nowPanelReadByLine` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+| %d chapters | `nowPanelChapters` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+|  ·  | `nowPanelStateSep` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |

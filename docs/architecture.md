@@ -231,6 +231,34 @@ Media and system: `GET /stream/{audioFileID}`, `GET /peaks/{audioFileID}` (wavef
 (raster images only), `GET /text/{editionID}/original` and `GET /exports/{id}` (`download_text`), `GET /healthz`,
 `GET /sw.js`, `GET /manifest.webmanifest`, `GET /static/...` (embedded, immutable, hashed names; precompressed gzip served on `Accept-Encoding`, `Vary: Accept-Encoding`, ETag per encoding, Range ignored).
 
+Routes added by the family milestone (M2), as registered at its exit. `TestRouteMatrix` fails when a registered
+route has no row, so this list and the code cannot drift unnoticed (the matrix is the exact inventory; this is
+the readable one):
+
+| Route | What it does and who may use it |
+| --- | --- |
+| `GET /admin/users`, `/admin/users/{id}`; `POST /admin/users/{id}/role`, `/disable`, `/enable`, `/stop`, `/grants`, `/grants/{gid}`, `/grants/{gid}/remove`, `/grants/{gid}/renew` | Users admin: role, turn an account off or on, stop sharing, grants (owner and admin; members and listeners get 404) |
+| `POST /admin/invites/{id}/cancel`, `/link`, `/email` | Cancel an invite, make a fresh link, open or send the invitation email (owner and admin) |
+| `GET /admin/email`; `POST /admin/email`, `/admin/email/test`, `/admin/email/off`; `GET /hx/admin/email/test/{id}` | Optional mail server settings and its test message (owner only) |
+| `POST /admin/libraries/scan`, `POST /admin/libraries/{id}/scan` | Rescan everything or one library (owner and admin) |
+| `GET /invite/{token}`, `/invite/{token}/cover`; `GET`, `POST /welcome` | The invite page, the cover on it, and the welcome step after the account is made; no session needed for the first two |
+| `GET /s/{token}`, `/s/{token}/stream/{file}`, `/s/{token}/peaks/{file}`, `/s/{token}/cover`; `POST /s/{token}` | Share link: one book, from the link row alone (see above) |
+| `GET /share`; `POST /share`; `GET`, `POST /books/{id}/share`; `POST /books/{id}/share/link`, `/share/links/{id}/stop` | Share & invite page and the book's Share control (owner and admin) |
+| `POST /shelves/{id}/share`, `/rename`, `/items`, `/items/{bookID}/move`, `/items/{bookID}/remove`, `/delete` | Shelf actions; sharing shows the shelf to members and admins, only with books they can already open |
+| `GET /hx/player/panel/{bookID}`, `/about`, `/bookmarks`, `/count`, `/chapter/{index}` | Now playing panel fragments (desktop, 1280 px and wider); the same book access as the book page, 404 otherwise |
+| `GET /hx/home/hero`, `/hx/books/{id}/play` | Home hero refresh and the play region of a book page |
+| `POST /api/v1/progress/batch`, `GET /api/v1/progress`, `GET`, `POST /api/v1/books/{id}/bookmarks`, `GET /api/v1/bookmarks`, `PATCH`, `DELETE /api/v1/bookmarks/{id}` | JSON sync (full list under "JSON API v1" below and in [api.md](api.md)) |
+
+Tables at the M2 exit (schema 9): `users`, `sessions`, `settings`, `libraries`, `folders`, `books`, `audio_files`,
+people, series and their links, `books_fts` (migrations 0001-0004), `shelves` and `shelf_items` (0005),
+`progress`, `bookmarks` and `listening_sessions` (0006), `devices`, `invites`, `share_links` and `grants` (0007), `bookmarks.client_id`
+(0008) and the invite email columns (0009). A new database is migrated from empty to 9; an older one is backed up
+first (see `internal/db`).
+
+Size budgets (gzip bytes the server sends): core CSS at most 18 KB and each page file a limit in `TestCSSBudget`
+(`internal/web/static/motion_test.go`); the JavaScript limits are in the "Design regions" notes below (all app JS
+38 KB). A budget is never met by minifying, only by writing less.
+
 JSON API v1 (`/api/v1`, bearer device token or session cookie + CSRF):
 Device tokens (P3-7a): `POST /api/v1/auth/token` takes JSON `{username, password, name, kind}` (kind `web`, `pwa`,
 `desktop` or `mobile`; body at most 4 KiB) with the same limits and failure path as the sign-in form, and answers 201
