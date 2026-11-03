@@ -65,6 +65,18 @@ type CompareSheetView struct {
 	ColOnline, ColUse      string
 	Caption, Same, ShowAll string
 	NoValue                string
+	// Log is the lookup's steps; LogTitle names it, LogPrivacy says what leaves the server, and
+	// LogReview heads the collapsed copy on a finished sheet.
+	Log                  []LogLine
+	LogTitle, LogPrivacy string
+	LogReview            string
+}
+
+// LogLine is one step of the lookup log. State is "wait", "run", "done", "none" or "failed"; Mark is
+// its sign; Words is the state spoken to a screen reader; Text is the visible line.
+type LogLine struct {
+	State, Mark, Words string
+	Text               string // place, what was asked and the outcome, joined with dashes
 }
 
 // LookupSheet is the "Look up details online" sheet with the query fields. It renders into #sheet,
@@ -128,17 +140,21 @@ templ LookupJobFragment(v CompareSheetView) {
 }
 
 // CompareBody is the part of the compare sheet under its heading. While the lookup runs it polls
-// the job every two seconds and replaces itself; without JavaScript "Check again" does the same.
+// the job every second and morphs itself, so lines already shown stay and only new ones slide in.
+// Every second is fine here: the poll is short-lived, started by a click, and one small query.
+// Without JavaScript "Check again" does the same as a plain link.
 templ CompareBody(v CompareSheetView) {
 	switch v.State {
 		case "wait":
-			<div id="compare-body" class="ts-compare-body" role="status" hx-get={ v.PollHref } hx-trigger="every 2s" hx-target="this" hx-swap="outerHTML">
+			<div id="compare-body" class="ts-compare-body" role="status" hx-get={ v.PollHref } hx-trigger="every 1s" hx-target="this" hx-swap="outerMorph">
 				<p class="body ts-compare-body__wait">{ v.Waiting }</p>
-				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SheetHref) } hx-boost="false">{ v.CheckAgain }</a>
+				@lookupLog(v)
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SheetHref) } hx-get={ v.PollHref } hx-target="#compare-body" hx-swap="outerMorph" hx-trigger="click">{ v.CheckAgain }</a>
 			</div>
 		case "failed", "none":
 			<div id="compare-body" class="ts-compare-body">
 				<p class="body ts-compare-body__message" role="status">{ v.Message }</p>
+				@lookupLogReview(v)
 				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.TryAgainHref) } hx-get={ v.TryAgainHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false">{ v.TryAgain }</a>
 			</div>
 		case "list":
@@ -157,15 +173,50 @@ templ CompareBody(v CompareSheetView) {
 						</li>
 					}
 				</ul>
+				@lookupLogReview(v)
 			</div>
 		default:
 			@compareTable(v)
 	}
 }
 
+// lookupLog is the terminal-style log of the steps, with the line that says what leaves the server.
+templ lookupLog(v CompareSheetView) {
+	<div class="ts-log">
+		if len(v.Log) > 0 {
+			<ol class="ts-log__list" aria-label={ v.LogTitle }>
+				for _, l := range v.Log {
+					<li class={ "ts-log__line", "is-" + l.State }>
+						<span class="ts-log__mark" aria-hidden="true">{ l.Mark }</span>
+						<span>
+							<span class="ts-sr">{ l.Words }</span>
+							{ l.Text }
+							if l.State == "run" {
+								<span class="ts-log__dot" aria-hidden="true"></span>
+							}
+						</span>
+					</li>
+				}
+			</ol>
+		}
+		<p class="caption ts-log__note">{ v.LogPrivacy }</p>
+	</div>
+}
+
+// lookupLogReview keeps the log of a finished lookup one click away.
+templ lookupLogReview(v CompareSheetView) {
+	if len(v.Log) > 0 {
+		<details class="ts-log-review">
+			<summary class="label">{ v.LogReview }</summary>
+			@lookupLog(v)
+		</details>
+	}
+}
+
 templ compareTable(v CompareSheetView) {
 	<div id="compare-body" class="ts-compare-body">
 		<p class="caption ts-compare-body__intro">{ v.Intro }</p>
+		@lookupLogReview(v)
 		<form id="compare-form" class="ts-compare-form" method="post" action={ templ.URL(v.ApplyAction) } hx-post={ v.ApplyAction } hx-target="#book-panel" hx-select="#book-panel" hx-select-oob="#sheet" hx-swap="outerHTML">
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			<input type="hidden" name="job" value={ v.JobID }/>

@@ -75,6 +75,7 @@ func compareResult() metadata.LookupResult {
 		Query:     online.Query{Title: "Sweepword Lantern"},
 		FetchedAt: 1_730_000_000_000,
 		Searched:  []string{"audnexus"},
+		Steps:     compareSteps(false),
 		Candidates: []metadata.Candidate{
 			{Provider: "audnexus", ProviderLabel: "Audible", Score: 0.95, Exact: true, CoverURL: compareCoverURL, CoverCached: true,
 				Details: metadata.Details{Title: "Sweepword Lantern", Narrators: []string{"Theo Onlinevoice"}, Publisher: "Online House",

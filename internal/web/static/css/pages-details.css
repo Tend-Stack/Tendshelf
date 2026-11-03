@@ -111,3 +111,22 @@
   .ts-person__head:has(.ts-person__photo) > :not(.ts-person__photo) { grid-column: 2; }
   .ts-person__head:has(.ts-person__photo) .ts-person__lookup, .ts-person__head:has(.ts-person__photo) .ts-person__status { justify-content: flex-start; }
 }
+
+/* Lookup log: one terminal-style line per place asked. The mark (and its words for a screen reader)
+   says the state, never the colour. A new line slides in; reduced motion gets no animation. */
+.ts-log { display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-log__list { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; padding: var(--space-12) var(--space-16); list-style: none;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.25rem; }
+.ts-log__line { display: grid; grid-template-columns: 1.25rem 1fr; color: var(--ink); overflow-wrap: anywhere; }
+.ts-log__line.is-wait, .ts-log__line.is-none { color: var(--ink-muted); }
+.ts-log__line.is-failed .ts-log__mark { color: var(--danger); }
+.ts-log__line.is-run .ts-log__mark, .ts-log__line.is-done .ts-log__mark { color: var(--accent); }
+.ts-log__dot { display: inline-block; width: 0.5rem; height: 0.5rem; margin-left: var(--space-8); border-radius: 50%; background: var(--accent); }
+.ts-log__note { margin: 0; color: var(--ink-muted); }
+.ts-log-review > summary { cursor: pointer; min-height: var(--size-tap); display: flex; align-items: center; color: var(--ink-muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .ts-log__line { animation: ts-log-in var(--duration-base) var(--easing-standard) both; }
+  .ts-log__dot { animation: ts-log-pulse 1s ease-in-out infinite; }
+  @keyframes ts-log-in { from { opacity: 0; transform: translateY(0.25rem); } }
+  @keyframes ts-log-pulse { 50% { opacity: 0.3; } }
+}
