@@ -17,8 +17,10 @@ was reused, extended or replaced.
 - **Go standard library first.** `net/http` with Go 1.22+ method/path patterns for routing; no web
   framework. Every new Go module needs operator approval and a row in `NOTICES.md` in the same commit.
   Approved and in use: `modernc.org/sqlite` v1.61.1 and `github.com/a-h/templ` v0.3.1100 (runtime; the
-  CLI runs through the `tool` directive in `go.mod`, one version source). More are listed under
-  "Dependencies awaiting approval" in `docs/architecture.md`.
+  CLI runs through the `tool` directive in `go.mod`, one version source). Approved for later phases
+  (operator, 2026-11-03), each added with its `NOTICES.md` row: the read-along modules, Wails v3 (desktop
+  module only), fsnotify, go-webauthn and an OpenID Connect client; see "Dependencies and approvals" in
+  `docs/architecture.md`.
 - **One server binary**, pure Go (`CGO_ENABLED=0` must build). Static assets and migrations are embedded
   with `embed`. External programs: `ffmpeg` and `ffprobe` only, located via config or `PATH`, plus the
   optional owner-installed alignment worker for read-along, launched only by `internal/align/runtime`

@@ -517,7 +517,7 @@ modes: connect to a Tendshelf server (the window loads the server's pages; nativ
 or personal mode running the same core in-process on a local library. See TendVox `docs/wails-v3.md`
 for origin guards and the audio gateway pattern.
 
-## Dependencies awaiting approval
+## Dependencies and approvals
 
 Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); each gets its
 `NOTICES.md` row in the commit that adds it:
@@ -530,7 +530,9 @@ Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); 
 | `golang.org/x/crypto` v0.58.0 (argon2) (**added in P1b-1**) | Password hashing, `internal/users` only | BSD-3 |
 | Fonts **vendored in P0b** to `internal/web/static/fonts/` (woff2): Fraunces (variable roman and italic), Fira Sans (400, 400 italic, 500, 600), Fira Mono (400, 500); 1.23 MB in total, 361 KB preloaded | The design's type; Fira Mono for mono text only (the Research lab is dropped, decision 0007) | SIL OFL 1.1, texts beside the files; upstream commits and SHA-256 in `NOTICES.md`; self-hosted, never Google Fonts |
 
-Read-along (phase R), each awaiting approval:
+Read-along (phase R), **approved by the operator on 2026-11-03** ("all dependencies of read along"); each
+still gets its `NOTICES.md` row, with its licence read from the release, in the commit that adds it, and the
+PDF reader is chosen between the two options below on fixtures during R1:
 
 | Module / file / runtime | Why | Note |
 | --- | --- | --- |
@@ -546,5 +548,5 @@ Considered and not chosen: `github.com/clipperhouse/uax29` (sentence segmentatio
 abbreviations better and stay versioned), `github.com/yuin/goldmark` (Markdown; only structure is
 needed), whisper.cpp or Parakeet as a second ASR runtime (see read-along.md section 2).
 
-Later, each with its own approval: `github.com/go-webauthn/webauthn` (passkeys), `github.com/fsnotify/fsnotify`
+Later, **approved by the operator on 2026-11-03** (each with its `NOTICES.md` row in the commit that adds it): `github.com/go-webauthn/webauthn` (passkeys), `github.com/fsnotify/fsnotify`
 (folder watcher), `github.com/wailsapp/wails/v3` (desktop module only), an OpenID Connect client.

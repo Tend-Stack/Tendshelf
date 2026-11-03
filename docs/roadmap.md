@@ -19,7 +19,7 @@ themes.
 | M2 Family | P3 | **Done 2026-11-03, released as v2026.1.0.** P3-1 to P3-13, the desktop player bar and the Now playing panel; Research dropped (decision 0007). | The P3 status notes below; the route-matrix and leak-test table under "Exit check (P3-13)"; [CHANGELOG.md](../CHANGELOG.md). |
 | M3 Pocket | P4 | Not started | |
 | M4 Details | P2 | Done 2026-11-03 | [plan](plans/m4-details.md) |
-| M5 Read along | R1-R6 | Designed 2026-10-31 ([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)); UI designed in the handoff (`screens/reader/`). Dependencies await approval. | Design only. |
+| M5 Read along | R1-R6 | Designed 2026-10-31 ([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)); UI designed in the handoff (`screens/reader/`). Dependencies approved by the operator 2026-11-03. | Design only. |
 | M6 Desktop | P5 | Not started | |
 | M7 Research | P6 | Dropped (decision 0007) | |
 
