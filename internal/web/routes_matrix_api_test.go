@@ -90,5 +90,12 @@ func apiSweepRows() []sweepRow {
 		api(apiUnsafe("DELETE /api/v1/bookmarks/{id}", http.MethodDelete, bookmarkPath(false), staff204)),
 		bmOther("PATCH /api/v1/bookmarks/{id}", http.MethodPatch),
 		bmOther("DELETE /api/v1/bookmarks/{id}", http.MethodDelete),
+		// Up next (Q1). The body is checked before the book on the two that name it in the body or
+		// the form is sent: a form is 415 for everyone; the book-in-path rows check access first.
+		api(sweepGet("GET /api/v1/queue", sweepStatic("/api/v1/queue"), ok)),
+		api(apiUnsafe("POST /api/v1/queue", http.MethodPost, sweepStatic("/api/v1/queue"), sweepSame(http.StatusUnsupportedMediaType))),
+		api(apiUnsafe("POST /api/v1/queue/next", http.MethodPost, sweepStatic("/api/v1/queue/next"), sweepSame(http.StatusUnsupportedMediaType))),
+		api(apiUnsafe("POST /api/v1/queue/{bookID}/move", http.MethodPost, bookPath("/api/v1/queue/", "/move"), staff415)),
+		api(apiUnsafe("DELETE /api/v1/queue/{bookID}", http.MethodDelete, bookPath("/api/v1/queue/", ""), sweepSame(http.StatusNotFound))),
 	}
 }

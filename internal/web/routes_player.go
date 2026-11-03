@@ -15,6 +15,7 @@ import (
 func (s *server) registerPlayer(mux *http.ServeMux) {
 	mux.HandleFunc("GET /hx/player", s.getCurrentPlayer)
 	mux.HandleFunc("GET /hx/player/{bookID}", s.getPlayer)
+	mux.HandleFunc("POST /hx/player/next", s.postPlayerNext)
 	mux.HandleFunc("GET /hx/player/panel/{bookID}", s.getNowPanel)
 	mux.HandleFunc("GET /hx/player/panel/{bookID}/about", s.getNowPanelAbout)
 	mux.HandleFunc("GET /hx/player/panel/{bookID}/bookmarks", s.getNowPanelBookmarks)
@@ -73,6 +74,41 @@ func (s *server) getCurrentPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.renderPlayer(w, r, b)
+}
+
+// postPlayerNext answers POST /hx/player/next: autoplay. It drops the book that just ended (form
+// field ended, optional) from Up next, pops the first book the person may play and answers with its
+// PlayerData fragment, or 204 when Up next has nothing to play. A book that cannot be built is
+// skipped, at most QueueMax times.
+func (s *server) postPlayerNext(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, apiQueueBody)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, queueErrEnded, http.StatusBadRequest)
+		return
+	}
+	ended := r.PostForm.Get("ended")
+	if r.PostForm.Has("ended") && (ended == "" || len(ended) > endedMaxLen) {
+		http.Error(w, queueErrEnded, http.StatusBadRequest)
+		return
+	}
+	u, sc := currentUser(r), s.scope(r)
+	var v components.PlayerDataView
+	found, err := s.popQueue(r.Context(), u, sc, ended, func(b library.Book) (bool, error) {
+		var err error
+		v, err = s.playerView(r.Context(), u, sc, b)
+		if errors.Is(err, library.ErrNotFound) {
+			return false, nil
+		}
+		return err == nil, err
+	})
+	switch {
+	case err != nil:
+		s.serverError(w, r, "player next", err)
+	case !found:
+		w.WriteHeader(http.StatusNoContent)
+	default:
+		s.fragment(w, r, http.StatusOK, components.PlayerData(v))
+	}
 }
 
 // The Now playing panel (NP1): fragments for the desktop side panel. Each one loads the book with

@@ -631,6 +631,9 @@ func sweepRows() []sweepRow {
 			"position_ms": {"2000"}, "client_updated_at": {"1800000000000"}, "device_id": {"sweepdevice02"}}), sweepStaff(200, 404), ""),
 		sweepPost("POST /hx/books/{id}/finished", id(bookID, "/hx/books/", "/finished"), sweepFormOf(url.Values{
 			"finished": {"1"}, "next": {"/"}}), sweepStaff(303, 404), "/"))
+	// Up next (Q1): autoplay with nothing queued is 204 for every role; the form is empty.
+	post = append(post,
+		sweepPost("POST /hx/player/next", sweepStatic("/hx/player/next"), nil, sweepSame(204), ""))
 	rows = append(rows, post...)
 	rows = append(rows, usersSweepRows()...)
 	rows = append(rows, invitesSweepRows()...)
