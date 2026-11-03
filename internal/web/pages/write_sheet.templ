@@ -92,7 +92,7 @@ templ WriteBody(v WriteSheetView) {
 templ writeBodyInner(v WriteSheetView) {
 	if v.State == "wait" {
 		<p class="body ts-write__status" role="status">{ v.Message }</p>
-		<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SheetHref) } hx-boost="false">{ v.CheckAgain }</a>
+		<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SheetHref) } hx-get={ v.SheetHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false">{ v.CheckAgain }</a>
 	} else if v.State != "" {
 		<p class="body ts-write__status" role="status">{ v.Message }</p>
 		@WritePending(v.Pending)
@@ -134,7 +134,7 @@ templ writeBodyInner(v WriteSheetView) {
 		}
 		<p class="caption ts-write__note">{ v.Note }</p>
 		if len(v.Refusals) == 0 {
-			<form class="ts-write__form" method="post" action={ templ.URL(v.Action) }>
+			<form class="ts-write__form" method="post" action={ templ.URL(v.Action) } hx-post={ v.Action } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false">
 				<input type="hidden" name="_csrf" value={ v.CSRF }/>
 				<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ v.Button }</button>
 			</form>
@@ -153,11 +153,11 @@ templ WritePending(v WritePendingView) {
 			}
 			<p class="body">{ v.Body }</p>
 			<div class="ts-write__actions">
-				<form method="post" action={ templ.URL(v.ConfirmAction) }>
+				<form method="post" action={ templ.URL(v.ConfirmAction) } hx-post={ v.ConfirmAction } hx-target="#book-panel" hx-select="#book-panel" hx-select-oob="#sheet" hx-swap="outerHTML">
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
 					<button type="submit" class="ts-btn ts-btn--primary">{ v.ConfirmLabel }</button>
 				</form>
-				<form method="post" action={ templ.URL(v.UndoAction) }>
+				<form method="post" action={ templ.URL(v.UndoAction) } hx-post={ v.UndoAction } hx-target="#book-panel" hx-select="#book-panel" hx-select-oob="#sheet" hx-swap="outerHTML">
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
 					<button type="submit" class="ts-btn ts-btn--secondary">{ v.UndoLabel }</button>
 				</form>
