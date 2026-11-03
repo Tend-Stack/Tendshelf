@@ -45,10 +45,11 @@ func fromSetup(r *http.Request) bool {
 // jobViews answers GET /hx/jobs/{id} by the kind of the job: each kind has its own status fragment
 // and its own rule for who may see it.
 var jobViews = map[string]func(s *server, w http.ResponseWriter, r *http.Request, j jobs.Job){
-	scan.KindScan:            (*server).getScanJob,
-	metadata.KindOnline:      (*server).getLookupJob,
-	metadata.KindAuthor:      (*server).getAuthorJob,
-	mediajobs.KindCoverAdopt: (*server).getCoverAdoptJob,
+	scan.KindScan:              (*server).getScanJob,
+	metadata.KindOnline:        (*server).getLookupJob,
+	metadata.KindAuthor:        (*server).getAuthorJob,
+	mediajobs.KindCoverAdopt:   (*server).getCoverAdoptJob,
+	mediajobs.KindWriteDetails: (*server).getWriteJob,
 }
 
 // getJob answers GET /hx/jobs/{id}. An unknown id and an unknown kind are both "no such job".

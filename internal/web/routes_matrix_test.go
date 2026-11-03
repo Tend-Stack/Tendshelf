@@ -88,7 +88,9 @@ type sweepEnv struct {
 	// coverID is the book's cover row, coverJob a waiting cover adoption of the book and authorJob a
 	// waiting author lookup (M4-8).
 	coverID, coverJob, authorJob string
-	tree                         string // a folder for the browse view, with a file name that must never be sent
+	// writeJob is a waiting write-details job of the book (M4-9).
+	writeJob string
+	tree     string // a folder for the browse view, with a file name that must never be sent
 
 	// granted marks the app of TestRouteMatrixGranted: the member and the guest hold a library
 	// grant on libID, so rows answer with Granted and the leak scan is off.
@@ -222,6 +224,7 @@ func sweepSeed(t *testing.T) *sweepEnv {
 	linkSeed(t, e)
 	e.lookupJob = compareSeedJob(t, e, e.book.ID, true)
 	coverSeed(t, e)
+	writeSeed(t, e)
 	e.job = a.adminEnqueueScan(t, l.ID)
 	a.adminSetJobState(t, e.job, "done")
 	if err := db.PutSetting(ctx, a.st.Writer(), settingSetupDone, true); err != nil {
@@ -634,6 +637,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, shareSweepRows()...)
 	rows = append(rows, detailsSweepRows()...)
 	rows = append(rows, coverSweepRows()...)
+	rows = append(rows, writeSweepRows()...)
 	rows = append(rows, devicesSweepRows()...)
 	rows = append(rows, emailSweepRows()...)
 	rows = append(rows, apiSweepRows()...)

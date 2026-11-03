@@ -1,0 +1,185 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// WriteDetail is one line of "what will be written".
+type WriteDetail struct{ Label, Value string }
+
+// WriteRefusalRow is one reason the files cannot be written now; File is empty when it concerns the book.
+type WriteRefusalRow struct{ File, Text string }
+
+// WritePendingView is the "Waiting for you" panel: the written files are in place and the person
+// chooses Looks good or Undo. It is shown on the Details tab and, once the job is done, in the sheet.
+// The zero value (empty ConfirmAction) shows nothing.
+type WritePendingView struct {
+	CSRF, Head, Body            string
+	ConfirmAction, ConfirmLabel string
+	UndoAction, UndoLabel       string
+}
+
+// WriteAttentionView is the notice for a file that changed after its details were written. Folder
+// is empty for people who may not manage the server.
+type WriteAttentionView struct{ Text, Folder string }
+
+// WriteTabView is what the Details tab shows about writing; the zero value shows nothing.
+type WriteTabView struct {
+	// Note is the one-line result of Looks good or Undo.
+	Note string
+	// OpenHref opens the write sheet; empty while a write waits for a choice.
+	OpenHref, OpenLabel string
+	Pending             WritePendingView
+	Attention           *WriteAttentionView
+}
+
+// WriteSheetView is the "Write details into the files" sheet. State is "" (the preview with its
+// confirm form), "wait", "done" or "failed" for the write job named by ?job=.
+type WriteSheetView struct {
+	CSRF, CloseHref, SheetHref, PollHref string
+	Title, CloseLabel, Intro             string
+	FilesLabel, DetailsLabel             string
+	Files                                []string
+	Details                              []WriteDetail
+	RefusedLabel                         string
+	Refusals                             []WriteRefusalRow
+	Note, Action, Button                 string
+	State, Message, CheckAgain           string
+	Pending                              WritePendingView
+	Styles                               []string
+}
+
+// WriteSheet is the sheet that previews, starts and follows a write. It renders into #sheet like
+// the other details sheets; without JavaScript every control is a plain form or link.
+templ WriteSheet(v WriteSheetView) {
+	<div class="ts-sheet-layer ts-sheet-layer--details">
+		@components.SheetStyles(v.Styles)
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
+		<div class="ts-sheet ts-details-sheet" role="dialog" aria-modal="true" aria-labelledby="wr-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="wr-title" class="ts-sheet__title">{ v.Title }</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel }>
+					@components.Icon("close", false)
+				</a>
+			</div>
+			@WriteBody(v)
+		</div>
+	</div>
+}
+
+// WriteBody is the sheet under its heading. While the job runs it polls every two seconds and
+// replaces itself; without JavaScript "Check again" does the same.
+templ WriteBody(v WriteSheetView) {
+	if v.State == "wait" {
+		<div id="write-body" class="ts-write" hx-get={ v.PollHref } hx-trigger="every 2s" hx-swap="outerHTML">
+			@writeBodyInner(v)
+		</div>
+	} else {
+		<div id="write-body" class="ts-write">
+			@writeBodyInner(v)
+		</div>
+	}
+}
+
+templ writeBodyInner(v WriteSheetView) {
+	if v.State == "wait" {
+		<p class="body ts-write__status" role="status">{ v.Message }</p>
+		<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SheetHref) } hx-boost="false">{ v.CheckAgain }</a>
+	} else if v.State != "" {
+		<p class="body ts-write__status" role="status">{ v.Message }</p>
+		@WritePending(v.Pending)
+	} else {
+		<p class="caption ts-write__intro">{ v.Intro }</p>
+		if len(v.Refusals) > 0 {
+			<div class="ts-write__refused" role="alert">
+				<h3 class="section">{ v.RefusedLabel }</h3>
+				<ul class="ts-write__list">
+					for _, r := range v.Refusals {
+						<li class="body">
+							if r.File != "" {
+								<span class="ts-write__file">{ r.File }</span>
+							}
+							{ r.Text }
+						</li>
+					}
+				</ul>
+			</div>
+		}
+		if len(v.Files) > 0 {
+			<h3 class="section">{ v.FilesLabel }</h3>
+			<ul class="ts-write__list">
+				for _, f := range v.Files {
+					<li class="body ts-write__file">{ f }</li>
+				}
+			</ul>
+		}
+		if len(v.Details) > 0 {
+			<h3 class="section">{ v.DetailsLabel }</h3>
+			<dl class="ts-write__details">
+				for _, d := range v.Details {
+					<div class="ts-write__detail">
+						<dt>{ d.Label }</dt>
+						<dd>{ d.Value }</dd>
+					</div>
+				}
+			</dl>
+		}
+		<p class="caption ts-write__note">{ v.Note }</p>
+		if len(v.Refusals) == 0 {
+			<form class="ts-write__form" method="post" action={ templ.URL(v.Action) }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ v.Button }</button>
+			</form>
+		}
+	}
+}
+
+// WritePending is the "Waiting for you" panel with its two forms.
+templ WritePending(v WritePendingView) {
+	if v.ConfirmAction != "" {
+		<section class="ts-write__pending" aria-labelledby="write-pending-head">
+			<h3 id="write-pending-head" class="section">{ v.Head }</h3>
+			<p class="body">{ v.Body }</p>
+			<div class="ts-write__actions">
+				<form method="post" action={ templ.URL(v.ConfirmAction) }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--primary">{ v.ConfirmLabel }</button>
+				</form>
+				<form method="post" action={ templ.URL(v.UndoAction) }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--secondary">{ v.UndoLabel }</button>
+				</form>
+			</div>
+		</section>
+	}
+}
+
+// WriteTab is the write controls of the Details tab.
+templ WriteTab(v WriteTabView) {
+	if v.Note != "" {
+		<p class="ts-book__applied label" role="status">
+			@components.Icon("check", false)
+			{ v.Note }
+		</p>
+	}
+	@WritePending(v.Pending)
+	if v.Attention != nil {
+		<div class="ts-write__attention" role="alert">
+			<p class="body">{ v.Attention.Text }</p>
+			if v.Attention.Folder != "" {
+				<p class="caption ts-write__folder">{ v.Attention.Folder }</p>
+			}
+		</div>
+	}
+	if v.OpenHref != "" {
+		<a
+			class="ts-btn ts-btn--secondary ts-book__write"
+			href={ templ.SafeURL(v.OpenHref) }
+			hx-get={ v.OpenHref }
+			hx-target="#sheet"
+			hx-select="#sheet > *"
+			hx-swap="innerHTML"
+			hx-push-url="false"
+			aria-haspopup="dialog"
+		>{ v.OpenLabel }</a>
+	}
+}

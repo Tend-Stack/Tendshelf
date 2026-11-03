@@ -102,6 +102,8 @@ type BookView struct {
 	CoverHref, CoverLabel string
 	// Edit holds the Details tab's lookup and reset controls; the zero value shows none.
 	Edit DetailsEditView
+	// Write holds the Details tab's write-details controls (M4-9); the zero value shows none.
+	Write WriteTabView
 }
 
 // DetailsEditView is what a person who may edit the book sees on the Details tab (M4-6): the lookup
@@ -455,4 +457,5 @@ templ bookDetails(v BookView) {
 			</form>
 		</details>
 	}
+	@WriteTab(v.Write)
 }

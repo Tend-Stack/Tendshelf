@@ -29,6 +29,7 @@ func (s *server) registerBook(mux *http.ServeMux) {
 	mux.HandleFunc("GET /search", s.getSearch)
 	s.registerDetails(mux)
 	s.registerCoverPick(mux)
+	s.registerWrite(mux)
 	s.registerAuthors(mux)
 }
 
@@ -148,6 +149,23 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 		}
 		sheet = pages.CoverSheet(cv)
 	}
+	canWrite := s.writes != nil && s.can.Can(ctx, currentUser(r), share.EditBook, target)
+	if r.URL.Query().Get("sheet") == "write" {
+		if !canWrite {
+			s.notFound(w, r)
+			return
+		}
+		wv, ok, err := s.writeSheetView(r, d, r.URL.Query().Get("job"))
+		if err != nil {
+			s.serverError(w, r, "write sheet", err)
+			return
+		}
+		if !ok {
+			s.notFound(w, r)
+			return
+		}
+		sheet = pages.WriteSheet(wv)
+	}
 	if q := r.URL.Query().Get("sheet"); q == "lookup" || q == "compare" || look != nil {
 		// The lookup sheets belong to people who may edit the book while lookups are on.
 		if !lookups {
@@ -193,6 +211,14 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 				s.serverError(w, r, "details controls", err)
 				return
 			}
+		}
+		if canWrite {
+			if v.Write, err = s.writeTabView(r, id); err != nil {
+				s.serverError(w, r, "write controls", err)
+				return
+			}
+		}
+		if canEdit || canWrite {
 			styles = append(append([]string(nil), styles...), pages.DetailsStyles...)
 		}
 	}
