@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -85,10 +86,10 @@ func envOrBool(key string, def bool) bool {
 // registerMediaJobs is the hook for the media job kinds: cover pictures with thumbnails and
 // accent colours, compatibility copies and waveform peaks. Covers and peaks follow the scanner's
 // settled books. It returns the compatibility and waveform services so the web handler can request
-// and serve them, plus the covers service for online cover adoption.
-func registerMediaJobs(d deps, mf *mediaFlags) (*mediajobs.Compat, *mediajobs.Peaks, *mediajobs.Covers, error) {
+// and serve them, plus the covers service for online cover adoption and the write-details service.
+func registerMediaJobs(d deps, mf *mediaFlags) (*mediajobs.Compat, *mediajobs.Peaks, *mediajobs.Covers, *mediajobs.Writes, error) {
 	if *mf.compatGiB < 1 {
-		return nil, nil, nil, fmt.Errorf("-compat-cache-gib must be at least 1, got %d", *mf.compatGiB)
+		return nil, nil, nil, nil, fmt.Errorf("-compat-cache-gib must be at least 1, got %d", *mf.compatGiB)
 	}
 	covers := mediajobs.NewCovers(d.lib, d.tools, d.dataDir, d.runner, d.log)
 	compat := mediajobs.NewCompat(d.lib, d.tools, mediajobs.CompatDir(d.dataDir), int64(*mf.compatGiB)<<30, d.runner, d.log)
@@ -96,8 +97,19 @@ func registerMediaJobs(d deps, mf *mediaFlags) (*mediajobs.Compat, *mediajobs.Pe
 	d.scanner.OnBookSettled(covers.Follower())
 	d.scanner.OnScanFinished(covers.Finisher())
 	d.scanner.OnBookSettled(peaks.Follower())
-	if err := mediajobs.Register(d.runner, covers, compat, peaks); err != nil {
-		return nil, nil, nil, err
+	writes := mediajobs.NewWrites(d.lib, d.tools, d.dataDir, d.runner, d.runner, d.log)
+	// After files were swapped or restored the library is scanned again: the same two calls as the
+	// admin Scan button (internal/web startScan), joining a scan that is already waiting.
+	writes.OnChanged = func(ctx context.Context, libraryID string) {
+		if _, ok, err := d.runner.ActiveFor(ctx, scan.KindScan, "library_id", libraryID); err != nil || ok {
+			return
+		}
+		if _, err := d.runner.Enqueue(ctx, scan.KindScan, scan.ScanPayload{LibraryID: libraryID}, jobs.EnqueueOptions{}); err != nil {
+			d.log.Warn("write details: could not queue a scan", "library", libraryID, "err", err)
+		}
 	}
-	return compat, peaks, covers, nil
+	if err := mediajobs.Register(d.runner, covers, compat, peaks, writes); err != nil {
+		return nil, nil, nil, nil, err
+	}
+	return compat, peaks, covers, writes, nil
 }

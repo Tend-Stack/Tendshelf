@@ -212,7 +212,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+2 { // +2: book_sidecars, online_cache (0010)
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+3 { // +3: book_sidecars, online_cache (0010), file_writes (0011)
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -590,6 +590,7 @@ var pinnedMigrations = map[int]string{
 	8:  "bcbac9ebb7f522de507ae72a6f6ebd31b21214d43444f3b0ee6f9c81033e5c16",
 	9:  "88ed2c5d9c91bc5eb0f2aed1092d38bf866660c082ebb17ea9bd543c9c43be84",
 	10: "45cf0f36dc20651b2c5091980a6447ab8fd1db7651b59981a7e68f14baaf0ec5",
+	11: "b8148a4007be1c37cc3de93e670620dd70a7abc28addbdc1db5925c9a3f1d873",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
@@ -1050,5 +1051,62 @@ func TestMigration0010Details(t *testing.T) {
 	}
 	if n := countRows(t, st.Reader(), "book_sidecars"); n != 0 {
 		t.Errorf("sidecar signature outlived its book (%d)", n)
+	}
+}
+
+// TestMigration0011FileWrites: a v10 database keeps its rows (a sidecar signature among them) and
+// gains the empty ledger; the ledger refuses an unknown state and a second open row for one path,
+// allows a new write after a closed one, and keeps its rows when the book is deleted.
+func TestMigration0011FileWrites(t *testing.T) {
+	ms := embedded(t)
+	dir := t.TempDir()
+	prev, err := open(context.Background(), dir, openConfig{migrations: ms[:10], supported: 10, now: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	seed7(t, prev)
+	if _, err := prev.Writer().Exec(`INSERT INTO book_sidecars VALUES ('bk_1', 'sig', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	prev.Close()
+	st := mustOpen(t, dir)
+	defer st.Close()
+	for _, tbl := range []string{"books", "metadata_values", "progress", "book_sidecars"} {
+		if countRows(t, st.Reader(), tbl) != 1 {
+			t.Errorf("%s lost its row", tbl)
+		}
+	}
+	if n := countRows(t, st.Reader(), "file_writes"); n != 0 {
+		t.Errorf("file_writes has %d rows", n)
+	}
+	ins := func(id, state, path string) error {
+		_, err := st.Writer().Exec(`INSERT INTO file_writes(id, job_id, book_id, audio_file_id, state, original_path, backup_path,
+  temp_path, before_sha256, audio_hash, created_by, created_at, updated_at) VALUES (?, 'jb_1', 'bk_1', 'af_1', ?, ?, 'b', 't', 'x', 'y', 'us_1', 1, 1)`,
+			id, state, path)
+		return err
+	}
+	if ins("fw_1", "bogus", "/a") == nil {
+		t.Error("an unknown state was accepted")
+	}
+	if err := ins("fw_1", "copying", "/a"); err != nil {
+		t.Fatal(err)
+	}
+	if ins("fw_2", "swapped", "/a") == nil {
+		t.Error("a second open row for one path was accepted")
+	}
+	if err := ins("fw_3", "copying", "/b"); err != nil {
+		t.Errorf("another path: %v", err)
+	}
+	if _, err := st.Writer().Exec(`UPDATE file_writes SET state = 'undone' WHERE id = 'fw_1'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := ins("fw_2", "copying", "/a"); err != nil {
+		t.Errorf("a new write after a closed one: %v", err)
+	}
+	if _, err := st.Writer().Exec(`DELETE FROM books WHERE id = 'bk_1'`); err != nil {
+		t.Fatal(err)
+	}
+	if n := countRows(t, st.Reader(), "file_writes"); n != 3 {
+		t.Errorf("ledger rows after the book went = %d, want 3", n)
 	}
 }

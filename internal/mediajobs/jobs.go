@@ -31,10 +31,10 @@ type PeaksPayload struct {
 	AudioFileID string `json:"audio_file_id"`
 }
 
-// Register adds the cover, compatibility-copy and waveform job kinds to the runner. Each runs one at
+// Register adds the cover, compatibility-copy, waveform and write-details job kinds (the last only when writes is not nil) to the runner. Each runs one at
 // a time: ffmpeg work is heavy, and a cover, copy or waveform is never urgent. Each handler's
 // writes begin with the job's fence check.
-func Register(r *jobs.Runner, covers *Covers, compat *Compat, peaks *Peaks) error {
+func Register(r *jobs.Runner, covers *Covers, compat *Compat, peaks *Peaks, writes *Writes) error {
 	if err := r.Register(jobs.Kind{Name: KindCover, Concurrency: 1, MaxAttempts: 2, Handler: covers.handle}); err != nil {
 		return err
 	}
@@ -44,7 +44,16 @@ func Register(r *jobs.Runner, covers *Covers, compat *Compat, peaks *Peaks) erro
 	if err := r.Register(jobs.Kind{Name: KindCoverAdopt, Concurrency: 1, MaxAttempts: 2, Handler: covers.adoptHandler}); err != nil {
 		return err
 	}
-	return r.Register(jobs.Kind{Name: KindPeaks, Concurrency: 1, MaxAttempts: 2, Handler: peaks.handle})
+	if err := r.Register(jobs.Kind{Name: KindPeaks, Concurrency: 1, MaxAttempts: 2, Handler: peaks.handle}); err != nil {
+		return err
+	}
+	if writes == nil {
+		return nil
+	}
+	// A write that was running when the process died is held, not retried: Writes.Recover settles
+	// its ledger rows and then cancels it. One attempt only, because a retry must never replay a
+	// half-done swap.
+	return r.Register(jobs.Kind{Name: KindWriteDetails, Concurrency: 1, MaxAttempts: 1, HoldOnRecovery: true, Handler: writes.handle})
 }
 
 func badPayload(err error) error {

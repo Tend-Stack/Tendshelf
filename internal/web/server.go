@@ -69,6 +69,9 @@ type Options struct {
 	Details *metadata.Service
 	// Covers adopts, chooses and uploads cover pictures; nil means the M4 cover routes answer 404.
 	Covers *mediajobs.Covers
+	// Writes writes details into the audio files and keeps the backups; nil means the M4 write
+	// routes answer 404.
+	Writes *mediajobs.Writes
 	// MailOptions changes how the optional email relay dials (tests give it the fake server's
 	// certificate); the zero value is production. The handler builds the mailer and registers its
 	// job kinds on Jobs, so Jobs must not be started yet.
@@ -98,6 +101,7 @@ type server struct {
 	peaks      *mediajobs.Peaks
 	details    *metadata.Service
 	covers     *mediajobs.Covers
+	writes     *mediajobs.Writes
 	progress   *progress.Service
 	mail       *share.Mail
 	mailLim    mailLimits
@@ -203,6 +207,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		peaks:      opts.Peaks,
 		details:    opts.Details,
 		covers:     opts.Covers,
+		writes:     opts.Writes,
 		progress:   progress.New(opts.Store, opts.Now),
 		mail:       mailer,
 		mailLim: mailLimits{
