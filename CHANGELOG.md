@@ -40,7 +40,7 @@ own files, no account anywhere else.
 
 - The one-handed check on real phones (Android Chrome and iOS Safari) is written
   ([docs/manual-checks.md](docs/manual-checks.md)) but has not been run yet.
-- Safari-engine coverage is a WebKitGTK run of the main pages, not a run on an iPhone or a Mac.
+- Safari-engine coverage is a WebKitGTK run (passed on 2026-11-02) of the design-system kitchen sink and the browse pages (Home, Library, a book, Search, Settings, Libraries) at 447 and 1440 px, not a run on an iPhone or a Mac. The player bar, the Now playing panel, Users, invites, share links and Shared with you are checked in Chromium only.
 - Larger text set only inside the browser (the browser's own text-size setting, not the Tendshelf setting)
   keeps the desktop player bar on windows 1280 to 1599 px wide.
 - Passkeys are not built yet; sign in with a password.
