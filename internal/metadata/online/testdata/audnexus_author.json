@@ -1,0 +1,10 @@
+{
+  "asin": "B0AUTHOR01",
+  "name": "Ann Author",
+  "description": "<p>Ann Author writes synthetic romances.</p>",
+  "image": "https://m.media-amazon.com/images/I/author.jpg",
+  "genres": [
+    {"asin": "1", "name": "Romance", "type": "genre"},
+    {"asin": "2", "name": "Contemporary Romance", "type": "genre"}
+  ]
+}

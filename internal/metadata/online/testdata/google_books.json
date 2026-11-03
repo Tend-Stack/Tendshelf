@@ -1,0 +1,40 @@
+{
+ "items": [
+  {
+   "id": "gb1",
+   "volumeInfo": {
+    "title": "The Test Match",
+    "subtitle": "A Novel",
+    "authors": [
+     "Ann Author"
+    ],
+    "publisher": "Example Press",
+    "publishedDate": "2023-05",
+    "description": "Plain description.",
+    "industryIdentifiers": [
+     {
+      "type": "ISBN_10",
+      "identifier": "1234567890"
+     },
+     {
+      "type": "ISBN_13",
+      "identifier": "9781234567897"
+     }
+    ],
+    "categories": [
+     "Fiction"
+    ],
+    "language": "en",
+    "imageLinks": {
+     "smallThumbnail": "http://books.google.com/s.jpg",
+     "thumbnail": "http://books.google.com/t.jpg"
+    },
+    "averageRating": 4.0,
+    "ratingsCount": 57
+   }
+  },
+  {
+   "id": "gb2"
+  }
+ ]
+}

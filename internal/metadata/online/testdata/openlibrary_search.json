@@ -1,0 +1,28 @@
+{
+ "docs": [
+  {
+   "key": "/works/OL1W",
+   "title": "The Test Match",
+   "author_name": [
+    "Ann Author"
+   ],
+   "first_publish_year": 2023,
+   "cover_edition_key": "OL1M",
+   "isbn": [
+    "9781234567897"
+   ],
+   "publisher": [
+    "Example Press"
+   ],
+   "language": [
+    "eng"
+   ],
+   "subject": [
+    "Romance",
+    "Sports"
+   ],
+   "ratings_average": 3.9123,
+   "ratings_count": 211
+  }
+ ]
+}

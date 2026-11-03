@@ -1,0 +1,15 @@
+{
+ "products": [
+  {
+   "asin": "B0TESTBOOK",
+   "title": "The Test Match"
+  },
+  {
+   "asin": "B0OTHER001",
+   "title": "Other"
+  },
+  {
+   "asin": "bad"
+  }
+ ]
+}
