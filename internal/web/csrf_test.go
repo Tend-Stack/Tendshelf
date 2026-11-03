@@ -237,7 +237,7 @@ func TestCSRFHXRequestGetsAlertToast(t *testing.T) {
 		t.Fatalf("status = %d, want 403", rec.Code)
 	}
 	body := rec.Body.String()
-	want := `<div hx-swap-oob="beforeend:#toasts"><div role="alert" class="ts-toast">This form expired. Reload the page and try again.</div></div>`
+	want := `<div hx-swap-oob="beforeend:#toasts"><div role="alert" class="ts-toast" data-ts-ms="8000">This form expired. Reload the page and try again.</div></div>`
 	if strings.TrimSpace(body) != want {
 		t.Fatalf("body = %q", body)
 	}

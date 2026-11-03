@@ -61,7 +61,7 @@ func ToastOOB(kind, message string) templ.Component {
 		}
 		switch kind {
 		case "err":
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div role=\"alert\" class=\"ts-toast\"><span class=\"ts-toast__err\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div role=\"alert\" class=\"ts-toast\" data-ts-ms=\"8000\"><span class=\"ts-toast__err\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -87,14 +87,14 @@ func ToastOOB(kind, message string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		case "hint":
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div role=\"status\" class=\"ts-toast ts-toast--hint\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div role=\"status\" class=\"ts-toast ts-toast--hint\" data-ts-ms=\"2500\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/toasts.templ`, Line: 20, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/toasts.templ`, Line: 20, Col: 82}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -105,7 +105,7 @@ func ToastOOB(kind, message string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		default:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div role=\"status\" class=\"ts-toast\"><span class=\"ts-toast__ok\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div role=\"status\" class=\"ts-toast\" data-ts-ms=\"4000\"><span class=\"ts-toast__ok\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -158,14 +158,14 @@ func ErrorToast(message string) templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div hx-swap-oob=\"beforeend:#toasts\"><div role=\"alert\" class=\"ts-toast\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div hx-swap-oob=\"beforeend:#toasts\"><div role=\"alert\" class=\"ts-toast\" data-ts-ms=\"8000\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/toasts.templ`, Line: 34, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/toasts.templ`, Line: 34, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {

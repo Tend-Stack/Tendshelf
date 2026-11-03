@@ -12,14 +12,14 @@ templ ToastOOB(kind, message string) {
 	<div hx-swap-oob="beforeend:#toasts">
 		switch kind {
 			case "err":
-				<div role="alert" class="ts-toast">
+				<div role="alert" class="ts-toast" data-ts-ms="8000">
 					<span class="ts-toast__err">@Icon("alert", false)</span>
 					{ message }
 				</div>
 			case "hint":
-				<div role="status" class="ts-toast ts-toast--hint">{ message }</div>
+				<div role="status" class="ts-toast ts-toast--hint" data-ts-ms="2500">{ message }</div>
 			default:
-				<div role="status" class="ts-toast">
+				<div role="status" class="ts-toast" data-ts-ms="4000">
 					<span class="ts-toast__ok">@Icon("check", false)</span>
 					{ message }
 				</div>
@@ -31,6 +31,6 @@ templ ToastOOB(kind, message string) {
 // and 5xx responses, so error responses to htmx requests carry this instead of a full page.
 templ ErrorToast(message string) {
 	<div hx-swap-oob="beforeend:#toasts">
-		<div role="alert" class="ts-toast">{ message }</div>
+		<div role="alert" class="ts-toast" data-ts-ms="8000">{ message }</div>
 	</div>
 }
