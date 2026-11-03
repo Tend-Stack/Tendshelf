@@ -300,8 +300,8 @@ func TestVisualMatrixUsed(t *testing.T) {
 	own := regexp.MustCompile(`(?m)^\s*for\s+_?,?\s*\w*\s*:?=\s*range\s+\[\]\s*(?:string|int)\s*\{`)
 	for _, f := range files {
 		switch f {
-		case "visual_matrix_test.go", "visual_motion_test.go", "visual_webkit_test.go", "visual_large_text_test.go", "visual_large_text_player_test.go", "visual_large_text_people_test.go", "visual_large_text_probe_test.go", "visual_nav_test.go":
-			continue // the matrix itself; motion tests; WebKit and the sink have their own fixed lists; the large-text tests (ltShots) have theirs; the nav rail test captures both sidebar states in all four themes at 1280 and 1440
+		case "visual_matrix_test.go", "visual_motion_test.go", "visual_webkit_test.go", "visual_large_text_test.go", "visual_large_text_player_test.go", "visual_large_text_people_test.go", "visual_large_text_probe_test.go", "visual_nav_test.go", "visual_max_width_test.go":
+			continue // the matrix itself; motion tests; WebKit and the sink have their own fixed lists; the large-text tests (ltShots) have theirs; the nav rail test captures both sidebar states in all four themes at 1280 and 1440; the max-width test captures dark and light at 3840 only
 		}
 		raw, err := os.ReadFile(f)
 		if err != nil {

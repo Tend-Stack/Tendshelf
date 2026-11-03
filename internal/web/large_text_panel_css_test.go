@@ -15,7 +15,7 @@ func TestLargeTextPanelGuard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	headers, bodies := textsizeBlocks(string(raw), "min-width: 1280px")
+	headers, bodies := textsizeBlocks(string(raw), "width >= 1280px")
 	if len(headers) == 0 {
 		t.Fatal("now-panel.css has no 1280 px block")
 	}

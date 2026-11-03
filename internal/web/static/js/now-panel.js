@@ -1,5 +1,5 @@
 // The Now playing panel (desktop): loads it, fills the top, keeps the tabs.
-const WIDE = matchMedia("(min-width: 1280px)");
+const WIDE = matchMedia("(width >= 1280px)");
 const $ = (selector) => document.querySelector(selector);
 const dialog = $("#player-full");
 

@@ -33,6 +33,6 @@
 .ts-bookmark-sheet__note { min-height: 7.5rem; resize: vertical; font: 400 1rem/1.5rem var(--font-sans); }
 .ts-bookmark-sheet__links { list-style: none; margin: 0; padding: 0 var(--space-4); display: flex; flex-direction: column; gap: var(--space-8); }
 
-@media (min-width: 768px) {
+@media (width >= 768px) {
   .ts-bookmarks__add { position: static; margin: var(--space-16) 0 0; padding: 0; background: none; max-width: 22.5rem; }
 }

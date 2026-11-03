@@ -11,7 +11,7 @@ const slot = document.getElementById("player");
 const dialog = document.getElementById("player-full");
 const root = document.documentElement;
 const LINK = document.body.dataset.tsLink; // link mode: no account, so no settings or bookmark requests
-const SIDE_PANEL = matchMedia("(min-width: 1280px)"); // from here the player is a side panel
+const SIDE_PANEL = matchMedia("(width >= 1280px)"); // from here the player is a side panel
 // Larger text never uses the side panel: the desktop shell does not fit at the bigger size.
 function sidePanel() { return SIDE_PANEL.matches && document.documentElement.dataset.textSize !== "large"; }
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)");

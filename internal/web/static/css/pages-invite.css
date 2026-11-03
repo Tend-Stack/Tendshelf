@@ -82,7 +82,7 @@ html[data-theme="contrast"] .ts-invite__band.is-tinted { background: none; }
 /* The name and password fields show only while "A name and password" is chosen. */
 .ts-invite__keep:has(#keep-phone:checked) .ts-invite__fields { display: none; }
 
-@media (min-width: 768px) {
+@media (width >= 768px) {
   .ts-invite__cover { width: 16rem; }
   .ts-invite__cta { margin-top: 0; }
 }
@@ -102,7 +102,7 @@ html[data-theme="contrast"] .ts-invite__band.is-tinted { background: none; }
 .ts-link--locked .ts-field { max-width: none; }
 .ts-link--locked .ts-input { width: 100%; max-width: none; box-sizing: border-box; border-radius: var(--radius-control); }
 .ts-link .ts-share__error { margin: 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--danger); border-radius: var(--radius-control); color: var(--danger); }
-@media (max-width: 767px) {
+@media (width < 768px) {
   .ts-linkshell .ts-player-slot { bottom: calc(env(safe-area-inset-bottom) + var(--space-8)); }
   .ts-linkshell .ts-frame__main { padding-bottom: calc(var(--size-mini-player) + var(--space-32) + env(safe-area-inset-bottom)); }
 }

@@ -50,7 +50,7 @@
 .ts-lib-results { min-width: 0; }
 .ts-lib-title { flex: 1 1 auto; min-width: 0; }
 
-@media (max-width: 767px) {
+@media (width < 768px) {
   /* A phone keeps Filter, Show and Grid/List on one line; the kinds in use follow them. */
   .ts-lib-kinds .ts-chipmenu { order: 3; }
   .ts-chipmenu[open] { flex: 1 1 100%; }
@@ -59,11 +59,11 @@
 }
 /* Below 1024 px the row is too narrow for the words: Grid/List keep their names for a screen reader and
    show only the icons. */
-@media (max-width: 1023px) {
+@media (width < 1024px) {
   .ts-lib-controls .ts-seg__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .ts-lib-controls .ts-seg__item { min-width: var(--size-tap); justify-content: center; padding-inline: 0; }
 }
-@media (min-width: 768px) {
+@media (width >= 768px) {
   .ts-chipmenu__body { position: absolute; top: 100%; left: 0; z-index: 5; }
   .ts-chipmenu--end .ts-chipmenu__body, #lib-menu-show .ts-chipmenu__body { left: auto; right: 0; }
 }
@@ -88,13 +88,13 @@
 .ts-skeleton-card__line--short { width: 60%; }
 
 /* From 1024 px the title field shares the line; below it takes its own line so a kind's menu has room. */
-@media (min-width: 1024px) {
+@media (width >= 1024px) {
   .ts-lib-bar { flex: 0 1 18.75rem; }
 }
-@media (min-width: 1280px) {
+@media (width >= 1280px) {
   .ts-lib-head { flex-direction: column; align-items: flex-start; gap: var(--space-4); }
   .ts-skeleton-cards { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
-@media (min-width: 768px) and (max-width: 1279px) {
+@media (width >= 768px) and (width < 1280px) {
   .ts-skeleton-cards { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
