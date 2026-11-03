@@ -111,7 +111,9 @@ func TestLibraryFiltersInURL(t *testing.T) {
 	// The chips name the choice; every option is an address that keeps the other filters.
 	_, body = sweepList(t, a, "?author="+author+"&length=short&sort=title")
 	flat := strings.Join(strings.Fields(body), " ")
-	for _, want := range []string{"Author: Una Uno<", "Length: Under 5 hours<", "Narrator<svg", "Series<svg", ">Any author<", ">Any length<",
+	for _, want := range []string{"Author: Una Uno</span>", "Length: Under 5 hours</span>", ">Narrator<", ">Series<", ">Any author<", ">Any length<",
+		`href="/libraries?add=narrator&author=` + author + `&length=short&sort=title"`, // Narrator and Series sit in the Filter menu
+		`href="/libraries?add=series&author=` + author + `&length=short&sort=title"`,
 		`href="/libraries?length=short&sort=title"`,                        // Any author
 		`href="/libraries?author=` + author + `&sort=title"`,               // Any length
 		`href="/libraries?author=` + author + `&length=medium&sort=title"`, // another length
@@ -121,7 +123,7 @@ func TestLibraryFiltersInURL(t *testing.T) {
 		}
 	}
 	// The narrator menu follows the author filter: Una Uno's two books have two narrators, 1 each.
-	_, nb := sweepList(t, a, "?author="+author)
+	_, nb := sweepList(t, a, "?author="+author+"&add=narrator")
 	if !strings.Contains(nb, `class="ts-chipmenu__name">Nel Nox<`) || !strings.Contains(nb, `class="ts-chipmenu__name">Ola Oro<`) {
 		t.Error("narrator menu lacks its people")
 	}
@@ -181,25 +183,15 @@ func TestLibraryResultsRegion(t *testing.T) {
 	}
 	// The bar form and the title field swap the region and push the address.
 	for _, want := range []string{`hx-get="/libraries"`, `hx-target="#library-results"`, `hx-select="#library-results"`, `hx-swap="outerHTML"`,
-		`hx-push-url="true"`, `hx-trigger="input changed delay:300ms, search"`, `hx-include="closest form"`, `hx-trigger="change target:select"`,
+		`hx-push-url="true"`, `hx-trigger="input changed delay:300ms, search"`, `hx-include="closest form"`, `hx-select-oob="#lib-menus, #lib-kinds"`,
 		`name="title"`, `value="fog"`, `<label class="ts-sr" for="fb-title">Filter by title</label>`, `placeholder="Filter this library by title"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("bar lacks %q", want)
 		}
 	}
-	// "Show books" is a no-JavaScript fallback in the bar and a real button in the sheet.
+	// "Show books" is a no-JavaScript fallback.
 	if !regexp.MustCompile(`<noscript>\s*<button type="submit"[^>]*>Show books</button>\s*</noscript>`).MatchString(body) {
 		t.Error("the bar's Show books is not inside <noscript>")
-	}
-	sheet := browseGet(a, "/libraries?sheet=filters", false, nil).Body.String()
-	k := strings.Index(sheet, `id="sheet"`)
-	for _, want := range []string{`>Show books<`, `name="length"`, `Any length`, `name="title"`, `Filter by title`} {
-		if !strings.Contains(sheet[k:], want) {
-			t.Errorf("sheet lacks %q", want)
-		}
-	}
-	if regexp.MustCompile(`<noscript>[^<]*<button`).MatchString(sheet[k:]) {
-		t.Error("the sheet's Show books is inside <noscript>")
 	}
 	// A bad hx- attribute set: nothing the CSP or htmx 4 rules ban.
 	for _, banned := range []string{"hx-on", `style="`, "js:"} {

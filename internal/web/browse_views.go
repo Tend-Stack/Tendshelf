@@ -190,7 +190,7 @@ const (
 )
 
 // browseQuery is what a list address says: the order, the view, the genres, the page position and
-// whether the filter sheet is open. Unknown values fall back to the defaults.
+// which kind of filter the header opens. Unknown values fall back to the defaults.
 type browseQuery struct {
 	Sort   library.Sort
 	View   string // "grid" or "list"
@@ -202,7 +202,9 @@ type browseQuery struct {
 	// listening progress.
 	Show   string
 	Cursor string
-	Sheet  bool
+	// Add opens one kind of filter ("author", "narrator", "series", "category" or "length") in the
+	// header for this page view. Only the Filter menu's own links write it; href never carries it on.
+	Add string
 }
 
 // Length buckets: under 5 hours, 5 to 15 hours, over 15 hours (the spine widths use the same edges).
@@ -232,7 +234,11 @@ func (q browseQuery) filtered() bool {
 
 func parseBrowseQuery(r *http.Request) browseQuery {
 	v := r.URL.Query()
-	q := browseQuery{Sort: library.ParseSort(v.Get("sort")), View: "grid", Cursor: v.Get("cursor"), Sheet: v.Get("sheet") == "filters"}
+	q := browseQuery{Sort: library.ParseSort(v.Get("sort")), View: "grid", Cursor: v.Get("cursor")}
+	switch a := v.Get("add"); a {
+	case "author", "narrator", "series", "category", "length":
+		q.Add = a
+	}
 	if v.Get("view") == "list" {
 		q.View = "list"
 	}
@@ -283,6 +289,7 @@ func (q browseQuery) hasGenre(g string) bool {
 // href writes path with the query, after mod changed a copy of it. Defaults are left out so the
 // canonical address stays short. The order of the parameters is fixed.
 func (q browseQuery) href(path string, mod func(*browseQuery)) string {
+	q.Add = "" // a kind opens for one page view only; a link that wants it sets it in mod
 	if mod != nil {
 		q.Genres = append([]string(nil), q.Genres...)
 		mod(&q)
@@ -298,16 +305,13 @@ func (q browseQuery) href(path string, mod func(*browseQuery)) string {
 		v.Add("genre", g)
 	}
 	for _, f := range [...]struct{ k, v string }{{"author", q.Author}, {"narrator", q.Narrator}, {"series", q.Series},
-		{"length", q.Length}, {"show", q.Show}, {"title", q.Title}} {
+		{"length", q.Length}, {"show", q.Show}, {"title", q.Title}, {"add", q.Add}} {
 		if f.v != "" {
 			v.Set(f.k, f.v)
 		}
 	}
 	if q.Cursor != "" {
 		v.Set("cursor", q.Cursor)
-	}
-	if q.Sheet {
-		v.Set("sheet", "filters")
 	}
 	if enc := v.Encode(); enc != "" {
 		return path + "?" + enc

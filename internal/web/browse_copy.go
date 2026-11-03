@@ -60,14 +60,20 @@ var browseSortLabels = []struct {
 	{library.SortDuration, "Length"},
 }
 
-// browseSortLabel is the sort chip's text.
-func browseSortLabel(s library.Sort) string {
-	for _, o := range browseSortLabels {
-		if o.Sort == s {
-			return o.Label
-		}
-	}
-	return "Recently added"
+// Library header (decision 0008). New words; they follow the voice rules in BRAND.md.
+const (
+	libFilterChip   = "Filter"
+	libFilterGroup  = "Add a filter"
+	libCategory     = "Category"
+	libCategoryAny  = "Any category"
+	libCategoryMore = "%s +%d"
+	libSortHeading  = "Sort by"
+)
+
+// browseSortChip is the short form of a sort on the Show chip ("Show · By title"); the default
+// order adds nothing.
+var browseSortChip = map[library.Sort]string{
+	library.SortTitle: "By title", library.SortAuthor: "By author", library.SortDuration: "By length",
 }
 
 // browseHeaderLine is the line under the Library title, from the board: "912 books · 3 folders ·

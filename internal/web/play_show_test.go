@@ -1,6 +1,7 @@
 package web
 
 import (
+	"html"
 	"strings"
 	"testing"
 
@@ -26,11 +27,11 @@ func TestPlayShowFilterChips(t *testing.T) {
 	if body := playBtnGet(e, "/libraries?show=unfinished"); !strings.Contains(body, "Progword Harbour") || strings.Contains(body, "Zed Done") {
 		t.Error("show=unfinished lists the wrong books")
 	}
-	// The sheet carries the group.
-	sheet := playBtnGet(e, "/libraries?sheet=filters&show=not_started")
-	for _, w := range []string{`name="show" value="unfinished"`, `value="not_started" checked`, `name="show" value="finished"`, `>Show</legend>`} {
-		if !strings.Contains(sheet, w) {
-			t.Errorf("filter sheet lacks %s", w)
+	// The Show menu carries the group.
+	menu := html.UnescapeString(playBtnGet(e, "/libraries?show=not_started"))
+	for _, w := range []string{`href="/libraries?show=unfinished"`, `href="/libraries?show=finished"`, `href="/libraries?show=not_started" aria-current="true"`, `>Show</p>`} {
+		if !strings.Contains(menu, w) {
+			t.Errorf("Show menu lacks %s", w)
 		}
 	}
 	// An unknown value is ignored, like length.

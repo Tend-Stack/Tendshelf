@@ -100,7 +100,7 @@ func TestGrantLeaks(t *testing.T) {
 			}
 			open := []string{
 				"/search?q=Hiddenword", "/search?q=Hiddenwrd", "/search?q=Hiddenauthor", "/", "/libraries", "/hx/libraries/items",
-				"/libraries?sheet=filters", "/hx/home/hero",
+				"/libraries?add=category", "/hx/home/hero",
 			}
 			if role == sweepMember {
 				open = append(open, "/shelves") // the guest has no shelves
