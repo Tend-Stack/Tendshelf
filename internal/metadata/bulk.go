@@ -355,6 +355,12 @@ func (r *bulkRun) run(ctx context.Context) (any, error) {
 				Text: "The book sites kept refusing requests, so Tendshelf stopped asking. Try again later."}
 		}
 		if w.For > 0 {
+			// No pause after the last book: there is no next request to space out.
+			if _, remaining, err := s.repo.NextLookupBook(ctx, r.p.LibraryID, r.p.Mode, r.runStart, r.skipBefore()); err != nil {
+				return nil, err
+			} else if remaining == 0 {
+				break
+			}
 			reason := ""
 			if w.Reason == "pause" {
 				reason = PauseBusy
