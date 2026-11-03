@@ -400,8 +400,8 @@ func TestPlayButtonSplit(t *testing.T) {
 		"fragment": playBtnGet(e, "/hx/books/"+e.book.ID+"/play"),
 	} {
 		for _, want := range []string{
-			`<div class="ts-split" role="group">`, `<details id="book-queue-menu" class="ts-split__more" data-ts-chipmenu hx-preserve>`,
-			`aria-label="Queue options"`, `action="/queue"`, `hx-post="/queue"`, `hx-target="#book-queue-menu"`,
+			`<div class="ts-split" role="group">`, `<details id="book-queue-menu-` + e.book.ID + `" class="ts-split__more" data-ts-chipmenu hx-preserve>`,
+			`aria-label="Queue options"`, `action="/queue"`, `hx-post="/queue"`, `hx-target="#book-queue-menu-` + e.book.ID + `"`,
 			`name="where" value="next"`, `name="where" value="end"`, `>Play next</button>`, `>Add to queue</button>`,
 		} {
 			if !strings.Contains(body, want) {

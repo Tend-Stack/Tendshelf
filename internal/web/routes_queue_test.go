@@ -63,7 +63,7 @@ func TestQueueAddHTMX(t *testing.T) {
 			t.Fatalf("add %s %s: %d %s", c.id, c.where, rec.Code, body)
 		}
 		// The answer is the menu alone (closed, no hx-preserve, focus on the toggle) plus an OOB toast.
-		if !strings.Contains(body, `id="book-queue-menu"`) || strings.Contains(body, "hx-preserve") || strings.Contains(body, " open") ||
+		if !strings.Contains(body, `id="book-queue-menu-`) || strings.Contains(body, "hx-preserve") || strings.Contains(body, " open") ||
 			!strings.Contains(body, `<summary class="ts-btn ts-btn--primary ts-btn--lg ts-split__toggle" aria-label="Queue options" autofocus`) ||
 			!strings.Contains(body, `hx-swap-oob="beforeend:#toasts"`) || strings.Contains(body, "<html") {
 			t.Fatalf("answer shape: %s", body)
@@ -109,7 +109,7 @@ func TestQueueAddErrors(t *testing.T) {
 		rec := queueSend(t, a, a.session, true, "/queue", c.form)
 		body := rec.Body.String()
 		// An error answer re-renders the same target (the menu) and carries the toast, so the swap is safe.
-		if rec.Code != c.code || !strings.Contains(body, html.EscapeString(c.toast)) || !strings.Contains(body, `id="book-queue-menu"`) {
+		if rec.Code != c.code || !strings.Contains(body, html.EscapeString(c.toast)) || !strings.Contains(body, `id="book-queue-menu-`) {
 			t.Errorf("%s: %d %s", c.name, rec.Code, body)
 		}
 	}
@@ -121,7 +121,7 @@ func TestQueueAddErrors(t *testing.T) {
 		}
 	}
 	rec := queueSend(t, a, a.session, true, "/queue", url.Values{"book_id": {good.ID}, "where": {"end"}})
-	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), queueErrFull) || !strings.Contains(rec.Body.String(), `id="book-queue-menu"`) {
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), queueErrFull) || !strings.Contains(rec.Body.String(), `id="book-queue-menu-`) {
 		t.Errorf("full: %d %s", rec.Code, rec.Body)
 	}
 }
