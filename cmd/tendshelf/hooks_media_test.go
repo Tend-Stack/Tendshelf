@@ -31,7 +31,7 @@ func TestCompatCacheFlag(t *testing.T) {
 		t.Errorf("bad environment value = %d, want the default 5", got)
 	}
 
-	_, _, err := registerMediaJobs(deps{}, parse("-compat-cache-gib", "0"))
+	_, _, _, err := registerMediaJobs(deps{}, parse("-compat-cache-gib", "0"))
 	if err == nil || !strings.Contains(err.Error(), "at least 1") {
 		t.Errorf("a cap below 1 GiB: err = %v", err)
 	}

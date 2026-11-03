@@ -14,6 +14,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
+	"github.com/Tend-Stack/tendshelf/internal/metadata/online"
 )
 
 // Enqueuer is the part of jobs.Runner this package uses to queue work.
@@ -28,6 +29,10 @@ type Service struct {
 	jobs Enqueuer
 	log  *slog.Logger
 	now  func() time.Time
+
+	online  *online.Client // set by SetOnline; nil means lookups are unavailable
+	tools   media.Tools
+	dataDir string
 }
 
 // New returns a Service. log may be nil.
@@ -174,6 +179,18 @@ func (s *Service) local(ctx context.Context, tx *library.Tx, bookID string) (boo
 		return false, err
 	}
 
+	synced, err := syncResolved(tx, b, rows)
+	if err != nil {
+		return false, err
+	}
+	return changed || synced, nil
+}
+
+// syncResolved brings the book's columns, people, series and genres in line with the strongest
+// value of each field in rows. Local and ApplyOnline both end here, so they never drift apart.
+func syncResolved(tx *library.Tx, b library.Book, rows []library.MetadataValue) (bool, error) {
+	bookID := b.ID
+	changed := false
 	d, _ := Resolve(rows)
 	nb := b
 	if d.Title != "" {

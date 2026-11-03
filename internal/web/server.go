@@ -28,6 +28,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
+	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
@@ -64,6 +65,10 @@ type Options struct {
 	Compat *mediajobs.Compat
 	// Peaks makes and finds waveform peaks; nil means GET /peaks/{id} answers 404.
 	Peaks *mediajobs.Peaks
+	// Details runs online lookups and applies their results; nil means the M4 details routes answer 404.
+	Details *metadata.Service
+	// Covers adopts, chooses and uploads cover pictures; nil means the M4 cover routes answer 404.
+	Covers *mediajobs.Covers
 	// MailOptions changes how the optional email relay dials (tests give it the fake server's
 	// certificate); the zero value is production. The handler builds the mailer and registers its
 	// job kinds on Jobs, so Jobs must not be started yet.
@@ -91,6 +96,8 @@ type server struct {
 	now        func() time.Time // the clock; never nil
 	compat     *mediajobs.Compat
 	peaks      *mediajobs.Peaks
+	details    *metadata.Service
+	covers     *mediajobs.Covers
 	progress   *progress.Service
 	mail       *share.Mail
 	mailLim    mailLimits
@@ -194,6 +201,8 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		now:        nowOrReal(opts.Now),
 		compat:     opts.Compat,
 		peaks:      opts.Peaks,
+		details:    opts.Details,
+		covers:     opts.Covers,
 		progress:   progress.New(opts.Store, opts.Now),
 		mail:       mailer,
 		mailLim: mailLimits{
