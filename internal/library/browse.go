@@ -71,6 +71,9 @@ const (
 	ShowUnfinished = "unfinished"
 	ShowNotStarted = "not_started"
 	ShowFinished   = "finished"
+	// ShowNotFinished leaves out the books the person has finished (Home's "New on the shelf");
+	// it is not offered in the Library's Show menu.
+	ShowNotFinished = "not_finished"
 	// ShowShared keeps the books shared with the person (Scope.Shared); it needs no user.
 	ShowShared = "shared"
 )
@@ -80,7 +83,7 @@ func checkShow(q ListQuery) error {
 	switch q.Show {
 	case "", ShowShared:
 		return nil
-	case ShowUnfinished, ShowNotStarted, ShowFinished:
+	case ShowUnfinished, ShowNotStarted, ShowFinished, ShowNotFinished:
 		if q.UserID == "" {
 			return invalid("show needs a user")
 		}
@@ -275,6 +278,8 @@ func whereExcept(sc Scope, q ListQuery, skip string) *whereClause {
 		w.add("EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NULL AND p.position_ms > 0)", q.UserID)
 	case q.Show == ShowNotStarted:
 		w.add("NOT EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND (p.finished_at IS NOT NULL OR p.position_ms > 0))", q.UserID)
+	case q.Show == ShowNotFinished:
+		w.add("NOT EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NOT NULL)", q.UserID)
 	case q.Show == ShowFinished:
 		w.add("EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NOT NULL)", q.UserID)
 	default:

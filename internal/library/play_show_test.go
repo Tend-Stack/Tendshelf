@@ -44,6 +44,7 @@ func TestPlayShowFilter(t *testing.T) {
 		{library.ShowUnfinished, listenOwner, []string{"Started"}},
 		{library.ShowNotStarted, listenOwner, []string{"Fresh", "Other", "Zero"}},
 		{library.ShowFinished, listenOwner, []string{"Done"}},
+		{library.ShowNotFinished, listenOwner, []string{"Fresh", "Other", "Started", "Zero"}},
 		{library.ShowUnfinished, listenMember, []string{"Other"}},
 	} {
 		if got := titles(allScope, library.ListQuery{Show: c.show, UserID: c.user}); !reflect.DeepEqual(got, c.want) {

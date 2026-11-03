@@ -731,3 +731,30 @@ func TestDurationText(t *testing.T) {
 		}
 	}
 }
+
+// TestHomeNewOnShelfSkipsFinished: "New on the shelf" leaves out a book the person has finished,
+// and keeps one they have only started.
+func TestHomeNewOnShelfSkipsFinished(t *testing.T) {
+	a := browseOwnerApp(t)
+	f := browseLibrary(t, a, "Audiobooks")
+	books := browseAddMany(t, a, f, 3)
+	owner := ""
+	if err := a.st.Writer().QueryRowContext(context.Background(), `SELECT id FROM users WHERE role = 'owner'`).Scan(&owner); err != nil {
+		t.Fatal(err)
+	}
+	now := int64(1_800_000_000_000)
+	streamExec(t, a, `INSERT INTO progress(user_id, book_id, position_ms, duration_ms, finished_at, client_updated_at, server_updated_at, device_id, device_label)
+VALUES (?,?,?,?,?,?,?,?,?)`, owner, books[2].ID, 180000, 180000, now, now, now, "devicealpha1", "x")
+	streamExec(t, a, `INSERT INTO progress(user_id, book_id, position_ms, duration_ms, finished_at, client_updated_at, server_updated_at, device_id, device_label)
+VALUES (?,?,?,?,?,?,?,?,?)`, owner, books[1].ID, 60000, 180000, nil, now, now, "devicealpha1", "x")
+
+	body := browseGet(a, "/", false, nil).Body.String()
+	if strings.Contains(body, `aria-label="Book 003 by Imogen Hale"`) {
+		t.Errorf("the finished book is on New on the shelf")
+	}
+	for _, want := range []string{`aria-label="Book 002 by Imogen Hale"`, `aria-label="Book 001 by Imogen Hale"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("New on the shelf lacks %q", want)
+		}
+	}
+}

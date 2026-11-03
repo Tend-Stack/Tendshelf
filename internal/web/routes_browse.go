@@ -68,7 +68,9 @@ func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "home libraries", err)
 		return
 	}
-	page, err := s.lib.ListBooks(ctx, sc, library.ListQuery{Sort: library.SortAdded, Limit: homeShelfMax})
+	// "New on the shelf" leaves out what the person has already finished.
+	page, err := s.lib.ListBooks(ctx, sc, library.ListQuery{Sort: library.SortAdded, Limit: homeShelfMax,
+		Show: library.ShowNotFinished, UserID: currentUser(r).ID})
 	if err != nil {
 		s.serverError(w, r, "home books", err)
 		return
