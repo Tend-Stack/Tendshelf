@@ -145,6 +145,37 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && closeSheet()) event.preventDefault();
 });
 
+// Dragging a sheet down closes it: from its handle, header, or a list scrolled to its top; under 80 px it snaps back.
+let drag = null;
+document.addEventListener("touchstart", (event) => {
+  const target = event.target;
+  const sheet = target.closest(".ts-sheet:not(.is-leaving)");
+  const list = sheet && !target.closest(".ts-sheet__grab, .ts-sheet__head") && target.closest("ol, ul");
+  const scrolled = sheet && (sheet.scrollTop > 0 || (list && list.scrollTop > 0));
+  drag = sheet && !scrolled && !target.closest("input") ? { sheet, y0: event.touches[0].clientY } : null;
+});
+document.addEventListener("touchmove", (event) => {
+  if (!drag) return;
+  const dy = event.touches[0].clientY - drag.y0;
+  if (!drag.on && dy < -6) drag = null;
+  else if (dy > 6) drag.on = true;
+  if (!drag || !drag.on) return;
+  if (event.cancelable) event.preventDefault();
+  drag.dy = Math.max(dy, 0);
+  drag.sheet.classList.add("is-dragging");
+  drag.sheet.style.setProperty("--ts-sheet-drag", "translateY(" + drag.dy + "px)");
+}, { passive: false });
+function endDrag() {
+  const { sheet, dy, on } = drag || {};
+  drag = null;
+  if (!on) return;
+  sheet.classList.remove("is-dragging");
+  if (dy >= 80 && sheet.closest("#sheet")) return closeSheet();
+  sheet.style.setProperty("--ts-sheet-drag", "");
+  if (dy >= 80) sheet.parentElement.querySelector("[data-ts-sheet-close]").click();
+}
+for (const type of ["touchend", "touchcancel"]) document.addEventListener(type, endDrag);
+
 // A sheet can also be closed by the server: a saved note answers with an empty #sheet (out of band),
 // so no exit animation runs. When the region empties while focus was inside it (focus falls back to
 // the body), focus returns to the opener, as it does after the animation below; an opener that is
