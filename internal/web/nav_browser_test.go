@@ -54,6 +54,14 @@ func TestNavRailBrowser(t *testing.T) {
 		t.Fatalf("start: mode %s, width %.0f, rail token %.0f", mode(), fullW, railToken)
 	}
 
+	// The toggle stays fully visible above the player bar while a book plays.
+	var toggleBottom, barTop float64
+	tab.Eval(`document.getElementById("nav-toggle").getBoundingClientRect().bottom`, &toggleBottom)
+	tab.Eval(`document.getElementById("player").getBoundingClientRect().top`, &barTop)
+	if toggleBottom >= barTop {
+		t.Errorf("#nav-toggle bottom %.0f is not above the player bar top %.0f", toggleBottom, barTop)
+	}
+
 	// Click: the sidebar becomes the rail, #main moves left, the audio keeps playing.
 	before := playerStateOf(tab)
 	playerClickSel(t, tab, "#nav-toggle")

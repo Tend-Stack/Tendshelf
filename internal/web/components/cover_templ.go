@@ -37,7 +37,7 @@ type CardView struct {
 func coverSizes(size string) string {
 	if size == "fill" {
 		// "auto" lets a browser that supports it use the real layout width of the lazy image; the rest use the list.
-		return "auto, (min-width: 1280px) 160px, (min-width: 768px) 17vw, 33vw"
+		return "auto, (width >= 1280px) 160px, (width >= 768px) 17vw, 33vw"
 	}
 	return "auto, " + size + "px"
 }

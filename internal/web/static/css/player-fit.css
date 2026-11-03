@@ -1,7 +1,7 @@
 /* Split from player.css (4 KB budget). The full player fits the visible height below 1280 px; the desktop side panel is untouched. */
 /* Phones and tablets: the player fits the visible height. The cover shrinks first (to 7.5rem), then spacing
    tightens and the clock scales; very short landscape hides the cover and sets two columns. */
-@media (max-width: 1279px) {
+@media (width < 1280px) {
   .ts-player { height: 100vh; height: 100dvh; }
   .ts-player__body { overscroll-behavior: contain; }
   .ts-player__block { flex: 0 1 16rem; min-height: 7.5rem; display: flex; justify-content: center; }
@@ -9,7 +9,7 @@
   .ts-player__title { flex: none; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   html[data-text-size="large"] .ts-player__block { min-height: 0; }
 }
-@media (max-width: 1279px) and (max-height: 50rem) {
+@media (width < 1280px) and (max-height: 50rem) {
   .ts-player__body { padding-block: calc(var(--space-8) + env(safe-area-inset-top)) calc(var(--space-12) + env(safe-area-inset-bottom)); }
   .ts-player__block { margin-top: var(--space-4); }
   .ts-player__title { margin-top: var(--space-8); }
@@ -18,7 +18,7 @@
   .ts-player__transport { margin: var(--space-8) 0 var(--space-12); }
   .ts-player .ts-iconbtn--xl { width: 4rem; height: 4rem; }
 }
-@media (max-width: 1279px) and (max-height: 30rem) {
+@media (width < 1280px) and (max-height: 30rem) {
   .ts-player__body { max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); grid-auto-rows: min-content; column-gap: var(--space-24); align-content: start; }
   .ts-player__head { grid-column: 1 / -1; }
   .ts-player__block { display: none; }

@@ -41,7 +41,7 @@ func TestLargeTextShellGuard(t *testing.T) {
 			t.Fatal(err)
 		}
 		css := string(raw)
-		for _, cond := range []string{"min-width: 1280px", "min-width: 768px"} {
+		for _, cond := range []string{"width >= 1280px", "width >= 768px"} {
 			headers, bodies := textsizeBlocks(css, cond)
 			if len(headers) == 0 {
 				t.Errorf("%s: no %q blocks found", name, cond)
@@ -53,8 +53,8 @@ func TestLargeTextShellGuard(t *testing.T) {
 			}
 		}
 		// Each guarded 768 block has a 960 twin for large text with the same body.
-		_, tablet := textsizeBlocks(css, "(min-width: 768px) {")
-		_, twins := textsizeBlocks(css, "(min-width: 960px) {")
+		_, tablet := textsizeBlocks(css, "(width >= 768px) {")
+		_, twins := textsizeBlocks(css, "(width >= 960px) {")
 		if len(tablet) != len(twins) {
 			t.Errorf("%s: %d tablet blocks but %d large-text twins", name, len(tablet), len(twins))
 			continue

@@ -93,7 +93,7 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 .ts-series__by { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; }
 
 /* Phone: the actions are one bar, like the player's */
-@media (max-width: 767.98px) {
+@media (width < 768px) {
   .ts-book__acts { border: 1px solid var(--line-strong); border-radius: var(--radius-md); overflow: hidden; }
   .ts-book__acts > * { flex: 1; display: flex; }
   .ts-book__acts > * + * { border-left: 1px solid var(--line-strong); }
@@ -102,7 +102,7 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   .ts-book__acts .ts-btn:hover { background: var(--raised-hover); }
 }
 
-@media (min-width: 768px) {
+@media (width >= 768px) {
   .ts-book { --ts-book-pad: var(--space-24); display: flow-root; }
   .ts-book__band { height: 26.25rem; }
   .ts-book__band.ts-band-dark-1, .ts-book__band.ts-band-dark-2, .ts-book__band.ts-band-dark-3 { --ts-band-max: 70%; }
@@ -124,7 +124,7 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   .ts-book__acts form { display: flex; align-items: center; }
 }
 
-@media (min-width: 1280px) {
+@media (width >= 1280px) {
   .ts-book { --ts-book-pad: var(--space-32); display: flex; flex-direction: column; }
   .ts-book__band { height: 32.5rem; }
   .ts-book > :not(.ts-book__band) { width: 100%; max-width: 62.5rem; align-self: center; }

@@ -1,7 +1,7 @@
 /* The Now playing panel (desktop, 1280 px and up). It sits under the full player's top in the same
    scroll area, so there is one scroll and no empty space. Below 1280 px it does not exist. */
 .ts-np { display: none; }
-@media (min-width: 1280px) {
+@media (width >= 1280px) {
   /* Larger text (P3-11) uses the tablet layout up to any width, so the panel does not exist there: the
      transport and the settings bar stay in the full player. */
   :where(html:not([data-text-size="large"])) {

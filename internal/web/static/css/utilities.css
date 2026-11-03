@@ -27,16 +27,16 @@ html:has(.ts-sheet-layer, dialog.ts-player[open]) { overscroll-behavior-y: none;
 .ts-gap-32 { gap: var(--space-32); }
 .ts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr)); gap: var(--space-16); }
 .ts-grid--covers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (min-width: 768px) { .ts-grid--covers { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
-@media (min-width: 900px) { .ts-grid--covers { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
-@media (min-width: 1280px) { .ts-grid--covers { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
-@media (min-width: 1600px) { .ts-grid--covers { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+@media (width >= 768px) { .ts-grid--covers { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (width >= 900px) { .ts-grid--covers { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (width >= 1280px) { .ts-grid--covers { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+@media (width >= 1600px) { .ts-grid--covers { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
 /* Larger text (P3-11): fewer, larger covers: 2, 3 (768), 4 (900), 5 (1280), 6 (1600) across. */
 html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 768px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (min-width: 900px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (min-width: 1280px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
-@media (min-width: 1600px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (width >= 768px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (width >= 900px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (width >= 1280px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (width >= 1600px) { html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .ts-center { max-inline-size: var(--size-content-max); margin-inline: auto; }
 .ts-measure { max-inline-size: var(--size-measure); }
 .ts-switcher { display: flex; flex-wrap: wrap; gap: var(--space-16); }
@@ -47,7 +47,7 @@ html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(2,
 
 /* Accessibility and safe areas */
 .ts-sr-focusable:not(:focus-visible) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.ts-sr-focusable:focus-visible { position: fixed; top: var(--space-8); left: var(--space-8); z-index: 30; padding: var(--space-12) var(--space-16);
+.ts-sr-focusable:focus-visible { position: fixed; top: var(--space-8); left: calc(var(--app-gutter) + var(--space-8)); z-index: 30; padding: var(--space-12) var(--space-16);
   border-radius: var(--radius-md); background: var(--raised); color: var(--ink); box-shadow: var(--shadow-float); }
 .ts-safe-top { padding-block-start: max(var(--space-16), env(safe-area-inset-top)); }
 .ts-safe-bottom { padding-block-end: max(var(--space-16), env(safe-area-inset-bottom)); }
