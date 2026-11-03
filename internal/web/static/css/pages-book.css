@@ -62,6 +62,10 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 .ts-book__desc { margin: 0; font-size: 1.0625rem; line-height: 1.625rem; white-space: pre-line; }
 .ts-book__more summary { margin-left: calc(var(--space-12) * -1); display: inline-flex; list-style: none; cursor: pointer; }
 .ts-book__more summary::-webkit-details-marker { display: none; }
+/* Open, the control says "Show less" and moves below the text it closes. */
+.ts-book__more[open] { position: relative; padding-bottom: calc(var(--size-tap) + var(--space-4)); }
+.ts-book__more[open] > summary { position: absolute; left: 0; bottom: 0; }
+.ts-book__more[open] .ts-more-closed, .ts-book__more:not([open]) .ts-more-open { display: none; }
 .ts-book__aboutchapters { display: none; }
 
 /* Rails: below 1280 only under About */

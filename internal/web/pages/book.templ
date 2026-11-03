@@ -76,6 +76,8 @@ type BookView struct {
 	// The description (Intro, then Rest behind MoreLabel) shows in the header on a wide screen and
 	// in the About panel otherwise.
 	Intro, Rest, MoreLabel string
+	// LessLabel replaces MoreLabel while the rest is open; the control then sits below the text.
+	LessLabel string
 	// The rails: "More in {series}" with its tiles (SeriesHref is the series page, StartHref and
 	// StartLabel the "Start series" link, empty when it does not apply) and "Also narrated by".
 	SeriesTitle, SeriesHref string
@@ -301,7 +303,7 @@ templ Book(v BookView) {
 					<p class="ts-book__desc">{ v.Intro }</p>
 					if v.Rest != "" {
 						<details class="ts-book__more">
-							<summary class="ts-btn ts-btn--quiet">{ v.MoreLabel }</summary>
+							<summary class="ts-btn ts-btn--quiet"><span class="ts-more-closed">{ v.MoreLabel }</span><span class="ts-more-open">{ v.LessLabel }</span></summary>
 							<p class="ts-book__desc">{ v.Rest }</p>
 						</details>
 					}
@@ -354,7 +356,7 @@ templ bookAbout(v BookView) {
 			<p class="ts-book__desc">{ v.Intro }</p>
 			if v.Rest != "" {
 				<details class="ts-book__more">
-					<summary class="ts-btn ts-btn--quiet">{ v.MoreLabel }</summary>
+					<summary class="ts-btn ts-btn--quiet"><span class="ts-more-closed">{ v.MoreLabel }</span><span class="ts-more-open">{ v.LessLabel }</span></summary>
 					<p class="ts-book__desc">{ v.Rest }</p>
 				</details>
 			}

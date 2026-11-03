@@ -124,7 +124,7 @@ func bookHeader(d library.BookDetail, tab string) pages.BookView {
 		BackHref: "/libraries", BackLabel: bookBack,
 		Authors: bookLinks(c.Authors, "authors"), Narrators: bookLinks(c.Narrators, "narrators"),
 		ByLabel: bookBy, NarratedLabel: bookNarratedBy, BylineSep: bookBylineSep,
-		MoreLabel: bookMore,
+		MoreLabel: bookMore, LessLabel: bookLess,
 	}
 	v.Intro, v.Rest = bookIntro(b.Description)
 	if len(d.Series) > 0 {

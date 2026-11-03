@@ -137,8 +137,8 @@ func nowPanelDesktop(t *testing.T, e *playerEnv, w int, out string) {
 
 	// About: the summary is clamped until Read more opens it; series, details, genres and more by.
 	var ab struct {
-		Clamp, ClampOpen, Series, Here, HereText, Genres, Covers, Dts, EmptyDd, Closed, Open, Label, TabLabel string
-		Rows                                                                                                  int
+		Clamp, ClampOpen, Series, Here, HereText, Genres, Covers, Dts, EmptyDd, Closed, Open, Label, TabLabel, LessBelow string
+		Rows                                                                                                             int
 	}
 	tab.Eval(`(() => {
 	  const q = (s) => document.querySelector("#now-panel " + s), all = (s) => [...document.querySelectorAll("#now-panel " + s)];
@@ -148,12 +148,15 @@ func nowPanelDesktop(t *testing.T, e *playerEnv, w int, out string) {
 	  more.open = true;
 	  const clampOpen = getComputedStyle(desc).display + "/" + getComputedStyle(desc).webkitLineClamp;
 	  const open = vis(q(".ts-np__more-open")), closed = vis(q(".ts-np__more-closed"));
+	  // Open, "Show less" sits below the rest of the text, not between the two parts.
+	  const rest = more.querySelector(".ts-np__desc").getBoundingClientRect(), less = more.querySelector("summary").getBoundingClientRect();
+	  const lessBelow = less.top >= rest.bottom - 1 ? "yes" : "no: summary top " + less.top + ", text bottom " + rest.bottom;
 	  more.open = false;
 	  const here = q('.ts-np__seriesitem[aria-current="true"]');
 	  return { Clamp: clamp, ClampOpen: clampOpen, Series: all(".ts-np__seriesitem").length + "", Here: here ? "1" : "0",
 	    HereText: here ? here.textContent.replace(/\s+/g, " ") : "", Genres: all(".ts-np__genres a").length + "", Covers: all(".ts-np__morebook").length + "",
 	    Dts: all(".ts-np__credits dt").map((x) => x.textContent.trim()).join(","), EmptyDd: all(".ts-np__credits dd").filter((x) => !x.textContent.trim()).length + "",
-	    Open: open, Closed: closed, Label: q("aside, .ts-np") ? document.getElementById("now-panel").getAttribute("aria-label") : "",
+	    Open: open, Closed: closed, LessBelow: lessBelow, Label: q("aside, .ts-np") ? document.getElementById("now-panel").getAttribute("aria-label") : "",
 	    TabLabel: q(".ts-np__tablist").getAttribute("aria-label"), Rows: all(".ts-np__credits dt").length };
 	})()`, &ab)
 	if ab.Clamp != "6" || !strings.HasPrefix(ab.ClampOpen, "block") {
@@ -161,6 +164,9 @@ func nowPanelDesktop(t *testing.T, e *playerEnv, w int, out string) {
 	}
 	if ab.Open != "Show less" || ab.Closed != "" {
 		t.Errorf("%d: Read more open shows %q and closed shows %q", w, ab.Open, ab.Closed)
+	}
+	if ab.LessBelow != "yes" {
+		t.Errorf("%d: Show less is not below the text: %s", w, ab.LessBelow)
 	}
 	if ab.Series != "3" || ab.Here != "1" || !strings.Contains(ab.HereText, "here") {
 		t.Errorf("%d: series rows %s, current %s, text %q", w, ab.Series, ab.Here, ab.HereText)

@@ -29,6 +29,9 @@
 .ts-np__more > summary { display: inline-flex; list-style: none; cursor: pointer; }
 .ts-np__more > summary::-webkit-details-marker { display: none; }
 .ts-np__more[open] .ts-np__more-closed, .ts-np__more:not([open]) .ts-np__more-open { display: none; }
+/* Open, "Show less" moves below the text it closes. */
+.ts-np__more[open] { position: relative; padding-bottom: calc(var(--size-tap) + var(--space-4)); }
+.ts-np__more[open] > summary { position: absolute; left: 0; bottom: 0; }
 .ts-np__empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); padding: var(--space-16); border: 1px dashed var(--line-strong); border-radius: var(--radius-md); color: var(--ink-muted); font-size: 0.9375rem; line-height: 1.375rem; }
 
 .ts-np__series { border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }

@@ -9,6 +9,7 @@ const (
 	bookTabChapters = "Chapters"
 	bookTabDetails  = "Details"
 	bookMore        = "More"
+	bookLess        = "Show less"
 	bookBy          = "by"
 	bookNarratedBy  = "Narrated by"
 	// Board: SeriesPhone.
