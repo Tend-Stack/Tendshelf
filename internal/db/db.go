@@ -19,7 +19,7 @@ const ApplicationID int32 = 0x54534846
 
 // SchemaVersion is the newest schema this binary understands. It equals the
 // number of the last embedded migration.
-const SchemaVersion = 10
+const SchemaVersion = 11
 
 var (
 	// ErrSchemaTooNew means the database was written by a newer Tendshelf.
