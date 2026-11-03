@@ -32,6 +32,7 @@ type Step struct {
 	Count    int    `json:"count,omitempty"`
 	Code     string `json:"code,omitempty"`
 	Cached   bool   `json:"cached,omitempty"` // answered from the saved copy, nothing was sent
+	Sent     int    `json:"sent,omitempty"`   // requests this step really sent to the site
 }
 
 // recorder collects the steps of one lookup and hands a copy to emit after every change.
@@ -133,6 +134,7 @@ func (r *recorder) end(count int, err error) {
 	default:
 		s.State = StepNone
 	}
+	s.Sent = r.calls - r.hit
 	s.Cached = err == nil && r.calls > 0 && r.hit == r.calls
 	r.cur = -1
 	r.publish()

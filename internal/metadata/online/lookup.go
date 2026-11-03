@@ -100,6 +100,35 @@ func (c *Client) Lookup(ctx context.Context, q Query, providers []string) (Resul
 // LookupSteps is Lookup that also tells onStep the log so far, a copy each time a step starts or
 // ends. The finished log is in Result.Steps.
 func (c *Client) LookupSteps(ctx context.Context, q Query, providers []string, onStep func([]Step)) (Result, error) {
+	return c.LookupWith(ctx, q, providers, LookupOptions{OnStep: onStep})
+}
+
+// LookupOptions tunes one lookup. MaxAudnexusBooks limits how many Audible matches get a detail
+// request each (0 means all, at most ten); OnStep is told the log as in LookupSteps.
+type LookupOptions struct {
+	MaxAudnexusBooks int
+	OnStep           func([]Step)
+}
+
+type maxBooksKey struct{}
+
+// SentBy is how many requests were really sent (not answered from the saved copy), by provider.
+func (r Result) SentBy() map[string]int {
+	out := map[string]int{}
+	for _, s := range r.Steps {
+		if s.Sent > 0 {
+			out[s.Provider] += s.Sent
+		}
+	}
+	return out
+}
+
+// LookupWith is LookupSteps with options.
+func (c *Client) LookupWith(ctx context.Context, q Query, providers []string, o LookupOptions) (Result, error) {
+	onStep := o.OnStep
+	if o.MaxAudnexusBooks > 0 {
+		ctx = context.WithValue(ctx, maxBooksKey{}, o.MaxAudnexusBooks)
+	}
 	q = q.clean()
 	if q.Title == "" && q.ASIN == "" && q.ISBN == "" {
 		return Result{}, ErrEmptyQuery
@@ -241,6 +270,9 @@ func (c *Client) searchAudnexus(ctx context.Context, q Query) ([]Book, error) {
 			return nil, err
 		}
 		asins = parseAudibleProducts(raw)
+		if n, _ := ctx.Value(maxBooksKey{}).(int); n > 0 && len(asins) > n {
+			asins = asins[:n]
+		}
 		rec.end(len(asins), nil)
 	}
 	order := append([]string(nil), audnexusRegions...)
