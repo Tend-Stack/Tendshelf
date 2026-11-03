@@ -17,16 +17,30 @@ templ BookCard(v CardView) {
 
 // BookRow is one book in the list view: a 56 px cover, the title, "{authors} · {length}".
 templ BookRow(v CardView) {
+	@BookRowWith(v, rowMeta(v), false, nil)
+}
+
+// BookRowWith is BookRow with its own second line and an optional control after the link (the offline
+// shell's play button). ready puts a check before the meta, the "Ready offline" mark.
+templ BookRowWith(v CardView, meta string, ready bool, action templ.Component) {
 	<div class="ts-row">
 		<a class="ts-row__main" href={ templ.SafeURL(v.Href) }>
 			@Cover(v, "56")
 			<span class="ts-row__text">
 				<span class="ts-row__title">{ v.Title }</span>
-				if meta := rowMeta(v); meta != "" {
-					<span class="ts-row__meta ts-truncate">{ meta }</span>
+				if meta != "" {
+					<span class="ts-row__meta ts-truncate">
+						if ready {
+							@Icon("check", false)
+						}
+						{ meta }
+					</span>
 				}
 			</span>
 		</a>
+		if action != nil {
+			@action
+		}
 	</div>
 }
 

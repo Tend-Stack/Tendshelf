@@ -40,6 +40,10 @@ func (s *server) getStream(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	download, ok := downloadParam(w, r)
+	if !ok {
+		return
+	}
 	f, err := s.lib.AudioFile(r.Context(), r.PathValue("audioFileID"))
 	if errors.Is(err, library.ErrNotFound) {
 		s.notFound(w, r)
@@ -57,7 +61,30 @@ func (s *server) getStream(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	s.serveAudio(w, r, f, compat, "private, no-cache")
+	cacheControl := "private, no-cache"
+	if download {
+		// Saving a copy needs the download right, not just the listen right, and the answer is never
+		// kept by a cache: the offline manager stores the bytes itself.
+		if !s.can.Can(r.Context(), currentUser(r), share.DownloadBook, share.Target{Kind: share.TargetBook, ID: book.ID, LibraryID: book.LibraryID}) {
+			s.plainError(w, r, http.StatusForbidden, downloadOffAnswer)
+			return
+		}
+		cacheControl = "private, no-store"
+	}
+	s.serveAudio(w, r, f, compat, cacheControl)
+}
+
+// downloadParam reads ?download=1, which marks a request made by the offline download manager. Any
+// other value is answered 400 here and ok is false.
+func downloadParam(w http.ResponseWriter, r *http.Request) (download, ok bool) {
+	if q := r.URL.Query(); q.Has("download") {
+		if q.Get("download") != "1" {
+			plainError(w, r, http.StatusBadRequest, "Bad download value.")
+			return false, false
+		}
+		return true, true
+	}
+	return false, true
 }
 
 // compatParam reads ?compat=1. Any other value is answered 400 here and ok is false.

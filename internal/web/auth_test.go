@@ -499,7 +499,7 @@ func TestLogout(t *testing.T) {
 		t.Errorf("GET /logout signed in: %d", rec.Code)
 	}
 	rec := a.do(http.MethodPost, "/logout", url.Values{"_csrf": {tok}}, nil, own)
-	if rec.Code != http.StatusSeeOther || location(rec) != "/login" {
+	if rec.Code != http.StatusSeeOther || location(rec) != "/login?signed_out=1" {
 		t.Fatalf("logout: %d -> %q", rec.Code, location(rec))
 	}
 	gone := cookieNamed(rec, "ts_session")

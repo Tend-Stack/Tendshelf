@@ -1,0 +1,37 @@
+package components
+
+// OfflineMsgs are the words of the offline banner. offline.js shows one of them in #ts-offline; the
+// words live here so the script carries no copy.
+type OfflineMsgs struct {
+	Offline, Unreachable, Back, Retry string
+}
+
+// OfflineBanner is the hidden status bar offline.js fills when the browser is offline or the server
+// cannot be reached. It sits above the shell, under the top safe area. The words ride on data
+// attributes; data-ts-downloads-src is where the script finds the download manager when a page needs
+// it (left out until that script exists).
+templ OfflineBanner(p Page) {
+	<div
+		id="ts-offline"
+		class="ts-offline"
+		role="status"
+		hidden
+		if p.Assets.Has("js/downloads.js") {
+			data-ts-downloads-src={ p.Assets.URL("js/downloads.js") }
+		}
+		data-ts-msg-offline={ p.Offline.Offline }
+		data-ts-msg-unreachable={ p.Offline.Unreachable }
+		data-ts-msg-back={ p.Offline.Back }
+	>
+		<p class="ts-offline__text" data-ts-offline-text></p>
+		<a class="ts-btn ts-btn--quiet ts-offline__retry" href="/" data-ts-offline-retry hidden>{ p.Offline.Retry }</a>
+	</div>
+}
+
+// OfflineScript loads offline.js on Layout and Frame pages (never on share-link pages). It is left
+// out while the file does not exist, so the page never names an unknown asset.
+templ OfflineScript(p Page) {
+	if p.Assets.Has("js/offline.js") {
+		<script type="module" async src={ p.Assets.URL("js/offline.js") }></script>
+	}
+}

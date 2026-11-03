@@ -3,6 +3,7 @@ package components
 import (
 	"encoding/json"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/web/static"
@@ -37,6 +38,16 @@ type Page struct {
 	Shelves []ShelfLink
 	// Player holds the words of the mini-player and the keyboard sheet (Layout only).
 	Player PlayerMsgs
+
+	// Person is the signed-in person's id, written on <html> so offline.js can tell a change of
+	// person (Layout only). ChunkBytes is the size of one offline download request.
+	Person     string
+	ChunkBytes int
+	// Offline holds the words of the offline banner (Layout only).
+	Offline OfflineMsgs
+	// NoInstall leaves out the install links (manifest, Home Screen icon and title). Share-link pages
+	// set it: they are not part of the installed app.
+	NoInstall bool
 
 	// prefetch is set by Layout: the page stylesheets this page does not link itself.
 	prefetch []string
@@ -89,10 +100,15 @@ templ Layout(p Page, body templ.Component) {
 		if p.TextSize == "large" {
 			data-text-size="large"
 		}
+		if p.Person != "" {
+			data-ts-person={ p.Person }
+			data-ts-chunk={ strconv.Itoa(p.ChunkBytes) }
+		}
 	>
 		@Head(p.withPrefetch(), layoutStyles()...)
 		<body hx-boost:inherited="target:#main select:#main swap:outerSync transition:true" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
+			@OfflineBanner(p)
 			<div class="ts-shell">
 				@TabBar(p.Current)
 				@SideRail(p.Current)
@@ -117,6 +133,7 @@ templ Layout(p Page, body templ.Component) {
 			<script type="module" async src={ p.Assets.URL("js/player-full.js") }></script>
 			<script type="module" async src={ p.Assets.URL("js/waveform.js") }></script>
 			<script type="module" async src={ p.Assets.URL("js/now-panel.js") }></script>
+			@OfflineScript(p)
 		</body>
 	</html>
 }
@@ -151,6 +168,11 @@ templ Head(p Page, extraCSS ...string) {
 			<link rel="prefetch" as="style" href={ p.Assets.URL(css) }/>
 		}
 		<link rel="icon" type="image/svg+xml" href={ p.Assets.URL("img/tendshelf-app-icon.svg") }/>
+		if !p.NoInstall {
+			<link rel="manifest" href="/manifest.webmanifest"/>
+			<link rel="apple-touch-icon" href={ p.Assets.URL("img/apple-touch-icon.png") }/>
+			<meta name="apple-mobile-web-app-title" content="Tendshelf"/>
+		}
 		<script src={ p.Assets.URL("vendor/htmx-4.0.0.min.js") } defer></script>
 		<script type="module" src={ p.Assets.URL("js/shell.js") }></script>
 		<script type="module" src={ p.Assets.URL("js/copy.js") }></script>

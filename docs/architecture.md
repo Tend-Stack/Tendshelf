@@ -233,7 +233,7 @@ HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id
 
 Details, cover, author photo and write routes (M4; the patterns are in `routes_details.go`, `routes_cover_pick.go`, `routes_author.go`, `routes_write.go` and `routes_nav.go`): `POST /books/{id}/match` (starts a lookup job), `POST /books/{id}/match/apply`, `GET /books/{id}/match/{job}/cover/{n}`, `POST /books/{id}/details/reset`, `POST /books/{id}/cover` (choose a cover), `POST /books/{id}/cover/upload`, `GET /covers/{bookID}/choices/{coverID}`, `POST /books/{id}/write`, `POST /books/{id}/write/confirm` (Looks good), `POST /books/{id}/write/undo` (Undo), `POST /people/{id}/lookup` and `GET /people/{id}/photo` (authors), `POST /admin/online` (the `online.enabled` switch), `POST /me/nav` and `POST /hx/me/nav` (sidebar setting). `GET /hx/jobs/{id}` answers by the job's kind; a lookup job needs `?book=`.
 
-Media and system: `GET /stream/{audioFileID}`, `GET /peaks/{audioFileID}` (waveform peaks, binary, 404 while being made), `GET|POST /progress/{bookID}` (JSON, session + CSRF header or
+Media and system: `GET /stream/{audioFileID}` (`?download=1` marks an offline copy), `GET /offline`, `GET /sw.js`, `GET /manifest.webmanifest`, `GET /peaks/{audioFileID}` (waveform peaks, binary, 404 while being made), `GET|POST /progress/{bookID}` (JSON, session + CSRF header or
 `_csrf` body field, 4 KiB, form-encoded), `GET /covers/{bookID}?w=320`,
 `GET /text/{editionID}/chapters/{idx}/timing.json` (ETag = chapter key), `GET /text/{editionID}/res/{resID}`
 (raster images only), `GET /text/{editionID}/original` and `GET /exports/{id}` (`download_text`), `GET /healthz`,
@@ -491,13 +491,36 @@ and its `/hx/dev/*` fragments; release builds do not register them.
 
 ## PWA and offline (P4)
 
-Service worker (`/sw.js`, plain JS) caches the app shell and visited pages. "Download" stores a book's
-files in Cache Storage after `navigator.storage.persist()`; offline playback answers Range requests from
-the cached response. Progress, bookmarks and notes made offline queue in IndexedDB and go to
-`POST /api/v1/progress/batch` and the bookmark/note endpoints on reconnect. iOS storage limits and
-eviction must be measured and stated in the UI (guess: large books may be evicted on iOS). With
-`read_text` and an aligned edition, Download also stores chapter fragments, timing JSON and images
-(keyed by alignment ID); offline highlights queue with bookmarks and notes.
+M3a offline pocket ([decision 0012](decisions/0012-offline-pocket.md), plan [m3-offline.md](plans/m3-offline.md));
+this replaces the earlier sketch (app shell and visited pages in the cache, an IndexedDB queue).
+
+- **Install files** (public, on the outer mux beside `/static/`, outside the gate and CSRF): `GET /sw.js` is
+  `self.TS_BUILD = {"build":"<12 hex>","assets":[...hashed /static/ URLs...]};` followed by
+  `static/js/sw.js` (`Cache-Control: no-cache`, ETag `"sw-<build>"`, 304, gzip). `build` is a hash of the
+  server version and every hashed asset name (`static.Set.Build`), so any new asset makes a new worker and a
+  new `ts-static-<build>` cache. `GET /manifest.webmanifest` is the web app manifest (standalone, hashed
+  192/512/maskable PNG icons and the SVG). Layout and Frame heads link the manifest, the 180 px
+  `apple-touch-icon` and the Home Screen title; share-link pages do not (`Page.NoInstall`).
+- **`GET /offline?books=a,b`** (signed in, any role): the shell the worker shows for a navigation it cannot
+  send to the server, `Cache-Control: private, no-store`. Up to 200 ids; each is checked again for
+  `ListenBook` and a streamable file and skipped silently otherwise, so the page never names a book the
+  person may not play. It lists the ready books (play control, "Ready offline · Chapter n"), then up to five
+  recent unfinished books that need a connection.
+- **`GET /stream/{id}?download=1`**: needs `share.DownloadBook` as well as `ListenBook` (403 plain text
+  otherwise), `Cache-Control: private, no-store`; `GET /api/v1/books/{id}` is the download manifest.
+- **Layout contract** for `js/offline.js`: `<html data-ts-person data-ts-chunk>` and a hidden `#ts-offline`
+  banner (words on `data-ts-msg-*`, the download manager's URL on `data-ts-downloads-src`) before `.ts-shell`.
+  The page scripts are linked only when the file exists. Sign-out answers `Clear-Site-Data: "storage"` and
+  redirects to `/login?signed_out=1`, where the page wipes what the header could not (insecure address,
+  older browser).
+- **Rule** (also in AGENTS.md): the worker answers only hashed `/static/` files and, from the signed-in person's
+  own `ts-person-<id>` cache, the stream, cover, peaks and player fragment of a downloaded book, plus the
+  `/offline` shell for a navigation that cannot reach the server. Nothing else is cached or answered, and a
+  change of person or a sign-out deletes the cache and the offline records.
+- Progress, bookmarks and notes made offline wait in `localStorage` (`ts.pending`, `ts.offline.marks`) and go
+  to `POST /api/v1/progress/batch` and the bookmark endpoint on reconnect. iOS storage limits and eviction are
+  stated in the UI (Safari may clear downloads after a week without a visit). With `read_text` and an aligned
+  edition, Download will also store chapter fragments, timing JSON and images (later, read-along).
 
 ## Read-along (R)
 
