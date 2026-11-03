@@ -147,7 +147,7 @@ func TestCSSBudget(t *testing.T) {
 	// 18.5 KB: the operator approved the raise on 2026-11-03 for the 2560 px app cap and the range-syntax
 	// breakpoints (18,563 bytes at the time).
 	// 19.5 KB: native feel (decision 0011), approved by the operator on 2026-11-03.
-	const coreBudget = 19*1024 + 512
+	const coreBudget = 19*1024 + 768 // offline banner (operator, 2026-11-03: 19.75 KB)
 	if coreGzip > coreBudget {
 		t.Errorf("core CSS %d gzip bytes, budget %d (raw %d)", coreGzip, coreBudget, coreRaw)
 	}
