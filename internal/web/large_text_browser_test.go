@@ -12,7 +12,7 @@ import (
 func TestBrowserLargeTextLive(t *testing.T) {
 	e := playerApp(t)
 	tab := fullpOpen(t, e, 1440, 900, true)
-	tab.Eval(`window.location.assign("/me/settings")`, nil)
+	tab.Eval(`window.location.assign("/me/settings/accessibility")`, nil)
 	tab.WaitFor(`!!document.querySelector('label[for="st-text-large"]')`, 10*time.Second)
 	var side struct {
 		Root  float64

@@ -125,7 +125,7 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 }
 
 @media (width >= 1280px) {
-  .ts-book { --ts-book-pad: var(--space-32); display: flex; flex-direction: column; }
+  .ts-book { --ts-book-pad: var(--space-12); display: flex; flex-direction: column; } /* .ts-main's side padding from 1280 px (bundle.css) */
   .ts-book__band { height: 32.5rem; }
   .ts-book > :not(.ts-book__band) { width: 100%; max-width: 62.5rem; align-self: center; }
   .ts-book > .ts-book__back { width: auto; align-self: flex-start; }
