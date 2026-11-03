@@ -2,6 +2,14 @@
 
 Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-numbers.md)). Dates are UTC.
 
+## Unreleased
+
+- **Book details.** Look up a book online and compare the results field by field before you apply them. Change or upload
+  a cover. Author photos and bios. Read sidecar files that sit next to a book. Write details into the audio file with
+  "Looks good", and Undo puts the original back.
+- **Sidebar.** On a computer the sidebar collapses into a rail of icons and opens again.
+- **Library header.** Tidier: one Filter menu, Category, and sorting under Show.
+
 ## 2026.1.0
 
 The first release. Tendshelf is a self-hosted audiobook server and player for a family: one program, your

@@ -70,20 +70,21 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `books` | `id`, `library_id`, `folder_id` (cascade on folder removal; the scan works per folder), `root_path` UNIQUE, `title`, `sort_title`, `subtitle`, `description`, `publisher`, `published_year`, `language`, `isbn`, `asin`, `abridged`, `dramatized`, `explicit`, `duration_ms`, `cover_id`, `refused_reason` NULL, `added_at`, `updated_at`, `missing_since` NULL | Resolved values (cache of the merge). |
 | `audio_files` | `id`, `book_id`, `path` UNIQUE, `idx`, `size`, `mtime_ns`, `quick_hash`, `sha256` NULL, `container`, `codec`, `bitrate`, `channels`, `sample_rate`, `duration_ms`, `offset_ms`, `encrypted`, `probe_json`, `probe_error` NULL, `missing_since` NULL, `updated_at` | `probe_error` (migration 0003) holds the media error code of a file that could not be read; a file is settled when `probe_json` or `probe_error` is set, so a damaged file never blocks its book. `offset_ms` places the file on the global timeline. `missing_since` flags a lost part of a multi-file book instead of dropping it. `quick_hash` = SHA-256 of size + first and last 1 MiB. |
 | `chapters` | `book_id`, `idx`, `start_ms`, `end_ms`, `title`, `source`; PK (`book_id`,`idx`) | Global timeline. Source: 'file','files','sidecar','online','user'. |
-| `metadata_values` | `book_id`, `field`, `source`, `value_json`, `observed_at`; PK (`book_id`,`field`,`source`) | Every candidate value with its source. `internal/metadata` (job `metadata.local`, queued when a book settles) writes the `folder` and `tags` rows and resolves each field by the fixed order user, opf, txt, nfo, tags, folder, online; `user` rows are never written by a job and win even when empty. |
+| `metadata_values` | `book_id`, `field`, `source`, `value_json`, `observed_at`; PK (`book_id`,`field`,`source`) | Every candidate value with its source. `internal/metadata` (job `metadata.local`, queued when a book settles) writes the `folder` and `tags` rows and resolves each field by the fixed order user > metadata.json (source `json`) > opf > txt > nfo > tags > folder > online; `user` rows are never written by a job and win even when empty. |
 | `people` | `id`, `name`, `sort_name`, `description`, `image_id`, `asin` | Authors and narrators share one table. |
 | `book_people` | `book_id`, `person_id`, `role` ('author','narrator'), `idx` | |
 | `series` / `book_series` | `id`, `name`, `sort_name`, `description` / `book_id`, `series_id`, `sequence` TEXT, `idx` | Sequence is text ("1.5", "0"). |
 | `book_labels` | `book_id`, `kind` ('genre','tag'), `value` | |
 | `covers` | `id`, `book_id`, `source`, `mime`, `width`, `height`, `sha256`, `path`, `tint` NULL, `accent_json` NULL, `created_at` | Files under `<data>/covers/`; thumbnails under `<data>/cache/thumbs/`. `tint` is the sampled hex colour, `accent_json` the checked accent per theme (`dark`, `light`, `sepia`); NULL means the ember fallback. |
-| `online_cache` | `provider`, `query_key`, `response_json`, `fetched_at`; PK (`provider`,`query_key`) | Expires after 7 days. |
+| `online_cache` | `provider` (audnexus, audible, google, openlibrary, itunes), `query_key`, `response_json`, `fetched_at`; PK (`provider`,`query_key`) | Migration 0010. Expires after 7 days. |
+| `book_sidecars` | `book_id` PK (cascade on `books`), `signature`, `checked_at` | Migration 0010. The sidecar signature that tells a scan a book's sidecar files changed. |
 | `progress` | `user_id`, `book_id`, `position_ms`, `duration_ms`, `finished_at` NULL, `client_updated_at`, `server_updated_at`, `device_id`, `device_label`; PK (`user_id`,`book_id`); text columns (`position_source`, `text_edition_id`, `text_sid`, `text_off`) arrive with R5 | One row per person and book. A write applies only if its `client_updated_at` is strictly newer, compared and written in one statement; the client time is clamped to server now + 60 s, and explicit server acts (mark finished, listen again, "continue here") win. `device_id` and `device_label` only name the device for the "continue there?" prompt; they never decide access. A text update (R5) sets `position_ms` to the sentence start (or, in a gap, the previous timed sentence's end). |
 | `listening_sessions` | `id`, `user_id`, `book_id`, `device_id`, `started_at`, `ended_at`, `start_ms`, `end_ms`, `listened_ms`, `speed_pct` | Written with each progress save since P1c (same transaction); P4 reads it. A save extends the device's latest session unless the pause exceeds 60 s, the speed changed or the position jumped over 35 s beyond the audio played; `listened_ms` is wall-clock playing time reported by the device and capped at 10 min per save. |
 | `bookmarks` | `id`, `user_id`, `book_id`, `position_ms`, `note`, `created_at`, `updated_at`, `deleted_at`, `client_id` NULL (0008, unique per person) | Soft delete (the note is cleared) so offline clients sync deletions. `edition_id` and `sid` arrive with R4; `sid` is set when made in the text. |
 | `notes` | `id`, `user_id`, `book_id`, `highlight_id`, `body`, `created_at`, `updated_at`, `deleted_at` (R4) | A note on a text passage hangs on its highlight; a note on a moment is the bookmark's `note`. |
 | `shelves` / `shelf_items` | `id`, `owner_id`, `name` (1-80 characters, unique per owner ignoring case), `shared` (P3-6a: 1 = visible to members and staff, effective only while the owner is an enabled owner or admin), `created_at`, `updated_at` / `shelf_id`, `book_id`, `idx`, `added_at`; PK (`shelf_id`,`book_id`) | Schema v5 (P1b-8). Cascade on the owner and on the book. At most 200 shelves per person and 5,000 books per shelf. Every read filters on `owner_id` and on the person's book scope; rows of a hidden or missing book stay and reappear with it. |
 | `jobs` | `id`, `kind`, `state` ('queued','running','done','failed','cancelled','held'), `payload_json`, `result_json`, `error_code`, `error_text`, `attempts`, `max_attempts`, `lease_until`, `not_before`, `progress_json`, `created_by`, `created_at`, `updated_at` | |
-| `file_writes` | `id`, `job_id`, `audio_file_id`, `state` ('copying','verifying','swapped','confirmed','undone','failed'), `original_path`, `backup_path`, `temp_path`, `before_sha256`, `after_sha256`, `audio_hash`, `created_at`, `updated_at` | The write-details ledger; drives restart recovery and Undo. |
+| `file_writes` | `id`, `job_id`, `book_id`, `audio_file_id`, `state` ('copying','verifying','swapping','swapped','confirming','confirmed','undoing','undone','failed'), `original_path`, `backup_path`, `temp_path`, `before_sha256`, `after_sha256` NULL, `audio_hash`, `error_code` NULL, `created_by`, `created_at`, `updated_at` | Migration 0011. No foreign keys, so a row outlives a pruned job and a deleted book. The write-details ledger; drives restart recovery and Undo. |
 | `audit_log` | `id`, `at`, `user_id`, `action`, `target`, `detail_json` | Logins, invites, grants, file writes. |
 | `books_fts` | FTS5, contentless with delete, over title, subtitle, authors, narrators, series, description; rowid from `books_fts_ids`; kept by triggers on books, book_people, book_series, people and series names (migration 0004); `books_fts_vocab` feeds did-you-mean. | Notes are per user: searched with a user filter, not in this index. |
 | `user_settings` | `user_id`, `key`, `value_json`, `updated_at`; PK (`user_id`,`key`) | The one per-user settings store: typed in `users.Settings` (`ui.theme`, `ui.player_tint`, `ui.big_buttons`, `playback.speed`, `playback.skip_back_s`, `playback.skip_forward_s`, `playback.auto_rewind`, `playback.next_in_series`; the player reads them with `LoadSettings`), `reader.v1`, chosen edition per book `edition.<bookID>`. |
@@ -157,17 +158,20 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
   (play-button text 4.5:1, scrubber fill 3:1 on its ground). Failing or grey covers fall back to ember.
   Rules: handoff `docs/design/tendshelf-handoff/docs/HANDOFF.md`, "Cover accent and theme rules". The contrast theme never uses it. The handoff's example accent pairs were hand-tuned outside its own rules; Tendshelf follows the rules (goldens and ΔE_OK tolerances in internal/media/accent_test.go).
 - **Write details into the file** (P2): `ffmpeg -map 0 -c copy` with the new tags and chapters into a
-  temp file in the same directory; verify the audio stream hash (`-map 0:a -c copy -f hash`) equals the
+  temp file in the same directory, named `.<name>.tendshelf-new`; verify the audio stream hash (`-map 0:a -c copy -f hash`) equals the
   original's, duration within 50 ms, chapter count and times equal, tags read back; check free space
   (file size + 5 %) and refuse files modified in the last 10 minutes; rename original to
-  `<name>.before-tags.<ext>`, rename temp into place, record `file_writes` state `swapped`. "Looks good"
+  `.<name>.tendshelf-before`, rename temp into place, record `file_writes` state `swapped`. "Looks good"
   deletes the backup (`confirmed`); "Undo" restores it (`undone`). Restart recovery reads `file_writes`
   and completes or rolls back each half-done row; it never re-runs ffmpeg on its own.
+- **Detail data folders (M4)**: `<data>/covers/incoming/` holds staged cover uploads until a job adopts them (swept after 24 h);
+  `<data>/people/` holds author photos `<sha>.<ext>` and their 320 px thumbnails `<sha>-320.jpg`; `<data>/cache/online-covers/`
+  holds covers fetched by lookups.
 
 ## Background jobs
 
 Kinds: `scan.library`, `media.probe`, `media.cover`, `media.compat`, `metadata.local`,
-`metadata.online` (only user-triggered), `media.write_details`,
+`metadata.online` (only user-triggered), `metadata.online_author`, `media.cover_adopt`, `media.write_details`,
 `ebook.ingest` (R1), `align.book` (R3, states and resume in [read-along.md](read-along.md) section 2),
 `align.export_overlays` (R6).
 A job runner per kind with bounded concurrency (probe 2, compat 1, write_details 1, ingest 1, align 1, export 1). Leases of 60 s
@@ -215,15 +219,15 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 
 HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id}/items` with the same query as the page (infinite scroll; the sentinel is a link to the next page, so "Show more" works without JavaScript; a bad cursor is a 400 toast),
 `GET /hx/search/suggest?q=`,
-`POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}`,
-`POST /hx/books/{id}/match` (starts lookup job), `GET /hx/books/{id}/compare?candidate=`,
-`POST /hx/books/{id}/apply`. Read-along: `POST /hx/books/{id}/editions`
+`POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}`. Read-along: `POST /hx/books/{id}/editions`
 (upload), `POST /hx/editions/{id}/pair`, `POST /hx/editions/{id}/unpair`, `POST /hx/editions/{id}/default`,
 `DELETE /hx/editions/{id}` (forgets the edition; deletes only an uploaded copy), `POST /hx/editions/{id}/alignments`,
 `POST /hx/alignments/{id}/cancel|resume|discard`, `GET /hx/editions/{id}/alignment`,
 `GET /hx/books/{id}/read/chapters/{idx}?edition=`, `GET /hx/books/{id}/read/toc?edition=`, `POST /hx/me/reader-settings`,
 `GET|POST /hx/books/{id}/highlights`, `PATCH|DELETE /hx/highlights/{id}`, `POST /hx/editions/{id}/exports/overlays`,
 `POST /hx/admin/runtimes/check`.
+
+Details, cover, author photo and write routes (M4; the patterns are in `routes_details.go`, `routes_cover_pick.go`, `routes_author.go`, `routes_write.go` and `routes_nav.go`): `POST /books/{id}/match` (starts a lookup job), `POST /books/{id}/match/apply`, `GET /books/{id}/match/{job}/cover/{n}`, `POST /books/{id}/details/reset`, `POST /books/{id}/cover` (choose a cover), `POST /books/{id}/cover/upload`, `GET /covers/{bookID}/choices/{coverID}`, `POST /books/{id}/write`, `POST /books/{id}/write/confirm` (Looks good), `POST /books/{id}/write/undo` (Undo), `POST /people/{id}/lookup` and `GET /people/{id}/photo` (authors), `POST /admin/online` (the `online.enabled` switch), `POST /me/nav` and `POST /hx/me/nav` (sidebar setting). `GET /hx/jobs/{id}` answers by the job's kind; a lookup job needs `?book=`.
 
 Media and system: `GET /stream/{audioFileID}`, `GET /peaks/{audioFileID}` (waveform peaks, binary, 404 while being made), `GET|POST /progress/{bookID}` (JSON, session + CSRF header or
 `_csrf` body field, 4 KiB, form-encoded), `GET /covers/{bookID}?w=320`,
@@ -254,6 +258,8 @@ people, series and their links, `books_fts` (migrations 0001-0004), `shelves` an
 `progress`, `bookmarks` and `listening_sessions` (0006), `devices`, `invites`, `share_links` and `grants` (0007), `bookmarks.client_id`
 (0008) and the invite email columns (0009). A new database is migrated from empty to 9; an older one is backed up
 first (see `internal/db`).
+
+At M4 the schema is 11 (`SchemaVersion` in `internal/db/db.go`): `book_sidecars` and `online_cache` (0010), `file_writes` (0011).
 
 Size budgets (gzip bytes the server sends): core CSS at most 18 KB and each page file a limit in `TestCSSBudget`
 (`internal/web/static/motion_test.go`); the JavaScript limits are in the "Design regions" notes below (all app JS

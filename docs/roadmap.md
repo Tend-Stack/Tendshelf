@@ -18,7 +18,7 @@ themes.
 | M1 It plays | P1a-P1c | **Done 2026-11-03.** P1a, P1b and P1c built; the operator's phone check (Android Chrome, http on the LAN) passed on 2026-11-02/03: steps 1-8 and 10-14 pass, shake skipped (needs HTTPS); the four findings (tab bar, player fit, sheet drag-down, toast timeout) fixed and rechecked on the phone. iOS Safari not yet checked. | On main: `make check`, `make build` (CGO_ENABLED=0), real-ffmpeg targets, `make visual` (about 55 s) and `make visual-full` (about 147 s), `make perf` (Library interactive in a median 64 ms at 4x CPU slowdown, 240 ms at 8x, budget 300 ms), `make visual-webkit`; `TestRouteMatrix` covers all 47 routes for every role. Board audit: `docs/design/screens.md`. Push CI green; nightly CI green (run 9052 onward). Player: `make player` (first sound about 270 ms). |
 | M2 Family | P3 | **Done 2026-11-03, released as v2026.1.0.** P3-1 to P3-13, the desktop player bar and the Now playing panel; Research dropped (decision 0007). | The P3 status notes below; the route-matrix and leak-test table under "Exit check (P3-13)"; [CHANGELOG.md](../CHANGELOG.md). |
 | M3 Pocket | P4 | Not started | |
-| M4 Details | P2 | Not started | |
+| M4 Details | P2 | Done 2026-11-03 | [plan](plans/m4-details.md) |
 | M5 Read along | R1-R6 | Designed 2026-10-31 ([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)); UI designed in the handoff (`screens/reader/`). Dependencies await approval. | Design only. |
 | M6 Desktop | P5 | Not started | |
 | M7 Research | P6 | Dropped (decision 0007) | |
@@ -422,6 +422,10 @@ check), and offline progress syncs on reconnect.
 Exit: ported parser tables from the Extractor tests pass in Go; write-details round-trip on synthetic
 m4b, mp3 and flac with real ffmpeg (`TENDSHELF_TEST_FFMPEG`) keeps the audio hash; a crash injected at
 each `file_writes` state recovers correctly.
+
+**M4 status (Details)**: done 2026-11-03. Built in ten packages: M4-1 sidecars and precedence; M4-2 online client; M4-3 cover store; M4-4 lookup service; M4-5 write engine; M4-6 compare sheet; M4-7 write ledger with crash recovery; M4-8 cover picker and author details; M4-9 write details UI; M4-10 styles and captures. Precedence user > metadata.json > opf > txt > nfo > tags > folder > online. Lookups use Audnexus by default; "Search more places" adds Google Books, Open Library and Apple Books. The owner's switch `online.enabled` (default on) turns lookups off; scans never go online. Checks: `make check`, `make build`, `make player`, `make visual`, `make test-media` and `make test-mediajobs-real` (real ffmpeg: m4b, mp3 and flac keep the audio hash, Undo is byte-identical); 9 crash-injection points recover. Limits: the Audnexus author response was checked live once (2026-11-03); the `no_space` refusal is not exercised in a web test; one real-ffmpeg failure seen once by a builder did not reproduce in 9 later runs. Next: M3 Pocket.
+
+**Library header (decision 0008) status**: built 2026-11-03. One Filter menu adds a kind's chip only when it is picked (Author, Narrator, Series, Category, Length; kinds without data are hidden). Category is one multi-select menu. Show holds the show states and Sort by. The "Filter and sort" sheet and "More filters" are retired. Chips sit on one line with Show beside Grid/List. Typing a title and then picking a filter keeps the title. Checks: `make check`, `make build`, `TestVisualLibraryFilters` at 390, 768, 1024 and 1440 px.
 
 ## M5 Read along (R)
 
