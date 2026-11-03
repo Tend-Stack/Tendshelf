@@ -49,3 +49,17 @@ func TestNavSteadyBrowser(t *testing.T) {
 		})
 	}
 }
+
+// TestNavMarksOnClickBrowser: a destination is marked the moment it is clicked, not when its page
+// arrives (operator, 2026-11-03: the selected icon lagged behind the page).
+func TestNavMarksOnClickBrowser(t *testing.T) {
+	e := playerApp(t)
+	b := chromium(t)
+	tab := playerOpen(t, b, e.URL, 1440, 900)
+	var marked string
+	tab.Eval(`(() => { const link = document.querySelector('#nav-side [data-nav="/search"]'); link.click(); return link.getAttribute("aria-current") || "none"; })()`, &marked)
+	if marked != "page" {
+		t.Errorf("right after the click Search is marked %q, want page", marked)
+	}
+	tab.WaitFor(`location.pathname === "/search" && document.querySelectorAll('#nav-side [aria-current="page"]').length === 1`, 5*time.Second)
+}

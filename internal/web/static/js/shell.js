@@ -5,11 +5,7 @@ function isCurrent(href, path) {
   return href === "/" ? path === "/" : path === href || path.startsWith(href + "/");
 }
 
-document.addEventListener("htmx:after:swap", (event) => {
-  const target = event.detail && event.detail.ctx && event.detail.ctx.target;
-  const main = document.getElementById("main");
-  if (!main || (target && target !== main && !main.contains(target))) return;
-  const path = location.pathname;
+function markCurrent(path) {
   for (const link of document.querySelectorAll("nav [data-nav]")) {
     if (isCurrent(link.dataset.nav, path)) {
       link.setAttribute("aria-current", "page");
@@ -17,6 +13,20 @@ document.addEventListener("htmx:after:swap", (event) => {
       link.removeAttribute("aria-current");
     }
   }
+}
+
+// A destination is marked as soon as its request starts (htmx leaves modified clicks to the browser),
+// so the nav never lags behind the click; the swap below marks it again from the address.
+document.addEventListener("htmx:before:request", (event) => {
+  const link = event.target.closest("nav [data-nav]");
+  if (link) markCurrent(link.dataset.nav);
+});
+
+document.addEventListener("htmx:after:swap", (event) => {
+  const target = event.detail && event.detail.ctx && event.detail.ctx.target;
+  const main = document.getElementById("main");
+  if (!main || (target && target !== main && !main.contains(target))) return;
+  markCurrent(location.pathname);
   main.focus({ preventScroll: true });
 });
 
