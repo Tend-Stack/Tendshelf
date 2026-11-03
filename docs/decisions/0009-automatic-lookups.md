@@ -1,5 +1,5 @@
 # 0009 Automatic book-detail lookups
-Status: proposed (2026-11-03). Changes S4 of `docs/plans/m4-details.md`.
+Status: accepted (2026-11-03, the operator's request: "when importing books, ask the user to automatically pull book's details ... The same for libraries ... with good mechanism to avoid being blocked by the provider"). Changes S4 of `docs/plans/m4-details.md`.
 Context: S4 said every lookup needs a click and scans never go online. Owners asked to fill details for new
 books and whole libraries without a click per book.
 Decision: An owner or admin may turn on "Look up details online for new books" per library (off by default) and
