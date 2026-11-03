@@ -9,8 +9,12 @@
 /* Controls: the title field, the Filter and Show chips, then Grid/List at the right. The field takes a full
    line below 768 px; the chips wrap rather than overflow at any text size. */
 .ts-lib-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--space-8) var(--space-12); }
-.ts-lib-controls .ts-seg { margin-left: auto; }
+/* Order: title field, Filter, the kinds in use, then Show and Grid/List together at the right. */
+.ts-lib-controls #lib-menu-show { order: 1; margin-left: auto; }
+.ts-lib-controls .ts-seg { order: 2; }
 .ts-lib-menus { display: contents; }
+/* The kinds in use sit on the same line as Filter and Show and wrap only when the line is full. */
+.ts-lib-kinds, .ts-lib-kinds .ts-lib-filters { display: contents; }
 .ts-icon--sm { width: 1.125rem; height: 1.125rem; }
 .ts-lib-bar { flex: 1 1 100%; min-width: 0; }
 .ts-lib-bar .ts-filter-form { flex-direction: row; align-items: center; padding: 0; }
@@ -47,20 +51,21 @@
 .ts-lib-title { flex: 1 1 auto; min-width: 0; }
 
 @media (max-width: 767px) {
+  /* A phone keeps Filter, Show and Grid/List on one line; the kinds in use follow them. */
+  .ts-lib-kinds .ts-chipmenu { order: 3; }
   .ts-chipmenu[open] { flex: 1 1 100%; }
   .ts-chipmenu[open] > summary { width: 100%; justify-content: space-between; box-sizing: border-box; }
   .ts-chipmenu__body { max-width: none; box-shadow: none; }
 }
 /* Below 1024 px the row is too narrow for the words: Grid/List keep their names for a screen reader and
-   show only the icons, and the title field is narrower so Filter, Show and the switch share its line. */
+   show only the icons. */
 @media (max-width: 1023px) {
   .ts-lib-controls .ts-seg__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .ts-lib-controls .ts-seg__item { min-width: var(--size-tap); justify-content: center; padding-inline: 0; }
 }
 @media (min-width: 768px) {
-  .ts-lib-bar { flex: 0 1 16rem; }
   .ts-chipmenu__body { position: absolute; top: 100%; left: 0; z-index: 5; }
-  .ts-chipmenu--end .ts-chipmenu__body { left: auto; right: 0; }
+  .ts-chipmenu--end .ts-chipmenu__body, #lib-menu-show .ts-chipmenu__body { left: auto; right: 0; }
 }
 
 /* The list: a grid of cards, or rows */
@@ -82,8 +87,9 @@
 .ts-skeleton-card__line { height: 0.875rem; width: 100%; }
 .ts-skeleton-card__line--short { width: 60%; }
 
+/* From 1024 px the title field shares the line; below it takes its own line so a kind's menu has room. */
 @media (min-width: 1024px) {
-  .ts-lib-bar { flex-basis: 18.75rem; }
+  .ts-lib-bar { flex: 0 1 18.75rem; }
 }
 @media (min-width: 1280px) {
   .ts-lib-head { flex-direction: column; align-items: flex-start; gap: var(--space-4); }

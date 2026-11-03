@@ -291,6 +291,15 @@ templ Library(v LibraryView) {
 				@filterMenu(v.FilterMenu)
 				@filterMenu(v.ShowMenu)
 			</div>
+			<div id="lib-kinds" class="ts-lib-kinds">
+				if len(v.Kinds) > 0 {
+					<div class="ts-chip-set ts-lib-filters" role="group" aria-label="Filters">
+						for _, m := range v.Kinds {
+							@filterMenu(m)
+						}
+					</div>
+				}
+			</div>
 			<div class="ts-seg" role="group" aria-label="View">
 				<a
 					class="ts-seg__item"
@@ -313,15 +322,6 @@ templ Library(v LibraryView) {
 					<span class="ts-seg__text">List</span>
 				</a>
 			</div>
-		</div>
-		<div id="lib-kinds">
-			if len(v.Kinds) > 0 {
-				<div class="ts-chip-set ts-lib-filters" role="group" aria-label="Filters">
-					for _, m := range v.Kinds {
-						@filterMenu(m)
-					}
-				</div>
-			}
 		</div>
 		<div id="library-results" class="ts-lib-results">
 			if v.Match != "" {
