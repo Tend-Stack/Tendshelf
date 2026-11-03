@@ -288,7 +288,7 @@ func TestNoSkipCollision(t *testing.T) {
 var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// P3-11a: the live text-size change on the Settings page (about 0.1 KB), so 4.5 KB; to be approved by the operator.
 	// The nav marks a destination as its request starts (operator, 2026-11-03: shell.js 4.625 KB, total 38.375 KB).
-	"shell.js": {4*1024 + 640, 64 * 1024},
+	"shell.js": {4*1024 + 768, 64 * 1024}, // the most specific nav item wins (operator, 2026-11-03: 4.75 KB, total 38.5 KB)
 	// The plan said 9 KB, sized from the squeezed file (7.2 KB). The version written for reading
 	// (one statement per line, comments for the why) is 10.2 KB, so the limit is 11 KB; see the
 	// AGENTS.md rule: report an overrun, never squeeze.
@@ -317,7 +317,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // P3-11a (Larger text: the layout switch at the large-text width also lives in script) passes 36 KB; the
 // operator approved 38 KB on 2026-11-02, with room for M2's last packages.
 // Q3 (Up next autoplay and the three-tab keys) makes it 38.25 KB; approved by the operator on 2026-11-03.
-const jsTotalGzip = 38*1024 + 384 // 12.5 (player.js) + 4.625 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
+const jsTotalGzip = 38*1024 + 512 // 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

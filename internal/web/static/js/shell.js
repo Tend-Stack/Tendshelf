@@ -5,9 +5,15 @@ function isCurrent(href, path) {
   return href === "/" ? path === "/" : path === href || path.startsWith(href + "/");
 }
 
+// The most specific destination wins: /me/downloads is Downloads, not Profile as well.
 function markCurrent(path) {
-  for (const link of document.querySelectorAll("nav [data-nav]")) {
-    if (isCurrent(link.dataset.nav, path)) {
+  const links = document.querySelectorAll("nav [data-nav]");
+  let best = "";
+  for (const link of links) {
+    if (isCurrent(link.dataset.nav, path) && link.dataset.nav.length > best.length) best = link.dataset.nav;
+  }
+  for (const link of links) {
+    if (link.dataset.nav === best) {
       link.setAttribute("aria-current", "page");
     } else {
       link.removeAttribute("aria-current");

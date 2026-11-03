@@ -63,3 +63,20 @@ func TestNavMarksOnClickBrowser(t *testing.T) {
 	}
 	tab.WaitFor(`location.pathname === "/search" && document.querySelectorAll('#nav-side [aria-current="page"]').length === 1`, 5*time.Second)
 }
+
+// TestNavMarksMostSpecificBrowser: on a phone, /me/downloads marks Downloads only, not Profile as
+// well (operator, 2026-11-03: both tabs lit up), and /me/settings still marks Profile.
+func TestNavMarksMostSpecificBrowser(t *testing.T) {
+	e := playerApp(t)
+	b := chromium(t)
+	tab := playerOpen(t, b, e.URL, 390, 844)
+	for _, c := range []struct{ path, want string }{{"/me/downloads", "/me/downloads"}, {"/me/settings", "/me"}, {"/libraries", "/libraries"}} {
+		var marked []string
+		tab.Eval(`(() => { const a = [...document.querySelectorAll('#nav-tabbar a')].find((x) => x.getAttribute("href") === `+"`"+c.path+"`"+`) || document.querySelector('#nav-tabbar a[href="/me"]');
+		  history.pushState({}, "", `+"`"+c.path+"`"+`); document.dispatchEvent(new CustomEvent("htmx:after:swap", {detail: {}}));
+		  return [...document.querySelectorAll('#nav-tabbar [aria-current="page"]')].map((x) => x.dataset.nav); })()`, &marked)
+		if len(marked) != 1 || marked[0] != c.want {
+			t.Errorf("%s: marked %v, want only %s", c.path, marked, c.want)
+		}
+	}
+}
