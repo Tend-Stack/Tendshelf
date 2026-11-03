@@ -15,7 +15,7 @@
       padding: 0 var(--space-24) calc(var(--space-24) + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); }
     .ts-np[hidden] { display: none; }
     /* The side panel is not modal, so the page makes room for it instead of running under it. */
-    body:has(dialog.ts-player[open]) .ts-main { padding-right: calc(var(--size-player-panel) + var(--space-20)); }
+    body:has(dialog.ts-player[open]) .ts-main { padding-right: calc(var(--size-player-panel) + var(--space-12)); }
   }
 }
 
