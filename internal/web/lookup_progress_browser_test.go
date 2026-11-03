@@ -116,6 +116,10 @@ func TestLookupProgressBrowser(t *testing.T) {
 			tab.Eval(`document.querySelector('#sheet input[name="more"]').click()`, nil)
 			tab.Eval(`document.querySelector('#sheet form.ts-lookup button[type="submit"]').click()`, nil)
 			tab.WaitFor(`document.querySelector("#sheet .ts-log__list") !== null`, 8*time.Second)
+			kept("starting the lookup")
+			tab.Eval(`document.querySelector("#sheet #compare-body > a.ts-btn").click()`, nil)
+			time.Sleep(300 * time.Millisecond)
+			kept("Check again")
 
 			// Lines appear while the sites answer: the count of finished lines grows, and the privacy line is there.
 			seen := map[int]bool{}
@@ -185,6 +189,28 @@ func TestLookupProgressBrowser(t *testing.T) {
 			tab.Eval(`({Marker: window.__tsMarker || 0, Playing: window.tsPlayer.state().playing})`, &after)
 			if after.Marker != 7 || !after.Playing {
 				t.Errorf("after Use: marker %v, playing %v (the page was reloaded or the audio stopped)", after.Marker, after.Playing)
+			}
+
+			// Keep everything as it is: a second lookup, a match, then the quiet button.
+			tab.Eval(`document.querySelector(".ts-book__lookup").click()`, nil)
+			tab.WaitFor(`document.querySelector("#sheet form.ts-lookup") !== null`, 5*time.Second)
+			tab.Eval(`document.querySelector('#sheet form.ts-lookup button[type="submit"]').click()`, nil)
+			tab.WaitFor(`document.querySelector("#sheet .ts-compare-list") !== null`, 30*time.Second)
+			tab.Eval(`document.querySelector("#sheet .ts-compare-list a").click()`, nil)
+			tab.WaitFor(`document.querySelector("#sheet table.ts-compare") !== null`, 5*time.Second)
+			tab.Eval(`document.querySelector("#sheet .ts-compare-form__actions a[data-ts-close]").click()`, nil)
+			tab.WaitFor(`document.querySelector("#sheet .ts-sheet") === null`, 5*time.Second)
+			kept("Keep everything as it is")
+
+			// Go back to the files' details.
+			tab.Eval(`document.querySelector(".ts-book__reset summary").click()`, nil)
+			tab.Eval(`document.querySelector(".ts-book__reset button[type=submit]").click()`, nil)
+			tab.WaitFor(`document.querySelector(".ts-book__reset") === null`, 5*time.Second)
+			kept("Go back to the files' details")
+			var playing bool
+			tab.Eval(`window.tsPlayer.state().playing`, &playing)
+			if !playing {
+				t.Error("the audio stopped")
 			}
 		})
 	}

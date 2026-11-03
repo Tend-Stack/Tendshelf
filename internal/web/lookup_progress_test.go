@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -108,4 +109,18 @@ func TestLookupProgressSheet(t *testing.T) {
 		}
 	}
 	// Who may look is unchanged: the role matrix and TestCompare* keep the 404 cases.
+}
+
+// The owner's switch answers an htmx request with the Libraries page in place: HX-Redirect would
+// load the whole window and stop a playing book.
+func TestLookupProgressAdminSwitchStaysInPlace(t *testing.T) {
+	e := sweepSeed(t)
+	form := url.Values{"on": {"1"}, "_csrf": {e.a.tokenFor(t, e.ck[sweepOwner])}}
+	rec := e.a.do(http.MethodPost, "/admin/online", form, compareHx, e.ck[sweepOwner])
+	if rec.Code != http.StatusOK || rec.Header().Get("HX-Redirect") != "" || !strings.Contains(rec.Body.String(), adminOnlineTitle) {
+		t.Errorf("htmx: %d, HX-Redirect %q", rec.Code, rec.Header().Get("HX-Redirect"))
+	}
+	if rec = e.comparePost(t, sweepOwner, "/admin/online", url.Values{"on": {"1"}}); rec.Code != http.StatusSeeOther {
+		t.Errorf("plain form: %d", rec.Code)
+	}
 }

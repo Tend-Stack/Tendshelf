@@ -137,6 +137,24 @@ func detailsPhoto(t *testing.T, a *testApp, personID string) {
 	}
 }
 
+// detailsLogSteps is the log of the captured lookups: mid-search (a place being asked, two waiting), or finished.
+func detailsLogSteps(running bool) []online.Step {
+	q := `"The Lighthouse Keeper's Daughter"`
+	steps := []online.Step{
+		{Provider: "audnexus", Label: "Audible catalogue", Query: q, State: online.StepDone, Count: 5},
+		{Provider: "audnexus", Label: "Audnexus", Region: "US", Query: "B0LIGHT001", State: online.StepDone, Count: 1, Cached: true},
+		{Provider: "audnexus", Label: "Audnexus", Region: "US", Query: "B0LIGHT002", State: online.StepNone},
+		{Provider: "google", Label: "Google Books", Query: q, State: online.StepFailed, Code: "busy"},
+		{Provider: "openlibrary", Label: "Open Library", Query: q, State: online.StepRunning},
+		{Provider: "itunes", Label: "Apple Books", State: online.StepWaiting},
+	}
+	if !running {
+		steps[4].State, steps[4].Count = online.StepDone, 2
+		steps[5] = online.Step{Provider: "itunes", Label: "Apple Books", Query: q, State: online.StepNone}
+	}
+	return steps
+}
+
 // detailsFinishJob finishes a queued lookup with the given candidates (the app never touches the network).
 func detailsFinishJob(t *testing.T, a *testApp, cn *compareNet, id string, cands []metadata.Candidate) {
 	t.Helper()
@@ -144,7 +162,7 @@ func detailsFinishJob(t *testing.T, a *testApp, cn *compareNet, id string, cands
 		t.Fatal(err)
 	}
 	res, err := json.Marshal(metadata.LookupResult{Query: online.Query{Title: "The Lighthouse Keeper's Daughter"}, FetchedAt: 1_730_000_000_000,
-		Searched: []string{"audnexus"}, Candidates: cands})
+		Searched: []string{"audnexus"}, Steps: detailsLogSteps(false), Candidates: cands})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,6 +215,13 @@ func TestVisualDetailsSheets(t *testing.T) {
 			Details: metadata.Details{Title: "The Lighthouse Keeper's Daughter (Dramatised)", Year: 2022}},
 	})
 	detailsFinishJob(t, app, cn, none, nil)
+	progress, err := json.Marshal(detailsLogSteps(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.st.Writer().Exec(`UPDATE jobs SET progress_json = ? WHERE id = ?`, string(progress), waiting); err != nil {
+		t.Fatal(err)
+	}
 	base := themedServer(t, app.signedIn(t))
 	book := "/books/" + bookID + "/details"
 	sheet := func(extra string) string { return book + "?sheet=" + extra }
@@ -205,7 +230,7 @@ func TestVisualDetailsSheets(t *testing.T) {
 		{"lookup", sheet("lookup"), ".ts-lookup", true},
 		{"compare-waiting", sheet("compare&job=" + waiting), "#compare-body", false},
 		{"compare-nomatch", sheet("compare&job=" + none), "#compare-body", false},
-		{"compare-list", sheet("compare&job=" + found), ".ts-compare-list", false},
+		{"compare-list", sheet("compare&job=" + found), "#compare-body", false},
 		{"compare", sheet("compare&job=" + found + "&c=0"), "table.ts-compare", true},
 		{"cover", sheet("cover"), ".ts-cover-pick__card", true},
 		{"author", "/authors/" + authorID, "", true},
