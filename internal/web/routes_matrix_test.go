@@ -519,6 +519,8 @@ func sweepRows() []sweepRow {
 		sweepPost("POST /me/settings", sweepStatic("/me/settings"), sweepFormOf(url.Values{
 			"theme": {"dark"}, "theme_auto": {"0"}, "speed": {"1.25"}, "skip_back": {"10"}, "skip_forward": {"60"},
 			"auto_rewind": {"0", "1"}, "next_in_series": {"0"}, "player_tint": {"0", "1"}, "big_buttons": {"0", "1"}, "text_size": {"standard"}}), sweepSame(303), ""),
+		sweepPost("POST /me/nav", sweepStatic("/me/nav"), sweepFormOf(url.Values{"nav": {"full"}}), sweepSame(303), ""),
+		sweepPost("POST /hx/me/nav", sweepStatic("/hx/me/nav"), sweepFormOf(url.Values{"nav": {"full"}}), sweepSame(200), ""),
 		sweepPost("POST /me/password", sweepStatic("/me/password"), sweepFormOf(url.Values{"current": {"not the password at all"}, "password": {"a brand new passphrase"}}), sweepSame(422), ""),
 		sweepPost("POST /me/sessions/{sid}/signout", func(e *sweepEnv, role int) string { return "/me/sessions/" + e.secondS[role] + "/signout" }, nil, sweepSame(303), "/me"),
 		sweepPost("POST /me/sessions/signout-others", sweepStatic("/me/sessions/signout-others"), nil, sweepSame(303), ""),

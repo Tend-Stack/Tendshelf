@@ -20,11 +20,12 @@ type Settings struct {
 	PlayerTint   bool
 	BigButtons   bool
 	TextSize     string // "standard" or "large"
+	Nav          string // "full" or "rail": the desktop sidebar
 }
 
 // DefaultSettings applies to every key a person has not set.
 var DefaultSettings = Settings{
-	Theme: "system", TextSize: "standard", Speed: 1.0, SkipBackS: 15, SkipForwardS: 30,
+	Theme: "system", TextSize: "standard", Nav: "full", Speed: 1.0, SkipBackS: 15, SkipForwardS: 30,
 	AutoRewind: true, NextInSeries: true, PlayerTint: true,
 }
 
@@ -42,6 +43,7 @@ const (
 	keyPlayerTint   = "ui.player_tint"
 	keyBigButtons   = "ui.big_buttons"
 	keyTextSize     = "ui.text_size"
+	keyNav          = "ui.nav"
 )
 
 func validTheme(t string) bool {
@@ -54,6 +56,9 @@ func validTheme(t string) bool {
 
 // validTextSize accepts "" as well: a Settings built without a text size (older callers) means standard.
 func validTextSize(t string) bool { return t == "" || t == "standard" || t == "large" }
+
+// validNav accepts "" as well: a Settings built without a nav state (older callers) means full.
+func validNav(n string) bool { return n == "" || n == "full" || n == "rail" }
 
 func validSpeed(v float64) bool {
 	if math.IsNaN(v) || v < 0.5 || v > 3.0 {
@@ -72,7 +77,7 @@ func validSkip(n int) bool {
 
 // Validate checks every field against its fixed set.
 func (s Settings) Validate() error {
-	if !validTheme(s.Theme) || !validTextSize(s.TextSize) || !validSpeed(s.Speed) || !validSkip(s.SkipBackS) || !validSkip(s.SkipForwardS) {
+	if !validTheme(s.Theme) || !validTextSize(s.TextSize) || !validNav(s.Nav) || !validSpeed(s.Speed) || !validSkip(s.SkipBackS) || !validSkip(s.SkipForwardS) {
 		return ErrInvalidSetting
 	}
 	return nil
@@ -88,6 +93,9 @@ func (s Settings) entries() []settingEntry {
 	if s.TextSize == "" {
 		s.TextSize = "standard"
 	}
+	if s.Nav == "" {
+		s.Nav = "full"
+	}
 	return []settingEntry{
 		{keyTheme, s.Theme},
 		{keySpeed, math.Round(s.Speed*100) / 100},
@@ -98,6 +106,7 @@ func (s Settings) entries() []settingEntry {
 		{keyPlayerTint, s.PlayerTint},
 		{keyBigButtons, s.BigButtons},
 		{keyTextSize, s.TextSize},
+		{keyNav, s.Nav},
 	}
 }
 
@@ -137,6 +146,11 @@ func (s *Settings) apply(key, raw string) {
 		var v string
 		if json.Unmarshal([]byte(raw), &v) == nil && validTextSize(v) {
 			s.TextSize = v
+		}
+	case keyNav:
+		var v string
+		if json.Unmarshal([]byte(raw), &v) == nil && validNav(v) {
+			s.Nav = v
 		}
 	}
 }
@@ -249,12 +263,12 @@ func (r *Repo) Theme(ctx context.Context, userID string) (string, error) {
 
 // Look is the part of a person's settings every page render needs: the theme and the text size.
 // An absent or invalid value is "".
-type Look struct{ Theme, TextSize string }
+type Look struct{ Theme, TextSize, Nav string }
 
-// Look reads ui.theme and ui.text_size in one query.
+// Look reads ui.theme, ui.text_size and ui.nav in one query.
 func (r *Repo) Look(ctx context.Context, userID string) (Look, error) {
 	rows, err := r.st.Reader().QueryContext(ctx,
-		`SELECT key, value_json FROM user_settings WHERE user_id = ? AND key IN (?, ?)`, userID, keyTheme, keyTextSize)
+		`SELECT key, value_json FROM user_settings WHERE user_id = ? AND key IN (?, ?, ?)`, userID, keyTheme, keyTextSize, keyNav)
 	if err != nil {
 		return Look{}, err
 	}
@@ -274,6 +288,8 @@ func (r *Repo) Look(ctx context.Context, userID string) (Look, error) {
 			l.Theme = v
 		case k == keyTextSize && validTextSize(v):
 			l.TextSize = v
+		case k == keyNav && validNav(v):
+			l.Nav = v
 		}
 	}
 	return l, rows.Err()

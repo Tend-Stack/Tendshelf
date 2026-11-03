@@ -15,6 +15,8 @@ type Page struct {
 	Theme   string // dark, light, sepia or contrast; "" follows the system
 	// TextSize is "large" for a person who chose Larger text in Settings; "" renders the standard size.
 	TextSize string
+	// NavRail collapses the desktop sidebar into an icon rail (the ui.nav setting).
+	NavRail bool
 	CSRF    string
 	Assets  *static.Set
 	// Sheet, when set, is rendered inside #sheet on a full-page load, so a canonical URL such as
@@ -94,7 +96,7 @@ templ Layout(p Page, body templ.Component) {
 			<div class="ts-shell">
 				@TabBar(p.Current)
 				@SideRail(p.Current)
-				@Sidebar(p.Current, p.Admin, UsersLink{Show: p.Users, Waiting: p.UsersWaiting}, p.Shelves)
+				@Sidebar(p.Current, p.Admin, UsersLink{Show: p.Users, Waiting: p.UsersWaiting}, p.Shelves, p.NavRail, p.CSRF, true)
 				<main id="main" class="ts-main" tabindex="-1" hx-history-elt>
 					for _, css := range p.Styles {
 						<link rel="stylesheet" href={ p.Assets.URL(css) }/>

@@ -82,27 +82,57 @@ type UsersLink struct {
 	Waiting string
 }
 
-// Sidebar is the desktop navigation (1280 px and up).
-templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink) {
-	<nav aria-label="Main" id="nav-side" hx-preserve class="ts-side ts-nav-side">
+// navMode is the value of the sidebar's data-nav attribute.
+func navMode(rail bool) string {
+	if rail {
+		return "rail"
+	}
+	return "full"
+}
+
+// navToggleLabel names the toggle by what pressing it does.
+func navToggleLabel(rail bool) string {
+	if rail {
+		return "Expand menu"
+	}
+	return "Collapse menu"
+}
+
+// Sidebar is the desktop navigation (1280 px and up). rail collapses it to large icons; the toggle at
+// its foot posts the next state. preserve keeps the element across boosted swaps (full page renders);
+// the fragment that answers the toggle leaves it off, because htmx 4 would otherwise put the OLD
+// preserved element back in place of the new one.
+templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, rail bool, csrf string, preserve bool) {
+	<nav
+		aria-label="Main"
+		id="nav-side"
+		class="ts-side ts-nav-side"
+		data-nav={ navMode(rail) }
+		if preserve {
+			hx-preserve
+		}
+	>
 		<span class="ts-side__brand ts-brand">
 			@Mark()
-			Tendshelf
+			<span class="ts-side__label">Tendshelf</span>
 		</span>
 		for _, it := range MainNav {
 			<a
 				href={ templ.SafeURL(it.Href) }
 				class="ts-side__item"
 				data-nav={ it.Href }
+				if rail {
+					title={ it.Label }
+				}
 				if it.Key == current {
 					aria-current="page"
 				}
 			>
 				@Icon(it.Icon, false)
-				{ it.Label }
+				<span class="ts-side__label">{ it.Label }</span>
 			</a>
 		}
-		if len(shelves) > 0 {
+		if len(shelves) > 0 && !rail {
 			<span class="ts-side__group ts-overline">Your shelves</span>
 			for _, sh := range shelves {
 				<a
@@ -119,7 +149,7 @@ templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink) 
 				</a>
 			}
 		}
-		if admin || users.Show {
+		if (admin || users.Show) && !rail {
 			<span class="ts-side__group ts-overline">Your server</span>
 		}
 		if users.Show {
@@ -127,12 +157,15 @@ templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink) 
 				href="/admin/users"
 				class="ts-side__item"
 				data-nav="/admin/users"
+				if rail {
+					title="Users &amp; invites"
+				}
 				if current == "admin-users" {
 					aria-current="page"
 				}
 			>
 				@Icon("invite", false)
-				Users &amp; invites
+				<span class="ts-side__label">Users &amp; invites</span>
 				if users.Waiting != "" {
 					<span class="ts-side__count">{ users.Waiting }</span>
 				}
@@ -143,13 +176,30 @@ templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink) 
 				href="/admin/libraries"
 				class="ts-side__item"
 				data-nav="/admin/libraries"
+				if rail {
+					title="Libraries"
+				}
 				if current == "admin-libraries" {
 					aria-current="page"
 				}
 			>
 				@Icon("folder", false)
-				Libraries
+				<span class="ts-side__label">Libraries</span>
 			</a>
 		}
+		<form class="ts-side__foot" method="post" action="/me/nav" hx-post="/hx/me/nav" hx-target="#nav-side" hx-swap="outerHTML">
+			<input type="hidden" name="_csrf" value={ csrf }/>
+			<input type="hidden" name="nav" value={ navMode(!rail) }/>
+			<button
+				type="submit"
+				id="nav-toggle"
+				class="ts-iconbtn ts-side__toggle"
+				aria-label={ navToggleLabel(rail) }
+				aria-pressed={ pressed(rail) }
+				title={ navToggleLabel(rail) }
+			>
+				@Icon("panel-left", false)
+			</button>
+		</form>
 	</nav>
 }
