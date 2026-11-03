@@ -116,7 +116,7 @@ func (s *server) getUsers(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "users page", err)
 		return
 	}
-	s.pageStyled(w, r, http.StatusOK, usersTitle, "admin-users", pages.AdminUsers(v), nil, adminStyles...)
+	s.prefsPage(w, r, http.StatusOK, usersTitle, "admin-users", "users", false, pages.AdminUsers(v), nil, adminStyles...)
 }
 
 func (s *server) getUsersFragment(w http.ResponseWriter, r *http.Request) {
@@ -242,7 +242,7 @@ func (s *server) renderPerson(w http.ResponseWriter, r *http.Request, status int
 		s.serverError(w, r, "person page", err)
 		return
 	}
-	s.pageStyled(w, r, status, v.Name, "admin-users", pages.AdminUser(v), nil, adminStyles...)
+	s.prefsPage(w, r, status, v.Name, "admin-users", "users", false, pages.AdminUser(v), nil, adminStyles...)
 }
 
 func (s *server) getUserPage(w http.ResponseWriter, r *http.Request) {
@@ -401,7 +401,7 @@ func (s *server) confirmPage(w http.ResponseWriter, r *http.Request, id, title, 
 	if ret != "" {
 		v.Back, v.Return = ret, ret
 	}
-	s.pageStyled(w, r, http.StatusOK, title, "admin-users", pages.AdminUserConfirm(v), nil, adminStyles...)
+	s.prefsPage(w, r, http.StatusOK, title, "admin-users", "users", false, pages.AdminUserConfirm(v), nil, adminStyles...)
 }
 
 func (s *server) postPersonDisable(w http.ResponseWriter, r *http.Request) {

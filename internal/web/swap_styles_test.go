@@ -32,7 +32,7 @@ func TestPageStylesTravelInMain(t *testing.T) {
 
 	browse := []string{"pages-admin", "pages-home", "pages-library"}
 	bookStyles := []string{"pages-home", "pages-library", "pages-book", "pages-shelves", "pages-bookmarks"}
-	adminStyles := []string{"pages-onboard", "pages-admin"}
+	adminStyles := []string{"pages-onboard", "pages-admin", "pages-settings"}
 	cases := []struct {
 		path string
 		want []string
@@ -47,7 +47,7 @@ func TestPageStylesTravelInMain(t *testing.T) {
 		{"/me/settings", []string{"pages-me", "pages-settings"}},
 		{"/me/password", []string{"pages-onboard", "pages-me", "pages-settings"}},
 		{"/admin/libraries", adminStyles},
-		{"/admin/libraries/folders/new", append(slices.Clone(adminStyles), "pages-folders")},
+		{"/admin/libraries/folders/new", slices.Insert(slices.Clone(adminStyles), 2, "pages-folders")},
 		// The book page links the styles of its tabs and sheets whatever tab it opens on, because the
 		// tabs swap only #book-panel.
 		{book, bookStyles},

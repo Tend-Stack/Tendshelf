@@ -12,5 +12,5 @@ func (s *server) registerDownloads(mux *http.ServeMux) {
 
 // getDownloads is the Downloads page. Offline saving is not built yet, so it is an honest empty state.
 func (s *server) getDownloads(w http.ResponseWriter, r *http.Request) {
-	s.page(w, r, http.StatusOK, "Downloads", "downloads", pages.Downloads())
+	s.pageStyled(w, r, http.StatusOK, "Downloads", "downloads", pages.Downloads(), nil, "css/pages-me.css")
 }

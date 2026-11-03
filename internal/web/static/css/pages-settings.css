@@ -3,7 +3,7 @@
    panel and large text all choose the right number of columns by themselves. */
 .ts-prefs { container: prefs / inline-size; }
 .ts-prefs__frame { display: flex; flex-direction: column; gap: var(--space-16); padding-bottom: var(--space-32); }
-.ts-prefs__pane { min-width: 0; }
+.ts-prefs__pane { min-width: 0; container: pane / inline-size; }
 /* One column: the list is the page on /me/settings, and a category page shows its pane alone. */
 .ts-prefs__nav { display: none; flex-direction: column; gap: var(--space-4); min-width: 0; }
 .ts-prefs--index > .ts-prefs__nav { display: flex; }

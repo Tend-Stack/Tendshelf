@@ -40,3 +40,6 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
 .ts-me__privacy-title { margin-bottom: 0.375rem; font-weight: 500; }
 .ts-me__shield { flex: none; color: var(--success); }
 .ts-me__shield .ts-icon { width: 1.5rem; height: 1.5rem; }
+
+/* Downloads: the empty state reads as one block with the heading, both at the start edge. */
+.ts-downloads .ts-empty { align-items: flex-start; text-align: start; margin: 0; padding-inline: 0; }
