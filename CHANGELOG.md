@@ -9,6 +9,12 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
   "Looks good", and Undo puts the original back.
 - **Sidebar.** On a computer the sidebar collapses into a rail of icons and opens again.
 - **Library header.** Tidier: one Filter menu, Category, and sorting under Show.
+- **Up next.** Play next and Add to queue from the play button. Books play one after another, and the Up next tab in
+  the Now playing panel and the `/queue` page show what is waiting.
+- **Automatic book details.** Turn on look-ups per library for new books, or look up a whole library at a gentle pace,
+  filling only what is missing. A list shows the books that need a look.
+- **Fewer interruptions.** Actions no longer stop the book that is playing.
+- **Wide screens.** The app stops growing at 2560 px.
 
 ## 2026.1.0
 

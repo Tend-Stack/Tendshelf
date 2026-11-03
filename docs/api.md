@@ -145,3 +145,34 @@ Body `{"note"*}` (empty clears it). 200 with the bookmark. Another person's, unk
 
 ### DELETE /api/v1/bookmarks/{id}
 Soft delete: 204; the id lives on as a tombstone in the feeds. 404 as for PATCH.
+
+## Up next (queue)
+
+The person's own ordered list of books to play after the current one. Up to 100 books, each book once. Every read
+filters by what the person may open, so a hidden, refused or missing book never shows. Adding needs access to listen
+to the book (`ListenBook`); moving and removing need access to view it. Unsafe requests take the same JSON body rules
+as the sync endpoints (a browser session sends `X-CSRF-Token`; a device token needs none). Order of checks: sign-in,
+access to the book, 415, 413, 400.
+
+### GET /api/v1/queue
+`{"items":[{"book":BookCard,"addedAt":ms}],"next":null,"total":int}`, in play order. `next` is always `null` (the list is
+short and whole).
+
+### POST /api/v1/queue
+Body `{"bookId"*,"where":"end"|"next"}` (`where` defaults to `end`; `next` puts the book first, for Play next).
+200 with the whole queue, as the GET answers. A book already queued stays where it is and the answer is still 200.
+Errors: 400 `bookId` or `where`; 404 for a book the person may not open; 409 `conflict` (field `bookId`) when the queue
+holds 100 books or the book has no file Tendshelf can play (refused, missing or without audio).
+
+### POST /api/v1/queue/next
+Autoplay: takes the first playable book off the front of the queue and answers `{"book":BookCard}`. Body optional
+(an empty body is fine), `{"ended":"<book id>"}` names the book that just finished; it is removed from the queue first.
+Books the person can no longer open or that cannot play are skipped. Nothing left to play: 204. Errors: 400 `ended`
+(longer than 64 characters), 415, 413, 400.
+
+### POST /api/v1/queue/{bookID}/move
+Body `{"dir":"up"|"down"}`. Swaps the book with its neighbour that the person can open, so a hidden book is stepped
+over; at either end nothing changes. 200 with the whole queue. 400 `dir`; 404 when the book is not queued or not visible.
+
+### DELETE /api/v1/queue/{bookID}
+Takes the book off the queue: 204. 404 when the book is not queued or not visible.
