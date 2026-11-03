@@ -97,7 +97,7 @@ func (s *server) emailView(r *http.Request) (pages.AdminEmailView, error) {
 }
 
 func (s *server) renderEmail(w http.ResponseWriter, r *http.Request, status int, v pages.AdminEmailView) {
-	s.pageStyled(w, r, status, emailTitle, "admin-email", pages.AdminEmail(v), nil, pages.EmailStyles...)
+	s.prefsPage(w, r, status, emailTitle, "admin-email", "email", false, pages.AdminEmail(v), nil, pages.EmailStyles...)
 }
 
 func (s *server) getEmail(w http.ResponseWriter, r *http.Request) {

@@ -135,7 +135,7 @@ func TestAdminActionsKeepPlayingBrowser(t *testing.T) {
 }
 
 // TestPrefsCategoriesKeepPlayingBrowser clicks the real category list of the preferences window (no
-// reload, no stop): Playback, then Appearance, then Users & invites. The page-load marker and the
+// reload, no stop): Playback, then Appearance, then Users & invites, then Libraries. The page-load marker and the
 // playing book must survive each move.
 func TestPrefsCategoriesKeepPlayingBrowser(t *testing.T) {
 	b := chromium(t)
@@ -164,7 +164,8 @@ func TestPrefsCategoriesKeepPlayingBrowser(t *testing.T) {
 	for _, step := range []struct{ href, ready string }{
 		{"/me/settings/playback", `document.querySelector("#st-speed") !== null`},
 		{"/me/settings/appearance", `document.querySelector("#st-theme-dark") !== null`},
-		{"/admin/users", `location.pathname === "/admin/users"`},
+		{"/admin/users", `document.querySelector(".ts-users__head") !== null`},
+		{"/admin/libraries", `document.querySelector(".ts-admin") !== null && document.querySelector(".ts-prefs__item[aria-current=page]").getAttribute("href") === "/admin/libraries"`},
 	} {
 		tab.Eval(`document.querySelector('.ts-prefs__item[href="`+step.href+`"]').click()`, nil)
 		tab.WaitFor(`location.pathname === "`+step.href+`" && (`+step.ready+`)`, 8*time.Second)

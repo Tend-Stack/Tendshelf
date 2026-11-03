@@ -166,7 +166,7 @@ func (s *server) getAdminLibraries(w http.ResponseWriter, r *http.Request) {
 			view.Banner = countText(n, "Marked 1 book as missing.", "Marked %d books as missing.")
 		}
 	}
-	s.pageStyled(w, r, http.StatusOK, "Libraries & scanning", "admin-libraries", pages.AdminLibraries(view), nil, adminStyles...)
+	s.prefsPage(w, r, http.StatusOK, "Libraries & scanning", "admin-libraries", "libraries", false, pages.AdminLibraries(view), nil, adminStyles...)
 }
 
 func (s *server) librariesView(ctx context.Context, r *http.Request, sc library.Scope) (pages.AdminLibrariesView, error) {
@@ -295,7 +295,7 @@ func (s *server) addFolderPageSheet(w http.ResponseWriter, r *http.Request, stat
 		s.serverError(w, r, "online setting", err)
 		return
 	}
-	s.pageStyled(w, r, status, "Add a folder", "admin-libraries", pages.AdminAddFolder(v), sheet, folderStyles...)
+	s.prefsPage(w, r, status, "Add a folder", "admin-libraries", "libraries", false, pages.AdminAddFolder(v), sheet, folderStyles...)
 }
 
 func (s *server) getAddFolder(w http.ResponseWriter, r *http.Request) {
@@ -496,7 +496,7 @@ func (s *server) emptiedPage(w http.ResponseWriter, r *http.Request, status int,
 		v.Title = "Nothing to mark"
 		v.Body = "No books in this folder need marking."
 	}
-	s.pageStyled(w, r, status, v.Title, "admin-libraries", pages.AdminFolderEmptied(v), nil, adminStyles...)
+	s.prefsPage(w, r, status, v.Title, "admin-libraries", "libraries", false, pages.AdminFolderEmptied(v), nil, adminStyles...)
 }
 
 func (s *server) loadFolder(w http.ResponseWriter, r *http.Request) (library.Folder, bool) {

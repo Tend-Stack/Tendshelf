@@ -469,7 +469,7 @@ func (s *server) postInviteLink(w http.ResponseWriter, r *http.Request) {
 			v.NewLink = link(row.Name)
 		}
 	}
-	s.pageStyled(w, r, http.StatusOK, usersTitle, "admin-users", pages.AdminUsers(v), nil, adminStyles...)
+	s.prefsPage(w, r, http.StatusOK, usersTitle, "admin-users", "users", false, pages.AdminUsers(v), nil, adminStyles...)
 }
 
 func (s *server) postInviteCancel(w http.ResponseWriter, r *http.Request) {

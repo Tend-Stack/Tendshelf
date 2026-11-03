@@ -141,7 +141,7 @@ func (s *server) getNeedsLook(w http.ResponseWriter, r *http.Request) {
 	if total > len(rows) {
 		v.More = lookupMoreText(total - len(rows))
 	}
-	s.pageStyled(w, r, http.StatusOK, lookupNeedsTitle, "admin-libraries", pages.AdminLookups(v), nil, adminStyles...)
+	s.prefsPage(w, r, http.StatusOK, lookupNeedsTitle, "admin-libraries", "libraries", false, pages.AdminLookups(v), nil, adminStyles...)
 }
 
 func (s *server) postLookupDismiss(w http.ResponseWriter, r *http.Request) {

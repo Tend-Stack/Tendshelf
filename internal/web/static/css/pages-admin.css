@@ -66,10 +66,10 @@
 }
 .ts-folder__link:hover { text-decoration: underline; }
 
-@media (width >= 768px) {
+@container pane (width >= 36rem) {
   .ts-admin__actions .ts-btn { flex: 0 0 auto; }
 }
-@media (width >= 1280px) {
+@container pane (width >= 56rem) {
   .ts-folder { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
   .ts-folder__actions { grid-column: auto; }
 }
@@ -132,7 +132,7 @@ a.ts-users__item:hover { background: var(--surface); }
 .ts-users__meta { color: var(--ink-muted); }
 
 /* Tablet and desktop: a table in a bordered card. */
-@media (width >= 768px) {
+@container pane (width >= 36rem) {
   .ts-users__list { display: none; }
   #users { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-lg); }
   .ts-users__table { display: table; width: 100%; border-collapse: collapse; font-size: 0.9375rem; line-height: 1.25rem; }
@@ -154,16 +154,16 @@ a.ts-users__item:hover { background: var(--surface); }
   .ts-users__active { color: var(--ink-muted); white-space: nowrap; }
 }
 /* On the narrow tablet the cells may wrap so the table fits without scrolling. */
-@media (width >= 768px) and (width < 1024px) {
+@container pane (36rem <= width < 50rem) {
   .ts-users__table th, .ts-users__table td { padding-left: var(--space-8); padding-right: var(--space-8); }
   .ts-users__row th, .ts-users__active { white-space: normal; }
   .ts-users__table thead th { letter-spacing: 0.06em; }
 }
 /* Devices column folds away on the narrow tablet. */
-@media (width >= 768px) and (width < 1024px) {
+@container pane (36rem <= width < 50rem) {
   .ts-users__table th:nth-child(6), .ts-users__table td:nth-child(6) { display: none; }
 }
-@media (width >= 1280px) {
+@container pane (width >= 56rem) {
   .ts-users__head { gap: var(--space-4); }
 }
 
@@ -192,7 +192,7 @@ a.ts-users__item:hover { background: var(--surface); }
 .ts-users__find .ts-input { flex: 1 1 12rem; max-width: 22.5rem; }
 .ts-users__addform .ts-switch-row { width: 100%; }
 .ts-users__add { padding-top: var(--space-16); border-top: 1px solid var(--line); }
-@media (width >= 768px) {
+@container pane (width >= 36rem) {
   .ts-users__grant { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--space-24); }
   .ts-users__granthead, .ts-users__grantactions { grid-column: 1; }
   .ts-users__grantform { grid-column: 2; grid-row: 1 / span 2; }
@@ -230,7 +230,7 @@ a.ts-users__item:hover { background: var(--surface); }
 /* "Invite someone" in the Users header (P3-4b): full width under the subtitle on a phone, at the
    header's right edge, centred on the title block, from 768 px (UsersPage, UsersTablet, UsersPhone). */
 .ts-users__invite { align-self: stretch; margin-top: var(--space-16); }
-@media (width >= 768px) {
+@container pane (width >= 36rem) {
   .ts-users__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-24); align-items: center; }
   .ts-users__head > :not(.ts-users__invite) { grid-column: 1; }
   .ts-users__invite { grid-column: 2; grid-row: 1 / span 3; align-self: center; margin-top: 0; }
@@ -257,6 +257,6 @@ a.ts-users__item:hover { background: var(--surface); }
 .ts-needs__title { margin: 0; }
 .ts-needs__author, .ts-needs__outcome, .ts-needs__more { color: var(--ink-muted); margin: 0; }
 .ts-needs__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
-@media (width >= 768px) {
+@container pane (width >= 36rem) {
   .ts-needs__row { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--space-16); }
 }
