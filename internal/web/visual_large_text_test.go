@@ -34,6 +34,7 @@ const ltProbeJS = `(() => {
   const clip = [];
   for (const el of document.querySelectorAll("[data-ts-full-left], [data-ts-full-book-left], [data-ts-bar-left], [data-ts-meta], .ts-hero__where")) {
     if (!shown(el)) continue;
+    if (el.closest(".ts-mini__text")?.getBoundingClientRect().width <= 2) continue; // the phone bubble keeps it as visually hidden text
     if (el.scrollWidth > el.clientWidth + 1) clip.push(name(el) + " cut " + el.scrollWidth + ">" + el.clientWidth);
     const r = el.getBoundingClientRect();
     for (let p = el.parentElement; p && p !== document.documentElement; p = p.parentElement) {

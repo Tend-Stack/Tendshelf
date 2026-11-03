@@ -670,9 +670,10 @@ function render(force) {
   const setLabel = (name, text) => controls[name].setAttribute("aria-label", text);
 
   controls.title.textContent = book.title;
+  controls.open.dataset.letter = book.title.charAt(0).toUpperCase();
   controls.meta.textContent = fill(msg("chapterLeft"), { n: chapterIdx + 1, m: minutesLeft });
   controls.open.href = LINK || "/books/" + encode(book.id);
-  setLabel("open", fill(msg("openPlayer") || msg("open"), { title: book.title, n: chapterIdx + 1 }));
+  setLabel("open", fill(msg("openPlayer") || msg("open"), { title: book.title, n: chapterIdx + 1, m: minutesLeft }));
   if (book.cover && controls.cover.getAttribute("src") !== book.cover) controls.cover.src = book.cover;
   controls.cover.hidden = !book.cover;
   controls["back-num"].textContent = book.skipBack;

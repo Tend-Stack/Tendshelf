@@ -327,7 +327,7 @@ const (
 	msgGoToBook        = "Go to book"
 	msgMarkFinished    = "Mark as finished"
 	msgChapterPlayed   = "{title}, played"
-	msgOpenPlayer      = "Open player: {title}, chapter {n}"
+	msgOpenPlayer      = "Open player: {title}, chapter {n}, {m} min left"
 
 	msgKeysTitle   = "Keyboard shortcuts"
 	msgKeysPlay    = "Play or pause"
