@@ -131,7 +131,7 @@ func TestFullPlayerCopy(t *testing.T) {
 	for got, want := range map[string]string{
 		msgChapterOf: "Chapter {n} of {total}", msgLeftInChapter: "{t} left in chapter", msgLeftInBookMinutes: "{m} m left in book", msgLeftInBookHours: "{h} h left in book", msgLeftInBookBoth: "{h} h {m} m left in book", msgSubtitleSep: " · ",
 		msgScrubValue: "Chapter {n}, {m} minutes {s} seconds elapsed", msgFineScrub: "Drag up for fine control", msgClosePlayer: "Close player",
-		msgOpenPlayer: "Open player: {title}, chapter {n}", msgMarkFinished: "Mark as finished", msgGoToBook: "Go to book",
+		msgOpenPlayer: "Open player: {title}, chapter {n}, {m} min left", msgMarkFinished: "Mark as finished", msgGoToBook: "Go to book",
 	} {
 		if got != want {
 			t.Errorf("copy %q, want %q", got, want)

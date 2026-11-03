@@ -208,7 +208,10 @@ function update(kind) {
 function syncExpand() {
   if (!book) return;
   bar.expand.setAttribute("aria-expanded", String(dialog.open));
-  bar.expand.setAttribute("aria-label", dialog.open ? msg("closePlayer") : fill(msg("openPlayer"), { title: book.title, n: chapterAt(player.state().positionMs) + 1 }));
+  const at = player.state().positionMs;
+  const idx = chapterAt(at);
+  const left = Math.max(1, Math.ceil((book.chapters[idx].end - at) / 60000));
+  bar.expand.setAttribute("aria-label", dialog.open ? msg("closePlayer") : fill(msg("openPlayer"), { title: book.title, n: idx + 1, m: left }));
 }
 
 // What changes only when another book loads.
