@@ -12,45 +12,49 @@ type LibChip struct {
 	Current    bool
 }
 
-// GenreChip is one genre. Href toggles it: it adds the genre to the filters, or removes it when On.
-type GenreChip struct {
-	Name, Href string
-	On         bool
-}
-
-// SortOption is one way to order the list.
-type SortOption struct {
-	Value, Label string
-	On           bool
-}
-
-// FilterOption is one choice in a filter menu: a link to the list with that choice made.
+// FilterOption is one choice in a filter menu: a link to the list with that choice made. A Disabled
+// option is shown but is not a link (the Category menu at five genres).
 type FilterOption struct {
 	Name, Href string
-	// Value is the form value of a length bucket (the sheet's radios); empty for people and series.
-	Value string
-	Count int
-	On    bool
+	// Value is the form value of a length or show choice; empty for people and series.
+	Value    string
+	Count    int
+	On       bool
+	Disabled bool
+}
+
+// MenuSection is a second titled group in a menu (the Show menu's "Sort by").
+type MenuSection struct {
+	Label   string
+	Options []FilterOption
 }
 
 // FilterMenu is one chip with its menu ("Author", "Series", "Length"). The chip reads "Author:
 // Imogen Hale" while a choice is made; AnyHref drops the choice. The menu is a <details> element and
 // its choices are links, so it works without JavaScript.
 type FilterMenu struct {
+	// ID names the menu: the <details> element is lib-menu-<ID>.
+	ID                             string
 	Label, Chip, AnyLabel, AnyHref string
-	Options                       []FilterOption
-	// Counts shows each option's number of books (people and series; not lengths).
+	// Icon is a leading icon for a chip that is not a value ("filter"); otherwise a check shows while On.
+	Icon    string
+	Options []FilterOption
+	// Sections are further groups under the first one.
+	Sections []MenuSection
+	// Counts shows each option's number of books (people, series and categories; not lengths).
 	Counts bool
 	// On is true while a choice is made.
 	On bool
 	// End opens the menu towards the left, for a chip near the right edge.
 	End bool
+	// Open renders the menu open (the address asked for it); Titled shows Label as the first group's heading.
+	Open, Titled bool
 }
 
 // HiddenField carries a filter the form does not edit across a submit.
 type HiddenField struct{ Name, Value string }
 
-// LibraryView is the Library page, its list fragment and its filter sheet. The handler builds every
+// LibraryView is the Library page and its list fragment. The handler builds every
 // address, so the template holds no URL logic: each filter, sort, view and page position is an
 // address a person can bookmark and go Back to.
 type LibraryView struct {
@@ -65,9 +69,10 @@ type LibraryView struct {
 	// Match is "16 books match", set only while a filter is on; it sits in the results region with
 	// the "Clear filters" link (ClearHref).
 	Match string
-	// Menus are the Author, Narrator and Series chips; LengthMenu is the Length chip after the genres.
-	Menus      []FilterMenu
-	LengthMenu FilterMenu
+	// FilterMenu is the "Filter" chip that lists the kinds; Kinds are the chips of the kinds in use
+	// (or the one the address asks to add).
+	FilterMenu FilterMenu
+	Kinds      []FilterMenu
 	// ShowMenu is the "Show" chip (Unfinished, Not started, Finished) and ShowValue the chosen one.
 	ShowMenu  FilterMenu
 	ShowValue string
@@ -77,18 +82,11 @@ type LibraryView struct {
 	// length bucket ("short", "medium", "long" or "").
 	Hidden      []HiddenField
 	LengthValue string
-	// SortLabel names the current sort for the sort chip; SortOptions are all four.
-	SortLabel   string
-	SortOptions []SortOption
 	// View is "grid" or "list"; GridHref and ListHref switch.
 	View               string
 	GridHref, ListHref string
-	// Genres are the chips in the row (the most used, plus any chosen); AllGenres fills the sheet.
-	Genres, AllGenres []GenreChip
-	// SelectedGenres are the chosen ones, carried by the inline bar's form.
+	// SelectedGenres are the chosen ones, carried by the title form.
 	SelectedGenres []string
-	// SheetHref opens the filter sheet; CloseHref is the page without it.
-	SheetHref, CloseHref string
 	// ClearHref drops every filter and keeps the sort and the view; it is set only while a filter is on.
 	ClearHref string
 	// StartHref is "Back to the start" and is set only on a page reached by a cursor.
@@ -101,187 +99,132 @@ type LibraryView struct {
 	Empty           *EmptyView
 }
 
-// filterForm is the one form of filters and sort. It is a boosted GET (the layout's inherited boost
-// supplies the target and the swap); hx-select-oob swaps the empty #sheet of the answer in, so the
-// open sheet closes with the new list. prefix keeps the ids of the sheet's copy and the bar's copy
-// apart. bar is the inline version from 1280 px: a select for the sort, the chosen genres carried
-// as hidden fields (the genre chips beside it toggle them).
-templ filterForm(v LibraryView, prefix string, bar bool) {
-	<form
-		class="ts-filter-form"
-		method="get"
-		action={ templ.SafeURL(v.FormAction) }
-		if bar {
-			hx-get={ v.FormAction }
-			hx-trigger="change target:select"
-			hx-target="#library-results"
-			hx-select="#library-results"
-			hx-swap="outerHTML"
-			hx-push-url="true"
-			hx-include="this"
-		} else {
-			hx-select-oob="#sheet"
-		}
-	>
+// titleForm is the "Filter by title" form. It is a boosted GET: typing sends it after a pause and
+// swaps the results plus the header menus (their links carry the typed title); without JavaScript
+// the "Show books" button sends it. The other filters ride along as hidden fields.
+templ titleForm(v LibraryView) {
+	<form class="ts-filter-form" method="get" action={ templ.SafeURL(v.FormAction) }>
 		if v.View == "list" {
 			<input type="hidden" name="view" value="list"/>
 		}
 		for _, h := range v.Hidden {
 			<input type="hidden" name={ h.Name } value={ h.Value }/>
 		}
-		if bar {
-			for _, g := range v.SelectedGenres {
-				<input type="hidden" name="genre" value={ g }/>
-			}
-			if v.LengthValue != "" {
-				<input type="hidden" name="length" value={ v.LengthValue }/>
-			}
-			if v.ShowValue != "" {
-				<input type="hidden" name="show" value={ v.ShowValue }/>
-			}
-			<div class="ts-search ts-lib-title">
-				@components.Icon("search", false)
-				<label class="ts-sr" for={ prefix + "-title" }>Filter by title</label>
-				<input
-					class="ts-input"
-					type="search"
-					id={ prefix + "-title" }
-					name="title"
-					value={ v.TitleFilter }
-					placeholder="Filter this library by title"
-					maxlength="100"
-					autocomplete="off"
-					hx-get={ v.FormAction }
-					hx-trigger="input changed delay:300ms, search"
-					hx-target="#library-results"
-					hx-select="#library-results"
-					hx-swap="outerHTML"
-					hx-push-url="true"
-					hx-include="closest form"
-				/>
-			</div>
-			<label class="ts-sr" for={ prefix + "-sort" }>Sort by</label>
-			<select class="ts-select ts-select--native" id={ prefix + "-sort" } name="sort">
-				for _, o := range v.SortOptions {
-					<option value={ o.Value } selected?={ o.On }>{ o.Label }</option>
-				}
-			</select>
-		} else {
-			<label class="ts-filter-group" for={ prefix + "-title" }>
-				<span class="ts-field__label">Filter by title</span>
-				<input class="ts-input" type="search" id={ prefix + "-title" } name="title" value={ v.TitleFilter } placeholder="Filter this library by title" maxlength="100" autocomplete="off"/>
-			</label>
-			<fieldset class="ts-filter-group">
-				<legend class="ts-field__label">Sort by</legend>
-				for _, o := range v.SortOptions {
-					<label class="ts-filter-option" for={ prefix + "-sort-" + o.Value }>
-						<input class="ts-filter-radio" type="radio" id={ prefix + "-sort-" + o.Value } name="sort" value={ o.Value } checked?={ o.On }/>
-						<span>{ o.Label }</span>
-					</label>
-				}
-			</fieldset>
-			<fieldset class="ts-filter-group">
-				<legend class="ts-field__label">Length</legend>
-				<label class="ts-filter-option" for={ prefix + "-length-any" }>
-					<input class="ts-filter-radio" type="radio" id={ prefix + "-length-any" } name="length" value="" checked?={ v.LengthValue == "" }/>
-					<span>{ v.LengthMenu.AnyLabel }</span>
-				</label>
-				for _, o := range v.LengthMenu.Options {
-					<label class="ts-filter-option" for={ prefix + "-length-" + o.Value }>
-						<input class="ts-filter-radio" type="radio" id={ prefix + "-length-" + o.Value } name="length" value={ o.Value } checked?={ o.On }/>
-						<span>{ o.Name }</span>
-					</label>
-				}
-			</fieldset>
-			<fieldset class="ts-filter-group">
-				<legend class="ts-field__label">{ v.ShowMenu.Label }</legend>
-				<label class="ts-filter-option" for={ prefix + "-show-any" }>
-					<input class="ts-filter-radio" type="radio" id={ prefix + "-show-any" } name="show" value="" checked?={ v.ShowValue == "" }/>
-					<span>{ v.ShowMenu.AnyLabel }</span>
-				</label>
-				for _, o := range v.ShowMenu.Options {
-					<label class="ts-filter-option" for={ prefix + "-show-" + o.Value }>
-						<input class="ts-filter-radio" type="radio" id={ prefix + "-show-" + o.Value } name="show" value={ o.Value } checked?={ o.On }/>
-						<span>{ o.Name }</span>
-					</label>
-				}
-			</fieldset>
-			if len(v.AllGenres) > 0 {
-				<fieldset class="ts-filter-group">
-					<legend class="ts-field__label">Genre</legend>
-					<div class="ts-filter-genres">
-						for i, g := range v.AllGenres {
-							<label class="ts-filter-option" for={ prefix + "-genre-" + strconv.Itoa(i) }>
-								<input class="ts-check" type="checkbox" id={ prefix + "-genre-" + strconv.Itoa(i) } name="genre" value={ g.Name } checked?={ g.On }/>
-								<span>{ g.Name }</span>
-							</label>
-						}
-					</div>
-				</fieldset>
-			}
+		for _, g := range v.SelectedGenres {
+			<input type="hidden" name="genre" value={ g }/>
 		}
-		if bar {
-			<noscript>
-				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-filter-submit">Show books</button>
-			</noscript>
-		} else {
+		if v.LengthValue != "" {
+			<input type="hidden" name="length" value={ v.LengthValue }/>
+		}
+		if v.ShowValue != "" {
+			<input type="hidden" name="show" value={ v.ShowValue }/>
+		}
+		<div class="ts-search ts-lib-title">
+			@components.Icon("search", false)
+			<label class="ts-sr" for="fb-title">Filter by title</label>
+			<input
+				class="ts-input"
+				type="search"
+				id="fb-title"
+				name="title"
+				value={ v.TitleFilter }
+				placeholder="Filter this library by title"
+				maxlength="100"
+				autocomplete="off"
+				hx-get={ v.FormAction }
+				hx-trigger="input changed delay:300ms, search"
+				hx-target="#library-results"
+				hx-select="#library-results"
+				hx-select-oob="#lib-menus, #lib-kinds"
+				hx-swap="outerHTML"
+				hx-push-url="true"
+				hx-include="closest form"
+			/>
+		</div>
+		<noscript>
 			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-filter-submit">Show books</button>
-		}
+		</noscript>
 	</form>
 }
 
-// filterMenu is one filter chip with its menu of links. Opening it needs no script.
+// menuOption is one line of a menu: a link, or plain words while it cannot be chosen.
+templ menuOption(m FilterMenu, o FilterOption) {
+	if o.Disabled {
+		<span class="ts-chipmenu__item is-disabled" aria-disabled="true">
+			<span class="ts-chipmenu__name">{ o.Name }</span>
+			if m.Counts {
+				<span class="ts-chipmenu__count ts-num">{ strconv.Itoa(o.Count) }</span>
+			}
+		</span>
+	} else {
+		<a
+			class="ts-chipmenu__item"
+			href={ templ.SafeURL(o.Href) }
+			if o.On {
+				aria-current="true"
+			}
+		>
+			<span class="ts-chipmenu__name">{ o.Name }</span>
+			if m.Counts {
+				<span class="ts-chipmenu__count ts-num">{ strconv.Itoa(o.Count) }</span>
+			}
+		</a>
+	}
+}
+
+// filterMenu is one filter chip with its menu of links. Opening it needs no script. An open menu
+// takes the focus on a page load or a swap (autofocus), so the next step is one key away.
 templ filterMenu(m FilterMenu) {
-	<details class={ "ts-chipmenu", templ.KV("is-on", m.On), templ.KV("ts-chipmenu--end", m.End) } data-ts-chipmenu>
-		<summary class="ts-chip">
-			if m.On {
+	<details id={ "lib-menu-" + m.ID } class={ "ts-chipmenu", templ.KV("is-on", m.On), templ.KV("ts-chipmenu--end", m.End) } data-ts-chipmenu open?={ m.Open }>
+		<summary class="ts-chip" autofocus?={ m.Open }>
+			if m.Icon != "" {
+				@components.Icon(m.Icon, false)
+			} else if m.On {
 				@components.Icon("check", false)
 			}
-			{ m.Chip }
+			<span class="ts-chipmenu__label">{ m.Chip }</span>
 			@chevron()
 		</summary>
-		<div class="ts-chipmenu__body" role="group" aria-label={ m.Label }>
-			<a
-				class="ts-chipmenu__item"
-				href={ templ.SafeURL(m.AnyHref) }
-				if !m.On {
-					aria-current="true"
-				}
-			>{ m.AnyLabel }</a>
-			for _, o := range m.Options {
-				<a
-					class="ts-chipmenu__item"
-					href={ templ.SafeURL(o.Href) }
-					if o.On {
-						aria-current="true"
+		<div class="ts-chipmenu__body">
+			if m.Titled {
+				<div class="ts-chipmenu__group" role="group" aria-labelledby={ "lib-menu-" + m.ID + "-h" }>
+					<p class="ts-chipmenu__head" id={ "lib-menu-" + m.ID + "-h" }>{ m.Label }</p>
+					@menuAny(m)
+					for _, o := range m.Options {
+						@menuOption(m, o)
 					}
-				>
-					<span class="ts-chipmenu__name">{ o.Name }</span>
-					if m.Counts {
-						<span class="ts-chipmenu__count ts-num">{ strconv.Itoa(o.Count) }</span>
+				</div>
+			} else {
+				<div class="ts-chipmenu__group" role="group" aria-label={ m.Label }>
+					@menuAny(m)
+					for _, o := range m.Options {
+						@menuOption(m, o)
 					}
-				</a>
+				</div>
+			}
+			for i, sec := range m.Sections {
+				<div class="ts-chipmenu__group" role="group" aria-labelledby={ "lib-menu-" + m.ID + "-s" + strconv.Itoa(i) }>
+					<p class="ts-chipmenu__head" id={ "lib-menu-" + m.ID + "-s" + strconv.Itoa(i) }>{ sec.Label }</p>
+					for _, o := range sec.Options {
+						@menuOption(m, o)
+					}
+				</div>
 			}
 		</div>
 	</details>
 }
 
-// LibraryFilterSheet is the "Filter and sort" sheet. It renders into #sheet, outside #main. From
-// 1280 px the same filters sit in the page as a bar, so the sheet is hidden there.
-templ LibraryFilterSheet(v LibraryView) {
-	<div class="ts-sheet-layer ts-sheet-layer--filters">
-		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label="Close the sheet" tabindex="-1"></a>
-		<div class="ts-sheet ts-filter-sheet" role="dialog" aria-modal="true" aria-labelledby="flt-title" tabindex="-1">
-			<div class="ts-sheet__grab" aria-hidden="true"></div>
-			<div class="ts-sheet__head">
-				<h2 id="flt-title" class="ts-sheet__title">Filter and sort</h2>
-				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label="Close">
-					@components.Icon("close", false)
-				</a>
-			</div>
-			@filterForm(v, "fs", false)
-		</div>
-	</div>
+// menuAny is the "Any ..." line that drops the menu's choice; menus without one (Filter) have no AnyHref.
+templ menuAny(m FilterMenu) {
+	if m.AnyHref != "" {
+		<a
+			class="ts-chipmenu__item"
+			href={ templ.SafeURL(m.AnyHref) }
+			if !m.On {
+				aria-current="true"
+			}
+		>{ m.AnyLabel }</a>
+	}
 }
 
 // libraryItems are the books of one page in the chosen view, then the sentinel for the next page.
@@ -310,8 +253,7 @@ templ LibraryItems(v LibraryView) {
 	@libraryItems(v)
 }
 
-// Library is the page: the title and count, the controls, the list. The filter sheet is rendered
-// into #sheet by the handler when the address says ?sheet=filters.
+// Library is the page: the title and count, the controls, the kinds in use, the list.
 templ Library(v LibraryView) {
 	<div class="ts-library">
 		<header class="ts-lib-head">
@@ -342,21 +284,12 @@ templ Library(v LibraryView) {
 			</nav>
 		}
 		<div class="ts-lib-controls">
-			<a
-				class="ts-btn ts-btn--quiet ts-lib-sort"
-				href={ templ.SafeURL(v.SheetHref) }
-				hx-get={ v.SheetHref }
-				hx-target="#sheet"
-				hx-select="#sheet > *"
-				hx-swap="innerHTML"
-				hx-push-url="false"
-				aria-haspopup="dialog"
-			>
-				{ v.SortLabel }
-				@chevron()
-			</a>
 			<div class="ts-lib-bar">
-				@filterForm(v, "fb", true)
+				@titleForm(v)
+			</div>
+			<div id="lib-menus" class="ts-lib-menus">
+				@filterMenu(v.FilterMenu)
+				@filterMenu(v.ShowMenu)
 			</div>
 			<div class="ts-seg" role="group" aria-label="View">
 				<a
@@ -367,7 +300,7 @@ templ Library(v LibraryView) {
 					}
 				>
 					@components.Icon("grid", false)
-					Grid
+					<span class="ts-seg__text">Grid</span>
 				</a>
 				<a
 					class="ts-seg__item"
@@ -377,43 +310,18 @@ templ Library(v LibraryView) {
 					}
 				>
 					@listIcon()
-					List
+					<span class="ts-seg__text">List</span>
 				</a>
 			</div>
 		</div>
-		<div class="ts-chip-set ts-lib-filters" role="group" aria-label="Filters">
-			for _, m := range v.Menus {
-				@filterMenu(m)
-			}
-			for _, g := range v.Genres {
-				<a
-					class="ts-chip"
-					href={ templ.SafeURL(g.Href) }
-					if g.On {
-						aria-current="true"
+		<div id="lib-kinds">
+			if len(v.Kinds) > 0 {
+				<div class="ts-chip-set ts-lib-filters" role="group" aria-label="Filters">
+					for _, m := range v.Kinds {
+						@filterMenu(m)
 					}
-				>
-					if g.On {
-						@components.Icon("check", false)
-					}
-					{ g.Name }
-				</a>
+				</div>
 			}
-			@filterMenu(v.LengthMenu)
-			@filterMenu(v.ShowMenu)
-			<a
-				class="ts-chip ts-lib-morefilters"
-				href={ templ.SafeURL(v.SheetHref) }
-				hx-get={ v.SheetHref }
-				hx-target="#sheet"
-				hx-select="#sheet > *"
-				hx-swap="innerHTML"
-				hx-push-url="false"
-				aria-haspopup="dialog"
-			>
-				@components.Icon("filter", false)
-				More filters
-			</a>
 		</div>
 		<div id="library-results" class="ts-lib-results">
 			if v.Match != "" {

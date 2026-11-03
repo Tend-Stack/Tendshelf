@@ -2,9 +2,8 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
-
-	"github.com/a-h/templ"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
@@ -20,10 +19,9 @@ import (
 // "Show more") and a fragment second.
 
 const (
-	homeShelfMax   = 40 // newest books sent for the row; shell.js shows as many as fit
-	browseTopChips = 3  // genre chips in the row; the sheet lists them all
-	browseSheetMax = 40 // genres listed in the sheet
-	browseMenuMax  = 30 // people or series listed in a chip menu
+	homeShelfMax      = 40 // newest books sent for the row; shell.js shows as many as fit
+	browseCategoryMax = 40 // genres listed in the Category menu
+	browseMenuMax     = 30 // people or series listed in a chip menu
 )
 
 func (s *server) registerBrowse(mux *http.ServeMux) {
@@ -196,7 +194,7 @@ func browseItems(q browseQuery, cur *library.LibrarySummary, page library.BookPa
 		v.Cards = append(v.Cards, cardView(b))
 	}
 	if page.Next != "" {
-		next := func(q *browseQuery) { q.Cursor, q.Sheet = page.Next, false }
+		next := func(q *browseQuery) { q.Cursor = page.Next }
 		v.MoreURL, v.MoreHX = q.href(pagePath, next), q.href(hxPath, next)
 	}
 	return v
@@ -283,8 +281,8 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "library scan", err)
 		return
 	}
-	v := s.libraryView(q, libs, cur, genres, page)
-	s.libraryFilters(&v, q, cur, facets)
+	v := s.libraryView(q, libs, cur, page)
+	s.libraryFilters(&v, q, cur, facets, genres)
 	v.HeaderLine = browseHeaderLine(totals, s.canManage(r))
 	v.Scan = scanStatus
 	if len(v.Cards) == 0 && q.Cursor == "" && v.Scan == nil {
@@ -299,15 +297,11 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 	if cur != nil {
 		title = cur.Name
 	}
-	var sheet templ.Component
-	if q.Sheet {
-		sheet = pages.LibraryFilterSheet(v)
-	}
-	s.pageStyled(w, r, http.StatusOK, title, "library", pages.Library(v), sheet, pages.BrowseStyles...)
+	s.pageStyled(w, r, http.StatusOK, title, "library", pages.Library(v), nil, pages.BrowseStyles...)
 }
 
-// libraryView builds the whole page view: the list part plus the title, chips, sort and sheet links.
-func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *library.LibrarySummary, genres []library.Facet, page library.BookPage) pages.LibraryView {
+// libraryView builds the whole page view: the list part plus the title, chips and view links.
+func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *library.LibrarySummary, page library.BookPage) pages.LibraryView {
 	pagePath, _ := browsePaths(cur)
 	v := browseItems(q, cur, page)
 	v.Title = browseLibraryTitle
@@ -318,15 +312,9 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 	if q.filtered() {
 		v.Match = browseMatch(page.Total)
 	}
-	v.SortLabel = browseSortLabel(q.Sort)
-	for _, o := range browseSortLabels {
-		v.SortOptions = append(v.SortOptions, pages.SortOption{Value: string(o.Sort), Label: o.Label, On: o.Sort == q.Sort})
-	}
-	reset := func(q *browseQuery) { q.Cursor, q.Sheet = "", false }
+	reset := func(q *browseQuery) { q.Cursor = "" }
 	v.GridHref = q.href(pagePath, func(q *browseQuery) { reset(q); q.View = "grid" })
 	v.ListHref = q.href(pagePath, func(q *browseQuery) { reset(q); q.View = "list" })
-	v.SheetHref = q.href(pagePath, func(q *browseQuery) { q.Sheet = true })
-	v.CloseHref = q.href(pagePath, func(q *browseQuery) { q.Sheet = false })
 	v.SelectedGenres = q.Genres
 	if q.filtered() {
 		v.ClearHref = q.href(pagePath, func(q *browseQuery) { reset(q); q.clearFilters() })
@@ -349,9 +337,37 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 		}
 	}
 
+	return v
+}
+
+// libraryFilters adds the Filter and Show menus, the chips of the kinds in use and the values the
+// forms carry. Every choice is an address; a menu's "Any ..." link drops its own filter and keeps
+// the others. A kind chip shows only while its value is set or the address asks to add it (add=).
+func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *library.LibrarySummary, f libraryFacets, genres []library.Facet) {
+	pagePath, _ := browsePaths(cur)
+	set := func(apply func(*browseQuery)) string {
+		return q.href(pagePath, func(q *browseQuery) { q.Cursor = ""; apply(q) })
+	}
+	people := func(id, label, any string, opts []library.NamedFacet, chosen string, assign func(*browseQuery, string)) pages.FilterMenu {
+		m := pages.FilterMenu{ID: id, Label: label, Chip: label, AnyLabel: any, Counts: true, On: chosen != "",
+			AnyHref: set(func(q *browseQuery) { assign(q, "") })}
+		for _, o := range opts {
+			oid := o.ID
+			m.Options = append(m.Options, pages.FilterOption{Name: o.Name, Count: o.Count, On: oid == chosen,
+				Href: set(func(q *browseQuery) { assign(q, oid) })})
+			if oid == chosen {
+				m.Chip = label + ": " + o.Name
+			}
+		}
+		return m
+	}
+	author := people("author", "Author", "Any author", f.Authors, q.Author, func(q *browseQuery, id string) { q.Author = id })
+	narrator := people("narrator", "Narrator", "Any narrator", f.Narrators, q.Narrator, func(q *browseQuery, id string) { q.Narrator = id })
+	series := people("series", "Series", "Any series", f.Series, q.Series, func(q *browseQuery, id string) { q.Series = id })
+
+	// Category: a multi-select of toggle links; at the limit the unchosen ones cannot be picked.
 	toggle := func(g string) string {
-		return q.href(pagePath, func(q *browseQuery) {
-			reset(q)
+		return set(func(q *browseQuery) {
 			if q.hasGenre(g) {
 				q.without(g)
 			} else if len(q.Genres) < browseMaxGenres {
@@ -359,93 +375,92 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 			}
 		})
 	}
-	chip := func(g string) pages.GenreChip { return pages.GenreChip{Name: g, Href: toggle(g), On: q.hasGenre(g)} }
+	option := func(g string, n int) pages.FilterOption {
+		on := q.hasGenre(g)
+		return pages.FilterOption{Name: g, Count: n, On: on, Href: toggle(g), Disabled: !on && len(q.Genres) >= browseMaxGenres}
+	}
+	category := pages.FilterMenu{ID: "category", Label: libCategory, Chip: libCategory, AnyLabel: libCategoryAny, Counts: true,
+		On: len(q.Genres) > 0, AnyHref: set(func(q *browseQuery) { q.Genres = nil })}
 	listed := map[string]bool{}
-	for i, f := range genres {
-		if i < browseTopChips {
-			v.Genres = append(v.Genres, chip(f.Value))
-			listed[f.Value] = true
-		}
-	}
-	for _, g := range q.Genres { // a chosen genre stays in the row, so it can be taken off
-		if !listed[g] {
-			v.Genres = append(v.Genres, chip(g))
-			listed[g] = true
-		}
-	}
-	inSheet := map[string]bool{}
-	for _, f := range genres {
-		if len(v.AllGenres) == browseSheetMax {
+	for _, g := range genres {
+		if len(category.Options) == browseCategoryMax {
 			break
 		}
-		v.AllGenres = append(v.AllGenres, chip(f.Value))
-		inSheet[f.Value] = true
+		category.Options = append(category.Options, option(g.Value, g.Count))
+		listed[g.Value] = true
 	}
-	for _, g := range q.Genres {
-		if !inSheet[g] {
-			v.AllGenres = append(v.AllGenres, chip(g))
+	for _, g := range q.Genres { // a chosen genre stays listed, so it can be taken off
+		if !listed[g] {
+			category.Options = append(category.Options, option(g, 0))
 		}
 	}
-	return v
-}
+	if n := len(q.Genres); n == 1 {
+		category.Chip = libCategory + ": " + q.Genres[0]
+	} else if n > 1 {
+		category.Chip = libCategory + ": " + fmt.Sprintf(libCategoryMore, q.Genres[0], n-1)
+	}
 
-// libraryFilters adds the Author, Narrator, Series and Length menus and the values the forms carry.
-// Every choice is an address; a menu's "Any ..." link drops its own filter and keeps the others.
-func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *library.LibrarySummary, f libraryFacets) {
-	pagePath, _ := browsePaths(cur)
-	set := func(apply func(*browseQuery)) string {
-		return q.href(pagePath, func(q *browseQuery) { q.Cursor, q.Sheet = "", false; apply(q) })
-	}
-	people := func(label, chip, any string, opts []library.NamedFacet, chosen string, assign func(*browseQuery, string)) pages.FilterMenu {
-		m := pages.FilterMenu{Label: label, Chip: label, AnyLabel: any, Counts: true, On: chosen != "",
-			AnyHref: set(func(q *browseQuery) { assign(q, "") })}
-		for _, o := range opts {
-			id := o.ID
-			m.Options = append(m.Options, pages.FilterOption{Name: o.Name, Count: o.Count, On: id == chosen,
-				Href: set(func(q *browseQuery) { assign(q, id) })})
-			if id == chosen {
-				m.Chip = chip + ": " + o.Name
-			}
-		}
-		return m
-	}
-	add := func(m pages.FilterMenu) {
-		if m.On || len(m.Options) > 0 {
-			v.Menus = append(v.Menus, m)
-		}
-	}
-	add(people("Author", "Author", "Any author", f.Authors, q.Author, func(q *browseQuery, id string) { q.Author = id }))
-	add(people("Narrator", "Narrator", "Any narrator", f.Narrators, q.Narrator, func(q *browseQuery, id string) { q.Narrator = id }))
-	add(people("Series", "Series", "Any series", f.Series, q.Series, func(q *browseQuery, id string) { q.Series = id }))
-
-	lm := pages.FilterMenu{Label: "Length", Chip: "Length", AnyLabel: "Any length", On: q.Length != "", End: true,
+	length := pages.FilterMenu{ID: "length", Label: "Length", Chip: "Length", AnyLabel: "Any length", On: q.Length != "",
 		AnyHref: set(func(q *browseQuery) { q.Length = "" })}
 	for _, o := range browseLengthOptions {
 		val := o.Value
-		lm.Options = append(lm.Options, pages.FilterOption{Name: o.Label, Value: val, On: val == q.Length,
+		length.Options = append(length.Options, pages.FilterOption{Name: o.Label, Value: val, On: val == q.Length,
 			Href: set(func(q *browseQuery) { q.Length = val })})
 		if val == q.Length {
-			lm.Chip = "Length: " + o.Label
+			length.Chip = "Length: " + o.Label
 		}
 	}
-	v.LengthMenu = lm
 
-	sm := pages.FilterMenu{Label: showLabel, Chip: showLabel, AnyLabel: showAny, On: q.Show != "", End: true,
+	// The Filter menu lists the available kinds; the kinds row shows those in use or asked for.
+	filter := pages.FilterMenu{ID: "filter", Icon: "filter", Label: libFilterGroup, Chip: libFilterChip}
+	for _, k := range [...]struct {
+		m      pages.FilterMenu
+		always bool
+	}{{author, false}, {narrator, false}, {series, false}, {category, false}, {length, true}} {
+		if !k.always && !k.m.On && len(k.m.Options) == 0 {
+			continue
+		}
+		id := k.m.ID
+		filter.Options = append(filter.Options, pages.FilterOption{Name: k.m.Label,
+			Href: set(func(q *browseQuery) { q.Add = id })})
+		if k.m.On || q.Add == id {
+			k.m.Open = q.Add == id
+			k.m.End = len(v.Kinds) >= 2
+			v.Kinds = append(v.Kinds, k.m)
+		}
+	}
+	v.FilterMenu = filter
+
+	// Show holds the show states, then the order. Only the show state makes the chip "on": a sort is not a filter.
+	show := pages.FilterMenu{ID: "show", Titled: true, Label: showLabel, Chip: showLabel, AnyLabel: showAny, On: q.Show != "",
 		AnyHref: set(func(q *browseQuery) { q.Show = "" })}
 	for _, o := range browseShowOptions {
 		val := o.Value
-		sm.Options = append(sm.Options, pages.FilterOption{Name: o.Label, Value: val, On: val == q.Show,
+		show.Options = append(show.Options, pages.FilterOption{Name: o.Label, Value: val, On: val == q.Show,
 			Href: set(func(q *browseQuery) { q.Show = val })})
 		if val == q.Show {
-			sm.Chip = showLabel + ": " + o.Label
+			show.Chip = showLabel + ": " + o.Label
 		}
 	}
-	v.ShowMenu, v.ShowValue = sm, q.Show
+	if t := browseSortChip[q.Sort]; t != "" {
+		show.Chip += " \u00b7 " + t
+	}
+	sort := pages.MenuSection{Label: libSortHeading}
+	for _, o := range browseSortLabels {
+		sv := o.Sort
+		sort.Options = append(sort.Options, pages.FilterOption{Name: o.Label, Value: string(sv), On: sv == q.Sort,
+			Href: set(func(q *browseQuery) { q.Sort = sv })})
+	}
+	show.Sections = []pages.MenuSection{sort}
+	v.ShowMenu, v.ShowValue = show, q.Show
 
 	v.TitleFilter, v.LengthValue = q.Title, q.Length
 	for _, h := range [...]pages.HiddenField{{Name: "author", Value: q.Author}, {Name: "narrator", Value: q.Narrator}, {Name: "series", Value: q.Series}} {
 		if h.Value != "" {
 			v.Hidden = append(v.Hidden, h)
 		}
+	}
+	if q.Sort != library.SortAdded { // the title form keeps the order
+		v.Hidden = append(v.Hidden, pages.HiddenField{Name: "sort", Value: string(q.Sort)})
 	}
 }

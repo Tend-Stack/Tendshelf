@@ -374,11 +374,11 @@ func TestLibraryGenres(t *testing.T) {
 	add("Six Of Six", "g1", "g2", "g3", "g4", "g5", "g6")
 	add("Five Of Six", "g1", "g2", "g3", "g4", "g5")
 
-	body := html.UnescapeString(browseGet(a, "/libraries", false, nil).Body.String())
-	// Top three genres by use: Mystery (3), then g1 and g2 (2 each, by name).
-	for _, want := range []string{`href="/libraries?genre=Mystery"`, "More filters", `aria-label="Filters"`} {
+	body := html.UnescapeString(browseGet(a, "/libraries?add=category", false, nil).Body.String())
+	// The Category menu lists every genre as a toggle link; the Filter menu offers the kind.
+	for _, want := range []string{`href="/libraries?genre=Mystery"`, `id="lib-menu-filter"`, `id="lib-menu-category"`, `href="/libraries?add=category"`} {
 		if !strings.Contains(body, want) {
-			t.Errorf("genre chips lack %q", want)
+			t.Errorf("genre menu lacks %q", want)
 		}
 	}
 	if strings.Contains(body, "Clear filters") {
@@ -507,51 +507,28 @@ func TestLibraryNoJSPaging(t *testing.T) {
 	}
 }
 
-func TestLibraryFilterSheet(t *testing.T) {
+func TestLibrarySheetRetired(t *testing.T) {
 	a := browseOwnerApp(t)
 	f := browseLibrary(t, a, "Audiobooks")
 	librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "One", Genres: []string{"Mystery", "Thriller"}})
 
-	plain := browseGet(a, "/libraries", false, nil).Body.String()
-	if !regexp.MustCompile(`id="sheet"[^>]*>\s*</div>`).MatchString(plain) || strings.Contains(plain, "Filter and sort") {
-		t.Error("the sheet is open without ?sheet=filters")
-	}
-	// The chip that opens it loads the sheet into #sheet.
-	if !strings.Contains(plain, `hx-get="/libraries?sheet=filters"`) || !strings.Contains(plain, `hx-target="#sheet"`) {
-		t.Error("the sort chip does not open the sheet")
-	}
-
+	// The "Filter and sort" sheet is gone: its address is an ignored parameter.
 	rec := browseGet(a, "/libraries?genre=Mystery&sheet=filters", false, nil)
 	body := rec.Body.String()
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d", rec.Code)
 	}
-	i := strings.Index(body, `id="sheet"`)
-	if i < 0 || !strings.Contains(body[i:], "Filter and sort") || !strings.Contains(body[i:], `role="dialog"`) {
-		t.Fatal("the sheet is not inside #sheet")
+	if !regexp.MustCompile(`id="sheet"[^>]*>\s*</div>`).MatchString(body) || strings.Contains(body, "Filter and sort") {
+		t.Error("?sheet=filters still opens a sheet")
 	}
-	main := body[:i]
-	if strings.Contains(main, "Filter and sort") {
-		t.Error("the sheet is rendered inside #main")
+	if strings.Contains(body, "sheet=filters") {
+		t.Error("an address carries the retired sheet parameter")
 	}
-	sheet := body[i:]
-	for _, want := range []string{
-		`<form class="ts-filter-form" method="get" action="/libraries" hx-select-oob="#sheet">`, `Sort by`, `Recently added`, `Title`, `Author`, `Length`,
-		`type="radio"`, `name="sort"`, `type="checkbox"`, `name="genre" value="Mystery" checked`, `name="genre" value="Thriller"`, `>Show books<`, `data-ts-close`,
-	} {
-		if !strings.Contains(sheet, want) {
-			t.Errorf("sheet lacks %q", want)
-		}
+	if got := strings.Count(body, `<form class="ts-filter-form" method="get" action="/libraries"`); got != 1 {
+		t.Errorf("%d filter forms, want the title form only", got)
 	}
-	if strings.Contains(sheet, `value="Thriller" checked`) {
-		t.Error("an unchosen genre is checked")
-	}
-	// The sheet form and the inline bar both are GET forms to this page; the bar carries the genres.
-	if got := strings.Count(body, `<form class="ts-filter-form" method="get" action="/libraries"`); got != 2 {
-		t.Errorf("%d filter forms, want the sheet's and the bar's", got)
-	}
-	if strings.Contains(body, "csrf") && strings.Contains(sheet, `name="_csrf"`) {
-		t.Error("a GET form carries a CSRF field")
+	if !strings.Contains(body, `name="genre" value="Mystery"`) {
+		t.Error("the title form drops the chosen genre")
 	}
 }
 
@@ -563,7 +540,7 @@ func TestLibraryHidesRefusedAndMissing(t *testing.T) {
 	librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Protected Book", Refused: library.RefusedDRM, Genres: []string{"Secret"}})
 	librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Gone Book", MissingSince: 1, Genres: []string{"Secret"}})
 
-	for _, path := range []string{"/", "/libraries", "/libraries?view=list", "/libraries?sheet=filters", "/libraries?genre=Secret"} {
+	for _, path := range []string{"/", "/libraries", "/libraries?view=list", "/libraries?add=category", "/libraries?genre=Secret"} {
 		body := browseGet(a, path, false, nil).Body.String()
 		for _, not := range []string{"Protected Book", "Gone Book"} {
 			if strings.Contains(body, not) {
@@ -718,7 +695,7 @@ func TestBrowseNoInlineStyles(t *testing.T) {
 	librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Blank"})
 	a.adminEnqueueScan(t, f.LibraryID)
 
-	for _, path := range []string{"/", "/libraries", "/libraries?view=list", "/libraries?sheet=filters&genre=Mystery", "/libraries?genre=Nope"} {
+	for _, path := range []string{"/", "/libraries", "/libraries?view=list", "/libraries?add=category&genre=Mystery", "/libraries?genre=Nope"} {
 		body := browseGet(a, path, false, nil).Body.String()
 		if regexp.MustCompile(`\sstyle\s*=`).MatchString(body) {
 			t.Errorf("%s has an inline style attribute", path)
