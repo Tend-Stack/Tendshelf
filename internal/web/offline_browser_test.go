@@ -40,12 +40,24 @@ type offlineEnv struct {
 	files  []library.AudioFile
 	URL    string
 	down   atomic.Bool
+	slow   atomic.Int64                // milliseconds each download=1 request waits, so a test can act mid-download
 	cookie atomic.Pointer[http.Cookie] // added to requests that carry no session of their own
 }
 
 func offlineApp(t *testing.T) *offlineEnv {
 	t.Helper()
-	a := newTestApp(t, func(o *Options) { o.DownloadChunk = offlineChunk })
+	return offlineAppWith(t, nil)
+}
+
+// offlineAppWith is offlineApp with more server options.
+func offlineAppWith(t *testing.T, more func(*Options)) *offlineEnv {
+	t.Helper()
+	a := newTestApp(t, func(o *Options) {
+		o.DownloadChunk = offlineChunk
+		if more != nil {
+			more(o)
+		}
+	})
 	owner := a.owner(t)
 	_, f := librarytest.NewLibrary(t, a.lib, "Offline library", t.TempDir())
 	book := librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{
@@ -77,6 +89,9 @@ func offlineApp(t *testing.T) *offlineEnv {
 				_ = conn.Close()
 			}
 			return
+		}
+		if ms := e.slow.Load(); ms > 0 && r.URL.Query().Has("download") {
+			time.Sleep(time.Duration(ms) * time.Millisecond)
 		}
 		if ck := e.cookie.Load(); ck != nil {
 			if _, err := r.Cookie(ck.Name); err != nil {
