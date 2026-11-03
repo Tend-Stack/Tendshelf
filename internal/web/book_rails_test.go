@@ -151,7 +151,7 @@ func TestBookPlayRegion(t *testing.T) {
 	page := func() string { return bookMain(playBtnGet(e, "/books/"+e.book.ID)) }
 	region := func() string { return playBtnGet(e, "/hx/books/"+e.book.ID+"/play") }
 
-	// Untouched: no ruler, but the shelf link and the one mark form are inside the region.
+	// Untouched: no ruler, but the shelf link, the one mark form and the queue menu are inside the region.
 	body := page()
 	reg := region()
 	if strings.Contains(reg, "ts-ruler") || strings.Contains(reg, "ts-book__where") {
@@ -162,8 +162,8 @@ func TestBookPlayRegion(t *testing.T) {
 			t.Errorf("region lacks %q", want)
 		}
 	}
-	if strings.Count(reg, "<form") != 1 || playBtnCount(body, e.book.ID) != 1 {
-		t.Errorf("region has %d forms, page has %d play buttons; want 1 and 1", strings.Count(reg, "<form"), playBtnCount(body, e.book.ID))
+	if strings.Count(reg, "<form") != 3 || playBtnCount(body, e.book.ID) != 1 { // the mark form and the queue menu's two
+		t.Errorf("region has %d forms, page has %d play buttons; want 3 and 1", strings.Count(reg, "<form"), playBtnCount(body, e.book.ID))
 	}
 	if strings.Contains(strings.Replace(body, reg, "", 1), `aria-haspopup="dialog"`) {
 		t.Error("the shelf link also appears outside #book-play")

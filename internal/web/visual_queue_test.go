@@ -13,8 +13,8 @@ import (
 )
 
 // queueVisualSeed builds the Harbour Lights library of the book boards and queues four of its books
-// for the owner. It returns the id of the book page to capture and the empty person's... none: the
-// empty state is captured before the books are queued.
+// for the owner when the returned function runs (the empty page is captured before it). It returns
+// the id of the book page to capture.
 func queueVisualSeed(t *testing.T, a *testApp) (bookID string, queue func()) {
 	t.Helper()
 	bookID, _, _, _ = bookVisualSeed(t, a)
@@ -37,7 +37,7 @@ func queueVisualSeed(t *testing.T, a *testApp) (bookID string, queue func()) {
 }
 
 // TestVisualQueue captures the split play button (closed and open) and the /queue page (empty and
-// filled) at 390, 768, 1024 and 1440 px in dark and light, and fails on horizontal overflow, a target
+// filled) at the widths and themes of visualMatrix (make visual-full: 390, 768, 1024 and 1440 px), and fails on horizontal overflow, a target
 // under 44 px, a page without one h1 or an inline style. The open menu is checked to stay inside the
 // viewport.
 func TestVisualQueue(t *testing.T) {
@@ -81,10 +81,8 @@ func TestVisualQueue(t *testing.T) {
 		tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("queue-%s-%s-%d.png", name, theme, w)))
 	}
 	each := func(name, path string, open bool) {
-		for _, theme := range []string{"dark", "light"} {
-			for _, w := range []int{390, 768, 1024, 1440} {
-				t.Run(fmt.Sprintf("%s-%s-%d", name, theme, w), func(t *testing.T) { shoot(t, name, path, theme, w, open) })
-			}
+		for _, sh := range visualMatrix(true) {
+			t.Run(fmt.Sprintf("%s-%s-%d", name, sh.Theme, sh.Width), func(t *testing.T) { shoot(t, name, path, sh.Theme, sh.Width, open) })
 		}
 	}
 	each("page-empty", "/queue", false)
