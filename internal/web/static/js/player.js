@@ -220,10 +220,27 @@ async function fetchBook(id, init) {
     if (res.status !== 200 || res.redirected) return null;
     const html = await res.text();
     const el = new DOMParser().parseFromString(html, "text/html").getElementById("player-data");
-    return el ? parseBook(el) : null;
+    const parsed = el ? parseBook(el) : null;
+    if (parsed) useNewerPendingSave(parsed);
+    return parsed;
   } catch {
     return null;
   }
+}
+
+// A save that never reached the server (offline) can be newer than the stored place the fragment
+// carries, possibly a copy from before the save: the newer one wins until offline.js has sent it.
+function useNewerPendingSave(parsed) {
+  const saved = new URLSearchParams(pendingSaves()[parsed.id] || "");
+  const savedAt = Number(saved.get("client_updated_at")) || 0;
+  if (savedAt <= (parsed.stored ? parsed.stored.updatedAt : 0)) return;
+  parsed.stored = {
+    positionMs: Number(saved.get("position_ms")) || 0,
+    updatedAt: savedAt,
+    deviceId: saved.get("device_id") || "",
+    deviceLabel: parsed.stored ? parsed.stored.deviceLabel : "",
+    finished: saved.get("finished") === "1",
+  };
 }
 
 // ---- Link mode: the book is on the page and the place is kept in this browser ----
@@ -499,7 +516,7 @@ function setSpeed(value) {
 // ---- Saves: position goes to the server, safely ----
 
 // A save is written to localStorage first and cleared when the server answers, so one lost to a
-// closed tab or dead network is sent again at the next start (flushPending).
+// closed tab or dead network is sent again by offline.js.
 function pendingSaves() {
   try {
     return JSON.parse(localStorage.getItem("ts.pending")) || {};
@@ -605,19 +622,6 @@ async function save(kind) {
   fire(document.body, "progress-saved", { bookId: id, positionMs: position, applied: answer.applied });
   // the server kept a newer place from another device
   if (!answer.applied && book && book.id === id) maybeAskContinue(answer.progress);
-}
-
-// Sends saves that never got an answer, stopping at the first failure.
-async function flushPending() {
-  if (LINK) return; // another page of this browser may have left saves for the signed-in account
-  for (const [id, body] of Object.entries(pendingSaves())) {
-    try {
-      if (!(await postProgress(id, body))) return;
-    } catch {
-      return;
-    }
-    setPendingSave(id, null);
-  }
 }
 
 // A redirect to sign-in means the session ended: say so once.
@@ -1150,7 +1154,6 @@ window.tsPlayer = {
 
 fire(document, "ts:player:ready"); // player-full.js is an async module and may have run first
 revealPlayAtButtons();
-flushPending();
 
 // Show the last played book in the bar, paused.
 fetchBook("").then((fetched) => {

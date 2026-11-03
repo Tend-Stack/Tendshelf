@@ -360,6 +360,7 @@ const (
 	msgVolume            = "Volume"
 	msgBookmarkMoment    = "Bookmark this moment"
 	msgBookmarkFailed    = "That bookmark didn't save. Try again."
+	msgBookmarkQueued    = "Bookmarked at {time}. It saves when you're back online."
 	msgKeysBookmark      = "Bookmark"
 )
 
@@ -388,9 +389,9 @@ func playerMsgs() components.PlayerMsgs {
 		KeysBookmark: msgKeysBookmark,
 		// one source with the Bookmarks tab (P1c-7a): its %s becomes the player's {time}
 		Bookmarked:       strings.Replace(bookmarkToast, "%s", "{time}", 1),
-		BookmarkMomentAt: strings.Replace(bookmarkAddButton, "%s", "{time}", 1),
-		AddNote:          bookmarkAddNote,
-		WaveLabel:        msgWaveLabel, WaveValue: msgWaveValue, Hour: msgHour, Hours: msgHours, Minute: msgMinute, Minutes: msgMinutes,
+		BookmarkMomentAt: strings.Replace(bookmarkAddButton, "%s", "{time}", 1), BookmarkQueued: msgBookmarkQueued,
+		AddNote:   bookmarkAddNote,
+		WaveLabel: msgWaveLabel, WaveValue: msgWaveValue, Hour: msgHour, Hours: msgHours, Minute: msgMinute, Minutes: msgMinutes,
 		Second: msgSecond, Seconds: msgSeconds, WaveDrawing: msgWaveDrawing, WaveChapter: msgWaveChapter, WaveLeft: msgWaveLeft,
 		WaveAhead: msgWaveAhead, WaveBack: msgWaveBack, WaveDragChapter: msgWaveDragChapter, DeltaMin: msgDeltaMin,
 		DeltaSec: msgDeltaSec, BookTip: msgBookTip, BarMeta: msgBarMeta,

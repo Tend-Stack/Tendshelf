@@ -780,12 +780,18 @@ let bookmarking = false; // one request at a time
 async function addBookmark() {
   if (!book || bookmarking || LINK) return;
   bookmarking = true;
+  const positionMs = player.state().positionMs;
   try {
-    const res = await fetch("/books/" + encodeURIComponent(book.id) + "/bookmarks", {
-      method: "POST",
-      headers: { Accept: "application/json", "X-CSRF-Token": csrf(), "Content-Type": FORM_TYPE },
-      body: "position_ms=" + player.state().positionMs,
-    });
+    let res;
+    try {
+      res = await fetch("/books/" + encodeURIComponent(book.id) + "/bookmarks", {
+        method: "POST",
+        headers: { Accept: "application/json", "X-CSRF-Token": csrf(), "Content-Type": FORM_TYPE },
+        body: "position_ms=" + positionMs,
+      });
+    } catch {
+      return queueBookmark(positionMs); // the network is gone: keep it for offline.js to send
+    }
     if (res.status === 201) showBookmarkToast(await res.json());
     else if (res.status === 409) player.toast("err", (await res.text()).trim()); // the limit, in plain words
     else player.toast("err", msg("bookmarkFailed"));
@@ -794,6 +800,20 @@ async function addBookmark() {
   } finally {
     bookmarking = false;
   }
+}
+
+// A bookmark made without a connection waits in ts.offline.marks (at most 200, the oldest dropped).
+function queueBookmark(positionMs) {
+  const clientId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+  try {
+    const marks = JSON.parse(localStorage.getItem("ts.offline.marks")) || [];
+    marks.push({ bookId: book.id, positionMs, clientId, at: Date.now() });
+    localStorage.setItem("ts.offline.marks", JSON.stringify(marks.slice(-200)));
+  } catch {
+    return player.toast("err", msg("bookmarkFailed"));
+  }
+  const time = clock(positionMs - book.chapters[chapterAt(positionMs)].start);
+  player.toast("hint", fill(msg("bookmarkQueued"), { time }));
 }
 
 // A bookmark toast (time and a note link) with a link that opens the note sheet like the
