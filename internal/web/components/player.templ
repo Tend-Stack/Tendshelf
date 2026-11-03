@@ -28,7 +28,7 @@ type PlayerMsgs struct {
 	SpeedValue, SpeedLabel, SpeedFine, SleepTitle, SleepEndOfChapter, SleepMinutes string
 	SleepIn, SleepCustom, SleepCustomLabel, SleepStart, SleepTurnOff, SleepOffLabel string
 	SleepOnLabel, Sleeping, SleepFading, SleepFadingShake, PlusTen, Volume         string
-	BookmarkMoment, BookmarkFailed, KeysBookmark, Bookmarked, BookmarkMomentAt     string
+	BookmarkMoment, BookmarkFailed, KeysBookmark, Bookmarked, BookmarkMomentAt, BookmarkQueued string
 	AddNote                                                                        string
 
 	// The desktop bar's chapter waveform (PB1).
@@ -100,6 +100,7 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 		"data-ts-msg-bookmark-failed":     m.BookmarkFailed,
 		"data-ts-msg-bookmarked":          m.Bookmarked,
 		"data-ts-msg-bookmark-moment-at":  m.BookmarkMomentAt,
+		"data-ts-msg-bookmark-queued":     m.BookmarkQueued,
 
 		"data-ts-msg-wave-label":        m.WaveLabel,
 		"data-ts-msg-wave-value":        m.WaveValue,

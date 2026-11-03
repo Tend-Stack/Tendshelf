@@ -299,7 +299,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"player.js": {12*1024 + 768, 64 * 1024},
 	// PB2 moved the desktop bar's wave seek and the volume pop into waveform.js: back to 12 KB (12.2 KB measured by gzip -c).
 	// P3-11a: sidePanel() (larger text never uses the side panel) is 12.03 KB, so 12.5 KB; to be approved by the operator.
-	"player-full.js": {12*1024 + 512, 64 * 1024},
+	// M3a (decision 0012): the offline bookmark queue; 12.75 KB, approved by the operator on 2026-11-03.
+	"player-full.js": {12*1024 + 768, 64 * 1024},
 	// W2: the waveform drawing (3.0 KB). PB2 folds in the desktop bar's wave (four layers, times, hover,
 	// drag, keys, retry backoff, hairline, volume pop): 7 KB, approved by the operator on 2026-11-02; 7.0 KB measured.
 	"waveform.js": {7 * 1024, 24 * 1024},
@@ -308,6 +309,11 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"now-panel.js": {1*1024 + 128, 16 * 1024},
 	// P3-12: the Copy buttons and the "Open in my email app" hand-off of invitations; 1 KB, inside the 38 KB total.
 	"copy.js": {1 * 1024, 16 * 1024},
+	// M3a offline pocket (decision 0012), approved by the operator on 2026-11-03: the service worker
+	// 3 KB, the page module 3.25 KB, the download manager 5.5 KB (written in package B2).
+	"sw.js":        {3 * 1024, 24 * 1024},
+	"offline.js":   {3*1024 + 256, 24 * 1024},
+	"downloads.js": {5*1024 + 512, 40 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
@@ -317,7 +323,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // P3-11a (Larger text: the layout switch at the large-text width also lives in script) passes 36 KB; the
 // operator approved 38 KB on 2026-11-02, with room for M2's last packages.
 // Q3 (Up next autoplay and the three-tab keys) makes it 38.25 KB; approved by the operator on 2026-11-03.
-const jsTotalGzip = 38*1024 + 512 // 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
+// M3a (decision 0012): sw.js, offline.js, downloads.js and player-full.js's share make it 50.5 KB; approved by the operator on 2026-11-03.
+const jsTotalGzip = 50*1024 + 512 // 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

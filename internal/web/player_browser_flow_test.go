@@ -145,7 +145,19 @@ func TestPlayerBrowserContinueThere(t *testing.T) {
 
 func TestPlayerBrowserBeacon(t *testing.T) {
 	e := playerApp(t)
-	tab := playerOpen(t, chromium(t), e.URL, 390, 800)
+	b := chromium(t)
+	// A page that a service worker (M3a) controls loses a beacon when the page is destroyed at once
+	// (measured: the same beacon from a live page arrives), so this test runs without a worker and
+	// looks at the beacon alone. The save is also in ts.pending and offline.js sends it at the next
+	// load (TestOfflineSyncsAfterReconnect).
+	tab := b.NewTab(390, 800, true, false)
+	_ = tab.Call("Page.enable", nil, nil)
+	noWorker := map[string]any{"source": `Object.defineProperty(Navigator.prototype, "serviceWorker", { get: () => undefined })`}
+	if err := tab.Call("Page.addScriptToEvaluateOnNewDocument", noWorker, nil); err != nil {
+		t.Fatal(err)
+	}
+	tab.Navigate(e.URL + "/libraries")
+	tab.WaitFor(`window.tsPlayer !== undefined`, 10*time.Second)
 	e.playerInject(tab, e.book.ID, 0, 0, "")
 	playerClickSel(t, tab, "#play-link")
 	tab.WaitFor(`window.tsPlayer.state().positionMs >= 3000`, 10*time.Second)
