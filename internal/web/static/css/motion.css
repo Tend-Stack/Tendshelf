@@ -36,8 +36,9 @@
 .ts-toast.is-leaving { animation: ts-toast-out var(--duration-base) var(--easing-exit) both; }
 
 /* Press feedback for cards, rows and chips */
-.ts-press { transition: transform var(--duration-instant) var(--easing-standard); }
-.ts-press:active { transform: scale(0.98); }
+.ts-press, .ts-card, .ts-row { transition: transform var(--duration-instant) var(--easing-standard); }
+/* Feedback starts the moment a finger lands (no transition in) and eases out on release. */
+.ts-press:active, .ts-card:active, .ts-row:active { transform: scale(0.98); transition-duration: 0s; }
 
 /* Progress and scan covers */
 .ts-value { transition: inline-size var(--duration-ring) var(--easing-standard); }
@@ -58,13 +59,17 @@
   .ts-tabs__item:hover:not([aria-selected="true"], [aria-current="page"]) { color: var(--ink-muted); }
   .ts-chip:hover:not(:active, [aria-pressed="true"], [disabled]) { background: transparent; }
   .ts-input:hover:not(:focus-visible, [aria-invalid="true"], [disabled]) { border-color: var(--line-strong); }
-  .ts-option:hover, .ts-player-bar__item:hover, .ts-selmenu__item:hover { background: transparent; }
-  .ts-chapter:hover:not([aria-current="true"]) { background: transparent; }
-  .ts-rail__item:hover:not([aria-current="page"]) { background: transparent; color: var(--ink-muted); }
-  .ts-side__item:hover:not([aria-current="page"]) { background: transparent; color: var(--ink-muted); }
+  .ts-option:hover:not(:active), .ts-player-bar__item:hover:not(:active), .ts-selmenu__item:hover:not(:active) { background: transparent; }
+  .ts-chapter:hover:not(:active, [aria-current="true"]) { background: transparent; }
+  .ts-rail__item:hover:not(:active, [aria-current="page"]) { background: transparent; color: var(--ink-muted); }
+  .ts-side__item:hover:not(:active, [aria-current="page"]) { background: transparent; color: var(--ink-muted); }
   .ts-mode__item:hover:not([aria-checked="true"], [disabled]) { color: var(--ink-muted); }
   .ts-voicepill:hover { background: var(--pill-voice); }
 }
+
+/* Press state for list items and controls: an instant state layer under the finger or the pointer. */
+.ts-chip:active, .ts-seg__item:active, .ts-tabs__item:active, .ts-mode__item:active, .ts-option:active, .ts-chapter:active, .ts-selmenu__item:active,
+.ts-player-bar__item:active, .ts-tabbar__item:active, .ts-rail__item:active, .ts-side__item:active { background-color: var(--raised-hover); transition-duration: 0s; }
 
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*) { animation: none; }
@@ -76,7 +81,7 @@
   .ts-sheet, .ts-toast { transition: opacity var(--duration-fast) linear; }
   .ts-scrim.is-leaving { animation-duration: var(--duration-fast); }
   .ts-sheet.is-leaving, .ts-toast.is-leaving { animation-name: ts-fade-out; animation-duration: var(--duration-fast); }
-  .ts-press:active, .ts-btn:active, .ts-iconbtn:active { transform: none; }
+  .ts-press:active, .ts-card:active, .ts-row:active, .ts-btn:active, .ts-iconbtn:active { transform: none; }
   .ts-value { transition-duration: var(--duration-fast); }
   .ts-appear { animation-duration: var(--duration-fast); }
   .ts-spinner, .ts-skeleton::after, .ts-eq span { animation: none; }

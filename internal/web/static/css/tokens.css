@@ -5,6 +5,7 @@
    the pill radius (9999px, meaning "fully round"); and media-query breakpoints, which are CSS pixels by
    design (phone 360-767, tablet 768-1279, desktop 1280+). TestRemUnits in internal/web enforces this. */
 :root, [data-theme="dark"] {
+  color-scheme: dark;
   --ground: #14110e;
   --surface: #1e1a15;
   --raised: #29231c;
@@ -59,6 +60,7 @@
   --wave-ahead: #e2703ae0;
 }
 [data-theme="light"] {
+  color-scheme: light;
   --ground: #f4eee3;
   --surface: #fbf7f0;
   --raised: #e9e0d0;
@@ -98,6 +100,7 @@
   --wave-ahead: #a2441ad0;
 }
 [data-theme="sepia"] {
+  color-scheme: light;
   --ground: #e6d7bc;
   --surface: #eee2cb;
   --raised: #dacbae;
@@ -137,6 +140,7 @@
   --wave-ahead: #8e3b15d0;
 }
 [data-theme="contrast"] {
+  color-scheme: dark;
   --ground: #000000;
   --surface: #0e0e0e;
   --raised: #1a1a1a;

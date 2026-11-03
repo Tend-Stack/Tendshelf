@@ -134,7 +134,7 @@ a.ts-users__item:hover { background: var(--surface); }
 /* Tablet and desktop: a table in a bordered card. */
 @container pane (width >= 36rem) {
   .ts-users__list { display: none; }
-  #users { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-lg); }
+  #users { overflow-x: auto; overscroll-behavior-x: contain; border: 1px solid var(--line); border-radius: var(--radius-lg); }
   .ts-users__table { display: table; width: 100%; border-collapse: collapse; font-size: 0.9375rem; line-height: 1.25rem; }
   .ts-users__table th, .ts-users__table td { padding: var(--space-12); text-align: left; font-weight: 400; vertical-align: middle; }
   .ts-users__table thead tr { background: var(--surface); }

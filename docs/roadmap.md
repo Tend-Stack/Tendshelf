@@ -130,6 +130,20 @@ the kitchen sink (`make run-dev`): press feedback, page swap, sheet, toasts, pro
 operator's browser; the same with GNOME Reduce Animation on (fades only); and the WebKitGTK 6.0
 MiniBrowser that Wails uses (`make app`). All behaved as specified. Next: M1 (P1a).
 
+Native feel status 2026-11-03 ([decision 0011](decisions/0011-native-feel.md), plan `docs/plans/native-feel.md`): built.
+Scope: `overscroll-behavior-y: none` on `html` (the page locks while a modal dialog is open, because Safari needs a
+scrolling box), selection scoped (chrome none, fields and content `text`, with the `-webkit-` prefixes), `:active`
+state layers for every control and a `:hover`-after-tap guard that keeps them, `color-scheme` per theme, `theme-color`
+and `format-detection` metas, `env(safe-area-inset-*)` on every fixed or sticky edge (tab bar, rail, sidebar, mini
+player, toasts, sheets, full player, sign-in frame, book band), `scroll-padding` for the fixed bars, a 16 px email
+textarea, contained inner scrollers. Budgets: core CSS 19.5 KB and `utilities.css` 2.5 KB, approved by the operator
+2026-11-03. Checks: `static/native_test.go`, `components/head_meta_test.go`, `native_feel_browser_test.go` (Chromium with
+`Emulation.setSafeAreaInsetsOverride`, portrait and landscape). Limits: the passive `<body>` touchstart listener for
+iOS `:active` did not fit the JS budget (`shell.js` 20 bytes over); the existing `document` listener stays. Pending
+manual checks on real devices: iPhone Safari and home-screen (no bounce, no callout on long-press, buttons darken on
+touch-down, notch and home bar in both orientations, no zoom on the email textarea); Android Chrome (no
+pull-to-refresh, toolbar takes the theme colour).
+
 ## M1 It plays (single owner)
 
 Goal: the owner installs it, points it at a folder and listens on phone and laptop. Built in three

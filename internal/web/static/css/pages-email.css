@@ -13,7 +13,7 @@ a.ts-share__tab:focus-visible { outline: 2px solid transparent; box-shadow: var(
 .ts-share__mailpanel [hidden] { display: none; }
 .ts-share__mailpanel .ts-btn { align-self: flex-start; }
 .ts-share__mailpanel .ts-input { max-width: none; }
-.ts-share__mailpanel textarea { min-height: 11rem; resize: vertical; font: 400 0.9375rem/1.5rem var(--font-sans); }
+.ts-share__mailpanel textarea { min-height: 11rem; resize: vertical; font: 400 1rem/1.5rem var(--font-sans); }
 .ts-share__mailpanel label { margin-top: var(--space-4); }
 
 /* Pending invites: "Link created for …", "Sent to …", "Couldn't send …". */
