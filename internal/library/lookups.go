@@ -34,20 +34,23 @@ type LookupRow struct {
 // SetAutoLookup turns "look up details online for new books" on for a library at the given time
 // (milliseconds), or off with 0. It is ErrNotFound for an unknown library.
 func (r *Repo) SetAutoLookup(ctx context.Context, libraryID string, at int64) error {
+	return r.Update(ctx, func(t *Tx) error { return t.SetAutoLookup(libraryID, at) })
+}
+
+// SetAutoLookup is Repo.SetAutoLookup inside a transaction.
+func (t *Tx) SetAutoLookup(libraryID string, at int64) error {
 	var arg any
 	if at > 0 {
 		arg = at
 	}
-	return r.Update(ctx, func(t *Tx) error {
-		res, err := t.exec(`UPDATE libraries SET auto_lookup_at = ? WHERE id = ?`, arg, libraryID)
-		if err != nil {
-			return mapErr(err, "library")
-		}
-		if n, _ := res.RowsAffected(); n == 0 {
-			return fmt.Errorf("%w: library", ErrNotFound)
-		}
-		return nil
-	})
+	res, err := t.exec(`UPDATE libraries SET auto_lookup_at = ? WHERE id = ?`, arg, libraryID)
+	if err != nil {
+		return mapErr(err, "library")
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return fmt.Errorf("%w: library", ErrNotFound)
+	}
+	return nil
 }
 
 // PutBookLookup records how a book's online lookup ended, replacing any earlier record.

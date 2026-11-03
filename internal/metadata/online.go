@@ -44,6 +44,7 @@ type Candidate struct {
 	ProviderLabel string
 	Score         float64
 	Exact         bool
+	Confident     bool // safe to apply without a person looking (online.Confident)
 	Details       Details
 	CoverURL      string
 	CoverCached   bool
@@ -180,20 +181,12 @@ func (s *Service) handleLookup(ctx context.Context, t *jobs.Task) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := LookupResult{Query: p.Query, FetchedAt: s.now().UnixMilli(), Errors: res.Errors, Searched: res.Searched, Steps: res.Steps}
-	for _, b := range res.Candidates {
-		c := Candidate{Provider: b.Provider, ProviderLabel: b.ProviderLabel, Score: b.Score, Exact: b.Exact,
-			Details: FromOnline(b), CoverURL: b.CoverURL}
-		for _, a := range b.Authors {
-			if asin := cleanASIN(a.ASIN); asin != "" {
-				if c.AuthorASINs == nil {
-					c.AuthorASINs = map[string]string{}
-				}
-				c.AuthorASINs[a.Name] = asin
-			}
-		}
-		out.Candidates = append(out.Candidates, c)
+	// A manual lookup is counted against the daily cap, never blocked by it.
+	if err := AddOnlineUsage(context.WithoutCancel(ctx), s.repo.Store(), usageDay(s.now()), res.SentBy()); err != nil {
+		s.log.Warn("count online requests", "err", err)
 	}
+	out := LookupResult{Query: p.Query, FetchedAt: s.now().UnixMilli(), Errors: res.Errors, Searched: res.Searched, Steps: res.Steps}
+	out.Candidates = toCandidates(p.Query, res)
 	for i := 0; i < len(out.Candidates) && i < coverPreviews; i++ {
 		c := &out.Candidates[i]
 		if c.CoverURL == "" {
@@ -206,6 +199,26 @@ func (s *Service) handleLookup(ctx context.Context, t *jobs.Task) (any, error) {
 		}
 	}
 	return out, nil
+}
+
+// toCandidates cleans a lookup's books into candidates and marks the ones that are confident
+// matches for the query.
+func toCandidates(q online.Query, res online.Result) []Candidate {
+	var out []Candidate
+	for _, b := range res.Candidates {
+		c := Candidate{Provider: b.Provider, ProviderLabel: b.ProviderLabel, Score: b.Score, Exact: b.Exact,
+			Confident: online.Confident(b, q.Title, q.Author), Details: FromOnline(b), CoverURL: b.CoverURL}
+		for _, a := range b.Authors {
+			if asin := cleanASIN(a.ASIN); asin != "" {
+				if c.AuthorASINs == nil {
+					c.AuthorASINs = map[string]string{}
+				}
+				c.AuthorASINs[a.Name] = asin
+			}
+		}
+		out = append(out, c)
+	}
+	return out
 }
 
 func offError() error {

@@ -105,6 +105,10 @@ func (s *Service) ApplyOnline(ctx context.Context, bookID string, c Candidate, f
 				changed = append(changed, f)
 			}
 		}
+		// A person chose: bulk and automatic lookups leave this book alone from now on.
+		if err := tx.PutBookLookup(bookID, library.LookupChosen, c.Provider, "", now); err != nil {
+			return err
+		}
 		return tx.Audit(db.AuditEntry{At: now, UserID: userID, Action: "book.details.apply", Target: "book:" + bookID,
 			Detail: map[string]any{"provider": c.Provider, "fields": changedOrEmpty(changed)}})
 	})
