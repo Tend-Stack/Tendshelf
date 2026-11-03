@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
+	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
@@ -166,6 +167,48 @@ func TestNowPanelRoles(t *testing.T) {
 			}
 			nowpanelNot(t, body, "data-ts-play", `type="range"`, "data-ts-full-toggle", `id="now-tab-chapters"`)
 		})
+	}
+}
+
+func TestNowPanelLookupLink(t *testing.T) {
+	l := newWriteLab(t, 1, false)
+	o := Options{Library: l.a.lib, Store: l.a.st, Jobs: l.a.runner}
+	compareMod(t, &compareNet{})(&o)
+	l.a.srv.details = o.Details
+	href := `href="/books/` + l.book.ID + `/details?sheet=lookup"`
+	panel := "/hx/player/panel/" + l.book.ID
+	has := func(ck *http.Cookie) bool {
+		rec := l.get(ck, panel, true)
+		if rec.Code != http.StatusOK {
+			return false
+		}
+		body := html.UnescapeString(rec.Body.String())
+		return strings.Contains(body, href) && strings.Contains(body, "Look up details online")
+	}
+	for name, ck := range map[string]*http.Cookie{"owner": l.owner, "admin": l.admin} {
+		if !has(ck) {
+			t.Errorf("%s: no lookup link", name)
+		}
+	}
+	for name, ck := range map[string]*http.Cookie{"member": l.member, "guest": l.guest} {
+		if has(ck) {
+			t.Errorf("%s: has the lookup link", name)
+		}
+	}
+	if err := metadata.SetOnlineEnabled(context.Background(), l.a.st, false, ""); err != nil {
+		t.Fatal(err)
+	}
+	if has(l.owner) {
+		t.Error("online off: has the lookup link")
+	}
+	if err := metadata.SetOnlineEnabled(context.Background(), l.a.st, true, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.a.st.Writer().Exec(`UPDATE books SET description = 'A story.' WHERE id = ?`, l.book.ID); err != nil {
+		t.Fatal(err)
+	}
+	if has(l.owner) {
+		t.Error("with a description: has the lookup link")
 	}
 }
 
