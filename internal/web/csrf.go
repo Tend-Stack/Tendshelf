@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -19,6 +20,9 @@ const (
 	csrfField  = "_csrf"
 	// csrfFormLimit bounds the form body read while looking for the _csrf field.
 	csrfFormLimit = 1 << 20
+	// csrfUploadLimit bounds the multipart body of the one route that takes a picture: the 5 MiB
+	// picture plus its form fields.
+	csrfUploadLimit = 6 << 20
 )
 
 type csrfContextKey struct{}
@@ -147,6 +151,18 @@ func (c *CSRF) mint(w http.ResponseWriter, r *http.Request) string {
 	return v
 }
 
+// coverUploadPath matches the only address whose multipart body may exceed csrfFormLimit.
+var coverUploadPath = regexp.MustCompile(`^/books/[^/]+/cover/upload$`)
+
+// csrfLimit is how much of a multipart body the check reads: the upload limit for a cover upload,
+// csrfFormLimit for everything else.
+func csrfLimit(r *http.Request) int64 {
+	if r.Method == http.MethodPost && coverUploadPath.MatchString(r.URL.Path) {
+		return csrfUploadLimit
+	}
+	return csrfFormLimit
+}
+
 // tokenOK checks the header, then the form field, against the token for the request's binding. A
 // binding that was only just minted can never match, so a request without the cookie is refused.
 func (c *CSRF) tokenOK(w http.ResponseWriter, r *http.Request) bool {
@@ -171,8 +187,9 @@ func (c *CSRF) tokenOK(w http.ResponseWriter, r *http.Request) bool {
 			}
 			got = vals.Get(csrfField)
 		case strings.HasPrefix(ct, "multipart/form-data"):
-			r.Body = http.MaxBytesReader(w, r.Body, csrfFormLimit)
-			if r.ParseMultipartForm(csrfFormLimit) != nil {
+			limit := csrfLimit(r)
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
+			if r.ParseMultipartForm(limit) != nil {
 				return false
 			}
 			if v := r.MultipartForm.Value[csrfField]; len(v) > 0 {

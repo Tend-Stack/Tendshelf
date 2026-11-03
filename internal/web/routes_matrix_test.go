@@ -85,7 +85,10 @@ type sweepEnv struct {
 	// cn is the fake network of the lookup service and lookupJob a finished lookup of the book (M4-6).
 	cn        *compareNet
 	lookupJob string
-	tree      string // a folder for the browse view, with a file name that must never be sent
+	// coverID is the book's cover row, coverJob a waiting cover adoption of the book and authorJob a
+	// waiting author lookup (M4-8).
+	coverID, coverJob, authorJob string
+	tree                         string // a folder for the browse view, with a file name that must never be sent
 
 	// granted marks the app of TestRouteMatrixGranted: the member and the guest hold a library
 	// grant on libID, so rows answer with Granted and the leak scan is off.
@@ -218,6 +221,7 @@ func sweepSeed(t *testing.T) *sweepEnv {
 	emailSeed(t, e)
 	linkSeed(t, e)
 	e.lookupJob = compareSeedJob(t, e, e.book.ID, true)
+	coverSeed(t, e)
 	e.job = a.adminEnqueueScan(t, l.ID)
 	a.adminSetJobState(t, e.job, "done")
 	if err := db.PutSetting(ctx, a.st.Writer(), settingSetupDone, true); err != nil {
@@ -629,6 +633,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, invitesSweepRows()...)
 	rows = append(rows, shareSweepRows()...)
 	rows = append(rows, detailsSweepRows()...)
+	rows = append(rows, coverSweepRows()...)
 	rows = append(rows, devicesSweepRows()...)
 	rows = append(rows, emailSweepRows()...)
 	rows = append(rows, apiSweepRows()...)
