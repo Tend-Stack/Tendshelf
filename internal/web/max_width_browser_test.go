@@ -6,12 +6,13 @@ import (
 	"testing"
 )
 
-// TestMaxWidthBrowser: on a monitor wider than the app's 2560 px limit the shell, the player bar and the
-// Now playing panel stay in one centred 2560 px column, the page never scrolls sideways, and the sidebar's
-// toggle sits above the bar. At exactly 2560 px nothing is capped yet.
+// TestMaxWidthBrowser: on a monitor wider than the app's 1920 px limit the shell, the player bar and the
+// Now playing panel stay in one 1920 px column at the left edge (operator, 2026-11-03), the page fills that
+// column, it never scrolls sideways, and the sidebar's toggle sits above the bar. At exactly 1920 px nothing
+// is capped yet.
 func TestMaxWidthBrowser(t *testing.T) {
 	e := nowPanelEnv(t)
-	for _, s := range []struct{ w, h int }{{2560, 1080}, {3840, 1080}, {5120, 1440}} {
+	for _, s := range []struct{ w, h int }{{1920, 1080}, {2560, 1080}, {3840, 1080}, {5120, 1440}} {
 		w := s.w
 		tab := nowPanelOpen(t, e, w, s.h)
 		var r struct {
@@ -26,15 +27,21 @@ func TestMaxWidthBrowser(t *testing.T) {
 		})()`, &r)
 		near := func(a, b float64) bool { return a-b < 1.5 && b-a < 1.5 }
 		// The page reserves a scrollbar gutter, so the usable width is the document's own width (ScrollW), not innerWidth.
-		want := 2560.0
+		want := 1920.0
 		if r.ScrollW < want {
 			want = r.ScrollW
 		}
 		if !near(r.ShellR-r.ShellL, want) {
 			t.Errorf("%d: shell is %.0f px wide, want %.0f", w, r.ShellR-r.ShellL, want)
 		}
-		if w == 2560 && (!near(r.BarL, 0) || !near(r.BarR, r.ScrollW)) {
-			t.Errorf("2560: bar %.1f..%.1f, want 0..%.0f (nothing capped yet)", r.BarL, r.BarR, r.ScrollW)
+		if !near(r.ShellL, 0) {
+			t.Errorf("%d: shell starts at %.1f, want the left edge", w, r.ShellL)
+		}
+		if w == 1920 && (!near(r.BarL, 0) || !near(r.BarR, r.ScrollW)) {
+			t.Errorf("1920: bar %.1f..%.1f, want 0..%.0f (nothing capped yet)", r.BarL, r.BarR, r.ScrollW)
+		}
+		if !near(r.MainR, r.ShellR) {
+			t.Errorf("%d: #main ends at %.1f, short of the shell's %.1f", w, r.MainR, r.ShellR)
 		}
 		if !near(r.BarL, r.ShellL) || !near(r.BarR, r.ShellR) {
 			t.Errorf("%d: bar %.1f..%.1f, shell %.1f..%.1f", w, r.BarL, r.BarR, r.ShellL, r.ShellR)

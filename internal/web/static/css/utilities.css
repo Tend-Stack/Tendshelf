@@ -47,7 +47,7 @@ html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(2,
 
 /* Accessibility and safe areas */
 .ts-sr-focusable:not(:focus-visible) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.ts-sr-focusable:focus-visible { position: fixed; top: var(--space-8); left: calc(var(--app-gutter) + var(--space-8)); z-index: 30; padding: var(--space-12) var(--space-16);
+.ts-sr-focusable:focus-visible { position: fixed; top: var(--space-8); left: var(--space-8); z-index: 30; padding: var(--space-12) var(--space-16);
   border-radius: var(--radius-md); background: var(--raised); color: var(--ink); box-shadow: var(--shadow-float); }
 .ts-safe-top { padding-block-start: max(var(--space-16), env(safe-area-inset-top)); }
 .ts-safe-bottom { padding-block-end: max(var(--space-16), env(safe-area-inset-bottom)); }
