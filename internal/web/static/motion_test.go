@@ -143,8 +143,11 @@ func TestCSSBudget(t *testing.T) {
 			t.Errorf("%s is neither core nor a pages-*.css file; add it to the budget", name)
 		}
 	}
-	if coreGzip > 18*1024 {
-		t.Errorf("core CSS %d gzip bytes, budget %d (raw %d)", coreGzip, 18*1024, coreRaw)
+	// 18.5 KB: the operator approved the raise on 2026-11-03 for the 2560 px app cap and the range-syntax
+	// breakpoints (18,563 bytes at the time).
+	const coreBudget = 18*1024 + 512
+	if coreGzip > coreBudget {
+		t.Errorf("core CSS %d gzip bytes, budget %d (raw %d)", coreGzip, coreBudget, coreRaw)
 	}
 	if coreRaw > 128*1024 {
 		t.Errorf("core CSS %d raw bytes, sanity ceiling %d", coreRaw, 128*1024)

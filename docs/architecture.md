@@ -261,7 +261,7 @@ first (see `internal/db`).
 
 At M4 the schema is 11 (`SchemaVersion` in `internal/db/db.go`): `book_sidecars` and `online_cache` (0010), `file_writes` (0011).
 
-Size budgets (gzip bytes the server sends): core CSS at most 18 KB and each page file a limit in `TestCSSBudget`
+Size budgets (gzip bytes the server sends): core CSS at most 18.5 KB (raised 2026-11-03) and each page file a limit in `TestCSSBudget`
 (`internal/web/static/motion_test.go`); the JavaScript limits are in the "Design regions" notes below (all app JS
 38 KB). A budget is never met by minifying, only by writing less.
 
@@ -398,7 +398,7 @@ win without specificity fights. Client code is plain ES modules in `static/js/` 
 filter chip menus (`<details data-ts-chipmenu>` works without it), and ends with
 `performance.mark("ts-ready")`, a measurement mark that nothing reads in production and no data leaves
 the browser; `make perf` (Chromium, 4x CPU throttle, 390 px, 2,000 books) reads it. A page loads the
-core files plus its own `pages-*.css`, so the CSS budgets are per load: core at most 18 KB gzip, each
+core files plus its own `pages-*.css`, so the CSS budgets are per load: core at most 18.5 KB gzip, each
 `pages-*.css` at most 3 KB gzip.
 
 Browser baseline: current Chromium (WebView2, Android WebView), WebKit (WKWebView, WebKitGTK 2.52). View
