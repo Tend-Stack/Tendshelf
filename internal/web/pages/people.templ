@@ -7,7 +7,14 @@ import "github.com/Tend-Stack/tendshelf/internal/web/components"
 type PersonView struct {
 	ID, Name string
 	// Role is the overline, "Author" or "Narrator"; Count is "14 books in your library · 182 h 4 m".
-	Role, Count, Description string
+	Role, Count string
+	// Bio is the description in paragraphs, plain text. PhotoSrc is the author's photo ("" shows the
+	// initials badge instead).
+	Bio      []string
+	PhotoSrc string
+	// Lookup is the "Look up author online" form; nil hides it. Status is the lookup job, if any.
+	Lookup *PersonLookupView
+	Status *PersonStatusView
 	BackHref, BackLabel      string
 	Cards                    []components.CardView
 	// MoreHref and MoreLabel are the no-JavaScript "Show more"; empty on the last page.
@@ -15,6 +22,35 @@ type PersonView struct {
 	// StartHref is "Back to the start", set only on a page reached by a cursor.
 	StartHref, StartLabel string
 	BooksTitle            string
+}
+
+// PersonLookupView is the "Look up author online" form.
+type PersonLookupView struct{ Action, CSRF, Label string }
+
+// PersonStatusView is the state of an author lookup. State is "wait", "done" or "failed"; while it
+// waits the status polls PollHref every two seconds. Link and LinkLabel are shown when it is over.
+type PersonStatusView struct {
+	State, Message, PollHref string
+	CheckHref, CheckLabel    string
+	Link, LinkLabel          string
+}
+
+// PersonStatus is the author lookup's status line; /hx/jobs/{id} answers with it again until the
+// lookup is over.
+templ PersonStatus(v PersonStatusView) {
+	if v.State == "wait" {
+		<div id="author-status" class="ts-person__status" role="status" hx-get={ v.PollHref } hx-trigger="every 2s" hx-swap="outerHTML">
+			<p class="body">{ v.Message }</p>
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.CheckHref) } hx-boost="false">{ v.CheckLabel }</a>
+		</div>
+	} else {
+		<div id="author-status" class="ts-person__status" role="status">
+			<p class="body">{ v.Message }</p>
+			if v.Link != "" {
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.Link) } hx-boost="false">{ v.LinkLabel }</a>
+			}
+		</div>
+	}
 }
 
 // Person renders an author or narrator page.
@@ -25,12 +61,25 @@ templ Person(v PersonView) {
 			{ v.BackLabel }
 		</a>
 		<header class="ts-person__head">
-			@components.Avatar(v.ID, v.Name, "lg")
+			if v.PhotoSrc != "" {
+				<img class="ts-avatar ts-avatar--lg ts-person__photo" src={ v.PhotoSrc } alt="" width="72" height="72"/>
+			} else {
+				@components.Avatar(v.ID, v.Name, "lg")
+			}
 			<p class="ts-overline">{ v.Role }</p>
 			<h1 class="title-1 ts-person__name">{ v.Name }</h1>
 			<p class="caption ts-num ts-person__count">{ v.Count }</p>
-			if v.Description != "" {
-				<p class="ts-book__desc ts-person__desc">{ v.Description }</p>
+			for _, para := range v.Bio {
+				<p class="ts-book__desc ts-person__desc">{ para }</p>
+			}
+			if v.Status != nil {
+				@PersonStatus(*v.Status)
+			}
+			if v.Lookup != nil {
+				<form class="ts-person__lookup" method="post" action={ templ.URL(v.Lookup.Action) }>
+					<input type="hidden" name="_csrf" value={ v.Lookup.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--secondary">{ v.Lookup.Label }</button>
+				</form>
 			}
 		</header>
 		<section aria-labelledby="person-books-title">

@@ -98,6 +98,8 @@ type BookView struct {
 	ShelfHref, ShelfLabel string
 	// ShareHref opens the book's Share & invite page; empty unless the person manages users.
 	ShareHref string
+	// CoverHref opens the "Change cover" sheet; empty for people who may not edit the book.
+	CoverHref, CoverLabel string
 	// Edit holds the Details tab's lookup and reset controls; the zero value shows none.
 	Edit DetailsEditView
 }
@@ -221,6 +223,18 @@ templ Book(v BookView) {
 				<span class="ts-book-block">
 					@components.Cover(v.Cover, "fill")
 				</span>
+				if v.CoverHref != "" {
+					<a
+						class="ts-btn ts-btn--quiet ts-book__cover-change"
+						href={ templ.SafeURL(v.CoverHref) }
+						hx-get={ v.CoverHref }
+						hx-target="#sheet"
+						hx-select="#sheet > *"
+						hx-swap="innerHTML"
+						hx-push-url="false"
+						aria-haspopup="dialog"
+					>{ v.CoverLabel }</a>
+				}
 			</div>
 			<div class="ts-book__info">
 				if v.Overline != "" {

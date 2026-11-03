@@ -1,0 +1,104 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// CoverChoice is one picture the book can use as its cover.
+type CoverChoice struct {
+	ID, Src, Label string
+	Current        bool
+}
+
+// CoverSheetView is the "Change cover" sheet. State is "" (idle), "wait", "done" or "failed" for
+// the adoption job named by ?job=. The handler writes every word and address.
+type CoverSheetView struct {
+	CSRF, CloseHref, SheetHref, PollHref string
+	Title, CloseLabel, Intro, NowLabel   string
+	NowSrc, NoCover                      string
+	Choices                              []CoverChoice
+	ChoicesLabel, CurrentTag, Use        string
+	ChooseAction, UploadAction           string
+	UploadTitle, UploadLabel, UploadHint string
+	UploadGo                             string
+	State, Message, CheckAgain           string
+	Styles                               []string
+}
+
+// CoverSheet is the sheet that picks, uploads and shows the state of a book's cover. It renders
+// into #sheet like the other details sheets; without JavaScript every control is a plain form.
+templ CoverSheet(v CoverSheetView) {
+	<div class="ts-sheet-layer ts-sheet-layer--details">
+		@components.SheetStyles(v.Styles)
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
+		<div class="ts-sheet ts-details-sheet" role="dialog" aria-modal="true" aria-labelledby="cvp-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="cvp-title" class="ts-sheet__title">{ v.Title }</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel }>
+					@components.Icon("close", false)
+				</a>
+			</div>
+			@CoverBody(v)
+		</div>
+	</div>
+}
+
+// CoverBody is the sheet under its heading. While a picture is being added it polls the job every
+// two seconds and replaces itself; without JavaScript "Check again" does the same.
+templ CoverBody(v CoverSheetView) {
+	if v.State == "wait" {
+		<div id="cover-body" class="ts-cover-pick" hx-get={ v.PollHref } hx-trigger="every 2s" hx-swap="outerHTML">
+			@coverBodyInner(v)
+		</div>
+	} else {
+		<div id="cover-body" class="ts-cover-pick">
+			@coverBodyInner(v)
+		</div>
+	}
+}
+
+templ coverBodyInner(v CoverSheetView) {
+	if v.State == "wait" {
+		<p class="body ts-cover-pick__status" role="status">{ v.Message }</p>
+		<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SheetHref) } hx-boost="false">{ v.CheckAgain }</a>
+	} else if v.State != "" {
+		<p class="body ts-cover-pick__status" role="status">{ v.Message }</p>
+	}
+	if v.NowSrc != "" {
+		<figure class="ts-cover-pick__now">
+			<img class="ts-cover-pick__now-img" src={ v.NowSrc } alt="" width="160" height="160"/>
+			<figcaption class="caption">{ v.NowLabel }</figcaption>
+		</figure>
+	}
+	<p class="caption ts-cover-pick__intro">{ v.Intro }</p>
+	if len(v.Choices) > 0 {
+		<form class="ts-cover-pick__form" method="post" action={ templ.URL(v.ChooseAction) }>
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<fieldset class="ts-cover-pick__set">
+				<legend class="ts-sr">{ v.ChoicesLabel }</legend>
+				for _, c := range v.Choices {
+					<label class="ts-cover-pick__card">
+						<input type="radio" class="ts-cover-pick__radio" name="cover_id" value={ c.ID } checked?={ c.Current }/>
+						<img class="ts-cover-pick__img" src={ c.Src } alt="" width="96" height="96" loading="lazy"/>
+						<span class="caption ts-cover-pick__label">{ c.Label }</span>
+						if c.Current {
+							<span class="ts-source">{ v.CurrentTag }</span>
+						}
+					</label>
+				}
+			</fieldset>
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ v.Use }</button>
+		</form>
+	} else {
+		<p class="body">{ v.NoCover }</p>
+	}
+	<form class="ts-cover-pick__upload" method="post" action={ templ.URL(v.UploadAction) } enctype="multipart/form-data">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		<h3 class="section">{ v.UploadTitle }</h3>
+		<label class="ts-cover-pick__file">
+			<span class="body">{ v.UploadLabel }</span>
+			<input type="file" name="picture" accept="image/jpeg,image/png,image/webp" required/>
+		</label>
+		<p class="caption">{ v.UploadHint }</p>
+		<button type="submit" class="ts-btn ts-btn--secondary ts-btn--block">{ v.UploadGo }</button>
+	</form>
+}

@@ -28,6 +28,8 @@ func (s *server) registerBook(mux *http.ServeMux) {
 	mux.HandleFunc("GET /series/{id}", s.getSeries)
 	mux.HandleFunc("GET /search", s.getSearch)
 	s.registerDetails(mux)
+	s.registerCoverPick(mux)
+	s.registerAuthors(mux)
 }
 
 func (s *server) getBook(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +127,26 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 			s.serverError(w, r, "online setting", err)
 			return
 		}
+	}
+	canCover := s.covers != nil && s.can.Can(ctx, currentUser(r), share.EditBook, target)
+	if canCover {
+		v.CoverHref, v.CoverLabel = coverSheetHref(id, ""), coverChangeLink
+	}
+	if r.URL.Query().Get("sheet") == "cover" {
+		if !canCover {
+			s.notFound(w, r)
+			return
+		}
+		cv, ok, err := s.coverSheetView(r, d.Book, r.URL.Query().Get("job"))
+		if err != nil {
+			s.serverError(w, r, "cover sheet", err)
+			return
+		}
+		if !ok {
+			s.notFound(w, r)
+			return
+		}
+		sheet = pages.CoverSheet(cv)
 	}
 	if q := r.URL.Query().Get("sheet"); q == "lookup" || q == "compare" || look != nil {
 		// The lookup sheets belong to people who may edit the book while lookups are on.
@@ -249,6 +271,12 @@ func (s *server) getPerson(role string) http.HandlerFunc {
 			s.serverError(w, r, "person", err)
 			return
 		}
+		full, err := s.lib.PersonByID(ctx, p.ID)
+		if err != nil {
+			s.serverError(w, r, "person details", err)
+			return
+		}
+		p.ImageID, p.ASIN = full.ImageID, full.ASIN
 		q := library.ListQuery{Sort: library.SortTitle, Cursor: r.URL.Query().Get("cursor"), Limit: bookPersonPage}
 		if role == library.RoleAuthor {
 			q.AuthorID = p.ID
@@ -275,9 +303,13 @@ func (s *server) getPerson(role string) http.HandlerFunc {
 		}
 		path += p.ID
 		v := pages.PersonView{
-			ID: p.ID, Name: p.Name, Role: roleLabel, Description: p.Description,
+			ID: p.ID, Name: p.Name, Role: roleLabel,
 			Count:    joinNonEmpty(" · ", countText(count(p), "1 book in your library", "%d books in your library"), hoursMinutesText(ms)),
 			BackHref: "/libraries", BackLabel: bookBack, BooksTitle: bookBooksHeading,
+		}
+		if err := s.personExtras(r, &v, p, role); err != nil {
+			s.serverError(w, r, "person extras", err)
+			return
 		}
 		for _, b := range page.Books {
 			v.Cards = append(v.Cards, cardView(b))
