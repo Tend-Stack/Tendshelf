@@ -129,14 +129,14 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   .ts-book__band { height: 32.5rem; }
   .ts-book > :not(.ts-book__band) { width: 100%; max-width: 62.5rem; align-self: center; }
   .ts-book > .ts-book__back { width: auto; align-self: flex-start; }
-  .ts-book__head { display: grid; grid-template-columns: 18.75rem minmax(0, 1fr); grid-template-rows: auto auto 1fr; gap: 0 var(--space-48);
-    grid-template-areas: "cover info" "cover play" "cover lede"; }
-  .ts-book__cover { grid-area: cover; align-self: start; float: none; width: 100%; margin: 0; }
+  /* The cover floats at the left. The details and the play row (flex boxes) sit beside it; the description's
+     lines run beside the cover and then across the whole width below it, so no empty column is left. */
+  .ts-book__head { display: flow-root; }
+  .ts-book__cover { float: left; width: 18.75rem; margin: 0 var(--space-48) var(--space-16) 0; }
   .ts-book__info, .ts-book__body { margin-left: 0; }
-  .ts-book__info { grid-area: info; }
-  #book-play, .ts-book__play { grid-area: play; float: none; clear: none; width: auto; margin: var(--space-16) 0 0;
+  #book-play, .ts-book__play { float: none; clear: none; width: auto; margin: var(--space-16) 0 0;
     flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
-  .ts-book__lede { display: block; grid-area: lede; margin-top: var(--space-24); font-size: 1.0625rem; line-height: 1.625rem; max-width: var(--size-measure); }
+  .ts-book__lede { display: block; margin-top: var(--space-24); font-size: 1.0625rem; line-height: 1.625rem; }
   .ts-book__lede p { margin: 0; }
   .ts-book__overline { display: block; }
   .ts-book__title { font-size: 2.5rem; line-height: 2.75rem; }
