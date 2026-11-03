@@ -9,7 +9,7 @@ import (
 )
 
 func TestPrecedencePinned(t *testing.T) {
-	want := []string{"user", "opf", "txt", "nfo", "tags", "folder", "online"}
+	want := []string{"user", "json", "opf", "txt", "nfo", "tags", "folder", "online"}
 	if !reflect.DeepEqual(Precedence, want) {
 		t.Fatalf("Precedence = %v, want %v", Precedence, want)
 	}

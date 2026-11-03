@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
@@ -243,7 +244,7 @@ func TestLocalRemovesStaleRows(t *testing.T) {
 	e.write("Au/Book/x.m4b", mediatest.FakeFile{})
 	e.scanAndProbe()
 	b := e.book("Au/Book")
-	for _, src := range []string{"tags", "folder", "nfo"} {
+	for _, src := range []string{"tags", "folder", "online"} {
 		if _, err := e.st.Writer().Exec(`INSERT INTO metadata_values(book_id, field, source, value_json, observed_at) VALUES (?,?,?,?,1)`,
 			b.ID, "subtitle", src, `"Old"`); err != nil {
 			t.Fatal(err)
@@ -253,7 +254,7 @@ func TestLocalRemovesStaleRows(t *testing.T) {
 	if n := e.count(`SELECT count(*) FROM metadata_values WHERE field = 'subtitle' AND source IN ('tags','folder')`); n != 0 {
 		t.Fatalf("%d stale rows left", n)
 	}
-	if n := e.count(`SELECT count(*) FROM metadata_values WHERE field = 'subtitle' AND source = 'nfo'`); n != 1 {
+	if n := e.count(`SELECT count(*) FROM metadata_values WHERE field = 'subtitle' AND source = 'online'`); n != 1 {
 		t.Fatal("a source this package does not own was deleted")
 	}
 	got, _ := e.repo.Book(bg, b.ID)
@@ -318,5 +319,227 @@ func TestLocalGoneBookAndGuard(t *testing.T) {
 	}
 	if got, _ := e.repo.Book(bg, b.ID); got.Title == "Tagged" {
 		t.Fatal("a fenced-out run wrote")
+	}
+}
+
+// writeSidecar writes a text file next to the books of a test library.
+func (e *env) writeSidecar(rel, text string) {
+	e.t.Helper()
+	p := filepath.Join(e.root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		e.t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+		e.t.Fatal(err)
+	}
+}
+
+// resolved returns the details the stored rows of a book resolve to, and where each field came from.
+func (e *env) resolved(id string) (metadata.Details, map[string]string) {
+	e.t.Helper()
+	rows, err := e.repo.MetadataValues(bg, id)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return metadata.Resolve(rows)
+}
+
+const sidecarBookDir = "Ann Author/Moon Series/Book 3 - The Tide {Dee Narr}"
+
+const sidecarOPF = `<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf"><metadata ` +
+	`xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">` +
+	`<dc:title>Opf Title</dc:title><dc:creator opf:role="aut">Opf Author</dc:creator>` +
+	`<dc:creator opf:role="nrt">Opf Narr One</dc:creator><dc:creator opf:role="nrt">Opf Narr Two</dc:creator>` +
+	`<dc:publisher>Opf Pub</dc:publisher><dc:date>2021-06-01</dc:date><dc:language>en</dc:language>` +
+	`<dc:identifier opf:scheme="ISBN">9781234567897</dc:identifier><dc:subject>Romance</dc:subject>` +
+	`<meta name="calibre:series" content="Opf Series"/><meta name="calibre:series_index" content="4"/>` +
+	`</metadata></package>`
+
+// newSidecarBook scans a one-file book with the Extractor's five sidecar files and tags.
+func newSidecarBook(t *testing.T) (*env, library.Book) {
+	e := newEnv(t, mediatest.FakeTools(t))
+	e.write(sidecarBookDir+"/tide.m4b", mediatest.FakeFile{Tags: map[string]string{"album": "Tag Title", "artist": "Tag Author", "composer": "Tag Narr"}})
+	e.writeSidecar(sidecarBookDir+"/desc.txt", "From desc.txt, an unabridged edition.")
+	e.writeSidecar(sidecarBookDir+"/reader.txt", "Reader One\nignored second line")
+	e.writeSidecar(sidecarBookDir+"/book.nfo", "Title: The Tide: A Subtitle\nAuthor: Nfo Author\nSeries Name: Nfo Series\nPosition in Series: 7\n"+
+		"Abridged: no\nASIN: B0015T963C\nPublisher: Nfo Pub\nBook Description\n=====\nNfo says dramatized.\n")
+	e.writeSidecar(sidecarBookDir+"/book.opf", sidecarOPF)
+	e.scanAndProbe()
+	return e, e.book(sidecarBookDir)
+}
+
+// TestSidecarPrecedence ports the Extractor's precedence test: folder < tags < nfo < txt < opf < json.
+func TestSidecarPrecedence(t *testing.T) {
+	e, b := newSidecarBook(t)
+	e.local(b.ID)
+	d, from := e.resolved(b.ID)
+	if !reflect.DeepEqual(d.Authors, []string{"Opf Author"}) || !reflect.DeepEqual(d.Narrators, []string{"Opf Narr One", "Opf Narr Two"}) {
+		t.Fatalf("people = %v / %v", d.Authors, d.Narrators)
+	}
+	if !reflect.DeepEqual(d.Series, []metadata.SeriesRef{{Name: "Opf Series", Sequence: "4"}}) || d.Year != 2021 || d.Publisher != "Opf Pub" {
+		t.Fatalf("series %v year %d publisher %q", d.Series, d.Year, d.Publisher)
+	}
+	if d.ASIN != "B0015T963C" || d.ISBN != "9781234567897" || from["asin"] != "nfo" {
+		t.Fatalf("asin %q (%s) isbn %q", d.ASIN, from["asin"], d.ISBN)
+	}
+	if from["authors"] != "opf" || from["title"] != "opf" {
+		t.Fatalf("from = %v", from)
+	}
+	got, _ := e.repo.Book(bg, b.ID)
+	if got.Title != "Opf Title" || got.Publisher != "Opf Pub" || got.PublishedYear != 2021 {
+		t.Fatalf("book = %+v", got)
+	}
+	people, _ := e.repo.BookPeople(bg, b.ID)
+	if !reflect.DeepEqual(names(people, "author"), []string{"Opf Author"}) {
+		t.Fatalf("book authors = %v", names(people, "author"))
+	}
+
+	e.writeSidecar(sidecarBookDir+"/metadata.json", `{"title":"Json Title","authors":["Json Author"],"narrators":["Json N"],`+
+		`"series":["Json Series #9"],"publishedYear":"2015","abridged":true,"description":"From json."}`)
+	if !e.local(b.ID) {
+		t.Fatal("a new metadata.json changed nothing")
+	}
+	d, from = e.resolved(b.ID)
+	if d.Title != "Json Title" || !reflect.DeepEqual(d.Authors, []string{"Json Author"}) || !reflect.DeepEqual(d.Narrators, []string{"Json N"}) ||
+		!reflect.DeepEqual(d.Series, []metadata.SeriesRef{{Name: "Json Series", Sequence: "9"}}) || d.Year != 2015 ||
+		d.Abridged == nil || !*d.Abridged || d.Description != "From json." || from["authors"] != "json" {
+		t.Fatalf("with json: %+v from %v", d, from)
+	}
+	got, _ = e.repo.Book(bg, b.ID)
+	if got.Title != "Json Title" || !got.Abridged {
+		t.Fatalf("book = %+v", got)
+	}
+	if e.local(b.ID) {
+		t.Fatal("repeating Local reported a change")
+	}
+
+	// Removing the file drops its rows and the values fall back to the opf.
+	if err := os.Remove(filepath.Join(e.root, filepath.FromSlash(sidecarBookDir), "metadata.json")); err != nil {
+		t.Fatal(err)
+	}
+	if !e.local(b.ID) {
+		t.Fatal("removing metadata.json changed nothing")
+	}
+	if n := e.count(`SELECT count(*) FROM metadata_values WHERE book_id = ? AND source = 'json'`, b.ID); n != 0 {
+		t.Fatalf("%d json rows left", n)
+	}
+	if d, _ := e.resolved(b.ID); d.Title != "Opf Title" {
+		t.Fatalf("title = %q", d.Title)
+	}
+}
+
+func TestSidecarUserWins(t *testing.T) {
+	e, b := newSidecarBook(t)
+	e.writeSidecar(sidecarBookDir+"/metadata.json", `{"title":"Json Title","publisher":"Json Pub"}`)
+	if _, err := e.st.Writer().Exec(`INSERT INTO metadata_values(book_id, field, source, value_json, observed_at) VALUES (?,?,?,?,1)`,
+		b.ID, "title", "user", `"My Title"`); err != nil {
+		t.Fatal(err)
+	}
+	e.local(b.ID)
+	got, _ := e.repo.Book(bg, b.ID)
+	if got.Title != "My Title" || got.Publisher != "Json Pub" {
+		t.Fatalf("title %q publisher %q", got.Title, got.Publisher)
+	}
+	if n := e.count(`SELECT count(*) FROM metadata_values WHERE book_id = ? AND source = 'user'`, b.ID); n != 1 {
+		t.Fatalf("%d user rows", n)
+	}
+}
+
+// TestSidecarLooseFile: a single file reads <stem>.opf beside it and ignores other books' sidecars.
+func TestSidecarLooseFile(t *testing.T) {
+	e := newEnv(t, mediatest.FakeTools(t))
+	e.write("Solo Book.m4b", mediatest.FakeFile{})
+	e.writeSidecar("Solo Book.opf", opfWith("Loose Title"))
+	e.writeSidecar("cover.opf", opfWith("Wrong Title"))
+	e.scanAndProbe()
+	b := e.book("Solo Book.m4b")
+	e.local(b.ID)
+	if got, _ := e.repo.Book(bg, b.ID); got.Title != "Loose Title" {
+		t.Fatalf("title = %q", got.Title)
+	}
+}
+
+func opfWith(title string) string {
+	return `<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">` +
+		`<dc:title>` + title + `</dc:title></metadata></package>`
+}
+
+func TestSidecarFinisher(t *testing.T) {
+	tools := mediatest.FakeTools(t)
+	e := newEnv(t, tools)
+	r, err := jobs.New(e.st, jobs.Options{
+		Lease: 5 * time.Second, RenewEvery: time.Second, ProgressEvery: 50 * time.Millisecond,
+		SweepEvery: time.Second, PollEvery: 10 * time.Millisecond,
+		Backoff: func(int) time.Duration { return 10 * time.Millisecond }, Logger: quiet(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.svc = metadata.New(e.repo, r, quiet())
+	if err := e.svc.Register(r); err != nil {
+		t.Fatal(err)
+	}
+	finish := e.svc.Finisher()
+	e.write("Ann Author/One/x.m4b", mediatest.FakeFile{})
+	e.write("Ann Author/Two/y.m4b", mediatest.FakeFile{})
+	e.writeSidecar("Ann Author/One/desc.txt", "first")
+	e.scanAndProbe()
+	queued := func() int {
+		return e.count(`SELECT count(*) FROM jobs WHERE kind = ? AND state = 'queued'`, metadata.Kind)
+	}
+	// settle runs the details job for both books by hand and clears the queue.
+	settle := func() {
+		for _, rel := range []string{"Ann Author/One", "Ann Author/Two"} {
+			e.local(e.book(rel).ID)
+		}
+		if _, err := e.st.Writer().Exec(`DELETE FROM jobs`); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	finish(bg, e.lib.ID) // nothing stored yet: both books are queued
+	if n := queued(); n != 2 {
+		t.Fatalf("%d jobs with no stored signature, want 2", n)
+	}
+	finish(bg, e.lib.ID) // active jobs are not queued twice
+	if n := queued(); n != 2 {
+		t.Fatalf("%d jobs after a second finish, want 2", n)
+	}
+	settle()
+	finish(bg, e.lib.ID)
+	if n := queued(); n != 0 {
+		t.Fatalf("%d jobs with unchanged sidecars, want 0", n)
+	}
+
+	desc := filepath.Join(e.root, "Ann Author", "One", "desc.txt")
+	later := time.Now().Add(time.Hour)
+	if err := os.WriteFile(desc, []byte("second, longer"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(desc, later, later); err != nil {
+		t.Fatal(err)
+	}
+	finish(bg, e.lib.ID)
+	if n := queued(); n != 1 {
+		t.Fatalf("%d jobs after touching desc.txt, want 1", n)
+	}
+	settle()
+	if got, _ := e.repo.Book(bg, e.book("Ann Author/One").ID); got.Description != "second, longer" {
+		t.Fatalf("description = %q", got.Description)
+	}
+
+	// A new sidecar next to the other book, and a removed one, are noticed too.
+	e.writeSidecar("Ann Author/Two/book.nfo", "Title: Two")
+	finish(bg, e.lib.ID)
+	if n := queued(); n != 1 {
+		t.Fatalf("%d jobs after adding an nfo, want 1", n)
+	}
+	settle()
+	if err := os.Remove(desc); err != nil {
+		t.Fatal(err)
+	}
+	finish(bg, e.lib.ID)
+	if n := queued(); n != 1 {
+		t.Fatalf("%d jobs after removing desc.txt, want 1", n)
 	}
 }
