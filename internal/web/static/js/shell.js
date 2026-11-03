@@ -301,7 +301,8 @@ document.addEventListener("click", (event) => {
   const y = event.clientY;
   transition.skipTransition();
   transition.finished.finally(() => {
-    const target = document.elementFromPoint(x, y);
-    if (target && target !== document.documentElement) target.click();
+    // An icon (SVG) has no click(): replay on the control around it.
+    const target = document.elementFromPoint(x, y)?.closest("a, button, summary, label, input, [role=button]");
+    if (target) target.click();
   });
 }, true);

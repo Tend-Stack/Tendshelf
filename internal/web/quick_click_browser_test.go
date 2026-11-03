@@ -31,4 +31,17 @@ func TestQuickClickBrowser(t *testing.T) {
 	}
 	playerClickAt(t, tab, r.X, r.Y)
 	swapstylesPath(t, tab, "/search", `document.querySelector(".ts-sf") !== null`)
+
+	// The same quick click landing on a nav icon (SVG, which has no click()) still navigates.
+	tab.WaitFor(`document.getAnimations().length === 0 && !document.activeViewTransition`, 5*time.Second)
+	swapstylesClick(t, tab, `a[data-nav="/libraries"]`)
+	tab.WaitFor(`location.pathname === "/libraries" && document.getAnimations().length > 0`, 5*time.Second)
+	tab.Eval(`(() => { const e = [...document.querySelectorAll('a[data-nav="/search"] svg')].find(e => e.getBoundingClientRect().width > 0);
+	  const r = e.getBoundingClientRect(); return {X: r.x + r.width / 2, Y: r.y + r.height / 2}; })()`, &r)
+	tab.Eval(`document.getAnimations().length > 0`, &running)
+	if !running {
+		t.Skip("the page change finished before the icon click could land; nothing to prove on this machine")
+	}
+	playerClickAt(t, tab, r.X, r.Y)
+	swapstylesPath(t, tab, "/search", `document.querySelector(".ts-sf") !== null`)
 }
