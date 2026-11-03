@@ -1,0 +1,51 @@
+{
+ "asin": "B0TESTBOOK",
+ "title": "The Test Match",
+ "subtitle": "A Synthetic Romance",
+ "authors": [
+  {
+   "asin": "B0AUTHOR01",
+   "name": "Ann Author"
+  }
+ ],
+ "narrators": [
+  {
+   "name": "Ben Narrator"
+  },
+  {
+   "name": "Cara Reader"
+  }
+ ],
+ "publisherName": "Example Audio",
+ "releaseDate": "2023-05-09T00:00:00.000Z",
+ "summary": "<p>A <b>dual-narrator</b> story. Full cast performance.</p>",
+ "image": "https://m.media-amazon.com/images/I/test.jpg",
+ "isbn": "9781234567897",
+ "genres": [
+  {
+   "asin": "1",
+   "name": "Romance",
+   "type": "genre"
+  },
+  {
+   "asin": "2",
+   "name": "Contemporary Romance",
+   "type": "genre"
+  },
+  {
+   "asin": "3",
+   "name": "Funny",
+   "type": "tag"
+  }
+ ],
+ "seriesPrimary": {
+  "asin": "S1",
+  "name": "The Match Series",
+  "position": "Book 2"
+ },
+ "language": "english",
+ "runtimeLengthMin": 600,
+ "formatType": "unabridged",
+ "isAdult": false,
+ "rating": "4.5"
+}

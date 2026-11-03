@@ -1,0 +1,15 @@
+{
+ "results": [
+  {
+   "collectionId": 42,
+   "collectionName": "The Test Match",
+   "artistName": "Ann Author & Bo Co",
+   "releaseDate": "2023-05-09T07:00:00Z",
+   "primaryGenreName": "Romance",
+   "description": "iTunes text",
+   "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/x/100x100bb.jpg",
+   "averageUserRating": 4.6,
+   "userRatingCount": 1380
+  }
+ ]
+}
