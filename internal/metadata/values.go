@@ -1,8 +1,8 @@
-// Package metadata turns what a library already holds (folder names and file tags) into a book's
-// details, field by field, and keeps every value's source. Online providers and sidecar files are
-// later work.
+// Package metadata turns what a library already holds (folder names, file tags and sidecar files
+// such as metadata.json, .opf, .nfo, desc.txt and reader.txt) into a book's details, field by
+// field, and keeps every value's source. Online providers are later work.
 //
-// A source writes only its own rows in metadata_values (folder, tags). The book's columns, people,
+// A source writes only its own rows in metadata_values (folder, tags, nfo, txt, opf, json). The book's columns, people,
 // series and genres are then resolved from all rows by the fixed Precedence list, so a value the
 // owner typed (source "user") always wins and is never written here. The code imports library,
 // media and jobs, never scan: scan reaches this package only through a follower function.
@@ -17,6 +17,7 @@ import (
 // Where a value came from.
 const (
 	SourceUser   = library.MetadataSourceUser // typed by the owner; never written by this package
+	SourceJSON   = "json"                     // metadata.json
 	SourceOPF    = "opf"
 	SourceTxt    = "txt"
 	SourceNFO    = "nfo"
@@ -26,7 +27,7 @@ const (
 )
 
 // Precedence ranks sources, highest first. Online is last, so it only fills gaps.
-var Precedence = []string{SourceUser, SourceOPF, SourceTxt, SourceNFO, SourceTags, SourceFolder, SourceOnline}
+var Precedence = []string{SourceUser, SourceJSON, SourceOPF, SourceTxt, SourceNFO, SourceTags, SourceFolder, SourceOnline}
 
 // Fields of metadata_values.
 const (

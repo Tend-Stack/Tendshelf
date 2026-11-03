@@ -31,6 +31,7 @@ type deps struct {
 func registerDetails(d deps) error {
 	svc := metadata.New(d.lib, d.runner, d.log)
 	d.scanner.OnBookSettled(svc.Follower())
+	d.scanner.OnScanFinished(svc.Finisher())
 	return svc.Register(d.runner)
 }
 

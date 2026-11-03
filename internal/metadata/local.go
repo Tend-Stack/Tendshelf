@@ -71,7 +71,8 @@ func firstTags(files []library.AudioFile) map[string]string {
 	return nil
 }
 
-// Local reads a book's folder names and file tags, stores them as "folder" and "tags" values, and
+// Local reads a book's folder names, file tags and sidecar files (read only), stores them as
+// "folder", "tags", "nfo", "txt", "opf" and "json" values, and
 // brings the book's columns, people, series and genres in line with the strongest value of each
 // field. It reads only database rows and writes only when something differs, in one transaction
 // that starts with guard (a job's fence). A book that is gone, or whose files are all missing, is
@@ -120,6 +121,10 @@ func (s *Service) local(ctx context.Context, tx *library.Tx, bookID string) (boo
 	fromTags := FromTags(firstTags(files), single)
 	fromTags.fillProduction()
 	desired := map[string]map[string]json.RawMessage{SourceFolder: fromFolder.Values(), SourceTags: fromTags.Values()}
+	sc := findSidecars(b.RootPath, single)
+	for src, d := range fromSidecars(sc) { // an absent sidecar gives an empty map, which drops its old rows
+		desired[src] = d.Values()
+	}
 
 	stored, err := tx.MetadataValues(bookID)
 	if err != nil {
@@ -151,7 +156,7 @@ func (s *Service) local(ctx context.Context, tx *library.Tx, bookID string) (boo
 	for _, r := range rows {
 		have[[2]string{r.Field, r.Source}] = true
 	}
-	for _, src := range []string{SourceFolder, SourceTags} {
+	for _, src := range []string{SourceFolder, SourceTags, SourceNFO, SourceTxt, SourceOPF, SourceJSON} {
 		for field, v := range desired[src] {
 			if have[[2]string{field, src}] {
 				continue
@@ -163,6 +168,10 @@ func (s *Service) local(ctx context.Context, tx *library.Tx, bookID string) (boo
 			rows = append(rows, mv)
 			changed = true
 		}
+	}
+
+	if err := tx.PutSidecarSignature(bookID, sidecarSignature(sc), now); err != nil {
+		return false, err
 	}
 
 	d, _ := Resolve(rows)

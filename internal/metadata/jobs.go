@@ -45,6 +45,33 @@ func (s *Service) Follower() func(context.Context, []string) {
 	}
 }
 
+// Finisher returns the function to hand to the scanner's OnScanFinished. After a scan it compares
+// each book's sidecar files with the signature stored when they were last read, and queues a
+// metadata.local job for every book where they differ or none is stored, even when the book's
+// audio files did not change. It logs its own errors and never stops at one book.
+func (s *Service) Finisher() func(context.Context, string) {
+	return func(ctx context.Context, libraryID string) {
+		books, err := s.repo.SidecarCandidates(ctx, libraryID)
+		if err != nil {
+			s.log.Warn("list books for sidecar check", "library", libraryID, "err", err)
+			return
+		}
+		var ids []string
+		for _, b := range books {
+			if ctx.Err() != nil {
+				return
+			}
+			sig := sidecarSignature(findSidecars(b.RootPath, b.Single))
+			if !b.Checked || b.Signature != sig {
+				ids = append(ids, b.ID)
+			}
+		}
+		if _, err := s.enqueue(ctx, ids); err != nil {
+			s.log.Warn("queue details jobs after sidecar check", "library", libraryID, "err", err)
+		}
+	}
+}
+
 // enqueue queues a job per distinct id that has none waiting and returns how many it queued. It
 // tries every id and returns the first error.
 func (s *Service) enqueue(ctx context.Context, ids []string) (int, error) {

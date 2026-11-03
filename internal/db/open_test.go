@@ -212,7 +212,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables) {
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+2 { // +2: book_sidecars, online_cache (0010)
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -292,15 +292,16 @@ func seed3(t *testing.T, st *Store) {
 
 // tablesAt lists the tables that exist, and hold one seeded row, at each version.
 var tablesAt = map[int][]string{
-	1: allTables,
-	2: append(append([]string{}, allTables...), libraryTables...),
-	3: append(append([]string{}, allTables...), libraryTables...),
-	4: append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"),
-	5: append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...),
-	6: append(append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...), progressTables...),
-	7: append(append(append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...), progressTables...), familyTables...),
-	8: nil, // 0008 adds a column and an index only; filled in init below
-	9: nil, // 0009 adds a column only; filled in init below
+	1:  allTables,
+	2:  append(append([]string{}, allTables...), libraryTables...),
+	3:  append(append([]string{}, allTables...), libraryTables...),
+	4:  append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"),
+	5:  append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...),
+	6:  append(append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...), progressTables...),
+	7:  append(append(append(append(append(append([]string{}, allTables...), libraryTables...), "books_fts_ids"), shelfTables...), progressTables...), familyTables...),
+	8:  nil, // 0008 adds a column and an index only; filled in init below
+	9:  nil, // 0009 adds a column only; filled in init below
+	10: nil, // 0010 adds tables that start empty; filled in init below
 }
 
 func TestMigrateFromPreviousFixtures(t *testing.T) {
@@ -579,15 +580,16 @@ func TestBackupFailureLeavesDatabaseUnmigrated(t *testing.T) {
 // Released migrations must never change: pin their hashes. Add a line when a
 // migration is released; never edit an existing one.
 var pinnedMigrations = map[int]string{
-	1: "0e70eb5003c239205ad0afda87e019d8983e64fddce9100222314b1075bcfaaa",
-	2: "bf7ece0acfd14ae9dc766e8e4c10d4507ad8ea4b0a50ccf1db01d62ab2f5de60",
-	3: "8ebdf61fb5ed156385ecf3fea7a7f82ba0275c409a88e2824aec5a8c9f0f5a6a",
-	4: "c0424f4fb4e9c40d8863a0b1c3bcb634233f900f01e458733309816beec8e339",
-	5: "1578816fe1e33952a8c5b79a2d00152c989c1d31d618216f4fc56296f2b50c97",
-	6: "9d83b1c2c0c7c0a4f86f02e82cccb5f6d66cb1b016a9b01a2dedc5a25c25ac45",
-	7: "94d2e5b344c393f29dbaafd56c9c5885e263f80e9f84d4f04184c91f473fd046",
-	8: "bcbac9ebb7f522de507ae72a6f6ebd31b21214d43444f3b0ee6f9c81033e5c16",
-	9: "88ed2c5d9c91bc5eb0f2aed1092d38bf866660c082ebb17ea9bd543c9c43be84",
+	1:  "0e70eb5003c239205ad0afda87e019d8983e64fddce9100222314b1075bcfaaa",
+	2:  "bf7ece0acfd14ae9dc766e8e4c10d4507ad8ea4b0a50ccf1db01d62ab2f5de60",
+	3:  "8ebdf61fb5ed156385ecf3fea7a7f82ba0275c409a88e2824aec5a8c9f0f5a6a",
+	4:  "c0424f4fb4e9c40d8863a0b1c3bcb634233f900f01e458733309816beec8e339",
+	5:  "1578816fe1e33952a8c5b79a2d00152c989c1d31d618216f4fc56296f2b50c97",
+	6:  "9d83b1c2c0c7c0a4f86f02e82cccb5f6d66cb1b016a9b01a2dedc5a25c25ac45",
+	7:  "94d2e5b344c393f29dbaafd56c9c5885e263f80e9f84d4f04184c91f473fd046",
+	8:  "bcbac9ebb7f522de507ae72a6f6ebd31b21214d43444f3b0ee6f9c81033e5c16",
+	9:  "88ed2c5d9c91bc5eb0f2aed1092d38bf866660c082ebb17ea9bd543c9c43be84",
+	10: "45cf0f36dc20651b2c5091980a6447ab8fd1db7651b59981a7e68f14baaf0ec5",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
@@ -943,7 +945,7 @@ func TestMigration0004BuildsIndex(t *testing.T) {
 	}
 }
 
-func init() { tablesAt[8] = tablesAt[7]; tablesAt[9] = tablesAt[7] }
+func init() { tablesAt[8] = tablesAt[7]; tablesAt[9] = tablesAt[7]; tablesAt[10] = tablesAt[7] }
 
 // TestMigration0008BookmarkClientID: bookmarks saved before 0008 survive with a NULL client id, and the
 // client id is unique per person (not across people), several NULLs are fine.
@@ -1001,5 +1003,52 @@ func TestMigration0009InviteMail(t *testing.T) {
 	}
 	if got := countRows(t, st.Reader(), "invites"); got != 1 {
 		t.Fatalf("invites = %d, want 1", got)
+	}
+}
+
+// TestMigration0010Details: a v9 database keeps its book, details and progress rows, and gains the
+// two empty tables; the cache refuses an unknown provider, a short key and a body that is not JSON.
+func TestMigration0010Details(t *testing.T) {
+	ms := embedded(t)
+	dir := t.TempDir()
+	prev, err := open(context.Background(), dir, openConfig{migrations: ms[:9], supported: 9, now: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	seed7(t, prev)
+	prev.Close()
+	st := mustOpen(t, dir)
+	defer st.Close()
+	for _, tbl := range []string{"books", "metadata_values", "progress"} {
+		if countRows(t, st.Reader(), tbl) != 1 {
+			t.Errorf("%s lost its row", tbl)
+		}
+	}
+	for _, tbl := range []string{"book_sidecars", "online_cache"} {
+		if n := countRows(t, st.Reader(), tbl); n != 0 {
+			t.Errorf("%s has %d rows", tbl, n)
+		}
+	}
+	key := strings.Repeat("a", 64)
+	for name, q := range map[string]string{
+		"provider": `INSERT INTO online_cache VALUES ('bing', '` + key + `', '{}', 1)`,
+		"key":      `INSERT INTO online_cache VALUES ('google', 'short', '{}', 1)`,
+		"json":     `INSERT INTO online_cache VALUES ('google', '` + key + `', '{nope', 1)`,
+	} {
+		if _, err := st.Writer().Exec(q); err == nil {
+			t.Errorf("online_cache accepted a bad %s", name)
+		}
+	}
+	if _, err := st.Writer().Exec(`INSERT INTO online_cache VALUES ('google', '` + key + `', '{}', 1)`); err != nil {
+		t.Errorf("good cache row: %v", err)
+	}
+	if _, err := st.Writer().Exec(`INSERT INTO book_sidecars VALUES ('bk_1', 'sig', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Writer().Exec(`DELETE FROM books WHERE id = 'bk_1'`); err != nil {
+		t.Fatal(err)
+	}
+	if n := countRows(t, st.Reader(), "book_sidecars"); n != 0 {
+		t.Errorf("sidecar signature outlived its book (%d)", n)
 	}
 }
