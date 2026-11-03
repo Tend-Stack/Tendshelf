@@ -41,6 +41,9 @@ func Register(r *jobs.Runner, covers *Covers, compat *Compat, peaks *Peaks) erro
 	if err := r.Register(jobs.Kind{Name: KindCompat, Concurrency: 1, MaxAttempts: 2, Handler: compat.handle}); err != nil {
 		return err
 	}
+	if err := r.Register(jobs.Kind{Name: KindCoverAdopt, Concurrency: 1, MaxAttempts: 2, Handler: covers.adoptHandler}); err != nil {
+		return err
+	}
 	return r.Register(jobs.Kind{Name: KindPeaks, Concurrency: 1, MaxAttempts: 2, Handler: peaks.handle})
 }
 

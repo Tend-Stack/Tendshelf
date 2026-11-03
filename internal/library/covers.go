@@ -191,3 +191,38 @@ func (t *Tx) SetBookCover(bookID, coverID string) error {
 	}
 	return needRow(res, "book")
 }
+
+// PruneChosenCovers keeps at most keep covers that someone chose (source upload or online) for the
+// book. It deletes the oldest ones first and never the book's current cover, and returns the rows it
+// deleted so the caller can remove their files.
+func (t *Tx) PruneChosenCovers(bookID string, keep int) ([]Cover, error) {
+	if keep < 0 {
+		return nil, invalid("keep must not be negative")
+	}
+	var current sql.NullString
+	if err := t.tx.QueryRowContext(t.ctx, `SELECT cover_id FROM books WHERE id = ?`, bookID).Scan(&current); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: book", ErrNotFound)
+		}
+		return nil, err
+	}
+	rows, err := many(t.ctx, t.tx, scanCover, `SELECT `+coverCols+` FROM covers
+  WHERE book_id = ? AND source IN (?, ?) ORDER BY created_at, rowid`, bookID, CoverUpload, CoverOnline)
+	if err != nil {
+		return nil, err
+	}
+	var gone []Cover
+	for _, r := range rows {
+		if len(rows)-len(gone) <= keep {
+			break
+		}
+		if r.ID == current.String {
+			continue
+		}
+		if err := t.DeleteCover(r.ID); err != nil {
+			return nil, err
+		}
+		gone = append(gone, r)
+	}
+	return gone, nil
+}

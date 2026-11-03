@@ -49,6 +49,8 @@ type Covers struct {
 	jobs  Enqueuer
 	log   *slog.Logger
 	now   func() time.Time
+	// fetch downloads a picture for an online adoption; nil means online lookups are off.
+	fetch func(ctx context.Context, url string) ([]byte, string, error)
 }
 
 // NewCovers returns the cover service. data is the data directory. Stale temporary files from
@@ -60,6 +62,7 @@ func NewCovers(repo *library.Repo, tools media.Tools, data string, enq Enqueuer,
 	c := &Covers{repo: repo, tools: tools, data: data, jobs: enq, log: log, now: time.Now}
 	sweepTemp(CoversDir(data), c.now())
 	sweepTemp(ThumbsDir(data), c.now())
+	sweepStaged(IncomingDir(data), c.now())
 	return c
 }
 
