@@ -33,6 +33,12 @@ type Service struct {
 	online  *online.Client // set by SetOnline; nil means lookups are unavailable
 	tools   media.Tools
 	dataDir string
+
+	// Bulk lookups: how the job sleeps and jitters (tests replace both) and how a matched book
+	// without a cover gets the match's picture.
+	sleep     func(context.Context, time.Duration) error
+	jitter    func() float64
+	coverFill func(ctx context.Context, bookID, url string) error
 }
 
 // New returns a Service. log may be nil.
@@ -40,7 +46,7 @@ func New(repo *library.Repo, jobs Enqueuer, log *slog.Logger) *Service {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Service{repo: repo, jobs: jobs, log: log, now: time.Now}
+	return &Service{repo: repo, jobs: jobs, log: log, now: time.Now, sleep: defaultSleep, jitter: defaultJitter}
 }
 
 func compact(b []byte) string {

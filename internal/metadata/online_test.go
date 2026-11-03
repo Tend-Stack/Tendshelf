@@ -34,6 +34,7 @@ type lookupNet struct {
 	mu     sync.Mutex
 	urls   []string
 	routes []lookupRoute
+	fail   int // when set, every request answers with this status
 }
 
 type lookupRoute struct {
@@ -56,6 +57,9 @@ func (n *lookupNet) RoundTrip(req *http.Request) (*http.Response, error) {
 	defer n.mu.Unlock()
 	u := req.URL.String()
 	n.urls = append(n.urls, u)
+	if n.fail != 0 {
+		return &http.Response{StatusCode: n.fail, Header: http.Header{}, Body: io.NopCloser(bytes.NewReader(nil)), Request: req}, nil
+	}
 	status, body := 404, []byte(nil)
 	for _, r := range n.routes {
 		if strings.HasPrefix(u, r.prefix) {
@@ -75,7 +79,10 @@ type lookupEnv struct {
 	dataDir string
 }
 
-func newLookupEnv(t *testing.T) *lookupEnv {
+func newLookupEnv(t *testing.T) *lookupEnv { return newLookupEnvWith(t, nil) }
+
+// newLookupEnvWith is newLookupEnv with a hook that adjusts the online client's options.
+func newLookupEnvWith(t *testing.T, tune func(*online.Options)) *lookupEnv {
 	t.Helper()
 	tools := mediatest.FakeTools(t)
 	e := newEnv(t, tools)
@@ -89,7 +96,11 @@ func newLookupEnv(t *testing.T) *lookupEnv {
 	}
 	le := &lookupEnv{env: e, runner: runner, net: &lookupNet{}, dataDir: t.TempDir()}
 	le.svc = metadata.New(e.repo, runner, quiet())
-	client := online.New(online.Options{Cache: metadata.NewOnlineCache(e.st), CoverDir: t.TempDir(), Transport: le.net})
+	opts := online.Options{Cache: metadata.NewOnlineCache(e.st), CoverDir: t.TempDir(), Transport: le.net}
+	if tune != nil {
+		tune(&opts)
+	}
+	client := online.New(opts)
 	le.svc.SetOnline(client, tools, le.dataDir)
 	if err := le.svc.Register(runner); err != nil {
 		t.Fatal(err)

@@ -95,6 +95,8 @@ type Options struct {
 	UserAgent string
 	Now       func() time.Time
 	Transport http.RoundTripper
+	// Sleep replaces the waits between requests and after a 429 (tests only); nil sleeps for real.
+	Sleep func(ctx context.Context, d time.Duration) error
 }
 
 // Client talks to the allowed sites.
@@ -117,6 +119,9 @@ func New(o Options) *Client {
 		next = http.DefaultTransport.(*http.Transport).Clone()
 	}
 	c := &Client{cache: o.Cache, coverDir: o.CoverDir, ua: o.UserAgent, now: o.Now, last: map[string]time.Time{}, sleep: sleepCtx}
+	if o.Sleep != nil {
+		c.sleep = o.Sleep
+	}
 	if c.ua == "" {
 		c.ua = defaultUA
 	}

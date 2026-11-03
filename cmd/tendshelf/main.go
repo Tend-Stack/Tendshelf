@@ -112,6 +112,7 @@ func run(ctx context.Context, args []string) error {
 		return err
 	}
 	covers.SetFetcher(onlineClient.FetchCover)
+	details.SetCoverFill(covers.FillOnline)
 	if err := sc.Register(runner); err != nil {
 		return err
 	}
