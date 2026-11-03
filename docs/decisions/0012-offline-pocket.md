@@ -1,6 +1,11 @@
 # 0012 Offline pocket (M3a): install, downloads, offline playback and sync
 
-Status: proposed (2026-11-03). Plan: `docs/plans/m3-offline.md`. Accepting it applies the AGENTS.md text in
+Status: accepted (2026-11-03). Operator decisions, 2026-11-03: JS budget total 38.5 KB to 50.5 KB as
+proposed (sw.js 3 KB, offline.js 3.25 KB, downloads.js 5.5 KB, player-full.js up to 12.75 KB); phone
+checks over Tailscale HTTPS (`tailscale serve`, set up by the operator); sign-out wipes everything
+(`Clear-Site-Data: "storage"` plus the in-page wipe); show the iOS storage note; keep "Remove finished
+books" (off by default), defer "Wi-Fi only" and "Next in series"; drop "Other apps" from the storage
+bar. Plan: `docs/plans/m3-offline.md`. Accepting it applies the AGENTS.md text in
 "Rule for AGENTS.md" below and the `docs/architecture.md` "PWA and offline (P4)" rewrite (plan, package A).
 
 ## Operator's words
