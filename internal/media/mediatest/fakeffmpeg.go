@@ -45,6 +45,17 @@ var scaleBox = regexp.MustCompile(`min\((\d+),iw\)`)
 //	c. thumbnail (-vf): the input scaled to fit the box, never enlarged, as JPEG in the output file
 //	d. compatibility copy (-c:a): a fake MP4/AAC file of the input's duration in the output file
 //
+// Two more commands serve the write engine (internal/media/writetags.go):
+//
+//	e. audio hash (-f hash): "SHA256=" plus the sha256 of the bytes after the fake file's description
+//	   line (its pad bytes, the stand-in for audio packets), so tags never change it; for a file
+//	   that is not a fake, the sha256 of the whole file
+//	f. tag write (-map_metadata 0 -c copy, output is the last argument): the output is the input's
+//	   description with every "-metadata k=v" merged into Tags (keys lower-cased, like ffprobe
+//	   reports them), the chapters of the -f ffmetadata input if -map_chapters is 1, and the same pad
+//	   bytes. The fake ffprobe then reads the new tags and chapters back. A missing "-id3v2_version"
+//	   or "-movflags" is not checked here; the argument tests do that.
+//
 // Like the fake ffprobe it rejects argument lists that lack the runner's safety flags.
 func runFakeFFmpeg(args []string, stdout, stderr io.Writer) int {
 	in, ok := inputArg(args)
@@ -104,6 +115,10 @@ func runFakeFFmpeg(args []string, stdout, stderr io.Writer) int {
 	}
 
 	switch {
+	case hasPair(args, "-f", "hash"): // e
+		return fakeAudioHash(in, stdout, stderr)
+	case hasPair(args, "-map_metadata", "0") && hasPair(args, "-c", "copy"): // f
+		return fakeWriteTags(args, in, isFake, stderr)
 	case hasArg(args, "image2pipe") && isFake: // a
 		if !ff.Cover {
 			fmt.Fprintln(stderr, in+": Output file does not contain any stream")

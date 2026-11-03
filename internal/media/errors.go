@@ -9,6 +9,8 @@ var (
 	ErrProtected = errors.New("media: copy-protected file")
 	// ErrNotRegular means the path is a directory, device, socket or pipe, so it was not opened.
 	ErrNotRegular = errors.New("media: not a regular file")
+	// ErrNoSpaceInfo means this platform cannot report free disk space (FreeBytes); the caller refuses to write.
+	ErrNoSpaceInfo = errors.New("media: free space is not available on this platform")
 )
 
 // Error codes of Error.Code. Code is stable (stored in job errors and tested); Text is the plain
