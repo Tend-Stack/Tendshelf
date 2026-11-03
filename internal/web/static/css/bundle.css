@@ -580,6 +580,12 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-toasts { position: fixed; left: var(--space-16); right: var(--space-16); z-index: 20; display: flex; flex-direction: column; align-items: center; gap: var(--space-8);
   bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-12) + var(--space-8)); pointer-events: none; }
 .ts-toasts > * { pointer-events: auto; }
+/* The offline banner (M3a, board StateOffline): a card under the top safe area that stays in view
+   while the page scrolls. js/offline.js shows it; a class display would beat [hidden], so restate it. */
+.ts-offline { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: var(--space-12); margin: max(var(--space-8), env(safe-area-inset-top)) var(--space-16) 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--ink); }
+.ts-offline[hidden], .ts-offline__retry[hidden] { display: none; }
+.ts-offline__text { flex: 1; min-width: 0; margin: 0; font-size: 0.9375rem; line-height: 1.375rem; }
+.ts-offline__retry { flex: none; }
 @media (width >= 768px) {
   :where(html:not([data-text-size="large"])) {
     .ts-shell { grid-template-columns: var(--size-rail) minmax(0, 1fr); }

@@ -43,3 +43,30 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
 
 /* Downloads: the empty state reads as one block with the heading, both at the start edge. */
 .ts-downloads .ts-empty { align-items: flex-start; text-align: start; margin: 0; padding-inline: 0; }
+
+/* Downloads (M3a, board DownloadsPhone): the lists, the storage card and the settings row. Every
+   node js/downloads.js fills starts hidden, and a class display would beat the browser's own
+   [hidden] rule, so it is restated here. */
+.ts-downloads { max-width: 40rem; padding-bottom: var(--space-32); }
+.ts-downloads [hidden] { display: none; }
+.ts-downloads__title { margin: 0; min-height: var(--size-tap); display: flex; align-items: center; }
+.ts-downloads__lead, .ts-downloads__note, .ts-downloads__legend { margin: 0; color: var(--ink-muted); }
+.ts-downloads__note { margin-top: var(--space-8); }
+.ts-downloads__install { align-self: flex-start; margin-top: var(--space-12); }
+.ts-downloads__storage { display: flex; flex-direction: column; gap: 0.625rem; margin-top: var(--space-20); padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-downloads__storage .ts-downloads__note { margin-top: 0; }
+.ts-downloads__storagehead, .ts-downloads__readyhead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-12); }
+.ts-downloads__storagetitle { margin: 0; }
+.ts-downloads__storagebar { height: 0.625rem; border-radius: 0.3125rem; }
+.ts-downloads__storagebar .ts-bar__fill { border-radius: 0.3125rem; }
+.ts-downloads__legend { display: flex; align-items: center; gap: 0.375rem; }
+.ts-downloads__dot { flex: none; width: 0.625rem; height: 0.625rem; border-radius: 0.1875rem; background: var(--accent-fill); }
+.ts-downloads__settings { margin-top: var(--space-8); }
+.ts-downloads__section { margin-top: var(--space-16); }
+.ts-downloads__overline { margin: 0 0 var(--space-4); }
+.ts-downloads__list { margin: 0; padding: 0; list-style: none; }
+.ts-downloads__row .ts-cover { flex: none; }
+.ts-downloads__row .ts-iconbtn { flex: none; color: var(--ink); }
+.ts-downloads__text { gap: 0.375rem; }
+.ts-downloads__ready { display: inline-flex; align-items: center; gap: 0.375rem; }
+.ts-downloads__ready .ts-icon { flex: none; width: 1rem; height: 1rem; color: var(--success); }

@@ -48,6 +48,17 @@ type BookPlayView struct {
 	ShelfHref, ShelfLabel string
 	// ShareHref opens the book's Share & invite page; empty unless the person manages users.
 	ShareHref string
+	// Download is the offline Download control; nil unless the person may download the book and it
+	// has a playable file (M3a). Both of its nodes start hidden: js/downloads.js shows one.
+	Download *BookDownloadView
+}
+
+// BookDownloadView is the Download pair on the book page: the button that starts a download and the
+// status link to the Downloads page. The messages are read by js/downloads.js.
+type BookDownloadView struct {
+	ID, Label, Href string
+	// Downloading has a {pct} token; the rest are the status link's words per state.
+	Downloading, Waiting, Ready, Paused, Failed string
 }
 
 // BookView is the book page. The handler writes every word and address; the template only lays
@@ -183,6 +194,9 @@ templ BookPlay(v *BookPlayView) {
 				if v.ShareHref != "" {
 					@bookShareLink(v.ShareHref)
 				}
+				if v.Download != nil {
+					@bookDownload(*v.Download)
+				}
 				<form method="post" action={ templ.SafeURL(v.Action) } hx-post={ v.Action } hx-swap="none">
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
 					<input type="hidden" name="finished" value={ v.MarkValue }/>
@@ -199,6 +213,34 @@ templ BookPlay(v *BookPlayView) {
 
 // bookShelfLink opens the "Add to shelf" sheet. It is not a play control: the book's one play button
 // stays alone.
+// bookDownload is the Download pair (hidden until js/downloads.js knows the download state): a
+// button to start, and a link to the Downloads page showing the state once one exists.
+templ bookDownload(v BookDownloadView) {
+	<button
+		type="button"
+		class="ts-btn ts-btn--quiet ts-book__download"
+		data-ts-download={ v.ID }
+		data-ts-msg-downloading={ v.Downloading }
+		data-ts-msg-waiting={ v.Waiting }
+		hidden
+	>
+		@components.Icon("download", false)
+		<span class="ts-book__label">{ v.Label }</span>
+	</button>
+	<a
+		class="ts-btn ts-btn--quiet ts-book__download"
+		href={ templ.SafeURL(v.Href) }
+		data-ts-download-status
+		data-ts-msg-ready={ v.Ready }
+		data-ts-msg-paused={ v.Paused }
+		data-ts-msg-failed={ v.Failed }
+		hidden
+	>
+		@components.Icon("download", false)
+		<span class="ts-book__label" data-ts-download-label></span>
+	</a>
+}
+
 // bookShareLink opens the Share & invite page for this book. A plain link: the page is a full page.
 templ bookShareLink(href string) {
 	<a class="ts-btn ts-btn--quiet ts-book__share" href={ templ.SafeURL(href) }>
