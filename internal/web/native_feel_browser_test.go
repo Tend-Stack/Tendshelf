@@ -3,7 +3,9 @@
 package web
 
 import (
+	"fmt"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -160,5 +162,39 @@ func TestNativeFeelThemesAndSelection(t *testing.T) {
 	tab.Eval(`[...document.querySelectorAll("#main p, #main h1, #main input, #main textarea")].filter(el => getComputedStyle(el).userSelect === "none").map(el => el.tagName + "." + el.className)`, &bad)
 	for _, b := range bad {
 		t.Errorf("readable element %s is not selectable", b)
+	}
+}
+
+// TestNativeFeelNavTransitionLayer: the visible navigation (tab bar, rail or sidebar) has its own view
+// transition layer, so the page never shows through it mid-swap (operator, 2026-11-03: the tab bar
+// went see-through while navigating on an iPhone). Exactly one named nav shows at each width; two
+// at once would abort every transition. A real swap must also run with no aborted transition.
+func TestNativeFeelNavTransitionLayer(t *testing.T) {
+	e := playerApp(t)
+	for _, w := range []int{390, 1024, 1440} {
+		t.Run(fmt.Sprint(w), func(t *testing.T) {
+			tab := nativeTab(t, e, w, 900, nativeInsets{})
+			var got struct {
+				Names   []string
+				Aborted string
+			}
+			tab.Eval(`(async () => {
+			  const names = [...document.querySelectorAll(".ts-nav-tabbar, .ts-nav-rail, .ts-nav-side")]
+			    .filter((n) => n.offsetParent !== null || getComputedStyle(n).position === "fixed" && getComputedStyle(n).display !== "none")
+			    .map((n) => getComputedStyle(n).viewTransitionName);
+			  let aborted = "";
+			  if (document.startViewTransition) {
+			    const vt = document.startViewTransition(() => {});
+			    try { await vt.finished; } catch (err) { aborted = String(err); }
+			  }
+			  return { Names: names, Aborted: aborted };
+			})()`, &got)
+			if len(got.Names) != 1 || !strings.HasPrefix(got.Names[0], "ts-") {
+				t.Errorf("%d: visible nav transition names %v, want exactly one ts-* name", w, got.Names)
+			}
+			if got.Aborted != "" {
+				t.Errorf("%d: a view transition was aborted: %s", w, got.Aborted)
+			}
+		})
 	}
 }

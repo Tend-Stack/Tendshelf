@@ -11,6 +11,13 @@
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 ::view-transition-old(ts-main) { animation: ts-fade-out var(--duration-base) var(--easing-standard) both; }
 ::view-transition-new(ts-main) { animation: ts-rise-in var(--duration-base) var(--easing-standard) both; }
+/* The navigation never changes during a swap: its own still layer, drawn above the page's, so the page
+   never shows through the tab bar, rail or sidebar mid-transition. One name each: only one shows. */
+.ts-nav-tabbar { view-transition-name: ts-tabbar; }
+.ts-nav-rail { view-transition-name: ts-rail; }
+.ts-nav-side { view-transition-name: ts-side; }
+::view-transition-group(ts-tabbar), ::view-transition-group(ts-rail), ::view-transition-group(ts-side) { z-index: 1; animation: none; }
+::view-transition-old(ts-tabbar), ::view-transition-new(ts-tabbar), ::view-transition-old(ts-rail), ::view-transition-new(ts-rail), ::view-transition-old(ts-side), ::view-transition-new(ts-side) { animation: none; }
 .ts-main.ts-entering { animation: ts-rise-in var(--duration-base) var(--easing-standard) both; }
 
 /* Shared cover: exactly one element per page carries .ts-vt-cover */
