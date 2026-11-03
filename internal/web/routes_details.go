@@ -88,7 +88,7 @@ func (s *server) detailsRefuse(w http.ResponseWriter, r *http.Request, status in
 func (s *server) detailsEditView(r *http.Request, id string, lookups bool) (pages.DetailsEditView, error) {
 	v := pages.DetailsEditView{}
 	if lookups {
-		v.LookupHref, v.LookupLabel = lookupHref(id), detailsLookupButton
+		v.LookupHref, v.LookupLabel, v.LookupCaption = lookupHref(id), detailsLookupButton, detailsLookupCaption
 	}
 	if n, err := strconv.Atoi(r.URL.Query().Get("applied")); err == nil && n > 0 && n < 100 {
 		v.Applied = detailsUsed(n)

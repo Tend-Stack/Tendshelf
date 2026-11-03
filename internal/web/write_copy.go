@@ -4,6 +4,7 @@ package web
 // has none of them yet. The reasons a write is refused come from internal/mediajobs (writeText).
 const (
 	writeOpenLink     = "Write details into the files"
+	writeOpenCaption  = "Puts these details into the audio files, with Undo."
 	writeSheetTitle   = "Write details into the files"
 	writeSheetClose   = "Close"
 	writeIntro        = "Tendshelf will put these details into the audio files themselves, so other apps show them too."

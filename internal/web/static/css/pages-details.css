@@ -91,9 +91,17 @@
 /* Details tab actions. */
 .ts-book__applied { display: flex; align-items: center; gap: var(--space-8); margin: 0 0 var(--space-12); color: var(--success); }
 .ts-book__applied .ts-icon { width: 1.25rem; height: 1.25rem; flex: none; }
-.ts-book__lookup, .ts-book__write { margin-top: var(--space-16); margin-right: var(--space-8); }
+.ts-book__side { display: flex; flex-direction: column; gap: 1.75rem; margin-top: var(--space-24); min-width: 0; }
+.ts-book__side .ts-book__rails { margin-top: 0; }
+@media (width >= 1280px) { .ts-book__side { margin-top: 0; } }
+.ts-dpanel { display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-20); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); }
+.ts-dpanel > *, .ts-dpanel .ts-write__pending { margin: 0; }
+.ts-dpanel .ts-btn--block { box-sizing: border-box; }
+.ts-dpanel__acts { display: flex; flex-direction: column; gap: var(--space-16); padding-top: var(--space-16); border-top: 1px solid var(--line); }
+.ts-dpanel__act { display: flex; flex-direction: column; gap: var(--space-4); }
+.ts-dpanel__act p { margin: 0; color: var(--ink-muted); }
+.ts-book__reset { padding-top: var(--space-16); border-top: 1px solid var(--line); }
 .ts-book__cover-change { align-self: center; margin-top: var(--space-8); }
-.ts-book__reset { margin-top: var(--space-16); }
 .ts-book__reset summary { cursor: pointer; }
 .ts-book__reset form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); margin-top: var(--space-8); }
 .ts-book__reset p { margin: 0; color: var(--ink-muted); }
