@@ -36,7 +36,7 @@ func jobsEnv(t *testing.T, tools media.Tools, ffLog string) (*env, *jobs.Runner,
 		t.Fatal(err)
 	}
 	e.peaks = NewPeaks(e.repo, tools, PeaksDir(e.data), r, true, log)
-	if err := Register(r, covers, compat, e.peaks); err != nil {
+	if err := Register(r, covers, compat, e.peaks, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := r.Start(bg); err != nil {
