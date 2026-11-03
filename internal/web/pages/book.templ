@@ -452,7 +452,7 @@ templ bookDetails(v BookView) {
 	if v.Edit.ResetAction != "" {
 		<details class="ts-book__reset">
 			<summary class="ts-btn ts-btn--quiet">{ v.Edit.ResetTitle }</summary>
-			<form method="post" action={ templ.URL(v.Edit.ResetAction) }>
+			<form method="post" action={ templ.URL(v.Edit.ResetAction) } hx-post={ v.Edit.ResetAction } hx-target="#book-panel" hx-select="#book-panel" hx-swap="outerHTML">
 				<input type="hidden" name="_csrf" value={ v.Edit.CSRF }/>
 				<p class="caption">{ v.Edit.ResetBody }</p>
 				<button type="submit" class="ts-btn ts-btn--secondary">{ v.Edit.ResetButton }</button>

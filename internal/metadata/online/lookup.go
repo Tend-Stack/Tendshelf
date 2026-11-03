@@ -61,6 +61,7 @@ type Result struct {
 	Candidates []Book
 	Errors     map[string]string // provider -> error code
 	Searched   []string
+	Steps      []Step // the log of the lookup, in the order it ran
 }
 
 // quote percent-encodes everything except unreserved characters and the bytes in safe.
@@ -93,15 +94,27 @@ func params(kv ...string) string {
 
 // Lookup asks the named providers (unknown names are ignored) and returns the best matches first.
 func (c *Client) Lookup(ctx context.Context, q Query, providers []string) (Result, error) {
+	return c.LookupSteps(ctx, q, providers, nil)
+}
+
+// LookupSteps is Lookup that also tells onStep the log so far, a copy each time a step starts or
+// ends. The finished log is in Result.Steps.
+func (c *Client) LookupSteps(ctx context.Context, q Query, providers []string, onStep func([]Step)) (Result, error) {
 	q = q.clean()
 	if q.Title == "" && q.ASIN == "" && q.ISBN == "" {
 		return Result{}, ErrEmptyQuery
 	}
 	res := Result{Errors: map[string]string{}}
+	var planned []string
 	for _, p := range providers {
-		if !contains(Providers, p) || contains(res.Searched, p) {
-			continue
+		if contains(Providers, p) && !contains(planned, p) {
+			planned = append(planned, p)
 		}
+	}
+	rec := &recorder{emit: onStep, cur: -1}
+	rec.plan(planned)
+	ctx = context.WithValue(ctx, recorderKey{}, rec)
+	for _, p := range planned {
 		res.Searched = append(res.Searched, p)
 		found, err := c.searchProvider(ctx, p, q)
 		if err != nil {
@@ -126,6 +139,7 @@ func (c *Client) Lookup(ctx context.Context, q Query, providers []string) (Resul
 		}
 		res.Candidates = append(res.Candidates, found...)
 	}
+	res.Steps = rec.snapshot()
 	sort.SliceStable(res.Candidates, func(i, j int) bool { return res.Candidates[i].Score > res.Candidates[j].Score })
 	if len(res.Candidates) > maxCandidates {
 		res.Candidates = res.Candidates[:maxCandidates]
@@ -133,10 +147,20 @@ func (c *Client) Lookup(ctx context.Context, q Query, providers []string) (Resul
 	return res, nil
 }
 
+// searchProvider asks one provider and records it as a step. Audnexus records its own steps.
 func (c *Client) searchProvider(ctx context.Context, provider string, q Query) ([]Book, error) {
-	switch provider {
-	case "audnexus":
+	if provider == "audnexus" {
 		return c.searchAudnexus(ctx, q)
+	}
+	rec := recorderFrom(ctx)
+	rec.begin(provider, label(provider), "", q.askFor(provider))
+	books, err := c.searchOther(ctx, provider, q)
+	rec.end(len(books), err)
+	return books, err
+}
+
+func (c *Client) searchOther(ctx context.Context, provider string, q Query) ([]Book, error) {
+	switch provider {
 	case "google":
 		var query string
 		switch {
@@ -204,16 +228,20 @@ func capBooks(b []Book) []Book {
 }
 
 func (c *Client) searchAudnexus(ctx context.Context, q Query) ([]Book, error) {
+	rec := recorderFrom(ctx)
 	asins := []string{}
 	if q.ASIN != "" {
 		asins = append(asins, q.ASIN)
 	} else if q.Title != "" {
+		rec.begin("audnexus", "Audible catalogue", "", q.titleAsk())
 		raw, err := c.getJSON(ctx, "audnexus", "https://api.audible.com/1.0/catalog/products?"+
 			params("num_results", "10", "products_sort_by", "Relevance", "title", q.Title, "author", q.Author))
 		if err != nil {
+			rec.end(0, err)
 			return nil, err
 		}
 		asins = parseAudibleProducts(raw)
+		rec.end(len(asins), nil)
 	}
 	order := append([]string(nil), audnexusRegions...)
 	if first, ok := langRegion[q.Language]; ok {
@@ -232,14 +260,18 @@ func (c *Client) searchAudnexus(ctx context.Context, q Query) ([]Book, error) {
 			if region != "" {
 				u += "?region=" + region
 			}
+			rec.begin("audnexus", "Audnexus", regionLabel(region), asin)
 			raw, err := c.getJSON(ctx, "audnexus", u)
 			if err != nil {
+				rec.end(0, err)
 				return nil, err
 			}
 			if b := parseAudnexusBook(json.RawMessage(raw)); b != nil {
+				rec.end(1, nil)
 				out = append(out, *b)
 				break
 			}
+			rec.end(0, nil)
 		}
 	}
 	return out, nil

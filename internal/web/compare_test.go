@@ -37,13 +37,13 @@ func TestCompareFlow(t *testing.T) {
 	// While the job waits, the sheet polls it and offers "Check again".
 	rec = e.compareGet(sweepOwner, loc, nil)
 	body := rec.Body.String()
-	for _, want := range []string{"Looking up details…", `hx-trigger="every 2s"`, "Check again", `hx-get="/hx/jobs/` + job + `?book=` + id + `"`} {
+	for _, want := range []string{"Looking up details…", `hx-trigger="every 1s"`, "Check again", `hx-get="/hx/jobs/` + job + `?book=` + id + `"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("waiting sheet lacks %q", want)
 		}
 	}
 	rec = e.compareGet(sweepOwner, "/hx/jobs/"+job+"?book="+id, compareHx)
-	if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), "<html") || !strings.Contains(rec.Body.String(), `every 2s`) {
+	if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), "<html") || !strings.Contains(rec.Body.String(), `every 1s`) {
 		t.Errorf("polling a waiting job: %d %.120s", rec.Code, rec.Body.String())
 	}
 
@@ -56,7 +56,7 @@ func TestCompareFlow(t *testing.T) {
 	// The job finishes: the same address answers with the matches, then the table.
 	done := compareSeedJob(t, e, id, true)
 	rec = e.compareGet(sweepOwner, "/hx/jobs/"+done+"?book="+id, compareHx)
-	if body := rec.Body.String(); rec.Code != http.StatusOK || !strings.Contains(body, "Sweepword Lantern Two") || !strings.Contains(body, "Exact match") || strings.Contains(body, "every 2s") {
+	if body := rec.Body.String(); rec.Code != http.StatusOK || !strings.Contains(body, "Sweepword Lantern Two") || !strings.Contains(body, "Exact match") || strings.Contains(body, "every 1s") {
 		t.Errorf("finished lookup: %d %.300s", rec.Code, body)
 	}
 	table := e.compareGet(sweepOwner, compareSheetPath(e, done, "&c=0"), nil).Body.String()

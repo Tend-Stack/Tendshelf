@@ -57,6 +57,7 @@ type LookupResult struct {
 	Candidates []Candidate
 	Errors     map[string]string // provider -> error code
 	Searched   []string
+	Steps      []online.Step // the log of the search, for "How Tendshelf searched"
 }
 
 // FromOnline turns a provider's book into Details: markup removed from the text, the description
@@ -172,14 +173,14 @@ func (s *Service) handleLookup(ctx context.Context, t *jobs.Task) (any, error) {
 	if err := PruneOnlineCache(ctx, s.repo.Store(), s.now().Add(-onlineCacheAge)); err != nil {
 		return nil, err
 	}
-	res, err := s.online.Lookup(ctx, p.Query, p.Providers)
+	res, err := s.online.LookupSteps(ctx, p.Query, p.Providers, func(steps []online.Step) { t.Progress(steps) })
 	if errors.Is(err, online.ErrEmptyQuery) {
 		return nil, &jobs.Error{Code: "empty_query", Text: "There is nothing to look up. Add a title, ASIN or ISBN.", Permanent: true, Err: err}
 	}
 	if err != nil {
 		return nil, err
 	}
-	out := LookupResult{Query: p.Query, FetchedAt: s.now().UnixMilli(), Errors: res.Errors, Searched: res.Searched}
+	out := LookupResult{Query: p.Query, FetchedAt: s.now().UnixMilli(), Errors: res.Errors, Searched: res.Searched, Steps: res.Steps}
 	for _, b := range res.Candidates {
 		c := Candidate{Provider: b.Provider, ProviderLabel: b.ProviderLabel, Score: b.Score, Exact: b.Exact,
 			Details: FromOnline(b), CoverURL: b.CoverURL}
@@ -247,4 +248,17 @@ func (s *Service) CachedCover(url string) ([]byte, string, bool) {
 		return nil, "", false
 	}
 	return s.online.CachedCover(url)
+}
+
+// LookupSteps is the log of a lookup job: the finished one from its result, else the latest one the
+// running job reported as its progress (empty before the first step).
+func LookupSteps(j jobs.Job, r LookupResult) []online.Step {
+	if j.State == jobs.StateDone {
+		return r.Steps
+	}
+	var steps []online.Step
+	if len(j.Progress) > 0 {
+		_ = json.Unmarshal(j.Progress, &steps)
+	}
+	return steps
 }

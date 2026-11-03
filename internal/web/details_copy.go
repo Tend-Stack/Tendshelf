@@ -30,6 +30,16 @@ const (
 	detailsTick       = " Tick the values you want to use."
 	detailsStillRuns  = "The lookup is still running."
 
+	// The log of a lookup: where Tendshelf is asking, and what it sent.
+	detailsLogTitle   = "Where Tendshelf is looking"
+	detailsLogPrivacy = "Only the title, author, ASIN and ISBN leave your server."
+	detailsLogReview  = "How Tendshelf searched"
+	detailsLogWaiting = "waiting"
+	detailsLogNone    = "nothing found"
+	detailsLogSaved   = " (saved earlier)"
+	detailsLogOne     = "1 book"
+	detailsLogMany    = "%d books"
+
 	detailsColField  = "Field"
 	detailsColNow    = "Now"
 	detailsColOnline = "Online"

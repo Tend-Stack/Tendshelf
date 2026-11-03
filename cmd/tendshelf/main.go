@@ -94,7 +94,7 @@ func run(ctx context.Context, args []string) error {
 		return describeOpenError(err, dataDir)
 	}
 	defer st.Close()
-	runner, err := jobs.New(st, jobs.Options{Logger: logger})
+	runner, err := jobs.New(st, jobs.Options{Logger: logger, ProgressEvery: 500 * time.Millisecond}) // half a second so the lookup log keeps up with its polling
 	if err != nil {
 		return err
 	}

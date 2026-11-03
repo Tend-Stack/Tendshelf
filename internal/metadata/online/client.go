@@ -283,11 +283,14 @@ func retryAfter(h string) time.Duration {
 // Answers, including 404s, are cached; errors never are.
 func (c *Client) getJSON(ctx context.Context, provider, rawURL string) (json.RawMessage, error) {
 	key := cacheKey(rawURL)
+	rec := recorderFrom(ctx)
 	if c.cache != nil {
 		if b, ok, err := c.cache.Get(ctx, provider, key, cacheTTL); err == nil && ok && json.Valid(b) {
+			rec.request(true)
 			return b, nil
 		}
 	}
+	rec.request(false)
 	site := ""
 	if u, err := url.Parse(rawURL); err == nil {
 		site = siteName(strings.ToLower(u.Hostname()))

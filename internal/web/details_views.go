@@ -238,6 +238,62 @@ func lookupHref(bookID string) string { return "/books/" + bookID + "/details?sh
 
 func detailsTabHref(bookID string) string { return "/books/" + bookID + "/details" }
 
+// logMarks are the signs of a step; the words beside them carry the state too, never colour alone.
+var logMarks = map[string][2]string{
+	online.StepWaiting: {"·", "Waiting: "},
+	online.StepRunning: {"▸", "Searching: "},
+	online.StepDone:    {"✓", "Done: "},
+	online.StepNone:    {"–", "Nothing found: "},
+	online.StepFailed:  {"✕", "Failed: "},
+}
+
+// logFailure is a failed step in a few plain words; the sheet's message has the full sentence.
+func logFailure(code string) string {
+	switch code {
+	case "offline":
+		return "could not reach it"
+	case "busy":
+		return "asked for a pause"
+	case "too_large":
+		return "the answer was too large"
+	case "bad_answer":
+		return "sent an answer Tendshelf could not use"
+	case "refused":
+		return "not on the list of sites"
+	}
+	return "had a problem"
+}
+
+// logLines words the steps of a lookup, one line each.
+func logLines(steps []online.Step) []pages.LogLine {
+	out := make([]pages.LogLine, 0, len(steps))
+	for _, st := range steps {
+		mark, ok := logMarks[st.State]
+		if !ok {
+			continue
+		}
+		place, result := st.Label, ""
+		if st.Region != "" {
+			place += " (" + st.Region + ")"
+		}
+		switch st.State {
+		case online.StepWaiting:
+			result = detailsLogWaiting
+		case online.StepDone:
+			result = countText(st.Count, detailsLogOne, detailsLogMany)
+		case online.StepNone:
+			result = detailsLogNone
+		case online.StepFailed:
+			result = logFailure(st.Code)
+		}
+		if st.Cached && (st.State == online.StepDone || st.State == online.StepNone) {
+			result += detailsLogSaved
+		}
+		out = append(out, pages.LogLine{State: st.State, Mark: mark[0], Words: mark[1], Text: joinNonEmpty(" — ", place, st.Query, result)})
+	}
+	return out
+}
+
 // candidateMeta is the second line of a match in the list: provider label and year.
 func candidateMeta(c metadata.Candidate) string {
 	by := ""
@@ -279,7 +335,9 @@ func (s *server) compareSheetView(r *http.Request, cur library.BookDetail, j job
 		ColField: detailsColField, ColNow: detailsColNow, ColOnline: detailsColOnline, ColUse: detailsColUse,
 		Caption: detailsCaption, Same: detailsSame, ShowAll: detailsShowAll, NoValue: detailsNoValue,
 		KeepLabel: detailsKeep, PickOther: detailsPickOther, ApplyAction: "/books/" + bookID + "/match/apply",
-		JobID: j.ID,
+		JobID:    j.ID,
+		LogTitle: detailsLogTitle, LogPrivacy: detailsLogPrivacy, LogReview: detailsLogReview,
+		Log: logLines(metadata.LookupSteps(j, res)),
 	}
 	switch j.State {
 	case jobs.StateDone:

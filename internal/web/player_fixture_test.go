@@ -113,10 +113,16 @@ func playerApp(t *testing.T) *playerEnv {
 // summary, a series and genres).
 func playerAppWith(t *testing.T, tweak func(*librarytest.BookSpec)) *playerEnv {
 	t.Helper()
+	return playerAppMods(t, tweak)
+}
+
+// playerAppMods is playerAppWith that also applies more options to the app (a lookup service, for example).
+func playerAppMods(t *testing.T, tweak func(*librarytest.BookSpec), mods ...func(*Options)) *playerEnv {
+	t.Helper()
 	enq := &streamEnq{}
-	a := newTestApp(t, func(o *Options) {
+	a := newTestApp(t, append([]func(*Options){func(o *Options) {
 		o.Compat = mediajobs.NewCompat(o.Library, media.Tools{}, mediajobs.CompatDir(o.DataDir), 1<<30, enq, nil)
-	})
+	}}, mods...)...)
 	owner := a.owner(t)
 	_, f := librarytest.NewLibrary(t, a.lib, "Player library", t.TempDir())
 	spec := librarytest.BookSpec{
