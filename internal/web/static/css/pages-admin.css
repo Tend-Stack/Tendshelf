@@ -246,7 +246,8 @@ a.ts-users__item:hover { background: var(--surface); }
 .ts-lookuplibs { display: flex; flex-direction: column; gap: var(--space-16); margin: var(--space-16) 0 0; padding: 0; list-style: none; }
 .ts-lookuplib { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
 .ts-lookuplib__name { margin: 0; font-weight: 600; }
-.ts-lookuplib__needs { min-height: var(--size-tap); display: inline-flex; align-items: center; }
+.ts-lookuplib__needs { min-height: var(--size-tap); display: inline-flex; align-items: center; color: var(--accent); text-decoration: none; font-weight: 500; }
+.ts-lookuplib__needs:hover { text-decoration: underline; }
 .ts-lookuplib .ts-scan { align-self: stretch; margin-top: 0; }
 .ts-autolookup__hint { margin: 0; color: var(--ink-muted); }
 .ts-autolookup { display: flex; flex-direction: column; gap: var(--space-4); }
