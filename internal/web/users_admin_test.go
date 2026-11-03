@@ -38,8 +38,9 @@ func usersNewEnv(t *testing.T) *usersEnv {
 	e.adminID = sweepUserID(t, a, e.admin)
 	l, f := librarytest.NewLibrary(t, a.lib, "Family library", adminAudioDir(t, true))
 	e.lib = l
-	for _, title := range []string{"Usersword One", "Usersword Two", "Usersword Three"} {
-		e.books = append(e.books, librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: title, Files: 1, DurationMs: sweepHourMs, AddedAt: 5}))
+	// Distinct times, newest first, so "the newest book" (an invite's featured title) never depends on random ids.
+	for i, title := range []string{"Usersword One", "Usersword Two", "Usersword Three"} {
+		e.books = append(e.books, librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: title, Files: 1, DurationMs: sweepHourMs, AddedAt: int64(7 - i)}))
 	}
 	return e
 }

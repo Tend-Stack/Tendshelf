@@ -20,7 +20,8 @@
 .ts-frame__title { margin: var(--space-32) 0 0; }
 .ts-frame__lead { margin: var(--space-12) 0 0; color: var(--ink-muted); }
 
-.ts-brand { display: flex; align-items: center; gap: var(--space-12); min-height: 2.75rem; }
+/* div: the setup screens' brand only; the nav's brand (a span) shares the class and must not grow on pages that load this file. */
+div.ts-brand { display: flex; align-items: center; gap: var(--space-12); min-height: 2.75rem; }
 .ts-brand__mark { display: inline-flex; color: var(--accent); }
 .ts-brand__mark .ts-icon { width: 1.75rem; height: 1.75rem; }
 .ts-brand__name { font-family: var(--font-serif); font-size: 1.25rem; line-height: 1.75rem; font-weight: 600; }
