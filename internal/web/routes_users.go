@@ -350,7 +350,7 @@ func (s *server) personError(w http.ResponseWriter, r *http.Request, id string, 
 }
 
 func (s *server) backToPerson(w http.ResponseWriter, r *http.Request, id string) {
-	s.redirect(w, r, "/admin/users/"+id)
+	s.answerPage(w, r, "/admin/users/"+id)
 }
 
 func (s *server) postPersonRole(w http.ResponseWriter, r *http.Request) {
@@ -462,7 +462,7 @@ func (s *server) postPersonDeviceSignOut(w http.ResponseWriter, r *http.Request)
 			Target: "user:" + id, Detail: map[string]string{"kind": kind}})
 	})
 	if done {
-		s.redirect(w, r, "/admin/users#users-devices")
+		s.answerPage(w, r, "/admin/users#users-devices")
 	}
 }
 
@@ -633,7 +633,7 @@ func (s *server) bookGrantOf(r *http.Request, userID, bookID string) (gid, title
 // "back"), else the person's page.
 func (s *server) afterChange(w http.ResponseWriter, r *http.Request, id string) {
 	if back, _, ok := validShareBack(r.PostForm.Get("back")); ok {
-		s.redirect(w, r, back)
+		s.answerPage(w, r, back)
 		return
 	}
 	s.backToPerson(w, r, id)

@@ -126,7 +126,7 @@ templ Shelves(v ShelvesView) {
 		}
 		<section class="ts-shelf-new" aria-labelledby="shelf-new-title">
 			<h2 id="shelf-new-title" class="ts-overline">New shelf</h2>
-			<form class="ts-shelf-form" method="post" action="/shelves" hx-boost="false">
+			<form class="ts-shelf-form" method="post" action="/shelves">
 				<input type="hidden" name="_csrf" value={ v.CSRF }/>
 				@components.TextField(components.Field{ID: "shelf-name", Name: "name", Label: "Shelf name", Value: v.NameValue, Error: v.NameErr, Autocomplete: "off"})
 				<button type="submit" class="ts-btn ts-btn--primary">Create shelf</button>
@@ -150,17 +150,17 @@ templ Shelf(v ShelfView) {
 		<div class="ts-shelf-tools">
 			<details class="ts-shelf-rename" open?={ v.RenameErr != "" }>
 				<summary class="ts-btn ts-btn--quiet">Rename</summary>
-				<form class="ts-shelf-form" method="post" action={ templ.URL("/shelves/" + v.ID + "/rename") } hx-boost="false">
+				<form class="ts-shelf-form" method="post" action={ templ.URL("/shelves/" + v.ID + "/rename") }>
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
 					@components.TextField(components.Field{ID: "shelf-rename", Name: "name", Label: "Shelf name", Value: v.RenameValue, Error: v.RenameErr, Autocomplete: "off"})
 					<button type="submit" class="ts-btn ts-btn--secondary">Save</button>
 				</form>
 			</details>
-			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL("/shelves/" + v.ID + "/delete") } hx-boost="false">Delete shelf</a>
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL("/shelves/" + v.ID + "/delete") }>Delete shelf</a>
 		</div>
 		}
 		if v.CanShare {
-			<form class="ts-shelf-share" method="post" action={ templ.URL("/shelves/" + v.ID + "/share") } hx-boost="false">
+			<form class="ts-shelf-share" method="post" action={ templ.URL("/shelves/" + v.ID + "/share") }>
 				<input type="hidden" name="_csrf" value={ v.CSRF }/>
 				<p class="caption">{ v.ShareNote }</p>
 				if v.Shared {
@@ -189,7 +189,7 @@ templ Shelf(v ShelfView) {
 							} else {
 								@shelfAction(v, it, "down", it.DownLabel)
 							}
-							<form method="post" action={ templ.URL("/shelves/" + v.ID + "/items/" + it.Card.ID + "/remove") } hx-boost="false">
+							<form method="post" action={ templ.URL("/shelves/" + v.ID + "/items/" + it.Card.ID + "/remove") }>
 								<input type="hidden" name="_csrf" value={ v.CSRF }/>
 								<input type="hidden" name="next" value={ "/shelves/" + v.ID }/>
 								<button type="submit" class="ts-iconbtn" aria-label={ it.RemoveLabel }>
@@ -214,7 +214,7 @@ templ Shelf(v ShelfView) {
 }
 
 templ shelfAction(v ShelfView, it ShelfItemView, dir, label string) {
-	<form method="post" action={ templ.URL("/shelves/" + v.ID + "/items/" + it.Card.ID + "/move") } hx-boost="false">
+	<form method="post" action={ templ.URL("/shelves/" + v.ID + "/items/" + it.Card.ID + "/move") }>
 		<input type="hidden" name="_csrf" value={ v.CSRF }/>
 		<input type="hidden" name="dir" value={ dir }/>
 		<button type="submit" class="ts-iconbtn" aria-label={ label }>
@@ -228,7 +228,7 @@ templ ShelfDelete(v ShelfDeleteView) {
 	<div class="ts-shelves ts-shelves--narrow">
 		<h1 class="title-1">{ v.Title }</h1>
 		<p class="ts-shelf-lead">{ v.Body }</p>
-		<form class="ts-shelf-confirm" method="post" action={ templ.URL("/shelves/" + v.ID + "/delete") } hx-boost="false">
+		<form class="ts-shelf-confirm" method="post" action={ templ.URL("/shelves/" + v.ID + "/delete") }>
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			<button type="submit" class="ts-btn ts-btn--danger">Delete shelf</button>
 			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL("/shelves/" + v.ID) }>Keep it</a>

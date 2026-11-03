@@ -485,8 +485,8 @@ func (s *server) postInviteCancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if back, _, ok := validShareBack(r.PostForm.Get("back")); ok {
-		s.redirect(w, r, back)
+		s.answerPage(w, r, back)
 		return
 	}
-	s.redirect(w, r, "/admin/users")
+	s.answerPage(w, r, "/admin/users")
 }

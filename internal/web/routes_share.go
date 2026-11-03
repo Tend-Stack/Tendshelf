@@ -643,5 +643,5 @@ func (s *server) postShareLinkStop(w http.ResponseWriter, r *http.Request) {
 	if b, _, ok := validShareBack(r.PostForm.Get("back")); ok {
 		back = b
 	}
-	s.redirect(w, r, back)
+	s.answerPage(w, r, back)
 }

@@ -79,6 +79,7 @@ type Options struct {
 }
 
 type server struct {
+	routes     http.Handler // the route mux itself, for answerPage to render a page a POST points at
 	assets     *static.Set
 	csrf       *CSRF
 	auth       *auth.Service
@@ -253,6 +254,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		s.errorPage(w, r, http.StatusNotFound)
 	})
 
+	s.routes = mux
 	guarded := s.refuseMixed(s.bearer(auth.Middleware(ss, s.proxies)(s.csrf.Middleware(s.gate(mux)))))
 	outer := http.NewServeMux()
 	outer.Handle("GET /static/", assets.Handler())
