@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
+	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
@@ -40,9 +41,35 @@ func fromSetup(r *http.Request) bool {
 	return err == nil && strings.HasPrefix(cur.Path, "/setup/")
 }
 
-// getJob answers GET /hx/jobs/{id}: the scan status fragment, which polls itself until the scan is
-// over and every file has been read.
+// jobViews answers GET /hx/jobs/{id} by the kind of the job: each kind has its own status fragment
+// and its own rule for who may see it.
+var jobViews = map[string]func(s *server, w http.ResponseWriter, r *http.Request, j jobs.Job){
+	scan.KindScan:       (*server).getScanJob,
+	metadata.KindOnline: (*server).getLookupJob,
+}
+
+// getJob answers GET /hx/jobs/{id}. An unknown id and an unknown kind are both "no such job".
 func (s *server) getJob(w http.ResponseWriter, r *http.Request) {
+	j, err := s.jobs.Get(r.Context(), r.PathValue("id"))
+	if errors.Is(err, jobs.ErrNotFound) {
+		s.notFound(w, r)
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "load job", err)
+		return
+	}
+	view, ok := jobViews[j.Kind]
+	if !ok {
+		s.notFound(w, r)
+		return
+	}
+	view(s, w, r, j)
+}
+
+// getScanJob is the scan status fragment, which polls itself until the scan is over and every file
+// has been read.
+func (s *server) getScanJob(w http.ResponseWriter, r *http.Request, _ jobs.Job) {
 	j, libID, ok, err := s.scanJobFor(r, r.PathValue("id"))
 	if err != nil {
 		s.serverError(w, r, "load job", err)

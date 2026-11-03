@@ -82,7 +82,10 @@ type sweepEnv struct {
 	book                     library.Book
 	author, narrator, series string
 	job                      string
-	tree                     string // a folder for the browse view, with a file name that must never be sent
+	// cn is the fake network of the lookup service and lookupJob a finished lookup of the book (M4-6).
+	cn        *compareNet
+	lookupJob string
+	tree      string // a folder for the browse view, with a file name that must never be sent
 
 	// granted marks the app of TestRouteMatrixGranted: the member and the guest hold a library
 	// grant on libID, so rows answer with Granted and the leak scan is off.
@@ -136,8 +139,9 @@ func sweepWriteCover(t *testing.T, dir, sha string) string {
 func sweepSeed(t *testing.T) *sweepEnv {
 	t.Helper()
 	ctx := context.Background()
-	a := newTestApp(t)
-	e := &sweepEnv{t: t, a: a}
+	cn := &compareNet{}
+	a := newTestApp(t, compareMod(t, cn))
+	e := &sweepEnv{t: t, a: a, cn: cn}
 	for i, r := range sweepRoles {
 		e.ck[i] = a.as(t, r)
 		e.uid[i] = sweepUserID(t, a, e.ck[i])
@@ -213,6 +217,7 @@ func sweepSeed(t *testing.T) *sweepEnv {
 	inviteSeed(t, e)
 	emailSeed(t, e)
 	linkSeed(t, e)
+	e.lookupJob = compareSeedJob(t, e, e.book.ID, true)
 	e.job = a.adminEnqueueScan(t, l.ID)
 	a.adminSetJobState(t, e.job, "done")
 	if err := db.PutSetting(ctx, a.st.Writer(), settingSetupDone, true); err != nil {
@@ -623,6 +628,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, usersSweepRows()...)
 	rows = append(rows, invitesSweepRows()...)
 	rows = append(rows, shareSweepRows()...)
+	rows = append(rows, detailsSweepRows()...)
 	rows = append(rows, devicesSweepRows()...)
 	rows = append(rows, emailSweepRows()...)
 	rows = append(rows, apiSweepRows()...)

@@ -30,6 +30,14 @@ type AdminLibrariesView struct {
 	Problems []ProblemCard
 	// ProblemsTitle is "{n} things need a look"; empty when nothing does.
 	ProblemsTitle string
+	// Online is the owner-only "Book details from the internet" section; nil for everyone else.
+	Online *AdminOnlineView
+}
+
+// AdminOnlineView is the switch that allows online lookups. The handler writes every word.
+type AdminOnlineView struct {
+	Title, Body, OnLabel, OffLabel, Save string
+	On                                   bool
 }
 
 func problemIcon(kind string) string {
@@ -118,5 +126,26 @@ templ AdminLibraries(v AdminLibrariesView) {
 				}
 			</ul>
 		</section>
+		if v.Online != nil {
+			<section class="ts-admin__section ts-admin__online" aria-labelledby="online-h">
+				<h2 id="online-h" class="section">{ v.Online.Title }</h2>
+				<p class="caption">{ v.Online.Body }</p>
+				<form method="post" action="/admin/online">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<fieldset class="ts-admin__choices">
+						<legend class="ts-sr">{ v.Online.Title }</legend>
+						<label class="ts-admin__choice">
+							<input type="radio" class="ts-check" name="on" value="1" checked?={ v.Online.On }/>
+							<span>{ v.Online.OnLabel }</span>
+						</label>
+						<label class="ts-admin__choice">
+							<input type="radio" class="ts-check" name="on" value="0" checked?={ !v.Online.On }/>
+							<span>{ v.Online.OffLabel }</span>
+						</label>
+					</fieldset>
+					<button type="submit" class="ts-btn ts-btn--secondary">{ v.Online.Save }</button>
+				</form>
+			</section>
+		}
 	</div>
 }

@@ -1,0 +1,256 @@
+package pages
+
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// DetailsStyles are the stylesheets of the Details tab's lookup actions and the lookup sheets.
+var DetailsStyles = []string{"css/pages-details.css"}
+
+// LookupSheetView is the first sheet of "Look up details online": the four query fields and the
+// "Search more places" disclosure. The handler writes every word and address.
+type LookupSheetView struct {
+	CSRF, Action, CloseHref          string
+	Title, CloseLabel, Intro, Submit string
+	TitleLabel, AuthorLabel          string
+	ASINLabel, ISBNLabel             string
+	QTitle, QAuthor, QASIN, QISBN    string
+	// Error is the refusal in plain words (nothing to look up); it shows under the title field.
+	Error                    string
+	More                     bool
+	MoreTitle, MoreLabel     string
+	Styles                   []string
+}
+
+// CompareRow is one field of the compare table. Now and Online are the two values; NowMore and
+// OnlineMore hold the whole text when the table shows the first part only. NowImg and OnlineImg
+// are set on the cover row, which shows pictures.
+type CompareRow struct {
+	Field, Label, Now, NowBadge, Online, OnlineBadge string
+	NowMore, OnlineMore, NowImg, OnlineImg           string
+	NowYou                                           bool
+	Diff, Ticked, Disabled                           bool
+}
+
+// CompareCandidate is one match in the list of matches.
+type CompareCandidate struct {
+	Href, Title, Meta string
+	Exact             bool
+}
+
+// CompareSheetView is the compare sheet. State is "wait", "failed", "none", "list" or "table".
+type CompareSheetView struct {
+	State                  string
+	CSRF                   string
+	Title, CloseLabel      string
+	CloseHref              string
+	Styles                 []string
+	Intro                  string // the line above the list or the table
+	Message                string // the failure or the "nothing close" text
+	Waiting, CheckAgain    string
+	TryAgain               string
+	SheetHref              string // this sheet's canonical address, for "Check again" and the use count
+	PollHref               string // /hx/jobs/{id}?book={id}
+	TryAgainHref           string
+	Candidates             []CompareCandidate
+	ExactLabel             string
+	PickOther, PickHref    string
+	Rows                   []CompareRow
+	ApplyAction, JobID, C  string
+	UseText, KeepLabel     string
+	UseCount               int
+	ColField, ColNow       string
+	ColOnline, ColUse      string
+	Caption, Same, ShowAll string
+	NoValue                string
+}
+
+// LookupSheet is the "Look up details online" sheet with the query fields. It renders into #sheet,
+// outside #main, like the shelf sheet. A plain submit posts and is answered with a redirect; htmx
+// swaps the answer (the waiting sheet, or this sheet with the refusal) into #sheet.
+templ LookupSheet(v LookupSheetView) {
+	<div class="ts-sheet-layer ts-sheet-layer--details">
+		@components.SheetStyles(v.Styles)
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
+		<div class="ts-sheet ts-details-sheet" role="dialog" aria-modal="true" aria-labelledby="lkp-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="lkp-title" class="ts-sheet__title">{ v.Title }</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel }>
+					@components.Icon("close", false)
+				</a>
+			</div>
+			<form class="ts-lookup" method="post" action={ templ.URL(v.Action) } hx-post={ v.Action } hx-target="#sheet" hx-swap="innerHTML">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<p class="caption ts-lookup__intro">{ v.Intro }</p>
+				@components.TextField(components.Field{ID: "lkp-title-q", Name: "title", Label: v.TitleLabel, Value: v.QTitle, Error: v.Error, Autocomplete: "off"})
+				@components.TextField(components.Field{ID: "lkp-author", Name: "author", Label: v.AuthorLabel, Value: v.QAuthor, Autocomplete: "off"})
+				@components.TextField(components.Field{ID: "lkp-asin", Name: "asin", Label: v.ASINLabel, Value: v.QASIN, Autocomplete: "off", Plain: true})
+				@components.TextField(components.Field{ID: "lkp-isbn", Name: "isbn", Label: v.ISBNLabel, Value: v.QISBN, Autocomplete: "off", Plain: true})
+				<details class="ts-lookup__more" open?={ v.More }>
+					<summary class="ts-btn ts-btn--quiet">{ v.MoreTitle }</summary>
+					<label class="ts-lookup__check">
+						<input type="checkbox" class="ts-check" name="more" value="1" checked?={ v.More }/>
+						<span>{ v.MoreLabel }</span>
+					</label>
+				</details>
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ v.Submit }</button>
+			</form>
+		</div>
+	</div>
+}
+
+// CompareSheet is the sheet that follows a lookup: waiting, failed, nothing found, the list of
+// matches, or the compare table. Its body (#compare-body) is what /hx/jobs/{id} swaps while it waits.
+templ CompareSheet(v CompareSheetView) {
+	<div class="ts-sheet-layer ts-sheet-layer--details">
+		@components.SheetStyles(v.Styles)
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
+		<div class="ts-sheet ts-details-sheet" role="dialog" aria-modal="true" aria-labelledby="cmp-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="cmp-title" class="ts-sheet__title">{ v.Title }</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel }>
+					@components.Icon("close", false)
+				</a>
+			</div>
+			@CompareBody(v)
+		</div>
+	</div>
+}
+
+// LookupJobFragment is what /hx/jobs/{id} answers for a lookup: the sheet's body again (still
+// waiting, so it polls once more) or the finished body.
+templ LookupJobFragment(v CompareSheetView) {
+	@CompareBody(v)
+}
+
+// CompareBody is the part of the compare sheet under its heading. While the lookup runs it polls
+// the job every two seconds and replaces itself; without JavaScript "Check again" does the same.
+templ CompareBody(v CompareSheetView) {
+	switch v.State {
+		case "wait":
+			<div id="compare-body" class="ts-compare-body" role="status" hx-get={ v.PollHref } hx-trigger="every 2s" hx-target="this" hx-swap="outerHTML">
+				<p class="body ts-compare-body__wait">{ v.Waiting }</p>
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SheetHref) } hx-boost="false">{ v.CheckAgain }</a>
+			</div>
+		case "failed", "none":
+			<div id="compare-body" class="ts-compare-body">
+				<p class="body ts-compare-body__message" role="status">{ v.Message }</p>
+				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.TryAgainHref) } hx-get={ v.TryAgainHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false">{ v.TryAgain }</a>
+			</div>
+		case "list":
+			<div id="compare-body" class="ts-compare-body">
+				<p class="caption ts-compare-body__intro">{ v.Intro }</p>
+				<ul class="ts-compare-list">
+					for _, c := range v.Candidates {
+						<li>
+							<a class="ts-compare-list__item" href={ templ.SafeURL(c.Href) } hx-get={ c.Href } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false">
+								<span class="body ts-compare-list__title">{ c.Title }</span>
+								<span class="caption ts-compare-list__meta">{ c.Meta }</span>
+								if c.Exact {
+									<span class="ts-source">{ v.ExactLabel }</span>
+								}
+							</a>
+						</li>
+					}
+				</ul>
+			</div>
+		default:
+			@compareTable(v)
+	}
+}
+
+templ compareTable(v CompareSheetView) {
+	<div id="compare-body" class="ts-compare-body">
+		<p class="caption ts-compare-body__intro">{ v.Intro }</p>
+		<form id="compare-form" class="ts-compare-form" method="post" action={ templ.URL(v.ApplyAction) } hx-post={ v.ApplyAction } hx-target="#book-panel" hx-select="#book-panel" hx-select-oob="#sheet" hx-swap="outerHTML">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<input type="hidden" name="job" value={ v.JobID }/>
+			<input type="hidden" name="c" value={ v.C }/>
+			<input type="hidden" name="picked" value="1"/>
+			<table class="ts-compare">
+				<caption class="ts-sr">{ v.Caption }</caption>
+				<thead>
+					<tr>
+						<th scope="col">{ v.ColField }</th>
+						<th scope="col">{ v.ColNow }</th>
+						<th scope="col">{ v.ColOnline }</th>
+						<th scope="col"><span class="ts-sr">{ v.ColUse }</span></th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, r := range v.Rows {
+						<tr class={ templ.KV("is-diff", r.Diff) }>
+							<th scope="row" class="ts-compare__field">{ r.Label }</th>
+							<td>
+								<div class={ "ts-compare__val", templ.KV("is-chosen", !r.Ticked), templ.KV("is-other", r.Ticked) }>
+									@compareValue(r.Now, r.NowMore, r.NowImg, r.Label+" ("+v.ColNow+")", v)
+									if r.NowBadge != "" {
+										<span class={ "ts-source", templ.KV("ts-source--you", r.NowYou) }>{ r.NowBadge }</span>
+									}
+								</div>
+							</td>
+							<td>
+								<div class={ "ts-compare__val", templ.KV("is-chosen", r.Ticked), templ.KV("is-other", !r.Ticked) }>
+									@compareValue(r.Online, r.OnlineMore, r.OnlineImg, r.Label+" ("+v.ColOnline+")", v)
+									if r.Disabled && r.Now == r.Online && r.Online != "" {
+										<span class="ts-source">{ v.Same }</span>
+									} else if r.OnlineBadge != "" {
+										<span class="ts-source">{ r.OnlineBadge }</span>
+									}
+								</div>
+							</td>
+							<td>
+								<input
+									class="ts-check"
+									type="checkbox"
+									name="use"
+									value={ r.Field }
+									aria-label={ v.ColUse + ": " + r.Label }
+									checked?={ r.Ticked }
+									disabled?={ r.Disabled }
+									if !r.Disabled {
+										hx-get={ v.SheetHref }
+										hx-trigger="change"
+										hx-include="#compare-form [name=use], #compare-form [name=picked]"
+										hx-select="#compare-use"
+										hx-target="#compare-use"
+										hx-swap="outerHTML"
+									}
+								/>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+			<div class="ts-compare-form__actions">
+				<button type="submit" id="compare-use" class="ts-btn ts-btn--primary ts-btn--block" disabled?={ v.UseCount == 0 } data-count={ strconv.Itoa(v.UseCount) }>{ v.UseText }</button>
+				<a class="ts-btn ts-btn--quiet ts-btn--block" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close>{ v.KeepLabel }</a>
+				if v.PickHref != "" {
+					<a class="ts-btn ts-btn--quiet ts-btn--block" href={ templ.SafeURL(v.PickHref) } hx-get={ v.PickHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false">{ v.PickOther }</a>
+				}
+			</div>
+		</form>
+	</div>
+}
+
+// compareValue shows one value: text (with the whole text behind a disclosure when it was cut), a
+// picture on the cover row, or the dash for no value.
+templ compareValue(text, more, img, label string, v CompareSheetView) {
+	if img != "" {
+		<img class="ts-compare__cover" src={ img } alt={ label } width="64" height="64" loading="lazy"/>
+	} else if text == "" {
+		<span class="body">{ v.NoValue }</span>
+	} else {
+		<span class="body">{ text }</span>
+		if more != "" {
+			<details class="ts-compare__more">
+				<summary>{ v.ShowAll }</summary>
+				<p class="caption">{ more }</p>
+			</details>
+		}
+	}
+}

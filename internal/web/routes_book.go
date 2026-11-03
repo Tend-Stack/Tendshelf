@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
@@ -26,6 +27,7 @@ func (s *server) registerBook(mux *http.ServeMux) {
 	mux.HandleFunc("GET /narrators/{id}", s.getPerson(library.RoleNarrator))
 	mux.HandleFunc("GET /series/{id}", s.getSeries)
 	mux.HandleFunc("GET /search", s.getSearch)
+	s.registerDetails(mux)
 }
 
 func (s *server) getBook(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +41,12 @@ func (s *server) getBook(w http.ResponseWriter, r *http.Request) {
 // renderBook is the book page. shelf is non-nil when a shelf form was refused: the page then
 // answers with that status and the "Add to shelf" sheet open, showing the refusal.
 func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab string, status int, shelf *shelfForm) {
+	s.renderBookWith(w, r, id, tab, status, shelf, nil)
+}
+
+// renderBookWith is renderBook that can also carry a refused lookup form: the page then answers
+// with that status and the lookup sheet open, showing the refusal.
+func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab string, status int, shelf *shelfForm, look *lookupForm) {
 	ctx := r.Context()
 	if !bookTabValid(tab) {
 		s.notFound(w, r)
@@ -110,6 +118,29 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 		// The Bookmarks tab swaps only #book-panel, so its stylesheet is linked whatever tab opens.
 		styles = append(append([]string(nil), styles...), pages.BookmarkStyles...)
 	}
+	canEdit := s.details != nil && s.can.Can(ctx, currentUser(r), share.EditBook, target)
+	lookups := false
+	if canEdit {
+		if lookups, err = metadata.OnlineEnabled(ctx, s.lib.Store().Reader()); err != nil {
+			s.serverError(w, r, "online setting", err)
+			return
+		}
+	}
+	if q := r.URL.Query().Get("sheet"); q == "lookup" || q == "compare" || look != nil {
+		// The lookup sheets belong to people who may edit the book while lookups are on.
+		if !lookups {
+			s.notFound(w, r)
+			return
+		}
+		var ok bool
+		if sheet, ok, err = s.detailsSheet(r, d, look); err != nil {
+			s.serverError(w, r, "details sheet", err)
+			return
+		} else if !ok {
+			s.notFound(w, r)
+			return
+		}
+	}
 	switch tab {
 	case "about":
 		bookChapters(&v, d, false, play)
@@ -135,6 +166,13 @@ func (s *server) renderBook(w http.ResponseWriter, r *http.Request, id, tab stri
 		}
 	case "details":
 		v.Rows = bookDetailsView(d, s.canManage(r))
+		if canEdit {
+			if v.Edit, err = s.detailsEditView(r, id, lookups); err != nil {
+				s.serverError(w, r, "details controls", err)
+				return
+			}
+			styles = append(append([]string(nil), styles...), pages.DetailsStyles...)
+		}
 	}
 	s.pageStyled(w, r, status, d.Book.Title, "library", pages.Book(v), sheet, styles...)
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
@@ -136,6 +137,15 @@ func (s *server) getAdminLibraries(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.serverError(w, r, "libraries page", err)
 		return
+	}
+	if s.details != nil && s.can.Can(ctx, currentUser(r), share.ManageServer, share.Target{Kind: share.TargetServer}) {
+		on, err := metadata.OnlineEnabled(ctx, s.lib.Store().Reader())
+		if err != nil {
+			s.serverError(w, r, "online setting", err)
+			return
+		}
+		view.Online = &pages.AdminOnlineView{Title: adminOnlineTitle, Body: adminOnlineBody,
+			OnLabel: adminOnlineOn, OffLabel: adminOnlineOff, Save: adminOnlineSave, On: on}
 	}
 	if m := r.URL.Query().Get("marked"); m != "" {
 		var n int

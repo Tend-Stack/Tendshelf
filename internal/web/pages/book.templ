@@ -98,6 +98,20 @@ type BookView struct {
 	ShelfHref, ShelfLabel string
 	// ShareHref opens the book's Share & invite page; empty unless the person manages users.
 	ShareHref string
+	// Edit holds the Details tab's lookup and reset controls; the zero value shows none.
+	Edit DetailsEditView
+}
+
+// DetailsEditView is what a person who may edit the book sees on the Details tab (M4-6): the lookup
+// button, the status after details were taken from a match, and the "go back to the files" form.
+type DetailsEditView struct {
+	// LookupHref opens the lookup sheet (the page with ?sheet=lookup); empty when lookups are off.
+	LookupHref, LookupLabel string
+	// Applied is "Used 2 changes."; empty when nothing was just applied.
+	Applied string
+	// ResetAction is where the reset form posts; empty hides the disclosure.
+	ResetAction, CSRF                  string
+	ResetTitle, ResetBody, ResetButton string
 }
 
 templ backIcon() {
@@ -380,6 +394,12 @@ templ bookChapters(v BookView) {
 }
 
 templ bookDetails(v BookView) {
+	if v.Edit.Applied != "" {
+		<p class="ts-book__applied label" role="status">
+			@components.Icon("check", false)
+			{ v.Edit.Applied }
+		</p>
+	}
 	<dl class="ts-book__details">
 		for _, r := range v.Rows {
 			<div class="ts-book__detail">
@@ -399,4 +419,26 @@ templ bookDetails(v BookView) {
 			</div>
 		}
 	</dl>
+	if v.Edit.LookupHref != "" {
+		<a
+			class="ts-btn ts-btn--secondary ts-book__lookup"
+			href={ templ.SafeURL(v.Edit.LookupHref) }
+			hx-get={ v.Edit.LookupHref }
+			hx-target="#sheet"
+			hx-select="#sheet > *"
+			hx-swap="innerHTML"
+			hx-push-url="false"
+			aria-haspopup="dialog"
+		>{ v.Edit.LookupLabel }</a>
+	}
+	if v.Edit.ResetAction != "" {
+		<details class="ts-book__reset">
+			<summary class="ts-btn ts-btn--quiet">{ v.Edit.ResetTitle }</summary>
+			<form method="post" action={ templ.URL(v.Edit.ResetAction) }>
+				<input type="hidden" name="_csrf" value={ v.Edit.CSRF }/>
+				<p class="caption">{ v.Edit.ResetBody }</p>
+				<button type="submit" class="ts-btn ts-btn--secondary">{ v.Edit.ResetButton }</button>
+			</form>
+		</details>
+	}
 }
