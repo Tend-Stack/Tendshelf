@@ -47,6 +47,63 @@ type AdoptPayload struct {
 	Source string `json:"source"`
 	Staged string `json:"staged,omitempty"`
 	URL    string `json:"url,omitempty"`
+	// IfNoCover makes the job give way to any cover the book has: automatic lookups use it, since
+	// they never replace a picture.
+	IfNoCover bool `json:"if_no_cover,omitempty"`
+}
+
+// errCoverPresent is what the guard of an IfNoCover adoption returns when the book got a cover
+// meanwhile; the job then ends as done and kept.
+var errCoverPresent = errors.New("mediajobs: the book already has a cover")
+
+// FillOnline queues the adoption of an online picture for a book that has no cover. It does
+// nothing when the book has a cover or a media.cover job for it is waiting or running, since the
+// scan's own picture would win. The adoption job checks again inside its transaction.
+func (c *Covers) FillOnline(ctx context.Context, bookID, url string) error {
+	if url == "" {
+		return nil
+	}
+	b, err := c.repo.Book(ctx, bookID)
+	if err != nil {
+		return err
+	}
+	if b.CoverID != "" {
+		return nil
+	}
+	active, err := c.jobs.ActiveKeys(ctx, KindCover, "book_id")
+	if err != nil {
+		return err
+	}
+	if active[bookID] {
+		return nil
+	}
+	_, err = c.jobs.Enqueue(ctx, KindCoverAdopt, AdoptPayload{BookID: bookID, Source: library.CoverOnline, URL: url, IfNoCover: true}, jobs.EnqueueOptions{})
+	return err
+}
+
+// ifNoCoverGuard runs fence, then refuses with errCoverPresent when the book has a cover.
+func ifNoCoverGuard(fence func(context.Context, *sql.Tx) error, bookID string) func(context.Context, *sql.Tx) error {
+	return func(ctx context.Context, tx *sql.Tx) error {
+		if err := fence(ctx, tx); err != nil {
+			return err
+		}
+		if has, err := bookHasCover(ctx, tx, bookID); err != nil {
+			return err
+		} else if has {
+			return errCoverPresent
+		}
+		return nil
+	}
+}
+
+// bookHasCover reads cover_id inside tx.
+func bookHasCover(ctx context.Context, tx *sql.Tx, bookID string) (bool, error) {
+	var id sql.NullString
+	err := tx.QueryRowContext(ctx, `SELECT cover_id FROM books WHERE id = ?`, bookID).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return id.Valid && id.String != "", err
 }
 
 // IncomingDir is where uploaded pictures wait for their job.
@@ -243,6 +300,11 @@ func (c *Covers) adoptHandler(ctx context.Context, t *jobs.Task) (any, error) {
 	if err := json.Unmarshal(t.Payload, &p); err != nil || p.BookID == "" {
 		return nil, badPayload(err)
 	}
+	if p.IfNoCover {
+		if b, err := c.repo.Book(ctx, p.BookID); err == nil && b.CoverID != "" {
+			return map[string]bool{"kept": true}, nil
+		}
+	}
 	var data []byte
 	var staged string
 	switch p.Source {
@@ -270,7 +332,14 @@ func (c *Covers) adoptHandler(ctx context.Context, t *jobs.Task) (any, error) {
 		return nil, badPayload(nil)
 	}
 
-	id, err := c.Adopt(ctx, p.BookID, p.Source, data, t.Fence)
+	guard := t.Fence
+	if p.IfNoCover {
+		guard = ifNoCoverGuard(t.Fence, p.BookID)
+	}
+	id, err := c.Adopt(ctx, p.BookID, p.Source, data, guard)
+	if errors.Is(err, errCoverPresent) {
+		return map[string]bool{"kept": true}, nil
+	}
 	if err != nil {
 		err = adoptError(err)
 		var je *jobs.Error
