@@ -346,7 +346,7 @@ func (s *server) getPerson(role string) http.HandlerFunc {
 		if q.Cursor != "" {
 			v.StartHref, v.StartLabel = path, bookBackToStart
 		}
-		s.pageStyled(w, r, http.StatusOK, p.Name, "library", pages.Person(v), nil, pages.BookStyles...)
+		s.pageStyled(w, r, http.StatusOK, p.Name, "library", pages.Person(v), nil, append(append([]string(nil), pages.BookStyles...), pages.DetailsStyles...)...)
 	}
 }
 

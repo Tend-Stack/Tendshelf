@@ -185,7 +185,7 @@ templ compareTable(v CompareSheetView) {
 					for _, r := range v.Rows {
 						<tr class={ templ.KV("is-diff", r.Diff) }>
 							<th scope="row" class="ts-compare__field">{ r.Label }</th>
-							<td>
+							<td data-label={ v.ColNow }>
 								<div class={ "ts-compare__val", templ.KV("is-chosen", !r.Ticked), templ.KV("is-other", r.Ticked) }>
 									@compareValue(r.Now, r.NowMore, r.NowImg, r.Label+" ("+v.ColNow+")", v)
 									if r.NowBadge != "" {
@@ -193,7 +193,7 @@ templ compareTable(v CompareSheetView) {
 									}
 								</div>
 							</td>
-							<td>
+							<td data-label={ v.ColOnline }>
 								<div class={ "ts-compare__val", templ.KV("is-chosen", r.Ticked), templ.KV("is-other", !r.Ticked) }>
 									@compareValue(r.Online, r.OnlineMore, r.OnlineImg, r.Label+" ("+v.ColOnline+")", v)
 									if r.Disabled && r.Now == r.Online && r.Online != "" {
