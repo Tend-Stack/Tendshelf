@@ -59,7 +59,7 @@ templ CoverBody(v CoverSheetView) {
 templ coverBodyInner(v CoverSheetView) {
 	if v.State == "wait" {
 		<p class="body ts-cover-pick__status" role="status">{ v.Message }</p>
-		<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SheetHref) } hx-boost="false">{ v.CheckAgain }</a>
+		<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SheetHref) } hx-get={ v.SheetHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false">{ v.CheckAgain }</a>
 	} else if v.State != "" {
 		<p class="body ts-cover-pick__status" role="status">{ v.Message }</p>
 	}
@@ -71,7 +71,7 @@ templ coverBodyInner(v CoverSheetView) {
 	}
 	<p class="caption ts-cover-pick__intro">{ v.Intro }</p>
 	if len(v.Choices) > 0 {
-		<form class="ts-cover-pick__form" method="post" action={ templ.URL(v.ChooseAction) }>
+		<form class="ts-cover-pick__form" method="post" action={ templ.URL(v.ChooseAction) } hx-post={ v.ChooseAction } hx-target="#main" hx-select="#main" hx-select-oob="#sheet" hx-swap="outerSync">
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			<fieldset class="ts-cover-pick__set">
 				<legend class="ts-sr">{ v.ChoicesLabel }</legend>
@@ -91,7 +91,7 @@ templ coverBodyInner(v CoverSheetView) {
 	} else {
 		<p class="body">{ v.NoCover }</p>
 	}
-	<form class="ts-cover-pick__upload" method="post" action={ templ.URL(v.UploadAction) } enctype="multipart/form-data">
+	<form class="ts-cover-pick__upload" method="post" action={ templ.URL(v.UploadAction) } enctype="multipart/form-data" hx-post={ v.UploadAction } hx-encoding="multipart/form-data" hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false">
 		<input type="hidden" name="_csrf" value={ v.CSRF }/>
 		<h3 class="section">{ v.UploadTitle }</h3>
 		<label class="ts-cover-pick__file">

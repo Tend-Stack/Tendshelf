@@ -201,7 +201,7 @@ func (s *server) postCoverChoose(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r.Context(), currentUser(r).ID, "book.cover.choose", book.ID, map[string]string{"cover_id": coverID})
-	s.redirect(w, r, detailsTabHref(book.ID))
+	s.answerBook(w, r, book.ID, detailsTabHref(book.ID))
 }
 
 // postCoverUpload keeps an uploaded picture and queues the job that stores it. The CSRF check has
@@ -264,5 +264,5 @@ func (s *server) postCoverUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r.Context(), user, "book.cover.upload", book.ID, map[string]string{"job": jobID})
-	s.redirect(w, r, coverSheetHref(book.ID, jobID))
+	s.answerBook(w, r, book.ID, coverSheetHref(book.ID, jobID))
 }
