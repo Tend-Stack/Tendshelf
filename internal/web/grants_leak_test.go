@@ -100,8 +100,10 @@ func TestGrantLeaks(t *testing.T) {
 			}
 			open := []string{
 				"/search?q=Hiddenword", "/search?q=Hiddenwrd", "/search?q=Hiddenauthor", "/", "/libraries", "/hx/libraries/items",
-				"/libraries?add=category", "/hx/home/hero",
+				"/libraries?add=category", "/hx/home/hero", "/offline",
+				// The offline shell names no book the person may not see, even when asked for it by id.
 			}
+			open = append(open, "/offline?books="+e.hidden.ID+","+e.hiddenAudio)
 			if role == sweepMember {
 				open = append(open, "/shelves") // the guest has no shelves
 			}

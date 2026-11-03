@@ -9,6 +9,15 @@ var themeGround = map[string]string{
 	"contrast": "#000000",
 }
 
+// withoutInstall is p without the install links: a share-link page is not part of the installed app.
+func withoutInstall(p Page) Page {
+	p.NoInstall = true
+	return p
+}
+
+// ThemeColor is the theme-color of a theme name, for the web app manifest.
+func ThemeColor(theme string) string { return themeColor(theme) }
+
 // colorSchemeMeta is the content of <meta name="color-scheme">, mirroring the color-scheme property
 // of the theme blocks in tokens.css: light and sepia are light, dark and contrast are dark, and an
 // empty theme follows the system.

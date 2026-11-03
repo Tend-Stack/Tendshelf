@@ -7,6 +7,7 @@ package web
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/hmac"
 	"crypto/rand"
@@ -76,6 +77,9 @@ type Options struct {
 	// certificate); the zero value is production. The handler builds the mailer and registers its
 	// job kinds on Jobs, so Jobs must not be started yet.
 	MailOptions share.MailOptions
+	// DownloadChunk is the size in bytes of one offline download request; zero means 4 MiB. Tests
+	// shrink it so a small fixture spans several chunks.
+	DownloadChunk int
 }
 
 type server struct {
@@ -106,6 +110,8 @@ type server struct {
 	progress   *progress.Service
 	mail       *share.Mail
 	mailLim    mailLimits
+	chunkBytes int    // size of one offline download request, written on <html data-ts-chunk>
+	swBuild    string // the id of this build of the assets, see static.Set.Build
 }
 
 // mailLimits are the in-memory rate limits of the email relay. A restart resets them (only the owner
@@ -211,6 +217,8 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		writes:     opts.Writes,
 		progress:   progress.New(opts.Store, opts.Now),
 		mail:       mailer,
+		chunkBytes: cmp.Or(opts.DownloadChunk, defaultDownloadChunk),
+		swBuild:    assets.Build(opts.Version),
 		mailLim: mailLimits{
 			inviter: auth.NewLimiter(20, time.Hour, 1024, opts.Now),
 			address: auth.NewLimiter(3, 24*time.Hour, 1024, opts.Now),
@@ -247,6 +255,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerShelves(mux)
 	s.registerQueue(mux)
 	s.registerDownloads(mux)
+	s.registerOffline(mux)
 	s.registerStream(mux)
 	s.registerPeaks(mux)
 	s.registerProgress(mux)
@@ -268,6 +277,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 			"version": opts.Version,
 		})
 	})
+	s.registerInstall(outer)
 	outer.Handle("/", guarded)
 	return s, securityHeaders(outer), nil
 }
@@ -294,6 +304,12 @@ func (s *server) pageSheet(w http.ResponseWriter, r *http.Request, status int, t
 // pageStyled is pageSheet with extra stylesheets (static paths) linked in the head. The shell shows
 // the "Your server" group to people who may manage libraries.
 func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, title, current string, body, sheet templ.Component, styles ...string) {
+	s.pageCached(w, r, status, "no-store", title, current, body, sheet, styles...)
+}
+
+// pageCached is pageStyled with the Cache-Control value given. Only the offline shell differs
+// ("private, no-store"): the service worker keeps that one answer itself.
+func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, cacheControl, title, current string, body, sheet templ.Component, styles ...string) {
 	var buf bytes.Buffer
 	showUsers, usersWaiting := s.usersLink(r)
 	theme, textSize, navRail := s.lookFor(r)
@@ -312,6 +328,9 @@ func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, 
 		UsersWaiting: usersWaiting,
 		Shelves:      s.sidebarShelves(r),
 		Player:       playerMsgs(),
+		Person:       currentUser(r).ID,
+		ChunkBytes:   s.chunkBytes,
+		Offline:      offlineMsgs(),
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render page", "path", logPath(r), "err", err)
@@ -320,7 +339,7 @@ func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, 
 	}
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
-	h.Set("Cache-Control", "no-store")
+	h.Set("Cache-Control", cacheControl)
 	w.WriteHeader(status)
 	_, _ = w.Write(buf.Bytes())
 }

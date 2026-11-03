@@ -100,6 +100,13 @@ was reused, extended or replaced.
   by grants in SQL; never fetch everything and filter in Go (counts and search must not leak titles).
 - Session, invite and API tokens are random 32-byte values; only their SHA-256 is stored.
 - The server binds `127.0.0.1:8095` by default; exposing it is an explicit setting.
+- The service worker (`/sw.js`, source `internal/web/static/js/sw.js`) answers only hashed `/static/` files and,
+  from the signed-in person's own cache, `/stream/{id}` (with or without `?compat=1`), `/covers/{bookID}`,
+  `/peaks/{id}`, `/hx/player/{bookID}` and the `/offline` shell for a navigation that cannot reach the server.
+  It never caches or answers `/s/...`, `/invite/...`, `/login`, `/setup`, `/logout`, `/api/...`, any request
+  with `download=1`, any non-GET request, or any other page. It is never registered inside a Wails window, on
+  share-link pages or outside a secure context. Sign-out and a change of person delete that person's caches
+  and offline records (decision [0012](docs/decisions/0012-offline-pocket.md)).
 
 ## Accessibility and layout
 

@@ -1,0 +1,50 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// OfflineRow is one book of the offline shell. Play is nil for a book that is not on this phone.
+type OfflineRow struct {
+	Card  components.CardView
+	Meta  string
+	Ready bool
+	Play  *components.PlayButtonView
+}
+
+// OfflineView is the page the service worker shows when the server cannot be reached
+// (screens/states/StateOffline): the books saved on this phone first, then the recent ones that need
+// a connection.
+type OfflineView struct {
+	Greeting, Caption, Section, Note string
+	// EmptyTitle and EmptyBody are the words shown when there is no book to list.
+	EmptyTitle, EmptyBody string
+	Rows                  []OfflineRow
+}
+
+// Offline is GET /offline. The service worker keeps this answer in the person's own cache and serves it
+// for a page it cannot fetch; the root carries data-ts-offline-shell so offline.js knows the shell is
+// showing.
+templ Offline(v OfflineView) {
+	<div class="ts-home ts-offline-home" data-ts-offline-shell>
+		<h1 class="title-1">{ v.Greeting }</h1>
+		<p class="caption">{ v.Caption }</p>
+		if len(v.Rows) == 0 {
+			@components.EmptyState(v.EmptyTitle, v.EmptyBody, nil)
+		} else {
+			<section aria-labelledby="offline-section">
+				<h2 id="offline-section" class="section">{ v.Section }</h2>
+				for _, row := range v.Rows {
+					@components.BookRowWith(row.Card, row.Meta, row.Ready, offlinePlay(row.Play))
+				}
+			</section>
+		}
+		<p class="caption">{ v.Note }</p>
+	</div>
+}
+
+// offlinePlay is the round play control of a ready row, or nothing.
+func offlinePlay(v *components.PlayButtonView) templ.Component {
+	if v == nil {
+		return nil
+	}
+	return components.PlayButton(*v)
+}

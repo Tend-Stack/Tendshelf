@@ -30,6 +30,7 @@ func TestLoadHashesAndTypes(t *testing.T) {
 	want := map[string]string{
 		".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8",
 		".woff2": "font/woff2", ".svg": "image/svg+xml", ".txt": "text/plain; charset=utf-8",
+		".png": "image/png",
 	}
 	names := s.Names()
 	if len(names) < 19 {

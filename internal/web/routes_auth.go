@@ -209,5 +209,9 @@ func (s *server) postLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	auth.ClearCookie(w, s.proxies.Secure(r))
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	// Clear-Site-Data wipes what the browser holds for this site (downloads, queued saves, the
+	// worker); the sign-in page's signed_out=1 makes offline.js do the same where the header is
+	// ignored (an insecure address, an older browser).
+	w.Header().Set("Clear-Site-Data", `"storage"`)
+	http.Redirect(w, r, "/login?signed_out=1", http.StatusSeeOther)
 }

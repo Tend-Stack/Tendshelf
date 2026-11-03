@@ -358,7 +358,7 @@ func TestSessionSignOut(t *testing.T) {
 
 	// The current device's own id is a sign-out, like /logout.
 	rec := settingsPost(t, a, owner, "/me/sessions/"+settingsDeviceID(t, owner)+"/signout", nil, false)
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/login" {
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/login?signed_out=1" {
 		t.Fatalf("sign out this device = %d %s", rec.Code, rec.Header().Get("Location"))
 	}
 	if c := cookieNamed(rec, auth.CookieName); c == nil || c.MaxAge >= 0 {

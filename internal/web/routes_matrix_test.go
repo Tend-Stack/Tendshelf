@@ -484,6 +484,7 @@ func sweepRows() []sweepRow {
 		sweepGet("GET /me/settings/{section}", sweepStatic("/me/settings/appearance"), sweepSame(200)),
 		sweepGet("GET /me/password", sweepStatic("/me/password"), sweepSame(200)),
 		sweepGet("GET /me/downloads", sweepStatic("/me/downloads"), sweepSame(200)),
+		sweepGet("GET /offline", sweepStatic("/offline"), sweepSame(200)),
 		// Shelves
 		sweepGet("GET /shelves", sweepStatic("/shelves"), shelfWant),
 		sweepGet("GET /shelves/{id}", shelfOf("", false), shelfWant),
@@ -528,7 +529,7 @@ func sweepRows() []sweepRow {
 			Want: sweepSame(409), Anon: 409},
 		{Pattern: "POST /login", Method: http.MethodPost, Path: sweepStatic("/login"),
 			Form: sweepFormOf(url.Values{"username": {"nobody"}, "password": {"wrong passphrase here"}}), Want: sweepSame(422), Anon: 422},
-		sweepPost("POST /logout", sweepStatic("/logout"), nil, sweepSame(303), "/login"),
+		sweepPost("POST /logout", sweepStatic("/logout"), nil, sweepSame(303), "/login?signed_out=1"),
 		// Me
 		sweepPost("POST /me/settings", sweepStatic("/me/settings"), sweepFormOf(url.Values{
 			"theme": {"dark"}, "theme_auto": {"0"}, "speed": {"1.25"}, "skip_back": {"10"}, "skip_forward": {"60"},
@@ -624,6 +625,9 @@ func sweepRows() []sweepRow {
 	stream := sweepPost("/stream/{audioFileID}", sweepAudioPath(0, ""), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, "")
 	stream.Label = "POST"
 	post = append(post, stream)
+	offline := sweepPost("/offline", sweepStatic("/offline"), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, "")
+	offline.Label = "POST"
+	post = append(post, offline)
 	peaks := sweepPost("/peaks/{audioFileID}", sweepPeaksPath(0), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, "")
 	peaks.Label = "POST"
 	post = append(post, peaks)
@@ -771,7 +775,7 @@ func sweepRegistered(t *testing.T) []string {
 				path = p[i+1:]
 			}
 			switch {
-			case p == "/", p == "GET /static/", p == "GET /healthz",
+			case p == "/", p == "GET /static/", p == "GET /healthz", p == "/sw.js", p == "/manifest.webmanifest",
 				strings.HasPrefix(path, "/dev/"), strings.HasPrefix(path, "/hx/dev/"):
 				continue
 			}

@@ -95,6 +95,13 @@ The page routes `/covers`, `/stream` and `/peaks` under the one prefix where a t
 parameters (`w` for covers, `compat` for stream), same visibility. Errors are JSON. Other methods: 405 with
 `Allow: GET, HEAD`.
 
+`GET /api/v1/stream/{audioFileID}?download=1` (also `/stream/...`) marks a request that saves a copy for offline
+listening. It needs `book.download` on top of `book.listen` (a grant with `can_download` off answers 403, the page
+route with the plain text "Downloads of this book are turned off."), answers as without the parameter and adds
+`Cache-Control: private, no-store`. Any other value of `download` is 400. Clients that keep audio themselves use
+`GET /api/v1/books/{id}` (`files[].size`, `needsCompat`, `playable`, `permissions.download`) as the manifest and
+fetch each file in `Range` chunks with `If-Range` set to the first answer's ETag.
+
 ## Sync endpoints (progress and bookmarks)
 
 A person's own rows only. Every row is filtered to books the person may list, so a book that is hidden, unknown,

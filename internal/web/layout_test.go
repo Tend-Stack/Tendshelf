@@ -174,6 +174,7 @@ func TestBoostedRequestFullPage(t *testing.T) {
 		r.Header.Set("HX-Boosted", "true")
 	})
 	norm := func(s string) string {
+		s = regexp.MustCompile(`data-ts-person="[^"]*"`).ReplaceAllString(s, "") // each call builds its own app and owner
 		s = regexp.MustCompile(`name="_csrf" value="[^"]*"`).ReplaceAllString(s, "")
 		return regexp.MustCompile(`X-CSRF-Token&#34;:&#34;[^&]*`).ReplaceAllString(s, "")
 	}

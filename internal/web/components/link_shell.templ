@@ -14,7 +14,7 @@ templ LinkShell(p Page, base string, data *PlayerDataView, body templ.Component)
 			data-theme={ p.Theme }
 		}
 	>
-		@Head(p, append(layoutStyles(), frameStyles(p)...)...)
+		@Head(withoutInstall(p), append(layoutStyles(), frameStyles(p)...)...)
 		<body
 			class="ts-frame ts-linkshell"
 			if base != "" {

@@ -72,6 +72,7 @@ var contentTypes = map[string]string{
 	".woff2": "font/woff2",
 	".svg":   "image/svg+xml",
 	".txt":   "text/plain; charset=utf-8",
+	".png":   "image/png",
 }
 
 // compressible lists the types worth gzipping. Fonts and images are already compressed.
@@ -266,6 +267,43 @@ func (s *Set) Names() []string {
 	sort.Strings(names)
 	return names
 }
+
+// serviceWorkerName is the source name of the service worker script. It is served at /sw.js with the
+// build and asset list in front of it, and is not part of its own precache.
+const serviceWorkerName = "js/sw.js"
+
+// Build is the 12-hex id of this set under the given server version: the SHA-256 over the version
+// and every hashed name, sorted. Any changed asset (or a new version) changes it, which is what makes
+// the worker's cache name and the /sw.js bytes new.
+func (s *Set) Build(version string) string {
+	names := make([]string, 0, len(s.byHashed))
+	for h := range s.byHashed {
+		names = append(names, h)
+	}
+	sort.Strings(names)
+	sum := sha256.Sum256([]byte(version + "\n" + strings.Join(names, "\n")))
+	return hex.EncodeToString(sum[:])[:12]
+}
+
+// Precache lists the served path of every asset the worker keeps for offline use: all of them but the
+// *.txt notices and the worker script itself. Sorted, so the list is stable.
+func (s *Set) Precache() []string {
+	var out []string
+	for name, a := range s.byName {
+		if name == serviceWorkerName || path.Ext(name) == ".txt" {
+			continue
+		}
+		out = append(out, "/static/"+a.Hashed)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// AcceptsGzip is acceptsGzip for handlers outside this package that serve their own gzip body.
+func AcceptsGzip(header string) bool { return acceptsGzip(header) }
+
+// MatchesETag is matchesETag for those handlers.
+func MatchesETag(header, etag string) bool { return matchesETag(header, etag) }
 
 // acceptsGzip reports whether an Accept-Encoding header allows a gzip answer. Codings are comma
 // separated, each "name[;q=value]" with a case-insensitive name. An explicit gzip (or x-gzip) entry

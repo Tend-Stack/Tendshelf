@@ -17,6 +17,7 @@ templ Frame(p Page, body templ.Component) {
 			<main id="main" class="ts-frame__main" tabindex="-1">
 				@body
 			</main>
+			@OfflineScript(p)
 		</body>
 	</html>
 }
