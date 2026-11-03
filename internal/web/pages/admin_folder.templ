@@ -31,7 +31,7 @@ templ AdminAddFolder(v AdminAddFolderView) {
 			Libraries &amp; scanning
 		</a>
 		<h1 class="title-1 ts-admin__title">Add a folder</h1>
-		<form class="ts-form" method="post" action="/admin/libraries/folders">
+		<form class="ts-group ts-group--pad ts-form" method="post" action="/admin/libraries/folders">
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			@components.FolderField(components.FolderFieldView{Value: v.Path, Error: v.PathError, Autofocus: true, BrowseURL: v.BrowseURL, BrowseSheet: true})
 			<div class="ts-field">

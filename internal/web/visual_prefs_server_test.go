@@ -98,7 +98,7 @@ func TestVisualPrefsServerPanel(t *testing.T) {
 	tab := fullpOpen(t, e, 1440, 1000, true)
 	fullpOpenPlayer(t, tab)
 	tab.WaitFor(`document.querySelector("#now-panel[data-book-id] .ts-np__desc") !== null`, 5*time.Second)
-	for _, pg := range []prefsServerPage{{"users", "/admin/users"}, {"libraries", "/admin/libraries"}} {
+	for _, pg := range []prefsServerPage{{"users", "/admin/users"}, {"libraries", "/admin/libraries"}, {"email", "/admin/email"}} {
 		// Follow a link the way the page does, through htmx, so the panel stays open.
 		tab.Eval(fmt.Sprintf(`(() => { const old = document.getElementById("go"); if (old) old.remove(); const a = document.createElement("a"); a.id = "go"; a.href = %q; a.textContent = "go"; document.body.append(a); htmx.process(a); a.click(); })()`, pg.path), nil)
 		tab.WaitFor(fmt.Sprintf(`location.pathname === %q && document.querySelector(".ts-prefs__pane h1") !== null`, pg.path), 8*time.Second)

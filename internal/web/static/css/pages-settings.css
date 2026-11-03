@@ -33,9 +33,15 @@
 .ts-group { box-sizing: border-box; min-width: 0; padding: 0 var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
 .ts-group > :last-child, .ts-group > .ts-me__row:last-of-type { border-bottom: 0; }
 .ts-group > .ts-overline { display: block; margin: 0; padding: var(--space-16) 0 var(--space-4); }
+.ts-group--wide { grid-column: 1 / -1; }
+/* A card of free content (a form, a list) instead of option rows: padded, its parts spaced by the gap. */
+.ts-group--pad { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16); }
 .ts-pref-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-16); min-height: 3.5rem; padding: var(--space-8) 0; border-bottom: 1px solid var(--line); }
 .ts-pref-row__note { flex-basis: 100%; margin: 0; color: var(--ink-muted); }
 
+@container pane (width >= 44rem) {
+  .ts-group--pad { padding: var(--space-24); }
+}
 @container prefs (width >= 44rem) {
   .ts-prefs__frame { display: grid; grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr); gap: var(--space-32); align-items: start; }
   .ts-prefs__frame > .ts-prefs__nav { display: flex; position: sticky; top: var(--space-24); }
