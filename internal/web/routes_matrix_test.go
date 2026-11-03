@@ -482,6 +482,7 @@ func sweepRows() []sweepRow {
 		sweepGet("GET /me", sweepStatic("/me"), sweepSame(200)),
 		sweepGet("GET /me/settings", sweepStatic("/me/settings"), sweepSame(200)),
 		sweepGet("GET /me/password", sweepStatic("/me/password"), sweepSame(200)),
+		sweepGet("GET /me/downloads", sweepStatic("/me/downloads"), sweepSame(200)),
 		// Shelves
 		sweepGet("GET /shelves", sweepStatic("/shelves"), shelfWant),
 		sweepGet("GET /shelves/{id}", shelfOf("", false), shelfWant),
