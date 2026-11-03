@@ -108,6 +108,8 @@ func TestCSSBudget(t *testing.T) {
 		"css/player.css": {4 * 1024, 24 * 1024},
 		// The full player's fit below 1280 px (phone check, 2026-11-02): split from player.css to keep it at 4 KB.
 		"css/player-fit.css": {1024, 24 * 1024},
+		// The phone bubble (operator, 2026-11-03): the same rules for phones and for Larger text up to 959 px.
+		"css/player-bubble.css": {1024, 24 * 1024},
 		// The desktop Now playing panel; loaded on every page like player.css (operator, 2026-11-02: about 3 KB).
 		"css/now-panel.css": {3 * 1024, 24 * 1024},
 		// The Users and invite pages share this file (list, person page, pending invites, the Invite someone

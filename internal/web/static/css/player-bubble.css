@@ -1,0 +1,35 @@
+/* The phone mini-player is a round bubble at the bottom right (operator request, 2026-11-03): the cover in a circle, a ring of
+   book progress (--ts-progress, set by player.js) and the play button on its lower-left edge. Phones are under 768 px, and under
+   960 px with Larger text (the tab bar stays). Tablets and desktop keep the bar. The two blocks below hold the same rules. */
+@media (width < 768px) {
+  .ts-player-slot { left: auto; right: var(--space-16); width: 4rem; bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--space-12)); }
+  .ts-player-slot.is-suppressed { translate: calc(100% + var(--space-24)) 0; }
+  .ts-player-slot .ts-mini { display: block; width: 4rem; height: 4rem; padding: 0; overflow: visible; border: 0; border-radius: 50%; background: var(--raised); box-shadow: var(--shadow-float); }
+  .ts-player-slot .ts-mini__progress { inset: 0; height: auto; border-radius: 50%; pointer-events: none; transform: none; transition: none;
+    background: conic-gradient(var(--cover-accent, var(--accent-fill)) calc(var(--ts-progress, 0) * 360deg), var(--line) 0);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 0.25rem), var(--ink) calc(100% - 0.25rem)); }
+  .ts-player-slot .ts-mini__open { position: absolute; inset: 0; display: block; padding: 0.3125rem; box-sizing: border-box; border-radius: 50%; }
+  .ts-player-slot .ts-mini__cover { width: 100%; height: 100%; border-radius: 50%; background: var(--accent-soft); }
+  .ts-player-slot .ts-mini__open:has(img[hidden])::after { content: attr(data-letter); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font: 500 1.75rem/1 var(--font-serif); color: var(--accent); }
+  .ts-player-slot .ts-mini__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ts-player-slot [data-ts-back] { display: none; }
+  .ts-player-slot [data-ts-toggle] { position: absolute; left: -0.75rem; bottom: -0.25rem; box-shadow: 0 0 0 2px var(--raised), var(--shadow-float); }
+}
+@media (768px <= width < 960px) {
+  :where(html[data-text-size="large"]) {
+    .ts-player-slot { left: auto; right: var(--space-16); width: 4rem; bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--space-12)); }
+    .ts-player-slot.is-suppressed { translate: calc(100% + var(--space-24)) 0; }
+    .ts-player-slot .ts-mini { display: block; width: 4rem; height: 4rem; padding: 0; overflow: visible; border: 0; border-radius: 50%; background: var(--raised); box-shadow: var(--shadow-float); }
+    .ts-player-slot .ts-mini__progress { inset: 0; height: auto; border-radius: 50%; pointer-events: none; transform: none; transition: none;
+      background: conic-gradient(var(--cover-accent, var(--accent-fill)) calc(var(--ts-progress, 0) * 360deg), var(--line) 0);
+      mask: radial-gradient(farthest-side, transparent calc(100% - 0.25rem), var(--ink) calc(100% - 0.25rem)); }
+    .ts-player-slot .ts-mini__open { position: absolute; inset: 0; display: block; padding: 0.3125rem; box-sizing: border-box; border-radius: 50%; }
+    .ts-player-slot .ts-mini__cover { width: 100%; height: 100%; border-radius: 50%; background: var(--accent-soft); }
+    .ts-player-slot .ts-mini__open:has(img[hidden])::after { content: attr(data-letter); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font: 500 1.75rem/1 var(--font-serif); color: var(--accent); }
+    .ts-player-slot .ts-mini__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .ts-player-slot [data-ts-back] { display: none; }
+    .ts-player-slot [data-ts-toggle] { position: absolute; left: -0.75rem; bottom: -0.25rem; box-shadow: 0 0 0 2px var(--raised), var(--shadow-float); }
+  }
+}

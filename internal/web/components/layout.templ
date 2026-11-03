@@ -72,7 +72,7 @@ func csrfHeaders(token string) string {
 // layoutStyles is what Layout adds to the head: the player stylesheet, because every Layout page
 // has the player. A page's own stylesheets go inside #main (see Page.Styles).
 func layoutStyles() []string {
-	return []string{"css/player.css", "css/player-fit.css", "css/now-panel.css"}
+	return []string{"css/player.css", "css/player-fit.css", "css/player-bubble.css", "css/now-panel.css"}
 }
 
 // Layout is the app shell. The navigation, the player slot, the audio element and the toasts sit

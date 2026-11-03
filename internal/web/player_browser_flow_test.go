@@ -509,8 +509,8 @@ func TestPlayerBrowserLayout(t *testing.T) {
 			}
 			near := func(a, b float64) bool { return a-b < 1.5 && b-a < 1.5 }
 			switch {
-			case w < 768: // floats 8 px above the tab bar, 8 px side insets
-				if !near(r.Mini[0], 8) || !near(r.Mini[2], r.CW-8) || !near(r.Mini[3], r.Tab[1]-8) || r.Mini[3] > r.Tab[1] {
+			case w < 768: // a 64 px bubble 12 px above the tab bar, 16 px from the right edge (the phone bubble, 2026-11-03)
+				if !near(r.Mini[2]-r.Mini[0], 64) || !near(r.Mini[2], r.CW-16) || !near(r.Mini[3], r.Tab[1]-12) || r.Mini[3] > r.Tab[1] {
 					t.Errorf("%s: mini %v, tab bar %v", name, r.Mini, r.Tab)
 				}
 			case w < 1280: // docked at the bottom of the content area, beside the rail
