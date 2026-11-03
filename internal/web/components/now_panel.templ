@@ -42,6 +42,7 @@ type NowDetail struct {
 // NowAboutView is the About tab. EmptyText is set only when there is no description.
 type NowAboutView struct {
 	Intro, Rest, EmptyText                                   string
+	LookupHref, LookupLabel                                  string
 	Heading, SummaryLabel, SeriesLabel, DetailsLabel          string
 	ReadMore, ShowLess                                        string
 	Series                                                    *NowSeries
@@ -175,7 +176,21 @@ templ NowPanelAbout(v NowAboutView) {
 				}
 			</div>
 		} else {
-			<div class="ts-np__empty"><span>{ v.EmptyText }</span></div>
+			<div class="ts-np__empty">
+				<span>{ v.EmptyText }</span>
+				if v.LookupHref != "" {
+					<a
+						class="ts-btn ts-btn--secondary"
+						href={ templ.SafeURL(v.LookupHref) }
+						hx-get={ v.LookupHref }
+						hx-target="#sheet"
+						hx-select="#sheet > *"
+						hx-swap="innerHTML"
+						hx-push-url="false"
+						aria-haspopup="dialog"
+					>{ v.LookupLabel }</a>
+				}
+			</div>
 		}
 	</section>
 	if v.Series != nil {

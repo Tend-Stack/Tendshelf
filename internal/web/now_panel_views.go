@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
+	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
@@ -205,6 +206,16 @@ func (s *server) nowAboutView(r *http.Request, d library.BookDetail, rails bookR
 	}
 	if v.Intro == "" {
 		v.EmptyText = nowPanelNoSummary
+		target := share.Target{Kind: share.TargetBook, ID: d.Book.ID, LibraryID: d.Book.LibraryID}
+		if s.details != nil && s.can.Can(r.Context(), currentUser(r), share.EditBook, target) {
+			on, err := s.lookupsOn(r)
+			if err != nil {
+				return v, err
+			}
+			if on {
+				v.LookupHref, v.LookupLabel = lookupHref(d.Book.ID), detailsLookupButton
+			}
+		}
 	}
 	for _, g := range d.Genres {
 		v.Genres = append(v.Genres, components.NowLink{Name: g, Href: "/libraries?genre=" + url.QueryEscape(g)})
