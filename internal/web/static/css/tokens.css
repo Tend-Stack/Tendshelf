@@ -215,6 +215,11 @@
   --size-side-rail: 5.5rem;
   --size-player-panel: 25rem;
   --size-content-max: 75rem;
+  /* The app frame never grows past this width: on a wider screen it is centred and the ground colour fills the sides. */
+  --size-app-max: 160rem;
+  /* Space left on each side of that frame, for fixed elements (left/right offsets). The percentage is the width of the fixed
+     element's containing block (the viewport without its scrollbar), so no horizontal scroll can appear. 0 up to 2560 px. */
+  --app-gutter: max(0px, calc((100% - var(--size-app-max)) / 2));
   --size-measure: 68ch;
   --size-read-measure: 68ch;
   --size-read-measure-min: 45ch;
