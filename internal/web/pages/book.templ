@@ -479,53 +479,55 @@ templ bookDetailsPanel(v BookView) {
 					}
 				</div>
 			}
-			<div class="ts-dpanel__acts">
-				if v.Edit.LookupHref != "" {
-					<div class="ts-dpanel__act">
-						<a
-							class="ts-btn ts-btn--secondary ts-btn--block ts-book__lookup"
-							href={ templ.SafeURL(v.Edit.LookupHref) }
-							hx-get={ v.Edit.LookupHref }
-							hx-target="#sheet"
-							hx-select="#sheet > *"
-							hx-swap="innerHTML"
-							hx-push-url="false"
-							aria-haspopup="dialog"
-						>{ v.Edit.LookupLabel }</a>
-						<p class="caption">{ v.Edit.LookupCaption }</p>
-					</div>
-				}
-				if v.Write.OpenHref != "" {
-					<div class="ts-dpanel__act">
-						<a
-							class="ts-btn ts-btn--secondary ts-btn--block ts-book__write"
-							href={ templ.SafeURL(v.Write.OpenHref) }
-							hx-get={ v.Write.OpenHref }
-							hx-target="#sheet"
-							hx-select="#sheet > *"
-							hx-swap="innerHTML"
-							hx-push-url="false"
-							aria-haspopup="dialog"
-						>{ v.Write.OpenLabel }</a>
-						<p class="caption">{ v.Write.OpenCaption }</p>
-					</div>
-				}
-				if v.CoverHref != "" {
-					<div class="ts-dpanel__act">
-						<a
-							class="ts-btn ts-btn--secondary ts-btn--block ts-dpanel__cover"
-							href={ templ.SafeURL(v.CoverHref) }
-							hx-get={ v.CoverHref }
-							hx-target="#sheet"
-							hx-select="#sheet > *"
-							hx-swap="innerHTML"
-							hx-push-url="false"
-							aria-haspopup="dialog"
-						>{ v.CoverLabel }</a>
-						<p class="caption">{ v.PanelCoverCaption }</p>
-					</div>
-				}
-			</div>
+			if v.Edit.LookupHref != "" || v.Write.OpenHref != "" || v.CoverHref != "" {
+				<div class="ts-dpanel__acts">
+					if v.Edit.LookupHref != "" {
+						<div class="ts-dpanel__act">
+							<a
+								class="ts-btn ts-btn--secondary ts-btn--block ts-book__lookup"
+								href={ templ.SafeURL(v.Edit.LookupHref) }
+								hx-get={ v.Edit.LookupHref }
+								hx-target="#sheet"
+								hx-select="#sheet > *"
+								hx-swap="innerHTML"
+								hx-push-url="false"
+								aria-haspopup="dialog"
+							>{ v.Edit.LookupLabel }</a>
+							<p class="caption">{ v.Edit.LookupCaption }</p>
+						</div>
+					}
+					if v.Write.OpenHref != "" {
+						<div class="ts-dpanel__act">
+							<a
+								class="ts-btn ts-btn--secondary ts-btn--block ts-book__write"
+								href={ templ.SafeURL(v.Write.OpenHref) }
+								hx-get={ v.Write.OpenHref }
+								hx-target="#sheet"
+								hx-select="#sheet > *"
+								hx-swap="innerHTML"
+								hx-push-url="false"
+								aria-haspopup="dialog"
+							>{ v.Write.OpenLabel }</a>
+							<p class="caption">{ v.Write.OpenCaption }</p>
+						</div>
+					}
+					if v.CoverHref != "" {
+						<div class="ts-dpanel__act">
+							<a
+								class="ts-btn ts-btn--secondary ts-btn--block ts-dpanel__cover"
+								href={ templ.SafeURL(v.CoverHref) }
+								hx-get={ v.CoverHref }
+								hx-target="#sheet"
+								hx-select="#sheet > *"
+								hx-swap="innerHTML"
+								hx-push-url="false"
+								aria-haspopup="dialog"
+							>{ v.CoverLabel }</a>
+							<p class="caption">{ v.PanelCoverCaption }</p>
+						</div>
+					}
+				</div>
+			}
 			if v.Edit.ResetAction != "" {
 				<details class="ts-book__reset">
 					<summary class="ts-btn ts-btn--quiet ts-btn--block">{ v.Edit.ResetTitle }</summary>
