@@ -1,0 +1,50 @@
+/* The preferences window: a category list beside rounded panels of grouped options.
+   It lays out by the width its container gets (not the screen), so the rail, the open Now playing
+   panel and large text all choose the right number of columns by themselves. */
+.ts-prefs { container: prefs / inline-size; }
+.ts-prefs__frame { display: flex; flex-direction: column; gap: var(--space-16); padding-bottom: var(--space-32); }
+.ts-prefs__pane { min-width: 0; }
+/* One column: the list is the page on /me/settings, and a category page shows its pane alone. */
+.ts-prefs__nav { display: none; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.ts-prefs--index > .ts-prefs__nav { display: flex; }
+.ts-prefs--index > .ts-prefs__pane { display: none; }
+
+.ts-prefs__title { order: -1; margin: 0 0 var(--space-8); }
+.ts-prefs__heading { margin: var(--space-20) 0 var(--space-4) var(--space-12); }
+.ts-prefs__list { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
+.ts-prefs__item, .ts-prefs__who { display: flex; align-items: center; gap: var(--space-12); min-height: var(--size-tap); padding: 0 var(--space-12); border-radius: var(--radius-control); color: var(--ink); text-decoration: none; font: 500 0.9375rem/1.25rem var(--font-sans); }
+.ts-prefs__item > span:first-child { flex: 1; }
+.ts-prefs__who { margin-bottom: var(--space-8); min-height: 3.5rem; padding-block: var(--space-8); border: 1px solid var(--line); background: var(--surface); }
+.ts-prefs__whotext { display: flex; flex-direction: column; min-width: 0; }
+.ts-prefs__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ts-prefs__role { color: var(--ink-muted); }
+.ts-prefs__item:hover, .ts-prefs__who:hover { background: var(--raised); }
+.ts-prefs__item:focus-visible, .ts-prefs__who:focus-visible, .ts-prefs__back:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+/* The current item is tinted and carries a bar, so colour is never the only sign. */
+.ts-prefs__item[aria-current="page"], .ts-prefs__who[aria-current="page"] { background: var(--accent-soft); box-shadow: inset 0.1875rem 0 0 var(--accent); font-weight: 600; }
+.ts-prefs__item[aria-current="page"]:focus-visible, .ts-prefs__who[aria-current="page"]:focus-visible { box-shadow: inset 0.1875rem 0 0 var(--accent), var(--focus-ring); }
+.ts-prefs__count { padding: 0 var(--space-8); border-radius: var(--radius-sm); background: var(--raised); color: var(--ink-muted); font-size: 0.8125rem; line-height: 1.375rem; }
+/* The phone list reads as a list of rows with a chevron; beside the pane the chevron goes. */
+.ts-prefs__item::after { content: ""; flex: none; width: 0.5rem; height: 0.5rem; border: solid var(--ink-muted); border-width: 2px 2px 0 0; transform: rotate(45deg); }
+.ts-prefs__back { align-self: flex-start; margin: 0 0 var(--space-8) calc(var(--space-12) * -1); color: var(--ink-muted); }
+
+/* Panels: rounded cards of rows, as many per row as fit at a readable width. */
+.ts-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr)); gap: var(--space-24); align-items: start; margin-top: var(--space-24); }
+.ts-group { box-sizing: border-box; min-width: 0; padding: 0 var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-group > :last-child, .ts-group > .ts-me__row:last-of-type { border-bottom: 0; }
+.ts-group > .ts-overline { display: block; margin: 0; padding: var(--space-16) 0 var(--space-4); }
+.ts-pref-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-16); min-height: 3.5rem; padding: var(--space-8) 0; border-bottom: 1px solid var(--line); }
+.ts-pref-row__note { flex-basis: 100%; margin: 0; color: var(--ink-muted); }
+
+@container prefs (width >= 44rem) {
+  .ts-prefs__frame { display: grid; grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr); gap: var(--space-32); align-items: start; }
+  .ts-prefs__frame > .ts-prefs__nav { display: flex; position: sticky; top: var(--space-24); }
+  .ts-prefs__frame > .ts-prefs__pane { display: block; }
+  .ts-prefs__back, .ts-me__hub, .ts-prefs__item::after { display: none; }
+  .ts-prefs__title { order: 0; margin: var(--space-20) 0 var(--space-4) var(--space-12); font: 600 0.8125rem/1rem var(--font-sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); }
+  .ts-prefs__item[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 0.1875rem 0 0 var(--accent); font-weight: 600; }
+  .ts-groups { margin-top: var(--space-16); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ts-prefs__item, .ts-prefs__who { transition: background-color var(--duration-fast) var(--easing-standard); }
+}

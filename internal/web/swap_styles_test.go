@@ -43,9 +43,9 @@ func TestPageStylesTravelInMain(t *testing.T) {
 		{"/shelves", []string{"pages-home", "pages-library", "pages-shelves"}},
 		{"/shelves/" + shelf, []string{"pages-home", "pages-library", "pages-shelves"}},
 		{"/shelves/" + shelf + "/delete", []string{"pages-home", "pages-library", "pages-shelves"}},
-		{"/me", []string{"pages-me"}},
-		{"/me/settings", []string{"pages-me"}},
-		{"/me/password", []string{"pages-onboard", "pages-me"}},
+		{"/me", []string{"pages-me", "pages-settings"}},
+		{"/me/settings", []string{"pages-me", "pages-settings"}},
+		{"/me/password", []string{"pages-onboard", "pages-me", "pages-settings"}},
 		{"/admin/libraries", adminStyles},
 		{"/admin/libraries/folders/new", append(slices.Clone(adminStyles), "pages-folders")},
 		// The book page links the styles of its tabs and sheets whatever tab it opens on, because the
@@ -76,7 +76,7 @@ func TestPageStylesTravelInMain(t *testing.T) {
 			}
 			// Every other page stylesheet is prefetched from the head, once.
 			prefetched := swapNames(swapPagePrefetch, head)
-			for _, n := range []string{"pages-search", "pages-shelves", "pages-book", "pages-bookmarks", "pages-me", "pages-folders"} {
+			for _, n := range []string{"pages-search", "pages-shelves", "pages-book", "pages-bookmarks", "pages-me", "pages-settings", "pages-folders"} {
 				if slices.Contains(c.want, n) != !slices.Contains(prefetched, n) {
 					t.Errorf("%s: in #main %v, prefetched %v", n, slices.Contains(c.want, n), slices.Contains(prefetched, n))
 				}

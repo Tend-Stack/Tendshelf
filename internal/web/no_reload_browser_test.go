@@ -133,3 +133,42 @@ func TestAdminActionsKeepPlayingBrowser(t *testing.T) {
 		})
 	}
 }
+
+// TestPrefsCategoriesKeepPlayingBrowser clicks the real category list of the preferences window (no
+// reload, no stop): Playback, then Appearance, then Users & invites. The page-load marker and the
+// playing book must survive each move.
+func TestPrefsCategoriesKeepPlayingBrowser(t *testing.T) {
+	b := chromium(t)
+	e := playerApp(t)
+	base := themedServer(t, e.a.signedIn(t))
+	tab := playerOpen(t, b, base, 1440, 900)
+	e.playerInject(tab, e.book.ID, 0, 0, "")
+	playerClickSel(t, tab, "#play-link")
+	tab.WaitFor(`window.tsPlayer.state().playing && window.tsPlayer.state().positionMs > 300`, 10*time.Second)
+	tab.Eval(`window.__tsMarker = 1`, nil)
+	check := func(step string) {
+		t.Helper()
+		var marker int
+		tab.Eval(`window.__tsMarker || 0`, &marker)
+		if marker != 1 {
+			t.Errorf("%s: the page was reloaded", step)
+		}
+		if s := playerStateOf(tab); !s.Playing || s.BookID != e.book.ID {
+			t.Errorf("%s: state %+v, want the book playing", step, s)
+		}
+	}
+	// Open the window through the sidebar's Profile link, then use only the list.
+	tab.Eval(`document.querySelector('a[href="/me/settings"], a[href="/me"]').click()`, nil)
+	tab.WaitFor(`document.querySelector(".ts-prefs__item") !== null`, 8*time.Second)
+	check("settings opened")
+	for _, step := range []struct{ href, ready string }{
+		{"/me/settings/playback", `document.querySelector("#st-speed") !== null`},
+		{"/me/settings/appearance", `document.querySelector("#st-theme-dark") !== null`},
+		{"/admin/users", `location.pathname === "/admin/users"`},
+	} {
+		tab.Eval(`document.querySelector('.ts-prefs__item[href="`+step.href+`"]').click()`, nil)
+		tab.WaitFor(`location.pathname === "`+step.href+`" && (`+step.ready+`)`, 8*time.Second)
+		time.Sleep(200 * time.Millisecond)
+		check("open " + step.href)
+	}
+}

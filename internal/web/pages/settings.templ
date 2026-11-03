@@ -7,14 +7,19 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
-// MeStyles is the stylesheet the Profile, Settings and Change password pages add to the shell.
-var MeStyles = []string{"css/pages-me.css"}
+// MeStyles is the stylesheet the Profile, Settings and Change password pages add to the shell,
+// followed by the preferences window's own.
+var MeStyles = []string{"css/pages-me.css", "css/pages-settings.css"}
 
 // SettingsView is what the Settings page shows. The handler writes every sentence.
 type SettingsView struct {
 	CSRF string
 	// Error is the refusal after an invalid plain form post; empty otherwise.
 	Error string
+	// Section is the category the pane shows: playback, appearance, accessibility or privacy.
+	Section string
+	// Index is true on /me/settings itself, where the list carries the page's h1.
+	Index bool
 	// Theme is system, dark, light, sepia or contrast.
 	Theme        string
 	Speed        float64
@@ -78,11 +83,11 @@ templ switchRow(id, name, label, hint string, on bool) {
 	</div>
 }
 
-// skipGroup is a radio group styled as the design's segmented control.
+// skipGroup is a radio group styled as the design's segmented control, on one row with its label.
 templ skipGroup(id, label, name string, cur int) {
-	<div class="ts-me__field">
+	<div class="ts-pref-row">
 		<span class="ts-switch-row__label" id={ id }>{ label }</span>
-		<div role="radiogroup" aria-labelledby={ id } class="ts-seg ts-me__seg">
+		<div role="radiogroup" aria-labelledby={ id } class="ts-seg">
 			for _, n := range skipChoices {
 				<input type="radio" class="ts-sr" id={ fmt.Sprintf("%s-%d", id, n) } name={ name } value={ strconv.Itoa(n) } checked?={ n == cur }/>
 				<label class="ts-seg__item ts-num" for={ fmt.Sprintf("%s-%d", id, n) }>{ strconv.Itoa(n) } s</label>
@@ -94,26 +99,28 @@ templ skipGroup(id, label, name string, cur int) {
 // textSizeChoices are the two text sizes, in the order the segmented control shows them.
 var textSizeChoices = []themeChoice{{"standard", "Standard"}, {"large", "Larger"}}
 
-templ textSizeGroup(id, label, name, cur string) {
-	<div class="ts-me__field">
+templ textSizeGroup(id, label, name, cur, note string) {
+	<div class="ts-pref-row">
 		<span class="ts-switch-row__label" id={ id }>{ label }</span>
-		<div role="radiogroup" aria-labelledby={ id } class="ts-seg ts-me__seg">
+		<div role="radiogroup" aria-labelledby={ id } class="ts-seg">
 			for _, c := range textSizeChoices {
 				<input type="radio" class="ts-sr" id={ id + "-" + c.Value } name={ name } value={ c.Value } checked?={ c.Value == cur }/>
 				<label class="ts-seg__item" for={ id + "-" + c.Value }>{ c.Label }</label>
 			}
 		</div>
+		<p class="caption ts-pref-row__note">{ note }</p>
 	</div>
 }
 
-// Settings is the person's own preferences, saved as they change.
-templ Settings(v SettingsView) {
+// settingsHead is the title, the lead and the refusal every category shows above its cards.
+templ settingsHead(v SettingsView, title string) {
 	<div class="ts-me">
-		<a class="ts-me__back" href="/me" aria-label="Back to profile">
-			@components.Icon("profile", false)
-			Profile
-		</a>
-		<h1 class="title-1 ts-me__title">Settings</h1>
+		if v.Index {
+			// On the index the list's own "Settings" is the page title.
+			<h2 class="title-1 ts-me__title">{ title }</h2>
+		} else {
+			<h1 class="title-1 ts-me__title">{ title }</h1>
+		}
 		<p class="caption ts-me__lead">Saved as you go, for you on every device.</p>
 		if v.Error != "" {
 			<p class="ts-banner ts-me__banner" role="alert">
@@ -121,65 +128,100 @@ templ Settings(v SettingsView) {
 				{ v.Error }
 			</p>
 		}
-		<form method="post" action="/me/settings" hx-post="/me/settings" hx-trigger="change" hx-swap="none" class="ts-me__form">
-			<input type="hidden" name="_csrf" value={ v.CSRF }/>
-			<section aria-labelledby="st-play" class="ts-me__section">
-				<h2 id="st-play" class="ts-overline">Playback</h2>
-				<div class="ts-switch-row ts-me__line">
-					<label class="ts-switch-row__label" for="st-speed">Usual speed</label>
-					<select id="st-speed" name="speed" class="ts-select ts-me__speed ts-num">
-						for _, sp := range speedSteps() {
-							<option value={ speedValue(sp) } selected?={ speedValue(sp) == speedValue(v.Speed) }>{ speedLabel(sp) }</option>
-						}
-					</select>
-				</div>
-				<div class="ts-me__skips">
-					@skipGroup("st-skipb", "Skip back", "skip_back", v.SkipBackS)
-					@skipGroup("st-skipf", "Skip forward", "skip_forward", v.SkipForwardS)
-				</div>
-				@switchRow("st-rewind", "auto_rewind", "Rewind a little after a break", "After 5 minutes or more, go back 5 s so you never lose the thread.", v.AutoRewind)
-				@switchRow("st-next", "next_in_series", "Play the next book in a series", "When a book ends.", v.NextInSeries)
-			</section>
-			<section aria-labelledby="st-look" class="ts-me__section">
-				<h2 id="st-look" class="ts-overline">Appearance</h2>
-				<div role="radiogroup" aria-label="Theme" class="ts-me__tiles">
-					for _, t := range themeChoices {
-						<input type="radio" class="ts-sr" id={ "st-theme-" + t.Value } name="theme" value={ t.Value } checked?={ tileChecked(v.Theme, t.Value) }/>
-						<label class="ts-me__tile" for={ "st-theme-" + t.Value }>
-							<span class="ts-me__swatch" data-theme={ t.Value } aria-hidden="true">
-								<span class="ts-me__bar ts-me__bar--head"></span>
-								<span class="ts-me__bar"></span>
-								<span class="ts-me__bar"></span>
-								<span class="ts-me__bar ts-me__bar--btn"></span>
-							</span>
-							<span class="meta ts-me__tilename">{ t.Label }</span>
-						</label>
-					}
-				</div>
-				@switchRow("st-auto", "theme_auto", "Match my phone", "Dark at night, light by day.", v.Theme == "system")
-				@switchRow("st-tint", "player_tint", "Tint the player with the cover", "Each book's colours, softly, behind its player.", v.PlayerTint)
-			</section>
-			<section aria-labelledby="st-a11y" class="ts-me__section">
-				<h2 id="st-a11y" class="ts-overline">Easier to use</h2>
-				@textSizeGroup("st-text", "Text size", "text_size", v.TextSize)
-				<p class="caption ts-me__lead">Follows your phone's text size too. At larger sizes, shelves show covers instead of spines.</p>
-				@switchRow("st-big", "big_buttons", "Bigger player buttons", "For driving, walking, or gloves.", v.BigButtons)
-			</section>
-			<noscript>
-				<button type="submit" class="ts-btn ts-btn--primary">Save</button>
-			</noscript>
-		</form>
-		<section aria-labelledby="st-priv" class="ts-me__section">
-			<h2 id="st-priv" class="ts-overline">Privacy</h2>
-			<div class="ts-me__privacy">
-				<span class="ts-me__shield" aria-hidden="true">
-					@components.Icon("shield", false)
-				</span>
-				<div>
-					<p class="body ts-me__privacy-title">Tendshelf sends nothing about you anywhere.</p>
-					<p class="caption ts-me__lead">No telemetry, no tracking, no ads. Your listening history stays on this server, in your home. Book details are looked up online only when someone asks.</p>
-				</div>
-			</div>
-		</section>
+		{ children... }
 	</div>
+}
+
+// settingsForm is the one form of a category: it saves on change, and posts the section so a plain
+// post comes back to the same page.
+templ settingsForm(v SettingsView) {
+	<form method="post" action="/me/settings" hx-post="/me/settings" hx-trigger="change" hx-swap="none" class="ts-me__form">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		<input type="hidden" name="section" value={ v.Section }/>
+		<div class="ts-groups">
+			{ children... }
+		</div>
+		<noscript>
+			<button type="submit" class="ts-btn ts-btn--primary">Save</button>
+		</noscript>
+	</form>
+}
+
+// SettingsPane is the person's own preferences for one category, saved as they change.
+templ SettingsPane(v SettingsView) {
+	switch v.Section {
+		case "appearance":
+			@settingsHead(v, "Appearance") {
+				@settingsForm(v) {
+					<div class="ts-group">
+						<div role="radiogroup" aria-label="Theme" class="ts-me__tiles">
+							for _, t := range themeChoices {
+								<input type="radio" class="ts-sr" id={ "st-theme-" + t.Value } name="theme" value={ t.Value } checked?={ tileChecked(v.Theme, t.Value) }/>
+								<label class="ts-me__tile" for={ "st-theme-" + t.Value }>
+									<span class="ts-me__swatch" data-theme={ t.Value } aria-hidden="true">
+										<span class="ts-me__bar ts-me__bar--head"></span>
+										<span class="ts-me__bar"></span>
+										<span class="ts-me__bar"></span>
+										<span class="ts-me__bar ts-me__bar--btn"></span>
+									</span>
+									<span class="meta ts-me__tilename">{ t.Label }</span>
+								</label>
+							}
+						</div>
+					</div>
+					<div class="ts-group">
+						@switchRow("st-auto", "theme_auto", "Match my phone", "Dark at night, light by day.", v.Theme == "system")
+						@switchRow("st-tint", "player_tint", "Tint the player with the cover", "Each book's colours, softly, behind its player.", v.PlayerTint)
+					</div>
+				}
+			}
+		case "accessibility":
+			@settingsHead(v, "Easier to use") {
+				@settingsForm(v) {
+					<div class="ts-group">
+						@textSizeGroup("st-text", "Text size", "text_size", v.TextSize, "Follows your phone's text size too. At larger sizes, shelves show covers instead of spines.")
+					</div>
+					<div class="ts-group">
+						@switchRow("st-big", "big_buttons", "Bigger player buttons", "For driving, walking, or gloves.", v.BigButtons)
+					</div>
+				}
+			}
+		case "privacy":
+			@settingsHead(v, "Privacy") {
+				<div class="ts-groups">
+					<div class="ts-group">
+						<div class="ts-me__privacy">
+							<span class="ts-me__shield" aria-hidden="true">
+								@components.Icon("shield", false)
+							</span>
+							<div>
+								<p class="body ts-me__privacy-title">Tendshelf sends nothing about you anywhere.</p>
+								<p class="caption ts-me__lead">No telemetry, no tracking, no ads. Your listening history stays on this server, in your home. Book details are looked up online only when someone asks.</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			}
+		default:
+			@settingsHead(v, "Playback") {
+				@settingsForm(v) {
+					<div class="ts-group">
+						<div class="ts-switch-row ts-me__line">
+							<label class="ts-switch-row__label" for="st-speed">Usual speed</label>
+							<select id="st-speed" name="speed" class="ts-select ts-me__speed ts-num">
+								for _, sp := range speedSteps() {
+									<option value={ speedValue(sp) } selected?={ speedValue(sp) == speedValue(v.Speed) }>{ speedLabel(sp) }</option>
+								}
+							</select>
+						</div>
+						@skipGroup("st-skipb", "Skip back", "skip_back", v.SkipBackS)
+						@skipGroup("st-skipf", "Skip forward", "skip_forward", v.SkipForwardS)
+					</div>
+					<div class="ts-group">
+						@switchRow("st-rewind", "auto_rewind", "Rewind a little after a break", "After 5 minutes or more, go back 5 s so you never lose the thread.", v.AutoRewind)
+						@switchRow("st-next", "next_in_series", "Play the next book in a series", "When a book ends.", v.NextInSeries)
+					</div>
+				}
+			}
+	}
 }
