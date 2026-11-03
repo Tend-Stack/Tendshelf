@@ -53,9 +53,12 @@ const (
 	detailsFromFile = "From file"
 	detailsEdited   = "Edited by you"
 
-	detailsResetTitle  = "Go back to the details in the files"
-	detailsResetBody   = "This removes the details you chose or took from the internet. The details in your audio files, folders and sidecar files come back."
-	detailsResetButton = "Go back to the files' details"
+	detailsPanelTitle    = "Options for this book"
+	detailsLookupCaption = "Searches Audible, and more if you ask."
+	detailsCoverCaption  = "Pick a new picture for this book."
+	detailsResetTitle    = "Go back to the details in the files"
+	detailsResetBody     = "This removes the details you chose or took from the internet. The details in your audio files, folders and sidecar files come back."
+	detailsResetButton   = "Go back to the files' details"
 
 	detailsLabelTitle       = "Title"
 	detailsLabelSubtitle    = "Subtitle"

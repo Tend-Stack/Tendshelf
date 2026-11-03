@@ -205,6 +205,7 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 			sheet = bsheet
 		}
 	case "details":
+		v.PanelTitle, v.PanelCoverCaption = detailsPanelTitle, detailsCoverCaption
 		v.Rows = bookDetailsView(d, s.canManage(r))
 		if canEdit {
 			if v.Edit, err = s.detailsEditView(r, id, lookups); err != nil {

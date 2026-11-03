@@ -234,7 +234,7 @@ func TestVisualDetailsSheets(t *testing.T) {
 		{"compare", sheet("compare&job=" + found + "&c=0"), "table.ts-compare", true},
 		{"cover", sheet("cover"), ".ts-cover-pick__card", true},
 		{"author", "/authors/" + authorID, "", true},
-		{"tab", book, "", false},
+		{"tab", book, ".ts-dpanel", false},
 	})
 }
 
@@ -262,4 +262,8 @@ func TestVisualDetailsWrite(t *testing.T) {
 		{"write-pending-sheet", ready.sheet() + "&job=" + job, ".ts-write__pending", false},
 		{"write-pending", ready.tab(), ".ts-write__pending", true},
 	})
+
+	// After Looks good the options panel leads with "Kept the new details."
+	ready.post(t, ready.owner, "/books/"+ready.book.ID+"/write/confirm")
+	detailsCapture(t, b, readyBase, out, []detailsShot{{"write-kept", ready.tab() + "?written=kept", ".ts-dpanel", false}})
 }

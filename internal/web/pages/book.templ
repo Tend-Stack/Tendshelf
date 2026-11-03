@@ -102,6 +102,9 @@ type BookView struct {
 	ShareHref string
 	// CoverHref opens the "Change cover" sheet; empty for people who may not edit the book.
 	CoverHref, CoverLabel string
+	// PanelTitle heads the options panel of the Details tab; PanelCoverCaption is the line under its
+	// Change cover button. Empty PanelTitle (any other tab) shows no panel.
+	PanelTitle, PanelCoverCaption string
 	// Edit holds the Details tab's lookup and reset controls; the zero value shows none.
 	Edit DetailsEditView
 	// Write holds the Details tab's write-details controls (M4-9); the zero value shows none.
@@ -118,6 +121,8 @@ type DetailsEditView struct {
 	// ResetAction is where the reset form posts; empty hides the disclosure.
 	ResetAction, CSRF                  string
 	ResetTitle, ResetBody, ResetButton string
+	// LookupCaption is the line under the lookup button.
+	LookupCaption string
 }
 
 templ backIcon() {
@@ -342,7 +347,14 @@ templ Book(v BookView) {
 							@bookAbout(v)
 					}
 				</div>
-				@bookRails(v)
+				if v.Tab == "details" {
+					<div class="ts-book__side">
+						@bookDetailsPanel(v)
+						@bookRails(v)
+					</div>
+				} else {
+					@bookRails(v)
+				}
 			</section>
 		</div>
 	</article>
@@ -412,12 +424,6 @@ templ bookChapters(v BookView) {
 }
 
 templ bookDetails(v BookView) {
-	if v.Edit.Applied != "" {
-		<p class="ts-book__applied label" role="status">
-			@components.Icon("check", false)
-			{ v.Edit.Applied }
-		</p>
-	}
 	<dl class="ts-book__details">
 		for _, r := range v.Rows {
 			<div class="ts-book__detail">
@@ -437,27 +443,101 @@ templ bookDetails(v BookView) {
 			</div>
 		}
 	</dl>
-	if v.Edit.LookupHref != "" {
-		<a
-			class="ts-btn ts-btn--secondary ts-book__lookup"
-			href={ templ.SafeURL(v.Edit.LookupHref) }
-			hx-get={ v.Edit.LookupHref }
-			hx-target="#sheet"
-			hx-select="#sheet > *"
-			hx-swap="innerHTML"
-			hx-push-url="false"
-			aria-haspopup="dialog"
-		>{ v.Edit.LookupLabel }</a>
+}
+
+// hasDetailsPanel is true when the person has at least one control for the options panel.
+func hasDetailsPanel(v BookView) bool {
+	return v.PanelTitle != "" && (v.Edit.LookupHref != "" || v.Edit.ResetAction != "" || v.CoverHref != "" ||
+		v.Write.OpenHref != "" || v.Write.Pending.ConfirmAction != "" || v.Write.Note != "" || v.Edit.Applied != "" || v.Write.Attention != nil)
+}
+
+// bookDetailsPanel is the card of options about the book: the latest status first, the "Waiting
+// for you" choice while a write waits, then the actions, each full width with a line of help. On a
+// wide screen it sits in the right column; below that it follows the details list.
+templ bookDetailsPanel(v BookView) {
+	if hasDetailsPanel(v) {
+		<section class="ts-dpanel" aria-labelledby="details-panel-head">
+			<h2 id="details-panel-head" class="section">{ v.PanelTitle }</h2>
+			if v.Edit.Applied != "" {
+				<p class="ts-book__applied label" role="status">
+					@components.Icon("check", false)
+					{ v.Edit.Applied }
+				</p>
+			}
+			if v.Write.Note != "" {
+				<p class="ts-book__applied label" role="status">
+					@components.Icon("check", false)
+					{ v.Write.Note }
+				</p>
+			}
+			@WritePending(v.Write.Pending)
+			if v.Write.Attention != nil {
+				<div class="ts-write__attention" role="alert">
+					<p class="body">{ v.Write.Attention.Text }</p>
+					if v.Write.Attention.Folder != "" {
+						<p class="caption ts-write__folder">{ v.Write.Attention.Folder }</p>
+					}
+				</div>
+			}
+			if v.Edit.LookupHref != "" || v.Write.OpenHref != "" || v.CoverHref != "" {
+				<div class="ts-dpanel__acts">
+					if v.Edit.LookupHref != "" {
+						<div class="ts-dpanel__act">
+							<a
+								class="ts-btn ts-btn--secondary ts-btn--block ts-book__lookup"
+								href={ templ.SafeURL(v.Edit.LookupHref) }
+								hx-get={ v.Edit.LookupHref }
+								hx-target="#sheet"
+								hx-select="#sheet > *"
+								hx-swap="innerHTML"
+								hx-push-url="false"
+								aria-haspopup="dialog"
+							>{ v.Edit.LookupLabel }</a>
+							<p class="caption">{ v.Edit.LookupCaption }</p>
+						</div>
+					}
+					if v.Write.OpenHref != "" {
+						<div class="ts-dpanel__act">
+							<a
+								class="ts-btn ts-btn--secondary ts-btn--block ts-book__write"
+								href={ templ.SafeURL(v.Write.OpenHref) }
+								hx-get={ v.Write.OpenHref }
+								hx-target="#sheet"
+								hx-select="#sheet > *"
+								hx-swap="innerHTML"
+								hx-push-url="false"
+								aria-haspopup="dialog"
+							>{ v.Write.OpenLabel }</a>
+							<p class="caption">{ v.Write.OpenCaption }</p>
+						</div>
+					}
+					if v.CoverHref != "" {
+						<div class="ts-dpanel__act">
+							<a
+								class="ts-btn ts-btn--secondary ts-btn--block ts-dpanel__cover"
+								href={ templ.SafeURL(v.CoverHref) }
+								hx-get={ v.CoverHref }
+								hx-target="#sheet"
+								hx-select="#sheet > *"
+								hx-swap="innerHTML"
+								hx-push-url="false"
+								aria-haspopup="dialog"
+							>{ v.CoverLabel }</a>
+							<p class="caption">{ v.PanelCoverCaption }</p>
+						</div>
+					}
+				</div>
+			}
+			if v.Edit.ResetAction != "" {
+				<details class="ts-book__reset">
+					<summary class="ts-btn ts-btn--quiet ts-btn--block">{ v.Edit.ResetTitle }</summary>
+					<form method="post" action={ templ.URL(v.Edit.ResetAction) } hx-post={ v.Edit.ResetAction } hx-target="#book-panel" hx-select="#book-panel" hx-swap="outerHTML">
+						<input type="hidden" name="_csrf" value={ v.Edit.CSRF }/>
+						<p class="caption">{ v.Edit.ResetBody }</p>
+						<button type="submit" class="ts-btn ts-btn--secondary ts-btn--block">{ v.Edit.ResetButton }</button>
+					</form>
+				</details>
+			}
+		</section>
 	}
-	if v.Edit.ResetAction != "" {
-		<details class="ts-book__reset">
-			<summary class="ts-btn ts-btn--quiet">{ v.Edit.ResetTitle }</summary>
-			<form method="post" action={ templ.URL(v.Edit.ResetAction) } hx-post={ v.Edit.ResetAction } hx-target="#book-panel" hx-select="#book-panel" hx-swap="outerHTML">
-				<input type="hidden" name="_csrf" value={ v.Edit.CSRF }/>
-				<p class="caption">{ v.Edit.ResetBody }</p>
-				<button type="submit" class="ts-btn ts-btn--secondary">{ v.Edit.ResetButton }</button>
-			</form>
-		</details>
-	}
-	@WriteTab(v.Write)
 }

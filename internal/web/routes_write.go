@@ -233,7 +233,7 @@ func (s *server) writeTabView(r *http.Request, bookID string) (pages.WriteTabVie
 	if has {
 		v.Pending = pending
 	} else {
-		v.OpenHref, v.OpenLabel = writeSheetHref(bookID, ""), writeOpenLink
+		v.OpenHref, v.OpenLabel, v.OpenCaption = writeSheetHref(bookID, ""), writeOpenLink, writeOpenCaption
 	}
 	rows, err := s.lib.BookFileWrites(r.Context(), bookID)
 	if err != nil || len(rows) == 0 {
