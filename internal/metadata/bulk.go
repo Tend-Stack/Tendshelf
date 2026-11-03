@@ -187,6 +187,12 @@ func (s *Service) BulkStatus(ctx context.Context, libraryID string) (jobs.Job, B
 	if err != nil || !found {
 		return jobs.Job{}, BulkProgress{}, false, err
 	}
+	p, err := ParseBulkProgress(j)
+	return j, p, true, err
+}
+
+// ParseBulkProgress reads the progress of a bulk job (its result once it is done).
+func ParseBulkProgress(j jobs.Job) (BulkProgress, error) {
 	var p BulkProgress
 	raw := j.Progress
 	if j.State == jobs.StateDone && len(j.Result) > 0 {
@@ -194,10 +200,10 @@ func (s *Service) BulkStatus(ctx context.Context, libraryID string) (jobs.Job, B
 	}
 	if len(raw) > 0 {
 		if err := json.Unmarshal(raw, &p); err != nil {
-			return j, BulkProgress{}, true, err
+			return BulkProgress{}, err
 		}
 	}
-	return j, p, true, nil
+	return p, nil
 }
 
 func defaultSleep(ctx context.Context, d time.Duration) error {

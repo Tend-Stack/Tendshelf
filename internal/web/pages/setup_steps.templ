@@ -41,6 +41,10 @@ type SetupFolderView struct {
 	// BrowseURL opens the folder browser; Browser, when set, is shown inline after the form.
 	BrowseURL string
 	Browser   *components.FolderBrowserView
+	// Auto is the "look up details online for new books" checkbox; nil when lookups are off. AutoOn
+	// is whether the person ticked it.
+	Auto   *components.AutoLookupView
+	AutoOn bool
 }
 
 // SetupFolder asks for the audiobook folder and then shows the scan streaming in.
@@ -51,6 +55,9 @@ templ SetupFolder(v SetupFolderView) {
 	<form class="ts-form" method="post" action="/setup/folder">
 		<input type="hidden" name="_csrf" value={ v.CSRF }/>
 		@components.FolderField(components.FolderFieldView{Value: v.Path, Error: v.Error, Added: v.Added, Autofocus: true, BrowseURL: v.BrowseURL})
+		if v.Auto != nil && !v.Added {
+			@components.AutoLookupField(*v.Auto)
+		}
 		if v.Scan != nil {
 			<div class="ts-setup-scan">
 				@components.ScanStatus(*v.Scan)

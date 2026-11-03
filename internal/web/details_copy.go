@@ -80,7 +80,7 @@ const (
 	detailsCoverOnline      = "Cover found online"
 
 	adminOnlineTitle = "Book details from the internet"
-	adminOnlineBody  = "When someone who edits books asks, Tendshelf can look a book up on Audible and, if they choose, a few other book sites. Scans never go online."
+	adminOnlineBody  = "When someone who edits books asks, or a library is set to look up new books, Tendshelf looks books up on Audible and, if chosen, a few other book sites."
 	adminOnlineOn    = "Look up details when someone asks"
 	adminOnlineOff   = "Never go online"
 	adminOnlineSave  = "Save"

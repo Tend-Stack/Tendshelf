@@ -39,5 +39,7 @@ func detailsSweepRows() []sweepRow {
 	reset.LocOf = func(e *sweepEnv) string { return "/books/" + e.book.ID + "/details" }
 	switchRow := sweepPost("POST /admin/online", sweepStatic("/admin/online"), sweepFormOf(url.Values{"on": {"0"}}),
 		sweepOwnerOnly(http.StatusSeeOther, http.StatusNotFound), "/admin/libraries")
-	return []sweepRow{lookupSheet, compareList, compareTable, poll, cover, match, apply, reset, switchRow}
+	rows := []sweepRow{lookupSheet, compareList, compareTable, poll, cover, match, apply, reset}
+	// The lookup rows come before the owner's switch, which turns lookups off.
+	return append(append(rows, lookupsSweepRows()...), switchRow)
 }

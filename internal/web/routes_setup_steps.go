@@ -123,6 +123,12 @@ func (s *server) folderStep(w http.ResponseWriter, r *http.Request, status int, 
 	v.CSRF = s.csrf.TokenFrom(r.Context())
 	if !v.Added {
 		v.BrowseURL = browseFieldURL(setupFolderURL, v.Path)
+		auto, err := s.autoLookupField(r, "auto-lookup", v.AutoOn)
+		if err != nil {
+			s.serverError(w, r, "online setting", err)
+			return
+		}
+		v.Auto = auto
 	}
 	s.frame(w, r, status, "Where are your audiobooks?", pages.SetupFolder(v), "css/pages-admin.css", "css/pages-folders.css")
 }
@@ -185,7 +191,8 @@ func (s *server) postSetupFolder(w http.ResponseWriter, r *http.Request) {
 		raw = ""
 	}
 	invalid := func(code string) {
-		s.folderStep(w, r, http.StatusUnprocessableEntity, pages.SetupFolderView{Path: raw, Error: pathMessage(code)})
+		s.folderStep(w, r, http.StatusUnprocessableEntity, pages.SetupFolderView{Path: raw, Error: pathMessage(code),
+			AutoOn: r.PostFormValue("auto_lookup") == "1"})
 	}
 	path, code := s.checkFolderPath(raw)
 	if code != "" {
@@ -202,6 +209,10 @@ func (s *server) postSetupFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	case err != nil:
 		s.serverError(w, r, "add folder", err)
+		return
+	}
+	if err := s.applyAutoLookup(r, lib.ID); err != nil {
+		s.serverError(w, r, "auto lookup", err)
 		return
 	}
 	jobID, err := s.startScan(ctx, u.ID, lib.ID)
