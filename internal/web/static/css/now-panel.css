@@ -75,6 +75,7 @@
 .ts-upnext__tools { display: flex; flex: none; align-items: center; }
 .ts-upnext__tools form { margin: 0; }
 .ts-upnext__tools .ts-icon { width: 1.25rem; height: 1.25rem; }
+.ts-np .ts-upnext .ts-cover--56 { width: 3.5rem; height: 3.5rem; } /* the panel's fill rule would stretch the row's cover */
 .ts-upnext__gap { display: block; width: var(--size-tap); height: var(--size-tap); }
 .ts-upnext .ts-row__main:focus-visible, .ts-upnext .ts-np__empty:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 .ts-upnext-page { display: flex; flex-direction: column; gap: var(--space-16); max-width: 40rem; }

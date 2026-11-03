@@ -3,10 +3,12 @@
 package web
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
 	"github.com/Tend-Stack/tendshelf/internal/testutil/cdp"
 )
@@ -164,4 +166,41 @@ func TestQueueBrowser(t *testing.T) {
 			check("remove" + step)
 		})
 	}
+}
+
+// TestQueuePanelCapture captures the Up next tab of the Now playing panel at 1440 px, filled and empty,
+// in dark and light, and checks that the tab keeps its count. Needs TENDSHELF_TEST_BROWSER.
+func TestQueuePanelCapture(t *testing.T) {
+	e := nowPanelEnv(t)
+	out := playerOut(t)
+	for _, title := range []string{"Salt Road", "Harbour Dawn", "Harbour Night"} {
+		page, err := e.a.lib.ListBooks(t.Context(), bookAllScope, library.ListQuery{Title: title, Limit: 5})
+		if err != nil || len(page.Books) == 0 {
+			t.Fatalf("book %q: %v", title, err)
+		}
+		if _, err := e.a.lib.QueueAdd(t.Context(), e.ownerID, page.Books[0].ID, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tab := nowPanelOpen(t, e, 1440, 800)
+	playerClickSel(t, tab, "#now-tab-queue")
+	tab.WaitFor(`document.querySelectorAll("#now-up-next li").length === 3`, 5*time.Second)
+	var sel struct {
+		Selected bool
+		Count    string
+	}
+	tab.Eval(`({ Selected: document.getElementById("now-tab-queue").getAttribute("aria-selected") === "true", Count: document.getElementById("now-panel-queue-count").textContent })`, &sel)
+	if !sel.Selected || sel.Count != "3" {
+		t.Errorf("tab %+v, want selected with count 3", sel)
+	}
+	for _, theme := range []string{"dark", "light"} {
+		nowPanelTheme(tab, theme)
+		tab.Screenshot(filepath.Join(out, "queue-panel-"+theme+"-1440.png"))
+	}
+	for range 3 {
+		playerClickSel(t, tab, `#now-up-next li:nth-child(1) form[action$="/delete"] button`)
+		time.Sleep(400 * time.Millisecond)
+	}
+	tab.WaitFor(`document.querySelector("#now-up-next li") === null && document.getElementById("now-panel-queue-count").textContent === "0"`, 5*time.Second)
+	tab.Screenshot(filepath.Join(out, "queue-panel-empty-light-1440.png"))
 }
