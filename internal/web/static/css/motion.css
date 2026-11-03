@@ -18,7 +18,10 @@
 ::view-transition-group(ts-cover) { animation-duration: var(--duration-slow); animation-timing-function: var(--easing-expand); }
 
 /* Sheets, scrims and dialogs */
-.ts-sheet { transition: translate var(--duration-base) var(--easing-enter); }
+.ts-sheet { transition: translate var(--duration-base) var(--easing-enter), transform var(--duration-fast) var(--easing-standard); }
+/* Dragged down by a finger (shell.js): it follows at once; letting go short of the threshold eases it back. */
+.ts-sheet { transform: var(--ts-sheet-drag); }
+.ts-sheet.is-dragging { transition: none; }
 @starting-style { .ts-sheet { translate: 0 100%; } }
 .ts-scrim, .ts-dialog { transition: opacity var(--duration-base) var(--easing-enter); }
 @starting-style { .ts-scrim, .ts-dialog { opacity: 0; } }

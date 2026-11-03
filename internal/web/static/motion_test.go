@@ -106,6 +106,8 @@ func TestCSSBudget(t *testing.T) {
 		"css/motion.css":    {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
 		"css/player.css": {4 * 1024, 24 * 1024},
+		// The full player's fit below 1280 px (phone check, 2026-11-02): split from player.css to keep it at 4 KB.
+		"css/player-fit.css": {1024, 24 * 1024},
 		// The desktop Now playing panel; loaded on every page like player.css (operator, 2026-11-02: about 3 KB).
 		"css/now-panel.css": {3 * 1024, 24 * 1024},
 		// The Users and invite pages share this file (list, person page, pending invites, the Invite someone

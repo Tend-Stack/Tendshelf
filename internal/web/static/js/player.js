@@ -148,6 +148,23 @@ function dismissToast(el) {
   setTimeout(() => el.remove(), 800); // shell.js usually removes it first
 }
 
+// Toasts the server sends out of band (components.ToastOOB, ErrorToast) carry data-ts-ms, their lifetime.
+// Nothing else dismissed them, so a saved-note toast stayed. They leave on time, but not while the pointer or
+// focus is on one (it stays reachable by Tab while shown).
+function dismissLater(el, ms) {
+  setTimeout(() => (el.matches(":hover, :focus-within") ? dismissLater(el, 1000) : dismissToast(el)), ms);
+}
+const serverToasts = document.getElementById("toasts");
+if (serverToasts) {
+  new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (node.dataset && node.dataset.tsMs) dismissLater(node, Number(node.dataset.tsMs));
+      }
+    }
+  }).observe(serverToasts, { childList: true });
+}
+
 function hint(text) {
   const el = toast("hint", text);
   setTimeout(() => dismissToast(el), 1600);
