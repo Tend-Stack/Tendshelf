@@ -16,7 +16,7 @@ themes.
 | --- | --- | --- | --- |
 | M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 4.0.0, fonts and templ v0.3.1100 downloads approved). **Done 2026-11-01.** P0a (data and jobs), P0b (UI shell) and P0c (utilities and motion) built, reviewed and merged; see their notes below. | `make check` (with and without `-tags dev`), `make build` (CGO_ENABLED=0), `make visual` (Chromium) and `make visual-webkit` (WebKitGTK 2.52.6) green on main 2026-11-01; CI green. |
 | M1 It plays | P1a-P1c | In progress. **P1a done** and **P1b done 2026-11-01** (accounts and first-run setup, Libraries admin and folder browser, Home, Library with filters, book, people and search pages, Settings and Profile, shelves, exit audit). **P1c built 2026-11-02** (progress data, streaming, player core, full player, speed, sleep timer, bookmarks, play buttons and Home rows, exit sweep); it closes, and M1 with it, after the operator's phone check in [manual-checks.md](manual-checks.md). | On main: `make check`, `make build` (CGO_ENABLED=0), real-ffmpeg targets, `make visual` (about 55 s) and `make visual-full` (about 147 s), `make perf` (Library interactive in a median 64 ms at 4x CPU slowdown, 240 ms at 8x, budget 300 ms), `make visual-webkit`; `TestRouteMatrix` covers all 47 routes for every role. Board audit: `docs/design/screens.md`. Push CI green; nightly CI green (run 9052 onward). Player: `make player` (first sound about 270 ms). |
-| M2 Family | P3 | In progress. P3-1 (authorization core: migration 0007, grants in `Can` and the listing filters) built 2026-11-02; P3-2 (Users admin: Go, markup, CSS, captures) built; P3-3a (Invites: Go and markup) built; P3-3b (Invites: CSS, captures, browser test) built; P3-4 onward not started. | See the P3-1 status note below. |
+| M2 Family | P3 | Built 2026-11-02 (P3-1 to P3-12, the desktop player bar and the Now playing panel; P3-13 is this exit check); Research dropped (decision 0007). Closes with the v2026.1.0 tag, which the lead makes. | The P3 status notes below; the route-matrix and leak-test table under "Exit check (P3-13)"; [CHANGELOG.md](../CHANGELOG.md). |
 | M3 Pocket | P4 | Not started | |
 | M4 Details | P2 | Not started | |
 | M5 Read along | R1-R6 | Designed 2026-10-31 ([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)); UI designed in the handoff (`screens/reader/`). Dependencies await approval. | Design only. |
@@ -363,6 +363,30 @@ the table in [`docs/manual-checks.md`](manual-checks.md)).
   proved unchanged by capturediff. Limits: browser-only large text on 1280-1599 px windows keeps the desktop bar
   (recorded risk, no detection script); the board's five-step slider is a declared difference (two choices); signed-out,
   invite and link pages follow the browser's text size only.
+
+**P3-5a, P3-10 and the player packages (one line each)**: P3-5a built the share-link repository, limiter and public `/s/` routes (merged with P3-5b). P3-10 moved sizes to rem, 12 px control corners and the handoff's spine sizes. The desktop player bar (chapter waveform seek, times, hairline, tools; [decision 0005](decisions/0005-chapter-scrubber.md)) and the Now playing panel (NP1 fragments, NP2 panel) are merged, as is Larger text (P3-11).
+
+**P3-13 status (M2 exit and release check)**: built 2026-11-02. No migration. Checks and fixes:
+
+- Route matrix (`routes_matrix_test.go`): `TestRouteMatrix` fails when a registered route has no row or a row names a route that is not registered; at the exit it covers 134 registered patterns with 197 rows (110 GET, 87 unsafe; 1,420 requests: each GET as owner, admin, member, listener and a visitor, each unsafe row also without the CSRF token). `TestRouteMatrixGranted` repeats the book-serving rows once the member and the listener hold a library grant. Gaps found: none in the matrix. Gaps found and closed in `TestGrantLeaks`: it did not try the waveform peaks, the bookmark export, the book's Share page, the five Now playing panel fragments, or a closed book placed on the member's own shelf; they are in the closed list now.
+- Copy audit: the Profile chip said "Guest" while the Users page says "Listener"; it says "Listener" now. No double spaces, dash or "Unknown" placeholders, exclamation marks, or "item/track/token" in the interface were found. 187 strings that are not in the copy deck are listed in [copy-additions.md](copy-additions.md) for review.
+- Docs: README (install, first run, flags, data folder and backups, the phone check), architecture (M2 route list, tables to migration 0009, budgets), `api.md` linked, [CHANGELOG.md](../CHANGELOG.md).
+
+Forbidden books never appear (the leak tests, by surface; "closed" is a book in a library the person has no grant on, or a refused book):
+
+| Surface | Routes | Tests that prove it |
+| --- | --- | --- |
+| Every route, every role | all 134 patterns | `TestRouteMatrix` (Want per role, leak words scanned in every GET body), `TestRouteMatrixGranted` |
+| Lists and counts | `/`, `/libraries`, `/libraries/{id}`, `/hx/libraries/items`, `/hx/libraries/{id}/items`, the filter sheet, `/shelves`, `/shelves/{id}`, `/hx/home/hero` | `TestGrantLeaks` (granted, revoked, expired; header counts "1 book" and "0 books"), `TestLibraryAccess`, `TestLibraryHidesRefusedAndMissing`, `TestHomeSharedNoLeak`, `TestShelvesAccess` |
+| Search | `/search`, live results, did-you-mean | `TestGrantLeaks` (exact, typo and author queries), `TestSearchScope`, `TestAPILeaks` (`/api/v1/search`) |
+| People and series pages | `/authors/{id}`, `/narrators/{id}`, `/series/{id}` | `TestGrantLeaks` (closed ids 404), matrix rows |
+| Covers | `/covers/{bookID}`, `/invite/{token}/cover`, `/s/{token}/cover` | `TestCoverForbidden` (refusal identical to unknown, no file opened), `TestGrantLeaks`, `TestLinkMedia` |
+| Stream and peaks | `/stream/{id}`, `/peaks/{id}` | `TestGrantLeaks`, `TestPeaksRefusals`, matrix rows (`second file`, `unknown file`) |
+| Player and panel | `/hx/player/{bookID}`, `/hx/player/panel/{bookID}` and its four sub-routes, `/hx/books/{id}/play`, `/progress/{bookID}` | `TestGrantLeaks`, `TestNowPanelHidden`, `TestNowPanelRoles`, matrix rows |
+| Bookmarks | `/books/{id}/bookmarks`, `/export`, `/bookmarks/{id}/...` | `TestGrantLeaks`, matrix rows (someone else's sheet) |
+| JSON API | every `/api/v1` route | `TestAPILeaks` (lists, counts, search, shelves, shared; closed ids byte-identical to unknown), matrix rows with the granted pass |
+| Shared with you, shared shelves | Home row, `/libraries?show=shared`, shelf pages | `TestHomeSharedNoLeak`, `TestShelfSharedView`, `TestShelvesSharedSection` |
+| Share links | `/s/{token}` and its media | `TestLinkPage`, `TestLinkBrokenPagesAreIdentical`, `TestLinkMedia`, `TestLinkSessionChangesNothing` |
 
 Exit: for every route, a test proves each role gets exactly the documented access, and forbidden books
 never appear in lists, counts, search or covers. First tagged release (v2026.1.0, [decision 0006](decisions/0006-version-numbers.md)) after this milestone.

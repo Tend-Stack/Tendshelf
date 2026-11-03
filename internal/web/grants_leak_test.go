@@ -86,6 +86,10 @@ func TestGrantLeaks(t *testing.T) {
 				"/stream/" + e.hiddenAudio, "/hx/player/" + e.hidden.ID, "/hx/books/" + e.hidden.ID + "/play",
 				"/progress/" + e.hidden.ID, "/authors/" + e.hiddenAuthor, "/series/" + e.hiddenSeries,
 				"/libraries/" + e.hiddenLib, "/hx/libraries/" + e.hiddenLib + "/items",
+				"/peaks/" + e.hiddenAudio, "/books/" + e.hidden.ID + "/bookmarks/export?format=md", "/books/" + e.hidden.ID + "/share",
+				"/hx/player/panel/" + e.hidden.ID, "/hx/player/panel/" + e.hidden.ID + "/about",
+				"/hx/player/panel/" + e.hidden.ID + "/bookmarks", "/hx/player/panel/" + e.hidden.ID + "/count",
+				"/hx/player/panel/" + e.hidden.ID + "/chapter/0",
 			}
 			for _, p := range closed {
 				if code, body := e.get(role, p, false); code != http.StatusNotFound {
@@ -109,6 +113,19 @@ func TestGrantLeaks(t *testing.T) {
 						continue
 					}
 					e.noHidden(t, p, body)
+				}
+			}
+			// A closed book on the member's own shelf is neither listed nor counted.
+			if role == sweepMember {
+				if err := e.a.lib.AddToShelf(context.Background(), e.uid[role], e.shelf[role], e.hidden.ID); err != nil {
+					t.Fatal(err)
+				}
+				for _, p := range []string{"/shelves", "/shelves/" + e.shelf[role]} {
+					if code, body := e.get(role, p, false); code != http.StatusOK {
+						t.Errorf("GET %s: %d, want 200", p, code)
+					} else {
+						e.noHidden(t, p, body)
+					}
 				}
 			}
 			// Control: the owner does see the closed library's book, so the scans above could have failed.
