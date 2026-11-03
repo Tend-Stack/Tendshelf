@@ -921,8 +921,12 @@ dialog.addEventListener("click", (event) => {
   }
 });
 
+// Following any link in the ⋯ menu (Go to book, Up next) closes the menu.
+ui["full-menu"].addEventListener("click", (event) => {
+  if (event.target.closest("a")) ui["full-menu"].open = false;
+});
+
 ui["full-book"].addEventListener("click", () => {
-  ui["full-menu"].open = false;
   if (!sidePanel()) closeNow(); // the page behind the full screen player is the destination
 });
 

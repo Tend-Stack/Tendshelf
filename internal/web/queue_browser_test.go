@@ -133,7 +133,13 @@ func TestQueueBrowser(t *testing.T) {
 				playerClickSel(t, tab, "#now-tab-queue")
 				step = " tab"
 			} else {
-				goBoosted("/queue", `document.querySelector("#up-next li") !== null`)
+				// Through the full player's ⋯ menu, which closes once its Up next link is followed.
+				fullpOpenPlayer(t, tab)
+				playerClickSel(t, tab, "[data-ts-full-menu] > summary")
+				tab.WaitFor(`document.querySelector("[data-ts-full-menu]").open`, 3*time.Second)
+				playerClickSel(t, tab, ".ts-player__menuqueue")
+				tab.WaitFor(`document.querySelector("#up-next li") !== null && !document.querySelector("[data-ts-full-menu]").open && !document.getElementById("player-full").open &&
+					!document.activeViewTransition && !document.documentElement.matches(".ts-vt-mini, .ts-vt-full")`, 5*time.Second)
 			}
 			tab.WaitFor(`document.querySelector(`+cdp.Quote(list+" li")+`) !== null`, 5*time.Second)
 			if got := order(list); got != ids[0]+","+ids[1] {

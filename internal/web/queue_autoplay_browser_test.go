@@ -126,8 +126,12 @@ func quoteJS(s string) string { return `"` + s + `"` }
 func TestNowPanelThreeTabKeys(t *testing.T) {
 	e := nowPanelEnv(t)
 	tab := nowPanelOpen(t, e, 1440, 900)
-	// Up next arrives with the markup package; here a third tab stands in so the keys can be checked.
-	tab.Eval(`(() => { const list = document.querySelector(".ts-np__tablist"); const third = list.lastElementChild.cloneNode(true); third.removeAttribute("id"); third.removeAttribute("hx-get"); list.append(third); list.firstElementChild.focus(); })()`, nil)
+	// About, Bookmarks and Up next: the arrow keys wrap around all three.
+	var tabs int
+	tab.Eval(`(() => { const list = document.querySelector(".ts-np__tablist"); list.firstElementChild.focus(); return list.children.length; })()`, &tabs)
+	if tabs != 3 {
+		t.Fatalf("%d tabs, want 3", tabs)
+	}
 	active := func() int {
 		var i int
 		tab.Eval(`[...document.querySelector(".ts-np__tablist").children].indexOf(document.activeElement)`, &i)

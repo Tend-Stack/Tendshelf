@@ -92,6 +92,17 @@ func nowPanelDesktop(t *testing.T, e *playerEnv, w int, out string) {
 		t.Errorf("%d: play controls visible %d, full transport %d, full toolbar %d; want 1, 0, 0", w, bar.Visible, bar.Transport, bar.Toolbar)
 	}
 
+	// The panel is not modal: the page's content stops short of it instead of running under it.
+	var room struct{ Content, Panel float64 }
+	tab.Eval(`(() => {
+	  const main = document.querySelector(".ts-main"), r = main.getBoundingClientRect();
+	  return { Content: r.right - parseFloat(getComputedStyle(main).paddingRight),
+	    Panel: document.getElementById("player-full").getBoundingClientRect().left };
+	})()`, &room)
+	if room.Content > room.Panel {
+		t.Errorf("%d: the page's content reaches %.0f px, under the panel from %.0f px", w, room.Content, room.Panel)
+	}
+
 	// One scroll area, tabs that stay, no empty area under the last section.
 	var sc struct {
 		Scrollers      int
