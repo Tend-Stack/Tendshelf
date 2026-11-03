@@ -171,7 +171,7 @@ func (s *server) postEmail(w http.ResponseWriter, r *http.Request) {
 	if dropped {
 		loc += "&dropped=1"
 	}
-	s.redirect(w, r, loc)
+	s.answerPage(w, r, loc)
 }
 
 func (s *server) postEmailTest(w http.ResponseWriter, r *http.Request) {
@@ -276,5 +276,5 @@ func (s *server) postEmailOff(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "turn off email", err)
 		return
 	}
-	s.redirect(w, r, "/admin/email")
+	s.answerPage(w, r, "/admin/email")
 }

@@ -124,7 +124,7 @@ func (s *server) postPersonLookup(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "start author lookup", err)
 		return
 	}
-	s.redirect(w, r, authorHref(p.ID, jobID))
+	s.answerPage(w, r, authorHref(p.ID, jobID))
 }
 
 func authorHref(personID, jobID string) string {

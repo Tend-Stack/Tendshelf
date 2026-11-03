@@ -84,6 +84,28 @@ func (s *server) redirect(w http.ResponseWriter, r *http.Request, loc string) {
 	http.Redirect(w, r, loc, http.StatusSeeOther)
 }
 
+// answerPage ends an unsafe request from a signed-in page in the normal layout. A plain form is
+// redirected to loc (303). An htmx request must not be (HX-Redirect loads the whole window and
+// stops the audio that plays in the layout), so it gets 200 with the page GET loc would render,
+// which the boosted form swaps into #main, and HX-Push-Url moves the address bar to loc.
+func (s *server) answerPage(w http.ResponseWriter, r *http.Request, loc string) {
+	if r.Header.Get("HX-Request") != "true" {
+		s.redirect(w, r, loc)
+		return
+	}
+	u, err := url.Parse(loc)
+	if err != nil || !strings.HasPrefix(u.Path, "/") {
+		s.serverError(w, r, "answer page", err)
+		return
+	}
+	r2 := r.Clone(r.Context())
+	r2.Method, r2.URL, r2.Body, r2.ContentLength = http.MethodGet, &url.URL{Path: u.Path, RawQuery: u.RawQuery}, http.NoBody, 0
+	r2.RequestURI = r2.URL.RequestURI()
+	r2.Header.Del("Content-Type")
+	w.Header().Set("HX-Push-Url", loc)
+	s.routes.ServeHTTP(w, r2)
+}
+
 // invitePrefix starts the only other public paths: /invite/{token} and /invite/{token}/cover.
 const invitePrefix = "/invite/"
 

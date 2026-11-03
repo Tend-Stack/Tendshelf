@@ -380,7 +380,7 @@ func (s *server) postAddFolder(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "queue scan", err)
 		return
 	}
-	s.redirect(w, r, "/admin/libraries")
+	s.answerPage(w, r, "/admin/libraries")
 }
 
 // ---- scanning ----
@@ -400,7 +400,7 @@ func (s *server) postScanAll(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.redirect(w, r, "/admin/libraries")
+	s.answerPage(w, r, "/admin/libraries")
 }
 
 func (s *server) postScanLibrary(w http.ResponseWriter, r *http.Request) {
@@ -420,7 +420,7 @@ func (s *server) postScanLibrary(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "queue scan", err)
 		return
 	}
-	s.redirect(w, r, "/admin/libraries")
+	s.answerPage(w, r, "/admin/libraries")
 }
 
 // ---- folder emptied on purpose ----
@@ -535,7 +535,7 @@ func (s *server) postFolderEmptied(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(ctx, currentUser(r).ID, "library.folder_emptied", f.ID, map[string]int{"books": marked})
-	s.redirect(w, r, fmt.Sprintf("/admin/libraries?marked=%d", marked))
+	s.answerPage(w, r, fmt.Sprintf("/admin/libraries?marked=%d", marked))
 }
 
 // booksText is "1 book" or "1,204 books".

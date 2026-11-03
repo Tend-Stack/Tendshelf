@@ -375,12 +375,5 @@ func (s *server) postAdminOnline(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "online setting", err)
 		return
 	}
-	if r.Header.Get("HX-Request") != "true" {
-		s.redirect(w, r, "/admin/libraries")
-		return
-	}
-	// HX-Redirect would load the whole window and stop a playing book: answer with the Libraries page.
-	r2 := r.Clone(r.Context())
-	r2.Method, r2.URL.Path, r2.URL.RawQuery = http.MethodGet, "/admin/libraries", ""
-	s.getAdminLibraries(w, r2)
+	s.answerPage(w, r, "/admin/libraries")
 }

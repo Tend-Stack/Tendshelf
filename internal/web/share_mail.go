@@ -184,10 +184,10 @@ func (s *server) postInviteEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if back, _, ok := validShareBack(r.PostForm.Get("back")); ok {
-		s.redirect(w, r, back)
+		s.answerPage(w, r, back)
 		return
 	}
-	s.redirect(w, r, "/admin/users")
+	s.answerPage(w, r, "/admin/users")
 }
 
 // inviteMailRefuse answers a refused send in plain words: a toast for htmx, else the Share page again.
