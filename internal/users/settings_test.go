@@ -19,7 +19,7 @@ func TestSettingsDefaultsAndRoundTrip(t *testing.T) {
 	if err != nil || got != DefaultSettings {
 		t.Fatalf("defaults = %+v, %v", got, err)
 	}
-	want := Settings{Theme: "sepia", Speed: 1.25, SkipBackS: 10, SkipForwardS: 60, AutoRewind: false, NextInSeries: false, PlayerTint: false, BigButtons: true, TextSize: "large"}
+	want := Settings{Theme: "sepia", Speed: 1.25, SkipBackS: 10, SkipForwardS: 60, AutoRewind: false, NextInSeries: false, PlayerTint: false, BigButtons: true, TextSize: "large", Nav: "full"}
 	if err := r.SaveSettings(ctx, u.ID, want); err != nil {
 		t.Fatal(err)
 	}

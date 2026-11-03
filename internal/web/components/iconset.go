@@ -3,6 +3,7 @@ package components
 // iconShapes holds the inner SVG markup of Tendshelf's icon set (design-system/components/Icon/README.md).
 // The strings are constants in this file, never user input, so they are rendered as raw markup.
 var iconShapes = map[string]string{
+	"panel-left":   `<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/>`,
 	"home":         `<path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/>`,
 	"library":      `<path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/>`,
 	"search":       `<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>`,

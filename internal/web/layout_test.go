@@ -174,6 +174,7 @@ func TestBoostedRequestFullPage(t *testing.T) {
 		r.Header.Set("HX-Boosted", "true")
 	})
 	norm := func(s string) string {
+		s = regexp.MustCompile(`name="_csrf" value="[^"]*"`).ReplaceAllString(s, "")
 		return regexp.MustCompile(`X-CSRF-Token&#34;:&#34;[^&]*`).ReplaceAllString(s, "")
 	}
 	if !strings.Contains(boosted, "<!doctype html>") && !strings.Contains(strings.ToLower(boosted), "<!doctype html>") {

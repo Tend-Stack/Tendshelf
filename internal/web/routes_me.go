@@ -24,6 +24,7 @@ func (s *server) registerMe(mux *http.ServeMux) {
 	mux.HandleFunc("POST /me/sessions/{sid}/signout", s.postSessionSignOut)
 	mux.HandleFunc("POST /me/sessions/signout-others", s.postSignOutOthers)
 	mux.HandleFunc("POST /me/devices/{did}/signout", s.postDeviceSignOut)
+	s.registerNav(mux)
 }
 
 // ---- Profile ----

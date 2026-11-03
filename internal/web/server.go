@@ -287,12 +287,13 @@ func (s *server) pageSheet(w http.ResponseWriter, r *http.Request, status int, t
 func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, title, current string, body, sheet templ.Component, styles ...string) {
 	var buf bytes.Buffer
 	showUsers, usersWaiting := s.usersLink(r)
-	theme, textSize := s.lookFor(r)
+	theme, textSize, navRail := s.lookFor(r)
 	err := components.Layout(components.Page{
 		Title:        title,
 		Current:      current,
 		Theme:        theme,
 		TextSize:     textSize,
+		NavRail:      navRail,
 		CSRF:         s.csrf.TokenFrom(r.Context()),
 		Assets:       s.assets,
 		Sheet:        sheet,

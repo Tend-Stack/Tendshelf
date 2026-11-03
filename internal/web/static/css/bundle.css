@@ -334,6 +334,17 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-side__item[aria-current="page"] { background: var(--raised); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
 .ts-side__item[aria-current="page"] .ts-icon { color: var(--accent); }
 .ts-side__count { margin-left: auto; font-size: 0.8125rem; color: var(--ink-subtle); font-variant-numeric: tabular-nums; }
+/* Sidebar foot: the collapse toggle, at the very bottom, right-aligned in the full sidebar and centred in the rail. */
+.ts-side__foot { margin: auto 0 0; padding-top: var(--space-16); display: flex; justify-content: flex-end; }
+.ts-side__toggle { border-radius: var(--radius-control); color: var(--ink-muted); }
+/* Rail (ui.nav = rail, 1280 px and up): large icons only; the labels stay as accessible names. */
+.ts-side[data-nav="rail"] { align-items: center; padding-inline: var(--space-8); }
+.ts-side[data-nav="rail"] .ts-side__label, .ts-side[data-nav="rail"] .ts-side__count { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ts-side[data-nav="rail"] .ts-side__brand { padding: 0 0 var(--space-24); }
+.ts-side[data-nav="rail"] .ts-side__item { width: 3.5rem; min-height: 3.5rem; justify-content: center; padding: 0; position: relative; }
+.ts-side[data-nav="rail"] .ts-side__item .ts-icon { width: 1.75rem; height: 1.75rem; }
+.ts-side[data-nav="rail"] .ts-side__item[aria-current="page"] { background: var(--accent-soft); }
+.ts-side[data-nav="rail"] .ts-side__foot { justify-content: center; }
 
 /* Avatars and role badges */
 .ts-avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-pill); font-weight: 600; color: #f1e8da; flex-shrink: 0; }
@@ -582,6 +593,10 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 @media (min-width: 1280px) {
   :where(html:not([data-text-size="large"])) {
     .ts-shell { grid-template-columns: var(--size-sidebar) minmax(0, 1fr); }
+    /* The rail is the sidebar at --size-side-rail: the grid column and the sidebar width both read --size-sidebar. */
+    .ts-shell:has(#nav-side[data-nav="rail"]) { --size-sidebar: var(--size-side-rail); }
+    /* The player bar covers the foot of the screen: while it shows, the sidebar (and its toggle) stops above it. */
+    .ts-shell:has(~ .ts-player-slot:not([hidden], .is-suppressed)) .ts-nav-side { padding-bottom: calc(var(--space-24) + var(--size-pbar)); }
     .ts-nav-rail { display: none; }
     .ts-nav-side { display: flex; position: sticky; top: 0; height: 100vh; height: 100dvh; align-self: start; }
     .ts-main { padding-inline: var(--space-32); }

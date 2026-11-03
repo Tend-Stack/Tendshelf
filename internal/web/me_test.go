@@ -111,7 +111,7 @@ func TestSettingsSaveHTMX(t *testing.T) {
 	if c := cookieNamed(rec, themeCookie); c == nil || c.Value != "sepia" || c.Path != "/" || !c.HttpOnly || c.MaxAge <= 0 {
 		t.Fatalf("theme cookie = %+v", c)
 	}
-	want := users.Settings{Theme: "sepia", Speed: 1.25, SkipBackS: 10, SkipForwardS: 60, AutoRewind: true, NextInSeries: false, PlayerTint: true, BigButtons: true, TextSize: "standard"}
+	want := users.Settings{Theme: "sepia", Speed: 1.25, SkipBackS: 10, SkipForwardS: 60, AutoRewind: true, NextInSeries: false, PlayerTint: true, BigButtons: true, TextSize: "standard", Nav: "full"}
 	if got := settingsOf(t, a); got != want {
 		t.Fatalf("stored %+v", got)
 	}
@@ -144,7 +144,7 @@ func TestSettingsSavePlain(t *testing.T) {
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/me/settings" {
 		t.Fatalf("plain save = %d %s", rec.Code, rec.Header().Get("Location"))
 	}
-	want := users.Settings{Theme: "light", Speed: 2, SkipBackS: 30, SkipForwardS: 15, TextSize: "standard"}
+	want := users.Settings{Theme: "light", Speed: 2, SkipBackS: 30, SkipForwardS: 15, TextSize: "standard", Nav: "full"}
 	if got := settingsOf(t, a); got != want {
 		t.Fatalf("stored %+v, want %+v (unchecked switches are false)", got, want)
 	}
