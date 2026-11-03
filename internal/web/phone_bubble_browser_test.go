@@ -131,3 +131,30 @@ func TestPhoneBubbleCaptures(t *testing.T) {
 	tab.WaitFor(`getComputedStyle(document.getElementById("player")).visibility === "visible"`, 5*time.Second)
 	shoot("home-playing")
 }
+
+// TestPhoneBubbleCoverOnEveryPage: the bubble's artwork stays inside its circle on pages that do not
+// load the browse stylesheets (operator, 2026-11-03: on Downloads and Profile the cover showed as a
+// small square on top of the bubble, because only pages-home.css made .ts-cover a block).
+func TestPhoneBubbleCoverOnEveryPage(t *testing.T) {
+	e := playerApp(t)
+	tab := phoneOpen(t, e, 390, 844, false)
+	for _, path := range []string{"/", "/me", "/me/downloads", "/me/settings", "/search"} {
+		tab.Navigate(e.URL + path)
+		tab.WaitFor(`document.readyState === "complete" && window.tsPlayer && window.tsPlayer.state().bookId !== "" && !document.getElementById("player").hidden`, 10*time.Second)
+		var r struct {
+			Display          string
+			Cover, Open, Img [4]float64
+		}
+		tab.Eval(`(() => {
+		  const box = (el) => { const r = el.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };
+		  const cover = document.querySelector(".ts-mini__cover");
+		  return {Display: getComputedStyle(cover).display, Cover: box(cover), Open: box(document.querySelector("[data-ts-open]")), Img: box(cover.querySelector("img"))};
+		})()`, &r)
+		inside := func(in, out [4]float64) bool {
+			return in[0] >= out[0]-0.5 && in[1] >= out[1]-0.5 && in[2] <= out[2]+0.5 && in[3] <= out[3]+0.5
+		}
+		if r.Display != "block" || !inside(r.Cover, r.Open) || !inside(r.Img, r.Cover) || r.Cover[2]-r.Cover[0] < 40 {
+			t.Errorf("%s: cover display %s, cover %v, image %v, bubble button %v; want a block cover filling the bubble with the image inside it", path, r.Display, r.Cover, r.Img, r.Open)
+		}
+	}
+}
