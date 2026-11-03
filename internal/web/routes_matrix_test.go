@@ -633,7 +633,19 @@ func sweepRows() []sweepRow {
 			"finished": {"1"}, "next": {"/"}}), sweepStaff(303, 404), "/"))
 	// Up next (Q1): autoplay with nothing queued is 204 for every role; the form is empty.
 	post = append(post,
-		sweepPost("POST /hx/player/next", sweepStatic("/hx/player/next"), nil, sweepSame(204), ""))
+		sweepPost("POST /hx/player/next", sweepStatic("/hx/player/next"), nil, sweepSame(204), ""),
+		// Up next (Q2): the person's own list is open to everyone signed in (hidden books never show);
+		// the changes need the book: staff 303, a member and a guest without a grant 404. Move and
+		// remove find the book already queued (sweepQueuedPath), a hidden one too for those two.
+		sweepGet("GET /queue", sweepStatic("/queue"), sweepSame(200)),
+		sweepGet("GET /hx/queue", sweepStatic("/hx/queue"), sweepSame(200)),
+		sweepPost("POST /queue", sweepStatic("/queue"), func(e *sweepEnv, _ int) url.Values {
+			return url.Values{"book_id": {e.book.ID}, "where": {"end"}}
+		}, sweepStaff(http.StatusSeeOther, http.StatusNotFound), ""),
+		sweepPost("POST /queue/{bookID}/move", sweepQueuedPath("/move"),
+			sweepFormOf(url.Values{"dir": {"down"}}), sweepStaff(http.StatusSeeOther, http.StatusNotFound), ""),
+		sweepPost("POST /queue/{bookID}/delete", sweepQueuedPath("/delete"),
+			nil, sweepStaff(http.StatusSeeOther, http.StatusNotFound), ""))
 	rows = append(rows, post...)
 	rows = append(rows, usersSweepRows()...)
 	rows = append(rows, invitesSweepRows()...)
@@ -900,5 +912,16 @@ func TestShelvesEmptyShelfPlaceholder(t *testing.T) {
 		if !strings.Contains(rule, want) {
 			t.Errorf("the placeholder rule lacks %q", want)
 		}
+	}
+}
+
+// sweepQueuedPath is /queue/{book}{suffix} once the role's queue holds the book. The member and the
+// guest cannot see it, so their row proves a hidden queued book is 404, not "not queued".
+func sweepQueuedPath(suffix string) func(*sweepEnv, int) string {
+	return func(e *sweepEnv, role int) string {
+		if _, err := e.a.lib.QueueAdd(e.t.Context(), e.uid[role], e.book.ID, false); err != nil {
+			e.t.Fatal(err)
+		}
+		return "/queue/" + e.book.ID + suffix
 	}
 }

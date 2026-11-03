@@ -390,3 +390,31 @@ func TestHomeHeroAndRows(t *testing.T) {
 		}
 	}
 }
+
+// Up next (Q2): the play button is split in two sections only where it plays; the second section is
+// the queue menu, kept open across the region's own redraw (hx-preserve) and never a second play control.
+func TestPlayButtonSplit(t *testing.T) {
+	e := playBtnEnv(t)
+	for name, body := range map[string]string{
+		"page":     bookMain(playBtnGet(e, "/books/"+e.book.ID)),
+		"fragment": playBtnGet(e, "/hx/books/"+e.book.ID+"/play"),
+	} {
+		for _, want := range []string{
+			`<div class="ts-split" role="group">`, `<details id="book-queue-menu" class="ts-split__more" data-ts-chipmenu hx-preserve>`,
+			`aria-label="Queue options"`, `action="/queue"`, `hx-post="/queue"`, `hx-target="#book-queue-menu"`,
+			`name="where" value="next"`, `name="where" value="end"`, `>Play next</button>`, `>Add to queue</button>`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s lacks %s", name, want)
+			}
+		}
+		if n := strings.Count(body, "data-ts-play="); n != 1 {
+			t.Errorf("%s has %d play controls, want 1", name, n)
+		}
+		for _, bad := range []string{"style=", "hx-boost=\"false\" data-ts-queue", "hx-on"} {
+			if strings.Contains(body, bad) {
+				t.Errorf("%s has %s", name, bad)
+			}
+		}
+	}
+}
