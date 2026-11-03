@@ -32,7 +32,7 @@ const (
 
 	detailsColField  = "Field"
 	detailsColNow    = "Now"
-	detailsColOnline = "Found online"
+	detailsColOnline = "Online"
 	detailsColUse    = "Use online value"
 	detailsCaption   = "Compare current details with details found online"
 	detailsSame      = "Same"
