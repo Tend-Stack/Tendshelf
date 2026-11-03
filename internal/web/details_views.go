@@ -1,0 +1,361 @@
+package web
+
+import (
+	"fmt"
+	"net/url"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Tend-Stack/tendshelf/internal/jobs"
+	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/metadata"
+	"github.com/Tend-Stack/tendshelf/internal/metadata/online"
+	"github.com/Tend-Stack/tendshelf/internal/web/pages"
+	"net/http"
+)
+
+// fieldCover is the compare table's extra row: not a metadata field, so it is not in
+// metadata.ApplyFields, but a ticked "cover" starts a cover_adopt job.
+const fieldCover = "cover"
+
+// compareDescriptionRunes is how much of a description the table shows before "Show all".
+const compareDescriptionRunes = 200
+
+// compareGoodScore is the score from which a match is "good": its values are ticked by default.
+const compareGoodScore = 0.8
+
+// compareMaxCandidates is how many matches the list shows.
+const compareMaxCandidates = 5
+
+// seriesText writes a series line: "Harbour Lights · Book 2".
+func seriesText(name, seq string) string {
+	if l := bookSeqLabel(seq); l != "" {
+		return name + " · " + l
+	}
+	return name
+}
+
+func personNames(l []library.PersonRef) string {
+	names := make([]string, 0, len(l))
+	for _, p := range l {
+		names = append(names, p.Name)
+	}
+	return strings.Join(names, ", ")
+}
+
+func abridgedText(known, abridged bool) string {
+	switch {
+	case !known:
+		return ""
+	case abridged:
+		return detailsAbridged
+	}
+	return detailsUnabridged
+}
+
+// compareNow is the current text of each applicable field of the book.
+func compareNow(cur library.BookDetail) map[string]string {
+	b := cur.Book
+	series := make([]string, 0, len(cur.Series))
+	for _, s := range cur.Series {
+		series = append(series, seriesText(s.Name, s.Sequence))
+	}
+	year := ""
+	if b.PublishedYear > 0 {
+		year = strconv.Itoa(b.PublishedYear)
+	}
+	return map[string]string{
+		metadata.FieldTitle:         b.Title,
+		metadata.FieldSubtitle:      b.Subtitle,
+		metadata.FieldAuthors:       personNames(cur.Card.Authors),
+		metadata.FieldNarrators:     personNames(cur.Card.Narrators),
+		metadata.FieldSeries:        strings.Join(series, ", "),
+		metadata.FieldPublishedYear: year,
+		metadata.FieldPublisher:     b.Publisher,
+		metadata.FieldDescription:   b.Description,
+		metadata.FieldLanguage:      b.Language,
+		metadata.FieldGenres:        strings.Join(cur.Genres, ", "),
+		metadata.FieldISBN:          b.ISBN,
+		metadata.FieldASIN:          b.ASIN,
+		metadata.FieldAbridged:      abridgedText(b.Abridged, b.Abridged),
+	}
+}
+
+// compareOnline is the text of each applicable field of a match.
+func compareOnline(d metadata.Details) map[string]string {
+	series := make([]string, 0, len(d.Series))
+	for _, s := range d.Series {
+		series = append(series, seriesText(s.Name, s.Sequence))
+	}
+	year := ""
+	if d.Year > 0 {
+		year = strconv.Itoa(d.Year)
+	}
+	ab := ""
+	if d.Abridged != nil {
+		ab = abridgedText(true, *d.Abridged)
+	}
+	return map[string]string{
+		metadata.FieldTitle:         d.Title,
+		metadata.FieldSubtitle:      d.Subtitle,
+		metadata.FieldAuthors:       strings.Join(d.Authors, ", "),
+		metadata.FieldNarrators:     strings.Join(d.Narrators, ", "),
+		metadata.FieldSeries:        strings.Join(series, ", "),
+		metadata.FieldPublishedYear: year,
+		metadata.FieldPublisher:     d.Publisher,
+		metadata.FieldDescription:   d.Description,
+		metadata.FieldLanguage:      d.Language,
+		metadata.FieldGenres:        strings.Join(d.Genres, ", "),
+		metadata.FieldISBN:          d.ISBN,
+		metadata.FieldASIN:          d.ASIN,
+		metadata.FieldAbridged:      ab,
+	}
+}
+
+// compareFields are the rows of the table, in order, with their labels.
+var compareFields = []struct{ field, label string }{
+	{metadata.FieldTitle, detailsLabelTitle},
+	{metadata.FieldSubtitle, detailsLabelSubtitle},
+	{metadata.FieldAuthors, detailsLabelAuthors},
+	{metadata.FieldNarrators, detailsLabelNarrators},
+	{metadata.FieldSeries, detailsLabelSeries},
+	{metadata.FieldPublishedYear, detailsLabelYear},
+	{metadata.FieldPublisher, detailsLabelPublisher},
+	{metadata.FieldDescription, detailsLabelDescription},
+	{metadata.FieldLanguage, detailsLabelLanguage},
+	{metadata.FieldGenres, detailsLabelGenres},
+	{metadata.FieldISBN, detailsLabelISBN},
+	{metadata.FieldASIN, detailsLabelASIN},
+	{metadata.FieldAbridged, detailsLabelAbridged},
+}
+
+func shortDate(ms int64) string {
+	if ms <= 0 {
+		return ""
+	}
+	return time.UnixMilli(ms).UTC().Format("2 Jan")
+}
+
+// nowBadge says where the current value came from.
+func nowBadge(info metadata.SourceInfo, has bool) (badge string, you bool) {
+	switch {
+	case !has:
+		return detailsFromFile, false
+	case info.Source == metadata.SourceUser:
+		return detailsEdited, true
+	case info.Source == metadata.SourceOnline:
+		return joinNonEmpty(" · ", "Online", shortDate(info.ObservedAt)), false
+	}
+	return detailsFromFile, false
+}
+
+// cut shortens a long text to its first runes; more is the whole text, or "" when nothing was cut.
+func cut(s string) (short, more string) {
+	r := []rune(s)
+	if len(r) <= compareDescriptionRunes {
+		return s, ""
+	}
+	return string(r[:compareDescriptionRunes]) + "…", s
+}
+
+// compareRows builds the table: one row per field either side has a value for, then the cover row.
+// A row is ticked by default when the online value fills a gap (or replaces a folder-name guess) on
+// a good match and the person has not edited the field. After a tick or untick (picked) the
+// request's use list decides instead. Rows with the same value or nothing online cannot be ticked.
+// coverNow and coverOnline are the picture addresses; coverOnline is "" when no picture was fetched.
+func compareRows(cur library.BookDetail, src map[string]metadata.SourceInfo, cand metadata.Candidate, fetchedAt int64,
+	use map[string]bool, picked bool, coverNow, coverOnline string) []pages.CompareRow {
+	now, found := compareNow(cur), compareOnline(cand.Details)
+	good := cand.Exact || cand.Score >= compareGoodScore
+	var rows []pages.CompareRow
+	for _, f := range compareFields {
+		n, o := now[f.field], found[f.field]
+		if n == "" && o == "" {
+			continue
+		}
+		info, has := src[f.field]
+		if n == "" {
+			has = false
+		}
+		row := pages.CompareRow{Field: f.field, Label: f.label}
+		row.Now, row.NowMore = cut(n)
+		row.Online, row.OnlineMore = cut(o)
+		if n != "" {
+			row.NowBadge, row.NowYou = nowBadge(info, has)
+		}
+		if o != "" {
+			row.OnlineBadge = joinNonEmpty(" · ", "Online", shortDate(fetchedAt))
+		}
+		row.Diff = n != o && o != ""
+		row.Disabled = !row.Diff
+		if !row.Disabled {
+			if picked {
+				row.Ticked = use[f.field]
+			} else {
+				row.Ticked = good && info.Source != metadata.SourceUser && (n == "" || info.Source == metadata.SourceFolder)
+			}
+		}
+		rows = append(rows, row)
+	}
+	if coverOnline != "" {
+		row := pages.CompareRow{Field: fieldCover, Label: detailsLabelCover, OnlineImg: coverOnline, Diff: true}
+		if cur.Card.Cover != nil {
+			row.NowImg = coverNow
+		}
+		if picked {
+			row.Ticked = use[fieldCover]
+		} else {
+			row.Ticked = cur.Card.Cover == nil
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+// tickedCount is how many rows are ticked: the number the main button says.
+func tickedCount(rows []pages.CompareRow) int {
+	n := 0
+	for _, r := range rows {
+		if r.Ticked && !r.Disabled {
+			n++
+		}
+	}
+	return n
+}
+
+// compareHref is the canonical address of a compare sheet.
+func compareHref(bookID, jobID string, c int, hasC bool) string {
+	href := "/books/" + bookID + "/details?sheet=compare&job=" + url.QueryEscape(jobID)
+	if hasC {
+		href += "&c=" + strconv.Itoa(c)
+	}
+	return href
+}
+
+func lookupHref(bookID string) string { return "/books/" + bookID + "/details?sheet=lookup" }
+
+func detailsTabHref(bookID string) string { return "/books/" + bookID + "/details" }
+
+// candidateMeta is the second line of a match in the list: provider label and year.
+func candidateMeta(c metadata.Candidate) string {
+	by := ""
+	if len(c.Details.Authors) > 0 {
+		by = strings.Join(c.Details.Authors, ", ")
+	}
+	year := ""
+	if c.Details.Year > 0 {
+		year = strconv.Itoa(c.Details.Year)
+	}
+	return joinNonEmpty(" · ", by, c.ProviderLabel, year)
+}
+
+// lookupFailure is the plain-words reason a finished lookup found nothing, or "" when it simply
+// found no match: every site that was asked failed.
+func lookupFailure(res metadata.LookupResult) string {
+	if len(res.Errors) == 0 || len(res.Errors) < len(res.Searched) {
+		return ""
+	}
+	sites := make([]string, 0, len(res.Errors))
+	for p := range res.Errors {
+		sites = append(sites, p)
+	}
+	slices.Sort(sites)
+	return (&online.Error{Code: res.Errors[sites[0]], Site: sites[0]}).Text()
+}
+
+// compareSheetView builds the compare sheet for a lookup job. The selected candidate is c (hasC);
+// ok is false when c is out of range, which the caller answers as 404. The "now" side is read
+// fresh, so the table always compares with what the book holds at this moment.
+func (s *server) compareSheetView(r *http.Request, cur library.BookDetail, j jobs.Job, res metadata.LookupResult, c int, hasC bool, use map[string]bool, picked bool) (pages.CompareSheetView, bool, error) {
+	bookID := cur.Book.ID
+	v := pages.CompareSheetView{
+		CSRF: s.csrf.TokenFrom(r.Context()), Title: detailsSheetTitle, CloseLabel: detailsSheetClose,
+		CloseHref: detailsTabHref(bookID), Styles: s.sheetStyles(pages.DetailsStyles...),
+		Waiting: detailsWaiting, CheckAgain: detailsCheckAgain, TryAgain: detailsTryAgain,
+		SheetHref: compareHref(bookID, j.ID, 0, false), TryAgainHref: lookupHref(bookID),
+		PollHref: "/hx/jobs/" + j.ID + "?book=" + bookID, ExactLabel: detailsExact,
+		ColField: detailsColField, ColNow: detailsColNow, ColOnline: detailsColOnline, ColUse: detailsColUse,
+		Caption: detailsCaption, Same: detailsSame, ShowAll: detailsShowAll, NoValue: detailsNoValue,
+		KeepLabel: detailsKeep, PickOther: detailsPickOther, ApplyAction: "/books/" + bookID + "/match/apply",
+		JobID: j.ID,
+	}
+	switch j.State {
+	case jobs.StateDone:
+	case jobs.StateFailed, jobs.StateCancelled:
+		v.State, v.Message = "failed", j.ErrorText
+		if v.Message == "" {
+			v.Message = detailsFailed
+		}
+		return v, true, nil
+	default:
+		v.State = "wait"
+		return v, true, nil
+	}
+	cands := res.Candidates
+	if len(cands) > compareMaxCandidates {
+		cands = cands[:compareMaxCandidates]
+	}
+	if len(cands) == 0 {
+		v.State, v.Message = "none", detailsNone
+		if m := lookupFailure(res); m != "" {
+			v.State, v.Message = "failed", m
+		}
+		return v, true, nil
+	}
+	if !hasC {
+		v.State, v.Intro = "list", detailsListIntro
+		for i, cd := range cands {
+			v.Candidates = append(v.Candidates, pages.CompareCandidate{
+				Href: compareHref(bookID, j.ID, i, true), Title: cd.Details.Title, Meta: candidateMeta(cd), Exact: cd.Exact})
+		}
+		return v, true, nil
+	}
+	if c < 0 || c >= len(cands) {
+		return v, false, nil
+	}
+	cd := cands[c]
+	src, err := s.details.Sources(r.Context(), bookID)
+	if err != nil {
+		return v, false, err
+	}
+	coverNow := ""
+	if cur.Card.Cover != nil {
+		coverNow = coverURL(bookID, cur.Card.Cover.SHA, 128)
+	}
+	coverOnline := ""
+	if cd.CoverCached {
+		coverOnline = fmt.Sprintf("/books/%s/match/%s/cover/%d", bookID, j.ID, c)
+	}
+	v.State, v.C = "table", strconv.Itoa(c)
+	v.SheetHref = compareHref(bookID, j.ID, c, true)
+	v.Rows = compareRows(cur, src, cd, res.FetchedAt, use, picked, coverNow, coverOnline)
+	v.UseCount = tickedCount(v.Rows)
+	v.UseText = detailsUseText(v.UseCount)
+	lead := detailsFound
+	if !cd.Exact && cd.Score < compareGoodScore {
+		lead = detailsMaybe
+	}
+	v.Intro = lead + joinNonEmpty(", ", cd.Details.Title, cd.Details.Publisher, yearText(cd.Details.Year)) + "." + detailsTick
+	if len(cands) > 1 {
+		v.PickHref = compareHref(bookID, j.ID, 0, false)
+	}
+	return v, true, nil
+}
+
+func yearText(y int) string {
+	if y <= 0 {
+		return ""
+	}
+	return strconv.Itoa(y)
+}
+
+// useSet reads the repeated use fields of a query.
+func useSet(vals []string) map[string]bool {
+	m := make(map[string]bool, len(vals))
+	for _, v := range vals {
+		m[v] = true
+	}
+	return m
+}
