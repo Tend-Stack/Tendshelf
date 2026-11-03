@@ -260,6 +260,16 @@ func TestOfflineSyncsAfterReconnect(t *testing.T) {
 	tab.WaitFor(`!localStorage.getItem("ts.pending") || localStorage.getItem("ts.pending") === "{}"`, 15*time.Second)
 	tab.WaitFor(`document.getElementById("toasts").textContent.includes("Back online")`, 5*time.Second)
 
+	// The notice leaves by itself (it carries a lifetime) and a tap dismisses it at once (operator,
+	// 2026-11-03: the "ready offline" notice could not be dismissed).
+	var life string
+	tab.Eval(`[...document.querySelectorAll("#toasts .ts-toast")].find((t) => t.textContent.includes("Back online")).dataset.tsMs || ""`, &life)
+	if life == "" {
+		t.Error(`the "Back online" notice has no lifetime (data-ts-ms)`)
+	}
+	tab.Eval(`[...document.querySelectorAll("#toasts .ts-toast")].find((t) => t.textContent.includes("Back online")).click()`, nil)
+	tab.WaitFor(`!document.getElementById("toasts").textContent.includes("Back online")`, 3*time.Second)
+
 	var saved int64
 	row := e.a.st.Writer().QueryRowContext(context.Background(), `SELECT position_ms FROM progress WHERE book_id=?`, e.book.ID)
 	if err := row.Scan(&saved); err != nil {

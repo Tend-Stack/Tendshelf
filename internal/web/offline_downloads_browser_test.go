@@ -117,6 +117,15 @@ func TestOfflineDownloadFromBookPage(t *testing.T) {
 	if label == "" || !tabHidden(t, tab, "[data-ts-download]") {
 		t.Errorf("book page: label %q, download button hidden %v", label, tabHidden(t, tab, "[data-ts-download]"))
 	}
+	// The "ready offline" notice has a lifetime and a tap dismisses it (operator, 2026-11-03).
+	tab.WaitFor(`document.getElementById("toasts").textContent.includes("ready offline")`, 10*time.Second)
+	var life string
+	tab.Eval(`[...document.querySelectorAll("#toasts .ts-toast")].find((t) => t.textContent.includes("ready offline")).dataset.tsMs || ""`, &life)
+	if life == "" {
+		t.Error(`the "ready offline" notice has no lifetime (data-ts-ms)`)
+	}
+	tab.Eval(`[...document.querySelectorAll("#toasts .ts-toast")].find((t) => t.textContent.includes("ready offline")).click()`, nil)
+	tab.WaitFor(`!document.getElementById("toasts").textContent.includes("ready offline")`, 3*time.Second)
 
 	e.downloadsPage(t, tab)
 	tab.WaitFor(`document.querySelector("[data-ts-ready-list] li")`, 10*time.Second)

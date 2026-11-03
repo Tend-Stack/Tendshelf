@@ -109,7 +109,14 @@ async function say(kind, key, record) {
       return;
     }
   }
-  if (window.tsPlayer) window.tsPlayer.toast(kind, words(key, { title: record.title }));
+  if (!window.tsPlayer) return;
+  const el = window.tsPlayer.toast(kind, words(key, { title: record.title }));
+  // It leaves by itself (data-ts-ms, timed by player.js) and a tap dismisses it (operator, 2026-11-03).
+  el.dataset.tsMs = kind === "err" ? "8000" : "4000";
+  el.addEventListener("click", () => {
+    el.classList.add("is-leaving");
+    setTimeout(() => el.remove(), 800); // no exit animation under reduced motion
+  });
 }
 
 // ---- The person's cache ----
