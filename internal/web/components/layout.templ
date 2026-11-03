@@ -127,7 +127,14 @@ templ Head(p Page, extraCSS ...string) {
 	<head>
 		<meta charset="utf-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-		<meta name="color-scheme" content="dark light"/>
+		<meta name="color-scheme" content={ colorSchemeMeta(p.Theme) }/>
+		if p.Theme == "" {
+			<meta name="theme-color" media="(prefers-color-scheme: light)" content={ themeColor("light") }/>
+			<meta name="theme-color" media="(prefers-color-scheme: dark)" content={ themeColor("dark") }/>
+		} else {
+			<meta name="theme-color" content={ themeColor(p.Theme) }/>
+		}
+		<meta name="format-detection" content="telephone=no, date=no, email=no, address=no"/>
 		<meta name="htmx-config" content={ htmxConfig }/>
 		<title>{ p.Title } · Tendshelf</title>
 		<link rel="preload" href={ p.Assets.URL("fonts/Fraunces-Variable.woff2") } as="font" type="font/woff2" crossorigin/>

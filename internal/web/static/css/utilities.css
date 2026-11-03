@@ -1,17 +1,37 @@
 /* Tendshelf utilities (P0c): layout primitives, sizes and native feel. Tokens only, ts- prefix. */
 
 /* Native feel */
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; scrollbar-gutter: stable; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; scrollbar-gutter: stable;
+  /* No bounce and no pull-to-refresh: a reload would stop the book that is playing. Inner scrollers contain their own.
+     Android Chrome also loses its stretch glow at the page edge (operator-approved trade-off, 2026-11-03). */
+  overscroll-behavior-y: none;
+  /* Fixed bars cover the top and bottom edge: a focused control scrolls clear of them (WCAG 2.4.11). */
+  scroll-padding-top: env(safe-area-inset-top);
+  scroll-padding-bottom: calc(var(--size-tab-bar) + var(--size-mini-player) + var(--space-16) + env(safe-area-inset-bottom)); }
+/* Safari honours overscroll-behavior only on boxes that can scroll: while a modal dialog is open the page behind is locked. */
+html:has(dialog:modal) { overflow: hidden; }
 /* Larger text (P3-11): a percentage, so it stacks on the browser's own text size and every rem grows with it. */
 html[data-text-size="large"] { font-size: 125%; }
-a, button, [role="button"], input, label { touch-action: manipulation; }
+a, button, [role="button"], input, select, summary, label { touch-action: manipulation; }
 .ts-sheet, .ts-dialog { overscroll-behavior: contain; }
 .ts-sheet__grab, .ts-sheet__head { touch-action: none; }
 .ts-player__chapters { overscroll-behavior: contain; }
-/* A sheet or the full player is open: no pull-to-refresh and no scroll chaining to the page behind. */
-html:has(.ts-sheet-layer, dialog.ts-player[open]) { overscroll-behavior-y: none; }
 .ts-scrub { touch-action: pan-y; }
-.ts-tabbar__item, .ts-rail__item, .ts-side__item { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* The interface is rigid, content is not: chrome cannot be selected, dragged or long-press-called-out. Safari still needs the prefix. */
+.ts-nav-tabbar, .ts-nav-rail, .ts-nav-side, .ts-player-slot, .ts-player__body, .ts-btn, .ts-iconbtn, .ts-chip, .ts-seg, .ts-tabs, .ts-mode, .ts-option,
+.ts-chapter, .ts-card, .ts-row, .ts-selmenu, .ts-sheet__head, .ts-switch, .ts-check, label, summary, img {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; }
+/* Fields and readable content stay selectable (on iOS an inherited none can make a field uneditable). */
+input, textarea, select, [contenteditable], .ts-note__body, .ts-mark__body { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+/* Safe areas: notch, status bar, home bar, and the side notch in landscape. */
+.ts-shell { padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
+.ts-main { padding-top: calc(var(--space-24) + env(safe-area-inset-top)); }
+.ts-nav-tabbar { padding-inline: calc(var(--space-4) + env(safe-area-inset-left)) calc(var(--space-4) + env(safe-area-inset-right)); }
+.ts-player-slot, .ts-toasts, .ts-sleepcard { margin-inline: env(safe-area-inset-left) env(safe-area-inset-right); }
+.ts-nav-rail { padding-block: calc(var(--space-16) + env(safe-area-inset-top)) calc(var(--space-16) + env(safe-area-inset-bottom)); }
+.ts-nav-side { padding-top: calc(var(--space-24) + env(safe-area-inset-top)); }
+.ts-sheet { padding-inline: max(var(--space-16), env(safe-area-inset-left)) max(var(--space-16), env(safe-area-inset-right));
+  padding-bottom: calc(var(--space-24) + env(safe-area-inset-bottom)); }
 /* #sheet sits outside #main. Stacking: player slot 9, tab bar 10, toasts 20, sheet layer 25, skip link 30. */
 .ts-sheet-region:empty { display: none; }
 .ts-sheet-layer { position: fixed; inset: 0; z-index: 25; }

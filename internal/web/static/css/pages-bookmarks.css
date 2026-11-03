@@ -9,7 +9,7 @@
 .ts-bookmarks__toast { margin: 0; align-self: flex-start; max-width: 100%; }
 .ts-bookmarks__toast a { color: var(--accent); display: inline-flex; align-items: center; min-height: var(--size-tap); text-underline-offset: 0.1875rem; }
 
-.ts-bookmarks__chips { align-self: flex-start; max-width: 100%; overflow-x: auto; }
+.ts-bookmarks__chips { align-self: flex-start; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
 .ts-bookmarks__chips .ts-seg__item { text-decoration: none; white-space: nowrap; }
 .ts-bookmarks__chips .ts-seg__item[aria-current="page"] { background: var(--raised); color: var(--ink); font-weight: 600; }
 .ts-bookmarks__chips .ts-icon { width: 1.125rem; height: 1.125rem; }

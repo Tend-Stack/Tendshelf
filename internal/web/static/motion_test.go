@@ -102,7 +102,8 @@ func TestCSSBudget(t *testing.T) {
 	}
 	core := map[string]bool{"css/tokens.css": true, "css/fonts.css": true, "css/bundle.css": true, "css/utilities.css": true, "css/motion.css": true}
 	single := map[string]cssBudget{
-		"css/utilities.css": {2 * 1024, 24 * 1024},
+		// Native feel (decision 0011): 2.5 KB, approved by the operator on 2026-11-03.
+		"css/utilities.css": {2*1024 + 512, 24 * 1024},
 		"css/motion.css":    {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
 		"css/player.css": {4 * 1024, 24 * 1024},
@@ -145,7 +146,8 @@ func TestCSSBudget(t *testing.T) {
 	}
 	// 18.5 KB: the operator approved the raise on 2026-11-03 for the 2560 px app cap and the range-syntax
 	// breakpoints (18,563 bytes at the time).
-	const coreBudget = 18*1024 + 512
+	// 19.5 KB: native feel (decision 0011), approved by the operator on 2026-11-03.
+	const coreBudget = 19*1024 + 512
 	if coreGzip > coreBudget {
 		t.Errorf("core CSS %d gzip bytes, budget %d (raw %d)", coreGzip, coreBudget, coreRaw)
 	}

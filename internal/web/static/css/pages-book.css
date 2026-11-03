@@ -9,7 +9,7 @@
 
 /* Band: the tint fades from the top; --ts-band-max is the theme's strongest alpha, --ts-band-k the
    verified fraction of it. */
-.ts-book__band { position: absolute; z-index: -1; top: calc(var(--space-24) * -1); inset-inline: calc(var(--ts-book-pad) * -1);
+.ts-book__band { position: absolute; z-index: -1; top: calc((var(--space-24) + env(safe-area-inset-top)) * -1); inset-inline: calc(var(--ts-book-pad) * -1);
   height: 35rem; background: none; border: 0; pointer-events: none; --ts-band-max: 0%; --ts-band-k: 0; }
 .ts-book__band.is-tinted { background: linear-gradient(180deg,
   color-mix(in srgb, var(--cover-tint) calc(var(--ts-band-max) * var(--ts-band-k)), transparent) 0,
