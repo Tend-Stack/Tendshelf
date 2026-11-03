@@ -199,8 +199,10 @@ templ AdminUsers(v UsersView) {
 			}
 		</nav>
 		@UsersList(v)
-		@InvitesList(v)
-		@UsersDevicesList(v)
+		<div class="ts-groups ts-users__groups">
+			@InvitesList(v)
+			@UsersDevicesList(v)
+		</div>
 		<p class="caption ts-users__note">Listening time is shown so you can see the shelf is being used. Nobody, including you, can see what someone else is listening to unless they share it.</p>
 	</div>
 }
@@ -239,7 +241,10 @@ templ InvitesList(v UsersView) {
 	if len(v.Invites) == 0 && v.NewLink == nil {
 		<div id="users-invites"></div>
 	} else {
-		<section id="users-invites" class="ts-invite__card" aria-label={ v.TabInvites }>
+		<section id="users-invites" class="ts-group ts-group--pad ts-invite__card" aria-label={ v.TabInvites }>
+			if v.TabInvites != "" {
+				<h2 class="section">{ v.TabInvites }</h2>
+			}
 			if v.NewLink != nil {
 				@InviteLinkPanel(*v.NewLink)
 			}
@@ -273,7 +278,8 @@ templ UsersDevicesList(v UsersView) {
 	if len(v.DeviceGroups) == 0 {
 		<div id="users-devices"></div>
 	} else {
-		<section id="users-devices" class="ts-invite__card ts-users__devices" aria-label={ v.TabDevices }>
+		<section id="users-devices" class="ts-group ts-group--pad ts-invite__card ts-users__devices" aria-label={ v.TabDevices }>
+			<h2 class="section">{ v.TabDevices }</h2>
 			for _, g := range v.DeviceGroups {
 				<h3 class="ts-overline ts-users__devname">{ g.Name }</h3>
 				if g.Note != "" {

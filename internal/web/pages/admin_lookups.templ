@@ -23,7 +23,7 @@ type AdminLookupsPageView struct {
 
 // AdminLookups lists the books an automatic lookup could not settle.
 templ AdminLookups(v AdminLookupsPageView) {
-	<div class="ts-admin ts-admin--narrow">
+	<div class="ts-admin ts-admin--list">
 		<a class="ts-admin__back" href="/admin/libraries">
 			@components.Icon("folder", false)
 			{ v.BackLabel }
@@ -33,7 +33,7 @@ templ AdminLookups(v AdminLookupsPageView) {
 		if len(v.Rows) == 0 {
 			<p class="body-lg ts-admin__lead">{ v.Empty }</p>
 		} else {
-			<ul class="ts-needs">
+			<ul class="ts-group ts-group--pad ts-needs">
 				for _, r := range v.Rows {
 					<li class="ts-needs__row">
 						<div class="ts-needs__text">

@@ -83,7 +83,8 @@ templ AdminLibraries(v AdminLibrariesView) {
 				{ v.Banner }
 			</p>
 		}
-		<section class="ts-admin__summary" aria-label="Scanning">
+		<div class="ts-groups ts-admin__groups">
+		<section class="ts-group ts-group--pad ts-admin__summary" aria-label="Scanning">
 			<p class="label ts-admin__ready">
 				@components.Icon("check", false)
 				{ v.Ready }
@@ -98,7 +99,7 @@ templ AdminLibraries(v AdminLibrariesView) {
 			</div>
 		</section>
 		if len(v.Problems) > 0 {
-			<section class="ts-admin__section" aria-labelledby="problems-h">
+			<section class="ts-group ts-group--pad ts-admin__section" aria-labelledby="problems-h">
 				<h2 id="problems-h" class="section">{ v.ProblemsTitle }</h2>
 				for _, c := range v.Problems {
 					<article class="ts-problem">
@@ -120,7 +121,7 @@ templ AdminLibraries(v AdminLibrariesView) {
 				}
 			</section>
 		}
-		<section class="ts-admin__section" aria-labelledby="folders-h">
+		<section class="ts-group ts-group--pad ts-group--wide ts-admin__section" aria-labelledby="folders-h">
 			<h2 id="folders-h" class="section">Folders</h2>
 			<ul class="ts-folders">
 				for _, f := range v.Folders {
@@ -149,7 +150,7 @@ templ AdminLibraries(v AdminLibrariesView) {
 			</ul>
 		</section>
 		if v.Online != nil || v.Lookups != nil {
-			<section class="ts-admin__section ts-admin__online" aria-labelledby="online-h">
+			<section class="ts-group ts-group--pad ts-group--wide ts-admin__section ts-admin__online" aria-labelledby="online-h">
 				<h2 id="online-h" class="section">{ v.OnlineTitle }</h2>
 				<p class="caption">{ v.OnlineBody }</p>
 				if v.Online != nil {
@@ -160,6 +161,7 @@ templ AdminLibraries(v AdminLibrariesView) {
 				}
 			</section>
 		}
+		</div>
 	</div>
 }
 

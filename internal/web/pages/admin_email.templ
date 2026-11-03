@@ -87,7 +87,8 @@ templ AdminEmail(v AdminEmailView) {
 			<p class="ts-banner ts-admin__banner" role="status">{ v.DropNotice }</p>
 		}
 		<p class="caption ts-email__status" role="status">{ v.StatusLine }</p>
-		<form class="ts-email__fill" method="get" action="/admin/email" aria-label="Pick your email provider">
+		<div class="ts-groups ts-email__groups">
+		<form class="ts-group ts-group--pad ts-email__fill" method="get" action="/admin/email" aria-label="Pick your email provider">
 			<div class="ts-field">
 				<label class="ts-field__label" for="email-provider">Your email provider</label>
 				<select id="email-provider" class="ts-select" name="preset">
@@ -109,7 +110,7 @@ templ AdminEmail(v AdminEmailView) {
 				<p class="caption ts-email__hint">{ v.ProviderHint }</p>
 			}
 		</form>
-		<form class="ts-email__form" method="post" action="/admin/email" aria-label="Email settings">
+		<form class="ts-group ts-group--pad ts-email__form" method="post" action="/admin/email" aria-label="Email settings">
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			<div class="ts-field">
 				<label class="ts-field__label" for="email-host">Server</label>
@@ -158,7 +159,7 @@ templ AdminEmail(v AdminEmailView) {
 			<button type="submit" class="ts-btn ts-btn--primary">Save</button>
 		</form>
 		if v.Ready {
-			<section class="ts-email__testbox" aria-labelledby="email-test-h">
+			<section class="ts-group ts-group--pad ts-email__testbox" aria-labelledby="email-test-h">
 				<h2 id="email-test-h" class="section">Send a test email</h2>
 				<p class="caption">{ v.TestHint }</p>
 				<form method="post" action="/admin/email/test" aria-label="Send a test email">
@@ -174,6 +175,9 @@ templ AdminEmail(v AdminEmailView) {
 					@EmailTestPanel(*v.Test)
 				}
 			</section>
+			}
+		</div>
+		if v.Ready {
 			<details class="ts-email__off">
 				<summary>{ v.OffLabel }</summary>
 				<p class="caption">{ v.OffHint }</p>

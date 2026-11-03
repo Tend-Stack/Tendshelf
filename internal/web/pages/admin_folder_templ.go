@@ -58,7 +58,7 @@ func AdminAddFolder(v AdminAddFolderView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " Libraries &amp; scanning</a><h1 class=\"title-1 ts-admin__title\">Add a folder</h1><form class=\"ts-form\" method=\"post\" action=\"/admin/libraries/folders\"><input type=\"hidden\" name=\"_csrf\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " Libraries &amp; scanning</a><h1 class=\"title-1 ts-admin__title\">Add a folder</h1><form class=\"ts-group ts-group--pad ts-form\" method=\"post\" action=\"/admin/libraries/folders\"><input type=\"hidden\" name=\"_csrf\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

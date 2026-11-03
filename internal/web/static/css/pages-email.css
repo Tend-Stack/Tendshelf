@@ -21,12 +21,11 @@ a.ts-share__tab:focus-visible { outline: 2px solid transparent; box-shadow: var(
 .ts-share__mail--failed { color: var(--danger); font-weight: 600; }
 
 /* Email settings */
-.ts-email { max-width: 40rem; }
+.ts-email .body, .ts-email__status { max-width: 40rem; }
+.ts-email__groups { margin-top: var(--space-8); }
 .ts-email .body, .ts-email__status, .ts-email__hint { margin: 0; }
 .ts-email__status, .ts-email__hint { color: var(--ink-muted); }
 .ts-email__fill, .ts-email__form, .ts-email__testbox form { display: flex; flex-direction: column; gap: var(--space-16); }
-.ts-email__fill, .ts-email__form, .ts-email__testbox { padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
-.ts-email__testbox { display: flex; flex-direction: column; gap: var(--space-12); }
 .ts-email__testbox h2, .ts-email__testbox p { margin: 0; }
 .ts-email .ts-select, .ts-email .ts-input { max-width: none; }
 .ts-email .ts-btn { align-self: flex-start; }
@@ -36,11 +35,21 @@ a.ts-share__tab:focus-visible { outline: 2px solid transparent; box-shadow: var(
 .ts-email__off { padding: var(--space-8) 0; }
 .ts-email__off summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; color: var(--ink-muted); }
 .ts-email__off p { margin: var(--space-8) 0; color: var(--ink-muted); }
-@media (width >= 768px) {
-  .ts-email__fill, .ts-email__form, .ts-email__testbox { padding: var(--space-24); }
+/* Wide: the provider and the test stand in one column beside the server settings. */
+@container pane (width >= 44rem) {
+  .ts-groups.ts-email__groups { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); grid-template-areas: "fill form" "test form"; }
+  .ts-email__fill { grid-area: fill; }
+  .ts-email__form { grid-area: form; }
+  .ts-email__testbox { grid-area: test; }
 }
 
 /* A pending row now can carry three actions (Send again, Copy link, Cancel): on a phone they wrap
    under the text instead of squeezing it to a word per line. */
 .ts-share__pending { flex-wrap: wrap; }
 .ts-share__pending .ts-users__text { flex: 1 1 11rem; }
+.ts-email .ts-field { max-width: none; }
+/* Wider still: the settings pair up (port and security, username and password, the two From fields). */
+@container pane (width >= 64rem) {
+  .ts-group.ts-email__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-16) var(--space-24); }
+  .ts-email__form > .ts-field:first-of-type, .ts-email__form > .ts-btn { grid-column: 1 / -1; }
+}
