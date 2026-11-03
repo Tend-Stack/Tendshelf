@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
@@ -13,6 +14,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
 	"github.com/Tend-Stack/tendshelf/internal/metadata"
+	"github.com/Tend-Stack/tendshelf/internal/metadata/online"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 )
 
@@ -24,15 +26,26 @@ type deps struct {
 	runner  *jobs.Runner
 	tools   media.Tools
 	dataDir string
+	version string
 	log     *slog.Logger
 }
 
 // registerDetails is the hook for the book details feature: its follower and job kinds.
-func registerDetails(d deps) error {
+// It returns the service and the online client so the web handler can serve lookups and covers.
+func registerDetails(d deps) (*metadata.Service, *online.Client, error) {
 	svc := metadata.New(d.lib, d.runner, d.log)
+	client := online.New(online.Options{
+		Cache:     metadata.NewOnlineCache(d.st),
+		CoverDir:  filepath.Join(d.dataDir, "cache", "online-covers"),
+		UserAgent: "Tendshelf/" + d.version,
+	})
+	svc.SetOnline(client, d.tools, d.dataDir)
 	d.scanner.OnBookSettled(svc.Follower())
 	d.scanner.OnScanFinished(svc.Finisher())
-	return svc.Register(d.runner)
+	if err := svc.Register(d.runner); err != nil {
+		return nil, nil, err
+	}
+	return svc, client, nil
 }
 
 // mediaFlags holds the command-line flags of the media jobs.
@@ -72,10 +85,10 @@ func envOrBool(key string, def bool) bool {
 // registerMediaJobs is the hook for the media job kinds: cover pictures with thumbnails and
 // accent colours, compatibility copies and waveform peaks. Covers and peaks follow the scanner's
 // settled books. It returns the compatibility and waveform services so the web handler can request
-// and serve them.
-func registerMediaJobs(d deps, mf *mediaFlags) (*mediajobs.Compat, *mediajobs.Peaks, error) {
+// and serve them, plus the covers service for online cover adoption.
+func registerMediaJobs(d deps, mf *mediaFlags) (*mediajobs.Compat, *mediajobs.Peaks, *mediajobs.Covers, error) {
 	if *mf.compatGiB < 1 {
-		return nil, nil, fmt.Errorf("-compat-cache-gib must be at least 1, got %d", *mf.compatGiB)
+		return nil, nil, nil, fmt.Errorf("-compat-cache-gib must be at least 1, got %d", *mf.compatGiB)
 	}
 	covers := mediajobs.NewCovers(d.lib, d.tools, d.dataDir, d.runner, d.log)
 	compat := mediajobs.NewCompat(d.lib, d.tools, mediajobs.CompatDir(d.dataDir), int64(*mf.compatGiB)<<30, d.runner, d.log)
@@ -84,7 +97,7 @@ func registerMediaJobs(d deps, mf *mediaFlags) (*mediajobs.Compat, *mediajobs.Pe
 	d.scanner.OnScanFinished(covers.Finisher())
 	d.scanner.OnBookSettled(peaks.Follower())
 	if err := mediajobs.Register(d.runner, covers, compat, peaks); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return compat, peaks, nil
+	return compat, peaks, covers, nil
 }

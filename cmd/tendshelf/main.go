@@ -102,20 +102,22 @@ func run(ctx context.Context, args []string) error {
 	tools := locateTools(media.Config{FFprobe: *ffprobe, FFmpeg: *ffmpeg}, logger)
 	lib := library.New(st)
 	sc := scan.New(lib, tools, runner, logger)
-	d := deps{st: st, lib: lib, scanner: sc, runner: runner, tools: tools, dataDir: dataDir, log: logger}
-	if err := registerDetails(d); err != nil {
-		return err
-	}
-	compat, peaks, err := registerMediaJobs(d, mf)
+	d := deps{st: st, lib: lib, scanner: sc, runner: runner, tools: tools, dataDir: dataDir, version: version, log: logger}
+	details, onlineClient, err := registerDetails(d)
 	if err != nil {
 		return err
 	}
+	compat, peaks, covers, err := registerMediaJobs(d, mf)
+	if err != nil {
+		return err
+	}
+	covers.SetFetcher(onlineClient.FetchCover)
 	if err := sc.Register(runner); err != nil {
 		return err
 	}
 	setupCode := auth.NewSetupCode()
 	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: proxies,
-		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, MailOptions: share.MailOptions{Logger: logger}})
+		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, MailOptions: share.MailOptions{Logger: logger}})
 	if err != nil {
 		return err
 	}

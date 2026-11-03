@@ -145,6 +145,7 @@ type BookDetail struct {
 type Person struct {
 	ID, Name, Description string
 	AuthorOf, NarratorOf  int
+	ASIN, ImageID         string // set by PersonByID only
 }
 
 // SeriesPage is a series with its visible books in reading order.

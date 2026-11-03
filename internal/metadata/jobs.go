@@ -16,10 +16,17 @@ type Payload struct {
 	BookID string `json:"book_id"`
 }
 
-// Register adds the metadata.local job kind to the runner. Its handler writes only inside a
+// Register adds the metadata.local, metadata.online and metadata.online_author job kinds to the runner. Its handler writes only inside a
 // transaction that begins with the job's fence check.
 func (s *Service) Register(r *jobs.Runner) error {
-	return r.Register(jobs.Kind{Name: Kind, Concurrency: 1, MaxAttempts: 2, Handler: s.handle})
+	if err := r.Register(jobs.Kind{Name: Kind, Concurrency: 1, MaxAttempts: 2, Handler: s.handle}); err != nil {
+		return err
+	}
+	// Lookups run once: a failed one is started again by a person, never behind their back.
+	if err := r.Register(jobs.Kind{Name: KindOnline, Concurrency: 1, MaxAttempts: 1, Handler: s.handleLookup}); err != nil {
+		return err
+	}
+	return r.Register(jobs.Kind{Name: KindAuthor, Concurrency: 1, MaxAttempts: 1, Handler: s.handleAuthor})
 }
 
 func (s *Service) handle(ctx context.Context, t *jobs.Task) (any, error) {
