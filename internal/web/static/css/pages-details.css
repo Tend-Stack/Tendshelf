@@ -1,2 +1,110 @@
-/* Styles of the "Look up details online" sheets and the Details tab actions. M4-6 adds the class
-   names in the markup; M4-10 writes the rules. */
+/* The Details tab actions, the sheets behind them (look up online, compare, cover picker, write
+   into the files) and the author's photo. Tokens only; the compare table's own rules are in bundle.css. */
+
+/* Sheet shell: the same centred bottom sheet as the bookmarks, scrolling inside its height. */
+.ts-details-sheet { max-height: 85vh; max-height: 85dvh; overflow-y: auto; max-width: 40rem; margin: 0 auto; }
+.ts-lookup, .ts-compare-body, .ts-cover-pick, .ts-write { display: flex; flex-direction: column; gap: var(--space-16); padding: 0 var(--space-4); }
+.ts-lookup > *, .ts-compare-body > *, .ts-cover-pick > *, .ts-write > * { margin: 0; }
+.ts-lookup .ts-field { max-width: none; }
+.ts-lookup .ts-field__label { display: flex; align-items: center; min-height: var(--size-tap); }
+.ts-lookup__intro, .ts-compare-body__intro, .ts-cover-pick__intro, .ts-write__intro, .ts-write__note { color: var(--ink-muted); }
+.ts-lookup__more { display: flex; flex-direction: column; gap: var(--space-4); }
+.ts-lookup__more summary { align-self: flex-start; cursor: pointer; }
+.ts-lookup__check { display: flex; align-items: center; gap: var(--space-4); min-height: var(--size-tap); }
+.ts-compare-body__wait, .ts-compare-body__message, .ts-cover-pick__status, .ts-write__status { color: var(--ink-muted); }
+.ts-compare-body > .ts-btn, .ts-cover-pick > .ts-btn, .ts-write > .ts-btn { align-self: flex-start; }
+
+/* Matches: one tappable row per match. */
+.ts-compare-list { display: flex; flex-direction: column; gap: var(--space-8); margin: 0; padding: 0; list-style: none; }
+.ts-compare-list__item { display: grid; gap: var(--space-4); justify-items: start; min-height: var(--size-tap); box-sizing: border-box; padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--raised); color: var(--ink); text-decoration: none; }
+.ts-compare-list__item:hover { background: var(--raised-hover); }
+.ts-compare-list__title { font-weight: 600; overflow-wrap: anywhere; }
+.ts-compare-list__meta { color: var(--ink-muted); }
+
+/* Compare table: the value cell, cover thumbnails and the pinned buttons. */
+.ts-compare__cover { width: 4rem; height: 4rem; object-fit: cover; border-radius: var(--radius-cover); background: var(--raised); }
+.ts-compare__val .body, .ts-compare__val .caption { margin: 0; overflow-wrap: anywhere; }
+.ts-compare__more summary { cursor: pointer; color: var(--accent); }
+.ts-compare__more p { margin: var(--space-4) 0 0; color: var(--ink-muted); }
+.ts-compare-form { display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-compare-form__actions { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-12) 0 var(--space-8); background: var(--surface); }
+@media (max-width: 767.98px) {
+  /* On phone the table becomes cards: field name, Now and Online one above the other, the tick on the right. */
+  .ts-compare, .ts-compare tbody { display: block; }
+  .ts-compare thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .ts-compare tr { display: grid; grid-template-columns: 1fr auto; column-gap: var(--space-8); padding: var(--space-8) var(--space-12); border-bottom: 1px solid var(--line); }
+  .ts-compare tr.is-diff { background: var(--surface); }
+  .ts-compare tr.is-diff td { background: none; }
+  .ts-compare th, .ts-compare td { display: block; padding: var(--space-4) 0; border: 0; }
+  .ts-compare__field { grid-column: 1; width: auto; }
+  .ts-compare td:nth-of-type(1), .ts-compare td:nth-of-type(2) { grid-column: 1; }
+  .ts-compare td:nth-of-type(1)::before, .ts-compare td:nth-of-type(2)::before { content: attr(data-label); flex: 0 0 3.75rem; font-size: 0.9375rem; line-height: 1.375rem; color: var(--ink-muted); }
+  .ts-compare td:nth-of-type(1), .ts-compare td:nth-of-type(2) { display: flex; gap: var(--space-8); align-items: flex-start; }
+  .ts-compare td:nth-of-type(3) { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+  .ts-compare__val { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: var(--space-8); }
+  .ts-compare__val .ts-source { align-self: center; }
+}
+
+/* Cover picker: radio cards in a grid, 3 across on phone, 4 on tablet, 6 on desktop. */
+.ts-cover-pick__now { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); margin: 0; }
+.ts-cover-pick__now-img { width: 8rem; height: 8rem; object-fit: cover; border-radius: var(--radius-cover); background: var(--raised); }
+.ts-cover-pick__form { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-cover-pick__set { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-8); min-width: 0; margin: 0; padding: 0; border: 0; }
+.ts-cover-pick__card { position: relative; display: flex; flex-direction: column; gap: var(--space-4); min-height: var(--size-tap); box-sizing: border-box; padding: var(--space-8);
+  border: 2px solid var(--line); border-radius: var(--radius-control); background: var(--raised); cursor: pointer; }
+.ts-cover-pick__card:has(:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.ts-cover-pick__card:has(:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ts-cover-pick__radio { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.ts-cover-pick__img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-cover); background: var(--surface); }
+.ts-cover-pick__label { color: var(--ink-muted); overflow-wrap: anywhere; }
+.ts-cover-pick__upload { display: flex; flex-direction: column; gap: var(--space-8); padding-top: var(--space-16); border-top: 1px solid var(--line); }
+.ts-cover-pick__upload > * { margin: 0; }
+.ts-cover-pick__file { display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-cover-pick__file input { min-height: var(--size-tap); max-width: 100%; color: var(--ink); font: inherit; }
+.ts-cover-pick__file input::file-selector-button { min-height: var(--size-tap); margin-right: var(--space-12); padding: 0 var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-control);
+  background: var(--raised); color: var(--ink); font: 600 1rem/1.25rem var(--font-sans); cursor: pointer; }
+@media (min-width: 768px) { .ts-cover-pick__set { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1280px) { .ts-cover-pick__set { grid-template-columns: repeat(6, 1fr); } }
+
+/* Write sheet and the pending panel. */
+.ts-write__list { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
+.ts-write__file { font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.25rem; overflow-wrap: anywhere; }
+.ts-write__refused { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-12) var(--space-16); border: 1px solid var(--danger); border-radius: var(--radius-control); }
+.ts-write__refused .section { margin: 0; color: var(--danger); }
+.ts-write__details { display: flex; flex-direction: column; margin: 0; }
+.ts-write__detail { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-16); padding: var(--space-8) 0; border-bottom: 1px solid var(--line); }
+.ts-write__detail dt { flex: 0 0 7rem; color: var(--ink-muted); font-size: 0.875rem; line-height: 1.375rem; }
+.ts-write__detail dd { flex: 1 1 12rem; margin: 0; overflow-wrap: anywhere; }
+.ts-write__form { margin: 0; }
+.ts-write__pending, .ts-write__attention { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-16); padding: var(--space-16); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); }
+.ts-write__pending { border-color: var(--accent); }
+.ts-write__attention { border-color: var(--warning); }
+.ts-write__pending > *, .ts-write__attention > * { margin: 0; }
+.ts-write__actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.ts-write__actions form { margin: 0; }
+.ts-write__folder { font-family: var(--font-mono); overflow-wrap: anywhere; color: var(--ink-muted); }
+
+/* Details tab actions. */
+.ts-book__applied { display: flex; align-items: center; gap: var(--space-8); margin: 0 0 var(--space-12); color: var(--success); }
+.ts-book__applied .ts-icon { width: 1.25rem; height: 1.25rem; flex: none; }
+.ts-book__lookup, .ts-book__write { margin-top: var(--space-16); margin-right: var(--space-8); }
+.ts-book__cover-change { align-self: center; margin-top: var(--space-8); }
+.ts-book__reset { margin-top: var(--space-16); }
+.ts-book__reset summary { cursor: pointer; }
+.ts-book__reset form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); margin-top: var(--space-8); }
+.ts-book__reset p { margin: 0; color: var(--ink-muted); }
+
+/* Author page: round photo (96 px on phone, 128 px from tablet), bio at the reading measure. */
+.ts-person__photo { width: 6rem; height: 6rem; margin-bottom: var(--space-8); object-fit: cover; background: var(--raised); }
+.ts-person__desc { max-width: var(--size-measure); }
+.ts-person__lookup, .ts-person__status { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-8); margin: var(--space-8) 0 0; }
+.ts-person__status .body { margin: 0; color: var(--ink-muted); }
+@media (min-width: 768px) {
+  .ts-person__photo { width: 8rem; height: 8rem; margin-bottom: 0; }
+  /* With a photo the head reads like the board: photo left, text beside it. */
+  .ts-person__head:has(.ts-person__photo) { display: grid; grid-template-columns: 8rem minmax(0, 1fr); column-gap: var(--space-24); align-items: start; justify-items: start; text-align: left; }
+  .ts-person__head:has(.ts-person__photo) .ts-person__photo { grid-row: 1 / span 8; }
+  .ts-person__head:has(.ts-person__photo) > :not(.ts-person__photo) { grid-column: 2; }
+  .ts-person__head:has(.ts-person__photo) .ts-person__lookup, .ts-person__head:has(.ts-person__photo) .ts-person__status { justify-content: flex-start; }
+}

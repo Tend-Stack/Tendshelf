@@ -15,6 +15,15 @@ type WritePendingView struct {
 	CSRF, Head, Body            string
 	ConfirmAction, ConfirmLabel string
 	UndoAction, UndoLabel       string
+	// TabLevel makes the heading an h2: on the Details tab nothing above it is a heading, while the
+	// sheet's own title is the h2 there and keeps this one an h3.
+	TabLevel bool
+}
+
+// tabPending is the pending panel as the Details tab shows it.
+func tabPending(v WritePendingView) WritePendingView {
+	v.TabLevel = true
+	return v
 }
 
 // WriteAttentionView is the notice for a file that changed after its details were written. Folder
@@ -137,7 +146,11 @@ templ writeBodyInner(v WriteSheetView) {
 templ WritePending(v WritePendingView) {
 	if v.ConfirmAction != "" {
 		<section class="ts-write__pending" aria-labelledby="write-pending-head">
-			<h3 id="write-pending-head" class="section">{ v.Head }</h3>
+			if v.TabLevel {
+				<h2 id="write-pending-head" class="section">{ v.Head }</h2>
+			} else {
+				<h3 id="write-pending-head" class="section">{ v.Head }</h3>
+			}
 			<p class="body">{ v.Body }</p>
 			<div class="ts-write__actions">
 				<form method="post" action={ templ.URL(v.ConfirmAction) }>
@@ -161,7 +174,7 @@ templ WriteTab(v WriteTabView) {
 			{ v.Note }
 		</p>
 	}
-	@WritePending(v.Pending)
+	@WritePending(tabPending(v.Pending))
 	if v.Attention != nil {
 		<div class="ts-write__attention" role="alert">
 			<p class="body">{ v.Attention.Text }</p>

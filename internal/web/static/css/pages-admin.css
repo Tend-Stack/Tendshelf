@@ -235,3 +235,8 @@ a.ts-users__item:hover { background: var(--surface); }
   .ts-users__head > :not(.ts-users__invite) { grid-column: 1; }
   .ts-users__invite { grid-column: 2; grid-row: 1 / span 3; align-self: center; margin-top: 0; }
 }
+
+/* "Book details from the internet": the on/off choice. */
+.ts-admin__online form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); }
+.ts-admin__choices { display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; }
+.ts-admin__choice { display: flex; align-items: center; gap: var(--space-4); min-height: var(--size-tap); }
