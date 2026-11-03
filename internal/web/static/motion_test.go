@@ -292,7 +292,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// P1c-5b adds volume, fade and the toast host to player.js (12 KB), and the speed and sleep
 	// sheets, the sleep timer, the bookmark toast and the B key to player-full.js (12 KB).
 	// NP2 adds the hero's Show player to player.js (about 0.2 KB), so its share is 12.5 KB; the all-JS total stays 36 KB.
-	"player.js": {12*1024 + 512, 64 * 1024},
+	// Q3 (Up next autoplay): 12.75 KB, approved by the operator on 2026-11-03.
+	"player.js": {12*1024 + 768, 64 * 1024},
 	// PB2 moved the desktop bar's wave seek and the volume pop into waveform.js: back to 12 KB (12.2 KB measured by gzip -c).
 	// P3-11a: sidePanel() (larger text never uses the side panel) is 12.03 KB, so 12.5 KB; to be approved by the operator.
 	"player-full.js": {12*1024 + 512, 64 * 1024},
@@ -300,7 +301,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// drag, keys, retry backoff, hairline, volume pop): 7 KB, approved by the operator on 2026-11-02; 7.0 KB measured.
 	"waveform.js": {7 * 1024, 24 * 1024},
 	// NP2: the desktop Now playing panel's loading, tabs and slots; 1 KB, approved by the operator on 2026-11-02.
-	"now-panel.js": {1 * 1024, 16 * 1024},
+	// Q3: the three-tab arrow keys, 1.125 KB, approved by the operator on 2026-11-03.
+	"now-panel.js": {1*1024 + 128, 16 * 1024},
 	// P3-12: the Copy buttons and the "Open in my email app" hand-off of invitations; 1 KB, inside the 38 KB total.
 	"copy.js": {1 * 1024, 16 * 1024},
 }
@@ -311,7 +313,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // NP2 (the Now playing panel: now-panel.js 1 KB, the hero's Show player in player.js) makes it 36 KB; approved by the operator on 2026-11-02.
 // P3-11a (Larger text: the layout switch at the large-text width also lives in script) passes 36 KB; the
 // operator approved 38 KB on 2026-11-02, with room for M2's last packages.
-const jsTotalGzip = 38 * 1024 // 12.5 (player.js) + 4.5 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
+// Q3 (Up next autoplay and the three-tab keys) makes it 38.25 KB; approved by the operator on 2026-11-03.
+const jsTotalGzip = 38*1024 + 256 // 12.5 (player.js) + 4.5 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

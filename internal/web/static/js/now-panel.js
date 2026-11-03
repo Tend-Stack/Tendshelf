@@ -33,7 +33,12 @@ document.addEventListener("click", (event) => {
 document.addEventListener("keydown", (event) => {
   const tab = event.target.closest(".ts-np__tabbtn");
   if (!tab || !/^Arrow[LR]/.test(event.key)) return;
-  const other = [...tab.parentElement.children].find((t) => t !== tab);
+  // arrows move to the next or previous one, wrapping round
+  const list = tab.parentElement;
+  const other =
+    event.key === "ArrowRight"
+      ? tab.nextElementSibling || list.firstElementChild
+      : tab.previousElementSibling || list.lastElementChild;
   other.focus();
   other.click();
   event.preventDefault();
