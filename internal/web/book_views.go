@@ -235,7 +235,7 @@ func bookOverline(d library.BookDetail, place string, p *progress.Progress, now 
 
 // seriesTileState is the line under a tile of the series rail. The first match wins: the open book,
 // finished, started (a rounded share of 1 to 99, or "Started" when the length is unknown), the book
-// right after the open one ("Up next"), else "Not started".
+// right after the open one ("Next in series"), else "Not started".
 func seriesTileState(i, at int, books []library.BookCard, prog map[string]progress.Progress) string {
 	if i == at {
 		return bookThisBook

@@ -29,7 +29,7 @@ func TestSeriesTileState(t *testing.T) {
 		{"percent beats up next", 2, 1, prog, "40%"},
 		{"unknown length", 3, 1, prog, "Started"},
 		{"percent clamps up to 1", 4, 1, prog, "1%"},
-		{"up next", 1, 0, prog, "Up next"},
+		{"up next", 1, 0, prog, "Next in series"},
 		{"not started", 1, 3, prog, "Not started"},
 		{"up next needs a current book", 1, -1, prog, "Not started"},
 		{"no progress at all", 2, 0, nil, "Not started"},

@@ -25,7 +25,7 @@ const (
 	bookSeriesOf       = "Book %s of %d"
 	bookFinishedIn     = "finished in %s"
 	bookTilePercent    = "%d%%"
-	bookTileUpNext     = "Up next"
+	bookTileUpNext     = "Next in series"
 	bookTileNotStarted = "Not started"
 	bookWhereShort     = "Chapter %d · %s left"
 	bookBylineSep      = " · "

@@ -111,7 +111,7 @@ func TestNowPanelFull(t *testing.T) {
 		`id="now-tab-queue"`, `hx-get="/hx/queue?in=panel"`,
 		`Written by`, `Ann Author`, `Read by`, `Nan Narrator`,
 		// series
-		`Book 2 of 3`, `You're here · 62%`, `aria-current="true"`, `Up next · 1 h 0 m`, `Not started`,
+		`Book 2 of 3`, `You're here · 62%`, `aria-current="true"`, `Next in series · 1 h 0 m`, `Not started`,
 		// summary and Read more
 		`<details class="ts-np__more">`, `Read more`, `Show less`,
 		// details

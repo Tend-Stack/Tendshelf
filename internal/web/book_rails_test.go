@@ -55,7 +55,7 @@ func TestBookRails(t *testing.T) {
 			t.Errorf("%q: series heading is not a link to the series page", tab)
 		}
 		tiles := railTiles(series)
-		if len(tiles) != 2 || tiles[0] != "Book 1|This book" || tiles[1] != "Book 2 · Saga Two|Up next" {
+		if len(tiles) != 2 || tiles[0] != "Book 1|This book" || tiles[1] != "Book 2 · Saga Two|Next in series" {
 			t.Errorf("%q: series tiles %q", tab, tiles)
 		}
 		if strings.Contains(main, "Saga Gone") {
@@ -109,7 +109,7 @@ func TestBookRailStates(t *testing.T) {
 	}
 	main := bookMain(browseGet(a, "/books/"+b[1].ID, false, nil).Body.String())
 	tiles := railTiles(railSection(main, "book-series-title"))
-	want := []string{"Book 1 · Tale 1|Finished", "Book 2|This book", "Book 3 · Tale 3|Up next", "Book 4 · Tale 4|40%", "Book 5 · Tale 5|Not started"}
+	want := []string{"Book 1 · Tale 1|Finished", "Book 2|This book", "Book 3 · Tale 3|Next in series", "Book 4 · Tale 4|40%", "Book 5 · Tale 5|Not started"}
 	if strings.Join(tiles, ",") != strings.Join(want, ",") {
 		t.Errorf("tiles %q, want %q", tiles, want)
 	}
