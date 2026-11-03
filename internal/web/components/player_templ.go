@@ -31,7 +31,7 @@ type PlayerMsgs struct {
 	ChapterOf, LeftInChapter, LeftInBookMinutes, LeftInBookHours, LeftInBookBoth, SubtitleSep, ScrubLabel, ScrubValue, FineScrub string
 	ClosePlayer, PrevChapter, NextChapter, Speed, Sleep, Chapters                                                                string
 	Bookmark, MoreActions, GoToBook, MarkFinished, ChapterPlayed, OpenPlayer, Resume                                             string
-	ScrubBubble                                                                                                                  string
+	ScrubBubble, UpNext                                                                                                          string
 
 	// Speed, sleep timer, volume and the bookmark key (P1c-5b).
 	SpeedValue, SpeedLabel, SpeedFine, SleepTitle, SleepEndOfChapter, SleepMinutes  string

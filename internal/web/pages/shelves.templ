@@ -52,16 +52,6 @@ type ShelfDeleteView struct {
 	CSRF, ID, Title, Body string
 }
 
-templ shelfArrow(up bool) {
-	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true">
-		if up {
-			<path d="m6 15 6-6 6 6"></path>
-		} else {
-			<path d="m6 9 6 6 6-6"></path>
-		}
-	</svg>
-}
-
 templ shelfBack(label string) {
 	<a class="ts-btn ts-btn--quiet ts-shelf-back" href="/shelves">
 		@backIcon()
@@ -218,7 +208,7 @@ templ shelfAction(v ShelfView, it ShelfItemView, dir, label string) {
 		<input type="hidden" name="_csrf" value={ v.CSRF }/>
 		<input type="hidden" name="dir" value={ dir }/>
 		<button type="submit" class="ts-iconbtn" aria-label={ label }>
-			@shelfArrow(dir == "up")
+			@components.MoveArrow(dir == "up")
 		</button>
 	</form>
 }

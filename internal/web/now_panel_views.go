@@ -71,8 +71,8 @@ func nowReadBy(narrators []library.PersonRef) string {
 	return fmt.Sprintf(nowPanelReadByLine, strings.Join(names, ", "))
 }
 
-// nowPanelView is the panel's frame: the hooks and the tabs. The caller fills Menu, ShareHref and About.
-func nowPanelView(d library.BookDetail, listen bool, marks int) components.NowPanelView {
+// nowPanelView is the panel's frame: the hooks and the tabs (About, and with listen Bookmarks and Up next). The caller fills Menu, ShareHref and About.
+func nowPanelView(d library.BookDetail, listen bool, marks, queued int) components.NowPanelView {
 	id := d.Book.ID
 	v := components.NowPanelView{
 		BookID: id, BookHref: "/books/" + id, AriaLabel: nowPanelAriaLabel, TabsLabel: nowPanelTabsLabel,
@@ -81,7 +81,9 @@ func nowPanelView(d library.BookDetail, listen bool, marks int) components.NowPa
 	}
 	if listen {
 		v.Tabs = append(v.Tabs, components.NowTab{
-			Key: "bookmarks", Label: nowPanelBookmarks, Count: strconv.Itoa(marks), Href: nowPanelHref(id, "bookmarks"),
+			Key: "bookmarks", Label: nowPanelBookmarks, Count: strconv.Itoa(marks), CountID: "now-panel-count", Href: nowPanelHref(id, "bookmarks"),
+		}, components.NowTab{
+			Key: "queue", Label: queueTitle, Count: strconv.Itoa(queued), CountID: "now-panel-queue-count", Href: "/hx/queue?in=panel",
 		})
 	}
 	return v

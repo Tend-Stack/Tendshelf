@@ -1,0 +1,81 @@
+package components
+
+// UpNextRow is one queued book: its row, the words of its three buttons and which button keeps the
+// keyboard focus after an answer (Focus is "up", "down", "remove" or empty).
+type UpNextRow struct {
+	Card                            CardView
+	UpLabel, DownLabel, RemoveLabel string
+	First, Last                     bool
+	Focus                           string
+}
+
+// UpNextView is the Up next list, in the Now playing panel (In "panel", ID "now-up-next") or on the
+// /queue page (In "page", ID "up-next"). Next is where a plain form returns to. Count is the number
+// on the panel's tab. FocusEmpty puts focus on the empty state after the last book is removed.
+type UpNextView struct {
+	ID, In, CSRF, Next, EmptyText, Count string
+	Rows                                 []UpNextRow
+	FocusEmpty                           bool
+}
+
+// UpNext is the list of books to play after this one, with move up, move down and remove. Each
+// button is a form that htmx answers in place by replacing the whole list; a plain post is
+// redirected to /queue. In the panel the answer also carries the tab's count.
+templ UpNext(v UpNextView) {
+	<section id={ v.ID } class="ts-upnext">
+		if len(v.Rows) == 0 {
+			<div class="ts-np__empty" tabindex="-1" autofocus?={ v.FocusEmpty }><span>{ v.EmptyText }</span></div>
+		} else {
+			<ol class="ts-upnext__list">
+				for _, r := range v.Rows {
+					<li id={ "item-" + r.Card.ID } class="ts-upnext__item">
+						@BookRow(r.Card)
+						<div class="ts-upnext__tools">
+							if r.First {
+								<span class="ts-upnext__gap" aria-hidden="true"></span>
+							} else {
+								@upNextButton(v, r, "move", "up", r.UpLabel)
+							}
+							if r.Last {
+								<span class="ts-upnext__gap" aria-hidden="true"></span>
+							} else {
+								@upNextButton(v, r, "move", "down", r.DownLabel)
+							}
+							@upNextButton(v, r, "delete", "", r.RemoveLabel)
+						</div>
+					</li>
+				}
+			</ol>
+		}
+	</section>
+	if v.In == "panel" {
+		<span id="now-panel-queue-count" hx-swap-oob="outerHTML">{ v.Count }</span>
+	}
+}
+
+// upNextButton is one icon button as a form. act is "move" (dir "up" or "down") or "delete".
+templ upNextButton(v UpNextView, r UpNextRow, act, dir, label string) {
+	<form method="post" action={ templ.URL("/queue/" + r.Card.ID + "/" + act) } hx-post={ "/queue/" + r.Card.ID + "/" + act } hx-target={ "#" + v.ID } hx-swap="outerHTML">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		if dir != "" {
+			<input type="hidden" name="dir" value={ dir }/>
+		}
+		<input type="hidden" name="in" value={ v.In }/>
+		<input type="hidden" name="next" value={ v.Next }/>
+		<button type="submit" class="ts-iconbtn" aria-label={ label } autofocus?={ r.Focus == focusKey(act, dir) }>
+			if act == "delete" {
+				@Icon("close", false)
+			} else {
+				@MoveArrow(dir == "up")
+			}
+		</button>
+	</form>
+}
+
+// focusKey names a button the way UpNextRow.Focus does.
+func focusKey(act, dir string) string {
+	if act == "delete" {
+		return "remove"
+	}
+	return dir
+}

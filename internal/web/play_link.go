@@ -131,6 +131,12 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	}
 	if l := playLinkIn(book, files, p); l != nil {
 		v.Button = l.button("", false)
+		// Only a signed-in person reaches this page (a share link has its own page), so the queue
+		// menu always comes with the button.
+		v.Queue = &components.QueueMenuView{
+			BookID: book.ID, CSRF: v.CSRF, Next: v.Next, Toggle: queueToggle,
+			PlayNext: queuePlayNext, AddEnd: queueAddEnd, Preserve: true,
+		}
 	}
 	if p != nil && !p.Finished() && p.PositionMs > 0 && book.DurationMs > 0 {
 		set, err := s.users.LoadSettings(r.Context(), currentUser(r).ID)

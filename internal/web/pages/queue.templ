@@ -1,0 +1,12 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// QueuePage is the full Up next page (/queue): the phone and tablet way to the list, which the
+// Now playing panel shows as a tab on a wide screen.
+templ QueuePage(title string, list components.UpNextView) {
+	<div class="ts-upnext-page">
+		<h1 class="title-1">{ title }</h1>
+		@components.UpNext(list)
+	</div>
+}

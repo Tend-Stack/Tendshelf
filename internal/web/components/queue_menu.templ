@@ -1,0 +1,37 @@
+package components
+
+// QueueMenuView is the dropdown on the right quarter of the book page's play button: "Play next"
+// and "Add to queue". Every word and address comes from the handler. Next is where a plain form
+// returns to. Preserve keeps an open menu open when the play region redraws itself (every 10 s while
+// the book plays); the answer to a form leaves it off, so the menu comes back closed. Focus puts the
+// keyboard focus on the toggle after that answer.
+type QueueMenuView struct {
+	BookID, CSRF, Next, Toggle, PlayNext, AddEnd string
+	Preserve, Focus                              bool
+}
+
+// QueueMenu is the second section of the split play button. It is a <details> that shell.js's chip
+// menu handling already opens, closes (outside click, Escape) and keeps to one at a time; it needs no
+// script of its own. Each choice is a form: htmx answers in place with the closed menu and a toast,
+// a plain post is redirected back.
+templ QueueMenu(v QueueMenuView) {
+	<details id="book-queue-menu" class="ts-split__more" data-ts-chipmenu hx-preserve?={ v.Preserve }>
+		<summary class="ts-btn ts-btn--primary ts-btn--lg ts-split__toggle" aria-label={ v.Toggle } autofocus?={ v.Focus }>
+			@MoveArrow(false)
+		</summary>
+		<div class="ts-player__menubody" role="group" aria-label={ v.Toggle }>
+			@queueMenuForm(v, "next", v.PlayNext)
+			@queueMenuForm(v, "end", v.AddEnd)
+		</div>
+	</details>
+}
+
+templ queueMenuForm(v QueueMenuView, where, label string) {
+	<form method="post" action="/queue" hx-post="/queue" hx-target="#book-queue-menu" hx-swap="outerHTML">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		<input type="hidden" name="book_id" value={ v.BookID }/>
+		<input type="hidden" name="where" value={ where }/>
+		<input type="hidden" name="next" value={ v.Next }/>
+		<button type="submit" class="ts-player__menuitem">{ label }</button>
+	</form>
+}

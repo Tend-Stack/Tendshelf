@@ -46,6 +46,7 @@ templ PlayerFull(m PlayerMsgs) {
 						</summary>
 						<div class="ts-player__menubody" role="group" aria-label={ m.MoreActions }>
 							<a class="ts-player__menuitem" href="/" data-ts-full-book if m.Link { hidden }>{ m.GoToBook }</a>
+							<a class="ts-player__menuitem ts-player__menuqueue" href="/queue" data-ts-close-player if m.Link { hidden }>{ m.UpNext }</a>
 							<form method="post" action="/" data-ts-full-finish if m.Link { hidden }>
 								<input type="hidden" name="_csrf" value=""/>
 								<input type="hidden" name="finished" value="1"/>

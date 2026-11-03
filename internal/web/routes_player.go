@@ -155,11 +155,15 @@ func (s *server) getNowPanel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, u := r.Context(), currentUser(r)
-	marks := 0
+	marks, queued := 0, 0
 	if listen {
 		var err error
 		if marks, _, err = s.progress.BookmarkCounts(ctx, u.ID, d.Book.ID); err != nil {
 			s.serverError(w, r, "now panel bookmarks", err)
+			return
+		}
+		if queued, err = s.lib.QueueCount(ctx, s.scope(r), u.ID); err != nil {
+			s.serverError(w, r, "now panel queue", err)
 			return
 		}
 	}
@@ -173,7 +177,7 @@ func (s *server) getNowPanel(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "now panel about", err)
 		return
 	}
-	v := nowPanelView(d, listen, marks)
+	v := nowPanelView(d, listen, marks, queued)
 	v.About = &about
 	if s.canManageServerUsers(r) {
 		v.ShareHref = "/books/" + d.Book.ID + "/share"

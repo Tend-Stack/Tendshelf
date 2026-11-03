@@ -34,7 +34,10 @@ type DetailRow struct {
 // the fragment address the region re-reads when a save or a mark fires progress-saved. Action, Next
 // and CSRF drive the plain-form fallback of the mark.
 type BookPlayView struct {
-	Button               *components.PlayButtonView
+	Button *components.PlayButtonView
+	// Queue is the dropdown on the button's right quarter (Play next, Add to queue); nil draws the
+	// button alone.
+	Queue                *components.QueueMenuView
 	MarkLabel, MarkValue string
 	Action, Next, CSRF   string
 	Refresh              string
@@ -158,7 +161,12 @@ templ BookPlay(v *BookPlayView) {
 			hx-trigger="progress-saved from:body"
 			hx-swap="outerHTML"
 		>
-			if v.Button != nil {
+			if v.Button != nil && v.Queue != nil {
+				<div class="ts-split" role="group">
+					@components.PlayButton(*v.Button)
+					@components.QueueMenu(*v.Queue)
+				</div>
+			} else if v.Button != nil {
 				@components.PlayButton(*v.Button)
 			}
 			if v.Ruler != nil {
