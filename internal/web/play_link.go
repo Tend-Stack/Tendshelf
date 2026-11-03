@@ -153,6 +153,7 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	if s.canManageServerUsers(r) {
 		v.ShareHref = "/books/" + book.ID + "/share"
 	}
+	v.Download = s.bookDownloadView(r, book, v.Button != nil)
 	return v, nil
 }
 

@@ -8,6 +8,7 @@ var iconShapes = map[string]string{
 	"library":      `<path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/>`,
 	"search":       `<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>`,
 	"download":     `<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>`,
+	"trash":        `<path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/>`,
 	"profile":      `<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>`,
 	"play":         `<path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/>`,
 	"pause":        `<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>`,
