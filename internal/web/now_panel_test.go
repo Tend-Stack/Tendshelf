@@ -108,6 +108,7 @@ func TestNowPanelFull(t *testing.T) {
 		`<aside id="now-panel" class="ts-np" aria-label="Now playing: about this book" data-book-id="`+b.ID+`" data-book-href="/books/`+b.ID+`">`,
 		`data-ts-now-by`, `read by Nan Narrator`, `data-ts-now-menu`, `role="tablist"`, `id="now-tab-about"`, `id="now-tab-bookmarks"`,
 		`hx-get="/hx/player/panel/`+b.ID+`/bookmarks"`, `hx-target="#now-panel-tab"`, `role="tabpanel"`,
+		`id="now-tab-queue"`, `hx-get="/hx/queue?in=panel"`,
 		`Written by`, `Ann Author`, `Read by`, `Nan Narrator`,
 		// series
 		`Book 2 of 3`, `You're here · 62%`, `aria-current="true"`, `Up next · 1 h 0 m`, `Not started`,
@@ -124,6 +125,9 @@ func TestNowPanelFull(t *testing.T) {
 	nowpanelNot(t, body, "data-ts-play", `type="range"`, "data-ts-full-toggle", "data-ts-full-", `id="now-tab-chapters"`, "Unknown", "—", "style=", "<script")
 	if got := regexp.MustCompile(`aria-current="true"`).FindAllString(body, -1); len(got) != 1 {
 		t.Errorf("%d rows are current, want 1", len(got))
+	}
+	if !regexp.MustCompile(`Up next\s*<span aria-hidden="true">·</span>\s*<span id="now-panel-queue-count">0</span>`).MatchString(body) {
+		t.Error("the Up next tab lacks its count")
 	}
 	// The open book's tab, with its count.
 	if !regexp.MustCompile(`Bookmarks\s*<span aria-hidden="true">·</span>\s*<span id="now-panel-count">0</span>`).MatchString(body) {
@@ -312,13 +316,13 @@ func TestNowPanelNoListenView(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v := nowPanelView(d, false, 0)
+	v := nowPanelView(d, false, 0, 0)
 	if len(v.Tabs) != 1 || v.Tabs[0].Key != "about" {
 		t.Errorf("tabs %+v, want About only", v.Tabs)
 	}
-	v = nowPanelView(d, true, 3)
-	if len(v.Tabs) != 2 || v.Tabs[1].Count != "3" {
-		t.Errorf("tabs %+v, want About and Bookmarks · 3", v.Tabs)
+	v = nowPanelView(d, true, 3, 2)
+	if len(v.Tabs) != 3 || v.Tabs[1].Count != "3" || v.Tabs[2].Key != "queue" || v.Tabs[2].Count != "2" || v.Tabs[2].CountID != "now-panel-queue-count" {
+		t.Errorf("tabs %+v, want About, Bookmarks · 3 and Up next · 2", v.Tabs)
 	}
 }
 

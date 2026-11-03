@@ -1,0 +1,13 @@
+package components
+
+// MoveArrow is the chevron on a move up or move down button (the shelf items and the Up next list
+// share it). It is decoration: the button carries the name.
+templ MoveArrow(up bool) {
+	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true">
+		if up {
+			<path d="m6 15 6-6 6 6"></path>
+		} else {
+			<path d="m6 9 6 6 6-6"></path>
+		}
+	</svg>
+}

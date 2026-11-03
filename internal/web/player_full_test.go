@@ -47,6 +47,7 @@ func TestFullPlayerMarkup(t *testing.T) {
 		`class="ts-player-bar ts-player__bar"`, `data-ts-open-speed`, `data-ts-open-sleep`, `data-ts-open-chapters`,
 		`data-ts-full-sheet`, `data-ts-chapters-sheet`, `data-ts-chapter-list`, `data-ts-chapter-row`,
 		`data-ts-full-book`, `data-ts-full-finish`, `Go to book`, `Mark as finished`,
+		`<a class="ts-player__menuitem ts-player__menuqueue" href="/queue" data-ts-close-player>Up next</a>`,
 	} {
 		if !strings.Contains(dlg, want) {
 			t.Errorf("the full player lacks %s", want)

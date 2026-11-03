@@ -394,6 +394,6 @@ func playerMsgs() components.PlayerMsgs {
 		Second: msgSecond, Seconds: msgSeconds, WaveDrawing: msgWaveDrawing, WaveChapter: msgWaveChapter, WaveLeft: msgWaveLeft,
 		WaveAhead: msgWaveAhead, WaveBack: msgWaveBack, WaveDragChapter: msgWaveDragChapter, DeltaMin: msgDeltaMin,
 		DeltaSec: msgDeltaSec, BookTip: msgBookTip, BarMeta: msgBarMeta,
-		ShowPlayer: msgShowPlayer, NowPlaying: nowPanelTitle,
+		ShowPlayer: msgShowPlayer, NowPlaying: nowPanelTitle, UpNext: queueTitle,
 	}
 }

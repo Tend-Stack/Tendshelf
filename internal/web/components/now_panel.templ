@@ -3,8 +3,8 @@ package components
 import "strconv"
 
 // The desktop "Now playing" panel (NP1). On a wide screen it fills the full player dialog's body
-// beside the page: the book's cover, who wrote and read it, the chapter that plays now, and two
-// tabs, About and Bookmarks. It has no transport; the player bar is the only place that plays.
+// beside the page: the book's cover, who wrote and read it, the chapter that plays now, and three
+// tabs: About, Bookmarks and Up next. It has no transport; the player bar is the only place that plays.
 // Every string is written by the handler (internal/web/now_panel_views.go). A part with nothing to
 // say is left out: there is never an empty row, "Unknown" or a dash.
 
@@ -14,9 +14,10 @@ type NowLink struct{ ID, Name, Href string }
 // NowMenu is the extra menu items. ShelfHref is empty when the person may not use shelves.
 type NowMenu struct{ ShelfHref, ShelfLabel string }
 
-// NowTab is one tab. Key is "about" or "bookmarks"; Count is empty for About.
+// NowTab is one tab. Key is "about", "bookmarks" or "queue"; Count is empty for About, and CountID is the
+// id of its number so the tab's own fragment can refresh it.
 type NowTab struct {
-	Key, Label, Count, Href string
+	Key, Label, Count, CountID, Href string
 	Selected                bool
 }
 
@@ -150,7 +151,7 @@ templ nowPanelTabs(v NowPanelView) {
 					{ t.Label }
 					if t.Count != "" {
 						<span aria-hidden="true">·</span>
-						@NowCount(t.Count)
+						<span id={ t.CountID }>{ t.Count }</span>
 					}
 				</button>
 			}

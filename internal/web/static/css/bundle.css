@@ -40,6 +40,13 @@ body { margin: 0; font-family: var(--font-sans); background: var(--ground); colo
 .ts-btn--danger { background: transparent; color: var(--danger); border-color: var(--danger); }
 .ts-btn--lg { min-height: 3.5rem; font-size: 1.125rem; line-height: 1.5rem; padding: 0 var(--space-32); }
 .ts-btn--lg .ts-icon { width: 1.375rem; height: 1.375rem; }
+/* Split play button: the play link and, on its right quarter, the Play next / Add to queue menu. */
+.ts-split { display: flex; }
+#book-play .ts-split [data-ts-play] { flex: 1; width: auto; min-width: 0; padding-inline: var(--space-16); border-start-end-radius: 0; border-end-end-radius: 0; }
+.ts-split__more { position: relative; display: flex; flex: 0 0 25%; min-inline-size: var(--size-tap); }
+.ts-split__toggle { flex: 1; padding: 0; list-style: none; border-start-start-radius: 0; border-end-start-radius: 0;
+  border-inline-start-color: color-mix(in srgb, var(--on-accent) 40%, transparent); }
+.ts-split__toggle::-webkit-details-marker { display: none; }
 .ts-btn--block { display: flex; width: 100%; }
 .ts-btn[disabled], .ts-btn.is-disabled { background: var(--raised); color: var(--ink-subtle); border-color: transparent; cursor: not-allowed; transform: none; }
 .ts-btn--quiet[disabled], .ts-btn--quiet.is-disabled { background: transparent; }

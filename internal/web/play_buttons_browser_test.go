@@ -144,14 +144,14 @@ func TestPlayButtonBrowserMarkFinished(t *testing.T) {
 	playerClickSel(t, tab, "#book-play [data-ts-play]")
 	tab.WaitFor(`window.tsPlayer.state().playing && window.tsPlayer.state().positionMs > 100500`, 10*time.Second)
 	tab.Eval(`window.tsPlayer.pause(); window.__marker = "same page"`, nil)
-	playerClickSel(t, tab, "#book-play form button")
+	playerClickSel(t, tab, "#book-play .ts-book__mark")
 	tab.WaitFor(`document.querySelector("#book-play [data-ts-play]").textContent.trim() === "Listen again"`, 8*time.Second)
 	var same string
 	tab.Eval(`window.__marker || ""`, &same)
 	if same != "same page" {
 		t.Fatal("the region refreshed with a page load, not through HX-Trigger")
 	}
-	if got := playBtnText(tab, "#book-play form button"); got != "Mark as not started" {
+	if got := playBtnText(tab, "#book-play .ts-book__mark"); got != "Mark as not started" {
 		t.Errorf("the mark button says %q", got)
 	}
 	var fromStart string

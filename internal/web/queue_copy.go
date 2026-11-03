@@ -9,3 +9,20 @@ const (
 	queueErrBookID     = "bookId is required."
 	queueErrEnded      = "ended must be a book id of 1 to 64 characters."
 )
+
+// The Up next screens' words (Q2): the split button, the list and the toasts.
+const (
+	queueTitle       = "Up next"
+	queueToggle      = "Queue options"
+	queuePlayNext    = "Play next"
+	queueAddEnd      = "Add to queue"
+	queueAddedEnd    = "Added to Up next"
+	queueAlready     = "Already in Up next"
+	queueAddedFront  = "Added to the top of Up next"
+	queueEmpty       = "Nothing is waiting. Choose Add to queue on a book and it plays after this one."
+	queueMoveUpFmt   = "Move %s up"
+	queueMoveDownFmt = "Move %s down"
+	queueRemoveFmt   = "Remove %s from Up next"
+)
+
+const queueErrGone = "We couldn't find that."
