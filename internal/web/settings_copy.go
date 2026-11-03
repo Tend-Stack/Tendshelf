@@ -19,7 +19,7 @@ func roleLabel(role string) string {
 	case "admin":
 		return "Admin"
 	case "guest":
-		return "Guest"
+		return "Listener"
 	}
 	return "Member"
 }
