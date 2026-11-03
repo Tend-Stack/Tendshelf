@@ -39,6 +39,25 @@ func (s *server) writeBook(w http.ResponseWriter, r *http.Request, id string) (l
 	return s.loadBook(w, r, id, share.EditBook)
 }
 
+// answerBook ends an unsafe request that came from a sheet or the Details tab. A plain form is
+// redirected to loc. An htmx request must not be (HX-Redirect loads the whole window and stops
+// the audio that plays in the layout), so it gets the Details page as GET loc would render it and
+// swaps out of it what it needs.
+func (s *server) answerBook(w http.ResponseWriter, r *http.Request, bookID, loc string) {
+	if r.Header.Get("HX-Request") != "true" {
+		s.redirect(w, r, loc)
+		return
+	}
+	u, err := url.Parse(loc)
+	if err != nil {
+		s.serverError(w, r, "answer book", err)
+		return
+	}
+	r2 := r.Clone(r.Context())
+	r2.URL.RawQuery = u.RawQuery
+	s.renderBook(w, r2, bookID, "details", http.StatusOK, nil)
+}
+
 // writeSheetHref is the write sheet's address, with the write job when there is one.
 func writeSheetHref(bookID, jobID string) string {
 	h := detailsTabHref(bookID) + "?sheet=write"
@@ -260,7 +279,7 @@ func (s *server) postWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r.Context(), user, "book.write.start", book.ID, map[string]string{"job": jobID})
-	s.redirect(w, r, writeSheetHref(book.ID, jobID))
+	s.answerBook(w, r, book.ID, writeSheetHref(book.ID, jobID))
 }
 
 // writeChoice runs Looks good or Undo and goes back to the Details tab with the result.
@@ -273,10 +292,10 @@ func (s *server) writeChoice(w http.ResponseWriter, r *http.Request, done string
 	var ref *mediajobs.WriteRefusal
 	switch {
 	case err == nil:
-		s.redirect(w, r, detailsTabHref(book.ID)+"?written="+done)
+		s.answerBook(w, r, book.ID, detailsTabHref(book.ID)+"?written="+done)
 	case errors.Is(err, mediajobs.ErrNeedsAttention):
 		// The Details tab shows the notice for the file that changed.
-		s.redirect(w, r, detailsTabHref(book.ID))
+		s.answerBook(w, r, book.ID, detailsTabHref(book.ID))
 	case errors.As(err, &ref):
 		s.detailsRefuse(w, r, http.StatusUnprocessableEntity, ref.Text)
 	default:
