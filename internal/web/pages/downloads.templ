@@ -1,0 +1,12 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// Downloads is /me/downloads. Saving books for offline listening is not built yet, so the page
+// says so plainly and offers no control (docs/plans/settings-desktop.md section 7).
+templ Downloads() {
+	<div class="ts-downloads">
+		<h1 class="title-1">Downloads</h1>
+		@components.EmptyState("No downloads yet", "Saving books to listen without a connection is on its way. Until then, books play while your server is in reach.", nil)
+	</div>
+}

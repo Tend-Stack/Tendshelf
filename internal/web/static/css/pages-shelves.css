@@ -1,11 +1,16 @@
 /* Personal shelves (P1b-8): the list, one shelf, the delete page, and the "Add to shelf" sheet on the
    book page. Tokens only. Rows and "Show more" come from pages-library.css, covers from pages-home.css. */
 
-.ts-shelves { display: flex; flex-direction: column; gap: var(--space-12); max-width: 45rem; }
+.ts-shelves { display: flex; flex-direction: column; gap: var(--space-12); }
 .ts-shelves--narrow { max-width: 30rem; }
+/* One shelf is an ordered list with move controls, so it stays one column; only its header spans the page. */
+.ts-shelves--one > :not(.ts-lib-head) { max-width: 48rem; }
 .ts-shelves .ts-lib-head__title { overflow-wrap: anywhere; }
 .ts-shelf-back { align-self: flex-start; margin-left: calc(var(--space-12) * -1); color: var(--ink-muted); }
 .ts-shelf-lead { margin: 0; color: var(--ink-muted); }
+
+/* The list: a grid of shelves that fills the page (a set of shelves has no reading order) */
+.ts-shelf-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr)); column-gap: var(--space-32); }
 
 /* The list: a stack of up to three covers, the name, the count */
 .ts-shelf-list, .ts-shelf-items, .ts-shelf-sheet__list { list-style: none; margin: 0; padding: 0; }

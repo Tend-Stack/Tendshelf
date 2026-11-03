@@ -352,7 +352,7 @@ func Shelf(v ShelfView) templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"ts-shelves\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"ts-shelves ts-shelves--one\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
