@@ -339,3 +339,14 @@ func TestNowPanelHeroButton(t *testing.T) {
 		t.Error("data-ts-show-player is not exactly the hero's")
 	}
 }
+
+// TestB2NowPanelHeadingLevel: the panel sections are h2, so the player h1 is not followed by an h3.
+func TestB2NowPanelHeadingLevel(t *testing.T) {
+	a, b, _ := nowpanelSeries(t)
+	code, body := nowpanelGet(a, "/hx/player/panel/"+b.ID, nil)
+	if code != http.StatusOK {
+		t.Fatalf("panel: %d", code)
+	}
+	nowpanelWant(t, body, `<h2 class="ts-np__h" id="now-sum">`, `<h2 class="ts-np__h" id="now-series">`)
+	nowpanelNot(t, body, "<h3")
+}

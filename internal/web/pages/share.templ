@@ -101,12 +101,13 @@ type ShareLinkRow struct {
 // on the right (one column on a phone).
 templ SharePage(v ShareView) {
 	<div class="ts-share">
+		<h1 class="ts-sr">Share &amp; invite</h1>
 		<div class="ts-share__bar">
 			<a class="ts-admin__back" href={ templ.SafeURL(v.BackHref) }>Back</a>
-			<span class="body">Share &amp; invite</span>
+			<span class="body" aria-hidden="true">Share &amp; invite</span>
 		</div>
 		<header class="ts-share__head">
-			<h1 class="title-1">Share &amp; invite</h1>
+			<div class="title-1" aria-hidden="true">Share &amp; invite</div>
 			<p class="body">Everyone gets their own place, progress and bookmarks. You decide what each person can see.</p>
 		</header>
 		<div class="ts-share__grid">
