@@ -105,6 +105,10 @@ func playLinkIn(book library.Book, files []library.AudioFile, p *progress.Progre
 // person may not play the book (no listen right, refused or missing): no control is drawn then.
 func (s *server) bookPlayData(r *http.Request, book library.Book) (files []library.AudioFile, p *progress.Progress, ok bool, err error) {
 	ctx, u := r.Context(), currentUser(r)
+	if book.Kind == library.BookText {
+		// No audio, no progress row; the region holds the reading button (or the sentence that says why not).
+		return nil, nil, true, nil
+	}
 	if !s.canPlay(ctx, u, book) {
 		return nil, nil, false, nil
 	}
@@ -129,16 +133,42 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	if p != nil && p.Finished() {
 		v.MarkLabel, v.MarkValue = playMarkNot, "0"
 	}
+	ctx, u := r.Context(), currentUser(r)
+	if book.Kind == library.BookText {
+		return s.textPlayView(r, book, v)
+	}
+	rp, err := s.readingOf(ctx, u.ID, book.ID)
+	if err != nil {
+		return nil, err
+	}
+	mayRead, err := s.mayReadBook(ctx, u, book)
+	if err != nil {
+		return nil, err
+	}
+	textFirst := false
 	if l := playLinkIn(book, files, p); l != nil {
 		v.Button = l.button("", false)
-		// Only a signed-in person reaches this page (a share link has its own page), so the queue
-		// menu always comes with the button.
-		v.Queue = &components.QueueMenuView{
-			BookID: book.ID, CSRF: v.CSRF, Next: v.Next, Toggle: queueToggle,
-			PlayNext: queuePlayNext, AddEnd: queueAddEnd, Preserve: true,
+		if mayRead && lastFormat(p, rp, true, true) == formatText {
+			// The other format is a plain secondary button: no place, no queue menu.
+			textFirst = true
+			v.Button.Label, v.Button.FromStart, v.Button.Secondary = listenOther, false, true
+		} else {
+			// Only a signed-in person reaches this page (a share link has its own page), so the queue
+			// menu always comes with the button.
+			v.Queue = &components.QueueMenuView{
+				BookID: book.ID, CSRF: v.CSRF, Next: v.Next, Toggle: queueToggle,
+				PlayNext: queuePlayNext, AddEnd: queueAddEnd, Preserve: true,
+			}
 		}
 	}
-	if p != nil && !p.Finished() && p.PositionMs > 0 && book.DurationMs > 0 {
+	if mayRead {
+		v.Read = readButton(book, rp, !textFirst && v.Button != nil)
+		if textFirst {
+			v.ReadFirst = true
+			v.Ruler, v.Where, v.WhereShort = readRuler(rp)
+		}
+	}
+	if !textFirst && p != nil && !p.Finished() && p.PositionMs > 0 && book.DurationMs > 0 {
 		set, err := s.users.LoadSettings(r.Context(), currentUser(r).ID)
 		if err != nil {
 			return nil, err
@@ -155,6 +185,48 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	}
 	v.Download = s.bookDownloadView(r, book, v.Button != nil)
 	return v, nil
+}
+
+// textPlayView is the #book-play region of a text book: the reading button and ruler, the shelf and share
+// links and the mark control. There is no queue menu, no download and no listening. A person who may see the
+// book but not read it gets the sentence that says so and no button.
+func (s *server) textPlayView(r *http.Request, book library.Book, v *pages.BookPlayView) (*pages.BookPlayView, error) {
+	ctx, u := r.Context(), currentUser(r)
+	rp, err := s.readingOf(ctx, u.ID, book.ID)
+	if err != nil {
+		return nil, err
+	}
+	mayRead, err := s.mayReadBook(ctx, u, book)
+	if err != nil {
+		return nil, err
+	}
+	v.MarkLabel, v.MarkValue = playMarkFinished, "1"
+	if rp != nil && rp.Finished() {
+		v.MarkLabel, v.MarkValue = playMarkNot, "0"
+	}
+	if mayRead {
+		v.Read, v.ReadFirst = readButton(book, rp, false), true
+		v.Ruler, v.Where, v.WhereShort = readRuler(rp)
+	} else {
+		v.Note = readNeedsRight
+		v.MarkLabel = "" // marking finished is a reader's act
+	}
+	if s.canShelve(r) {
+		v.ShelfHref, v.ShelfLabel = shelfSheetHref(book.ID), shelfAddLabel
+	}
+	if s.canManageServerUsers(r) {
+		v.ShareHref = "/books/" + book.ID + "/share"
+	}
+	return v, nil
+}
+
+// readRuler is the reading ruler (percent, no ticks) and its where-lines, nil when the book is not under way.
+func readRuler(rp *progress.ReadingPosition) (*components.RulerView, string, string) {
+	if rp == nil || rp.Finished() || rp.PercentBP <= 0 {
+		return nil, "", ""
+	}
+	_, where := readState(rp)
+	return &components.RulerView{Label: readerRulerLabel, Now: strconv.Itoa(rp.PercentBP / 100)}, where, where
 }
 
 // getBookPlay answers GET /hx/books/{id}/play: only the #book-play region, so it follows a mark or

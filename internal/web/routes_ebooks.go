@@ -24,6 +24,7 @@ import (
 
 func (s *server) registerEbooks(mux *http.ServeMux) {
 	mux.HandleFunc("POST /books/{id}/text", s.postEbookUpload)
+	s.registerEbookDownload(mux)
 	mux.HandleFunc("POST /books/{id}/text/{fileID}/dismiss", s.postEbookDismiss)
 	s.registerEbookPairing(mux)
 }
@@ -137,6 +138,9 @@ func (s *server) textFileView(ctx context.Context, book library.Book, f ebook.Fi
 		}
 		if tc != nil && tc.canRead && f.BookID == book.ID && ed.ID != "" {
 			fv.ReadHref, fv.ReadLabel = "/books/"+book.ID+"/read?edition="+url.QueryEscape(ed.ID), readerRead
+		}
+		if tc != nil && tc.canDownload && f.BookID == book.ID && f.MissingSince == 0 {
+			fv.DownloadHref, fv.DownloadLabel = ebookFileHref(book.ID, f.ID), ebookDownload
 		}
 		shown := rows
 		if !all && len(shown) > bookChaptersHead {

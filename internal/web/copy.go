@@ -185,36 +185,39 @@ func audioHereText(n int) string {
 // "Continue series", "Start series" and the filter words are in the copy deck and the boards; the
 // rest follows the voice rules in BRAND.md.
 const (
-	playStart        = "Start listening"
-	playResume       = "Resume"
-	playAgain        = "Listen again"
-	homeContinue     = "Continue listening"
-	homeReadBy       = "read by %s"
-	homeWhere        = "Chapter %d · %d min left in chapter · %s left in book"
-	homeWhereBook    = "%s left in book"
-	homeChapters     = "Chapters"
-	homeBookProgress = "Book progress"
-	homeRulerChapter = "Book progress, chapter %d of %d"
-	homeSeriesTitle  = "Your series in progress"
-	homeSeriesLine   = "Book %d of %d · %s · %d%%"
-	homeSeriesNext   = "Book %d of %d · up next: %s"
-	homeSeriesCont   = "Continue series %s"
-	homeSeriesStart  = "Start series %s"
-	homeBecause      = "Because you listened to"
-	homeShared       = "Shared with you"
-	homeSharedFrom   = "from %s"
-	homeSharedTwo    = "%s and %s"
-	homeSharedOne    = "%s, %s and 1 other"
-	homeSharedMany   = "%s, %s and %d others"
-	playMarkFinished = "Mark as finished"
-	playMarkNot      = "Mark as not started"
-	chapterPlayed    = "%s, played"
-	showLabel        = "Show"
-	showAny          = "Any"
-	showUnfinished   = "Unfinished"
-	showNotStarted   = "Not started"
-	showFinished     = "Finished"
-	showShared       = "Shared with you"
+	playStart    = "Start listening"
+	playResume   = "Resume"
+	playAgain    = "Listen again"
+	homeContinue = "Continue listening"
+	// NEW (B2): the hero of a book last read; "Continue reading" is in the copy deck, the line follows homeWhere.
+	homeContinueReading = "Continue reading"
+	homeWhereReading    = "Chapter %d · about %s left in chapter · about %s left in book"
+	homeReadBy          = "read by %s"
+	homeWhere           = "Chapter %d · %d min left in chapter · %s left in book"
+	homeWhereBook       = "%s left in book"
+	homeChapters        = "Chapters"
+	homeBookProgress    = "Book progress"
+	homeRulerChapter    = "Book progress, chapter %d of %d"
+	homeSeriesTitle     = "Your series in progress"
+	homeSeriesLine      = "Book %d of %d · %s · %d%%"
+	homeSeriesNext      = "Book %d of %d · up next: %s"
+	homeSeriesCont      = "Continue series %s"
+	homeSeriesStart     = "Start series %s"
+	homeBecause         = "Because you listened to"
+	homeShared          = "Shared with you"
+	homeSharedFrom      = "from %s"
+	homeSharedTwo       = "%s and %s"
+	homeSharedOne       = "%s, %s and 1 other"
+	homeSharedMany      = "%s, %s and %d others"
+	playMarkFinished    = "Mark as finished"
+	playMarkNot         = "Mark as not started"
+	chapterPlayed       = "%s, played"
+	showLabel           = "Show"
+	showAny             = "Any"
+	showUnfinished      = "Unfinished"
+	showNotStarted      = "Not started"
+	showFinished        = "Finished"
+	showShared          = "Shared with you"
 )
 
 // P1c-7a bookmarks. "Bookmarks and notes", "Export", "Play from here", "No note", "Add a note", "Bookmark
@@ -359,6 +362,7 @@ const (
 	msgPlusTen           = "+10 min"
 	msgVolume            = "Volume"
 	msgBookmarkMoment    = "Bookmark this moment"
+	msgOpenReader        = "Read this book" // NEW (B2): the player's book icon
 	msgBookmarkFailed    = "That bookmark didn't save. Try again."
 	msgBookmarkQueued    = "Bookmarked at {time}. It saves when you're back online."
 	msgKeysBookmark      = "Bookmark"
@@ -385,7 +389,7 @@ func playerMsgs() components.PlayerMsgs {
 		SleepCustom: msgSleepCustom, SleepCustomLabel: msgSleepCustomLabel, SleepStart: msgSleepStart,
 		SleepTurnOff: msgSleepTurnOff, SleepOffLabel: msgSleepOffLabel, SleepOnLabel: msgSleepOnLabel,
 		Sleeping: msgSleeping, SleepFading: msgSleepFading, SleepFadingShake: msgSleepFadingShake,
-		PlusTen: msgPlusTen, Volume: msgVolume, BookmarkMoment: msgBookmarkMoment, BookmarkFailed: msgBookmarkFailed,
+		PlusTen: msgPlusTen, Volume: msgVolume, BookmarkMoment: msgBookmarkMoment, OpenReader: msgOpenReader, BookmarkFailed: msgBookmarkFailed,
 		KeysBookmark: msgKeysBookmark,
 		// one source with the Bookmarks tab (P1c-7a): its %s becomes the player's {time}
 		Bookmarked:       strings.Replace(bookmarkToast, "%s", "{time}", 1),

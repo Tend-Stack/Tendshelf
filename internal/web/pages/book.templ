@@ -35,6 +35,11 @@ type DetailRow struct {
 // and CSRF drive the plain-form fallback of the mark.
 type BookPlayView struct {
 	Button *components.PlayButtonView
+	// Read opens the reader. ReadFirst puts it before Button (it is the primary one, decision 0018); Note is the
+	// sentence a person sees instead of it when they may see the book but not read it.
+	Read      *components.ReadButtonView
+	ReadFirst bool
+	Note      string
 	// Queue is the dropdown on the button's right quarter (Play next, Add to queue); nil draws the
 	// button alone.
 	Queue                *components.QueueMenuView
@@ -78,7 +83,7 @@ type BookView struct {
 	// chapters" (the tablet's line).
 	Overline                                                     string
 	ChipSeries, ChipSeriesHref                                   string
-	ChipDuration, ChipChapters, ChipYear, ChipPublisher, Caption string
+	ChipEbook, ChipDuration, ChipChapters, ChipYear, ChipPublisher, Caption string
 	// BandTint is the cover's tint for the band behind the header and BandClass its strength per
 	// theme ("ts-band-dark-1 ts-band-light-2"); both are empty when the band stays plain.
 	BandTint, BandClass string
@@ -177,6 +182,12 @@ templ BookPlay(v *BookPlayView) {
 			hx-trigger="progress-saved from:body"
 			hx-swap="outerHTML"
 		>
+			if v.Read != nil && v.ReadFirst {
+				@components.ReadButton(*v.Read)
+			}
+			if v.Note != "" {
+				<p class="ts-book__note">{ v.Note }</p>
+			}
 			if v.Button != nil && v.Queue != nil {
 				<div class="ts-split" role="group">
 					@components.PlayButton(*v.Button)
@@ -184,6 +195,9 @@ templ BookPlay(v *BookPlayView) {
 				</div>
 			} else if v.Button != nil {
 				@components.PlayButton(*v.Button)
+			}
+			if v.Read != nil && !v.ReadFirst {
+				@components.ReadButton(*v.Read)
 			}
 			if v.Ruler != nil {
 				<div class="ts-book__progress">
@@ -202,15 +216,17 @@ templ BookPlay(v *BookPlayView) {
 				if v.Download != nil {
 					@bookDownload(*v.Download)
 				}
-				<form method="post" action={ templ.SafeURL(v.Action) } hx-post={ v.Action } hx-swap="none">
-					<input type="hidden" name="_csrf" value={ v.CSRF }/>
-					<input type="hidden" name="finished" value={ v.MarkValue }/>
-					<input type="hidden" name="next" value={ v.Next }/>
-					<button type="submit" class="ts-btn ts-btn--quiet ts-book__mark">
-						@components.Icon("check", false)
-						<span class="ts-book__label">{ v.MarkLabel }</span>
-					</button>
-				</form>
+				if v.MarkLabel != "" {
+					<form method="post" action={ templ.SafeURL(v.Action) } hx-post={ v.Action } hx-swap="none">
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<input type="hidden" name="finished" value={ v.MarkValue }/>
+						<input type="hidden" name="next" value={ v.Next }/>
+						<button type="submit" class="ts-btn ts-btn--quiet ts-book__mark">
+							@components.Icon("check", false)
+							<span class="ts-book__label">{ v.MarkLabel }</span>
+						</button>
+					</form>
+				}
 			</div>
 		</div>
 	}
@@ -323,6 +339,9 @@ templ Book(v BookView) {
 					}
 					if v.ChipDuration != "" {
 						<li><span class="ts-chip ts-chip--static ts-num">{ v.ChipDuration }</span></li>
+					}
+					if v.ChipEbook != "" {
+						<li><span class="ts-chip ts-chip--static ts-num">{ v.ChipEbook }</span></li>
 					}
 					if v.ChipChapters != "" {
 						<li><span class="ts-chip ts-chip--static ts-book__chip--wide">{ v.ChipChapters }</span></li>

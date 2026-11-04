@@ -206,7 +206,7 @@ func (s *server) listQuery(u users.User, q browseQuery, cur *library.LibrarySumm
 	from, to := lengthRange(q.Length)
 	return library.ListQuery{LibraryID: curID(cur), Sort: q.Sort, Genres: q.Genres, Cursor: q.Cursor, Limit: browsePageSize,
 		AuthorID: q.Author, NarratorID: q.Narrator, SeriesID: q.Series, Title: q.Title, MinDurationMs: from, MaxDurationMs: to,
-		Show: q.Show, UserID: u.ID}
+		Format: q.Format, Show: q.Show, UserID: u.ID}
 }
 
 // libraryFacets are the choices the Author, Narrator and Series menus list.
@@ -284,7 +284,12 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := s.libraryView(q, libs, cur, page)
-	s.libraryFilters(&v, q, cur, facets, genres)
+	hasText, err := s.hasTextBooks(r, cur)
+	if err != nil {
+		s.serverError(w, r, "library formats", err)
+		return
+	}
+	s.libraryFilters(&v, q, cur, facets, genres, hasText)
 	v.HeaderLine = browseHeaderLine(totals, s.canManage(r))
 	if v.AddBooksHref = s.addBooksHref(r, cur, libs); v.AddBooksHref != "" {
 		v.AddBooksLabel = uploadTitle
@@ -348,7 +353,7 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 // libraryFilters adds the Filter and Show menus, the chips of the kinds in use and the values the
 // forms carry. Every choice is an address; a menu's "Any ..." link drops its own filter and keeps
 // the others. A kind chip shows only while its value is set or the address asks to add it (add=).
-func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *library.LibrarySummary, f libraryFacets, genres []library.Facet) {
+func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *library.LibrarySummary, f libraryFacets, genres []library.Facet, hasText bool) {
 	pagePath, _ := browsePaths(cur)
 	set := func(apply func(*browseQuery)) string {
 		return q.href(pagePath, func(q *browseQuery) { q.Cursor = ""; apply(q) })
@@ -416,12 +421,27 @@ func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *librar
 		}
 	}
 
+	// Format: audiobooks or ebooks. Offered once the person can see an ebook (or has chosen one).
+	format := pages.FilterMenu{ID: "format", Label: libFormat, Chip: libFormat, AnyLabel: libFormatAny, On: q.Format != "",
+		AnyHref: set(func(q *browseQuery) { q.Format = "" })}
+	for _, o := range browseFormatOptions {
+		val := o.Value
+		format.Options = append(format.Options, pages.FilterOption{Name: o.Label, Value: val, On: val == q.Format,
+			Href: set(func(q *browseQuery) { q.Format = val })})
+		if val == q.Format {
+			format.Chip = libFormat + ": " + o.Label
+		}
+	}
+
 	// The Filter menu lists the available kinds; the kinds row shows those in use or asked for.
 	filter := pages.FilterMenu{ID: "filter", Icon: "filter", Label: libFilterGroup, Chip: libFilterChip}
 	for _, k := range [...]struct {
 		m      pages.FilterMenu
 		always bool
-	}{{author, false}, {narrator, false}, {series, false}, {category, false}, {length, true}} {
+	}{{author, false}, {narrator, false}, {series, false}, {category, false}, {length, true}, {format, false}} {
+		if k.m.ID == "format" && !hasText && !k.m.On {
+			continue
+		}
 		if !k.always && !k.m.On && len(k.m.Options) == 0 {
 			continue
 		}
@@ -460,7 +480,8 @@ func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *librar
 	v.ShowMenu, v.ShowValue = show, q.Show
 
 	v.TitleFilter, v.LengthValue = q.Title, q.Length
-	for _, h := range [...]pages.HiddenField{{Name: "author", Value: q.Author}, {Name: "narrator", Value: q.Narrator}, {Name: "series", Value: q.Series}} {
+	for _, h := range [...]pages.HiddenField{{Name: "author", Value: q.Author}, {Name: "narrator", Value: q.Narrator}, {Name: "series", Value: q.Series},
+		{Name: "format", Value: q.Format}} {
 		if h.Value != "" {
 			v.Hidden = append(v.Hidden, h)
 		}
@@ -468,4 +489,11 @@ func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *librar
 	if q.Sort != library.SortAdded { // the title form keeps the order
 		v.Hidden = append(v.Hidden, pages.HiddenField{Name: "sort", Value: string(q.Sort)})
 	}
+}
+
+// hasTextBooks reports whether the person can see any ebook in the shown library, which is when the
+// Format filter is offered.
+func (s *server) hasTextBooks(r *http.Request, cur *library.LibrarySummary) (bool, error) {
+	page, err := s.lib.ListBooks(r.Context(), s.scope(r), library.ListQuery{LibraryID: curID(cur), Format: library.BookText, Limit: 1})
+	return page.Total > 0, err
 }

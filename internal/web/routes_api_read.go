@@ -130,6 +130,16 @@ type apiBookDetail struct {
 	Missing      bool               `json:"missing"`
 	Permissions  apiBookPermissions `json:"permissions"`
 	Progress     *apiProgress       `json:"progress"`
+	// Kind is "audio" or "text"; Formats lists what this person can open ("audio", "text"); Reading is their
+	// place in the text, null when they have none or may not read the book.
+	Kind    string      `json:"kind"`
+	Formats []string    `json:"formats"`
+	Reading *apiReading `json:"reading"`
+}
+
+type apiReading struct {
+	PercentBP int   `json:"percentBp"`
+	UpdatedAt int64 `json:"updatedAt"`
 }
 
 func nonNil(in []string) []string {
@@ -180,6 +190,29 @@ func (s *server) getAPIBook(w http.ResponseWriter, r *http.Request) {
 		if prog != nil {
 			p := apiProgressOf(*prog)
 			out.Progress = &p
+		}
+	}
+	out.Kind, out.Formats = book.Kind, []string{}
+	if out.Kind == "" {
+		out.Kind = library.BookAudio
+	}
+	if out.Kind == library.BookAudio && len(out.Files) > 0 && out.Permissions.Listen {
+		out.Formats = append(out.Formats, library.BookAudio)
+	}
+	mayRead, err := s.mayReadBook(ctx, u, book)
+	if err != nil {
+		s.serverError(w, r, "api book text", err)
+		return
+	}
+	if mayRead {
+		out.Formats = append(out.Formats, library.BookText)
+		rp, err := s.readingOf(ctx, u.ID, book.ID)
+		if err != nil {
+			s.serverError(w, r, "api book reading", err)
+			return
+		}
+		if rp != nil {
+			out.Reading = &apiReading{PercentBP: rp.PercentBP, UpdatedAt: rp.ClientUpdatedAt}
 		}
 	}
 	api.WriteCached(w, r, http.StatusOK, out)

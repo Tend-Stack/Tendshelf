@@ -1,0 +1,30 @@
+package components
+
+// ReadButtonView is the control that opens the reader. Secondary draws the plain button of the format
+// that is not the person's last (decision 0018: one primary resume button per book on any screen).
+type ReadButtonView struct {
+	Href, Label, AriaLabel string
+	Secondary              bool
+}
+
+func readBtnClass(v ReadButtonView) string {
+	if v.Secondary {
+		return "ts-btn ts-btn--secondary"
+	}
+	return "ts-btn ts-btn--primary ts-btn--lg"
+}
+
+// ReadButton is a plain, boosted link to the reader's full page. It needs no JavaScript.
+templ ReadButton(v ReadButtonView) {
+	<a
+		class={ readBtnClass(v) }
+		href={ templ.SafeURL(v.Href) }
+		data-ts-read
+		if v.AriaLabel != "" {
+			aria-label={ v.AriaLabel }
+		}
+	>
+		@Icon("book-open", false)
+		<span>{ v.Label }</span>
+	</a>
+}

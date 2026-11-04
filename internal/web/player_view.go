@@ -92,6 +92,12 @@ func (s *server) playerView(ctx context.Context, u users.User, sc library.Scope,
 	}
 	v.PositionMs, v.Finished, v.UpdatedAt = p.PositionMs, p.Finished(), p.ClientUpdatedAt
 	v.DeviceID, v.DeviceLabel = p.DeviceID, p.DeviceLabel
+	// The book icon of the player: only with the right to read and a ready edition. Share links never get one.
+	if ok, err := s.mayReadBook(ctx, u, book); err != nil {
+		return components.PlayerDataView{}, err
+	} else if ok {
+		v.ReadHref = readHref(book.ID)
+	}
 	return v, nil
 }
 

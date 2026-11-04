@@ -118,6 +118,10 @@ templ PlayerFull(m PlayerMsgs) {
 					@Icon("chapters", false)
 					<span class="ts-player-bar__label">{ m.Chapters }</span>
 				</button>
+				<a class="ts-player-bar__item" data-ts-full-read href="/" hidden>
+					@Icon("book-open", false)
+					<span class="ts-player-bar__label">{ m.OpenReader }</span>
+				</a>
 				<button type="button" class="ts-player-bar__item ts-player__barmark" data-ts-bookmark aria-keyshortcuts="B" aria-label={ m.BookmarkMoment } if m.Link { hidden }>
 					@Icon("bookmark", false)
 					<span class="ts-player-bar__label">{ m.Bookmark }</span>

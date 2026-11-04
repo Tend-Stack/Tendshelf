@@ -166,11 +166,21 @@ func (s *server) sharePageView(r *http.Request, bookID string) (pages.ShareView,
 	if r.Method == http.MethodPost {
 		typed = r.PostForm
 	}
+	// A link page has no reader, so a text book offers no link and lists none (decision 0018).
+	textBook := false
 	if bookID != "" {
+		if tb, err := s.lib.Book(ctx, bookID); err == nil && tb.Kind == library.BookText {
+			textBook = true
+		}
+	}
+	v.NoLinks = textBook
+	if bookID != "" && !textBook {
 		v.LinkForm = linkFormFor(bookID, typed)
 	}
-	if v.Links, err = s.shareLinkRows(ctx, bookID); err != nil {
-		return v, err
+	if !textBook {
+		if v.Links, err = s.shareLinkRows(ctx, bookID); err != nil {
+			return v, err
+		}
 	}
 	return v, s.shareLists(r, &v, bookID)
 }
@@ -547,6 +557,10 @@ func (s *server) postBookShareLink(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	bookID := r.PathValue("id")
+	if tb, err := s.lib.Book(ctx, bookID); err == nil && tb.Kind == library.BookText {
+		s.notFound(w, r) // a link page has no reader
+		return
+	}
 	spec, pw, err := linkSpec(r, bookID)
 	hash := ""
 	if err == nil && pw != "" {

@@ -68,7 +68,16 @@ const (
 	libCategoryAny  = "Any category"
 	libCategoryMore = "%s +%d"
 	libSortHeading  = "Sort by"
+	// NEW (B2): the Format filter and the card's length slot for an ebook.
+	libFormat    = "Format"
+	libFormatAny = "Any format"
+	cardEbook    = "Ebook"
 )
+
+// browseFormatOptions are the choices of the Format filter.
+var browseFormatOptions = []struct{ Value, Label string }{
+	{library.BookAudio, "Audiobooks"}, {library.BookText, "Ebooks"},
+}
 
 // browseSortChip is the short form of a sort on the Show chip ("Show · By title"); the default
 // order adds nothing.

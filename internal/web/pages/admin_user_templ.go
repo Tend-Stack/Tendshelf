@@ -372,7 +372,7 @@ func userGrantRow(v AdminUserView, g GrantRow) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\">Can read along</label></span> <input type=\"checkbox\" role=\"switch\" class=\"ts-switch\" id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\">Can read</label></span> <input type=\"checkbox\" role=\"switch\" class=\"ts-switch\" id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -719,7 +719,7 @@ func userShareForm(v AdminUserView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</fieldset><div class=\"ts-switch-row\"><span class=\"ts-switch-row__text\"><label class=\"ts-switch-row__label\" for=\"us-dl\">Can download</label></span> <input type=\"checkbox\" role=\"switch\" class=\"ts-switch\" id=\"us-dl\" name=\"download\" value=\"1\" checked></div><div class=\"ts-switch-row\"><span class=\"ts-switch-row__text\"><label class=\"ts-switch-row__label\" for=\"us-rd\">Can read along</label></span> <input type=\"checkbox\" role=\"switch\" class=\"ts-switch\" id=\"us-rd\" name=\"read\" value=\"1\"></div><div class=\"ts-field\"><label class=\"ts-field__label\" for=\"us-until\">Ends on (optional)</label> <input class=\"ts-input\" type=\"date\" id=\"us-until\" name=\"until\" min=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</fieldset><div class=\"ts-switch-row\"><span class=\"ts-switch-row__text\"><label class=\"ts-switch-row__label\" for=\"us-dl\">Can download</label></span> <input type=\"checkbox\" role=\"switch\" class=\"ts-switch\" id=\"us-dl\" name=\"download\" value=\"1\" checked></div><div class=\"ts-switch-row\"><span class=\"ts-switch-row__text\"><label class=\"ts-switch-row__label\" for=\"us-rd\">Can read</label></span> <input type=\"checkbox\" role=\"switch\" class=\"ts-switch\" id=\"us-rd\" name=\"read\" value=\"1\"></div><div class=\"ts-field\"><label class=\"ts-field__label\" for=\"us-until\">Ends on (optional)</label> <input class=\"ts-input\" type=\"date\" id=\"us-until\" name=\"until\" min=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

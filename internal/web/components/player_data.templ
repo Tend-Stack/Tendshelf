@@ -35,6 +35,8 @@ type PlayerDataView struct {
 	AccentSepia, Tint               string // Tint: the cover's colour for the full player's background fade
 	Files                           []PlayerFileView
 	Chapters                        []PlayerChapterView
+	// ReadHref opens the reader on this book's ebook; empty unless the person may read it (the player shows a book icon then).
+	ReadHref string
 }
 
 func flagStr(b bool) string {
@@ -66,6 +68,9 @@ templ PlayerData(v PlayerDataView) {
 		data-skip-back-s={ strconv.Itoa(v.SkipBackS) }
 		data-skip-forward-s={ strconv.Itoa(v.SkipForwardS) }
 		data-auto-rewind={ flagStr(v.AutoRewind) }
+		if v.ReadHref != "" {
+			data-read-href={ v.ReadHref }
+		}
 		if v.AccentDark != "" {
 			data-accent-dark={ v.AccentDark }
 		}

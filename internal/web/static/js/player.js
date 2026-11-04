@@ -201,6 +201,7 @@ function parseBook(el) {
     speed: clamp(num(d.speed) || 1, 0.5, 3),
     accents: { dark: d.accentDark, light: d.accentLight, sepia: d.accentSepia }, // cover colours for the full player
     tint: d.tint || "",
+    readHref: d.readHref || "", // the book's reader, empty without an ebook the person may read
     // null when this book was never started
     stored: updatedAt > 0
       ? { positionMs: num(d.positionMs), updatedAt, deviceId: d.deviceId, deviceLabel: d.deviceLabel, finished: d.finished === "1" }
@@ -1130,8 +1131,8 @@ applyVolume();
 // The loaded book as player-full.js needs it (copies), or null.
 function info() {
   if (!book) return null;
-  const { id, title, author, cover, durationMs, skipBack, skipForward, tint } = book;
-  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
+  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref } = book;
+  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
     files: book.files.map(({ id, offset, dur, playable }) => ({ id, offset, dur, playable })), // for the waveform
   };
 }

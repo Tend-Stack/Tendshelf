@@ -235,7 +235,16 @@ func (s *server) postProgress(w http.ResponseWriter, r *http.Request) {
 // postFinished answers POST /hx/books/{id}/finished with finished=1 or 0: htmx gets 204 and a
 // trigger, a plain form is sent on to next (a safe local path) or back to the book.
 func (s *server) postFinished(w http.ResponseWriter, r *http.Request) {
-	b, ok := s.playableBook(w, r, r.PathValue("id"))
+	var b library.Book
+	var ok bool
+	if tb, err := s.lib.Book(r.Context(), r.PathValue("id")); err == nil && tb.Kind == library.BookText {
+		// A text book is marked on the reading side: it needs the right to read and a ready edition.
+		if b, ok = s.loadBook(w, r, tb.ID, share.ReadText); ok && !s.readyOr404(w, r, b) {
+			return
+		}
+	} else {
+		b, ok = s.playableBook(w, r, r.PathValue("id"))
+	}
 	if !ok {
 		return
 	}
@@ -253,7 +262,13 @@ func (s *server) postFinished(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "That did not work. Try again.", http.StatusBadRequest)
 		return
 	}
-	if _, err := s.progress.SetFinished(r.Context(), currentUser(r).ID, b.ID, v == "1", b.DurationMs); err != nil {
+	var err error
+	if b.Kind == library.BookText {
+		_, err = s.progress.SetReadingFinished(r.Context(), currentUser(r).ID, b.ID, v == "1")
+	} else {
+		_, err = s.progress.SetFinished(r.Context(), currentUser(r).ID, b.ID, v == "1", b.DurationMs)
+	}
+	if err != nil {
 		s.serverError(w, r, "set finished", err)
 		return
 	}
@@ -267,4 +282,17 @@ func (s *server) postFinished(w http.ResponseWriter, r *http.Request) {
 		dest = next
 	}
 	http.Redirect(w, r, dest, http.StatusSeeOther)
+}
+
+// readyOr404 answers 404 for a text book with no ready edition to read, and says whether the caller may go on.
+func (s *server) readyOr404(w http.ResponseWriter, r *http.Request, b library.Book) bool {
+	ok, err := s.mayReadBook(r.Context(), currentUser(r), b)
+	if err != nil {
+		s.serverError(w, r, "ready edition", err)
+		return false
+	}
+	if !ok {
+		s.notFound(w, r)
+	}
+	return ok
 }

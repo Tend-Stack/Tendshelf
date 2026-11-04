@@ -25,6 +25,11 @@ func listeningLimit(n int) int { return min(max(n, 1), maxListeningLimit) }
 type Listening struct {
 	Book                              BookCard
 	PositionMs, DurationMs, UpdatedAt int64
+	// Format is the format the person used last: BookAudio, or BookText with the reading place below
+	// (ContinueBooks fills it; ContinueListening is audio only).
+	Format                      string
+	ChapterIdx, PercentBP, Char int
+	EditionID                   string
 }
 
 // ContinueListening lists the visible books the person has started and not finished, most recently
@@ -71,6 +76,74 @@ func (r *Repo) ContinueListening(ctx context.Context, sc Scope, userID string, l
 		}
 	}
 	return out, nil
+}
+
+// ContinueBooks lists the visible books the person is under way with in either format, one row per book
+// with the format they used last, newest first. Audio is under way when started and not finished; text
+// when its percent is above 0 and it is not finished.
+func (r *Repo) ContinueBooks(ctx context.Context, sc Scope, userID string, limit int) ([]Listening, error) {
+	audio, err := r.ContinueListening(ctx, sc, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	for i := range audio {
+		audio[i].Format = BookAudio
+	}
+	w := visible(sc, true)
+	w.add("r.user_id = ?", userID)
+	w.add("r.finished_at IS NULL")
+	w.add("r.percent_bp > 0")
+	type row struct {
+		id, edition       string
+		chapter, bp, char int
+		updated           int64
+	}
+	rows, err := many(ctx, r.st.Reader(), func(s scanner) (row, error) {
+		var x row
+		err := s.Scan(&x.id, &x.edition, &x.chapter, &x.bp, &x.char, &x.updated)
+		return x, err
+	}, `SELECT b.id, COALESCE(r.edition_id,''), r.chapter_idx, r.percent_bp, r.char_pos, r.client_updated_at`+fromVisible+`
+  JOIN reading_positions r ON r.book_id = b.id WHERE `+w.sql()+`
+  ORDER BY r.client_updated_at DESC, r.book_id LIMIT ?`, append(append([]any(nil), w.args...), listeningLimit(limit))...)
+	if err != nil || len(rows) == 0 {
+		return audio, err
+	}
+	ids := make([]string, len(rows))
+	for i, x := range rows {
+		ids[i] = x.id
+	}
+	cards, err := r.cards(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[string]BookCard, len(cards))
+	for _, c := range cards {
+		byID[c.ID] = c
+	}
+	last := make(map[string]int, len(audio))
+	for i, a := range audio {
+		last[a.Book.ID] = i
+	}
+	for _, x := range rows {
+		c, ok := byID[x.id]
+		if !ok {
+			continue
+		}
+		t := Listening{Book: c, UpdatedAt: x.updated, Format: BookText, EditionID: x.edition, ChapterIdx: x.chapter, PercentBP: x.bp, Char: x.char}
+		if i, both := last[x.id]; both {
+			if audio[i].UpdatedAt >= x.updated {
+				continue // the audio place is newer: one row per book
+			}
+			audio[i] = t
+			continue
+		}
+		audio = append(audio, t)
+	}
+	sort.SliceStable(audio, func(i, j int) bool { return audio[i].UpdatedAt > audio[j].UpdatedAt })
+	if n := listeningLimit(limit); len(audio) > n {
+		audio = audio[:n]
+	}
+	return audio, nil
 }
 
 // SeriesNext is the book to listen to next in a series the person has started.
