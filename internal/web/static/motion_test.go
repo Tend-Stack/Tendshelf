@@ -288,7 +288,7 @@ func TestNoSkipCollision(t *testing.T) {
 var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// P3-11a: the live text-size change on the Settings page (about 0.1 KB), so 4.5 KB; to be approved by the operator.
 	// The nav marks a destination as its request starts (operator, 2026-11-03: shell.js 4.625 KB, total 38.375 KB).
-	"shell.js": {4*1024 + 768, 64 * 1024}, // the most specific nav item wins (operator, 2026-11-03: 4.75 KB, total 38.5 KB)
+	"shell.js": {5 * 1024, 64 * 1024}, // the most specific nav item wins (operator, 2026-11-03: 4.75 KB, total 38.5 KB); M3b S sends the time zone: 5 KB (operator, 2026-11-04)
 	// The plan said 9 KB, sized from the squeezed file (7.2 KB). The version written for reading
 	// (one statement per line, comments for the why) is 10.2 KB, so the limit is 11 KB; see the
 	// AGENTS.md rule: report an overrun, never squeeze.
@@ -296,11 +296,13 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// sheets, the sleep timer, the bookmark toast and the B key to player-full.js (12 KB).
 	// NP2 adds the hero's Show player to player.js (about 0.2 KB), so its share is 12.5 KB; the all-JS total stays 36 KB.
 	// Q3 (Up next autoplay): 12.75 KB, approved by the operator on 2026-11-03.
-	"player.js": {12*1024 + 768, 64 * 1024},
+	// M3b (decision 0013): Eyes-free hooks, 13 KB, approved by the operator on 2026-11-04.
+	"player.js": {13 * 1024, 64 * 1024},
 	// PB2 moved the desktop bar's wave seek and the volume pop into waveform.js: back to 12 KB (12.2 KB measured by gzip -c).
 	// P3-11a: sidePanel() (larger text never uses the side panel) is 12.03 KB, so 12.5 KB; to be approved by the operator.
 	// M3a (decision 0012): the offline bookmark queue; 12.75 KB, approved by the operator on 2026-11-03.
-	"player-full.js": {12*1024 + 768, 64 * 1024},
+	// M3b (decision 0013): the Eyes-free menu entry and lazy load, 13.25 KB, approved by the operator on 2026-11-04.
+	"player-full.js": {13*1024 + 256, 64 * 1024},
 	// W2: the waveform drawing (3.0 KB). PB2 folds in the desktop bar's wave (four layers, times, hover,
 	// drag, keys, retry backoff, hairline, volume pop): 7 KB, approved by the operator on 2026-11-02; 7.0 KB measured.
 	"waveform.js": {7 * 1024, 24 * 1024},
@@ -315,6 +317,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"offline.js": {3*1024 + 256, 24 * 1024},
 	// B2 measured 7.8 KB served for the whole manager (5.5 KB was the estimate); 8 KB approved by the operator on 2026-11-03.
 	"downloads.js": {8 * 1024, 40 * 1024},
+	// M3b (decision 0013): the Eyes-free dialog, loaded on first use; 3 KB, approved by the operator on 2026-11-04.
+	"eyes-free.js": {3 * 1024, 24 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
@@ -326,7 +330,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // Q3 (Up next autoplay and the three-tab keys) makes it 38.25 KB; approved by the operator on 2026-11-03.
 // M3a (decision 0012): sw.js, offline.js, downloads.js and player-full.js's share make it 50.5 KB; approved by the operator on 2026-11-03.
 // B2: downloads.js came out at 7.8 KB instead of 5.5, so 52.5 KB; approved by the operator on 2026-11-03.
-const jsTotalGzip = 52*1024 + 512 // 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
+// M3b (decision 0013): statistics, Eyes-free and the shake check make it 55.75 KB; approved by the operator on 2026-11-04.
+const jsTotalGzip = 55*1024 + 768 // 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()
