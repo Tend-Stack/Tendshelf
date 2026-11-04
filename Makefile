@@ -79,6 +79,17 @@ player:
 perf:
 	TENDSHELF_TEST_PERF=1 $(GO) test -count=1 -v -run 'TestPerf' ./internal/web/
 
+# The accessibility audit (M3c): every page at four widths in four themes, checked for WCAG 2.2 AA (the
+# contrast theme for 7:1 text) with our own scripts in internal/web/testdata/a11y and Chromium's
+# accessibility tree. Needs TENDSHELF_TEST_BROWSER. Findings: .local/tests/a11y/<run>/findings.json
+# (TENDSHELF_A11Y_OUT overrides the folder). TENDSHELF_A11Y_FAST=1 runs dark and contrast at 390 and
+# 1440 only. A11Y_RUN narrows the run. It fails while findings stand; that is its job.
+A11Y_RUN ?= TestA11y
+
+.PHONY: a11y
+a11y:
+	$(GO) test -count=1 -tags dev -timeout 45m -run '$(A11Y_RUN)' -v ./internal/web/
+
 # The same pages in WebKitGTK through WebKitWebDriver and MiniBrowser. MiniBrowser has no headless
 # mode: use `xvfb-run -a make visual-webkit` to keep the window off the desktop.
 # Needs TENDSHELF_TEST_WEBKIT_DRIVER=/usr/bin/WebKitWebDriver (the browser defaults to the 4.1 MiniBrowser).

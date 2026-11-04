@@ -11,12 +11,12 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/db"
 )
 
-// seedVisualIDs gives a visual test (its name has "Visual", as `make visual` selects them) and all its
+// seedVisualIDs gives a visual test (its name has "Visual", as `make visual` selects them, or starts with TestA11y, the audit) and all its
 // subtests a repeatable id sequence, so spine heights, avatar colours and anything else derived from an
 // id come out the same on every run.
 func seedVisualIDs(t *testing.T) {
 	top := strings.SplitN(t.Name(), "/", 2)[0]
-	if !strings.Contains(top, "Visual") {
+	if !strings.Contains(top, "Visual") && !strings.HasPrefix(top, "TestA11y") {
 		db.SeedIDs("") // other tests keep random ids
 		return
 	}
