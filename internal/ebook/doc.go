@@ -15,7 +15,7 @@ import (
 // Recipe names the parsing rules that made a document; a change to any rule bumps it so editions are
 // read again. Segmenter names the sentence and word rules.
 const (
-	Recipe    = "tendshelf-ebook-v1"
+	Recipe    = "tendshelf-ebook-v2"
 	Segmenter = "tendshelf-segment-v1"
 	DocV      = 1
 )
@@ -39,6 +39,14 @@ type Meta struct {
 	Authors     []string    `json:"authors"`
 	Language    string      `json:"language"`
 	Identifiers Identifiers `json:"identifiers"`
+
+	// Added by recipe v2; all omitted when empty, so a v1 document still loads and hashes.
+	Description string `json:"description,omitempty"`
+	Publisher   string `json:"publisher,omitempty"`
+	Series      string `json:"series,omitempty"`
+	SeriesIndex string `json:"seriesIndex,omitempty"`
+	Year        int    `json:"year,omitempty"`
+	CoverPart   string `json:"coverPart,omitempty"` // zip path of the cover picture (EPUB)
 }
 
 // Identifiers are the book numbers found in the file.
@@ -79,6 +87,23 @@ type Block struct {
 	Sentences [][2]int `json:"sentences"`
 	Words     [][2]int `json:"words"`
 	Src       *SrcRef  `json:"src,omitempty"`
+	Links     []Link   `json:"links,omitempty"`
+	ImgW      int      `json:"imgW,omitempty"`
+	ImgH      int      `json:"imgH,omitempty"`
+
+	// anchors are the source ids (part#id) that point into this block; only Finish reads them.
+	anchors []string
+}
+
+// Link is a clickable span of a block's text, UTF-16 units, half-open. To is the ID of the block it
+// goes to inside the book; URL is an outside address (http, https or mailto). Note marks a link to a
+// footnote, which the reader opens as a popup.
+type Link struct {
+	Start int    `json:"start"`
+	End   int    `json:"end"`
+	To    string `json:"to,omitempty"`
+	URL   string `json:"url,omitempty"`
+	Note  bool   `json:"note,omitempty"`
 }
 
 // Run is a styled span: style is em, strong or code.

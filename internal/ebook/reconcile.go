@@ -265,6 +265,9 @@ func (s *Service) enqueue(ctx context.Context, fileID, createdBy string) error {
 // code not_yet (a parser that did not exist yet) are reset to pending first, so a newer build reads
 // them.
 func (s *Service) EnqueuePending(ctx context.Context) error {
+	if err := s.EnqueueStale(ctx); err != nil {
+		return err
+	}
 	if _, err := s.db.Writer().ExecContext(ctx, `UPDATE ebook_files SET state='pending', refused_reason=NULL, error_code=NULL,
 updated_at=? WHERE state='refused' AND error_code='not_yet'`, s.now().UnixMilli()); err != nil {
 		return err
@@ -295,4 +298,15 @@ updated_at=? WHERE state='refused' AND error_code='not_yet'`, s.now().UnixMilli(
 		}
 	}
 	return nil
+}
+
+// EnqueueStale marks ready files for reading again when no edition exists for their present bytes and the
+// present recipe (a new parser version). Their older edition keeps serving until the new one lands
+// (Store.EditionFor). EnqueuePending then queues the job, at start-up and after every scan.
+func (s *Service) EnqueueStale(ctx context.Context) error {
+	_, err := s.db.Writer().ExecContext(ctx, `UPDATE ebook_files SET state='pending', job_id=NULL, updated_at=?
+WHERE state='ready' AND sha256 IS NOT NULL AND NOT EXISTS (
+  SELECT 1 FROM editions e WHERE e.ebook_file_id = ebook_files.id AND e.source_sha256 = ebook_files.sha256 AND e.recipe = ?)`,
+		s.now().UnixMilli(), Recipe)
+	return err
 }

@@ -81,6 +81,10 @@ func (s *Service) handleIngest(ctx context.Context, t *jobs.Task) (any, error) {
 	if err != nil {
 		return s.failRead(ctx, t, f, err)
 	}
+	olds, err := s.olderEditions(ctx, f.ID, doc.SourceSHA256, doc.Recipe)
+	if err != nil {
+		return s.failRead(ctx, t, f, err)
+	}
 	words, chars := 0, 0
 	for _, ch := range doc.Chapters {
 		for _, b := range ch.Blocks {
@@ -104,11 +108,11 @@ error_code=NULL, updated_at=? WHERE id=? AND quick_hash=? AND state='pending'`, 
 		authors, _ := json.Marshal(nonNil(doc.Meta.Authors))
 		eid := db.NewID("edn")
 		res, err = tx.ExecContext(ctx, `INSERT INTO editions(id, ebook_file_id, source_sha256, recipe, doc_sha256, doc_bytes, format,
-layout, title, subtitle, authors_json, language, isbn, asin, chapter_count, word_count, char_count, page_count, created_at)
-VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING`,
+layout, title, subtitle, authors_json, language, isbn, asin, chapter_count, word_count, char_count, page_count, created_at, meta_json)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING`,
 			eid, f.ID, doc.SourceSHA256, doc.Recipe, sha, len(js), doc.Format, doc.Layout, doc.Meta.Title, doc.Meta.Subtitle,
 			string(authors), doc.Meta.Language, doc.Meta.Identifiers.ISBN, doc.Meta.Identifiers.ASIN,
-			len(doc.Chapters), words, chars, doc.PageCount, now)
+			len(doc.Chapters), words, chars, doc.PageCount, now, metaJSON(doc.Meta))
 		if err != nil {
 			return err
 		}
@@ -130,8 +134,11 @@ block_count, word_count, char_count, src) VALUES(?,?,?,?,?,?,?,?,?,?)`,
 				return err
 			}
 		}
-		return nil
+		return s.rehome(ctx, tx, olds, doc, eid, now)
 	})
+	if err == nil {
+		s.dropDocs(ctx, olds)
+	}
 	switch {
 	case errors.Is(err, errDiscard):
 		return IngestResult{State: "discarded"}, nil
@@ -171,6 +178,22 @@ func (s *Service) failRead(ctx context.Context, t *jobs.Task, f File, cause erro
 		return nil, err
 	}
 	return nil, &jobs.Error{Code: "read_error", Text: "Tendshelf could not read this file. Try again later.", Permanent: true, Err: cause}
+}
+
+// metaJSON is what the file says beyond the edition's columns (editions.meta_json). A struct, so the
+// field order and the bytes are always the same.
+func metaJSON(m Meta) string {
+	js, err := json.Marshal(struct {
+		Description string `json:"description,omitempty"`
+		Publisher   string `json:"publisher,omitempty"`
+		Year        int    `json:"year,omitempty"`
+		Series      string `json:"series,omitempty"`
+		SeriesIndex string `json:"series_index,omitempty"`
+	}{m.Description, m.Publisher, m.Year, m.Series, m.SeriesIndex})
+	if err != nil {
+		return "{}"
+	}
+	return string(js)
 }
 
 func nonNil(a []string) []string {

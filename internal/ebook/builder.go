@@ -14,6 +14,16 @@ type builder struct {
 	blocks   int
 	total    int
 	err      error
+
+	// dims reads the pixel size of an image by its zip path (EPUB only; nil elsewhere).
+	dims func(path string) (w, h int)
+}
+
+// extra is what an HTML block carries beyond text: its links (Link targets as part#id or URL) and the
+// source ids that point at it.
+type extra struct {
+	links   []Link
+	anchors []string
 }
 
 func newBuilder(format string, lim Limits) *builder {
@@ -69,10 +79,10 @@ func (b *builder) add(blk Block, nWords int) {
 // Block adds a block to the open chapter. Empty blocks are dropped. src may be nil; when set, its Map
 // is filled from the segments' byte offsets.
 func (b *builder) Block(kind string, level int, segs []seg, src *SrcRef) {
-	b.block(kind, level, segs, src, "")
+	b.block(kind, level, segs, src, "", nil)
 }
 
-func (b *builder) block(kind string, level int, segs []seg, src *SrcRef, img string) {
+func (b *builder) block(kind string, level int, segs []seg, src *SrcRef, img string, ex *extra) {
 	if b.err != nil {
 		return
 	}
@@ -107,6 +117,13 @@ func (b *builder) block(kind string, level int, segs []seg, src *SrcRef, img str
 		blk.Runs = append(blk.Runs, Run{Start: idx[i], End: idx[j], Style: nr[i].style})
 		i = j
 	}
+	if ex != nil {
+		blk.anchors = ex.anchors
+		blk.Links = placeLinks(nr, idx, ex.links)
+	}
+	if kind == KindImg && img != "" && b.dims != nil {
+		blk.ImgW, blk.ImgH = b.dims(img)
+	}
 	blk.Sentences, blk.Words = segmentText(text, kind == KindH || kind == KindImg || kind == KindHR || kind == KindPre)
 	if src != nil {
 		s := *src
@@ -123,7 +140,85 @@ func (b *builder) block(kind string, level int, segs []seg, src *SrcRef, img str
 
 // Image adds an img block; alt becomes its text. An image stays even with an empty alt.
 func (b *builder) Image(zipPath, alt string, src *SrcRef) {
-	b.block(KindImg, 0, []seg{{Text: alt, ByteOff: -1}}, src, zipPath)
+	b.block(KindImg, 0, []seg{{Text: alt, ByteOff: -1}}, src, zipPath, nil)
+}
+
+// placeLinks turns the runes' link numbers into Link spans over the block text. table[i-1] is the
+// target of link number i. Spans of only blank text are dropped, and so are links with no target.
+func placeLinks(nr []nrune, idx []int, table []Link) []Link {
+	var out []Link
+	for i := 0; i < len(nr); {
+		n := nr[i].link
+		if n == 0 || n > len(table) {
+			i++
+			continue
+		}
+		j := i
+		blank := true
+		for j < len(nr) && nr[j].link == n {
+			if nr[j].r != ' ' {
+				blank = false
+			}
+			j++
+		}
+		l := table[n-1]
+		if !blank && (l.To != "" || l.URL != "") {
+			l.Start, l.End = idx[i], idx[j]
+			out = append(out, l)
+		}
+		i = j
+	}
+	return out
+}
+
+// resolveLinks points every link at a block ID. A link to a part#id the book does not have is dropped
+// (its text stays); one that lands on a note block, or was marked as a note, opens as a footnote.
+func resolveLinks(chs []Chapter) {
+	target := map[string]*Block{}
+	partFirst := map[string]*Block{}
+	for ci := range chs {
+		c := &chs[ci]
+		if _, dup := partFirst[c.Src]; !dup && len(c.Blocks) > 0 {
+			partFirst[c.Src] = &c.Blocks[0]
+		}
+		for bi := range c.Blocks {
+			bl := &c.Blocks[bi]
+			for _, a := range bl.anchors {
+				if _, dup := target[a]; !dup {
+					target[a] = bl
+				}
+			}
+		}
+	}
+	for ci := range chs {
+		for bi := range chs[ci].Blocks {
+			bl := &chs[ci].Blocks[bi]
+			if len(bl.Links) == 0 {
+				continue
+			}
+			kept := bl.Links[:0]
+			for _, l := range bl.Links {
+				if l.To != "" {
+					t := target[l.To]
+					if t == nil {
+						if part, frag, ok := strings.Cut(l.To, "#"); ok && frag == "" {
+							t = partFirst[part]
+						}
+					}
+					if t == nil {
+						continue
+					}
+					l.To = t.ID
+					l.Note = l.Note || t.Kind == KindNote
+				}
+				kept = append(kept, l)
+			}
+			if len(kept) == 0 {
+				kept = nil
+			}
+			bl.Links = kept
+		}
+	}
 }
 
 // Finish drops empty chapters, numbers chapters and blocks, marks front matter and returns the
@@ -156,6 +251,7 @@ func (b *builder) Finish(meta Meta, pageCount int) (*Doc, error) {
 			chars += u16Len(bl.Text)
 		}
 	}
+	resolveLinks(chs)
 	if pageCount <= 0 {
 		pageCount = (chars + 1799) / 1800
 	}

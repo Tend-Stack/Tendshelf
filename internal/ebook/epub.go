@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	"golang.org/x/net/html"
+
 	"github.com/Tend-Stack/tendshelf/internal/textmatch"
 )
 
@@ -44,6 +46,12 @@ type opfData struct {
 	SpineTOC string
 	Guide    map[string][]string // resolved path -> guide types
 	roles    map[string]string   // refines id -> role
+
+	Description, Publisher, Date string
+	Series, SeriesIndex          string
+	CoverID                      string            // <meta name="cover" content="item id">
+	collID                       string            // id of the belongs-to-collection meta
+	positions                    map[string]string // refines id -> group-position
 }
 
 type opfCreator struct{ ID, Role, Name string }
@@ -79,7 +87,7 @@ func readElementText(d *xmlDec) (string, error) {
 
 func parseOPF(data []byte, opfDir string, lim Limits) (*opfData, error) {
 	d := newXMLBytes(data, lim)
-	o := &opfData{Guide: map[string][]string{}, roles: map[string]string{}}
+	o := &opfData{Guide: map[string][]string{}, roles: map[string]string{}, positions: map[string]string{}}
 	for {
 		t, err := d.Next()
 		if err == io.EOF {
@@ -120,13 +128,55 @@ func parseOPF(data []byte, opfDir string, lim Limits) (*opfData, error) {
 				return nil, err
 			}
 			o.IDs = append(o.IDs, strings.TrimSpace(txt))
+		case "description":
+			txt, err := readElementText(d)
+			if err != nil {
+				return nil, err
+			}
+			if o.Description == "" {
+				o.Description = txt
+			}
+		case "publisher":
+			txt, err := readElementText(d)
+			if err != nil {
+				return nil, err
+			}
+			if o.Publisher == "" {
+				o.Publisher = txt
+			}
+		case "date":
+			txt, err := readElementText(d)
+			if err != nil {
+				return nil, err
+			}
+			if o.Date == "" {
+				o.Date = strings.TrimSpace(txt)
+			}
 		case "meta":
-			if r := attr(se, "refines"); r != "" && attr(se, "property") == "role" {
+			r, prop := attr(se, "refines"), attr(se, "property")
+			switch name := attr(se, "name"); {
+			case name == "cover" && o.CoverID == "":
+				o.CoverID = attr(se, "content")
+			case name == "calibre:series" && o.Series == "":
+				o.Series = attr(se, "content")
+			case name == "calibre:series_index" && o.SeriesIndex == "":
+				o.SeriesIndex = attr(se, "content")
+			case prop == "belongs-to-collection" && r == "" && o.Series == "":
 				txt, err := readElementText(d)
 				if err != nil {
 					return nil, err
 				}
-				o.roles[strings.TrimPrefix(r, "#")] = strings.TrimSpace(txt)
+				o.Series, o.collID = strings.TrimSpace(txt), attr(se, "id")
+			case r != "" && (prop == "role" || prop == "group-position"):
+				txt, err := readElementText(d)
+				if err != nil {
+					return nil, err
+				}
+				if prop == "role" {
+					o.roles[strings.TrimPrefix(r, "#")] = strings.TrimSpace(txt)
+				} else {
+					o.positions[strings.TrimPrefix(r, "#")] = strings.TrimSpace(txt)
+				}
 			}
 		case "item":
 			o.Items = append(o.Items, opfItem{ID: attr(se, "id"), Href: attr(se, "href"), Type: attr(se, "media-type"), Props: attr(se, "properties")})
@@ -388,6 +438,18 @@ func parseEPUB(zb *zipBox, lim Limits) (*Doc, error) {
 	}
 
 	b := newBuilder("epub", lim)
+	imgDims := map[string][2]int{}
+	b.dims = func(p string) (int, int) {
+		if d, ok := imgDims[p]; ok {
+			return d[0], d[1]
+		}
+		var w, h int
+		if data, err := zb.Read(p); err == nil {
+			w, h = imageSize(data)
+		}
+		imgDims[p] = [2]int{w, h}
+		return w, h
+	}
 	for _, id := range o.Spine {
 		it, ok := byID[id]
 		if !ok || !(it.Type == "application/xhtml+xml" || it.Type == "text/html") {
@@ -436,6 +498,12 @@ func parseEPUB(zb *zipBox, lim Limits) (*Doc, error) {
 		pages = nav.Pages
 	}
 	meta := Meta{Title: o.Title, Authors: o.authors(), Language: o.Lang, Identifiers: identifiers(o.IDs)}
+	meta.Description = normalizeString(stripTags(o.Description))
+	meta.Publisher = normalizeString(o.Publisher)
+	meta.Series = normalizeString(o.Series)
+	meta.SeriesIndex = strings.TrimSpace(firstNonEmpty(o.SeriesIndex, o.positions[o.collID]))
+	meta.Year = yearOf(o.Date)
+	meta.CoverPart = o.coverPart(opfDir)
 	return b.Finish(meta, pages)
 }
 
@@ -466,4 +534,65 @@ func firstHeading(d *htmlDoc) string {
 		}
 	}
 	return ""
+}
+
+// coverPart returns the zip path of the cover picture: the item marked cover-image, else the item
+// the legacy cover meta names. Empty when neither exists.
+func (o *opfData) coverPart(opfDir string) string {
+	for _, it := range o.Items {
+		if hasProp(it.Props, "cover-image") {
+			if p, ok := resolveRef(opfDir, it.Href); ok {
+				return p
+			}
+		}
+	}
+	if o.CoverID != "" {
+		for _, it := range o.Items {
+			if it.ID == o.CoverID && strings.HasPrefix(it.Type, "image/") {
+				if p, ok := resolveRef(opfDir, it.Href); ok {
+					return p
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// yearOf reads the year from the start of a Dublin Core date ("2019", "2019-05-01"); 0 when absent
+// or not plausible.
+func yearOf(s string) int {
+	s = strings.TrimSpace(s)
+	if len(s) < 4 {
+		return 0
+	}
+	n := 0
+	for _, c := range s[:4] {
+		if c < '0' || c > '9' {
+			return 0
+		}
+		n = n*10 + int(c-'0')
+	}
+	if n < 1000 || n > 2999 {
+		return 0
+	}
+	return n
+}
+
+// stripTags removes markup from a description that the publisher wrote as HTML.
+func stripTags(s string) string {
+	if !strings.ContainsAny(s, "<&") {
+		return s
+	}
+	var sb strings.Builder
+	z := html.NewTokenizer(strings.NewReader(s))
+	for {
+		switch z.Next() {
+		case html.ErrorToken:
+			return sb.String()
+		case html.TextToken:
+			sb.Write(z.Text())
+		case html.StartTagToken, html.EndTagToken, html.SelfClosingTagToken:
+			sb.WriteByte(' ')
+		}
+	}
 }

@@ -15,6 +15,14 @@ type hblock struct {
 	Segs  []seg
 	Src   SrcRef // Part, Start, End; Map is filled by the builder
 	Img   string // raw src of an img block
+	Links []rawLink
+	Anch  []string // ids found on or inside the block (resolved to part#id by feed)
+}
+
+// rawLink is an <a href> as the walker saw it; feed turns it into a Link target.
+type rawLink struct {
+	Href string
+	Note bool
 }
 
 // htmlDoc is what the tokenizer walk found in one part.
@@ -30,6 +38,8 @@ type hframe struct {
 	kind   bool   // pushed a block kind
 	style  string // pushed an inline style
 	isNote bool
+	block  bool // a container: closing it ends the open block
+	link   bool // an <a href>: closing it ends the link
 }
 
 var containerTags = map[string]bool{
@@ -97,16 +107,23 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 	var svgTitle strings.Builder
 	svgHref, svgInTitle := "", false
 	var titleBuf strings.Builder
+	var links []rawLink  // every <a href> of the part; seg.Link is index+1
+	var linkStack []int  // open links, innermost last
+	var pend []string    // ids seen before their block began
+	var curAnch []string // ids of the open block
+	supDepth := 0
 
 	flush := func(end int) error {
-		defer func() { cur, curStart, begun = nil, -1, false }()
+		defer func() { cur, curStart, begun, curAnch = nil, -1, false, nil }()
 		if len(cur) == 0 {
 			return nil
 		}
 		if len(doc.Blocks) >= lim.MaxBlocks {
 			return damaged("too_many_blocks")
 		}
-		doc.Blocks = append(doc.Blocks, hblock{Kind: curKind, Level: curLevel, Segs: cur, Src: SrcRef{Part: part, Start: curStart, End: end}})
+		hb := hblock{Kind: curKind, Level: curLevel, Segs: cur, Anch: curAnch, Src: SrcRef{Part: part, Start: curStart, End: end}}
+		hb.Segs, hb.Links = localLinks(cur, links)
+		doc.Blocks = append(doc.Blocks, hb)
 		return nil
 	}
 	curStyle := func() string {
@@ -121,11 +138,35 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 			curKind = kinds[len(kinds)-1]
 			curLevel = level
 			curStart = start
+			curAnch = append(curAnch, pend...)
+			pend = nil
 		}
+	}
+	// takePend gives the ids waiting for a block to a block that is made in one step (img, hr).
+	takePend := func() []string {
+		a := pend
+		pend = nil
+		return a
+	}
+	anchor := func(id string) {
+		if id == "" {
+			return
+		}
+		if begun {
+			curAnch = append(curAnch, id)
+		} else {
+			pend = append(pend, id)
+		}
+	}
+	curLink := func() int {
+		if len(linkStack) == 0 {
+			return 0
+		}
+		return linkStack[len(linkStack)-1]
 	}
 	popTo := func(i int, tokEnd int) error {
 		for _, f := range frames[i:] {
-			if f.style == "" {
+			if f.style == "" && (f.kind || f.block) {
 				if err := flush(tokEnd); err != nil {
 					return err
 				}
@@ -141,6 +182,12 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 			}
 			if f.style != "" {
 				styles = styles[:len(styles)-1]
+			}
+			if f.link {
+				linkStack = linkStack[:len(linkStack)-1]
+			}
+			if f.name == "sup" {
+				supDepth--
 			}
 		}
 		return nil
@@ -177,7 +224,7 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 					continue // blank space between blocks starts nothing
 				}
 				begin(start)
-				cur = append(cur, seg{Text: txt, Style: curStyle(), ByteOff: start})
+				cur = append(cur, seg{Text: txt, Style: curStyle(), ByteOff: start, Link: curLink()})
 			}
 		case html.StartTagToken, html.SelfClosingTagToken, html.EndTagToken:
 			nameB, hasAttr := z.TagName()
@@ -210,7 +257,7 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 							if err := flush(start); err != nil {
 								return nil, err
 							}
-							doc.Blocks = append(doc.Blocks, hblock{Kind: KindImg, Segs: []seg{{Text: svgTitle.String(), ByteOff: -1}}, Img: svgHref, Src: SrcRef{Part: part, Start: start, End: end}})
+							doc.Blocks = append(doc.Blocks, hblock{Kind: KindImg, Segs: []seg{{Text: svgTitle.String(), ByteOff: -1}}, Img: svgHref, Anch: takePend(), Src: SrcRef{Part: part, Start: start, End: end}})
 						}
 					}
 				}
@@ -284,30 +331,35 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 			if inHead {
 				continue
 			}
+			id := firstNonEmpty(attrs["id"], attrs["name"])
 			switch {
 			case name == "br":
+				anchor(id)
 				begin(start)
 				sep := " "
 				if kinds[len(kinds)-1] == KindPre {
 					sep = "\n"
 				}
-				cur = append(cur, seg{Text: sep, Style: curStyle(), ByteOff: -1})
+				cur = append(cur, seg{Text: sep, Style: curStyle(), ByteOff: -1, Link: curLink()})
 			case name == "hr":
 				if err := flush(start); err != nil {
 					return nil, err
 				}
-				doc.Blocks = append(doc.Blocks, hblock{Kind: KindHR, Src: SrcRef{Part: part, Start: start, End: end}})
+				anchor(id)
+				doc.Blocks = append(doc.Blocks, hblock{Kind: KindHR, Anch: takePend(), Src: SrcRef{Part: part, Start: start, End: end}})
 			case name == "img":
 				if err := flush(start); err != nil {
 					return nil, err
 				}
+				anchor(id)
 				if isLocalRef(attrs["src"]) {
-					doc.Blocks = append(doc.Blocks, hblock{Kind: KindImg, Segs: []seg{{Text: attrs["alt"], ByteOff: -1}}, Img: attrs["src"], Src: SrcRef{Part: part, Start: start, End: end}})
+					doc.Blocks = append(doc.Blocks, hblock{Kind: KindImg, Segs: []seg{{Text: attrs["alt"], ByteOff: -1}}, Img: attrs["src"], Anch: takePend(), Src: SrcRef{Part: part, Start: start, End: end}})
 				}
 			case len(name) == 2 && name[0] == 'h' && name[1] >= '1' && name[1] <= '6':
 				if err := flush(start); err != nil {
 					return nil, err
 				}
+				anchor(id)
 				if tt == html.StartTagToken {
 					frames = push(frames, hframe{name: name, kind: true}, lim)
 					kinds = append(kinds, KindH)
@@ -318,6 +370,7 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 				if err := flush(start); err != nil {
 					return nil, err
 				}
+				anchor(id)
 				if tt == html.StartTagToken {
 					k := map[string]string{"p": kinds[len(kinds)-1], "blockquote": KindQuote, "li": KindLI, "pre": KindPre}[name]
 					if name == "p" && k == KindH {
@@ -332,8 +385,9 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 				if err := flush(start); err != nil {
 					return nil, err
 				}
+				anchor(id)
 				if tt == html.StartTagToken {
-					f := hframe{name: name}
+					f := hframe{name: name, block: true}
 					et := attrs["epub:type"]
 					if name == "section" || name == "nav" || name == "body" || name == "article" {
 						doc.Types = appendTypes(doc.Types, et)
@@ -346,10 +400,24 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 					frames = push(frames, f, lim)
 				}
 			default:
+				anchor(id)
 				if st := inlineStyle(name); st != "" && tt == html.StartTagToken {
 					frames = push(frames, hframe{name: name, style: st}, lim)
 					styles = append(styles, st)
+				} else if name == "a" && tt == html.StartTagToken && strings.TrimSpace(attrs["href"]) != "" {
+					links = append(links, rawLink{
+						Href: strings.TrimSpace(attrs["href"]),
+						Note: hasToken(attrs["epub:type"], "noteref") || supDepth > 0,
+					})
+					linkStack = append(linkStack, len(links))
+					frames = push(frames, hframe{name: name, link: true}, lim)
 				} else if tt == html.StartTagToken && !voidTags[name] {
+					if name == "sup" {
+						supDepth++
+						if n := len(linkStack); n > 0 {
+							links[linkStack[n-1]-1].Note = true // <a><sup>1</sup></a>
+						}
+					}
 					frames = push(frames, hframe{name: name}, lim)
 				}
 			}
@@ -379,14 +447,46 @@ func appendTypes(dst []string, v string) []string {
 func feed(b *builder, d *htmlDoc, from int, resolve func(string) string) {
 	for _, hb := range d.Blocks[from:] {
 		src := hb.Src
+		ex := &extra{anchors: make([]string, len(hb.Anch))}
+		for i, a := range hb.Anch {
+			ex.anchors[i] = hb.Src.Part + "#" + a
+		}
 		if hb.Kind == KindImg {
 			if p := resolve(hb.Img); p != "" {
-				b.Image(p, joinSegs(hb.Segs), &src)
+				b.block(KindImg, 0, []seg{{Text: joinSegs(hb.Segs), ByteOff: -1}}, &src, p, ex)
 			}
 			continue
 		}
-		b.Block(hb.Kind, hb.Level, hb.Segs, &src)
+		for _, rl := range hb.Links {
+			ex.links = append(ex.links, linkTarget(rl, hb.Src.Part, resolve))
+		}
+		b.block(hb.Kind, hb.Level, hb.Segs, &src, "", ex)
 	}
+}
+
+// linkTarget turns a raw href into a Link whose To is "part#id" (resolved to a block ID by Finish) or
+// whose URL is an allowed outside address. Anything else (javascript:, data:, a file the book lacks)
+// gives an empty Link, which placeLinks drops.
+func linkTarget(rl rawLink, part string, resolve func(string) string) Link {
+	href := rl.Href
+	if strings.HasPrefix(href, "#") {
+		return Link{To: part + href, Note: rl.Note}
+	}
+	if i := strings.IndexAny(href, ":/?#"); i > 0 && href[i] == ':' {
+		switch strings.ToLower(href[:i]) {
+		case "http", "https", "mailto":
+			return Link{URL: href}
+		}
+		return Link{}
+	}
+	if !isLocalRef(href) {
+		return Link{}
+	}
+	path, frag, _ := strings.Cut(href, "#")
+	if r := resolve(path); r != "" {
+		return Link{To: r + "#" + frag, Note: rl.Note}
+	}
+	return Link{}
 }
 
 func joinSegs(segs []seg) string {
@@ -395,4 +495,37 @@ func joinSegs(segs []seg) string {
 		sb.WriteString(s.Text)
 	}
 	return sb.String()
+}
+
+func hasToken(v, want string) bool {
+	for _, f := range strings.Fields(v) {
+		if f == want {
+			return true
+		}
+	}
+	return false
+}
+
+// localLinks gives a block its own link table: segs point at links[i-1] of the whole part, and the
+// block's copy numbers only the links it uses.
+func localLinks(segs []seg, all []rawLink) ([]seg, []rawLink) {
+	var out []rawLink
+	var remap map[int]int
+	for i, s := range segs {
+		if s.Link == 0 {
+			continue
+		}
+		if remap == nil {
+			remap = map[int]int{}
+			segs = append([]seg(nil), segs...)
+		}
+		n, ok := remap[s.Link]
+		if !ok {
+			out = append(out, all[s.Link-1])
+			n = len(out)
+			remap[s.Link] = n
+		}
+		segs[i].Link = n
+	}
+	return segs, out
 }
