@@ -135,7 +135,20 @@ func (s *server) renderUploadRow(w http.ResponseWriter, r *http.Request, libID, 
 		return
 	}
 	folder, _ := s.uploadFolder(ctx, lib)
-	s.fragment(w, r, http.StatusOK, components.UploadRow(s.uploadRow(ctx, v, lib.Name, folder.Path)))
+	row := s.uploadRow(ctx, v, lib.Name, folder.Path)
+	// An archive that was split into several books: the books this poll has not shown yet join the
+	// list beside this row, and later polls ask only for the ones after them.
+	var more []components.UploadRowView
+	if sibs, err := s.uploads.Siblings(ctx, currentUser(r).ID, id); err == nil && len(sibs) > 0 {
+		seen, _ := strconv.Atoi(r.URL.Query().Get("seen"))
+		seen = max(0, min(seen, len(sibs)))
+		for _, sib := range sibs[seen:] {
+			m := s.uploadRow(ctx, sib, lib.Name, folder.Path)
+			more = append(more, m)
+		}
+		row.Seen = len(sibs)
+	}
+	s.fragment(w, r, http.StatusOK, components.UploadRowWithBooks(row, more))
 }
 
 // uploadRow turns an upload into the words and state of its queue row.
