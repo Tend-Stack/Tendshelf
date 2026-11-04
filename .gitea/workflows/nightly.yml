@@ -24,7 +24,7 @@ env:
 
 jobs:
   nightly:
-    name: race suite, real media, browser matrix
+    name: race suite, real media, browser matrix, accessibility
     runs-on: [tend-ci, linux-amd64]
     container:
       image: docker.gitea.com/runner-images:ubuntu-24.04
@@ -84,3 +84,7 @@ jobs:
           make test-mediajobs-real
       - name: Browser screenshot matrix (all themes and widths)
         run: make visual-full
+      - name: Accessibility audit (WCAG 2.2 AA, contrast theme 7:1)
+        run: make a11y
+      - name: Page weight at four widths
+        run: make page-weight

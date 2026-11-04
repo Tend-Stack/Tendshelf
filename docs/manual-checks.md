@@ -88,3 +88,22 @@ Dated runs (browser and version, date, who ran it, anything that surprised you):
 Automated proof of the same surfaces lives in `internal/web/offline_browser_test.go`,
 `offline_downloads_browser_test.go` and `offline_proof_browser_test.go` (Chromium over CDP). What those
 cannot say: a real phone's storage limits, iOS eviction, the lock screen and a real airplane mode.
+
+## M3c keyboard and screen reader
+
+Covers what `make a11y` cannot: real assistive technology. Status: **not run**. Plan:
+[plans/m3c-audit.md](plans/m3c-audit.md); summary: [accessibility.md](accessibility.md). Run each row with Orca
+and Firefox on Ubuntu, TalkBack on Android Chrome, and VoiceOver on iOS Safari. Write the result in each column.
+
+| # | Step | Expected | Orca + Firefox | TalkBack | VoiceOver |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Sign in. | Fields are announced with their labels; a wrong password error is announced. | | | |
+| 2 | From Home, play a book with the keyboard only (or the screen reader's gestures). | One resume control, reachable, labelled; sound starts. | | | |
+| 3 | Full player: every key (space, arrows, speed, sleep, chapters). | Each control works and announces its new state. | | | |
+| 4 | Open a sheet, then close it. | Focus moves inside on open and returns to the opener on close. | | | |
+| 5 | Trigger a toast (add a bookmark). | The toast text is announced once. | | | |
+| 6 | Go offline. | The offline banner is announced. | | | |
+| 7 | Submit a form with an error (Add books, Settings). | The error is announced and linked to its field. | | | |
+| 8 | Browser zoom 200 % and 400 % at 1280 px wide. | No lost content, no sideways scroll, controls usable. | | | |
+| 9 | Windows high-contrast / forced colours (Edge or Firefox). | Text, focus and control edges stay visible. | | | |
+| 10 | Move the scrubber and the volume by keys, without dragging. | Arrow keys change the value and announce it. | | | |
