@@ -281,3 +281,14 @@ func TestMailSettingsTestIsRateLimited(t *testing.T) {
 		t.Error("no Retry-After")
 	}
 }
+
+// TestB2AdminEmailAutocomplete: the user name and from address say what they are to a password manager.
+func TestB2AdminEmailAutocomplete(t *testing.T) {
+	e := mailNewWeb(t, smtpfake.Options{})
+	page := e.get(e.owner, "/admin/email").Body.String()
+	for _, want := range []string{`id="email-user" class="ts-input" type="text" name="username"`, `autocomplete="username"`, `id="email-from" class="ts-input" type="email"`, `autocomplete="email"`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+}

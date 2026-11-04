@@ -162,7 +162,7 @@ templ nowPanelTabs(v NowPanelView) {
 // NowPanelAbout is the About tab: the summary, the series, the details, the genres and more books.
 templ NowPanelAbout(v NowAboutView) {
 	<section class="ts-np__section" aria-labelledby="now-sum">
-		<h3 class="ts-np__h" id="now-sum">{ v.SummaryLabel }</h3>
+		<h2 class="ts-np__h" id="now-sum">{ v.SummaryLabel }</h2>
 		if v.Intro != "" {
 			<div class="ts-np__summary">
 				<p class="ts-np__desc">{ v.Intro }</p>
@@ -196,7 +196,7 @@ templ NowPanelAbout(v NowAboutView) {
 	</section>
 	if v.Series != nil {
 		<section class="ts-np__section" aria-labelledby="now-series">
-			<h3 class="ts-np__h" id="now-series">{ v.SeriesLabel }</h3>
+			<h2 class="ts-np__h" id="now-series">{ v.SeriesLabel }</h2>
 			<div class="ts-np__series">
 				<div class="ts-np__serieshead">
 					<a class="ts-np__seriesname" href={ templ.SafeURL(v.Series.Href) }>{ v.Series.Name }</a>
@@ -223,7 +223,7 @@ templ NowPanelAbout(v NowAboutView) {
 	}
 	if len(v.Details) > 0 || len(v.Genres) > 0 {
 		<section class="ts-np__section" aria-labelledby="now-details">
-			<h3 class="ts-np__h" id="now-details">{ v.DetailsLabel }</h3>
+			<h2 class="ts-np__h" id="now-details">{ v.DetailsLabel }</h2>
 			if len(v.Details) > 0 {
 				<dl class="ts-np__credits">
 					for _, d := range v.Details {
@@ -254,7 +254,7 @@ templ NowPanelAbout(v NowAboutView) {
 	}
 	if len(v.More) > 0 {
 		<section class="ts-np__section" aria-labelledby="now-more">
-			<h3 class="ts-np__h" id="now-more">{ v.MoreTitle }</h3>
+			<h2 class="ts-np__h" id="now-more">{ v.MoreTitle }</h2>
 			<div class="ts-np__covers">
 				for _, c := range v.More {
 					<a class="ts-np__morebook" href={ templ.SafeURL(c.Href) } aria-label={ c.AriaLabel }>

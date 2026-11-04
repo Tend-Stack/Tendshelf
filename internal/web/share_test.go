@@ -431,3 +431,12 @@ func TestSharePureWords(t *testing.T) {
 		t.Errorf("admin roles %+v", got)
 	}
 }
+
+// TestB2SharePageH1: one screen-reader h1 serves both the phone bar and the desktop header, which are drawn as plain text.
+func TestB2SharePageH1(t *testing.T) {
+	e := inviteNewWeb(t)
+	page := e.get(e.owner, "/share").Body.String()
+	if !strings.Contains(page, `<h1 class="ts-sr">Share &amp; invite</h1>`) || !strings.Contains(page, `<div class="title-1" aria-hidden="true">Share &amp; invite</div>`) {
+		t.Error("share page headings")
+	}
+}

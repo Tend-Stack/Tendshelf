@@ -134,7 +134,7 @@ templ AdminEmail(v AdminEmailView) {
 			</div>
 			<div class="ts-field">
 				<label class="ts-field__label" for="email-user">Username</label>
-				<input id="email-user" class="ts-input" type="text" name="username" value={ v.Username } maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false"/>
+				<input id="email-user" class="ts-input" type="text" name="username" value={ v.Username } maxlength="256" autocomplete="username" autocapitalize="none" spellcheck="false"/>
 				@emailFieldError(v.Errors["username"], "email-user-err")
 			</div>
 			<div class="ts-field">
@@ -153,7 +153,7 @@ templ AdminEmail(v AdminEmailView) {
 			</div>
 			<div class="ts-field">
 				<label class="ts-field__label" for="email-from">From address</label>
-				<input id="email-from" class="ts-input" type="email" name="from_address" value={ v.FromAddress } maxlength="254" autocomplete="off" autocapitalize="none" spellcheck="false" required/>
+				<input id="email-from" class="ts-input" type="email" name="from_address" value={ v.FromAddress } maxlength="254" autocomplete="email" autocapitalize="none" spellcheck="false" required/>
 				@emailFieldError(v.Errors["from_address"], "email-from-err")
 			</div>
 			<button type="submit" class="ts-btn ts-btn--primary">Save</button>

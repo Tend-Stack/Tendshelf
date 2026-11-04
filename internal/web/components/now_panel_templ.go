@@ -554,7 +554,7 @@ func NowPanelAbout(v NowAboutView) templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<section class=\"ts-np__section\" aria-labelledby=\"now-sum\"><h3 class=\"ts-np__h\" id=\"now-sum\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<section class=\"ts-np__section\" aria-labelledby=\"now-sum\"><h2 class=\"ts-np__h\" id=\"now-sum\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -567,7 +567,7 @@ func NowPanelAbout(v NowAboutView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</h3>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -711,7 +711,7 @@ func NowPanelAbout(v NowAboutView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if v.Series != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<section class=\"ts-np__section\" aria-labelledby=\"now-series\"><h3 class=\"ts-np__h\" id=\"now-series\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<section class=\"ts-np__section\" aria-labelledby=\"now-series\"><h2 class=\"ts-np__h\" id=\"now-series\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -724,7 +724,7 @@ func NowPanelAbout(v NowAboutView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</h3><div class=\"ts-np__series\"><div class=\"ts-np__serieshead\"><a class=\"ts-np__seriesname\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</h2><div class=\"ts-np__series\"><div class=\"ts-np__serieshead\"><a class=\"ts-np__seriesname\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -869,7 +869,7 @@ func NowPanelAbout(v NowAboutView) templ.Component {
 			}
 		}
 		if len(v.Details) > 0 || len(v.Genres) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "<section class=\"ts-np__section\" aria-labelledby=\"now-details\"><h3 class=\"ts-np__h\" id=\"now-details\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "<section class=\"ts-np__section\" aria-labelledby=\"now-details\"><h2 class=\"ts-np__h\" id=\"now-details\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -882,7 +882,7 @@ func NowPanelAbout(v NowAboutView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "</h3>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1042,7 +1042,7 @@ func NowPanelAbout(v NowAboutView) templ.Component {
 			}
 		}
 		if len(v.More) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "<section class=\"ts-np__section\" aria-labelledby=\"now-more\"><h3 class=\"ts-np__h\" id=\"now-more\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "<section class=\"ts-np__section\" aria-labelledby=\"now-more\"><h2 class=\"ts-np__h\" id=\"now-more\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1055,7 +1055,7 @@ func NowPanelAbout(v NowAboutView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "</h3><div class=\"ts-np__covers\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "</h2><div class=\"ts-np__covers\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
