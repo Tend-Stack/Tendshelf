@@ -1,0 +1,129 @@
+package pages
+
+import (
+	"net/url"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// BackupCopyRow is one copy in the list: when, how big, and the file name in mono.
+type BackupCopyRow struct{ When, Size, Name string }
+
+// BackupStatusView is the answer to "Back up now": a line that polls until the job ends.
+type BackupStatusView struct {
+	JobID, Line     string
+	Pending, Failed bool
+}
+
+// AdminBackupsView is the Backups page. The words come from the handler so the copy lives in one file.
+type AdminBackupsView struct {
+	CSRF, Schedule, Error                                 string
+	Saved                                                 bool
+	Choices                                               []Option
+	Title, Intro, Heading, Save, SavedNotice              string
+	LastLine, NextLine, DirLine, NowLabel, Keeps, CopiesH string
+	RestoreTitle                                          string
+	RestoreSteps                                          []string
+	Copies                                                []BackupCopyRow
+	Failure                                               string
+	Status                                                *BackupStatusView
+}
+
+func backupStatusQuery(v BackupStatusView) string {
+	return "/admin/backups?job=" + url.QueryEscape(v.JobID)
+}
+
+// BackupStatusPanel is the backup status line. While the job runs it asks for itself every 2 seconds
+// and swaps itself out; without JavaScript the link checks the result.
+templ BackupStatusPanel(v BackupStatusView) {
+	<div
+		id="backup-status"
+		class="ts-email__test"
+		role="status"
+		if v.Pending {
+			hx-get={ "/hx/jobs/" + url.PathEscape(v.JobID) }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		<p class={ "body", templ.KV("ts-email__test--failed", v.Failed) }>{ v.Line }</p>
+		if v.Pending {
+			<a class="caption" href={ templ.SafeURL(backupStatusQuery(v)) }>Check the result</a>
+		}
+	</div>
+}
+
+// AdminBackups is the owner's page for scheduled database copies.
+templ AdminBackups(v AdminBackupsView) {
+	<div class="ts-admin ts-email ts-backups">
+		<span class="ts-overline">Your server</span>
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		<p class="body">{ v.Intro }</p>
+		if v.Saved {
+			<p class="ts-banner ts-admin__banner" role="status">
+				@components.Icon("check", false)
+				{ v.SavedNotice }
+			</p>
+		}
+		<div class="ts-groups ts-email__groups ts-backups__groups">
+			<section class="ts-group ts-group--pad ts-email__testbox ts-backups__last" aria-labelledby="backup-last-h">
+				<h2 id="backup-last-h" class="section">{ v.LastLine }</h2>
+				if v.NextLine != "" {
+					<p class="caption">{ v.NextLine }</p>
+				}
+				if v.Failure != "" {
+					<p class="body ts-email__test--failed" role="alert">{ v.Failure }</p>
+				}
+				<form method="post" action="/admin/backups/now" hx-post="/admin/backups/now" hx-target="#backup-status" hx-select="#backup-status" hx-swap="outerHTML" aria-label={ v.NowLabel }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--secondary">{ v.NowLabel }</button>
+				</form>
+				if v.Status != nil {
+					@BackupStatusPanel(*v.Status)
+				} else {
+					<div id="backup-status" role="status"></div>
+				}
+			</section>
+			<form class="ts-group ts-group--pad ts-email__form ts-backups__sched" method="post" action="/admin/backups/schedule" aria-label={ v.Heading }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<fieldset class="ts-admin__choices">
+					<legend class="section">{ v.Heading }</legend>
+					for _, c := range v.Choices {
+						<label class="ts-admin__choice">
+							<input type="radio" class="ts-check" name="schedule" value={ c.Value } checked?={ c.Value == v.Schedule }/>
+							<span>{ c.Label }</span>
+						</label>
+					}
+				</fieldset>
+				if v.Error != "" {
+					<span class="ts-field__hint ts-field__error" id="backup-schedule-err" role="alert">{ v.Error }</span>
+				}
+				<button type="submit" class="ts-btn ts-btn--primary">{ v.Save }</button>
+			</form>
+			<section class="ts-group ts-group--pad ts-backups__copies" aria-labelledby="backup-copies-h">
+				<h2 id="backup-copies-h" class="section">{ v.CopiesH }</h2>
+				<p class="caption">{ v.DirLine }</p>
+				if len(v.Copies) > 0 {
+					<ul class="ts-backups__list">
+						for _, c := range v.Copies {
+							<li class="ts-backups__row">
+								<span class="body">{ c.When }</span>
+								<span class="caption">{ c.Size }</span>
+								<span class="mono ts-backups__name">{ c.Name }</span>
+							</li>
+						}
+					</ul>
+				}
+				<p class="caption">{ v.Keeps }</p>
+			</section>
+		</div>
+		<details class="ts-email__off">
+			<summary>{ v.RestoreTitle }</summary>
+			<ol class="ts-backups__steps">
+				for _, st := range v.RestoreSteps {
+					<li class="body">{ st }</li>
+				}
+			</ol>
+		</details>
+	</div>
+}

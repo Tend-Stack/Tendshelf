@@ -23,6 +23,7 @@ func (s *server) prefsNav(r *http.Request, current string, index bool) pages.Pre
 		Users: showUsers, UsersWaiting: waiting,
 		Libraries: s.can.Can(ctx, u, share.ManageLibraries, server),
 		Email:     s.can.Can(ctx, u, share.ManageServer, server),
+		Backups:   s.can.Can(ctx, u, share.ManageServer, server),
 	}
 }
 

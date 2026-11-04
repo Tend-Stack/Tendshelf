@@ -43,6 +43,15 @@ a.ts-share__tab:focus-visible { outline: 2px solid transparent; box-shadow: var(
   .ts-email__testbox { grid-area: test; }
 }
 
+/* Backups: same order as the phone. The state and "Back up now" lead the left column, the schedule sits
+   under it, and the copies fill the right column. */
+@container pane (width >= 44rem) {
+  .ts-groups.ts-backups__groups { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "last copies" "sched copies"; }
+  .ts-backups__last { grid-area: last; }
+  .ts-backups__sched { grid-area: sched; }
+  .ts-backups__copies { grid-area: copies; }
+}
+
 /* A pending row now can carry three actions (Send again, Copy link, Cancel): on a phone they wrap
    under the text instead of squeezing it to a word per line. */
 .ts-share__pending { flex-wrap: wrap; }
@@ -53,3 +62,12 @@ a.ts-share__tab:focus-visible { outline: 2px solid transparent; box-shadow: var(
   .ts-group.ts-email__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-16) var(--space-24); }
   .ts-email__form > .ts-field:first-of-type, .ts-email__form > .ts-btn { grid-column: 1 / -1; }
 }
+
+/* Backups: the owner's page for scheduled database copies. It shares the Email page's layout. */
+.ts-backups__list, .ts-backups__steps { margin: 0; padding: 0; list-style: none; }
+.ts-backups__steps { padding-inline-start: var(--space-16); list-style: decimal; }
+.ts-backups__row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4) var(--space-16); padding-block: var(--space-8); border-bottom: 1px solid var(--line); }
+.ts-backups__row:last-child { border-bottom: 0; }
+.ts-backups__name { color: var(--ink-muted); overflow-wrap: anywhere; }
+.ts-backups .caption, .ts-backups h2 { margin: 0; }
+.ts-backups .caption { color: var(--ink-muted); }

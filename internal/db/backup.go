@@ -74,6 +74,11 @@ func verifyBackup(ctx context.Context, path string, old int) error {
 // timestamp in the name. Files that do not match the backup name are never
 // touched.
 func rotateBackups(dir string, keep int) error {
+	return rotateMatching(dir, backupName, keep)
+}
+
+// rotateMatching is rotateBackups for any name pattern whose second group is the stamp.
+func rotateMatching(dir string, re *regexp.Regexp, keep int) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
@@ -84,7 +89,7 @@ func rotateBackups(dir string, keep int) error {
 	}
 	var all []bk
 	for _, e := range entries {
-		m := backupName.FindStringSubmatch(e.Name())
+		m := re.FindStringSubmatch(e.Name())
 		if m == nil || e.IsDir() {
 			continue
 		}

@@ -661,6 +661,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, writeSweepRows()...)
 	rows = append(rows, devicesSweepRows()...)
 	rows = append(rows, emailSweepRows()...)
+	rows = append(rows, backupsSweepRows()...)
 	rows = append(rows, apiSweepRows()...)
 	return append(rows, linksSweepRows()...)
 }
