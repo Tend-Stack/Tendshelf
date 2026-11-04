@@ -123,6 +123,7 @@ func run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	wireTextBooks(details, covers, ebooks, logger)
 	if err := sc.Register(runner); err != nil {
 		return err
 	}

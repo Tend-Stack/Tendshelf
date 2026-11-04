@@ -73,6 +73,20 @@ func registerEbooks(d deps) (*ebook.Service, error) {
 	return svc, nil
 }
 
+// wireTextBooks connects ebook books (decision 0018) to the details and cover jobs: a new text book gets its
+// details and cover like a scanned one; an audiobook whose tags were just read is offered to the automatic merge;
+// the cover job takes a picture from a book's ebook file when the book has no other.
+func wireTextBooks(details *metadata.Service, covers *mediajobs.Covers, ebooks *ebook.Service, log *slog.Logger) {
+	ebooks.OnBookCreated(details.Follower())
+	ebooks.OnBookCreated(covers.Follower())
+	details.OnLocal(func(ctx context.Context, bookID string) {
+		if err := ebooks.PairBook(ctx, bookID); err != nil {
+			log.Warn("ebooks: could not merge after details were read", "book", bookID, "err", err)
+		}
+	})
+	covers.TextCover = ebooks.CoverFor
+}
+
 // mediaFlags holds the command-line flags of the media jobs.
 type mediaFlags struct {
 	compatGiB *int

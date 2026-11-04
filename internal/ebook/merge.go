@@ -150,15 +150,27 @@ func bindFor(q string, all []any) []any {
 	return out
 }
 
-// PairBook runs the automatic merge for one audiobook, after its tags were read: an audiobook's title is
-// only right then.
+// PairBook runs the automatic merge for one book after its details were read: an audiobook's title is only
+// right once its tags are in, and a text book's ISBN and authors only once its details are. For an audiobook
+// it looks for a text book to take in; for a text book, for an audiobook to join.
 func (s *Service) PairBook(ctx context.Context, bookID string) error {
-	return s.mergePending(ctx, bookID)
+	var kind string
+	err := s.db.Reader().QueryRowContext(ctx, `SELECT kind FROM books WHERE id = ?`, bookID).Scan(&kind)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if kind == library.BookText {
+		return s.mergePending(ctx, "", bookID)
+	}
+	return s.mergePending(ctx, bookID, "")
 }
 
 // mergePending merges every text book whose default file confidently matches one audiobook. onlyTo limits the
-// audiobook ("" for all). A match the guard refuses stays a suggestion for a person.
-func (s *Service) mergePending(ctx context.Context, onlyTo string) error {
+// audiobook and onlyFrom the text book ("" for all). A match the guard refuses stays a suggestion for a person.
+func (s *Service) mergePending(ctx context.Context, onlyTo, onlyFrom string) error {
 	audio, err := s.store.bookKeysKind(ctx, share.Filter{}, library.BookAudio)
 	if err != nil || len(audio) == 0 {
 		return err
@@ -221,7 +233,7 @@ AND book_id IN (SELECT id FROM books WHERE kind = 'text' AND missing_since IS NU
 				to, by, ok = id, "folder", true
 			}
 		}
-		if !ok || (onlyTo != "" && to != onlyTo) {
+		if !ok || (onlyTo != "" && to != onlyTo) || (onlyFrom != "" && f.BookID != onlyFrom) {
 			continue
 		}
 		if _, err := s.mergeBook(ctx, f.BookID, to, mergeOpts{reason: by, auto: true}); err != nil && !errors.Is(err, ErrBookNotFound) {

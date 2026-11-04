@@ -67,7 +67,7 @@ func (s *Service) Finisher() scan.Finisher {
 		if err := s.ensureBooks(ctx); err != nil {
 			s.log.Warn("ebooks: could not make books", "err", err)
 		}
-		if err := s.mergePending(ctx, ""); err != nil {
+		if err := s.mergePending(ctx, "", ""); err != nil {
 			s.log.Warn("ebooks: merging failed", "err", err)
 		}
 		if err := s.EnqueuePending(ctx); err != nil {

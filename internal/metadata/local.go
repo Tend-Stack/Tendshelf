@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/ebook"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
@@ -36,6 +38,8 @@ type Service struct {
 
 	// Bulk lookups: how the job sleeps and jitters (tests replace both) and how a matched book
 	// without a cover gets the match's picture.
+	onLocal []func(ctx context.Context, bookID string) // told after a local read changed a book (OnLocal)
+
 	sleep     func(context.Context, time.Duration) error
 	jitter    func() float64
 	coverFill func(ctx context.Context, bookID, url string) error
@@ -82,6 +86,12 @@ func firstTags(files []library.AudioFile) map[string]string {
 	return nil
 }
 
+// OnLocal adds a function called after a local read changed a book. An audiobook's title is only right once its
+// tags are read, so this is how the ebook merge hears of it. Call it before the service runs.
+func (s *Service) OnLocal(f func(ctx context.Context, bookID string)) {
+	s.onLocal = append(s.onLocal, f)
+}
+
 // Local reads a book's folder names, file tags and sidecar files (read only), stores them as
 // "folder", "tags", "nfo", "txt", "opf" and "json" values, and
 // brings the book's columns, people, series and genres in line with the strongest value of each
@@ -107,6 +117,9 @@ func (s *Service) local(ctx context.Context, tx *library.Tx, bookID string) (boo
 		return false, nil
 	} else if err != nil {
 		return false, err
+	}
+	if b.Kind == library.BookText {
+		return s.localText(ctx, tx, b)
 	}
 	files, err := tx.AudioFiles(bookID)
 	if err != nil {
@@ -137,6 +150,56 @@ func (s *Service) local(ctx context.Context, tx *library.Tx, bookID string) (boo
 		desired[src] = d.Values()
 	}
 
+	return s.storeValues(tx, b, desired, sc)
+}
+
+// localText is local for a text book (decision 0018): the file's own details beat the folder's, which come
+// from the file name. Folder values apply only when the book's file sits inside the library folder. Sidecars
+// and a folder picture belong to the book only when its folder holds that one book (Calibre's "Title (id)/").
+// An audiobook paired with an ebook takes nothing from it.
+func (s *Service) localText(ctx context.Context, tx *library.Tx, b library.Book) (bool, error) {
+	tm, err := tx.TextMeta(b.ID)
+	if err != nil {
+		return false, err
+	}
+	if b.MissingSince != 0 || !tm.Live {
+		return false, nil
+	}
+	folder, err := s.repo.Folder(ctx, b.FolderID)
+	if err != nil {
+		return false, err
+	}
+	var fromFolder Details
+	if rel, err := filepath.Rel(folder.Path, b.RootPath); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
+		fromFolder = FromPath(folder.Path, b.RootPath, true)
+		fromFolder.fillProduction()
+	}
+	fromFile := Details{Title: tm.Title, Subtitle: tm.Subtitle, Authors: tm.Authors, Language: tm.Language, ISBN: tm.ISBN,
+		ASIN: tm.ASIN, Description: tm.Description, Publisher: tm.Publisher, Year: tm.Year}
+	for _, sr := range tm.Series {
+		fromFile.Series = append(fromFile.Series, SeriesRef{Name: sr.Name, Sequence: sr.Sequence})
+	}
+	desired := map[string]map[string]json.RawMessage{SourceFolder: fromFolder.Values(), SourceFile: fromFile.Values()}
+	sc := textSidecars(b.RootPath)
+	for src, d := range fromSidecars(sc) {
+		desired[src] = d.Values()
+	}
+	return s.storeValues(tx, b, desired, sc)
+}
+
+// textSidecars finds the sidecar files of a text book: the folder's when the folder holds only this book,
+// else only those that share the file's name.
+func textSidecars(root string) sidecarFiles {
+	if dir, ok := ebook.SoleStemDir(root); ok {
+		return findSidecars(dir, false)
+	}
+	return findSidecars(root, true)
+}
+
+// storeValues writes the desired rows of the sources this package owns, drops the ones that went away, and
+// brings the book in line with the strongest value of each field.
+func (s *Service) storeValues(tx *library.Tx, b library.Book, desired map[string]map[string]json.RawMessage, sc sidecarFiles) (bool, error) {
+	bookID := b.ID
 	stored, err := tx.MetadataValues(bookID)
 	if err != nil {
 		return false, err
@@ -167,7 +230,7 @@ func (s *Service) local(ctx context.Context, tx *library.Tx, bookID string) (boo
 	for _, r := range rows {
 		have[[2]string{r.Field, r.Source}] = true
 	}
-	for _, src := range []string{SourceFolder, SourceTags, SourceNFO, SourceTxt, SourceOPF, SourceJSON} {
+	for _, src := range []string{SourceFolder, SourceTags, SourceFile, SourceNFO, SourceTxt, SourceOPF, SourceJSON} {
 		for field, v := range desired[src] {
 			if have[[2]string{field, src}] {
 				continue

@@ -2,7 +2,7 @@
 // such as metadata.json, .opf, .nfo, desc.txt and reader.txt) into a book's details, field by
 // field, and keeps every value's source. Online providers are later work.
 //
-// A source writes only its own rows in metadata_values (folder, tags, nfo, txt, opf, json). The book's columns, people,
+// A source writes only its own rows in metadata_values (folder, tags, file, nfo, txt, opf, json). The book's columns, people,
 // series and genres are then resolved from all rows by the fixed Precedence list, so a value the
 // owner typed (source "user") always wins and is never written here. The code imports library,
 // media and jobs, never scan: scan reaches this package only through a follower function.
@@ -21,13 +21,14 @@ const (
 	SourceOPF    = "opf"
 	SourceTxt    = "txt"
 	SourceNFO    = "nfo"
+	SourceFile   = "file" // what an ebook file says about itself (title, authors, ISBN, series)
 	SourceTags   = "tags"
 	SourceFolder = "folder"
 	SourceOnline = "online"
 )
 
 // Precedence ranks sources, highest first. Online is last, so it only fills gaps.
-var Precedence = []string{SourceUser, SourceJSON, SourceOPF, SourceTxt, SourceNFO, SourceTags, SourceFolder, SourceOnline}
+var Precedence = []string{SourceUser, SourceJSON, SourceOPF, SourceTxt, SourceNFO, SourceFile, SourceTags, SourceFolder, SourceOnline}
 
 // Fields of metadata_values.
 const (
