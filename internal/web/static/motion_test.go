@@ -103,10 +103,10 @@ func TestCSSBudget(t *testing.T) {
 	core := map[string]bool{"css/tokens.css": true, "css/fonts.css": true, "css/bundle.css": true, "css/utilities.css": true, "css/motion.css": true}
 	single := map[string]cssBudget{
 		// Native feel (decision 0011): 2.5 KB, approved by the operator on 2026-11-03.
-		// M3c B3 adds the hit-area rule and the 200 % text wrapping rules: 3.25 KB (overrun 572 bytes, reported for approval).
+		// M3c B3 adds the hit-area rule and the 200 % text wrapping rules: 3.25 KB (overrun 572 bytes, operator approved 2026-11-04).
 		"css/utilities.css": {3*1024 + 256, 24 * 1024},
 		// M3c B3: the phone action bar wraps at large text.
-		"css/pages-book.css": {3*1024 + 128, 24 * 1024}, // M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; reported for approval
+		"css/pages-book.css": {3*1024 + 128, 24 * 1024}, // M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
 		"css/motion.css":     {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
 		"css/player.css": {4 * 1024, 24 * 1024},
@@ -150,7 +150,7 @@ func TestCSSBudget(t *testing.T) {
 	// 18.5 KB: the operator approved the raise on 2026-11-03 for the 2560 px app cap and the range-syntax
 	// breakpoints (18,563 bytes at the time).
 	// 19.5 KB: native feel (decision 0011), approved by the operator on 2026-11-03.
-	const coreBudget = 20*1024 + 896 // offline banner (operator, 2026-11-03: 19.75 KB); M3c B1 focus rings and B3 hit areas and large-text wrapping: 20.875 KB, reported for approval
+	const coreBudget = 20*1024 + 896 // offline banner (operator, 2026-11-03: 19.75 KB); M3c B1 focus rings and B3 hit areas and large-text wrapping: 20.875 KB, operator approved 2026-11-04
 	if coreGzip > coreBudget {
 		t.Errorf("core CSS %d gzip bytes, budget %d (raw %d)", coreGzip, coreBudget, coreRaw)
 	}

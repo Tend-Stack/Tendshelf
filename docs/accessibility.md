@@ -37,4 +37,4 @@ Not covered by the audit: forced-colors mode, placeholder contrast, PDF and eboo
 reachable as a page state, pointer-gesture alternatives (2.5.1, 2.5.7), timing of live announcements, and
 the 2378 unmeasured text nodes. These are manual:
 [M3c keyboard and screen reader](manual-checks.md#m3c-keyboard-and-screen-reader).
-Book tabs wrap at 768 px (a design change, pending operator review).
+Book tabs wrap at 768 px (a design change, operator approved 2026-11-04).
