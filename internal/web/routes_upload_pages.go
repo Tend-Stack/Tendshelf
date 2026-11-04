@@ -304,16 +304,18 @@ func (s *server) addBooksHref(r *http.Request, cur *library.LibrarySummary, libs
 	if s.uploads == nil {
 		return ""
 	}
-	var lib *library.Library
+	var id string
 	switch {
 	case cur != nil:
-		lib = &cur.Library
+		id = cur.ID
 	case len(libs) == 1:
-		lib = &libs[0].Library
+		id = libs[0].ID
 	default:
 		return ""
 	}
-	if lib.UploadFolderID == "" ||
+	// The summaries do not carry the upload folder, so the library is read for it.
+	lib, err := s.lib.Library(r.Context(), id)
+	if err != nil || lib.UploadFolderID == "" ||
 		!s.can.Can(r.Context(), currentUser(r), share.AddBooks, share.Target{Kind: share.TargetLibrary, ID: lib.ID, LibraryID: lib.ID}) {
 		return ""
 	}

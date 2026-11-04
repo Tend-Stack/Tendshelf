@@ -501,7 +501,7 @@ templ bookDetails(v BookView) {
 // hasDetailsPanel is true when the person has at least one control for the options panel.
 func hasDetailsPanel(v BookView) bool {
 	return v.PanelTitle != "" && (v.Edit.LookupHref != "" || v.Edit.ResetAction != "" || v.CoverHref != "" ||
-		v.Write.OpenHref != "" || v.Write.Pending.ConfirmAction != "" || v.Write.Note != "" || v.Edit.Applied != "" || v.Write.Attention != nil)
+		v.Write.OpenHref != "" || v.Write.Pending.ConfirmAction != "" || v.Write.Note != "" || v.Edit.Applied != "" || v.Write.Attention != nil || v.RemoveHref != "")
 }
 
 // bookDetailsPanel is the card of options about the book: the latest status first, the "Waiting
