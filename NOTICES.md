@@ -20,6 +20,7 @@ other projects. Every port, vendored file or third-party dependency adds a row h
 | `internal/metadata/production.go` | TendVox Extractor `extractor_details.py` (`find_production`, `_FULL_CAST`, `_DRAMATIZED`) | GPL-3.0 | Method port, idiomatic Go |
 | `internal/metadata/online/*.go` | TendVox Extractor `extractor_online.py`; Audiobookshelf `server/providers/Audnexus.js`, `Audible.js`, `GoogleBooks.js`, `iTunes.js` | GPL-3.0 | Method port, idiomatic Go |
 | `internal/textmatch/textmatch.go` (`Ratio`) | Python `difflib.SequenceMatcher` | PSF-2.0 | Algorithm re-implemented in Go |
+| `internal/align/normalize.go` | TendVocal `internal/review/number_forms.go` (`smallCardinal`, the rule to leave identifiers alone) and `fidelity_normalize.go` (number words as atoms) | Same author | Method port (digits to spoken words, the reverse direction), idiomatic Go |
 
 Expected first entries (fill in when the port lands; do not pre-credit code that does not exist):
 

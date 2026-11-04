@@ -543,6 +543,13 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
   least 95 % of sentences within ±250 ms, zero invented times); job crash/resume tests; opt-in real run
   on a public-domain recording records the ±250 ms share, CPU time per audio hour and storage per book
   here (replacing the guesses in read-along.md).
+  - *R3 P1 (data, normaliser, doc loader, job hold; done)*: migration 0018 (`runtime_components`, `alignments`,
+    `alignment_chapters`; `SchemaVersion` 18), `internal/ebook.ReadDoc` (512 MiB cap, address re-check),
+    `WordSpans`, `SentenceID`; `internal/align` with the `tendshelf-normalize-v1` normaliser (English and Spanish
+    numbers, ordinals, abbreviations; 4-digit numbers and `1º` are wildcards) and the alignment `Store`
+    (guarded writes, supersede, chapter upsert and lookup by key); `jobs.Error.Hold`. Checks: `TestMigration0018*`,
+    `TestReadDoc*`, `TestWordSpans`, `TestNormalize*`, `TestAlignStore*`, `TestJobsHold*`. Limits: no years with
+    context, no spelled-out Spanish ordinals, no other languages' numbers. Next: P2, P4, then P3a.
 - **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line and Eyes-free;
   `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reading settings (Fraunces,
   Fira Sans, OpenDyslexic); migration `highlights` (`highlights`, `bookmarks.edition_id/sid`,
