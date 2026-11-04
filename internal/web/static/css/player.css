@@ -8,8 +8,8 @@
 .ts-player-slot:not(.is-playing) [data-ts-icon-pause], .ts-player-slot.is-playing [data-ts-icon-play] { display: none; }
 .ts-mini__forward { display: none; }
 
-/* Phone: the content ends above the floating bar */
-body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-24)); }
+/* Room above the bar only while it shows; a hidden or suppressed bar leaves none */
+.ts-shell:has(~ .ts-player-slot:not([hidden], .is-suppressed)) .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-24)); }
 
 /* One resume per screen: a [data-ts-play] control for the loaded book on screen hides the bar */
 .ts-player-slot { transition: translate var(--duration-slow) var(--easing-standard), opacity var(--duration-slow) var(--easing-standard), visibility 0s linear 0s; }
@@ -18,12 +18,12 @@ body.has-player .ts-main { padding-bottom: calc(var(--size-tab-bar) + env(safe-a
 
 @media (width >= 768px) {
   :where(html:not([data-text-size="large"])) {
-    & body.has-player .ts-main { padding-bottom: calc(var(--size-mini-player) + var(--space-32)); }
+    & .ts-shell:has(~ .ts-player-slot:not([hidden], .is-suppressed)) .ts-main { padding-bottom: calc(var(--size-mini-player) + var(--space-32)); }
   }
 }
 @media (width >= 960px) {
   :where(html[data-text-size="large"]) {
-    & body.has-player .ts-main { padding-bottom: calc(var(--size-mini-player) + var(--space-32)); }
+    & .ts-shell:has(~ .ts-player-slot:not([hidden], .is-suppressed)) .ts-main { padding-bottom: calc(var(--size-mini-player) + var(--space-32)); }
   }
 }
 
