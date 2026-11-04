@@ -119,6 +119,10 @@ func run(ctx context.Context, args []string) error {
 	}
 	covers.SetFetcher(onlineClient.FetchCover)
 	details.SetCoverFill(covers.FillOnline)
+	ebooks, err := registerEbooks(d)
+	if err != nil {
+		return err
+	}
 	if err := sc.Register(runner); err != nil {
 		return err
 	}
@@ -142,6 +146,10 @@ func run(ctx context.Context, args []string) error {
 	if err := runner.Start(ctx); err != nil {
 		ln.Close()
 		return err
+	}
+	// Queue the read of every ebook still pending, and retry those refused only because a parser was missing.
+	if err := ebooks.EnqueuePending(ctx); err != nil {
+		logger.Warn("ebooks: could not queue pending reads", "err", err)
 	}
 	// Settle any write-details swap that a crash left half done, then check again every 30 seconds.
 	go writes.Run(ctx)

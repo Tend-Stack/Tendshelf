@@ -33,6 +33,7 @@ type Scanner struct {
 
 	followers []Follower
 	finishers []Finisher
+	sinks     []EbookSink
 
 	afterProbe func() // test hook: runs between ffprobe and the write transaction
 }
@@ -125,7 +126,8 @@ type plan struct {
 	skip      []string          // paths and folders whose absence proves nothing
 	scope     string            // when set, only rows under this path can vanish (ScanSubtree)
 	start     int64
-	settled   []string // books finalize settled in the apply transaction
+	settled   []string      // books finalize settled in the apply transaction
+	ebooks    []EbookFolder // ebook files per walked folder, handed to the sinks after the write
 }
 
 func underAny(path string, prefixes []string) bool {
@@ -197,10 +199,14 @@ func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree,
 		if sc != nil {
 			walkRoot = sc.root
 		}
-		files, st, werr := walk(ctx, walkRoot)
+		all, st, werr := walk(ctx, walkRoot)
+		files, ebooks := splitEbooks(all)
 		if sc != nil {
 			for i := range files {
 				files[i].RelDir = path.Join(sc.subdir, files[i].RelDir)
+			}
+			for i := range ebooks {
+				ebooks[i].RelDir = path.Join(sc.subdir, ebooks[i].RelDir)
 			}
 		}
 		if ctx.Err() != nil {
@@ -225,6 +231,7 @@ func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree,
 		case werr != nil:
 			return res, werr
 		}
+		p.ebooks = append(p.ebooks, EbookFolder{FolderID: fo.ID, Path: fo.Path, Files: ebooks})
 		res.SymlinksSkipped += st.Symlinks
 		res.UnreadableDirs += len(st.Unreadable)
 		p.skip = append(p.skip, st.Unreadable...)
@@ -271,6 +278,13 @@ func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree,
 		return res, err
 	}
 	res.BooksRefused = len(refused)
+
+	if len(s.sinks) > 0 {
+		es := EbookScan{LibraryID: libraryID, Scope: p.scope, Skip: p.skip, Folders: p.ebooks}
+		for _, sink := range s.sinks {
+			sink(ctx, es)
+		}
+	}
 
 	n, err := s.enqueueProbes(ctx, libraryID)
 	res.ProbesEnqueued = n

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/backups"
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/ebook"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
@@ -55,6 +56,18 @@ func registerDetails(d deps) (*metadata.Service, *online.Client, error) {
 func registerBackups(d deps) (*backups.Service, error) {
 	svc := backups.New(d.st, d.runner, d.dataDir, nil, d.log)
 	if err := svc.Register(); err != nil {
+		return nil, err
+	}
+	return svc, nil
+}
+
+// registerEbooks is the hook for ebooks (read-along R1): the scanner hands over the ebook files it
+// finds, and the ebook.ingest job reads them into documents. Call it before scanner.Register.
+func registerEbooks(d deps) (*ebook.Service, error) {
+	svc := ebook.New(d.st, d.lib, d.runner, d.dataDir, d.log)
+	d.scanner.OnEbooks(svc.ScanSink())
+	d.scanner.OnScanFinished(svc.Finisher())
+	if err := svc.Register(d.runner); err != nil {
 		return nil, err
 	}
 	return svc, nil
