@@ -543,6 +543,11 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
   least 95 % of sentences within ±250 ms, zero invented times); job crash/resume tests; opt-in real run
   on a public-domain recording records the ±250 ms share, CPU time per audio hour and storage per book
   here (replacing the guesses in read-along.md).
+  - R3 P4 (worker files): `runtimes/align/` package `alignfiles` embeds `worker.py` (pipe protocol
+    `tendshelf-emissions-v1`, nonce echo, stdout isolation, sockets disabled), manifests `models/{en,es}.json`
+    and the hash-locked requirements, all taken from TendVocal's verified files. Checks: `TestWorkerBundle*`,
+    `python3 -I runtimes/align/test_worker.py` (stub backend, no torch; 7 tests). Limits: the torch backend is
+    not run here (no torch on the build machine); `make test-align-real` is opt-in.
 - **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line and Eyes-free;
   `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reading settings (Fraunces,
   Fira Sans, OpenDyslexic); migration `highlights` (`highlights`, `bookmarks.edition_id/sid`,

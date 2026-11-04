@@ -6,7 +6,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell git describe --tags --long --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
+.PHONY: app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real test-align-real
 
 generate:
 	$(GO) tool templ generate
@@ -118,3 +118,8 @@ clean:
 .PHONY: test-mediajobs-real
 test-mediajobs-real:
 	TENDSHELF_TEST_FFMPEG=1 $(GO) test -count=1 -run 'Real' ./internal/media/ ./internal/mediajobs/
+
+# Alignment worker and runtime against a real Python install (opt-in; never downloads anything).
+# ALIGN_PYTHON is the venv interpreter, e.g. <data>/runtimes/align/venv/bin/python.
+test-align-real:
+	TENDSHELF_TEST_ALIGN_RUNTIME=$(ALIGN_PYTHON) $(GO) test -count=1 -run 'TestRuntimeReal|TestAlignJobReal|TestWorkerBundlePython' ./internal/align/... ./runtimes/...
