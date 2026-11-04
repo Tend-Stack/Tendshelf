@@ -19,6 +19,8 @@ type TextProtectedView struct {
 // The handler writes every word and address.
 type TextFileView struct {
 	ID, State, Name, Source string
+	// SourceIsPath is set when Source names a file in a library folder (drawn in the mono face).
+	SourceIsPath bool
 	// Ready: the summary line, a note, the chapters and the "Show all" link.
 	Summary, Note string
 	Chapters      []TextChapterView
@@ -94,7 +96,7 @@ templ EbookFileRow(f TextFileView) {
 			>
 				<p class="body">{ f.Reading }</p>
 				if f.CheckHref != "" {
-					<a class="caption" href={ templ.SafeURL(f.CheckHref) }>{ f.CheckLabel }</a>
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(f.CheckHref) }>{ f.CheckLabel }</a>
 				}
 			</div>
 		default:
@@ -109,7 +111,7 @@ templ EbookEdition(f TextFileView) {
 		<h3 id={ "ebook-name-" + f.ID } class="section ts-ebook__name">{ f.Name }</h3>
 		<p class="caption ts-ebook__meta">{ f.Summary }</p>
 		if f.Source != "" {
-			<p class="caption ts-ebook__meta ts-ebook__path">{ f.Source }</p>
+			<p class={ "caption", "ts-ebook__meta", templ.KV("ts-ebook__path", f.SourceIsPath) }>{ f.Source }</p>
 		}
 		if f.Note != "" {
 			<p class="caption ts-ebook__note">{ f.Note }</p>

@@ -89,7 +89,7 @@ func (s *server) textFileView(ctx context.Context, book library.Book, f ebook.Fi
 	if edit {
 		fv.Source = ebookFromThis
 		if f.Origin == "library" {
-			fv.Source = fmt.Sprintf(ebookFoundIn, ebookShortPath(f.Path))
+			fv.Source, fv.SourceIsPath = fmt.Sprintf(ebookFoundIn, ebookShortPath(f.Path)), true
 		}
 	}
 	if edit && f.Origin == "upload" && (f.State == "refused" || f.State == "failed") {
@@ -112,7 +112,7 @@ func (s *server) textFileView(ctx context.Context, book library.Book, f ebook.Fi
 			return fv, err
 		}
 		fv.Summary = fmt.Sprintf(ebookSummary, strings.ToUpper(ed.Format),
-			countText(ed.ChapterCount, "1 chapter", "%d chapters"), countText(ed.WordCount, "1 word", thousands(ed.WordCount)+" words"))
+			countText(ed.ChapterCount, "1 chapter", "%d chapters"), ebookWords(ed.WordCount))
 		if ed.Layout == "page" {
 			fv.Note = ebookPDFLayout
 		}
@@ -158,6 +158,14 @@ func (s *server) textFileView(ctx context.Context, book library.Book, f ebook.Fi
 		}
 	}
 	return fv, nil
+}
+
+// ebookWords is the word count with thousands separators.
+func ebookWords(n int) string {
+	if n == 1 {
+		return "1 word"
+	}
+	return thousands(n) + " words"
 }
 
 func ebookPollHref(jobID string) string {

@@ -763,10 +763,13 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-ebook__why p { margin: 0; color: var(--ink-muted); }
 .ts-ebook__still .ts-icon { color: var(--success); }
 .ts-ebook__clear { display: contents; }
+.ts-ebook__file > .ts-btn { align-self: flex-start; }
 .ts-ebook__add { display: flex; flex-direction: column; gap: var(--space-8); }
 .ts-ebook__drop { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); padding: var(--space-16); border: 0.125rem dashed var(--line-strong); border-radius: var(--radius-lg); }
 .ts-ebook__drop .caption, .ts-ebook__drop .body { margin: 0; }
 .ts-ebook__pick { display: flex; flex-direction: column; gap: var(--space-8); max-width: 100%; }
 .ts-ebook__picklabel { font-weight: 600; }
-.ts-ebook__input { max-width: 100%; min-height: 2.75rem; color: var(--ink); font: inherit; }
+.ts-ebook__input { box-sizing: border-box; max-width: 100%; min-height: 2.75rem; padding: var(--space-8); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--raised); color: var(--ink); font: inherit; }
+.ts-ebook__input::file-selector-button { min-height: 2.25rem; margin-right: var(--space-12); padding: 0 var(--space-12); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--ink); font: 600 1rem/1.25rem var(--font-sans); }
+.ts-ebook .ts-btn { height: auto; min-height: 2.75rem; max-width: 100%; padding-block: var(--space-8); white-space: normal; text-align: center; }
 .ts-ebook__error { color: var(--danger); }

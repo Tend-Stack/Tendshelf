@@ -156,19 +156,51 @@ func (l *textLab) waitState(t *testing.T, id, state string) ebook.File {
 // addPlaced inserts a file row of an upload in the given state (no job runs for it).
 func (l *textLab) addPlaced(t *testing.T, name, state, reason string) string {
 	t.Helper()
+	return placeEbook(t, l.a, l.book, l.ownerID, name, state, reason)
+}
+
+// placeEbook inserts an uploaded ebook row of the book in the given state and returns its id.
+func placeEbook(t *testing.T, a *testApp, book library.Book, userID, name, state, reason string) string {
+	t.Helper()
 	id := fmt.Sprintf("ebf_%s_%s", state, strings.ReplaceAll(name, ".", "_"))
 	sha := fmt.Sprintf("%064x", len(id)*7919+int(name[0]))
 	var r any
 	if reason != "" {
 		r = reason
 	}
-	if _, err := l.a.st.Writer().Exec(`INSERT INTO ebook_files(id, origin, library_id, book_id, paired_by, ext, size, mtime_ns, quick_hash,
+	if _, err := a.st.Writer().Exec(`INSERT INTO ebook_files(id, origin, library_id, book_id, paired_by, ext, size, mtime_ns, quick_hash,
 		sha256, state, refused_reason, original_name, uploaded_by, created_at, updated_at)
 		VALUES (?, 'upload', ?, ?, 'upload', 'epub', 10, 0, ?, ?, ?, ?, ?, ?, 1, 1)`,
-		id, l.book.LibraryID, l.book.ID, sha, sha, state, r, name, l.ownerID); err != nil {
+		id, book.LibraryID, book.ID, sha, sha, state, r, name, userID); err != nil {
 		t.Fatal(err)
 	}
 	return id
+}
+
+// textSeedStates gives an app the Text tab with a ready edition of 14 chapters, a copy-protected
+// refusal and a waiting read of the book, for the accessibility audit and the captures. The job
+// runner runs only until the edition is ready.
+func textSeedStates(t *testing.T, a *testApp, book library.Book, userID string) {
+	t.Helper()
+	svc := ebook.New(a.st, a.lib, a.runner, a.dir, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err := svc.Register(a.runner); err != nil {
+		t.Fatal(err)
+	}
+	a.srv.ebooks = svc
+	f, err := svc.AddUpload(context.Background(), book, userID, "salt-and-ember.epub", bytes.NewReader(textEPUB(t, "Salt and Ember", 14)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := &textLab{a: a, svc: svc, book: book}
+	if err := a.runner.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	l.waitState(t, f.ID, "ready")
+	if err := a.runner.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	placeEbook(t, a, book, userID, "the-glass-orchard.epub", "refused", "drm")
+	placeEbook(t, a, book, userID, "waiting.epub", "pending", "")
 }
 
 func TestTextTabVisibility(t *testing.T) {
@@ -255,6 +287,9 @@ func TestTextTabLists(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("owner page lacks %q", want)
 		}
+	}
+	if strings.Contains(body, "%!") || !strings.Contains(body, " words") {
+		t.Error("the summary line is not formatted")
 	}
 	if strings.Contains(body, "Chapter 14") || strings.Contains(body, "Chapter 13") {
 		t.Error("the list shows more than the first twelve chapters")

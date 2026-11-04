@@ -116,6 +116,11 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	}
 	e.AdminFolderID = a11yOne(t, a, `SELECT id FROM library_folders WHERE library_id = ?`, e.AdminLibID)
 
+	if bk, err := a.lib.Book(ctx, e.BookID); err != nil {
+		t.Fatal(err)
+	} else {
+		textSeedStates(t, a, bk, owner)
+	}
 	memberCk := a.as(t, users.RoleMember)
 	e.MemberID = sweepUserID(t, a, memberCk)
 	if _, err := a.st.Writer().Exec(`INSERT INTO grants(id, user_id, scope, library_id, can_download, can_read, created_at, updated_at)

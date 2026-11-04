@@ -46,5 +46,5 @@ const (
 	ebookPDFLayout   = "This PDF keeps its page layout. Read along will show its words plainly."
 
 	// NEW: upload errors (the 422, 413, 409 and 507 answers).
-	ebookNoFile    = "Choose a file first."
+	ebookNoFile = "Choose a file first."
 )
