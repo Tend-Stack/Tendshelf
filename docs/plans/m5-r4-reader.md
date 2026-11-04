@@ -311,3 +311,12 @@ Gates: `make a11y` (A11Y_RUN on the reader rows), `make visual-full` (VISUAL_RUN
 Cross-format position, Read mode driving the position, edition switching by quote, `can_read` share links, offline text (R5); Media Overlays (R6);
 images in text; shared or public highlights; highlight colours other than yellow in the UI (the column allows four); search in text; the book page
 redesign of `ReaderBook*` boards ("Continue reading along" on the hero); the Car mode.
+
+## Operator answers (2026-11-04)
+
+- JS budgets approved as planned: `readalong.js` 6 KB, `reader-marks.js` 2.5 KB, `reader-settings.js` 1.25 KB;
+  app JS total 61.5 KB -> 71.25 KB (72,960 B gzip).
+- OpenDyslexic: the builder fetches the three woff2 files once from the official release, pinned, with the
+  SHA-256 and the OFL text recorded in NOTICES.md. Tendshelf itself never downloads anything.
+- The other decisions take their defaults (highlight notes in `highlights.note`; contrast failures fixed by token
+  lightness and listed; mode switcher as links marked current).
