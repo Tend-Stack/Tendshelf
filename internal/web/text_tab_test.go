@@ -191,11 +191,29 @@ func textSeedStates(t *testing.T, a *testApp, book library.Book, userID string) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Pairing (M5 R2 P2): a second edition found in a folder (a pairing card with its checks) and one
+	// more ebook that is still unpaired (a suggestion).
+	folder, err := svc.AddUpload(context.Background(), book, userID, "folder-copy.epub", bytes.NewReader(textEPUB(t, book.Title, 13)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := svc.AddUpload(context.Background(), book, userID, "found-copy.epub", bytes.NewReader(textEPUB(t, book.Title, 12)))
+	if err != nil {
+		t.Fatal(err)
+	}
 	l := &textLab{a: a, svc: svc, book: book}
 	if err := a.runner.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	l.waitState(t, f.ID, "ready")
+	l.waitState(t, folder.ID, "ready")
+	l.waitState(t, found.ID, "ready")
+	if _, err := a.st.Writer().Exec(`UPDATE ebook_files SET paired_by = 'folder' WHERE id = ?`, folder.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.st.Writer().Exec(`UPDATE ebook_files SET book_id = NULL, paired_by = NULL WHERE id = ?`, found.ID); err != nil {
+		t.Fatal(err)
+	}
 	if err := a.runner.Stop(context.Background()); err != nil {
 		t.Fatal(err)
 	}

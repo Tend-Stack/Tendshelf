@@ -94,7 +94,10 @@ type sweepEnv struct {
 	// the admin to clear (M5 R1).
 	ebookJob     string
 	ebookRefused [2]string
-	tree         string // a folder for the browse view, with a file name that must never be sent
+	// ebookPair names the ready files the pairing rows act on (M5 R2 P2), by verb; unpair has one per
+	// staff person because it uses its file up.
+	ebookPair map[string]string
+	tree      string // a folder for the browse view, with a file name that must never be sent
 
 	// granted marks the app of TestRouteMatrixGranted: the member and the guest hold a library
 	// grant on libID, so rows answer with Granted and the leak scan is off.

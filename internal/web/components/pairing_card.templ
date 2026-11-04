@@ -1,0 +1,81 @@
+package components
+
+// PairingCheck is one line of evidence on a pairing card: OK draws the check icon, otherwise the
+// warning icon. Text is already in plain words.
+type PairingCheck struct {
+	OK   bool
+	Text string
+}
+
+// PairingCardView is an ebook and an audiobook side by side, with what agrees and what differs
+// (board AddEbook*, NoMatchPhone). The Text tab and the Ebooks to pair inbox both draw it.
+type PairingCardView struct {
+	// ID makes the title's id, which names the card for a screen reader.
+	ID string
+	// Audio is the audiobook; nil draws the dashed headphones placeholder (no audiobook chosen yet).
+	Audio *CardView
+	// Title is the ebook's title, Meta its line ("Ruth Okafor · EPUB · 288 pages").
+	Title, Meta string
+	// FoundIn and Path draw "Found in {path}" with the path in the mono face; Path empty for none.
+	FoundIn, Path string
+	Checks        []PairingCheck
+	// Warning is one paragraph with the warning icon (the "no match" sentence); empty for none.
+	Warning string
+	// NoMatch gives the link badge its dashed "nothing found" look and the card role="status".
+	NoMatch bool
+}
+
+// PairingCard draws the card; the forms and links that act on it go in its children.
+templ PairingCard(v PairingCardView) {
+	<section
+		class={ "ts-pair", templ.KV("ts-pair--nomatch", v.NoMatch) }
+		aria-labelledby={ "pair-title-" + v.ID }
+		if v.NoMatch {
+			role="status"
+		}
+	>
+		<div class="ts-pair__books">
+			if v.Audio != nil {
+				@Cover(*v.Audio, "64")
+			} else {
+				<span class="ts-pair__noaudio">
+					@Icon("headphones", false)
+				</span>
+			}
+			<span class="ts-pair__link">
+				@Icon("link", false)
+			</span>
+			<span class="ts-pair__ebook" aria-hidden="true"></span>
+			<div class="ts-pair__text">
+				<span id={ "pair-title-" + v.ID } class="body ts-pair__title">{ v.Title }</span>
+				if v.Meta != "" {
+					<span class="caption ts-pair__meta">{ v.Meta }</span>
+				}
+			</div>
+		</div>
+		if v.Path != "" {
+			<p class="caption ts-pair__found">{ v.FoundIn } <span class="ts-pair__path">{ v.Path }</span></p>
+		}
+		if len(v.Checks) > 0 {
+			<ul class="ts-pair__checks">
+				for _, c := range v.Checks {
+					<li class={ templ.KV("is-warn", !c.OK) }>
+						if c.OK {
+							@Icon("check", false)
+						} else {
+							@Icon("alert", false)
+						}
+						<span>{ c.Text }</span>
+					</li>
+				}
+			</ul>
+		}
+		if v.Warning != "" {
+			<p class="body ts-pair__warning">
+				@Icon("alert", false)
+				<span>{ v.Warning }</span>
+			</p>
+		}
+		{ children... }
+	</section>
+}
