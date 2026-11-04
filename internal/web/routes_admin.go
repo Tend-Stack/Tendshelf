@@ -131,6 +131,12 @@ func (s *server) getAdminLibraries(w http.ResponseWriter, r *http.Request) {
 	if !s.allowLibraries(w, r) {
 		return
 	}
+	s.renderAdminLibraries(w, r, http.StatusOK, "")
+}
+
+// renderAdminLibraries draws the Libraries page with a status and, when banner is not empty, that
+// line in place of the "marked" one. The caller has already checked access.
+func (s *server) renderAdminLibraries(w http.ResponseWriter, r *http.Request, status int, banner string) {
 	ctx := r.Context()
 	sc := s.scope(r)
 	view, err := s.librariesView(ctx, r, sc)
@@ -166,7 +172,10 @@ func (s *server) getAdminLibraries(w http.ResponseWriter, r *http.Request) {
 			view.Banner = countText(n, "Marked 1 book as missing.", "Marked %d books as missing.")
 		}
 	}
-	s.prefsPage(w, r, http.StatusOK, "Libraries & scanning", "admin-libraries", "libraries", false, pages.AdminLibraries(view), nil, adminStyles...)
+	if banner != "" {
+		view.Banner = banner
+	}
+	s.prefsPage(w, r, status, "Libraries & scanning", "admin-libraries", "libraries", false, pages.AdminLibraries(view), nil, adminStyles...)
 }
 
 func (s *server) librariesView(ctx context.Context, r *http.Request, sc library.Scope) (pages.AdminLibrariesView, error) {

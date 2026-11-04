@@ -54,7 +54,8 @@ type Library struct {
 	Name            string
 	ScanIntervalMin int // 0 = scan only on request
 	CreatedAt       int64
-	AutoLookupAt    int64 // when "look up details online for new books" was turned on; 0 = off
+	AutoLookupAt    int64  // when "look up details online for new books" was turned on; 0 = off
+	UploadFolderID  string // the folder that receives uploads (decision 0015); "" = uploads off
 }
 
 // Folder is one directory the owner added to a library.

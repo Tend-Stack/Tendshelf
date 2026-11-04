@@ -46,8 +46,12 @@ func (s *server) gate(next http.Handler) http.Handler {
 	})
 }
 
-// isAPIPath reports whether p is under /api/, the JSON area.
-func isAPIPath(p string) bool { return strings.HasPrefix(p, "/api/") }
+// isAPIPath reports whether p is under /api/, the JSON area, or is one of the JSON routes of the
+// upload client (decision 0015): it gets JSON errors and a 401 instead of a redirect to /login.
+func isAPIPath(p string) bool {
+	return strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/uploads/") ||
+		(strings.HasPrefix(p, "/libraries/") && strings.HasSuffix(p, "/uploads"))
+}
 
 // loginURL is /login with next set to where the person was going, when that is known and safe:
 // the request itself for a plain or boosted GET or HEAD (a boosted link click is a navigation), the

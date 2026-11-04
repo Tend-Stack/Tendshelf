@@ -33,6 +33,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/upload"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
@@ -84,6 +85,9 @@ type Options struct {
 	// DownloadChunk is the size in bytes of one offline download request; zero means 4 MiB. Tests
 	// shrink it so a small fixture spans several chunks.
 	DownloadChunk int
+	// Uploads adds books by upload into a library folder (decision 0015); nil means the upload
+	// routes answer 404.
+	Uploads *upload.Service
 }
 
 type server struct {
@@ -111,6 +115,7 @@ type server struct {
 	details    *metadata.Service
 	covers     *mediajobs.Covers
 	writes     *mediajobs.Writes
+	uploads    *upload.Service
 	backups    *backups.Service
 	progress   *progress.Service
 	mail       *share.Mail
@@ -227,6 +232,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		details:    opts.Details,
 		covers:     opts.Covers,
 		writes:     opts.Writes,
+		uploads:    opts.Uploads,
 		backups:    bk,
 		progress:   progress.New(opts.Store, opts.Now),
 		mail:       mailer,

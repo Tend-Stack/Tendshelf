@@ -29,8 +29,16 @@ func QuickHash(path string) (hash string, size int64, err error) {
 		return "", 0, err
 	}
 	defer f.Close()
+	return QuickHashFile(f)
+}
+
+// QuickHashFile is QuickHash for a file the caller has already opened (for example through an
+// os.Root, so the path cannot be swapped for a link). The caller closes it.
+func QuickHashFile(f *os.File) (hash string, size int64, err error) {
+	path := f.Name()
 	// Size comes from the open file, so it is consistent with the bytes read below.
-	if fi, err = f.Stat(); err != nil {
+	fi, err := f.Stat()
+	if err != nil {
 		return "", 0, err
 	}
 	n := fi.Size()
