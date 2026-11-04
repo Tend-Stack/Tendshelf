@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -122,6 +123,7 @@ type plan struct {
 	walked    []walkedFolder
 	hashes    map[string]string // quick hash of files new or changed since the last scan, by path
 	skip      []string          // paths and folders whose absence proves nothing
+	scope     string            // when set, only rows under this path can vanish (ScanSubtree)
 	start     int64
 	settled   []string // books finalize settled in the apply transaction
 }
@@ -142,6 +144,39 @@ func underAny(path string, prefixes []string) bool {
 // cannot be read, or that suddenly shows no files at all, changes nothing. A scan that finds
 // nothing new writes nothing and queues nothing.
 func (s *Scanner) ScanLibrary(ctx context.Context, libraryID string, guard func(context.Context, *sql.Tx) error) (Result, error) {
+	return s.scanScoped(ctx, libraryID, nil, guard)
+}
+
+// subtree is the part of a library folder a scoped scan reads (decision 0015, the import of one
+// uploaded book).
+type subtree struct {
+	folder library.Folder
+	subdir string // slash form, below folder.Path
+	root   string // folder.Path joined with subdir
+}
+
+// ScanSubtree is ScanLibrary for one directory (subdir, slash form) of one folder of the library:
+// the same walk, grouping, hashing, write transaction, probes, followers and finishers, but only the
+// files under that directory are read and only rows under it can be marked missing, so nothing
+// else in the library changes. A subdir that is unavailable or holds no files changes nothing.
+func (s *Scanner) ScanSubtree(ctx context.Context, libraryID, folderID, subdir string, guard func(context.Context, *sql.Tx) error) (Result, error) {
+	var res Result
+	fo, err := s.repo.Folder(ctx, folderID)
+	if err != nil {
+		return res, err
+	}
+	if fo.LibraryID != libraryID {
+		return res, fmt.Errorf("%w: folder", library.ErrNotFound)
+	}
+	clean := path.Clean("/" + subdir)
+	if subdir == "" || clean == "/" {
+		return s.scanScoped(ctx, libraryID, nil, guard) // no subdir: the whole library, as before
+	}
+	rel := strings.TrimPrefix(clean, "/")
+	return s.scanScoped(ctx, libraryID, &subtree{folder: fo, subdir: rel, root: filepath.Join(fo.Path, filepath.FromSlash(rel))}, guard)
+}
+
+func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree, guard func(context.Context, *sql.Tx) error) (Result, error) {
 	var res Result
 	if _, err := s.repo.Library(ctx, libraryID); err != nil {
 		return res, err
@@ -151,10 +186,23 @@ func (s *Scanner) ScanLibrary(ctx context.Context, libraryID string, guard func(
 		return res, err
 	}
 	p := &plan{libraryID: libraryID, hashes: map[string]string{}, start: s.now().UnixMilli()}
+	if sc != nil {
+		folders = []library.Folder{sc.folder}
+		p.scope = sc.root
+	}
 	res.Folders = len(folders)
 
 	for _, fo := range folders {
-		files, st, werr := walk(ctx, fo.Path)
+		walkRoot := fo.Path
+		if sc != nil {
+			walkRoot = sc.root
+		}
+		files, st, werr := walk(ctx, walkRoot)
+		if sc != nil {
+			for i := range files {
+				files[i].RelDir = path.Join(sc.subdir, files[i].RelDir)
+			}
+		}
 		if ctx.Err() != nil {
 			return res, context.Cause(ctx)
 		}
@@ -169,9 +217,9 @@ func (s *Scanner) ScanLibrary(ctx context.Context, libraryID string, guard func(
 			live = live || pre[i].MissingSince == 0
 		}
 		switch {
-		case errors.Is(werr, errFolderUnavailable), werr == nil && len(files) == 0 && live:
-			s.log.Warn("scan: folder unavailable or suddenly empty; nothing under it changes", "folder", fo.Path)
-			p.skip = append(p.skip, fo.Path)
+		case errors.Is(werr, errFolderUnavailable), werr == nil && len(files) == 0 && (live || sc != nil):
+			s.log.Warn("scan: folder unavailable or suddenly empty; nothing under it changes", "folder", walkRoot)
+			p.skip = append(p.skip, walkRoot)
 			res.FoldersSkipped++
 			continue
 		case werr != nil:
@@ -343,7 +391,7 @@ func (s *Scanner) apply(tx *library.Tx, p *plan) (Result, error) {
 	// 2. Hash match: a found path with no row takes the identity of a vanished row with the same hash.
 	var vanished []*library.AudioFile
 	for _, r := range rows {
-		if byPath[r.Path] == nil && !underAny(r.Path, p.skip) {
+		if byPath[r.Path] == nil && !underAny(r.Path, p.skip) && (p.scope == "" || underAny(r.Path, []string{p.scope})) {
 			vanished = append(vanished, r)
 		}
 	}

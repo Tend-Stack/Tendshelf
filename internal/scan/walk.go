@@ -34,10 +34,10 @@ type WalkStats struct {
 	Unreadable []string // directories (or files) that could not be read; nothing under them changes
 }
 
-// skipName reports whether a directory or file name is junk that is never scanned: hidden entries
+// SkipName reports whether a directory or file name is junk that is never scanned: hidden entries
 // (which covers .DS_Store and the ._ files macOS leaves on other file systems) and the folders NAS
 // boxes, Windows and macOS keep beside a library.
-func skipName(name string) bool {
+func SkipName(name string) bool {
 	if strings.HasPrefix(name, ".") {
 		return true
 	}
@@ -79,7 +79,7 @@ func walk(ctx context.Context, root string) (files []Found, st WalkStats, err er
 		if path == root {
 			return nil
 		}
-		if skipName(d.Name()) {
+		if SkipName(d.Name()) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}

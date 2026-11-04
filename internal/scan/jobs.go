@@ -18,6 +18,10 @@ const (
 // ScanPayload is the payload of a scan.library job.
 type ScanPayload struct {
 	LibraryID string `json:"library_id"`
+	// FolderID and Subdir scope the scan to one directory of one folder (an uploaded book, decision
+	// 0015). Subdir is in slash form, below the folder. Both empty scans the whole library.
+	FolderID string `json:"folder_id,omitempty"`
+	Subdir   string `json:"subdir,omitempty"`
 }
 
 // ProbePayload is the payload of a media.probe job.
@@ -43,7 +47,13 @@ func (s *Scanner) handleScan(ctx context.Context, t *jobs.Task) (any, error) {
 	if err := json.Unmarshal(t.Payload, &p); err != nil || p.LibraryID == "" {
 		return nil, badPayload(err)
 	}
-	res, err := s.ScanLibrary(ctx, p.LibraryID, t.Fence)
+	var res Result
+	var err error
+	if p.FolderID != "" {
+		res, err = s.ScanSubtree(ctx, p.LibraryID, p.FolderID, p.Subdir, t.Fence)
+	} else {
+		res, err = s.ScanLibrary(ctx, p.LibraryID, t.Fence)
+	}
 	if errors.Is(err, library.ErrNotFound) {
 		return nil, &jobs.Error{Code: "not_found", Text: "This library no longer exists.", Permanent: true, Err: err}
 	}

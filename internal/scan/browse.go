@@ -153,7 +153,7 @@ func ListFolders(ctx context.Context, path string, hide func(full string) bool) 
 				return Listing{Path: path, Parent: l.Parent, TooMany: true}, nil
 			}
 			name := d.Name()
-			if skipName(name) || d.Type()&fs.ModeSymlink != 0 {
+			if SkipName(name) || d.Type()&fs.ModeSymlink != 0 {
 				continue
 			}
 			switch {

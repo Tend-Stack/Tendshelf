@@ -24,7 +24,8 @@ var (
 	partNameRe = regexp.MustCompile(`(?i)(\b(part|pt|disc|disk|cd)\b\.?\s*\d{1,3})|(\b\d{1,3}\s*of\s*\d{1,3}\b)`)
 )
 
-func isDiscDir(dir string) bool { return discDirRe.MatchString(filepath.Base(dir)) }
+// IsDiscDir reports whether dir is named like a disc folder (CD1, Disc 2).
+func IsDiscDir(dir string) bool { return discDirRe.MatchString(filepath.Base(dir)) }
 
 func stem(name string) string { return strings.TrimSuffix(name, filepath.Ext(name)) }
 
@@ -53,7 +54,7 @@ func GroupFiles(root string, files []Found) []Group {
 			continue
 		}
 		for p := filepath.Dir(q); ; p = filepath.Dir(p) {
-			if !(isDiscDir(q) && p == filepath.Dir(q)) {
+			if !(IsDiscDir(q) && p == filepath.Dir(q)) {
 				container[p] = true
 			}
 			if p == root || len(p) <= len(root) {
@@ -63,7 +64,7 @@ func GroupFiles(root string, files []Found) []Group {
 	}
 	// target is the folder whose book owns files that sit in dir.
 	target := func(dir string) string {
-		for dir != root && isDiscDir(dir) {
+		for dir != root && IsDiscDir(dir) {
 			p := filepath.Dir(dir)
 			if p == root || container[p] {
 				break
