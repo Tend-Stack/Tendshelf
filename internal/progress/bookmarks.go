@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/ebook"
 )
 
 // Bookmark is a saved moment in a book with an optional note. DeletedAt is 0 for a live bookmark.
@@ -22,6 +23,7 @@ type Bookmark struct {
 	UpdatedAt          int64
 	DeletedAt          int64
 	ClientID           string // the id the app chose when it created the bookmark, "" if none
+	EditionID, SID     string // set for a bookmark made in the text: the edition and the sentence id; "" for a moment in the audio
 }
 
 // cleanNote trims space, turns CRLF into LF and refuses other control characters (newline and tab are fine)
@@ -42,12 +44,12 @@ func cleanNote(s string) (string, error) {
 	return s, nil
 }
 
-const selectBookmark = `SELECT id, user_id, book_id, position_ms, note, created_at, updated_at, deleted_at, coalesce(client_id, '') FROM bookmarks`
+const selectBookmark = `SELECT id, user_id, book_id, position_ms, note, created_at, updated_at, deleted_at, coalesce(client_id, ''), coalesce(edition_id, ''), coalesce(sid, '') FROM bookmarks`
 
 func scanBookmark(r rowScanner) (Bookmark, error) {
 	var b Bookmark
 	var del sql.NullInt64
-	err := r.Scan(&b.ID, &b.UserID, &b.BookID, &b.PositionMs, &b.Note, &b.CreatedAt, &b.UpdatedAt, &del, &b.ClientID)
+	err := r.Scan(&b.ID, &b.UserID, &b.BookID, &b.PositionMs, &b.Note, &b.CreatedAt, &b.UpdatedAt, &del, &b.ClientID, &b.EditionID, &b.SID)
 	b.DeletedAt = del.Int64
 	if errors.Is(err, sql.ErrNoRows) {
 		return Bookmark{}, ErrNotFound
@@ -78,6 +80,24 @@ func ValidClientID(id string) bool {
 // person sending the same id for the same book gets the existing bookmark back (created false) and nothing
 // is written. An id already used by another person or for another book is ErrClientIDTaken.
 func (s *Service) AddBookmarkWithClientID(ctx context.Context, userID, bookID string, positionMs int64, note, clientID string) (b Bookmark, created bool, err error) {
+	return s.insertBookmark(ctx, userID, bookID, "", "", positionMs, note, clientID)
+}
+
+// AddTextBookmark saves a place in the text of an edition: the sentence id (sid) and the audio moment the
+// alignment gives it (positionMs, 0 when unknown). editionID and sid are both required and sid must parse.
+// The client id rules are those of AddBookmarkWithClientID.
+func (s *Service) AddTextBookmark(ctx context.Context, userID, bookID, editionID, sid string, positionMs int64, note, clientID string) (Bookmark, bool, error) {
+	if editionID == "" {
+		return Bookmark{}, false, &InvalidError{"edition_id"}
+	}
+	if _, _, _, ok := ebook.ParseSID(sid); !ok {
+		return Bookmark{}, false, &InvalidError{"sid"}
+	}
+	return s.insertBookmark(ctx, userID, bookID, editionID, sid, positionMs, note, clientID)
+}
+
+// insertBookmark is the one insert behind both kinds of bookmark; editionID and sid are "" for a moment in the audio.
+func (s *Service) insertBookmark(ctx context.Context, userID, bookID, editionID, sid string, positionMs int64, note, clientID string) (b Bookmark, created bool, err error) {
 	switch {
 	case userID == "":
 		return Bookmark{}, false, &InvalidError{"user_id"}
@@ -93,7 +113,7 @@ func (s *Service) AddBookmarkWithClientID(ctx context.Context, userID, bookID st
 		return Bookmark{}, false, err
 	}
 	now := s.nowMs()
-	b = Bookmark{ID: db.NewID("bm"), UserID: userID, BookID: bookID, PositionMs: positionMs, Note: note, CreatedAt: now, UpdatedAt: now, ClientID: clientID}
+	b = Bookmark{ID: db.NewID("bm"), UserID: userID, BookID: bookID, PositionMs: positionMs, Note: note, CreatedAt: now, UpdatedAt: now, ClientID: clientID, EditionID: editionID, SID: sid}
 	err = s.st.WriteTx(ctx, func(tx *sql.Tx) error {
 		created = false
 		if clientID != "" {
@@ -120,8 +140,12 @@ func (s *Service) AddBookmarkWithClientID(ctx context.Context, userID, bookID st
 		if clientID != "" {
 			cid = clientID
 		}
-		_, err := tx.ExecContext(ctx, `INSERT INTO bookmarks(id, user_id, book_id, position_ms, note, created_at, updated_at, client_id) VALUES (?,?,?,?,?,?,?,?)`,
-			b.ID, userID, bookID, positionMs, note, now, now, cid)
+		var eid, bsid any
+		if editionID != "" {
+			eid, bsid = editionID, sid
+		}
+		_, err := tx.ExecContext(ctx, `INSERT INTO bookmarks(id, user_id, book_id, position_ms, note, created_at, updated_at, client_id, edition_id, sid) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+			b.ID, userID, bookID, positionMs, note, now, now, cid, eid, bsid)
 		created = err == nil
 		return err
 	})
