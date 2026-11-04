@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/ebookfile"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 )
 
@@ -196,27 +196,5 @@ AND missing_since IS NOT NULL AND `+live, libraryID)
 	return err
 }
 
-// SoleStemDir says whether a library ebook's folder belongs to that one book, as in Calibre's "Title (id)/":
-// the folder holds ebook files of exactly one name stem (an EPUB and a MOBI of one title count as one).
-// Only then may the folder's sidecar files and picture be lent to the book. An upload root has no
-// extension and never qualifies.
-func SoleStemDir(root string) (string, bool) {
-	if ExtOf(root) == "" {
-		return "", false
-	}
-	dir := filepath.Dir(root)
-	ents, err := os.ReadDir(dir)
-	if err != nil {
-		return "", false
-	}
-	stems := map[string]bool{}
-	for _, e := range ents {
-		if !e.Type().IsRegular() {
-			continue
-		}
-		if x := ExtOf(e.Name()); x != "" {
-			stems[strings.ToLower(strings.TrimSuffix(e.Name(), e.Name()[len(e.Name())-len(x)-1:]))] = true
-		}
-	}
-	return dir, len(stems) == 1
-}
+// SoleStemDir is ebookfile.SoleStemDir.
+func SoleStemDir(root string) (string, bool) { return ebookfile.SoleStemDir(root) }

@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/xml"
 	"errors"
+	"github.com/Tend-Stack/tendshelf/internal/ebookfile"
 	"io"
 	"os"
 	"strings"
@@ -19,21 +20,10 @@ import (
 const MaxCoverBytes = 20 << 20
 
 // ErrNoCover means the file has no usable cover picture.
-var ErrNoCover = errors.New("ebook: no cover")
+var ErrNoCover = ebookfile.ErrNoCover
 
-// SniffImage says what a picture is by its first bytes: "jpeg", "png" or "webp". Anything else, SVG and GIF
-// included, is "": an SVG is a document that can carry script and is never shown as a cover.
-func SniffImage(b []byte) string {
-	switch {
-	case len(b) >= 3 && b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF:
-		return "jpeg"
-	case len(b) >= 8 && bytes.Equal(b[:8], []byte("\x89PNG\r\n\x1a\n")):
-		return "png"
-	case len(b) >= 12 && string(b[:4]) == "RIFF" && string(b[8:12]) == "WEBP":
-		return "webp"
-	}
-	return ""
-}
+// SniffImage is ebookfile.SniffImage.
+func SniffImage(b []byte) string { return ebookfile.SniffImage(b) }
 
 func checkCover(b []byte) ([]byte, error) {
 	if len(b) == 0 || len(b) > MaxCoverBytes || SniffImage(b) == "" {

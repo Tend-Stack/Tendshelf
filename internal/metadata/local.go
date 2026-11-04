@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tend-Stack/tendshelf/internal/ebook"
+	"github.com/Tend-Stack/tendshelf/internal/ebookfile"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
@@ -190,7 +190,7 @@ func (s *Service) localText(ctx context.Context, tx *library.Tx, b library.Book)
 // textSidecars finds the sidecar files of a text book: the folder's when the folder holds only this book,
 // else only those that share the file's name.
 func textSidecars(root string) sidecarFiles {
-	if dir, ok := ebook.SoleStemDir(root); ok {
+	if dir, ok := ebookfile.SoleStemDir(root); ok {
 		return findSidecars(dir, false)
 	}
 	return findSidecars(root, true)
