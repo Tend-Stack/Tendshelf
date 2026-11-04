@@ -69,7 +69,7 @@ func (s *server) getCurrentPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.can.Can(r.Context(), u, share.ListenBook, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) ||
-		b.RefusedReason != "" || b.MissingSince != 0 {
+		b.RefusedReason != "" || b.MissingSince != 0 || b.Kind == library.BookText {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

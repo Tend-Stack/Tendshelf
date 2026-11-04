@@ -229,11 +229,14 @@ func (t *Tx) InsertBook(b *Book) error {
 	if b.UpdatedAt == 0 {
 		b.UpdatedAt = now
 	}
+	if b.Kind == "" {
+		b.Kind = BookAudio
+	}
 	args := append([]any{b.ID, b.LibraryID}, bookValues(b)...)
-	args = append(args, b.AddedAt)
+	args = append(args, b.AddedAt, b.Kind)
 	_, err = t.exec(`INSERT INTO books(id, library_id, folder_id, root_path, title, sort_title, subtitle, description,
   publisher, published_year, language, isbn, asin, abridged, dramatized, explicit, duration_ms, cover_id,
-  refused_reason, updated_at, missing_since, added_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, args...)
+  refused_reason, updated_at, missing_since, added_at, kind) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, args...)
 	return mapErr(err, "book root path")
 }
 

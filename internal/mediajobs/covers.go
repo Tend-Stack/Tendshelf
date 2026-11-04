@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/ebookfile"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
@@ -51,6 +52,9 @@ type Covers struct {
 	now   func() time.Time
 	// fetch downloads a picture for an online adoption; nil means online lookups are off.
 	fetch func(ctx context.Context, url string) ([]byte, string, error)
+	// TextCover returns the picture inside a book's ebook file, or an error when it has none (ebookfile.ErrNoCover).
+	// A text book's only picture, and an audiobook's when its own files carry none. Nil means ebooks give no covers.
+	TextCover func(ctx context.Context, bookID string) ([]byte, error)
 }
 
 // NewCovers returns the cover service. data is the data directory. Stale temporary files from
@@ -236,8 +240,49 @@ func (c *Covers) loadEmbedded(ctx context.Context, files []library.AudioFile) (*
 	return nil, nil
 }
 
+// loadText reads the picture inside the book's ebook file. A WebP goes through ffmpeg to PNG, like a folder one.
+func (c *Covers) loadText(ctx context.Context, bookID string) (*candidate, error) {
+	if c.TextCover == nil {
+		return nil, nil
+	}
+	data, err := c.TextCover(ctx, bookID)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if !errors.Is(err, ebookfile.ErrNoCover) {
+			c.log.Warn("ebook cover skipped", "book", bookID, "err", err)
+		}
+		return nil, nil
+	}
+	if ebookfile.SniffImage(data) == "webp" {
+		sum := sha256.Sum256(data)
+		name := "ebook-" + hex.EncodeToString(sum[:8]) + ".webp"
+		if err := writeAtomic(IncomingDir(c.data), name, data); err != nil {
+			return nil, err
+		}
+		tmp := filepath.Join(IncomingDir(c.data), name)
+		defer os.Remove(tmp)
+		if data, err = c.tools.ImageToPNG(ctx, tmp); err != nil {
+			if fatal(ctx, err) {
+				return nil, err
+			}
+			c.log.Warn("ebook cover skipped", "book", bookID, "err", err)
+			return nil, nil
+		}
+	}
+	// The picture is the one inside the file, which is what source 'embedded' means.
+	cand, err := check(data, library.CoverEmbedded)
+	if err != nil {
+		c.log.Warn("ebook cover skipped", "book", bookID, "err", err)
+		return nil, nil
+	}
+	return cand, nil
+}
+
 // pick chooses the picture: a folder image the owner placed (folder books only), else the
-// embedded picture, else none.
+// embedded picture, else the picture inside the book's ebook file, else none. A text book's
+// folder picture counts only when its folder holds that one book (ebookfile.SoleStemDir).
 func (c *Covers) pick(ctx context.Context, book library.Book, files []library.AudioFile) (*candidate, error) {
 	single := false
 	for i := range files {
@@ -245,8 +290,13 @@ func (c *Covers) pick(ctx context.Context, book library.Book, files []library.Au
 			single = true
 		}
 	}
+	dir := book.RootPath
+	if book.Kind == library.BookText {
+		d, ok := ebookfile.SoleStemDir(book.RootPath)
+		single, dir = !ok, d
+	}
 	if !single {
-		for _, p := range folderPictures(book.RootPath) {
+		for _, p := range folderPictures(dir) {
 			cand, err := c.loadFolder(ctx, p)
 			if err != nil {
 				return nil, err
@@ -256,7 +306,11 @@ func (c *Covers) pick(ctx context.Context, book library.Book, files []library.Au
 			}
 		}
 	}
-	return c.loadEmbedded(ctx, files)
+	cand, err := c.loadEmbedded(ctx, files)
+	if err != nil || cand != nil {
+		return cand, err
+	}
+	return c.loadText(ctx, book.ID)
 }
 
 // coverEqual says whether a stored row already holds what the job would write.

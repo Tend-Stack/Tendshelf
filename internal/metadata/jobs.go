@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
+	"github.com/Tend-Stack/tendshelf/internal/library"
 )
 
 // Kind is the job that refreshes one book's local details.
@@ -42,6 +43,11 @@ func (s *Service) handle(ctx context.Context, t *jobs.Task) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if changed {
+		for _, f := range s.onLocal {
+			f(ctx, p.BookID)
+		}
+	}
 	s.maybeAuto(ctx, p.BookID)
 	return map[string]bool{"changed": changed}, nil
 }
@@ -73,7 +79,12 @@ func (s *Service) Finisher() func(context.Context, string) {
 			if ctx.Err() != nil {
 				return
 			}
-			sig := sidecarSignature(findSidecars(b.RootPath, b.Single))
+			var sig string
+			if b.Kind == library.BookText {
+				sig = sidecarSignature(textSidecars(b.RootPath))
+			} else {
+				sig = sidecarSignature(findSidecars(b.RootPath, b.Single))
+			}
 			if !b.Checked || b.Signature != sig {
 				ids = append(ids, b.ID)
 			}

@@ -126,8 +126,9 @@ func TestTextPairActions(t *testing.T) {
 	rec := l.postForm(t, l.owner, l.path("/"+sg.ID+"/unpair"), true)
 	if rec.Code != http.StatusOK || rec.Header().Get("HX-Push-Url") != l.path("") {
 		t.Fatalf("unpair htmx: %d %q", rec.Code, rec.Header().Get("HX-Push-Url"))
+		// (now on a text book of its own)
 	}
-	if f := l.textPairFile(t, sg.ID); f.BookID != "" || f.Hold != "person" {
+	if f := l.textPairFile(t, sg.ID); f.BookID == "" || f.BookID == l.book.ID || f.Hold != "person" {
 		t.Fatalf("after unpair: %+v", f)
 	}
 	// The unpaired file is not offered again for this book (the unpair recorded it).

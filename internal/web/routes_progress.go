@@ -61,7 +61,7 @@ func (s *server) playableFor(ctx context.Context, u users.User, id string) (libr
 		return library.Book{}, err
 	}
 	if !s.can.Can(ctx, u, share.ListenBook, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) ||
-		b.RefusedReason != "" || b.MissingSince != 0 {
+		b.RefusedReason != "" || b.MissingSince != 0 || b.Kind == library.BookText {
 		return library.Book{}, library.ErrNotFound
 	}
 	return b, nil
@@ -74,7 +74,7 @@ func (s *server) playableBook(w http.ResponseWriter, r *http.Request, id string)
 	if !ok {
 		return library.Book{}, false
 	}
-	if b.RefusedReason != "" || b.MissingSince != 0 {
+	if b.RefusedReason != "" || b.MissingSince != 0 || b.Kind == library.BookText {
 		s.notFound(w, r)
 		return library.Book{}, false
 	}

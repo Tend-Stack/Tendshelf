@@ -28,7 +28,7 @@ func scanFolder(s scanner) (Folder, error) {
 
 const bookCols = `id, library_id, folder_id, root_path, title, sort_title, subtitle, description, publisher,
   published_year, language, isbn, asin, abridged, dramatized, explicit, duration_ms, cover_id, refused_reason,
-  added_at, updated_at, missing_since`
+  added_at, updated_at, missing_since, kind`
 
 func scanBook(s scanner) (Book, error) {
 	var b Book
@@ -36,7 +36,7 @@ func scanBook(s scanner) (Book, error) {
 	var cover, refused sql.NullString
 	err := s.Scan(&b.ID, &b.LibraryID, &b.FolderID, &b.RootPath, &b.Title, &b.SortTitle, &b.Subtitle,
 		&b.Description, &b.Publisher, &year, &b.Language, &b.ISBN, &b.ASIN, &b.Abridged, &b.Dramatized,
-		&b.Explicit, &b.DurationMs, &cover, &refused, &b.AddedAt, &b.UpdatedAt, &missing)
+		&b.Explicit, &b.DurationMs, &cover, &refused, &b.AddedAt, &b.UpdatedAt, &missing, &b.Kind)
 	b.PublishedYear = int(year.Int64)
 	b.CoverID = cover.String
 	b.RefusedReason = refused.String

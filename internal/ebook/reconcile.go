@@ -144,6 +144,9 @@ quick_hash, state, original_name, created_at, updated_at) VALUES(?, 'library', ?
 			return err
 		}
 	}
+	if err := s.syncTextBooks(ctx, es.LibraryID); err != nil {
+		s.log.Warn("ebooks: could not update text books", "err", err)
+	}
 	if err := s.pairByFolder(ctx, es.LibraryID); err != nil {
 		s.log.Warn("ebooks: pairing failed", "err", err)
 	}
@@ -192,20 +195,58 @@ WHERE library_id=? AND origin='library' AND quick_hash=? AND size=? ORDER BY id`
 	return "", false, rs.Err()
 }
 
-// pairByFolder pairs unpaired library ebooks with the one live book whose folder holds them, or whose
-// single audio file sits beside them; failing that, with the one book of the parent folder. It never
+// folderBooks maps each directory that holds a live audiobook to the audiobooks there. A single-file book
+// sits in its directory. Text books are not listed: a folder rule pairs files with audio only.
+func (s *Service) folderBooks(ctx context.Context, libraryID string) (map[string][]string, error) {
+	br, err := s.db.Reader().QueryContext(ctx, `SELECT id, root_path FROM books WHERE library_id=? AND kind='audio' AND missing_since IS NULL ORDER BY root_path`, libraryID)
+	if err != nil {
+		return nil, err
+	}
+	defer br.Close()
+	byDir := map[string][]string{} // directory holding the book -> book ids
+	for br.Next() {
+		var id, root string
+		if err := br.Scan(&id, &root); err != nil {
+			return nil, err
+		}
+		key := root
+		if k := media.Classify(root); k == media.KindAudio || k == media.KindProtected {
+			key = filepath.Dir(root) // a single-file book sits in its directory
+		}
+		byDir[key] = append(byDir[key], id)
+	}
+	return byDir, br.Err()
+}
+
+// folderBook is the one audiobook whose folder holds the ebook at path, or whose single audio file sits
+// beside it; failing that, the one audiobook of the parent folder. A PDF uses the same-folder rule only:
+// a PDF in a parent folder is as likely a manual or a scan as the book's text.
+func folderBook(byDir map[string][]string, path, ext string) (string, bool) {
+	dir := filepath.Dir(path)
+	ids := byDir[dir]
+	if len(ids) == 0 && ext != "pdf" {
+		ids = byDir[filepath.Dir(dir)]
+	}
+	if len(ids) != 1 {
+		return "", false
+	}
+	return ids[0], true
+}
+
+// pairByFolder pairs unpaired library ebooks with the one live audiobook whose folder holds them, or whose
+// single audio file sits beside them; failing that, with the one audiobook of the parent folder. It never
 // unpairs and never overrides a pairing made another way.
 func (s *Service) pairByFolder(ctx context.Context, libraryID string) error {
-	rs, err := s.db.Reader().QueryContext(ctx, `SELECT id, path FROM ebook_files
+	rs, err := s.db.Reader().QueryContext(ctx, `SELECT id, path, ext FROM ebook_files
 WHERE library_id=? AND origin='library' AND book_id IS NULL AND hold IS NULL ORDER BY path`, libraryID)
 	if err != nil {
 		return err
 	}
-	type pend struct{ id, path string }
+	type pend struct{ id, path, ext string }
 	var todo []pend
 	for rs.Next() {
 		var p pend
-		if err := rs.Scan(&p.id, &p.path); err != nil {
+		if err := rs.Scan(&p.id, &p.path, &p.ext); err != nil {
 			rs.Close()
 			return err
 		}
@@ -215,36 +256,18 @@ WHERE library_id=? AND origin='library' AND book_id IS NULL AND hold IS NULL ORD
 	if len(todo) == 0 {
 		return nil
 	}
-	br, err := s.db.Reader().QueryContext(ctx, `SELECT id, root_path FROM books WHERE library_id=? AND missing_since IS NULL ORDER BY root_path`, libraryID)
+	byDir, err := s.folderBooks(ctx, libraryID)
 	if err != nil {
 		return err
 	}
-	byDir := map[string][]string{} // directory holding the book -> book ids
-	for br.Next() {
-		var id, root string
-		if err := br.Scan(&id, &root); err != nil {
-			br.Close()
-			return err
-		}
-		key := root
-		if k := media.Classify(root); k == media.KindAudio || k == media.KindProtected {
-			key = filepath.Dir(root) // a single-file book sits in its directory
-		}
-		byDir[key] = append(byDir[key], id)
-	}
-	br.Close()
 	for _, p := range todo {
-		dir := filepath.Dir(p.path)
-		ids := byDir[dir]
-		if len(ids) == 0 {
-			ids = byDir[filepath.Dir(dir)]
-		}
-		if len(ids) != 1 {
+		id, ok := folderBook(byDir, p.path, p.ext)
+		if !ok {
 			continue
 		}
 		if _, err := s.db.Writer().ExecContext(ctx, `UPDATE ebook_files SET book_id=?, paired_by='folder', updated_at=?
 WHERE id=? AND book_id IS NULL AND hold IS NULL
-AND NOT EXISTS (SELECT 1 FROM ebook_not_same WHERE ebook_file_id=? AND book_id=?)`, ids[0], s.now().UnixMilli(), p.id, p.id, ids[0]); err != nil {
+AND NOT EXISTS (SELECT 1 FROM ebook_not_same WHERE ebook_file_id=? AND book_id=?)`, id, s.now().UnixMilli(), p.id, p.id, id); err != nil {
 			return err
 		}
 	}

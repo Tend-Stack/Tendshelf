@@ -3,6 +3,7 @@ package ebook
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -160,13 +161,22 @@ func (s *Service) Dismiss(ctx context.Context, bookID, fileID string) error {
 	if !ok || f.Origin != "upload" || f.BookID != bookID || (f.State != "refused" && f.State != "failed") {
 		return ErrNotFound
 	}
-	res, err := s.db.Writer().ExecContext(ctx, `DELETE FROM ebook_files WHERE id=? AND book_id=? AND origin='upload'
+	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `DELETE FROM ebook_files WHERE id=? AND book_id=? AND origin='upload'
 AND state IN ('refused','failed')`, fileID, bookID)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		// The last file of a text book was its only reason to exist.
+		_, err = tx.ExecContext(ctx, `DELETE FROM books WHERE id=? AND kind='text'
+AND NOT EXISTS (SELECT 1 FROM ebook_files WHERE book_id = books.id)`, bookID)
+		return err
+	})
 	if err != nil {
 		return err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrNotFound
 	}
 	s.dropBytes(ctx, f.SHA256, f.Ext, fileID)
 	return nil

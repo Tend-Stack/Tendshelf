@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 )
 
@@ -26,7 +27,15 @@ func EditionMeta(e Edition) PairMeta { return e.pairMeta() }
 
 // bookKeys lists live books with their authors. f limits the books (empty for the engine, which has no person).
 func (s *Store) bookKeys(ctx context.Context, f share.Filter) ([]BookKey, error) {
+	return s.bookKeysKind(ctx, f, "")
+}
+
+// bookKeysKind is bookKeys limited to one kind of book ('audio' or 'text'); an empty kind lists both.
+func (s *Store) bookKeysKind(ctx context.Context, f share.Filter, kind string) ([]BookKey, error) {
 	where := `b.missing_since IS NULL`
+	if kind != "" {
+		where += ` AND b.kind = '` + kind + `'` // kind is one of two constants, never input
+	}
 	if f.SQL != "" {
 		where += ` AND (` + f.SQL + `)`
 	}
@@ -65,7 +74,57 @@ WHERE bp.role = 'author' AND `+where+` ORDER BY bp.book_id, bp.idx`, f.Args...)
 			out[i].Authors = append(out[i].Authors, name)
 		}
 	}
-	return out, as.Err()
+	if err := as.Err(); err != nil {
+		return nil, err
+	}
+	if kind == library.BookText {
+		return out, s.fillFromEditions(ctx, out)
+	}
+	return out, nil
+}
+
+// fillFromEditions gives a text book what its default file says where the book row says nothing yet: the
+// details job fills the row a moment after the book is made, and a second format arriving in that moment
+// must still match (ISBN, ASIN, authors).
+func (s *Store) fillFromEditions(ctx context.Context, keys []BookKey) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	rs, err := s.db.Reader().QueryContext(ctx, `SELECT f.book_id, e.isbn, e.asin, e.authors_json FROM ebook_files f
+JOIN editions e ON e.ebook_file_id = f.id AND e.source_sha256 = f.sha256
+JOIN books b ON b.id = f.book_id AND b.kind = 'text'
+WHERE f.book_default = 1 AND f.state = 'ready' ORDER BY e.created_at, e.id`)
+	if err != nil {
+		return err
+	}
+	defer rs.Close()
+	byID := map[string]int{}
+	for i, k := range keys {
+		byID[k.ID] = i
+	}
+	for rs.Next() {
+		var id, isbn, asin, authors string
+		if err := rs.Scan(&id, &isbn, &asin, &authors); err != nil {
+			return err
+		}
+		i, ok := byID[id]
+		if !ok {
+			continue
+		}
+		k := &keys[i]
+		if k.ISBN == "" {
+			k.ISBN = isbn
+		}
+		if k.ASIN == "" {
+			k.ASIN = asin
+		}
+		if len(k.Authors) == 0 {
+			var as []string
+			_ = json.Unmarshal([]byte(authors), &as)
+			k.Authors = as
+		}
+	}
+	return rs.Err()
 }
 
 // notSameFor returns, per file, the books a person said it is not.

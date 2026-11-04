@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/auth"
@@ -70,7 +71,7 @@ func (s *server) allow(w http.ResponseWriter, r *http.Request, a share.Action, t
 func (s *server) loadBook(w http.ResponseWriter, r *http.Request, id string, a share.Action) (library.Book, bool) {
 	b, err := s.lib.Book(r.Context(), id)
 	if errors.Is(err, library.ErrNotFound) {
-		s.notFound(w, r)
+		s.redirectMerged(w, r, id, a)
 		return library.Book{}, false
 	}
 	if err != nil {
@@ -81,6 +82,27 @@ func (s *server) loadBook(w http.ResponseWriter, r *http.Request, id string, a s
 		return library.Book{}, false
 	}
 	return b, true
+}
+
+// redirectMerged answers for an id that no longer names a book. If the id belonged to a text book that was merged
+// into an audiobook, a GET of its page or reader goes (308) to the same address on the book that took over, but only
+// when the person may do the same thing to that book; otherwise it is the usual 404 and nothing is revealed.
+func (s *server) redirectMerged(w http.ResponseWriter, r *http.Request, id string, a share.Action) {
+	page, read := "/books/"+id, "/books/"+id+"/read"
+	if r.Method == http.MethodGet && (r.URL.Path == page || r.URL.Path == read) {
+		if to, ok := s.lib.MergedInto(r.Context(), id); ok {
+			if b, err := s.lib.Book(r.Context(), to); err == nil &&
+				s.can.Can(r.Context(), currentUser(r), a, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) {
+				dest := "/books/" + to + strings.TrimPrefix(r.URL.Path, page)
+				if r.URL.RawQuery != "" {
+					dest += "?" + r.URL.RawQuery
+				}
+				http.Redirect(w, r, dest, http.StatusPermanentRedirect)
+				return
+			}
+		}
+	}
+	s.notFound(w, r)
 }
 
 // coverURL is the address of a book's cover: /covers/<bookID>?w=<w>&v=<sha[:8]>. w 0 omits the

@@ -54,7 +54,7 @@ func TestMigration0020FromPrevious(t *testing.T) {
 	}
 	prev.Close()
 
-	st := mustOpen(t, dir)
+	st := openUpTo(t, 20, dir)
 	defer st.Close()
 	if v := st.SchemaVersion(); v != 20 {
 		t.Fatalf("schema version = %d, want 20", v)
