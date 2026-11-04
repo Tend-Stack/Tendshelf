@@ -141,7 +141,7 @@ func (r *Repo) NeedsLook(ctx context.Context, libraryID string, limit int) ([]Lo
 		return l, err
 	}, `SELECT b.id, b.title, COALESCE((SELECT p.name FROM book_people bp JOIN people p ON p.id = bp.person_id
       WHERE bp.book_id = b.id AND bp.role = 'author' ORDER BY bp.idx LIMIT 1), ''), k.outcome, k.checked_at`+where+`
-  ORDER BY b.sort_title COLLATE NOCASE, b.id LIMIT ?`, libraryID, limit)
+  ORDER BY `+titleKey+` COLLATE NOCASE, b.id LIMIT ?`, libraryID, limit)
 	return rows, total, err
 }
 
