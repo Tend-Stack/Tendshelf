@@ -18,8 +18,8 @@ was reused, extended or replaced.
   framework. Every new Go module needs operator approval and a row in `NOTICES.md` in the same commit.
   Approved and in use: `modernc.org/sqlite` v1.61.1 and `github.com/a-h/templ` v0.3.1100 (runtime; the
   CLI runs through the `tool` directive in `go.mod`, one version source), `golang.org/x/net` v0.61.0
-  (`html`, `html/charset`) and `golang.org/x/text` v0.43.0 (`unicode/norm`, `encoding/...`; ebook reading,
-  `internal/ebook` only). Approved for later phases
+  (`html`, `html/charset`), `golang.org/x/text` v0.43.0 (`unicode/norm`, `encoding/...`; ebook reading,
+  `internal/ebook` only) and `github.com/ledongthuc/pdf` (PDF text layer, `internal/ebook/pdf.go` only). Approved for later phases
   (operator, 2026-11-03), each added with its `NOTICES.md` row: the read-along modules, Wails v3 (desktop
   module only), fsnotify, go-webauthn and an OpenID Connect client; see "Dependencies and approvals" in
   `docs/architecture.md`.
