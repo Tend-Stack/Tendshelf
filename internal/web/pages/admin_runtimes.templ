@@ -37,6 +37,7 @@ type AdminRuntimesView struct {
 	Cards                []RuntimeCardView
 	StepsTitle, StepsLead string
 	Steps                []RuntimeStepView
+	StepsOpen            bool // nothing is set up yet, so the steps are the first thing to read
 }
 
 func runtimeCardID(lang string) string { return "runtime-card-" + lang }
@@ -98,7 +99,7 @@ templ AdminRuntimes(v AdminRuntimesView) {
 				@RuntimeCard(c)
 			}
 		</div>
-		<details class="ts-email__off ts-runtimes__steps">
+		<details class="ts-email__off ts-runtimes__steps" open?={ v.StepsOpen }>
 			<summary>{ v.StepsTitle }</summary>
 			<p class="caption">{ v.StepsLead }</p>
 			<ol class="ts-runtimes__list">

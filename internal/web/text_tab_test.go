@@ -187,6 +187,7 @@ func textSeedStates(t *testing.T, a *testApp, book library.Book, userID string) 
 		t.Fatal(err)
 	}
 	a.srv.ebooks = svc
+	textSeedAlignSetup(t, a)
 	f, err := svc.AddUpload(context.Background(), book, userID, "salt-and-ember.epub", bytes.NewReader(textEPUB(t, "Salt and Ember", 14)))
 	if err != nil {
 		t.Fatal(err)

@@ -296,3 +296,15 @@ func TestAdminRuntimesFiles(t *testing.T) {
 		t.Errorf("dot-dot path served: %d", rec.Code)
 	}
 }
+
+// runtimesSeedStates wires the word-timing runtime into an app for the accessibility audit and the captures:
+// no Python is installed, so both cards say "Not set up" and the install steps are open.
+func runtimesSeedStates(t *testing.T, a *testApp) {
+	t.Helper()
+	cfg := artConfig(t)
+	comps := alignrt.NewComponents(a.st)
+	if err := alignrt.Register(a.runner, cfg, comps); err != nil {
+		t.Fatal(err)
+	}
+	a.srv.runtimes = &alignrt.Provider{Cfg: cfg, Comps: comps}
+}

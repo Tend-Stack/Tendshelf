@@ -43,6 +43,7 @@ type a11yState struct {
 
 // a11ySkip lists the registered GETs that are not full pages: a redirect, a file or JSON.
 var a11ySkip = map[string]string{
+	"/admin/runtimes/files/{name...}": "a pinned text file for the owner to save, not a page",
 	"/uploads/{id}":                   "JSON (the upload status the uploader polls), not a page",
 	"/progress/{bookID}":              "JSON, not a page",
 	"/welcome":                        "redirects (303) to Home",
@@ -115,6 +116,7 @@ func a11yPages() []a11yPage {
 		row("admin-user-stop", "/admin/users/{id}/stop", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID + "/stop" }, owner, "main", true),
 		row("admin-email", "/admin/email", a11yStatic("/admin/email"), owner, "main", true),
 		row("admin-backups", "/admin/backups", a11yStatic("/admin/backups"), owner, "main", true),
+		row("admin-runtimes", "/admin/runtimes", a11yStatic("/admin/runtimes"), owner, "main", true),
 		row("login", "/login", a11yStatic("/login"), anon, "main", false),
 		row("invite", "/invite/{token}", func(e *a11yEnv) string { return "/invite/" + e.InviteToken }, anon, "main", false),
 		row("link", "/s/{token}", func(e *a11yEnv) string { return "/s/" + e.LinkToken }, anon, "main", false),

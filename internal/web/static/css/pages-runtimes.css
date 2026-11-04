@@ -21,6 +21,8 @@
 .ts-runtimes__fact dt { color: var(--ink-muted); }
 .ts-runtimes__fact dd { margin: 0; overflow-wrap: anywhere; }
 .ts-runtimes a { color: var(--ink); text-decoration: underline; }
+/* Links are targets: 44 px tall, even inside a line of facts. */
+.ts-runtimes__fact a, .ts-runtimes__card > a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 
 /* Install steps */
 .ts-runtimes__steps .caption { margin: var(--space-8) 0; color: var(--ink-muted); max-width: 40rem; }

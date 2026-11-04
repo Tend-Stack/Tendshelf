@@ -10,6 +10,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/align"
 	alignrt "github.com/Tend-Stack/tendshelf/internal/align/runtime"
 	"github.com/Tend-Stack/tendshelf/internal/ebook"
+	"github.com/Tend-Stack/tendshelf/internal/library"
 )
 
 // talignRT is a word-timing runtime that is there or not. Its worker is never launched: the tests do not run
@@ -346,4 +347,67 @@ func TestTextAlignJobFragment(t *testing.T) {
 	if r := l.get(l.owner, "/hx/jobs/nope", true); r.Code != http.StatusNotFound {
 		t.Errorf("unknown job: %d", r.Code)
 	}
+}
+
+// textSeedAlign gives the Text tab of an app its read-along states for the audit and the captures: the
+// first paired ebook is being matched (chapter 9 of 15, about 7 minutes left) and the folder copy waits for a
+// decision. The ebook that stays unpaired is offered "Pair and prepare read-along". The runner is stopped.
+func textSeedAlign(t *testing.T, a *testApp, book library.Book, userID string) {
+	t.Helper()
+	fileOf := func(name string) string {
+		var id string
+		if err := a.st.Reader().QueryRow(`SELECT id FROM ebook_files WHERE original_name = ? AND book_id = ?`, name, book.ID).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	activeID, heldID := fileOf("salt-and-ember.epub"), fileOf("folder-copy.epub")
+	ctx := context.Background()
+	if _, err := a.st.Writer().Exec(`INSERT OR IGNORE INTO runtime_components(id, kind, name, language, revision, model_sha256, files_json, python_path, worker_sha256, licence_spdx, licence_url, source_url, checked_at)
+VALUES ('rc_talign', 'emissions-model', 'w2v', 'en', 'r', ?, '[]', '/py', ?, 'MIT', 'u', 'u', 1)`, strings.Repeat("ab", 32), strings.Repeat("cd", 32)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.st.Writer().Exec(`UPDATE audio_files SET duration_ms = 3600000 WHERE book_id = ?`, book.ID); err != nil {
+		t.Fatal(err)
+	}
+	svc := a.srv.align
+	start := func(fileID string) align.Alignment {
+		ed, ok, err := a.srv.ebooks.Store().CurrentEdition(ctx, fileID)
+		if err != nil || !ok {
+			t.Fatalf("edition of %s: %v %v", fileID, ok, err)
+		}
+		al, err := svc.Start(ctx, ed.ID, book.ID, userID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return al
+	}
+	al := start(activeID)
+	if _, err := a.st.Writer().Exec(`UPDATE alignments SET state = 'aligning' WHERE id = ?`, al.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.st.Writer().Exec(`UPDATE jobs SET state = 'running', lease_until = 9999999999999, progress_json = ? WHERE id = ?`,
+		`{"stage":"aligning","chaptersDone":8,"chaptersTotal":15,"audioDoneMs":1800000,"audioTotalMs":3600000,"leftMs":420000}`, al.JobID); err != nil {
+		t.Fatal(err)
+	}
+	held := start(heldID)
+	if _, err := a.st.Writer().Exec(`UPDATE alignments SET state = 'held', error_code = 'audio_changed' WHERE id = ?`, held.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.st.Writer().Exec(`UPDATE jobs SET state = 'held' WHERE id = ?`, held.JobID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// textSeedAlignSetup registers the alignment service and the word-timing check on the runner. It must run
+// before the runner starts; textSeedAlign does the rest once the ebooks are read.
+func textSeedAlignSetup(t *testing.T, a *testApp) {
+	t.Helper()
+	svc := align.NewService(align.Deps{Store: a.st, Library: a.lib, Ebooks: a.srv.ebooks.Store(), Runner: a.runner,
+		Runtimes: &talignRT{ok: true}, DataDir: a.dir})
+	if err := svc.Register(a.runner); err != nil {
+		t.Fatal(err)
+	}
+	a.srv.align = svc
+	runtimesSeedStates(t, a)
 }

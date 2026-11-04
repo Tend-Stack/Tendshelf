@@ -202,6 +202,7 @@ func (s *server) runtimesView(r *http.Request, check string, errLine string) (pa
 			return v, err
 		}
 		v.Cards = append(v.Cards, c)
+		v.StepsOpen = v.StepsOpen || c.State == alignrt.HealthNotSetUp
 	}
 	return v, nil
 }

@@ -604,6 +604,20 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
     timing files are outside them (`TestAlignJobBackupExcludesCache`). Not run: `TestAlignJobReal` (opt-in,
     needs the operator's sample). Limits: after a restart in the aligning stage the Viterbi of a chapter in
     progress is redone (finished chapters are not); `leftMs` is a plain average. Next: P5.
+  - *R3 P5 (`/admin/runtimes`, the Text tab, wiring; done)*: `alignrt.Provider` (the `align.Runtimes` adapter over
+    `Components` and `Manager`, plus `Health`: not set up, needs a check, problem, ready); flags `-align-python`,
+    `-align-models`, `-align-threads`, `-align-cache-gib` and their `TENDSHELF_ALIGN_*` variables, the `align.check`
+    and `align.book` kinds, `Reconcile` after start, `Manager.Close` on shutdown, one Info line when Python is
+    missing. Page `/admin/runtimes` (owner only, `pages-runtimes.css`, linked from Settings and Profile): a card
+    per language, Check as a job polled through `/hx/jobs/{id}`, the install steps with this server's paths,
+    the pinned files served as text. Text tab: "Pair and prepare read-along" when a checked runtime exists for the
+    edition's language, "Prepare read-along", the running card (chapter bar, stage, time left, Cancel), the held card
+    (Resume, Discard), ready, partial, failed and stale states. Reused: `align.Service`, the core `.ts-align` card
+    classes (core CSS untouched), the Email page layout. Checks: `TestAdminRuntimes*`, `TestTextAlign*`,
+    `TestRuntimeProviderHealth`, `TestAlignConfigDefaults`, matrix rows, `admin-runtimes` in the a11y audit; opt-in
+    captures `TestTextAlignVisual`, `TestAdminRuntimesVisual`. Limits: no switch for a disabled component on the page;
+    readers see no read-along card until R4; the real worker is still unrun here. Next: the operator installs the
+    runtime and records the opt-in real run.
 - **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line and Eyes-free;
   `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reading settings (Fraunces,
   Fira Sans, OpenDyslexic); migration `highlights` (`highlights`, `bookmarks.edition_id/sid`,
