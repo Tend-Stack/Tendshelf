@@ -39,7 +39,7 @@ type Stats struct {
 }
 
 // Stats computes the person's numbers at now, cutting days at midnight in loc (nil means time.Local).
-// A session counts on the local day it started. Every read is by user_id and a started_at or
+// A session is cut at local midnight (splitSession), so one that crosses it counts on both days. Every read is by user_id and a started_at or
 // finished_at range.
 func (s *Service) Stats(ctx context.Context, userID string, loc *time.Location, now time.Time) (Stats, error) {
 	if loc == nil {
@@ -54,22 +54,10 @@ func (s *Service) Stats(ctx context.Context, userID string, loc *time.Location, 
 	sums := map[int64]int64{}
 	loadedFrom := -statsWindowDays // civil offset of the oldest day read so far
 	load := func(fromOff, toOff int) error {
-		rows, err := s.st.Reader().QueryContext(ctx,
-			`SELECT started_at, listened_ms FROM listening_sessions WHERE user_id = ? AND started_at >= ? AND started_at < ?`,
-			userID, startOf(civil(fromOff)).UnixMilli(), startOf(civil(toOff)).UnixMilli())
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var at, ms int64
-			if err := rows.Scan(&at, &ms); err != nil {
-				return err
-			}
-			yy, mm, dd := time.UnixMilli(at).In(loc).Date()
+		return s.eachPiece(ctx, userID, loc, startOf(civil(fromOff)), startOf(civil(toOff)), func(at time.Time, ms int64, _ int) {
+			yy, mm, dd := at.Date()
 			sums[time.Date(yy, mm, dd, 0, 0, 0, 0, time.UTC).Unix()] += ms
-		}
-		return rows.Err()
+		})
 	}
 	if err := load(loadedFrom, 1); err != nil {
 		return Stats{}, err
