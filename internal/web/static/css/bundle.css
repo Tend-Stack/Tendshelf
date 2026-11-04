@@ -733,3 +733,40 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
     .ts-wave__needle { forced-color-adjust: none; background: CanvasText; }
   }
 }
+
+/* Text tab (M5 R1): the ebooks of a book, their chapters with first lines, the add form and the
+   copy-protection card. Tokens only; the card reuses .ts-pair. */
+.ts-ebook { display: flex; flex-direction: column; gap: var(--space-16); max-width: 46rem; }
+.ts-ebook__title, .ts-ebook__lead { margin: 0; }
+.ts-ebook__lead, .ts-ebook__muted { color: var(--ink-muted); }
+.ts-ebook__body, .ts-ebook__files { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-ebook__file { display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-ebook__edition, .ts-ebook__problem, .ts-ebook__reading { padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-ebook__name, .ts-ebook__meta, .ts-ebook__note, .ts-ebook__reading p { margin: 0; overflow-wrap: anywhere; }
+.ts-ebook__meta, .ts-ebook__note { color: var(--ink-muted); }
+.ts-ebook__path { font-family: var(--font-mono); }
+.ts-ebook__chapters { list-style: none; margin: var(--space-8) 0 0; padding: 0; display: flex; flex-direction: column; }
+.ts-ebook__chapter { display: flex; gap: var(--space-12); padding: var(--space-8) 0; border-top: 1px solid var(--line); }
+.ts-ebook__num { width: 1.75rem; flex-shrink: 0; text-align: right; font-size: 0.875rem; color: var(--ink-subtle); font-variant-numeric: tabular-nums; }
+.ts-ebook__ch { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.ts-ebook__chtitle { font-family: var(--font-serif); font-style: italic; font-size: 1.0625rem; line-height: 1.375rem; overflow-wrap: anywhere; }
+.ts-ebook__front { margin-left: var(--space-8); font: 600 0.8125rem/1rem var(--font-sans); font-style: normal; letter-spacing: 0.04em; color: var(--ink-muted); }
+.ts-ebook__first { color: var(--ink-muted); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ts-ebook__card { border-color: var(--danger); }
+.ts-ebook__cardhead { display: flex; gap: var(--space-12); align-items: flex-start; }
+.ts-ebook__shield { color: var(--danger); flex-shrink: 0; }
+.ts-ebook__shield .ts-icon { width: 1.625rem; height: 1.625rem; }
+.ts-ebook__cardtext { display: flex; flex-direction: column; gap: var(--space-8); min-width: 0; }
+.ts-ebook__cardtitle { margin: 0; }
+.ts-ebook__cardtext .body, .ts-ebook__card > .body { margin: 0; overflow-wrap: anywhere; }
+.ts-ebook__why summary { display: flex; align-items: center; min-height: 2.75rem; cursor: pointer; color: var(--ink-muted); }
+.ts-ebook__why p { margin: 0; color: var(--ink-muted); }
+.ts-ebook__still .ts-icon { color: var(--success); }
+.ts-ebook__clear { display: contents; }
+.ts-ebook__add { display: flex; flex-direction: column; gap: var(--space-8); }
+.ts-ebook__drop { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); padding: var(--space-16); border: 0.125rem dashed var(--line-strong); border-radius: var(--radius-lg); }
+.ts-ebook__drop .caption, .ts-ebook__drop .body { margin: 0; }
+.ts-ebook__pick { display: flex; flex-direction: column; gap: var(--space-8); max-width: 100%; }
+.ts-ebook__picklabel { font-weight: 600; }
+.ts-ebook__input { max-width: 100%; min-height: 2.75rem; color: var(--ink); font: inherit; }
+.ts-ebook__error { color: var(--danger); }

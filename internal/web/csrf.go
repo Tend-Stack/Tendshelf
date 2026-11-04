@@ -23,6 +23,11 @@ const (
 	// csrfUploadLimit bounds the multipart body of the one route that takes a picture: the 5 MiB
 	// picture plus its form fields.
 	csrfUploadLimit = 6 << 20
+	// csrfTextLimit bounds the multipart body of the ebook upload on the Text tab: the 200 MiB file
+	// limit plus a mebibyte for the form fields. Only csrfTextMemory of it is held in memory; the
+	// rest of a large file spills to temporary files that net/http removes after the request.
+	csrfTextLimit  = 201 << 20
+	csrfTextMemory = 1 << 20
 )
 
 type csrfContextKey struct{}
@@ -160,7 +165,21 @@ func csrfLimit(r *http.Request) int64 {
 	if r.Method == http.MethodPost && coverUploadPath.MatchString(r.URL.Path) {
 		return csrfUploadLimit
 	}
+	if r.Method == http.MethodPost && textUploadPath.MatchString(r.URL.Path) {
+		return csrfTextLimit
+	}
 	return csrfFormLimit
+}
+
+// textUploadPath is the ebook upload of the Text tab: the other address that takes a large multipart body.
+var textUploadPath = regexp.MustCompile(`^/books/[^/]+/text$`)
+
+// csrfMemory is how much of a multipart body the token check keeps in memory.
+func csrfMemory(r *http.Request) int64 {
+	if csrfLimit(r) == csrfTextLimit {
+		return csrfTextMemory
+	}
+	return csrfLimit(r)
 }
 
 // tokenOK checks the header, then the form field, against the token for the request's binding. A
@@ -189,7 +208,7 @@ func (c *CSRF) tokenOK(w http.ResponseWriter, r *http.Request) bool {
 		case strings.HasPrefix(ct, "multipart/form-data"):
 			limit := csrfLimit(r)
 			r.Body = http.MaxBytesReader(w, r.Body, limit)
-			if r.ParseMultipartForm(limit) != nil {
+			if r.ParseMultipartForm(csrfMemory(r)) != nil {
 				return false
 			}
 			if v := r.MultipartForm.Value[csrfField]; len(v) > 0 {

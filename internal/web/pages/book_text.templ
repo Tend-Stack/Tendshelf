@@ -1,0 +1,233 @@
+package pages
+
+import (
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// TextChapterView is one chapter line of an ebook edition: the number (empty for front matter), the
+// title, the first line of its text and the front-matter label.
+type TextChapterView struct {
+	Num, Title, FirstLine, Front string
+}
+
+// TextProtectedView is the card for a copy-protected ebook (board ProtectedPhone).
+type TextProtectedView struct {
+	Title, Body, Advice, Another, AnotherHref, WhyTitle, WhyBody, StillPlays string
+}
+
+// TextFileView is one ebook file of the book. State is "ready", "pending", "refused" or "failed".
+// The handler writes every word and address.
+type TextFileView struct {
+	ID, State, Name, Source string
+	// Ready: the summary line, a note, the chapters and the "Show all" link.
+	Summary, Note string
+	Chapters      []TextChapterView
+	ShowAll       string
+	ShowAllHref   string
+	// Pending: the line, the poll address (empty when no job is queued yet) and the plain fallback.
+	Reading, PollHref, CheckLabel, CheckHref string
+	// Refused or failed: the plain sentence; Protected replaces it for copy protection.
+	Message   string
+	Protected *TextProtectedView
+	// Clear removes a refused or failed upload; empty when the file came from a library folder.
+	ClearAction, ClearLabel, ClearAria, CSRF string
+}
+
+// TextUploadView is the "add a file" form. Error is the plain sentence of a refused upload.
+type TextUploadView struct {
+	Heading, Label, Hint, Go, Action, CSRF, Error string
+}
+
+// TextView is the Text tab. Editors get Lead, the form and every file; readers only the ready editions.
+type TextView struct {
+	Heading, Lead, FoundLabel string
+	Files                     []TextFileView
+	Upload                    *TextUploadView
+}
+
+// TextPanel is the Text tab of the book page.
+templ TextPanel(v TextView) {
+	<div class="ts-ebook">
+		<h2 class="title-3 ts-ebook__title">{ v.Heading }</h2>
+		if v.Lead != "" {
+			<p class="body ts-ebook__lead">{ v.Lead }</p>
+		}
+		@TextBody(v)
+	</div>
+}
+
+// TextBody is what an upload swaps: the files and the form. Its id lets an htmx request replace it.
+templ TextBody(v TextView) {
+	<div id="ebook-body" class="ts-ebook__body">
+		if len(v.Files) > 0 {
+			if v.FoundLabel != "" {
+				<span class="ts-overline">{ v.FoundLabel }</span>
+			}
+			<div id="ebook-files" class="ts-ebook__files">
+				for _, f := range v.Files {
+					@EbookFileRow(f)
+				}
+			</div>
+		}
+		if v.Upload != nil {
+			@EbookUploadForm(*v.Upload)
+		}
+	</div>
+}
+
+// EbookFileRow is one ebook file in whatever state it is in. A pending one asks for itself every 2
+// seconds and swaps itself out, so it turns into the edition when the read is done.
+templ EbookFileRow(f TextFileView) {
+	switch f.State {
+		case "ready":
+			@EbookEdition(f)
+		case "pending":
+			<div
+				id={ "ebook-file-" + f.ID }
+				class="ts-ebook__file ts-ebook__reading"
+				role="status"
+				if f.PollHref != "" {
+					hx-get={ f.PollHref }
+					hx-trigger="every 2s"
+					hx-swap="outerHTML"
+				}
+			>
+				<p class="body">{ f.Reading }</p>
+				if f.CheckHref != "" {
+					<a class="caption" href={ templ.SafeURL(f.CheckHref) }>{ f.CheckLabel }</a>
+				}
+			</div>
+		default:
+			@EbookRefusal(f)
+	}
+}
+
+// EbookEdition is a ready ebook: where it came from, its size in chapters and words, and the
+// chapters with their first lines.
+templ EbookEdition(f TextFileView) {
+	<section id={ "ebook-file-" + f.ID } class="ts-ebook__file ts-ebook__edition" aria-labelledby={ "ebook-name-" + f.ID }>
+		<h3 id={ "ebook-name-" + f.ID } class="section ts-ebook__name">{ f.Name }</h3>
+		<p class="caption ts-ebook__meta">{ f.Summary }</p>
+		if f.Source != "" {
+			<p class="caption ts-ebook__meta ts-ebook__path">{ f.Source }</p>
+		}
+		if f.Note != "" {
+			<p class="caption ts-ebook__note">{ f.Note }</p>
+		}
+		<ol class="ts-ebook__chapters">
+			for _, c := range f.Chapters {
+				<li class="ts-ebook__chapter">
+					<span class="ts-ebook__num">{ c.Num }</span>
+					<span class="ts-ebook__ch">
+						<span class="ts-ebook__chtitle">
+							{ c.Title }
+							if c.Front != "" {
+								<span class="ts-ebook__front">{ c.Front }</span>
+							}
+						</span>
+						if c.FirstLine != "" {
+							<span class="caption ts-ebook__first">{ c.FirstLine }</span>
+						}
+					</span>
+				</li>
+			}
+		</ol>
+		if f.ShowAll != "" {
+			<a
+				class="ts-btn ts-btn--quiet"
+				href={ templ.SafeURL(f.ShowAllHref) }
+				hx-get={ f.ShowAllHref }
+				hx-target="#book-panel"
+				hx-select="#book-panel"
+				hx-swap="outerHTML"
+				hx-push-url="true"
+			>{ f.ShowAll }</a>
+		}
+	</section>
+}
+
+// EbookRefusal is a file Tendshelf did not read: the copy-protection card, or one plain sentence.
+templ EbookRefusal(f TextFileView) {
+	if f.Protected != nil {
+		<section id={ "ebook-file-" + f.ID } class="ts-pair ts-ebook__file ts-ebook__card" role="alert" aria-labelledby={ "ebook-name-" + f.ID }>
+			<div class="ts-ebook__cardhead">
+				<span class="ts-ebook__shield">
+					@components.Icon("shield", false)
+				</span>
+				<div class="ts-ebook__cardtext">
+					<h3 id={ "ebook-name-" + f.ID } class="title-3 ts-ebook__cardtitle">{ f.Protected.Title }</h3>
+					<p class="body ts-ebook__muted">{ f.Protected.Body }</p>
+				</div>
+			</div>
+			<p class="body">{ f.Protected.Advice }</p>
+			<div class="ts-pair__actions">
+				<a class="ts-btn ts-btn--primary" href={ templ.SafeURL(f.Protected.AnotherHref) }>{ f.Protected.Another }</a>
+				if f.ClearAction != "" {
+					@ebookClearForm(f)
+				}
+			</div>
+			<details class="ts-ebook__why">
+				<summary class="caption">{ f.Protected.WhyTitle }</summary>
+				<p class="caption">{ f.Protected.WhyBody }</p>
+			</details>
+			<p class="ts-banner ts-ebook__still">
+				@components.Icon("play", false)
+				{ f.Protected.StillPlays }
+			</p>
+		</section>
+	} else {
+		<section id={ "ebook-file-" + f.ID } class="ts-ebook__file ts-ebook__problem" aria-labelledby={ "ebook-name-" + f.ID }>
+			<h3 id={ "ebook-name-" + f.ID } class="section ts-ebook__name">{ f.Name }</h3>
+			<p class="body" role="alert">{ f.Message }</p>
+			if f.ClearAction != "" {
+				@ebookClearForm(f)
+			}
+		</section>
+	}
+}
+
+// ebookClearForm removes a refused or failed upload. htmx drops the row; a plain form goes back to the tab.
+templ ebookClearForm(f TextFileView) {
+	<form
+		class="ts-ebook__clear"
+		method="post"
+		action={ templ.URL(f.ClearAction) }
+		hx-post={ f.ClearAction }
+		hx-target={ "#ebook-file-" + f.ID }
+		hx-swap="outerHTML"
+		hx-push-url="false"
+	>
+		<input type="hidden" name="_csrf" value={ f.CSRF }/>
+		<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ f.ClearAria }>{ f.ClearLabel }</button>
+	</form>
+}
+
+// EbookUploadForm is "Or add a file": one plain multipart form that also works without JavaScript.
+templ EbookUploadForm(u TextUploadView) {
+	<form
+		id="ebook-add"
+		class="ts-ebook__add"
+		method="post"
+		action={ templ.URL(u.Action) }
+		enctype="multipart/form-data"
+		hx-post={ u.Action }
+		hx-encoding="multipart/form-data"
+		hx-target="#ebook-body"
+		hx-swap="outerHTML"
+		hx-push-url="false"
+	>
+		<input type="hidden" name="_csrf" value={ u.CSRF }/>
+		<span class="ts-overline">{ u.Heading }</span>
+		<div class="ts-ebook__drop">
+			<label class="ts-ebook__pick" for="ebook-file">
+				<span class="body ts-ebook__picklabel">{ u.Label }</span>
+				<input id="ebook-file" class="ts-ebook__input" type="file" name="file" aria-describedby="ebook-hint"/>
+			</label>
+			<p id="ebook-hint" class="caption">{ u.Hint }</p>
+			if u.Error != "" {
+				<p class="body ts-ebook__error" role="alert">{ u.Error }</p>
+			}
+			<button type="submit" class="ts-btn ts-btn--primary">{ u.Go }</button>
+		</div>
+	</form>
+}

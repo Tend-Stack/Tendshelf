@@ -85,7 +85,7 @@ type BookView struct {
 	// Banner is the status line for a missing or refused book.
 	Banner string
 	Tabs   []BookTab
-	// Tab is "about", "chapters", "bookmarks" or "details".
+	// Tab is "about", "chapters", "bookmarks", "text" or "details".
 	Tab string
 	// The description (Intro, then Rest behind MoreLabel) shows in the header on a wide screen and
 	// in the About panel otherwise.
@@ -106,6 +106,8 @@ type BookView struct {
 	Rows []DetailRow
 	// Bookmarks fills the Bookmarks tab (P1c-7a).
 	Bookmarks BookmarksView
+	// Text fills the Text tab (M5 R1).
+	Text TextView
 	// Play is the play region (the book's one play button and the mark control); nil when the person
 	// may not listen.
 	Play *BookPlayView
@@ -394,6 +396,8 @@ templ Book(v BookView) {
 							@bookChapters(v)
 						case "bookmarks":
 							@BookmarksPanel(v.Bookmarks)
+						case "text":
+							@TextPanel(v.Text)
 						case "details":
 							@bookDetails(v)
 						default:

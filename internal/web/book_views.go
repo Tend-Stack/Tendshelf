@@ -32,7 +32,7 @@ const (
 
 // bookTabs are the tabs of the book page in order; the first is the bare address.
 var bookTabs = []struct{ ID, Label string }{
-	{"about", bookTabAbout}, {"chapters", bookTabChapters}, {"bookmarks", bookTabBookmarks}, {"details", bookTabDetails},
+	{"about", bookTabAbout}, {"chapters", bookTabChapters}, {"text", ebookTabLabel}, {"bookmarks", bookTabBookmarks}, {"details", bookTabDetails},
 }
 
 func bookTabValid(tab string) bool {
