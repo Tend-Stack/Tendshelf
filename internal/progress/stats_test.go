@@ -69,6 +69,8 @@ func TestStatsQueries(t *testing.T) {
 			sessions: []ses{{day(10, 31, 12, 0), 9 * min}, {day(11, 1, 9, 0), 10 * min}, {day(11, 2, 9, 0), 59_000}, {day(11, 4, 8, 0), 20 * min}}},
 		{name: "23:30 local counts that day", loc: ny, now: now, marks: "mmltaaa", week: 5 * min, streak: 1,
 			sessions: []ses{{day(11, 3, 23, 30), 5 * min}}},
+		{name: "23:50 to 00:10 local marks both days", loc: ny, now: now, marks: "mlltaaa", week: 20 * min, streak: 2,
+			sessions: []ses{{day(11, 2, 23, 50), 20 * min}}},
 		{name: "DST week: Saturday 23:30 EDT is still Saturday, the 25-hour Sunday starts 00:00 EDT", loc: ny, now: now, marks: "llltaaa", week: 8 * min, streak: 4,
 			sessions: []ses{{day(10, 31, 23, 30), 2 * min}, {day(11, 1, 0, 30), 2 * min}, {day(11, 1, 23, 30), 2 * min}, {day(11, 2, 12, 0), 2 * min}, {day(11, 3, 12, 0), 2 * min}}},
 		{name: "streak through yesterday when today is empty", loc: ny, now: now, marks: "mlltaaa", week: 4 * min, streak: 2,
