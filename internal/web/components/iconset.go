@@ -36,6 +36,7 @@ var iconShapes = map[string]string{
 	"phone":        `<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>`,
 	"laptop":       `<path d="M4 6h16v10H4zM2 19h20"/>`,
 	"mail":         `<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>`,
+	"headphones":   `<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3.5" y="14" width="4" height="6.5" rx="1.5"/><rect x="16.5" y="14" width="4" height="6.5" rx="1.5"/>`,
 	"shield":       `<path d="M12 3 4 6v6c0 4.4 3.4 8 8 9 4.6-1 8-4.6 8-9V6z"/>`,
 	"sun":          `<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>`,
 	"sunrise":      `<path d="M4 18h16M7.5 18a4.5 4.5 0 0 1 9 0M12 6v4M5.6 11.6l1.4 1.4M18.4 11.6 17 13M9.5 8 12 5.5 14.5 8"/>`,
