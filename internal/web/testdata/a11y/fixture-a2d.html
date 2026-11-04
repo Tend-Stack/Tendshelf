@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit fixture A2d</title>
+<link rel="stylesheet" href="fixture-a2.css">
+</head>
+<body>
+<main>
+  <!-- The second button swallows Tab: focus stays on it. -->
+  <h1>A focus trap</h1>
+  <button class="big">1</button>
+  <button id="trap" class="big">2</button>
+  <button class="big">3</button>
+</main>
+<script>
+document.getElementById("trap").addEventListener("keydown", (event) => {
+  if (event.key === "Tab") {
+    event.preventDefault();
+  }
+});
+</script>
+</body>
+</html>

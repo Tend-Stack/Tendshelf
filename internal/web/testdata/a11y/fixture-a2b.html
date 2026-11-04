@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit fixture A2b</title>
+<link rel="stylesheet" href="fixture-a2.css">
+</head>
+<body>
+<main>
+  <!-- A button that only a script focuses (tabindex -1) is not a Tab stop: the walk must not call it unreachable. -->
+  <h1>Only script focus</h1>
+  <button class="big" tabindex="-1">Script only</button>
+  <button class="big">Tab stop</button>
+</main>
+</body>
+</html>
