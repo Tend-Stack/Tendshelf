@@ -138,8 +138,10 @@ func TestEbookHostile(t *testing.T) {
 		wantRefusal(t, err, ReasonDamaged, "parser_panic")
 	})
 	t.Run("deadline", func(t *testing.T) {
-		parseHook = func(string) { time.Sleep(100 * time.Millisecond) }
-		defer func() { parseHook = nil }()
+		done := make(chan struct{})
+		parseHook = func(string) { time.Sleep(100 * time.Millisecond); close(done) }
+		// The abandoned read goroutine still runs the hook; wait for it before resetting the hook.
+		defer func() { <-done; parseHook = nil }()
 		short := lim
 		short.ParseTimeout = time.Millisecond
 		_, err := readBytes(t, "a.txt", []byte("text"), short)

@@ -88,6 +88,7 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 	var styles []string
 	var cur []seg
 	curKind, curLevel, curStart := KindP, 0, -1
+	begun := false // a block has an owner element or first text; curStart is set once per block
 	pos := 0
 	skip := "" // script / style: ignore until its end tag
 	inHead := false
@@ -98,7 +99,7 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 	var titleBuf strings.Builder
 
 	flush := func(end int) error {
-		defer func() { cur, curStart = nil, -1 }()
+		defer func() { cur, curStart, begun = nil, -1, false }()
 		if len(cur) == 0 {
 			return nil
 		}
@@ -115,7 +116,8 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 		return styles[len(styles)-1]
 	}
 	begin := func(start int) {
-		if len(cur) == 0 {
+		if !begun {
+			begun = true
 			curKind = kinds[len(kinds)-1]
 			curLevel = level
 			curStart = start
@@ -171,6 +173,9 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 				titleBuf.WriteString(txt)
 			case inHead:
 			default:
+				if len(cur) == 0 && !begun && kinds[len(kinds)-1] != KindPre && strings.TrimSpace(txt) == "" {
+					continue // blank space between blocks starts nothing
+				}
 				begin(start)
 				cur = append(cur, seg{Text: txt, Style: curStyle(), ByteOff: start})
 			}

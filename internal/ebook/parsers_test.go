@@ -114,10 +114,10 @@ func TestEbookParsers(t *testing.T) {
 		{"docx", "a.docx", ebooktest.DOCX(t, ebooktest.DocxOptions{Title: "Ledger", Author: "Pia Roy", Paras: []ebooktest.DocxPara{
 			ebooktest.Para("Heading1", "Opening"), ebooktest.Para("", "Body of the opening."), ebooktest.Para("Heading2", "A sub"),
 			ebooktest.Para("Heading1", "Closing"), ebooktest.Para("", "Last words.")}}), "Ledger", []string{"Pia Roy"}, []string{"Opening", "Closing"}, "h,p,h", "Opening", 0},
-		{"fb2 utf-8", "a.fb2", ebooktest.FB2(ebooktest.FB2Options{Title: "Moss", Authors: []ebooktest.FB2Author{{"Kai", "Lund"}}, Lang: "en", ISBN: "0-306-40615-2",
+		{"fb2 utf-8", "a.fb2", ebooktest.FB2(ebooktest.FB2Options{Title: "Moss", Authors: []ebooktest.FB2Author{{First: "Kai", Last: "Lund"}}, Lang: "en", ISBN: "0-306-40615-2",
 			Sections: []ebooktest.FB2Section{{Title: "Rise", Paras: []string{"One. Two."}}, {Title: "Fall", Paras: []string{"Three."}, Sub: []ebooktest.FB2Section{{Title: "Deeper", Paras: []string{"Four."}}}}}}),
 			"Moss", []string{"Kai Lund"}, []string{"Rise", "Fall"}, "h,p", "Rise", 0},
-		{"fb2 windows-1251", "a.fb2", ebooktest.FB2(ebooktest.FB2Options{Encoding: "windows-1251", Title: "Привет", Authors: []ebooktest.FB2Author{{"Иван", "Петров"}},
+		{"fb2 windows-1251", "a.fb2", ebooktest.FB2(ebooktest.FB2Options{Encoding: "windows-1251", Title: "Привет", Authors: []ebooktest.FB2Author{{First: "Иван", Last: "Петров"}},
 			Sections: []ebooktest.FB2Section{{Title: "Начало", Paras: []string{"Первый абзац."}}}}),
 			"Привет", []string{"Иван Петров"}, []string{"Начало"}, "h,p", "Начало", 0},
 		{"fb2 zip", "a.fb2.zip", ebooktest.FB2Zip(t, "book.fb2", ebooktest.FB2(ebooktest.FB2Options{Title: "Zipped", Sections: []ebooktest.FB2Section{{Title: "Only", Paras: []string{"Text."}}}})),

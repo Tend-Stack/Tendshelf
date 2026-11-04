@@ -474,6 +474,15 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
   layer, reflow check, page fallback) and DRM-free MOBI/AZW3; canonical document with stable IDs;
   `ebook.ingest` job. Exit: every parser and refusal fixture passes; same file gives byte-identical
   document; hostile-file tests pass; the Text page lists chapters and first lines.
+  **R1 E1 status** (data, canonical document, core parsers): built. Migration 0016 (`ebook_files`,
+  `editions`, `edition_chapters`, schema version 16); `internal/ebook` reads EPUB 2/3, TXT, Markdown, HTML,
+  DOCX and FB2 (also `.fb2.zip`) into `tendshelf-doc-v1` with stable block IDs, UTF-16 offsets, sentences,
+  words and front-matter marks; copy-protection refusal before parsing (ADEPT, Apple, LCP, EPUB encryption,
+  OLE Word, KFX, encrypted zip entries); bounded in-memory zip, XML depth, word and block limits, 60 s
+  deadline, panic recovery; read-only `Store`. Checks: `go test -race ./internal/ebook/... ./internal/db/...`
+  (parsers, refusals, hostile files, determinism, golden, segmenter, migration), `make check`, `make build`.
+  Limits: PDF and MOBI/AZW3 are stubs that refuse `unsupported` (E2); no scanner, upload or job (E3); no
+  route (E4). Next: E2 and E3.
 - **R2 Pairing**: automatic by folder, upload, ISBN/ASIN, title + author (suggestion when not unique);
   manual pair/unpair; `/admin/ebooks` inbox; several editions, book default, per-user choice. Exit:
   pairing table tests; an unpaired ebook never appears as a book; no ebook is ever written.
