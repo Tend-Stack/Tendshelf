@@ -226,7 +226,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	}
 	if link != nil {
 		btn := link.button(readerSpeaker, true)
-		btn.Icon = "speaker"
+		btn.Icon = "output" // the set's speaker with sound waves
 		v.Speaker = btn
 	}
 	hls, err := s.progress.Highlights(ctx, u.ID, rc.book.ID)
