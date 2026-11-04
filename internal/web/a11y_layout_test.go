@@ -26,8 +26,8 @@ func a11yLayout(tab *cdp.Tab, width int, checkThemes []string) (a11yResult, erro
 		return res, err
 	}
 	var targets struct {
-		Findings []a11yFinding
-		Measured int
+		Findings, Unmeasured []a11yFinding
+		Measured             int
 	}
 	if err := a11yScript(tab, "targets.js", map[string]any{"min": a11yTargetMin(width)}, &targets); err != nil {
 		return res, fmt.Errorf("targets.js: %w", err)
@@ -35,6 +35,10 @@ func a11yLayout(tab *cdp.Tab, width int, checkThemes []string) (a11yResult, erro
 	for _, f := range targets.Findings {
 		f.Theme = "dark"
 		res.Findings = append(res.Findings, f)
+	}
+	for _, f := range targets.Unmeasured {
+		f.Theme = "dark"
+		res.Unmeasured = append(res.Unmeasured, f)
 	}
 	for _, theme := range checkThemes {
 		if err := a11yTheme(tab, theme); err != nil {

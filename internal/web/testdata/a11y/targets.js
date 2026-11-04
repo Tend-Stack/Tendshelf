@@ -1,6 +1,6 @@
 // Touch-target size of one page. Called as (this function)(options) with options {min}, the smallest
 // width and height in CSS px for this viewport (44 on the touch layouts, 24 at 1440: a11yTargetMin).
-// Returns {findings, measured}. A finding is a target smaller than min on either side, with detail
+// Returns {findings, unmeasured, measured}. A finding is a target smaller than min on either side, with detail
 // "WxH" and wcag258 telling whether it still meets the WCAG 2.5.8 floor of 24 px.
 //
 // A hit area grown by a pseudo-element counts: when a box is short, the points min/2 away from its centre
@@ -9,6 +9,7 @@
 (options) => {
   const min = options.min;
   const findings = [];
+  const unmeasured = [];
   let measured = 0;
 
   const targetSelector = [
@@ -44,6 +45,13 @@
     return outside > 1;
   };
 
+  // screenReaderOnly is true for a box clipped to a point (a skip link that appears when it has focus). It is
+  // not something a finger can meet; the focus walk checks it once it is shown.
+  const screenReaderOnly = (el, rect) => {
+    const style = getComputedStyle(el);
+    return rect.width <= 1 && rect.height <= 1 && (style.overflow !== "visible" || style.clip !== "auto" || style.clipPath !== "none");
+  };
+
   const seen = new Set();
   for (const el of document.querySelectorAll(targetSelector)) {
     if (el.closest("[inert],[aria-hidden=true]") || el.matches(":disabled,[aria-disabled=true]")) {
@@ -56,13 +64,14 @@
     let rect = el.getBoundingClientRect();
     if (hiddenControl(el, rect)) {
       const label = (el.labels && el.labels[0]) || el.closest("label");
-      if (!label) {
+      if (!label || label.getBoundingClientRect().width <= 2 || label.getBoundingClientRect().height <= 2) {
+        unmeasured.push({check: "target-size", selector: a11ySelector(el), text: "", detail: "drawn by another element", mark: a11yCase(el)});
         continue;
       }
       box = label;
       rect = label.getBoundingClientRect();
     }
-    if (rect.width === 0 || rect.height === 0 || inlineLink(el)) {
+    if (rect.width === 0 || rect.height === 0 || inlineLink(el) || screenReaderOnly(el, rect)) {
       continue;
     }
     measured++;
@@ -105,5 +114,5 @@
     });
   }
   window.scrollTo(0, 0);
-  return {findings, measured};
+  return {findings, unmeasured, measured};
 }

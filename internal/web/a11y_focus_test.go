@@ -33,6 +33,7 @@ type a11yStop struct {
 	Ring     bool   `json:"ring"`
 	Obscured bool   `json:"obscured"`
 	Mark     string `json:"mark"`
+	Extra    int    `json:"extra"`
 	Ratios   map[string]struct {
 		Ratio  float64 `json:"ratio"`
 		Detail string  `json:"detail"`
@@ -76,6 +77,7 @@ func a11yFocusWalk(t *testing.T, tab *cdp.Tab, checkThemes []string) (findings, 
 	var tabbables []struct {
 		ID       int    `json:"id"`
 		Selector string `json:"selector"`
+		Extra    int    `json:"extra"`
 	}
 	if err = a11yScript(tab, "focus.js", map[string]any{"op": "tabbables"}, &tabbables); err != nil {
 		return nil, nil, fmt.Errorf("focus.js tabbables: %w", err)
@@ -96,6 +98,9 @@ func a11yFocusWalk(t *testing.T, tab *cdp.Tab, checkThemes []string) (findings, 
 	_ = tab.TryEval(`(document.activeElement && document.activeElement.blur(), true)`, nil)
 
 	presses := len(tabbables) + 5
+	for _, tb := range tabbables {
+		presses += tb.Extra // a date field takes several presses
+	}
 	capped := presses > a11yWalkCap
 	if capped {
 		presses = a11yWalkCap
@@ -120,7 +125,7 @@ func a11yFocusWalk(t *testing.T, tab *cdp.Tab, checkThemes []string) (findings, 
 			findings = append(findings, a11yStopFindings(s, checkThemes)...)
 		}
 		run = append(run, s.ID)
-		if n := len(run); n >= 4 && len(tabbables) > 1 && run[n-1] == run[n-2] && run[n-2] == run[n-3] && run[n-3] == run[n-4] {
+		if n := 4 + s.Extra; len(run) >= n && len(tabbables) > 1 && a11yAllSame(run[len(run)-n:]) {
 			findings = append(findings, a11yFinding{Check: "focus-trap", Selector: s.Selector, Text: s.Text, Mark: s.Mark, Detail: "three Tab presses left focus on the same element"})
 			trapped = true
 			break
@@ -139,4 +144,14 @@ func a11yFocusWalk(t *testing.T, tab *cdp.Tab, checkThemes []string) (findings, 
 		}
 	}
 	return findings, unmeasured, nil
+}
+
+// a11yAllSame is true when every id in the list is the same.
+func a11yAllSame(ids []int) bool {
+	for _, id := range ids {
+		if id != ids[0] {
+			return false
+		}
+	}
+	return true
 }

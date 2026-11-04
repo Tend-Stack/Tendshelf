@@ -21,7 +21,7 @@ button, a, input, label { font: inherit; }
 .hit:has(.vh:focus-visible) { outline: 3px solid #000; }
 
 /* Non-text contrast */
-input[type=text] { box-sizing: border-box; width: 160px; height: 48px; background: #fff; }
+input[type=text], input[type=date] { box-sizing: border-box; width: 160px; height: 48px; background: #fff; }
 .weak-field { border: 1px solid #dddddd; }
 .good-field { border: 1px solid #767676; }
 .plain-field { border: 0; background: #f5f5f5; }
@@ -32,6 +32,7 @@ input[type=text] { box-sizing: border-box; width: 160px; height: 48px; backgroun
 /* Focus */
 .f-nofocus:focus-visible { outline: none; box-shadow: none; }
 .f-ring:focus-visible { outline: 2px solid transparent; box-shadow: 0 0 0 2px #14110e, 0 0 0 4px #f0956a; }
+.f-inset:focus-visible { outline: none; box-shadow: inset 0 0 0 3px #000000; }
 .f-weak:focus-visible { outline: none; box-shadow: 0 0 0 3px #eeeeee; }
 .f-covered { position: fixed; left: 10px; bottom: 10px; width: 120px; height: 48px; display: block; }
 .bar { position: fixed; left: 0; right: 0; bottom: 0; height: 80px; background: #ddd; z-index: 10; }
@@ -41,3 +42,5 @@ input[type=text] { box-sizing: border-box; width: 160px; height: 48px; backgroun
 .clip { width: 100px; height: 24px; overflow: hidden; white-space: nowrap; }
 .ellipsis { width: 100px; height: 24px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fits { width: 200px; height: 24px; overflow: hidden; white-space: nowrap; }
+.card { position: relative; display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid #767676; }
+.card label::after { content: ""; position: absolute; inset: 0; }

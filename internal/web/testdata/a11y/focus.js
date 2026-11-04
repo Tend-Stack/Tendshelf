@@ -5,6 +5,8 @@
 (options) => {
   const colours = a11yColour();
   window.__a11yFocusIds = window.__a11yFocusIds || {map: new WeakMap(), next: 1};
+  // A date field has several Tab stops inside it (day, month, year, the picker button).
+  const dateLike = (el) => el.matches("input[type=date],input[type=time],input[type=datetime-local],input[type=month],input[type=week]");
   const idOf = (el) => {
     const ids = window.__a11yFocusIds;
     if (!ids.map.has(el)) {
@@ -38,7 +40,7 @@
         }
         radios.set(key, true);
       }
-      list.push({id: idOf(el), selector: a11ySelector(el)});
+      list.push({id: idOf(el), selector: a11ySelector(el), extra: dateLike(el) ? 5 : 0});
     }
     return list;
   }
@@ -61,8 +63,13 @@
       }
     }
   }
+  // The box that has to be seen: the element, or for an input drawn by something else the first label or
+  // wrapper that has a real size.
   const hidden = el.localName === "input" && (Number(getComputedStyle(el).opacity) === 0 || rect.width <= 2 || rect.height <= 2);
-  const visual = hidden && indicators[1] ? indicators[1] : el;
+  const visual = (hidden && indicators.slice(1).find((node) => {
+    const r = node.getBoundingClientRect();
+    return r.width > 4 && r.height > 4;
+  })) || el;
 
   // rings lists the box-shadow rings and the outline of an element that are drawn outside it.
   const rings = (node) => {
@@ -92,15 +99,15 @@
       }
       parts.push(part);
       for (const shadow of parts) {
-        if (/\binset\b/.test(shadow)) {
-          continue;
-        }
+        // An inset ring is drawn inside the element (a side menu item cannot grow a ring outwards); it is
+        // read against the element's own background instead of what is behind the element.
+        const inset = /\binset\b/.test(shadow);
         const lengths = (shadow.match(/-?[\d.]+px/g) || []).map(parseFloat);
         const colour = shadow.replace(/-?[\d.]+px/g, "").replace(/\binset\b/, "").trim();
         const spread = lengths[3] || 0;
         const blur = lengths[2] || 0;
         if (spread >= 2 && blur === 0) {
-          out.push({kind: "ring", colour, width: spread});
+          out.push({kind: inset ? "inset" : "ring", colour, width: spread});
         }
       }
     }
@@ -125,7 +132,8 @@
       [probe.left + inset, probe.bottom - inset], [probe.right - inset, probe.bottom - inset],
     ]) {
       const hit = document.elementFromPoint(x, y);
-      hits.push(Boolean(hit) && (visual.contains(hit) || hit.contains(visual) && hit !== document.documentElement && hit !== document.body));
+      // A transparent label stretched over a card (a link-style row) is how the card is clicked, not a cover.
+      hits.push(Boolean(hit) && ((hit.closest("label") && [...(el.labels || [])].includes(hit.closest("label"))) || visual.contains(hit) || el.contains(hit) || hit.contains(visual) && hit !== document.documentElement && hit !== document.body));
     }
   }
   const obscured = hits.length > 0 && !hits.some(Boolean);
@@ -156,23 +164,21 @@
       perTheme[theme] = {ratio: 21, detail: "browser focus ring"};
       continue;
     }
-    const behind = colours.backdrop(visual.parentElement || visual);
+    const outside = colours.backdrop(visual.parentElement || visual);
+    const inside = colours.backdrop(visual);
     let best = 0;
     let bestColour = "";
     for (const r of now) {
       const c = colours.rgba(r.colour);
+      const behind = r.kind === "inset" ? inside : outside;
       const flat = colours.over(c, behind.colour);
       const got = colours.ratio(flat, behind.colour);
-      if (got > best) {
+      if (got > best || !bestColour) {
         best = got;
-        bestColour = colours.hex(flat);
+        bestColour = colours.hex(flat) + " on " + colours.hex(behind.colour) + (r.kind === "inset" ? " (inside)" : "") + (behind.picture ? " (image behind)" : "");
       }
     }
-    perTheme[theme] = {
-      ratio: Math.round(best * 100) / 100,
-      detail: bestColour + " on " + colours.hex(behind.colour) + (behind.picture ? " (image behind)" : ""),
-      picture: behind.picture,
-    };
+    perTheme[theme] = {ratio: Math.round(best * 100) / 100, detail: bestColour};
   }
   document.documentElement.setAttribute("data-theme", keep);
   void document.body.offsetHeight;
@@ -184,5 +190,6 @@
     id: idOf(el), selector: a11ySelector(el), text: a11yText(el) || el.getAttribute("aria-label") || "",
     focusVisible: el.matches(":focus-visible"), ring: found.length > 0, obscured: obscured && !offscreen,
     offscreen, perTheme, mark: a11yCase(el),
+    extra: dateLike(el) ? 6 : 0,
   };
 }

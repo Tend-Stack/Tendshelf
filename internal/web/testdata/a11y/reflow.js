@@ -56,13 +56,36 @@
     if (r.width <= 1 || r.height <= 1) {
       continue; // the screen-reader-only pattern
     }
-    const sideways = el.scrollWidth - el.clientWidth > 1 && /hidden|clip/.test(style.overflowX);
-    const down = el.scrollHeight - el.clientHeight > 1 && /hidden|clip/.test(style.overflowY);
-    if (!sideways && !down) {
+    // Text that sticks out of the box: a text node whose rectangle leaves the padding box of this element
+    // (text of a descendant that clips or scrolls on its own is that descendant's business).
+    let out_ = null;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let node = walker.nextNode(); node && !out_; node = walker.nextNode()) {
+      if (node.nodeValue.trim() === "" || !node.parentElement || !a11yVisible(node.parentElement)) {
+        continue;
+      }
+      let own = true;
+      for (let up = node.parentElement; up && up !== el; up = up.parentElement) {
+        if (getComputedStyle(up).overflow !== "visible") {
+          own = false;
+          break;
+        }
+      }
+      if (!own) {
+        continue;
+      }
+      range.selectNodeContents(node);
+      const t = range.getBoundingClientRect();
+      if (t.width > 1 && t.height > 1 && (t.right > r.right + 1 || t.bottom > r.bottom + 1 || t.left < r.left - 1 || t.top < r.top - 1)) {
+        out_ = t;
+      }
+    }
+    if (!out_) {
       continue;
     }
     const selector = a11ySelector(el);
-    const detail = "content " + el.scrollWidth + "x" + el.scrollHeight + " in a box of " + el.clientWidth + "x" + el.clientHeight;
+    const detail = "text " + Math.round(out_.width) + "x" + Math.round(out_.height) + " at " + Math.round(out_.left - r.left) + "," + Math.round(out_.top - r.top) + " in a box of " + Math.round(r.width) + "x" + Math.round(r.height);
     if (seen.has(selector + detail)) {
       continue;
     }
