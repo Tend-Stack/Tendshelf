@@ -145,7 +145,7 @@ func a11yStates() []a11yState {
 			tab.WaitFor(`window.tsPlayer && window.tsPlayer.state().bookId !== "" && !document.getElementById("player").hidden`, 10*time.Second)
 			bmkeyPlay(t, tab, "[data-ts-toggle]")
 			fullpOpenPlayer(t, tab)
-			tab.WaitFor(`document.querySelector("#now-panel[data-book-id] .ts-np__desc") !== null`, 5*time.Second)
+			tab.WaitFor(`document.querySelector("#now-panel[data-book-id] .ts-np__h") !== null`, 5*time.Second)
 		}, MinWidth: 1280},
 	}
 }
