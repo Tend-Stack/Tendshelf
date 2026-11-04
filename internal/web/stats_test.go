@@ -130,6 +130,10 @@ func TestStatsTimeZonePost(t *testing.T) {
 	if got := settingsOf(t, a).TimeZone; got != "Asia/Tokyo" {
 		t.Fatalf("stored %q", got)
 	}
+	// The zone alone stores no theme, so the theme cookie still decides for someone who never chose one.
+	if theme, err := a.srv.users.Theme(context.Background(), sweepUserID(t, a, ck)); err != nil || theme != "" {
+		t.Fatalf("a zone post stored theme %q (%v)", theme, err)
+	}
 	for _, bad := range []string{"Mars/Base", "", "Local"} {
 		if rec := settingsPost(t, a, ck, "/me/settings", url.Values{"time_zone": {bad}}, true); rec.Code != http.StatusUnprocessableEntity {
 			t.Errorf("zone %q = %d, want 422", bad, rec.Code)

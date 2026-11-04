@@ -46,3 +46,28 @@ func TestSettingsTimeZone(t *testing.T) {
 		t.Fatalf("look: %+v %v", l, err)
 	}
 }
+
+// SaveTimeZone stores ui.time_zone and no other key: a person who never chose a theme keeps none.
+func TestSaveTimeZoneOnly(t *testing.T) {
+	r := newRepo(t, Options{})
+	ctx := context.Background()
+	u, err := createOwner(t, r, goodUser("ana"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.SaveTimeZone(ctx, u.ID, "Mars/Base"); !errors.Is(err, ErrInvalidSetting) {
+		t.Fatalf("invalid zone: %v", err)
+	}
+	if err := r.SaveTimeZone(ctx, u.ID, "Asia/Tokyo"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.SaveTimeZone(ctx, u.ID, "Europe/Madrid"); err != nil {
+		t.Fatal(err)
+	}
+	if l, err := r.Look(ctx, u.ID); err != nil || l.TimeZone != "Europe/Madrid" {
+		t.Fatalf("look: %+v %v", l, err)
+	}
+	if theme, err := r.Theme(ctx, u.ID); err != nil || theme != "" {
+		t.Fatalf("theme = %q %v, want none stored", theme, err)
+	}
+}

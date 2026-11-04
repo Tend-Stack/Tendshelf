@@ -167,6 +167,20 @@ func (s *server) postSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	u := currentUser(r)
+	if zone, only := timeZoneOnly(r.PostForm); only {
+		// shell.js posts the browser's zone by itself: store that key and nothing else.
+		if !users.ValidTimeZone(zone) {
+			s.fragment(w, r, http.StatusUnprocessableEntity, components.ErrorToast(msgSettingInvalid))
+			return
+		}
+		if err := s.users.SaveTimeZone(ctx, u.ID, zone); err != nil {
+			s.serverError(w, r, "save time zone", err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	cur, err := s.users.LoadSettings(ctx, u.ID)
 	if err != nil {
 		s.serverError(w, r, "load settings", err)

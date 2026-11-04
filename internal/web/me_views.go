@@ -210,3 +210,18 @@ func settingsFromForm(f url.Values, cur users.Settings) (next users.Settings, ok
 	}
 	return next, ok && next.Validate() == nil
 }
+
+// timeZoneOnly reports whether a settings post carries the browser's time zone and nothing else
+// (besides the CSRF field), as shell.js sends it, and returns the zone.
+func timeZoneOnly(f url.Values) (string, bool) {
+	zone, has := f["time_zone"]
+	if !has || len(zone) != 1 {
+		return "", false
+	}
+	for k := range f {
+		if k != "time_zone" && k != csrfField {
+			return "", false
+		}
+	}
+	return zone[0], true
+}

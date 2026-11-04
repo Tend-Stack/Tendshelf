@@ -263,6 +263,25 @@ func (r *Repo) SaveSettings(ctx context.Context, userID string, s Settings) erro
 	})
 }
 
+// SaveTimeZone writes ui.time_zone alone. The browser posts its zone on its own (decision 0013); going
+// through SaveSettings would also store every other setting, including a theme the person never chose,
+// which would then beat the theme cookie.
+func (r *Repo) SaveTimeZone(ctx context.Context, userID, zone string) error {
+	if !validTimeZoneSetting(zone) {
+		return ErrInvalidSetting
+	}
+	raw, err := json.Marshal(zone)
+	if err != nil {
+		return err
+	}
+	return r.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO user_settings (user_id, key, value_json, updated_at) VALUES (?, ?, ?, ?)
+			ON CONFLICT(user_id, key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at`,
+			userID, keyTimeZone, string(raw), r.nowMs())
+		return err
+	})
+}
+
 // Theme reads ui.theme alone: one indexed read for every page render. It returns "" when the
 // person has not chosen one.
 func (r *Repo) Theme(ctx context.Context, userID string) (string, error) {
