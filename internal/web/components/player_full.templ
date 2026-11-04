@@ -53,6 +53,7 @@ templ PlayerFull(m PlayerMsgs) {
 								<input type="hidden" name="next" value=""/>
 								<button type="submit" class="ts-player__menuitem">{ m.MarkFinished }</button>
 							</form>
+							<button type="button" class="ts-player__menuitem" data-ts-eyes-free-open data-ts-src={ m.EyesFreeJS } data-ts-css={ m.EyesFreeCSS } if m.Link { hidden }>{ m.EyesFree.Title }</button>
 							<div class="ts-player__menuextra" data-ts-full-extra></div>
 						</div>
 					</details>
@@ -235,6 +236,9 @@ templ PlayerFull(m PlayerMsgs) {
 			</li>
 		</template>
 	</dialog>
+	if !m.Link {
+		@EyesFree(m)
+	}
 }
 
 templ playerChevron() {

@@ -12,6 +12,10 @@ type PlayerMsgs struct {
 	// Link is set on a share-link page: the controls that need an account are rendered hidden.
 	Link bool
 
+	// Eyes-free (M3b): its words and the addresses of its script and stylesheet, loaded on first use.
+	EyesFree                EyesFreeMsgs
+	EyesFreeJS, EyesFreeCSS string
+
 	Open, PlayPrefix, PausePrefix, BackSeconds, ForwardSeconds, ChapterLeft string
 	Rewound, CompatWait, CompatFailed, SignedOut, SignIn                    string
 	ContinueAsk, OtherDevice, ContinueThere, StayHere                       string
