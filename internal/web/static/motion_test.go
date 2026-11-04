@@ -324,6 +324,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"eyes-free.js": {3 * 1024, 24 * 1024},
 	// Decision 0015: the resumable uploader, loaded only on the Add books page; 5 KB, approved by the operator on 2026-11-04.
 	"upload.js": {5 * 1024, 32 * 1024},
+	// M5 R4 P4: the reading settings sheet; 1.25 KB, approved by the operator on 2026-11-04.
+	"reader-settings.js": {1*1024 + 256, 8 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
