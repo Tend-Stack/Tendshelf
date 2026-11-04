@@ -36,17 +36,22 @@ func (s *Service) Writable(ctx context.Context, folderID string) error {
 	if err != nil || !fi.IsDir() {
 		return ErrNotWritable
 	}
+	lr, err := openLroot(folder.Path)
+	if err != nil {
+		return errors.Join(ErrNotWritable, err)
+	}
+	defer lr.Close()
 	id, err := s.plan(ctx, nil, checkUploadID, folder.ID, p, kindFile, pathPlanned)
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	f, err := lr.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		_ = s.dropPath(ctx, nil, id)
 		return errors.Join(ErrNotWritable, err)
 	}
 	cerr := f.Close()
-	rerr := os.Remove(p)
+	rerr := lr.Remove(p)
 	if rerr != nil {
 		s.log.Warn("upload: cannot remove the write-check file", "path", p, "err", rerr)
 		_ = s.markPath(ctx, nil, id, pathKept)

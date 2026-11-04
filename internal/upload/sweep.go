@@ -9,6 +9,7 @@ import (
 
 const (
 	staleAfter  = 24 * time.Hour
+	failedKeep  = 7 * 24 * time.Hour
 	pruneAfter  = 30 * 24 * time.Hour
 	sweepEvery  = time.Hour
 	firstSweep  = time.Minute
@@ -58,6 +59,35 @@ func (s *Service) Sweep(ctx context.Context) error {
 		l := s.lock(id)
 		l.Lock()
 		err := s.setState(ctx, nil, id, StateExpired, "", StateReceiving)
+		l.Unlock()
+		if err == nil {
+			s.removeStaging(id)
+			s.forget(id)
+		}
+	}
+
+	// A queued or placing upload whose job is gone (or never ran) and that nothing has touched for a
+	// day would keep its staging forever: it becomes failed, and Try again or the week-long expiry
+	// below takes it from there.
+	ids, err := s.ids(ctx, `SELECT id FROM uploads WHERE state IN ('queued','placing') AND updated_at < ?
+  AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.id = uploads.job_id AND j.state IN ('queued','running','held'))`, cut)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if err := s.setState(ctx, nil, id, StateFailed, "stuck", StateQueued, StatePlacing); err != nil {
+			s.log.Warn("upload: cannot fail a stuck upload", "upload", id, "err", err)
+		}
+	}
+	// Failed uploads keep their staged bytes for a week so Try again works, then expire.
+	ids, err = s.ids(ctx, `SELECT id FROM uploads WHERE state = 'failed' AND updated_at < ?`, now.Add(-failedKeep).UnixMilli())
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		l := s.lock(id)
+		l.Lock()
+		err := s.setState(ctx, nil, id, StateExpired, "", StateFailed)
 		l.Unlock()
 		if err == nil {
 			s.removeStaging(id)
@@ -119,4 +149,22 @@ func (s *Service) Sweep(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// ids runs a query that selects upload ids.
+func (s *Service) ids(ctx context.Context, q string, args ...any) ([]string, error) {
+	rows, err := s.st.Reader().QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
 }

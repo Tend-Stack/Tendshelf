@@ -593,7 +593,7 @@ var pinnedMigrations = map[int]string{
 	11: "b8148a4007be1c37cc3de93e670620dd70a7abc28addbdc1db5925c9a3f1d873",
 	12: "760860c0f8fadff0464c091cfdd00dccef4d021f1dd5e145e81336d39913a04c",
 	13: "174072f5013367e258c8ff18d3b1b35d704d532fa24606876cbd75481f18f150",
-	14: "a4ef24a12395f02a5b7c4106c1ee642696e7bee5af33dd40e669abdbbf7c1d84",
+	14: "052ca76dec68a1a13859fca04fb0118e903dfaa3fc3999ba9b553eb4234448cc",
 }
 
 func TestMigrationsImmutable(t *testing.T) {

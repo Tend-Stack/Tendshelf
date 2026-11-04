@@ -74,7 +74,7 @@ and `testutil/wav`; the route-matrix tests (`routes_matrix_*_test.go`).
    one (`dir` rows `planned` then `present`). i. create `.tendshelf-upload-<id>` (0755), store `temp_path`. j. per file
    (book-relative path from `rel_path` minus the first segment when the label is a folder, segments through
    `SafeName`, in-book collisions get " (2)" before the extension): `file` row `staged` with the final path; move with
-   `os.Link`+`os.Remove` when `sameFS` (fall back to copy on error), else copy with `O_EXCL`, `Sync`, re-read for
+   copy through `os.Root` (rework: no hard link, a link cannot be made through the root) copy with `O_EXCL`, `Sync`, re-read for
    SHA-256; record size, mtime_ns, quick hash, sha256 (copy only). k. `Lstat(final)` must be not-exist (else back to f
    with the next suffix), `os.Rename(temp, final)`; one transaction: rows `staged`→`present`, `book_path`, clear
    `temp_path`, state `placed`, audit `upload.place`. l. enqueue `scan.library` `{library_id, folder_id, subdir}`,

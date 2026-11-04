@@ -85,21 +85,21 @@ func TestLayout(t *testing.T) {
 	}
 	t.Run("author and title", func(t *testing.T) {
 		root := t.TempDir()
-		p, n, ok := layout(root, "Ann Author", "", "", "The Book", nil)
+		p, n, ok := layout(lr(t, root), "Ann Author", "", "", "The Book", nil)
 		if !ok || rel(root, p, n) != "Ann Author/The Book" {
 			t.Errorf("got %q %q %v", p, n, ok)
 		}
 	})
 	t.Run("series", func(t *testing.T) {
 		root := t.TempDir()
-		p, n, ok := layout(root, "Ann", "Saga", "1.5", "Part", nil)
+		p, n, ok := layout(lr(t, root), "Ann", "Saga", "1.5", "Part", nil)
 		if !ok || rel(root, p, n) != "Ann/Saga/01.5 - Part" {
 			t.Errorf("got %q %q %v", p, n, ok)
 		}
 	})
 	t.Run("unknown names", func(t *testing.T) {
 		root := t.TempDir()
-		p, n, _ := layout(root, "", "", "", "", nil)
+		p, n, _ := layout(lr(t, root), "", "", "", "", nil)
 		if rel(root, p, n) != "Unknown author/Untitled book" {
 			t.Errorf("got %q", rel(root, p, n))
 		}
@@ -107,7 +107,7 @@ func TestLayout(t *testing.T) {
 	t.Run("ancestor holds audio: fall back to the top", func(t *testing.T) {
 		root := t.TempDir()
 		mk(t, root, "Ann/loose.m4b")
-		p, n, ok := layout(root, "Ann", "", "", "T", nil)
+		p, n, ok := layout(lr(t, root), "Ann", "", "", "T", nil)
 		if !ok || rel(root, p, n) != "Ann - T" {
 			t.Errorf("got %q %q %v", p, n, ok)
 		}
@@ -118,7 +118,7 @@ func TestLayout(t *testing.T) {
 		if err := os.Symlink(other, filepath.Join(root, "Ann")); err != nil {
 			t.Fatal(err)
 		}
-		p, n, ok := layout(root, "Ann", "", "", "T", nil)
+		p, n, ok := layout(lr(t, root), "Ann", "", "", "T", nil)
 		if !ok || rel(root, p, n) != "Ann - T" {
 			t.Errorf("got %q %q %v", p, n, ok)
 		}
@@ -126,7 +126,7 @@ func TestLayout(t *testing.T) {
 	t.Run("ancestor is a file", func(t *testing.T) {
 		root := t.TempDir()
 		mk(t, root, "Ann")
-		p, n, ok := layout(root, "Ann", "", "", "T", nil)
+		p, n, ok := layout(lr(t, root), "Ann", "", "", "T", nil)
 		if !ok || rel(root, p, n) != "Ann - T" {
 			t.Errorf("got %q %q %v", p, n, ok)
 		}
@@ -134,7 +134,7 @@ func TestLayout(t *testing.T) {
 	t.Run("ancestor is inside a book", func(t *testing.T) {
 		root := t.TempDir()
 		mk(t, root, "Ann/")
-		p, n, ok := layout(root, "Ann", "", "", "T", []string{filepath.Join(root, "Ann")})
+		p, n, ok := layout(lr(t, root), "Ann", "", "", "T", []string{filepath.Join(root, "Ann")})
 		if !ok || rel(root, p, n) != "Ann - T" {
 			t.Errorf("got %q %q %v", p, n, ok)
 		}
@@ -142,7 +142,7 @@ func TestLayout(t *testing.T) {
 	t.Run("series ancestor unusable falls back to Author/Title", func(t *testing.T) {
 		root := t.TempDir()
 		mk(t, root, "Ann/Saga/x.mp3")
-		p, n, ok := layout(root, "Ann", "Saga", "2", "T", nil)
+		p, n, ok := layout(lr(t, root), "Ann", "Saga", "2", "T", nil)
 		if !ok || rel(root, p, n) != "Ann/T" {
 			t.Errorf("got %q %q %v", p, n, ok)
 		}
@@ -150,7 +150,7 @@ func TestLayout(t *testing.T) {
 	t.Run("a file at the name", func(t *testing.T) {
 		root := t.TempDir()
 		mk(t, root, "Ann/T")
-		p, n, ok := layout(root, "Ann", "", "", "T", nil)
+		p, n, ok := layout(lr(t, root), "Ann", "", "", "T", nil)
 		if !ok || rel(root, p, n) != "Ann/T (2)" {
 			t.Errorf("got %q %q %v", p, n, ok)
 		}
@@ -161,7 +161,7 @@ func TestLayout(t *testing.T) {
 		for i := 2; i <= 99; i++ {
 			mk(t, root, "Ann/T ("+itoa(i)+")/")
 		}
-		p, n, ok := layout(root, "Ann", "", "", "T", nil)
+		p, n, ok := layout(lr(t, root), "Ann", "", "", "T", nil)
 		if !ok || rel(root, p, n) != "Ann - T" {
 			t.Errorf("got %q %q %v", p, n, ok)
 		}
@@ -169,10 +169,20 @@ func TestLayout(t *testing.T) {
 		for i := 2; i <= 99; i++ {
 			mk(t, root, "Ann - T ("+itoa(i)+")/")
 		}
-		if _, _, ok := layout(root, "Ann", "", "", "T", nil); ok {
+		if _, _, ok := layout(lr(t, root), "Ann", "", "", "T", nil); ok {
 			t.Error("layout found a place when every name was taken")
 		}
 	})
 }
 
 func itoa(i int) string { return strconv.Itoa(i) }
+
+func lr(t *testing.T, root string) *lroot {
+	t.Helper()
+	l, err := openLroot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(l.Close)
+	return l
+}

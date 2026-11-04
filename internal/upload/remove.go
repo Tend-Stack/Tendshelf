@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"syscall"
@@ -54,6 +53,11 @@ func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResu
 	if err != nil {
 		return res, fail(409, "not_removable", "The folder this book is in is no longer part of the library.")
 	}
+	lr, err := openLroot(folder.Path)
+	if err != nil {
+		return res, err
+	}
+	defer lr.Close()
 	audio, err := s.repo.AudioFiles(ctx, bookID)
 	if err != nil {
 		return res, err
@@ -82,7 +86,7 @@ func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResu
 				if !within(book.RootPath, r.Path) {
 					continue
 				}
-				if s.removeFile(ctx, r, &res) {
+				if s.removeFile(ctx, lr, r, &res) {
 					continue
 				}
 			case kindDir:
@@ -94,7 +98,7 @@ func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResu
 	}
 	sort.Slice(dirs, func(i, j int) bool { return len(dirs[i].Path) > len(dirs[j].Path) })
 	for _, d := range dirs {
-		err := os.Remove(d.Path) // rmdir: fails when anything is inside
+		err := lr.Remove(d.Path) // rmdir: fails when anything is inside
 		switch {
 		case err == nil || errors.Is(err, fs.ErrNotExist):
 			_ = s.markPath(ctx, nil, d.ID, pathRemoved)
@@ -107,7 +111,7 @@ func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResu
 
 	left := false
 	for _, a := range audio {
-		if _, err := os.Lstat(a.Path); err == nil {
+		if _, err := lr.Lstat(a.Path); err == nil {
 			left = true
 			break
 		}
@@ -122,7 +126,7 @@ func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResu
 		return res, err
 	}
 	sub := book.RootPath
-	if fi, err := os.Lstat(sub); err != nil || !fi.IsDir() {
+	if fi, err := lr.Lstat(sub); err != nil || !fi.IsDir() {
 		sub = filepath.Dir(sub)
 	}
 	if rel, err := filepath.Rel(folder.Path, sub); err == nil && within(folder.Path, sub) && rel != "." {
@@ -136,8 +140,8 @@ func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResu
 }
 
 // removeFile deletes one ledger file when it is unchanged. It reports whether the file is gone.
-func (s *Service) removeFile(ctx context.Context, r pathRow, res *RemoveResult) bool {
-	fi, err := os.Lstat(r.Path)
+func (s *Service) removeFile(ctx context.Context, lr *lroot, r pathRow, res *RemoveResult) bool {
+	fi, err := lr.Lstat(r.Path)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		_ = s.markPath(ctx, nil, r.ID, pathRemoved)
@@ -148,15 +152,19 @@ func (s *Service) removeFile(ctx context.Context, r pathRow, res *RemoveResult) 
 	}
 	unchanged := fi.Mode().IsRegular() && fi.Size() == r.Size && fi.ModTime().UnixNano() == r.MtimeNs
 	if unchanged {
-		quick, _, qerr := media.QuickHash(r.Path)
-		unchanged = qerr == nil && quick == r.QuickHash
+		unchanged = false
+		if f, oerr := lr.Open(r.Path); oerr == nil {
+			quick, _, qerr := media.QuickHashFile(f)
+			f.Close()
+			unchanged = qerr == nil && quick == r.QuickHash
+		}
 	}
 	if !unchanged {
 		res.Kept = append(res.Kept, r.Path)
 		_ = s.markPath(ctx, nil, r.ID, pathKept)
 		return false
 	}
-	if err := os.Remove(r.Path); err != nil {
+	if err := lr.Remove(r.Path); err != nil {
 		res.Kept = append(res.Kept, r.Path)
 		return false
 	}

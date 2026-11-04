@@ -12,6 +12,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/upload"
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
 // Adding books by upload (decision 0015, package U1). The JSON routes are used by js/upload.js: a
@@ -236,6 +237,11 @@ func (s *server) postBookRemove(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.uploads.Remove(r.Context(), currentUser(r).ID, b.ID); err != nil {
 		var ue *upload.Error
 		if errors.As(err, &ue) && ue.Status != http.StatusNotFound {
+			if r.Header.Get("HX-Request") == "true" {
+				// htmx swaps 4xx answers, so a refusal is an out-of-band toast, never a text page.
+				s.fragment(w, r, ue.Status, components.ErrorToast(ue.Message))
+				return
+			}
 			http.Error(w, ue.Message, ue.Status)
 			return
 		}

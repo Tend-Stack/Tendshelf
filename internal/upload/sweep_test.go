@@ -13,8 +13,8 @@ func TestSweepExpiresStaleReceivingUploads(t *testing.T) {
 	old, _ := oneFile(t, e, 64)
 	fresh, _ := oneFile(t, e, 64)
 	queuedV, _ := oneFile(t, e, 64)
-	if _, err := e.st.Writer().Exec(`UPDATE uploads SET updated_at = ? WHERE id IN (?, ?)`,
-		now.Add(-25*time.Hour).UnixMilli(), old.ID, queuedV.ID); err != nil {
+	if _, err := e.st.Writer().Exec(`UPDATE uploads SET updated_at = ? WHERE id = ?`,
+		now.Add(-25*time.Hour).UnixMilli(), old.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := e.st.Writer().Exec(`UPDATE uploads SET state = 'queued' WHERE id = ?`, queuedV.ID); err != nil {

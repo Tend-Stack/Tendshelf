@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -22,6 +23,8 @@ type FileIn struct {
 	Path       string `json:"path"`
 	Size       int64  `json:"size"`
 	ModifiedMs int64  `json:"modified_ms"`
+	// SHA256 is the optional hex SHA-256 of the whole file; when present placement verifies it.
+	SHA256 string `json:"sha256,omitempty"`
 }
 
 // Manifest describes one book before any byte is sent.
@@ -37,6 +40,8 @@ const (
 )
 
 // placedExt lists the non-audio extensions that go into the book's folder: pictures and sidecars.
+var sha256Re = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
+
 var placedExt = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
 	".opf": true, ".nfo": true, ".txt": true, ".json": true, ".cue": true,
@@ -156,6 +161,9 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 
 	seen := map[string]bool{}
 	for _, f := range m.Files {
+		if f.SHA256 != "" && !sha256Re.MatchString(f.SHA256) {
+			return View{}, &Error{Status: 422, Code: "bad_checksum", Message: "That file's checksum is not valid.", Field: f.Path}
+		}
 		if msg := checkPath(f.Path); msg != "" {
 			return View{}, &Error{Status: 422, Code: "bad_path", Message: msg, Field: f.Path}
 		}
@@ -186,11 +194,17 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 	}
 
 	var receiving int
-	var pending int64
+	var pending, mine int64
 	if err := s.st.Reader().QueryRowContext(ctx, `SELECT
-  COALESCE(SUM(created_by = ?), 0), COALESCE(SUM(bytes_total - bytes_received), 0) FROM uploads WHERE state = 'receiving'`,
-		userID).Scan(&receiving, &pending); err != nil {
+  COALESCE(SUM(created_by = ? AND state = 'receiving'), 0),
+  COALESCE(SUM(CASE WHEN state = 'receiving' THEN bytes_total - bytes_received ELSE 0 END), 0),
+  COALESCE(SUM(CASE WHEN created_by = ? THEN bytes_total ELSE 0 END), 0)
+  FROM uploads WHERE state IN ('receiving','queued','placing','failed')`,
+		userID, userID).Scan(&receiving, &pending, &mine); err != nil {
 		return View{}, err
+	}
+	if mine+total > s.cfg.PerPerson {
+		return View{}, fail(507, "quota", "You already have a lot waiting on the server. Finish or cancel an upload first.")
 	}
 	if receiving >= s.cfg.MaxReceiving {
 		return View{}, fail(429, "too_many", "Finish or cancel one of your other uploads first.")
@@ -219,12 +233,13 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 	id := db.NewID("upl")
 	rows := make([]fileRow, len(files))
 	for i, f := range files {
-		rows[i] = fileRow{ID: db.NewID("upf"), UploadID: id, Idx: i, RelPath: f.Path, Size: f.Size, ModifiedMs: f.ModifiedMs}
+		rows[i] = fileRow{ID: db.NewID("upf"), UploadID: id, Idx: i, RelPath: f.Path, Size: f.Size, ModifiedMs: f.ModifiedMs, SHA256: f.SHA256}
 	}
 	staging := s.stagingDir(id)
 	if err := os.Mkdir(staging, 0o700); err != nil {
 		return View{}, err
 	}
+	syncDir(s.incomingDir())
 	err = s.write(ctx, nil, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO uploads(id, library_id, folder_id, created_by, label, state, bytes_total,
   bytes_received, skipped, created_at, updated_at) VALUES (?,?,?,?,?,?,?,0,?,?,?)`,
@@ -232,8 +247,8 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 			return err
 		}
 		for _, r := range rows {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO upload_files(id, upload_id, idx, rel_path, size, modified_ms)
-  VALUES (?,?,?,?,?,?)`, r.ID, id, r.Idx, r.RelPath, r.Size, r.ModifiedMs); err != nil {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO upload_files(id, upload_id, idx, rel_path, size, modified_ms, sha256)
+  VALUES (?,?,?,?,?,?,?)`, r.ID, id, r.Idx, r.RelPath, r.Size, r.ModifiedMs, nullIfEmpty(strings.ToLower(r.SHA256))); err != nil {
 				return err
 			}
 		}

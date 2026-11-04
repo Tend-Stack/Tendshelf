@@ -57,6 +57,23 @@ func (s *Service) jobFail(ctx context.Context, g guard, uploadID, code, text str
 	return &jobs.Error{Code: code, Text: text, Permanent: permanent, Err: cause}
 }
 
+// plainFail ends a placement that hit an error. A *jobs.Error keeps its code, words and
+// permanence; anything else (a permission error, a read-only file system, an unplugged disk) is
+// transient: the upload becomes failed with a plain message, the runner may retry, and Try again
+// works. Nothing is ever left in placing. A shutdown (the context ending) is not a failure.
+func (s *Service) plainFail(ctx context.Context, g guard, uploadID string, err error) error {
+	var je *jobs.Error
+	if errors.As(err, &je) {
+		return s.jobFail(ctx, g, uploadID, je.Code, je.Text, je.Permanent, err)
+	}
+	if ctx.Err() != nil {
+		return err
+	}
+	s.log.Error("upload: placement failed", "upload", uploadID, "err", err)
+	return s.jobFail(ctx, g, uploadID, "place_failed",
+		"Tendshelf could not finish adding this book. Check that the library folder is available, then press Try again.", false, err)
+}
+
 // place is the body of the upload.place job (the steps are numbered in the plan). g is the job's
 // fence; a test passes nil.
 func (s *Service) place(ctx context.Context, g guard, progress func(any), uploadID string) (any, error) {
@@ -78,51 +95,65 @@ func (s *Service) place(ctx context.Context, g guard, progress func(any), upload
 	if err != nil {
 		return nil, s.jobFail(ctx, g, uploadID, "folder_gone", "The library folder for uploads is no longer set.", true, err)
 	}
+	// Compare-and-set: placement starts only from a state it was queued into. An upload cancelled
+	// (or expired) in the meantime is left as it is.
+	if err := s.setState(ctx, g, uploadID, StatePlacing, "", StateQueued, StatePlacing, StateFailed); err != nil {
+		var ue *Error
+		if errors.As(err, &ue) && ue.Code == "wrong_state" {
+			cur, lerr := s.loadUpload(ctx, uploadID)
+			if lerr != nil {
+				return nil, lerr
+			}
+			return PlaceResult{State: cur.State}, nil
+		}
+		return nil, err
+	}
+	lr, err := openLroot(folder.Path)
+	if err != nil {
+		return nil, s.plainFail(ctx, g, uploadID, err)
+	}
+	defer lr.Close()
 
 	step("recover")
-	published, err := s.recoverPlacement(ctx, g, uploadID, folder.Path)
+	published, err := s.recoverPlacement(ctx, g, uploadID, lr)
 	if err != nil {
-		return nil, err
+		return nil, s.plainFail(ctx, g, uploadID, err)
 	}
 	if up, err = s.loadUpload(ctx, uploadID); err != nil {
 		return nil, err
 	}
 	if !published {
-		if err := s.setState(ctx, g, uploadID, StatePlacing, ""); err != nil {
-			return nil, err
-		}
 		step("checking")
 		files, err := s.loadFiles(ctx, uploadID)
 		if err != nil {
 			return nil, err
 		}
 		for _, f := range files {
-			fi, err := os.Stat(s.partPath(uploadID, f.ID))
+			part := s.partPath(uploadID, f.ID)
+			fi, err := os.Stat(part)
 			if err != nil || fi.Size() != f.Size {
 				return nil, s.jobFail(ctx, g, uploadID, "incomplete", "The uploaded files are not all on the server. Choose them again.", true, err)
 			}
-		}
-		names, refused, err := s.inspect(ctx, files)
-		if err != nil {
-			var je *jobs.Error
-			if errors.As(err, &je) {
-				return nil, s.jobFail(ctx, g, uploadID, je.Code, je.Text, true, err)
+			if f.SHA256 != "" {
+				sum, err := media.FileSHA256(part)
+				if err != nil {
+					return nil, s.plainFail(ctx, g, uploadID, err)
+				}
+				if !strings.EqualFold(sum, f.SHA256) {
+					return nil, s.jobFail(ctx, g, uploadID, "damaged", "A file arrived damaged. Choose the files again.", true, nil)
+				}
 			}
-			return nil, err
+		}
+		names, refused, err := s.inspect(ctx, up, files)
+		if err != nil {
+			return nil, s.plainFail(ctx, g, uploadID, err)
 		}
 		if refused != "" {
 			return s.refuse(ctx, g, up, refused)
 		}
 		step("placing")
-		if err := s.build(ctx, g, up, folder.Path, files, names); err != nil {
-			var je *jobs.Error
-			if errors.As(err, &je) {
-				return nil, s.jobFail(ctx, g, uploadID, je.Code, je.Text, je.Permanent, err)
-			}
-			if ctx.Err() == nil {
-				s.log.Error("upload: placement failed", "upload", uploadID, "err", err)
-			}
-			return nil, err
+		if err := s.build(ctx, g, up, lr, files, names); err != nil {
+			return nil, s.plainFail(ctx, g, uploadID, err)
 		}
 		if up, err = s.loadUpload(ctx, uploadID); err != nil {
 			return nil, err
@@ -137,7 +168,7 @@ type bookNames struct{ author, title, series, seq string }
 
 // inspect probes every staged audio file. It returns the name of a file that is copy-protected
 // (the whole book is then refused), or the names for the layout (step e).
-func (s *Service) inspect(ctx context.Context, files []fileRow) (bookNames, string, error) {
+func (s *Service) inspect(ctx context.Context, up uploadRow, files []fileRow) (bookNames, string, error) {
 	var audio []fileRow
 	for _, f := range files {
 		if media.Classify(f.RelPath) == media.KindAudio {
@@ -157,8 +188,16 @@ func (s *Service) inspect(ctx context.Context, files []fileRow) (bookNames, stri
 		case errors.Is(err, media.ErrNotFound) || (errors.As(err, &me) && me.Code == media.CodeFFprobeMissing):
 			return bookNames{}, "", &jobs.Error{Code: media.CodeFFprobeMissing, Text: media.ErrorText(media.CodeFFprobeMissing), Permanent: true, Err: err}
 		case err != nil:
-			s.log.Warn("upload: staged file did not probe", "err", err)
-			continue
+			// A file that cannot be read must not be placed unchecked: it might be protected.
+			code := media.CodeProbeFailed
+			if me != nil && me.Code != "" {
+				code = me.Code
+			}
+			text := media.ErrorText(code)
+			if text == "" {
+				text = "Tendshelf could not read one of the files."
+			}
+			return bookNames{}, "", &jobs.Error{Code: code, Text: text, Permanent: code == media.CodeNotAudio, Err: err}
 		}
 		if i == 0 || first == nil {
 			p := pr
@@ -168,10 +207,6 @@ func (s *Service) inspect(ctx context.Context, files []fileRow) (bookNames, stri
 	var d metadata.Details
 	if first != nil {
 		d = metadata.FromTags(first.Tags, len(audio) == 1)
-	}
-	up, err := s.loadUpload(ctx, files[0].UploadID)
-	if err != nil {
-		return bookNames{}, "", err
 	}
 	bn := metadata.ParseBookName(up.Label)
 	var n bookNames
@@ -266,7 +301,8 @@ func bookItems(files []fileRow) []item {
 }
 
 // build lays the book out, builds it in the hidden folder and publishes it (steps f to k).
-func (s *Service) build(ctx context.Context, g guard, up uploadRow, root string, files []fileRow, n bookNames) error {
+func (s *Service) build(ctx context.Context, g guard, up uploadRow, lr *lroot, files []fileRow, n bookNames) error {
+	root := lr.path
 	roots, err := s.repo.BookRootsIn(ctx, up.FolderID)
 	if err != nil {
 		return err
@@ -275,22 +311,19 @@ func (s *Service) build(ctx context.Context, g guard, up uploadRow, root string,
 	for _, f := range files {
 		total += f.Size
 	}
-	staging := s.stagingDir(up.ID)
-	same := sameDevice(staging, root) && !s.noLink
-	need := s.cfg.Margin
-	if !same {
-		need += total + total/20
-	}
+	// Files are always copied (a hard link cannot be made through the os.Root), so the book's size
+	// plus 5 % is needed in the library folder.
+	need := s.cfg.Margin + total + total/20
 	if free, err := s.free(root); err != nil || int64(free) < need {
 		return &jobs.Error{Code: "no_space", Text: "The library folder is full. Free some space, then press Try again.", Permanent: true, Err: err}
 	}
 	items := bookItems(files)
 	for attempt := 0; attempt < 5; attempt++ {
-		parent, name, ok := layout(root, n.author, n.series, n.seq, n.title, roots)
+		parent, name, ok := layout(lr, n.author, n.series, n.seq, n.title, roots)
 		if !ok {
 			return &jobs.Error{Code: "layout", Text: "Tendshelf could not find a free place for this book in the library folder.", Permanent: true}
 		}
-		err := s.buildAt(ctx, g, up, root, parent, name, items, same)
+		err := s.buildAt(ctx, g, up, lr, parent, name, items)
 		if errors.Is(err, errRetry) {
 			continue
 		}
@@ -301,11 +334,11 @@ func (s *Service) build(ctx context.Context, g guard, up uploadRow, root string,
 
 // mkdirLedger creates one directory the package owns: the row first, then the directory. Reports
 // whether it was created; an existing real directory is reused (false), anything else retries.
-func (s *Service) mkdirLedger(ctx context.Context, g guard, up uploadRow, root, dir string) (created bool, err error) {
-	if !within(root, dir) {
+func (s *Service) mkdirLedger(ctx context.Context, g guard, up uploadRow, lr *lroot, dir string) (created bool, err error) {
+	if !within(lr.path, dir) {
 		return false, fmt.Errorf("upload: %q is outside the upload folder", dir)
 	}
-	fi, lerr := os.Lstat(dir)
+	fi, lerr := lr.Lstat(dir)
 	switch {
 	case lerr == nil && fi.IsDir() && fi.Mode()&fs.ModeSymlink == 0:
 		return false, nil
@@ -321,14 +354,14 @@ func (s *Service) mkdirLedger(ctx context.Context, g guard, up uploadRow, root, 
 	if err != nil {
 		return false, err
 	}
-	if err := os.Mkdir(dir, 0o755); err != nil {
+	if err := lr.Mkdir(dir, 0o755); err != nil {
 		if derr := s.dropPath(ctx, g, id); derr != nil {
 			return false, derr
 		}
 		if errors.Is(err, fs.ErrExist) {
 			// Someone else made it between the check and the call. A real directory is reused;
 			// the row is gone, so it is never deleted by us.
-			if fi, lerr := os.Lstat(dir); lerr == nil && fi.IsDir() && fi.Mode()&fs.ModeSymlink == 0 {
+			if fi, lerr := lr.Lstat(dir); lerr == nil && fi.IsDir() && fi.Mode()&fs.ModeSymlink == 0 {
 				return false, nil
 			}
 			return false, errRetry
@@ -339,7 +372,8 @@ func (s *Service) mkdirLedger(ctx context.Context, g guard, up uploadRow, root, 
 }
 
 // buildAt builds one book at parent/name. It returns errRetry when a name is taken meanwhile.
-func (s *Service) buildAt(ctx context.Context, g guard, up uploadRow, root, parent, name string, items []item, linkable bool) (err error) {
+func (s *Service) buildAt(ctx context.Context, g guard, up uploadRow, lr *lroot, parent, name string, items []item) (err error) {
+	root := lr.path
 	final := filepath.Join(parent, name)
 	temp := filepath.Join(parent, tempPrefix+up.ID)
 	if !within(root, final) || !within(root, temp) {
@@ -355,7 +389,7 @@ func (s *Service) buildAt(ctx context.Context, g guard, up uploadRow, root, pare
 	if rel != "." {
 		for _, seg := range strings.Split(rel, string(filepath.Separator)) {
 			dir = filepath.Join(dir, seg)
-			if _, err := s.mkdirLedger(ctx, g, up, root, dir); err != nil {
+			if _, err := s.mkdirLedger(ctx, g, up, lr, dir); err != nil {
 				return err
 			}
 		}
@@ -365,7 +399,7 @@ func (s *Service) buildAt(ctx context.Context, g guard, up uploadRow, root, pare
 	}
 
 	// i. The hidden build folder. temp_path and book_path are stored with its row, before it exists.
-	if _, err := os.Lstat(temp); err == nil {
+	if _, err := lr.Lstat(temp); err == nil {
 		return &jobs.Error{Code: "layout", Text: "A leftover build folder is in the way. Remove it, then press Try again.", Permanent: true}
 	}
 	var tempRow string
@@ -385,8 +419,8 @@ func (s *Service) buildAt(ctx context.Context, g guard, up uploadRow, root, pare
 		return errRetryIfTaken(err)
 	}
 	abandon := func() {
-		s.removeBuild(ctx, g, up.ID, root, temp)
-		if _, err := os.Lstat(temp); errors.Is(err, fs.ErrNotExist) {
+		s.removeBuild(ctx, g, up.ID, lr, temp)
+		if _, err := lr.Lstat(temp); errors.Is(err, fs.ErrNotExist) {
 			// The folder was never made (or is gone): its planned row describes nothing.
 			_ = s.write(ctx, g, func(tx *sql.Tx) error {
 				_, err := tx.ExecContext(ctx, `DELETE FROM upload_paths WHERE id = ? AND state = ?`, tempRow, pathPlanned)
@@ -401,7 +435,7 @@ func (s *Service) buildAt(ctx context.Context, g guard, up uploadRow, root, pare
 			return err
 		})
 	}
-	if err := os.Mkdir(temp, 0o755); err != nil {
+	if err := lr.Mkdir(temp, 0o755); err != nil {
 		abandon()
 		return err
 	}
@@ -436,7 +470,7 @@ func (s *Service) buildAt(ctx context.Context, g guard, up uploadRow, root, pare
 					abandon()
 					return errRetryIfTaken(err)
 				}
-				if err := os.Mkdir(filepath.Join(temp, filepath.FromSlash(cum)), 0o755); err != nil {
+				if err := lr.Mkdir(filepath.Join(temp, filepath.FromSlash(cum)), 0o755); err != nil {
 					abandon()
 					return err
 				}
@@ -453,22 +487,12 @@ func (s *Service) buildAt(ctx context.Context, g guard, up uploadRow, root, pare
 			abandon()
 			return fmt.Errorf("upload: %q is outside the build folder", dst)
 		}
-		sha, err := s.moveIn(s.partPath(up.ID, it.f.ID), dst, it.f.Size, linkable)
+		cp, err := s.copyIn(lr, s.partPath(up.ID, it.f.ID), dst, it.f.Size)
 		if err != nil {
 			abandon()
 			return err
 		}
-		quick, size, err := media.QuickHash(dst)
-		if err != nil {
-			abandon()
-			return err
-		}
-		fi, err := os.Lstat(dst)
-		if err != nil {
-			abandon()
-			return err
-		}
-		if err := s.describePath(ctx, g, id, size, fi.ModTime().UnixNano(), quick, sha); err != nil {
+		if err := s.describePath(ctx, g, id, cp.size, cp.mtimeNs, cp.quick, cp.sha); err != nil {
 			abandon()
 			return err
 		}
@@ -478,14 +502,14 @@ func (s *Service) buildAt(ctx context.Context, g guard, up uploadRow, root, pare
 	}
 
 	// k. Publish: the name must not exist, then one rename.
-	if _, err := os.Lstat(final); err == nil {
+	if _, err := lr.Lstat(final); err == nil {
 		abandon()
 		return errRetry
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		abandon()
 		return err
 	}
-	if err := os.Rename(temp, final); err != nil {
+	if err := lr.Rename(temp, final); err != nil {
 		abandon()
 		if errors.Is(err, fs.ErrExist) || errors.Is(err, fs.ErrNotExist) || isNotEmpty(err) {
 			return errRetry
@@ -563,76 +587,77 @@ func (s *Service) afterPublish(ctx context.Context, g guard, up uploadRow) (any,
 	return res, nil
 }
 
-// moveIn puts a staged part file at dst, which must not exist. On the same file system it is a
-// hard link (the part file is deleted with the staging folder afterwards); otherwise, or when
-// linking fails, it is a copy opened with O_EXCL, synced and read back. It returns the SHA-256 of
-// a copy, "" for a link.
-func (s *Service) moveIn(src, dst string, size int64, linkable bool) (string, error) {
-	if linkable {
-		if err := os.Link(src, dst); err == nil {
-			if err := os.Chmod(dst, 0o644); err != nil {
-				return "", err
-			}
-			return "", checkSize(dst, size)
-		} else if errors.Is(err, fs.ErrExist) {
-			return "", err
-		}
-	}
+// copied describes a file copied into the build folder.
+type copied struct {
+	sha, quick    string
+	size, mtimeNs int64
+}
+
+// copyIn copies a staged part file to dst, which must not exist (O_EXCL), through the library
+// root. The copy is synced, read back and compared by SHA-256 with what was read from staging, so a
+// library file never shares an inode with staging and is proven intact before it is published.
+func (s *Service) copyIn(lr *lroot, src, dst string, size int64) (copied, error) {
+	var c copied
 	in, err := os.Open(src)
 	if err != nil {
-		return "", err
+		return c, err
 	}
 	defer in.Close()
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	out, err := lr.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
-		return "", err
+		return c, err
 	}
 	h := sha256.New()
 	if _, err := io.Copy(io.MultiWriter(out, h), in); err != nil {
 		out.Close()
-		return "", err
+		return c, err
 	}
 	if err := out.Sync(); err != nil {
 		out.Close()
-		return "", err
+		return c, err
 	}
 	if err := out.Close(); err != nil {
-		return "", err
+		return c, err
 	}
-	sum := hex.EncodeToString(h.Sum(nil))
-	back, err := media.FileSHA256(dst)
+	c.sha = hex.EncodeToString(h.Sum(nil))
+	back, err := lr.Open(dst)
 	if err != nil {
-		return "", err
+		return c, err
 	}
-	if back != sum {
-		return "", errors.New("upload: the copy does not match the staged file")
+	defer back.Close()
+	bh := sha256.New()
+	if _, err := io.Copy(bh, back); err != nil {
+		return c, err
 	}
-	return sum, checkSize(dst, size)
-}
-
-func checkSize(p string, want int64) error {
-	fi, err := os.Lstat(p)
+	if hex.EncodeToString(bh.Sum(nil)) != c.sha {
+		return c, errors.New("upload: the copy does not match the staged file")
+	}
+	if c.quick, c.size, err = media.QuickHashFile(back); err != nil {
+		return c, err
+	}
+	if c.size != size {
+		return c, fmt.Errorf("upload: %s is %d bytes, expected %d", filepath.Base(dst), c.size, size)
+	}
+	fi, err := lr.Lstat(dst)
 	if err != nil {
-		return err
+		return c, err
 	}
-	if fi.Size() != want {
-		return fmt.Errorf("upload: %s is %d bytes, expected %d", filepath.Base(p), fi.Size(), want)
-	}
-	return nil
+	c.mtimeNs = fi.ModTime().UnixNano()
+	return c, nil
 }
 
 // removeBuild deletes the hidden build folder of an upload. It is one of only two RemoveAll calls
-// in the package: the folder must have the exact name for this upload, lie inside root and be a
-// real directory, not a link.
-func (s *Service) removeBuild(ctx context.Context, g guard, uploadID, root, temp string) {
-	if filepath.Base(temp) != tempPrefix+uploadID || !within(root, temp) || filepath.Clean(temp) == filepath.Clean(root) {
+// in the package: the folder must have the exact name for this upload and be a real directory, not
+// a link, and the removal runs through the library root.
+func (s *Service) removeBuild(ctx context.Context, g guard, uploadID string, lr *lroot, temp string) {
+	if filepath.Base(temp) != tempPrefix+uploadID || !within(lr.path, temp) || filepath.Clean(temp) == lr.path {
 		return
 	}
-	fi, err := os.Lstat(temp)
+	fi, err := lr.Lstat(temp)
 	if err != nil || !fi.IsDir() || fi.Mode()&fs.ModeSymlink != 0 {
 		return
 	}
-	if err := os.RemoveAll(temp); err != nil {
+	if err := lr.RemoveAll(temp); err != nil {
 		s.log.Warn("upload: cannot remove the build folder", "upload", uploadID, "err", err)
 		return
 	}

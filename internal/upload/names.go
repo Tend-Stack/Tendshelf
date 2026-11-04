@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -151,7 +150,8 @@ func seqPrefix(seq string) string {
 // and holds no audio directly, so a new folder never turns a book into a container nor splits it.
 // The last name gets " (2)" to " (99)" until it does not exist. It returns the parent directory
 // (which may not exist yet) and the leaf name; ok is false when no candidate works.
-func layout(root, author, series, seq, title string, roots []string) (parent, name string, ok bool) {
+func layout(lr *lroot, author, series, seq, title string, roots []string) (parent, name string, ok bool) {
+	root := lr.path
 	a := SafeName(author, "Unknown author")
 	t := SafeName(title, "Untitled book")
 	type cand struct {
@@ -172,7 +172,7 @@ func layout(root, author, series, seq, title string, roots []string) (parent, na
 		good := true
 		for _, d := range c.dirs {
 			dir = filepath.Join(dir, d)
-			if !usableAncestor(dir, roots) {
+			if !usableAncestor(lr, dir, roots) {
 				good = false
 				break
 			}
@@ -185,7 +185,7 @@ func layout(root, author, series, seq, title string, roots []string) (parent, na
 			if n > 1 {
 				leaf = suffixed(c.leaf, n)
 			}
-			if _, err := os.Lstat(filepath.Join(dir, leaf)); err != nil && errorsIsNotExist(err) {
+			if _, err := lr.Lstat(filepath.Join(dir, leaf)); err != nil && errorsIsNotExist(err) {
 				return dir, leaf, true
 			}
 		}
@@ -213,8 +213,8 @@ func suffixedFile(name string, n int) string {
 // usableAncestor reports whether the directory p may be reused or created as part of a new book's
 // path. A path that does not exist is fine. One that exists must be a real directory, not a book
 // or inside a book, and hold no audio file directly.
-func usableAncestor(p string, roots []string) bool {
-	fi, err := os.Lstat(p)
+func usableAncestor(lr *lroot, p string, roots []string) bool {
+	fi, err := lr.Lstat(p)
 	if err != nil {
 		return errorsIsNotExist(err)
 	}
@@ -224,7 +224,7 @@ func usableAncestor(p string, roots []string) bool {
 	if underAny(p, roots) {
 		return false
 	}
-	entries, err := os.ReadDir(p)
+	entries, err := lr.ReadDir(p)
 	if err != nil {
 		return false
 	}

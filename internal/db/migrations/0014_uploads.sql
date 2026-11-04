@@ -35,6 +35,7 @@ CREATE TABLE upload_files (
   rel_path       TEXT NOT NULL,
   size           INTEGER NOT NULL CHECK (size >= 0),
   modified_ms    INTEGER NOT NULL DEFAULT 0,
+  sha256         TEXT, -- optional: the hash the client promised for the whole file
   bytes_received INTEGER NOT NULL DEFAULT 0 CHECK (bytes_received >= 0),
   UNIQUE (upload_id, rel_path)
 ) STRICT;

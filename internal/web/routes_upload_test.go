@@ -370,6 +370,16 @@ func TestBookRemoveRefusals(t *testing.T) {
 			t.Errorf("%s: %d", name, rec.Code)
 		}
 	}
+	// An htmx request gets an out-of-band toast fragment, not a plain-text page.
+	r := httptest.NewRequest(http.MethodPost, "/books/"+b.ID+"/remove", nil)
+	r.Header.Set(csrfHeader, u.a.tokenFor(t, u.owner))
+	r.Header.Set("HX-Request", "true")
+	r.AddCookie(u.owner)
+	hx := httptest.NewRecorder()
+	u.a.h.ServeHTTP(hx, r)
+	if hx.Code != http.StatusConflict || !strings.HasPrefix(hx.Header().Get("Content-Type"), "text/html") || !strings.Contains(hx.Body.String(), "hx-swap-oob") {
+		t.Errorf("htmx refusal: %d %q %s", hx.Code, hx.Header().Get("Content-Type"), hx.Body.String())
+	}
 	if rec := post(u.owner, "bk_nope"); rec.Code != http.StatusNotFound {
 		t.Errorf("unknown book: %d", rec.Code)
 	}

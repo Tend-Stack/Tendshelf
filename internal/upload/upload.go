@@ -54,7 +54,10 @@ type Config struct {
 	MaxFiles     int   // 1000
 	MaxReceiving int   // 3 receiving uploads per person
 	Margin       int64 // 1 GiB of free space kept beyond what an upload needs
-	Now          func() time.Time
+	// PerPerson caps the bytes one person may hold in staging across all their unfinished uploads,
+	// failed ones included (60 GiB).
+	PerPerson int64
+	Now       func() time.Time
 }
 
 func (c *Config) defaults() {
@@ -72,6 +75,9 @@ func (c *Config) defaults() {
 	}
 	if c.MaxReceiving <= 0 {
 		c.MaxReceiving = 3
+	}
+	if c.PerPerson <= 0 {
+		c.PerPerson = 60 << 30
 	}
 	if c.Margin < 0 {
 		c.Margin = 0
@@ -114,7 +120,6 @@ type Service struct {
 	free    func(dir string) (uint64, error)
 	writeAt func(f *os.File, b []byte, off int64) error
 	crash   func(point string) error // returns an error to simulate a crash at a named point
-	noLink  bool                     // tests: always copy, never hard-link
 }
 
 // New returns the service. tools may lack ffprobe: placement then fails with ffprobe_missing.
@@ -222,19 +227,19 @@ func scanUpload(r rowScanner) (uploadRow, error) {
 
 // fileRow is one upload_files row.
 type fileRow struct {
-	ID, UploadID, RelPath string
-	Idx                   int
-	Size, ModifiedMs      int64
-	BytesReceived         int64
+	ID, UploadID, RelPath, SHA256 string
+	Idx                           int
+	Size, ModifiedMs              int64
+	BytesReceived                 int64
 }
 
 func scanFile(r rowScanner) (fileRow, error) {
 	var f fileRow
-	err := r.Scan(&f.ID, &f.UploadID, &f.Idx, &f.RelPath, &f.Size, &f.ModifiedMs, &f.BytesReceived)
+	err := r.Scan(&f.ID, &f.UploadID, &f.Idx, &f.RelPath, &f.Size, &f.ModifiedMs, &f.SHA256, &f.BytesReceived)
 	return f, err
 }
 
-const fileCols = `id, upload_id, idx, rel_path, size, modified_ms, bytes_received`
+const fileCols = `id, upload_id, idx, rel_path, size, modified_ms, COALESCE(sha256,''), bytes_received`
 
 func (s *Service) loadUpload(ctx context.Context, id string) (uploadRow, error) {
 	u, err := scanUpload(s.st.Reader().QueryRowContext(ctx, `SELECT `+uploadCols+` FROM uploads WHERE id = ?`, id))
@@ -401,7 +406,13 @@ func (s *Service) Cancel(ctx context.Context, userID, id string) error {
 // Finish starts the upload.place job once every byte has arrived. It also restarts a failed upload
 // whose staged bytes are still there. It returns the job's id.
 func (s *Service) Finish(ctx context.Context, userID, id string) (string, error) {
-	u, err := s.loadOwn(ctx, userID, id)
+	if _, err := s.loadOwn(ctx, userID, id); err != nil {
+		return "", err
+	}
+	l := s.lock(id)
+	l.Lock()
+	defer l.Unlock()
+	u, err := s.loadOwn(ctx, userID, id) // read again under the lock: a cancel may have come first
 	if err != nil {
 		return "", err
 	}

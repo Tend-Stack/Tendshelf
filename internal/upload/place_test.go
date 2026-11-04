@@ -69,8 +69,8 @@ func TestPlaceLayoutAndLedger(t *testing.T) {
 	if f.Kind != kindFile || f.Size != int64(len(b["My Book/01.mp3"])) || f.QuickHash == "" || f.MtimeNs == 0 {
 		t.Errorf("file row = %+v", f)
 	}
-	if f.SHA256 != "" {
-		t.Errorf("a hard-linked file records no SHA-256, got %q", f.SHA256)
+	if f.SHA256 == "" {
+		t.Errorf("a copied file records its SHA-256")
 	}
 	var audits int
 	if err := e.st.Reader().QueryRow(`SELECT count(*) FROM audit_log WHERE action = 'upload.place' AND user_id = ?`, me).Scan(&audits); err != nil || audits != 1 {
@@ -93,7 +93,6 @@ func TestPlaceLayoutAndLedger(t *testing.T) {
 
 func TestPlaceCopyRecordsSHA256(t *testing.T) {
 	e := newEnv(t, nil)
-	e.svc.noLink = true
 	v := e.send("My Book", greatBook(t))
 	e.mustPlace(v.ID)
 	n := 0
@@ -255,7 +254,6 @@ func TestPlaceRefusesEncryptedAudio(t *testing.T) {
 func TestPlaceNoSpaceKeepsStaging(t *testing.T) {
 	e := newEnv(t, nil)
 	v := e.send("Book", book{"01.mp3": mp3(t, map[string]string{"album": "T", "artist": "A"})})
-	e.svc.noLink = true
 	e.svc.free = func(dir string) (uint64, error) { return 10, nil }
 	_, err := e.place(v.ID)
 	var je *jobs.Error

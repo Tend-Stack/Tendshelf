@@ -68,9 +68,24 @@ func (s *Service) WriteChunk(ctx context.Context, userID, uploadID, fileID strin
 	if part == "" {
 		return 0, errNotFound
 	}
+	// The offset is a promise that those bytes are on disk. If the part file is shorter (lost in a
+	// crash, or deleted), Truncate below would pad the gap with zeros, so the offset goes back to
+	// what is really there and the client resumes from it.
+	existed := true
+	if fi, err := os.Lstat(part); err != nil {
+		existed = false
+		if offset > 0 {
+			return 0, s.rewind(ctx, uploadID, fileID, 0)
+		}
+	} else if fi.Size() < offset {
+		return 0, s.rewind(ctx, uploadID, fileID, fi.Size())
+	}
 	fh, err := os.OpenFile(part, os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return 0, s.diskError(err)
+	}
+	if !existed {
+		syncDir(s.stagingDir(uploadID))
 	}
 	defer fh.Close()
 	// Drop anything after the server's offset: a chunk that was cut off earlier left bytes there.
@@ -153,4 +168,35 @@ func (s *Service) diskError(err error) error {
 	}
 	s.log.Error("upload: staging write failed", "err", err)
 	return fail(500, "disk", "Tendshelf could not save that piece. Details are in the server log.")
+}
+
+// syncDir flushes a directory so a file just created in it survives a crash. Failures are ignored:
+// not every platform can sync a directory, and the chunk's own Sync is what the offset depends on.
+func syncDir(dir string) {
+	d, err := os.Open(dir)
+	if err != nil {
+		return
+	}
+	_ = d.Sync()
+	_ = d.Close()
+}
+
+// rewind sets a file's stored offset to size, fixes the upload's total, and answers wrong_offset
+// with it.
+func (s *Service) rewind(ctx context.Context, uploadID, fileID string, size int64) error {
+	err := s.write(ctx, nil, func(tx *sql.Tx) error {
+		var old int64
+		if err := tx.QueryRowContext(ctx, `SELECT bytes_received FROM upload_files WHERE id = ? AND upload_id = ?`, fileID, uploadID).Scan(&old); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE upload_files SET bytes_received = ? WHERE id = ?`, size, fileID); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `UPDATE uploads SET bytes_received = MAX(0, bytes_received - ?), updated_at = ? WHERE id = ?`, old-size, s.nowMs(), uploadID)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return &Error{Status: 409, Code: "wrong_offset", Message: "The server is at a different place in this file.", Offset: size}
 }
