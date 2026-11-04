@@ -87,3 +87,5 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
 .ts-stats__day--listened { background: var(--accent-fill); border: 0; }
 .ts-stats__day--today { border: 0.09375rem dashed var(--line-strong); }
 .ts-stats__note { margin: var(--space-12) 0 0; color: var(--ink-muted); }
+/* The link under the Profile panel to the listening dashboard (decision 0014). */
+.ts-dash__more { display: inline-flex; align-items: center; min-height: var(--size-tap); margin-top: var(--space-4); color: var(--accent); text-decoration: none; }

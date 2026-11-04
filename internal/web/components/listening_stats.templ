@@ -12,6 +12,8 @@ type ListeningStatsView struct {
 	DaysLabel               string
 	Days                    []StatsDay
 	Note                    string
+	// More is the link under the panel to /me/listening (Profile only; the admin view leaves it empty).
+	More, MoreHref string
 }
 
 // ListeningStats is the three numbers and, on Profile, the week's day marks. The marks are one
@@ -36,6 +38,9 @@ templ ListeningStats(v ListeningStatsView) {
 		}
 		if v.Note != "" {
 			<p class="caption ts-stats__note">{ v.Note }</p>
+		}
+		if v.More != "" {
+			<a class="label ts-dash__more" href={ templ.SafeURL(v.MoreHref) }>{ v.More }</a>
 		}
 	</section>
 }
