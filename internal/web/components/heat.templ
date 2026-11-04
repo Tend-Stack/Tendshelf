@@ -1,0 +1,52 @@
+package components
+
+// HeatGrid is the Day by day heat grid. Both layouts are in the page and CSS shows one (see heat.go).
+// The labels are HTML in equal grid tracks beside the SVG, so text never scales. The SVG is
+// decoration; the key has numbers and the hidden table lists every month.
+templ HeatGrid(v HeatGridView) {
+	<div class="ts-heat ts-heat--weeks">
+		<div class="ts-heat__cols meta" aria-hidden="true">
+			for _, l := range v.WeekLabels {
+				<span>{ l }</span>
+			}
+		</div>
+		<div class="ts-heat__rows meta" aria-hidden="true">
+			for _, l := range heatWeekdayLabels {
+				<span>{ l }</span>
+			}
+		</div>
+		<svg class="ts-heat__plot" viewBox={ v.weeksViewBox() } preserveAspectRatio="none" aria-hidden="true" focusable="false">
+			for _, c := range v.Cells {
+				@heatRect(c, heatWeeksXY)
+			}
+		</svg>
+	</div>
+	<div class="ts-heat ts-heat--months">
+		<div class="ts-heat__cols meta" aria-hidden="true">
+			for day := 1; day <= 31; day++ {
+				<span>{ heatMonthCol(day) }</span>
+			}
+		</div>
+		<div class="ts-heat__rows meta" aria-hidden="true">
+			for _, l := range heatMonthNames {
+				<span>{ l }</span>
+			}
+		</div>
+		<svg class="ts-heat__plot" viewBox={ heatMonthsViewBox() } preserveAspectRatio="none" aria-hidden="true" focusable="false">
+			for _, c := range v.Cells {
+				@heatRect(c, heatMonthsXY)
+			}
+		</svg>
+	</div>
+	<ul class="ts-heat__key">
+		for _, k := range v.Key {
+			<li class="meta"><span class={ "ts-heat__swatch", heatLevelClass(k.Level) } aria-hidden="true"></span>{ k.Label }</li>
+		}
+	</ul>
+	@ChartTable(v.Caption, v.Heads, v.Rows)
+}
+
+templ heatRect(c HeatCell, xy func(HeatCell) (int, int)) {
+	{{ x, y := heatXY(xy, c) }}
+	<rect class={ heatLevelClass(c.Level) } x={ x } y={ y } width="10" height="10" rx="2"><title>{ c.Title }</title></rect>
+}

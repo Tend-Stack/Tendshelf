@@ -1,0 +1,242 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// ListeningRange is one link of the Week / Month / Year control.
+type ListeningRange struct {
+	Label, Href string
+	Current     bool
+}
+
+// ListeningStep is the Earlier or Later link beside the period; an empty Href means there is none
+// (the current period has no Later).
+type ListeningStep struct{ Label, Href string }
+
+// ListeningNum is one of the four summary numbers.
+type ListeningNum struct{ Label, Value string }
+
+// ListeningPart is one part of the day: its icon, words, time and share.
+type ListeningPart struct{ Icon, Name, Hours, Time, Share string }
+
+// ListeningClock is the Time of day body: the hour chart, its note and the four parts.
+type ListeningClock struct {
+	Chart components.BarChartView
+	Note  string
+	Parts []ListeningPart
+}
+
+// ListeningTopRow is a row of Most listened: a book (Cover set) or a person (Cover nil).
+type ListeningTopRow struct {
+	Cover        *components.CardView
+	Href, Name   string
+	Byline, Time string
+	Meter        string // the filled width of the meter, 0 to 100, as text
+}
+
+// ListeningTopList is one of the three lists.
+type ListeningTopList struct {
+	Heading string
+	Rows    []ListeningTopRow
+}
+
+// ListeningDone is a finished book: its cover and the full title and date for the link.
+type ListeningDone struct {
+	Cover       components.CardView
+	Href, Title string
+	Date        string
+}
+
+// ListeningCard is one card of the grid. Exactly one body is set.
+type ListeningCard struct {
+	ID, Title, Say string
+	Wide           bool
+	Chart          *components.BarChartView
+	Heat           *components.HeatGridView
+	Clock          *ListeningClock
+	Lists          []ListeningTopList
+	Done           []ListeningDone
+}
+
+// ListeningView is the whole /me/listening page. Only Back, Title and Lead are set for a person who
+// never listened (Empty is the state then); Quiet is the line of a period without listening.
+type ListeningView struct {
+	Back, BackHref string
+	Title, Lead    string
+	RangeLabel     string
+	Ranges         []ListeningRange
+	PeriodLabel    string
+	Earlier, Later ListeningStep
+	Empty          *ListeningEmpty
+	Quiet          string
+	Nums           []ListeningNum
+	Cards          []ListeningCard
+}
+
+// ListeningEmpty is the "Nothing to show yet" state with its one link.
+type ListeningEmpty struct{ Title, Body, Action, Href string }
+
+// Listening is /me/listening (decision 0014, board ListeningDashboard): the person's own listening by
+// day, hour and weekday, drawn as server-rendered SVG with a text equivalent for each chart.
+templ Listening(v ListeningView) {
+	<div class="ts-dash">
+		<a class="ts-dash__back" href={ templ.SafeURL(v.BackHref) }>
+			@dashChevron(true)
+			<span>{ v.Back }</span>
+		</a>
+		<h1 class="title-2 ts-dash__title">{ v.Title }</h1>
+		<p class="body ts-dash__muted ts-dash__lead">{ v.Lead }</p>
+		if v.Empty != nil {
+			@components.EmptyState(v.Empty.Title, v.Empty.Body, listeningAction(v.Empty.Action, v.Empty.Href))
+		} else {
+			<div class="ts-dash__bar">
+				<nav class="ts-seg ts-dash__range" aria-label={ v.RangeLabel }>
+					for _, r := range v.Ranges {
+						if r.Current {
+							<a class="ts-seg__item" href={ templ.SafeURL(r.Href) } aria-current="page">{ r.Label }</a>
+						} else {
+							<a class="ts-seg__item" href={ templ.SafeURL(r.Href) }>{ r.Label }</a>
+						}
+					}
+				</nav>
+				<div class="ts-dash__period">
+					@dashStep(v.Earlier, true)
+					<span class="label ts-dash__periodlabel">{ v.PeriodLabel }</span>
+					@dashStep(v.Later, false)
+				</div>
+			</div>
+			if v.Quiet != "" {
+				<p class="body ts-dash__muted">{ v.Quiet }</p>
+			} else {
+				<dl class="ts-dash__nums">
+					for _, n := range v.Nums {
+						<div>
+							<dt class="caption ts-dash__numlabel">{ n.Label }</dt>
+							<dd class="time ts-dash__num">{ n.Value }</dd>
+						</div>
+					}
+				</dl>
+				<div class="ts-dash__grid">
+					for _, c := range v.Cards {
+						@dashCard(c)
+					}
+				</div>
+			}
+		}
+	</div>
+}
+
+templ listeningAction(label, href string) {
+	<a class="ts-btn ts-btn--primary" href={ templ.SafeURL(href) }>{ label }</a>
+}
+
+// dashChevron is the arrow of the back link and the period steps: decoration, the link carries the name.
+templ dashChevron(left bool) {
+	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true">
+		if left {
+			<path d="M15 5l-7 7 7 7"></path>
+		} else {
+			<path d="M9 5l7 7-7 7"></path>
+		}
+	</svg>
+}
+
+templ dashStep(s ListeningStep, left bool) {
+	if s.Href != "" {
+		<a class="ts-iconbtn" href={ templ.SafeURL(s.Href) } aria-label={ s.Label }>
+			@dashChevron(left)
+		</a>
+	} else {
+		<span class="ts-dash__navgap"></span>
+	}
+}
+
+templ dashCard(c ListeningCard) {
+	<section class={ "ts-dash__card", templ.KV("ts-dash__card--wide", c.Wide) } aria-labelledby={ c.ID }>
+		<h2 id={ c.ID } class="section ts-dash__h">{ c.Title }</h2>
+		if c.Say != "" {
+			<p class="body ts-dash__say">{ c.Say }</p>
+		}
+		if c.Chart != nil {
+			@components.BarChart(*c.Chart)
+		}
+		if c.Heat != nil {
+			@components.HeatGrid(*c.Heat)
+		}
+		if c.Clock != nil {
+			@dashClock(*c.Clock)
+		}
+		if len(c.Lists) > 0 {
+			<div class="ts-dash__lists">
+				for _, l := range c.Lists {
+					<div>
+						<h3 class="overline ts-dash__sub">{ l.Heading }</h3>
+						<ol class="ts-dash__top">
+							for _, r := range l.Rows {
+								@dashTopRow(r)
+							}
+						</ol>
+					</div>
+				}
+			</div>
+		}
+		if len(c.Done) > 0 {
+			<ul class="ts-dash__done">
+				for _, d := range c.Done {
+					<li>
+						<a class="ts-dash__donelink" href={ templ.SafeURL(d.Href) }>
+							@components.Cover(d.Cover, "fill")
+							<span class="meta ts-dash__donetitle">{ d.Title }</span>
+							<span class="meta ts-dash__muted">{ d.Date }</span>
+						</a>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}
+
+templ dashClock(c ListeningClock) {
+	<div class="ts-dash__clock">
+		<div class="ts-dash__clockchart">
+			@components.BarChart(c.Chart)
+			<p class="meta ts-dash__note">{ c.Note }</p>
+		</div>
+		<ul class="ts-dash__parts">
+			for _, p := range c.Parts {
+				<li>
+					<span class="ts-dash__particon">
+						@components.Icon(p.Icon, false)
+					</span>
+					<span class="ts-dash__parttext">
+						<span class="label">{ p.Name }</span>
+						<span class="meta ts-dash__muted">{ p.Hours }</span>
+					</span>
+					<span class="time ts-dash__parttime">{ p.Time }<span class="meta ts-dash__muted">{ " · " + p.Share }</span></span>
+				</li>
+			}
+		</ul>
+	</div>
+}
+
+templ dashTopRow(r ListeningTopRow) {
+	<li class="ts-dash__toprow">
+		if r.Cover != nil {
+			@components.Cover(*r.Cover, "36")
+		}
+		<span class="ts-dash__toptext">
+			if r.Href != "" {
+				<a class="label ts-dash__topname" href={ templ.SafeURL(r.Href) }>{ r.Name }</a>
+			} else {
+				<span class="label ts-dash__topname">{ r.Name }</span>
+			}
+			if r.Byline != "" {
+				<span class="meta ts-dash__muted">{ r.Byline }</span>
+			}
+			<svg class="ts-dash__meter" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+				<rect class="ts-dash__track" x="0" y="0" width="100" height="4"></rect>
+				<rect class="ts-dash__fill" x="0" y="0" width={ r.Meter } height="4"></rect>
+			</svg>
+		</span>
+		<span class="time ts-dash__toptime">{ r.Time }</span>
+	</li>
+}

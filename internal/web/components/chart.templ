@@ -1,0 +1,67 @@
+package components
+
+// BarChart is one bar chart of the listening dashboard. The SVG is decoration (aria-hidden): the
+// text equivalent is the visible sentence above it and the visually hidden table below it. Bars
+// and gridlines are coloured by classes only.
+templ BarChart(v BarChartView) {
+	<div class={ "ts-chart", templ.KV("ts-chart--wide", v.Wide()), templ.KV("ts-chart--edge", v.Edge) }>
+		<div class="ts-chart__ticks meta" aria-hidden="true">
+			<span></span>
+			<span class="ts-chart__tick">{ v.MaxLabel }</span>
+			<span></span>
+			<span class="ts-chart__tick">{ v.MidLabel }</span>
+			<span></span>
+		</div>
+		<svg class="ts-chart__plot" viewBox={ v.ViewBox() } preserveAspectRatio="none" aria-hidden="true" focusable="false">
+			for _, r := range v.Rects() {
+				<rect class="ts-chart__night" x={ chartInt(r[0]) } y="0" width={ chartInt(r[1]) } height="160"></rect>
+			}
+			<line class="ts-chart__grid" x1="0" y1="4" x2={ chartInt(v.Width()) } y2="4"></line>
+			<line class="ts-chart__grid" x1="0" y1="80" x2={ chartInt(v.Width()) } y2="80"></line>
+			<line class="ts-chart__base" x1="0" y1="156" x2={ chartInt(v.Width()) } y2="156"></line>
+			for _, l := range v.Lines() {
+				<g>
+					if l.Title != "" {
+						<title>{ l.Title }</title>
+					}
+					<line class="ts-chart__bar" x1={ l.X } y1={ l.Y1 } x2={ l.X } y2={ l.Y2 }></line>
+				</g>
+			}
+		</svg>
+		<div class="ts-chart__x" aria-hidden="true">
+			for _, b := range v.Bars {
+				<span class="ts-chart__xl meta">
+					if b.Icon != "" {
+						@Icon(b.Icon, false)
+					}
+					{ b.Label }
+				</span>
+			}
+		</div>
+	</div>
+	@ChartTable(v.Caption, v.Heads, v.Rows)
+}
+
+// ChartTable is the visually hidden table behind a chart or a heat grid, for a screen reader.
+templ ChartTable(caption string, heads []string, rows []ChartRow) {
+	<table class="ts-sr">
+		<caption>{ caption }</caption>
+		<thead>
+			<tr>
+				for _, h := range heads {
+					<th scope="col">{ h }</th>
+				}
+			</tr>
+		</thead>
+		<tbody>
+			for _, r := range rows {
+				<tr>
+					<th scope="row">{ r.Head }</th>
+					for _, c := range r.Cells {
+						<td>{ c }</td>
+					}
+				</tr>
+			}
+		</tbody>
+	</table>
+}

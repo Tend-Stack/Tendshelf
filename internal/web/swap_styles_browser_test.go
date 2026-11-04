@@ -55,6 +55,8 @@ func swapstylesPath(t *testing.T, tab *cdp.Tab, path, ready string) {
 
 func TestSwapStylesBrowser(t *testing.T) {
 	e := playerApp(t)
+	// One minute of listening, so /me/listening draws its cards.
+	statsListen(t, e.a, e.ownerID, e.book.ID, time.Now(), 1)
 	for _, vp := range []struct {
 		name string
 		w, h int
@@ -76,6 +78,14 @@ func TestSwapStylesBrowser(t *testing.T) {
 			swapstylesClick(t, tab, `a[data-nav="/me"]`)
 			swapstylesPath(t, tab, "/me", `document.querySelector(".ts-me") !== null`)
 			swapstylesHas(t, tab, ".ts-me", "display", "flex")
+
+			// Your listening (pages-listening.css), reached by the link under the Profile panel and left by
+			// its back link; the cards only exist for a person who has listened.
+			swapstylesClick(t, tab, `a.ts-dash__more`)
+			swapstylesPath(t, tab, "/me/listening", `document.querySelector(".ts-dash__card") !== null`)
+			swapstylesHas(t, tab, ".ts-dash__card", "borderRadius", "16px")
+			swapstylesClick(t, tab, `a.ts-dash__back`)
+			swapstylesPath(t, tab, "/me", `document.querySelector(".ts-me") !== null`)
 
 			// Shelves: the form is a column with a gap (pages-shelves.css).
 			if vp.w < 768 {
