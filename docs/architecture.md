@@ -517,6 +517,10 @@ this replaces the earlier sketch (app shell and visited pages in the cache, an I
   own `ts-person-<id>` cache, the stream, cover, peaks and player fragment of a downloaded book, plus the
   `/offline` shell for a navigation that cannot reach the server. Nothing else is cached or answered, and a
   change of person or a sign-out deletes the cache and the offline records.
+- **Browser storage** (all wiped on sign-out or a change of person): `ts.offline` (the download index per book),
+  `ts.offline.person`, `ts.offline.prefs` (Remove finished books), `ts.offline.checkedAt` (the daily finished
+  check), `ts.offline.marks` (queued bookmarks), `ts.pending` (queued positions), and `ts.offline.msgs` (the
+  Downloads page's sentences, kept so the book page's Download control can word its states).
 - Progress, bookmarks and notes made offline wait in `localStorage` (`ts.pending`, `ts.offline.marks`) and go
   to `POST /api/v1/progress/batch` and the bookmark endpoint on reconnect. iOS storage limits and eviction are
   stated in the UI (Safari may clear downloads after a week without a visit). With `read_text` and an aligned

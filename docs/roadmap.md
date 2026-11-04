@@ -17,7 +17,7 @@ themes.
 | M0 Foundation | P0 skeleton | Docs, stdlib server on 127.0.0.1:8095 with `/` and `/healthz`, `internal/db` header-check rules, Makefile. P0 dependencies approved 2026-11-01 (htmx 4.0.0, fonts and templ v0.3.1100 downloads approved). **Done 2026-11-01.** P0a (data and jobs), P0b (UI shell) and P0c (utilities and motion) built, reviewed and merged; see their notes below. | `make check` (with and without `-tags dev`), `make build` (CGO_ENABLED=0), `make visual` (Chromium) and `make visual-webkit` (WebKitGTK 2.52.6) green on main 2026-11-01; CI green. |
 | M1 It plays | P1a-P1c | **Done 2026-11-03.** P1a, P1b and P1c built; the operator's phone check (Android Chrome, http on the LAN) passed on 2026-11-02/03: steps 1-8 and 10-14 pass, shake skipped (needs HTTPS); the four findings (tab bar, player fit, sheet drag-down, toast timeout) fixed and rechecked on the phone. iOS Safari not yet checked. | On main: `make check`, `make build` (CGO_ENABLED=0), real-ffmpeg targets, `make visual` (about 55 s) and `make visual-full` (about 147 s), `make perf` (Library interactive in a median 64 ms at 4x CPU slowdown, 240 ms at 8x, budget 300 ms), `make visual-webkit`; `TestRouteMatrix` covers all 47 routes for every role. Board audit: `docs/design/screens.md`. Push CI green; nightly CI green (run 9052 onward). Player: `make player` (first sound about 270 ms). |
 | M2 Family | P3 | **Done 2026-11-03, released as v2026.1.0.** P3-1 to P3-13, the desktop player bar and the Now playing panel; Research dropped (decision 0007). | The P3 status notes below; the route-matrix and leak-test table under "Exit check (P3-13)"; [CHANGELOG.md](../CHANGELOG.md). |
-| M3 Pocket | P4 | Not started | |
+| M3 Pocket | P4 | M3a built; phone check pending | |
 | M4 Details | P2 | Done 2026-11-03 | [plan](plans/m4-details.md) |
 | M5 Read along | R1-R6 | Designed 2026-10-31 ([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)); UI designed in the handoff (`screens/reader/`). Dependencies approved by the operator 2026-11-03. | Design only. |
 | M6 Desktop | P5 | Not started | |
@@ -422,6 +422,20 @@ never appear in lists, counts, search or covers. First tagged release (v2026.1.0
 
 Exit: a downloaded book plays in airplane mode on Android Chrome and iOS Safari (recorded manual
 check), and offline progress syncs on reconnect.
+
+**M3a status (Offline pocket)**: built and proven in Chromium, 2026-11-03; the phone check is not run. Decision
+[0012](decisions/0012-offline-pocket.md), plan [m3-offline.md](plans/m3-offline.md); packages A (server), C
+(pages), B1 (worker and page module), B2 (download manager), D (proof). Built: `/sw.js`, the manifest and icons,
+the `/offline` shell, chunked downloads with pause, resume and cancel, the Downloads page, the book page's
+Download control, offline play from stored chunks, queued progress and bookmarks that sync once on reconnect,
+sign-out wipe, "Remove finished books". Checks: `make check`, `make build`, `make player`, the TestOffline*
+browser tests (worker, shell play, sync, sign-out, download, pause/resume/cancel, quota, compat copy, worker
+update, remove finished, storage notes), captures of the Downloads page, the book page's Download states and the
+offline shell at 390, 1024 and 1440 px in dark and light, beside the boards. Limits: the Chromium harness cannot
+show a real phone's storage limits, iOS eviction or a real airplane mode; the takeover of a new worker right after
+playback can wait until the page is left (decision 0012, notes); "Wi-Fi only", "Next in series" and "Other apps"
+are deferred; the Wi-Fi-off icon of the board's banner is not drawn. Next: the operator runs the airplane-mode check
+([manual-checks.md](manual-checks.md)); then the rest of M3 (statistics, Eyes-free mode, backups, the accessibility audit).
 
 ## M4 Details (P2 metadata providers, covers, write-to-file)
 

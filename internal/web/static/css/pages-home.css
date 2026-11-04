@@ -142,6 +142,7 @@ html[data-theme="contrast"] .is-tinted.ts-ink-deep { background: var(--surface);
 /* The offline shell (M3a, board StateOffline): the greeting and "On this phone" with what the
    person has saved. A book that is not on the phone is dimmed and has no play control. */
 .ts-offline-home__lead { margin: 0; color: var(--ink-muted); }
+.ts-offline-home .ts-row__meta .ts-icon { width: 1rem; height: 1rem; margin-inline-end: var(--space-4); vertical-align: -0.2em; color: var(--success); }
 .ts-offline-home__section { margin-top: var(--space-20); }
 .ts-offline-home__list { margin: 0; padding: 0; list-style: none; }
 .ts-offline-home .ts-row.is-offline .ts-row__main { opacity: 0.55; }

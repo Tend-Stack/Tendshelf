@@ -99,3 +99,14 @@ queue; this decision replaces both (points 3 and 5).
   `http://<LAN address>`).
 - Offline notes, offline read-along, listening time made offline (`listened_ms`) and Background Fetch are not
   in M3a.
+
+## Notes (budget decisions recorded by package D, 2026-11-03)
+The operator approved these after the builders measured the served (gzip) sizes; the tests carry the numbers
+(`internal/web/static/motion_test.go`):
+- JS total 52.5 KB (the proposal in the plan said 50.5 KB; `downloads.js` came out larger than estimated).
+- `downloads.js` 8 KB (estimate 5.5 KB; measured 7.8 KB).
+- Core CSS 19.75 KB (the offline banner; two `ts-offline` rules were added by package D within it).
+- Observed in package D: Chromium completes a worker takeover only once the old worker has nothing in
+  flight, so right after a book played from the worker the takeover can wait until the page is left (about 3
+  runs in 5 in headless Chromium). The invariant still holds (a waiting worker never takes over while
+  `audio` plays); only the moment of takeover after the pause is browser-dependent.

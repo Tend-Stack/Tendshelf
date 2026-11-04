@@ -47,3 +47,44 @@ run and fixed in the next build: the bottom tab bar drifted while scrolling; the
 the screen (Speed/Sleep/Chapters needed a scroll); pulling the chapters sheet down refreshed the page
 instead of closing it; the "Note saved" toast stayed on screen. All four were fixed (5f8ab4d) and rechecked on
 the phone by the operator on 2026-11-03. iOS Safari not yet checked.
+
+## M3a offline pocket: airplane-mode check (Android Chrome, iOS Safari)
+
+Closes the M3 exit: a downloaded book plays in airplane mode, and offline progress syncs on reconnect.
+Plan: [m3-offline.md](plans/m3-offline.md); decision [0012](decisions/0012-offline-pocket.md).
+
+**Setup (HTTPS is required).** A service worker does not run on `http://<LAN address>`, so Downloads would
+say it needs a secure address. Give the phone an https address with Tailscale. Start Tendshelf on its
+default `127.0.0.1:8095` (the server must be reachable there; Tailscale connects to it on this machine), then
+run, as a suggestion to verify against your Tailscale version (`tailscale serve --help`):
+
+    tailscale serve --bg --https=443 http://127.0.0.1:8095
+
+Tailscale prints the `https://<machine>.<tailnet>.ts.net` address; open it on a phone that has Tailscale
+running and is signed in to the same tailnet. Stop sharing afterwards with `tailscale serve --https=443 off`
+(check the form with `tailscale serve --help`). Use a book with two or more audio files, and a second device
+signed in as the same person for step 7. Run everything twice: Android Chrome (a tab, then installed) and
+iOS Safari (a Safari tab, then the Home Screen app).
+
+| # | Step | Expected | Android Chrome | iOS Safari tab | iOS Home Screen app |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Install: Android, the Install Tendshelf button on Downloads or the browser menu; iOS, Share, Add to Home Screen. | The app opens in its own window with the Tendshelf icon (not a letter on a plain tile) and the name Tendshelf. On iOS Safari tab, Downloads shows the line about Safari clearing downloads after a week. | | | |
+| 2 | Open a multi-file book, press Download. Watch Downloads: progress row, Pause download, Resume download. Keep the app open until it finishes. | The row shows "{done} of {total}", the bar moves, Pause then Resume continue where it stopped, the end shows "{title} is ready offline." and a Ready offline row. | | | |
+| 3 | Open Downloads. | Storage numbers show; the "may clear downloads" line shows or not as `persist()` says. Write both below. | | | |
+| 4 | Turn on airplane mode. Close the app and open it cold. | The offline page shows: banner "You're offline...", "On this phone" with the book as Ready offline, others as Needs a connection. | | | |
+| 5 | Press play, seek into the second file, lock the phone for 2 minutes, unlock. | Sound plays from the start, the seek lands without an error or a gap, playback is still going after the unlock (or resumes on one tap). | | | |
+| 6 | Add a bookmark, then pause. | A toast says "Bookmarked at {time}. It saves when you're back online." | | | |
+| 7 | Turn airplane mode off. | A "Back online. Your place and bookmarks are saved." toast; on the second device Resume starts within a few seconds of where the phone stopped, and the bookmark is in the book's Bookmarks tab. | | | |
+| 8 | Sign out on the phone, then sign in again (as the same person, then as another person if you have one). | Downloads is empty after the next sign-in; nothing from the old session is left. | | | |
+
+Record the figures: the `estimate()` quota and usage Downloads shows, and whether `persist()` was granted
+(the line is absent when it was). Android: quota ____ , persist ____ . iOS Safari tab: quota ____ , persist
+____ . iOS Home Screen app: quota ____ , persist ____ . (iOS figures in the plan are guesses until measured.)
+
+Dated runs (browser and version, date, who ran it, anything that surprised you):
+
+-
+
+Automated proof of the same surfaces lives in `internal/web/offline_browser_test.go`,
+`offline_downloads_browser_test.go` and `offline_proof_browser_test.go` (Chromium over CDP). What those
+cannot say: a real phone's storage limits, iOS eviction, the lock screen and a real airplane mode.
