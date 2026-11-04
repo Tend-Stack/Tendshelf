@@ -21,6 +21,8 @@ type ReadingSheetView struct {
 	Theme                        string // ui.theme: "" or "system" checks no tile
 	Font, Leading                string
 	Size                         int
+	Margin, Flow                 string
+	Justify, Hyphens, TapSwap    bool
 	Large                        bool // large text mode: 26 joins the sizes
 }
 
@@ -29,6 +31,8 @@ type readerChoice struct{ Value, Label string }
 var (
 	readerLeadingChoices = []readerChoice{{"compact", "Compact"}, {"normal", "Normal"}, {"airy", "Airy"}}
 	readerFontChoices    = []readerChoice{{"serif", "Serif"}, {"sans", "Sans"}, {"dyslexic", "OpenDyslexic"}}
+	readerMarginChoices  = []readerChoice{{"narrow", "Narrow"}, {"normal", "Normal"}, {"wide", "Wide"}}
+	readerFlowChoices    = []readerChoice{{"auto", "Automatic"}, {"pages", "Pages"}, {"scroll", "Scroll"}}
 )
 
 func readerSizes(large bool) []int {
@@ -49,6 +53,15 @@ templ readerChoices(name, label, cur string, choices []readerChoice) {
 			}
 		</div>
 	</fieldset>
+}
+
+// readerSwitch is a labelled switch. The hidden 0 before the checkbox makes an unchecked switch post false.
+templ readerSwitch(name, label string, on bool) {
+	<div class="ts-switch-row">
+		<label class="ts-switch-row__label" for={ "rs-" + name }>{ label }</label>
+		<input type="hidden" name={ name } value="0"/>
+		<input type="checkbox" role="switch" class="ts-switch" id={ "rs-" + name } name={ name } value="1" checked?={ on }/>
+	</div>
 }
 
 // ReadingSheet is the reading settings over the reader (the house ?sheet= pattern). Every change posts on its own and
@@ -101,6 +114,11 @@ templ ReadingSheet(v ReadingSheetView) {
 				</fieldset>
 				@readerChoices("leading", "Line spacing", v.Leading, readerLeadingChoices)
 				@readerChoices("font", "Font", v.Font, readerFontChoices)
+				@readerChoices("margin", "Margins", v.Margin, readerMarginChoices)
+				@readerChoices("flow", "Page or scroll", v.Flow, readerFlowChoices)
+				@readerSwitch("justify", "Justify text", v.Justify)
+				@readerSwitch("hyphens", "Hyphens", v.Hyphens)
+				@readerSwitch("tap_swap", "Swap tap sides", v.TapSwap)
 				<noscript><button type="submit" class="ts-btn ts-btn--primary ts-btn--block">Save</button></noscript>
 			</form>
 		</div>

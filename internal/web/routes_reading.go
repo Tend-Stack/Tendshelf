@@ -14,6 +14,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
 // The reading place API, on the /progress pattern: the same CSRF and body rules, and a form body so
@@ -24,6 +25,7 @@ import (
 func (s *server) registerReading(mux *http.ServeMux) {
 	mux.HandleFunc("GET /reading/{bookID}", s.getReading)
 	mux.HandleFunc("POST /reading/{bookID}", s.postReading)
+	mux.HandleFunc("POST /reading/{bookID}/finished", s.postReadingFinished)
 }
 
 // Bounds on what one save may add to the reading-speed sessions.
@@ -82,6 +84,39 @@ func (s *server) getReading(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"reading": readingJSON(p), "serverNow": s.now().UnixMilli()})
+}
+
+// postReadingFinished answers POST /reading/{bookID}/finished (finished=1, or 0 for "read again"): the person marks
+// the book read at the end of the text. It writes the reading place only; listening progress is never touched
+// (invariant 7), which is why the audiobook's /hx/books/{id}/finished is not used for text.
+func (s *server) postReadingFinished(w http.ResponseWriter, r *http.Request) {
+	b, ok := s.readingBook(w, r)
+	if !ok {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, formLimit)
+	v := ""
+	if err := r.ParseForm(); err == nil {
+		v = r.PostForm.Get("finished")
+	}
+	htmx := r.Header.Get("HX-Request") == "true"
+	if v != "1" && v != "0" {
+		if htmx {
+			s.fragment(w, r, http.StatusBadRequest, components.ErrorToast("That did not work. Try again."))
+			return
+		}
+		http.Error(w, "That did not work. Try again.", http.StatusBadRequest)
+		return
+	}
+	if _, err := s.progress.SetReadingFinished(r.Context(), currentUser(r).ID, b.ID, v == "1"); err != nil {
+		s.serverError(w, r, "set reading finished", err)
+		return
+	}
+	if htmx {
+		s.fragment(w, r, http.StatusOK, components.ToastOOB("ok", readerFinished))
+		return
+	}
+	http.Redirect(w, r, "/books/"+b.ID, http.StatusSeeOther)
 }
 
 // postReading answers POST /reading/{bookID}. The person comes from the session; the percent is worked out

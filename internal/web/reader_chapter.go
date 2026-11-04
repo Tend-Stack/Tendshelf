@@ -114,6 +114,9 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 	}
 	v := pages.ReaderChapterView{Idx: idx, Title: ch.Title, Part: max(part, 1), Parts: len(parts), Head: part <= 1,
 		Before: before + sel.Before}
+	for _, b := range ch.Blocks {
+		v.Chars += rsUnits(b.Text)
+	}
 	linkTo := s.rsLinkTo(rc)
 	cum, dropDone := before+sel.Before, false
 	c := sel.Before
@@ -164,6 +167,10 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 		ni, np, ok := rsNext(rc.doc, idx, part, len(parts))
 		if ok {
 			v.NextFrag, v.NextHref, v.NextLabel = rc.rsFragURL(ni, np), rc.rsPageURL(ni, np), readerNextChapter
+		} else {
+			// The last part of the last chapter: the end of the book, where the person may mark it finished.
+			v.End = &pages.ReaderEnd{Text: readerTheEnd, Label: readerMarkFinished, Action: "/reading/" + rc.book.ID + "/finished",
+				CSRF: s.csrf.TokenFrom(ctx)}
 		}
 		pi, pp, ok := rsPrev(rc.doc, idx, part)
 		if ok {

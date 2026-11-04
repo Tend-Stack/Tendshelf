@@ -327,6 +327,10 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"upload.js": {5 * 1024, 32 * 1024},
 	// M5 R4 P4: the reading settings sheet; 1.25 KB, approved by the operator on 2026-11-04.
 	"reader-settings.js": {1*1024 + 512, 8 * 1024}, // operator, 2026-11-04: reading settings
+	// M5 RD2 (operator, 2026-11-04): the page reader. reader.js is flow, anchor, saving, input and progress; reader-pages.js
+	// (the columns) loads only when pages are shown.
+	"reader.js":       {4*1024 + 512, 32 * 1024},
+	"reader-pages.js": {3 * 1024, 16 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.

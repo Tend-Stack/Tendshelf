@@ -32,6 +32,15 @@ func rsetText(form url.Values, key string, dst *string) {
 	}
 }
 
+// rsetBool reads a switch when the form has it: the sheet posts a hidden 0 before each checkbox, so an unchecked
+// switch posts false. Anything but "1" is false.
+func rsetBool(form url.Values, key string, dst *bool) {
+	if form.Has(key) {
+		vals := form[key]
+		*dst = vals[len(vals)-1] == "1"
+	}
+}
+
 // rsetNext is the page a plain post returns to: a book page of this server, else the home page.
 func rsetNext(next string) string {
 	if strings.HasPrefix(next, "/books/") && !strings.Contains(next, "//") && !strings.ContainsAny(next, "\\\r\n") {
@@ -66,6 +75,11 @@ func (s *server) postReaderSettings(w http.ResponseWriter, r *http.Request) {
 	form := r.PostForm
 	rsetText(form, "font", &next.Font)
 	rsetText(form, "leading", &next.Leading)
+	rsetText(form, "margin", &next.Margin)
+	rsetText(form, "flow", &next.Flow)
+	rsetBool(form, "justify", &next.Justify)
+	rsetBool(form, "hyphens", &next.Hyphens)
+	rsetBool(form, "tap_swap", &next.TapSwap)
 	if form.Has("size") {
 		n, err := strconv.Atoi(form.Get("size"))
 		if err != nil {
@@ -119,6 +133,15 @@ func readerLook(rs users.ReaderSettings) pages.ReaderLook {
 	if rs.Font != "serif" {
 		class += " ts-reader--" + rs.Font // "sans" or "dyslexic"
 	}
+	class += " ts-reader--margin-" + rs.Margin
+	for _, on := range []struct {
+		set  bool
+		name string
+	}{{rs.Justify, "justify"}, {!rs.Hyphens, "nohyph"}, {rs.TapSwap, "tapswap"}} {
+		if on.set {
+			class += " ts-reader--" + on.name
+		}
+	}
 	return pages.ReaderLook{Class: class}
 }
 
@@ -139,5 +162,6 @@ func (s *server) readingSheet(r *http.Request, rc readerCtx, ch int) (pages.Read
 		Action: readerSettingsRoute, CSRF: s.csrf.TokenFrom(ctx), Next: back, Preview: readerPreviewText,
 		Look: readerLook(rs), Theme: set.Theme, Font: rs.Font, Leading: rs.Leading,
 		Size: rs.Size, Large: set.TextSize == "large",
+		Margin: rs.Margin, Flow: rs.Flow, Justify: rs.Justify, Hyphens: rs.Hyphens, TapSwap: rs.TapSwap,
 	}, nil
 }
