@@ -26,7 +26,7 @@ type OfflineView struct {
 templ Offline(v OfflineView) {
 	<div class="ts-home ts-offline-home" data-ts-offline-shell>
 		<h1 class="title-1">{ v.Greeting }</h1>
-		<p class="caption">{ v.Caption }</p>
+		<p class="caption ts-offline-home__lead">{ v.Caption }</p>
 		if len(v.Rows) == 0 {
 			@components.EmptyState(v.EmptyTitle, v.EmptyBody, nil)
 		} else {
@@ -37,7 +37,7 @@ templ Offline(v OfflineView) {
 				}
 			</section>
 		}
-		<p class="caption">{ v.Note }</p>
+		<p class="caption ts-offline-home__lead">{ v.Note }</p>
 	</div>
 }
 

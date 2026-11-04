@@ -202,3 +202,30 @@ Terms: the interface says **Listener** for the guest role (Users page, role pick
 | read by %s | `nowPanelReadByLine` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
 | %d chapters | `nowPanelChapters` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
 |  ·  | `nowPanelStateSep` | `now_panel_copy.go` | Now playing panel: the operator's design shows the layout; wording follows the voice rules |
+
+## M3a offline pocket (added by package D, 2026-11-03)
+
+Strings of the Downloads page, the book page's Download control, the offline banner and the offline sync that
+are not in the copy deck or on `DownloadsPhone` / `StateOffline`. Same voice rules as above.
+
+| String | Constant | File | Why it is new |
+| --- | --- | --- | --- |
+| Resume download | see file | `downloads_copy.go` | Download manager button; the board has Pause but no word for the opposite |
+| Paused · {done} of {total} | see file | `downloads_copy.go` | Row meta of a paused download; the board shows only the downloading and waiting rows |
+| Waiting for a connection | see file | `downloads_copy.go` | Row meta of a download that stopped because the phone went offline |
+| Preparing a version this phone can play | see file | `downloads_copy.go` | Row meta while the server makes a compatible copy (needsCompat file) |
+| {done} of {total} | see file | `downloads_copy.go` | Progress line; the board's ETA part is added by the script when it has a rate |
+| Keep Tendshelf open until downloads finish. | see file | `downloads_copy.go` | No Background Fetch, so downloads run only while the page is open; the page says so |
+| This browser may clear downloads when the phone runs low on space. | see file | `downloads_copy.go` | Shown when persist() was not granted; plain words for storage eviction |
+| Safari may clear downloads after a week without a visit. Add Tendshelf to your Home Screen to keep them. | see file | `downloads_copy.go` | iOS storage note (operator asked for it, decision 0012) |
+| Downloads need a secure (https) address. Ask the person who runs Tendshelf to set one up. | see file | `downloads_copy.go` | Shown when the page is not a secure context |
+| Install Tendshelf | see file | `downloads_copy.go` | Button shown when the browser offers installing |
+| Tendshelf uses {used}; {free} free | see file | `downloads_copy.go` | Storage bar label for screen readers |
+| There isn't room on this phone for {title}. Remove a download, then try again. | see file | `downloads_copy.go` | Failed row and toast, not enough space |
+| {title} is no longer available to download. | see file | `downloads_copy.go` | Failed row and toast, book removed or access changed |
+| {title} didn't download. Try again. | see file | `downloads_copy.go` | Failed row and toast, any other failure |
+| {title} is ready offline. | see file | `downloads_copy.go` | Toast when a download finishes |
+| Downloading · {pct}% | see file | `routes_downloads.go` | The book page's Download control while a download runs |
+| Back online. Your place and bookmarks are saved. | see file | `offline_copy.go` | Toast after a sync that followed an offline spell |
+| Bookmarked at {time}. It saves when you're back online. | see file | `copy.go (msgBookmarkQueued)` | Toast for a bookmark made offline |
+| Downloads of this book are turned off. | see file | `offline_copy.go (downloadOffAnswer)` | Plain answer of /stream?download=1 when a person has no download permission |

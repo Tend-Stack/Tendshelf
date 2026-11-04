@@ -33,6 +33,7 @@ page actions. New: `/sw.js`, `/manifest.webmanifest`, `/offline`, `js/sw.js`, `j
   "files":[{"id","key","mime","size","chunks","have","etag"}]}}}`. `ts.offline.person` = userID.
   `ts.offline.marks` = `[{"bookId","positionMs","clientId","at"}]` (max 200, oldest dropped).
   `ts.offline.prefs` = `{"removeFinished":false}`; `ts.offline.checkedAt` = ms.
+  `ts.offline.msgs` = `{"<key>":"<sentence>"}`, the Downloads page's `data-ts-msg-*` strings, copied the first time that page is seen so the book page's Download control can word its states (wiped with the other `ts.offline*` keys).
 - Manifest: `{"id":"/","name":"Tendshelf","short_name":"Tendshelf","start_url":"/","scope":"/","display":
   "standalone","background_color":<themeColor("dark")>,"theme_color":<same>,"launch_handler":{"client_mode":
   "focus-existing"},"icons":[192 any png, 512 any png, 512 maskable png, svg "any" "image/svg+xml"]}` (hashed URLs).
