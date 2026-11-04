@@ -576,8 +576,8 @@ PDF reader is chosen between the two options below on fixtures during R1:
 
 | Module / file / runtime | Why | Note |
 | --- | --- | --- |
-| `golang.org/x/net/html` | HTML5 parsing of EPUB 2 XHTML, HTML files and MOBI/KF8 content (R1) | BSD-3; Go team |
-| `golang.org/x/text` (`unicode/norm`) | NFC normalisation for matching and alignment (R1, R3) | BSD-3; Go team |
+| `golang.org/x/net/html` (**added in M5 R1 E1**, v0.61.0, also `html/charset`) | HTML5 tokenizing of EPUB XHTML, HTML files and MOBI/KF8 content (R1) | BSD-3; Go team |
+| `golang.org/x/text` (`unicode/norm`, `encoding/...`) (**added in M5 R1 E1**, v0.43.0) | NFC normalisation for matching and alignment (R1, R3); charset decoding for FB2, HTML and text (R1) | BSD-3; Go team |
 | PDF text-layer reader: candidate `github.com/ledongthuc/pdf`, or an own minimal reader | PDF import (R1) | BSD-3 (guess, read it); evaluate ToUnicode/CMap coverage on fixtures before choosing; the module may not be enough for complex PDFs (guess) |
 | Font vendored to `internal/web/static/fonts/` (woff2): OpenDyslexic | The one extra reader font (R4); the reader otherwise uses the design's Fraunces and Fira Sans | SIL OFL 1.1 (guess; read it from the release); `NOTICES.md` row |
 | Optional runtime, not shipped: Python 3.12 + `torch` CPU (2.8, as TendVox) + `transformers` + `safetensors` + `numpy` | The emissions worker (R3) | Owner-installed; BSD-3 / Apache-2.0 / Apache-2.0 / BSD-3 (guess for exact versions) |

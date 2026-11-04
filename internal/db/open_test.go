@@ -212,7 +212,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+9 { // +9: book_sidecars, online_cache (0010), file_writes (0011), book_lookups, online_usage (0012), queue_items (0013), uploads, upload_files, upload_paths (0014)
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+12 { // +12: book_sidecars, online_cache (0010), file_writes (0011), book_lookups, online_usage (0012), queue_items (0013), uploads, upload_files, upload_paths (0014), ebook_files, editions, edition_chapters (0016)
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -595,6 +595,7 @@ var pinnedMigrations = map[int]string{
 	13: "174072f5013367e258c8ff18d3b1b35d704d532fa24606876cbd75481f18f150",
 	14: "052ca76dec68a1a13859fca04fb0118e903dfaa3fc3999ba9b553eb4234448cc",
 	15: "272ba4886017c9f590b31d4650cdcb562e2ed8bc77692bc7a618630e2a1a736f",
+	16: "ea6c953d183d6fd2c4acfbd18f351b9a6181cccb0adc7c8e1dac865cff41d7dd",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
