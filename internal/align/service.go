@@ -86,8 +86,10 @@ func (s *Service) timingDir() string { return filepath.Join(s.d.DataDir, "align"
 
 // Register adds align.book to the runner. It never holds on recovery: a restart resumes from the emissions
 // cache and the finished chapters.
-func (s *Service) Register(r *jobs.Runner) error {
-	return r.Register(jobs.Kind{Name: KindBook, Concurrency: 1, MaxAttempts: 3, HoldOnRecovery: false, Handler: s.handle})
+func (s *Service) Register(r *jobs.Runner) error { return r.Register(s.bookKind()) }
+
+func (s *Service) bookKind() jobs.Kind {
+	return jobs.Kind{Name: KindBook, Concurrency: 1, MaxAttempts: 3, HoldOnRecovery: false, Handler: s.handle}
 }
 
 // payload is the job payload.
