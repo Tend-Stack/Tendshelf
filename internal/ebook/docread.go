@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"unicode/utf16"
 )
 
@@ -86,3 +87,65 @@ func WordSpans(b Block) []WordSpan {
 
 // SentenceID names sentence k of a block: the block id, ".s", the index.
 func SentenceID(blockID string, k int) string { return blockID + ".s" + strconv.Itoa(k) }
+
+// ParseSID splits a sentence id "c<chapter>.p<block>.s<sentence>" (see SentenceID) into its numbers. Chapters and
+// blocks count from 1, sentences from 0; at most 5, 6 and 5 digits, no leading zeros.
+func ParseSID(sid string) (ch, p, s int, ok bool) {
+	parts := strings.Split(sid, ".")
+	if len(parts) != 3 {
+		return 0, 0, 0, false
+	}
+	var oks [3]bool
+	ch, oks[0] = sidNumber(parts[0], 'c', 5, false)
+	p, oks[1] = sidNumber(parts[1], 'p', 6, false)
+	s, oks[2] = sidNumber(parts[2], 's', 5, true)
+	if !oks[0] || !oks[1] || !oks[2] {
+		return 0, 0, 0, false
+	}
+	return ch, p, s, true
+}
+
+// sidNumber reads prefix then 1..maxDigits ASCII digits without a leading zero (a lone "0" only when zeroOK).
+func sidNumber(part string, prefix byte, maxDigits int, zeroOK bool) (int, bool) {
+	if len(part) < 2 || part[0] != prefix || len(part)-1 > maxDigits {
+		return 0, false
+	}
+	digits := part[1:]
+	n := 0
+	for i := 0; i < len(digits); i++ {
+		c := digits[i]
+		if c < '0' || c > '9' {
+			return 0, false
+		}
+		n = n*10 + int(c-'0')
+	}
+	if digits[0] == '0' && !(zeroOK && len(digits) == 1) {
+		return 0, false
+	}
+	return n, true
+}
+
+// CompareSID orders two sentence ids in document order (chapter, block, sentence): -1, 0 or 1. An id that does not
+// parse sorts before every valid one, and two that do not parse compare as strings.
+func CompareSID(a, b string) int {
+	ac, ap, asn, aok := ParseSID(a)
+	bc, bp, bsn, bok := ParseSID(b)
+	if !aok || !bok {
+		if aok == bok {
+			return strings.Compare(a, b)
+		}
+		if !aok {
+			return -1
+		}
+		return 1
+	}
+	for _, d := range [3]int{ac - bc, ap - bp, asn - bsn} {
+		if d < 0 {
+			return -1
+		}
+		if d > 0 {
+			return 1
+		}
+	}
+	return 0
+}
