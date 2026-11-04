@@ -355,6 +355,11 @@ func (s *Scanner) apply(tx *library.Tx, p *plan) (Result, error) {
 	bookByRoot := make(map[string]*library.Book, len(books))
 	bookByID := make(map[string]*library.Book, len(books))
 	for i := range books {
+		// A text book is owned by the ebook service (decision 0018): the audio sweep never sees it, so no audio
+		// group claims it and it is never deleted or marked missing here.
+		if books[i].Kind == library.BookText {
+			continue
+		}
 		bookByRoot[books[i].RootPath] = &books[i]
 		bookByID[books[i].ID] = &books[i]
 	}

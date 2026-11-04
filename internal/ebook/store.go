@@ -24,7 +24,8 @@ type File struct {
 	ErrorCode, JobID      string
 	OriginalName          string
 	UploadedBy            string
-	MissingSince          int64 // 0 when NULL
+	MissingSince          int64  // 0 when NULL
+	MergedFrom            string // the text book this file was merged out of; empty when NULL
 	CreatedAt, UpdatedAt  int64
 }
 
@@ -57,7 +58,7 @@ func NewStore(s *db.Store) *Store { return &Store{db: s} }
 const fileCols = `id, origin, library_id, COALESCE(folder_id,''), COALESCE(path,''), COALESCE(book_id,''),
 COALESCE(paired_by,''), COALESCE(hold,''), book_default, ext, size, mtime_ns, quick_hash, COALESCE(sha256,''), COALESCE(format,''), state,
 COALESCE(refused_reason,''), COALESCE(error_code,''), COALESCE(job_id,''), original_name,
-COALESCE(uploaded_by,''), COALESCE(missing_since,0), created_at, updated_at`
+COALESCE(uploaded_by,''), COALESCE(missing_since,0), created_at, updated_at, COALESCE(merged_from,'')`
 
 type scanner interface{ Scan(dest ...any) error }
 
@@ -65,7 +66,7 @@ func scanFile(r scanner) (File, error) {
 	var f File
 	err := r.Scan(&f.ID, &f.Origin, &f.LibraryID, &f.FolderID, &f.Path, &f.BookID, &f.PairedBy, &f.Hold, &f.BookDefault, &f.Ext, &f.Size,
 		&f.MtimeNS, &f.QuickHash, &f.SHA256, &f.Format, &f.State, &f.RefusedReason, &f.ErrorCode, &f.JobID,
-		&f.OriginalName, &f.UploadedBy, &f.MissingSince, &f.CreatedAt, &f.UpdatedAt)
+		&f.OriginalName, &f.UploadedBy, &f.MissingSince, &f.CreatedAt, &f.UpdatedAt, &f.MergedFrom)
 	return f, err
 }
 

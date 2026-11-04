@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 )
 
@@ -75,30 +76,73 @@ func (s *Service) Pair(ctx context.Context, fileID, bookID, userID string) error
 		if _, err := tx.ExecContext(ctx, `DELETE FROM text_choices WHERE ebook_file_id=?`, fileID); err != nil {
 			return err
 		}
+		if from != "" {
+			// The file's old book was a text book and this was its last file: it has no reason to exist now.
+			if _, err := tx.ExecContext(ctx, `DELETE FROM books WHERE id=? AND kind='text' AND NOT EXISTS (SELECT 1 FROM ebook_files WHERE book_id = books.id)`, from); err != nil {
+				return err
+			}
+		}
 		return s.audit(ctx, tx, userID, "ebook.pair", fileID, map[string]string{"book": bookID, "from": from})
 	})
 }
 
-// Unpair takes a file off the book it is on, remembers that a person did it, and says it is not that book.
+// Unpair takes a file off the book it is on, remembers that a person did it, and says it is not that book
+// ("Not the same book"). The file, and every file merged in with it, becomes a text book of its own: the id
+// it had before a merge when that is free, so old links work again. Marks made in those files go back with them.
+// Only rows change.
 func (s *Service) Unpair(ctx context.Context, fileID, bookID, userID string) error {
-	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		now := s.now().UnixMilli()
-		res, err := tx.ExecContext(ctx, `UPDATE ebook_files SET book_id=NULL, paired_by=NULL, hold='person', book_default=0, updated_at=?
-WHERE id=? AND book_id=?`, now, fileID, bookID)
+	var made string
+	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		var mergedFrom, kind string
+		err := tx.QueryRowContext(ctx, `SELECT COALESCE(f.merged_from,''), b.kind FROM ebook_files f JOIN books b ON b.id = f.book_id
+WHERE f.id = ? AND f.book_id = ?`, fileID, bookID).Scan(&mergedFrom, &kind)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrFileNotFound
+		}
 		if err != nil {
 			return err
 		}
-		if n, _ := res.RowsAffected(); n == 0 {
-			return ErrFileNotFound
+		ids := []string{fileID}
+		if mergedFrom != "" {
+			rs, err := tx.QueryContext(ctx, `SELECT id FROM ebook_files WHERE book_id = ? AND merged_from = ? AND id <> ? ORDER BY created_at, id`,
+				bookID, mergedFrom, fileID)
+			if err != nil {
+				return err
+			}
+			for rs.Next() {
+				var id string
+				if err := rs.Scan(&id); err != nil {
+					rs.Close()
+					return err
+				}
+				ids = append(ids, id)
+			}
+			rs.Close()
+			if err := rs.Err(); err != nil {
+				return err
+			}
 		}
-		if err := insertNotSame(ctx, tx, fileID, bookID, userID, now); err != nil {
+		if kind == library.BookText {
+			// A text book's only file cannot leave it: that would leave a book with no text.
+			var n int
+			if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM ebook_files WHERE book_id = ?`, bookID).Scan(&n); err != nil {
+				return err
+			}
+			if n <= len(ids) {
+				return nil
+			}
+		}
+		now := s.now().UnixMilli()
+		if made, err = s.splitBook(ctx, tx, ids, bookID, userID, now); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM text_choices WHERE ebook_file_id=?`, fileID); err != nil {
-			return err
-		}
-		return s.audit(ctx, tx, userID, "ebook.unpair", fileID, map[string]string{"book": bookID})
+		return s.audit(ctx, tx, userID, "ebook.unpair", fileID, map[string]any{"book": bookID, "new_book": made, "files": len(ids)})
 	})
+	if err != nil {
+		return err
+	}
+	s.notifyCreated(ctx, made)
+	return nil
 }
 
 func insertNotSame(ctx context.Context, tx *sql.Tx, fileID, bookID, userID string, now int64) error {
@@ -188,12 +232,31 @@ ON CONFLICT(user_id, book_id) DO UPDATE SET ebook_file_id=excluded.ebook_file_id
 	})
 }
 
+// pairKeys lists what pairing compares files with: audiobooks first, then text books (an EPUB and a MOBI
+// of one title are one book).
+func (s *Service) pairKeys(ctx context.Context) (audio, text []BookKey, err error) {
+	if audio, err = s.store.bookKeysKind(ctx, share.Filter{}, library.BookAudio); err != nil {
+		return nil, nil, err
+	}
+	text, err = s.store.bookKeysKind(ctx, share.Filter{}, library.BookText)
+	return audio, text, err
+}
+
 // PairPending pairs every unpaired, ready file that automatic pairing may touch and that has exactly one candidate.
 func (s *Service) PairPending(ctx context.Context) error {
-	keys, err := s.store.bookKeys(ctx, share.Filter{})
-	if err != nil || len(keys) == 0 {
+	audio, text, err := s.pairKeys(ctx)
+	if err != nil {
 		return err
 	}
+	if len(audio)+len(text) > 0 {
+		if err := s.pairUnpaired(ctx, audio, text); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) pairUnpaired(ctx context.Context, audio, text []BookKey) error {
 	afterAt, afterID := int64(-1), ""
 	for {
 		rs, err := s.db.Reader().QueryContext(ctx, `SELECT `+fileCols+` FROM ebook_files
@@ -218,7 +281,7 @@ WHERE book_id IS NULL AND hold IS NULL AND state = 'ready' AND (created_at, id) 
 		if len(files) == 0 {
 			return nil
 		}
-		if err := s.pairFiles(ctx, files, keys); err != nil {
+		if err := s.pairFiles(ctx, files, audio, text); err != nil {
 			return err
 		}
 		last := files[len(files)-1]
@@ -235,14 +298,14 @@ func (s *Service) pairFile(ctx context.Context, fileID string) error {
 	if err != nil || !ok || f.BookID != "" || f.Hold != "" || f.State != "ready" {
 		return err
 	}
-	keys, err := s.store.bookKeys(ctx, share.Filter{})
-	if err != nil || len(keys) == 0 {
+	audio, text, err := s.pairKeys(ctx)
+	if err != nil || len(audio)+len(text) == 0 {
 		return err
 	}
-	return s.pairFiles(ctx, []File{f}, keys)
+	return s.pairFiles(ctx, []File{f}, audio, text)
 }
 
-func (s *Service) pairFiles(ctx context.Context, files []File, keys []BookKey) error {
+func (s *Service) pairFiles(ctx context.Context, files []File, audio, text []BookKey) error {
 	ids := make([]string, len(files))
 	for i, f := range files {
 		ids[i] = f.ID
@@ -259,7 +322,11 @@ func (s *Service) pairFiles(ctx context.Context, files []File, keys []BookKey) e
 		if !ok {
 			continue
 		}
-		bookID, by, ok := Decide(Match(ed.pairMeta(), keys, ns[f.ID], 0))
+		meta := ed.pairMeta()
+		bookID, by, ok := Decide(Match(meta, audio, ns[f.ID], 0))
+		if !ok {
+			bookID, by, ok = Decide(Match(meta, text, ns[f.ID], 0))
+		}
 		if !ok {
 			continue
 		}

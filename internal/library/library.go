@@ -77,8 +77,15 @@ type Book struct {
 	CoverID                                                      string
 	RefusedReason                                                string
 	AddedAt, UpdatedAt                                           int64
-	MissingSince                                                 int64 // 0 = present
+	MissingSince                                                 int64  // 0 = present
+	Kind                                                         string // BookAudio or BookText; empty means audio on insert
 }
+
+// The kinds of book. The kind names who owns the row's life: the scanner (audio) or the ebook service (text).
+const (
+	BookAudio = "audio"
+	BookText  = "text"
+)
 
 // AudioFile is one file of a book. OffsetMs places it on the book's timeline.
 type AudioFile struct {

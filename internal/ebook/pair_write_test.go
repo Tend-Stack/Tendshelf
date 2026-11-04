@@ -142,13 +142,13 @@ func TestPairFolderRespectsNotSame(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.scan()
-	if got := e.file(f.ID); got.BookID != "" {
+	if got := e.file(f.ID); got.BookID == bk.ID {
 		t.Fatalf("rescan redid an unpaired folder pairing: %+v", got)
 	}
 	// A not-same row alone also stops it, for a file whose hold is clear.
 	pairTExec(e, `UPDATE ebook_files SET hold=NULL WHERE id=?`, f.ID)
 	e.scan()
-	if got := e.file(f.ID); got.BookID != "" {
+	if got := e.file(f.ID); got.BookID == bk.ID {
 		t.Fatalf("not-same row ignored: %+v", got)
 	}
 }
@@ -240,7 +240,7 @@ func TestPairUnpair(t *testing.T) {
 	if err := e.svc.Unpair(bg, "f1", "b1", pairTUser); err != nil {
 		t.Fatal(err)
 	}
-	if got := e.file("f1"); got.BookID != "" || got.PairedBy != "" || got.Hold != "person" || got.BookDefault {
+	if got := e.file("f1"); got.BookID == "" || got.BookID == "b1" || got.PairedBy != "" || got.Hold != "person" || !got.BookDefault || pairTCount(e, `SELECT count(*) FROM books WHERE id=? AND kind='text'`, got.BookID) != 1 {
 		t.Fatalf("after unpair: %+v", got)
 	}
 	if n := pairTCount(e, `SELECT count(*) FROM ebook_not_same WHERE ebook_file_id='f1' AND book_id='b1'`); n != 1 {
@@ -255,8 +255,8 @@ func TestPairUnpair(t *testing.T) {
 	if n := pairTCount(e, `SELECT count(*) FROM text_choices`); n != 0 {
 		t.Error("choice for an unpaired file kept")
 	}
-	// Not the same book, and keep, on unpaired files only.
 	pairTBook(e, "b2", "Two")
+	pairTExec(e, `UPDATE ebook_files SET book_id=NULL WHERE id='f1'`) // NotSame and Keep are for files with no book
 	if err := e.svc.NotSame(bg, "f1", "b2", pairTUser); err != nil {
 		t.Fatal(err)
 	}
@@ -399,7 +399,10 @@ VALUES ('f_up','upload',?, 'epub', ?, ?, ?, 'epub', 'ready', 5, 5)`, e.lib.ID, l
 		func() error { return e.svc.SetBookDefault(bg, "b2", "f_up", pairTUser) },
 		func() error { return e.svc.Choose(bg, pairTUser, "b1", lf.ID) },
 		func() error { return e.svc.Unpair(bg, lf.ID, "b1", pairTUser) },
-		func() error { return e.svc.NotSame(bg, lf.ID, "b2", pairTUser) },
+		func() error {
+			pairTExec(e, `UPDATE ebook_files SET book_id=NULL WHERE id=?`, lf.ID) // NotSame and Keep are for files with no book
+			return e.svc.NotSame(bg, lf.ID, "b2", pairTUser)
+		},
 		func() error { return e.svc.Keep(bg, lf.ID, pairTUser) },
 		func() error { return e.svc.Unpair(bg, "f_up", "b2", pairTUser) },
 		func() error { return e.svc.PairPending(bg) },

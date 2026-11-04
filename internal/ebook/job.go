@@ -145,6 +145,10 @@ block_count, word_count, char_count, src) VALUES(?,?,?,?,?,?,?,?,?,?)`,
 		if err := s.pairFile(ctx, f.ID); err != nil {
 			s.log.Warn("ebooks: pairing failed", "err", err)
 		}
+		// Still no book (no audiobook or other edition matched, or a person held the file): it becomes a book.
+		if err := s.ensureFile(ctx, f.ID); err != nil {
+			s.log.Warn("ebooks: could not make a book", "err", err)
+		}
 	}
 	return IngestResult{State: "ready", Chapters: len(doc.Chapters), Words: words}, nil
 }

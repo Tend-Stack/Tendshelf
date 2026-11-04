@@ -24,6 +24,7 @@ type Service struct {
 	store   *Store
 	limits  Limits
 	now     func() time.Time
+	created []func(context.Context, []string) // told about new text books (OnBookCreated)
 }
 
 // New returns the ebook service. dataDir is the Tendshelf data folder: uploaded bytes live in
@@ -62,6 +63,12 @@ func (s *Service) Finisher() scan.Finisher {
 	return func(ctx context.Context, _ string) {
 		if err := s.PairPending(ctx); err != nil {
 			s.log.Warn("ebooks: pairing failed", "err", err)
+		}
+		if err := s.ensureBooks(ctx); err != nil {
+			s.log.Warn("ebooks: could not make books", "err", err)
+		}
+		if err := s.mergePending(ctx, ""); err != nil {
+			s.log.Warn("ebooks: merging failed", "err", err)
 		}
 		if err := s.EnqueuePending(ctx); err != nil {
 			s.log.Warn("ebooks: could not queue reads", "err", err)
