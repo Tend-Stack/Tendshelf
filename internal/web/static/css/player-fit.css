@@ -1,4 +1,4 @@
-/* Split from player.css (4 KB budget). The full player fits the visible height below 1280 px; the desktop side panel is untouched. */
+/* Split from player.css (4 KB budget). The full player fits the visible height below 1280 px; the desktop side panel only meets the foot when no bar is under it. */
 /* Phones and tablets: the player fits the visible height. The cover shrinks first (to 7.5rem), then spacing
    tightens and the clock scales; very short landscape hides the cover and sets two columns. */
 @media (width < 1280px) {
@@ -32,3 +32,9 @@
   .ts-player__bar { grid-row: 4; }
 }
 
+/* Desktop side panel: with no bar under it, it reaches the foot (operator, 2026-11-04) */
+@media (width >= 1280px) {
+  :where(html:not([data-text-size="large"])) {
+    body:has(.ts-player-slot:is([hidden], .is-suppressed)) .ts-player { bottom: 0; }
+  }
+}
