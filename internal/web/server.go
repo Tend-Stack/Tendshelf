@@ -23,6 +23,8 @@ import (
 
 	"github.com/a-h/templ"
 
+	"github.com/Tend-Stack/tendshelf/internal/align"
+	alignrt "github.com/Tend-Stack/tendshelf/internal/align/runtime"
 	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/backups"
@@ -92,6 +94,11 @@ type Options struct {
 	// Ebooks holds the ebook files, editions and uploads of the Text tab (M5 R1); nil means the Text
 	// tab and its routes answer 404.
 	Ebooks *ebook.Service
+	// Align starts, watches and ends read-along alignments (M5 R3); nil means the alignment routes answer 404.
+	Align *align.Service
+	// Runtimes is the word-timing runtime the /admin/runtimes page reports on and checks; nil means that
+	// page answers 404.
+	Runtimes *alignrt.Provider
 }
 
 type server struct {
@@ -121,6 +128,8 @@ type server struct {
 	writes     *mediajobs.Writes
 	uploads    *upload.Service
 	ebooks     *ebook.Service
+	align      *align.Service
+	runtimes   *alignrt.Provider
 	backups    *backups.Service
 	progress   *progress.Service
 	mail       *share.Mail
@@ -239,6 +248,8 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		writes:     opts.Writes,
 		uploads:    opts.Uploads,
 		ebooks:     opts.Ebooks,
+		align:      opts.Align,
+		runtimes:   opts.Runtimes,
 		backups:    bk,
 		progress:   progress.New(opts.Store, opts.Now),
 		mail:       mailer,
@@ -274,6 +285,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerShare(mux)
 	s.registerLinks(mux)
 	s.registerEmail(mux)
+	s.registerRuntimes(mux)
 	//
 	s.registerSetupSteps(mux)
 	s.registerMe(mux)

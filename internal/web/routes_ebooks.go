@@ -26,6 +26,7 @@ func (s *server) registerEbooks(mux *http.ServeMux) {
 	mux.HandleFunc("POST /books/{id}/text", s.postEbookUpload)
 	mux.HandleFunc("POST /books/{id}/text/{fileID}/dismiss", s.postEbookDismiss)
 	s.registerEbookPairing(mux)
+	s.registerEbookAlign(mux)
 }
 
 // ebookUploadErrKey carries the refusal of an upload to the page render that shows it.
@@ -134,6 +135,11 @@ func (s *server) textFileView(ctx context.Context, book library.Book, f ebook.Fi
 		}
 		if tc != nil {
 			tc.decorate(book, f, &fv, ed, rows)
+			if tc.edit && f.BookID == book.ID {
+				if fv.Align, err = s.alignView(ctx, book, f, ed, rows, tc); err != nil {
+					return fv, err
+				}
+			}
 		}
 		shown := rows
 		if !all && len(shown) > bookChaptersHead {

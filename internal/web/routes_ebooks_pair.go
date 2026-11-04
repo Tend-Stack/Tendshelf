@@ -193,7 +193,7 @@ func (s *server) textSuggestions(ctx context.Context, book library.Book, tc *tex
 		}
 		out = append(out, pages.TextSuggestionView{
 			Card:    tc.card(f, ed, rows),
-			Pair:    *tc.action(book, f, "pair", ebookPairGo, "primary"),
+			Pair:    *tc.action(book, f, "pair", s.pairLabel(ctx, book, ed), "primary"),
 			NotSame: *tc.action(book, f, "not-same", ebookNotSame, "quiet"),
 		})
 	}
@@ -217,6 +217,12 @@ func (s *server) ebookPairFail(w http.ResponseWriter, r *http.Request, book libr
 		s.serverError(w, r, "ebook pairing", err)
 		return
 	}
+	s.ebookTabRefuse(w, r, book, status, msg)
+}
+
+// ebookTabRefuse answers a refused Text tab action: an error toast for htmx, the tab with the sentence in
+// its alert otherwise.
+func (s *server) ebookTabRefuse(w http.ResponseWriter, r *http.Request, book library.Book, status int, msg string) {
 	if r.Header.Get("HX-Request") == "true" {
 		s.fragment(w, r, status, components.ErrorToast(msg))
 		return
@@ -256,7 +262,11 @@ func (s *server) postTextPair(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.ebookPairDone(w, r, book, s.ebooks.Pair(r.Context(), f.ID, book.ID, currentUser(r).ID))
+	err = s.ebooks.Pair(r.Context(), f.ID, book.ID, currentUser(r).ID)
+	if err == nil {
+		s.prepareAfterPair(r, book, f.ID)
+	}
+	s.ebookPairDone(w, r, book, err)
 }
 
 // postTextUnpair is "Not the same book" on a paired file: it leaves the book and is not offered again.

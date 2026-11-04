@@ -1,0 +1,38 @@
+/* Word timing: the owner's page for the read-along speech model (M5 R3 P5). It shares the Email page's
+   layout; these rules add the language cards, the facts list and the install steps. Tokens only; every rule
+   works in all four themes. */
+
+.ts-runtimes .body, .ts-runtimes__line { margin: 0; }
+.ts-runtimes__cards { margin-top: var(--space-8); }
+.ts-runtimes__card { display: flex; flex-direction: column; gap: var(--space-12); }
+.ts-runtimes__card .ts-btn { align-self: flex-start; }
+.ts-runtimes__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8); }
+.ts-runtimes__head h2 { margin: 0; }
+
+/* The state is always a word; the border colour only backs it up. */
+.ts-runtimes__state { display: inline-flex; align-items: center; min-height: 1.75rem; padding: 0 var(--space-12); border-radius: var(--radius-control); border: 1px solid var(--line-strong); font: 600 0.8125rem/1.125rem var(--font-sans); color: var(--ink); }
+.ts-runtimes__state--ready { border-color: var(--success); }
+.ts-runtimes__state--problem { border-color: var(--danger); }
+.ts-runtimes__state--needs_check { border-color: var(--accent); }
+.ts-runtimes__line--failed { color: var(--danger); font-weight: 600; }
+
+.ts-runtimes__facts { display: grid; gap: var(--space-8); margin: 0; }
+.ts-runtimes__fact { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.ts-runtimes__fact dt { color: var(--ink-muted); }
+.ts-runtimes__fact dd { margin: 0; overflow-wrap: anywhere; }
+.ts-runtimes a { color: var(--ink); text-decoration: underline; }
+
+/* Install steps */
+.ts-runtimes__steps .caption { margin: var(--space-8) 0; color: var(--ink-muted); max-width: 40rem; }
+.ts-runtimes__list { margin: 0; padding-inline-start: var(--space-20); display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-runtimes__list li { padding-inline-start: var(--space-4); }
+.ts-runtimes__list p { margin: 0 0 var(--space-8); }
+.ts-runtimes__files { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-16); margin: 0 0 var(--space-8); padding: 0; list-style: none; }
+.ts-runtimes__files a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+.ts-runtimes__code { margin: 0; padding: var(--space-12) var(--space-16); border-radius: var(--radius-md); background: var(--raised); color: var(--ink); font-size: 0.8125rem; line-height: 1.25rem; overflow-x: auto; overscroll-behavior-x: contain; user-select: text; }
+.ts-runtimes__code:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+
+/* Wide: the two language cards stand side by side. */
+@container pane (width >= 44rem) {
+  .ts-groups.ts-runtimes__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

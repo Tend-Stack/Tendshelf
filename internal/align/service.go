@@ -165,6 +165,18 @@ func (s *Service) editionLang(ctx context.Context, ed ebook.Edition, bookID stri
 	return ""
 }
 
+// Language is the language the edition's narration is aligned in (a primary subtag such as "en"), or empty.
+func (s *Service) Language(ctx context.Context, ed ebook.Edition, bookID string) string {
+	return s.editionLang(ctx, ed, bookID)
+}
+
+// Available reports whether a checked runtime exists for the edition's language. It is what the Text tab asks
+// before it offers "Pair and prepare read-along".
+func (s *Service) Available(ctx context.Context, ed ebook.Edition, bookID string) (bool, error) {
+	_, ok, err := s.d.Runtimes.Usable(ctx, s.editionLang(ctx, ed, bookID))
+	return ok, err
+}
+
 // Start queues an alignment of the edition with the book's audio. An active one is returned as it is, and so
 // is a finished one made from the same text, audio, model and recipe.
 func (s *Service) Start(ctx context.Context, editionID, bookID, userID string) (Alignment, error) {
