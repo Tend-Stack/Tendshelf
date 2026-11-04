@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 )
 
 const (
@@ -165,7 +167,9 @@ func csrfLimit(r *http.Request) int64 {
 	if r.Method == http.MethodPost && coverUploadPath.MatchString(r.URL.Path) {
 		return csrfUploadLimit
 	}
-	if r.Method == http.MethodPost && textUploadPath.MatchString(r.URL.Path) {
+	// Only a signed-in request gets the large ebook limit, so no visitor can make the check spill
+	// 200 MiB to disk before the gate refuses them.
+	if _, signedIn := auth.SessionFrom(r.Context()); signedIn && r.Method == http.MethodPost && textUploadPath.MatchString(r.URL.Path) {
 		return csrfTextLimit
 	}
 	return csrfFormLimit

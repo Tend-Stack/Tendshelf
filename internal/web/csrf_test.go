@@ -8,6 +8,9 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/Tend-Stack/tendshelf/internal/auth"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
 var unsafeMethods = []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
@@ -290,5 +293,20 @@ func TestCSRFInjectableBinding(t *testing.T) {
 	}
 	if c.Token("c:abc") == tok {
 		t.Fatal("binding kinds collide")
+	}
+}
+
+// The ebook upload's large body limit is for signed-in requests only; a visitor gets the form limit.
+func TestCSRFTextLimitNeedsSession(t *testing.T) {
+	anon := httptest.NewRequest(http.MethodPost, "/books/bk_1/text", nil)
+	if got := csrfLimit(anon); got != csrfFormLimit {
+		t.Errorf("anonymous limit %d, want the form limit %d", got, csrfFormLimit)
+	}
+	signed := anon.WithContext(auth.WithSession(anon.Context(), auth.Session{UserID: "u_1"}, users.User{ID: "u_1"}))
+	if got := csrfLimit(signed); got != csrfTextLimit {
+		t.Errorf("signed-in limit %d, want %d", got, csrfTextLimit)
+	}
+	if got := csrfMemory(signed); got != csrfTextMemory {
+		t.Errorf("signed-in memory %d, want %d", got, csrfTextMemory)
 	}
 }
