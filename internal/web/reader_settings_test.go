@@ -39,31 +39,31 @@ func (l *rdrLab) rsetStored(t *testing.T, ck *http.Cookie) users.ReaderSettings 
 func TestReaderSettingsRoute(t *testing.T) {
 	l := rdrSeed(t)
 	// htmx: 204, and the change is stored; theme goes to ui.theme.
-	if code, _, _ := rsetPost(t, l, l.owner, true, "size", "22", "hl", "underline", "theme", "sepia"); code != http.StatusNoContent {
+	if code, _, _ := rsetPost(t, l, l.owner, true, "size", "22", "theme", "sepia"); code != http.StatusNoContent {
 		t.Fatalf("htmx post: %d", code)
 	}
 	rs := l.rsetStored(t, l.owner)
-	if rs.Size != 22 || rs.Highlight != "underline" || rs.Font != "serif" {
+	if rs.Size != 22 || rs.Font != "serif" {
 		t.Errorf("stored %+v", rs)
 	}
 	set, err := l.a.srv.users.LoadSettings(context.Background(), l.ownerID)
 	if err != nil || set.Theme != "sepia" {
 		t.Errorf("theme %q, %v", set.Theme, err)
 	}
-	// Fields are merged over the stored value; a switch posts its hidden 0 first.
-	rsetPost(t, l, l.owner, true, "font", "dyslexic", "word", "0", "follow", "0", "follow", "1", "view", "focus")
+	// Fields are merged over the stored value; keys the reader no longer has are ignored.
+	rsetPost(t, l, l.owner, true, "font", "dyslexic", "word", "0", "view", "focus")
 	rs = l.rsetStored(t, l.owner)
-	if rs.Size != 22 || rs.Font != "dyslexic" || rs.Word || !rs.Follow || rs.View != "focus" {
+	if rs.Size != 22 || rs.Font != "dyslexic" {
 		t.Errorf("merged %+v", rs)
 	}
 	// Plain post: 303 to next when it is a book path, else to /.
 	for next, want := range map[string]string{
-		"/books/abc/read?mode=read": "/books/abc/read?mode=read",
-		"//evil.example":            "/",
-		"/books//evil":              "/",
-		"https://evil.example/":     "/",
-		"/me":                       "/",
-		"":                          "/",
+		"/books/abc/read?ch=2":  "/books/abc/read?ch=2",
+		"//evil.example":        "/",
+		"/books//evil":          "/",
+		"https://evil.example/": "/",
+		"/me":                   "/",
+		"":                      "/",
 	} {
 		code, loc, _ := rsetPost(t, l, l.owner, false, "leading", "airy", "next", next)
 		if code != http.StatusSeeOther || loc != want {
@@ -72,8 +72,7 @@ func TestReaderSettingsRoute(t *testing.T) {
 	}
 	// Invalid values: 400 and nothing changes. htmx gets the toast words.
 	before := l.rsetStored(t, l.owner)
-	for _, kv := range [][]string{{"size", "19"}, {"size", "big"}, {"font", "comic"}, {"hl", "glow"}, {"leading", "x"},
-		{"followStyle", "wild"}, {"view", "tv"}, {"word", "maybe"}, {"theme", "pink"}} {
+	for _, kv := range [][]string{{"size", "19"}, {"size", "big"}, {"font", "comic"}, {"leading", "x"}, {"theme", "pink"}} {
 		code, _, body := rsetPost(t, l, l.owner, true, kv...)
 		if code != http.StatusBadRequest || !strings.Contains(body, readerSettingsInvalid) {
 			t.Errorf("%v: %d %q", kv, code, body)
@@ -101,11 +100,10 @@ func TestReaderSettingsRoute(t *testing.T) {
 
 func TestReaderSettingsPage(t *testing.T) {
 	l := rdrSeed(t)
-	rsetPost(t, l, l.owner, true, "font", "sans", "size", "18", "leading", "airy", "hl", "brighten", "word", "0", "follow", "0", "followStyle", "gentle", "returnAuto", "1", "view", "focus")
+	rsetPost(t, l, l.owner, true, "font", "sans", "size", "18", "leading", "airy")
 	body := l.get(l.owner, l.readPath(""), false).Body.String()
-	for _, want := range []string{`ts-reader--size-18`, `ts-reader--leading-airy`, `ts-reader--sans`, `data-hl="brighten"`, `data-word="off"`,
-		`data-follow="off"`, `data-follow-style="gentle"`, `data-return="on"`, `data-view="focus"`, `href="/books/` + l.book.ID + `/read?mode=readalong&amp;sheet=reading"`,
-		`aria-label="Reading settings"`, `css/pages-reader-settings`} {
+	for _, want := range []string{`ts-reader--size-18`, `ts-reader--leading-airy`, `ts-reader--sans`,
+		`href="/books/` + l.book.ID + `/read?sheet=reading"`, `aria-label="Reading settings"`} {
 		if !strings.Contains(body, want) && !strings.Contains(body, strings.ReplaceAll(want, "&amp;", "&")) {
 			t.Errorf("page misses %q", want)
 		}
@@ -128,14 +126,18 @@ func TestReaderSettingsSheet(t *testing.T) {
 	}
 	body := sheet.Body.String()
 	for _, want := range []string{`role="dialog"`, `Reading settings`, `data-ts-reader-settings`, `hx-post="/me/reader-settings"`, `hx-trigger="change"`,
-		`name="next"`, `<noscript>`, `Underline each word`, `Follow the voice`, `Return automatically`, `Focus line`, `OpenDyslexic`, `Sepia`, `Contrast`,
-		`Your browser shows the sentence only.`, `role="switch"`, `role="radiogroup"`, `value="light" checked`, `id="rs-size-22"`} {
+		`name="next"`, `<noscript>`, `OpenDyslexic`, `Sepia`, `Contrast`, `role="radiogroup"`, `value="light" checked`, `id="rs-size-22"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("sheet misses %q", want)
 		}
 	}
 	if strings.Contains(body, ` style="`) {
 		t.Error("inline style in the sheet")
+	}
+	for _, gone := range []string{`Underline each word`, `Follow the voice`, `Return automatically`, `Focus line`, `role="switch"`, `Highlight</legend>`, `data-ts-no-word`} {
+		if strings.Contains(body, gone) {
+			t.Errorf("sheet still has %q", gone)
+		}
 	}
 	// 26 px joins the sizes only in large text mode.
 	if strings.Contains(body, `id="rs-size-26"`) {
@@ -180,7 +182,7 @@ func TestReaderFontVendored(t *testing.T) {
 	if !strings.Contains(string(ofl), "SIL OPEN FONT LICENSE Version 1.1") {
 		t.Error("the OFL text is not there")
 	}
-	css, err := os.ReadFile("static/css/pages-reader-settings.css")
+	css, err := os.ReadFile("static/css/pages-reader.css")
 	if err != nil {
 		t.Fatal(err)
 	}

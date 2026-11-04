@@ -97,10 +97,6 @@ type sweepEnv struct {
 	// ebookPair names the ready files the pairing rows act on (M5 R2 P2), by verb; unpair has one per
 	// staff person because it uses its file up.
 	ebookPair map[string]string
-	// alignFile names the paired ebooks with an edition the read-along rows act on (M5 R3 P5), by verb and
-	// staff person; alignJob is the job of a running alignment and runtimeJob a waiting word-timing check.
-	alignFile            map[string]string
-	alignJob, runtimeJob string
 	// rdr names what the reader rows act on (M5 R4 P2): the edition and a highlight per verb and staff person.
 	rdr  rdrSweep
 	tree string // a folder for the browse view, with a file name that must never be sent
@@ -240,7 +236,6 @@ func sweepSeed(t *testing.T) *sweepEnv {
 	writeSeed(t, e)
 	uploadSeed(t, e)
 	ebookSeed(t, e)
-	alignSeed(t, e)
 	readerSeed(t, e)
 	e.job = a.adminEnqueueScan(t, l.ID)
 	a.adminSetJobState(t, e.job, "done")
@@ -685,9 +680,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, ebookInboxSweepRows()...)
 	rows = append(rows, devicesSweepRows()...)
 	rows = append(rows, emailSweepRows()...)
-	rows = append(rows, alignSweepRows()...)
 	rows = append(rows, readerSweepRows()...)
-	rows = append(rows, runtimesSweepRows()...)
 	rows = append(rows, backupsSweepRows()...)
 	rows = append(rows, apiSweepRows()...)
 	return append(rows, linksSweepRows()...)

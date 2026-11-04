@@ -3,7 +3,7 @@
 Superseded by [0018](0018-book-reader.md) (2026-11-04).
 
 Date: 2026-10-31. Status: accepted for design by operator brief (2026-10-31); the dependency rows in
-`docs/architecture.md` still need approval one by one. Design: [read-along.md](../read-along.md).
+`docs/architecture.md` still need approval one by one. Design: [reader.md](../reader.md) (was read-along.md).
 
 ## Context
 

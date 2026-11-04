@@ -14,7 +14,7 @@ which would be a second exception to the rule that only `internal/metadata/onlin
 ## Decision
 `internal/align/runtime` starts the worker as a private child and talks to it over the child's own stdin
 and stdout: one request at a time, a JSON header line plus a raw binary body, in both directions
-(protocol `tendshelf-emissions-v1`, `docs/read-along.md` section 2 "Worker"). The worker has no listener, no port
+(protocol `tendshelf-emissions-v1`, `docs/read-along.md` section 2 "Worker" in git history). The worker has no listener, no port
 and no network path (its sockets are disabled as well). The per-launch nonce of decision 0001 stays: it
 travels in the environment, is echoed in the ready line and every response, and binds replies to this launch.
 The worker script is embedded in the binary and written to the data folder before launch, so the protocol

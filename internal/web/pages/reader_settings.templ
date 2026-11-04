@@ -7,10 +7,9 @@ import (
 )
 
 // ReaderLook is how the reader draws itself for one person: the classes and data attributes of the reader
-// root. The values come from users.ReaderSettings (M5 R4 P4); "on" and "off" are the switches.
+// root. The values come from users.ReaderSettings (M5 R4 P4).
 type ReaderLook struct {
-	Class                                         string // extra classes of the reader root
-	Hl, Word, Follow, FollowStyle, Return, View string
+	Class string // extra classes of the reader root
 }
 
 // ReadingSheetView is the "Reading settings" sheet. Choices carry the person's current values.
@@ -20,11 +19,9 @@ type ReadingSheetView struct {
 	Preview                      string
 	Look                         ReaderLook
 	Theme                        string // ui.theme: "" or "system" checks no tile
-	Font, Leading, Hl, Style     string
-	View                         string
+	Font, Leading                string
 	Size                         int
 	Large                        bool // large text mode: 26 joins the sizes
-	Word, Follow, ReturnAuto     bool
 }
 
 type readerChoice struct{ Value, Label string }
@@ -32,9 +29,6 @@ type readerChoice struct{ Value, Label string }
 var (
 	readerLeadingChoices = []readerChoice{{"compact", "Compact"}, {"normal", "Normal"}, {"airy", "Airy"}}
 	readerFontChoices    = []readerChoice{{"serif", "Serif"}, {"sans", "Sans"}, {"dyslexic", "OpenDyslexic"}}
-	readerHlChoices      = []readerChoice{{"wash", "Wash"}, {"underline", "Underline"}, {"brighten", "Brighten"}}
-	readerStyleChoices   = []readerChoice{{"steady", "Steady"}, {"gentle", "Gentle"}}
-	readerViewChoices    = []readerChoice{{"page", "Page"}, {"focus", "Focus line"}}
 )
 
 func readerSizes(large bool) []int {
@@ -55,15 +49,6 @@ templ readerChoices(name, label, cur string, choices []readerChoice) {
 			}
 		</div>
 	</fieldset>
-}
-
-// readerSwitch is a labelled switch. The hidden 0 before the checkbox makes an unchecked switch post false.
-templ readerSwitch(name, label string, on bool) {
-	<div class="ts-switch-row">
-		<label class="ts-switch-row__label" for={ "rs-" + name }>{ label }</label>
-		<input type="hidden" name={ name } value="0"/>
-		<input type="checkbox" role="switch" class="ts-switch" id={ "rs-" + name } name={ name } value="1" checked?={ on }/>
-	</div>
 }
 
 // ReadingSheet is the reading settings over the reader (the house ?sheet= pattern). Every change posts on its own and
@@ -90,8 +75,8 @@ templ ReadingSheet(v ReadingSheetView) {
 			>
 				<input type="hidden" name="_csrf" value={ v.CSRF }/>
 				<input type="hidden" name="next" value={ v.Next }/>
-				<div class={ "ts-readset__preview ts-reader " + v.Look.Class } data-hl={ v.Look.Hl } data-word={ v.Look.Word } aria-hidden="true">
-					<div class="ts-reader__text"><span class="ts-s is-now">{ v.Preview }</span></div>
+				<div class={ "ts-readset__preview ts-reader " + v.Look.Class } aria-hidden="true">
+					<div class="ts-reader__text"><span class="ts-s">{ v.Preview }</span></div>
 				</div>
 				<fieldset class="ts-readset__row" role="radiogroup">
 					<legend class="ts-readset__label">Theme</legend>
@@ -116,13 +101,6 @@ templ ReadingSheet(v ReadingSheetView) {
 				</fieldset>
 				@readerChoices("leading", "Line spacing", v.Leading, readerLeadingChoices)
 				@readerChoices("font", "Font", v.Font, readerFontChoices)
-				@readerChoices("hl", "Highlight", v.Hl, readerHlChoices)
-				@readerSwitch("word", "Underline each word", v.Word)
-				<p class="caption" data-ts-no-word hidden>Your browser shows the sentence only.</p>
-				@readerSwitch("follow", "Follow the voice", v.Follow)
-				@readerChoices("followStyle", "How the page follows", v.Style, readerStyleChoices)
-				@readerSwitch("returnAuto", "Return automatically", v.ReturnAuto)
-				@readerChoices("view", "View", v.View, readerViewChoices)
 				<noscript><button type="submit" class="ts-btn ts-btn--primary ts-btn--block">Save</button></noscript>
 			</form>
 		</div>

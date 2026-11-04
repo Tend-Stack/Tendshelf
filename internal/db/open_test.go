@@ -212,7 +212,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+18 { // +18: book_sidecars, online_cache (0010), file_writes (0011), book_lookups, online_usage (0012), queue_items (0013), uploads, upload_files, upload_paths (0014), ebook_files, editions, edition_chapters (0016), ebook_not_same, text_choices (0017), runtime_components, alignments, alignment_chapters (0018), highlights (0019)
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+15 { // +15: book_sidecars, online_cache (0010), file_writes (0011), book_lookups, online_usage (0012), queue_items (0013), uploads, upload_files, upload_paths (0014), ebook_files, editions, edition_chapters (0016), ebook_not_same, text_choices (0017), highlights (0019); 0018's runtime_components, alignments and alignment_chapters are dropped again by 0020
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -599,6 +599,7 @@ var pinnedMigrations = map[int]string{
 	17: "1c63d80943b163ca0cd7064d605395ece06a1ad8f78cbd5159b2403586c2a536",
 	18: "71e5b383b009e119afd04e716d565b39895e1ba188ea9a7cf04db8acd89850e8",
 	19: "e0784cb5c6840eb99ca9bb035a86e5b96f4c933f9cea6b17f76887f53eecbe6b",
+	20: "1c060688f654fd112fd46a515f25a7db1a29459c1de7728d9d9305b2c1850f9a",
 }
 
 func TestMigrationsImmutable(t *testing.T) {

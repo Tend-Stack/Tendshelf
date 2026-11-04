@@ -46,10 +46,6 @@ progress_json=COALESCE(?, progress_json), lease_until=NULL, updated_at=?` + fenc
 	sqlHold = `UPDATE jobs SET state='held', error_code=?, error_text=?,
 progress_json=COALESCE(?, progress_json), lease_until=NULL, updated_at=?` + fence
 
-	// The handler asked for a person (Error.Hold): held, and the attempt is not spent. args as sqlHold
-	sqlHoldHandler = `UPDATE jobs SET state='held', attempts=attempts-1, error_code=?, error_text=?,
-progress_json=COALESCE(?, progress_json), lease_until=NULL, updated_at=?` + fence
-
 	// args: now
 	sqlExpired = `SELECT id, kind, attempts, max_attempts FROM jobs WHERE state='running' AND lease_until<?`
 

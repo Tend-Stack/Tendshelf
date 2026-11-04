@@ -8,7 +8,6 @@ import (
 	"unicode"
 	"unicode/utf16"
 
-	"github.com/Tend-Stack/tendshelf/internal/align"
 	"github.com/Tend-Stack/tendshelf/internal/ebook"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 )
@@ -159,37 +158,8 @@ func rdrSegments(b ebook.Block, hls []rdrHl, bookmarkSents map[int]bool) []rdrPi
 	return out
 }
 
-// rdrTiming is a chapter's timing file with its sentence ids indexed. The zero value knows nothing.
-type rdrTiming struct {
-	t   *align.Timing
-	idx map[string]int
-}
-
-func rdrTimingOf(t *align.Timing) rdrTiming {
-	rt := rdrTiming{t: t}
-	if t == nil {
-		return rt
-	}
-	rt.idx = make(map[string]int, len(t.SID))
-	for i, sid := range t.SID {
-		rt.idx[sid] = i
-	}
-	return rt
-}
-
-// timed returns the timing index of a sentence, or -1 when it has none (a gap, an absent id, no timing).
-func (rt rdrTiming) timed(sid string) int {
-	i, ok := rt.idx[sid]
-	if !ok || rt.t.Gap[i] != nil || rt.t.SS[i] < 0 {
-		return -1
-	}
-	return i
-}
-
 // rdrBlockOpts is what writing one block needs besides the block.
 type rdrBlockOpts struct {
-	Timing    rdrTiming
-	Aligned   bool // the chapter has a timing file: sentences without an entry are gaps
 	DropCap   bool // wrap the first letter of the first sentence
 	Hls       []progress.Highlight
 	Bookmarks map[string]bool // sentence ids that carry a bookmark
@@ -212,16 +182,7 @@ func rdrInner(b ebook.Block, o rdrBlockOpts) string {
 	for _, p := range rdrSegments(b, rdrHlsFor(b, n, o.Hls), bms) {
 		if p.OpenSent {
 			sid := ebook.SentenceID(b.ID, p.Sent)
-			ti := o.Timing.timed(sid)
-			sb.WriteString(`<span class="ts-s`)
-			if o.Aligned && ti < 0 {
-				sb.WriteString(` ts-s--gap`)
-			}
-			sb.WriteString(`" id="s-` + html.EscapeString(sid) + `" data-sid="` + html.EscapeString(sid) + `" data-o="` + strconv.Itoa(p.Start) + `"`)
-			if o.Aligned && ti >= 0 {
-				sb.WriteString(` data-s="` + strconv.Itoa(ti) + `"`)
-			}
-			sb.WriteString(`>`)
+			sb.WriteString(`<span class="ts-s" id="s-` + html.EscapeString(sid) + `" data-sid="` + html.EscapeString(sid) + `" data-o="` + strconv.Itoa(p.Start) + `">`)
 		}
 		for _, s := range p.Styles {
 			sb.WriteString("<" + s + ">")

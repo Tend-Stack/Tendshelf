@@ -1,28 +1,16 @@
 package web
 
-// The words of the read-along reader (M5 R4 P2). The ones the copy deck gives are used exactly; the ones it
+// The words of the book reader. The ones the copy deck gives are used exactly; the ones it
 // does not are marked NEW and follow the voice rules in BRAND.md. Every string a person reads comes from here.
 
 const (
 	// From the deck.
 	readerClose        = "Close reader"
-	readerModesLabel   = "How to follow this book"
-	readerModeListen   = "Listen"
-	readerModeAlong    = "Read along"
-	readerModeRead     = "Read"
-	readerBackVoice    = "Back to the voice"
-	readerListenHere   = "Listen from here"
-	readerPartial      = "Read along works up to chapter %d for now"
-	readerContinueFrom = "Continue listening from %s"
 	readerChapter      = "Chapter %d"
 	readerFrontOnly    = "text only, not narrated"
 	readerMarksTitle   = "Highlights and notes"
-	readerMarksLead    = "One set for this book, whether you were listening or reading. Each one opens at the same moment in both."
-	readerLeftInCh     = "%s left in chapter"
+	readerMarksLead    = "Your highlights, notes and bookmarks in this book."
 	readerPageOf       = "p. %d of %d"
-	readerSpeedLabel   = "Playback speed, %s times"
-	readerBackSentence = "Back one sentence"
-	readerFwdSentence  = "Forward one sentence"
 	readerNoteLabel    = "Your note"
 	readerHighlighted  = "Highlighted."
 	readerHlRemoved    = "Highlight removed."
@@ -32,18 +20,13 @@ const (
 	readerHighlight    = "Highlight"
 	readerNote         = "Note"
 	readerCopy         = "Copy"
-	readerEyesFree     = "Eyes-free"
 	readerNoteSaved    = "Note saved."
 	readerBookmarked   = "Bookmarked."
 
 	// NEW (not in the deck).
-	readerPlay        = "Play"
-	readerPlayLabel   = "Play or pause"
 	readerContents    = "Contents and notes"
 	readerSettings    = "Reading settings"
 	readerBookmarkLbl = "Bookmark"
-	readerExitFocus   = "Exit focus line"
-	readerFocusHint   = "Next sentence: swipe up or press the arrow key"
 	readerNextChapter = "Next chapter"
 	readerTocTitle    = "Contents"
 	readerCloseSheet  = "Close"
@@ -54,7 +37,6 @@ const (
 	readerKindHl      = "Highlight"
 	readerKindNote    = "Highlight with a note"
 	readerKindBm      = "Bookmark"
-	readerPlayAt      = "Play at %s"
 	readerOpenPage    = "Open p. %d"
 	readerDelete      = "Delete"
 	readerSaveNote    = "Save note"
@@ -63,8 +45,5 @@ const (
 	readerMarksCount  = "%d marked"
 	readerHlBad       = "That highlight could not be saved."
 	readerNoteLong    = "That note is too long."
-	readerTextBook    = "Text of %s"
-	readerChoosePage  = "Reading mode"
 	readerRead        = "Read"
-	readerReadAlong   = "Read along"
 )

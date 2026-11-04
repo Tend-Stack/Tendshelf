@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 
-	"github.com/Tend-Stack/tendshelf/internal/align"
 	"github.com/Tend-Stack/tendshelf/internal/ebook"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 )
@@ -20,8 +18,7 @@ type rdrSweep struct {
 	patch, hl [2]string
 }
 
-// readerSeed gives the sweep app a ready edition with a one-chapter synthetic document, a finished alignment
-// with its timing file, and highlights for the owner and the admin.
+// readerSeed gives the sweep app a ready edition with a one-chapter synthetic document and highlights for the owner and the admin.
 func readerSeed(t *testing.T, e *sweepEnv) {
 	t.Helper()
 	a := e.a
@@ -48,21 +45,6 @@ func readerSeed(t *testing.T, e *sweepEnv) {
 VALUES (?, ?, ?, ?, ?, 5, 'epub', 'en', 1, 4, 24, 1)`, e.rdr.ed, id, fsha, ebook.Recipe, sha); err != nil {
 		t.Fatal(err)
 	}
-	key := strings.Repeat("ef", 32)
-	tm := &align.Timing{V: align.TimingV, Chapter: 1, SID: []string{"c1.p1.s0", "c1.p1.s1"}, SS: []int64{0, 2000}, SE: []int64{1900, 3900},
-		SC: []float64{1, 1}, Gap: []*string{nil, nil}, WS: []int{0, 0, 1, 1}, WO0: []int{0, 6, 12, 18}, WO1: []int{5, 10, 17, 23},
-		W0: []int64{0, 1000, 2000, 3000}, W1: []int64{900, 1900, 2900, 3900}, WM: []int{0, 0, 0, 0}}
-	if err := align.WriteTiming(a.dir+"/align", key, tm); err != nil {
-		t.Fatal(err)
-	}
-	if err := a.srv.align.Store().Insert(ctx, align.Alignment{ID: "al_rdrsweep", EditionID: e.rdr.ed, BookID: e.book.ID, AudioKey: strings.Repeat("cd", 32),
-		DocSHA256: sha, State: align.StateDone, FinishedAt: 5, SentencesTotal: 2, SentencesTimed: 2}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := a.st.Writer().ExecContext(ctx, `INSERT INTO alignment_chapters(alignment_id, chapter_idx, state, chapter_key, start_ms, end_ms, sentences_total, sentences_timed, updated_at)
-VALUES ('al_rdrsweep', 1, 'aligned', ?, 0, 3900, 2, 2, 1)`, key); err != nil {
-		t.Fatal(err)
-	}
 	for person := 0; person < 2; person++ {
 		for _, dst := range []*[2]string{&e.rdr.patch, &e.rdr.hl} {
 			h, _, err := a.srv.progress.AddHighlight(ctx, progress.Highlight{UserID: e.uid[person], BookID: e.book.ID, EditionID: e.rdr.ed, Chapter: 1,
@@ -75,7 +57,7 @@ VALUES ('al_rdrsweep', 1, 'aligned', ?, 0, 3900, 2, 2, 1)`, key); err != nil {
 	}
 }
 
-// readerSweepRows are the rows of the reader (M5 R4 P2). Reading needs share.ReadText, which the sweep's member
+// readerSweepRows are the rows of the reader . Reading needs share.ReadText, which the sweep's member
 // and guest lack (TestRouteMatrixReaderGranted gives them can_read); highlights are the caller's own.
 func readerSweepRows() []sweepRow {
 	staff := sweepStaff(http.StatusOK, http.StatusNotFound)
@@ -83,9 +65,6 @@ func readerSweepRows() []sweepRow {
 	page := sweepGet("GET /books/{id}/read", func(e *sweepEnv, _ int) string { return "/books/" + e.book.ID + "/read" + q(e) }, staff)
 	chapter := sweepGet("GET /hx/books/{id}/read/chapters/{idx}", func(e *sweepEnv, _ int) string {
 		return "/hx/books/" + e.book.ID + "/read/chapters/1" + q(e)
-	}, staff)
-	timing := sweepGet("GET /books/{id}/read/timing/{idx}", func(e *sweepEnv, _ int) string {
-		return "/books/" + e.book.ID + "/read/timing/1" + q(e)
 	}, staff)
 	create := sweepPost("POST /hx/books/{id}/highlights", func(e *sweepEnv, _ int) string { return "/hx/books/" + e.book.ID + "/highlights" },
 		func(e *sweepEnv, _ int) url.Values {
@@ -97,7 +76,7 @@ func readerSweepRows() []sweepRow {
 	del := sweepRow{Pattern: "DELETE /hx/highlights/{id}", Method: http.MethodDelete, Want: staff, HX: true,
 		Path: func(e *sweepEnv, role int) string { return "/hx/highlights/" + e.rdr.hl[min(role, 1)] }}
 	create.HX = true
-	return []sweepRow{page, chapter, timing, create, patch, del}
+	return []sweepRow{page, chapter, create, patch, del}
 }
 
 // TestRouteMatrixReaderGranted: a member and a guest with can_read reach the reader pages; with a grant that

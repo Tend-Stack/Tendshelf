@@ -1,24 +1,20 @@
 package web
 
 import (
-	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"unicode/utf8"
 
 	"github.com/a-h/templ"
 
-	"github.com/Tend-Stack/tendshelf/internal/align"
 	"github.com/Tend-Stack/tendshelf/internal/ebook"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
@@ -26,17 +22,14 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
-	"github.com/Tend-Stack/tendshelf/internal/web/static"
 )
 
-// The read-along reader (M5 R4 P2): the page, one chapter at a time as a fragment, the chapter's timing file, and
-// the person's highlights. Every route answers 404 unless share.Can(user, ReadText, book); a share-link visitor
+// The reader: the page, one chapter at a time as a fragment, and the person's highlights. Every route answers 404 unless share.Can(user, ReadText, book); a share-link visitor
 // has no session user, so share.Can refuses them. Highlights are the signed-in person's own.
 
 func (s *server) registerReader(mux *http.ServeMux) {
 	mux.HandleFunc("GET /books/{id}/read", s.getReader)
 	mux.HandleFunc("GET /hx/books/{id}/read/chapters/{idx}", s.getReaderChapter)
-	mux.HandleFunc("GET /books/{id}/read/timing/{idx}", s.getReaderTiming)
 	mux.HandleFunc("POST /hx/books/{id}/highlights", s.postReaderHighlight)
 	mux.HandleFunc("PATCH /hx/highlights/{id}", s.patchReaderHighlight)
 	mux.HandleFunc("DELETE /hx/highlights/{id}", s.deleteReaderHighlight)
@@ -73,20 +66,14 @@ func (c *readerDocCache) get(dir, sha string) (*ebook.Doc, error) {
 	return d, nil
 }
 
-// readerCtx is what every reader route works on: the book, the edition shown, its document and its alignment.
+// readerCtx is what every reader route works on: the book, the edition shown and its document.
 type readerCtx struct {
 	book     library.Book
 	file     ebook.File
 	ed       ebook.Edition
 	doc      *ebook.Doc
-	al       align.Alignment
-	hasAl    bool
-	rows     map[int]align.ChapterRow
-	listen   bool
 	explicit bool // the address named the edition
 }
-
-func (rc readerCtx) alongOK() bool { return rc.hasAl && rc.listen }
 
 // href is a reader address with the edition (when the address named it) and the given query pairs.
 func (rc readerCtx) href(kv ...string) string {
@@ -106,10 +93,8 @@ func (rc readerCtx) href(kv ...string) string {
 	return u
 }
 
-// edq is the edition query every fragment and timing address carries.
+// edq is the edition query every fragment address carries.
 func (rc readerCtx) edq() string { return "edition=" + url.QueryEscape(rc.ed.ID) }
-
-func (s *server) readerAlignDir() string { return filepath.Join(s.dataDir, "align") }
 
 // readerCtx is the gate: the book is visible and readable, the edition is one of its ready ones, and the
 // document opens. Anything else has answered 404.
@@ -173,23 +158,6 @@ func (s *server) readerLoad(ctx context.Context, u users.User, book library.Book
 		return rc, false, err
 	}
 	rc.doc = doc
-	if s.align != nil {
-		al, has, err := s.align.Store().Latest(ctx, rc.ed.ID)
-		if err != nil {
-			return rc, false, err
-		}
-		if has {
-			rows, err := s.align.Store().Chapters(ctx, al.ID)
-			if err != nil {
-				return rc, false, err
-			}
-			rc.al, rc.hasAl, rc.rows = al, true, make(map[int]align.ChapterRow, len(rows))
-			for _, row := range rows {
-				rc.rows[row.Idx] = row
-			}
-		}
-	}
-	rc.listen = s.can.Can(ctx, u, share.ListenBook, share.Target{Kind: share.TargetBook, ID: book.ID, LibraryID: book.LibraryID})
 	return rc, true, nil
 }
 
@@ -197,24 +165,12 @@ func (s *server) readerLoad(ctx context.Context, u users.User, book library.Book
 type rdrChap struct {
 	view   pages.ReaderChapterView
 	blocks map[string]pages.ReaderBlockView
-	timing rdrTiming
 }
 
 // readerChapter builds chapter idx (1-based) for the person: its blocks with their sentences, highlights and flags.
-func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, idx int, mode string) (rdrChap, error) {
+func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, idx int) (rdrChap, error) {
 	ch := rc.doc.Chapters[idx-1]
 	out := rdrChap{blocks: map[string]pages.ReaderBlockView{}}
-	row := rc.rows[idx]
-	aligned := rc.hasAl && row.State == align.ChapterAligned && row.ChapterKey != "" && row.StartMS != nil && row.EndMS != nil
-	if aligned {
-		t, err := align.ReadTiming(s.readerAlignDir(), row.ChapterKey)
-		if err != nil {
-			slog.Error("reader timing", "key", row.ChapterKey, "err", err)
-			aligned = false
-		} else {
-			out.timing = rdrTimingOf(t)
-		}
-	}
 	hls, err := s.progress.ChapterHighlights(ctx, u.ID, rc.ed.ID, idx)
 	if err != nil {
 		return out, err
@@ -225,15 +181,8 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 	}
 	bms := map[string]bool{}
 	for _, b := range list {
-		switch {
-		case b.SID != "":
-			if c, _, _, ok := ebook.ParseSID(b.SID); ok && c == idx && b.EditionID == rc.ed.ID {
-				bms[b.SID] = true
-			}
-		case aligned:
-			if sid := rdrSIDAt(out.timing.t, b.PositionMs); sid != "" {
-				bms[sid] = true
-			}
+		if c, _, _, ok := ebook.ParseSID(b.SID); ok && c == idx && b.EditionID == rc.ed.ID {
+			bms[b.SID] = true
 		}
 	}
 	// Characters before this chapter, for the page numbers.
@@ -247,11 +196,7 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 			total += n
 		}
 	}
-	v := pages.ReaderChapterView{Idx: idx, Start: -1, End: -1, Title: ch.Title}
-	if aligned {
-		v.Start, v.End = *row.StartMS, *row.EndMS
-		v.TimingHref = fmt.Sprintf("/books/%s/read/timing/%d?%s", rc.book.ID, idx, rc.edq())
-	}
+	v := pages.ReaderChapterView{Idx: idx, Title: ch.Title}
 	cum, dropDone := before, false
 	for _, b := range ch.Blocks {
 		pg := 0
@@ -264,7 +209,7 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 		}
 		bv := pages.ReaderBlockView{Kind: b.Kind, ID: "b-" + b.ID, Pg: pg}
 		if b.Kind != ebook.KindHR {
-			opts := rdrBlockOpts{Timing: out.timing, Aligned: aligned, Hls: hls, Bookmarks: bms}
+			opts := rdrBlockOpts{Hls: hls, Bookmarks: bms}
 			if b.Kind == ebook.KindP && !dropDone {
 				opts.DropCap, dropDone = true, true
 			}
@@ -291,44 +236,12 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 		v.Page = fmt.Sprintf(readerPageOf, v.Pg, rc.doc.PageCount)
 	}
 	if idx < len(rc.doc.Chapters) {
-		v.NextFrag = fmt.Sprintf("/hx/books/%s/read/chapters/%d?%s&mode=%s", rc.book.ID, idx+1, rc.edq(), url.QueryEscape(mode))
-		v.NextHref = rc.href("ch", strconv.Itoa(idx+1), "mode", mode)
+		v.NextFrag = fmt.Sprintf("/hx/books/%s/read/chapters/%d?%s", rc.book.ID, idx+1, rc.edq())
+		v.NextHref = rc.href("ch", strconv.Itoa(idx+1))
 		v.NextLabel = readerNextChapter
 	}
 	out.view = v
 	return out, nil
-}
-
-// rdrSIDAt is the sentence of the timing file being spoken at ms, or "".
-func rdrSIDAt(t *align.Timing, ms int64) string {
-	if t == nil {
-		return ""
-	}
-	for i := range t.SID {
-		if t.Gap[i] == nil && t.SS[i] >= 0 && t.SS[i] <= ms && ms < t.SE[i] {
-			return t.SID[i]
-		}
-	}
-	return ""
-}
-
-// readerMode reads ?mode=; ok is false for a value that is not a mode.
-func readerMode(rc readerCtx, q url.Values) (string, bool) {
-	switch m := q.Get("mode"); m {
-	case "":
-		if rc.alongOK() {
-			return "readalong", true
-		}
-		return "read", true
-	case "readalong":
-		if !rc.alongOK() {
-			return "read", true
-		}
-		return m, true
-	case "read":
-		return m, true
-	}
-	return "", false
 }
 
 func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
@@ -337,11 +250,6 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, u, q := r.Context(), currentUser(r), r.URL.Query()
-	mode, ok := readerMode(rc, q)
-	if !ok {
-		s.notFound(w, r)
-		return
-	}
 	n := len(rc.doc.Chapters)
 	ch := 0
 	if q.Has("ch") {
@@ -367,19 +275,6 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	prog, err := s.playProgress(ctx, u.ID, rc.book.ID)
-	if err != nil {
-		s.serverError(w, r, "reader progress", err)
-		return
-	}
-	if ch == 0 && prog != nil {
-		for i := 1; i <= n && ch == 0; i++ {
-			row := rc.rows[i]
-			if row.State == align.ChapterAligned && row.StartMS != nil && row.EndMS != nil && prog.PositionMs >= *row.StartMS && prog.PositionMs < *row.EndMS {
-				ch = i
-			}
-		}
-	}
 	if ch == 0 {
 		ch = 1
 		for i, c := range rc.doc.Chapters {
@@ -389,12 +284,12 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	chap, err := s.readerChapter(ctx, u, rc, ch, mode)
+	chap, err := s.readerChapter(ctx, u, rc, ch)
 	if err != nil {
 		s.serverError(w, r, "reader chapter", err)
 		return
 	}
-	v, err := s.readerView(r, rc, mode, chap, prog)
+	v, err := s.readerView(r, rc, chap)
 	if err != nil {
 		s.serverError(w, r, "reader view", err)
 		return
@@ -403,7 +298,7 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 	switch sheet {
 	case "":
 	case "reading":
-		sv, err := s.readingSheet(r, rc, mode, ch)
+		sv, err := s.readingSheet(r, rc, ch)
 		if err != nil {
 			s.serverError(w, r, "reading settings sheet", err)
 			return
@@ -441,89 +336,29 @@ func rdrSIDExists(d *ebook.Doc, sid string) (int, bool) {
 }
 
 // readerView assembles the page around a chapter.
-func (s *server) readerView(r *http.Request, rc readerCtx, mode string, chap rdrChap, prog *progress.Progress) (pages.ReaderView, error) {
+func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap) (pages.ReaderView, error) {
 	ctx, u := r.Context(), currentUser(r)
 	id := rc.book.ID
 	v := pages.ReaderView{
-		Title: rc.book.Title, BookID: id, EditionID: rc.ed.ID, Mode: mode,
-		CloseHref: "/books/" + id, CloseLabel: readerClose, ModesLabel: readerModesLabel,
-		Chapter: chap.view, Module: s.assetOr("js/readalong.js"), MarksModule: s.assetOr("js/reader-marks.js"),
-		MsgLeft: "{n} min left in chapter", MsgPage: "p. {n} of {total}",
-		Voice: readerBackVoice, ExitFocus: readerExitFocus, FocusHint: readerFocusHint,
-		FocusBack: readerBackSentence, FocusFwd: readerFwdSentence,
-	}
-	if rc.listen {
-		v.Modes = append(v.Modes, pages.ReaderModeLink{Label: readerModeListen, Href: "/books/" + id})
-	}
-	if rc.alongOK() {
-		v.Modes = append(v.Modes, pages.ReaderModeLink{Label: readerModeAlong, Href: rc.href("mode", "readalong"), Current: mode == "readalong"})
-	}
-	v.Modes = append(v.Modes, pages.ReaderModeLink{Label: readerModeRead, Href: rc.href("mode", "read"), Current: mode == "read"})
-	var spans []string
-	for i := range rc.doc.Chapters {
-		row := rc.rows[i+1]
-		if row.State == align.ChapterAligned && row.StartMS != nil && row.EndMS != nil {
-			spans = append(spans, fmt.Sprintf("%d,%d", *row.StartMS, *row.EndMS))
-		} else {
-			spans = append(spans, "-1,-1")
-		}
-	}
-	v.Chapters = strings.Join(spans, ";")
-	if rc.hasAl && rc.al.State == align.StatePartial {
-		last := 0
-		for idx, row := range rc.rows {
-			if row.State == align.ChapterAligned && idx > last {
-				last = idx
-			}
-		}
-		if last > 0 {
-			v.Banner = fmt.Sprintf(readerPartial, last)
-		}
-	}
-	speed := "1"
-	if set, err := s.users.LoadSettings(ctx, u.ID); err == nil {
-		speed = strconv.FormatFloat(set.Speed, 'f', -1, 64)
+		Title: rc.book.Title, BookID: id, EditionID: rc.ed.ID,
+		CloseHref: "/books/" + id, CloseLabel: readerClose,
+		Chapter: chap.view, MarksModule: s.assetOr("js/reader-marks.js"),
 	}
 	rs, err := s.users.LoadReader(ctx, u.ID)
 	if err != nil {
 		return v, err
 	}
 	v.Look = readerLook(rs)
-	v.SettingsLabel, v.SettingsHref = readerSettings, rc.href("mode", mode, "sheet", "reading")
-	v.SettingsModule, v.SettingsAction, v.SettingsCSRF = s.assetOr("js/reader-settings.js"), readerSettingsRoute, s.csrf.TokenFrom(ctx)
-	v.Dock = pages.ReaderDock{
-		SpeedText: speed + "×", SpeedLabel: fmt.Sprintf(readerSpeedLabel, speed),
-		BackLabel: readerBackSentence, FwdLabel: readerFwdSentence,
-		ContentsLabel: readerContents, ContentsHref: rc.href("mode", mode, "sheet", "contents"),
-		PageLine: chap.view.Page,
-	}
-	var link *playLink
-	if rc.listen {
-		var err error
-		if link, err = s.playLinkFor(ctx, u, rc.book, prog); err != nil {
-			return v, err
-		}
-	}
-	if link != nil {
-		v.Dock.Play = link.button(readerPlayLabel, true)
-		if prog != nil && prog.PositionMs > 0 {
-			rl := *link
-			rl.Label = fmt.Sprintf(readerContinueFrom, clockText(prog.PositionMs))
-			v.Dock.ReadPlay = rl.button("", false)
-		} else {
-			v.Dock.ReadPlay = link.button("", false)
-		}
-		if mode == "readalong" {
-			v.EyesFree = &pages.ReaderEyesFree{Label: readerEyesFree, Src: s.assets.URL("js/eyes-free.js"), CSS: s.assets.URL("css/pages-eyes-free.css")}
-		}
-	}
+	v.SettingsLabel, v.SettingsHref = readerSettings, rc.href("sheet", "reading")
+	v.SettingsModule = s.assetOr("js/reader-settings.js")
+	v.Footer = pages.ReaderFooter{PageLine: chap.view.Page, ContentsLabel: readerContents, ContentsHref: rc.href("sheet", "contents")}
 	hls, err := s.progress.Highlights(ctx, u.ID, rc.book.ID)
 	if err != nil {
 		return v, err
 	}
 	v.Marks = pages.ReaderMarksBar{
-		Label: readerSelLabel, Highlight: readerHighlight, Note: readerNote, Listen: readerListenHere, Copy: readerCopy,
-		Action: "/hx/books/" + id + "/highlights", CSRF: s.csrf.TokenFrom(ctx), Listenable: rc.alongOK(),
+		Label: readerSelLabel, Highlight: readerHighlight, Note: readerNote, Copy: readerCopy,
+		Action: "/hx/books/" + id + "/highlights", CSRF: s.csrf.TokenFrom(ctx),
 		Count: fmt.Sprintf(readerMarksCount, len(hls)),
 	}
 	return v, nil
@@ -532,14 +367,13 @@ func (s *server) readerView(r *http.Request, rc readerCtx, mode string, chap rdr
 // readerSheet builds the contents or the marks panel.
 func (s *server) readerSheet(r *http.Request, rc readerCtx, kind string, cur int) (pages.ReaderSheetView, error) {
 	ctx, u, q := r.Context(), currentUser(r), r.URL.Query()
-	mode, _ := readerMode(rc, q)
 	sv := pages.ReaderSheetView{Kind: kind, CloseLabel: readerCloseSheet, BookID: rc.book.ID,
-		CloseHref: rc.href("mode", mode, "ch", strconv.Itoa(cur))}
+		CloseHref: rc.href("ch", strconv.Itoa(cur))}
 	if kind == "contents" {
 		sv.Title = readerTocTitle
 		n := 0
 		for i, c := range rc.doc.Chapters {
-			it := pages.ReaderContentsItem{Title: c.Title, Current: i+1 == cur, Href: rc.href("mode", mode, "ch", strconv.Itoa(i+1))}
+			it := pages.ReaderContentsItem{Title: c.Title, Current: i+1 == cur, Href: rc.href("ch", strconv.Itoa(i+1))}
 			if c.Front {
 				it.Note = readerFrontOnly
 			} else {
@@ -569,8 +403,7 @@ func (s *server) readerSheet(r *http.Request, rc readerCtx, kind string, cur int
 		}
 	}
 	for _, b := range bms {
-		it := pages.ReaderMarkItem{ID: b.ID, BookID: rc.book.ID, Kind: readerKindBm, Note: b.Note, HasTime: true, StartMs: b.PositionMs,
-			PlayLabel: fmt.Sprintf(readerPlayAt, clockText(b.PositionMs))}
+		it := pages.ReaderMarkItem{ID: b.ID, BookID: rc.book.ID, Kind: readerKindBm, Note: b.Note}
 		if c, _, _, ok := ebook.ParseSID(b.SID); ok && b.EditionID == rc.ed.ID {
 			it.OpenHref = rc.href("ch", strconv.Itoa(c), "at", b.SID) + "#s-" + b.SID
 			it.OpenLabel = fmt.Sprintf(readerOpenPage, c)
@@ -591,7 +424,7 @@ func (s *server) readerSheet(r *http.Request, rc readerCtx, kind string, cur int
 	}
 	filter := func(key, label string, n int) pages.ReaderFilter {
 		return pages.ReaderFilter{Label: label, Count: n, Current: show == key,
-			Href: rc.href("mode", mode, "ch", strconv.Itoa(cur), "sheet", "marks", "show", key)}
+			Href: rc.href("ch", strconv.Itoa(cur), "sheet", "marks", "show", key)}
 	}
 	sv.Filters = []pages.ReaderFilter{
 		filter("all", readerShowAll, len(hlItems)+len(bmItems)), filter("highlights", readerShowHl, len(hlItems)),
@@ -609,10 +442,6 @@ func (s *server) readerMarkItem(rc readerCtx, h progress.Highlight, csrf string)
 	if h.Note != "" {
 		it.Kind = readerKindNote
 	}
-	if h.StartMs != nil && h.EndMs != nil {
-		it.HasTime, it.StartMs, it.EndMs = true, *h.StartMs, *h.EndMs
-		it.PlayLabel = fmt.Sprintf(readerPlayAt, clockText(*h.StartMs))
-	}
 	if h.EditionID == rc.ed.ID {
 		it.OpenHref = rc.href("ch", strconv.Itoa(h.Chapter), "at", h.StartSID) + "#s-" + h.StartSID
 		it.OpenLabel = fmt.Sprintf(readerOpenPage, h.Chapter)
@@ -625,66 +454,17 @@ func (s *server) getReaderChapter(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	mode, ok := readerMode(rc, r.URL.Query())
 	idx, err := strconv.Atoi(r.PathValue("idx"))
-	if !ok || err != nil || idx < 1 || idx > len(rc.doc.Chapters) {
+	if err != nil || idx < 1 || idx > len(rc.doc.Chapters) {
 		s.notFound(w, r)
 		return
 	}
-	chap, err := s.readerChapter(r.Context(), currentUser(r), rc, idx, mode)
+	chap, err := s.readerChapter(r.Context(), currentUser(r), rc, idx)
 	if err != nil {
 		s.serverError(w, r, "reader chapter fragment", err)
 		return
 	}
 	s.fragment(w, r, http.StatusOK, pages.ReaderChapter(chap.view))
-}
-
-// maxTimingPlain bounds what the plain (no gzip) answer inflates.
-const maxTimingPlain = 64 << 20
-
-func (s *server) getReaderTiming(w http.ResponseWriter, r *http.Request) {
-	rc, ok := s.readerCtx(w, r)
-	if !ok {
-		return
-	}
-	idx, err := strconv.Atoi(r.PathValue("idx"))
-	row, has := rc.rows[idx]
-	if err != nil || !has || row.State != align.ChapterAligned || row.ChapterKey == "" {
-		s.notFound(w, r)
-		return
-	}
-	f, err := align.OpenTiming(s.readerAlignDir(), row.ChapterKey)
-	if errors.Is(err, fs.ErrNotExist) {
-		s.notFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "reader timing", err)
-		return
-	}
-	defer f.Close()
-	etag := `"` + row.ChapterKey + `"`
-	h := w.Header()
-	h.Set("Content-Type", "application/json")
-	h.Set("ETag", etag)
-	h.Set("Cache-Control", "private, no-cache")
-	h.Set("Vary", "Accept-Encoding")
-	if static.MatchesETag(r.Header.Get("If-None-Match"), etag) {
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
-	if static.AcceptsGzip(r.Header.Get("Accept-Encoding")) {
-		h.Set("Content-Encoding", "gzip")
-		_, _ = io.Copy(w, f)
-		return
-	}
-	zr, err := gzip.NewReader(f)
-	if err != nil {
-		s.serverError(w, r, "reader timing gzip", err)
-		return
-	}
-	defer zr.Close()
-	_, _ = io.Copy(w, io.LimitReader(zr, maxTimingPlain))
 }
 
 // readerHx refuses a request that did not come from htmx: the highlight routes have no plain form.
@@ -728,12 +508,6 @@ func (s *server) postReaderHighlight(w http.ResponseWriter, r *http.Request) {
 	h := progress.Highlight{UserID: u.ID, BookID: rc.book.ID, EditionID: rc.ed.ID, StartSID: startSID, EndSID: endSID,
 		StartOff: so, EndOff: eo, Chapter: sc, Quote: q.Quote, Prefix: q.Prefix, Suffix: q.Suffix,
 		Colour: r.PostFormValue("colour"), Note: r.PostFormValue("note"), ClientID: r.PostFormValue("client_id")}
-	if row := rc.rows[sc]; rc.hasAl && row.State == align.ChapterAligned && row.ChapterKey != "" {
-		if t, err := align.ReadTiming(s.readerAlignDir(), row.ChapterKey); err == nil {
-			h.AlignmentID = rc.al.ID
-			h.StartMs, h.EndMs = rdrTimes(t, startSID, so, endSID, eo)
-		}
-	}
 	saved, _, err := s.progress.AddHighlight(ctx, h)
 	var invalid *progress.InvalidError
 	switch {
@@ -771,7 +545,7 @@ func (s *server) readerOOB(r *http.Request, rc readerCtx, h progress.Highlight) 
 	ctx, u := r.Context(), currentUser(r)
 	var parts []templ.Component
 	if rc.doc != nil && h.EditionID == rc.ed.ID && h.Chapter >= 1 && h.Chapter <= len(rc.doc.Chapters) {
-		chap, err := s.readerChapter(ctx, u, rc, h.Chapter, "read")
+		chap, err := s.readerChapter(ctx, u, rc, h.Chapter)
 		if err != nil {
 			return nil, err
 		}

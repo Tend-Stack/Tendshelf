@@ -47,8 +47,6 @@ type ProfileView struct {
 	Email bool
 	// Backups is the "Backups" row ("Last backup 3 hours ago · 1.2 MB" or "No backup yet"), owner only.
 	Backups string
-	// Runtimes shows the "Word timing" row of "Your server", for the owner only.
-	Runtimes bool
 	// Shelves is the "Your shelves" row ("3 shelves"), empty for people who may not use shelves.
 	Shelves string
 	// NoPassword is true for an account made from an invite that never added a password: Profile
@@ -116,7 +114,7 @@ func Profile(v ProfileView) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(v.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 62, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 60, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -169,7 +167,7 @@ func Profile(v ProfileView) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(v.Role)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 64, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 62, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -187,7 +185,7 @@ func Profile(v ProfileView) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(v.ServerName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 66, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 64, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -218,7 +216,7 @@ func Profile(v ProfileView) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(v.Banner)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 74, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 72, Col: 14}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -249,7 +247,7 @@ func Profile(v ProfileView) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(v.Shelves)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 85, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 83, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -327,7 +325,7 @@ func Profile(v ProfileView) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(d.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 117, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 115, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -340,7 +338,7 @@ func Profile(v ProfileView) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(d.Meta)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 118, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 116, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -358,7 +356,7 @@ func Profile(v ProfileView) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.URL(d.Action)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 121, Col: 54}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 119, Col: 54}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 				if templ_7745c5c3_Err != nil {
@@ -371,7 +369,7 @@ func Profile(v ProfileView) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.CSRF).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 122, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 120, Col: 55}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 				if templ_7745c5c3_Err != nil {
@@ -384,7 +382,7 @@ func Profile(v ProfileView) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templruntime.NewAttributeExpression("Sign out " + d.Title).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 123, Col: 92}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 121, Col: 92}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 				if templ_7745c5c3_Err != nil {
@@ -408,7 +406,7 @@ func Profile(v ProfileView) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.CSRF).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 130, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 128, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
@@ -423,7 +421,7 @@ func Profile(v ProfileView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if v.Libraries != "" || v.UsersRow != "" || v.Email || v.Backups != "" || v.Runtimes {
+		if v.Libraries != "" || v.UsersRow != "" || v.Email || v.Backups != "" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<section aria-labelledby=\"pf-srv\" class=\"ts-me__section ts-group ts-me__hub\"><h2 id=\"pf-srv\" class=\"ts-overline\">Your server</h2>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -436,7 +434,7 @@ func Profile(v ProfileView) templ.Component {
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(v.UsersRow)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 142, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 140, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
@@ -463,7 +461,7 @@ func Profile(v ProfileView) templ.Component {
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(v.Libraries)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 151, Col: 54}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 149, Col: 54}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 				if templ_7745c5c3_Err != nil {
@@ -504,7 +502,7 @@ func Profile(v ProfileView) templ.Component {
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(v.Backups)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 169, Col: 52}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 167, Col: 52}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 				if templ_7745c5c3_Err != nil {
@@ -518,57 +516,43 @@ func Profile(v ProfileView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</a> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			if v.Runtimes {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<a class=\"ts-me__row\" href=\"/admin/runtimes\"><span class=\"ts-me__rowtext\"><span class=\"body ts-me__rowtitle\">Word timing</span> <span class=\"caption ts-me__lead\">Set up read-along</span></span>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = meChevron().Render(ctx, templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</a>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</section>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</section>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</div><form method=\"post\" action=\"/logout\" class=\"ts-me__signout\" hx-boost=\"false\"><input type=\"hidden\" name=\"_csrf\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</div><form method=\"post\" action=\"/logout\" class=\"ts-me__signout\" hx-boost=\"false\"><input type=\"hidden\" name=\"_csrf\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.CSRF).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 187, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 176, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\"> <button type=\"submit\" class=\"ts-btn ts-btn--secondary ts-btn--block\">Sign out</button></form><p class=\"caption ts-me__foot\">Tendshelf ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "\"> <button type=\"submit\" class=\"ts-btn ts-btn--secondary ts-btn--block\">Sign out</button></form><p class=\"caption ts-me__foot\">Tendshelf ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(v.Version)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 190, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/profile.templ`, Line: 179, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, " · open source</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, " · open source</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

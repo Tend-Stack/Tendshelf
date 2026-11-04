@@ -83,8 +83,8 @@ func (s *Service) AddBookmarkWithClientID(ctx context.Context, userID, bookID st
 	return s.insertBookmark(ctx, userID, bookID, "", "", positionMs, note, clientID)
 }
 
-// AddTextBookmark saves a place in the text of an edition: the sentence id (sid) and the audio moment the
-// alignment gives it (positionMs, 0 when unknown). editionID and sid are both required and sid must parse.
+// AddTextBookmark saves a place in the text of an edition: the sentence id (sid) and an audio moment
+// (positionMs, 0 for a text place). editionID and sid are both required and sid must parse.
 // The client id rules are those of AddBookmarkWithClientID.
 func (s *Service) AddTextBookmark(ctx context.Context, userID, bookID, editionID, sid string, positionMs int64, note, clientID string) (Bookmark, bool, error) {
 	if editionID == "" {

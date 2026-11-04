@@ -1,5 +1,5 @@
 // Package ebook reads ebook files into one canonical, deterministic text document
-// (docs/read-along.md section 1). Files are only ever opened read-only.
+// (docs/reader.md). Files are only ever opened read-only.
 package ebook
 
 import "time"

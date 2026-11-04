@@ -43,8 +43,7 @@ func TestHighlightAddAndList(t *testing.T) {
 	}
 	h2 := hlBase(u[0], b)
 	h2.EditionID, h2.Chapter, h2.StartSID, h2.EndSID = "ed_1", 2, "c2.p1.s0", "c2.p1.s0"
-	ms0, ms1 := int64(1000), int64(2500)
-	h2.StartMs, h2.EndMs, h2.Colour = &ms0, &ms1, "green"
+	h2.Colour = "green"
 	clk.Advance(1000)
 	a2, _, err := svc.AddHighlight(ctx, h2)
 	if err != nil {
@@ -54,8 +53,8 @@ func TestHighlightAddAndList(t *testing.T) {
 	if err != nil || len(all) != 2 || all[0].ID != a.ID || all[1].ID != a2.ID {
 		t.Fatalf("list = %+v, %v", all, err)
 	}
-	if all[1].StartMs == nil || *all[1].StartMs != 1000 || *all[1].EndMs != 2500 || all[0].StartMs != nil || all[1].Colour != "green" {
-		t.Errorf("times or colour lost: %+v", all)
+	if all[1].Colour != "green" {
+		t.Errorf("colour lost: %+v", all)
 	}
 	ch, err := svc.ChapterHighlights(ctx, u[0], "ed_1", 2)
 	if err != nil || len(ch) != 1 || ch[0].ID != a2.ID {
@@ -91,7 +90,6 @@ func TestHighlightAddAndList(t *testing.T) {
 func TestHighlightInvalid(t *testing.T) {
 	svc, _, u, books, _ := progEnv(t)
 	b := books[0].ID
-	ms := func(v int64) *int64 { return &v }
 	cases := []struct {
 		name string
 		edit func(h *progress.Highlight)
@@ -110,8 +108,6 @@ func TestHighlightInvalid(t *testing.T) {
 		{"bad colour", func(h *progress.Highlight) { h.Colour = "red" }},
 		{"long note", func(h *progress.Highlight) { h.Note = strings.Repeat("n", 2001) }},
 		{"control char in note", func(h *progress.Highlight) { h.Note = "a\x07b" }},
-		{"start without end ms", func(h *progress.Highlight) { h.StartMs = ms(5) }},
-		{"end ms before start ms", func(h *progress.Highlight) { h.StartMs, h.EndMs = ms(9), ms(4) }},
 		{"negative offset", func(h *progress.Highlight) { h.StartOff = -1 }},
 		{"bad client id", func(h *progress.Highlight) { h.ClientID = "a b" }},
 		{"no user", func(h *progress.Highlight) { h.UserID = "" }},

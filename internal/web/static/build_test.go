@@ -38,4 +38,8 @@ func TestBuildAndPrecache(t *testing.T) {
 	if a, ok := s.Asset("css/bundle.css"); !ok || !slices.Contains(pre, "/static/"+a.Hashed) {
 		t.Errorf("precache lacks bundle.css")
 	}
+	// Only the reader page uses its stylesheet, so it is not kept for offline use.
+	if a, ok := s.Asset("css/pages-reader.css"); !ok || slices.Contains(pre, "/static/"+a.Hashed) {
+		t.Errorf("pages-reader.css must be an asset and stay out of the precache")
+	}
 }

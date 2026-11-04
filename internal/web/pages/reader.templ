@@ -6,14 +6,8 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
-// ReaderStyles are the reader's stylesheets: the page (P3) and the reading settings (P4).
-var ReaderStyles = []string{"css/pages-reader.css", "css/pages-reader-settings.css"}
-
-// ReaderModeLink is one link of the "How to follow this book" navigation.
-type ReaderModeLink struct {
-	Label, Href string
-	Current     bool
-}
+// ReaderStyles are the reader's stylesheets: the page and the reading settings.
+var ReaderStyles = []string{"css/pages-reader.css"}
 
 // ReaderBlockView is one block of text. HTML is the already escaped inside (see web/reader_render.go).
 type ReaderBlockView struct {
@@ -21,13 +15,9 @@ type ReaderBlockView struct {
 	Pg             int
 }
 
-// ReaderChapterView is one chapter of the text. Start and End are milliseconds on the book's timeline, -1 when
-// the chapter has no times. TimingHref is empty for an unaligned chapter; NextFrag and NextHref are empty after
-// the last chapter.
+// ReaderChapterView is one chapter of the text. NextFrag and NextHref are empty after the last chapter.
 type ReaderChapterView struct {
 	Idx, Pg          int
-	Start, End       int64
-	TimingHref       string
 	Overline, Page   string
 	Title            string
 	Blocks           []ReaderBlockView
@@ -39,14 +29,12 @@ type ReaderChapterView struct {
 // ReaderMarkItem is one row of the "Highlights and notes" sheet.
 type ReaderMarkItem struct {
 	ID, BookID, Kind, Quote, Note string
-	PlayLabel, OpenLabel    string
+	OpenLabel               string
 	OpenHref, DeleteHref    string
 	NoteHref, SaveLabel     string
 	DeleteLabel, NoteField  string
 	CSRF                    string
 	OOB                     bool
-	StartMs, EndMs          int64
-	HasTime                 bool
 }
 
 // ReaderFilter is a filter link of the marks sheet.
@@ -73,70 +61,36 @@ type ReaderContentsItem struct {
 
 // ReaderView is the whole page.
 type ReaderView struct {
-	Title, BookID, EditionID, Mode string
-	CloseHref, CloseLabel          string
-	ModesLabel                     string
-	Modes                          []ReaderModeLink
-	Banner                         string
-	Chapters                       string // data-chapters
-	MsgLeft, MsgPage               string
-	Chapter                        ReaderChapterView
-	Module                         string // address of readalong.js
-	MarksModule                    string // address of reader-marks.js
-	EyesFree                       *ReaderEyesFree
-	Voice, ExitFocus, FocusHint    string
-	FocusBack, FocusFwd            string
-	Dock                           ReaderDock
-	Marks                          ReaderMarksBar
-	Play                           *components.PlayButtonView
-	PlayLabel                      string
-	Look                           ReaderLook // the person's reading settings (reader.v1)
-	SettingsLabel, SettingsHref    string     // the Aa link
-	SettingsModule, SettingsAction string     // address of reader-settings.js, and the route it posts to
-	SettingsCSRF                   string
+	Title, BookID, EditionID    string
+	CloseHref, CloseLabel       string
+	Chapter                     ReaderChapterView
+	MarksModule                 string // address of reader-marks.js
+	Footer                      ReaderFooter
+	Marks                       ReaderMarksBar
+	Look                        ReaderLook // the person's reading settings (reader.v1)
+	SettingsLabel, SettingsHref string     // the Aa link
+	SettingsModule              string     // address of reader-settings.js
 }
 
-// ReaderEyesFree is the top-bar button that opens Eyes-free.
-type ReaderEyesFree struct {
-	Label, Src, CSS string
-}
-
-// ReaderDock is the read-along dock; in Read mode only Play (with its words) shows.
-type ReaderDock struct {
-	SpeedText, SpeedLabel     string
-	BackLabel, FwdLabel       string
-	ContentsLabel, ContentsHref string
-	PageLine, LeftLine        string
-	Play                      *components.PlayButtonView
-	ReadPlay                  *components.PlayButtonView
+// ReaderFooter is the line under the text: the page number and the link to the contents.
+type ReaderFooter struct {
+	PageLine, ContentsLabel, ContentsHref string
 }
 
 // ReaderMarksBar is the selection toolbar and the hidden form it posts.
 type ReaderMarksBar struct {
-	Label, Highlight, Note, Listen, Copy string
+	Label, Highlight, Note, Copy string
 	Action, CSRF                         string
 	Count                                string
-	Listenable                           bool
 }
 
-// Reader is the page: the top bar, the text, the focus line, the dock and the selection toolbar.
+// Reader is the page: the top bar, the text, the footer and the selection toolbar.
 templ Reader(v ReaderView) {
-	<div class="ts-readerpage" data-mode={ v.Mode }>
+	<div class="ts-readerpage">
 		<header class="ts-readerbar">
 			<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } aria-label={ v.CloseLabel }>
 				@components.Icon("close", false)
 			</a>
-			<nav class="ts-mode" aria-label={ v.ModesLabel }>
-				for _, m := range v.Modes {
-					<a
-						class="ts-mode__item"
-						href={ templ.SafeURL(m.Href) }
-						if m.Current {
-							aria-current="page"
-						}
-					>{ m.Label }</a>
-				}
-			</nav>
 			<a
 				class="ts-iconbtn ts-aa"
 				href={ templ.SafeURL(v.SettingsHref) }
@@ -148,101 +102,34 @@ templ Reader(v ReaderView) {
 				aria-haspopup="dialog"
 				aria-label={ v.SettingsLabel }
 			>Aa</a>
-			if v.EyesFree != nil {
-				<button type="button" class="ts-iconbtn" data-ts-reader-eyes-free data-ts-src={ v.EyesFree.Src } data-ts-css={ v.EyesFree.CSS }>{ v.EyesFree.Label }</button>
-			}
 		</header>
-		if v.Banner != "" {
-			<p class="caption ts-reader__banner" role="status">{ v.Banner }</p>
-		}
 		<article
 			id="reader"
 			class={ "ts-reader " + v.Look.Class }
-			if v.Module != "" {
-				data-ts-module={ v.Module }
-			}
 			data-book={ v.BookID }
 			data-edition={ v.EditionID }
-			data-mode={ v.Mode }
-			data-hl={ v.Look.Hl }
-			data-word={ v.Look.Word }
-			data-view={ v.Look.View }
-			data-follow={ v.Look.Follow }
-			data-follow-style={ v.Look.FollowStyle }
-			data-return={ v.Look.Return }
-			data-chapters={ v.Chapters }
-			data-ts-msg-left={ v.MsgLeft }
-			data-ts-msg-page={ v.MsgPage }
 		>
 			<div class="ts-reader__col" id="reader-text">
 				@ReaderChapter(v.Chapter)
 			</div>
 		</article>
 		if v.SettingsModule != "" {
-			<span hidden data-ts-module={ v.SettingsModule } data-action={ v.SettingsAction } data-csrf={ v.SettingsCSRF }></span>
+			<span hidden data-ts-module={ v.SettingsModule }></span>
 		}
-		if v.Mode == "readalong" {
-			<button type="button" class="ts-voicepill" data-ts-voice hidden>{ v.Voice }</button>
-			<div class="ts-focus" data-ts-focus hidden>
-				<p class="ts-focus__side"></p>
-				<p class="ts-focus__line"></p>
-				<p class="ts-focus__side"></p>
-				<button type="button" class="ts-btn ts-btn--quiet" data-ts-focus-exit>{ v.ExitFocus }</button>
-				<button type="button" class="ts-iconbtn" data-ts-sent="-1" aria-label={ v.FocusBack }>
-					@components.Icon("skip-back", false)
-				</button>
-				<button type="button" class="ts-iconbtn" data-ts-sent="1" aria-label={ v.FocusFwd }>
-					@components.Icon("skip-forward", false)
-				</button>
-				<p class="caption">{ v.FocusHint }</p>
+		<footer class="ts-readdock" id="reader-dock">
+			<div class="ts-readdock__row">
+				<span>{ v.Footer.PageLine }</span>
+				<a class="ts-iconbtn ts-iconbtn--md" href={ templ.SafeURL(v.Footer.ContentsHref) } aria-label={ v.Footer.ContentsLabel }>
+					@components.Icon("chapters", false)
+				</a>
 			</div>
-		}
-		<div class="ts-readdock" id="reader-dock">
-			if v.Mode == "readalong" {
-				<div class="ts-scrub" aria-hidden="true"><div class="ts-scrub__line"></div></div>
-				<div class="ts-readdock__times">
-					<span data-ts-reader-page>{ v.Dock.PageLine }</span>
-					<span data-ts-reader-left>{ v.Dock.LeftLine }</span>
-				</div>
-				<div class="ts-readdock__row">
-					<button type="button" class="ts-readdock__speed" data-ts-reader-speed aria-label={ v.Dock.SpeedLabel }>{ v.Dock.SpeedText }</button>
-					<button type="button" class="ts-iconbtn ts-iconbtn--md" data-ts-sent="-1" aria-label={ v.Dock.BackLabel }>
-						@components.Icon("skip-back", false)
-					</button>
-					if v.Dock.Play != nil {
-						@components.PlayButton(*v.Dock.Play)
-					}
-					<button type="button" class="ts-iconbtn ts-iconbtn--md" data-ts-sent="1" aria-label={ v.Dock.FwdLabel }>
-						@components.Icon("skip-forward", false)
-					</button>
-					<a class="ts-iconbtn ts-iconbtn--md" href={ templ.SafeURL(v.Dock.ContentsHref) } aria-label={ v.Dock.ContentsLabel }>
-						@components.Icon("chapters", false)
-					</a>
-				</div>
-			} else {
-				<div class="ts-readdock__row">
-					<span data-ts-reader-page>{ v.Dock.PageLine }</span>
-					<a class="ts-iconbtn ts-iconbtn--md" href={ templ.SafeURL(v.Dock.ContentsHref) } aria-label={ v.Dock.ContentsLabel }>
-						@components.Icon("chapters", false)
-					</a>
-					if v.Dock.ReadPlay != nil {
-						@components.PlayButton(*v.Dock.ReadPlay)
-					}
-				</div>
-			}
-		</div>
+		</footer>
 		<div id="reader-marks" class="ts-selmenu" role="toolbar" aria-label={ v.Marks.Label } if v.MarksModule != "" { data-ts-module={ v.MarksModule } } hidden>
 			<button type="button" class="ts-selmenu__item" data-ts-mark="highlight"><span class="ts-selmenu__swatch"></span>{ v.Marks.Highlight }</button>
 			<button type="button" class="ts-selmenu__item" data-ts-mark="note">
 				@components.Icon("edit", false)
 				{ v.Marks.Note }
 			</button>
-			if v.Marks.Listenable {
-				<button type="button" class="ts-selmenu__item" data-ts-mark="listen">
-					@components.Icon("headphones", false)
-					{ v.Marks.Listen }
-				</button>
-			}
 			<button type="button" class="ts-selmenu__item" data-ts-mark="copy">
 				@components.Icon("share", false)
 				{ v.Marks.Copy }
@@ -268,11 +155,6 @@ templ ReaderChapter(c ReaderChapterView) {
 	<section
 		id={ "reader-ch-" + strconv.Itoa(c.Idx) }
 		data-ch={ strconv.Itoa(c.Idx) }
-		data-start={ strconv.FormatInt(c.Start, 10) }
-		data-end={ strconv.FormatInt(c.End, 10) }
-		if c.TimingHref != "" {
-			data-timing={ c.TimingHref }
-		}
 	>
 		<div class="ts-reader__meta"><span class="ts-overline ts-overline--accent">{ c.Overline }</span><span>{ c.Page }</span></div>
 		<h2 class="ts-reader__chapter">{ c.Title }</h2>
@@ -376,9 +258,6 @@ templ ReaderMarkRow(it ReaderMarkItem) {
 		}
 		if it.Note != "" {
 			<p class="body">{ it.Note }</p>
-		}
-		if it.HasTime {
-			<button type="button" class="ts-btn ts-btn--quiet" data-ts-play-at={ strconv.FormatInt(it.StartMs, 10) } data-ts-book={ it.BookID } if it.EndMs > 0 { data-ts-play-until={ strconv.FormatInt(it.EndMs, 10) } } hidden>{ it.PlayLabel }</button>
 		}
 		if it.OpenHref != "" {
 			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(it.OpenHref) }>{ it.OpenLabel }</a>

@@ -48,7 +48,7 @@ Measurable, not adjectives. Each is an acceptance target for the phase that deli
   folder of numbered MP3s, multi-disc folders) with no manual fixing.
 - **Sharing in two taps**: "Share this book" gives a link with an expiry; the guest listens on their phone
   without installing anything.
-- **The words follow the voice** (read-along, [read-along.md](read-along.md)): add an EPUB, PDF, DOCX or
+- **The words follow the voice** (read-along, [reader.md](reader.md)): add an EPUB, PDF, DOCX or
   other DRM-free ebook to a book you own and, after one background job, the sentence being spoken is
   highlighted (and the word, where the browser allows it) and the page scrolls gently with it. Targets:
   at least 95 % of narrated sentences highlighted within ±250 ms of the voice (measured on a

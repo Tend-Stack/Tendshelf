@@ -54,7 +54,7 @@ const (
 const (
 	ebookNotSame      = "Not the same book"
 	ebookFoundInLead  = "Found in"
-	ebookPairGo       = "Pair with this audiobook" // NEW: the label while no checked word timing exists for the book's language
+	ebookPairGo       = "Pair with this audiobook" // NEW
 	ebookSameTitle    = "Same title and author: %s"
 	ebookSameTitleNA  = "Same title"    // NEW: the deck line needs an author
 	ebookSameISBN     = "Same ISBN: %s" // NEW
@@ -72,42 +72,4 @@ const (
 	ebookPairMeta     = "%s · %s · %s" // NEW: {authors} · {FORMAT} · {n} pages
 	ebookPairMetaNoA  = "%s · %s"      // NEW: {FORMAT} · {n} pages, for an ebook that names no author
 	ebookPagesOf      = "%d pages"     // NEW
-)
-
-// Copy for preparing read-along on the Text tab (M5 R3 P5). Deck words (boards PreparingPhone, AddEbookPhone and
-// the AlignmentCard README) are used word for word; lines marked "NEW" are not in the deck and are listed in the
-// package report. The failure lines follow docs/read-along.md section 2.
-const (
-	ebookPairAndPrepare = "Pair and prepare read-along"
-	alignPrepare        = "Prepare read-along" // NEW: for an ebook that is already paired
-	alignPrepareAgain   = "Prepare read-along again"
-	alignTryAgain       = "Try again"
-	alignTitle          = "Preparing read-along"
-	alignChapterOf      = "%d of %d"
-	alignMatching       = "Matching chapter %d \u00b7 %s"
-	alignMatchingNoName = "Matching chapter %d"        // NEW: a chapter with no title
-	alignListening      = "Listening to the audiobook" // NEW
-	alignWaiting        = "Waiting for its turn"       // NEW
-	alignLeft           = "about %d min left"
-	alignLeftShort      = "less than a minute left" // NEW
-	alignRunsHere       = "This runs on your server, so you can close the app."
-	alignCancel         = "Cancel"                        // NEW
-	alignResume         = "Resume"                        // NEW
-	alignDiscard        = "Discard"                       // NEW
-	alignHeldTitle      = "Read-along is waiting for you" // NEW
-	alignDone           = "Read-along is ready for %s"
-	alignPartial        = "Read-along works for %d %% of the book."
-	alignAbridged       = "The recording seems shorter than the ebook (abridged?). Parts not read are shown in grey."
-	alignDifferent      = "This looks like a different edition. It still works; small differences are not highlighted."
-	alignStale          = "The audio changed since read-along was prepared." // NEW
-	alignNoMatch        = "This ebook does not seem to match the recording."
-	alignNoMatchHint    = "If it is the wrong ebook, choose Not the same book." // NEW
-	alignNoRuntime      = "Read-along for %s needs word timing for %s. An admin can set it up."
-	alignNoRuntimeAny   = "Read-along is not available for this book's language yet."                                          // NEW
-	alignNoAudio        = "The audio files are missing or cannot be read, so Tendshelf cannot prepare read-along."             // NEW
-	alignFinished       = "This has already finished."                                                                         // NEW
-	alignFailedOther    = "Tendshelf could not prepare read-along. Try again later."                                           // NEW
-	alignHeldWorker     = "The word timing stopped on part of this book. Resume to try again, or discard this."                // NEW
-	alignHeldRuntime    = "The word timing model changed. Resume to use the new one, or discard this."                         // NEW
-	alignHeldAudio      = "The audio files changed while Tendshelf was working. Resume to use the new files, or discard this." // NEW
 )

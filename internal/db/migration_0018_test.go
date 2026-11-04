@@ -35,7 +35,7 @@ func TestMigration0018Alignments(t *testing.T) {
 	}
 	prev.Close()
 
-	st := mustOpen(t, dir)
+	st := openUpTo(t, 18, dir)
 	defer st.Close()
 	if countRows(t, st.Reader(), "editions") != 1 {
 		t.Fatal("edition lost")
@@ -72,7 +72,7 @@ func TestMigration0018Alignments(t *testing.T) {
 
 // TestMigration0018FromEmpty: the checks and keys hold on a fresh database.
 func TestMigration0018FromEmpty(t *testing.T) {
-	st := mustOpen(t, t.TempDir())
+	st := openUpTo(t, 18, t.TempDir())
 	defer st.Close()
 	w := st.Writer()
 	for _, q := range []string{

@@ -24,17 +24,6 @@ type TextActionView struct {
 	Action, Label, Aria, CSRF, Kind string
 }
 
-// TextAlignView is the read-along card of a paired edition (M5 R3 P5). State is "active", "held", "done",
-// "partial", "failed" or "idle" (nothing running: only the action). Segments draw the chapter bar of an
-// active alignment ("done", "now" or ""). An active card asks for itself every 2 seconds.
-type TextAlignView struct {
-	ID, State, Title, Count, Line, Left string
-	Notes                               []string
-	Segments                            []string
-	PollHref                            string
-	Actions                             []TextActionView
-}
-
 // TextSuggestionView is an unpaired ebook that may be this book's text: its card, "Pair with this
 // audiobook" and "Not the same book".
 type TextSuggestionView struct {
@@ -64,9 +53,7 @@ type TextFileView struct {
 	// "Not the same book" for any paired file, shown in the card or under the row.
 	Card    *components.PairingCardView
 	NotSame *TextActionView
-	// Align is the read-along card of a paired edition; editors only.
-	Align *TextAlignView
-	// ReadHref opens the reader on this edition; ReadLabel is "Read along" or "Read". Empty when the person may not read.
+	// ReadHref opens the reader on this edition; ReadLabel is "Read". Empty when the person may not read.
 	ReadHref, ReadLabel string
 	// Chips say whose edition this is; Choose and MakeDefault change it (two or more editions).
 	Chips               []string
@@ -196,9 +183,6 @@ templ EbookEdition(f TextFileView) {
 		if f.ReadHref != "" {
 			<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(f.ReadHref) }>{ f.ReadLabel }</a>
 		}
-		if f.Align != nil {
-			@TextAlign(*f.Align)
-		}
 		<ol class="ts-ebook__chapters">
 			for _, c := range f.Chapters {
 				<li class="ts-ebook__chapter">
@@ -242,59 +226,6 @@ templ EbookEdition(f TextFileView) {
 			>{ f.ShowAll }</a>
 		}
 	</section>
-}
-
-// TextAlign is the read-along card: the progress of a running alignment, the question of a held one or the
-// result of a finished one, with the buttons that fit. It reuses the core alignment card classes.
-templ TextAlign(a TextAlignView) {
-	<div
-		id={ a.ID }
-		class="ts-align"
-		role="group"
-		aria-label={ a.Title }
-		if a.PollHref != "" {
-			hx-get={ a.PollHref }
-			hx-trigger="every 2s"
-			hx-swap="outerSync"
-		}
-	>
-		if a.State != "idle" {
-			<div class="ts-align__head">
-				<h4 class="section">{ a.Title }</h4>
-				if a.Count != "" {
-					<span class="caption">{ a.Count }</span>
-				}
-			</div>
-		}
-		if len(a.Segments) > 0 {
-			<div class="ts-align__chapters" aria-hidden="true">
-				for _, sg := range a.Segments {
-					<span class={ "ts-align__ch", templ.KV("is-done", sg == "done"), templ.KV("is-now", sg == "now") }></span>
-				}
-			</div>
-		}
-		if a.Line != "" || a.Left != "" {
-			<div class="ts-align__meta">
-				<span>{ a.Line }</span>
-				<span>{ a.Left }</span>
-			</div>
-		}
-		for _, n := range a.Notes {
-			<p
-				class="caption"
-				if a.State == "failed" {
-					role="alert"
-				}
-			>{ n }</p>
-		}
-		if len(a.Actions) > 0 {
-			<div class="ts-pair__actions">
-				for _, act := range a.Actions {
-					@textActionForm(act)
-				}
-			</div>
-		}
-	</div>
 }
 
 // EbookRefusal is a file Tendshelf did not read: the copy-protection card, or one plain sentence.

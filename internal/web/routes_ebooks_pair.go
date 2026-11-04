@@ -195,7 +195,7 @@ func (s *server) textSuggestions(ctx context.Context, book library.Book, tc *tex
 		}
 		out = append(out, pages.TextSuggestionView{
 			Card:    tc.card(f, ed, rows),
-			Pair:    *tc.action(book, f, "pair", s.pairLabel(ctx, book, ed), "primary"),
+			Pair:    *tc.action(book, f, "pair", ebookPairGo, "primary"),
 			NotSame: *tc.action(book, f, "not-same", ebookNotSame, "quiet"),
 		})
 	}
@@ -265,9 +265,6 @@ func (s *server) postTextPair(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	err = s.ebooks.Pair(r.Context(), f.ID, book.ID, currentUser(r).ID)
-	if err == nil {
-		s.prepareAfterPair(r, book, f.ID)
-	}
 	s.ebookPairDone(w, r, book, err)
 }
 
