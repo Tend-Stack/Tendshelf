@@ -520,6 +520,14 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
 - **R2 Pairing**: automatic by folder, upload, ISBN/ASIN, title + author (suggestion when not unique);
   manual pair/unpair; `/admin/ebooks` inbox; several editions, book default, per-user choice. Exit:
   pairing table tests; an unpaired ebook never appears as a book; no ebook is ever written.
+  **R2 P1 status** (data and pairing engine): built. Migration 0017 (`ebook_files.hold`, `book_default`,
+  `ebook_not_same`, `text_choices`); `internal/textmatch` (normaliser moved from `metadata/online` and `ebook`,
+  plus `ISBN13`, `Surname`, `TitleKey`); `internal/ebook` `Match`/`Decide`/`Checks`, `Pair`, `Unpair`, `NotSame`,
+  `Keep`, `SetBookDefault`, `Choose`, `EditionFor`, `PairPending` (run after every scan and when a file becomes
+  ready); folder pairing now honours `hold` and "not the same book". Checks: `TestTextmatch*`, `TestPair*`,
+  `TestMigration0017*` (race), `make check`, `make build`. Limits: no page or route (P2, P3); no ebook-only
+  books; the engine does not re-run when a book's details change (the next scan does). The pure type is
+  `PairMeta` because `ebook.Meta` already names the parsed metadata.
 - **R3 Alignment job**: `internal/align` and `internal/align/runtime`, migration `alignments`
   (`runtime_components`, `alignments`, `alignment_chapters`); `runtimes/align/worker.py`; `/admin/runtimes`
   check; emissions cache; mapping, forced alignment, confidence, failure labels; resume, cancel, hold;

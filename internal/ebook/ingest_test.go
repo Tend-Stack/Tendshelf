@@ -309,7 +309,7 @@ func TestIngestPairing(t *testing.T) {
 	if _, err := e.st.Writer().Exec(`UPDATE ebook_files SET paired_by='person' WHERE id=?`, f.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.st.Writer().Exec(`UPDATE ebook_files SET book_id=NULL, paired_by='person' WHERE id=?`,
+	if _, err := e.st.Writer().Exec(`UPDATE ebook_files SET book_id=NULL, paired_by='person', hold='person' WHERE id=?`,
 		e.fileAt(filepath.Join(e.root, "single.epub")).ID); err != nil {
 		t.Fatal(err)
 	}
