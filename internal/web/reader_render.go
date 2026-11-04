@@ -33,6 +33,7 @@ type rdrPiece struct {
 	OpenSent   bool     // first piece of its sentence
 	CloseSent  bool     // last piece of its sentence
 	After      []rdrMark
+	Link       *ebook.Link // the link the piece sits in, or nil
 }
 
 // rdrHl is a highlight clipped to one block: [Start,End) in that block's offsets.
@@ -96,6 +97,9 @@ func rdrSegments(b ebook.Block, hls []rdrHl, bookmarkSents map[int]bool) []rdrPi
 	for _, h := range hls {
 		cuts[clip(h.Start)], cuts[clip(h.End)] = true, true
 	}
+	for _, l := range b.Links {
+		cuts[clip(l.Start)], cuts[clip(l.End)] = true, true
+	}
 	points := make([]int, 0, len(cuts))
 	for c := range cuts {
 		points = append(points, c)
@@ -119,6 +123,12 @@ func rdrSegments(b ebook.Block, hls []rdrHl, bookmarkSents map[int]bool) []rdrPi
 		for _, h := range hls {
 			if a >= h.Start && e <= h.End {
 				p.Hls = append(p.Hls, h.ID)
+			}
+		}
+		for i := range b.Links {
+			if l := &b.Links[i]; a >= l.Start && e <= l.End {
+				p.Link = l
+				break
 			}
 		}
 		out = append(out, p)
@@ -163,6 +173,9 @@ type rdrBlockOpts struct {
 	DropCap   bool // wrap the first letter of the first sentence
 	Hls       []progress.Highlight
 	Bookmarks map[string]bool // sentence ids that carry a bookmark
+	// LinkTo gives the address of an in-book link and, for a footnote, the address of its popup
+	// fragment. ok is false for a link the page cannot take (its text is then written plain).
+	LinkTo func(l ebook.Link) (href, noteHref string, ok bool)
 }
 
 // rdrNoteIcon is the pencil of the note dot, the same shape as the "edit" icon.
@@ -190,6 +203,10 @@ func rdrInner(b ebook.Block, o rdrBlockOpts) string {
 		for _, id := range p.Hls {
 			sb.WriteString(`<span class="ts-hl" data-hl="` + html.EscapeString(id) + `">`)
 		}
+		closeLink := ""
+		if p.Link != nil {
+			closeLink = rdrOpenLink(&sb, *p.Link, o)
+		}
 		text := p.Text
 		if drop && p.OpenSent {
 			drop = false
@@ -199,6 +216,7 @@ func rdrInner(b ebook.Block, o rdrBlockOpts) string {
 			}
 		}
 		sb.WriteString(html.EscapeString(text))
+		sb.WriteString(closeLink)
 		sb.WriteString(strings.Repeat(`</span>`, len(p.Hls)))
 		for i := len(p.Styles) - 1; i >= 0; i-- {
 			sb.WriteString("</" + p.Styles[i] + ">")
@@ -218,4 +236,27 @@ func rdrInner(b ebook.Block, o rdrBlockOpts) string {
 		}
 	}
 	return sb.String()
+}
+
+// rdrOpenLink writes the opening <a> of a link piece and returns its closing tag ("" when the link
+// cannot be drawn). An outside address opens in a new tab with no opener; a footnote carries the address
+// of its popup. The href is ours or passed the scheme allowlist when the document was made.
+func rdrOpenLink(sb *strings.Builder, l ebook.Link, o rdrBlockOpts) string {
+	if l.URL != "" {
+		sb.WriteString(`<a class="ts-reader__link" href="` + html.EscapeString(l.URL) + `" rel="noopener noreferrer" target="_blank">`)
+		return "</a>"
+	}
+	if o.LinkTo == nil {
+		return ""
+	}
+	href, note, ok := o.LinkTo(l)
+	if !ok {
+		return ""
+	}
+	sb.WriteString(`<a class="ts-reader__link" href="` + html.EscapeString(href) + `"`)
+	if l.Note && note != "" {
+		sb.WriteString(` data-note-href="` + html.EscapeString(note) + `"`)
+	}
+	sb.WriteString(">")
+	return "</a>"
 }

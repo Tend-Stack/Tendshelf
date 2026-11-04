@@ -45,3 +45,11 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 .ts-readset input.ts-switch { appearance: none; margin: 0; }
 .ts-readset input.ts-switch:checked { background: var(--accent-fill); border-color: var(--accent); }
 .ts-readset input.ts-switch:checked::after { transform: translateX(1.25rem); background: var(--on-accent); }
+
+/* Top bar: close, title, speaker, contents, marks, settings. The title takes the free width and shortens. */
+.ts-readerbar { display: flex; align-items: center; gap: var(--space-4); }
+.ts-readerbar__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+
+/* Links and pictures in the text. A link is told apart by its underline, not by colour alone. */
+.ts-reader__link { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; }
+.ts-reader__image { display: block; max-width: 100%; height: auto; margin: 0 auto; }

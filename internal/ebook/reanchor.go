@@ -113,3 +113,26 @@ func anchorIn(b Block, off int) Anchor {
 	}
 	return Anchor{SID: SentenceID(b.ID, k), Off: off}
 }
+
+// AnchorAtChar names the place pos units into the whole text of d (chapters and blocks in order), for
+// a place known only as a percent. ok is false for an empty document.
+func (d *Doc) AnchorAtChar(pos int) (Anchor, bool) {
+	var last *Block
+	for ci := range d.Chapters {
+		for bi := range d.Chapters[ci].Blocks {
+			b := &d.Chapters[ci].Blocks[bi]
+			n := u16Len(b.Text)
+			if pos < n || (pos == n && n > 0 && ci == len(d.Chapters)-1 && bi == len(d.Chapters[ci].Blocks)-1) {
+				return anchorIn(*b, max(pos, 0)), true
+			}
+			pos -= n
+			if n > 0 {
+				last = b
+			}
+		}
+	}
+	if last == nil {
+		return Anchor{}, false
+	}
+	return anchorIn(*last, u16Len(last.Text)), true
+}
