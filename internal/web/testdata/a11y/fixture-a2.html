@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit fixture A2</title>
+<link rel="stylesheet" href="fixture-a2.css">
+</head>
+<body>
+<main>
+  <!-- data-case names a planted case; data-expect lists the checks that must fire on it ("none": nothing).
+       Every focusable element sits inside a case, so a finding with no case is a harness fault. -->
+  <h1>Audit fixture A2</h1>
+  <div class="row">
+    <button class="bare" data-case="t-bare" data-expect="target-size">a</button>
+    <button class="grown" data-case="t-grown" data-expect="none">b</button>
+    <button class="big" data-case="t-big" data-expect="none">c</button>
+    <label class="hit" data-case="t-label" data-expect="none"><input type="checkbox" class="vh"> Remember me</label>
+    <input type="text" class="weak-field" aria-label="Weak border" data-case="c-weak-field" data-expect="contrast-control">
+    <input type="text" class="good-field" aria-label="Good border" data-case="c-good-field" data-expect="none">
+    <input type="text" class="plain-field" aria-label="No border" data-case="c-plain-field" data-expect="contrast-control">
+    <button class="icon icon-weak" aria-label="Weak icon" data-case="c-icon-weak" data-expect="contrast-icon"><svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg></button>
+    <button class="icon icon-good" aria-label="Good icon" data-case="c-icon-good" data-expect="none"><svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg></button>
+    <button class="big icon-weak" data-case="c-icon-text" data-expect="none"><svg viewBox="0 0 24 24" width="12" height="12"><circle cx="6" cy="6" r="4" fill="currentColor"/></svg> Save</button>
+    <button class="big f-nofocus" data-case="f-nofocus" data-expect="focus-not-visible">d</button>
+    <button class="big f-ring" data-case="f-ring" data-expect="none">e</button>
+    <button class="big f-weak" data-case="f-weak" data-expect="focus-indicator-contrast">f</button>
+    <button class="big" data-case="f-outline" data-expect="none">g</button>
+    <button class="big f-inset" data-case="f-inset" data-expect="none">h</button>
+    <input type="date" class="good-field" aria-label="A date" data-case="f-date" data-expect="none">
+    <div class="card" data-case="f-stretch" data-expect="none"><input type="radio" name="s" id="s1" class="big"><label for="s1">Choose this</label></div>
+    <a href="#covered" class="f-covered" data-case="f-covered" data-expect="focus-obscured">Covered</a>
+  </div>
+  <p>Read the <a href="#terms" data-case="t-inline" data-expect="none">terms</a> before you go on.</p>
+  <div class="row">
+    <div class="wide" data-case="r-wide" data-expect="reflow-320"></div>
+    <div class="clip" data-case="r-clip" data-expect="text-200-clip">This line is much too long for its box</div>
+    <div class="ellipsis" data-case="r-ellipsis" data-expect="none" data-expect-unmeasured="truncated">This line is much too long for its box</div>
+    <div class="fits" data-case="r-fits" data-expect="none">Short</div>
+  </div>
+  <div class="bar"></div>
+</main>
+</body>
+</html>

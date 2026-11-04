@@ -29,6 +29,9 @@ var a11yChecks = []string{
 	"lang", "title", "heading-skip", "nav-missing", "img-alt", "label-missing", "duplicate-id", "aria-ref-broken",
 	"aria-hidden-focusable", "viewport-zoom", "autocomplete-missing", "live-region-missing",
 	"h1-count", "main-count", "name-missing", "contrast-text", "load-error",
+	// A2: targets, keyboard focus, non-text contrast, reflow.
+	"target-size", "focus-not-visible", "focus-indicator-contrast", "focus-obscured", "focus-trap", "focus-unreachable",
+	"contrast-control", "contrast-icon", "scroll-x", "reflow-320", "text-200-scroll-x", "text-200-clip",
 }
 
 func a11yFast() bool { return os.Getenv("TENDSHELF_A11Y_FAST") == "1" }
@@ -56,7 +59,9 @@ type a11yFinding struct {
 	Detail   string  `json:"detail"`
 	Measured float64 `json:"measured,omitempty"`
 	Required float64 `json:"required,omitempty"`
-	Mark     string  `json:"mark,omitempty"`
+	// Wcag258 is set on target-size findings: whether the target still meets the WCAG 2.5.8 floor of 24 px.
+	Wcag258 *bool  `json:"wcag258,omitempty"`
+	Mark    string `json:"mark,omitempty"`
 }
 
 var (
@@ -86,7 +91,7 @@ func a11yScript(tab *cdp.Tab, name string, options, out any) error {
 	if err != nil {
 		return err
 	}
-	expr := "(() => {\n" + a11yRead("common.js") + "\nreturn (" + a11yRead(name) + "\n)(" + string(opts) + ");\n})()"
+	expr := "(() => {\n" + a11yRead("common.js") + "\n" + a11yRead("colour.js") + "\nreturn (" + a11yRead(name) + "\n)(" + string(opts) + ");\n})()"
 	return tab.TryEval(expr, out)
 }
 
@@ -382,6 +387,7 @@ func TestA11yAudit(t *testing.T) {
 	for _, w := range widths {
 		tabs[w.W] = b.NewTab(w.W, w.H, w.W < 1280, true)
 	}
+	tab320 := b.NewTab(320, 640, true, true)
 	defer func() {
 		dir := run.write(t)
 		t.Logf("findings: %s", filepath.Join(dir, "findings.json"))
@@ -459,10 +465,59 @@ func TestA11yAudit(t *testing.T) {
 				}
 				res.Findings = kept
 			}
+			// A2: target size, non-text contrast and sideways scroll; then the Tab walk (pages, at the phone
+			// and desktop widths); then the same page with text at 200 %.
+			layout, err := a11yLayout(tab, w.W, checkThemes)
+			trace("layout")
+			if err != nil {
+				run.add(base, []a11yFinding{{Check: "load-error", Selector: "document", Detail: err.Error()}})
+				continue
+			}
+			res.Findings = append(res.Findings, layout.Findings...)
+			res.Unmeasured = append(res.Unmeasured, layout.Unmeasured...)
+			touchOrDesktop := w.W == 390 || w.W == 1440
+			if prepare == nil && touchOrDesktop {
+				found, notes, err := a11yFocusWalk(t, tab, checkThemes)
+				trace("walked")
+				if err != nil {
+					found = []a11yFinding{{Check: "load-error", Selector: "document", Detail: "focus walk: " + err.Error()}}
+				}
+				res.Findings = append(res.Findings, found...)
+				res.Unmeasured = append(res.Unmeasured, notes...)
+			}
+			if touchOrDesktop {
+				zoom := a11yTextZoom(tab)
+				zoomed, zerr := a11yReflow(tab, w.W, "text-200-scroll-x", "text-200-clip")
+				if zoom != nil || zerr != nil {
+					zoomed.Findings = []a11yFinding{{Check: "load-error", Selector: "document", Detail: fmt.Sprintf("text at 200 %%: %v %v", zoom, zerr)}}
+				}
+				trace("zoomed")
+				res.Findings = append(res.Findings, zoomed.Findings...)
+				res.Unmeasured = append(res.Unmeasured, zoomed.Unmeasured...)
+			}
 			run.add(base, res.Findings)
 			run.addUnmeasured(base, res.Unmeasured)
 			run.Measured += res.Measured
 		}
+		// The narrowest window WCAG 1.4.10 names: 320 CSS px, a phone. A state that only exists on wider
+		// windows is not opened here.
+		if minWidth > 0 {
+			return
+		}
+		base := a11yFinding{Page: key, Role: role, Width: 320}
+		status, err := a11yLoad(tab320, url, shell)
+		if err != nil || status != 200 {
+			return // the wider visits above already report a page that does not load
+		}
+		if prepare != nil {
+			prepare(tab320)
+		}
+		narrow, err := a11yReflow(tab320, 320, "reflow-320", "")
+		if err != nil {
+			run.add(base, []a11yFinding{{Check: "load-error", Selector: "document", Detail: err.Error()}})
+			return
+		}
+		run.add(base, narrow.Findings)
 	}
 
 	for _, p := range a11yPages() {

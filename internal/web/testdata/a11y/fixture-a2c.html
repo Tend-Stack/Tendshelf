@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit fixture A2c</title>
+<link rel="stylesheet" href="fixture-a2.css">
+</head>
+<body>
+<main>
+  <!-- The first button sends Tab straight to the third: the second is tabbable and visible but never reached. -->
+  <h1>A Tab stop that is skipped</h1>
+  <button id="first" class="big">1</button>
+  <button id="second" class="big">2</button>
+  <button id="third" class="big">3</button>
+</main>
+<script>
+document.getElementById("first").addEventListener("keydown", (event) => {
+  if (event.key === "Tab" && !event.shiftKey) {
+    event.preventDefault();
+    document.getElementById("third").focus();
+  }
+});
+</script>
+</body>
+</html>
