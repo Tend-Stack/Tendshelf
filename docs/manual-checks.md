@@ -37,7 +37,15 @@ shake needs a motion permission prompt on iOS.
 
 Dated runs (browser and version, date, who ran it, anything that surprised you):
 
--
+- 2026-11-04, operator, Android Chrome tab over `http://<LAN address>:8095` with the
+  "Insecure origins treated as secure" flag (not real HTTPS), build v2026.1.0-201.
+  1 partial: "Install app" made a shortcut that opens in full Chrome, not an app window; expected without a
+  real HTTPS address (Chrome only builds an installed app for a secure origin), recheck over Tailscale.
+  2 pass. 3: storage shown 10.7 GB, the downloaded book 878 MB; the "may clear downloads" line not recorded.
+  4 partial: the book played offline, but the page showed broken parts (details to collect; likely the
+  shortcut opening as a Chrome tab), recheck over HTTPS. 5 pass. 6 fail, fixed: the queued-bookmark toast
+  stayed until a reload (toasts inside the full player were never timed out; fixed in f8ba733 with
+  `TestPlayerToastLeavesInFullPlayer`). 7 pass. 8 pass. iOS not run.
 
 
 ## Run 2026-11-02 (operator, Android Chrome over http on the LAN, build bea2035)
