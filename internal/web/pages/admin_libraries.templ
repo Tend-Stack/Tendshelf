@@ -37,7 +37,29 @@ type AdminLibrariesView struct {
 	// does not see the owner's switch.
 	Lookups                 *AdminLookupsView
 	OnlineTitle, OnlineBody string
+	// Uploads is "Adding books from this device" (decision 0015); nil when uploads are not set up.
+	Uploads *AdminUploadsView
 }
+
+// AdminUploadsView is the section where the owner picks, per library, the folder that receives
+// uploaded books. An admin sees the same words read-only. The handler writes every word.
+type AdminUploadsView struct {
+	Title, Lead, Where, Off, Save, OwnerOnly string
+	Owner                                    bool
+	Libraries                                []AdminUploadLibrary
+}
+
+// AdminUploadLibrary is one library's choice: the folders it has, the chosen one (empty = off), the
+// refusal after a save that failed, and the link to the Add books page when uploads are on.
+type AdminUploadLibrary struct {
+	ID, Name, Chosen, ChosenPath string
+	Folders                      []AdminUploadFolder
+	Error                        string
+	AddHref, AddLabel            string
+}
+
+// AdminUploadFolder is one choice: a folder of the library.
+type AdminUploadFolder struct{ ID, Path string }
 
 // AdminLookupsView is the library rows of "Book details from the internet". The handler writes
 // every word.
@@ -161,8 +183,65 @@ templ AdminLibraries(v AdminLibrariesView) {
 				}
 			</section>
 		}
+		if v.Uploads != nil {
+			@adminUploads(v)
+		}
 		</div>
 	</div>
+}
+
+// adminUploads is "Adding books from this device": a plain form for each library that works without
+// script. The owner chooses the folder that receives books or "Nowhere (off)"; an admin only reads.
+templ adminUploads(v AdminLibrariesView) {
+	<section class="ts-upset ts-group--wide" aria-labelledby="uploads-h" id="uploads">
+		<h2 id="uploads-h" class="section">{ v.Uploads.Title }</h2>
+		<p class="caption ts-upset__lead">{ v.Uploads.Lead }</p>
+		for _, l := range v.Uploads.Libraries {
+			if v.Uploads.Owner {
+				<form class="ts-upset__lib" method="post" action={ templ.SafeURL("/admin/libraries/" + l.ID + "/uploads") }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<fieldset class="ts-upset__choices">
+						<legend class="body ts-upset__name">{ l.Name } <span class="caption ts-upset__q">{ v.Uploads.Where }</span></legend>
+						<label class="ts-upset__choice">
+							<input type="radio" class="ts-check" name="folder_id" value="" checked?={ l.Chosen == "" }/>
+							<span>{ v.Uploads.Off }</span>
+						</label>
+						for _, f := range l.Folders {
+							<label class="ts-upset__choice">
+								<input type="radio" class="ts-check" name="folder_id" value={ f.ID } checked?={ l.Chosen == f.ID }/>
+								<span class="ts-upset__path">{ f.Path }</span>
+							</label>
+						}
+					</fieldset>
+					if l.Error != "" {
+						<p class="ts-field__error ts-upset__err" role="alert">
+							@components.Icon("alert", false)
+							{ l.Error }
+						</p>
+					}
+					<div class="ts-upset__btns">
+						<button type="submit" class="ts-btn ts-btn--secondary">{ v.Uploads.Save }</button>
+						if l.AddHref != "" {
+							<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(l.AddHref) }>{ l.AddLabel }</a>
+						}
+					</div>
+				</form>
+			} else {
+				<div class="ts-upset__lib">
+					<p class="body ts-upset__name">{ l.Name } <span class="caption ts-upset__q">{ v.Uploads.Where }</span></p>
+					if l.ChosenPath != "" {
+						<p class="ts-upset__path">{ l.ChosenPath }</p>
+					} else {
+						<p>{ v.Uploads.Off }</p>
+					}
+					<p class="caption ts-upset__lead">{ v.Uploads.OwnerOnly }</p>
+					if l.AddHref != "" {
+						<div class="ts-upset__btns"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(l.AddHref) }>{ l.AddLabel }</a></div>
+					}
+				</div>
+			}
+		}
+	</section>
 }
 
 // adminOnlineSwitch is the owner's on/off choice.

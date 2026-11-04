@@ -354,11 +354,14 @@ type View struct {
 	BookPath  string      `json:"book_path,omitempty"`
 	Refused   string      `json:"refused_file,omitempty"`
 	ErrorCode string      `json:"error_code,omitempty"`
+	// ScanJobID is the scoped import after placement; the page reads it, the uploader does not.
+	ScanJobID string `json:"scan_job_id,omitempty"`
+	LibraryID string `json:"library_id,omitempty"`
 }
 
 func (s *Service) view(u uploadRow, files []fileRow) View {
 	v := View{ID: u.ID, State: u.State, ChunkSize: s.cfg.ChunkSize, Skipped: u.Skipped, JobID: u.JobID,
-		Label: u.Label, BookPath: u.BookPath, Refused: u.RefusedFile, ErrorCode: u.ErrorCode, Files: []FileState{}}
+		Label: u.Label, BookPath: u.BookPath, Refused: u.RefusedFile, ErrorCode: u.ErrorCode, ScanJobID: u.ScanJobID, LibraryID: u.LibraryID, Files: []FileState{}}
 	for _, f := range files {
 		v.Files = append(v.Files, FileState{ID: f.ID, Path: f.RelPath, Size: f.Size, Offset: f.BytesReceived})
 	}

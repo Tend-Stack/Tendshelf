@@ -134,6 +134,9 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 	if canCover {
 		v.CoverHref, v.CoverLabel = coverSheetHref(id, ""), coverChangeLink
 	}
+	if s.uploads != nil && s.can.Can(ctx, currentUser(r), share.AddBooks, target) && s.uploads.Removable(ctx, id) {
+		v.RemoveHref, v.RemoveLabel = "/books/"+id+"/remove", bookRemoveLabel
+	}
 	if r.URL.Query().Get("sheet") == "cover" {
 		if !canCover {
 			s.notFound(w, r)
