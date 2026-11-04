@@ -49,6 +49,7 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 .ts-book__play { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-16); }
 .ts-book__play form { margin: 0; }
 .ts-book__play .ts-btn { text-decoration: none; }
+.ts-book__note { margin: 0; color: var(--ink-muted); }
 #book-play [data-ts-play] { display: flex; width: 100%; box-sizing: border-box; }
 .ts-book__progress { display: flex; flex-direction: column; gap: 0.625rem; }
 .ts-book__where, .ts-book__whereshort { text-align: center; margin: 0; }
