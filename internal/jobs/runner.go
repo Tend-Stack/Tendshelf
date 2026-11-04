@@ -510,8 +510,13 @@ func (r *Runner) finish(a *active, cause error, result any, herr error) {
 
 	default:
 		code, text, permanent := classify(herr)
-		r.log.Warn("job failed", "job", a.id, "kind", a.kind.Name, "attempt", a.attempts, "err", herr)
-		if permanent || a.attempts >= a.max {
+		var je *Error
+		hold := errors.As(herr, &je) && je.Hold
+		r.log.Warn("job failed", "job", a.id, "kind", a.kind.Name, "attempt", a.attempts, "hold", hold, "err", herr)
+		if hold {
+			// The handler asked for a person: held, and the attempt is given back like a shutdown requeue.
+			res, err = r.st.Writer().ExecContext(ctx, sqlHoldHandler, code, text, prog, nowMS, a.id, a.attempts)
+		} else if permanent || a.attempts >= a.max {
 			res, err = r.st.Writer().ExecContext(ctx, sqlFail, code, text, prog, nowMS, a.id, a.attempts)
 		} else {
 			nb := now.Add(r.o.Backoff(a.attempts)).UnixMilli()
