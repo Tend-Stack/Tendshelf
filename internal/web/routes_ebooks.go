@@ -25,6 +25,7 @@ import (
 func (s *server) registerEbooks(mux *http.ServeMux) {
 	mux.HandleFunc("POST /books/{id}/text", s.postEbookUpload)
 	mux.HandleFunc("POST /books/{id}/text/{fileID}/dismiss", s.postEbookDismiss)
+	s.registerEbookPairing(mux)
 }
 
 // ebookUploadErrKey carries the refusal of an upload to the page render that shows it.
@@ -67,11 +68,23 @@ func (s *server) textView(r *http.Request, book library.Book, edit, all bool, up
 			Action: ebookTextHref(book.ID), CSRF: csrf, Error: upErr,
 		}
 	}
+	tc, err := s.textContext(r, book, edit, files)
+	if err != nil {
+		return pages.TextView{}, err
+	}
+	if edit {
+		if v.Suggestions, err = s.textSuggestions(ctx, book, tc); err != nil {
+			return pages.TextView{}, err
+		}
+		if len(v.Suggestions) > 0 {
+			v.FoundLabel = ebookFoundLabel
+		}
+	}
 	for _, f := range files {
 		if !edit && f.State != "ready" {
 			continue
 		}
-		fv, err := s.textFileView(ctx, book, f, edit, all, csrf)
+		fv, err := s.textFileView(ctx, book, f, edit, all, csrf, tc)
 		if err != nil {
 			return pages.TextView{}, err
 		}
@@ -84,7 +97,7 @@ func (s *server) textView(r *http.Request, book library.Book, edit, all bool, up
 }
 
 // textFileView is one file of the book in the words of its state.
-func (s *server) textFileView(ctx context.Context, book library.Book, f ebook.File, edit, all bool, csrf string) (pages.TextFileView, error) {
+func (s *server) textFileView(ctx context.Context, book library.Book, f ebook.File, edit, all bool, csrf string, tc *textCtx) (pages.TextFileView, error) {
 	fv := pages.TextFileView{ID: f.ID, State: f.State, Name: ebookName(f)}
 	if edit {
 		fv.Source = ebookFromThis
@@ -118,6 +131,9 @@ func (s *server) textFileView(ctx context.Context, book library.Book, f ebook.Fi
 		}
 		if edit && f.MissingSince > 0 {
 			fv.Note = ebookGone
+		}
+		if tc != nil {
+			tc.decorate(book, f, &fv, ed, rows)
 		}
 		shown := rows
 		if !all && len(shown) > bookChaptersHead {
@@ -320,7 +336,17 @@ func (s *server) getIngestJob(w http.ResponseWriter, r *http.Request, j jobs.Job
 	if !ok {
 		return
 	}
-	fv, err := s.textFileView(r.Context(), book, f, true, false, s.csrf.TokenFrom(r.Context()))
+	files, err := s.ebooks.Store().FilesForBook(r.Context(), book.ID)
+	if err != nil {
+		s.serverError(w, r, "ebook rows", err)
+		return
+	}
+	tc, err := s.textContext(r, book, true, files)
+	if err != nil {
+		s.serverError(w, r, "ebook rows", err)
+		return
+	}
+	fv, err := s.textFileView(r.Context(), book, f, true, false, s.csrf.TokenFrom(r.Context()), tc)
 	if err != nil {
 		s.serverError(w, r, "ebook row", err)
 		return

@@ -18,6 +18,19 @@ type TextProtectedView struct {
 	Title, Body, Advice, Another, AnotherHref, WhyTitle, WhyBody, StillPlays string
 }
 
+// TextActionView is one button in a form of its own: a POST to Action with the token. Kind is the
+// button style ("primary", "secondary" or "quiet"); Aria names the file the button acts on.
+type TextActionView struct {
+	Action, Label, Aria, CSRF, Kind string
+}
+
+// TextSuggestionView is an unpaired ebook that may be this book's text: its card, "Pair with this
+// audiobook" and "Not the same book".
+type TextSuggestionView struct {
+	Card          components.PairingCardView
+	Pair, NotSame TextActionView
+}
+
 // TextFileView is one ebook file of the book. State is "ready", "pending", "refused" or "failed".
 // The handler writes every word and address.
 type TextFileView struct {
@@ -36,6 +49,13 @@ type TextFileView struct {
 	Protected *TextProtectedView
 	// Clear removes a refused or failed upload; empty when the file came from a library folder.
 	ClearAction, ClearLabel, ClearAria, CSRF string
+	// Card is the pairing card of a file found by the automatic rules (editors only); NotSame is
+	// "Not the same book" for any paired file, shown in the card or under the row.
+	Card    *components.PairingCardView
+	NotSame *TextActionView
+	// Chips say whose edition this is; Choose and MakeDefault change it (two or more editions).
+	Chips               []string
+	Choose, MakeDefault *TextActionView
 }
 
 // TextUploadView is the "add a file" form. Error is the plain sentence of a refused upload.
@@ -46,6 +66,7 @@ type TextUploadView struct {
 // TextView is the Text tab. Editors get Lead, the form and every file; readers only the ready editions.
 type TextView struct {
 	Heading, Lead, FoundLabel string
+	Suggestions               []TextSuggestionView
 	Files                     []TextFileView
 	Upload                    *TextUploadView
 }
@@ -64,10 +85,22 @@ templ TextPanel(v TextView) {
 // TextBody is what an upload swaps: the files and the form. Its id lets an htmx request replace it.
 templ TextBody(v TextView) {
 	<div id="ebook-body" class="ts-ebook__body">
+		if v.FoundLabel != "" && (len(v.Suggestions) > 0 || len(v.Files) > 0) {
+			<span class="ts-overline">{ v.FoundLabel }</span>
+		}
+		if len(v.Suggestions) > 0 {
+			<div id="ebook-suggestions" class="ts-ebook__files">
+				for _, sg := range v.Suggestions {
+					@components.PairingCard(sg.Card) {
+						<div class="ts-pair__actions">
+							@textActionForm(sg.Pair)
+							@textActionForm(sg.NotSame)
+						</div>
+					}
+				}
+			</div>
+		}
 		if len(v.Files) > 0 {
-			if v.FoundLabel != "" {
-				<span class="ts-overline">{ v.FoundLabel }</span>
-			}
 			<div id="ebook-files" class="ts-ebook__files">
 				for _, f := range v.Files {
 					@EbookFileRow(f)
@@ -85,7 +118,20 @@ templ TextBody(v TextView) {
 templ EbookFileRow(f TextFileView) {
 	switch f.State {
 		case "ready":
-			@EbookEdition(f)
+			if f.Card != nil {
+				<div id={ "ebook-file-" + f.ID } class="ts-ebook__file">
+					@components.PairingCard(*f.Card) {
+						if f.NotSame != nil {
+							<div class="ts-pair__actions">
+								@textActionForm(*f.NotSame)
+							</div>
+						}
+					}
+					@EbookEdition(f)
+				</div>
+			} else {
+				@EbookEdition(f)
+			}
 		case "pending":
 			<div
 				id={ "ebook-file-" + f.ID }
@@ -110,8 +156,21 @@ templ EbookFileRow(f TextFileView) {
 // EbookEdition is a ready ebook: where it came from, its size in chapters and words, and the
 // chapters with their first lines.
 templ EbookEdition(f TextFileView) {
-	<section id={ "ebook-file-" + f.ID } class="ts-ebook__file ts-ebook__edition" aria-labelledby={ "ebook-name-" + f.ID }>
+	<section
+		class="ts-ebook__file ts-ebook__edition"
+		if f.Card == nil {
+			id={ "ebook-file-" + f.ID }
+		}
+		aria-labelledby={ "ebook-name-" + f.ID }
+	>
 		<h3 id={ "ebook-name-" + f.ID } class="section ts-ebook__name">{ f.Name }</h3>
+		if len(f.Chips) > 0 {
+			<p class="ts-pair__editions">
+				for _, c := range f.Chips {
+					<span class="ts-pair__chip">{ c }</span>
+				}
+			</p>
+		}
 		<p class="caption ts-ebook__meta">{ f.Summary }</p>
 		if f.Source != "" {
 			<p class={ "caption", "ts-ebook__meta", templ.KV("ts-ebook__path", f.SourceIsPath) }>{ f.Source }</p>
@@ -137,6 +196,19 @@ templ EbookEdition(f TextFileView) {
 				</li>
 			}
 		</ol>
+		if f.Choose != nil || f.MakeDefault != nil || (f.NotSame != nil && f.Card == nil) {
+			<div class="ts-pair__actions">
+				if f.Choose != nil {
+					@textActionForm(*f.Choose)
+				}
+				if f.MakeDefault != nil {
+					@textActionForm(*f.MakeDefault)
+				}
+				if f.NotSame != nil && f.Card == nil {
+					@textActionForm(*f.NotSame)
+				}
+			</div>
+		}
 		if f.ShowAll != "" {
 			<a
 				class="ts-btn ts-btn--quiet"
@@ -234,5 +306,14 @@ templ EbookUploadForm(u TextUploadView) {
 			}
 			<button type="submit" class="ts-btn ts-btn--primary">{ u.Go }</button>
 		</div>
+	</form>
+}
+
+// textActionForm is one button in its own plain POST form: htmx boosts it, and it works without
+// JavaScript (the answer is a redirect back to the tab).
+templ textActionForm(a TextActionView) {
+	<form class="ts-pair__form" method="post" action={ templ.URL(a.Action) }>
+		<input type="hidden" name="_csrf" value={ a.CSRF }/>
+		<button type="submit" class={ "ts-btn", "ts-btn--" + a.Kind } aria-label={ a.Aria }>{ a.Label }</button>
 	</form>
 }

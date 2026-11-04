@@ -48,3 +48,28 @@ const (
 	// NEW: upload errors (the 422, 413, 409 and 507 answers).
 	ebookNoFile = "Choose a file first."
 )
+
+// Copy for pairing (M5 R2 P2). Deck words (boards AddEbook*, NoMatchPhone) are used word for word;
+// lines marked "NEW" are not in the deck and are listed in the package report.
+const (
+	ebookNotSame      = "Not the same book"
+	ebookFoundInLead  = "Found in"
+	ebookPairGo       = "Pair with this audiobook" // NEW: until R3, when the deck's "Pair and prepare read-along" starts alignment
+	ebookSameTitle    = "Same title and author: %s"
+	ebookSameTitleNA  = "Same title"    // NEW: the deck line needs an author
+	ebookSameISBN     = "Same ISBN: %s" // NEW
+	ebookChaptersSame = "%d chapters in both, with the same names"
+	ebookChaptersNum  = "%d chapters in both"                                             // NEW
+	ebookChaptersDiff = "%d chapters in the ebook, %d in the audiobook"                   // NEW
+	ebookDiffTitle    = "Different title or author: %s by %s"                             // NEW
+	ebookDiffTitleNA  = "Different title or author: %s"                                   // NEW: an ebook that names no author
+	ebookBookEdition  = "The book's edition"                                              // NEW
+	ebookYourEdition  = "Your edition"                                                    // NEW
+	ebookReadThis     = "Read this edition"                                               // NEW
+	ebookMakeDefault  = "Make it the book's edition"                                      // NEW
+	ebookNotReadyYet  = "This ebook is still being read, or Tendshelf could not open it." // NEW
+	ebookAlreadyHere  = "This ebook is already on this book."
+	ebookPairMeta     = "%s · %s · %s" // NEW: {authors} · {FORMAT} · {n} pages
+	ebookPairMetaNoA  = "%s · %s"      // NEW: {FORMAT} · {n} pages, for an ebook that names no author
+	ebookPagesOf      = "%d pages"     // NEW
+)

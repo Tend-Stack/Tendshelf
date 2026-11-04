@@ -528,6 +528,14 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
   `TestMigration0017*` (race), `make check`, `make build`. Limits: no page or route (P2, P3); no ebook-only
   books; the engine does not re-run when a book's details change (the next scan does). The pure type is
   `PairMeta` because `ebook.Meta` already names the parsed metadata.
+  **R2 P2 status** (Text tab: pair, unpair, editions): built. `components.PairingCard`; routes `POST
+  /books/{id}/text/{fileID}/{pair,unpair,not-same,default,choose}` (EditBook, choose ReadText; a file on another
+  book moves only for someone who may edit that book too); the tab shows the card with checks for files paired by
+  folder, ISBN or title, up to three suggestions under "Found in your folders" (editors only), and chips and
+  buttons for the book's edition and your own when a book has two ready ebooks. Checks: `TestTextPair*`,
+  `TestTextEdition*`, matrix rows, `book-text` a11y seed (0 findings), opt-in `TestTextPairVisual`. Limits: the
+  main button is "Pair with this audiobook" until R3; the core CSS budget is over by 212 gzip bytes (21,588 against
+  21,376) and waits for an operator decision.
 - **R3 Alignment job**: `internal/align` and `internal/align/runtime`, migration `alignments`
   (`runtime_components`, `alignments`, `alignment_chapters`); `runtimes/align/worker.py`; `/admin/runtimes`
   check; emissions cache; mapping, forced alignment, confidence, failure labels; resume, cancel, hold;

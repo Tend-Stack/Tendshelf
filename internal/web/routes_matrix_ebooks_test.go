@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -39,6 +40,23 @@ func ebookSeed(t *testing.T, e *sweepEnv) {
 		}
 		e.ebookRefused[i] = f.ID
 	}
+	// Ready files for the pairing rows: two on the book (default, choose, and one unpair each for the
+	// owner and the admin) and two unpaired (pair, not-same). They have no edition; the routes only
+	// need the row.
+	e.ebookPair = map[string]string{}
+	for i, name := range []string{"default", "choose", "unpair0", "unpair1", "pair", "not-same"} {
+		id := placeEbook(t, a, e.book, e.uid[sweepOwner], "sweep-"+name+".epub", "ready", "")
+		if _, err := a.st.Writer().ExecContext(ctx, `UPDATE ebook_files SET sha256 = ?, quick_hash = ? WHERE id = ?`,
+			fmt.Sprintf("%064x", 5000+i), fmt.Sprintf("%064x", 5000+i), id); err != nil {
+			t.Fatal(err)
+		}
+		if name == "pair" || name == "not-same" {
+			if _, err := a.st.Writer().ExecContext(ctx, `UPDATE ebook_files SET book_id = NULL, paired_by = NULL WHERE id = ?`, id); err != nil {
+				t.Fatal(err)
+			}
+		}
+		e.ebookPair[name] = id
+	}
 }
 
 // ebookSweepRows are the route matrix rows of the Text tab. Owner and admin may add and clear
@@ -56,5 +74,21 @@ func ebookSweepRows() []sweepRow {
 		return "/books/" + e.book.ID + "/text/" + e.ebookRefused[min(role, 1)] + "/dismiss"
 	}, sweepFormOf(url.Values{}), sweepStaff(http.StatusSeeOther, http.StatusNotFound), "")
 	dismiss.LocOf = func(e *sweepEnv) string { return "/books/" + e.book.ID + "/text" }
-	return []sweepRow{tab, poll, add, dismiss}
+	rows := []sweepRow{tab, poll, add, dismiss}
+	acts := func(verb, key string, want [4]int) sweepRow {
+		r := sweepPost("POST /books/{id}/text/{fileID}/"+verb, func(e *sweepEnv, role int) string {
+			k := key
+			if key == "unpair" {
+				k += fmt.Sprint(min(role, 1))
+			}
+			return "/books/" + e.book.ID + "/text/" + e.ebookPair[k] + "/" + verb
+		}, sweepFormOf(url.Values{}), want, "")
+		r.LocOf = func(e *sweepEnv) string { return "/books/" + e.book.ID + "/text" }
+		return r
+	}
+	for _, verb := range []string{"pair", "unpair", "not-same", "default"} {
+		rows = append(rows, acts(verb, verb, sweepStaff(http.StatusSeeOther, http.StatusNotFound)))
+	}
+	// Choosing needs only the right to read the text: a member or guest without can_read gets 404.
+	return append(rows, acts("choose", "choose", sweepStaff(http.StatusSeeOther, http.StatusNotFound)))
 }
