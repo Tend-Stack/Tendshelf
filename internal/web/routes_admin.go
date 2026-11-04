@@ -137,6 +137,12 @@ func (s *server) getAdminLibraries(w http.ResponseWriter, r *http.Request) {
 // renderAdminLibraries draws the Libraries page with a status and, when banner is not empty, that
 // line in place of the "marked" one. The caller has already checked access.
 func (s *server) renderAdminLibraries(w http.ResponseWriter, r *http.Request, status int, banner string) {
+	s.renderAdminLibrariesFor(w, r, status, banner, "", "")
+}
+
+// renderAdminLibrariesFor is renderAdminLibraries with a refusal shown under one library's upload
+// choice (errLib is its id).
+func (s *server) renderAdminLibrariesFor(w http.ResponseWriter, r *http.Request, status int, banner, errLib, errText string) {
 	ctx := r.Context()
 	sc := s.scope(r)
 	view, err := s.librariesView(ctx, r, sc)
@@ -165,6 +171,10 @@ func (s *server) renderAdminLibraries(w http.ResponseWriter, r *http.Request, st
 		}
 		view.Online = &pages.AdminOnlineView{Title: adminOnlineTitle, Body: adminOnlineBody,
 			OnLabel: adminOnlineOn, OffLabel: adminOnlineOff, Save: adminOnlineSave, On: on}
+	}
+	if view.Uploads, err = s.adminUploadsView(ctx, r, errLib, errText); err != nil {
+		s.serverError(w, r, "uploads setting", err)
+		return
 	}
 	if m := r.URL.Query().Get("marked"); m != "" {
 		var n int

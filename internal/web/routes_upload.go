@@ -34,6 +34,7 @@ func (s *server) registerUploads(mux *http.ServeMux) {
 	mux.HandleFunc("POST /uploads/{id}/cancel", s.postUploadCancel)
 	mux.HandleFunc("POST /admin/libraries/{id}/uploads", s.postUploadSetting)
 	mux.HandleFunc("POST /books/{id}/remove", s.postBookRemove)
+	s.registerUploadPages(mux)
 }
 
 // uploadRefusal is the JSON error body of an upload route; offset is set only for wrong_offset.
@@ -203,17 +204,17 @@ func (s *server) postUploadSetting(w http.ResponseWriter, r *http.Request) {
 	if folderID != "" {
 		f, err := s.lib.Folder(ctx, folderID)
 		if err != nil || f.LibraryID != lib.ID {
-			s.renderAdminLibraries(w, r, http.StatusUnprocessableEntity, uploadsCannotWrite)
+			s.renderAdminLibrariesFor(w, r, http.StatusUnprocessableEntity, "", lib.ID, uploadsCannotWrite)
 			return
 		}
 		if err := s.uploads.Writable(ctx, folderID); err != nil {
-			s.renderAdminLibraries(w, r, http.StatusUnprocessableEntity, uploadsCannotWrite)
+			s.renderAdminLibrariesFor(w, r, http.StatusUnprocessableEntity, "", lib.ID, uploadsCannotWrite)
 			return
 		}
 	}
 	if err := s.lib.SetUploadFolder(ctx, lib.ID, folderID); err != nil {
 		if errors.Is(err, library.ErrNotFound) {
-			s.renderAdminLibraries(w, r, http.StatusUnprocessableEntity, uploadsCannotWrite)
+			s.renderAdminLibrariesFor(w, r, http.StatusUnprocessableEntity, "", lib.ID, uploadsCannotWrite)
 			return
 		}
 		s.serverError(w, r, "upload setting", err)

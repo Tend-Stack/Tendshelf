@@ -12,6 +12,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/upload"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
@@ -53,6 +54,7 @@ var jobViews = map[string]func(s *server, w http.ResponseWriter, r *http.Request
 	mediajobs.KindWriteDetails: (*server).getWriteJob,
 	metadata.KindOnlineBulk:    (*server).getBulkJob,
 	backups.Kind:               (*server).getBackupJob,
+	upload.KindPlace:           (*server).getUploadJob,
 }
 
 // getJob answers GET /hx/jobs/{id}. An unknown id and an unknown kind are both "no such job".

@@ -60,6 +60,9 @@ type HiddenField struct{ Name, Value string }
 type LibraryView struct {
 	// Title is "Library" or the name of the one library shown.
 	Title string
+	// AddBooksHref and AddBooksLabel are the header button to the Add books page; empty when the
+	// person may not add books or the library takes no uploads.
+	AddBooksHref, AddBooksLabel string
 	// FormAction is the address the filter form sends to (the page without its query).
 	FormAction string
 	// Libraries are the chips that switch between libraries; empty with a single library.
@@ -259,6 +262,9 @@ templ Library(v LibraryView) {
 		<header class="ts-lib-head">
 			<h1 class="title-1 ts-lib-head__title">{ v.Title }</h1>
 			<p class="caption ts-num ts-lib-head__count">{ v.HeaderLine }</p>
+			if v.AddBooksHref != "" {
+				<a class="ts-btn ts-btn--secondary ts-lib-head__add" href={ templ.SafeURL(v.AddBooksHref) }>{ v.AddBooksLabel }</a>
+			}
 		</header>
 		if v.Scan != nil {
 			<div class="ts-browse-scan">

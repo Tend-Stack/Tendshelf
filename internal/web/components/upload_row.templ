@@ -1,0 +1,150 @@
+package components
+
+import "strconv"
+
+// UploadRowWords are the button words of a queue row. The handler supplies them so every word
+// comes from the server (upload_copy.go).
+type UploadRowWords struct {
+	Pause, Resume, ChooseAgain, Cancel, TryAgain, OpenBook string
+}
+
+// UploadRowView is one row of the Add books queue (decision 0015, board UploadBooks). State is
+// sending, paused, stopped (an upload that lost its page: choose the same files again), checking,
+// placing, adding, added, refused or failed. The handler writes every sentence; js/upload.js fills
+// the "sending" template (Template true) and moves a live row between sending, paused, refused and
+// failed.
+type UploadRowView struct {
+	ID, State         string
+	Title, Meta, Line string
+	Path, Left        string
+	Percent           int
+	OpenHref          string
+	Words             UploadRowWords
+	// Template marks the hidden row js/upload.js clones for each new upload.
+	Template bool
+}
+
+// uploadShapes are the row icons of the board: upload, pause, play, warning, refresh, shield with a
+// cross, and a tick. They are drawn here because no other page uses them.
+var uploadShapes = map[string]string{
+	"sending": `<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>`,
+	"paused":  `<path d="M9 5v14M15 5v14"/>`,
+	"play":    `<path d="M8 5.5v13l10-6.5z"/>`,
+	"warn":    `<path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/>`,
+	"adding":  `<path d="M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5"/>`,
+	"refused": `<path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="m9 9 6 6M15 9l-6 6"/>`,
+	"added":   `<path d="m5 12.5 4.5 4.5L19 7.5"/>`,
+	"back":    `<path d="M15 5l-7 7 7 7"/>`,
+	"file":    `<path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/>`,
+	"folder":  `<path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/>`,
+}
+
+// uploadIconName maps a row state to its icon.
+func uploadIconName(state string) string {
+	switch state {
+	case "stopped", "failed":
+		return "warn"
+	case "checking", "placing":
+		return "adding"
+	}
+	return state
+}
+
+// uploadWorking is true while the server still has work to do for the row.
+func uploadWorking(v UploadRowView) bool {
+	return v.State == "checking" || v.State == "placing" || v.State == "adding"
+}
+
+// uploadPolls is true for a live row that asks the server for itself.
+func uploadPolls(v UploadRowView) bool {
+	return !v.Template && uploadWorking(v)
+}
+
+// UploadIcon draws one of the Add books icons without any attribute of its own.
+templ UploadIcon(name string) {
+	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true">
+		@templ.Raw(uploadShapes[name])
+	</svg>
+}
+
+templ uploadSVG(name string, hidden bool) {
+	<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true" data-ts-icon={ name } hidden?={ hidden }>
+		@templ.Raw(uploadShapes[name])
+	</svg>
+}
+
+// UploadRow is one queue row. A row that is still being worked on asks the server for itself every
+// 2 seconds and is replaced by what comes back (GET /hx/uploads/{id}).
+templ UploadRow(v UploadRowView) {
+	<li
+		class={ "ts-upload__row ts-upload__row--" + v.State }
+		role="status"
+		if v.ID != "" {
+			id={ "up-" + v.ID }
+			data-ts-upload={ v.ID }
+		}
+		if uploadPolls(v) {
+			hx-get={ "/hx/uploads/" + v.ID }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		<span class={ "ts-upload__icon ts-upload__icon--" + v.State } aria-hidden="true" data-ts-icons>
+			if v.Template {
+				@uploadSVG("sending", false)
+				@uploadSVG("paused", true)
+				@uploadSVG("warn", true)
+				@uploadSVG("refused", true)
+			} else {
+				@uploadSVG(uploadIconName(v.State), false)
+			}
+		</span>
+		<div class="ts-upload__text">
+			<p class="body ts-upload__title" data-ts-title>{ v.Title }</p>
+			<p class="caption ts-upload__meta" data-ts-meta>{ v.Meta }</p>
+			if v.State == "sending" || v.State == "paused" {
+				<progress class="ts-upload__progress" max="100" value={ strconv.Itoa(v.Percent) } aria-label={ v.Title } data-ts-bar>{ strconv.Itoa(v.Percent) } %</progress>
+			}
+			if v.Path != "" {
+				<p class="caption ts-upload__path">{ v.Path }</p>
+			}
+			if v.Line != "" || v.Template {
+				<p class="caption ts-num ts-upload__line" data-ts-line>
+					if uploadWorking(v) {
+						<span class="ts-spinner ts-upload__spin" aria-hidden="true"></span>
+					}
+					{ v.Line }
+				</p>
+			}
+			if v.Left != "" {
+				<p class="caption ts-upload__line">{ v.Left }</p>
+			}
+		</div>
+		<div class="ts-upload__actions">
+			if v.Template {
+				<button type="button" class="ts-btn ts-btn--secondary" data-ts-act="pause" data-ts-for="sending">
+					@uploadSVG("paused", false)
+					{ v.Words.Pause }
+				</button>
+				<button type="button" class="ts-btn ts-btn--secondary" data-ts-act="resume" data-ts-for="paused" hidden>
+					@uploadSVG("play", false)
+					{ v.Words.Resume }
+				</button>
+				<button type="button" class="ts-btn ts-btn--quiet" data-ts-act="cancel" data-ts-for="paused failed" hidden>{ v.Words.Cancel }</button>
+			}
+			if v.State == "stopped" {
+				<label class="ts-btn ts-btn--secondary ts-upload__choose">
+					{ v.Words.ChooseAgain }
+					<input class="ts-sr" type="file" multiple data-ts-again/>
+				</label>
+				<button type="button" class="ts-btn ts-btn--quiet" data-ts-act="cancel">{ v.Words.Cancel }</button>
+			}
+			if v.State == "failed" && !v.Template {
+				<button type="button" class="ts-btn ts-btn--secondary" data-ts-act="retry">{ v.Words.TryAgain }</button>
+			}
+			if v.State == "added" && v.OpenHref != "" {
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.OpenHref) }>{ v.Words.OpenBook }</a>
+			}
+		</div>
+	</li>
+}

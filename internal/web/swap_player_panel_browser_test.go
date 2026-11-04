@@ -88,7 +88,9 @@ func TestSwapPlayerBrowserSidePanelStays(t *testing.T) {
 			during := swapPanelShot(t, tab, box, "during")
 			var after struct{ X, Y, W, H float64 }
 			tab.Eval(`(() => { const r = document.getElementById("player-full").getBoundingClientRect(); return {X: r.x, Y: r.y, W: r.width, H: r.height}; })()`, &after)
-			if after != b {
+			// Home's Resume for the playing book suppresses the bar, so the panel may grow down to the foot
+			// (operator, 2026-11-04: no empty strip under it); its top, side and width never move.
+			if after.X != b.X || after.Y != b.Y || after.W != b.W || after.H < b.H {
 				t.Errorf("the panel moved during the swap: %+v to %+v", b, after)
 			}
 			if d := swapPanelDiff(before, during); d > 0.01 {
