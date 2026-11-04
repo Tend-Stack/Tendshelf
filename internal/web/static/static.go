@@ -272,6 +272,9 @@ func (s *Set) Names() []string {
 // build and asset list in front of it, and is not part of its own precache.
 const serviceWorkerName = "js/sw.js"
 
+// readerStyleName is the reader page's stylesheet, which the worker does not precache.
+const readerStyleName = "css/pages-reader.css"
+
 // Build is the 12-hex id of this set under the given server version: the SHA-256 over the version
 // and every hashed name, sorted. Any changed asset (or a new version) changes it, which is what makes
 // the worker's cache name and the /sw.js bytes new.
@@ -286,11 +289,12 @@ func (s *Set) Build(version string) string {
 }
 
 // Precache lists the served path of every asset the worker keeps for offline use: all of them but the
-// *.txt notices and the worker script itself. Sorted, so the list is stable.
+// *.txt notices, the worker script itself and the reader's stylesheet (only the reader page uses it; offline
+// reading adds it back when the reader works offline). Sorted, so the list is stable.
 func (s *Set) Precache() []string {
 	var out []string
 	for name, a := range s.byName {
-		if name == serviceWorkerName || path.Ext(name) == ".txt" {
+		if name == serviceWorkerName || name == readerStyleName || path.Ext(name) == ".txt" {
 			continue
 		}
 		out = append(out, "/static/"+a.Hashed)

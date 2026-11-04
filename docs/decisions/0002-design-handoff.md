@@ -46,6 +46,6 @@ because no dependency was approved.
 ## Consequences
 
 `AGENTS.md` (layout, design and checks), `docs/architecture.md` (dependencies, design regions, cover
-colour, setup), `docs/roadmap.md` (milestones), `docs/vision.md` (10 s), `docs/read-along.md` (fonts)
+colour, setup), `docs/roadmap.md` (milestones), `docs/vision.md` (10 s), `docs/reader.md` (fonts)
 and `docs/design/README.md` are updated in the same commit. The duplicate handoff zip and canvas
 overview screenshots were not kept.

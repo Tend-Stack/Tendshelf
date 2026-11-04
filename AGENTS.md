@@ -20,14 +20,12 @@ was reused, extended or replaced.
   CLI runs through the `tool` directive in `go.mod`, one version source), `golang.org/x/net` v0.61.0
   (`html`, `html/charset`), `golang.org/x/text` v0.43.0 (`unicode/norm`, `encoding/...`; ebook reading,
   `internal/ebook` only) and `github.com/ledongthuc/pdf` (PDF text layer, `internal/ebook/pdf.go` only). Approved for later phases
-  (operator, 2026-11-03), each added with its `NOTICES.md` row: the read-along modules, Wails v3 (desktop
+  (operator, 2026-11-03), each added with its `NOTICES.md` row: Wails v3 (desktop
   module only), fsnotify, go-webauthn and an OpenID Connect client; see "Dependencies and approvals" in
   `docs/architecture.md`.
 - **One server binary**, pure Go (`CGO_ENABLED=0` must build). Static assets and migrations are embedded
-  with `embed`. External programs: `ffmpeg` and `ffprobe` only, located via config or `PATH`, plus the
-  optional owner-installed alignment worker for read-along, launched only by `internal/align/runtime`
-  over its own stdin/stdout pipes, never a port (decisions `docs/decisions/0001-read-along.md` and
-  [0017](docs/decisions/0017-alignment-worker-pipes.md)). Tendshelf never downloads runtimes or models.
+  with `embed`. External programs: `ffmpeg` and `ffprobe` only, located via config or `PATH`
+  ([decision 0018](docs/decisions/0018-book-reader.md)). Tendshelf never downloads runtimes or models.
 - **templ** for HTML. Generated `*_templ.go` files are committed so `go build` works without the templ
   CLI; `make generate` regenerates them and CI fails if the tree changes afterwards. Pin the templ CLI
   version to the `github.com/a-h/templ` version in `go.mod`.
@@ -99,7 +97,7 @@ was reused, extended or replaced.
   An upload with a copy-protected file is refused before its bytes are sent (by extension) or after
   ffprobe reports encryption on the staged copy; its staged bytes are deleted and nothing reaches the
   library folder.
-- Ebook files (read-along text editions, `docs/read-along.md`) follow the same rules: library ebooks are
+- Ebook files (text editions, `docs/reader.md`) follow the same rules: library ebooks are
   read-only, uploads are kept byte-identical, and copy-protected ebooks (Adobe ADEPT, Apple, Readium LCP,
   encrypted EPUB content, PDF `/Encrypt`, encrypted MOBI, any KFX) are refused, never decrypted.
 - ffmpeg/ffprobe run with `-protocol_whitelist file,pipe` (ffmpeg also `-nostdin`; ffprobe has no such

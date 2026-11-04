@@ -28,7 +28,7 @@ func TestReaderSettingsBrowser(t *testing.T) {
 			}))
 			t.Cleanup(srv.Close)
 			tab := b.NewTab(vp.w, vp.h, vp.mobile, true)
-			tab.Navigate(srv.URL + l.readPath("mode=read"))
+			tab.Navigate(srv.URL + l.readPath(""))
 			tab.WaitFor(`window.htmx !== undefined && document.getElementById("reader") !== null`, 5*time.Second)
 			// A marker so a reload would be noticed.
 			tab.Eval(`window.__noReload = true`, nil)
@@ -40,8 +40,6 @@ func TestReaderSettingsBrowser(t *testing.T) {
 
 			click("rs-size-22")
 			tab.WaitFor(`document.getElementById("reader").classList.contains("ts-reader--size-22")`, 5*time.Second)
-			click("rs-hl-underline")
-			tab.WaitFor(`document.getElementById("reader").dataset.hl === "underline"`, 5*time.Second)
 			click("rs-leading-airy")
 			tab.WaitFor(`document.getElementById("reader").classList.contains("ts-reader--leading-airy")`, 5*time.Second)
 			click("rs-theme-light")
@@ -81,14 +79,14 @@ func TestReaderSettingsBrowser(t *testing.T) {
 				time.Sleep(100 * time.Millisecond)
 			}
 			rs := l.rsetStored(t, l.owner)
-			if rs.Size != 22 || rs.Highlight != "underline" || rs.Leading != "airy" || rs.Font != "dyslexic" {
+			if rs.Size != 22 || rs.Leading != "airy" || rs.Font != "dyslexic" {
 				t.Fatalf("stored %+v", rs)
 			}
-			tab.Navigate(srv.URL + l.readPath("mode=read"))
+			tab.Navigate(srv.URL + l.readPath(""))
 			tab.WaitFor(`document.getElementById("reader") !== null`, 5*time.Second)
 			var ok bool
 			tab.Eval(`(() => { const r = document.getElementById("reader");
-				return r.classList.contains("ts-reader--size-22") && r.classList.contains("ts-reader--dyslexic") && r.dataset.hl === "underline"
+				return r.classList.contains("ts-reader--size-22") && r.classList.contains("ts-reader--dyslexic")
 					&& document.documentElement.dataset.theme === "light"; })()`, &ok)
 			if !ok {
 				t.Error("choices not kept after reload")

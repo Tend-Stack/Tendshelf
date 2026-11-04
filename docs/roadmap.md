@@ -19,7 +19,7 @@ themes.
 | M2 Family | P3 | **Done 2026-11-03, released as v2026.1.0.** P3-1 to P3-13, the desktop player bar and the Now playing panel; Research dropped (decision 0007). | The P3 status notes below; the route-matrix and leak-test table under "Exit check (P3-13)"; [CHANGELOG.md](../CHANGELOG.md). |
 | M3 Pocket | P4 | M3a built; phone check pending | |
 | M4 Details | P2 | Done 2026-11-03 | [plan](plans/m4-details.md) |
-| M5 Book reader | R1, R2, R4, X, B1-B3, RD1-RD4 | Pivoted 2026-11-04 ([decision 0018](decisions/0018-book-reader.md), [plan](plans/m5-book-reader.md)). R1, R2 and R4 P1-P2 built; read-along dropped. | Plan only. |
+| M5 Book reader | R1, R2, R4, X, B1-B3, RD1-RD4 | Pivoted 2026-11-04 ([decision 0018](decisions/0018-book-reader.md), [plan](plans/m5-book-reader.md)). R1, R2, R4 P1-P4 and X built; read-along removed. | Plan only. |
 | M6 Desktop | P5 | Not started | |
 | M7 Research | P6 | Dropped (decision 0007) | |
 
@@ -569,9 +569,14 @@ boards: `screens/reader/` minus the read-along ones.
 
 Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then B1 and RD1, then B2, B3 and RD2, RD3, RD4.
 
-- **X Remove alignment**: migration 0020 (`highlights` without audio times, alignment tables and jobs gone), `internal/align`,
-  `runtimes/align`, `/admin/runtimes`, voice code in the reader. Exit: no alignment code left; old links still answer;
-  `make page-weight` passes. The orchestrator then removes `<data>/runtimes/align`, `<data>/cache/align` and `<data>/align`.
+- **X Remove alignment (done)**: migration 0020 (`highlights` rebuilt without audio times; `alignments`, `alignment_chapters`,
+  `runtime_components` and the `align.*` jobs gone), `internal/align`, `runtimes/align`, `/admin/runtimes`, `media.PCM16k`,
+  `jobs.Error.Hold`, and the reader's voice code (modes, dock, timing route, Eyes-free button, Highlight, Word, Follow and View
+  settings). The reader is a plain scrolling page again; `mode=` is ignored so old links work. `pages-reader-settings.css`
+  folded into `pages-reader.css`, which `Set.Precache()` skips. Checks: `TestMigration0020*`, `TestX*`, `make check`,
+  `make page-weight`, `make a11y`. Limits: `media.LowerPriority` stays (waveform peaks use it); `bundle.css` voice classes wait for RD4;
+  "Also let them read along" (share, admin user) and "text only, not narrated" wait for B2 and B3. Next: the orchestrator removes
+  `<data>/runtimes/align`, `<data>/cache/align` and `<data>/align` with the server stopped (plan, "Repair after X merges").
 - **B1 Ebook books**: migration 0021 (`books.kind`, `reading_positions`, `reading_sessions`, `merged_books`); a ready ebook with
   no audiobook is a book; automatic merge and split; details and covers from the file. Exit: merge and split tests, files
   untouched, an automatic merge never widens access.

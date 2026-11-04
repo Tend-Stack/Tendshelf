@@ -1,8 +1,8 @@
 # Architecture
 
-One Go process serves pages, fragments, a small JSON API, audio and read-along text. SQLite (WAL) holds everything that
-is not an audio file or a cached image. ffmpeg/ffprobe are child processes, and so is the optional alignment worker for read-along
-([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)). No Node, no SPA.
+One Go process serves pages, fragments, a small JSON API, audio and ebook text. SQLite (WAL) holds everything that
+is not an audio file or a cached image. ffmpeg/ffprobe are the only child processes ([reader.md](reader.md),
+[decision 0018](decisions/0018-book-reader.md)). No Node, no SPA.
 
 ## Invariants
 
@@ -22,9 +22,7 @@ is not an audio file or a cached image. ffmpeg/ffprobe are child processes, and 
 7. Background work is a persisted job; a restart resumes or re-queues it, never silently repeats a
    file swap.
 8. The server binary builds with `CGO_ENABLED=0` and contains no JavaScript build output.
-9. A read-along time is measured from the audio or marked as a gap, never interpolated; an alignment is
-   keyed by recipe, model hashes, edition text hash and audio quick hashes, so a re-run is reproducible.
-10. A text location is stored beside the position (invariant 6), never instead of it.
+9. A text location is stored beside the position (invariant 6), never instead of it.
 
 ## Packages
 
@@ -48,13 +46,10 @@ is not an audio file or a cached image. ffmpeg/ffprobe are child processes, and 
 | `internal/web` | templ pages/components, static assets (embedded), HTMX handlers, security headers, the page router. |
 | `internal/api` | JSON helpers of API v1 (envelope, errors, lists, ETag); the routes live in `internal/web` (`routes_api*.go`) and reuse the pages' library and share functions. |
 | `internal/ebook` | Ebook ingestion (R1): format detection, copy-protection check, one parser per format (EPUB 2/3 with SMIL, PDF text layer, TXT/Markdown, DOCX, HTML, FB2, DRM-free MOBI/AZW3), the canonical document `tendshelf-doc-v1` with stable IDs and source offsets, sentence segmenter, pairing scores. No HTTP, no model. |
-| `internal/align` | Read-along alignment (R3): normaliser, emissions cache, greedy CTC transcript, block mapping and anchors, CTC forced alignment, confidence, timing files, the `align.book` job; Media Overlays import/export (R6). Pure Go. |
-| `internal/align/runtime` | Checks runtime components (hashes, `--describe`, licence), launches and owns the pipe-connected emissions worker (`tendshelf-emissions-v1`, stdin/stdout, no port), idle stop, parent-death cleanup. The only code that starts it. |
 | `desktop/` (P5) | Separate Go module: Wails v3 shell. Not imported by the server. |
 
 Dependency direction: `web`, `api` → services (`library`, `progress`, `share`, `users`, `metadata`,
-`scan`, `jobs`, `ebook`, `align`) → `db`, `media`. `align` uses `ebook` (documents) and
-`media` (ffmpeg decode); `ebook` imports neither. Services never import `web` or `api`.
+`scan`, `jobs`, `ebook`) → `db`, `media`. `ebook` imports neither. Services never import `web` or `api`.
 
 ## Data model
 
@@ -102,11 +97,8 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `editions` (R1) | `id` (`edn_`), `ebook_file_id`, `source_sha256`, `recipe`, `doc_sha256`, `doc_bytes`, `format`, `layout` ('flow','page'), `title`, `subtitle`, `authors_json`, `language`, `isbn`, `asin`, `chapter_count`, `word_count`, `char_count`, `page_count`, `created_at`; UNIQUE (`ebook_file_id`, `source_sha256`, `recipe`) | One canonical document read from one file's exact bytes by one recipe; document file `<data>/text/<doc_sha256>.json.gz`. Not the pairing: that is `ebook_files.book_id`. |
 | `ebook_not_same` (R2) | `ebook_file_id`, `book_id`, `user_id` NULL, `created_at`; PK (`ebook_file_id`, `book_id`) | "Not the same book": keeps folder and automatic pairing from offering that file for that book again. Cascades with the file and the book. |
 | `text_choices` (R2) | `user_id`, `book_id`, `ebook_file_id`, `updated_at`; PK (`user_id`, `book_id`) | A person's edition of a book (replaces the planned `edition.<bookID>` user setting). Removed when the file is unpaired or re-paired. |
-| `edition_chapters` (R1) | `edition_id`, `idx`, `title`, `src`, `front`, `word_count`, `sentence_count`, `text_sha256`; PK (`edition_id`,`idx`) | `text_sha256` over the normalised text drives re-alignment of changed chapters only. |
-| `runtime_components` (R3, 0018) | `id` (`rc_`), `kind` ('emissions-model'), `name`, `language`, `revision`, `model_sha256`, `files_json` (path, size, sha256), `identity_json`, `python_path`, `worker_sha256`, `licence_spdx`, `licence_url`, `source_url`, `check_error` (empty when usable), `checked_at`, `disabled`; UNIQUE (`kind`, `language`) | Usable only when `check_error = ''` and `disabled = 0`; the licence is shown on `/admin/runtimes` and `/about`. |
-| `alignments` (R3, 0018) | `id` (`al_`), `edition_id`, `book_id`, `source` ('model','overlay'), `recipe`, `runtime_id` NULL (SET NULL), `model_sha256` NULL, `audio_key`, `doc_sha256`, `state` CHECK IN ('queued','emitting','aligning','done','partial','failed','cancelled','held'), `labels_json` (`abridged`, `different_edition`), `job_id` NULL, `coverage` REAL, `sentences_total`, `sentences_timed`, `error_code` NULL, `created_at`, `updated_at`, `finished_at` NULL, `superseded_by` NULL | `audio_key` = SHA-256 of the ordered audio `quick_hash` list. At most one active row per edition (partial unique index `alignments_active`). The newest `done`/`partial` row per edition with `superseded_by IS NULL` is used. |
-| `alignment_chapters` (R3, 0018) | `alignment_id`, `chapter_idx`, `state` ('pending','aligned','unmatched','failed'), `chapter_key` NULL, `start_ms` NULL, `end_ms` NULL, `sentences_total`, `sentences_timed`, `mean_confidence` REAL NULL, `updated_at`; PK (`alignment_id`,`chapter_idx`) | Timing file `<data>/align/<chapter_key>.json.gz`, shared by every alignment with the same key. |
-| `highlights` (R4, 0019) | `id` (`hl_`), `user_id`, `book_id`, `edition_id` NULL (SET NULL), `chapter_idx`, `start_sid`, `start_off`, `end_sid`, `end_off`, `quote`, `quote_prefix`, `quote_suffix`, `start_ms` NULL, `end_ms` NULL, `alignment_id` NULL, `colour` ('yellow','green','blue','pink'), `note` (max 2,000 characters; a note on a moment stays `bookmarks.note`, there is no notes table), `client_id` NULL (unique per person), `created_at`, `updated_at`, `deleted_at` | Text range and time range. Private to `user_id`. Soft delete for offline sync. |
+| `edition_chapters` (R1) | `edition_id`, `idx`, `title`, `src`, `front`, `word_count`, `sentence_count`, `text_sha256`; PK (`edition_id`,`idx`) | `text_sha256` over the normalised text drives re-anchoring of changed chapters only. |
+| `highlights` (R4, 0019; rebuilt without audio times by 0020) | `id` (`hl_`), `user_id`, `book_id`, `edition_id` NULL (SET NULL), `chapter_idx`, `start_sid`, `start_off`, `end_sid`, `end_off`, `quote`, `quote_prefix`, `quote_suffix`, `colour` ('yellow','green','blue','pink'), `note` (max 2,000 characters; a note on a moment stays `bookmarks.note`, there is no notes table), `client_id` NULL (unique per person), `created_at`, `updated_at`, `deleted_at` | Text range. Private to `user_id`. Soft delete for offline sync. |
 
 ## Media handling
 
@@ -187,19 +179,17 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 
 Kinds: `scan.library`, `media.probe`, `media.cover`, `media.compat`, `metadata.local`,
 `metadata.online` (only user-triggered), `metadata.online_bulk` (AL-3, one bulk lookup per library, paced; decision [0009](decisions/0009-automatic-lookups.md)), `metadata.online_author`, `media.cover_adopt`, `media.write_details`,
-`upload.place` (decision 0015; concurrency 1, 3 attempts, recovery reruns its idempotent recovery step first), `ebook.ingest` (R1), `align.book` (R3, states and resume in [read-along.md](read-along.md) section 2),
-`align.export_overlays` (R6).
-A job runner per kind with bounded concurrency (probe 2, compat 1, write_details 1, ingest 1, align 1, export 1). Leases of 60 s
+`upload.place` (decision 0015; concurrency 1, 3 attempts, recovery reruns its idempotent recovery step first), `ebook.ingest` (R1).
+A job runner per kind with bounded concurrency (probe 2, compat 1, write_details 1, ingest 1). Leases of 60 s
 renewed while running; on startup, expired `running` jobs return to `queued` except `write_details`,
-which goes to `held` until `file_writes` recovery decides, and `align.book`, which resumes from its
-emissions cache and finished chapters (a held alignment waits for Resume or Discard). Cancellation via context. Progress is
+which goes to `held` until `file_writes` recovery decides. Cancellation via context. Progress is
 written to `progress_json` at most once per second and read by `/hx/jobs/{id}` polling.
 Claiming a job bumps `attempts`, which is the fencing token: every write a running handler makes is
 conditioned on `state='running' AND attempts=?`, so a handler that lost its lease is cancelled with
 `ErrLeaseLost` and never writes a result. Startup recovery also runs every 30 s as a sweep. A running row
 whose kind is `HoldOnRecovery` or not registered goes to `held` (unknown work never re-runs on its own),
 and a row that used all its attempts goes to `failed` (`interrupted`). On shutdown, handlers are cancelled
-with `ErrShutdown` and their rows go back to `queued` without using an attempt (or to `held`). A handler can also ask for a person: a `jobs.Error` with `Hold` sends the row to `held` without using an attempt (`align.book`: `worker_failed`, `runtime_changed`, `audio_changed`); Resume runs it again.
+with `ErrShutdown` and their rows go back to `queued` without using an attempt (or to `held`).
 A handler that writes other tables begins its write transaction with `Task.Fence` (the same check as above,
 as a read inside the transaction), so a run that lost its lease writes nothing. Probe dedupe: after every
 scan, `scan.library` queues `media.probe` for each live unsettled file that has no queued, running or
@@ -228,20 +218,18 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `/s/{token}` (GET, POST to unlock) | Share link (P3-5): one book's listen page; no session; `Referrer-Policy: no-referrer`, `noindex`, `no-store` |
 | `/s/{token}/stream/{file}`, `/s/{token}/peaks/{file}`, `/s/{token}/cover` | The link's media, authorized from the link row; the player in link mode keeps its place in `localStorage` and calls no session route |
 | `POST /books/{id}/share/link`, `POST /share/links/{id}/stop` | Make and stop a link (owner and admin) |
-| `/books/{id}/text` (R1) | The book's text editions: upload, pairing, default edition, alignment status, export |
-| `/books/{id}/read?mode=readalong\|read&ch=&at=&sheet=contents\|marks&edition=` (R4 P2) | Reader inside the layout (player keeps playing); needs `ReadText`, a link visitor and a person without `can_read` get 404. `GET /books/{id}/read/timing/{idx}?edition=` serves the chapter's timing file as stored (gzip pass-through, ETag = chapter key) |
+| `/books/{id}/text` (R1) | The book's text editions: upload, pairing, default edition |
+| `/books/{id}/read?ch=&at=&off=&sheet=contents\|marks\|reading&edition=` | Reader inside the layout (player keeps playing); needs `ReadText`, a link visitor and a person without `can_read` get 404. |
 | `/libraries/{id}/add` | Add books (decision 0015): owner and admin (`share.AddBooks`), 404 otherwise and when the library takes no uploads; with several such libraries a chooser links to the others' pages. JSON routes used by `js/upload.js` (session and `X-CSRF-Token`; errors through `api.Error`): `POST /libraries/{id}/uploads` (manifest, 201), `GET /uploads/{id}`, `PUT /uploads/{id}/files/{fileID}?offset=` (one chunk), `POST /uploads/{id}/finish` (202, starts `upload.place`), `POST /uploads/{id}/cancel` (204). Fragment `GET /hx/uploads/{id}` (one queue row; polls every 2 s while placing). Setting: `POST /admin/libraries/{id}/uploads` (owner only, 303). Remove: `GET\|POST /books/{id}/remove` (confirm page, then 303 to the library) |
 | `/admin/users`, `/admin/libraries`, `/admin/jobs`, `/admin/settings` | Admin. `/admin/libraries` (P1b-4) lists folders and problems, starts scans, and links to `/admin/libraries/folders/new` and `/admin/folders/{id}/emptied`; scan status is `GET /hx/jobs/{id}`. The folder browser is the `?browse=<path>` mode of `/admin/libraries/folders/new` (sheet) and `/setup/folder` (inline); picking links back with `?folder=<path>`, and the submit still runs the add-folder checks |
-| `/admin/ebooks` (R2), `/admin/runtimes` (R3), `/about` (R3) | Unpaired and refused ebooks; word-timing runtime check and licences; credits and model licences |
+| `/admin/ebooks` (R2), `/about` (R3) | Unpaired and refused ebooks; credits and licences |
 
 HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id}/items` with the same query as the page (infinite scroll; the sentinel is a link to the next page, so "Show more" works without JavaScript; a bad cursor is a 400 toast),
 `GET /hx/search/suggest?q=`,
-`POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}` (also the status card of an `align.book` job, for people who may edit the book, and of an `align.check` job, for the owner). Read-along (R2 and R3, as built):
+`POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}`). Ebooks (as built):
 `POST /books/{id}/text` (upload), `POST /books/{id}/text/{fileID}/pair|unpair|not-same|default|choose|dismiss`,
-`POST /books/{id}/text/{fileID}/align` (prepare read-along), `POST /books/{id}/text/{fileID}/align/cancel|resume|discard`
-(all need edit rights on the book; a file not paired to that book is a 404; a missing runtime or audio is a 409), and
-`GET /admin/runtimes`, `POST /admin/runtimes/check`, `GET /admin/runtimes/files/{name...}` (owner only; the lock files and
-model manifests as text). Built in R4 P2: `GET /hx/books/{id}/read/chapters/{idx}?edition=&mode=`,
+(These need edit rights on the book; a file not paired to that book is a 404.)
+`GET /hx/books/{id}/read/chapters/{idx}?edition=`,
 `POST /hx/books/{id}/highlights`, `PATCH|DELETE /hx/highlights/{id}` (the person's own; htmx only), and `POST /books/{id}/bookmarks`
 with `edition_id` and `sid` for a bookmark made in the text. Built in R4 P4: `POST /me/reader-settings` (any signed-in person; `reader.v1` fields and `theme`, merged over the stored value; `?sheet=reading` on the reader page). Planned for later:
 `POST /hx/editions/{id}/exports/overlays`.
@@ -250,7 +238,7 @@ Details, cover, author photo and write routes (M4; the patterns are in `routes_d
 
 Media and system: `GET /stream/{audioFileID}` (`?download=1` marks an offline copy), `GET /offline`, `GET /sw.js`, `GET /manifest.webmanifest`, `GET /peaks/{audioFileID}` (waveform peaks, binary, 404 while being made), `GET|POST /progress/{bookID}` (JSON, session + CSRF header or
 `_csrf` body field, 4 KiB, form-encoded), `GET /covers/{bookID}?w=320`,
-`GET /text/{editionID}/chapters/{idx}/timing.json` (ETag = chapter key), `GET /text/{editionID}/res/{resID}`
+`GET /text/{editionID}/res/{resID}`
 (raster images only), `GET /text/{editionID}/original` and `GET /exports/{id}` (`download_text`), `GET /healthz`,
 `GET /sw.js`, `GET /manifest.webmanifest`, `GET /static/...` (embedded, immutable, hashed names; precompressed gzip served on `Accept-Encoding`, `Vary: Accept-Encoding`, ETag per encoding, Range ignored).
 
@@ -308,11 +296,11 @@ The reference is `docs/api.md`. Shipped in P3-9a (read side): `POST|DELETE /auth
 Built in P3-9b (sync): `GET /progress?since=`, `GET|PUT /progress/{bookID}`, `POST /progress/batch`,
 `GET|POST /books/{id}/bookmarks`, `GET /bookmarks?since=`, `PATCH|DELETE /bookmarks/{id}`. Trimmed from the earlier
 list on 2026-11-02: notes are bookmarks with a note (`?notes=1`), so there are no `/notes` routes; `POST /sessions`
-is folded into the progress body (`speed`, `listenedMs`); editions, chapter text, timing and highlights move to the
-read-along phases. Under `/api/` every error, including those of the reused page helpers, is JSON:
+is folded into the progress body (`speed`, `listenedMs`); editions, chapter text and highlights move to the
+reader phases. Under `/api/` every error, including those of the reused page helpers, is JSON:
 `{"error":{"code","message","field"?}}` with codes `unauthorized` 401, `forbidden` 403, `not_found` 404, `invalid` 400,
 `conflict` 409, `too_large` 413, `unsupported` 415, `rate_limited` 429, `unavailable` 503 (`drm_refused`, `not_ready`
-come with read-along). A book the person may not see, and one that does not exist, give the same `not_found` body.
+come with the reader). A book the person may not see, and one that does not exist, give the same `not_found` body.
 Bearer requests are limited to 600 a minute per device (429 with `Retry-After`); sessions are not limited. There are
 no CORS headers: the PWA is same-origin and native clients do not need them.
 
@@ -406,8 +394,6 @@ so Back, reload and links without JavaScript all work.
 | Reader mode | mode switcher | Page + `hx-select`: `GET /books/{id}/read?mode=` |
 | Reading settings (R4) | `change` | `POST /me/reader-settings` (htmx: 204; plain: 303 to `next`), `hx-swap="none"` |
 | Highlights and notes (R4) | selection menu | `POST /hx/books/{id}/highlights` (out-of-band touched blocks `#b-{blockID}` and `#reader-marks-count`) |
-| Alignment progress `#align-{fileID}` (R3) | `every 2s` until done, held or ended | `GET /hx/jobs/{id}` |
-| Word timing check `#runtime-card-{lang}` (R3) | `every 2s` until the check ends | `GET /hx/jobs/{id}` |
 
 Theme and other UI preferences live in `user_settings` (`ui.theme`, `ui.text_size`), so they follow the
 user across devices; before login the system preference applies.
@@ -497,9 +483,9 @@ and its `/hx/dev/*` fragments; release builds do not register them.
 - Invites: link `/invite/{token}`, default expiry 7 days, default one use, optional email via SMTP.
   Share links `/s/{token}`: one book, expiry required (max 90 days), optional password, no account.
 - Passkeys (WebAuthn) later, added beside passwords.
-- Read-along actions (R5): `read_text` (reader page, chapter text, timing, images) needs `can_read` on the
+- Reader actions: `read_text` (reader page, chapter text, images) needs `can_read` on the
   grant or share link (default off: sharing a book shares listening only); `download_text` (original
-  ebook, overlay export) needs `can_read` and `can_download`; upload, pairing and alignment are owner/admin.
+  ebook) needs `can_read` and `can_download`; upload and pairing are owner/admin.
   Without `read_text` every text route answers `not_found`. Highlights, notes and reader settings are
   readable only by their own user, admins included.
 - Security headers: `Content-Security-Policy: default-src 'self'; img-src 'self' data:; media-src 'self'
@@ -540,18 +526,14 @@ this replaces the earlier sketch (app shell and visited pages in the cache, an I
   Downloads page's sentences, kept so the book page's Download control can word its states).
 - Progress, bookmarks and notes made offline wait in `localStorage` (`ts.pending`, `ts.offline.marks`) and go
   to `POST /api/v1/progress/batch` and the bookmark endpoint on reconnect. iOS storage limits and eviction are
-  stated in the UI (Safari may clear downloads after a week without a visit). With `read_text` and an aligned
-  edition, Download will also store chapter fragments, timing JSON and images (later, read-along).
+  stated in the UI (Safari may clear downloads after a week without a visit). With `read_text`, Download will also store chapter
+  fragments and images (later, offline reading).
 
-## Read-along (R)
+## Reader
 
-Full design: [read-along.md](read-along.md). In short: `internal/ebook` turns a DRM-free ebook into an
-immutable canonical document with stable sentence IDs; `internal/align` decodes the audio with ffmpeg,
-asks the owned worker only for wav2vec2 CTC emissions (cached, resumable), then maps, anchors and
-force-aligns in Go and writes content-addressed per-chapter timing files; the reader page is templ +
-HTMX and `static/js/readalong.js` follows the player's global time with `requestAnimationFrame` and
-binary search over typed arrays. Storage per 10-hour book about 1-1.5 MB of text and timings plus a
-reconstructible emissions cache of about 58 MB (guesses, measured in R3).
+Full description: [reader.md](reader.md). `internal/ebook` turns a DRM-free ebook into an immutable canonical document
+with stable sentence IDs; the reader page is templ and HTMX, one chapter at a time, and keeps the person's
+highlights, notes and bookmarks by sentence id and offset. There is no audio timing and no worker process.
 
 ## Desktop (P5)
 
@@ -574,23 +556,20 @@ Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); 
 | `golang.org/x/crypto` v0.58.0 (argon2) (**added in P1b-1**) | Password hashing, `internal/users` only | BSD-3 |
 | Fonts **vendored in P0b** to `internal/web/static/fonts/` (woff2): Fraunces (variable roman and italic), Fira Sans (400, 400 italic, 500, 600), Fira Mono (400, 500); 1.23 MB in total, 361 KB preloaded | The design's type; Fira Mono for mono text only (the Research lab is dropped, decision 0007) | SIL OFL 1.1, texts beside the files; upstream commits and SHA-256 in `NOTICES.md`; self-hosted, never Google Fonts |
 
-Read-along (phase R), **approved by the operator on 2026-11-03** ("all dependencies of read along"); each
+Ebook reading (phase R), **approved by the operator on 2026-11-03**; each
 still gets its `NOTICES.md` row, with its licence read from the release, in the commit that adds it, and the
 PDF reader was chosen on fixtures in R1 (E2):
 
 | Module / file / runtime | Why | Note |
 | --- | --- | --- |
 | `golang.org/x/net/html` (**added in M5 R1 E1**, v0.61.0, also `html/charset`) | HTML5 tokenizing of EPUB XHTML, HTML files and MOBI/KF8 content (R1) | BSD-3; Go team |
-| `golang.org/x/text` (`unicode/norm`, `encoding/...`) (**added in M5 R1 E1**, v0.43.0) | NFC normalisation for matching and alignment (R1, R3); charset decoding for FB2, HTML and text (R1) | BSD-3; Go team |
+| `golang.org/x/text` (`unicode/norm`, `encoding/...`) (**added in M5 R1 E1**, v0.43.0) | NFC normalisation for matching (R1); charset decoding for FB2, HTML and text (R1) | BSD-3; Go team |
 | `github.com/ledongthuc/pdf` (**added in M5 R1 E2**, v0.0.0-20261020125853-5e46805f718e) | PDF text layer (R1): per-glyph position and size, ToUnicode CMaps, xref streams and incremental updates passed the four spike fixtures | BSD-3 (The Go Authors; licence read from the release); no context support, so the parser checks the deadline between pages; encrypted files are refused before it reads text. Limit: glyph widths of standard fonts without `/Widths` read as 0 |
 | Font vendored to `internal/web/static/fonts/` (woff2): OpenDyslexic | The one extra reader font (R4); the reader otherwise uses the design's Fraunces and Fira Sans | SIL OFL 1.1 (read from the v0.91.12 tag; built in R4 P4); `NOTICES.md` row |
-| Optional runtime, not shipped: Python 3.12 + `torch` CPU (2.8, as TendVox) + `transformers` + `safetensors` + `numpy` | The emissions worker (R3) | Owner-installed; BSD-3 / Apache-2.0 / Apache-2.0 / BSD-3 (guess for exact versions) |
-| Optional models, not shipped: `facebook/wav2vec2-base-960h` (English), `jonatasgrosman/wav2vec2-large-xlsr-53-spanish` (Spanish) | Emissions (R3) | Apache-2.0 per model cards (TendVox `docs/alignment-worker.md`); revision and file hashes pinned in `runtimes/align/models/*.json` |
-| Test-only, opt-in: epubcheck (Java) | Validate the overlay export (R6) | BSD-3 (guess); never in `make check` |
 
 Considered and not chosen: `github.com/clipperhouse/uax29` (sentence segmentation; own rules handle
 abbreviations better and stay versioned), `github.com/yuin/goldmark` (Markdown; only structure is
-needed), whisper.cpp or Parakeet as a second ASR runtime (see read-along.md section 2).
+needed), a speech-recognition runtime (decision 0018).
 
 Later, **approved by the operator on 2026-11-03** (each with its `NOTICES.md` row in the commit that adds it): `github.com/go-webauthn/webauthn` (passkeys), `github.com/fsnotify/fsnotify`
 (folder watcher), `github.com/wailsapp/wails/v3` (desktop module only), an OpenID Connect client.
