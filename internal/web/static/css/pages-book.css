@@ -151,6 +151,7 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   #book-tab-about, .ts-book__aboutdesc { display: none; }
   .ts-book__aboutchapters { display: block; }
   .ts-tabs__item.is-home { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+  .ts-tabs__item.is-home:focus-visible { box-shadow: inset 0 -2px 0 var(--accent), var(--focus-ring); }
   .ts-book__panel { display: grid; grid-template-columns: minmax(0, 1fr) 23rem; gap: var(--space-48); }
   .ts-book__rails, .ts-book__panel.is-about .ts-book__rails { display: flex; margin-top: 0; }
   .ts-book__tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }

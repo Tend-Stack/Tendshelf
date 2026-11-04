@@ -66,7 +66,7 @@
   --raised: #e9e0d0;
   --raised-hover: #e0d5c2;
   --line: #1f1a141f;
-  --line-strong: #8a7f70;
+  --line-strong: #877c6d;
   --ink: #1f1a14;
   --ink-muted: #5e5448;
   --ink-subtle: #685e51;
@@ -106,7 +106,7 @@
   --raised: #dacbae;
   --raised-hover: #d0c0a1;
   --line: #33281b26;
-  --line-strong: #7e6e58;
+  --line-strong: #7b6b55;
   --ink: #33281b;
   --ink-muted: #55452f;
   --ink-subtle: #615039;
@@ -118,7 +118,7 @@
   --cover-accent: var(--accent-fill);
   --cover-tint: var(--surface);
   --on-cover-accent: #ffffff;
-  --success: #1e6458;
+  --success: #1a6155;
   --warning: #6e5200;
   --danger: #93243a;
   --scrim: #33281b66;
@@ -178,6 +178,7 @@
   --wave-played: #ff9a66;
   --wave-rest: #7a7a7a;
   --wave-ahead: #ff9a66e0;
+  --avatar-c5: #3e4e56; /* the slate avatar, lowered to 7:1 under its cream initials (decision 0016) */
 }
 :root {
   /* The dark ink on a tinted spine or blank cover: the boards' spine text colour. Deeper than

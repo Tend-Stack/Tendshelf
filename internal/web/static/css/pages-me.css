@@ -27,7 +27,7 @@
 .ts-sr:checked + .ts-seg__item { background: var(--raised); color: var(--ink); font-weight: 600; }
 .ts-sr:focus-visible + .ts-seg__item, .ts-sr:focus-visible + .ts-me__tile .ts-me__swatch { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 input.ts-switch { appearance: none; margin: 0; }
-input.ts-switch:checked { background: var(--accent-fill); border-color: var(--accent-fill); }
+input.ts-switch:checked { background: var(--accent-fill); border-color: var(--accent); }
 input.ts-switch:checked::after { transform: translateX(1.25rem); background: var(--on-accent); }
 .ts-me__tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-12); padding: var(--space-16) 0; }
 .ts-me__tile { display: flex; flex-direction: column; align-items: center; gap: var(--space-8); cursor: pointer; color: var(--ink); }

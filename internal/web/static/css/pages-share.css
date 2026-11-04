@@ -35,11 +35,12 @@
 .ts-share__choice { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: var(--space-4); row-gap: var(--space-8); min-height: 2.75rem; padding: var(--space-8) var(--space-16) var(--space-8) var(--space-8); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); }
 .ts-share__choice:hover { border-color: var(--ink-muted); }
 .ts-share__choice:has(:checked) { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
-.ts-share__choice:has(:focus-visible) { box-shadow: var(--focus-ring); }
+/* The card carries the ring (and the transparent outline forced colours show); the check inside draws none. */
+.ts-share__choice:has(:focus-visible) { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 .ts-share__choice > .ts-check, .ts-share__found > .ts-check { margin: var(--space-8); border-radius: 50%; }
 .ts-share__choice > .ts-check:checked, .ts-share__found > .ts-check:checked { border-color: var(--accent); background: var(--surface); }
 .ts-share__choice > .ts-check:checked::after, .ts-share__found > .ts-check:checked::after { width: 0.75rem; height: 0.75rem; border: 0; border-radius: 50%; background: var(--accent); transform: none; }
-.ts-share__choice > .ts-check:focus-visible { box-shadow: none; }
+.ts-share__choice > .ts-check:focus-visible { outline: none; box-shadow: none; }
 .ts-share__choice > label { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--space-4) 0; }
 .ts-share__choice > label::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
 .ts-share__choice > :not(input[type="radio"]):not(label) { position: relative; z-index: 1; grid-column: 2; }
@@ -53,7 +54,7 @@
 .ts-share__read { padding: var(--space-8) var(--space-16); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); }
 .ts-share__read .ts-switch-row__label { font-weight: 500; }
 .ts-share .ts-switch { appearance: none; -webkit-appearance: none; margin: 0; flex: none; }
-.ts-share .ts-switch:checked { background: var(--accent-fill); border-color: var(--accent-fill); }
+.ts-share .ts-switch:checked { background: var(--accent-fill); border-color: var(--accent); }
 .ts-share .ts-switch:checked::after { transform: translateX(1.25rem); background: var(--on-accent); }
 
 /* Expiry chips: a radio hidden inside its label; the check shows the chosen one by shape, not colour alone. */

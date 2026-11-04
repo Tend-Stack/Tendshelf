@@ -204,7 +204,7 @@ a.ts-users__item:hover { background: var(--raised); }
 
 /* The bundle's switch is a button with aria-checked; here it is a real checkbox, so it follows :checked. */
 .ts-users .ts-switch { appearance: none; -webkit-appearance: none; margin: 0; }
-.ts-users .ts-switch:checked { background: var(--accent-fill); border-color: var(--accent-fill); }
+.ts-users .ts-switch:checked { background: var(--accent-fill); border-color: var(--accent); }
 .ts-users .ts-switch:checked::after { transform: translateX(1.25rem); background: var(--on-accent); }
 .ts-users .ts-check[type="radio"] { border-radius: 50%; }
 .ts-users .ts-check[type="radio"]:checked::after { width: 0.5rem; height: 0.5rem; border: 0; border-radius: 50%; background: var(--on-accent); transform: none; }
