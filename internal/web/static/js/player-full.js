@@ -777,7 +777,7 @@ bar.volume.addEventListener("input", () => player.setVolume(Number(bar.volume.va
 let bookmarking = false; // one request at a time
 
 // Always the live position at the moment of the press, never the position saved earlier.
-async function addBookmark() {
+async function addBookmark(options) {
   if (!book || bookmarking || LINK) return;
   bookmarking = true;
   const positionMs = player.state().positionMs;
@@ -792,7 +792,7 @@ async function addBookmark() {
     } catch {
       return queueBookmark(positionMs); // the network is gone: keep it for offline.js to send
     }
-    if (res.status === 201) showBookmarkToast(await res.json());
+    if (res.status === 201) showBookmarkToast(await res.json(), Boolean(options && options.quiet));
     else if (res.status === 409) player.toast("err", (await res.text()).trim()); // the limit, in plain words
     else player.toast("err", msg("bookmarkFailed"));
   } catch {
@@ -818,12 +818,15 @@ function queueBookmark(positionMs) {
 
 // A bookmark toast (time and a note link) with a link that opens the note sheet like the
 // Bookmarks tab does (the same htmx attributes), after closing a full screen player.
-function showBookmarkToast(saved) {
+function showBookmarkToast(saved, quiet) {
   const toast = ui["bookmark-toast"].content.firstElementChild.cloneNode(true);
   const link = $("toast-link", toast);
+  if (quiet) link.remove(); // Eyes-free has no note link: the text is all it shows
   $("toast-text", toast).textContent = fill(msg("bookmarked"), { time: saved.label });
-  link.href = saved.noteHref;
-  link.setAttribute("hx-get", saved.noteHref); // the other htmx attributes are in the template
+  if (!quiet) {
+    link.href = saved.noteHref;
+    link.setAttribute("hx-get", saved.noteHref); // the other htmx attributes are in the template
+  }
   const dismiss = () => {
     toast.classList.add("is-leaving");
     setTimeout(() => toast.remove(), 800); // shell.js usually removes it first
@@ -832,8 +835,10 @@ function showBookmarkToast(saved) {
     if (dialog.open && !sidePanel()) closeNow();
     dismiss();
   });
-  (document.querySelector("#player-full:modal [data-ts-full-toasts]") || document.getElementById("toasts")).append(toast);
-  if (window.htmx) window.htmx.process(link);
+  // Eyes-free sits on top of the player: its own region first (a selector list would find the player's)
+  const host = document.querySelector("#eyes-free:modal [data-ts-full-toasts]") || document.querySelector("#player-full:modal [data-ts-full-toasts]");
+  (host || document.getElementById("toasts")).append(toast);
+  if (window.htmx && !quiet) window.htmx.process(link);
   // leaves after a few seconds, but not while the pointer or focus is on it
   const wait = () => (toast.matches(":hover, :focus-within") ? setTimeout(wait, 1000) : dismiss());
   setTimeout(wait, BOOKMARK_TOAST_MS);
@@ -944,6 +949,11 @@ dialog.addEventListener("click", (event) => {
 // Following any link in the ⋯ menu (Go to book, Up next) closes the menu.
 ui["full-menu"].addEventListener("click", (event) => {
   if (event.target.closest("a")) ui["full-menu"].open = false;
+  const item = event.target.closest("[data-ts-eyes-free-open]");
+  if (!item) return;
+  ui["full-menu"].open = false;
+  // Eyes-free is a module of its own, fetched the first time it is asked for (the worker precaches it)
+  import(item.dataset.tsSrc).then((module) => module.openEyesFree(ui["full-menu"].querySelector("summary"))).catch(() => {});
 });
 
 ui["full-book"].addEventListener("click", () => {
@@ -981,8 +991,11 @@ function start() {
   }
 }
 
-// For tests only (like tsPlayer.debug): move the sleep timer on without waiting.
+// The surface Eyes-free (js/eyes-free.js) uses; debug is for tests only (like tsPlayer.debug).
 window.tsPlayerFull = {
+  sleep: (choice, minutes) => setSleep(choice, minutes), // sync: iOS asks for motion access inside the tap
+  sleepInfo: () => ({ mode: sleepState.mode, choice: sleepState.choice, leftMs: sleepState.mode === "off" ? 0 : sleepLeft() }),
+  bookmark: (options) => addBookmark(options),
   debug: {
     advanceSleep: (ms) => {
       stepSleep(ms);

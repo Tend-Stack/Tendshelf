@@ -137,7 +137,7 @@ function toast(kind, text, actions) {
     }
   }
   // While the modal full player is open the page behind it is inert, so toasts go into its own region.
-  const host = document.querySelector("#player-full:modal [data-ts-full-toasts]") || document.getElementById("toasts");
+  const host = document.querySelector("#eyes-free:modal [data-ts-full-toasts]") || document.querySelector("#player-full:modal [data-ts-full-toasts]") || document.getElementById("toasts");
   host.append(el);
   return el;
 }

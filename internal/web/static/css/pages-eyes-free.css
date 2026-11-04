@@ -1,0 +1,50 @@
+/* Eyes-free (M3b, decision 0013; board EyesFreePhone): the whole screen is the controls. Loaded by
+   js/eyes-free.js the first time the mode opens. The zone look itself (.ts-eyesfree__zone) is in
+   bundle.css. Tokens only, so it works in all four themes. */
+
+.ts-eyesfree { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0;
+  box-sizing: border-box; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; background: var(--ground); color: var(--ink);
+  font-family: var(--font-sans); padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.ts-eyesfree[open] { display: flex; flex-direction: column; align-items: center; }
+.ts-eyesfree::backdrop { background: var(--scrim); }
+.ts-eyesfree[hidden], .ts-eyesfree [hidden] { display: none; }
+.ts-eyesfree > :not(.ts-toasts) { width: 100%; max-width: 40rem; box-sizing: border-box; }
+
+.ts-eyesfree__head { display: flex; align-items: center; justify-content: space-between; min-height: 3.5rem; padding: var(--space-8) var(--space-8) 0; }
+.ts-eyesfree__close { min-height: 2.75rem; }
+.ts-eyesfree__overline { padding-right: var(--space-12); }
+.ts-eyesfree__heading { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-16) var(--space-24) 0; }
+.ts-eyesfree__title, .ts-eyesfree__chapter { margin: 0; }
+.ts-eyesfree__chapter { color: var(--ink-muted); }
+
+/* Two rows of two, the play zone across the middle and half again as tall (the board's 1 : 1.6 : 1). */
+.ts-eyesfree__grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1.6fr 1fr; gap: 0.75rem; padding: var(--space-16); }
+.ts-eyesfree__zone { min-height: 2.75rem; -webkit-tap-highlight-color: transparent; }
+.ts-eyesfree__zone--main { grid-column: 1 / span 2; font-size: 1.625rem; line-height: 2rem; }
+.ts-eyesfree__zone--main .ts-icon { width: 4.5rem; height: 4.5rem; }
+.ts-eyesfree__zone:active { filter: brightness(0.9); transition-duration: 0s; }
+.ts-eyesfree__zone:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+.ts-eyesfree__big { display: contents; }
+.ts-eyesfree__big[hidden] { display: none; }
+.ts-eyesfree__note { margin: 0; padding: 0 var(--space-24) var(--space-24); text-align: center; color: var(--ink-muted); }
+.ts-eyesfree__toasts { bottom: calc(env(safe-area-inset-bottom) + 5rem); }
+
+/* Dimmed: the ground fades over everything; the first tap only wakes it (js/eyes-free.js). */
+.ts-eyesfree::after { content: ""; position: fixed; inset: 0; background: var(--ground); opacity: 0; pointer-events: none; transition: opacity var(--duration-slow) var(--easing-exit); }
+.ts-eyesfree.is-dim::after { opacity: 0.7; }
+@media (prefers-reduced-motion: reduce) {
+  .ts-eyesfree::after { transition: none; }
+}
+
+/* A phone on its side: three columns, the play zone spanning both rows in the middle. */
+@media (orientation: landscape) and (max-height: 32rem) {
+  .ts-eyesfree__heading { padding-top: var(--space-4); }
+  .ts-eyesfree__note { display: none; }
+  .ts-eyesfree__grid { grid-template-columns: 1fr 1.6fr 1fr; grid-template-rows: 1fr 1fr; padding-bottom: var(--space-8); }
+  .ts-eyesfree__zone--main { grid-column: 2; grid-row: 1 / span 2; }
+  .ts-eyesfree__zone--back { grid-column: 1; grid-row: 1; }
+  .ts-eyesfree__zone--bookmark { grid-column: 1; grid-row: 2; }
+  .ts-eyesfree__zone--forward { grid-column: 3; grid-row: 1; }
+  .ts-eyesfree__zone--sleep { grid-column: 3; grid-row: 2; }
+  .ts-eyesfree > :not(.ts-toasts) { max-width: none; }
+}

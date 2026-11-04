@@ -1,0 +1,74 @@
+package components
+
+// EyesFreeMsgs are the words of Eyes-free mode (M3b, decision 0013). js/eyes-free.js reads them from
+// the dialog's data-ts-msg-* attributes; {n} and {m} are filled there.
+type EyesFreeMsgs struct {
+	Title, Back, ChapterLine                string
+	SkipBack, SkipForward                   string // visible: "Back {n} s"
+	SkipBackLabel, SkipForwardLabel         string // spoken: "Back {n} seconds"
+	Play, Pause, Bookmark, Sleep            string
+	Note, SleepChapter, SleepMinutes, SleepOff string
+}
+
+// EyesFree is the big-button dialog: five zones and no text to follow. It is a second modal dialog
+// kept by hx-preserve beside #player-full, so it exists wherever the player does (never in link mode).
+// js/eyes-free.js fills the title and chapter line and wires the buttons; it drives the player only
+// through window.tsPlayer and window.tsPlayerFull.
+templ EyesFree(m PlayerMsgs) {
+	<dialog
+		id="eyes-free"
+		class="ts-eyesfree"
+		aria-labelledby="eyes-free-title"
+		hx-preserve
+		data-ts-eyes-free
+		data-ts-msg-chapter-line={ m.EyesFree.ChapterLine }
+		data-ts-msg-skip-back={ m.EyesFree.SkipBack }
+		data-ts-msg-skip-forward={ m.EyesFree.SkipForward }
+		data-ts-msg-skip-back-label={ m.EyesFree.SkipBackLabel }
+		data-ts-msg-skip-forward-label={ m.EyesFree.SkipForwardLabel }
+		data-ts-msg-play={ m.EyesFree.Play }
+		data-ts-msg-pause={ m.EyesFree.Pause }
+		data-ts-msg-sleep={ m.EyesFree.Sleep }
+		data-ts-msg-sleep-chapter={ m.EyesFree.SleepChapter }
+		data-ts-msg-sleep-minutes={ m.EyesFree.SleepMinutes }
+		data-ts-msg-sleep-off={ m.EyesFree.SleepOff }
+	>
+		<header class="ts-eyesfree__head">
+			<button type="button" class="ts-btn ts-btn--quiet ts-eyesfree__close" data-ts-ef-close>
+				<svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+				{ m.EyesFree.Back }
+			</button>
+			<span class="ts-overline ts-eyesfree__overline">{ m.EyesFree.Title }</span>
+		</header>
+		<div class="ts-eyesfree__heading">
+			<h2 id="eyes-free-title" class="title-2 ts-eyesfree__title" data-ts-ef-title></h2>
+			<p class="body-lg ts-num ts-eyesfree__chapter" data-ts-ef-chapter></p>
+		</div>
+		<div class="ts-eyesfree__grid">
+			<button type="button" class="ts-eyesfree__zone ts-eyesfree__zone--back" data-ts-ef-back>
+				@Icon("skip-back", false)
+				<span data-ts-ef-back-text></span>
+			</button>
+			<button type="button" class="ts-eyesfree__zone ts-eyesfree__zone--forward" data-ts-ef-forward>
+				@Icon("skip-forward", false)
+				<span data-ts-ef-forward-text></span>
+			</button>
+			<button type="button" class="ts-eyesfree__zone ts-eyesfree__zone--main" data-ts-ef-toggle>
+				<span class="ts-eyesfree__big" data-ts-ef-icon-play>@Icon("play", true)</span>
+				<span class="ts-eyesfree__big" data-ts-ef-icon-pause>@Icon("pause", true)</span>
+				<span data-ts-ef-toggle-text></span>
+			</button>
+			<button type="button" class="ts-eyesfree__zone ts-eyesfree__zone--bookmark" data-ts-ef-bookmark>
+				@Icon("bookmark", false)
+				<span>{ m.EyesFree.Bookmark }</span>
+			</button>
+			<button type="button" class="ts-eyesfree__zone ts-eyesfree__zone--sleep" data-ts-ef-sleep>
+				@Icon("sleep", false)
+				<span data-ts-ef-sleep-text></span>
+			</button>
+		</div>
+		<p class="body ts-eyesfree__note">{ m.EyesFree.Note }</p>
+		<div class="ts-toasts ts-eyesfree__toasts" data-ts-full-toasts aria-live="polite"></div>
+		<p class="ts-sr" role="status" aria-live="polite" data-ts-ef-status></p>
+	</dialog>
+}
