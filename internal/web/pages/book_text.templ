@@ -68,7 +68,9 @@ type TextUploadView struct {
 // TextView is the Text tab. Editors get Lead, the form and every file; readers only the ready editions.
 type TextView struct {
 	Heading, Lead, FoundLabel string
-	Suggestions               []TextSuggestionView
+	// FindHref and FindLabel link "Find the audiobook" on the Text tab of a text book, for people who manage libraries.
+	FindHref, FindLabel string
+	Suggestions         []TextSuggestionView
 	Files                     []TextFileView
 	Upload                    *TextUploadView
 }
@@ -89,6 +91,11 @@ templ TextBody(v TextView) {
 	<div id="ebook-body" class="ts-ebook__body">
 		if v.FoundLabel != "" && (len(v.Suggestions) > 0 || len(v.Files) > 0) {
 			<span class="ts-overline">{ v.FoundLabel }</span>
+		}
+		if v.FindHref != "" {
+			<div class="ts-pair__actions">
+				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.FindHref) }>{ v.FindLabel }</a>
+			</div>
 		}
 		if len(v.Suggestions) > 0 {
 			<div id="ebook-suggestions" class="ts-ebook__files">

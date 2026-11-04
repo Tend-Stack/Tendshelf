@@ -2,6 +2,7 @@ package ebook
 
 import (
 	"context"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -47,6 +48,32 @@ func (s *Service) textDir() string     { return filepath.Join(s.dataDir, "text")
 // storedPath is where an uploaded file's bytes live.
 func (s *Service) storedPath(sha, ext string) string {
 	return filepath.Join(s.ebooksDir(), sha+"."+ext)
+}
+
+// OpenSource opens the original bytes of a file for a download: the library file in place, or the stored upload.
+// It is read-only, and the file must be a regular file (a link swapped in after the scan is refused).
+func (s *Service) OpenSource(f File) (*os.File, error) {
+	path := f.Path
+	if f.Origin == "upload" {
+		path = s.storedPath(f.SHA256, f.Ext)
+	}
+	lfi, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !lfi.Mode().IsRegular() {
+		return nil, fs.ErrNotExist
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	fi, err := file.Stat()
+	if err != nil || !os.SameFile(lfi, fi) {
+		file.Close()
+		return nil, fs.ErrNotExist
+	}
+	return file, nil
 }
 
 // ScanSink is how the scanner hands over the ebooks it found.

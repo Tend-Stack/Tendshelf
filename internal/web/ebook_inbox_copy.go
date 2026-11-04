@@ -1,25 +1,32 @@
 package web
 
-// Copy for the Ebooks to pair inbox (M5 R2 P3). Deck words (boards AddEbook*, NoMatchPhone) are
-// used word for word; lines marked "NEW" are not in the deck and are listed in the package report.
+// Copy for /admin/ebooks (M5 R2 P3, reshaped by B3 when ebooks became books). Deck words (boards
+// AddEbook*, NoMatchPhone) are used word for word; lines marked "NEW" are not in the deck and are listed in
+// the package report.
 const (
-	inboxTitle      = "Ebooks to pair"                                                                      // NEW
-	inboxLead       = "These ebooks are not paired with an audiobook yet. Only owners and admins see them." // NEW
-	inboxEmpty      = "Every ebook is paired with an audiobook."                                            // NEW
-	inboxKeptTitle  = "Kept on their own"                                                                   // NEW
-	inboxKeptLead   = "It stays here, off your shelf, until you pair it with an audiobook."                 // NEW: the deck's sentence says it goes on the shelf, which R2 does not do
-	inboxMore       = "And %d more."                                                                        // NEW
-	inboxBack       = "Back to Ebooks to pair"                                                              // NEW: aria label
-	inboxNoneChosen = "Choose a book first."                                                                // NEW
+	inboxTitle      = "Ebooks"                                                                                                // NEW: the nav label
+	inboxLead       = "Ebooks are books you can read. When one may be the same book as an audiobook, you can join them here." // NEW
+	inboxEmpty      = "Nothing here needs a look."                                                                            // NEW
+	inboxMaybeTitle = "Maybe the same book"                                                                                   // NEW
+	inboxMaybeLead  = "Joining makes one book you can listen to and read. Nothing is changed in your folders."                // NEW
+	inboxCannotHead = "Could not be opened"                                                                                   // NEW
+	inboxMore       = "And %d more."                                                                                          // NEW
+	inboxBack       = "Back to Ebooks"                                                                                        // NEW: aria label
+	inboxNoneChosen = "Choose a book first."                                                                                  // NEW
+	inboxMake       = "Make one book"                                                                                         // NEW
+	inboxMakeAria   = "Make one book of %s and %s"                                                                            // NEW: {ebook}, {audiobook}
+	inboxGuard      = "People who can see this ebook today lose it, or may gain the audiobook. Check who has access first."   // NEW
+	inboxDownload   = "Download the file"                                                                                     // NEW
+	inboxDownloadAr = "Download %s"                                                                                           // NEW: {file}
 
 	// Board: AddEbook*, NoMatchPhone.
 	inboxEyebrow    = "Add an ebook"
 	inboxPickTitle  = "Which audiobook is it?"
 	inboxNoMatch    = "None of your %d audiobooks has this title and author. It may be listed under a different name."
 	inboxClose      = "Close matches"
-	inboxChoose     = "Choose"
 	inboxChooseBook = "Choose the audiobook"
 	inboxKeep       = "Keep it as an ebook on its own"
+	inboxKeepNote   = "It goes on the shelf as a book you can read"
 	inboxSameAuthor = "same author"
 	inboxSimilar    = "similar title"
 
@@ -29,7 +36,5 @@ const (
 	inboxNoResults    = "No audiobook matches “%s”." // NEW
 	inboxSameISBN     = "same ISBN"                  // NEW
 	inboxSameTitle    = "same title and author"      // NEW
-	inboxToPairOne    = "1 ebook to pair"            // NEW
-	inboxToPairMany   = "%d ebooks to pair"          // NEW
-	inboxChooseAria   = "Choose %s for %s"           // NEW: {audiobook}, {ebook}
+	inboxSameFolder   = "in the same folder"         // NEW
 )

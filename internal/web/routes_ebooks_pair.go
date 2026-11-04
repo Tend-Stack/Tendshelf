@@ -166,7 +166,10 @@ func (tc *textCtx) decorate(book library.Book, f ebook.File, fv *pages.TextFileV
 	if !tc.edit || f.BookID != book.ID {
 		return
 	}
-	fv.NotSame = tc.action(book, f, "unpair", ebookNotSame, "quiet")
+	// A text book's only file cannot leave it, so "Not the same book" is offered only where there is a merge to undo.
+	if book.Kind != library.BookText || tc.multi {
+		fv.NotSame = tc.action(book, f, "unpair", ebookNotSame, "quiet")
+	}
 	switch f.PairedBy {
 	case "folder", "isbn", "title":
 		card := tc.card(f, ed, rows)

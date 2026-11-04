@@ -92,7 +92,7 @@ AND book_id IN (SELECT b.id FROM books b WHERE b.kind = 'text' AND b.missing_sin
 			if !visible[to] {
 				continue
 			}
-			allowed, err := s.guardAllows(ctx, file.BookID, to)
+			allowed, err := s.GuardAllows(ctx, file.BookID, to)
 			if err != nil {
 				return nil, err
 			}

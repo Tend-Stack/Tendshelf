@@ -53,6 +53,7 @@ const (
 // lines marked "NEW" are not in the deck and are listed in the package report.
 const (
 	ebookNotSame      = "Not the same book"
+	ebookFindAudio    = "Find the audiobook" // NEW
 	ebookFoundInLead  = "Found in"
 	ebookPairGo       = "Pair with this audiobook" // NEW
 	ebookSameTitle    = "Same title and author: %s"

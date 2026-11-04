@@ -80,6 +80,13 @@ func (s *server) textView(r *http.Request, book library.Book, edit, all bool, up
 			v.FoundLabel = ebookFoundLabel
 		}
 	}
+	if edit && book.Kind == library.BookText && s.can.Can(ctx, currentUser(r), share.ManageLibraries, share.Target{Kind: share.TargetServer}) {
+		for _, f := range files {
+			if f.BookDefault && f.State == "ready" {
+				v.FindHref, v.FindLabel = inboxPickHref(f.ID), ebookFindAudio
+			}
+		}
+	}
 	for _, f := range files {
 		if !edit && f.State != "ready" {
 			continue

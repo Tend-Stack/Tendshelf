@@ -255,8 +255,9 @@ func (s *Service) autoTarget(ctx context.Context, f File, ed Edition, audio []Bo
 	return "", "", false, nil
 }
 
-// guardAllows says whether the automatic guard would let the text book `from` merge into `to`.
-func (s *Service) guardAllows(ctx context.Context, from, to string) (bool, error) {
+// GuardAllows says whether the automatic guard would let the text book `from` merge into `to`. A person's own
+// merge skips it; the page uses it to say first that grants on the text book go along.
+func (s *Service) GuardAllows(ctx context.Context, from, to string) (bool, error) {
 	var one int
 	err := s.db.Reader().QueryRowContext(ctx, `SELECT 1 WHERE `+mergeGuard, sql.Named("from", from), sql.Named("to", to)).Scan(&one)
 	if errors.Is(err, sql.ErrNoRows) {

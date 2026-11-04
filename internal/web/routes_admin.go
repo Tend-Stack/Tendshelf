@@ -187,14 +187,7 @@ func (s *server) renderAdminLibrariesFor(w http.ResponseWriter, r *http.Request,
 		view.Banner = banner
 	}
 	if s.ebooks != nil {
-		n, err := s.ebooks.Store().CountToPair(ctx)
-		if err != nil {
-			s.serverError(w, r, "ebooks to pair", err)
-			return
-		}
-		if n > 0 {
-			view.EbooksHref, view.EbooksLabel = "/admin/ebooks", countText(n, inboxToPairOne, inboxToPairMany)
-		}
+		view.EbooksHref, view.EbooksLabel = "/admin/ebooks", inboxTitle
 	}
 	s.prefsPage(w, r, status, "Libraries & scanning", "admin-libraries", "libraries", false, pages.AdminLibraries(view), nil, adminStyles...)
 }
