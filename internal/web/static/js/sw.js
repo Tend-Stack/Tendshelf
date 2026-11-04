@@ -49,6 +49,26 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+// How long a page or boosted navigation waits for the network before the offline shell answers.
+// With a VPN (Tailscale) up on a phone in airplane mode, requests hang instead of failing, so
+// without a limit the app would never leave the splash screen. 4 s is longer than a slow mobile
+// round trip yet short enough to feel like a failure, not a freeze.
+const PAGE_DEADLINE_MS = 4000;
+// The player fragment is small and the stored copy is as good, so it gives up sooner.
+const PLAYER_DEADLINE_MS = 3000;
+
+// fetch() that gives up after `ms`. A timeout rejects like a network error, so callers fall back
+// exactly as they already do when the network is gone.
+async function timedFetch(request, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(request, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // The signed-in person's cache: the one ts-person-* cache there is.
 async function personCache() {
   for (const name of await caches.keys()) {
@@ -101,7 +121,7 @@ async function freshOrCached(request, url) {
   const cached = cache ? await cache.match(url.pathname) : undefined;
   if (!cached) return fetch(request);
   try {
-    const fresh = await fetch(request);
+    const fresh = await timedFetch(request, PLAYER_DEADLINE_MS);
     if (fresh.status === 200 && !fresh.redirected) await cache.put(url.pathname, fresh.clone());
     return fresh;
   } catch {
@@ -112,8 +132,10 @@ async function freshOrCached(request, url) {
 // ---- Pages: the network, and the offline shell when it cannot answer ----
 
 async function pageOrShell(request) {
+  // Known offline: do not wait for a network that cannot answer.
+  if (self.navigator.onLine === false) return (await shell()) || Response.error();
   try {
-    const response = await fetch(request);
+    const response = await timedFetch(request, PAGE_DEADLINE_MS);
     if (response.status !== 502 && response.status !== 504) return response;
     return (await shell()) || response;
   } catch {
