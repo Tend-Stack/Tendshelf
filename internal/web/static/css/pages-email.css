@@ -43,6 +43,15 @@ a.ts-share__tab:focus-visible { outline: 2px solid transparent; box-shadow: var(
   .ts-email__testbox { grid-area: test; }
 }
 
+/* Backups: same order as the phone. The state and "Back up now" lead the left column, the schedule sits
+   under it, and the copies fill the right column. */
+@container pane (width >= 44rem) {
+  .ts-groups.ts-backups__groups { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "last copies" "sched copies"; }
+  .ts-backups__last { grid-area: last; }
+  .ts-backups__sched { grid-area: sched; }
+  .ts-backups__copies { grid-area: copies; }
+}
+
 /* A pending row now can carry three actions (Send again, Copy link, Cancel): on a phone they wrap
    under the text instead of squeezing it to a word per line. */
 .ts-share__pending { flex-wrap: wrap; }

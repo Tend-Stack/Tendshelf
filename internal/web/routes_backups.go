@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/backups"
 	"github.com/Tend-Stack/tendshelf/internal/db"
@@ -42,7 +43,7 @@ func (s *server) backupsLastLine() (string, error) {
 	if !ok {
 		return backupsNone, nil
 	}
-	return fmt.Sprintf(backupsLast, agoText(s.now(), c.At), sizeText(c.Bytes)), nil
+	return fmt.Sprintf(backupsLast, agoText(s.now(), c.At), strings.ReplaceAll(sizeText(c.Bytes), " ", "\u00a0")), nil // no break inside "492 kB"
 }
 
 func (s *server) backupsView(r *http.Request) (pages.AdminBackupsView, error) {

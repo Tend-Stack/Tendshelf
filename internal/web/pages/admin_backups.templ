@@ -65,24 +65,8 @@ templ AdminBackups(v AdminBackupsView) {
 				{ v.SavedNotice }
 			</p>
 		}
-		<div class="ts-groups ts-email__groups">
-			<form class="ts-group ts-group--pad ts-email__form" method="post" action="/admin/backups/schedule" aria-label={ v.Heading }>
-				<input type="hidden" name="_csrf" value={ v.CSRF }/>
-				<fieldset class="ts-admin__choices">
-					<legend class="section">{ v.Heading }</legend>
-					for _, c := range v.Choices {
-						<label class="ts-admin__choice">
-							<input type="radio" class="ts-check" name="schedule" value={ c.Value } checked?={ c.Value == v.Schedule }/>
-							<span>{ c.Label }</span>
-						</label>
-					}
-				</fieldset>
-				if v.Error != "" {
-					<span class="ts-field__hint ts-field__error" id="backup-schedule-err" role="alert">{ v.Error }</span>
-				}
-				<button type="submit" class="ts-btn ts-btn--primary">{ v.Save }</button>
-			</form>
-			<section class="ts-group ts-group--pad ts-email__testbox" aria-labelledby="backup-last-h">
+		<div class="ts-groups ts-email__groups ts-backups__groups">
+			<section class="ts-group ts-group--pad ts-email__testbox ts-backups__last" aria-labelledby="backup-last-h">
 				<h2 id="backup-last-h" class="section">{ v.LastLine }</h2>
 				if v.NextLine != "" {
 					<p class="caption">{ v.NextLine }</p>
@@ -100,7 +84,23 @@ templ AdminBackups(v AdminBackupsView) {
 					<div id="backup-status" role="status"></div>
 				}
 			</section>
-			<section class="ts-group ts-group--pad" aria-labelledby="backup-copies-h">
+			<form class="ts-group ts-group--pad ts-email__form ts-backups__sched" method="post" action="/admin/backups/schedule" aria-label={ v.Heading }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<fieldset class="ts-admin__choices">
+					<legend class="section">{ v.Heading }</legend>
+					for _, c := range v.Choices {
+						<label class="ts-admin__choice">
+							<input type="radio" class="ts-check" name="schedule" value={ c.Value } checked?={ c.Value == v.Schedule }/>
+							<span>{ c.Label }</span>
+						</label>
+					}
+				</fieldset>
+				if v.Error != "" {
+					<span class="ts-field__hint ts-field__error" id="backup-schedule-err" role="alert">{ v.Error }</span>
+				}
+				<button type="submit" class="ts-btn ts-btn--primary">{ v.Save }</button>
+			</form>
+			<section class="ts-group ts-group--pad ts-backups__copies" aria-labelledby="backup-copies-h">
 				<h2 id="backup-copies-h" class="section">{ v.CopiesH }</h2>
 				<p class="caption">{ v.DirLine }</p>
 				if len(v.Copies) > 0 {
