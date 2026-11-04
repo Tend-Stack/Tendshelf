@@ -26,6 +26,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/upload"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web"
 )
@@ -121,9 +122,14 @@ func run(ctx context.Context, args []string) error {
 	if err := sc.Register(runner); err != nil {
 		return err
 	}
+	// Adding books by upload (decision 0015): the staging store, the upload.place job and the sweep.
+	uploads := upload.New(upload.Config{DataDir: dataDir}, st, lib, tools, runner, logger)
+	if err := uploads.Register(runner); err != nil {
+		return err
+	}
 	setupCode := auth.NewSetupCode()
 	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: proxies,
-		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Backups: bk, MailOptions: share.MailOptions{Logger: logger}})
+		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Backups: bk, MailOptions: share.MailOptions{Logger: logger}})
 	if err != nil {
 		return err
 	}
@@ -141,6 +147,8 @@ func run(ctx context.Context, args []string) error {
 	go writes.Run(ctx)
 	// Scheduled database copies: the first check two minutes after start, then every 15 minutes.
 	go bk.Run(ctx)
+	// Expire stale uploads and clear their staging: the first sweep a minute after start, then hourly.
+	go uploads.Run(ctx)
 	// Files scanned before waveforms existed (or while they were off) get their peaks in the
 	// background; a failure here costs only the waveform, never the start.
 	if n, err := peaks.Backfill(ctx); err != nil {

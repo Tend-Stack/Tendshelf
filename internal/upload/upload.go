@@ -373,6 +373,15 @@ func (s *Service) Get(ctx context.Context, userID, id string) (View, error) {
 	return s.view(u, files), nil
 }
 
+// LibraryOf returns the library an upload of the person belongs to, for the route's authorization.
+func (s *Service) LibraryOf(ctx context.Context, userID, id string) (string, error) {
+	u, err := s.loadOwn(ctx, userID, id)
+	return u.LibraryID, err
+}
+
+// ChunkSize is the largest piece the server accepts.
+func (s *Service) ChunkSize() int64 { return s.cfg.ChunkSize }
+
 // Cancel ends a receiving or failed upload and deletes its staged bytes.
 func (s *Service) Cancel(ctx context.Context, userID, id string) error {
 	if _, err := s.loadOwn(ctx, userID, id); err != nil {

@@ -225,6 +225,7 @@ func sweepSeed(t *testing.T) *sweepEnv {
 	e.lookupJob = compareSeedJob(t, e, e.book.ID, true)
 	coverSeed(t, e)
 	writeSeed(t, e)
+	uploadSeed(t, e)
 	e.job = a.adminEnqueueScan(t, l.ID)
 	a.adminSetJobState(t, e.job, "done")
 	if err := db.PutSetting(ctx, a.st.Writer(), settingSetupDone, true); err != nil {
@@ -660,6 +661,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, detailsSweepRows()...)
 	rows = append(rows, coverSweepRows()...)
 	rows = append(rows, writeSweepRows()...)
+	rows = append(rows, uploadSweepRows()...)
 	rows = append(rows, devicesSweepRows()...)
 	rows = append(rows, emailSweepRows()...)
 	rows = append(rows, backupsSweepRows()...)

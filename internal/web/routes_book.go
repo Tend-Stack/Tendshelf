@@ -30,6 +30,7 @@ func (s *server) registerBook(mux *http.ServeMux) {
 	s.registerDetails(mux)
 	s.registerCoverPick(mux)
 	s.registerWrite(mux)
+	s.registerUploads(mux)
 	s.registerAuthors(mux)
 }
 
