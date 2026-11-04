@@ -85,10 +85,22 @@ page; B starts after A merges. Translations: none (English only today). Reused: 
    baseline 156; `Night` adds rects x 0 w 60 and x 220 w 20. `templ BarChart(v)`: markup exactly as the board
    (`ts-chart__ticks` five spans, `svg.ts-chart__plot aria-hidden`, `<g><title>` per bar, `ts-chart__x` labels with
    optional icon, then `table.ts-sr` with caption, `th scope`).
-7. `internal/web/components/heat.go` + `heat.templ`: `type HeatCell struct { Col, Row, Level int; Title string }`;
-   `type HeatGridView struct { Label string; Cols int; Cells []HeatCell; Months []HeatMonth{Col int; Label string}; Key []HeatKey{Level int; Label string}; Caption string; Heads []string; Rows []ChartRow }`.
-   Cell `x = 32+Col*12`, `y = 20+Row*12`, 10×10, rx 2, class `ts-heat__c{Level}`; viewBox `0 0 {32+Cols*12} 104`; labels
-   Mon/Wed/Fri at rows 1/3/5 (`y = 20+row*12+9`), months at `y = 13`. Region `div.ts-heat__scroll role=region tabindex=0 aria-label={Label}`.
+7. `internal/web/components/heat.go` + `heat.templ`. **Two layouts of the same cells, both rendered, CSS shows one; no
+   sideways scroll** (a scroller hides most of the year on a phone; months as rows fit 390 px with 1.5 px gaps).
+   `type HeatCell struct { Week, Weekday, Month, Day, Level int; Title string }` (Weekday 0 = Sunday, Month 0–11, Day 1–31);
+   `type HeatGridView struct { Weeks int; WeekLabels []string /* len Weeks, month name at the column holding its 1st */;
+   Cells []HeatCell; Key []HeatKey{Level int; Label string}; Caption string; Heads []string; Rows []ChartRow }`.
+   - Weeks (768 px and up): `div.ts-heat.ts-heat--weeks` = `div.ts-heat__cols.meta aria-hidden` (one `span` per week,
+     text from WeekLabels), `div.ts-heat__rows.meta aria-hidden` (7 spans: "", Mon, "", Wed, "", Fri, ""), then
+     `svg.ts-heat__plot viewBox="0 0 {Weeks*12} 84" preserveAspectRatio="none" aria-hidden focusable=false`; cell
+     `x = Week*12`, `y = Weekday*12`.
+   - Months (below 768): `div.ts-heat.ts-heat--months` = cols (31 spans: "1" at 1, "10", "20", "31", else ""), rows
+     (12 spans Jan–Dec), `svg.ts-heat__plot viewBox="0 0 372 192" preserveAspectRatio="none"`; cell `x = (Day-1)*12`,
+     `y = Month*16`.
+   - Every cell `<rect class="ts-heat__c{Level}" width="10" height="10" rx="2"><title>{Title}</title></rect>`; no rect
+     for days after today or for 30–31 Feb. Then `ul.ts-heat__key` and `table.ts-sr`. The SVG stretches to the card
+     width (so it spans it at 1440) and the labels are HTML in equal grid tracks, so text never scales. No region, no
+     tabindex (nothing scrolls). Geometry helpers `heatWeeksXY(c)`, `heatMonthsXY(c)` in `heat.go`, unit-tested.
 8. `internal/web/listening_copy.go` (new): every string below as a const; `tickText(ms)` ("45 m", "2 h", "1 h 30 m");
    `niceMax(ms)`: smallest of minutes {10,20,30,60,90,120,180,240,300,360,480,600,720,900,1200,1500,1800,2400,3000,3600,
    4800,6000,7200,9000,12000,15000,18000,24000,30000,36000,48000,60000} ≥ max, else round up to 60,000 min; `speedText(pct)`
@@ -98,13 +110,20 @@ page; B starts after A merges. Translations: none (English only today). Reused: 
    (S..S), month days (labels 1, 8, 15, 22, 29), year 12 months (J..D); future days no bar, no title. Hours: labels at 0, 6,
    12, 18 with icons `sleep`, `sunrise`, `sun`, `sunset`, `Edge`, `Night`. Parts: Morning 6–11, Afternoon 12–17, Evening
    18–21, Night 22–5; share = round(%); "most" ties go to the earlier of Morning, Afternoon, Evening, Night; weekday ties to
-   the earlier day. Cards in order: [Day by day: year], Listening time, Time of day, [Days of the week: month, year],
-   Most listened (when any), Finished (when any), [Year by year: year, ≥2 years with Ms > 0].
+   the earlier day. Cards in this DOM order with this `Wide` flag (`ts-dash__card--wide`, spans both columns from 1024):
+   [Day by day: year, wide], Listening time (wide only on the week range, where Days of the week is absent), [Days of the
+   week: month, year, not wide], Time of day (wide), Most listened (when any, wide), Finished (when any, wide), [Year by
+   year: year, ≥2 years with Ms > 0, wide]. Only the two bar-chart cards ever share a row, so no short card stands
+   beside a tall one (board at 1024 and 1440).
 10. `internal/web/pages/listening.templ` (new): `ListeningView` + `templ Listening(v)`; markup and classes of the board
     (`ts-dash`, `__back`, `__title` `title-2`, `__lead`, `__bar`, `nav.ts-seg.ts-dash__range aria-label`, `__period` with
     `ts-iconbtn` links, `dl.ts-dash__nums`, `__grid`, `section.ts-dash__card aria-labelledby`, `h2.section`, `p.ts-dash__say`,
     `ol.ts-dash__top` with `components.Cover(c, "36")`, `ul.ts-dash__done` with `Cover(c, "fill")` in 5.5 rem cells).
     "Later" is a `span.ts-dash__navgap` for the current period. Empty: `components.EmptyState`.
+    - Time of day body: `div.ts-dash__clock` > `div.ts-dash__clockchart` (BarChart + `p.ts-dash__note`) + `ul.ts-dash__parts`.
+    - Most listened body: `div.ts-dash__lists` > three `div`s, each `h3.overline.ts-dash__sub` + `ol.ts-dash__top`.
+    - Finished item: `a.ts-dash__donelink` > Cover (it renders `alt=""`) + `span.meta.ts-dash__donetitle` (the full title,
+      clamped to two lines by CSS only) + `span.meta.ts-dash__muted` date. The link's name is the full title and date.
 11. `internal/web/routes_listening.go` (new): `registerListening(mux)` → `GET /me/listening`; call it beside
     `s.registerDownloads(mux)` in `server.go`. Handler: `range` "" → month, else `PeriodOf` (`ErrRange` → `s.notFound`); `at`
     "" → today in `statsLocation(set.TimeZone)`, else `time.Parse("2006-01-02")` (error or year < 2000 → `s.notFound`); a
@@ -114,7 +133,12 @@ page; B starts after A merges. Translations: none (English only today). Reused: 
 12. `internal/web/components/listening_stats.templ` + `stats_copy.go`: optional `More, MoreHref` on the view; Profile
     (`statsView(st, false)`) sets "See your listening over time" → `/me/listening`; admin view leaves it empty.
 13. `internal/web/static/css/pages-listening.css` (new): port the board's "Proposed css/pages-listening.css" block
-    verbatim minus `.ts-dash__cover*` (use `ts-cover`); add `.ts-dash__more` (link row under the Profile panel) to `pages-me.css`.
+    verbatim minus `.ts-dash__cover*` (use `ts-cover`), with every `@container frame (min-width: N)` written as
+    `@media (min-width: N)`. Breakpoints it carries: 768 (four numbers and four parts across; weeks grid replaces months
+    grid), 1024 (two columns, `--wide` spans, three Most listened lists side by side 1.5fr/1fr/1fr), 1280 (heat rows
+    `--heat-row: 1.125rem`; Time of day chart and parts side by side 2fr/1fr). Heat row heights: months 1rem, weeks
+    0.75rem, 1.125rem from 1280. Finished titles: `-webkit-line-clamp: 2` + `line-clamp: 2`, class `meta` (13 px floor).
+    Add `.ts-dash__more` (link row under the Profile panel) to `pages-me.css`.
 14. `docs/copy-additions.md`: list the new strings; `docs/roadmap.md`: M3b dashboard row.
 
 ## Copy (all NEW unless marked)
@@ -124,7 +148,7 @@ Usual speed · Listening time · {total} in {period}, about {avg} on the days yo
 · Time of day · You listen most in the morning. / in the afternoon. / in the evening. / at night. · Morning · Afternoon ·
 Evening · Night · 6 am to noon · noon to 6 pm · 6 pm to 10 pm · 10 pm to 6 am · midnight · 6 am · noon · 6 pm · The light
 band is daytime, 6 am to 6 pm. · Days of the week · You listen most on {Weekday}s. · Day by day · You listened on {n} days
-in {year}. (1 day) · Every day of {year}, scrolls sideways · No listening · Under 15 m · 15 to 45 m · 45 m to 1 h 30 m · 1 h
+in {year}. (1 day) · No listening · Under 15 m · 15 to 45 m · 45 m to 1 h 30 m · 1 h
 30 m or more · Most listened · Books · Authors · Narrators · Year by year · Listening since {Month YYYY}. · Nothing to show
 yet · Listen to a book and your time will show here, by day and by hour. · Go to your library · No listening in {period}. ·
 captions: Listening time by day / by month · Listening by hour of the day · Listening by day of the week · Listening by month
@@ -133,7 +157,8 @@ captions: Listening time by day / by month · Listening by hour of the day · Li
 
 ## Package B tests and gates
 - `components/chart_test.go`: geometry table (0 → no line; tiny → dot `y1-0.01`; max → `y2 = 4+cap`; cap 6 vs 3 at 12/13
-  bars; Night rects); heat cell x/y and viewBox width for 2026 (53 columns) and 2028.
+  bars; Night rects); `heat_test.go`: weeks x/y and viewBox width for 2026 (53 columns) and 2028 (54 columns: 1 Jan is
+  a Saturday, 31 Dec a Sunday); months x/y (31 Dec → x 360, y 176); no cell after today or on 30 Feb; WeekLabels holds 12 names.
 - `internal/web/listening_test.go` (httptest, fixed clock 2026-11-07 10:00 UTC, `statsListen`/`statsFinish`/`statsZone`):
   `TestListeningPage` (month default; week, year; `at` one month back shows "Later"; current period has none; numbers and
   sentences); `TestListeningBadParams` (`range=decade`, `at=2026-13-01`, `at=1999-12-31` → 404; `at=2030-01-01` → 200 current);
@@ -143,7 +168,12 @@ captions: Listening time by day / by month · Listening by hour of the day · Li
 - `routes_matrix_test.go`: `sweepGet("GET /me/listening", sweepStatic("/me/listening"), sweepSame(200))`; anonymous → sign in.
 - `swap_styles_browser_test.go`: Profile → "See your listening over time" → assert `.ts-dash__card` border radius.
 - `visual_listening_test.go` `TestListeningVisual`: month and year at 390, 768, 1024, 1440 in dark and light, seeded like the
-  board (sessions since March 2024, same clock); record side by side with the board in the report.
+  board (sessions since March 2024, same clock); record side by side with the board in the report. Browser asserts in the
+  same test: at 390 the visible heat grid (`.ts-heat--months`) has `scrollWidth <= clientWidth` of its card and the
+  card has no horizontal overflow; at 1440 the weeks plot's width is within 2 px of its card's content box (minus the
+  label column); at 1024 and 1440 the Listening time and Days of the week cards share a top and their heights differ by
+  < 48 px, and no other card shares a row; every `.ts-dash__donetitle` computes `font-size` ≥ 13 px and at most two
+  lines (`height <= 2 * line-height`), and its link's text equals the full title + date.
 - Gates: `make generate` clean, `make check`, `make build`, `TestCSSBudget` (pages-listening.css ≤ 3 KB gzip; report bytes),
   `TestRemUnits`, the JS budget unchanged (no JS file touched).
 

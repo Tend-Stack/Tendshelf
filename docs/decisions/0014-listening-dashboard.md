@@ -37,7 +37,9 @@ Amends decision 0013 point 1 ("no stats page") and its day rule ("a session coun
    - **Day by day** (year only): a calendar heat grid of that calendar year, Sunday-first columns, a sequential
      single-hue ramp (`--accent-fill` at four opacities over `--raised`) with a numeric key: No listening, Under
      15 m, 15 to 45 m, 45 m to 1 h 30 m, 1 h 30 m or more. Fixed thresholds, not quantiles, so a colour means the
-     same every year. On a phone it scrolls sideways and opens at the newest week.
+     same every year. It never scrolls: below 768 px months are rows and days of the month columns (12 by 31, fits
+     390 px with 1.5 px gaps); from 768 px weeks are columns and days of the week rows (53 by 7), stretched to the
+     card's width. Labels are HTML beside the SVG, so they never scale.
    - **Days of the week** (month, year): seven bars, Sunday first, "You listen most on Fridays."
    - **Most listened**: top 5 books (cover, title, author), top 3 authors, top 3 narrators, by time, each with a
      thin meter scaled to the first row. A book with two authors credits each in full.
@@ -77,14 +79,15 @@ Amends decision 0013 point 1 ("no stats page") and its day rule ("a session coun
    day and by hour." and a "Go to your library" link. A period without listening: "No listening in {period}." in
    place of the charts; the range and period controls stay.
 9. **Layout.** Phone first at 390: one column of cards, the summary in two columns. 768: the summary and the four
-   day parts go four across, still one column. 1024 and up: two columns of cards, left-aligned up to
-   `--size-content-max`; the heat grid, Finished and the summary span both. Every theme through tokens; the
+   day parts go four across, still one column. 1024 and up: two columns, left-aligned up to `--size-content-max`;
+   only Listening time and Days of the week (two bar charts of the same height) share a row; every other card spans
+   both, Most listened with its three lists side by side, and from 1280 Time of day with its parts beside the chart. Every theme through tokens; the
    contrast theme uses its own `--accent-fill`.
 10. **Accessibility.** Each SVG is `aria-hidden` and has a text equivalent: the visible summary sentence plus a
     visually hidden table (`ts-sr`) with a caption. Bars and cells carry an SVG `<title>` as a mouse tooltip only.
     No focusable data points (the tables do that job better). Nothing is told by colour alone: the parts of the day
-    have icons and words, the key has numbers, the night band has icons and a caption. The sideways-scrolling heat
-    grid is a labelled, focusable region.
+    have icons and words, the key has numbers, the night band has icons and a caption. Finished titles clamp to two
+    lines visually; the full title stays in the link's name.
 
 ## Not decided here
 - A week starting on Monday, 12- or 24-hour clock labels by locale, and real sunrise and sunset by location.
