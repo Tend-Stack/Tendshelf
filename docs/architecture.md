@@ -229,7 +229,7 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 | `/s/{token}/stream/{file}`, `/s/{token}/peaks/{file}`, `/s/{token}/cover` | The link's media, authorized from the link row; the player in link mode keeps its place in `localStorage` and calls no session route |
 | `POST /books/{id}/share/link`, `POST /share/links/{id}/stop` | Make and stop a link (owner and admin) |
 | `/books/{id}/text` (R1) | The book's text editions: upload, pairing, default edition, alignment status, export |
-| `/books/{id}/read?mode=readalong\|read\|focus&edition=&at=` (R4) | Reader inside the layout (player keeps playing) |
+| `/books/{id}/read?mode=readalong\|read&ch=&at=&sheet=contents\|marks&edition=` (R4 P2) | Reader inside the layout (player keeps playing); needs `ReadText`, a link visitor and a person without `can_read` get 404. `GET /books/{id}/read/timing/{idx}?edition=` serves the chapter's timing file as stored (gzip pass-through, ETag = chapter key) |
 | `/libraries/{id}/add` | Add books (decision 0015): owner and admin (`share.AddBooks`), 404 otherwise and when the library takes no uploads; with several such libraries a chooser links to the others' pages. JSON routes used by `js/upload.js` (session and `X-CSRF-Token`; errors through `api.Error`): `POST /libraries/{id}/uploads` (manifest, 201), `GET /uploads/{id}`, `PUT /uploads/{id}/files/{fileID}?offset=` (one chunk), `POST /uploads/{id}/finish` (202, starts `upload.place`), `POST /uploads/{id}/cancel` (204). Fragment `GET /hx/uploads/{id}` (one queue row; polls every 2 s while placing). Setting: `POST /admin/libraries/{id}/uploads` (owner only, 303). Remove: `GET\|POST /books/{id}/remove` (confirm page, then 303 to the library) |
 | `/admin/users`, `/admin/libraries`, `/admin/jobs`, `/admin/settings` | Admin. `/admin/libraries` (P1b-4) lists folders and problems, starts scans, and links to `/admin/libraries/folders/new` and `/admin/folders/{id}/emptied`; scan status is `GET /hx/jobs/{id}`. The folder browser is the `?browse=<path>` mode of `/admin/libraries/folders/new` (sheet) and `/setup/folder` (inline); picking links back with `?folder=<path>`, and the submit still runs the add-folder checks |
 | `/admin/ebooks` (R2), `/admin/runtimes` (R3), `/about` (R3) | Unpaired and refused ebooks; word-timing runtime check and licences; credits and model licences |
@@ -241,9 +241,10 @@ HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id
 `POST /books/{id}/text/{fileID}/align` (prepare read-along), `POST /books/{id}/text/{fileID}/align/cancel|resume|discard`
 (all need edit rights on the book; a file not paired to that book is a 404; a missing runtime or audio is a 409), and
 `GET /admin/runtimes`, `POST /admin/runtimes/check`, `GET /admin/runtimes/files/{name...}` (owner only; the lock files and
-model manifests as text). Planned for R4 and later:
-`GET /hx/books/{id}/read/chapters/{idx}?edition=`, `GET /hx/books/{id}/read/toc?edition=`, `POST /hx/me/reader-settings`,
-`GET|POST /hx/books/{id}/highlights`, `PATCH|DELETE /hx/highlights/{id}`, `POST /hx/editions/{id}/exports/overlays`.
+model manifests as text). Built in R4 P2: `GET /hx/books/{id}/read/chapters/{idx}?edition=&mode=`,
+`POST /hx/books/{id}/highlights`, `PATCH|DELETE /hx/highlights/{id}` (the person's own; htmx only), and `POST /books/{id}/bookmarks`
+with `edition_id` and `sid` for a bookmark made in the text. Planned for later: `POST /me/reader-settings` (R4 P4),
+`POST /hx/editions/{id}/exports/overlays`.
 
 Details, cover, author photo and write routes (M4; the patterns are in `routes_details.go`, `routes_cover_pick.go`, `routes_author.go`, `routes_write.go` and `routes_nav.go`): `POST /books/{id}/match` (starts a lookup job), `POST /books/{id}/match/apply`, `GET /books/{id}/match/{job}/cover/{n}`, `POST /books/{id}/details/reset`, `POST /books/{id}/cover` (choose a cover), `POST /books/{id}/cover/upload`, `GET /covers/{bookID}/choices/{coverID}`, `POST /books/{id}/write`, `POST /books/{id}/write/confirm` (Looks good), `POST /books/{id}/write/undo` (Undo), `POST /people/{id}/lookup` and `GET /people/{id}/photo` (authors), `POST /admin/online` (the `online.enabled` switch), `POST /me/nav` and `POST /hx/me/nav` (sidebar setting). `GET /hx/jobs/{id}` answers by the job's kind; a lookup job needs `?book=`.
 
@@ -404,7 +405,7 @@ so Back, reload and links without JavaScript all work.
 | Reader text `#reader-text` (R4) | open, `revealed` near the end | `GET /hx/books/{id}/read/chapters/{idx}?edition=` |
 | Reader mode | mode switcher | Page + `hx-select`: `GET /books/{id}/read?mode=` |
 | Reading settings (R4) | `change` | `POST /hx/me/reader-settings`, `hx-swap="none"` |
-| Highlights and notes (R4) | selection menu | `POST /hx/books/{id}/highlights` (out-of-band sentence span and count) |
+| Highlights and notes (R4) | selection menu | `POST /hx/books/{id}/highlights` (out-of-band touched blocks `#b-{blockID}` and `#reader-marks-count`) |
 | Alignment progress `#align-{fileID}` (R3) | `every 2s` until done, held or ended | `GET /hx/jobs/{id}` |
 | Word timing check `#runtime-card-{lang}` (R3) | `every 2s` until the check ends | `GET /hx/jobs/{id}` |
 

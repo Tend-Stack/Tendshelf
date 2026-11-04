@@ -101,7 +101,9 @@ type sweepEnv struct {
 	// staff person; alignJob is the job of a running alignment and runtimeJob a waiting word-timing check.
 	alignFile            map[string]string
 	alignJob, runtimeJob string
-	tree                 string // a folder for the browse view, with a file name that must never be sent
+	// rdr names what the reader rows act on (M5 R4 P2): the edition and a highlight per verb and staff person.
+	rdr  rdrSweep
+	tree string // a folder for the browse view, with a file name that must never be sent
 
 	// granted marks the app of TestRouteMatrixGranted: the member and the guest hold a library
 	// grant on libID, so rows answer with Granted and the leak scan is off.
@@ -239,6 +241,7 @@ func sweepSeed(t *testing.T) *sweepEnv {
 	uploadSeed(t, e)
 	ebookSeed(t, e)
 	alignSeed(t, e)
+	readerSeed(t, e)
 	e.job = a.adminEnqueueScan(t, l.ID)
 	a.adminSetJobState(t, e.job, "done")
 	if err := db.PutSetting(ctx, a.st.Writer(), settingSetupDone, true); err != nil {
@@ -320,6 +323,8 @@ type sweepRow struct {
 	// NoCSRF marks an unsafe row that needs no CSRF token (the public token sign-in): sent without
 	// one it gets the same answer as with one, not 403.
 	NoCSRF bool
+	// HX sends the request as htmx does (HX-Request: true).
+	HX bool
 }
 
 func (r sweepRow) name() string {
@@ -680,6 +685,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, devicesSweepRows()...)
 	rows = append(rows, emailSweepRows()...)
 	rows = append(rows, alignSweepRows()...)
+	rows = append(rows, readerSweepRows()...)
 	rows = append(rows, runtimesSweepRows()...)
 	rows = append(rows, backupsSweepRows()...)
 	rows = append(rows, apiSweepRows()...)
@@ -696,11 +702,15 @@ func (e *sweepEnv) send(t *testing.T, row sweepRow, role int, token bool) *httpt
 	t.Helper()
 	pathRole := max(role, 0)
 	path := row.Path(e, pathRole)
+	var hx func(*http.Request)
+	if row.HX {
+		hx = func(r *http.Request) { r.Header.Set("HX-Request", "true") }
+	}
 	if row.Method == http.MethodGet {
 		if role < 0 {
 			return e.a.do(http.MethodGet, path, nil, nil)
 		}
-		return e.a.do(http.MethodGet, path, nil, nil, e.ck[role])
+		return e.a.do(http.MethodGet, path, nil, hx, e.ck[role])
 	}
 	form := url.Values{}
 	if row.Form != nil {
@@ -718,7 +728,7 @@ func (e *sweepEnv) send(t *testing.T, row sweepRow, role int, token bool) *httpt
 	if token {
 		form.Set("_csrf", e.a.tokenFor(t, e.ck[role]))
 	}
-	return e.a.do(row.Method, path, form, nil, e.ck[role])
+	return e.a.do(row.Method, path, form, hx, e.ck[role])
 }
 
 // check compares one answer with the row's expectation.

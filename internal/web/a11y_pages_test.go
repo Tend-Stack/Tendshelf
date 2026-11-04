@@ -47,6 +47,8 @@ var a11ySkip = map[string]string{
 	"/uploads/{id}":                   "JSON (the upload status the uploader polls), not a page",
 	"/progress/{bookID}":              "JSON, not a page",
 	"/welcome":                        "redirects (303) to Home",
+	"/books/{id}/read":                "the reader page, audited in R4 P5 (reader-readalong, reader-read, reader-focus, reader-contents, reader-marks, reader-settings)",
+	"/books/{id}/read/timing/{idx}":   "JSON timing file, not a page",
 	"/s/{token}/stream/{audioFileID}": "audio stream, not a page",
 	"/s/{token}/peaks/{audioFileID}":  "JSON waveform, not a page",
 }

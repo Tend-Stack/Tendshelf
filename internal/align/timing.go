@@ -138,3 +138,12 @@ func ReadTiming(dir, key string) (*Timing, error) {
 	}
 	return &t, nil
 }
+
+// OpenTiming opens a chapter file for serving as it is (gzip bytes). The key is checked like ReadTiming's;
+// a missing file satisfies errors.Is(err, fs.ErrNotExist).
+func OpenTiming(dir, key string) (*os.File, error) {
+	if !cleanName(key) {
+		return nil, errors.New("align: bad timing key")
+	}
+	return os.Open(TimingPath(dir, key))
+}
