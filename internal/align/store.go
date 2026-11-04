@@ -190,6 +190,11 @@ func (s *Store) Latest(ctx context.Context, editionID string) (Alignment, bool, 
 ORDER BY created_at DESC, id DESC LIMIT 1`, editionID)
 }
 
+// Newest returns the most recently created alignment of an edition in any state.
+func (s *Store) Newest(ctx context.Context, editionID string) (Alignment, bool, error) {
+	return s.one(ctx, `edition_id = ? ORDER BY created_at DESC, id DESC LIMIT 1`, editionID)
+}
+
 // SetState moves an active alignment of this job to state, with an optional error code. It reports false
 // when the row is no longer active (cancelled, discarded, finished) or belongs to another job.
 func (s *Store) SetState(ctx context.Context, id, jobID, state, code string) (bool, error) {
@@ -313,6 +318,48 @@ start_ms = excluded.start_ms, end_ms = excluded.end_ms, sentences_total = exclud
 sentences_timed = excluded.sentences_timed, mean_confidence = excluded.mean_confidence, updated_at = excluded.updated_at`,
 		c.Idx, c.State, nullStr(c.ChapterKey), c.StartMS, c.EndMS, c.SentencesTotal, c.SentencesTimed, c.MeanConfidence,
 		c.UpdatedAt, id, jobID)
+	return affected(res, err)
+}
+
+// SetJob records the job of an active alignment that has none yet. The service sets it right after it
+// enqueues, and the handler sets it when it runs first; whichever lands first wins and the other is a no-op.
+func (s *Store) SetJob(ctx context.Context, id, jobID string) (bool, error) {
+	res, err := s.db.Writer().ExecContext(ctx, `UPDATE alignments SET job_id = ?, updated_at = ? WHERE id = ? AND job_id IS NULL
+AND state IN ('queued','emitting','aligning','held')`, jobID, s.now().UnixMilli(), id)
+	return affected(res, err)
+}
+
+// ActiveAll lists every active alignment, oldest first.
+func (s *Store) ActiveAll(ctx context.Context) ([]Alignment, error) {
+	rows, err := s.db.Reader().QueryContext(ctx, `SELECT `+alignmentCols+` FROM alignments
+WHERE state IN ('queued','emitting','aligning','held') ORDER BY created_at, id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Alignment
+	for rows.Next() {
+		a, err := scanAlignment(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// End moves an active alignment to a final or waiting state whoever owns it: the service's own writes
+// (Cancel, Discard, Reconcile) use it, a job never does. It reports false when the row is not active.
+func (s *Store) End(ctx context.Context, id, state, code string) (bool, error) {
+	now := s.now().UnixMilli()
+	var finished any
+	switch state {
+	case StateDone, StatePartial, StateFailed, StateCancelled:
+		finished = now
+	}
+	res, err := s.db.Writer().ExecContext(ctx, `UPDATE alignments SET state = ?, error_code = ?, updated_at = ?,
+finished_at = COALESCE(?, finished_at) WHERE id = ? AND state IN ('queued','emitting','aligning','held')`,
+		state, nullStr(code), now, finished, id)
 	return affected(res, err)
 }
 

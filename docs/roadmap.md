@@ -587,6 +587,23 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
     errors); a sentence whose first word is not timed starts at its first timed word; the plan's 20 % abridged
     case times 80 % of the text, above the 70 % bound, so the abridged label is tested with 40 % removed.
     Next: P3b (job and service), then P5.
+  - *R3 P3b (`align.book` job and service; done)*: `media.Tools.PCM16k` (ffmpeg through `ffmpegTo` at low
+    priority, fixed arguments, deadline 60 s + a tenth of the span, output cap); `align.Service`
+    (`Start`, `Cancel`/`Discard`, `Resume`, `Status`, `Reconcile`; `Runtimes` and `Decoder` interfaces) and the
+    `align.book` handler (no `HoldOnRecovery`): one ffmpeg stream per run of missing 30 s windows, quantised
+    windows into the cache, three tries per window then hold `worker_failed`, holds `runtime_changed` and
+    `audio_changed` (also by a quick-hash recheck at the end of emitting), a held row adopts the current audio
+    and model on Resume, chapters saved the moment they finish (`Align` gained `Stop` and `OnChapter`, and now
+    builds a chapter as soon as its last segment is done), reuse of finished chapters by key, `Cache.Prune`
+    at the end. Reused: `Store`, `Cache`, `Align`, the runtime `Emitter`; extended: `ebook.Store.Edition`,
+    `align.Store` (`SetJob`, `ActiveAll`, `End`, `Newest`). Checks: `TestPCM16k*`, `TestAlignJob*` (runs,
+    kind without hold, resume while emitting and while aligning, lease recovery, cancel, worker-failed hold and
+    Resume, runtime and audio changed, re-chaptered ebook with zero worker calls, start errors and dedup,
+    reconcile, no match, backup excludes the cache) on a fake worker and fake decoder; no Python or ffmpeg.
+    Backups were checked: `db.WriteCopy` is `VACUUM INTO` of the database only, so the emissions cache and
+    timing files are outside them (`TestAlignJobBackupExcludesCache`). Not run: `TestAlignJobReal` (opt-in,
+    needs the operator's sample). Limits: after a restart in the aligning stage the Viterbi of a chapter in
+    progress is redone (finished chapters are not); `leftMs` is a plain average. Next: P5.
 - **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line and Eyes-free;
   `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reading settings (Fraunces,
   Fira Sans, OpenDyslexic); migration `highlights` (`highlights`, `bookmarks.edition_id/sid`,

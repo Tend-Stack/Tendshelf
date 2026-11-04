@@ -99,14 +99,28 @@ func (s *Store) File(ctx context.Context, id string) (File, bool, error) {
 const editionCols = `id, ebook_file_id, source_sha256, recipe, doc_sha256, doc_bytes, format, layout, title, subtitle,
 authors_json, language, isbn, asin, chapter_count, word_count, char_count, page_count, created_at`
 
-// CurrentEdition returns the edition read from the file's present bytes by the present recipe.
-func (s *Store) CurrentEdition(ctx context.Context, fileID string) (Edition, bool, error) {
+func scanEdition(r scanner) (Edition, error) {
 	var e Edition
-	err := s.db.Reader().QueryRowContext(ctx, `SELECT `+editionCols+` FROM editions e
-WHERE ebook_file_id = ? AND recipe = ? AND source_sha256 = (SELECT sha256 FROM ebook_files WHERE id = ?)`,
-		fileID, Recipe, fileID).Scan(&e.ID, &e.EbookFileID, &e.SourceSHA256, &e.Recipe, &e.DocSHA256, &e.DocBytes,
+	err := r.Scan(&e.ID, &e.EbookFileID, &e.SourceSHA256, &e.Recipe, &e.DocSHA256, &e.DocBytes,
 		&e.Format, &e.Layout, &e.Title, &e.Subtitle, &e.AuthorsJSON, &e.Language, &e.ISBN, &e.ASIN,
 		&e.ChapterCount, &e.WordCount, &e.CharCount, &e.PageCount, &e.CreatedAt)
+	return e, err
+}
+
+// CurrentEdition returns the edition read from the file's present bytes by the present recipe.
+func (s *Store) CurrentEdition(ctx context.Context, fileID string) (Edition, bool, error) {
+	e, err := scanEdition(s.db.Reader().QueryRowContext(ctx, `SELECT `+editionCols+` FROM editions e
+WHERE ebook_file_id = ? AND recipe = ? AND source_sha256 = (SELECT sha256 FROM ebook_files WHERE id = ?)`,
+		fileID, Recipe, fileID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return Edition{}, false, nil
+	}
+	return e, err == nil, err
+}
+
+// Edition returns one edition by id; ok is false when it does not exist.
+func (s *Store) Edition(ctx context.Context, id string) (Edition, bool, error) {
+	e, err := scanEdition(s.db.Reader().QueryRowContext(ctx, `SELECT `+editionCols+` FROM editions WHERE id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return Edition{}, false, nil
 	}
