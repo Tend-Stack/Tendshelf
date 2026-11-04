@@ -1,5 +1,7 @@
 # 0017 The alignment worker speaks over pipes, not loopback HTTP
 
+Superseded by [0018](0018-book-reader.md) (2026-11-04).
+
 Status: accepted (2026-11-04). Plan: `docs/plans/m5-r3-alignment.md`, package P2. Amends point 3 of
 [decision 0001](0001-read-along.md) (loopback only, a per-launch token) and the "Owned word timing server"
 lifetime reused from TendVocal.

@@ -1,7 +1,7 @@
 # Roadmap
 
 Work is grouped into milestones; each ends with something usable. A milestone is a sequence of phases
-(P = server and listening app, R = read-along), and each phase ships as packages of about one agent
+(P = server and listening app, R = reader), and each phase ships as packages of about one agent
 session (split by layer: data and jobs, then pages, then client code). A phase is done when its exit
 criteria pass on the gates in `AGENTS.md` and the status below records scope, checks, limits and next
 step. Order and scope decisions: [decision 0002](decisions/0002-design-handoff.md) (2026-11-01).
@@ -19,7 +19,7 @@ themes.
 | M2 Family | P3 | **Done 2026-11-03, released as v2026.1.0.** P3-1 to P3-13, the desktop player bar and the Now playing panel; Research dropped (decision 0007). | The P3 status notes below; the route-matrix and leak-test table under "Exit check (P3-13)"; [CHANGELOG.md](../CHANGELOG.md). |
 | M3 Pocket | P4 | M3a built; phone check pending | |
 | M4 Details | P2 | Done 2026-11-03 | [plan](plans/m4-details.md) |
-| M5 Read along | R1-R6 | Designed 2026-10-31 ([read-along.md](read-along.md), [decision 0001](decisions/0001-read-along.md)); UI designed in the handoff (`screens/reader/`). Dependencies approved by the operator 2026-11-03. | Design only. |
+| M5 Book reader | R1, R2, R4, X, B1-B3, RD1-RD4 | Pivoted 2026-11-04 ([decision 0018](decisions/0018-book-reader.md), [plan](plans/m5-book-reader.md)). R1, R2 and R4 P1-P2 built; read-along dropped. | Plan only. |
 | M6 Desktop | P5 | Not started | |
 | M7 Research | P6 | Dropped (decision 0007) | |
 
@@ -463,10 +463,11 @@ each `file_writes` state recovers correctly.
 
 **Other fixes 2026-11-03 status**: no full page reload while a book plays (answers go to the page with `answerPage`; a guard test checks it). The Details tab has a side panel, "Options for this book". The app width stops growing at 2560 px. Breakpoints use range syntax; the core CSS budget is 18.5 KB, approved. The Library header is one line, with Show beside Grid and List. "Show less" appears below a long description, and the description wraps under the cover. Home "New on the shelf" hides finished books. Radio choices are drawn round. The live lookup step log shows each step as it runs.
 
-## M5 Read along (R)
+## M5 Book reader (R)
 
-Integrated into the book, player, position, sharing and offline downloads; not a second app. Comes
-after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); boards: `screens/reader/`.
+Tendshelf reads books. An ebook is a book; one book with two formats is its advantage. Decision
+[0018](decisions/0018-book-reader.md) drops read-along; research: [ebook-reader-features.md](research/ebook-reader-features.md);
+boards: `screens/reader/` minus the read-along ones.
 
 - **R1 Ebook ingestion**: `internal/ebook`, migration `ebooks` (`ebook_files`, `editions`,
   `edition_chapters`); scanner finds ebooks in book folders; upload on `/books/{id}/text`;
@@ -546,84 +547,9 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
   `pages-text.css`. Checks: `TestEbookInbox*`, matrix rows (`routes_matrix_ebook_inbox_test.go`), a11y rows
   `admin-ebooks` and `admin-ebook`, opt-in `TestEbookInboxVisual`. Limits: no bulk pairing, no deleting unpaired
   upload bytes, no nav item.
-- **R3 Alignment job**: `internal/align` and `internal/align/runtime`, migration `alignments`
-  (`runtime_components`, `alignments`, `alignment_chapters`); `runtimes/align/worker.py`; `/admin/runtimes`
-  check; emissions cache; mapping, forced alignment, confidence, failure labels; resume, cancel, hold;
-  re-align changed chapters only. Exit: synthetic-emission accuracy (clean at least 99 %, perturbed at
-  least 95 % of sentences within ±250 ms, zero invented times); job crash/resume tests; opt-in real run
-  on a public-domain recording records the ±250 ms share, CPU time per audio hour and storage per book
-  here (replacing the guesses in read-along.md).
-  - R3 P4 (worker files): `runtimes/align/` package `alignfiles` embeds `worker.py` (pipe protocol
-    `tendshelf-emissions-v1`, nonce echo, stdout isolation, sockets disabled), manifests `models/{en,es}.json`
-    and the hash-locked requirements, all taken from TendVocal's verified files. Checks: `TestWorkerBundle*`,
-    `python3 -I runtimes/align/test_worker.py` (stub backend, no torch; 7 tests). Limits: the torch backend is
-    not run here (no torch on the build machine); `make test-align-real` is opt-in.
-  - *R3 P2 (`internal/align/runtime`; done)*: `Config`/`Manifest` (`ParseManifest`, `ModelSHA`, `Locate`),
-    `Components` store over `runtime_components` (`Usable` requires the same interpreter and worker script),
-    `Check` and the `align.check` job (model files hashed against the pinned manifest, then `--describe`, whose
-    identity must equal the manifest), and `Manager`/`Emitter` over stdin/stdout pipes (ready line with a
-    per-launch nonce, one request at a time, deadlines kill the worker, idle stop after 5 minutes, `Pdeathsig`,
-    rebuilt environment). `media.LowerPriority` is exported. Decision
-    [0017](decisions/0017-alignment-worker-pipes.md) amends 0001 point 3. A Go fake worker
-    (`internal/align/runtime/fakeworker`, TestMain switch) covers it without Python. Checks: `TestRuntime*`.
-    Limits: the real worker is not run here (opt-in `TENDSHELF_TEST_ALIGN_RUNTIME`, wired in P3b); no GPU, no
-    Windows or macOS default interpreter path. Next: P3a, then P3b.
-  - *R3 P1 (data, normaliser, doc loader, job hold; done)*: migration 0018 (`runtime_components`, `alignments`,
-    `alignment_chapters`; `SchemaVersion` 18), `internal/ebook.ReadDoc` (512 MiB cap, address re-check),
-    `WordSpans`, `SentenceID`; `internal/align` with the `tendshelf-normalize-v1` normaliser (English and Spanish
-    numbers, ordinals, abbreviations; 4-digit numbers and `1º` are wildcards) and the alignment `Store`
-    (guarded writes, supersede, chapter upsert and lookup by key); `jobs.Error.Hold`. Checks: `TestMigration0018*`,
-    `TestReadDoc*`, `TestWordSpans`, `TestNormalize*`, `TestAlignStore*`, `TestJobsHold*`. Limits: no years with
-    context, no spelled-out Spanish ordinals, no other languages' numbers. Next: P2, P4, then P3a.
-  - *R3 P3a (`internal/align` core; done)*: emissions cache (`.em`, CRC, atomic write, LRU `Prune`), `Vocab`
-    and `BuildText`, `Track`/`Source`, greedy coarse transcript, multi-region map (5-gram hits, repeated
-    longest increasing chain per block, up to 4 regions, Needleman-Wunsch with a cell bound and a 3-gram
-    re-anchor), CTC Viterbi with star states for wildcards, `Align` (segments, confidence, gap reasons, chapter
-    keys and `Reuse`, labels, state) and the `tendshelf-timing-v1` writer and reader; `internal/align/aligntest`
-    builds documents, scripts and emissions. Checks: `TestAlignCore*`, `TestAlignAccuracy*` (6 chapters x 400
-    words, noise 0.8): clean 100 %, intro 99.6 %, front matter 100 %, swapped 99.1 %, abridged 100 %, other
-    edition 96.5 %, unsupported 100 %, music 99.1 % of narrated sentences within ±250 ms; zero invented or
-    out-of-order times in every case. Limits: synthetic emissions only (peaky, no accents, no real-model
-    errors); a sentence whose first word is not timed starts at its first timed word; the plan's 20 % abridged
-    case times 80 % of the text, above the 70 % bound, so the abridged label is tested with 40 % removed.
-    Next: P3b (job and service), then P5.
-  - *R3 P3b (`align.book` job and service; done)*: `media.Tools.PCM16k` (ffmpeg through `ffmpegTo` at low
-    priority, fixed arguments, deadline 60 s + a tenth of the span, output cap); `align.Service`
-    (`Start`, `Cancel`/`Discard`, `Resume`, `Status`, `Reconcile`; `Runtimes` and `Decoder` interfaces) and the
-    `align.book` handler (no `HoldOnRecovery`): one ffmpeg stream per run of missing 30 s windows, quantised
-    windows into the cache, three tries per window then hold `worker_failed`, holds `runtime_changed` and
-    `audio_changed` (also by a quick-hash recheck at the end of emitting), a held row adopts the current audio
-    and model on Resume, chapters saved the moment they finish (`Align` gained `Stop` and `OnChapter`, and now
-    builds a chapter as soon as its last segment is done), reuse of finished chapters by key, `Cache.Prune`
-    at the end. Reused: `Store`, `Cache`, `Align`, the runtime `Emitter`; extended: `ebook.Store.Edition`,
-    `align.Store` (`SetJob`, `ActiveAll`, `End`, `Newest`). Checks: `TestPCM16k*`, `TestAlignJob*` (runs,
-    kind without hold, resume while emitting and while aligning, lease recovery, cancel, worker-failed hold and
-    Resume, runtime and audio changed, re-chaptered ebook with zero worker calls, start errors and dedup,
-    reconcile, no match, backup excludes the cache) on a fake worker and fake decoder; no Python or ffmpeg.
-    Backups were checked: `db.WriteCopy` is `VACUUM INTO` of the database only, so the emissions cache and
-    timing files are outside them (`TestAlignJobBackupExcludesCache`). Not run: `TestAlignJobReal` (opt-in,
-    needs the operator's sample). Limits: after a restart in the aligning stage the Viterbi of a chapter in
-    progress is redone (finished chapters are not); `leftMs` is a plain average. Next: P5.
-  - *R3 P5 (`/admin/runtimes`, the Text tab, wiring; done)*: `alignrt.Provider` (the `align.Runtimes` adapter over
-    `Components` and `Manager`, plus `Health`: not set up, needs a check, problem, ready); flags `-align-python`,
-    `-align-models`, `-align-threads`, `-align-cache-gib` and their `TENDSHELF_ALIGN_*` variables, the `align.check`
-    and `align.book` kinds, `Reconcile` after start, `Manager.Close` on shutdown, one Info line when Python is
-    missing. Page `/admin/runtimes` (owner only, `pages-runtimes.css`, linked from Settings and Profile): a card
-    per language, Check as a job polled through `/hx/jobs/{id}`, the install steps with this server's paths,
-    the pinned files served as text. Text tab: "Pair and prepare read-along" when a checked runtime exists for the
-    edition's language, "Prepare read-along", the running card (chapter bar, stage, time left, Cancel), the held card
-    (Resume, Discard), ready, partial, failed and stale states. Reused: `align.Service`, the core `.ts-align` card
-    classes (core CSS untouched), the Email page layout. Checks: `TestAdminRuntimes*`, `TestTextAlign*`,
-    `TestRuntimeProviderHealth`, `TestAlignConfigDefaults`, matrix rows, `admin-runtimes` in the a11y audit; opt-in
-    captures `TestTextAlignVisual`, `TestAdminRuntimesVisual`. Limits: no switch for a disabled component on the page;
-    readers see no read-along card until R4; the real worker is still unrun here. Next: the operator installs the
-    runtime and records the opt-in real run.
-- **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line and Eyes-free;
-  `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reading settings (Fraunces,
-  Fira Sans, OpenDyslexic); migration `highlights` (`highlights`, `bookmarks.edition_id/sid`,
-  `highlights.note`, no notes table); highlights, bookmarks and notes in both directions. Exit: handler tests by
-  role; contrast checked for every theme and highlight colour; side-by-side check at the four widths;
-  highlight changes within one frame of a sentence start on a mid-range phone (measured).
+- **R3 Alignment job**: removed (decision 0018); the work stays in git history (`docs/plans/m5-r3-alignment.md`).
+- **R4 Reader page**: P1 and P2 are built (below). P3 (`readalong.js`) is dropped; P4 reading settings is on its branch and is
+  kept; what remains moved to RD1-RD4. The read-along parts of these notes describe code that package X removes.
   - *R4 P1 (data; done)*: migration `0019_highlights` (`highlights` with its note column, `bookmarks.edition_id`
     and `sid`), `progress` highlight repo (`AddHighlight`, `Highlights`, `ChapterHighlights`, `Highlight`,
     `SetHighlight`, `DeleteHighlight`; limit 2,000 per book; client id retry as bookmarks), `AddTextBookmark`
@@ -638,13 +564,28 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
     `TestRouteMatrix*` (6 reader rows, member and guest with and without `can_read`). Limits: no JS or CSS (P3 writes
     `readalong.js`, `reader-marks.js`, `pages-reader.css`; the page leaves `data-ts-module` out until those files ship);
     the reader page is skipped in the a11y list until R4 P5; no reading-settings link (P4).
-- **R5 Cross-format position**: `progress.position_source/text_*`; Read mode drives the position;
-  edition switch maps through time or quote; `can_read` on grants and share links with the P3 matrix;
-  offline text download with P4. Exit: read on one browser, press play on another, the voice starts at
-  that sentence; guest without `can_read` gets 404 on every text route; airplane-mode read-along check.
-- **R6 Media Overlays**: import SMIL when the audio matches, otherwise align; export a new EPUB 3.3 with
-  sentence-level overlays. Exit: import fixtures (match used, mismatch ignored); export then re-import
-  within 1 ms; opt-in epubcheck passes.
+- **R5 and R6**: removed (decision 0018). Cross-format position and Media Overlays need sentence timing. Offline text and
+  `can_read` on share links move to G6 and G7 below.
+
+Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then B1 and RD1, then B2, B3 and RD2, RD3, RD4.
+
+- **X Remove alignment**: migration 0020 (`highlights` without audio times, alignment tables and jobs gone), `internal/align`,
+  `runtimes/align`, `/admin/runtimes`, voice code in the reader. Exit: no alignment code left; old links still answer;
+  `make page-weight` passes. The orchestrator then removes `<data>/runtimes/align`, `<data>/cache/align` and `<data>/align`.
+- **B1 Ebook books**: migration 0021 (`books.kind`, `reading_positions`, `reading_sessions`, `merged_books`); a ready ebook with
+  no audiobook is a book; automatic merge and split; details and covers from the file. Exit: merge and split tests, files
+  untouched, an automatic merge never widens access.
+- **B2 Book surfaces**: book page, Home, cards, filters, API, the resume rule for two formats, the player's book icon.
+  Exit: one primary resume per book at every width.
+- **B3 Add books and `/admin/ebooks`**: ebooks by upload (0015 amended), PDF scanning, suggestions and "Could not be opened".
+- **RD1 Reader server**: document recipe v2 (links, images, metadata), chapter parts, images route, `/reading/{bookID}`,
+  the speaker icon. Exit: a hostile EPUB puts no script, handler or style byte in any answer.
+- **RD2 Paginator**: `reader.js`, `reader-pages.js`, pages and scroll, tap zones, keys, swipe, time left from the person's
+  speed, settings. Exit: the place survives a change of device size, font size and flow.
+- **RD3 Marks and more**: colours, notes, footnote popups, search, export, plain errors.
+- **RD4 Checks**: a11y, contrast, boards side by side, layout time, a manual WebKit and phone check.
+- **Later** (a note each in the plan): G1 look-up and word list, G2 reading stats, G3 print pages, G4 skim, G5 comfort,
+  G6 offline reading, G7 collections and sending a book; then OPDS and KOReader sync.
 
 ## M6 Desktop (P5 Wails)
 

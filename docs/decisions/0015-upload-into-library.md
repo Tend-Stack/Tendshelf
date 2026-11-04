@@ -1,6 +1,7 @@
 # 0015 Adding books by upload, straight into a library folder
 
 Status: proposed (2026-11-04). Plan: `docs/plans/upload-books.md`. Board: `docs/design/boards/UploadBooks.html`.
+Amended by [0018](0018-book-reader.md) (2026-11-04): uploads may also hold ebooks.
 Amends AGENTS.md "Audio files are the user's" and architecture invariant 1.
 
 ## Context
