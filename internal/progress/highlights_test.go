@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
@@ -44,7 +45,7 @@ func TestHighlightAddAndList(t *testing.T) {
 	h2 := hlBase(u[0], b)
 	h2.EditionID, h2.Chapter, h2.StartSID, h2.EndSID = "ed_1", 2, "c2.p1.s0", "c2.p1.s0"
 	h2.Colour = "green"
-	clk.Advance(1000)
+	clk.Advance(time.Second)
 	a2, _, err := svc.AddHighlight(ctx, h2)
 	if err != nil {
 		t.Fatal(err)
