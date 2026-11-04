@@ -131,6 +131,10 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 		// The Bookmarks tab swaps only #book-panel, so its stylesheet is linked whatever tab opens.
 		styles = append(append([]string(nil), styles...), pages.BookmarkStyles...)
 	}
+	if textEdit || textRead {
+		// The Text tab swaps only #book-panel, so its stylesheet is linked whichever tab opens.
+		styles = append(append([]string(nil), styles...), pages.TextStyles...)
+	}
 	canEdit := s.details != nil && s.can.Can(ctx, currentUser(r), share.EditBook, target)
 	lookups := false
 	if canEdit {

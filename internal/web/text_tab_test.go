@@ -288,6 +288,9 @@ func TestTextTabLists(t *testing.T) {
 			t.Errorf("owner page lacks %q", want)
 		}
 	}
+	if !strings.Contains(l.get(l.owner, "/books/"+l.book.ID, false).Body.String(), "pages-text") {
+		t.Error("the book page does not link the Text tab stylesheet")
+	}
 	if strings.Contains(body, "%!") || !strings.Contains(body, " words") {
 		t.Error("the summary line is not formatted")
 	}

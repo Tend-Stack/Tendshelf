@@ -4,6 +4,9 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
+// TextStyles are the stylesheets the Text tab links after the book page's own.
+var TextStyles = []string{"css/pages-text.css"}
+
 // TextChapterView is one chapter line of an ebook edition: the number (empty for front matter), the
 // title, the first line of its text and the front-matter label.
 type TextChapterView struct {
