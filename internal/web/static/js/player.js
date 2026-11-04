@@ -165,6 +165,16 @@ if (serverToasts) {
   }).observe(serverToasts, { childList: true });
 }
 
+// A toast for the other modules (offline, downloads, the full player). It leaves by itself, 4 s, or 8 s
+// for an error, and a tap dismisses it. It must not rely on the #toasts observer: in the full player
+// or Eyes-free the toast goes into their own region, which nothing else watches (operator, 2026-11-04).
+function timedToast(kind, text) {
+  const el = toast(kind, text);
+  dismissLater(el, kind === "err" ? 8000 : 4000);
+  listen(el, "click", () => dismissToast(el));
+  return el;
+}
+
 function hint(text) {
   const el = toast("hint", text);
   setTimeout(() => dismissToast(el), 1600);
@@ -1141,7 +1151,7 @@ window.tsPlayer = {
   setVolume,
   setFade,
   canSetVolume,
-  toast: (kind, text) => toast(kind, text),
+  toast: timedToast,
   debug: {
     setPausedAt: (ms) => {
       idleAt = ms;

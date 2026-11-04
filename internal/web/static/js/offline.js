@@ -156,20 +156,10 @@ async function flush() {
   failures += 1;
 }
 
+// A notice leaves by itself and a tap dismisses it: player.js times every toast it makes for us.
 function say(name) {
   const text = banner ? banner.dataset["tsMsg" + name[0].toUpperCase() + name.slice(1)] : "";
-  if (text && window.tsPlayer) leaveSoon(window.tsPlayer.toast("hint", text));
-}
-
-// A notice leaves by itself (player.js times toasts that carry data-ts-ms, and waits while the pointer
-// or focus is on one) and a tap dismisses it at once (operator, 2026-11-03).
-function leaveSoon(el) {
-  if (!el) return;
-  el.dataset.tsMs = "4000";
-  el.addEventListener("click", () => {
-    el.classList.add("is-leaving");
-    setTimeout(() => el.remove(), 800); // no exit animation under reduced motion
-  });
+  if (text && window.tsPlayer) window.tsPlayer.toast("hint", text);
 }
 
 // ---- The banner ----
