@@ -420,3 +420,10 @@ Later packages (G) ask for their own rows.
 ## Boards that no longer fit
 
 Gone: `ReadAlong*` (10), `FocusPhone`, `PreparingPhone`, `AlignFailPhone`, `EyesFreePhone` as a reader mode. Changed: mode switcher on `Read*` and `ReaderBook*`; dock replaced by a footer; Highlight, Follow and View rows on `ReadSettings*`; "text only, not narrated" on `Contents*`; "Play at" and the "same moment in both" lead on `Marks*`; "Pair and prepare read-along" on `AddEbook*`; "Also let them read along" on `ShareReadPhone`; "Ready offline: listen, read, read along" on `ReaderBookOffline`; HANDOFF 209-268 keys and motion. No board: pages, tap zones, footnote dialog, search, end of book, speaker icon, player book icon. Built from BRAND rules and listed for a design pass.
+
+## Operator answers (2026-11-04)
+
+- Budgets approved: app JS total 74.25 KB (76,032 B); `reader.js` 4.5, `reader-pages.js` 3, `reader-notes.js` 1,
+  `reader-marks.js` 2.75, `reader-settings.js` 1.5 KB; `pages-reader.css` 4 KB; `TestFontBudget` 1.6 MB.
+- Phone: the book icon sits in the full player only; the mini row stays as it is.
+- The other decisions take their defaults: PDFs in folders with no audio count as ebooks; new grants tick "read".
