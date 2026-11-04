@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit fixture</title>
+<link rel="stylesheet" href="fixture-a1.css">
+</head>
+<body>
+<main>
+  <!-- data-case names a planted case. data-expect lists the checks that must fire on it ("none": nothing).
+       data-expect-contrast replaces data-expect in the contrast theme; data-expect-unmeasured marks text
+       the audit cannot measure. Two h1 are planted on purpose: the page-level check h1-count fires. -->
+  <h1>Audit fixture</h1>
+  <h2>Contrast</h2>
+  <p data-case="c777" data-expect="contrast-text" class="c777">#777 on white, 16px: 4.48, fails</p>
+  <p data-case="c767676" data-expect="none" data-expect-contrast="contrast-text" class="c767676">#767676 on white, 16px: 4.54, passes AA, fails 7:1</p>
+  <p data-case="large" data-expect="none" data-expect-contrast="contrast-text" class="large949494">Large #949494 on white: 3.03, passes AA large</p>
+  <p data-case="mid" data-expect="contrast-text" class="mid949494">The same pair at 18px: fails</p>
+  <p data-case="white-on-grey" data-expect="none" class="on-grey">White on #595959: 7.0, passes both</p>
+  <p data-case="on-black" data-expect="none" data-expect-contrast="contrast-text" class="on-black">#8a8a8a on black: 6.08, passes AA, fails 7:1</p>
+  <p data-case="half" data-expect="contrast-text" class="half">Black at 50% opacity: about 3.9, fails</p>
+  <p data-case="mixed" data-expect="none" data-expect-contrast="contrast-text" class="mixed">color-mix text: #737373, 4.74, passes AA, fails 7:1</p>
+  <p data-case="picture" data-expect="none" data-expect-unmeasured="yes" class="picture">Text over a gradient is not measured</p>
+  <p data-case="sr-only-parent" data-expect="none">Visible and fine <span data-case="sr-only" data-expect="none" class="sr-only">Hidden for sighted people</span></p>
+  <p><button data-case="disabled" data-expect="none" type="button" disabled>Disabled button</button> <button data-case="enabled" data-expect="none" type="button">Save</button></p>
+
+  <h2>Structure</h2>
+  <h4 data-case="skip" data-expect="heading-skip">A heading that skips levels</h4>
+  <p><button data-case="icon-button" data-expect="name-missing" type="button"><svg aria-hidden="true" width="16" height="16"><circle cx="8" cy="8" r="6"></circle></svg></button></p>
+  <p><input data-case="placeholder" data-expect="label-missing" placeholder="Search"></p>
+  <p><label for="named">Name</label> <input data-case="labelled" data-expect="none" id="named"></p>
+  <p><img data-case="no-alt" data-expect="img-alt name-missing" width="8" height="8" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></p>
+  <p><img data-case="alt" data-expect="none" width="8" height="8" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></p>
+  <div data-case="broken-ref" data-expect="aria-ref-broken" role="group" aria-labelledby="no-such-id">A group</div>
+  <div aria-hidden="true"><a data-case="hidden-link" data-expect="aria-hidden-focusable" href="#top">Link inside aria-hidden</a></div>
+  <div data-case="dup-first" data-expect="none" id="dup">First</div>
+  <div data-case="dup-second" data-expect="duplicate-id" id="dup">Second</div>
+  <p><input data-case="password" data-expect="autocomplete-missing" type="password" aria-label="Password"></p>
+  <p><input data-case="password-ok" data-expect="none" type="password" aria-label="Password" autocomplete="current-password"></p>
+  <h1>A second level-1 heading</h1>
+</main>
+</body>
+</html>

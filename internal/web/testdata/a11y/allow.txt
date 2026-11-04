@@ -1,0 +1,5 @@
+# Findings the accessibility audit may leave standing. It starts empty and should stay short.
+#
+# One line per finding:   <check> <pageKey|*> <selector> -- <reason, at least 10 characters>
+# The check ids are a11yChecks in internal/web/a11y_audit_test.go; the selector is the one findings.json
+# shows. Role, theme and width do not matter. A line that matches nothing in a full run fails the audit.

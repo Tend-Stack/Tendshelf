@@ -1,0 +1,30 @@
+/* Planted cases for TestA11yHarnessCatches. Colours are literal on purpose: the ratio of each pair is in the HTML. */
+body {
+  margin: 0;
+  padding: 16px;
+  background: #fff;
+  color: #222;
+  font: 400 16px/1.4 sans-serif;
+}
+a { color: #00468c; }
+.c777 { color: #777; }
+.c767676 { color: #767676; }
+.large949494 { color: #949494; font-size: 24px; }
+.mid949494 { color: #949494; font-size: 18px; }
+.on-grey { background: #595959; color: #fff; }
+.on-black { background: #000; color: #8a8a8a; }
+.half { color: #000; opacity: 0.5; }
+.mixed { color: color-mix(in srgb, #000 55%, #fff); }
+.picture {
+  color: #777;
+  background-image: linear-gradient(90deg, #fff, #ddd);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  color: #ccc;
+}
+button:disabled { color: #aaa; }
