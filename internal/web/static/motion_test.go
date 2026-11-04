@@ -288,7 +288,7 @@ func TestNoSkipCollision(t *testing.T) {
 var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// P3-11a: the live text-size change on the Settings page (about 0.1 KB), so 4.5 KB; to be approved by the operator.
 	// The nav marks a destination as its request starts (operator, 2026-11-03: shell.js 4.625 KB, total 38.375 KB).
-	"shell.js": {5 * 1024, 64 * 1024}, // the most specific nav item wins (operator, 2026-11-03: 4.75 KB, total 38.5 KB); M3b S sends the time zone: 5 KB (operator, 2026-11-04)
+	"shell.js": {5*1024 + 384, 64 * 1024}, // the most specific nav item wins (operator, 2026-11-03: 4.75 KB, total 38.5 KB); M3b S sends the time zone: 5.375 KB measured 5.29 KB (operator, 2026-11-04)
 	// The plan said 9 KB, sized from the squeezed file (7.2 KB). The version written for reading
 	// (one statement per line, comments for the why) is 10.2 KB, so the limit is 11 KB; see the
 	// AGENTS.md rule: report an overrun, never squeeze.
@@ -331,7 +331,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // M3a (decision 0012): sw.js, offline.js, downloads.js and player-full.js's share make it 50.5 KB; approved by the operator on 2026-11-03.
 // B2: downloads.js came out at 7.8 KB instead of 5.5, so 52.5 KB; approved by the operator on 2026-11-03.
 // M3b (decision 0013): statistics, Eyes-free and the shake check make it 55.75 KB; approved by the operator on 2026-11-04.
-const jsTotalGzip = 55*1024 + 768 // 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
+// Measured together after S, E and K merged: 55.93 KB; the operator approved 56 KB on 2026-11-04.
+const jsTotalGzip = 56 * 1024 // 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()
