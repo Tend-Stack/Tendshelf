@@ -306,3 +306,38 @@ document.addEventListener("click", (event) => {
     if (target) target.click();
   });
 }, true);
+
+// Time zone (decision 0013): listening days end at the person's midnight, so the server keeps the
+// zone of their browser. When it differs from the stored one (data-ts-tz on <body>), send it once to
+// the settings route. sessionStorage remembers what was sent, so a refused or ignored post is not
+// retried on every page load. Link pages and sign-in pages have no account and send nothing.
+function sendTimeZone() {
+  const body = document.body;
+  if (body.dataset.tsLink || !document.documentElement.dataset.tsPerson) return;
+  let zone = "";
+  try {
+    zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return;
+  }
+  if (!zone || zone === body.dataset.tsTz) return;
+  try {
+    if (sessionStorage.getItem("ts.tz.sent") === zone) return;
+    sessionStorage.setItem("ts.tz.sent", zone);
+  } catch {
+    return; // storage is blocked: skip rather than post on every page
+  }
+  let token = "";
+  try {
+    token = JSON.parse(body.getAttribute("hx-headers:inherited"))["X-CSRF-Token"] || "";
+  } catch {
+    return;
+  }
+  fetch("/me/settings", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "X-CSRF-Token": token, "HX-Request": "true", "Content-Type": "application/x-www-form-urlencoded" },
+    body: "time_zone=" + encodeURIComponent(zone),
+  }).catch(() => {});
+}
+sendTimeZone();

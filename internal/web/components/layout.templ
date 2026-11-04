@@ -18,6 +18,8 @@ type Page struct {
 	TextSize string
 	// NavRail collapses the desktop sidebar into an icon rail (the ui.nav setting).
 	NavRail bool
+	// TimeZone is the person's stored zone (ui.time_zone), rendered as data-ts-tz so shell.js can tell when the browser's differs.
+	TimeZone string
 	CSRF    string
 	Assets  *static.Set
 	// Sheet, when set, is rendered inside #sheet on a full-page load, so a canonical URL such as
@@ -106,7 +108,7 @@ templ Layout(p Page, body templ.Component) {
 		}
 	>
 		@Head(p.withPrefetch(), layoutStyles()...)
-		<body hx-boost:inherited="target:#main select:#main swap:outerSync transition:true" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
+		<body data-ts-tz={ p.TimeZone } hx-boost:inherited="target:#main select:#main swap:outerSync transition:true" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
 			@OfflineBanner(p)
 			<div class="ts-shell">

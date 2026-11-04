@@ -1,0 +1,41 @@
+package components
+
+// StatsDay is one mark of the week row: its letter and state (listened, today, missed or ahead).
+type StatsDay struct{ Letter, State string }
+
+// ListeningStatsView is the words and numbers of the listening panel. It carries no book title.
+type ListeningStatsView struct {
+	Title                   string
+	WeekLabel, Week         string
+	StreakLabel, Streak     string
+	FinishedLabel, Finished string
+	DaysLabel               string
+	Days                    []StatsDay
+	Note                    string
+}
+
+// ListeningStats is the three numbers and, on Profile, the week's day marks. The marks are one
+// image with a sentence label, so no state is told by colour alone.
+templ ListeningStats(v ListeningStatsView) {
+	<section aria-labelledby="pf-stats" class="ts-stats">
+		<h2 id="pf-stats" class="ts-overline ts-stats__title">{ v.Title }</h2>
+		<dl class="ts-stats__grid">
+			<div><dt class="caption ts-stats__label">{ v.WeekLabel }</dt><dd class="time ts-stats__value">{ v.Week }</dd></div>
+			<div><dt class="caption ts-stats__label">{ v.StreakLabel }</dt><dd class="time ts-stats__value">{ v.Streak }</dd></div>
+			<div><dt class="caption ts-stats__label">{ v.FinishedLabel }</dt><dd class="time ts-stats__value">{ v.Finished }</dd></div>
+		</dl>
+		if len(v.Days) > 0 {
+			<div role="img" aria-label={ v.DaysLabel } class="ts-stats__days">
+				for _, d := range v.Days {
+					<span class="ts-stats__day">
+						<span aria-hidden="true" class={ "ts-stats__mark", "ts-stats__day--" + d.State }></span>
+						<span class="meta ts-stats__letter" aria-hidden="true">{ d.Letter }</span>
+					</span>
+				}
+			</div>
+		}
+		if v.Note != "" {
+			<p class="caption ts-stats__note">{ v.Note }</p>
+		}
+	</section>
+}

@@ -70,3 +70,20 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
 .ts-downloads__text { gap: 0.375rem; }
 .ts-downloads__ready { display: inline-flex; align-items: center; gap: 0.375rem; }
 .ts-downloads__ready .ts-icon { flex: none; width: 1rem; height: 1rem; color: var(--success); }
+
+/* Listening statistics (M3b, board ProfilePhone "Your listening"): three numbers and the week's day
+   marks. The panel is also the first card of the Profile grid and sits on the person page for an
+   admin. The marks are 1.75 rem circles: filled when there was listening, dashed for today with none
+   yet, a plain ring for an earlier empty day and for days to come. */
+.ts-stats { grid-column: 1 / -1; box-sizing: border-box; margin: var(--space-16) 0; padding: 1.125rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-stats__title { margin: 0; }
+.ts-stats__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-12); margin: 0.875rem 0 0; }
+.ts-stats__label { margin: 0; color: var(--ink-muted); }
+.ts-stats__value { margin: 0.125rem 0 0; font-size: 1.375rem; line-height: 1.75rem; }
+.ts-stats__days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.375rem; margin-top: var(--space-16); }
+.ts-stats__day { display: flex; flex-direction: column; align-items: center; gap: 0.375rem; }
+.ts-stats__letter { color: var(--ink-muted); }
+.ts-stats__mark { display: block; box-sizing: border-box; width: 1.75rem; height: 1.75rem; border-radius: 0.875rem; background: transparent; border: 1.5px solid var(--line); }
+.ts-stats__day--listened { background: var(--accent-fill); border: 0; }
+.ts-stats__day--today { border: 1.5px dashed var(--line-strong); }
+.ts-stats__note { margin: var(--space-12) 0 0; color: var(--ink-muted); }

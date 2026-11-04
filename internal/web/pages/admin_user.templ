@@ -42,6 +42,8 @@ type AdminUserView struct {
 	Shelves   []Option
 	Q         string
 	Found     []Option
+	// Stats is the Listening panel: the three numbers of this person, never a title.
+	Stats components.ListeningStatsView
 	// Today is the earliest day the "Ends on" field takes (YYYY-MM-DD).
 	Today string
 }
@@ -198,6 +200,7 @@ templ AdminUser(v AdminUserView) {
 		if v.Error != "" {
 			<p class="ts-users__error" role="alert">{ v.Error }</p>
 		}
+		@components.ListeningStats(v.Stats)
 		<section class="ts-users__roles" aria-labelledby="us-role">
 			<h2 id="us-role" class="section">Change role</h2>
 			<form method="post" action={ templ.URL("/admin/users/" + v.ID + "/role") }>
