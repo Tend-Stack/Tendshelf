@@ -18,8 +18,7 @@ func TestReaderSettingsLoadSave(t *testing.T) {
 	if err != nil || got != DefaultReader {
 		t.Fatalf("defaults = %+v, %v", got, err)
 	}
-	want := ReaderSettings{Font: "dyslexic", Size: 26, Leading: "airy", Highlight: "brighten", Word: false, Follow: false,
-		FollowStyle: "gentle", ReturnAuto: true, View: "focus"}
+	want := ReaderSettings{Font: "dyslexic", Size: 26, Leading: "airy"}
 	if err := r.SaveReader(ctx, u.ID, want); err != nil {
 		t.Fatal(err)
 	}
@@ -36,9 +35,6 @@ func TestReaderSettingsLoadSave(t *testing.T) {
 		func(s *ReaderSettings) { s.Font = "comic" },
 		func(s *ReaderSettings) { s.Size = 19 },
 		func(s *ReaderSettings) { s.Leading = "" },
-		func(s *ReaderSettings) { s.Highlight = "glow" },
-		func(s *ReaderSettings) { s.FollowStyle = "wild" },
-		func(s *ReaderSettings) { s.View = "tv" },
 	} {
 		bad := want
 		mod(&bad)
@@ -70,10 +66,10 @@ func TestReaderSettingsBadStoredFields(t *testing.T) {
 		}
 	}
 	// Bad fields fall back one by one; good ones are kept.
-	put(`{"font":"sans","size":99,"leading":7,"hl":"underline","word":"yes","follow":false,"view":"nope"}`)
+	put(`{"font":"sans","size":99,"leading":7}`)
 	got, err := r.LoadReader(ctx, u.ID)
 	want := DefaultReader
-	want.Font, want.Highlight, want.Follow = "sans", "underline", false
+	want.Font = "sans"
 	if err != nil || got != want {
 		t.Fatalf("partial = %+v, %v", got, err)
 	}
@@ -83,5 +79,29 @@ func TestReaderSettingsBadStoredFields(t *testing.T) {
 		if got, err := r.LoadReader(ctx, u.ID); err != nil || got != DefaultReader {
 			t.Errorf("%s: %+v, %v", raw, got, err)
 		}
+	}
+}
+
+// TestXReaderSettingsOldJSON: a reader.v1 row stored while the reader had voice settings still loads. The keys that
+// are gone are ignored and the rest is kept.
+func TestXReaderSettingsOldJSON(t *testing.T) {
+	r := newRepo(t, Options{})
+	ctx := context.Background()
+	u, err := createOwner(t, r, goodUser("ana"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = r.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO user_settings (user_id, key, value_json, updated_at) VALUES (?, 'reader.v1', ?, 1)`,
+			u.ID, `{"font":"dyslexic","size":22,"leading":"airy","hl":"underline","word":false,"follow":false,"followStyle":"gentle","returnAuto":true,"view":"focus"}`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.LoadReader(ctx, u.ID)
+	want := ReaderSettings{Font: "dyslexic", Size: 22, Leading: "airy"}
+	if err != nil || got != want {
+		t.Fatalf("old JSON = %+v, %v; want %+v", got, err, want)
 	}
 }

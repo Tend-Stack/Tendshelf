@@ -25,23 +25,6 @@ func (s *server) registerReaderSettings(mux *http.ServeMux) {
 	mux.HandleFunc("POST /me/reader-settings", s.postReaderSettings)
 }
 
-// rsetFlag reads a switch the form posts as 0 or 1 (a hidden 0 comes before the checkbox, so the last value wins).
-func rsetFlag(form url.Values, key string, dst *bool) bool {
-	vals, ok := form[key]
-	if !ok {
-		return true
-	}
-	switch vals[len(vals)-1] {
-	case "1", "on", "true":
-		*dst = true
-	case "0", "off", "false":
-		*dst = false
-	default:
-		return false
-	}
-	return true
-}
-
 // rsetText reads a choice when the form has it; whether it is allowed is checked by Validate.
 func rsetText(form url.Values, key string, dst *string) {
 	if form.Has(key) {
@@ -83,9 +66,6 @@ func (s *server) postReaderSettings(w http.ResponseWriter, r *http.Request) {
 	form := r.PostForm
 	rsetText(form, "font", &next.Font)
 	rsetText(form, "leading", &next.Leading)
-	rsetText(form, "hl", &next.Highlight)
-	rsetText(form, "followStyle", &next.FollowStyle)
-	rsetText(form, "view", &next.View)
 	if form.Has("size") {
 		n, err := strconv.Atoi(form.Get("size"))
 		if err != nil {
@@ -94,7 +74,7 @@ func (s *server) postReaderSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		next.Size = n
 	}
-	if !rsetFlag(form, "word", &next.Word) || !rsetFlag(form, "follow", &next.Follow) || !rsetFlag(form, "returnAuto", &next.ReturnAuto) || next.Validate() != nil {
+	if next.Validate() != nil {
 		bad()
 		return
 	}
@@ -135,24 +115,15 @@ func (s *server) postReaderSettings(w http.ResponseWriter, r *http.Request) {
 
 // readerLook turns the stored settings into the classes and data values of the reader root.
 func readerLook(rs users.ReaderSettings) pages.ReaderLook {
-	onOff := func(b bool) string {
-		if b {
-			return "on"
-		}
-		return "off"
-	}
 	class := "ts-reader--size-" + strconv.Itoa(rs.Size) + " ts-reader--leading-" + rs.Leading
 	if rs.Font != "serif" {
 		class += " ts-reader--" + rs.Font // "sans" or "dyslexic"
 	}
-	return pages.ReaderLook{
-		Class: class, Hl: rs.Highlight, Word: onOff(rs.Word), Follow: onOff(rs.Follow),
-		FollowStyle: rs.FollowStyle, Return: onOff(rs.ReturnAuto), View: rs.View,
-	}
+	return pages.ReaderLook{Class: class}
 }
 
 // readingSheet builds the "Reading settings" sheet over the page the person is on.
-func (s *server) readingSheet(r *http.Request, rc readerCtx, mode string, ch int) (pages.ReadingSheetView, error) {
+func (s *server) readingSheet(r *http.Request, rc readerCtx, ch int) (pages.ReadingSheetView, error) {
 	ctx, u := r.Context(), currentUser(r)
 	rs, err := s.users.LoadReader(ctx, u.ID)
 	if err != nil {
@@ -162,12 +133,11 @@ func (s *server) readingSheet(r *http.Request, rc readerCtx, mode string, ch int
 	if err != nil {
 		return pages.ReadingSheetView{}, err
 	}
-	back := rc.href("mode", mode, "ch", strconv.Itoa(ch))
+	back := rc.href("ch", strconv.Itoa(ch))
 	return pages.ReadingSheetView{
 		Title: readerSettings, CloseLabel: readerCloseSheet, CloseHref: back,
 		Action: readerSettingsRoute, CSRF: s.csrf.TokenFrom(ctx), Next: back, Preview: readerPreviewText,
-		Look: readerLook(rs), Theme: set.Theme, Font: rs.Font, Leading: rs.Leading, Hl: rs.Highlight,
-		Style: rs.FollowStyle, View: rs.View, Size: rs.Size, Large: set.TextSize == "large",
-		Word: rs.Word, Follow: rs.Follow, ReturnAuto: rs.ReturnAuto,
+		Look: readerLook(rs), Theme: set.Theme, Font: rs.Font, Leading: rs.Leading,
+		Size: rs.Size, Large: set.TextSize == "large",
 	}, nil
 }

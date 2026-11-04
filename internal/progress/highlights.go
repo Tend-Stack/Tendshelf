@@ -11,16 +11,14 @@ import (
 )
 
 // Highlight is a passage of an edition's text the person marked: a sentence id and character offset at each end
-// (offsets count UTF-16 units of the block text), the quote with a little context, and, when the alignment knew the
-// passage, its time range. DeletedAt is 0 for a live highlight.
+// (offsets count UTF-16 units of the block text) and the quote with a little context. DeletedAt is 0 for a live highlight.
 type Highlight struct {
-	ID, UserID, BookID, EditionID, AlignmentID string
-	StartSID, EndSID                           string
-	Quote, Prefix, Suffix                      string
-	Colour, Note, ClientID                     string
-	Chapter, StartOff, EndOff                  int
-	StartMs, EndMs                             *int64
-	CreatedAt, UpdatedAt, DeletedAt            int64
+	ID, UserID, BookID, EditionID   string
+	StartSID, EndSID                string
+	Quote, Prefix, Suffix           string
+	Colour, Note, ClientID          string
+	Chapter, StartOff, EndOff       int
+	CreatedAt, UpdatedAt, DeletedAt int64
 }
 
 // MaxHighlightsPerBook is how many live highlights one person may keep on one book. It is a variable so tests can lower it.
@@ -40,25 +38,19 @@ func validColour(c string) bool {
 	return false
 }
 
-const selectHighlight = `SELECT id, user_id, book_id, coalesce(edition_id, ''), coalesce(alignment_id, ''), chapter_idx, start_sid, start_off,
-end_sid, end_off, quote, quote_prefix, quote_suffix, start_ms, end_ms, colour, note, coalesce(client_id, ''), created_at, updated_at, deleted_at FROM highlights`
+const selectHighlight = `SELECT id, user_id, book_id, coalesce(edition_id, ''), chapter_idx, start_sid, start_off,
+end_sid, end_off, quote, quote_prefix, quote_suffix, colour, note, coalesce(client_id, ''), created_at, updated_at, deleted_at FROM highlights`
 
 func scanHighlight(r rowScanner) (Highlight, error) {
 	var h Highlight
-	var del, startMs, endMs sql.NullInt64
-	err := r.Scan(&h.ID, &h.UserID, &h.BookID, &h.EditionID, &h.AlignmentID, &h.Chapter, &h.StartSID, &h.StartOff,
-		&h.EndSID, &h.EndOff, &h.Quote, &h.Prefix, &h.Suffix, &startMs, &endMs, &h.Colour, &h.Note, &h.ClientID,
+	var del sql.NullInt64
+	err := r.Scan(&h.ID, &h.UserID, &h.BookID, &h.EditionID, &h.Chapter, &h.StartSID, &h.StartOff,
+		&h.EndSID, &h.EndOff, &h.Quote, &h.Prefix, &h.Suffix, &h.Colour, &h.Note, &h.ClientID,
 		&h.CreatedAt, &h.UpdatedAt, &del)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Highlight{}, ErrNotFound
 	}
 	h.DeletedAt = del.Int64
-	if startMs.Valid {
-		h.StartMs = &startMs.Int64
-	}
-	if endMs.Valid {
-		h.EndMs = &endMs.Int64
-	}
 	return h, err
 }
 
@@ -96,9 +88,6 @@ func checkHighlight(h *Highlight) error {
 	}
 	if utf8.RuneCountInString(h.Prefix) > maxContextRunes || utf8.RuneCountInString(h.Suffix) > maxContextRunes {
 		return &InvalidError{"quote"}
-	}
-	if (h.StartMs == nil) != (h.EndMs == nil) || h.StartMs != nil && (*h.StartMs < 0 || *h.EndMs < *h.StartMs) {
-		return &InvalidError{"time"}
 	}
 	if h.Colour == "" {
 		h.Colour = defaultColour
@@ -145,24 +134,18 @@ func (s *Service) AddHighlight(ctx context.Context, h Highlight) (out Highlight,
 		if n >= MaxHighlightsPerBook {
 			return ErrLimit
 		}
-		var cid, eid, aid, sms, ems any
+		var cid, eid any
 		if h.ClientID != "" {
 			cid = h.ClientID
 		}
 		if h.EditionID != "" {
 			eid = h.EditionID
 		}
-		if h.AlignmentID != "" {
-			aid = h.AlignmentID
-		}
-		if h.StartMs != nil {
-			sms, ems = *h.StartMs, *h.EndMs
-		}
 		_, err := tx.ExecContext(ctx, `INSERT INTO highlights(id, user_id, book_id, edition_id, chapter_idx, start_sid, start_off, end_sid, end_off,
-quote, quote_prefix, quote_suffix, start_ms, end_ms, alignment_id, colour, note, client_id, created_at, updated_at)
-VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+quote, quote_prefix, quote_suffix, colour, note, client_id, created_at, updated_at)
+VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			h.ID, h.UserID, h.BookID, eid, h.Chapter, h.StartSID, h.StartOff, h.EndSID, h.EndOff,
-			h.Quote, h.Prefix, h.Suffix, sms, ems, aid, h.Colour, h.Note, cid, now, now)
+			h.Quote, h.Prefix, h.Suffix, h.Colour, h.Note, cid, now, now)
 		if err == nil {
 			out, created = h, true
 		}

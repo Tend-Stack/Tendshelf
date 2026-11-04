@@ -103,10 +103,7 @@ type Kind struct {
 type Error struct {
 	Code, Text string
 	Permanent  bool
-	// Hold sends the job to held without spending an attempt, for a decision only a person can make.
-	// Resume runs it again. It wins over Permanent.
-	Hold bool
-	Err  error
+	Err        error
 }
 
 func (e *Error) Error() string {

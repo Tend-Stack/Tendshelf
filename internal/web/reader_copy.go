@@ -17,7 +17,7 @@ const (
 	readerChapter      = "Chapter %d"
 	readerFrontOnly    = "text only, not narrated"
 	readerMarksTitle   = "Highlights and notes"
-	readerMarksLead    = "One set for this book, whether you were listening or reading. Each one opens at the same moment in both."
+	readerMarksLead    = "Your highlights, notes and bookmarks in this book."
 	readerLeftInCh     = "%s left in chapter"
 	readerPageOf       = "p. %d of %d"
 	readerSpeedLabel   = "Playback speed, %s times"

@@ -7,25 +7,18 @@ import (
 	"errors"
 )
 
-// ReaderSettings are one person's reading choices for the read-along reader (M5 R4 P4). They are kept in
+// ReaderSettings are one person's reading choices for the book reader (M5 R4 P4). They are kept in
 // user_settings as one JSON row, reader.v1, so they follow the person across devices. The theme is not here:
 // it is the app's ui.theme.
 type ReaderSettings struct {
-	Font        string `json:"font"`        // "serif", "sans" or "dyslexic"
-	Size        int    `json:"size"`        // text size in px: 18, 20, 22 or 26
-	Leading     string `json:"leading"`     // "compact", "normal" or "airy"
-	Highlight   string `json:"hl"`          // "wash", "underline" or "brighten"
-	Word        bool   `json:"word"`        // underline each word as it is spoken
-	Follow      bool   `json:"follow"`      // scroll with the voice
-	FollowStyle string `json:"followStyle"` // "steady" or "gentle"
-	ReturnAuto  bool   `json:"returnAuto"`  // scroll back to the voice by itself after the person scrolled away
-	View        string `json:"view"`        // "page" or "focus"
+	Font    string `json:"font"`    // "serif", "sans" or "dyslexic"
+	Size    int    `json:"size"`    // text size in px: 18, 20, 22 or 26
+	Leading string `json:"leading"` // "compact", "normal" or "airy"
 }
 
 // DefaultReader applies to every field a person has not set.
 var DefaultReader = ReaderSettings{
-	Font: "serif", Size: 20, Leading: "normal", Highlight: "wash",
-	Word: true, Follow: true, FollowStyle: "steady", ReturnAuto: false, View: "page",
+	Font: "serif", Size: 20, Leading: "normal",
 }
 
 const keyReader = "reader.v1"
@@ -45,17 +38,14 @@ func validReaderSize(n int) bool { return n == 18 || n == 20 || n == 22 || n == 
 func (r ReaderSettings) Validate() error {
 	ok := oneOf(r.Font, "serif", "sans", "dyslexic") &&
 		validReaderSize(r.Size) &&
-		oneOf(r.Leading, "compact", "normal", "airy") &&
-		oneOf(r.Highlight, "wash", "underline", "brighten") &&
-		oneOf(r.FollowStyle, "steady", "gentle") &&
-		oneOf(r.View, "page", "focus")
+		oneOf(r.Leading, "compact", "normal", "airy")
 	if !ok {
 		return ErrInvalidSetting
 	}
 	return nil
 }
 
-// parseReader reads the stored JSON. A field that is missing, of the wrong type or outside its set keeps its default.
+// parseReader reads the stored JSON; keys it does not know (older versions kept more) are ignored. A field that is missing, of the wrong type or outside its set keeps its default.
 func parseReader(raw string) ReaderSettings {
 	out := DefaultReader
 	var m map[string]json.RawMessage
@@ -68,20 +58,8 @@ func parseReader(raw string) ReaderSettings {
 			*dst = v
 		}
 	}
-	flag := func(key string, dst *bool) {
-		var v bool
-		if json.Unmarshal(m[key], &v) == nil {
-			*dst = v
-		}
-	}
 	str("font", &out.Font, "serif", "sans", "dyslexic")
 	str("leading", &out.Leading, "compact", "normal", "airy")
-	str("hl", &out.Highlight, "wash", "underline", "brighten")
-	str("followStyle", &out.FollowStyle, "steady", "gentle")
-	str("view", &out.View, "page", "focus")
-	flag("word", &out.Word)
-	flag("follow", &out.Follow)
-	flag("returnAuto", &out.ReturnAuto)
 	var n int
 	if json.Unmarshal(m["size"], &n) == nil && validReaderSize(n) {
 		out.Size = n

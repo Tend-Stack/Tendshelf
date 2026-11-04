@@ -31,7 +31,7 @@ func TestMigration0019Highlights(t *testing.T) {
 	}
 	prev.Close()
 
-	st := mustOpen(t, dir)
+	st := openUpTo(t, 19, dir)
 	defer st.Close()
 	w := st.Writer()
 	var note string
@@ -70,7 +70,7 @@ func TestMigration0019Highlights(t *testing.T) {
 
 // TestMigration0019FromEmpty: the checks and keys hold on a fresh database.
 func TestMigration0019FromEmpty(t *testing.T) {
-	st := mustOpen(t, t.TempDir())
+	st := openUpTo(t, 19, t.TempDir())
 	defer st.Close()
 	w := st.Writer()
 	for _, q := range []string{
