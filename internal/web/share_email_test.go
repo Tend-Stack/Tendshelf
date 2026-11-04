@@ -244,7 +244,8 @@ func TestShareEmailResendRefusals(t *testing.T) {
 	}
 	e.ready()
 	// Still sending: 409.
-	e.exec(`INSERT INTO jobs(id, kind, state, created_by, created_at, updated_at) VALUES ('jb_run', 'invite.mail', 'queued', ?, 1, 1)`, e.ownerID)
+	// not_before far ahead, so the running job runner never claims and finishes it mid-test (it did under load).
+	e.exec(`INSERT INTO jobs(id, kind, state, created_by, created_at, updated_at, not_before) VALUES ('jb_run', 'invite.mail', 'queued', ?, 1, 1, 9999999999999)`, e.ownerID)
 	e.exec(`UPDATE invites SET mail_job_id = 'jb_run'`)
 	rec := e.post(e.owner, path, url.Values{"back": {"/share"}}, false)
 	usersWant(t, rec, http.StatusConflict, "still sending")
