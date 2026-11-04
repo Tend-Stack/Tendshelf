@@ -577,9 +577,19 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   `make page-weight`, `make a11y`. Limits: `media.LowerPriority` stays (waveform peaks use it); `bundle.css` voice classes wait for RD4;
   "Also let them read along" (share, admin user) and "text only, not narrated" wait for B2 and B3. Next: the orchestrator removes
   `<data>/runtimes/align`, `<data>/cache/align` and `<data>/align` with the server stopped (plan, "Repair after X merges").
-- **B1 Ebook books**: migration 0021 (`books.kind`, `reading_positions`, `reading_sessions`, `merged_books`); a ready ebook with
-  no audiobook is a book; automatic merge and split; details and covers from the file. Exit: merge and split tests, files
-  untouched, an automatic merge never widens access.
+- **B1 Ebook books (done)**: migration 0021 (`books.kind`, `editions.meta_json`, `ebook_files.merged_from`, `merged_books`,
+  `reading_positions`, `reading_sessions`; schema version 21). A ready ebook with no audiobook gets a `kind='text'` book
+  (`internal/ebook/textbook.go`); the scanner's audio sweep never sees it and `syncTextBooks` marks it missing and back. The
+  automatic merge (`merge.go`: `mergePending`, `PairBook`, called by `Finisher` and the new `metadata.Service.OnLocal`) takes
+  a text book into the one audiobook `Match`/`Decide` or the folder rule singles out, only when the SQL guard says no grant,
+  share link or shared shelf could widen; `MergeBook` is a person's merge (no guard); `Unpair` is "Not the same book" and
+  restores the merged-from id. Rows only, no file is opened. Details: `SourceFile` ("file") ranks between `nfo` and `tags`;
+  sidecars and a folder picture are lent only when the folder holds one book (`ebook.SoleStemDir`). Covers: `ebook.CoverBytes`
+  (EPUB, FB2, MOBI) feeds `mediajobs.Covers.TextCover`, stored as `embedded`. `progress` gained reading positions, sessions
+  and speed. `/books/{id}` and `/books/{id}/read` of a merged-away id answer 308. Checks: `TestMigration0021*`, `TestTextBook*`,
+  `TestMerge*`, `TestSplit*`, `TestReadingRepo*`, `go test -race` on the touched packages, `make check`, `make build`.
+  Limits: no pages (B2, B3); `meta_json` keys assumed `description`, `publisher`, `year`, `series`, `series_index` until RD1
+  writes them; WebP ebook covers go through ffmpeg like folder ones. Next: RD1 fills `meta_json`; B2 and B3 add the surfaces.
 - **B2 Book surfaces**: book page, Home, cards, filters, API, the resume rule for two formats, the player's book icon.
   Exit: one primary resume per book at every width.
 - **B3 Add books and `/admin/ebooks`**: ebooks by upload (0015 amended), PDF scanning, suggestions and "Could not be opened".
