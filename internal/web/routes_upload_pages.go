@@ -59,7 +59,7 @@ func (s *server) getAddBooks(w http.ResponseWriter, r *http.Request) {
 		LibraryID: lib.ID, LibraryName: lib.Name, BackHref: "/libraries/" + lib.ID,
 		Title: uploadTitle, LeadBefore: before, Folder: folder.Path, LeadAfter: after,
 		LibrariesLabel: uploadLibraries, PickHeading: uploadPickHeading, Files: uploadFiles, FolderPick: uploadFolder,
-		Hint: uploadHint, QueueHeading: uploadQueue,
+		Hint: uploadHint, QueueHeading: uploadQueue, DropLine: uploadDrop, Several: uploadSeveral,
 		NeedsJS: strings.Replace(uploadNeedsJS, "{path}", folder.Path, 1),
 		Module:  s.assets.URL("js/upload.js"), Messages: uploadMessages(),
 		Template: components.UploadRowView{State: "sending", Template: true, Words: uploadRowWords()},

@@ -16,6 +16,7 @@ type AddBooksView struct {
 	Libraries                      []LibChip
 	LibrariesLabel                 string
 	PickHeading, Files, FolderPick string
+	DropLine, Several            string
 	Hint, NeedsJS, QueueHeading    string
 	// Module is the hashed address of js/upload.js, which only this page loads.
 	Module   string
@@ -67,6 +68,7 @@ templ AddBooks(v AddBooksView) {
 				@components.UploadIcon("sending")
 			</span>
 			<noscript><p class="body ts-upload__drop">{ v.NeedsJS }</p></noscript>
+			<p class="caption ts-upload__drop ts-upload__drop--dnd">{ v.DropLine }</p>
 			<div class="ts-upload__pickbtns">
 				<label class="ts-btn ts-btn--primary ts-upload__choose">
 					@components.UploadIcon("file")
@@ -79,6 +81,10 @@ templ AddBooks(v AddBooksView) {
 					<input class="ts-sr" type="file" webkitdirectory data-ts-pick="folder"/>
 				</label>
 			</div>
+			<label class="ts-upload__several">
+				<input class="ts-check" type="checkbox" data-ts-several/>
+				{ v.Several }
+			</label>
 			<p class="caption ts-upload__hint">{ v.Hint }</p>
 		</section>
 		<section class="ts-upload__queue" aria-labelledby="queue-h" data-ts-queue hidden?={ len(v.Rows) == 0 }>

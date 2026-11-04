@@ -201,32 +201,57 @@ export function mount(root) {
   // ---- choosing ----
 
   function pathOf(file) {
-    return file.webkitRelativePath || file.name;
+    return file.tsPath || file.webkitRelativePath || file.name;
   }
 
-  async function addBooks(files, isFolder) {
-    if (!files.length) return;
-    const label = isFolder ? pathOf(files[0]).split("/")[0] : "";
+  // Split what was picked or dropped into books: a zip next to nothing else, or at the top of the
+  // picked folder when it holds several books, is a book; so is each folder (each subfolder when it
+  // holds several books); the loose files left over make one book. A book's paths start at its folder.
+  function split(files) {
+    const several = root.querySelector("[data-ts-several]").checked;
+    const depth = several ? 2 : 1;
+    const books = new Map();
+    for (const file of files) {
+      const parts = pathOf(file).split("/");
+      const zip = extension(file.name) === "zip" && parts.length <= depth;
+      if (several && parts.length > 1 && parts.length <= depth && !zip) continue; // loose in the folder: left out
+      const key = zip ? "z:" + parts.join("/") : parts.length > depth ? parts.slice(0, depth).join("/") : "";
+      if (!books.has(key)) books.set(key, []);
+      books.get(key).push(file);
+    }
+    for (const [key, group] of books) {
+      const label = key && !key.startsWith("z:") ? key.split("/").pop() : "";
+      addBook(group, label, several && label ? 1 : 0);
+    }
+  }
+
+  function addBook(files, label, cut) {
+    const name = (f) => pathOf(f).split("/").slice(cut).join("/");
     const title = label || files[0].name.replace(/\.[^.]*$/, "");
     const up = { id: "", files: [], samples: [], shownAt: 0, row: newRow(title, say(files.length === 1 ? "files-one" : "files-many", { n: files.length })) };
     uploads.set(up.row, up);
+    if (list.children.length > 1) root.querySelector("#queue-h").textContent = say("books", { n: list.children.length });
     const copyProtected = files.find((f) => PROTECTED.includes(extension(f.name)));
     if (copyProtected) {
       refuse(up, title, say("refused-drm", { file: copyProtected.name }));
       return;
     }
     setState(up, "checking", say("checking"));
-    try {
-      const manifest = files.map((f) => ({ path: pathOf(f), size: f.size, modified_ms: f.lastModified }));
-      const created = await call("POST", "/libraries/" + root.dataset.tsLibrary + "/uploads", { label, files: manifest });
-      const byPath = new Map(files.map((f) => [pathOf(f), f]));
-      adopt(up, created, created.files.map((f) => byPath.get(f.path)));
-      send(up);
-    } catch (error) {
-      if (error.code === "no_audio") refuse(up, title, say("refused-none"));
-      else if (error.code === "copy_protected") refuse(up, title, error.message);
-      else setState(up, "failed", error.message || say("failed"));
-    }
+    // Books are created one at a time, as they are sent: the server limits unfinished uploads.
+    turn = turn.then(async () => {
+      try {
+        const manifest = files.map((f) => ({ path: name(f), size: f.size, modified_ms: f.lastModified }));
+        const created = await call("POST", "/libraries/" + root.dataset.tsLibrary + "/uploads", { label, files: manifest });
+        const byPath = new Map(files.map((f) => [name(f), f]));
+        adopt(up, created, created.files.map((f) => byPath.get(f.path)));
+      } catch (error) {
+        if (error.code === "no_audio") refuse(up, title, say("refused-none"));
+        else if (error.code === "copy_protected") refuse(up, title, error.message);
+        else setState(up, "failed", error.message || say("failed"));
+        return;
+      }
+      await run(up);
+    });
   }
 
   // Pair what the server expects with the files the person picked (one blob for each expected file).
@@ -262,7 +287,27 @@ export function mount(root) {
     const again = input.closest("[data-ts-upload]");
     input.value = "";
     if (again) chooseAgain(again, files).catch(() => {});
-    else addBooks(files, input.dataset.tsPick === "folder");
+    else split(files);
+  });
+
+  // Dragging files or folders onto the page: the entries are read before the first await, then
+  // every folder is read to its end (a reader returns its entries in batches).
+  async function walk(entry) {
+    if (entry.isFile) return new Promise((ok) => entry.file((f) => ok([Object.assign(f, { tsPath: entry.fullPath.slice(1) })]), () => ok([])));
+    const reader = entry.createReader();
+    const found = [];
+    for (;;) {
+      const batch = await new Promise((ok) => reader.readEntries(ok, () => ok([])));
+      if (!batch.length) return found;
+      for (const child of batch) found.push(...(await walk(child)));
+    }
+  }
+
+  root.addEventListener("dragover", (event) => event.preventDefault());
+  root.addEventListener("drop", async (event) => {
+    event.preventDefault();
+    const entries = [...event.dataTransfer.items].map((item) => item.webkitGetAsEntry()).filter(Boolean);
+    split((await Promise.all(entries.map(walk))).flat());
   });
 
   root.addEventListener("click", (event) => {
