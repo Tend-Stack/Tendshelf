@@ -107,6 +107,8 @@ func a11yPages() []a11yPage {
 		row("admin-folder-new", "/admin/libraries/folders/new", a11yStatic("/admin/libraries/folders/new"), owner, "main", true),
 		row("admin-folder-emptied", "/admin/folders/{id}/emptied", func(e *a11yEnv) string { return "/admin/folders/" + e.AdminFolderID + "/emptied" }, owner, "main", true),
 		row("admin-lookups", "/admin/libraries/{id}/lookups", func(e *a11yEnv) string { return "/admin/libraries/" + e.AdminLibID + "/lookups" }, owner, "main", true),
+		row("admin-ebooks", "/admin/ebooks", a11yStatic("/admin/ebooks"), owner, "main", true),
+		row("admin-ebook", "/admin/ebooks/{fileID}", func(e *a11yEnv) string { return "/admin/ebooks/" + e.EbookFoundID }, owner, "main", true),
 		row("admin-users", "/admin/users", a11yStatic("/admin/users"), owner, "main", true),
 		row("admin-user", "/admin/users/{id}", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID }, owner, "main", true),
 		row("admin-user-disable", "/admin/users/{id}/disable", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID + "/disable" }, owner, "main", true),

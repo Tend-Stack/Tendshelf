@@ -39,6 +39,8 @@ type AdminLibrariesView struct {
 	OnlineTitle, OnlineBody string
 	// Uploads is "Adding books from this device" (decision 0015); nil when uploads are not set up.
 	Uploads *AdminUploadsView
+	// EbooksHref and EbooksLabel link the Ebooks to pair inbox ("3 ebooks to pair"); empty when none wait.
+	EbooksHref, EbooksLabel string
 }
 
 // AdminUploadsView is the section where the owner picks, per library, the folder that receives
@@ -112,6 +114,9 @@ templ AdminLibraries(v AdminLibrariesView) {
 				{ v.Ready }
 			</p>
 			<p class="caption ts-num ts-admin__last">{ v.LastScan }</p>
+			if v.EbooksHref != "" {
+				<div class="ts-admin__actions"><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.EbooksHref) }>{ v.EbooksLabel }</a></div>
+			}
 			<div class="ts-admin__actions">
 				<form method="post" action="/admin/libraries/scan">
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>

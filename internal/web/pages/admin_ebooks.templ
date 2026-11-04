@@ -1,0 +1,180 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// InboxMatch is one audiobook an ebook might belong to: its title, byline, why it was offered, and
+// the "Choose" form. The handler writes every word.
+type InboxMatch struct {
+	Title, Byline, Reason string
+	Action, CSRF, BookID  string
+	ChooseLabel, Aria     string
+}
+
+// InboxRow is one unpaired ebook on the inbox. Ready rows carry the best match and the link to the
+// pick page; the others carry only the sentence that says why they cannot be paired yet.
+type InboxRow struct {
+	ID, Name, Meta, Note string
+	Match                *InboxMatch
+	PickHref, PickLabel  string
+}
+
+// AdminEbooksView is the Ebooks to pair inbox.
+type AdminEbooksView struct {
+	Title, Lead, Empty, Error string
+	Waiting            []InboxRow
+	KeptTitle, KeptLead string
+	Kept               []InboxRow
+	// More is "And {n} more." when the list is cut.
+	More string
+}
+
+// AdminEbooks lists the ebooks with no audiobook: those waiting for one, then those kept on their own.
+templ AdminEbooks(v AdminEbooksView) {
+	<div class="ts-admin ts-admin--list">
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		if v.Error != "" {
+			<p class="body ts-users__error" role="alert">{ v.Error }</p>
+		}
+		<p class="body-lg ts-admin__lead">{ v.Lead }</p>
+		if len(v.Waiting) == 0 && len(v.Kept) == 0 {
+			<p class="body ts-admin__lead" role="status">{ v.Empty }</p>
+		}
+		if len(v.Waiting) > 0 {
+			@inboxList(v.Waiting)
+		}
+		if len(v.Kept) > 0 {
+			<h2 class="section ts-inbox__kept">{ v.KeptTitle }</h2>
+			<p class="caption ts-admin__lead">{ v.KeptLead }</p>
+			@inboxList(v.Kept)
+		}
+		if v.More != "" {
+			<p class="caption ts-needs__more">{ v.More }</p>
+		}
+	</div>
+}
+
+templ inboxList(rows []InboxRow) {
+	<ul class="ts-group ts-group--pad ts-needs">
+		for _, r := range rows {
+			<li class="ts-needs__row" id={ "inbox-" + r.ID }>
+				<div class="ts-needs__text">
+					<span class="body ts-needs__title">{ r.Name }</span>
+					if r.Meta != "" {
+						<span class="caption ts-needs__author">{ r.Meta }</span>
+					}
+					if r.Note != "" {
+						<span class="caption ts-needs__outcome">{ r.Note }</span>
+					}
+				</div>
+				if r.Match != nil {
+					<div class="ts-inbox__match">
+						<span class="body">{ r.Match.Title }</span>
+						<span class="caption">
+							if r.Match.Byline != "" {
+								{ r.Match.Byline }
+								&nbsp;·&nbsp;
+							}
+							{ r.Match.Reason }
+						</span>
+						@inboxChooseForm(*r.Match)
+					</div>
+				}
+				if r.PickHref != "" {
+					<div class="ts-needs__actions">
+						<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(r.PickHref) }>{ r.PickLabel }</a>
+					</div>
+				}
+			</li>
+		}
+	</ul>
+}
+
+// inboxChooseForm is "Choose" for one audiobook: a plain POST that carries the book's id.
+templ inboxChooseForm(m InboxMatch) {
+	<form class="ts-pair__form" method="post" action={ templ.URL(m.Action) }>
+		<input type="hidden" name="_csrf" value={ m.CSRF }/>
+		<input type="hidden" name="book" value={ m.BookID }/>
+		<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ m.Aria }>{ m.ChooseLabel }</button>
+	</form>
+}
+
+// AdminEbookPickView is the page that asks which audiobook an ebook belongs to (board NoMatchPhone).
+type AdminEbookPickView struct {
+	Eyebrow, Title, BackLabel, BackText string
+	// Error is the sentence of a refused pairing, drawn in an alert.
+	Error string
+	Card  components.PairingCardView
+	// SearchAction is the page's own address; the form is a plain GET with the field q.
+	SearchAction, SearchLabel, SearchGo, Q string
+	CloseTitle                             string
+	Close                                  []InboxMatch
+	ResultsTitle, NoResults                string
+	Results                                []InboxMatch
+	Searched                               bool
+	KeepAction, KeepLabel, CSRF            string
+}
+
+// AdminEbookPick offers the close matches, a search of the audiobooks and "Keep it as an ebook on its own".
+templ AdminEbookPick(v AdminEbookPickView) {
+	<div class="ts-admin ts-admin--list">
+		<a class="ts-admin__back" href="/admin/ebooks" aria-label={ v.BackLabel }>
+			@components.Icon("folder", false)
+			{ v.BackText }
+		</a>
+		<span class="ts-overline">{ v.Eyebrow }</span>
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		if v.Error != "" {
+			<p class="body ts-users__error" role="alert">{ v.Error }</p>
+		}
+		@components.PairingCard(v.Card)
+		<form class="ts-inbox__search" method="get" action={ templ.URL(v.SearchAction) } role="search">
+			<div class="ts-field">
+				<label class="ts-field__label" for="inbox-q">{ v.SearchLabel }</label>
+				<input class="ts-input" id="inbox-q" type="search" name="q" value={ v.Q } autocomplete="off"/>
+			</div>
+			<button type="submit" class="ts-btn ts-btn--secondary">{ v.SearchGo }</button>
+		</form>
+		if v.Searched {
+			<section aria-labelledby="inbox-results-h">
+				<h2 id="inbox-results-h" class="section">{ v.ResultsTitle }</h2>
+				if len(v.Results) == 0 {
+					<p class="body" role="status">{ v.NoResults }</p>
+				} else {
+					@inboxMatches(v.Results)
+				}
+			</section>
+		}
+		if len(v.Close) > 0 {
+			<section aria-labelledby="inbox-close-h">
+				<h2 id="inbox-close-h" class="section">{ v.CloseTitle }</h2>
+				@inboxMatches(v.Close)
+			</section>
+		}
+		<form class="ts-inbox__keep" method="post" action={ templ.URL(v.KeepAction) }>
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<button type="submit" class="ts-btn ts-btn--quiet">{ v.KeepLabel }</button>
+		</form>
+	</div>
+}
+
+templ inboxMatches(ms []InboxMatch) {
+	<ul class="ts-group ts-group--pad ts-needs">
+		for _, m := range ms {
+			<li class="ts-needs__row">
+				<div class="ts-needs__text">
+					<span class="body ts-needs__title">{ m.Title }</span>
+					<span class="caption ts-needs__author">
+						if m.Byline != "" {
+							{ m.Byline }
+						}
+						if m.Byline != "" && m.Reason != "" {
+							&nbsp;·&nbsp;
+						}
+						{ m.Reason }
+					</span>
+				</div>
+				@inboxChooseForm(m)
+			</li>
+		}
+	</ul>
+}

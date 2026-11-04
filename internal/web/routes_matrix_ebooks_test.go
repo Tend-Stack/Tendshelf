@@ -57,6 +57,7 @@ func ebookSeed(t *testing.T, e *sweepEnv) {
 		}
 		e.ebookPair[name] = id
 	}
+	ebookInboxSeed(t, e)
 }
 
 // ebookSweepRows are the route matrix rows of the Text tab. Owner and admin may add and clear
