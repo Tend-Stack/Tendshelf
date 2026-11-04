@@ -483,6 +483,16 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
   (parsers, refusals, hostile files, determinism, golden, segmenter, migration), `make check`, `make build`.
   Limits: PDF and MOBI/AZW3 are stubs that refuse `unsupported` (E2); no scanner, upload or job (E3); no
   route (E4). Next: E2 and E3.
+  **R1 E3 status** (scanner, upload store, job): built. `media.KindEbook` for epub, mobi, azw3, azw, fb2,
+  kfx and kfx-zip; the scanner splits ebooks out of each walk and hands them to `EbookSink`s after its
+  write transaction (grouping and probing never see them; `internal/scan` does not import `internal/ebook`).
+  `ebook.Service`: `Reconcile` (new, unchanged, changed, moved, missing, skip prefixes, scope; read-only
+  hashing), folder pairing, the `ebook.ingest` job (fenced write of edition, chapters and the gzip document;
+  refusals; stale results discarded; `not_yet` refusals reset at start-up and after each scan), `AddUpload`
+  (byte-identical at `<data>/ebooks/<sha256>.<ext>`, mode 0600, plain multipart-sized streaming, 413/422/
+  507/409 errors) and `Dismiss`. PDF, DOCX, TXT, MD and HTML come only by upload. Checks: `TestScanEbook*`,
+  `TestIngest*` (race), `make check`, `make build`. Limits: no route or page (E4); R2 pairing rules, inbox
+  and an orphaned-bytes sweep are not built.
 - **R2 Pairing**: automatic by folder, upload, ISBN/ASIN, title + author (suggestion when not unique);
   manual pair/unpair; `/admin/ebooks` inbox; several editions, book default, per-user choice. Exit:
   pairing table tests; an unpaired ebook never appears as a book; no ebook is ever written.
