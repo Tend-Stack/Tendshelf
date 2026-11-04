@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add books by upload: board for approval (decision 0015)</title>
+<link rel="stylesheet" href="../tendshelf-handoff/design-system/tokens.css">
+<link rel="stylesheet" href="../tendshelf-handoff/design-system/components/bundle.css">
+<style>
+/* ---- Board only: self-hosted fonts by relative path (no Google Fonts), frames, theme switch. ---- */
+@font-face { font-family: "Fraunces"; font-weight: 100 900; src: url("../../../internal/web/static/fonts/Fraunces-Variable.woff2") format("woff2"); }
+@font-face { font-family: "Fira Sans"; font-weight: 400; src: url("../../../internal/web/static/fonts/FiraSans-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Fira Sans"; font-weight: 500; src: url("../../../internal/web/static/fonts/FiraSans-Medium.woff2") format("woff2"); }
+@font-face { font-family: "Fira Sans"; font-weight: 600; src: url("../../../internal/web/static/fonts/FiraSans-SemiBold.woff2") format("woff2"); }
+:root { --radius-control: 12px; } /* decision 0004: the app's controls use 12 px corners, not the handoff's pills */
+.ts-btn { border-radius: var(--radius-control); }
+.bd-body { margin: 0; padding: 24px 0; background: #6b6259; font-family: "Fira Sans", system-ui, sans-serif; color: #fff; }
+.bd-head { margin-bottom: 24px; padding: 0 24px; }
+.bd-h1 { margin: 0 0 4px; font: 600 22px/28px "Fira Sans", sans-serif; }
+.bd-p { margin: 0 0 12px; max-width: 70rem; }
+.bd-radio { position: absolute; opacity: 0; }
+.bd-switch { display: flex; flex-wrap: wrap; gap: 8px; }
+.bd-switch label { padding: 8px 16px; border: 1px solid #fff; border-radius: 12px; cursor: pointer; }
+#bd-dark:checked ~ .bd-head label[for="bd-dark"], #bd-light:checked ~ .bd-head label[for="bd-light"],
+#bd-sepia:checked ~ .bd-head label[for="bd-sepia"], #bd-contrast:checked ~ .bd-head label[for="bd-contrast"] { background: #fff; color: #000; }
+.bd-radio:focus-visible ~ .bd-head .bd-switch { outline: 2px solid #fff; outline-offset: 4px; }
+.bd-theme { display: none; background: transparent; }
+#bd-dark:checked ~ .bd-theme--dark, #bd-light:checked ~ .bd-theme--light,
+#bd-sepia:checked ~ .bd-theme--sepia, #bd-contrast:checked ~ .bd-theme--contrast { display: block; }
+.bd-row { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; padding: 0 24px; }
+.bd-fig { margin: 0 0 40px; }
+.bd-cap { margin-bottom: 8px; font: 500 14px/20px "Fira Sans", sans-serif; color: #fff; }
+.bd-phone { container: frame / inline-size; position: relative; width: 390px; background: var(--ground); color: var(--ink); font-family: var(--font-sans); border-radius: 24px; overflow: hidden; }
+.bd-main { padding: 24px 20px 104px; }
+.bd-tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 72px; display: flex; justify-content: space-around; align-items: center; background: var(--surface); border-top: 1px solid var(--line); }
+.bd-tab { display: flex; flex-direction: column; align-items: center; gap: 4px; font: 500 13px/16px var(--font-sans); color: var(--ink-muted); }
+.bd-tab--on { color: var(--accent); }
+.bd-dot { width: 22px; height: 22px; border-radius: 6px; border: 1.75px solid currentColor; }
+.bd-desk { container: frame / inline-size; display: flex; width: 1440px; background: var(--ground); color: var(--ink); font-family: var(--font-sans); }
+.bd-side { flex: none; min-height: 900px; }
+.bd-main--desk { flex: 1; min-width: 0; padding: 40px 40px 64px; }
+
+/* ---- Proposed css/pages-upload.css (decision 0015). rem sizes, tokens only. In the app every
+   "@container frame (" below is "@media (". The Libraries section (ts-upset) goes to pages-admin.css. ---- */
+.ts-upload { display: flex; flex-direction: column; gap: var(--space-16); max-width: 46rem; }
+.ts-upload__back { display: inline-flex; align-items: center; gap: var(--space-8); align-self: flex-start; min-height: 2.75rem; color: var(--ink-muted); text-decoration: none; font-size: 0.9375rem; }
+.ts-upload__back .ts-icon { width: 1.25rem; height: 1.25rem; }
+.ts-upload__title, .ts-upload__lead { margin: 0; }
+.ts-upload__lead { margin-top: calc(-1 * var(--space-8)); color: var(--ink-muted); }
+.ts-upload__folder, .ts-upload__path, .ts-upset__path { font-family: var(--font-mono, "Fira Mono", monospace); overflow-wrap: anywhere; }
+.ts-upload__folder { color: var(--ink); }
+/* The picker: one surface, two real file inputs wrapped in their labels (keyboard: the label's input takes focus). */
+.ts-upload__pick { display: flex; flex-direction: column; align-items: center; gap: var(--space-12); padding: var(--space-24) var(--space-16); border: 1.5px dashed var(--line-strong); border-radius: var(--radius-lg); background: var(--surface); text-align: center; }
+.ts-upload__pickicon { display: flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--raised); color: var(--accent); }
+.ts-upload__drop { margin: 0; color: var(--ink); font-size: 1rem; }
+.ts-upload__pickbtns { display: flex; flex-direction: column; gap: var(--space-8); width: 100%; }
+.ts-upload__choose { cursor: pointer; }
+.ts-upload__choose:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ts-upload__hint { margin: 0; color: var(--ink-muted); max-width: 30rem; }
+/* The queue: one row per book. Icon + word for every state, never colour alone. */
+.ts-upload__queue .section { margin: var(--space-8) 0 var(--space-12); }
+.ts-upload__list { display: flex; flex-direction: column; gap: var(--space-12); margin: 0; padding: 0; list-style: none; }
+.ts-upload__row { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: var(--space-4) var(--space-12); padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-upload__icon { display: flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--raised); color: var(--accent); }
+.ts-upload__icon .ts-icon { width: 1.25rem; height: 1.25rem; }
+.ts-upload__icon--added { color: var(--success); }
+.ts-upload__icon--refused, .ts-upload__icon--failed { color: var(--danger); }
+.ts-upload__icon--stopped { color: var(--warning); }
+.ts-upload__text { min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.ts-upload__title { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.ts-upload__meta, .ts-upload__line, .ts-upload__path { margin: 0; color: var(--ink-muted); }
+.ts-upload__path { color: var(--ink); }
+.ts-upload__line { display: flex; align-items: center; gap: var(--space-8); }
+.ts-upload__spin { flex: none; width: 1rem; height: 1rem; color: var(--accent); }
+.ts-upload__progress { appearance: none; width: 100%; height: 0.375rem; margin: var(--space-4) 0; border: 0; border-radius: 3px; background: var(--line); overflow: hidden; }
+.ts-upload__progress::-webkit-progress-bar { background: var(--line); border-radius: 3px; }
+.ts-upload__progress::-webkit-progress-value { background: var(--accent-fill); border-radius: 3px; }
+.ts-upload__progress::-moz-progress-bar { background: var(--accent-fill); border-radius: 3px; }
+.ts-upload__row--paused .ts-upload__progress::-webkit-progress-value { background: var(--ink-subtle); }
+.ts-upload__row--paused .ts-upload__progress::-moz-progress-bar { background: var(--ink-subtle); }
+.ts-upload__actions { grid-column: 2; display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.ts-upload__actions:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .ts-upload__spin { animation: none; border-right-color: currentColor; opacity: 0.6; } }
+/* The Libraries section "Adding books from this device": radio rows, a plain form that works without script. */
+.ts-admin-up { display: flex; flex-direction: column; gap: var(--space-12); max-width: 46rem; }
+.ts-upset { display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-20); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-upset .section, .ts-upset__lead { margin: 0; }
+.ts-upset__lead { color: var(--ink-muted); }
+.ts-upset__lib { display: flex; flex-direction: column; gap: var(--space-12); padding-top: var(--space-16); border-top: 1px solid var(--line); }
+.ts-upset__choices { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; padding: 0; border: 0; }
+.ts-upset__name { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-8); padding: 0; font-weight: 600; }
+.ts-upset__q { font-weight: 400; color: var(--ink-muted); }
+.ts-upset__choice { display: flex; align-items: center; gap: var(--space-12); min-height: var(--size-tap); }
+.ts-upset__choice .ts-check[type="radio"] { border-radius: 50%; }
+.ts-upset__err { margin: 0; }
+.ts-upset__btns { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+@container frame (min-width: 768px) {
+  .ts-upload__pickbtns { flex-direction: row; justify-content: center; width: auto; }
+  .ts-upload__row { grid-template-columns: 2.5rem minmax(0, 1fr) auto; align-items: start; }
+  .ts-upload__actions { grid-column: 3; justify-content: flex-end; }
+}
+@container frame (min-width: 1280px) {
+  .ts-upload { max-width: 52rem; }
+  .ts-upload__pick { padding: var(--space-40, 2.5rem) var(--space-32); }
+}
+</style>
+</head>
+<body class="bd-body">
+<!-- Board for /libraries/{id}/add and the Libraries section "Adding books from this device" (decision 0015, plan
+     docs/plans/upload-books.md). Reference markup with synthetic data; not production code. The block marked
+     "Proposed css/pages-upload.css" is the page stylesheet: its @container frame (...) queries become @media (...) in
+     the app. The bd- rules only draw the frames and the theme switch: four radio inputs and CSS, no script. Every
+     theme repeats the same markup (generated). -->
+<input class="bd-radio" type="radio" name="bd-theme" id="bd-dark" checked>
+<input class="bd-radio" type="radio" name="bd-theme" id="bd-light">
+<input class="bd-radio" type="radio" name="bd-theme" id="bd-sepia">
+<input class="bd-radio" type="radio" name="bd-theme" id="bd-contrast">
+<header class="bd-head">
+  <h1 class="bd-h1">Add books: /libraries/{id}/add</h1>
+  <p class="bd-p">Board for decision 0015. Synthetic owner Daniel, library "Audiobooks" with uploads going into /srv/media/audiobooks. The queue shows every row state at once: sending, paused, stopped after a reload (resumable), adding, added, refused as copy-protected, and out of space.</p>
+  <div class="bd-switch" role="group" aria-label="Theme">
+    <label for="bd-dark">Dark</label><label for="bd-light">Light</label><label for="bd-sepia">Sepia</label><label for="bd-contrast">Contrast</label>
+  </div>
+</header>
+<div class="bd-theme bd-theme--dark" data-theme="dark">
+<div class="bd-row">
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · picking files or a folder · dark</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-0">
+  <h2 id="pick-h-0" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab"><span class="bd-dot"></span>Me</span></nav></div></figure>
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · the queue, every state · dark</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-0">
+  <h2 id="pick-h-0" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  <section class="ts-upload__queue" aria-labelledby="queue-h"><h2 id="queue-h" class="section">This session</h2><ul class="ts-upload__list"><li class="ts-upload__row ts-upload__row--sending" role="status">
+  <span class="ts-upload__icon ts-upload__icon--sending" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">All Systems Red</p>
+    <p class="caption ts-upload__meta">Martha Wells · 1 file · m4b</p>
+    <progress class="ts-upload__progress" max="100" value="62" aria-label="Sending All Systems Red">62 %</progress><p class="caption ts-num ts-upload__line">2.1 GB of 3.4 GB · about 6 min left</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>Pause</button></div>
+</li><li class="ts-upload__row ts-upload__row--paused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--paused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Hollow Orchard</p>
+    <p class="caption ts-upload__meta">Ines Calder · 14 files · mp3</p>
+    <progress class="ts-upload__progress" max="100" value="41" aria-label="Sending The Hollow Orchard">41 %</progress><p class="caption ts-num ts-upload__line">Paused. 460 MB of 1.1 GB sent.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Resume</button></div>
+</li><li class="ts-upload__row ts-upload__row--stopped" role="status">
+  <span class="ts-upload__icon ts-upload__icon--stopped" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Salt Road Letters</p>
+    <p class="caption ts-upload__meta">4 files · flac</p>
+    <p class="caption ts-num ts-upload__line">Stopped at 46 %. Choose the same files again to carry on.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Choose files again</button><button type="button" class="ts-btn ts-btn--quiet">Cancel upload</button></div>
+</li><li class="ts-upload__row ts-upload__row--adding" role="status">
+  <span class="ts-upload__icon ts-upload__icon--adding" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Weather for Beginners</p>
+    <p class="caption ts-upload__meta">Rosa Lindqvist · 22 files · mp3</p>
+    <p class="caption ts-upload__line"><span class="ts-spinner ts-upload__spin" aria-hidden="true"></span>Adding it to your library</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--added" role="status">
+  <span class="ts-upload__icon ts-upload__icon--added" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Lighthouse Keeper's Daughter</p>
+    <p class="caption ts-upload__meta">Added to Audiobooks</p>
+    <p class="caption ts-upload__path">Ann Marlowe/Tidewater/02 - The Lighthouse Keeper's Daughter</p><p class="caption ts-upload__line">2 other files were left out.</p>
+  </div>
+  <div class="ts-upload__actions"><a class="ts-btn ts-btn--quiet" href="#">Open book</a></div>
+</li><li class="ts-upload__row ts-upload__row--refused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--refused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="m9 9 6 6M15 9l-6 6"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added: The Glass Orchard</p>
+    <p class="caption ts-upload__meta">1 file · aax</p>
+    <p class="caption ts-upload__line">The Glass Orchard.aax is copy-protected, so Tendshelf will not open it. Nothing was kept.</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--failed" role="status">
+  <span class="ts-upload__icon ts-upload__icon--failed" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added yet: A Quiet Harbour</p>
+    <p class="caption ts-upload__meta">9 files · m4a</p>
+    <p class="caption ts-upload__line">The server ran out of space. Free some space, then press Try again.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Try again</button></div>
+</li></ul></section>
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab"><span class="bd-dot"></span>Me</span></nav></div></figure>
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · the owner's setting · dark</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-admin-up">
+  <span class="ts-overline">Your server</span>
+  <h1 class="title-1 ts-upload__title">Libraries &amp; scanning</h1>
+  <section class="ts-upset" aria-labelledby="uploads-h-0">
+    <h2 id="uploads-h-0" class="section">Adding books from this device</h2>
+    <p class="caption ts-upset__lead">Tendshelf makes a folder for each author in the folder you pick. It never changes or deletes anything already there.</p>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Audiobooks <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a"><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a" checked><span class="ts-upset__path">/srv/media/audiobooks</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a"><span class="ts-upset__path">/home/daniel/Inbox</span></label>
+      </fieldset>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button><a class="ts-btn ts-btn--quiet" href="#">Add books</a></div>
+    </form>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Kids <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0b" checked><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0b"><span class="ts-upset__path">/srv/media/kids</span></label>
+      </fieldset>
+      <p class="ts-field__error ts-upset__err" role="alert"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg>Tendshelf cannot write in this folder. Check its permissions.</p>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button></div>
+    </form>
+  </section>
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Me</span></nav></div></figure>
+</div>
+<div class="bd-row"><figure class="bd-fig"><figcaption class="bd-cap">Desktop 1440 · Add books with the queue (drop area arrives with U3) · dark</figcaption><div class="bd-desk bd-desk--1440"><nav class="ts-side bd-side" aria-label="Main"><div class="ts-side__brand">Tendshelf</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg>Home</a><a href="#" class="ts-side__item" aria-current="page"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/></svg>Library</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Downloads</a><div class="ts-side__group ts-overline">Server</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c1.4-4 4-6 7-6s5.6 2 7 6M19 8v6M16 11h6"/></svg>Users &amp; invites</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Libraries</a></nav><main class="bd-main--desk"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-1">
+  <h2 id="pick-h-1" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <p class="caption ts-upload__drop">Drop audio files or a folder here</p>
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  <section class="ts-upload__queue" aria-labelledby="queue-h"><h2 id="queue-h" class="section">This session</h2><ul class="ts-upload__list"><li class="ts-upload__row ts-upload__row--sending" role="status">
+  <span class="ts-upload__icon ts-upload__icon--sending" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">All Systems Red</p>
+    <p class="caption ts-upload__meta">Martha Wells · 1 file · m4b</p>
+    <progress class="ts-upload__progress" max="100" value="62" aria-label="Sending All Systems Red">62 %</progress><p class="caption ts-num ts-upload__line">2.1 GB of 3.4 GB · about 6 min left</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>Pause</button></div>
+</li><li class="ts-upload__row ts-upload__row--paused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--paused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Hollow Orchard</p>
+    <p class="caption ts-upload__meta">Ines Calder · 14 files · mp3</p>
+    <progress class="ts-upload__progress" max="100" value="41" aria-label="Sending The Hollow Orchard">41 %</progress><p class="caption ts-num ts-upload__line">Paused. 460 MB of 1.1 GB sent.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Resume</button></div>
+</li><li class="ts-upload__row ts-upload__row--stopped" role="status">
+  <span class="ts-upload__icon ts-upload__icon--stopped" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Salt Road Letters</p>
+    <p class="caption ts-upload__meta">4 files · flac</p>
+    <p class="caption ts-num ts-upload__line">Stopped at 46 %. Choose the same files again to carry on.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Choose files again</button><button type="button" class="ts-btn ts-btn--quiet">Cancel upload</button></div>
+</li><li class="ts-upload__row ts-upload__row--adding" role="status">
+  <span class="ts-upload__icon ts-upload__icon--adding" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Weather for Beginners</p>
+    <p class="caption ts-upload__meta">Rosa Lindqvist · 22 files · mp3</p>
+    <p class="caption ts-upload__line"><span class="ts-spinner ts-upload__spin" aria-hidden="true"></span>Adding it to your library</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--added" role="status">
+  <span class="ts-upload__icon ts-upload__icon--added" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Lighthouse Keeper's Daughter</p>
+    <p class="caption ts-upload__meta">Added to Audiobooks</p>
+    <p class="caption ts-upload__path">Ann Marlowe/Tidewater/02 - The Lighthouse Keeper's Daughter</p><p class="caption ts-upload__line">2 other files were left out.</p>
+  </div>
+  <div class="ts-upload__actions"><a class="ts-btn ts-btn--quiet" href="#">Open book</a></div>
+</li><li class="ts-upload__row ts-upload__row--refused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--refused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="m9 9 6 6M15 9l-6 6"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added: The Glass Orchard</p>
+    <p class="caption ts-upload__meta">1 file · aax</p>
+    <p class="caption ts-upload__line">The Glass Orchard.aax is copy-protected, so Tendshelf will not open it. Nothing was kept.</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--failed" role="status">
+  <span class="ts-upload__icon ts-upload__icon--failed" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added yet: A Quiet Harbour</p>
+    <p class="caption ts-upload__meta">9 files · m4a</p>
+    <p class="caption ts-upload__line">The server ran out of space. Free some space, then press Try again.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Try again</button></div>
+</li></ul></section>
+</div></main></div></figure></div>
+<div class="bd-row"><figure class="bd-fig"><figcaption class="bd-cap">Desktop 1440 · Libraries &amp; scanning, the new section · dark</figcaption><div class="bd-desk bd-desk--1440"><nav class="ts-side bd-side" aria-label="Main"><div class="ts-side__brand">Tendshelf</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg>Home</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/></svg>Library</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Downloads</a><div class="ts-side__group ts-overline">Server</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c1.4-4 4-6 7-6s5.6 2 7 6M19 8v6M16 11h6"/></svg>Users &amp; invites</a><a href="#" class="ts-side__item" aria-current="page"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Libraries</a></nav><main class="bd-main--desk"><div class="ts-admin-up">
+  <span class="ts-overline">Your server</span>
+  <h1 class="title-1 ts-upload__title">Libraries &amp; scanning</h1>
+  <section class="ts-upset" aria-labelledby="uploads-h-1">
+    <h2 id="uploads-h-1" class="section">Adding books from this device</h2>
+    <p class="caption ts-upset__lead">Tendshelf makes a folder for each author in the folder you pick. It never changes or deletes anything already there.</p>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Audiobooks <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a"><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a" checked><span class="ts-upset__path">/srv/media/audiobooks</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a"><span class="ts-upset__path">/home/daniel/Inbox</span></label>
+      </fieldset>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button><a class="ts-btn ts-btn--quiet" href="#">Add books</a></div>
+    </form>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Kids <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1b" checked><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1b"><span class="ts-upset__path">/srv/media/kids</span></label>
+      </fieldset>
+      <p class="ts-field__error ts-upset__err" role="alert"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg>Tendshelf cannot write in this folder. Check its permissions.</p>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button></div>
+    </form>
+  </section>
+</div></main></div></figure></div>
+</div><div class="bd-theme bd-theme--light" data-theme="light">
+<div class="bd-row">
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · picking files or a folder · light</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-0">
+  <h2 id="pick-h-0" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab"><span class="bd-dot"></span>Me</span></nav></div></figure>
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · the queue, every state · light</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-0">
+  <h2 id="pick-h-0" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  <section class="ts-upload__queue" aria-labelledby="queue-h"><h2 id="queue-h" class="section">This session</h2><ul class="ts-upload__list"><li class="ts-upload__row ts-upload__row--sending" role="status">
+  <span class="ts-upload__icon ts-upload__icon--sending" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">All Systems Red</p>
+    <p class="caption ts-upload__meta">Martha Wells · 1 file · m4b</p>
+    <progress class="ts-upload__progress" max="100" value="62" aria-label="Sending All Systems Red">62 %</progress><p class="caption ts-num ts-upload__line">2.1 GB of 3.4 GB · about 6 min left</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>Pause</button></div>
+</li><li class="ts-upload__row ts-upload__row--paused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--paused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Hollow Orchard</p>
+    <p class="caption ts-upload__meta">Ines Calder · 14 files · mp3</p>
+    <progress class="ts-upload__progress" max="100" value="41" aria-label="Sending The Hollow Orchard">41 %</progress><p class="caption ts-num ts-upload__line">Paused. 460 MB of 1.1 GB sent.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Resume</button></div>
+</li><li class="ts-upload__row ts-upload__row--stopped" role="status">
+  <span class="ts-upload__icon ts-upload__icon--stopped" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Salt Road Letters</p>
+    <p class="caption ts-upload__meta">4 files · flac</p>
+    <p class="caption ts-num ts-upload__line">Stopped at 46 %. Choose the same files again to carry on.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Choose files again</button><button type="button" class="ts-btn ts-btn--quiet">Cancel upload</button></div>
+</li><li class="ts-upload__row ts-upload__row--adding" role="status">
+  <span class="ts-upload__icon ts-upload__icon--adding" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Weather for Beginners</p>
+    <p class="caption ts-upload__meta">Rosa Lindqvist · 22 files · mp3</p>
+    <p class="caption ts-upload__line"><span class="ts-spinner ts-upload__spin" aria-hidden="true"></span>Adding it to your library</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--added" role="status">
+  <span class="ts-upload__icon ts-upload__icon--added" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Lighthouse Keeper's Daughter</p>
+    <p class="caption ts-upload__meta">Added to Audiobooks</p>
+    <p class="caption ts-upload__path">Ann Marlowe/Tidewater/02 - The Lighthouse Keeper's Daughter</p><p class="caption ts-upload__line">2 other files were left out.</p>
+  </div>
+  <div class="ts-upload__actions"><a class="ts-btn ts-btn--quiet" href="#">Open book</a></div>
+</li><li class="ts-upload__row ts-upload__row--refused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--refused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="m9 9 6 6M15 9l-6 6"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added: The Glass Orchard</p>
+    <p class="caption ts-upload__meta">1 file · aax</p>
+    <p class="caption ts-upload__line">The Glass Orchard.aax is copy-protected, so Tendshelf will not open it. Nothing was kept.</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--failed" role="status">
+  <span class="ts-upload__icon ts-upload__icon--failed" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added yet: A Quiet Harbour</p>
+    <p class="caption ts-upload__meta">9 files · m4a</p>
+    <p class="caption ts-upload__line">The server ran out of space. Free some space, then press Try again.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Try again</button></div>
+</li></ul></section>
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab"><span class="bd-dot"></span>Me</span></nav></div></figure>
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · the owner's setting · light</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-admin-up">
+  <span class="ts-overline">Your server</span>
+  <h1 class="title-1 ts-upload__title">Libraries &amp; scanning</h1>
+  <section class="ts-upset" aria-labelledby="uploads-h-0">
+    <h2 id="uploads-h-0" class="section">Adding books from this device</h2>
+    <p class="caption ts-upset__lead">Tendshelf makes a folder for each author in the folder you pick. It never changes or deletes anything already there.</p>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Audiobooks <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a"><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a" checked><span class="ts-upset__path">/srv/media/audiobooks</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a"><span class="ts-upset__path">/home/daniel/Inbox</span></label>
+      </fieldset>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button><a class="ts-btn ts-btn--quiet" href="#">Add books</a></div>
+    </form>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Kids <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0b" checked><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0b"><span class="ts-upset__path">/srv/media/kids</span></label>
+      </fieldset>
+      <p class="ts-field__error ts-upset__err" role="alert"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg>Tendshelf cannot write in this folder. Check its permissions.</p>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button></div>
+    </form>
+  </section>
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Me</span></nav></div></figure>
+</div>
+<div class="bd-row"><figure class="bd-fig"><figcaption class="bd-cap">Desktop 1440 · Add books with the queue (drop area arrives with U3) · light</figcaption><div class="bd-desk bd-desk--1440"><nav class="ts-side bd-side" aria-label="Main"><div class="ts-side__brand">Tendshelf</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg>Home</a><a href="#" class="ts-side__item" aria-current="page"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/></svg>Library</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Downloads</a><div class="ts-side__group ts-overline">Server</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c1.4-4 4-6 7-6s5.6 2 7 6M19 8v6M16 11h6"/></svg>Users &amp; invites</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Libraries</a></nav><main class="bd-main--desk"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-1">
+  <h2 id="pick-h-1" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <p class="caption ts-upload__drop">Drop audio files or a folder here</p>
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  <section class="ts-upload__queue" aria-labelledby="queue-h"><h2 id="queue-h" class="section">This session</h2><ul class="ts-upload__list"><li class="ts-upload__row ts-upload__row--sending" role="status">
+  <span class="ts-upload__icon ts-upload__icon--sending" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">All Systems Red</p>
+    <p class="caption ts-upload__meta">Martha Wells · 1 file · m4b</p>
+    <progress class="ts-upload__progress" max="100" value="62" aria-label="Sending All Systems Red">62 %</progress><p class="caption ts-num ts-upload__line">2.1 GB of 3.4 GB · about 6 min left</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>Pause</button></div>
+</li><li class="ts-upload__row ts-upload__row--paused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--paused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Hollow Orchard</p>
+    <p class="caption ts-upload__meta">Ines Calder · 14 files · mp3</p>
+    <progress class="ts-upload__progress" max="100" value="41" aria-label="Sending The Hollow Orchard">41 %</progress><p class="caption ts-num ts-upload__line">Paused. 460 MB of 1.1 GB sent.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Resume</button></div>
+</li><li class="ts-upload__row ts-upload__row--stopped" role="status">
+  <span class="ts-upload__icon ts-upload__icon--stopped" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Salt Road Letters</p>
+    <p class="caption ts-upload__meta">4 files · flac</p>
+    <p class="caption ts-num ts-upload__line">Stopped at 46 %. Choose the same files again to carry on.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Choose files again</button><button type="button" class="ts-btn ts-btn--quiet">Cancel upload</button></div>
+</li><li class="ts-upload__row ts-upload__row--adding" role="status">
+  <span class="ts-upload__icon ts-upload__icon--adding" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Weather for Beginners</p>
+    <p class="caption ts-upload__meta">Rosa Lindqvist · 22 files · mp3</p>
+    <p class="caption ts-upload__line"><span class="ts-spinner ts-upload__spin" aria-hidden="true"></span>Adding it to your library</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--added" role="status">
+  <span class="ts-upload__icon ts-upload__icon--added" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Lighthouse Keeper's Daughter</p>
+    <p class="caption ts-upload__meta">Added to Audiobooks</p>
+    <p class="caption ts-upload__path">Ann Marlowe/Tidewater/02 - The Lighthouse Keeper's Daughter</p><p class="caption ts-upload__line">2 other files were left out.</p>
+  </div>
+  <div class="ts-upload__actions"><a class="ts-btn ts-btn--quiet" href="#">Open book</a></div>
+</li><li class="ts-upload__row ts-upload__row--refused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--refused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="m9 9 6 6M15 9l-6 6"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added: The Glass Orchard</p>
+    <p class="caption ts-upload__meta">1 file · aax</p>
+    <p class="caption ts-upload__line">The Glass Orchard.aax is copy-protected, so Tendshelf will not open it. Nothing was kept.</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--failed" role="status">
+  <span class="ts-upload__icon ts-upload__icon--failed" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added yet: A Quiet Harbour</p>
+    <p class="caption ts-upload__meta">9 files · m4a</p>
+    <p class="caption ts-upload__line">The server ran out of space. Free some space, then press Try again.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Try again</button></div>
+</li></ul></section>
+</div></main></div></figure></div>
+<div class="bd-row"><figure class="bd-fig"><figcaption class="bd-cap">Desktop 1440 · Libraries &amp; scanning, the new section · light</figcaption><div class="bd-desk bd-desk--1440"><nav class="ts-side bd-side" aria-label="Main"><div class="ts-side__brand">Tendshelf</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg>Home</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/></svg>Library</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Downloads</a><div class="ts-side__group ts-overline">Server</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c1.4-4 4-6 7-6s5.6 2 7 6M19 8v6M16 11h6"/></svg>Users &amp; invites</a><a href="#" class="ts-side__item" aria-current="page"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Libraries</a></nav><main class="bd-main--desk"><div class="ts-admin-up">
+  <span class="ts-overline">Your server</span>
+  <h1 class="title-1 ts-upload__title">Libraries &amp; scanning</h1>
+  <section class="ts-upset" aria-labelledby="uploads-h-1">
+    <h2 id="uploads-h-1" class="section">Adding books from this device</h2>
+    <p class="caption ts-upset__lead">Tendshelf makes a folder for each author in the folder you pick. It never changes or deletes anything already there.</p>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Audiobooks <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a"><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a" checked><span class="ts-upset__path">/srv/media/audiobooks</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a"><span class="ts-upset__path">/home/daniel/Inbox</span></label>
+      </fieldset>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button><a class="ts-btn ts-btn--quiet" href="#">Add books</a></div>
+    </form>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Kids <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1b" checked><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1b"><span class="ts-upset__path">/srv/media/kids</span></label>
+      </fieldset>
+      <p class="ts-field__error ts-upset__err" role="alert"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg>Tendshelf cannot write in this folder. Check its permissions.</p>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button></div>
+    </form>
+  </section>
+</div></main></div></figure></div>
+</div><div class="bd-theme bd-theme--sepia" data-theme="sepia">
+<div class="bd-row">
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · picking files or a folder · sepia</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-0">
+  <h2 id="pick-h-0" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab"><span class="bd-dot"></span>Me</span></nav></div></figure>
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · the queue, every state · sepia</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-0">
+  <h2 id="pick-h-0" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  <section class="ts-upload__queue" aria-labelledby="queue-h"><h2 id="queue-h" class="section">This session</h2><ul class="ts-upload__list"><li class="ts-upload__row ts-upload__row--sending" role="status">
+  <span class="ts-upload__icon ts-upload__icon--sending" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">All Systems Red</p>
+    <p class="caption ts-upload__meta">Martha Wells · 1 file · m4b</p>
+    <progress class="ts-upload__progress" max="100" value="62" aria-label="Sending All Systems Red">62 %</progress><p class="caption ts-num ts-upload__line">2.1 GB of 3.4 GB · about 6 min left</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>Pause</button></div>
+</li><li class="ts-upload__row ts-upload__row--paused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--paused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Hollow Orchard</p>
+    <p class="caption ts-upload__meta">Ines Calder · 14 files · mp3</p>
+    <progress class="ts-upload__progress" max="100" value="41" aria-label="Sending The Hollow Orchard">41 %</progress><p class="caption ts-num ts-upload__line">Paused. 460 MB of 1.1 GB sent.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Resume</button></div>
+</li><li class="ts-upload__row ts-upload__row--stopped" role="status">
+  <span class="ts-upload__icon ts-upload__icon--stopped" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Salt Road Letters</p>
+    <p class="caption ts-upload__meta">4 files · flac</p>
+    <p class="caption ts-num ts-upload__line">Stopped at 46 %. Choose the same files again to carry on.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Choose files again</button><button type="button" class="ts-btn ts-btn--quiet">Cancel upload</button></div>
+</li><li class="ts-upload__row ts-upload__row--adding" role="status">
+  <span class="ts-upload__icon ts-upload__icon--adding" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Weather for Beginners</p>
+    <p class="caption ts-upload__meta">Rosa Lindqvist · 22 files · mp3</p>
+    <p class="caption ts-upload__line"><span class="ts-spinner ts-upload__spin" aria-hidden="true"></span>Adding it to your library</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--added" role="status">
+  <span class="ts-upload__icon ts-upload__icon--added" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Lighthouse Keeper's Daughter</p>
+    <p class="caption ts-upload__meta">Added to Audiobooks</p>
+    <p class="caption ts-upload__path">Ann Marlowe/Tidewater/02 - The Lighthouse Keeper's Daughter</p><p class="caption ts-upload__line">2 other files were left out.</p>
+  </div>
+  <div class="ts-upload__actions"><a class="ts-btn ts-btn--quiet" href="#">Open book</a></div>
+</li><li class="ts-upload__row ts-upload__row--refused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--refused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="m9 9 6 6M15 9l-6 6"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added: The Glass Orchard</p>
+    <p class="caption ts-upload__meta">1 file · aax</p>
+    <p class="caption ts-upload__line">The Glass Orchard.aax is copy-protected, so Tendshelf will not open it. Nothing was kept.</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--failed" role="status">
+  <span class="ts-upload__icon ts-upload__icon--failed" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added yet: A Quiet Harbour</p>
+    <p class="caption ts-upload__meta">9 files · m4a</p>
+    <p class="caption ts-upload__line">The server ran out of space. Free some space, then press Try again.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Try again</button></div>
+</li></ul></section>
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab"><span class="bd-dot"></span>Me</span></nav></div></figure>
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · the owner's setting · sepia</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-admin-up">
+  <span class="ts-overline">Your server</span>
+  <h1 class="title-1 ts-upload__title">Libraries &amp; scanning</h1>
+  <section class="ts-upset" aria-labelledby="uploads-h-0">
+    <h2 id="uploads-h-0" class="section">Adding books from this device</h2>
+    <p class="caption ts-upset__lead">Tendshelf makes a folder for each author in the folder you pick. It never changes or deletes anything already there.</p>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Audiobooks <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a"><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a" checked><span class="ts-upset__path">/srv/media/audiobooks</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a"><span class="ts-upset__path">/home/daniel/Inbox</span></label>
+      </fieldset>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button><a class="ts-btn ts-btn--quiet" href="#">Add books</a></div>
+    </form>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Kids <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0b" checked><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0b"><span class="ts-upset__path">/srv/media/kids</span></label>
+      </fieldset>
+      <p class="ts-field__error ts-upset__err" role="alert"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg>Tendshelf cannot write in this folder. Check its permissions.</p>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button></div>
+    </form>
+  </section>
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Me</span></nav></div></figure>
+</div>
+<div class="bd-row"><figure class="bd-fig"><figcaption class="bd-cap">Desktop 1440 · Add books with the queue (drop area arrives with U3) · sepia</figcaption><div class="bd-desk bd-desk--1440"><nav class="ts-side bd-side" aria-label="Main"><div class="ts-side__brand">Tendshelf</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg>Home</a><a href="#" class="ts-side__item" aria-current="page"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/></svg>Library</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Downloads</a><div class="ts-side__group ts-overline">Server</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c1.4-4 4-6 7-6s5.6 2 7 6M19 8v6M16 11h6"/></svg>Users &amp; invites</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Libraries</a></nav><main class="bd-main--desk"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-1">
+  <h2 id="pick-h-1" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <p class="caption ts-upload__drop">Drop audio files or a folder here</p>
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  <section class="ts-upload__queue" aria-labelledby="queue-h"><h2 id="queue-h" class="section">This session</h2><ul class="ts-upload__list"><li class="ts-upload__row ts-upload__row--sending" role="status">
+  <span class="ts-upload__icon ts-upload__icon--sending" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">All Systems Red</p>
+    <p class="caption ts-upload__meta">Martha Wells · 1 file · m4b</p>
+    <progress class="ts-upload__progress" max="100" value="62" aria-label="Sending All Systems Red">62 %</progress><p class="caption ts-num ts-upload__line">2.1 GB of 3.4 GB · about 6 min left</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>Pause</button></div>
+</li><li class="ts-upload__row ts-upload__row--paused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--paused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Hollow Orchard</p>
+    <p class="caption ts-upload__meta">Ines Calder · 14 files · mp3</p>
+    <progress class="ts-upload__progress" max="100" value="41" aria-label="Sending The Hollow Orchard">41 %</progress><p class="caption ts-num ts-upload__line">Paused. 460 MB of 1.1 GB sent.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Resume</button></div>
+</li><li class="ts-upload__row ts-upload__row--stopped" role="status">
+  <span class="ts-upload__icon ts-upload__icon--stopped" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Salt Road Letters</p>
+    <p class="caption ts-upload__meta">4 files · flac</p>
+    <p class="caption ts-num ts-upload__line">Stopped at 46 %. Choose the same files again to carry on.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Choose files again</button><button type="button" class="ts-btn ts-btn--quiet">Cancel upload</button></div>
+</li><li class="ts-upload__row ts-upload__row--adding" role="status">
+  <span class="ts-upload__icon ts-upload__icon--adding" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Weather for Beginners</p>
+    <p class="caption ts-upload__meta">Rosa Lindqvist · 22 files · mp3</p>
+    <p class="caption ts-upload__line"><span class="ts-spinner ts-upload__spin" aria-hidden="true"></span>Adding it to your library</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--added" role="status">
+  <span class="ts-upload__icon ts-upload__icon--added" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Lighthouse Keeper's Daughter</p>
+    <p class="caption ts-upload__meta">Added to Audiobooks</p>
+    <p class="caption ts-upload__path">Ann Marlowe/Tidewater/02 - The Lighthouse Keeper's Daughter</p><p class="caption ts-upload__line">2 other files were left out.</p>
+  </div>
+  <div class="ts-upload__actions"><a class="ts-btn ts-btn--quiet" href="#">Open book</a></div>
+</li><li class="ts-upload__row ts-upload__row--refused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--refused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="m9 9 6 6M15 9l-6 6"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added: The Glass Orchard</p>
+    <p class="caption ts-upload__meta">1 file · aax</p>
+    <p class="caption ts-upload__line">The Glass Orchard.aax is copy-protected, so Tendshelf will not open it. Nothing was kept.</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--failed" role="status">
+  <span class="ts-upload__icon ts-upload__icon--failed" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added yet: A Quiet Harbour</p>
+    <p class="caption ts-upload__meta">9 files · m4a</p>
+    <p class="caption ts-upload__line">The server ran out of space. Free some space, then press Try again.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Try again</button></div>
+</li></ul></section>
+</div></main></div></figure></div>
+<div class="bd-row"><figure class="bd-fig"><figcaption class="bd-cap">Desktop 1440 · Libraries &amp; scanning, the new section · sepia</figcaption><div class="bd-desk bd-desk--1440"><nav class="ts-side bd-side" aria-label="Main"><div class="ts-side__brand">Tendshelf</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg>Home</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/></svg>Library</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Downloads</a><div class="ts-side__group ts-overline">Server</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c1.4-4 4-6 7-6s5.6 2 7 6M19 8v6M16 11h6"/></svg>Users &amp; invites</a><a href="#" class="ts-side__item" aria-current="page"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Libraries</a></nav><main class="bd-main--desk"><div class="ts-admin-up">
+  <span class="ts-overline">Your server</span>
+  <h1 class="title-1 ts-upload__title">Libraries &amp; scanning</h1>
+  <section class="ts-upset" aria-labelledby="uploads-h-1">
+    <h2 id="uploads-h-1" class="section">Adding books from this device</h2>
+    <p class="caption ts-upset__lead">Tendshelf makes a folder for each author in the folder you pick. It never changes or deletes anything already there.</p>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Audiobooks <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a"><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a" checked><span class="ts-upset__path">/srv/media/audiobooks</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a"><span class="ts-upset__path">/home/daniel/Inbox</span></label>
+      </fieldset>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button><a class="ts-btn ts-btn--quiet" href="#">Add books</a></div>
+    </form>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Kids <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1b" checked><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1b"><span class="ts-upset__path">/srv/media/kids</span></label>
+      </fieldset>
+      <p class="ts-field__error ts-upset__err" role="alert"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg>Tendshelf cannot write in this folder. Check its permissions.</p>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button></div>
+    </form>
+  </section>
+</div></main></div></figure></div>
+</div><div class="bd-theme bd-theme--contrast" data-theme="contrast">
+<div class="bd-row">
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · picking files or a folder · contrast</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-0">
+  <h2 id="pick-h-0" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab"><span class="bd-dot"></span>Me</span></nav></div></figure>
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · the queue, every state · contrast</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-0">
+  <h2 id="pick-h-0" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  <section class="ts-upload__queue" aria-labelledby="queue-h"><h2 id="queue-h" class="section">This session</h2><ul class="ts-upload__list"><li class="ts-upload__row ts-upload__row--sending" role="status">
+  <span class="ts-upload__icon ts-upload__icon--sending" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">All Systems Red</p>
+    <p class="caption ts-upload__meta">Martha Wells · 1 file · m4b</p>
+    <progress class="ts-upload__progress" max="100" value="62" aria-label="Sending All Systems Red">62 %</progress><p class="caption ts-num ts-upload__line">2.1 GB of 3.4 GB · about 6 min left</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>Pause</button></div>
+</li><li class="ts-upload__row ts-upload__row--paused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--paused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Hollow Orchard</p>
+    <p class="caption ts-upload__meta">Ines Calder · 14 files · mp3</p>
+    <progress class="ts-upload__progress" max="100" value="41" aria-label="Sending The Hollow Orchard">41 %</progress><p class="caption ts-num ts-upload__line">Paused. 460 MB of 1.1 GB sent.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Resume</button></div>
+</li><li class="ts-upload__row ts-upload__row--stopped" role="status">
+  <span class="ts-upload__icon ts-upload__icon--stopped" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Salt Road Letters</p>
+    <p class="caption ts-upload__meta">4 files · flac</p>
+    <p class="caption ts-num ts-upload__line">Stopped at 46 %. Choose the same files again to carry on.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Choose files again</button><button type="button" class="ts-btn ts-btn--quiet">Cancel upload</button></div>
+</li><li class="ts-upload__row ts-upload__row--adding" role="status">
+  <span class="ts-upload__icon ts-upload__icon--adding" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Weather for Beginners</p>
+    <p class="caption ts-upload__meta">Rosa Lindqvist · 22 files · mp3</p>
+    <p class="caption ts-upload__line"><span class="ts-spinner ts-upload__spin" aria-hidden="true"></span>Adding it to your library</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--added" role="status">
+  <span class="ts-upload__icon ts-upload__icon--added" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Lighthouse Keeper's Daughter</p>
+    <p class="caption ts-upload__meta">Added to Audiobooks</p>
+    <p class="caption ts-upload__path">Ann Marlowe/Tidewater/02 - The Lighthouse Keeper's Daughter</p><p class="caption ts-upload__line">2 other files were left out.</p>
+  </div>
+  <div class="ts-upload__actions"><a class="ts-btn ts-btn--quiet" href="#">Open book</a></div>
+</li><li class="ts-upload__row ts-upload__row--refused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--refused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="m9 9 6 6M15 9l-6 6"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added: The Glass Orchard</p>
+    <p class="caption ts-upload__meta">1 file · aax</p>
+    <p class="caption ts-upload__line">The Glass Orchard.aax is copy-protected, so Tendshelf will not open it. Nothing was kept.</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--failed" role="status">
+  <span class="ts-upload__icon ts-upload__icon--failed" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added yet: A Quiet Harbour</p>
+    <p class="caption ts-upload__meta">9 files · m4a</p>
+    <p class="caption ts-upload__line">The server ran out of space. Free some space, then press Try again.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Try again</button></div>
+</li></ul></section>
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab"><span class="bd-dot"></span>Me</span></nav></div></figure>
+<figure class="bd-fig"><figcaption class="bd-cap">Phone 390 · the owner's setting · contrast</figcaption><div class="bd-phone"><main class="bd-main"><div class="ts-admin-up">
+  <span class="ts-overline">Your server</span>
+  <h1 class="title-1 ts-upload__title">Libraries &amp; scanning</h1>
+  <section class="ts-upset" aria-labelledby="uploads-h-0">
+    <h2 id="uploads-h-0" class="section">Adding books from this device</h2>
+    <p class="caption ts-upset__lead">Tendshelf makes a folder for each author in the folder you pick. It never changes or deletes anything already there.</p>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Audiobooks <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a"><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a" checked><span class="ts-upset__path">/srv/media/audiobooks</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0a"><span class="ts-upset__path">/home/daniel/Inbox</span></label>
+      </fieldset>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button><a class="ts-btn ts-btn--quiet" href="#">Add books</a></div>
+    </form>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Kids <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0b" checked><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f0b"><span class="ts-upset__path">/srv/media/kids</span></label>
+      </fieldset>
+      <p class="ts-field__error ts-upset__err" role="alert"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg>Tendshelf cannot write in this folder. Check its permissions.</p>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button></div>
+    </form>
+  </section>
+</div></main><nav class="bd-tabs" aria-label="Main"><span class="bd-tab"><span class="bd-dot"></span>Home</span><span class="bd-tab"><span class="bd-dot"></span>Library</span><span class="bd-tab"><span class="bd-dot"></span>Search</span><span class="bd-tab bd-tab--on"><span class="bd-dot"></span>Me</span></nav></div></figure>
+</div>
+<div class="bd-row"><figure class="bd-fig"><figcaption class="bd-cap">Desktop 1440 · Add books with the queue (drop area arrives with U3) · contrast</figcaption><div class="bd-desk bd-desk--1440"><nav class="ts-side bd-side" aria-label="Main"><div class="ts-side__brand">Tendshelf</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg>Home</a><a href="#" class="ts-side__item" aria-current="page"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/></svg>Library</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Downloads</a><div class="ts-side__group ts-overline">Server</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c1.4-4 4-6 7-6s5.6 2 7 6M19 8v6M16 11h6"/></svg>Users &amp; invites</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Libraries</a></nav><main class="bd-main--desk"><div class="ts-upload">
+  <a class="ts-upload__back" href="#"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Audiobooks</a>
+  <h1 class="title-1 ts-upload__title">Add books</h1>
+  <p class="body ts-upload__lead">Books go into <span class="ts-upload__folder">/srv/media/audiobooks</span>, in a folder for each author.</p>
+  <section class="ts-upload__pick" aria-labelledby="pick-h-1">
+  <h2 id="pick-h-1" class="ts-sr">Choose what to add</h2>
+  <span class="ts-upload__pickicon" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <p class="caption ts-upload__drop">Drop audio files or a folder here</p>
+  <div class="ts-upload__pickbtns">
+    <label class="ts-btn ts-btn--primary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z"/><path d="M14 3.5V8h4"/><circle cx="10.5" cy="15.5" r="2"/><path d="M12.5 15.5V10l2.5 1"/></svg>Choose files<input class="ts-sr" type="file" multiple></label>
+    <label class="ts-btn ts-btn--secondary ts-upload__choose"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Choose a folder<input class="ts-sr" type="file"></label>
+  </div>
+  <p class="caption ts-upload__hint">Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused.</p>
+</section>
+  <section class="ts-upload__queue" aria-labelledby="queue-h"><h2 id="queue-h" class="section">This session</h2><ul class="ts-upload__list"><li class="ts-upload__row ts-upload__row--sending" role="status">
+  <span class="ts-upload__icon ts-upload__icon--sending" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">All Systems Red</p>
+    <p class="caption ts-upload__meta">Martha Wells · 1 file · m4b</p>
+    <progress class="ts-upload__progress" max="100" value="62" aria-label="Sending All Systems Red">62 %</progress><p class="caption ts-num ts-upload__line">2.1 GB of 3.4 GB · about 6 min left</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>Pause</button></div>
+</li><li class="ts-upload__row ts-upload__row--paused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--paused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Hollow Orchard</p>
+    <p class="caption ts-upload__meta">Ines Calder · 14 files · mp3</p>
+    <progress class="ts-upload__progress" max="100" value="41" aria-label="Sending The Hollow Orchard">41 %</progress><p class="caption ts-num ts-upload__line">Paused. 460 MB of 1.1 GB sent.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>Resume</button></div>
+</li><li class="ts-upload__row ts-upload__row--stopped" role="status">
+  <span class="ts-upload__icon ts-upload__icon--stopped" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Salt Road Letters</p>
+    <p class="caption ts-upload__meta">4 files · flac</p>
+    <p class="caption ts-num ts-upload__line">Stopped at 46 %. Choose the same files again to carry on.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Choose files again</button><button type="button" class="ts-btn ts-btn--quiet">Cancel upload</button></div>
+</li><li class="ts-upload__row ts-upload__row--adding" role="status">
+  <span class="ts-upload__icon ts-upload__icon--adding" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4.5V8h-3.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Weather for Beginners</p>
+    <p class="caption ts-upload__meta">Rosa Lindqvist · 22 files · mp3</p>
+    <p class="caption ts-upload__line"><span class="ts-spinner ts-upload__spin" aria-hidden="true"></span>Adding it to your library</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--added" role="status">
+  <span class="ts-upload__icon ts-upload__icon--added" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">The Lighthouse Keeper's Daughter</p>
+    <p class="caption ts-upload__meta">Added to Audiobooks</p>
+    <p class="caption ts-upload__path">Ann Marlowe/Tidewater/02 - The Lighthouse Keeper's Daughter</p><p class="caption ts-upload__line">2 other files were left out.</p>
+  </div>
+  <div class="ts-upload__actions"><a class="ts-btn ts-btn--quiet" href="#">Open book</a></div>
+</li><li class="ts-upload__row ts-upload__row--refused" role="status">
+  <span class="ts-upload__icon ts-upload__icon--refused" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="m9 9 6 6M15 9l-6 6"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added: The Glass Orchard</p>
+    <p class="caption ts-upload__meta">1 file · aax</p>
+    <p class="caption ts-upload__line">The Glass Orchard.aax is copy-protected, so Tendshelf will not open it. Nothing was kept.</p>
+  </div>
+  <div class="ts-upload__actions"></div>
+</li><li class="ts-upload__row ts-upload__row--failed" role="status">
+  <span class="ts-upload__icon ts-upload__icon--failed" aria-hidden="true"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg></span>
+  <div class="ts-upload__text">
+    <p class="body ts-upload__title">Not added yet: A Quiet Harbour</p>
+    <p class="caption ts-upload__meta">9 files · m4a</p>
+    <p class="caption ts-upload__line">The server ran out of space. Free some space, then press Try again.</p>
+  </div>
+  <div class="ts-upload__actions"><button type="button" class="ts-btn ts-btn--secondary">Try again</button></div>
+</li></ul></section>
+</div></main></div></figure></div>
+<div class="bd-row"><figure class="bd-fig"><figcaption class="bd-cap">Desktop 1440 · Libraries &amp; scanning, the new section · contrast</figcaption><div class="bd-desk bd-desk--1440"><nav class="ts-side bd-side" aria-label="Main"><div class="ts-side__brand">Tendshelf</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg>Home</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/></svg>Library</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search</a><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Downloads</a><div class="ts-side__group ts-overline">Server</div><a href="#" class="ts-side__item"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c1.4-4 4-6 7-6s5.6 2 7 6M19 8v6M16 11h6"/></svg>Users &amp; invites</a><a href="#" class="ts-side__item" aria-current="page"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>Libraries</a></nav><main class="bd-main--desk"><div class="ts-admin-up">
+  <span class="ts-overline">Your server</span>
+  <h1 class="title-1 ts-upload__title">Libraries &amp; scanning</h1>
+  <section class="ts-upset" aria-labelledby="uploads-h-1">
+    <h2 id="uploads-h-1" class="section">Adding books from this device</h2>
+    <p class="caption ts-upset__lead">Tendshelf makes a folder for each author in the folder you pick. It never changes or deletes anything already there.</p>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Audiobooks <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a"><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a" checked><span class="ts-upset__path">/srv/media/audiobooks</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1a"><span class="ts-upset__path">/home/daniel/Inbox</span></label>
+      </fieldset>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button><a class="ts-btn ts-btn--quiet" href="#">Add books</a></div>
+    </form>
+    <form class="ts-upset__lib">
+      <fieldset class="ts-upset__choices">
+        <legend class="body ts-upset__name">Kids <span class="caption ts-upset__q">Where new books go</span></legend>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1b" checked><span>Nowhere (off)</span></label>
+        <label class="ts-upset__choice"><input type="radio" class="ts-check" name="f1b"><span class="ts-upset__path">/srv/media/kids</span></label>
+      </fieldset>
+      <p class="ts-field__error ts-upset__err" role="alert"><svg class="ts-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.5"/></svg>Tendshelf cannot write in this folder. Check its permissions.</p>
+      <div class="ts-upset__btns"><button type="button" class="ts-btn ts-btn--secondary">Save</button></div>
+    </form>
+  </section>
+</div></main></div></figure></div>
+</div>
+</body>
+</html>

@@ -30,7 +30,8 @@ was reused, extended or replaced.
   version to the `github.com/a-h/templ` version in `go.mod`.
 - **HTMX** is vendored as one static file (no CDN). Plain JavaScript is allowed only in
   `internal/web/static/js/` as ES modules loaded directly by the browser: the audio player, the
-  service worker, offline storage and small progressive enhancements. No framework, no transpiling.
+  service worker, offline storage, the book uploader (`upload.js`, loaded only on the Add books page,
+  decision 0015) and small progressive enhancements. No framework, no transpiling.
 - **CSS** is hand-written in `internal/web/static/css/` with custom properties for design tokens.
 - **SQLite** via the pure-Go driver, WAL mode, one database file in the data directory.
 - **Wails v3** for desktop, in a separate Go module under `desktop/` so the server binary never links
@@ -80,11 +81,21 @@ was reused, extended or replaced.
 
 ## Audio files are the user's
 
-- Library files are read-only to Tendshelf except through the "write details into the file" job, which
-  stream-copies to a temporary file, verifies audio hash, duration, chapters and tags, keeps the original
-  as a backup and supports Undo. No other code path may write, rename or delete a library file.
+- Library files are read-only to Tendshelf except through two paths. (1) The "write details into the
+  file" job, which stream-copies to a temporary file, verifies audio hash, duration, chapters and tags,
+  keeps the original as a backup and supports Undo. (2) Adding books by upload
+  ([decision 0015](docs/decisions/0015-upload-into-library.md)), only in `internal/upload`: it writes only
+  into the one folder the owner chose for uploads in that library (off by default), only creates new
+  folders and files, records every path before creating it in `upload_paths`, builds the book inside a
+  hidden `.tendshelf-upload-<id>` folder and publishes it by one rename to a name that did not exist, and
+  never overwrites, renames or deletes anything it did not create. "Remove this book" deletes only
+  `upload_paths` files still unchanged since they were placed (size, mtime and quick hash), then only the
+  empty folders it created. No other code path may write, rename or delete a library file.
 - Copy-protected files (`.aax`, `.aaxc`, `.aa`, `.m4p`, or streams ffprobe reports as encrypted) are
   listed as refused and never decoded, streamed or remuxed. Tendshelf never removes or works around DRM.
+  An upload with a copy-protected file is refused before its bytes are sent (by extension) or after
+  ffprobe reports encryption on the staged copy; its staged bytes are deleted and nothing reaches the
+  library folder.
 - Ebook files (read-along text editions, `docs/read-along.md`) follow the same rules: library ebooks are
   read-only, uploads are kept byte-identical, and copy-protected ebooks (Adobe ADEPT, Apple, Readium LCP,
   encrypted EPUB content, PDF `/Encrypt`, encrypted MOBI, any KFX) are refused, never decrypted.
