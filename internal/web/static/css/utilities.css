@@ -114,9 +114,10 @@ a.ts-hit { display: inline-block; }
 body { overflow-wrap: break-word; }
 .ts-tabs, .ts-share__tabs, .ts-seg { flex-wrap: wrap; max-width: 100%; box-sizing: border-box; }
 .ts-tabbar__item { min-width: 0; overflow-wrap: anywhere; }
-.ts-upload__actions .ts-btn { max-width: 100%; white-space: normal; }
+/* A lone button in a row may wrap its label rather than push the page wider. */
+.ts-upload__actions .ts-btn, .ts-hero__actions .ts-btn, .ts-bookmarks__head .ts-btn, .ts-share__person .ts-btn, .ts-lookuplib__form .ts-btn, .ts-person__lookup .ts-btn, .ts-email__form > .ts-btn, .ts-email__groups .ts-btn, .ts-bookmarks__add .ts-btn { max-width: 100%; white-space: normal; }
 .ts-invite__cover { max-width: calc(100% - 0.75rem); }
-.ts-empty { max-width: min(22.5rem, 100%); box-sizing: border-box; }
+.ts-empty { max-width: min(22.5rem, calc(100% - 2 * var(--space-24))); }
 /* The mini-player is one row on a phone: at large text its rem sizes would be wider than the screen, so the
    cover and buttons are capped by the screen width (14vw is still 44 px at 320 px). */
 @media (width < 1280px) {
