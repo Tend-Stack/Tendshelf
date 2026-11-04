@@ -167,7 +167,7 @@ func runTo(ctx context.Context, bin string, args []string, extraEnv []string, st
 	err := cmd.Start()
 	if err == nil {
 		if low {
-			lowerPriority(cmd.Process.Pid)
+			LowerPriority(cmd.Process.Pid)
 		}
 		err = cmd.Wait()
 	}

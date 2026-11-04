@@ -17,7 +17,8 @@ highlighted while listening, using a model for the timing, and one position acro
    byte-identical; copy-protected ebooks are refused with a plain message and never decrypted.
 3. **One more external program**: the optional alignment worker (`runtimes/align/worker.py` under an
    owner-installed Python environment), launched only by `internal/align/runtime` with a fixed
-   argument list, loopback only, a per-launch token in the environment, bounded lifetime. It is not a
+   argument list, loopback only, a per-launch token in the environment, bounded lifetime.
+   *Amended by [0017](0017-alignment-worker-pipes.md): pipes instead of loopback.* It is not a
    build step and not part of the binary; the server builds and runs without it (read-along is then
    unavailable, everything else works).
 4. **No new outbound connection**: Tendshelf does not download runtimes or models. The admin installs

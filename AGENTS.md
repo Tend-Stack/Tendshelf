@@ -26,7 +26,8 @@ was reused, extended or replaced.
 - **One server binary**, pure Go (`CGO_ENABLED=0` must build). Static assets and migrations are embedded
   with `embed`. External programs: `ffmpeg` and `ffprobe` only, located via config or `PATH`, plus the
   optional owner-installed alignment worker for read-along, launched only by `internal/align/runtime`
-  (decision `docs/decisions/0001-read-along.md`). Tendshelf never downloads runtimes or models.
+  over its own stdin/stdout pipes, never a port (decisions `docs/decisions/0001-read-along.md` and
+  [0017](docs/decisions/0017-alignment-worker-pipes.md)). Tendshelf never downloads runtimes or models.
 - **templ** for HTML. Generated `*_templ.go` files are committed so `go build` works without the templ
   CLI; `make generate` regenerates them and CI fails if the tree changes afterwards. Pin the templ CLI
   version to the `github.com/a-h/templ` version in `go.mod`.

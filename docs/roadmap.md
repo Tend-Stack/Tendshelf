@@ -558,6 +558,16 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
     and the hash-locked requirements, all taken from TendVocal's verified files. Checks: `TestWorkerBundle*`,
     `python3 -I runtimes/align/test_worker.py` (stub backend, no torch; 7 tests). Limits: the torch backend is
     not run here (no torch on the build machine); `make test-align-real` is opt-in.
+  - *R3 P2 (`internal/align/runtime`; done)*: `Config`/`Manifest` (`ParseManifest`, `ModelSHA`, `Locate`),
+    `Components` store over `runtime_components` (`Usable` requires the same interpreter and worker script),
+    `Check` and the `align.check` job (model files hashed against the pinned manifest, then `--describe`, whose
+    identity must equal the manifest), and `Manager`/`Emitter` over stdin/stdout pipes (ready line with a
+    per-launch nonce, one request at a time, deadlines kill the worker, idle stop after 5 minutes, `Pdeathsig`,
+    rebuilt environment). `media.LowerPriority` is exported. Decision
+    [0017](decisions/0017-alignment-worker-pipes.md) amends 0001 point 3. A Go fake worker
+    (`internal/align/runtime/fakeworker`, TestMain switch) covers it without Python. Checks: `TestRuntime*`.
+    Limits: the real worker is not run here (opt-in `TENDSHELF_TEST_ALIGN_RUNTIME`, wired in P3b); no GPU, no
+    Windows or macOS default interpreter path. Next: P3a, then P3b.
   - *R3 P1 (data, normaliser, doc loader, job hold; done)*: migration 0018 (`runtime_components`, `alignments`,
     `alignment_chapters`; `SchemaVersion` 18), `internal/ebook.ReadDoc` (512 MiB cap, address re-check),
     `WordSpans`, `SentenceID`; `internal/align` with the `tendshelf-normalize-v1` normaliser (English and Spanish
