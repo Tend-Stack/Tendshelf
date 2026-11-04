@@ -548,6 +548,13 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
     and the hash-locked requirements, all taken from TendVocal's verified files. Checks: `TestWorkerBundle*`,
     `python3 -I runtimes/align/test_worker.py` (stub backend, no torch; 7 tests). Limits: the torch backend is
     not run here (no torch on the build machine); `make test-align-real` is opt-in.
+  - *R3 P1 (data, normaliser, doc loader, job hold; done)*: migration 0018 (`runtime_components`, `alignments`,
+    `alignment_chapters`; `SchemaVersion` 18), `internal/ebook.ReadDoc` (512 MiB cap, address re-check),
+    `WordSpans`, `SentenceID`; `internal/align` with the `tendshelf-normalize-v1` normaliser (English and Spanish
+    numbers, ordinals, abbreviations; 4-digit numbers and `1º` are wildcards) and the alignment `Store`
+    (guarded writes, supersede, chapter upsert and lookup by key); `jobs.Error.Hold`. Checks: `TestMigration0018*`,
+    `TestReadDoc*`, `TestWordSpans`, `TestNormalize*`, `TestAlignStore*`, `TestJobsHold*`. Limits: no years with
+    context, no spelled-out Spanish ordinals, no other languages' numbers. Next: P2, P4, then P3a.
 - **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line and Eyes-free;
   `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reading settings (Fraunces,
   Fira Sans, OpenDyslexic); migration `highlights` (`highlights`, `bookmarks.edition_id/sid`,
