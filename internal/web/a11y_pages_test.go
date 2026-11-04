@@ -49,6 +49,7 @@ var a11ySkip = map[string]string{
 	"/books/{id}/read/images/{blockID}": "a picture from the book, not a page",
 	"/welcome":                          "redirects (303) to Home",
 	"/books/{id}/read":                  "the reader page, audited by the reader packages",
+	"/books/{id}/text/{fileID}/file":    "the original ebook file as a download, not a page",
 	"/s/{token}/stream/{audioFileID}":   "audio stream, not a page",
 	"/s/{token}/peaks/{audioFileID}":    "JSON waveform, not a page",
 }
@@ -80,6 +81,10 @@ func a11yPages() []a11yPage {
 		row("book-bookmarks", "/books/{id}/{tab}", book("/bookmarks"), both, "main", true),
 		row("book-details", "/books/{id}/{tab}", book("/details"), owner, "main", true),
 		row("book-text", "/books/{id}/{tab}", book("/text"), owner, "main", true),
+		// B2: a text book (the member holds can_read = 0 and sees the sentence that says so) and the library's ebooks.
+		row("book-ebook", "/books/{id}", func(e *a11yEnv) string { return "/books/" + e.TextBookID }, both, "main", true),
+		row("book-ebook-text", "/books/{id}/{tab}", func(e *a11yEnv) string { return "/books/" + e.TextBookID + "/text" }, owner, "main", true),
+		row("libraries-ebooks", "/libraries", a11yStatic("/libraries?format=text&view=list"), both, "main", true),
 		row("book-remove", "/books/{id}/remove", func(e *a11yEnv) string { return "/books/" + e.UploadBookID + "/remove" }, owner, "upload", true),
 		row("book-share", "/books/{id}/share", book("/share"), owner, "main", true),
 		row("author", "/authors/{id}", func(e *a11yEnv) string { return "/authors/" + e.AuthorID }, both, "main", true),

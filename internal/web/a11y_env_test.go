@@ -26,6 +26,7 @@ type a11yEnv struct {
 	ShelfID, EmptyShelfID                  string
 	AdminLibID, AdminFolderID              string // the library of adminSeed
 	EbookFoundID                           string // the ready ebook no book has (the Ebooks to pair inbox)
+	TextBookID                             string // a text book (an ebook with no audiobook), with a ready ebook
 	MemberID                               string
 	InviteToken, LinkToken                 string
 	UploadLibID, UploadBookID              string
@@ -121,6 +122,17 @@ func a11ySeed(t *testing.T) *a11yEnv {
 		t.Fatal(err)
 	} else {
 		e.EbookFoundID = textSeedStates(t, a, bk, owner)
+		tid, err := a.lib.CreateTextBook(ctx, library.TextBookIn{LibraryID: bk.LibraryID, FolderID: bk.FolderID,
+			RootPath: a.dir + "/the-salt-road.epub", Title: "The Salt Road"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		tb, err := a.lib.Book(ctx, tid)
+		if err != nil {
+			t.Fatal(err)
+		}
+		placeEbook(t, a, tb, owner, "the-salt-road.epub", "ready", "")
+		e.TextBookID = tid
 	}
 	memberCk := a.as(t, users.RoleMember)
 	e.MemberID = sweepUserID(t, a, memberCk)
