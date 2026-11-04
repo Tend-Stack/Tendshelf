@@ -90,13 +90,19 @@ func a11yScript(tab *cdp.Tab, name string, options, out any) error {
 	return tab.TryEval(expr, out)
 }
 
-// a11yTheme sets the theme on <html> and waits two animation frames for the styles to settle.
+// a11yTheme sets the theme on <html> and settles the styles. It does not wait for animation frames
+// (a tab behind the front one gets none): it forces a style and layout pass, finishes every running
+// transition so a colour is read at its end value, and forces another pass.
 func a11yTheme(tab *cdp.Tab, theme string) error {
-	return tab.TryEval(`new Promise((done) => {
+	return tab.TryEval(`(() => {
   document.documentElement.setAttribute("data-theme", `+cdp.Quote(theme)+`);
-  const timer = setTimeout(done, 1000);
-  requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(timer); done(true); }));
-})`, nil)
+  void document.body.offsetHeight;
+  for (const animation of document.getAnimations()) {
+    try { animation.finish(); } catch (error) { /* an infinite animation has no end */ }
+  }
+  void document.body.offsetHeight;
+  return true;
+})()`, nil)
 }
 
 // a11yLoad opens url and waits for it: the shell's "ts-ready" mark on a shell page, the load event
@@ -363,6 +369,15 @@ func TestA11yAudit(t *testing.T) {
 	for _, m := range bad {
 		t.Error(m)
 	}
+	// TENDSHELF_A11Y_ONLY=home,book narrows the run to those page and state keys (for fixing; the
+	// allowlist check is then off). TENDSHELF_A11Y_TRACE=1 logs the seconds each visit took.
+	var only map[string]bool
+	if v := os.Getenv("TENDSHELF_A11Y_ONLY"); v != "" {
+		only = map[string]bool{}
+		for _, k := range strings.Split(v, ",") {
+			only[strings.TrimSpace(k)] = true
+		}
+	}
 	tabs := map[int]*cdp.Tab{}
 	for _, w := range widths {
 		tabs[w.W] = b.NewTab(w.W, w.H, w.W < 1280, true)
@@ -370,7 +385,7 @@ func TestA11yAudit(t *testing.T) {
 	defer func() {
 		dir := run.write(t)
 		t.Logf("findings: %s", filepath.Join(dir, "findings.json"))
-		if run.Mode == "full" {
+		if run.Mode == "full" && only == nil {
 			for _, en := range run.allow {
 				if en.Used == 0 {
 					t.Errorf("allow.txt line %d (%s %s %s) matches nothing in a full run", en.Line, en.Check, en.Page, en.Selector)
@@ -402,7 +417,14 @@ func TestA11yAudit(t *testing.T) {
 			}
 			tab := tabs[w.W]
 			base := a11yFinding{Page: key, Role: role, Width: w.W}
+			started := time.Now()
+			trace := func(phase string) {
+				if os.Getenv("TENDSHELF_A11Y_TRACE") == "1" {
+					t.Logf("trace %s/%s %dpx %s: %.1fs", role, key, w.W, phase, time.Since(started).Seconds())
+				}
+			}
 			status, err := a11yLoad(tab, url, shell)
+			trace("loaded")
 			switch {
 			case err != nil:
 				run.add(base, []a11yFinding{{Check: "load-error", Selector: "document", Detail: err.Error()}})
@@ -418,9 +440,24 @@ func TestA11yAudit(t *testing.T) {
 				prepare(tab)
 			}
 			res, err := a11yCheck(tab, shell, checkThemes)
+			trace("checked")
 			if err != nil {
 				run.add(base, []a11yFinding{{Check: "load-error", Selector: "document", Detail: err.Error()}})
 				continue
+			}
+			if prepare != nil {
+				// A state is a modal dialog over the page: the page behind it is inert, so the page-wide counts
+				// (one h1, one main) belong to the page and are not asked of the dialog.
+				kept := res.Findings[:0:0]
+				for _, f := range res.Findings {
+					if f.Check == "h1-count" || f.Check == "main-count" {
+						f.Detail += " (modal state: the page behind is inert)"
+						run.addUnmeasured(base, []a11yFinding{f})
+						continue
+					}
+					kept = append(kept, f)
+				}
+				res.Findings = kept
 			}
 			run.add(base, res.Findings)
 			run.addUnmeasured(base, res.Unmeasured)
@@ -429,6 +466,9 @@ func TestA11yAudit(t *testing.T) {
 	}
 
 	for _, p := range a11yPages() {
+		if only != nil && !only[p.Key] {
+			continue
+		}
 		for _, role := range p.Roles {
 			base := e.url(p.Fixture, role)
 			if base == "" {
@@ -440,6 +480,9 @@ func TestA11yAudit(t *testing.T) {
 	}
 	for _, s := range a11yStates() {
 		s := s
+		if only != nil && !only[s.Key] {
+			continue
+		}
 		run.States = append(run.States, s.Role+"/"+s.Key)
 		visit(s.Key, s.Role, e.url("player", s.Role)+s.Path(e), true, s.MinWidth, func(tab *cdp.Tab) { s.Prepare(t, tab, e) })
 	}

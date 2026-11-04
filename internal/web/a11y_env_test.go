@@ -5,6 +5,7 @@ package web
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -82,7 +83,8 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	}
 
 	// main: the Harbour Lights library with its shelves, a queue, a member, an invite and a link.
-	a := newTestApp(t)
+	// The lookup service sits on a fake network, as in the route sweep, so the lookup pages exist.
+	a := newTestApp(t, compareMod(t, &compareNet{}))
 	e.Main = a
 	ownerCk := a.owner(t)
 	var full, empty string
@@ -147,6 +149,15 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	up, upLib := uploadVisualApp(t)
 	e.Upload, e.UploadLibID = up, upLib
 	e.UploadBookID = a11yOne(t, up, `SELECT id FROM books`)
+	// The book was "placed by an upload": give each of its files a ledger row, so /books/{id}/remove is a page.
+	files, err := up.lib.AudioFiles(ctx, e.UploadBookID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, f := range files {
+		streamExec(t, up, `INSERT INTO upload_paths(id, upload_id, library_folder_id, path, kind, state, size, mtime_ns, quick_hash, created_at, updated_at)
+			SELECT ?, id, folder_id, ?, 'file', 'present', 1, 1, 'x', 1, 1 FROM uploads WHERE id = 'upl_a3'`, fmt.Sprintf("upp_a11y_%d", i), f.Path)
+	}
 	as("upload/owner", up, up.owner(t))
 
 	// fresh: no owner yet (/setup); setup: an owner who has not finished the three steps.

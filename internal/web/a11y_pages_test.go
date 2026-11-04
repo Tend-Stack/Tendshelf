@@ -43,6 +43,7 @@ type a11yState struct {
 
 // a11ySkip lists the registered GETs that are not full pages: a redirect, a file or JSON.
 var a11ySkip = map[string]string{
+	"/uploads/{id}":                   "JSON (the upload status the uploader polls), not a page",
 	"/progress/{bookID}":              "JSON, not a page",
 	"/welcome":                        "redirects (303) to Home",
 	"/s/{token}/stream/{audioFileID}": "audio stream, not a page",
@@ -68,7 +69,6 @@ func a11yPages() []a11yPage {
 		row("libraries", "/libraries", a11yStatic("/libraries"), both, "main", true),
 		row("library", "/libraries/{id}", func(e *a11yEnv) string { return "/libraries/" + e.LibID }, both, "main", true),
 		row("add-books", "/libraries/{id}/add", func(e *a11yEnv) string { return "/libraries/" + e.UploadLibID + "/add" }, owner, "upload", true),
-		row("upload", "/uploads/{id}", a11yStatic("/uploads/upl_a5"), owner, "upload", true),
 		row("search-empty", "/search", a11yStatic("/search"), both, "main", true),
 		row("search-query", "/search", a11yStatic("/search?q=Lighthouse"), both, "main", true),
 		row("book", "/books/{id}", book(""), both, "main", true),
@@ -137,12 +137,14 @@ func a11yStates() []a11yState {
 		{Key: "full-player", Role: "owner", Path: a11yStatic("/libraries"), Prepare: openPlayer},
 		{Key: "eyes-free", Role: "owner", Path: a11yStatic("/libraries"), Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
 			openPlayer(t, tab, e)
-			bmkeyPlay(t, tab, "[data-ts-full-toggle]")
 			efOpenMode(t, tab)
 			time.Sleep(450 * time.Millisecond)
 		}, MinWidth: 0},
-		{Key: "now-panel", Role: "owner", Path: a11yStatic("/"), Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
-			openPlayer(t, tab, e)
+		{Key: "now-panel", Role: "owner", Path: a11yStatic("/libraries"), Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
+			// As nowPanelOpen does: the bar plays first, then the player opens.
+			tab.WaitFor(`window.tsPlayer && window.tsPlayer.state().bookId !== "" && !document.getElementById("player").hidden`, 10*time.Second)
+			bmkeyPlay(t, tab, "[data-ts-toggle]")
+			fullpOpenPlayer(t, tab)
 			tab.WaitFor(`document.querySelector("#now-panel[data-book-id] .ts-np__desc") !== null`, 5*time.Second)
 		}, MinWidth: 1280},
 	}
