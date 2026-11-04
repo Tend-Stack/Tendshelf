@@ -142,6 +142,14 @@ func (r *Repo) BookByRootPath(ctx context.Context, path string) (Book, error) {
 		scanBook, "book")
 }
 
+// BookUnderPath returns the book whose root is dir or lies inside it, or ErrNotFound. An uploaded folder
+// that holds only an ebook has no book at the folder: the text book's root is the file.
+func (r *Repo) BookUnderPath(ctx context.Context, dir string) (Book, error) {
+	return one(r.st.Reader().QueryRowContext(ctx, `SELECT `+bookCols+` FROM books
+  WHERE root_path = ?1 OR substr(root_path, 1, length(?1) + 1) = ?1 || '/' ORDER BY root_path LIMIT 1`, dir),
+		scanBook, "book")
+}
+
 // BooksInFolder returns every book of a folder by root path, including books marked missing.
 func (r *Repo) BooksInFolder(ctx context.Context, folderID string) ([]Book, error) {
 	return many(ctx, r.st.Reader(), scanBook,

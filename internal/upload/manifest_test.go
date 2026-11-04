@@ -98,7 +98,7 @@ func TestCreateLimits(t *testing.T) {
 	_, err = e.svc.Create(bg, me, e.lib.ID, sized(0))
 	wantErr(t, err, 422, "empty_file")
 	// Hidden junk is left out and counted, whatever its size.
-	m := files("a.mp3", ".DS_Store", "@eaDir/x.mp3", "readme.pdf", "cover.JPG", "info.opf")
+	m := files("a.mp3", ".DS_Store", "@eaDir/x.mp3", "readme.rtf", "cover.JPG", "info.opf")
 	m.Files[1].Size = 0
 	v, err := e.svc.Create(bg, me, e.lib.ID, m)
 	if err != nil {

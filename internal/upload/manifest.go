@@ -33,6 +33,9 @@ type Manifest struct {
 	Files []FileIn `json:"files"`
 }
 
+// noBookFile is the refusal for an upload with neither audio nor an ebook.
+const noBookFile = "There is no audio or ebook file in it."
+
 const (
 	maxPathBytes    = 1024
 	maxPathSegments = 8
@@ -61,13 +64,30 @@ func hiddenPath(p string) bool {
 	return false
 }
 
-// kept reports whether a manifest entry is placed: audio, a picture or a sidecar, not hidden.
+// isEbook reports whether a path is an ebook Tendshelf places: the scanner's ebook extensions and PDF.
+// TXT, MD, HTML and DOCX are not here: no scanner rule can tell them from notes, so they stay on the Text tab.
+func isEbook(p string) bool {
+	k := media.Classify(p)
+	return k == media.KindEbook || k == media.KindLooseEbook
+}
+
+// isBookFile reports whether a path counts as the book itself: audio or an ebook. Each top-level folder of
+// an archive that holds one is a book of its own.
+func isBookFile(p string) bool { return media.Classify(p) == media.KindAudio || isEbook(p) }
+
+// isKFX reports a Kindle KFX file, which is always copy-protected and refused by extension.
+func isKFX(p string) bool {
+	e := strings.ToLower(filepath.Ext(p))
+	return e == ".kfx" || e == ".kfx-zip"
+}
+
+// kept reports whether a manifest entry is placed: audio, an ebook, a picture or a sidecar, not hidden.
 func kept(p string) bool {
 	if hiddenPath(p) {
 		return false
 	}
 	switch media.Classify(p) {
-	case media.KindAudio, media.KindProtected:
+	case media.KindAudio, media.KindProtected, media.KindEbook, media.KindLooseEbook:
 		return true
 	}
 	return placedExt[strings.ToLower(filepath.Ext(p))]
@@ -137,7 +157,7 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 	}
 
 	if len(m.Files) == 0 {
-		return View{}, fail(422, "no_audio", "There is no audio file in it.")
+		return View{}, fail(422, "no_audio", noBookFile)
 	}
 	if len(m.Files) > s.cfg.MaxFiles {
 		return View{}, fail(413, "too_large", "That is too many files for one book.")
@@ -176,9 +196,9 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 		seen[low] = true
 	}
 	var files []FileIn
-	skipped, audio := 0, 0
+	skipped, audio, ebooks := 0, 0, 0
 	for _, f := range m.Files {
-		if media.Classify(f.Path) == media.KindProtected && !hiddenPath(f.Path) {
+		if (media.Classify(f.Path) == media.KindProtected || isKFX(f.Path)) && !hiddenPath(f.Path) {
 			return View{}, &Error{Status: 422, Code: "copy_protected", Field: f.Path,
 				Message: "This file is copy-protected, so Tendshelf will not open it."}
 		}
@@ -193,10 +213,13 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 		if media.Classify(f.Path) == media.KindAudio {
 			audio++
 		}
+		if isEbook(f.Path) {
+			ebooks++
+		}
 		files = append(files, f)
 	}
-	if audio == 0 && !zipOnly {
-		return View{}, fail(422, "no_audio", "There is no audio file in it.")
+	if audio == 0 && ebooks == 0 && !zipOnly {
+		return View{}, fail(422, "no_audio", noBookFile)
 	}
 
 	var receiving int
@@ -229,7 +252,7 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 	label := cleanLabel(m.Label)
 	if label == "" {
 		for _, f := range files {
-			if media.Classify(f.Path) == media.KindAudio || zipOnly {
+			if media.Classify(f.Path) == media.KindAudio || isEbook(f.Path) || zipOnly {
 				label = cleanLabel(strings.TrimSuffix(filepath.Base(f.Path), filepath.Ext(f.Path)))
 				break
 			}

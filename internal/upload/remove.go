@@ -22,14 +22,35 @@ type RemoveResult struct {
 	Kept    []string `json:"kept"`
 }
 
-// Removable reports whether every live audio file of the book is a file this package placed (a
-// present ledger row), and the book has at least one. Only then is "Remove this book" offered.
+// Removable reports whether every live audio file and every live library ebook file of the book is a
+// file this package placed (a present ledger row), and the book has at least one. Only then is
+// "Remove this book" offered.
 func (s *Service) Removable(ctx context.Context, bookID string) bool {
 	var live, owned int
-	err := s.st.Reader().QueryRowContext(ctx, `SELECT COUNT(*),
-  COALESCE(SUM(EXISTS (SELECT 1 FROM upload_paths p WHERE p.path = a.path AND p.kind = 'file' AND p.state = 'present')), 0)
-  FROM audio_files a WHERE a.book_id = ? AND a.missing_since IS NULL`, bookID).Scan(&live, &owned)
+	err := s.st.Reader().QueryRowContext(ctx, `SELECT COUNT(*), COALESCE(SUM(EXISTS (SELECT 1 FROM upload_paths p
+  WHERE p.path = a.path AND p.kind = 'file' AND p.state = 'present')), 0) FROM (
+    SELECT path FROM audio_files WHERE book_id = ?1 AND missing_since IS NULL
+    UNION ALL
+    SELECT path FROM ebook_files WHERE book_id = ?1 AND path IS NOT NULL AND missing_since IS NULL) a`, bookID).Scan(&live, &owned)
 	return err == nil && live > 0 && live == owned
+}
+
+// ebookPaths lists the library paths of the book's ebook files, missing ones included.
+func (s *Service) ebookPaths(ctx context.Context, bookID string) ([]string, error) {
+	rows, err := s.st.Reader().QueryContext(ctx, `SELECT path FROM ebook_files WHERE book_id = ? AND path IS NOT NULL ORDER BY path`, bookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
 }
 
 // Remove deletes the files this package placed for a book, and then the book. This is the only
@@ -65,6 +86,13 @@ func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResu
 	audioPaths := map[string]bool{}
 	for _, a := range audio {
 		audioPaths[a.Path] = true
+	}
+	ebooks, err := s.ebookPaths(ctx, bookID)
+	if err != nil {
+		return res, err
+	}
+	for _, p := range ebooks {
+		audioPaths[p] = true
 	}
 	uploads, err := s.uploadsOfPaths(ctx, audioPaths)
 	if err != nil {
@@ -114,6 +142,29 @@ func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResu
 		if _, err := lr.Lstat(a.Path); err == nil {
 			left = true
 			break
+		}
+	}
+	// An ebook row whose file is gone is deleted here, before the book row, so the ebook service cannot
+	// make a new book from it. One that is still on disk (changed since the upload) stays and keeps the book.
+	var gone []string
+	for _, p := range ebooks {
+		if _, err := lr.Lstat(p); err == nil {
+			left = true
+		} else {
+			gone = append(gone, p)
+		}
+	}
+	if len(gone) > 0 {
+		err := s.write(ctx, nil, func(tx *sql.Tx) error {
+			for _, p := range gone {
+				if _, err := tx.ExecContext(ctx, `DELETE FROM ebook_files WHERE book_id = ? AND path = ?`, bookID, p); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return res, err
 		}
 	}
 	detail := map[string]any{"deleted": len(res.Deleted), "kept": len(res.Kept), "title": book.Title}

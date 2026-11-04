@@ -66,7 +66,7 @@ func (s *Service) expand(ctx context.Context, up uploadRow, zf fileRow) ([]fileR
 		return nil, "", err
 	}
 
-	// Which top-level folders hold audio (or protected audio)?
+	// Which top-level folders hold audio or an ebook (or protected ones)?
 	audioTop := map[string]bool{}
 	top := func(rel string) (string, bool) {
 		i := strings.IndexByte(rel, '/')
@@ -76,7 +76,7 @@ func (s *Service) expand(ctx context.Context, up uploadRow, zf fileRow) ([]fileR
 		return rel[:i], true
 	}
 	for _, g := range got {
-		if t, ok := top(g.rel); ok && media.Classify(g.rel) == media.KindAudio {
+		if t, ok := top(g.rel); ok && isBookFile(g.rel) {
 			audioTop[t] = true
 		}
 	}
@@ -100,14 +100,14 @@ func (s *Service) oneBook(ctx context.Context, up uploadRow, got []extracted, le
 	audio := 0
 	rows := make([]fileRow, len(got))
 	for i, g := range got {
-		if media.Classify(g.rel) == media.KindAudio {
+		if isBookFile(g.rel) {
 			audio++
 		}
 		rows[i] = fileRow{ID: fmt.Sprintf("x%04d", i), UploadID: up.ID, Idx: i, RelPath: g.rel, Size: g.size}
 	}
 	if audio == 0 {
 		clear()
-		return nil, "", zipFail("no_audio", "There is no audio file in that zip file.", nil)
+		return nil, "", zipFail("no_audio", "There is no audio or ebook file in that zip file.", nil)
 	}
 	_ = s.write(ctx, nil, func(tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, `UPDATE uploads SET skipped = ? WHERE id = ?`, left, up.ID)

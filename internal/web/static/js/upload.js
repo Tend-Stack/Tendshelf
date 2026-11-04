@@ -3,7 +3,7 @@
 // <template data-ts-row>); this file picks the files, sends them in pieces and moves the rows.
 // Exactly one request is in flight at any time: pieces of one file after another, books one by one.
 
-const PROTECTED = ["aax", "aaxc", "aa", "m4p"];
+const PROTECTED = ["aax", "aaxc", "aa", "m4p", "kfx", "kfx-zip"];
 const MAX_WAIT_MS = 30000;
 const AVERAGE_MS = 20000;
 

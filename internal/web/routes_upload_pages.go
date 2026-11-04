@@ -182,6 +182,9 @@ func (s *server) uploadRow(ctx context.Context, u upload.View, libName, folderPa
 	case upload.StateRefused:
 		v.State, v.Title = "refused", fmt.Sprintf(uploadNotAdded, u.Label)
 		v.Line = path.Base(u.Refused) + " is copy-protected, so Tendshelf will not open it. Nothing was kept."
+		if u.ErrorCode == upload.CodeUnreadable {
+			v.Line = "Not added. Tendshelf could not open " + path.Base(u.Refused) + "."
+		}
 	default:
 		v.State, v.Title = "failed", fmt.Sprintf(uploadNotAddedYet, u.Label)
 		v.Line = uploadPlaceFailed
@@ -196,7 +199,7 @@ func (s *server) uploadRow(ctx context.Context, u upload.View, libName, folderPa
 // book, then "Added to {library}" with its folder and a link.
 func (s *server) placedRow(ctx context.Context, v *components.UploadRowView, u upload.View, libName, folderPath string) {
 	var bookID string
-	if b, err := s.lib.BookByRootPath(ctx, u.BookPath); err == nil {
+	if b, err := s.lib.BookUnderPath(ctx, u.BookPath); err == nil {
 		bookID = b.ID
 	}
 	done := bookID != ""

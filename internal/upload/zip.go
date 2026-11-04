@@ -94,7 +94,7 @@ func extractZip(ctx context.Context, zipPath string, lim zipLimits, name func(i 
 			left++
 			continue
 		}
-		if media.Classify(n) == media.KindProtected {
+		if media.Classify(n) == media.KindProtected || isKFX(n) {
 			protected = append(protected, n)
 			continue
 		}
