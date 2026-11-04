@@ -483,6 +483,18 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
   (parsers, refusals, hostile files, determinism, golden, segmenter, migration), `make check`, `make build`.
   Limits: PDF and MOBI/AZW3 are stubs that refuse `unsupported` (E2); no scanner, upload or job (E3); no
   route (E4). Next: E2 and E3.
+  **R1 E2 status** (PDF and MOBI/AZW3): built. PDF text layer through `github.com/ledongthuc/pdf`
+  (v0.0.0-20261020125853-5e46805f718e), chosen on four generated fixtures (plain, Type0 with ToUnicode, xref
+  stream, incremental update); `/Encrypt` found by a raw scan and in the trailer is refused `drm`; lines from
+  glyph runs, repeated headers, footers and page numbers dropped, hyphen joins, heading and chapter rules,
+  `layout='page'` for columns or mostly short lines, `no_text`/`image_only` for scans. MOBI/AZW3: own PalmDB
+  reader (PalmDOC LZ77 and uncompressed, trailing entries, cp1252 or UTF-8, EXTH meta, combined files read
+  from the KF8 part); encryption 1 or 2 refused `drm`, HUFF/CDIC `unsupported`; record, back-reference and
+  text-length lies are `damaged`. Checks: `go test -race ./internal/ebook/...`, `make check`, `make build`.
+  Limits: no OCR, HUFF/CDIC, SKEL/FRAG rebuild; the module takes no context, so the deadline is checked
+  between pages; standard fonts without `/Widths` read as zero-width glyphs, so line width falls back to a
+  character estimate; the short-line test uses the 90th percentile line width (a median cannot be beaten by
+  more than half the lines). Not run: the manual check on real books.
 - **R2 Pairing**: automatic by folder, upload, ISBN/ASIN, title + author (suggestion when not unique);
   manual pair/unpair; `/admin/ebooks` inbox; several editions, book default, per-user choice. Exit:
   pairing table tests; an unpaired ebook never appears as a book; no ebook is ever written.
