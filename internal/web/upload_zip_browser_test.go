@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -124,5 +125,32 @@ func TestUploadBrowserZipsAndSeveralBooks(t *testing.T) {
 	}
 	if n := len(u.uploads(t)); n != 4 {
 		t.Errorf("server lists %d uploads, want 4", n)
+	}
+}
+
+// TestUploadBrowserOneZipOfTwoBooks: a zip with two top-level book folders is two books. The row of
+// the upload turns into the first book and the second one appears beside it, both end "Added", and
+// every track is placed.
+func TestUploadBrowserOneZipOfTwoBooks(t *testing.T) {
+	b := chromium(t)
+	u := newUploadBrowser(t)
+	tab := openAddBooks(t, u, b)
+	z := zipOf(t, "Two Books.zip", map[string]string{
+		"Alpha Tale/01.wav": writeTone(t, "a.wav", 1500),
+		"Alpha Tale/02.wav": writeTone(t, "b.wav", 1600),
+		"Beta Tale/01.wav":  writeTone(t, "c.wav", 1700),
+		"notes.txt":         writeTone(t, "d.wav", 1000),
+	})
+	chooseFiles(t, tab, "[data-ts-pick=files]", z)
+	waitAdded(t, tab, 2)
+	if n := len(placedAudio(t, u.folderDir)); n != 3 {
+		t.Errorf("placed %d tracks, want 3", n)
+	}
+	text := rowText(t, tab)
+	if !strings.Contains(text, "Alpha Tale") || !strings.Contains(text, "Beta Tale") {
+		t.Errorf("rows = %q", text)
+	}
+	if n := len(u.uploads(t)); n != 2 {
+		t.Errorf("server lists %d uploads, want 2", n)
 	}
 }
