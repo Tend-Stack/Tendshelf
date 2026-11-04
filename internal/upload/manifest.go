@@ -142,9 +142,11 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 	if len(m.Files) > s.cfg.MaxFiles {
 		return View{}, fail(413, "too_large", "That is too many files for one book.")
 	}
+	// An upload of one .zip file is one book: the archive is unpacked on the server at placement.
+	zipOnly := len(m.Files) == 1 && isZip(m.Files[0].Path) && !hiddenPath(m.Files[0].Path)
 	var total int64
 	for _, f := range m.Files {
-		if !kept(f.Path) {
+		if !kept(f.Path) && !zipOnly {
 			continue
 		}
 		if f.Size <= 0 {
@@ -180,6 +182,10 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 			return View{}, &Error{Status: 422, Code: "copy_protected", Field: f.Path,
 				Message: "This file is copy-protected, so Tendshelf will not open it."}
 		}
+		if zipOnly {
+			files = append(files, f)
+			continue
+		}
 		if !kept(f.Path) {
 			skipped++
 			continue
@@ -189,7 +195,7 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 		}
 		files = append(files, f)
 	}
-	if audio == 0 {
+	if audio == 0 && !zipOnly {
 		return View{}, fail(422, "no_audio", "There is no audio file in it.")
 	}
 
@@ -223,7 +229,7 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 	label := cleanLabel(m.Label)
 	if label == "" {
 		for _, f := range files {
-			if media.Classify(f.Path) == media.KindAudio {
+			if media.Classify(f.Path) == media.KindAudio || zipOnly {
 				label = cleanLabel(strings.TrimSuffix(filepath.Base(f.Path), filepath.Ext(f.Path)))
 				break
 			}

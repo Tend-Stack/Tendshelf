@@ -16,10 +16,13 @@ const (
 	uploadPickHeading = "Choose what to add"
 	uploadFiles       = "Choose files"
 	uploadFolder      = "Choose a folder"
-	uploadHint        = "Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused."
-	uploadQueue       = "This session"
-	uploadLibraries   = "Libraries"
-	uploadNeedsJS     = "Adding books needs JavaScript in this browser. You can also copy a book's folder into {path}, then press Scan."
+	uploadHint        = "Audio files, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused. Archives inside archives are left out."
+	// Plan U3: the drop line is the board's; the tick box, the "{n} books" header and the sentence about nested archives are new.
+	uploadDrop      = "Drop audio files or a folder here"
+	uploadSeveral   = "This folder holds several books"
+	uploadQueue     = "This session"
+	uploadLibraries = "Libraries"
+	uploadNeedsJS   = "Adding books needs JavaScript in this browser. You can also copy a book's folder into {path}, then press Scan."
 
 	uploadPause       = "Pause"
 	uploadResume      = "Resume"
@@ -67,6 +70,7 @@ func uploadLeftOut(n int) string {
 // New: the time units, the reconnect line and the refusal lines that name a file.
 func uploadMessages() []pages.UploadMsg {
 	return []pages.UploadMsg{
+		{Key: "books", Text: "{n} books"},
 		{Key: "files-one", Text: "1 file"},
 		{Key: "files-many", Text: "{n} files"},
 		{Key: "progress", Text: "{sent} of {total} · about {time} left"},

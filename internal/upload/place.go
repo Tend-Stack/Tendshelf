@@ -144,6 +144,15 @@ func (s *Service) place(ctx context.Context, g guard, progress func(any), upload
 				}
 			}
 		}
+		if len(files) == 1 && isZip(files[0].RelPath) {
+			var refusedZip string
+			if files, refusedZip, err = s.expand(ctx, up, files[0]); err != nil {
+				return nil, s.plainFail(ctx, g, uploadID, err)
+			}
+			if refusedZip != "" {
+				return s.refuse(ctx, g, up, refusedZip)
+			}
+		}
 		names, refused, err := s.inspect(ctx, up, files)
 		if err != nil {
 			return nil, s.plainFail(ctx, g, uploadID, err)
@@ -673,3 +682,63 @@ func (s *Service) removeBuild(ctx context.Context, g guard, uploadID string, lr 
 }
 
 func isNotEmpty(err error) bool { return errors.Is(err, syscall.ENOTEMPTY) }
+
+// expand unpacks the one staged archive of an upload into its staging folder and returns the files
+// it holds as the upload's files (plan U3). The extracted files are named x0000.part, x0001.part
+// and so on, and are rebuilt from scratch on every attempt, so a retry never meets half of an
+// earlier one. The archive's own size is already in the person's quota; the unpacked bytes are
+// counted on top of it, before and while they are written.
+func (s *Service) expand(ctx context.Context, up uploadRow, zf fileRow) ([]fileRow, string, error) {
+	dir := s.stagingDir(up.ID)
+	if dir == "" {
+		return nil, "", errors.New("upload: bad staging folder")
+	}
+	name := func(i int) string { return filepath.Join(dir, fmt.Sprintf("x%04d.part", i)) }
+	clear := func() {
+		for i := 0; i < maxZipEntries; i++ {
+			if os.Remove(name(i)) != nil {
+				break
+			}
+		}
+	}
+	clear()
+	var mine int64
+	if err := s.st.Reader().QueryRowContext(ctx, `SELECT COALESCE(SUM(bytes_total), 0) FROM uploads
+  WHERE created_by = ? AND state IN ('receiving','queued','placing','failed')`, up.CreatedBy).Scan(&mine); err != nil {
+		return nil, "", err
+	}
+	budget := min(s.cfg.MaxBook, s.cfg.PerPerson-mine)
+	if budget <= 0 {
+		return nil, "", &jobs.Error{Code: "quota", Text: "You already have a lot waiting on the server. Finish or cancel an upload first.", Permanent: true}
+	}
+	free, err := s.free(dir)
+	if err != nil {
+		return nil, "", err
+	}
+	room := max(int64(free)-s.cfg.Margin, 0)
+	got, left, protected, err := extractZip(ctx, s.partPath(up.ID, zf.ID), zipLimits{budget: budget, free: room}, name)
+	if err != nil {
+		clear()
+		return nil, "", err
+	}
+	if protected != "" {
+		return nil, protected, nil
+	}
+	audio := 0
+	rows := make([]fileRow, len(got))
+	for i, g := range got {
+		if media.Classify(g.rel) == media.KindAudio {
+			audio++
+		}
+		rows[i] = fileRow{ID: fmt.Sprintf("x%04d", i), UploadID: up.ID, Idx: i, RelPath: g.rel, Size: g.size}
+	}
+	if audio == 0 {
+		clear()
+		return nil, "", zipFail("no_audio", "There is no audio file in that zip file.", nil)
+	}
+	_ = s.write(ctx, nil, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE uploads SET skipped = ? WHERE id = ?`, left, up.ID)
+		return err
+	})
+	return rows, "", nil
+}
