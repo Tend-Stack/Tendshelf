@@ -38,6 +38,8 @@ type ProfileView struct {
 	Email bool
 	// Backups is the "Backups" row ("Last backup 3 hours ago · 1.2 MB" or "No backup yet"), owner only.
 	Backups string
+	// Runtimes shows the "Word timing" row of "Your server", for the owner only.
+	Runtimes bool
 	// Shelves is the "Your shelves" row ("3 shelves"), empty for people who may not use shelves.
 	Shelves string
 	// NoPassword is true for an account made from an invite that never added a password: Profile
@@ -130,7 +132,7 @@ templ Profile(v ProfileView) {
 				</form>
 			}
 		</section>
-		if v.Libraries != "" || v.UsersRow != "" || v.Email || v.Backups != "" {
+		if v.Libraries != "" || v.UsersRow != "" || v.Email || v.Backups != "" || v.Runtimes {
 			<section aria-labelledby="pf-srv" class="ts-me__section ts-group ts-me__hub">
 				<h2 id="pf-srv" class="ts-overline">Your server</h2>
 				if v.UsersRow != "" {
@@ -165,6 +167,15 @@ templ Profile(v ProfileView) {
 						<span class="ts-me__rowtext">
 							<span class="body ts-me__rowtitle">Backups</span>
 							<span class="caption ts-me__lead">{ v.Backups }</span>
+						</span>
+						@meChevron()
+					</a>
+				}
+				if v.Runtimes {
+					<a class="ts-me__row" href="/admin/runtimes">
+						<span class="ts-me__rowtext">
+							<span class="body ts-me__rowtitle">Word timing</span>
+							<span class="caption ts-me__lead">Set up read-along</span>
 						</span>
 						@meChevron()
 					</a>

@@ -176,5 +176,11 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	e.Player = playerApp(t)
 	e.Player.store(t, 100_000, "a11ydevice001", "Other device", 0, false)
 	e.URLs["player/owner"] = e.Player.URL
+	// Read-along states last of all: they draw ids, and the avatar colours of every person made above follow theirs.
+	if bk, err := a.lib.Book(ctx, e.BookID); err != nil {
+		t.Fatal(err)
+	} else {
+		textSeedAlign(t, a, bk, owner)
+	}
 	return e
 }

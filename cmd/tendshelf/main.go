@@ -65,6 +65,7 @@ func run(ctx context.Context, args []string) error {
 	ffmpeg := fs.String("ffmpeg", envOr("TENDSHELF_FFMPEG", ""), "ffmpeg program name or absolute path; default searches PATH")
 	proxyFlag := fs.String("trusted-proxy", envOr("TENDSHELF_TRUSTED_PROXY", ""), "comma-separated IPs or CIDR ranges of reverse proxies whose X-Forwarded-For and X-Forwarded-Proto are trusted; default none")
 	mf := addMediaFlags(fs)
+	af := addAlignFlags(fs)
 	showVersion := fs.Bool("version", false, "print the version and exit")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -123,6 +124,11 @@ func run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	alignment, err := registerAlign(d, af, ebooks)
+	if err != nil {
+		return err
+	}
+	defer alignment.mgr.Close()
 	if err := sc.Register(runner); err != nil {
 		return err
 	}
@@ -133,7 +139,7 @@ func run(ctx context.Context, args []string) error {
 	}
 	setupCode := auth.NewSetupCode()
 	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: proxies,
-		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Ebooks: ebooks, Backups: bk, MailOptions: share.MailOptions{Logger: logger}})
+		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Ebooks: ebooks, Align: alignment.svc, Runtimes: alignment.provider, Backups: bk, MailOptions: share.MailOptions{Logger: logger}})
 	if err != nil {
 		return err
 	}
@@ -146,6 +152,10 @@ func run(ctx context.Context, args []string) error {
 	if err := runner.Start(ctx); err != nil {
 		ln.Close()
 		return err
+	}
+	// Bring alignment rows in line with their jobs after a restart.
+	if err := alignment.svc.Reconcile(ctx); err != nil {
+		logger.Warn("align: could not reconcile alignments", "err", err)
 	}
 	// Queue the read of every ebook still pending, and retry those refused only because a parser was missing.
 	if err := ebooks.EnqueuePending(ctx); err != nil {

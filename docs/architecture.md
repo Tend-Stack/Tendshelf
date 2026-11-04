@@ -237,13 +237,14 @@ Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 
 HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id}/items` with the same query as the page (infinite scroll; the sentinel is a link to the next page, so "Show more" works without JavaScript; a bad cursor is a 400 toast),
 `GET /hx/search/suggest?q=`,
-`POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}`. Read-along: `POST /hx/books/{id}/editions`
-(upload), `POST /hx/editions/{id}/pair`, `POST /hx/editions/{id}/unpair`, `POST /hx/editions/{id}/default`,
-`DELETE /hx/editions/{id}` (forgets the edition; deletes only an uploaded copy), `POST /hx/editions/{id}/alignments`,
-`POST /hx/alignments/{id}/cancel|resume|discard`, `GET /hx/editions/{id}/alignment`,
+`POST /hx/books/{id}/finished`, `GET /hx/jobs/{id}` (also the status card of an `align.book` job, for people who may edit the book, and of an `align.check` job, for the owner). Read-along (R2 and R3, as built):
+`POST /books/{id}/text` (upload), `POST /books/{id}/text/{fileID}/pair|unpair|not-same|default|choose|dismiss`,
+`POST /books/{id}/text/{fileID}/align` (prepare read-along), `POST /books/{id}/text/{fileID}/align/cancel|resume|discard`
+(all need edit rights on the book; a file not paired to that book is a 404; a missing runtime or audio is a 409), and
+`GET /admin/runtimes`, `POST /admin/runtimes/check`, `GET /admin/runtimes/files/{name...}` (owner only; the lock files and
+model manifests as text). Planned for R4 and later:
 `GET /hx/books/{id}/read/chapters/{idx}?edition=`, `GET /hx/books/{id}/read/toc?edition=`, `POST /hx/me/reader-settings`,
-`GET|POST /hx/books/{id}/highlights`, `PATCH|DELETE /hx/highlights/{id}`, `POST /hx/editions/{id}/exports/overlays`,
-`POST /hx/admin/runtimes/check`.
+`GET|POST /hx/books/{id}/highlights`, `PATCH|DELETE /hx/highlights/{id}`, `POST /hx/editions/{id}/exports/overlays`.
 
 Details, cover, author photo and write routes (M4; the patterns are in `routes_details.go`, `routes_cover_pick.go`, `routes_author.go`, `routes_write.go` and `routes_nav.go`): `POST /books/{id}/match` (starts a lookup job), `POST /books/{id}/match/apply`, `GET /books/{id}/match/{job}/cover/{n}`, `POST /books/{id}/details/reset`, `POST /books/{id}/cover` (choose a cover), `POST /books/{id}/cover/upload`, `GET /covers/{bookID}/choices/{coverID}`, `POST /books/{id}/write`, `POST /books/{id}/write/confirm` (Looks good), `POST /books/{id}/write/undo` (Undo), `POST /people/{id}/lookup` and `GET /people/{id}/photo` (authors), `POST /admin/online` (the `online.enabled` switch), `POST /me/nav` and `POST /hx/me/nav` (sidebar setting). `GET /hx/jobs/{id}` answers by the job's kind; a lookup job needs `?book=`.
 
@@ -405,7 +406,8 @@ so Back, reload and links without JavaScript all work.
 | Reader mode | mode switcher | Page + `hx-select`: `GET /books/{id}/read?mode=` |
 | Reading settings (R4) | `change` | `POST /hx/me/reader-settings`, `hx-swap="none"` |
 | Highlights and notes (R4) | selection menu | `POST /hx/books/{id}/highlights` (out-of-band sentence span and count) |
-| Alignment progress `#align` (R3) | `every 2s` until done | `GET /hx/editions/{id}/alignment` |
+| Alignment progress `#align-{fileID}` (R3) | `every 2s` until done, held or ended | `GET /hx/jobs/{id}` |
+| Word timing check `#runtime-card-{lang}` (R3) | `every 2s` until the check ends | `GET /hx/jobs/{id}` |
 
 Theme and other UI preferences live in `user_settings` (`ui.theme`, `ui.text_size`), so they follow the
 user across devices; before login the system preference applies.

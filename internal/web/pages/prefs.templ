@@ -19,6 +19,7 @@ type PrefsNav struct {
 	UsersWaiting       string
 	Libraries, Email   bool
 	Backups            bool
+	Runtimes           bool
 }
 
 type prefsItem struct{ Key, Label, Href string }
@@ -89,7 +90,7 @@ templ PrefsShell(n PrefsNav, pane templ.Component) {
 						</li>
 					}
 				</ul>
-				if n.Users || n.Libraries || n.Email || n.Backups {
+				if n.Users || n.Libraries || n.Email || n.Backups || n.Runtimes {
 					<h2 class="ts-overline ts-prefs__heading">Your server</h2>
 					<ul class="ts-prefs__list">
 						if n.Users {
@@ -110,6 +111,11 @@ templ PrefsShell(n PrefsNav, pane templ.Component) {
 						if n.Backups {
 							<li>
 								@prefsLink(n, "backups", "Backups", "/admin/backups")
+							</li>
+						}
+						if n.Runtimes {
+							<li>
+								@prefsLink(n, "runtimes", "Word timing", "/admin/runtimes")
 							</li>
 						}
 					</ul>
