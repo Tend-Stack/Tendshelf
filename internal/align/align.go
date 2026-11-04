@@ -19,6 +19,11 @@ type Input struct {
 	ModelSHA string
 	Params   Params
 	Reuse    func(chapter int, key string) (*Timing, bool)
+	// Stop, if set, is asked before every Viterbi segment; an error ends Align with it.
+	Stop func() error
+	// OnChapter, if set, gets each chapter as soon as its last segment is done, in document order, so a job
+	// can save it before the next one is computed. An error ends Align with it.
+	OnChapter func(ChapterResult) error
 }
 
 // ChapterResult is one chapter. Idx is the document's chapter number. State is ChapterAligned when at least
@@ -102,7 +107,37 @@ func Align(in Input) (Result, error) {
 	for i := range units {
 		units[i].chunk = -1
 	}
+	// minU0[i] is the smallest first unit among chunks i.., so a chapter is finished once every remaining
+	// chunk starts after it.
+	minU0 := make([]int, len(chunks)+1)
+	minU0[len(chunks)] = len(in.Text.Units)
+	for i := len(chunks) - 1; i >= 0; i-- {
+		minU0[i] = min(chunks[i].u0, minU0[i+1])
+	}
+	built := make([]ChapterResult, len(in.Text.Chapters))
+	next := 0
+	flush := func(limit int) error {
+		for next < len(in.Text.Chapters) && in.Text.Chapters[next].EndUnit <= limit {
+			cr := buildChapter(in, p, next, keys, reused, units, exact)
+			built[next] = cr
+			next++
+			if in.OnChapter != nil {
+				if err := in.OnChapter(cr); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
 	for id, c := range chunks {
+		if err := flush(minU0[id]); err != nil {
+			return Result{}, err
+		}
+		if in.Stop != nil {
+			if err := in.Stop(); err != nil {
+				return Result{}, err
+			}
+		}
 		need := false
 		for u := c.u0; u < c.u1; u++ {
 			units[u].chunk = id
@@ -146,20 +181,11 @@ func Align(in Input) (Result, error) {
 		}
 	}
 
+	if err := flush(len(in.Text.Units) + 1); err != nil {
+		return Result{}, err
+	}
 	for ci, tc := range in.Text.Chapters {
-		cr := ChapterResult{Idx: tc.Idx, Front: tc.Front, Key: keys[ci], StartMS: -1, EndMS: -1, State: ChapterUnmatched}
-		switch {
-		case reused[ci] != nil:
-			cr.Timing, cr.Reused = reused[ci], true
-		case keys[ci] != "":
-			cr.Timing = buildTiming(in, p, ci, units, exact)
-		}
-		if cr.Timing != nil {
-			chapterStats(&cr)
-			if cr.Timed > 0 {
-				cr.State = ChapterAligned
-			}
-		}
+		cr := built[ci]
 		if !tc.Front {
 			res.Total += cr.Total
 			res.Timed += cr.Timed
@@ -173,6 +199,25 @@ func Align(in Input) (Result, error) {
 	}
 	finishResult(&res, p)
 	return res, nil
+}
+
+// buildChapter assembles chapter ci from the finished units.
+func buildChapter(in Input, p Params, ci int, keys []string, reused []*Timing, units []unitRes, exact []bool) ChapterResult {
+	tc := in.Text.Chapters[ci]
+	cr := ChapterResult{Idx: tc.Idx, Front: tc.Front, Key: keys[ci], StartMS: -1, EndMS: -1, State: ChapterUnmatched}
+	switch {
+	case reused[ci] != nil:
+		cr.Timing, cr.Reused = reused[ci], true
+	case keys[ci] != "":
+		cr.Timing = buildTiming(in, p, ci, units, exact)
+	}
+	if cr.Timing != nil {
+		chapterStats(&cr)
+		if cr.Timed > 0 {
+			cr.State = ChapterAligned
+		}
+	}
+	return cr
 }
 
 func finishResult(res *Result, p Params) {
