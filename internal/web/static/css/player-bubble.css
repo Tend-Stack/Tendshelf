@@ -15,6 +15,8 @@
   .ts-player-slot .ts-mini__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .ts-player-slot [data-ts-back] { display: none; }
   .ts-player-slot [data-ts-toggle] { position: absolute; left: -0.75rem; bottom: -0.25rem; box-shadow: 0 0 0 2px var(--raised), var(--shadow-float); }
+  /* The halo above would replace the focus ring, so the ring goes first and the halo stays under it. */
+  .ts-player-slot [data-ts-toggle]:focus-visible { box-shadow: var(--focus-ring), var(--shadow-float); }
 }
 @media (768px <= width < 960px) {
   :where(html[data-text-size="large"]) {
@@ -31,5 +33,6 @@
     .ts-player-slot .ts-mini__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .ts-player-slot [data-ts-back] { display: none; }
     .ts-player-slot [data-ts-toggle] { position: absolute; left: -0.75rem; bottom: -0.25rem; box-shadow: 0 0 0 2px var(--raised), var(--shadow-float); }
+    .ts-player-slot [data-ts-toggle]:focus-visible { box-shadow: var(--focus-ring), var(--shadow-float); }
   }
 }

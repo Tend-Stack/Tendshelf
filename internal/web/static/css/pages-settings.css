@@ -49,6 +49,7 @@
   .ts-prefs__back, .ts-me__hub, .ts-prefs__item::after { display: none; }
   .ts-prefs__title { order: 0; margin: var(--space-20) 0 var(--space-4) var(--space-12); font: 600 0.8125rem/1rem var(--font-sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-muted); }
   .ts-prefs__item[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 0.1875rem 0 0 var(--accent); font-weight: 600; }
+  .ts-prefs__item[aria-current="true"]:focus-visible { box-shadow: inset 0.1875rem 0 0 var(--accent), var(--focus-ring); }
   .ts-groups { margin-top: var(--space-16); }
 }
 @media (prefers-reduced-motion: no-preference) {
