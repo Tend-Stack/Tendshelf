@@ -66,6 +66,8 @@ type TextFileView struct {
 	NotSame *TextActionView
 	// Align is the read-along card of a paired edition; editors only.
 	Align *TextAlignView
+	// ReadHref opens the reader on this edition; ReadLabel is "Read along" or "Read". Empty when the person may not read.
+	ReadHref, ReadLabel string
 	// Chips say whose edition this is; Choose and MakeDefault change it (two or more editions).
 	Chips               []string
 	Choose, MakeDefault *TextActionView
@@ -190,6 +192,9 @@ templ EbookEdition(f TextFileView) {
 		}
 		if f.Note != "" {
 			<p class="caption ts-ebook__note">{ f.Note }</p>
+		}
+		if f.ReadHref != "" {
+			<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(f.ReadHref) }>{ f.ReadLabel }</a>
 		}
 		if f.Align != nil {
 			@TextAlign(*f.Align)

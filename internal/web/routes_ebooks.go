@@ -141,6 +141,16 @@ func (s *server) textFileView(ctx context.Context, book library.Book, f ebook.Fi
 				}
 			}
 		}
+		if tc != nil && tc.canRead && f.BookID == book.ID && ed.ID != "" {
+			fv.ReadHref, fv.ReadLabel = "/books/"+book.ID+"/read?edition="+url.QueryEscape(ed.ID), readerModeRead
+			if tc.canListen && s.align != nil {
+				if _, has, err := s.align.Store().Latest(ctx, ed.ID); err != nil {
+					return fv, err
+				} else if has {
+					fv.ReadLabel = readerModeAlong
+				}
+			}
+		}
 		shown := rows
 		if !all && len(shown) > bookChaptersHead {
 			shown = shown[:bookChaptersHead]

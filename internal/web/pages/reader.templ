@@ -1,0 +1,390 @@
+package pages
+
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// ReaderStyles is the reader's own stylesheet (P3 fills it; P2 only commits it with a header comment).
+var ReaderStyles = []string{"css/pages-reader.css"}
+
+// ReaderModeLink is one link of the "How to follow this book" navigation.
+type ReaderModeLink struct {
+	Label, Href string
+	Current     bool
+}
+
+// ReaderBlockView is one block of text. HTML is the already escaped inside (see web/reader_render.go).
+type ReaderBlockView struct {
+	Kind, ID, HTML string
+	Pg             int
+}
+
+// ReaderChapterView is one chapter of the text. Start and End are milliseconds on the book's timeline, -1 when
+// the chapter has no times. TimingHref is empty for an unaligned chapter; NextFrag and NextHref are empty after
+// the last chapter.
+type ReaderChapterView struct {
+	Idx, Pg          int
+	Start, End       int64
+	TimingHref       string
+	Overline, Page   string
+	Title            string
+	Blocks           []ReaderBlockView
+	NextFrag         string
+	NextHref         string
+	NextLabel        string
+}
+
+// ReaderMarkItem is one row of the "Highlights and notes" sheet.
+type ReaderMarkItem struct {
+	ID, BookID, Kind, Quote, Note string
+	PlayLabel, OpenLabel    string
+	OpenHref, DeleteHref    string
+	NoteHref, SaveLabel     string
+	DeleteLabel, NoteField  string
+	CSRF                    string
+	OOB                     bool
+	StartMs, EndMs          int64
+	HasTime                 bool
+}
+
+// ReaderFilter is a filter link of the marks sheet.
+type ReaderFilter struct {
+	Label, Href string
+	Count       int
+	Current     bool
+}
+
+// ReaderSheetView is the contents or the marks panel, drawn over the page (the house ?sheet= pattern).
+type ReaderSheetView struct {
+	Kind, Title, CloseLabel, CloseHref, BookID string
+	Lead, Empty                                string
+	Chapters                                   []ReaderContentsItem
+	Filters                                    []ReaderFilter
+	Items                                      []ReaderMarkItem
+}
+
+// ReaderContentsItem is a chapter in the contents.
+type ReaderContentsItem struct {
+	Num, Title, Note, Href string
+	Current                bool
+}
+
+// ReaderView is the whole page.
+type ReaderView struct {
+	Title, BookID, EditionID, Mode string
+	CloseHref, CloseLabel          string
+	ModesLabel                     string
+	Modes                          []ReaderModeLink
+	Banner                         string
+	Chapters                       string // data-chapters
+	MsgLeft, MsgPage               string
+	Chapter                        ReaderChapterView
+	Module                         string // address of readalong.js
+	MarksModule                    string // address of reader-marks.js
+	EyesFree                       *ReaderEyesFree
+	Voice, ExitFocus, FocusHint    string
+	FocusBack, FocusFwd            string
+	Dock                           ReaderDock
+	Marks                          ReaderMarksBar
+	Play                           *components.PlayButtonView
+	PlayLabel                      string
+}
+
+// ReaderEyesFree is the top-bar button that opens Eyes-free.
+type ReaderEyesFree struct {
+	Label, Src, CSS string
+}
+
+// ReaderDock is the read-along dock; in Read mode only Play (with its words) shows.
+type ReaderDock struct {
+	SpeedText, SpeedLabel     string
+	BackLabel, FwdLabel       string
+	ContentsLabel, ContentsHref string
+	PageLine, LeftLine        string
+	Play                      *components.PlayButtonView
+	ReadPlay                  *components.PlayButtonView
+}
+
+// ReaderMarksBar is the selection toolbar and the hidden form it posts.
+type ReaderMarksBar struct {
+	Label, Highlight, Note, Listen, Copy string
+	Action, CSRF                         string
+	Count                                string
+	Listenable                           bool
+}
+
+// Reader is the page: the top bar, the text, the focus line, the dock and the selection toolbar.
+templ Reader(v ReaderView) {
+	<div class="ts-readerpage" data-mode={ v.Mode }>
+		<header class="ts-readerbar">
+			<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } aria-label={ v.CloseLabel }>
+				@components.Icon("close", false)
+			</a>
+			<nav class="ts-mode" aria-label={ v.ModesLabel }>
+				for _, m := range v.Modes {
+					<a
+						class="ts-mode__item"
+						href={ templ.SafeURL(m.Href) }
+						if m.Current {
+							aria-current="page"
+						}
+					>{ m.Label }</a>
+				}
+			</nav>
+			if v.EyesFree != nil {
+				<button type="button" class="ts-iconbtn" data-ts-reader-eyes-free data-ts-src={ v.EyesFree.Src } data-ts-css={ v.EyesFree.CSS }>{ v.EyesFree.Label }</button>
+			}
+		</header>
+		if v.Banner != "" {
+			<p class="caption ts-reader__banner" role="status">{ v.Banner }</p>
+		}
+		<article
+			id="reader"
+			class="ts-reader"
+			if v.Module != "" {
+				data-ts-module={ v.Module }
+			}
+			data-book={ v.BookID }
+			data-edition={ v.EditionID }
+			data-mode={ v.Mode }
+			data-hl="wash"
+			data-word="on"
+			data-view="page"
+			data-follow="on"
+			data-follow-style="steady"
+			data-return="off"
+			data-chapters={ v.Chapters }
+			data-ts-msg-left={ v.MsgLeft }
+			data-ts-msg-page={ v.MsgPage }
+		>
+			<div class="ts-reader__col" id="reader-text">
+				@ReaderChapter(v.Chapter)
+			</div>
+		</article>
+		if v.Mode == "readalong" {
+			<button type="button" class="ts-voicepill" data-ts-voice hidden>{ v.Voice }</button>
+			<div class="ts-focus" data-ts-focus hidden>
+				<p class="ts-focus__side"></p>
+				<p class="ts-focus__line"></p>
+				<p class="ts-focus__side"></p>
+				<button type="button" class="ts-btn ts-btn--quiet" data-ts-focus-exit>{ v.ExitFocus }</button>
+				<button type="button" class="ts-iconbtn" data-ts-sent="-1" aria-label={ v.FocusBack }>
+					@components.Icon("skip-back", false)
+				</button>
+				<button type="button" class="ts-iconbtn" data-ts-sent="1" aria-label={ v.FocusFwd }>
+					@components.Icon("skip-forward", false)
+				</button>
+				<p class="caption">{ v.FocusHint }</p>
+			</div>
+		}
+		<div class="ts-readdock" id="reader-dock">
+			if v.Mode == "readalong" {
+				<div class="ts-scrub" aria-hidden="true"><div class="ts-scrub__line"></div></div>
+				<div class="ts-readdock__times">
+					<span data-ts-reader-page>{ v.Dock.PageLine }</span>
+					<span data-ts-reader-left>{ v.Dock.LeftLine }</span>
+				</div>
+				<div class="ts-readdock__row">
+					<button type="button" class="ts-readdock__speed" data-ts-reader-speed aria-label={ v.Dock.SpeedLabel }>{ v.Dock.SpeedText }</button>
+					<button type="button" class="ts-iconbtn ts-iconbtn--md" data-ts-sent="-1" aria-label={ v.Dock.BackLabel }>
+						@components.Icon("skip-back", false)
+					</button>
+					if v.Dock.Play != nil {
+						@components.PlayButton(*v.Dock.Play)
+					}
+					<button type="button" class="ts-iconbtn ts-iconbtn--md" data-ts-sent="1" aria-label={ v.Dock.FwdLabel }>
+						@components.Icon("skip-forward", false)
+					</button>
+					<a class="ts-iconbtn ts-iconbtn--md" href={ templ.SafeURL(v.Dock.ContentsHref) } aria-label={ v.Dock.ContentsLabel }>
+						@components.Icon("chapters", false)
+					</a>
+				</div>
+			} else {
+				<div class="ts-readdock__row">
+					<span data-ts-reader-page>{ v.Dock.PageLine }</span>
+					<a class="ts-iconbtn ts-iconbtn--md" href={ templ.SafeURL(v.Dock.ContentsHref) } aria-label={ v.Dock.ContentsLabel }>
+						@components.Icon("chapters", false)
+					</a>
+					if v.Dock.ReadPlay != nil {
+						@components.PlayButton(*v.Dock.ReadPlay)
+					}
+				</div>
+			}
+		</div>
+		<div id="reader-marks" class="ts-selmenu" role="toolbar" aria-label={ v.Marks.Label } if v.MarksModule != "" { data-ts-module={ v.MarksModule } } hidden>
+			<button type="button" class="ts-selmenu__item" data-ts-mark="highlight"><span class="ts-selmenu__swatch"></span>{ v.Marks.Highlight }</button>
+			<button type="button" class="ts-selmenu__item" data-ts-mark="note">
+				@components.Icon("edit", false)
+				{ v.Marks.Note }
+			</button>
+			if v.Marks.Listenable {
+				<button type="button" class="ts-selmenu__item" data-ts-mark="listen">
+					@components.Icon("headphones", false)
+					{ v.Marks.Listen }
+				</button>
+			}
+			<button type="button" class="ts-selmenu__item" data-ts-mark="copy">
+				@components.Icon("share", false)
+				{ v.Marks.Copy }
+			</button>
+		</div>
+		<form id="reader-hl-form" hidden hx-post={ v.Marks.Action } hx-swap="none">
+			<input type="hidden" name="_csrf" value={ v.Marks.CSRF }/>
+			<input type="hidden" name="edition" value={ v.EditionID }/>
+			<input type="hidden" name="start_sid"/>
+			<input type="hidden" name="start_off"/>
+			<input type="hidden" name="end_sid"/>
+			<input type="hidden" name="end_off"/>
+			<input type="hidden" name="colour" value="yellow"/>
+			<input type="hidden" name="note"/>
+			<input type="hidden" name="client_id"/>
+		</form>
+		<span id="reader-marks-count" hidden>{ v.Marks.Count }</span>
+	</div>
+}
+
+// ReaderChapter is one chapter: the meta line, the title, the blocks and the sentinel that asks for the next one.
+templ ReaderChapter(c ReaderChapterView) {
+	<section
+		id={ "reader-ch-" + strconv.Itoa(c.Idx) }
+		data-ch={ strconv.Itoa(c.Idx) }
+		data-start={ strconv.FormatInt(c.Start, 10) }
+		data-end={ strconv.FormatInt(c.End, 10) }
+		if c.TimingHref != "" {
+			data-timing={ c.TimingHref }
+		}
+	>
+		<div class="ts-reader__meta"><span class="ts-overline ts-overline--accent">{ c.Overline }</span><span>{ c.Page }</span></div>
+		<h2 class="ts-reader__chapter">{ c.Title }</h2>
+		<div class="ts-reader__text">
+			for _, b := range c.Blocks {
+				@ReaderBlock(b, false)
+			}
+		</div>
+		if c.NextFrag != "" {
+			<div class="ts-reader__next" hx-get={ c.NextFrag } hx-trigger="revealed, ts-reader-next" hx-swap="outerHTML">
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(c.NextHref) }>{ c.NextLabel }</a>
+			</div>
+		}
+	</section>
+}
+
+// ReaderBlock is one block; with oob it swaps itself in place (a highlight changed it).
+templ ReaderBlock(b ReaderBlockView, oob bool) {
+	switch b.Kind {
+		case "h":
+			<h3 id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</h3>
+		case "quote":
+			<blockquote id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }><p>@templ.Raw(b.HTML)</p></blockquote>
+		case "li":
+			<p id={ b.ID } class="ts-reader__li" data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+		case "note":
+			<p id={ b.ID } class="ts-reader__note" data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+		case "img":
+			<p id={ b.ID } class="ts-reader__img" data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+		case "pre":
+			<pre id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</pre>
+		case "hr":
+			<hr id={ b.ID } if oob { hx-swap-oob="outerHTML" }/>
+		default:
+			<p id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+	}
+}
+
+// ReaderSheet is the contents or the marks panel over the page.
+templ ReaderSheet(v ReaderSheetView) {
+	<div class="ts-sheet-layer ts-sheet-layer--details">
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" aria-label={ v.CloseLabel } tabindex="-1"></a>
+		<div class="ts-sheet ts-details-sheet" role="dialog" aria-modal="true" aria-labelledby="reader-sheet-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="reader-sheet-title" class="ts-sheet__title">{ v.Title }</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" aria-label={ v.CloseLabel }>
+					@components.Icon("close", false)
+				</a>
+			</div>
+			if v.Kind == "contents" {
+				<ol class="ts-reader__toc">
+					for _, c := range v.Chapters {
+						<li>
+							<a
+								href={ templ.SafeURL(c.Href) }
+								if c.Current {
+									aria-current="location"
+								}
+							>
+								<span>{ c.Num }</span> { c.Title }
+								if c.Note != "" {
+									<span class="caption">{ c.Note }</span>
+								}
+							</a>
+						</li>
+					}
+				</ol>
+			} else {
+				<p class="body">{ v.Lead }</p>
+				<nav class="ts-chip-set" aria-label={ v.Title }>
+					for _, f := range v.Filters {
+						<a
+							class="ts-chip"
+							href={ templ.SafeURL(f.Href) }
+							if f.Current {
+								aria-current="true"
+							}
+						>{ f.Label } { strconv.Itoa(f.Count) }</a>
+					}
+				</nav>
+				if len(v.Items) == 0 {
+					<p class="body">{ v.Empty }</p>
+				}
+				<ul class="ts-reader__marks" id="reader-marks-list">
+					for _, it := range v.Items {
+						@ReaderMarkRow(it)
+					}
+				</ul>
+			}
+		</div>
+	</div>
+}
+
+// ReaderMarkRow is one highlight, note or bookmark in the marks panel.
+templ ReaderMarkRow(it ReaderMarkItem) {
+	<li id={ "reader-mark-" + it.ID } class="ts-reader__mark" if it.OOB { hx-swap-oob="outerHTML" }>
+		<p class="caption">{ it.Kind }</p>
+		if it.Quote != "" {
+			<blockquote class="ts-note__quote">{ it.Quote }</blockquote>
+		}
+		if it.Note != "" {
+			<p class="body">{ it.Note }</p>
+		}
+		if it.HasTime {
+			<button type="button" class="ts-btn ts-btn--quiet" data-ts-play-at={ strconv.FormatInt(it.StartMs, 10) } data-ts-book={ it.BookID } if it.EndMs > 0 { data-ts-play-until={ strconv.FormatInt(it.EndMs, 10) } } hidden>{ it.PlayLabel }</button>
+		}
+		if it.OpenHref != "" {
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(it.OpenHref) }>{ it.OpenLabel }</a>
+		}
+		if it.NoteHref != "" {
+			<form hx-patch={ it.NoteHref } hx-swap="none">
+				<input type="hidden" name="_csrf" value={ it.CSRF }/>
+				<label class="caption" for={ "reader-note-" + it.ID }>{ it.NoteField }</label>
+				<textarea id={ "reader-note-" + it.ID } name="note" rows="2">{ it.Note }</textarea>
+				<button type="submit" class="ts-btn ts-btn--quiet">{ it.SaveLabel }</button>
+			</form>
+		}
+		if it.DeleteHref != "" {
+			<button type="button" class="ts-btn ts-btn--quiet" hx-delete={ it.DeleteHref } hx-swap="none">{ it.DeleteLabel }</button>
+		}
+	</li>
+}
+
+// ReaderMarksCount is the out-of-band count of marks (the Contents and notes link reads it).
+templ ReaderMarksCount(text string) {
+	<span id="reader-marks-count" hx-swap-oob="true" hidden>{ text }</span>
+}
+
+// ReaderMarkGone removes a row of the marks panel.
+templ ReaderMarkGone(id string) {
+	<li id={ "reader-mark-" + id } hx-swap-oob="delete"></li>
+}

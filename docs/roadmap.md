@@ -631,6 +631,13 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
     fixture and from empty), `TestHighlight*`, `TestBookmarkTextPlace`, `TestParseSID*`. Limits: no sync
     endpoints for highlights (`highlights_sync` is the R5 hook); the `/api` bookmark JSON is unchanged.
     Next: P2.
+  - *R4 P2 (server; done)*: `GET /books/{id}/read` (modes `readalong|read`, `ch`, `at`, `sheet=contents|marks`), the chapter
+    fragment, the gzip pass-through timing endpoint, highlight create, change and delete (htmx only, the person's own),
+    text bookmarks (`POST /books/{id}/bookmarks` with `edition_id` and `sid`), the Text-tab "Read along" / "Read" link, and the
+    sentence/run/highlight renderer (`reader_render.go`). Every route is `ReadText` (404 otherwise). Checks: `TestReader*`,
+    `TestRouteMatrix*` (6 reader rows, member and guest with and without `can_read`). Limits: no JS or CSS (P3 writes
+    `readalong.js`, `reader-marks.js`, `pages-reader.css`; the page leaves `data-ts-module` out until those files ship);
+    the reader page is skipped in the a11y list until R4 P5; no reading-settings link (P4).
 - **R5 Cross-format position**: `progress.position_source/text_*`; Read mode drives the position;
   edition switch maps through time or quote; `can_read` on grants and share links with the P3 matrix;
   offline text download with P4. Exit: read on one browser, press play on another, the voice starts at

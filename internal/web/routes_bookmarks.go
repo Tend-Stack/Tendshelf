@@ -49,6 +49,10 @@ func (s *server) bookmarkRefuse(w http.ResponseWriter, r *http.Request, status i
 
 func (s *server) postBookmark(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	if edID, sid := r.PostFormValue("edition_id"), r.PostFormValue("sid"); edID != "" || sid != "" {
+		s.postTextBookmark(w, r, edID, sid)
+		return
+	}
 	b, ok := s.loadBook(w, r, r.PathValue("id"), share.ListenBook)
 	if !ok {
 		return

@@ -134,8 +134,9 @@ type server struct {
 	progress   *progress.Service
 	mail       *share.Mail
 	mailLim    mailLimits
-	chunkBytes int    // size of one offline download request, written on <html data-ts-chunk>
-	swBuild    string // the id of this build of the assets, see static.Set.Build
+	readerDocs readerDocCache // the last few parsed ebook documents (M5 R4 P2)
+	chunkBytes int            // size of one offline download request, written on <html data-ts-chunk>
+	swBuild    string         // the id of this build of the assets, see static.Set.Build
 }
 
 // mailLimits are the in-memory rate limits of the email relay. A restart resets them (only the owner
@@ -286,6 +287,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerLinks(mux)
 	s.registerEmail(mux)
 	s.registerRuntimes(mux)
+	s.registerReader(mux)
 	//
 	s.registerSetupSteps(mux)
 	s.registerMe(mux)

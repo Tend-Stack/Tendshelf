@@ -1,0 +1,6 @@
+/* The read-along reader page (M5 R4). P2 commits this file empty; P3 writes the rules.
+   Markup that needs rules, all built by internal/web/pages/reader.templ and web/reader_render.go:
+   .ts-readerpage (page wrapper, data-mode), .ts-readerbar (top bar), .ts-reader__banner, .ts-reader__next
+   (the sentinel with its plain link), .ts-reader__li, .ts-reader__note, .ts-reader__img, .ts-reader__bm
+   (empty span, role=img, draw the flag with ::before), .ts-s--gap, .ts-reader__toc, .ts-reader__marks,
+   .ts-reader__mark. Elements with [hidden]: .ts-voicepill, .ts-focus, #reader-marks. */
