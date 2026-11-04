@@ -506,6 +506,17 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
   between pages; standard fonts without `/Widths` read as zero-width glyphs, so line width falls back to a
   character estimate; the short-line test uses the 90th percentile line width (a median cannot be beaten by
   more than half the lines). Not run: the manual check on real books.
+  **R1 E4 status** (Text tab): built. `GET /books/{id}/text` is a book tab (Text, after Chapters) shown to people
+  who may `EditBook`, or may `ReadText` when the book has a ready edition; anything else answers 404. Editors
+  see every file (reading, copy-protection card, plain refusal sentences, failed or gone) and the add form;
+  readers see ready editions only, never a folder path. `POST /books/{id}/text` is one multipart form that also
+  works without JavaScript (htmx: files and form again, the new file polls `/hx/jobs/{id}`; plain: 303; a
+  refusal answers 413, 422, 507 or 409 with its sentence in the form), `POST .../{fileID}/dismiss` clears a
+  refused or failed upload. `csrf.go` takes a 201 MiB multipart body for that one route and keeps 1 MiB of it
+  in memory. First 12 chapters, then "Show all {n} chapters" (`?all=1`); front matter is labelled. Checks:
+  `TestTextTab*`, route matrix rows, a11y row `book-text`, `TestTextTabVisual` at 390, 768, 1024 and 1440.
+  Limits: the board's "Found in your folders" pairing card (Pair and prepare, Not the same book) is R2, and
+  Read, Read along and Preparing are R3 to R4.
 - **R2 Pairing**: automatic by folder, upload, ISBN/ASIN, title + author (suggestion when not unique);
   manual pair/unpair; `/admin/ebooks` inbox; several editions, book default, per-user choice. Exit:
   pairing table tests; an unpaired ebook never appears as a book; no ebook is ever written.

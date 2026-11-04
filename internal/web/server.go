@@ -27,6 +27,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/backups"
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/ebook"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
@@ -88,6 +89,9 @@ type Options struct {
 	// Uploads adds books by upload into a library folder (decision 0015); nil means the upload
 	// routes answer 404.
 	Uploads *upload.Service
+	// Ebooks holds the ebook files, editions and uploads of the Text tab (M5 R1); nil means the Text
+	// tab and its routes answer 404.
+	Ebooks *ebook.Service
 }
 
 type server struct {
@@ -116,6 +120,7 @@ type server struct {
 	covers     *mediajobs.Covers
 	writes     *mediajobs.Writes
 	uploads    *upload.Service
+	ebooks     *ebook.Service
 	backups    *backups.Service
 	progress   *progress.Service
 	mail       *share.Mail
@@ -233,6 +238,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		covers:     opts.Covers,
 		writes:     opts.Writes,
 		uploads:    opts.Uploads,
+		ebooks:     opts.Ebooks,
 		backups:    bk,
 		progress:   progress.New(opts.Store, opts.Now),
 		mail:       mailer,

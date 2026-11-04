@@ -31,6 +31,7 @@ func (s *server) registerBook(mux *http.ServeMux) {
 	s.registerCoverPick(mux)
 	s.registerWrite(mux)
 	s.registerUploads(mux)
+	s.registerEbooks(mux)
 	s.registerAuthors(mux)
 }
 
@@ -75,6 +76,14 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 	listen := s.can.Can(ctx, currentUser(r), share.ListenBook, target)
 	if !listen {
 		v.Tabs = slices.DeleteFunc(v.Tabs, func(t pages.BookTab) bool { return t.ID == "bookmarks" })
+	}
+	textEdit, textRead, err := s.textAccess(r, book)
+	if err != nil {
+		s.serverError(w, r, "text access", err)
+		return
+	}
+	if !textEdit && !textRead {
+		v.Tabs = slices.DeleteFunc(v.Tabs, func(t pages.BookTab) bool { return t.ID == "text" })
 	}
 	files, prog, canPlay, err := s.bookPlayData(r, book)
 	if err != nil {
@@ -121,6 +130,10 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 	if listen {
 		// The Bookmarks tab swaps only #book-panel, so its stylesheet is linked whatever tab opens.
 		styles = append(append([]string(nil), styles...), pages.BookmarkStyles...)
+	}
+	if textEdit || textRead {
+		// The Text tab swaps only #book-panel, so its stylesheet is linked whichever tab opens.
+		styles = append(append([]string(nil), styles...), pages.TextStyles...)
 	}
 	canEdit := s.details != nil && s.can.Can(ctx, currentUser(r), share.EditBook, target)
 	lookups := false
@@ -190,6 +203,16 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 		bookChapters(&v, d, false, play)
 	case "chapters":
 		bookChapters(&v, d, r.URL.Query().Get("all") == "1", play)
+	case "text":
+		if !textEdit && !textRead {
+			s.notFound(w, r)
+			return
+		}
+		upErr, _ := ctx.Value(ebookUploadErrKey{}).(string)
+		if v.Text, err = s.textView(r, book, textEdit, r.URL.Query().Get("all") == "1", upErr); err != nil {
+			s.serverError(w, r, "text tab", err)
+			return
+		}
 	case "bookmarks":
 		if !listen {
 			s.notFound(w, r)

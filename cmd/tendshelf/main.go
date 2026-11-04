@@ -133,7 +133,7 @@ func run(ctx context.Context, args []string) error {
 	}
 	setupCode := auth.NewSetupCode()
 	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: proxies,
-		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Backups: bk, MailOptions: share.MailOptions{Logger: logger}})
+		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Ebooks: ebooks, Backups: bk, MailOptions: share.MailOptions{Logger: logger}})
 	if err != nil {
 		return err
 	}

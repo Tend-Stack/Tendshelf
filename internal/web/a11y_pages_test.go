@@ -76,6 +76,7 @@ func a11yPages() []a11yPage {
 		row("book-chapters", "/books/{id}/{tab}", book("/chapters"), both, "main", true),
 		row("book-bookmarks", "/books/{id}/{tab}", book("/bookmarks"), both, "main", true),
 		row("book-details", "/books/{id}/{tab}", book("/details"), owner, "main", true),
+		row("book-text", "/books/{id}/{tab}", book("/text"), owner, "main", true),
 		row("book-remove", "/books/{id}/remove", func(e *a11yEnv) string { return "/books/" + e.UploadBookID + "/remove" }, owner, "upload", true),
 		row("book-share", "/books/{id}/share", book("/share"), owner, "main", true),
 		row("author", "/authors/{id}", func(e *a11yEnv) string { return "/authors/" + e.AuthorID }, both, "main", true),
