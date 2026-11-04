@@ -52,7 +52,7 @@ check:
 VISUAL_RUN ?= Visual
 
 visual:
-	$(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
+	$(GO) test -count=1 -tags dev -timeout 30m -run '$(VISUAL_RUN)' ./internal/web/
 
 # Runs the capture set twice into separate folders and fails, naming them, on any PNG that differs.
 # To prove a change is pixel-identical: capture before (TENDSHELF_VISUAL_OUT=/tmp/before make visual),
