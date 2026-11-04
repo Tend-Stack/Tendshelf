@@ -179,8 +179,8 @@ func placeEbook(t *testing.T, a *testApp, book library.Book, userID, name, state
 
 // textSeedStates gives an app the Text tab with a ready edition of 14 chapters, a copy-protected
 // refusal and a waiting read of the book, for the accessibility audit and the captures. The job
-// runner runs only until the edition is ready.
-func textSeedStates(t *testing.T, a *testApp, book library.Book, userID string) {
+// runner runs only until the edition is ready. It returns the id of the ready ebook that stays unpaired.
+func textSeedStates(t *testing.T, a *testApp, book library.Book, userID string) (unpairedID string) {
 	t.Helper()
 	svc := ebook.New(a.st, a.lib, a.runner, a.dir, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err := svc.Register(a.runner); err != nil {
@@ -219,6 +219,7 @@ func textSeedStates(t *testing.T, a *testApp, book library.Book, userID string) 
 	}
 	placeEbook(t, a, book, userID, "the-glass-orchard.epub", "refused", "drm")
 	placeEbook(t, a, book, userID, "waiting.epub", "pending", "")
+	return found.ID
 }
 
 func TestTextTabVisibility(t *testing.T) {

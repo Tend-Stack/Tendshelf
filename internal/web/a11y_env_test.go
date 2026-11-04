@@ -25,6 +25,7 @@ type a11yEnv struct {
 	LibID                                  string // the Harbour Lights library
 	ShelfID, EmptyShelfID                  string
 	AdminLibID, AdminFolderID              string // the library of adminSeed
+	EbookFoundID                           string // the ready ebook no book has (the Ebooks to pair inbox)
 	MemberID                               string
 	InviteToken, LinkToken                 string
 	UploadLibID, UploadBookID              string
@@ -119,7 +120,7 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	if bk, err := a.lib.Book(ctx, e.BookID); err != nil {
 		t.Fatal(err)
 	} else {
-		textSeedStates(t, a, bk, owner)
+		e.EbookFoundID = textSeedStates(t, a, bk, owner)
 	}
 	memberCk := a.as(t, users.RoleMember)
 	e.MemberID = sweepUserID(t, a, memberCk)

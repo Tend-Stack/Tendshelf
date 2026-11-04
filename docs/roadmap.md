@@ -536,6 +536,16 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
   `TestTextEdition*`, matrix rows, `book-text` a11y seed (0 findings), opt-in `TestTextPairVisual`. Limits: the
   main button is "Pair with this audiobook" until R3; the core CSS budget is over by 212 gzip bytes (21,588 against
   21,376) and waits for an operator decision.
+  **R2 P3 status** (`/admin/ebooks` inbox): built. Routes `GET /admin/ebooks`, `GET /admin/ebooks/{fileID}`, `POST
+  /admin/ebooks/{fileID}/{pair,keep}` (ManageLibraries; pairing also needs EditBook on the chosen book; anything
+  refused is 404). The list shows the first 100 unpaired files with their best close match, a "Kept on their own"
+  section for files kept as ebooks on their own (they stay in the inbox, never become a book), and the R1 sentence
+  for files not ready; the pick page is board NoMatchPhone (card, no-match warning, search of the visible
+  audiobooks, close matches, keep). `/admin/libraries` links "{n} ebooks to pair". New reads: `ebook.Service.
+  CandidatesFor` (books loaded once for many files), `ebook.Store.CountToPair`. Inbox styles sit in
+  `pages-text.css`. Checks: `TestEbookInbox*`, matrix rows (`routes_matrix_ebook_inbox_test.go`), a11y rows
+  `admin-ebooks` and `admin-ebook`, opt-in `TestEbookInboxVisual`. Limits: no bulk pairing, no deleting unpaired
+  upload bytes, no nav item.
 - **R3 Alignment job**: `internal/align` and `internal/align/runtime`, migration `alignments`
   (`runtime_components`, `alignments`, `alignment_chapters`); `runtimes/align/worker.py`; `/admin/runtimes`
   check; emissions cache; mapping, forced alignment, confidence, failure labels; resume, cancel, hold;

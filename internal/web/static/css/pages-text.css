@@ -54,3 +54,8 @@
 .ts-pair__actions .ts-btn { min-height: 2.75rem; height: auto; white-space: normal; }
 .ts-pair__editions { display: flex; gap: var(--space-8); flex-wrap: wrap; }
 .ts-pair__chip { display: inline-flex; align-items: center; min-height: 2rem; padding: 0 var(--space-12); border-radius: var(--radius-control); background: var(--raised); color: var(--ink); border: 1px solid var(--line-strong); font: 600 0.8125rem/1rem var(--font-sans); }
+/* ebook inbox: the Ebooks to pair page (only /admin/ebooks links this sheet besides the Text tab) */
+.ts-inbox__kept { margin: var(--space-16) 0 0; }
+.ts-inbox__match { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-8) var(--space-12); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.ts-inbox__search { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); }
+.ts-inbox__keep .ts-btn, .ts-needs__actions .ts-btn, .ts-inbox__match .ts-btn { min-height: 2.75rem; height: auto; white-space: normal; max-inline-size: 100%; }
