@@ -6,8 +6,8 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
-// ReaderStyles is the reader's own stylesheet (P3 fills it; P2 only commits it with a header comment).
-var ReaderStyles = []string{"css/pages-reader.css"}
+// ReaderStyles are the reader's stylesheets: the page (P3) and the reading settings (P4).
+var ReaderStyles = []string{"css/pages-reader.css", "css/pages-reader-settings.css"}
 
 // ReaderModeLink is one link of the "How to follow this book" navigation.
 type ReaderModeLink struct {
@@ -90,6 +90,10 @@ type ReaderView struct {
 	Marks                          ReaderMarksBar
 	Play                           *components.PlayButtonView
 	PlayLabel                      string
+	Look                           ReaderLook // the person's reading settings (reader.v1)
+	SettingsLabel, SettingsHref    string     // the Aa link
+	SettingsModule, SettingsAction string     // address of reader-settings.js, and the route it posts to
+	SettingsCSRF                   string
 }
 
 // ReaderEyesFree is the top-bar button that opens Eyes-free.
@@ -133,6 +137,17 @@ templ Reader(v ReaderView) {
 					>{ m.Label }</a>
 				}
 			</nav>
+			<a
+				class="ts-iconbtn ts-aa"
+				href={ templ.SafeURL(v.SettingsHref) }
+				hx-get={ v.SettingsHref }
+				hx-target="#sheet"
+				hx-select="#sheet > *"
+				hx-swap="innerHTML"
+				hx-push-url="false"
+				aria-haspopup="dialog"
+				aria-label={ v.SettingsLabel }
+			>Aa</a>
 			if v.EyesFree != nil {
 				<button type="button" class="ts-iconbtn" data-ts-reader-eyes-free data-ts-src={ v.EyesFree.Src } data-ts-css={ v.EyesFree.CSS }>{ v.EyesFree.Label }</button>
 			}
@@ -142,19 +157,19 @@ templ Reader(v ReaderView) {
 		}
 		<article
 			id="reader"
-			class="ts-reader"
+			class={ "ts-reader " + v.Look.Class }
 			if v.Module != "" {
 				data-ts-module={ v.Module }
 			}
 			data-book={ v.BookID }
 			data-edition={ v.EditionID }
 			data-mode={ v.Mode }
-			data-hl="wash"
-			data-word="on"
-			data-view="page"
-			data-follow="on"
-			data-follow-style="steady"
-			data-return="off"
+			data-hl={ v.Look.Hl }
+			data-word={ v.Look.Word }
+			data-view={ v.Look.View }
+			data-follow={ v.Look.Follow }
+			data-follow-style={ v.Look.FollowStyle }
+			data-return={ v.Look.Return }
 			data-chapters={ v.Chapters }
 			data-ts-msg-left={ v.MsgLeft }
 			data-ts-msg-page={ v.MsgPage }
@@ -163,6 +178,9 @@ templ Reader(v ReaderView) {
 				@ReaderChapter(v.Chapter)
 			</div>
 		</article>
+		if v.SettingsModule != "" {
+			<span hidden data-ts-module={ v.SettingsModule } data-action={ v.SettingsAction } data-csrf={ v.SettingsCSRF }></span>
+		}
 		if v.Mode == "readalong" {
 			<button type="button" class="ts-voicepill" data-ts-voice hidden>{ v.Voice }</button>
 			<div class="ts-focus" data-ts-focus hidden>

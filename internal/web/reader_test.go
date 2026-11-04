@@ -160,7 +160,7 @@ func TestReaderPageModes(t *testing.T) {
 	if got := l.get(l.owner, l.readPath("sheet=marks"), false).Body.String(); !strings.Contains(got, "Highlights and notes") || !strings.Contains(got, "Each one opens at the same moment") {
 		t.Error("marks sheet")
 	}
-	for _, q := range []string{"mode=listen", "ch=0", "ch=9", "ch=x", "at=nope", "at=c9.p1.s0", "at=c2.p1.s99", "sheet=reading", "edition=ed_missing"} {
+	for _, q := range []string{"mode=listen", "ch=0", "ch=9", "ch=x", "at=nope", "at=c9.p1.s0", "at=c2.p1.s99", "sheet=nothing", "edition=ed_missing"} {
 		if rec := l.get(l.owner, l.readPath(q), false); rec.Code != http.StatusNotFound {
 			t.Errorf("%s: %d", q, rec.Code)
 		}

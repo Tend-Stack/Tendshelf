@@ -243,7 +243,7 @@ HTMX fragments (`/hx/...`): `GET /hx/libraries/items` and `GET /hx/libraries/{id
 `GET /admin/runtimes`, `POST /admin/runtimes/check`, `GET /admin/runtimes/files/{name...}` (owner only; the lock files and
 model manifests as text). Built in R4 P2: `GET /hx/books/{id}/read/chapters/{idx}?edition=&mode=`,
 `POST /hx/books/{id}/highlights`, `PATCH|DELETE /hx/highlights/{id}` (the person's own; htmx only), and `POST /books/{id}/bookmarks`
-with `edition_id` and `sid` for a bookmark made in the text. Planned for later: `POST /me/reader-settings` (R4 P4),
+with `edition_id` and `sid` for a bookmark made in the text. Built in R4 P4: `POST /me/reader-settings` (any signed-in person; `reader.v1` fields and `theme`, merged over the stored value; `?sheet=reading` on the reader page). Planned for later:
 `POST /hx/editions/{id}/exports/overlays`.
 
 Details, cover, author photo and write routes (M4; the patterns are in `routes_details.go`, `routes_cover_pick.go`, `routes_author.go`, `routes_write.go` and `routes_nav.go`): `POST /books/{id}/match` (starts a lookup job), `POST /books/{id}/match/apply`, `GET /books/{id}/match/{job}/cover/{n}`, `POST /books/{id}/details/reset`, `POST /books/{id}/cover` (choose a cover), `POST /books/{id}/cover/upload`, `GET /covers/{bookID}/choices/{coverID}`, `POST /books/{id}/write`, `POST /books/{id}/write/confirm` (Looks good), `POST /books/{id}/write/undo` (Undo), `POST /people/{id}/lookup` and `GET /people/{id}/photo` (authors), `POST /admin/online` (the `online.enabled` switch), `POST /me/nav` and `POST /hx/me/nav` (sidebar setting). `GET /hx/jobs/{id}` answers by the job's kind; a lookup job needs `?book=`.
@@ -404,7 +404,7 @@ so Back, reload and links without JavaScript all work.
 | Sheets `#sheet` | click on the opener | Page + `hx-select="#sheet > *"`, `hx-swap="innerHTML"`; sheets render in `#sheet` outside `#main`, and the canonical URL renders the sheet inside it on a full load |
 | Reader text `#reader-text` (R4) | open, `revealed` near the end | `GET /hx/books/{id}/read/chapters/{idx}?edition=` |
 | Reader mode | mode switcher | Page + `hx-select`: `GET /books/{id}/read?mode=` |
-| Reading settings (R4) | `change` | `POST /hx/me/reader-settings`, `hx-swap="none"` |
+| Reading settings (R4) | `change` | `POST /me/reader-settings` (htmx: 204; plain: 303 to `next`), `hx-swap="none"` |
 | Highlights and notes (R4) | selection menu | `POST /hx/books/{id}/highlights` (out-of-band touched blocks `#b-{blockID}` and `#reader-marks-count`) |
 | Alignment progress `#align-{fileID}` (R3) | `every 2s` until done, held or ended | `GET /hx/jobs/{id}` |
 | Word timing check `#runtime-card-{lang}` (R3) | `every 2s` until the check ends | `GET /hx/jobs/{id}` |
@@ -583,7 +583,7 @@ PDF reader was chosen on fixtures in R1 (E2):
 | `golang.org/x/net/html` (**added in M5 R1 E1**, v0.61.0, also `html/charset`) | HTML5 tokenizing of EPUB XHTML, HTML files and MOBI/KF8 content (R1) | BSD-3; Go team |
 | `golang.org/x/text` (`unicode/norm`, `encoding/...`) (**added in M5 R1 E1**, v0.43.0) | NFC normalisation for matching and alignment (R1, R3); charset decoding for FB2, HTML and text (R1) | BSD-3; Go team |
 | `github.com/ledongthuc/pdf` (**added in M5 R1 E2**, v0.0.0-20261020125853-5e46805f718e) | PDF text layer (R1): per-glyph position and size, ToUnicode CMaps, xref streams and incremental updates passed the four spike fixtures | BSD-3 (The Go Authors; licence read from the release); no context support, so the parser checks the deadline between pages; encrypted files are refused before it reads text. Limit: glyph widths of standard fonts without `/Widths` read as 0 |
-| Font vendored to `internal/web/static/fonts/` (woff2): OpenDyslexic | The one extra reader font (R4); the reader otherwise uses the design's Fraunces and Fira Sans | SIL OFL 1.1 (guess; read it from the release); `NOTICES.md` row |
+| Font vendored to `internal/web/static/fonts/` (woff2): OpenDyslexic | The one extra reader font (R4); the reader otherwise uses the design's Fraunces and Fira Sans | SIL OFL 1.1 (read from the v0.91.12 tag; built in R4 P4); `NOTICES.md` row |
 | Optional runtime, not shipped: Python 3.12 + `torch` CPU (2.8, as TendVox) + `transformers` + `safetensors` + `numpy` | The emissions worker (R3) | Owner-installed; BSD-3 / Apache-2.0 / Apache-2.0 / BSD-3 (guess for exact versions) |
 | Optional models, not shipped: `facebook/wav2vec2-base-960h` (English), `jonatasgrosman/wav2vec2-large-xlsr-53-spanish` (Spanish) | Emissions (R3) | Apache-2.0 per model cards (TendVox `docs/alignment-worker.md`); revision and file hashes pinned in `runtimes/align/models/*.json` |
 | Test-only, opt-in: epubcheck (Java) | Validate the overlay export (R6) | BSD-3 (guess); never in `make check` |

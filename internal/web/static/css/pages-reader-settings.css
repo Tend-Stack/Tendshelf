@@ -1,0 +1,44 @@
+/* Reading settings (M5 R4 P4): what the choices do to the reader, and the sheet that holds them.
+   reader-settings.js swaps these classes on every .ts-reader (the page and the sheet's preview) at once. */
+
+/* Text size and line spacing. They sit in the pages layer, so they beat the large-text default. */
+.ts-reader--size-18 { --read-size: 1.125rem; }
+.ts-reader--size-20 { --read-size: 1.25rem; }
+.ts-reader--size-22 { --read-size: 1.375rem; }
+.ts-reader--size-26 { --read-size: 1.625rem; }
+.ts-reader--leading-compact { --read-leading: var(--leading-compact); }
+.ts-reader--leading-normal { --read-leading: var(--leading-normal); }
+.ts-reader--leading-airy { --read-leading: var(--leading-airy); }
+
+/* OpenDyslexic: the font file is fetched only when this class is on a page (the browser loads a face when it is used). */
+@font-face {
+  font-family: "OpenDyslexic"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/static/fonts/OpenDyslexic-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "OpenDyslexic"; font-style: normal; font-weight: 700; font-display: swap;
+  src: url("/static/fonts/OpenDyslexic-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "OpenDyslexic"; font-style: italic; font-weight: 400; font-display: swap;
+  src: url("/static/fonts/OpenDyslexic-Italic.woff2") format("woff2");
+}
+.ts-reader--dyslexic .ts-reader__text { font-family: "OpenDyslexic", var(--font-sans); }
+
+/* The Aa button in the top bar. */
+.ts-aa { font: 600 1.0625rem/1 var(--font-serif); }
+
+/* The sheet: native radios and switches in the house look. */
+.ts-readset { padding-bottom: var(--space-16); }
+fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
+.ts-readset legend { padding: 0; margin-bottom: var(--space-8); }
+.ts-readset .ts-seg { display: flex; }
+.ts-readset .ts-seg__item { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; }
+.ts-readset .ts-sr:checked + .ts-seg__item { background: var(--raised); color: var(--ink); font-weight: 600; }
+.ts-readset .ts-sr:checked + .ts-theme { border: 2px solid var(--accent); background: var(--accent-soft); font-weight: 600; }
+.ts-readset .ts-sr:focus-visible + .ts-seg__item, .ts-readset .ts-sr:focus-visible + .ts-theme { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+.ts-readset .ts-theme { min-height: var(--size-tap); cursor: pointer; }
+.ts-readset .ts-theme__swatch { background: var(--ground); color: var(--ink); }
+.ts-readset input.ts-switch { appearance: none; margin: 0; }
+.ts-readset input.ts-switch:checked { background: var(--accent-fill); border-color: var(--accent); }
+.ts-readset input.ts-switch:checked::after { transform: translateX(1.25rem); background: var(--on-accent); }

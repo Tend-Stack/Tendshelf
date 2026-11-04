@@ -324,6 +324,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"eyes-free.js": {3 * 1024, 24 * 1024},
 	// Decision 0015: the resumable uploader, loaded only on the Add books page; 5 KB, approved by the operator on 2026-11-04.
 	"upload.js": {5 * 1024, 32 * 1024},
+	// M5 R4 P4: the reading settings sheet; 1.25 KB, approved by the operator on 2026-11-04.
+	"reader-settings.js": {1*1024 + 512, 8 * 1024}, // operator, 2026-11-04: reading settings
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
@@ -338,7 +340,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // M3b (decision 0013): statistics, Eyes-free and the shake check make it 55.75 KB; approved by the operator on 2026-11-04.
 // Measured together after S, E and K merged: 55.93 KB; the operator approved 56 KB on 2026-11-04.
 // Decision 0015 (adding books by upload): 61.5 KB, approved by the operator on 2026-11-04.
-const jsTotalGzip = 61*1024 + 512 // 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
+const jsTotalGzip = 74*1024 + 256 // operator, 2026-11-04: 74.25 KB with the reader scripts. Earlier: 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

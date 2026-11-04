@@ -192,8 +192,9 @@ func TestFontBudget(t *testing.T) {
 		a, _ := s.Asset(n)
 		preload += len(a.Body)
 	}
-	if total > 1_300_000 || preload > 400_000 {
-		t.Fatalf("fonts %d B (max 1.3 MB), preloaded %d B (max 400 KB)", total, preload)
+	// OpenDyslexic (three files, 348 KB, loaded only when chosen) raised the total cap from 1.3 to 1.6 MB; operator approved the font on 2026-11-04.
+	if total > 1_600_000 || preload > 400_000 {
+		t.Fatalf("fonts %d B (max 1.6 MB), preloaded %d B (max 400 KB)", total, preload)
 	}
 }
 
