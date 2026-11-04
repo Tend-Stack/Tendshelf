@@ -107,7 +107,7 @@ func TestCSSBudget(t *testing.T) {
 		"css/utilities.css": {3*1024 + 256, 24 * 1024},
 		// M3c B3: the phone action bar wraps at large text.
 		"css/pages-book.css": {3*1024 + 256, 24 * 1024},
-		"css/motion.css":    {2 * 1024, 24 * 1024},
+		"css/motion.css":     {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
 		"css/player.css": {4 * 1024, 24 * 1024},
 		// The full player's fit below 1280 px (phone check, 2026-11-02): split from player.css to keep it at 4 KB.
