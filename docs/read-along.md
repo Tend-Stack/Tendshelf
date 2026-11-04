@@ -160,7 +160,7 @@ automatically up to 2 times before the job is held.
 3.12, PyTorch CPU, transformers, safetensors, numpy; GPU optional with a CUDA/ROCm torch build and
 `--device`). Launched by `internal/align/runtime` with a fixed argument list (`-I -B -u <script> --serve
 --model-dir <models>/<lang> --language <lang> --threads N --device cpu`), `--threads` (default
-min(4, CPUs/2)), lowered priority (nice 10), `Pdeathsig` on Linux, a rebuilt environment (`LC_ALL`, the
+min(8, CPUs/2)), lowered priority (nice 10), `Pdeathsig` on Linux, a rebuilt environment (`LC_ALL`, the
 nonce, thread counts, offline switches, and `HOME`, `TMPDIR`, `HF_HOME` under the data folder; nothing else).
 The script is embedded in the binary and written to `<data>/runtimes/align/worker/worker-<sha12>.py`.
 

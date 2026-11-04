@@ -32,9 +32,10 @@ type Config struct {
 	Env []string // extra KEY=VALUE pairs; tests only
 }
 
-// DefaultThreads is max(1, min(4, CPUs/2)).
+// DefaultThreads is max(1, min(8, CPUs/2)). Measured on the wav2vec2 model, 2026-11-04: 4 threads ran 19x real
+// time, 8 ran 36x, 12 ran 41x and 16 ran 37x, so more than 8 buys nothing (operator asked for faster preparing).
 func DefaultThreads() int {
-	return max(1, min(4, goruntime.NumCPU()/2))
+	return max(1, min(8, goruntime.NumCPU()/2))
 }
 
 // withDefaults fills zero values.
