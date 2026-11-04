@@ -23,7 +23,7 @@ admin inbox until it is paired.
    ordered audio quick hashes. Changing any of them makes a new alignment; old ones stay readable
    until replaced.
 6. Models are optional runtime components the owner installs explicitly; none ships in the binary or
-   the repository. The server stays pure Go; the model runs in a separate, owned, loopback-only process.
+   the repository. The server stays pure Go; the model runs in a separate, owned process that has no port and speaks only over its own pipes.
 7. Reading an ebook needs its own permission (`read_text`), separate from listening. Highlights and
    notes are private to the user who made them.
 8. The reader is server-rendered (templ + HTMX); the only new script is a small ES module that maps
@@ -143,21 +143,33 @@ music or silence. Reconsider only if the R3 accuracy target fails on real narrat
 
 **Reuse from TendVox** (same author; NOTICES row when ported): the wav2vec2 models and their
 Apache-2.0 licences, the 0.30 timed-word threshold and "no interpolation" policy, the owned-server
-lifetime of `docs/alignment-worker.md` "Owned word timing server" (first-demand launch, loopback
-ephemeral port, 32-byte token in the environment only, ready line plus authenticated `/healthz` whose
-identity must match, one request at a time, stop after 5 idle minutes and on exit, `Pdeathsig`), and
+lifetime of `docs/alignment-worker.md` "Owned word timing server" (first-demand launch, 32-byte nonce in
+the environment only, ready line whose identity must match, one request at a time, stop after 5 idle
+minutes and on exit, `Pdeathsig`; pipes instead of its loopback port, decision 0017), and
 its definite/uncertain failure split. Different: the worker returns emissions instead of word spans
 (protocol `tendshelf-emissions-v1`), and a local re-run is free, so a failed window is retried
 automatically up to 2 times before the job is held.
 
 **Worker** (`runtimes/align/worker.py`, derived from TendVox `runtimes/alignment/worker.py`; Python
 3.12, PyTorch CPU, transformers, safetensors, numpy; GPU optional with a CUDA/ROCm torch build and
-`--device`). Launched by `internal/align/runtime` with a fixed argument list, `--threads` (default
-min(4, CPUs/2)), lowered priority, `Pdeathsig` on Linux. Endpoints: `GET /healthz` → `{protocol,
-model, modelSha256, vocab, frameMs, language, revision}`; `POST /v1/emissions` with headers
-`X-Request-Id`, `X-Audio-Sha256`, body raw PCM (`audio/L16;rate=16000;channels=1`, at most 34 s) →
-`{requestId, audioSha256, frames, vocabSize, frameMs, logprobs: base64 float16}`. Go checks every
-identity and hash and refuses a response that does not match.
+`--device`). Launched by `internal/align/runtime` with a fixed argument list (`-I -B -u <script> --serve
+--model-dir <models>/<lang> --language <lang> --threads N --device cpu`), `--threads` (default
+min(4, CPUs/2)), lowered priority (nice 10), `Pdeathsig` on Linux, a rebuilt environment (`LC_ALL`, the
+nonce, thread counts, offline switches, and `HOME`, `TMPDIR`, `HF_HOME` under the data folder; nothing else).
+The script is embedded in the binary and written to `<data>/runtimes/align/worker/worker-<sha12>.py`.
+
+**Protocol `tendshelf-emissions-v1`** over the worker's stdin and stdout (no port; decision 0017). The worker
+prints a ready line `{"status":"ready","nonce","identity":{protocol, model, revision, modelSha256, language,
+delimiter, vocab, blank, frameMs, sampleRate, versions}}`; Go requires the nonce it generated for this launch,
+the protocol and a `modelSha256` equal to the checked component's. A request is one JSON header line
+`{"op":"emissions","id","audioSha256","samples","fileQuickHash","offsetMs"}` followed by `samples*2` bytes of
+s16le mono 16 kHz audio (at most 544 000 samples, 34 s). The response is a header line `{"id","nonce",
+"audioSha256","frames","vocabSize","frameMs","bytes"}` followed by `bytes` of little-endian float16
+log-probabilities (frame-major), or `{"id","nonce","error","detail"}`. Go checks id, nonce, audio hash,
+vocabulary size, 20 ms frames, a frame count within 2 of `floor((samples-400)/320)+1`, a payload of exactly
+frames x vocab x 2 bytes (at most 4 MiB) and that every value is finite and at most 1e-3. Any failed check
+kills the worker (`ErrProtocol`, definite); a vanished process is `ErrWorkerCrashed` (uncertain); a missed
+deadline is `ErrTimeout`. The next request starts a new worker. The worker ends when its stdin closes.
 
 **Install** (R3, admin page `/admin/runtimes`): Tendshelf does not download runtimes. The page shows the
 pinned requirements, the official model page and revision, sizes and the licence, plus a **Check** button
