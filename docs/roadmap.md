@@ -565,6 +565,18 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
     (guarded writes, supersede, chapter upsert and lookup by key); `jobs.Error.Hold`. Checks: `TestMigration0018*`,
     `TestReadDoc*`, `TestWordSpans`, `TestNormalize*`, `TestAlignStore*`, `TestJobsHold*`. Limits: no years with
     context, no spelled-out Spanish ordinals, no other languages' numbers. Next: P2, P4, then P3a.
+  - *R3 P3a (`internal/align` core; done)*: emissions cache (`.em`, CRC, atomic write, LRU `Prune`), `Vocab`
+    and `BuildText`, `Track`/`Source`, greedy coarse transcript, multi-region map (5-gram hits, repeated
+    longest increasing chain per block, up to 4 regions, Needleman-Wunsch with a cell bound and a 3-gram
+    re-anchor), CTC Viterbi with star states for wildcards, `Align` (segments, confidence, gap reasons, chapter
+    keys and `Reuse`, labels, state) and the `tendshelf-timing-v1` writer and reader; `internal/align/aligntest`
+    builds documents, scripts and emissions. Checks: `TestAlignCore*`, `TestAlignAccuracy*` (6 chapters x 400
+    words, noise 0.8): clean 100 %, intro 99.6 %, front matter 100 %, swapped 99.1 %, abridged 100 %, other
+    edition 96.5 %, unsupported 100 %, music 99.1 % of narrated sentences within ±250 ms; zero invented or
+    out-of-order times in every case. Limits: synthetic emissions only (peaky, no accents, no real-model
+    errors); a sentence whose first word is not timed starts at its first timed word; the plan's 20 % abridged
+    case times 80 % of the text, above the 70 % bound, so the abridged label is tested with 40 % removed.
+    Next: P3b (job and service), then P5.
 - **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line and Eyes-free;
   `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reading settings (Fraunces,
   Fira Sans, OpenDyslexic); migration `highlights` (`highlights`, `bookmarks.edition_id/sid`,
