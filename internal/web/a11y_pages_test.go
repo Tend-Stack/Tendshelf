@@ -43,12 +43,14 @@ type a11yState struct {
 
 // a11ySkip lists the registered GETs that are not full pages: a redirect, a file or JSON.
 var a11ySkip = map[string]string{
-	"/uploads/{id}":                   "JSON (the upload status the uploader polls), not a page",
-	"/progress/{bookID}":              "JSON, not a page",
-	"/welcome":                        "redirects (303) to Home",
-	"/books/{id}/read":                "the reader page, audited by the reader packages",
-	"/s/{token}/stream/{audioFileID}": "audio stream, not a page",
-	"/s/{token}/peaks/{audioFileID}":  "JSON waveform, not a page",
+	"/uploads/{id}":                     "JSON (the upload status the uploader polls), not a page",
+	"/progress/{bookID}":                "JSON, not a page",
+	"/reading/{bookID}":                 "JSON (the reading place), not a page",
+	"/books/{id}/read/images/{blockID}": "a picture from the book, not a page",
+	"/welcome":                          "redirects (303) to Home",
+	"/books/{id}/read":                  "the reader page, audited by the reader packages",
+	"/s/{token}/stream/{audioFileID}":   "audio stream, not a page",
+	"/s/{token}/peaks/{audioFileID}":    "JSON waveform, not a page",
 }
 
 func a11yStatic(p string) func(*a11yEnv) string { return func(*a11yEnv) string { return p } }

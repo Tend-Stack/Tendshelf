@@ -13,17 +13,31 @@ var ReaderStyles = []string{"css/pages-reader.css"}
 type ReaderBlockView struct {
 	Kind, ID, HTML string
 	Pg             int
+	C              int // characters (UTF-16 units) before the block in its chapter; the paginator counts with it
 }
 
 // ReaderChapterView is one chapter of the text. NextFrag and NextHref are empty after the last chapter.
 type ReaderChapterView struct {
-	Idx, Pg          int
-	Overline, Page   string
-	Title            string
-	Blocks           []ReaderBlockView
-	NextFrag         string
-	NextHref         string
-	NextLabel        string
+	Idx, Pg        int
+	Part, Parts    int // this part of the chapter and how many there are
+	Before         int // characters of the book before this part
+	Overline, Page string
+	Title          string
+	Head           bool // the part carries the chapter's heading (the first part only)
+	Blocks         []ReaderBlockView
+	// PrevFrag and NextFrag are fragment addresses the client fetches (data-prev-href, data-next-href);
+	// PrevHref and NextHref are the plain page links for no JavaScript. Empty at the ends of the book.
+	PrevFrag, PrevHref, PrevLabel string
+	NextFrag, NextHref, NextLabel string
+}
+
+// ReaderRoot is what the client reads from the reader root: the place to open at, the reading speed,
+// the sizes it needs for page numbers and time left, and where to save.
+type ReaderRoot struct {
+	At, Off, Flow, Save, Lang        string
+	Cpm, TotalChars, ChapterChars    int
+	Before                           int
+	Learned                          bool
 }
 
 // ReaderMarkItem is one row of the "Highlights and notes" sheet.
@@ -63,6 +77,9 @@ type ReaderContentsItem struct {
 type ReaderView struct {
 	Title, BookID, EditionID    string
 	CloseHref, CloseLabel       string
+	Root                        ReaderRoot
+	Speaker                     *components.PlayButtonView // the audiobook; nil without ListenBook or audio
+	MarksLabel, MarksHref       string                     // the Highlights and notes sheet
 	Chapter                     ReaderChapterView
 	MarksModule                 string // address of reader-marks.js
 	Footer                      ReaderFooter
@@ -75,6 +92,7 @@ type ReaderView struct {
 // ReaderFooter is the line under the text: the page number and the link to the contents.
 type ReaderFooter struct {
 	PageLine, ContentsLabel, ContentsHref string
+	Ruler                                 components.RulerView // place in the book, ticks at chapter starts
 }
 
 // ReaderMarksBar is the selection toolbar and the hidden form it posts.
@@ -90,6 +108,16 @@ templ Reader(v ReaderView) {
 		<header class="ts-readerbar">
 			<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } aria-label={ v.CloseLabel }>
 				@components.Icon("close", false)
+			</a>
+			<span class="ts-readerbar__title">{ v.Title }</span>
+			if v.Speaker != nil {
+				@components.PlayButton(*v.Speaker)
+			}
+			<a class="ts-iconbtn" href={ templ.SafeURL(v.Footer.ContentsHref) } aria-label={ v.Footer.ContentsLabel }>
+				@components.Icon("chapters", false)
+			</a>
+			<a class="ts-iconbtn" href={ templ.SafeURL(v.MarksHref) } aria-label={ v.MarksLabel }>
+				@components.Icon("bookmark", false)
 			</a>
 			<a
 				class="ts-iconbtn ts-aa"
@@ -108,6 +136,18 @@ templ Reader(v ReaderView) {
 			class={ "ts-reader " + v.Look.Class }
 			data-book={ v.BookID }
 			data-edition={ v.EditionID }
+			data-at={ v.Root.At }
+			data-off={ v.Root.Off }
+			data-cpm={ strconv.Itoa(v.Root.Cpm) }
+			data-learned={ strconv.FormatBool(v.Root.Learned) }
+			data-total-chars={ strconv.Itoa(v.Root.TotalChars) }
+			data-before={ strconv.Itoa(v.Root.Before) }
+			data-chapter-chars={ strconv.Itoa(v.Root.ChapterChars) }
+			data-save={ v.Root.Save }
+			data-flow={ v.Root.Flow }
+			if v.Root.Lang != "" {
+				lang={ v.Root.Lang }
+			}
 		>
 			<div class="ts-reader__col" id="reader-text">
 				@ReaderChapter(v.Chapter)
@@ -117,11 +157,10 @@ templ Reader(v ReaderView) {
 			<span hidden data-ts-module={ v.SettingsModule }></span>
 		}
 		<footer class="ts-readdock" id="reader-dock">
+			@components.Ruler(v.Footer.Ruler)
 			<div class="ts-readdock__row">
-				<span>{ v.Footer.PageLine }</span>
-				<a class="ts-iconbtn ts-iconbtn--md" href={ templ.SafeURL(v.Footer.ContentsHref) } aria-label={ v.Footer.ContentsLabel }>
-					@components.Icon("chapters", false)
-				</a>
+				<span id="reader-page">{ v.Footer.PageLine }</span>
+				<span id="reader-left"></span>
 			</div>
 		</footer>
 		<div id="reader-marks" class="ts-selmenu" role="toolbar" aria-label={ v.Marks.Label } if v.MarksModule != "" { data-ts-module={ v.MarksModule } } hidden>
@@ -153,11 +192,24 @@ templ Reader(v ReaderView) {
 // ReaderChapter is one chapter: the meta line, the title, the blocks and the sentinel that asks for the next one.
 templ ReaderChapter(c ReaderChapterView) {
 	<section
-		id={ "reader-ch-" + strconv.Itoa(c.Idx) }
+		id={ readerSectionID(c) }
 		data-ch={ strconv.Itoa(c.Idx) }
+		data-part={ strconv.Itoa(c.Part) }
+		data-before={ strconv.Itoa(c.Before) }
+		if c.PrevFrag != "" {
+			data-prev-href={ c.PrevFrag }
+		}
+		if c.NextFrag != "" {
+			data-next-href={ c.NextFrag }
+		}
 	>
-		<div class="ts-reader__meta"><span class="ts-overline ts-overline--accent">{ c.Overline }</span><span>{ c.Page }</span></div>
-		<h2 class="ts-reader__chapter">{ c.Title }</h2>
+		if c.PrevHref != "" {
+			<a class="ts-btn ts-btn--quiet ts-reader__prev" href={ templ.SafeURL(c.PrevHref) }>{ c.PrevLabel }</a>
+		}
+		if c.Head {
+			<div class="ts-reader__meta"><span class="ts-overline ts-overline--accent">{ c.Overline }</span><span>{ c.Page }</span></div>
+			<h2 class="ts-reader__chapter">{ c.Title }</h2>
+		}
 		<div class="ts-reader__text">
 			for _, b := range c.Blocks {
 				@ReaderBlock(b, false)
@@ -171,25 +223,33 @@ templ ReaderChapter(c ReaderChapterView) {
 	</section>
 }
 
+// readerSectionID names a chapter part's section: the first part keeps the chapter's id.
+func readerSectionID(c ReaderChapterView) string {
+	if c.Part <= 1 {
+		return "reader-ch-" + strconv.Itoa(c.Idx)
+	}
+	return "reader-ch-" + strconv.Itoa(c.Idx) + "-" + strconv.Itoa(c.Part)
+}
+
 // ReaderBlock is one block; with oob it swaps itself in place (a highlight changed it).
 templ ReaderBlock(b ReaderBlockView, oob bool) {
 	switch b.Kind {
 		case "h":
-			<h3 id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</h3>
+			<h3 id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</h3>
 		case "quote":
-			<blockquote id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }><p>@templ.Raw(b.HTML)</p></blockquote>
+			<blockquote id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }><p>@templ.Raw(b.HTML)</p></blockquote>
 		case "li":
-			<p id={ b.ID } class="ts-reader__li" data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+			<p id={ b.ID } class="ts-reader__li" data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
 		case "note":
-			<p id={ b.ID } class="ts-reader__note" data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+			<p id={ b.ID } class="ts-reader__note" data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
 		case "img":
-			<p id={ b.ID } class="ts-reader__img" data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+			<p id={ b.ID } class="ts-reader__img" data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
 		case "pre":
-			<pre id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</pre>
+			<pre id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</pre>
 		case "hr":
-			<hr id={ b.ID } if oob { hx-swap-oob="outerHTML" }/>
+			<hr id={ b.ID } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }/>
 		default:
-			<p id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+			<p id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
 	}
 }
 

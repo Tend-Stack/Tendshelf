@@ -12,6 +12,7 @@ type seg struct {
 	Text    string
 	Style   string
 	ByteOff int
+	Link    int // 1-based index into the block's link table; 0 for none
 }
 
 // nrune is a normalised rune with the style and source offset of the segment it came from.
@@ -20,6 +21,7 @@ type nrune struct {
 	style string
 	off   int  // source byte offset of the segment start; -1 if none
 	first bool // first rune kept from its segment
+	link  int
 }
 
 func isDropped(r rune) bool { return r == 0x00AD || r == 0x200B || r == 0xFEFF }
@@ -45,7 +47,7 @@ func normalizeSegs(segs []seg, keepSpace bool) []nrune {
 					continue
 				}
 			}
-			out = append(out, nrune{r: r, style: s.Style, off: s.ByteOff, first: first})
+			out = append(out, nrune{r: r, style: s.Style, off: s.ByteOff, first: first, link: s.Link})
 			first = false
 		}
 	}

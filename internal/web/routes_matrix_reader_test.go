@@ -76,7 +76,18 @@ func readerSweepRows() []sweepRow {
 	del := sweepRow{Pattern: "DELETE /hx/highlights/{id}", Method: http.MethodDelete, Want: staff, HX: true,
 		Path: func(e *sweepEnv, role int) string { return "/hx/highlights/" + e.rdr.hl[min(role, 1)] }}
 	create.HX = true
-	return []sweepRow{page, chapter, create, patch, del}
+	// RD1: the picture route (the seeded block is text, so everyone gets 404; the rights and the picture
+	// itself are in TestReaderServeImage), and the reading place API on the /progress pattern.
+	image := sweepGet("GET /books/{id}/read/images/{blockID}", func(e *sweepEnv, _ int) string {
+		return "/books/" + e.book.ID + "/read/images/c1.p1" + q(e)
+	}, sweepSame(http.StatusNotFound))
+	readingGet := sweepGet("GET /reading/{bookID}", func(e *sweepEnv, _ int) string { return "/reading/" + e.book.ID }, staff)
+	readingPost := sweepPost("POST /reading/{bookID}", func(e *sweepEnv, _ int) string { return "/reading/" + e.book.ID },
+		func(e *sweepEnv, _ int) url.Values {
+			return url.Values{"edition_id": {e.rdr.ed}, "chapter_idx": {"1"}, "sid": {"c1.p1.s0"}, "off": {"0"}, "quote": {"Alpha"},
+				"char_pos": {"3"}, "client_updated_at": {"1800000000000"}, "device_id": {"sweepdevice03"}}
+		}, staff, "")
+	return []sweepRow{page, chapter, create, patch, del, image, readingGet, readingPost}
 }
 
 // TestRouteMatrixReaderGranted: a member and a guest with can_read reach the reader pages; with a grant that

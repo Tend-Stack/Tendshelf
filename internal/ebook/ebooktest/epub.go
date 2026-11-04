@@ -30,6 +30,8 @@ type EPUBOptions struct {
 	EncryptAlg      string // adds META-INF/encryption.xml with this algorithm for a chapter file
 	FontObfuscation bool   // encryption.xml with the IDPF font algorithm only
 	Extra           []Entry
+	MetaXML         string // extra <metadata> children (description, publisher, date, series, cover)
+	ManifestXML     string // extra <manifest> children (images)
 }
 
 func esc(s string) string { return html.EscapeString(s) }
@@ -80,6 +82,9 @@ func EPUB(t testing.TB, o EPUBOptions) []byte {
 		meta.WriteString(`<dc:identifier>urn:isbn:` + o.ISBN + `</dc:identifier>`)
 	}
 	meta.WriteString(`<dc:identifier id="uid">urn:uuid:00000000-0000-0000-0000-000000000001</dc:identifier>`)
+
+	meta.WriteString(o.MetaXML)
+	manifest.WriteString(o.ManifestXML)
 
 	var nav strings.Builder
 	if o.Version == 3 {

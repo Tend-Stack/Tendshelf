@@ -119,6 +119,16 @@ WHERE ebook_file_id = ? AND recipe = ? AND source_sha256 = (SELECT sha256 FROM e
 	return e, err == nil, err
 }
 
+// NewestEdition returns the most recently made edition of a file, whatever its recipe or source bytes.
+func (s *Store) NewestEdition(ctx context.Context, fileID string) (Edition, bool, error) {
+	e, err := scanEdition(s.db.Reader().QueryRowContext(ctx, `SELECT `+editionCols+` FROM editions e
+WHERE ebook_file_id = ? ORDER BY created_at DESC, id DESC LIMIT 1`, fileID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return Edition{}, false, nil
+	}
+	return e, err == nil, err
+}
+
 // Edition returns one edition by id; ok is false when it does not exist.
 func (s *Store) Edition(ctx context.Context, id string) (Edition, bool, error) {
 	e, err := scanEdition(s.db.Reader().QueryRowContext(ctx, `SELECT `+editionCols+` FROM editions WHERE id = ?`, id))

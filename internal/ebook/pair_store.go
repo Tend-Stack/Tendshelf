@@ -199,7 +199,7 @@ func (s *Store) Unpaired(ctx context.Context, limit int) (rows []UnpairedFile, t
 // BookDefault returns the file marked as the book's edition.
 func (s *Store) BookDefault(ctx context.Context, bookID string) (File, bool, error) {
 	f, err := scanFile(s.db.Reader().QueryRowContext(ctx, `SELECT `+fileCols+` FROM ebook_files
-WHERE book_id = ? AND book_default = 1 AND state = 'ready'`, bookID))
+WHERE book_id = ? AND book_default = 1 AND `+readableState, bookID))
 	if err == sql.ErrNoRows {
 		return File{}, false, nil
 	}
@@ -231,7 +231,15 @@ func (s *Store) EditionFor(ctx context.Context, userID, bookID string) (File, Ed
 			if err != nil {
 				return File{}, Edition{}, false, err
 			}
-			if ok && c.BookID == bookID && c.State == "ready" {
+			if ok && c.BookID == bookID && c.State == "pending" {
+				// Waiting for a new reading: still readable while an older edition exists.
+				if _, has, err := s.NewestEdition(ctx, c.ID); err != nil {
+					return File{}, Edition{}, false, err
+				} else if !has {
+					ok = false
+				}
+			}
+			if ok && c.BookID == bookID && (c.State == "ready" || c.State == "pending") {
 				f, found = c, true
 			}
 		}
@@ -245,7 +253,7 @@ func (s *Store) EditionFor(ctx context.Context, userID, bookID string) (File, Ed
 	}
 	if !found {
 		c, err := scanFile(s.db.Reader().QueryRowContext(ctx, `SELECT `+fileCols+` FROM ebook_files
-WHERE book_id = ? AND state = 'ready' ORDER BY created_at, id LIMIT 1`, bookID))
+WHERE book_id = ? AND `+readableState+` ORDER BY created_at, id LIMIT 1`, bookID))
 		if err == sql.ErrNoRows {
 			return File{}, Edition{}, false, nil
 		}
@@ -254,12 +262,25 @@ WHERE book_id = ? AND state = 'ready' ORDER BY created_at, id LIMIT 1`, bookID))
 		}
 		f, found = c, true
 	}
-	ed, _, err := s.CurrentEdition(ctx, f.ID)
+	ed, ok, err := s.CurrentEdition(ctx, f.ID)
 	if err != nil {
 		return File{}, Edition{}, false, err
 	}
+	if !ok {
+		// A file being read again keeps serving its newest edition until the new one lands.
+		if ed, ok, err = s.NewestEdition(ctx, f.ID); err != nil {
+			return File{}, Edition{}, false, err
+		}
+		if !ok && f.State != "ready" {
+			return File{}, Edition{}, false, nil // a pending file nobody has read yet
+		}
+	}
 	return f, ed, true, nil
 }
+
+// readableState selects the files a person can read: ready ones, and ones waiting for a new reading
+// that still have an older edition to serve.
+const readableState = `(state = 'ready' OR (state = 'pending' AND EXISTS (SELECT 1 FROM editions e WHERE e.ebook_file_id = ebook_files.id)))`
 
 // Candidates rates the books one unpaired file might belong to, among the books f lets the caller see.
 func (s *Service) Candidates(ctx context.Context, fileID string, f share.Filter, limit int) ([]Candidate, error) {

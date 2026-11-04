@@ -289,6 +289,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerStream(mux)
 	s.registerPeaks(mux)
 	s.registerProgress(mux)
+	s.registerReading(mux)
 	s.registerPlayer(mux)
 	s.registerAPI(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

@@ -595,6 +595,16 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
 - **B3 Add books and `/admin/ebooks`**: ebooks by upload (0015 amended), PDF scanning, suggestions and "Could not be opened".
 - **RD1 Reader server**: document recipe v2 (links, images, metadata), chapter parts, images route, `/reading/{bookID}`,
   the speaker icon. Exit: a hostile EPUB puts no script, handler or style byte in any answer.
+  **Status (built 2026-11-04)**: recipe `tendshelf-ebook-v2` (links with resolved targets, image sizes, description,
+  publisher, series, year, cover part; spans and links no longer split a paragraph), `meta_json` written, stale files read
+  again while the old edition keeps serving, `ebook.Reanchor` and the re-home of highlights, bookmarks and reading positions,
+  chapter parts, `data-c`, the start-place ladder, `GET /books/{id}/read/images/{blockID}`, `GET` and `POST /reading/{bookID}`,
+  the speaker in the bar (the set's `output` icon through `PlayButtonView.Icon`), Contents and Marks in the bar. Checks:
+  `TestDocV2*`, `TestReaderServe*`, `TestReaderSpeaker`, route matrix rows, `make check`, `make build`, full `make a11y` (the
+  reader page stays in `a11ySkip` until RD4). Limits: no client yet (RD2 turns pages, saves and reads `data-flow`, which is
+  `auto` until the Flow setting exists); the footnote popup address `/hx/books/{id}/read/note/{blockID}` is emitted in
+  `data-note-href` and answered in RD3; `revealed` stays in the scroll sentinel's trigger until `reader.js` fires
+  `ts-reader-next`. Next: RD2.
 - **RD2 Paginator**: `reader.js`, `reader-pages.js`, pages and scroll, tap zones, keys, swipe, time left from the person's
   speed, settings. Exit: the place survives a change of device size, font size and flow.
 - **RD3 Marks and more**: colours, notes, footnote popups, search, export, plain errors.

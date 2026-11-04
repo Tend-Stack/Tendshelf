@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/a-h/templ"
 
@@ -30,6 +29,7 @@ import (
 func (s *server) registerReader(mux *http.ServeMux) {
 	mux.HandleFunc("GET /books/{id}/read", s.getReader)
 	mux.HandleFunc("GET /hx/books/{id}/read/chapters/{idx}", s.getReaderChapter)
+	mux.HandleFunc("GET /books/{id}/read/images/{blockID}", s.getReaderImage)
 	mux.HandleFunc("POST /hx/books/{id}/highlights", s.postReaderHighlight)
 	mux.HandleFunc("PATCH /hx/highlights/{id}", s.patchReaderHighlight)
 	mux.HandleFunc("DELETE /hx/highlights/{id}", s.deleteReaderHighlight)
@@ -135,10 +135,14 @@ func (s *server) readerLoad(ctx context.Context, u users.User, book library.Book
 				return rc, false, err
 			}
 		}
-		if !ok || f.BookID != book.ID || f.State != "ready" {
+		if !ok || f.BookID != book.ID || (f.State != "ready" && f.State != "pending") {
 			return rc, false, nil
 		}
+		// The edition named must be the file's current one, or, while the file is read again, its newest.
 		cur, ok, err := st.CurrentEdition(ctx, f.ID)
+		if err == nil && !ok {
+			cur, ok, err = st.NewestEdition(ctx, f.ID)
+		}
 		if err != nil || !ok || cur.ID != ed.ID {
 			return rc, false, err
 		}
@@ -159,160 +163,6 @@ func (s *server) readerLoad(ctx context.Context, u users.User, book library.Book
 	}
 	rc.doc = doc
 	return rc, true, nil
-}
-
-// rdrChap is one chapter ready to draw.
-type rdrChap struct {
-	view   pages.ReaderChapterView
-	blocks map[string]pages.ReaderBlockView
-}
-
-// readerChapter builds chapter idx (1-based) for the person: its blocks with their sentences, highlights and flags.
-func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, idx int) (rdrChap, error) {
-	ch := rc.doc.Chapters[idx-1]
-	out := rdrChap{blocks: map[string]pages.ReaderBlockView{}}
-	hls, err := s.progress.ChapterHighlights(ctx, u.ID, rc.ed.ID, idx)
-	if err != nil {
-		return out, err
-	}
-	list, err := s.progress.Bookmarks(ctx, u.ID, rc.book.ID, false)
-	if err != nil {
-		return out, err
-	}
-	bms := map[string]bool{}
-	for _, b := range list {
-		if c, _, _, ok := ebook.ParseSID(b.SID); ok && c == idx && b.EditionID == rc.ed.ID {
-			bms[b.SID] = true
-		}
-	}
-	// Characters before this chapter, for the page numbers.
-	before, total := 0, 0
-	for _, c := range rc.doc.Chapters {
-		for _, b := range c.Blocks {
-			n := utf8.RuneCountInString(b.Text)
-			if c.Idx < idx {
-				before += n
-			}
-			total += n
-		}
-	}
-	v := pages.ReaderChapterView{Idx: idx, Title: ch.Title}
-	cum, dropDone := before, false
-	for _, b := range ch.Blocks {
-		pg := 0
-		if pc := rc.doc.PageCount; pc > 0 && total > 0 {
-			pg = min(pc, cum*pc/total+1)
-		}
-		cum += utf8.RuneCountInString(b.Text)
-		if b.Kind == ebook.KindImg && b.Text == "" {
-			continue
-		}
-		bv := pages.ReaderBlockView{Kind: b.Kind, ID: "b-" + b.ID, Pg: pg}
-		if b.Kind != ebook.KindHR {
-			opts := rdrBlockOpts{Hls: hls, Bookmarks: bms}
-			if b.Kind == ebook.KindP && !dropDone {
-				opts.DropCap, dropDone = true, true
-			}
-			bv.HTML = rdrInner(b, opts)
-		}
-		if v.Pg == 0 {
-			v.Pg = pg
-		}
-		v.Blocks = append(v.Blocks, bv)
-		out.blocks[b.ID] = bv
-	}
-	if ch.Front {
-		v.Overline = readerFrontOnly
-	} else {
-		n := 0
-		for _, c := range rc.doc.Chapters[:idx] {
-			if !c.Front {
-				n++
-			}
-		}
-		v.Overline = fmt.Sprintf(readerChapter, n)
-	}
-	if rc.doc.PageCount > 0 && v.Pg > 0 {
-		v.Page = fmt.Sprintf(readerPageOf, v.Pg, rc.doc.PageCount)
-	}
-	if idx < len(rc.doc.Chapters) {
-		v.NextFrag = fmt.Sprintf("/hx/books/%s/read/chapters/%d?%s", rc.book.ID, idx+1, rc.edq())
-		v.NextHref = rc.href("ch", strconv.Itoa(idx+1))
-		v.NextLabel = readerNextChapter
-	}
-	out.view = v
-	return out, nil
-}
-
-func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
-	rc, ok := s.readerCtx(w, r)
-	if !ok {
-		return
-	}
-	ctx, u, q := r.Context(), currentUser(r), r.URL.Query()
-	n := len(rc.doc.Chapters)
-	ch := 0
-	if q.Has("ch") {
-		c, err := strconv.Atoi(q.Get("ch"))
-		if err != nil || c < 1 || c > n {
-			s.notFound(w, r)
-			return
-		}
-		ch = c
-	}
-	if at := q.Get("at"); at != "" {
-		c, ok := rdrSIDExists(rc.doc, at)
-		if !ok {
-			s.notFound(w, r)
-			return
-		}
-		if ch == 0 {
-			ch = c
-		}
-	}
-	sheet := q.Get("sheet")
-	if sheet != "" && sheet != "contents" && sheet != "marks" && sheet != "reading" {
-		s.notFound(w, r)
-		return
-	}
-	if ch == 0 {
-		ch = 1
-		for i, c := range rc.doc.Chapters {
-			if !c.Front {
-				ch = i + 1
-				break
-			}
-		}
-	}
-	chap, err := s.readerChapter(ctx, u, rc, ch)
-	if err != nil {
-		s.serverError(w, r, "reader chapter", err)
-		return
-	}
-	v, err := s.readerView(r, rc, chap)
-	if err != nil {
-		s.serverError(w, r, "reader view", err)
-		return
-	}
-	var sh templ.Component
-	switch sheet {
-	case "":
-	case "reading":
-		sv, err := s.readingSheet(r, rc, ch)
-		if err != nil {
-			s.serverError(w, r, "reading settings sheet", err)
-			return
-		}
-		sh = pages.ReadingSheet(sv)
-	default:
-		sv, err := s.readerSheet(r, rc, sheet, ch)
-		if err != nil {
-			s.serverError(w, r, "reader sheet", err)
-			return
-		}
-		sh = pages.ReaderSheet(sv)
-	}
-	s.pageSheetStyled(w, r, v.Title, pages.Reader(v), sh)
 }
 
 // pageSheetStyled renders the reader inside the layout with its stylesheet.
@@ -336,7 +186,7 @@ func rdrSIDExists(d *ebook.Doc, sid string) (int, bool) {
 }
 
 // readerView assembles the page around a chapter.
-func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap) (pages.ReaderView, error) {
+func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPlace) (pages.ReaderView, error) {
 	ctx, u := r.Context(), currentUser(r)
 	id := rc.book.ID
 	v := pages.ReaderView{
@@ -351,7 +201,34 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap) (pages.
 	v.Look = readerLook(rs)
 	v.SettingsLabel, v.SettingsHref = readerSettings, rc.href("sheet", "reading")
 	v.SettingsModule = s.assetOr("js/reader-settings.js")
-	v.Footer = pages.ReaderFooter{PageLine: chap.view.Page, ContentsLabel: readerContents, ContentsHref: rc.href("sheet", "contents")}
+	v.Footer = pages.ReaderFooter{PageLine: chap.view.Page, ContentsLabel: readerContents, ContentsHref: rc.href("sheet", "contents"),
+		Ruler: rsRuler(rc.doc, chap)}
+	v.MarksLabel, v.MarksHref = readerMarksTitle, rc.href("sheet", "marks")
+	cpm, learned := s.progress.ReadingSpeed(ctx, u.ID)
+	chChars := 0
+	for _, b := range rc.doc.Chapters[chap.view.Idx-1].Blocks {
+		chChars += rsUnits(b.Text)
+	}
+	v.Root = pages.ReaderRoot{
+		At: pl.At, Off: strconv.Itoa(pl.Off), Cpm: cpm, Learned: learned, TotalChars: chap.total,
+		Before: chap.view.Before, ChapterChars: chChars, Save: "/reading/" + id,
+		Flow: "auto", Lang: rc.doc.Meta.Language,
+	}
+	// The speaker: only with the right to listen and an audiobook to play. It starts at the audiobook's own
+	// saved place (never the reading place) and writes neither position itself.
+	p, err := s.playProgress(ctx, u.ID, rc.book.ID)
+	if err != nil {
+		return v, err
+	}
+	link, err := s.playLinkFor(ctx, u, rc.book, p)
+	if err != nil {
+		return v, err
+	}
+	if link != nil {
+		btn := link.button(readerSpeaker, true)
+		btn.Icon = "output" // the set's speaker with sound waves
+		v.Speaker = btn
+	}
 	hls, err := s.progress.Highlights(ctx, u.ID, rc.book.ID)
 	if err != nil {
 		return v, err
@@ -449,24 +326,6 @@ func (s *server) readerMarkItem(rc readerCtx, h progress.Highlight, csrf string)
 	return it
 }
 
-func (s *server) getReaderChapter(w http.ResponseWriter, r *http.Request) {
-	rc, ok := s.readerCtx(w, r)
-	if !ok {
-		return
-	}
-	idx, err := strconv.Atoi(r.PathValue("idx"))
-	if err != nil || idx < 1 || idx > len(rc.doc.Chapters) {
-		s.notFound(w, r)
-		return
-	}
-	chap, err := s.readerChapter(r.Context(), currentUser(r), rc, idx)
-	if err != nil {
-		s.serverError(w, r, "reader chapter fragment", err)
-		return
-	}
-	s.fragment(w, r, http.StatusOK, pages.ReaderChapter(chap.view))
-}
-
 // readerHx refuses a request that did not come from htmx: the highlight routes have no plain form.
 func (s *server) readerHx(w http.ResponseWriter, r *http.Request) bool {
 	if r.Header.Get("HX-Request") == "true" {
@@ -545,7 +404,7 @@ func (s *server) readerOOB(r *http.Request, rc readerCtx, h progress.Highlight) 
 	ctx, u := r.Context(), currentUser(r)
 	var parts []templ.Component
 	if rc.doc != nil && h.EditionID == rc.ed.ID && h.Chapter >= 1 && h.Chapter <= len(rc.doc.Chapters) {
-		chap, err := s.readerChapter(ctx, u, rc, h.Chapter)
+		chap, err := s.readerChapter(ctx, u, rc, h.Chapter, 0)
 		if err != nil {
 			return nil, err
 		}
