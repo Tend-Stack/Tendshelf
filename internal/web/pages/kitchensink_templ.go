@@ -191,7 +191,7 @@ func KitchenSinkB() templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div class=\"ts-stack\"><h1 class=\"title-1\">Kitchen sink, page B</h1><div class=\"ts-cover ts-cover--200 ts-vt-cover\" aria-label=\"Cover\"></div><p class=\"body\"><a href=\"/dev/kitchen-sink\">Back to the kitchen sink</a></p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div class=\"ts-stack\"><h1 class=\"title-1\">Kitchen sink, page B</h1><div class=\"ts-cover ts-cover--200 ts-vt-cover\" aria-label=\"Cover\"></div><p class=\"body\"><a class=\"ts-hit\" href=\"/dev/kitchen-sink\">Back to the kitchen sink</a></p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -98,3 +98,31 @@ html[data-text-size="large"] .ts-grid--covers { grid-template-columns: repeat(2,
 .ts-cover--152 { inline-size: 9.5rem; block-size: 9.5rem; }
 .ts-cover--200 { inline-size: 12.5rem; block-size: 12.5rem; }
 .ts-cover--fill { inline-size: 100%; block-size: auto; aspect-ratio: 1; }
+
+/* Hit area (M3c B3): a control under 44 px keeps its look and grows its touch area with an invisible
+   pseudo-element. Each axis grows only when the box is shorter than 44 px (the inset is negative then, zero
+   otherwise), and the audit probes it with elementFromPoint. .ts-hit uses ::after; a check box and a switch
+   draw with ::after, so they carry the same rule in ::before. */
+a.ts-hit { display: inline-block; }
+.ts-hit, .ts-check, .ts-switch, .ts-chip, .ts-admin__back { position: relative; }
+.ts-hit::after, .ts-check::before, .ts-switch::before, .ts-chip::after, .ts-admin__back::after {
+  content: ""; position: absolute; inset: min(0px, calc((100% - 2.75rem) / 2)); }
+
+/* Larger text (M3c B3): at 200 % text nothing may push the page sideways or cut text off, so rows of controls wrap
+   and boxes sized in rem may not be wider than the screen. */
+/* A long word breaks instead of widening the page. */
+body { overflow-wrap: break-word; }
+.ts-tabs, .ts-share__tabs, .ts-seg { flex-wrap: wrap; max-width: 100%; box-sizing: border-box; }
+.ts-tabbar__item { min-width: 0; overflow-wrap: anywhere; }
+.ts-upload__actions .ts-btn { max-width: 100%; white-space: normal; }
+.ts-invite__cover { max-width: calc(100% - 0.75rem); }
+.ts-empty { max-width: min(22.5rem, 100%); box-sizing: border-box; }
+/* The mini-player is one row on a phone: at large text its rem sizes would be wider than the screen, so the
+   cover and buttons are capped by the screen width (14vw is still 44 px at 320 px). */
+@media (width < 1280px) {
+  .ts-mini { min-width: 0; }
+  .ts-mini__cover { width: min(3rem, 14vw); height: min(3rem, 14vw); flex: none; }
+  .ts-mini .ts-iconbtn { width: min(var(--size-tap), 14vw); }
+}
+.ts-hero__actions { flex-wrap: wrap; }
+.ts-cover--200 { max-inline-size: 100%; block-size: auto; aspect-ratio: 1; }

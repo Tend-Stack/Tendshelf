@@ -25,7 +25,7 @@ body { margin: 0; font-family: var(--font-sans); background: var(--ground); colo
 /* Buttons */
 .ts-btn { font: 600 1rem/1.25rem var(--font-sans); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-8);
   min-height: var(--size-tap); padding: 0 var(--space-20); border-radius: var(--radius-control); border: 1px solid transparent;
-  cursor: pointer; text-decoration: none; white-space: nowrap;
+  cursor: pointer; text-decoration: none; white-space: normal; text-align: center; max-width: 100%;
   transition: background-color var(--duration-fast) var(--easing-standard), transform var(--duration-instant) var(--easing-standard); }
 .ts-btn .ts-icon { width: 1.25rem; height: 1.25rem; }
 .ts-btn--primary { background: var(--accent-fill); color: var(--on-accent); }

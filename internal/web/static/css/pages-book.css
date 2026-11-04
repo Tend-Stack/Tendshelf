@@ -26,7 +26,7 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 /* Head: phone. Text on the band is ink or muted ink, never accent. */
 .ts-book__back { align-self: flex-start; justify-self: start; margin-left: calc(var(--space-12) * -1); color: var(--ink); }
 .ts-book__head { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-16); text-align: center; }
-.ts-book__cover { width: 13rem; align-self: center; }
+.ts-book__cover { width: 13rem; max-width: 100%; align-self: center; }
 .ts-book-block { display: block; }
 .ts-book__cover .ts-cover { box-shadow: var(--shadow-cover); }
 .ts-book__info { display: flex; flex-direction: column; align-items: center; gap: var(--space-8); min-width: 0; }
@@ -96,7 +96,9 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 /* Phone: the actions are one bar, like the player's */
 @media (width < 768px) {
   .ts-book__acts { border: 1px solid var(--line-strong); border-radius: var(--radius-md); overflow: hidden; }
-  .ts-book__acts > * { flex: 1; display: flex; }
+  /* Wraps to two rows when large text leaves a button under 4.5rem: nothing is cut off. */
+  .ts-book__acts { flex-wrap: wrap; }
+  .ts-book__acts > * { flex: 1 0 4.5rem; display: flex; }
   .ts-book__acts > * + * { border-left: 1px solid var(--line-strong); }
   .ts-book__acts .ts-btn { flex: 1; flex-direction: column; gap: var(--space-4); min-height: 3.75rem; padding: 0 var(--space-8); border: 0; border-radius: 0;
     background: transparent; color: var(--ink); font-size: 0.8125rem; line-height: 1.125rem; font-weight: 500; }
