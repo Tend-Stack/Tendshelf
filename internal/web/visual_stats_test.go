@@ -55,7 +55,6 @@ func TestStatsVisual(t *testing.T) {
 	mb := librarytest.AddBook(t, a.lib, f, librarytest.BookSpec{Title: "Member book", DurationMs: 3_600_000})
 	statsZone(t, a, memberID, "UTC")
 	statsListen(t, a, memberID, mb.ID, time.Date(2026, 11, 6, 9, 0, 0, 0, time.UTC), 95)
-	_ = ownerID
 	base := themedServer(t, a.signedIn(t))
 
 	if src, err := os.Open(filepath.Join("..", "..", "docs", "design", "tendshelf-handoff", "screens", "people", "ProfilePhone.png")); err == nil {
@@ -66,6 +65,15 @@ func TestStatsVisual(t *testing.T) {
 		_ = src.Close()
 	}
 	shoot := func(t *testing.T, path, theme string, w int, name string) {
+		// A saved theme beats the ?theme= cookie, and statsZone saved "system": save the shot's theme.
+		cur, err := a.srv.users.LoadSettings(t.Context(), ownerID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cur.Theme = theme
+		if err := a.srv.users.SaveSettings(t.Context(), ownerID, cur); err != nil {
+			t.Fatal(err)
+		}
 		tab := b.NewTab(w, 900, w == 390, false)
 		if err := tab.Call("Emulation.setTimezoneOverride", map[string]any{"timezoneId": "UTC"}, nil); err != nil {
 			t.Fatal(err)
@@ -74,6 +82,9 @@ func TestStatsVisual(t *testing.T) {
 		tab.WaitFor(`document.getElementById("pf-stats") !== null`, 5*time.Second)
 		var m browseProbe
 		tab.Eval(browseProbeJS, &m)
+		if m.Theme != theme {
+			t.Errorf("data-theme = %q, want %q", m.Theme, theme)
+		}
 		if m.Over {
 			t.Errorf("horizontal overflow")
 		}
