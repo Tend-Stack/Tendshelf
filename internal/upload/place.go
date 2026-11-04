@@ -276,8 +276,9 @@ func (s *Service) build(ctx context.Context, g guard, up uploadRow, root string,
 		total += f.Size
 	}
 	staging := s.stagingDir(up.ID)
+	same := sameDevice(staging, root) && !s.noLink
 	need := s.cfg.Margin
-	if !sameDevice(staging, root) {
+	if !same {
 		need += total + total/20
 	}
 	if free, err := s.free(root); err != nil || int64(free) < need {
@@ -289,7 +290,7 @@ func (s *Service) build(ctx context.Context, g guard, up uploadRow, root string,
 		if !ok {
 			return &jobs.Error{Code: "layout", Text: "Tendshelf could not find a free place for this book in the library folder.", Permanent: true}
 		}
-		err := s.buildAt(ctx, g, up, root, parent, name, items, sameDevice(staging, root))
+		err := s.buildAt(ctx, g, up, root, parent, name, items, same)
 		if errors.Is(err, errRetry) {
 			continue
 		}

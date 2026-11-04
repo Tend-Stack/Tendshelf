@@ -114,6 +114,7 @@ type Service struct {
 	free    func(dir string) (uint64, error)
 	writeAt func(f *os.File, b []byte, off int64) error
 	crash   func(point string) error // returns an error to simulate a crash at a named point
+	noLink  bool                     // tests: always copy, never hard-link
 }
 
 // New returns the service. tools may lack ffprobe: placement then fails with ffprobe_missing.
