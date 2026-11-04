@@ -151,6 +151,45 @@ type sweepLoad struct {
 	ResponseEndMs float64 `json:"responseEndMs"`
 	HTMLBytes     int64   `json:"htmlEncodedBytes"`
 	ScrollPageMs  float64 `json:"firstScrollPageMs"`
+	LCPMs         float64 `json:"lcpMs"`
+}
+
+// sweepLCPJS resolves with the start time of the latest largest-contentful-paint entry (0 when the
+// browser reports none). The observer is buffered, so entries from before the call are delivered.
+const sweepLCPJS = `new Promise((resolve) => {
+  let last = 0;
+  const po = new PerformanceObserver((list) => { for (const e of list.getEntries()) { last = e.startTime; } });
+  po.observe({type: "largest-contentful-paint", buffered: true});
+  setTimeout(() => { po.disconnect(); resolve(last); }, 100);
+})`
+
+// sweepMeasureLoad opens a fresh tab of w by h (mobile as a phone), throttles the CPU by
+// sweepPerfRate, loads url, waits for ts-ready and returns the navigation timings and the LCP. cold
+// turns the HTTP cache off. The tab is returned so a caller can go on with it (the scroll step).
+func sweepMeasureLoad(t testing.TB, b *cdp.Browser, url string, w, h int, mobile, cold bool) (sweepLoad, *cdp.Tab) {
+	t.Helper()
+	tab := b.NewTab(w, h, mobile, false)
+	if err := tab.Call("Emulation.setCPUThrottlingRate", map[string]any{"rate": sweepPerfRate}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if cold {
+		if err := tab.Call("Network.enable", nil, nil); err != nil {
+			t.Fatal(err)
+		}
+		if err := tab.Call("Network.setCacheDisabled", map[string]any{"cacheDisabled": true}, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tab.Navigate(url)
+	tab.WaitFor(`performance.getEntriesByName("ts-ready").length > 0`, 10*time.Second)
+	var m struct {
+		Ready, DCL, ResponseEnd float64
+		Size                    int64
+	}
+	tab.Eval(sweepNavTimingJS, &m)
+	var lcp float64
+	tab.Eval(sweepLCPJS, &lcp)
+	return sweepLoad{InteractiveMs: max(m.Ready, m.DCL), ReadyMs: m.Ready, DCLMs: m.DCL, ResponseEndMs: m.ResponseEnd, HTMLBytes: m.Size, LCPMs: lcp}, tab
 }
 
 const sweepNavTimingJS = `(() => {
@@ -180,6 +219,22 @@ func sweepMedian(xs []float64) float64 {
 	return (s[n/2-1] + s[n/2]) / 2
 }
 
+func TestSweepMedian(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		in   []float64
+		want float64
+	}{
+		{"one", []float64{7}, 7},
+		{"odd", []float64{9, 1, 5}, 5},
+		{"even", []float64{4, 1, 3, 2}, 2.5},
+	} {
+		if got := sweepMedian(c.in); got != c.want {
+			t.Errorf("%s: sweepMedian(%v) = %v, want %v", c.name, c.in, got, c.want)
+		}
+	}
+}
+
 func TestPerfLibraryPage(t *testing.T) {
 	sweepPerfOn(t)
 	chrome := os.Getenv("TENDSHELF_TEST_BROWSER")
@@ -192,28 +247,10 @@ func TestPerfLibraryPage(t *testing.T) {
 	b := cdp.Start(t, chrome)
 
 	measure := func(cold bool) sweepLoad {
-		tab := b.NewTab(390, 844, true, false)
-		if err := tab.Call("Emulation.setCPUThrottlingRate", map[string]any{"rate": sweepPerfRate}, nil); err != nil {
-			t.Fatal(err)
-		}
-		if cold {
-			if err := tab.Call("Network.enable", nil, nil); err != nil {
-				t.Fatal(err)
-			}
-			if err := tab.Call("Network.setCacheDisabled", map[string]any{"cacheDisabled": true}, nil); err != nil {
-				t.Fatal(err)
-			}
-		}
-		tab.Navigate(srv.URL + "/libraries")
-		tab.WaitFor(`performance.getEntriesByName("ts-ready").length > 0`, 10*time.Second)
-		var m struct {
-			Ready, DCL, ResponseEnd float64
-			Size                    int64
-		}
-		tab.Eval(sweepNavTimingJS, &m)
-		var scroll float64
-		tab.Eval(sweepScrollJS, &scroll)
-		return sweepLoad{InteractiveMs: max(m.Ready, m.DCL), ReadyMs: m.Ready, DCLMs: m.DCL, ResponseEndMs: m.ResponseEnd, HTMLBytes: m.Size, ScrollPageMs: scroll}
+		l, tab := sweepMeasureLoad(t, b, srv.URL+"/libraries", 390, 844, true, cold)
+		tab.Eval(sweepScrollJS, &l.ScrollPageMs)
+		tab.Close()
+		return l
 	}
 
 	measure(false) // the warm-up: the server, the browser caches and the font files
