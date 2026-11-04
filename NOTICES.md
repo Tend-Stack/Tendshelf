@@ -20,6 +20,10 @@ other projects. Every port, vendored file or third-party dependency adds a row h
 | `internal/metadata/production.go` | TendVox Extractor `extractor_details.py` (`find_production`, `_FULL_CAST`, `_DRAMATIZED`) | GPL-3.0 | Method port, idiomatic Go |
 | `internal/metadata/online/*.go` | TendVox Extractor `extractor_online.py`; Audiobookshelf `server/providers/Audnexus.js`, `Audible.js`, `GoogleBooks.js`, `iTunes.js` | GPL-3.0 | Method port, idiomatic Go |
 | `internal/textmatch/textmatch.go` (`Ratio`) | Python `difflib.SequenceMatcher` | PSF-2.0 | Algorithm re-implemented in Go |
+| `runtimes/align/worker.py` | TendVocal `runtimes/alignment/worker.py` (same author; HTTP server replaced by the stdin/stdout protocol, emissions instead of word spans) | AGPL-3.0-or-later (own work) | Rewritten from the original |
+| `runtimes/align/models/{en,es}.json`, `requirements-torch.lock`, `requirements-pypi.lock`, `pyproject.toml` | TendVocal `runtimes/alignment/model-{en,es}.json`, `dependencies-{torch,pypi}.lock`, `pyproject.toml` (same author; file lists, hashes and pins copied, manifests reshaped) | AGPL-3.0-or-later (own work) | Copied, reshaped |
+| Model `facebook/wav2vec2-base-960h`, revision `22aad52d435eb6dbaf354bdad9b0da84ce7d6156` (not shipped; the owner fetches it by hand) | https://huggingface.co/facebook/wav2vec2-base-960h | Apache-2.0 | Pinned by `runtimes/align/models/en.json` |
+| Model `jonatasgrosman/wav2vec2-large-xlsr-53-spanish`, revision `80106547eee5065e01618d6588c22c256e8d0e70` (not shipped) | https://huggingface.co/jonatasgrosman/wav2vec2-large-xlsr-53-spanish | Apache-2.0 | Pinned by `runtimes/align/models/es.json` |
 
 Expected first entries (fill in when the port lands; do not pre-credit code that does not exist):
 

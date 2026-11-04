@@ -1,0 +1,37 @@
+{
+  "format": "tendshelf-emissions-model",
+  "version": 1,
+  "language": "es",
+  "repository": "jonatasgrosman/wav2vec2-large-xlsr-53-spanish",
+  "revision": "80106547eee5065e01618d6588c22c256e8d0e70",
+  "licenceSpdx": "Apache-2.0",
+  "licenceUrl": "https://huggingface.co/jonatasgrosman/wav2vec2-large-xlsr-53-spanish/tree/80106547eee5065e01618d6588c22c256e8d0e70",
+  "sourceUrl": "https://huggingface.co/jonatasgrosman/wav2vec2-large-xlsr-53-spanish/tree/80106547eee5065e01618d6588c22c256e8d0e70",
+  "files": [
+    {
+      "name": "config.json",
+      "size": 1531,
+      "sha256": "39ffe954848d5161270eef4378a17a538bffeefc310482f409ec099f7fceaa5b"
+    },
+    {
+      "name": "model.safetensors",
+      "size": 1261975532,
+      "sha256": "89a23a747328eeef7b8a857c45e54dfbad0833965a01c0734512da45c8259f69"
+    },
+    {
+      "name": "preprocessor_config.json",
+      "size": 262,
+      "sha256": "ca5999a45e98bb76ea87a461ba28a23ad32a5bb9f733b8e0f6546ff38b6c612d"
+    },
+    {
+      "name": "special_tokens_map.json",
+      "size": 85,
+      "sha256": "bb7068de1150661a10b55f9e4b12a0e77af8bf91f5e45e1b58afaf1d0e17f675"
+    },
+    {
+      "name": "vocab.json",
+      "size": 380,
+      "sha256": "7aea8bcd8ba1c176f12cc96c1e8f45247548f4de3218106f7352e3d833cfafdc"
+    }
+  ]
+}
