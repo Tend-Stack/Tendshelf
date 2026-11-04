@@ -3,6 +3,7 @@ package ebook
 import (
 	"context"
 
+	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 )
 
@@ -15,7 +16,7 @@ func (s *Service) CandidatesFor(ctx context.Context, fileIDs []string, f share.F
 	if len(fileIDs) == 0 {
 		return out, nil
 	}
-	keys, err := s.store.bookKeys(ctx, f)
+	keys, err := s.store.bookKeysKind(ctx, f, library.BookAudio)
 	if err != nil {
 		return nil, err
 	}

@@ -288,7 +288,7 @@ func (s *Service) Candidates(ctx context.Context, fileID string, f share.Filter,
 	if err != nil || !ok {
 		return nil, err
 	}
-	keys, err := s.store.bookKeys(ctx, f)
+	keys, err := s.store.bookKeysKind(ctx, f, library.BookAudio)
 	if err != nil {
 		return nil, err
 	}
