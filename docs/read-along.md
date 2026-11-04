@@ -90,7 +90,7 @@ automatically; normalised title (subtitle, series marks and "Unabridged" removed
 surname set equal to exactly one book gives a suggestion with score 0.9 that is applied automatically
 only when it is the single candidate; anything else waits in the inbox for a person. Manual pairing
 and unpairing are always possible. A book may have several editions; one is the book's default and
-each user may choose their own (`user_settings`). Audiobook and ebook ISBNs usually differ, so title
+each user may choose their own (`text_choices`). Audiobook and ebook ISBNs usually differ, so title
 plus author is the common path (guess, measure on the fixture library).
 
 ## 2. Alignment pipeline (`internal/align`)
