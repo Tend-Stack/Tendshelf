@@ -1,6 +1,8 @@
 /* Tendshelf utilities (P0c): layout primitives, sizes and native feel. Tokens only, ts- prefix. */
 
 /* Native feel */
+/* A touch screen shows no scrollbars, as native apps do; a mouse keeps them (operator, 2026-11-04). */
+@media (pointer: coarse) { * { scrollbar-width: none; } ::-webkit-scrollbar { display: none; } } /* the second for iOS WebKit before 18.2 */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; scrollbar-gutter: stable;
   /* No bounce and no pull-to-refresh: a reload would stop the book that is playing. Inner scrollers contain their own.
      Android Chrome also loses its stretch glow at the page edge (operator-approved trade-off, 2026-11-03). */

@@ -104,7 +104,7 @@ func TestCSSBudget(t *testing.T) {
 	single := map[string]cssBudget{
 		// Native feel (decision 0011): 2.5 KB, approved by the operator on 2026-11-03.
 		// M3c B3 adds the hit-area rule and the 200 % text wrapping rules: 3.25 KB (overrun 572 bytes, operator approved 2026-11-04).
-		"css/utilities.css": {3*1024 + 256, 24 * 1024},
+		"css/utilities.css": {3*1024 + 384, 24 * 1024}, // +128 B: no scrollbars on touch screens, iOS WebKit rule (operator, 2026-11-04)
 		// M3c B3: the phone action bar wraps at large text.
 		"css/pages-book.css": {3*1024 + 128, 24 * 1024}, // M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
 		"css/motion.css":     {2 * 1024, 24 * 1024},
@@ -150,7 +150,7 @@ func TestCSSBudget(t *testing.T) {
 	// 18.5 KB: the operator approved the raise on 2026-11-03 for the 2560 px app cap and the range-syntax
 	// breakpoints (18,563 bytes at the time).
 	// 19.5 KB: native feel (decision 0011), approved by the operator on 2026-11-03.
-	const coreBudget = 20*1024 + 896 // offline banner (operator, 2026-11-03: 19.75 KB); M3c B1 focus rings and B3 hit areas and large-text wrapping: 20.875 KB, operator approved 2026-11-04
+	const coreBudget = 21 * 1024 // offline banner (operator, 2026-11-03: 19.75 KB); M3c B1 focus rings and B3 hit areas and large-text wrapping: 20.875 KB, operator approved 2026-11-04; +128 B for no scrollbars on touch screens (operator, 2026-11-04)
 	if coreGzip > coreBudget {
 		t.Errorf("core CSS %d gzip bytes, budget %d (raw %d)", coreGzip, coreBudget, coreRaw)
 	}
