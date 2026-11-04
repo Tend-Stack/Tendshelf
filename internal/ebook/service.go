@@ -60,6 +60,9 @@ func (s *Service) ScanSink() scan.EbookSink {
 // Finisher catches up on pending files after every scan.
 func (s *Service) Finisher() scan.Finisher {
 	return func(ctx context.Context, _ string) {
+		if err := s.PairPending(ctx); err != nil {
+			s.log.Warn("ebooks: pairing failed", "err", err)
+		}
 		if err := s.EnqueuePending(ctx); err != nil {
 			s.log.Warn("ebooks: could not queue reads", "err", err)
 		}

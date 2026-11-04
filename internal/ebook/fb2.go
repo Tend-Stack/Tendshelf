@@ -4,6 +4,8 @@ import (
 	"encoding/xml"
 	"io"
 	"strings"
+
+	"github.com/Tend-Stack/tendshelf/internal/textmatch"
 )
 
 func fb2Href(se xml.StartElement) string {
@@ -100,7 +102,7 @@ func parseFB2(data []byte, lim Limits) (*Doc, error) {
 						return nil, err
 					}
 					stack = stack[:len(stack)-1]
-					meta.Identifiers.ISBN = validISBN(txt)
+					meta.Identifiers.ISBN = textmatch.ISBN(txt)
 				}
 			case "author":
 				if in("title-info") && !in("body") {

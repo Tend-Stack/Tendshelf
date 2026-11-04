@@ -141,6 +141,11 @@ block_count, word_count, char_count, src) VALUES(?,?,?,?,?,?,?,?,?,?)`,
 		}
 		return s.failRead(ctx, t, f, err)
 	}
+	if f.BookID == "" {
+		if err := s.pairFile(ctx, f.ID); err != nil {
+			s.log.Warn("ebooks: pairing failed", "err", err)
+		}
+	}
 	return IngestResult{State: "ready", Chapters: len(doc.Chapters), Words: words}, nil
 }
 

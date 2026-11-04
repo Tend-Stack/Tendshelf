@@ -197,7 +197,7 @@ WHERE library_id=? AND origin='library' AND quick_hash=? AND size=? ORDER BY id`
 // unpairs and never overrides a pairing made another way.
 func (s *Service) pairByFolder(ctx context.Context, libraryID string) error {
 	rs, err := s.db.Reader().QueryContext(ctx, `SELECT id, path FROM ebook_files
-WHERE library_id=? AND origin='library' AND book_id IS NULL AND (paired_by IS NULL OR paired_by='folder') ORDER BY path`, libraryID)
+WHERE library_id=? AND origin='library' AND book_id IS NULL AND hold IS NULL ORDER BY path`, libraryID)
 	if err != nil {
 		return err
 	}
@@ -243,7 +243,8 @@ WHERE library_id=? AND origin='library' AND book_id IS NULL AND (paired_by IS NU
 			continue
 		}
 		if _, err := s.db.Writer().ExecContext(ctx, `UPDATE ebook_files SET book_id=?, paired_by='folder', updated_at=?
-WHERE id=? AND book_id IS NULL`, ids[0], s.now().UnixMilli(), p.id); err != nil {
+WHERE id=? AND book_id IS NULL AND hold IS NULL
+AND NOT EXISTS (SELECT 1 FROM ebook_not_same WHERE ebook_file_id=? AND book_id=?)`, ids[0], s.now().UnixMilli(), p.id, p.id, ids[0]); err != nil {
 			return err
 		}
 	}

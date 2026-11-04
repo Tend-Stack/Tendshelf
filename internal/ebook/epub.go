@@ -7,6 +7,8 @@ import (
 	"path"
 	"regexp"
 	"strings"
+
+	"github.com/Tend-Stack/tendshelf/internal/textmatch"
 )
 
 // resolveRef resolves href (relative to the zip directory baseDir) to a zip name. A reference that
@@ -162,54 +164,11 @@ func (o *opfData) authors() []string {
 
 var asinRE = regexp.MustCompile(`^B0[0-9A-Z]{8}$`)
 
-func validISBN(s string) string {
-	s = strings.ToUpper(s)
-	s = strings.TrimPrefix(s, "URN:ISBN:")
-	s = strings.TrimPrefix(s, "ISBN:")
-	s = strings.NewReplacer("-", "", " ", "").Replace(s)
-	switch len(s) {
-	case 10:
-		sum := 0
-		for i := 0; i < 10; i++ {
-			c := s[i]
-			v := 0
-			switch {
-			case c >= '0' && c <= '9':
-				v = int(c - '0')
-			case c == 'X' && i == 9:
-				v = 10
-			default:
-				return ""
-			}
-			sum += v * (10 - i)
-		}
-		if sum%11 == 0 {
-			return s
-		}
-	case 13:
-		sum := 0
-		for i := 0; i < 13; i++ {
-			if s[i] < '0' || s[i] > '9' {
-				return ""
-			}
-			v := int(s[i] - '0')
-			if i%2 == 1 {
-				v *= 3
-			}
-			sum += v
-		}
-		if sum%10 == 0 {
-			return s
-		}
-	}
-	return ""
-}
-
 func identifiers(ids []string) Identifiers {
 	var out Identifiers
 	for _, id := range ids {
 		if out.ISBN == "" {
-			if v := validISBN(id); v != "" {
+			if v := textmatch.ISBN(id); v != "" {
 				out.ISBN = v
 			}
 		}
