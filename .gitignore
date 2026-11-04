@@ -22,3 +22,6 @@ node_modules/
 
 # Agent worktrees (Claude Code); each is its own checkout
 /.claude/worktrees/
+
+# Python bytecode from the alignment worker tests
+__pycache__/
