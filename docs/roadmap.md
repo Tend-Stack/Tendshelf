@@ -621,9 +621,16 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
 - **R4 Read-along UI**: `/books/{id}/read` with Listen, Read along, Read, Focus line and Eyes-free;
   `static/js/readalong.js`; auto-scroll, Back to the voice, tap to play; reading settings (Fraunces,
   Fira Sans, OpenDyslexic); migration `highlights` (`highlights`, `bookmarks.edition_id/sid`,
-  `notes.highlight_id`); highlights, bookmarks and notes in both directions. Exit: handler tests by
+  `highlights.note`, no notes table); highlights, bookmarks and notes in both directions. Exit: handler tests by
   role; contrast checked for every theme and highlight colour; side-by-side check at the four widths;
   highlight changes within one frame of a sentence start on a mid-range phone (measured).
+  - *R4 P1 (data; done)*: migration `0019_highlights` (`highlights` with its note column, `bookmarks.edition_id`
+    and `sid`), `progress` highlight repo (`AddHighlight`, `Highlights`, `ChapterHighlights`, `Highlight`,
+    `SetHighlight`, `DeleteHighlight`; limit 2,000 per book; client id retry as bookmarks), `AddTextBookmark`
+    over one shared insert, `ebook.ParseSID` and `CompareSID`. Checks: `TestMigration0019*` (from the 0018
+    fixture and from empty), `TestHighlight*`, `TestBookmarkTextPlace`, `TestParseSID*`. Limits: no sync
+    endpoints for highlights (`highlights_sync` is the R5 hook); the `/api` bookmark JSON is unchanged.
+    Next: P2.
 - **R5 Cross-format position**: `progress.position_source/text_*`; Read mode drives the position;
   edition switch maps through time or quote; `can_read` on grants and share links with the P3 matrix;
   offline text download with P4. Exit: read on one browser, press play on another, the voice starts at
