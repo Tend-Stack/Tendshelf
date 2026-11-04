@@ -178,7 +178,7 @@ func (s *server) postAPIQueueNext(w http.ResponseWriter, r *http.Request) {
 
 // queueable reports whether a book can be queued: not refused, not missing and with an audio file.
 func (s *server) queueable(ctx context.Context, b library.Book) bool {
-	if b.RefusedReason != "" || b.MissingSince != 0 {
+	if b.RefusedReason != "" || b.MissingSince != 0 || b.Kind == library.BookText {
 		return false
 	}
 	files, err := s.lib.AudioFiles(ctx, b.ID)
@@ -206,7 +206,7 @@ func (s *server) popQueue(ctx context.Context, u users.User, sc library.Scope, e
 			return false, err
 		}
 		if !s.can.Can(ctx, u, share.ListenBook, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) ||
-			b.RefusedReason != "" || b.MissingSince != 0 {
+			b.RefusedReason != "" || b.MissingSince != 0 || b.Kind == library.BookText {
 			continue
 		}
 		if ok, err := use(b); err != nil || ok {

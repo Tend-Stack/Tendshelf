@@ -58,6 +58,9 @@ VALUES (?, 'upload', ?, ?, 'epub', 10, ?, ?, 'epub', ?, ?, 1)`, id, e.lib.ID, bo
 	if title == "" {
 		return
 	}
+	if authors == nil {
+		authors = []string{}
+	}
 	js, _ := json.Marshal(authors)
 	pairTExec(e, `INSERT INTO editions(id, ebook_file_id, source_sha256, recipe, doc_sha256, doc_bytes, format, title, authors_json,
 chapter_count, word_count, char_count, created_at) VALUES (?,?,?,?,?,5,'epub',?,?,1,1,1,1)`,
