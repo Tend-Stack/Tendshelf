@@ -112,15 +112,21 @@ One background job per (edition, audio set). Stages:
    excluded from backups and exports.
 3. **Coarse transcript** (Go): greedy CTC decoding of the emissions gives the heard words with frame
    times. This is the ASR transcript; wav2vec2 trained on read audiobooks (LibriSpeech) is a fair fit
-   for narration (guess, measured in R3). It is stored only inside the emissions cache, never shown.
+   for narration (guess, measured in R3). It is not stored anywhere: it is recomputed from the cached emissions
+   (cheap) whenever the map is needed, and never shown.
 4. **Map** (Go): cut the audio timeline into blocks of about 10 minutes at the nearest pause (blank run
    of 300 ms or more). For each block, look up its 5-grams among the edition's 5-grams that occur once
-   in the whole edition; the densest text window wins. Blocks with fewer than 3 hits are **audio
+   in the whole edition. The longest increasing chain of hits is one **region**; its hits are removed and the
+   search repeats while 3 hits remain, up to 4 regions per block, so a block that holds two chapters read
+   in swapped order maps to both places. Blocks with fewer than 3 hits are **audio
    without text** (publisher intro, credits, music). Each block maps independently, so chapter order
    differences, front matter that is not read and missing chapters need no special case. Within a
    mapped region, anchors are the longest increasing run of unique 5-gram hits; between anchors a
    word-level Needleman-Wunsch (exact = match, edit distance at most 1 per 4 letters = near match),
    bounded to 4 M cells per gap; a larger gap first re-anchors with 3-grams unique in the window.
+   Text is forced to audio only where the two are contiguous: two neighbouring anchors are joined when the text
+   runs on, the audio between them is at most 30 s and the words in between fit it at 0.5-6 words per second;
+   otherwise the text between them (an unread paragraph, an inserted sentence) is `not-in-recording`.
 5. **Fine alignment** (Go): CTC forced alignment (Viterbi over the 2L+1 blank-interleaved token
    sequence) of the ebook's own tokens over the cached emissions, one segment per pair of anchors at
    most 30 s apart, padded 200 ms. Wildcards use a star state whose emission is the best non-blank
@@ -197,8 +203,14 @@ it touches. Timing payload served to the browser (flat arrays, -1 for no time):
 
 ```
 { "v":1, "alignment":"al_…", "chapter":3, "sid":["c3.p12.s0",…], "ss":[…], "se":[…], "sc":[…],
-  "gap":[null,"not-found",…], "ws":[sentence index…], "wo0":[…], "wo1":[…], "w0":[…], "w1":[…] }
+  "gap":[null,"not-found",…], "ws":[sentence index…], "wo0":[…], "wo1":[…], "w0":[…], "w1":[…],
+  "wm":[0,1,2,…] }
 ```
+
+`wm` marks each source word: 0 timed (measured), 1 `between` (a wildcard such as a year, given the span between
+its two timed neighbours, never used as a sentence edge), 2 not timed. A sentence's time comes from words marked 0
+only. `alignment` is added when the file is served; the stored file (content-addressed, so shared) leaves it out.
+Offsets `wo0`/`wo1` are UTF-16 units in the block. The writer is deterministic (gzip with an empty header).
 
 **Job and states.** Kind `align.book`, concurrency 1, lease 60 s. `alignments.state`: `queued` →
 `emitting` → `aligning` → `done` (body coverage at least 90 %) | `partial` (5-90 %) | `failed` |
