@@ -116,6 +116,9 @@ type BookView struct {
 	ShareHref string
 	// CoverHref opens the "Change cover" sheet; empty for people who may not edit the book.
 	CoverHref, CoverLabel string
+	// RemoveHref opens the confirmation of "Remove this book"; empty unless Tendshelf added every
+	// file of the book by upload and the person may add books (decision 0015).
+	RemoveHref, RemoveLabel string
 	// PanelTitle heads the options panel of the Details tab; PanelCoverCaption is the line under its
 	// Change cover button. Empty PanelTitle (any other tab) shows no panel.
 	PanelTitle, PanelCoverCaption string
@@ -577,6 +580,9 @@ templ bookDetailsPanel(v BookView) {
 						</div>
 					}
 				</div>
+			}
+			if v.RemoveHref != "" {
+				<a class="ts-btn ts-btn--quiet ts-btn--block ts-book__remove" href={ templ.SafeURL(v.RemoveHref) }>{ v.RemoveLabel }</a>
 			}
 			if v.Edit.ResetAction != "" {
 				<details class="ts-book__reset">

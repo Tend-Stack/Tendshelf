@@ -1,0 +1,27 @@
+package pages
+
+// BookRemoveView is the confirmation page of "Remove this book" (decision 0015, point 11). It lists
+// the files Tendshelf will delete; the handler writes every word.
+type BookRemoveView struct {
+	Title, Body, Button, Cancel string
+	Action, CancelHref, CSRF    string
+	Files                       []string
+}
+
+// BookRemove asks before the files of a book Tendshelf added are deleted.
+templ BookRemove(v BookRemoveView) {
+	<div class="ts-upload ts-remove">
+		<h1 class="title-1 ts-upload__title">{ v.Title }</h1>
+		<p class="body ts-upload__lead">{ v.Body }</p>
+		<ul class="caption ts-remove__files">
+			for _, f := range v.Files {
+				<li class="ts-upload__path">{ f }</li>
+			}
+		</ul>
+		<form method="post" action={ templ.URL(v.Action) } class="ts-upset__btns">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<button type="submit" class="ts-btn ts-btn--primary">{ v.Button }</button>
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.CancelHref) }>{ v.Cancel }</a>
+		</form>
+	</div>
+}

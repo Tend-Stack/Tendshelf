@@ -286,6 +286,9 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 	v := s.libraryView(q, libs, cur, page)
 	s.libraryFilters(&v, q, cur, facets, genres)
 	v.HeaderLine = browseHeaderLine(totals, s.canManage(r))
+	if v.AddBooksHref = s.addBooksHref(r, cur, libs); v.AddBooksHref != "" {
+		v.AddBooksLabel = uploadTitle
+	}
 	v.Scan = scanStatus
 	if len(v.Cards) == 0 && q.Cursor == "" && v.Scan == nil {
 		if q.filtered() {

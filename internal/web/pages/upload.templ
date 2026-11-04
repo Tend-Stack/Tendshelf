@@ -1,0 +1,96 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// UploadMsg is one data-ts-msg-<Key> attribute on the Add books root: a sentence with {tokens} that
+// js/upload.js fills in. Every word on the page comes from the server.
+type UploadMsg struct{ Key, Text string }
+
+// AddBooksView is /libraries/{id}/add (decision 0015, board UploadBooks).
+type AddBooksView struct {
+	LibraryID, LibraryName, BackHref string
+	// Title is "Add books". LeadBefore, Folder and LeadAfter are "Books go into {path}, in a folder
+	// for each author." around the path, which is set in a monospace face.
+	Title                          string
+	LeadBefore, Folder, LeadAfter  string
+	Libraries                      []LibChip
+	LibrariesLabel                 string
+	PickHeading, Files, FolderPick string
+	Hint, NeedsJS, QueueHeading    string
+	// Module is the hashed address of js/upload.js, which only this page loads.
+	Module   string
+	Messages []UploadMsg
+	Rows     []components.UploadRowView
+	// Template is the row js/upload.js clones for each upload it starts.
+	Template components.UploadRowView
+}
+
+func (v AddBooksView) attrs() templ.Attributes {
+	a := templ.Attributes{"data-ts-module": v.Module, "data-ts-library": v.LibraryID}
+	for _, m := range v.Messages {
+		a["data-ts-msg-"+m.Key] = m.Text
+	}
+	return a
+}
+
+// AddBooks is the page. Without JavaScript only the heading, the lead, the sentence in noscript and
+// the rows the server already knows show: there is no form fallback (decision 0015, point 12).
+templ AddBooks(v AddBooksView) {
+	<div class="ts-upload" { v.attrs()... }>
+		<a class="ts-upload__back" href={ templ.SafeURL(v.BackHref) }>
+			@components.UploadIcon("back")
+			{ v.LibraryName }
+		</a>
+		<h1 class="title-1 ts-upload__title">{ v.Title }</h1>
+		<p class="body ts-upload__lead">{ v.LeadBefore }<span class="ts-upload__folder">{ v.Folder }</span>{ v.LeadAfter }</p>
+		if len(v.Libraries) > 1 {
+			<nav class="ts-chip-set" aria-label={ v.LibrariesLabel }>
+				for _, l := range v.Libraries {
+					<a
+						class="ts-chip"
+						href={ templ.SafeURL(l.Href) }
+						if l.Current {
+							aria-current="true"
+						}
+					>
+						if l.Current {
+							@components.Icon("check", false)
+						}
+						{ l.Name }
+					</a>
+				}
+			</nav>
+		}
+		<section class="ts-upload__pick" aria-labelledby="pick-h">
+			<h2 id="pick-h" class="ts-sr">{ v.PickHeading }</h2>
+			<span class="ts-upload__pickicon" aria-hidden="true">
+				@components.UploadIcon("sending")
+			</span>
+			<noscript><p class="body ts-upload__drop">{ v.NeedsJS }</p></noscript>
+			<div class="ts-upload__pickbtns">
+				<label class="ts-btn ts-btn--primary ts-upload__choose">
+					@components.UploadIcon("file")
+					{ v.Files }
+					<input class="ts-sr" type="file" multiple data-ts-pick="files"/>
+				</label>
+				<label class="ts-btn ts-btn--secondary ts-upload__choose">
+					@components.UploadIcon("folder")
+					{ v.FolderPick }
+					<input class="ts-sr" type="file" webkitdirectory data-ts-pick="folder"/>
+				</label>
+			</div>
+			<p class="caption ts-upload__hint">{ v.Hint }</p>
+		</section>
+		<section class="ts-upload__queue" aria-labelledby="queue-h" data-ts-queue hidden?={ len(v.Rows) == 0 }>
+			<h2 id="queue-h" class="section">{ v.QueueHeading }</h2>
+			<ul class="ts-upload__list" data-ts-list>
+				for _, r := range v.Rows {
+					@components.UploadRow(r)
+				}
+			</ul>
+		</section>
+		<template data-ts-row>
+			@components.UploadRow(v.Template)
+		</template>
+	</div>
+}

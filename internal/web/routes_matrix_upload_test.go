@@ -47,5 +47,10 @@ func uploadSweepRows() []sweepRow {
 		sweepOwnerOnly(http.StatusSeeOther, http.StatusNotFound), "/admin/libraries#uploads-h")
 	remove := sweepPost("POST /books/{id}/remove", sweepBookPath("/remove"), sweepFormOf(url.Values{}),
 		staff(http.StatusConflict), "")
-	return []sweepRow{create, get, chunk, finish, cancel, setting, remove}
+	// The pages: the sweep's library takes no uploads and its books were not added by upload, so every
+	// role gets 404 (the allowed answers are in routes_upload_pages_test.go).
+	addPage := sweepGet("GET /libraries/{id}/add", func(e *sweepEnv, _ int) string { return "/libraries/" + e.libID + "/add" }, sweepSame(http.StatusNotFound))
+	rowPage := sweepGet("GET /hx/uploads/{id}", sweepStatic("/hx/uploads/upl_none"), sweepSame(http.StatusNotFound))
+	removePage := sweepGet("GET /books/{id}/remove", sweepBookPath("/remove"), sweepSame(http.StatusNotFound))
+	return []sweepRow{create, get, chunk, finish, cancel, setting, remove, addPage, rowPage, removePage}
 }
