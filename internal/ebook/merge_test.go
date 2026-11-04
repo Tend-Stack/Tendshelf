@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
 const tbUser2 = "us_two"
@@ -445,5 +448,34 @@ func TestSplitTwoFiles(t *testing.T) {
 	}
 	if e.count(`SELECT count(*) FROM ebook_not_same WHERE book_id='a1'`) != 2 {
 		t.Error("a not-same row per file")
+	}
+}
+
+// TestMergeNoWidenLibrary: a member who can read the text book's library, and has nothing in the audiobook's
+// library, still cannot reach the audiobook after the two merge across libraries.
+func TestMergeNoWidenLibrary(t *testing.T) {
+	e := newIEnv(t, false)
+	tbUsers(e)
+	f := tbText(e, "f1", "Cross", "9780306406157")
+	tbOtherLibrary(e)
+	pairTExec(e, `INSERT INTO grants(id, user_id, scope, library_id, can_read, created_at, updated_at) VALUES ('g_lib', ?, 'library', ?, 1, 1, 1)`, tbUser2, e.lib.ID)
+	member := users.User{ID: tbUser2, Role: users.RoleMember}
+	checker := share.New(e.st)
+	target := share.Target{Kind: share.TargetBook, ID: "a_other", LibraryID: "lib_2"}
+	for _, a := range []share.Action{share.ListenBook, share.ReadText} {
+		if checker.Can(bg, member, a, target) {
+			t.Fatalf("setup: member can already %s the other library's book", a)
+		}
+	}
+	if err := e.svc.mergePending(bg, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if !tbMerged(e, f.BookID) {
+		t.Fatal("the cross-library merge without data should go through")
+	}
+	for _, a := range []share.Action{share.ListenBook, share.ReadText} {
+		if checker.Can(bg, member, a, target) {
+			t.Errorf("after the merge the member can %s the audiobook", a)
+		}
 	}
 }
