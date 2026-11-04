@@ -121,3 +121,9 @@ Amends AGENTS.md "Audio files are the user's" and architecture invariant 1.
 2. The residual empty-folder rename race in point 9 (accept, or build a Linux-only `renameat2` through raw syscalls).
 3. Remove (point 11) deletes the book row, so everyone's progress, bookmarks and queue rows for it go with it (the
    existing cascades). Recommended, since the person asked to remove it; the alternative keeps the book as missing.
+
+Answered by the operator on 2026-11-04 ("use your picks"):
+1. Raise the all-app total to 61.5 KB, counting `upload.js` like every other module (as `eyes-free.js` is);
+   `upload.js` 5 KB, `shell.js` 5.625 KB.
+2. Accept the residual empty-folder race; no `renameat2`.
+3. Remove deletes the files Tendshelf created and the book row (with its cascades), after a confirmation.
