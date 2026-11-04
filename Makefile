@@ -77,7 +77,14 @@ player:
 # be 300 ms or less (one warm-up load, then five). Needs TENDSHELF_TEST_BROWSER. Numbers and the CPU
 # model are logged; the JSON goes to .local/tests/perf/<run>/library.json.
 perf:
-	TENDSHELF_TEST_PERF=1 $(GO) test -count=1 -v -run 'TestPerf' ./internal/web/
+	TENDSHELF_TEST_PERF=1 $(GO) test -count=1 -v -run 'TestPerf|TestPageWeight' ./internal/web/
+
+# What a cold load of each main page sends (bytes by type and requests) at 390, 768, 1024 and 1440 px,
+# against the budgets in perf_weight_test.go. Needs only TENDSHELF_TEST_BROWSER (byte counts are
+# deterministic). JSON: .local/tests/perf/<run>/weight.json.
+.PHONY: page-weight
+page-weight:
+	$(GO) test -count=1 -v -run 'TestPageWeight' ./internal/web/
 
 # The same pages in WebKitGTK through WebKitWebDriver and MiniBrowser. MiniBrowser has no headless
 # mode: use `xvfb-run -a make visual-webkit` to keep the window off the desktop.

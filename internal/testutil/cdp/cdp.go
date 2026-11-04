@@ -225,6 +225,12 @@ func (t *Tab) TryEval(expr string, out any) error {
 	return json.Unmarshal(res.Result.Value, out)
 }
 
+// Close closes the page now instead of at the end of the test, for tests that open many tabs. The
+// end-of-test cleanup then closes a target that is already gone and does nothing.
+func (t *Tab) Close() {
+	_ = t.b.call("", "Target.closeTarget", map[string]any{"targetId": t.target}, nil)
+}
+
 // Call sends any DevTools command to this page (for example Emulation.setCPUThrottlingRate) and
 // decodes the result into out, which may be nil.
 func (t *Tab) Call(method string, params, out any) error {
