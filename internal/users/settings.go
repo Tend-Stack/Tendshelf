@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"time"
 )
 
 // Settings are one person's preferences, kept in user_settings as one JSON row per key. The
@@ -21,6 +22,7 @@ type Settings struct {
 	BigButtons   bool
 	TextSize     string // "standard" or "large"
 	Nav          string // "full" or "rail": the desktop sidebar
+	TimeZone     string // an IANA name from the person's browser; "" means the server's zone
 }
 
 // DefaultSettings applies to every key a person has not set.
@@ -44,6 +46,7 @@ const (
 	keyBigButtons   = "ui.big_buttons"
 	keyTextSize     = "ui.text_size"
 	keyNav          = "ui.nav"
+	keyTimeZone     = "ui.time_zone"
 )
 
 func validTheme(t string) bool {
@@ -59,6 +62,18 @@ func validTextSize(t string) bool { return t == "" || t == "standard" || t == "l
 
 // validNav accepts "" as well: a Settings built without a nav state (older callers) means full.
 func validNav(n string) bool { return n == "" || n == "full" || n == "rail" }
+
+// ValidTimeZone reports whether s names a zone Tendshelf can load. "" and "Local" are not names.
+func ValidTimeZone(s string) bool {
+	if s == "" || s == "Local" || len(s) > 64 {
+		return false
+	}
+	_, err := time.LoadLocation(s)
+	return err == nil
+}
+
+// validTimeZoneSetting accepts "" (the server's zone) as well as a loadable name.
+func validTimeZoneSetting(s string) bool { return s == "" || ValidTimeZone(s) }
 
 func validSpeed(v float64) bool {
 	if math.IsNaN(v) || v < 0.5 || v > 3.0 {
@@ -77,7 +92,7 @@ func validSkip(n int) bool {
 
 // Validate checks every field against its fixed set.
 func (s Settings) Validate() error {
-	if !validTheme(s.Theme) || !validTextSize(s.TextSize) || !validNav(s.Nav) || !validSpeed(s.Speed) || !validSkip(s.SkipBackS) || !validSkip(s.SkipForwardS) {
+	if !validTheme(s.Theme) || !validTextSize(s.TextSize) || !validNav(s.Nav) || !validTimeZoneSetting(s.TimeZone) || !validSpeed(s.Speed) || !validSkip(s.SkipBackS) || !validSkip(s.SkipForwardS) {
 		return ErrInvalidSetting
 	}
 	return nil
@@ -107,6 +122,7 @@ func (s Settings) entries() []settingEntry {
 		{keyBigButtons, s.BigButtons},
 		{keyTextSize, s.TextSize},
 		{keyNav, s.Nav},
+		{keyTimeZone, s.TimeZone},
 	}
 }
 
@@ -151,6 +167,11 @@ func (s *Settings) apply(key, raw string) {
 		var v string
 		if json.Unmarshal([]byte(raw), &v) == nil && validNav(v) {
 			s.Nav = v
+		}
+	case keyTimeZone:
+		var v string
+		if json.Unmarshal([]byte(raw), &v) == nil && validTimeZoneSetting(v) {
+			s.TimeZone = v
 		}
 	}
 }
@@ -263,12 +284,12 @@ func (r *Repo) Theme(ctx context.Context, userID string) (string, error) {
 
 // Look is the part of a person's settings every page render needs: the theme and the text size.
 // An absent or invalid value is "".
-type Look struct{ Theme, TextSize, Nav string }
+type Look struct{ Theme, TextSize, Nav, TimeZone string }
 
-// Look reads ui.theme, ui.text_size and ui.nav in one query.
+// Look reads ui.theme, ui.text_size, ui.nav and ui.time_zone in one query.
 func (r *Repo) Look(ctx context.Context, userID string) (Look, error) {
 	rows, err := r.st.Reader().QueryContext(ctx,
-		`SELECT key, value_json FROM user_settings WHERE user_id = ? AND key IN (?, ?, ?)`, userID, keyTheme, keyTextSize, keyNav)
+		`SELECT key, value_json FROM user_settings WHERE user_id = ? AND key IN (?, ?, ?, ?)`, userID, keyTheme, keyTextSize, keyNav, keyTimeZone)
 	if err != nil {
 		return Look{}, err
 	}
@@ -290,6 +311,8 @@ func (r *Repo) Look(ctx context.Context, userID string) (Look, error) {
 			l.TextSize = v
 		case k == keyNav && validNav(v):
 			l.Nav = v
+		case k == keyTimeZone && ValidTimeZone(v):
+			l.TimeZone = v
 		}
 	}
 	return l, rows.Err()

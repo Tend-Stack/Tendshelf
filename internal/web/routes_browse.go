@@ -79,7 +79,7 @@ func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
 	for _, b := range page.Books {
 		v.New = append(v.New, cardView(b))
 	}
-	_, textSize, _ := s.lookFor(r)
+	_, textSize, _, _ := s.lookFor(r)
 	v.Large = textSize == "large"
 	var heroID string
 	if v.Hero, heroID, err = s.homeHeroView(ctx, r); err != nil {

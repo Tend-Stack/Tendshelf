@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -195,6 +196,16 @@ func (s *server) personView(r *http.Request, t users.User, errMsg string) (pages
 			}
 		}
 	}
+	// The target's own numbers, cut at the target's midnight; three numbers, no marks, no titles.
+	set, err := s.users.LoadSettings(ctx, t.ID)
+	if err != nil {
+		return v, err
+	}
+	st, err := s.progress.Stats(ctx, t.ID, statsLocation(set.TimeZone), now)
+	if err != nil {
+		return v, err
+	}
+	v.Stats = statsView(st, true)
 	if !v.CanGrant {
 		return v, nil
 	}
@@ -242,7 +253,7 @@ func (s *server) renderPerson(w http.ResponseWriter, r *http.Request, status int
 		s.serverError(w, r, "person page", err)
 		return
 	}
-	s.prefsPage(w, r, status, v.Name, "admin-users", "users", false, pages.AdminUser(v), nil, adminStyles...)
+	s.prefsPage(w, r, status, v.Name, "admin-users", "users", false, pages.AdminUser(v), nil, append(slices.Clone(adminStyles), "css/pages-me.css")...)
 }
 
 func (s *server) getUserPage(w http.ResponseWriter, r *http.Request) {

@@ -22,6 +22,8 @@ type ProfileView struct {
 	Name       string
 	Role       string // Owner, Admin, Member or Listener
 	ServerName string
+	// Stats is the "Your listening" panel, the first of Profile.
+	Stats components.ListeningStatsView
 	// Banner is the line after a password change, or empty.
 	Banner  string
 	Devices []ProfileDevice
@@ -69,6 +71,7 @@ templ Profile(v ProfileView) {
 			</p>
 		}
 		<div class="ts-groups">
+		@components.ListeningStats(v.Stats)
 		<section aria-labelledby="pf-mine" class="ts-me__section ts-group">
 			<h2 id="pf-mine" class="ts-sr">Yours</h2>
 			if v.Shelves != "" {

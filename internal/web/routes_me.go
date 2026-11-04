@@ -61,6 +61,16 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 	}
 	v.NoPassword = !has
 
+	set, err := s.users.LoadSettings(ctx, u.ID)
+	if err != nil {
+		return v, err
+	}
+	st, err := s.progress.Stats(ctx, u.ID, statsLocation(set.TimeZone), s.now())
+	if err != nil {
+		return v, err
+	}
+	v.Stats = statsView(st, false)
+
 	list, err := s.sessions.ListForUser(ctx, u.ID, sess.Hash)
 	if err != nil {
 		return v, err

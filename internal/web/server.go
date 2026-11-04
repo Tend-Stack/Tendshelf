@@ -312,13 +312,14 @@ func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, 
 func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, cacheControl, title, current string, body, sheet templ.Component, styles ...string) {
 	var buf bytes.Buffer
 	showUsers, usersWaiting := s.usersLink(r)
-	theme, textSize, navRail := s.lookFor(r)
+	theme, textSize, navRail, timeZone := s.lookFor(r)
 	err := components.Layout(components.Page{
 		Title:        title,
 		Current:      current,
 		Theme:        theme,
 		TextSize:     textSize,
 		NavRail:      navRail,
+		TimeZone:     timeZone,
 		CSRF:         s.csrf.TokenFrom(r.Context()),
 		Assets:       s.assets,
 		Sheet:        sheet,

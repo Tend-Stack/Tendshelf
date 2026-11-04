@@ -182,6 +182,12 @@ func settingsFromForm(f url.Values, cur users.Settings) (next users.Settings, ok
 	if v, has := last("text_size"); has {
 		next.TextSize = v // Validate refuses anything but standard and large
 	}
+	if v, has := last("time_zone"); has {
+		if !users.ValidTimeZone(v) {
+			ok = false
+		}
+		next.TimeZone = v // the browser's zone, posted by shell.js (decision 0013)
+	}
 	skip("skip_back", &next.SkipBackS)
 	skip("skip_forward", &next.SkipForwardS)
 
