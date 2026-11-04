@@ -40,6 +40,8 @@ type offlineEnv struct {
 	files  []library.AudioFile
 	URL    string
 	down   atomic.Bool
+	stall  atomic.Bool // pages and /hx/ answers hang until the test ends, as a VPN in airplane mode makes them
+	ended  chan struct{}
 	slow   atomic.Int64                // milliseconds each download=1 request waits, so a test can act mid-download
 	cookie atomic.Pointer[http.Cookie] // added to requests that carry no session of their own
 }
@@ -80,13 +82,20 @@ func offlineAppWith(t *testing.T, more func(*Options)) *offlineEnv {
 			offlineFileMs, int64(i)*offlineFileMs, fi.Size(), fi.ModTime().UnixNano(), af.ID)
 	}
 	files, _ = a.lib.AudioFiles(context.Background(), book.ID)
-	e := &offlineEnv{a: a, book: book, files: files}
+	e := &offlineEnv{a: a, book: book, files: files, ended: make(chan struct{})}
 	e.cookie.Store(owner)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if e.down.Load() {
 			// The server is gone: the connection closes without an answer.
 			if conn, _, err := w.(http.Hijacker).Hijack(); err == nil {
 				_ = conn.Close()
+			}
+			return
+		}
+		if e.stall.Load() && offlineStalls(r.URL.Path) {
+			select {
+			case <-e.ended:
+			case <-r.Context().Done():
 			}
 			return
 		}
@@ -101,8 +110,20 @@ func offlineAppWith(t *testing.T, more func(*Options)) *offlineEnv {
 		a.h.ServeHTTP(w, r)
 	}))
 	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(e.ended) }) // runs before srv.Close, which waits for stalled requests
 	e.URL = srv.URL
 	return e
+}
+
+// offlineStalls is true for what a hung network holds back: pages and fragments. Assets, audio and
+// covers are answered by the worker's cache first and never wait on the server.
+func offlineStalls(path string) bool {
+	for _, p := range []string{"/static/", "/stream/", "/covers/", "/peaks/", "/sw.js"} {
+		if strings.HasPrefix(path, p) {
+			return false
+		}
+	}
+	return true
 }
 
 // offlineTab opens the Library and waits until the worker controls the page and has stored the assets.
