@@ -60,6 +60,8 @@ Expected first entries (fill in when the port lands; do not pre-credit code that
 | github.com/a-h/templ v0.3.1100 | MIT | templ runtime (`internal/web`); the CLI runs through `go tool`, not linked into the binary. |
 | modernc.org/sqlite v1.61.1 | BSD-3-Clause | Pure-Go SQLite driver (`internal/db` only). The SQLite C source it carries is public domain. |
 | golang.org/x/crypto v0.58.0 | BSD-3-Clause | argon2id password hashing (`internal/users` only). |
+| golang.org/x/net v0.61.0 | BSD-3-Clause | HTML5 tokenizer (`html`) and charset detection (`html/charset`) for reading EPUB, HTML and MOBI text (`internal/ebook` only). |
+| golang.org/x/text v0.43.0 | BSD-3-Clause | Unicode NFC normalisation (`unicode/norm`) and legacy charset decoding (`encoding/...`: Windows-1251 FB2, Windows-1252 text, UTF-16) in `internal/ebook`. |
 | modernc.org/libc v1.79.1 | BSD-3-Clause | C runtime for the transpiled SQLite (indirect). |
 | modernc.org/mathutil v1.7.1 | BSD-3-Clause | Helper of modernc.org/libc (indirect). |
 | modernc.org/memory v1.12.1 | BSD-3-Clause | Allocator of modernc.org/libc (indirect). |

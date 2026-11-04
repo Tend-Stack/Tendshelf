@@ -1,0 +1,510 @@
+package ebook
+
+import (
+	"encoding/xml"
+	"io"
+	"net/url"
+	"path"
+	"regexp"
+	"strings"
+)
+
+// resolveRef resolves href (relative to the zip directory baseDir) to a zip name. A reference that
+// leaves the zip root, or starts with '/', is skipped (ok is false). Only path (zip names) is used.
+func resolveRef(baseDir, href string) (string, bool) {
+	if i := strings.IndexAny(href, "#?"); i >= 0 {
+		href = href[:i]
+	}
+	if href == "" || strings.HasPrefix(href, "/") || !isLocalRef(href) {
+		return "", false
+	}
+	if u, err := url.PathUnescape(href); err == nil {
+		href = u
+	}
+	p := path.Join(baseDir, href)
+	if p == "." || p == ".." || strings.HasPrefix(p, "../") || strings.HasPrefix(p, "/") {
+		return "", false
+	}
+	return p, true
+}
+
+type opfItem struct {
+	ID, Href, Type, Props string
+}
+
+type opfData struct {
+	Title    string
+	Creators []opfCreator
+	Lang     string
+	IDs      []string
+	Items    []opfItem
+	Spine    []string // linear itemrefs
+	SpineTOC string
+	Guide    map[string][]string // resolved path -> guide types
+	roles    map[string]string   // refines id -> role
+}
+
+type opfCreator struct{ ID, Role, Name string }
+
+func epubTypeAttr(se xml.StartElement) string {
+	for _, a := range se.Attr {
+		if a.Name.Local == "type" && (a.Name.Space == "epub" || strings.HasSuffix(a.Name.Space, "/ops")) {
+			return a.Value
+		}
+	}
+	return ""
+}
+
+func readElementText(d *xmlDec) (string, error) {
+	var sb strings.Builder
+	depth := 1
+	for depth > 0 {
+		t, err := d.Next()
+		if err != nil {
+			return "", err
+		}
+		switch v := t.(type) {
+		case xml.StartElement:
+			depth++
+		case xml.EndElement:
+			depth--
+		case xml.CharData:
+			sb.Write(v)
+		}
+	}
+	return sb.String(), nil
+}
+
+func parseOPF(data []byte, opfDir string, lim Limits) (*opfData, error) {
+	d := newXMLBytes(data, lim)
+	o := &opfData{Guide: map[string][]string{}, roles: map[string]string{}}
+	for {
+		t, err := d.Next()
+		if err == io.EOF {
+			return o, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		se, ok := t.(xml.StartElement)
+		if !ok {
+			continue
+		}
+		switch se.Name.Local {
+		case "title":
+			if txt, err := readElementText(d); err != nil {
+				return nil, err
+			} else if o.Title == "" {
+				o.Title = txt
+			}
+		case "creator":
+			role := attr(se, "role")
+			txt, err := readElementText(d)
+			if err != nil {
+				return nil, err
+			}
+			o.Creators = append(o.Creators, opfCreator{ID: attr(se, "id"), Role: role, Name: txt})
+		case "language":
+			txt, err := readElementText(d)
+			if err != nil {
+				return nil, err
+			}
+			if o.Lang == "" {
+				o.Lang = strings.TrimSpace(txt)
+			}
+		case "identifier":
+			txt, err := readElementText(d)
+			if err != nil {
+				return nil, err
+			}
+			o.IDs = append(o.IDs, strings.TrimSpace(txt))
+		case "meta":
+			if r := attr(se, "refines"); r != "" && attr(se, "property") == "role" {
+				txt, err := readElementText(d)
+				if err != nil {
+					return nil, err
+				}
+				o.roles[strings.TrimPrefix(r, "#")] = strings.TrimSpace(txt)
+			}
+		case "item":
+			o.Items = append(o.Items, opfItem{ID: attr(se, "id"), Href: attr(se, "href"), Type: attr(se, "media-type"), Props: attr(se, "properties")})
+		case "spine":
+			o.SpineTOC = attr(se, "toc")
+		case "itemref":
+			if attr(se, "linear") != "no" {
+				o.Spine = append(o.Spine, attr(se, "idref"))
+			}
+		case "reference":
+			if p, ok := resolveRef(opfDir, attr(se, "href")); ok {
+				o.Guide[p] = append(o.Guide[p], attr(se, "type"))
+			}
+		}
+	}
+}
+
+// authors returns creators without a role, or with role aut, in order.
+func (o *opfData) authors() []string {
+	var out []string
+	for _, c := range o.Creators {
+		role := c.Role
+		if role == "" && c.ID != "" {
+			role = o.roles[c.ID]
+		}
+		if role != "" && role != "aut" {
+			continue
+		}
+		if n := normalizeString(c.Name); n != "" {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+var asinRE = regexp.MustCompile(`^B0[0-9A-Z]{8}$`)
+
+func validISBN(s string) string {
+	s = strings.ToUpper(s)
+	s = strings.TrimPrefix(s, "URN:ISBN:")
+	s = strings.TrimPrefix(s, "ISBN:")
+	s = strings.NewReplacer("-", "", " ", "").Replace(s)
+	switch len(s) {
+	case 10:
+		sum := 0
+		for i := 0; i < 10; i++ {
+			c := s[i]
+			v := 0
+			switch {
+			case c >= '0' && c <= '9':
+				v = int(c - '0')
+			case c == 'X' && i == 9:
+				v = 10
+			default:
+				return ""
+			}
+			sum += v * (10 - i)
+		}
+		if sum%11 == 0 {
+			return s
+		}
+	case 13:
+		sum := 0
+		for i := 0; i < 13; i++ {
+			if s[i] < '0' || s[i] > '9' {
+				return ""
+			}
+			v := int(s[i] - '0')
+			if i%2 == 1 {
+				v *= 3
+			}
+			sum += v
+		}
+		if sum%10 == 0 {
+			return s
+		}
+	}
+	return ""
+}
+
+func identifiers(ids []string) Identifiers {
+	var out Identifiers
+	for _, id := range ids {
+		if out.ISBN == "" {
+			if v := validISBN(id); v != "" {
+				out.ISBN = v
+			}
+		}
+		if out.ASIN == "" {
+			a := strings.ToUpper(id)
+			if i := strings.LastIndexByte(a, ':'); i >= 0 {
+				a = a[i+1:]
+			}
+			if asinRE.MatchString(a) {
+				out.ASIN = a
+			}
+		}
+	}
+	return out
+}
+
+type tocEntry struct{ Href, Text string }
+
+type navData struct {
+	TOC       []tocEntry
+	Landmarks map[string][]string // resolved path -> epub:type values
+	Pages     int
+}
+
+// parseNav reads an EPUB 3 navigation document.
+func parseNav(data []byte, navDir string, lim Limits) (*navData, error) {
+	d := newXMLBytes(data, lim)
+	n := &navData{Landmarks: map[string][]string{}}
+	navType := ""
+	for {
+		t, err := d.Next()
+		if err == io.EOF {
+			return n, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		switch v := t.(type) {
+		case xml.StartElement:
+			switch v.Name.Local {
+			case "nav":
+				navType = epubTypeAttr(v)
+			case "a":
+				if navType == "" {
+					continue
+				}
+				href := attr(v, "href")
+				ty := epubTypeAttr(v)
+				txt, err := readElementText(d)
+				if err != nil {
+					return nil, err
+				}
+				switch {
+				case strings.Contains(navType, "page-list"):
+					n.Pages++
+				case strings.Contains(navType, "landmarks"):
+					if p, ok := resolveRef(navDir, href); ok && ty != "" {
+						n.Landmarks[p] = append(n.Landmarks[p], strings.Fields(ty)...)
+					}
+				case strings.Contains(navType, "toc"):
+					n.TOC = append(n.TOC, tocEntry{Href: href, Text: txt})
+				}
+			}
+		case xml.EndElement:
+			if v.Name.Local == "nav" {
+				navType = ""
+			}
+		}
+	}
+}
+
+// parseNCX reads an EPUB 2 navigation file.
+func parseNCX(data []byte, lim Limits) (*navData, error) {
+	d := newXMLBytes(data, lim)
+	n := &navData{Landmarks: map[string][]string{}}
+	var labels []string
+	for {
+		t, err := d.Next()
+		if err == io.EOF {
+			return n, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		switch v := t.(type) {
+		case xml.StartElement:
+			switch v.Name.Local {
+			case "navPoint":
+				labels = append(labels, "")
+			case "text":
+				txt, err := readElementText(d)
+				if err != nil {
+					return nil, err
+				}
+				if len(labels) > 0 && labels[len(labels)-1] == "" {
+					labels[len(labels)-1] = txt
+				}
+			case "content":
+				if len(labels) > 0 {
+					n.TOC = append(n.TOC, tocEntry{Href: attr(v, "src"), Text: labels[len(labels)-1]})
+				}
+			case "pageTarget":
+				n.Pages++
+			}
+		case xml.EndElement:
+			if v.Name.Local == "navPoint" && len(labels) > 0 {
+				labels = labels[:len(labels)-1]
+			}
+		}
+	}
+}
+
+func dirOf(p string) string {
+	d := path.Dir(p)
+	if d == "." {
+		return "."
+	}
+	return d
+}
+
+func parseEPUB(zb *zipBox, lim Limits) (*Doc, error) {
+	cdata, err := zb.Read("META-INF/container.xml")
+	if err != nil {
+		if _, ok := err.(*Refusal); ok {
+			return nil, err
+		}
+		return nil, damaged("no_container")
+	}
+	opfPath := ""
+	cd := newXMLBytes(cdata, lim)
+	for opfPath == "" {
+		t, err := cd.Next()
+		if err != nil {
+			break
+		}
+		if se, ok := t.(xml.StartElement); ok && se.Name.Local == "rootfile" {
+			if strings.EqualFold(attr(se, "media-type"), "application/oebps-package+xml") {
+				if p, ok := resolveRef(".", attr(se, "full-path")); ok {
+					opfPath = p
+				}
+			}
+		}
+	}
+	if opfPath == "" {
+		return nil, damaged("no_container")
+	}
+	odata, err := zb.Read(opfPath)
+	if err != nil {
+		if _, ok := err.(*Refusal); ok {
+			return nil, err
+		}
+		return nil, damaged("no_container")
+	}
+	opfDir := dirOf(opfPath)
+	o, err := parseOPF(odata, opfDir, lim)
+	if err != nil {
+		return nil, err
+	}
+	byID := map[string]opfItem{}
+	for _, it := range o.Items {
+		if _, dup := byID[it.ID]; !dup {
+			byID[it.ID] = it
+		}
+	}
+	if len(o.Spine) == 0 {
+		return nil, damaged("no_spine")
+	}
+
+	// Navigation: the EPUB 3 nav document first, then the NCX for what it lacks.
+	var nav *navData
+	for _, it := range o.Items {
+		if !hasProp(it.Props, "nav") {
+			continue
+		}
+		if p, ok := resolveRef(opfDir, it.Href); ok {
+			if nd, err := zb.Read(p); err == nil {
+				if nv, err := parseNav(nd, dirOf(p), lim); err == nil {
+					nv.TOC = rebase(nv.TOC, dirOf(p))
+					nav = nv
+				}
+			}
+		}
+		break
+	}
+	if nav == nil || len(nav.TOC) == 0 || nav.Pages == 0 {
+		for _, it := range o.Items {
+			if !(it.Type == "application/x-dtbncx+xml" || (it.ID == o.SpineTOC && o.SpineTOC != "")) {
+				continue
+			}
+			if p, ok := resolveRef(opfDir, it.Href); ok {
+				if nd, err := zb.Read(p); err == nil {
+					if nv, err := parseNCX(nd, lim); err == nil {
+						nv.TOC = rebase(nv.TOC, dirOf(p))
+						if nav == nil {
+							nav = nv
+						} else {
+							if len(nav.TOC) == 0 {
+								nav.TOC = nv.TOC
+							}
+							if nav.Pages == 0 {
+								nav.Pages = nv.Pages
+							}
+						}
+					}
+				}
+			}
+			break
+		}
+	}
+	titles := map[string]string{}
+	if nav != nil {
+		for _, e := range nav.TOC {
+			if _, dup := titles[e.Href]; !dup {
+				titles[e.Href] = e.Text
+			}
+		}
+	}
+
+	b := newBuilder("epub", lim)
+	for _, id := range o.Spine {
+		it, ok := byID[id]
+		if !ok || !(it.Type == "application/xhtml+xml" || it.Type == "text/html") {
+			continue
+		}
+		p, ok := resolveRef(opfDir, it.Href)
+		if !ok {
+			continue
+		}
+		data, err := zb.Read(p)
+		if err != nil {
+			if r, ok := err.(*Refusal); ok {
+				return nil, r
+			}
+			continue
+		}
+		hd, err := walkHTML(data, p, lim)
+		if err != nil {
+			return nil, err
+		}
+		title := titles[p]
+		if title == "" {
+			title = firstHeading(hd)
+		}
+		var kinds []string
+		kinds = append(kinds, o.Guide[p]...)
+		if nav != nil {
+			kinds = append(kinds, nav.Landmarks[p]...)
+		}
+		kinds = append(kinds, hd.Types...)
+		b.Chapter(title, p, kinds)
+		dir := dirOf(p)
+		feed(b, hd, 0, func(src string) string {
+			r, ok := resolveRef(dir, src)
+			if !ok {
+				return ""
+			}
+			return r
+		})
+		if b.err != nil {
+			return nil, b.err
+		}
+	}
+	pages := 0
+	if nav != nil {
+		pages = nav.Pages
+	}
+	meta := Meta{Title: o.Title, Authors: o.authors(), Language: o.Lang, Identifiers: identifiers(o.IDs)}
+	return b.Finish(meta, pages)
+}
+
+func hasProp(props, want string) bool {
+	for _, f := range strings.Fields(props) {
+		if f == want {
+			return true
+		}
+	}
+	return false
+}
+
+// rebase turns hrefs relative to dir into zip names; references that leave the zip are dropped.
+func rebase(es []tocEntry, dir string) []tocEntry {
+	out := make([]tocEntry, 0, len(es))
+	for _, e := range es {
+		if p, ok := resolveRef(dir, e.Href); ok {
+			out = append(out, tocEntry{Href: p, Text: e.Text})
+		}
+	}
+	return out
+}
+
+func firstHeading(d *htmlDoc) string {
+	for _, b := range d.Blocks {
+		if b.Kind == KindH && b.Level >= 1 && b.Level <= 3 {
+			return joinSegs(b.Segs)
+		}
+	}
+	return ""
+}
