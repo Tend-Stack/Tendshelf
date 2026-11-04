@@ -3,14 +3,21 @@
 package web
 
 import (
+	"context"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
+	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
 )
 
 const listenLongTitle = "The Remarkably Long and Winding Title of a Very Patient Book About Nothing in Particular"
@@ -32,6 +39,11 @@ func listeningVisualApp(t *testing.T) *listeningWorld {
 	for _, s := range specs {
 		b := librarytest.AddBook(t, w.a.lib, f, librarytest.BookSpec{Title: s.title, DurationMs: 36_000_000, Authors: []string{s.author}, Narrators: []string{s.narrator}})
 		books = append(books, b.ID)
+	}
+	// Three of the six books have a cover picture (a plain coloured square); the rest are blank, so the
+	// captures show the cover and the fallback side by side.
+	for i, rgb := range [][3]uint8{{150, 70, 40}, {40, 90, 130}, {90, 120, 60}} {
+		listeningCover(t, w, books[i*2], fmt.Sprintf("%064x", i+1), rgb)
 	}
 	rng := rand.New(rand.NewSource(11))
 	tx, err := w.a.st.Writer().Begin()
@@ -93,7 +105,7 @@ const listeningProbeJS = `(() => {
     const a = t.closest("a");
     return {text: t.textContent, font: parseFloat(s.fontSize), lines: Math.round(t.getBoundingClientRect().height / lh),
       height: t.getBoundingClientRect().height, lh, clamped: t.scrollHeight > t.clientHeight + 1,
-      link: [...a.children].filter(c => c.getAttribute("aria-hidden") !== "true").map(c => c.textContent).join(" ")};
+      link: [...a.children].filter(c => c.getAttribute("aria-hidden") !== "true").map(c => c.textContent.trim()).filter(x => x).join(" ")};
   });
   const minFont = Math.min(...[...document.querySelectorAll(".ts-dash *")].filter(e => e.childNodes.length && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && !e.closest(".ts-sr")).map(e => parseFloat(getComputedStyle(e).fontSize)));
   return {cards, heat: heatInfo, done, minFont};
@@ -259,4 +271,41 @@ func sepFor(path string) string {
 		return "&"
 	}
 	return "?"
+}
+
+// listeningCover gives a book a cover row and writes a real PNG as its original and its three
+// thumbnails, so the page's <img> loads.
+func listeningCover(t *testing.T, w *listeningWorld, bookID, sha string, rgb [3]uint8) {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	for y := 0; y < 64; y++ {
+		for x := 0; x < 64; x++ {
+			img.Set(x, y, color.RGBA{rgb[0] + uint8(x), rgb[1] + uint8(y), rgb[2], 255})
+		}
+	}
+	path := "covers/" + sha + ".png"
+	c := library.Cover{BookID: bookID, Source: library.CoverFolder, Mime: "image/png", Width: 64, Height: 64, SHA256: sha, Path: path}
+	err := w.a.lib.Update(context.Background(), func(tx *library.Tx) error {
+		if err := tx.PutCover(&c); err != nil {
+			return err
+		}
+		return tx.SetBookCover(bookID, c.ID)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{filepath.Join(w.a.dir, path), mediajobs.ThumbPath(w.a.dir, sha, 160),
+		mediajobs.ThumbPath(w.a.dir, sha, 320), mediajobs.ThumbPath(w.a.dir, sha, 640)} {
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		f, err := os.Create(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := png.Encode(f, img); err != nil {
+			t.Fatal(err)
+		}
+		_ = f.Close()
+	}
 }

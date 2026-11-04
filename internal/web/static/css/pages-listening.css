@@ -86,6 +86,10 @@ a.ts-dash__topname::after { content: ""; position: absolute; inset: 0; }
    lines and then clamp; the full title stays in the DOM, so it is the link's accessible name. */
 .ts-dash__done { display: flex; gap: var(--space-12); margin: var(--space-12) 0 0; padding: 0 0 var(--space-4); list-style: none; overflow-x: auto; overscroll-behavior: contain; }
 .ts-dash__done li { flex: none; width: 5.5rem; }
+/* Blank covers (pages-home.css) draw the title; a 36 px tile shows one letter, and a finished cover is a square. */
+.ts-dash__toprow .ts-cover--blank { align-items: center; justify-content: center; padding: 0; }
+.ts-dash__toprow .ts-cover__title { display: block; font: 500 0.875rem/1 var(--font-serif); }
+.ts-dash__done .ts-cover { aspect-ratio: 1; }
 .ts-dash__donelink { display: flex; flex-direction: column; gap: var(--space-4); color: var(--ink); text-decoration: none; }
 .ts-dash__donetitle { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 @media (width >= 768px) {

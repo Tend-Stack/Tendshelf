@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
@@ -250,6 +251,9 @@ func topLists(t library.TopListened) []pages.ListeningTopList {
 		list := pages.ListeningTopList{Heading: listenBooks}
 		for _, b := range t.Books {
 			c := cardView(b.Book)
+			if c.CoverSrc == "" {
+				c.Title = initialOf(b.Book.Title) // a 36 px tile has room for a letter, not a title
+			}
 			list.Rows = append(list.Rows, pages.ListeningTopRow{Cover: &c, Href: c.Href, Name: b.Book.Title, Byline: c.Byline,
 				Time: weekTime(b.Ms), Meter: meter(b.Ms, t.Books[0].Ms)})
 		}
@@ -329,4 +333,12 @@ func yearsChart(in listeningIn) (components.BarChartView, bool) {
 	v.MaxMs = niceMax(most)
 	v.MaxLabel, v.MidLabel = tickText(v.MaxMs), tickText(v.MaxMs/2)
 	return v, true
+}
+
+// initialOf is the first letter of a title, upper case; "" for an empty title.
+func initialOf(title string) string {
+	for _, r := range strings.TrimSpace(title) {
+		return strings.ToUpper(string(r))
+	}
+	return ""
 }

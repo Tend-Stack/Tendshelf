@@ -86,7 +86,7 @@ func (s *server) getListening(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	s.pageStyled(w, r, http.StatusOK, listenTitle, "profile", pages.Listening(listeningView(in)), nil, "css/pages-listening.css")
+	s.pageStyled(w, r, http.StatusOK, listenTitle, "profile", pages.Listening(listeningView(in)), nil, "css/pages-home.css", "css/pages-listening.css")
 }
 
 // firstListened is the start of the person's first session, in their zone. YearTotals returns years
