@@ -240,7 +240,7 @@ a.ts-users__item:hover { background: var(--raised); }
 
 /* "Book details from the internet": the on/off choice. */
 .ts-admin__online form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); }
-.ts-admin__choices { display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; }
+.ts-admin__choices { display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 0; border: 0; }
 .ts-admin__choice { display: flex; align-items: center; gap: var(--space-4); min-height: var(--size-tap); }
 
 /* Automatic and bulk lookups (AL-4): one row per library under "Book details from the internet", the

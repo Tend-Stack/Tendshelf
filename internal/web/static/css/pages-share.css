@@ -38,7 +38,9 @@
 /* The card carries the ring (and the transparent outline forced colours show); the check inside draws none. */
 .ts-share__choice:has(:focus-visible) { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 .ts-share__choice > .ts-check, .ts-share__found > .ts-check { margin: var(--space-8); border-radius: 50%; }
-.ts-share__choice > .ts-check:checked, .ts-share__found > .ts-check:checked { border-color: var(--accent); background: var(--surface); }
+/* Above the stretched label, so the radio's own hit area answers where it is. */
+.ts-share__choice > .ts-check { z-index: 1; }
+.ts-share__choice > .ts-check:checked,.ts-share__found > .ts-check:checked { border-color: var(--accent); background: var(--surface); }
 .ts-share__choice > .ts-check:checked::after, .ts-share__found > .ts-check:checked::after { width: 0.75rem; height: 0.75rem; border: 0; border-radius: 50%; background: var(--accent); transform: none; }
 .ts-share__choice > .ts-check:focus-visible { outline: none; box-shadow: none; }
 .ts-share__choice > label { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--space-4) 0; }
@@ -77,7 +79,7 @@
 .ts-share__peoplehead h2 { margin: 0; }
 .ts-share__peoplehead .caption { color: var(--ink-muted); }
 .ts-share__list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
-.ts-share__person, .ts-share__pending { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-16) 0; border-top: 1px solid var(--line); }
+.ts-share__person, .ts-share__pending { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); padding: var(--space-16) 0; border-top: 1px solid var(--line); }
 .ts-share__list > :first-child { border-top: 0; }
 .ts-share__person .ts-users__text, .ts-share__pending .ts-users__text { flex: 1; min-width: 0; }
 .ts-share__stop { flex: none; font-weight: 600; }
