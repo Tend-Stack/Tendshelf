@@ -25,6 +25,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/auth"
+	"github.com/Tend-Stack/tendshelf/internal/backups"
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
@@ -77,6 +78,9 @@ type Options struct {
 	// certificate); the zero value is production. The handler builds the mailer and registers its
 	// job kinds on Jobs, so Jobs must not be started yet.
 	MailOptions share.MailOptions
+	// Backups makes and lists scheduled database copies; nil means the handler makes its own
+	// (tests) and registers the job kind on Jobs.
+	Backups *backups.Service
 	// DownloadChunk is the size in bytes of one offline download request; zero means 4 MiB. Tests
 	// shrink it so a small fixture spans several chunks.
 	DownloadChunk int
@@ -107,6 +111,7 @@ type server struct {
 	details    *metadata.Service
 	covers     *mediajobs.Covers
 	writes     *mediajobs.Writes
+	backups    *backups.Service
 	progress   *progress.Service
 	mail       *share.Mail
 	mailLim    mailLimits
@@ -190,6 +195,13 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	if err := mailer.Register(); err != nil && !errors.Is(err, jobs.ErrDuplicateKind) { // tests build several handlers on one runner
 		return nil, nil, fmt.Errorf("web: email jobs: %w", err)
 	}
+	bk := opts.Backups
+	if bk == nil {
+		bk = backups.New(opts.Store, opts.Jobs, opts.DataDir, opts.Now, nil)
+		if err := bk.Register(); err != nil && !errors.Is(err, jobs.ErrDuplicateKind) {
+			return nil, nil, fmt.Errorf("web: backup job: %w", err)
+		}
+	}
 	lk := hmac.New(sha256.New, key)
 	lk.Write([]byte("tendshelf share-link unlock v1"))
 	s := &server{
@@ -215,6 +227,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		details:    opts.Details,
 		covers:     opts.Covers,
 		writes:     opts.Writes,
+		backups:    bk,
 		progress:   progress.New(opts.Store, opts.Now),
 		mail:       mailer,
 		chunkBytes: cmp.Or(opts.DownloadChunk, defaultDownloadChunk),
@@ -255,6 +268,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerShelves(mux)
 	s.registerQueue(mux)
 	s.registerDownloads(mux)
+	s.registerBackups(mux)
 	s.registerOffline(mux)
 	s.registerStream(mux)
 	s.registerPeaks(mux)

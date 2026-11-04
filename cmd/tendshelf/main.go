@@ -111,6 +111,10 @@ func run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
+	bk, err := registerBackups(d)
+	if err != nil {
+		return err
+	}
 	covers.SetFetcher(onlineClient.FetchCover)
 	details.SetCoverFill(covers.FillOnline)
 	if err := sc.Register(runner); err != nil {
@@ -118,7 +122,7 @@ func run(ctx context.Context, args []string) error {
 	}
 	setupCode := auth.NewSetupCode()
 	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: proxies,
-		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, MailOptions: share.MailOptions{Logger: logger}})
+		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Backups: bk, MailOptions: share.MailOptions{Logger: logger}})
 	if err != nil {
 		return err
 	}
@@ -134,6 +138,8 @@ func run(ctx context.Context, args []string) error {
 	}
 	// Settle any write-details swap that a crash left half done, then check again every 30 seconds.
 	go writes.Run(ctx)
+	// Scheduled database copies: the first check two minutes after start, then every 15 minutes.
+	go bk.Run(ctx)
 	// Files scanned before waveforms existed (or while they were off) get their peaks in the
 	// background; a failure here costs only the waveform, never the start.
 	if n, err := peaks.Backfill(ctx); err != nil {

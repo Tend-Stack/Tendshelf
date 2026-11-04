@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/Tend-Stack/tendshelf/internal/backups"
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
@@ -47,6 +48,16 @@ func registerDetails(d deps) (*metadata.Service, *online.Client, error) {
 		return nil, nil, err
 	}
 	return svc, client, nil
+}
+
+// registerBackups is the hook for scheduled database copies: the db.backup job kind. The web handler
+// shows and starts them; main runs the schedule check once the runner is going.
+func registerBackups(d deps) (*backups.Service, error) {
+	svc := backups.New(d.st, d.runner, d.dataDir, nil, d.log)
+	if err := svc.Register(); err != nil {
+		return nil, err
+	}
+	return svc, nil
 }
 
 // mediaFlags holds the command-line flags of the media jobs.

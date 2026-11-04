@@ -34,6 +34,8 @@ type ProfileView struct {
 	UsersRow string
 	// Email shows the "Email" row of "Your server", for the owner only.
 	Email bool
+	// Backups is the "Backups" row ("Last backup 3 hours ago · 1.2 MB" or "No backup yet"), owner only.
+	Backups string
 	// Shelves is the "Your shelves" row ("3 shelves"), empty for people who may not use shelves.
 	Shelves string
 	// NoPassword is true for an account made from an invite that never added a password: Profile
@@ -125,7 +127,7 @@ templ Profile(v ProfileView) {
 				</form>
 			}
 		</section>
-		if v.Libraries != "" || v.UsersRow != "" || v.Email {
+		if v.Libraries != "" || v.UsersRow != "" || v.Email || v.Backups != "" {
 			<section aria-labelledby="pf-srv" class="ts-me__section ts-group ts-me__hub">
 				<h2 id="pf-srv" class="ts-overline">Your server</h2>
 				if v.UsersRow != "" {
@@ -151,6 +153,15 @@ templ Profile(v ProfileView) {
 						<span class="ts-me__rowtext">
 							<span class="body ts-me__rowtitle">Email</span>
 							<span class="caption ts-me__lead">Send invitations from Tendshelf</span>
+						</span>
+						@meChevron()
+					</a>
+				}
+				if v.Backups != "" {
+					<a class="ts-me__row" href="/admin/backups">
+						<span class="ts-me__rowtext">
+							<span class="body ts-me__rowtitle">Backups</span>
+							<span class="caption ts-me__lead">{ v.Backups }</span>
 						</span>
 						@meChevron()
 					</a>
