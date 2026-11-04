@@ -363,7 +363,7 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	sheet := q.Get("sheet")
-	if sheet != "" && sheet != "contents" && sheet != "marks" {
+	if sheet != "" && sheet != "contents" && sheet != "marks" && sheet != "reading" {
 		s.notFound(w, r)
 		return
 	}
@@ -400,7 +400,16 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var sh templ.Component
-	if sheet != "" {
+	switch sheet {
+	case "":
+	case "reading":
+		sv, err := s.readingSheet(r, rc, mode, ch)
+		if err != nil {
+			s.serverError(w, r, "reading settings sheet", err)
+			return
+		}
+		sh = pages.ReadingSheet(sv)
+	default:
 		sv, err := s.readerSheet(r, rc, sheet, ch)
 		if err != nil {
 			s.serverError(w, r, "reader sheet", err)
@@ -475,6 +484,13 @@ func (s *server) readerView(r *http.Request, rc readerCtx, mode string, chap rdr
 	if set, err := s.users.LoadSettings(ctx, u.ID); err == nil {
 		speed = strconv.FormatFloat(set.Speed, 'f', -1, 64)
 	}
+	rs, err := s.users.LoadReader(ctx, u.ID)
+	if err != nil {
+		return v, err
+	}
+	v.Look = readerLook(rs)
+	v.SettingsLabel, v.SettingsHref = readerSettings, rc.href("mode", mode, "sheet", "reading")
+	v.SettingsModule, v.SettingsAction, v.SettingsCSRF = s.assetOr("js/reader-settings.js"), readerSettingsRoute, s.csrf.TokenFrom(ctx)
 	v.Dock = pages.ReaderDock{
 		SpeedText: speed + "×", SpeedLabel: fmt.Sprintf(readerSpeedLabel, speed),
 		BackLabel: readerBackSentence, FwdLabel: readerFwdSentence,

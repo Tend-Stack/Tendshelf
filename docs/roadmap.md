@@ -638,6 +638,15 @@ after M2 and M3 so R5 lands whole. Design: [read-along.md](read-along.md); board
     `TestRouteMatrix*` (6 reader rows, member and guest with and without `can_read`). Limits: no JS or CSS (P3 writes
     `readalong.js`, `reader-marks.js`, `pages-reader.css`; the page leaves `data-ts-module` out until those files ship);
     the reader page is skipped in the a11y list until R4 P5; no reading-settings link (P4).
+  - *R4 P4 (reading settings and OpenDyslexic; done)*: `users.ReaderSettings` (`reader.v1`, validated, bad stored fields fall
+    back one by one), `POST /me/reader-settings` (htmx 204, plain 303 to a `/books/` `next`, bad value 400 toast; theme goes to
+    `ui.theme`), `?sheet=reading` (`ReadingSheet`: native radios and switches, preview, no-JS Save), the Aa link, root classes and
+    data attributes from the stored settings, `reader-settings.js` (1.25 KB budget), `pages-reader-settings.css` (size, leading,
+    sheet glue, the `@font-face` rules), and OpenDyslexic Regular/Bold/Italic (release v0.91.12, SHA-256 and OFL in `NOTICES.md`;
+    never preloaded, fetched only when chosen). Checks: `TestReaderSettings*`, `TestReaderFontVendored`, `TestRouteMatrix` row,
+    opt-in `TestReaderSettingsBrowser` (desktop-1440 and mobile-390). Limits: Text size is a segmented control, not the
+    stepper; the font cap in `TestFontBudget` rose to 1.6 MB; `make page-weight` is over on requests (see the report: each new
+    `pages-*.css` is one prefetch request on every page); the app JS total waits for P3's 72,960 B figure.
 - **R5 Cross-format position**: `progress.position_source/text_*`; Read mode drives the position;
   edition switch maps through time or quote; `can_read` on grants and share links with the P3 matrix;
   offline text download with P4. Exit: read on one browser, press play on another, the voice starts at

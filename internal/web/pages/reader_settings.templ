@@ -1,0 +1,130 @@
+package pages
+
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// ReaderLook is how the reader draws itself for one person: the classes and data attributes of the reader
+// root. The values come from users.ReaderSettings (M5 R4 P4); "on" and "off" are the switches.
+type ReaderLook struct {
+	Class                                         string // extra classes of the reader root
+	Hl, Word, Follow, FollowStyle, Return, View string
+}
+
+// ReadingSheetView is the "Reading settings" sheet. Choices carry the person's current values.
+type ReadingSheetView struct {
+	Title, CloseLabel, CloseHref string
+	Action, CSRF, Next           string
+	Preview                      string
+	Look                         ReaderLook
+	Theme                        string // ui.theme: "" or "system" checks no tile
+	Font, Leading, Hl, Style     string
+	View                         string
+	Size                         int
+	Large                        bool // large text mode: 26 joins the sizes
+	Word, Follow, ReturnAuto     bool
+}
+
+type readerChoice struct{ Value, Label string }
+
+var (
+	readerLeadingChoices = []readerChoice{{"compact", "Compact"}, {"normal", "Normal"}, {"airy", "Airy"}}
+	readerFontChoices    = []readerChoice{{"serif", "Serif"}, {"sans", "Sans"}, {"dyslexic", "OpenDyslexic"}}
+	readerHlChoices      = []readerChoice{{"wash", "Wash"}, {"underline", "Underline"}, {"brighten", "Brighten"}}
+	readerStyleChoices   = []readerChoice{{"steady", "Steady"}, {"gentle", "Gentle"}}
+	readerViewChoices    = []readerChoice{{"page", "Page"}, {"focus", "Focus line"}}
+)
+
+func readerSizes(large bool) []int {
+	if large {
+		return []int{18, 20, 22, 26}
+	}
+	return []int{18, 20, 22}
+}
+
+// readerChoices is one radiogroup row: a fieldset with its legend and native radios styled as the segmented control.
+templ readerChoices(name, label, cur string, choices []readerChoice) {
+	<fieldset class="ts-readset__row" role="radiogroup">
+		<legend class="ts-readset__label">{ label }</legend>
+		<div class="ts-seg">
+			for _, c := range choices {
+				<input type="radio" class="ts-sr" id={ "rs-" + name + "-" + c.Value } name={ name } value={ c.Value } checked?={ c.Value == cur }/>
+				<label class="ts-seg__item" for={ "rs-" + name + "-" + c.Value }>{ c.Label }</label>
+			}
+		</div>
+	</fieldset>
+}
+
+// readerSwitch is a labelled switch. The hidden 0 before the checkbox makes an unchecked switch post false.
+templ readerSwitch(name, label string, on bool) {
+	<div class="ts-switch-row">
+		<label class="ts-switch-row__label" for={ "rs-" + name }>{ label }</label>
+		<input type="hidden" name={ name } value="0"/>
+		<input type="checkbox" role="switch" class="ts-switch" id={ "rs-" + name } name={ name } value="1" checked?={ on }/>
+	</div>
+}
+
+// ReadingSheet is the reading settings over the reader (the house ?sheet= pattern). Every change posts on its own and
+// reader-settings.js applies it at once; the Save button shows only without JavaScript.
+templ ReadingSheet(v ReadingSheetView) {
+	<div class="ts-sheet-layer ts-sheet-layer--details">
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
+		<div class="ts-sheet ts-details-sheet" role="dialog" aria-modal="true" aria-labelledby="reader-sheet-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="reader-sheet-title" class="ts-sheet__title">{ v.Title }</h2>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel }>
+					@components.Icon("close", false)
+				</a>
+			</div>
+			<form
+				class="ts-readset"
+				method="post"
+				action={ templ.URL(v.Action) }
+				hx-post={ v.Action }
+				hx-trigger="change"
+				hx-swap="none"
+				data-ts-reader-settings
+			>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<input type="hidden" name="next" value={ v.Next }/>
+				<div class={ "ts-readset__preview ts-reader " + v.Look.Class } data-hl={ v.Look.Hl } data-word={ v.Look.Word } aria-hidden="true">
+					<div class="ts-reader__text"><span class="ts-s is-now">{ v.Preview }</span></div>
+				</div>
+				<fieldset class="ts-readset__row" role="radiogroup">
+					<legend class="ts-readset__label">Theme</legend>
+					<div class="ts-themes">
+						for _, t := range themeChoices {
+							<input type="radio" class="ts-sr" id={ "rs-theme-" + t.Value } name="theme" value={ t.Value } checked?={ v.Theme == t.Value }/>
+							<label class="ts-theme" for={ "rs-theme-" + t.Value }>
+								<span class="ts-theme__swatch" data-theme={ t.Value } aria-hidden="true">Aa</span>
+								{ t.Label }
+							</label>
+						}
+					</div>
+				</fieldset>
+				<fieldset class="ts-readset__row" role="radiogroup">
+					<legend class="ts-readset__label">Text size</legend>
+					<div class="ts-seg">
+						for _, n := range readerSizes(v.Large) {
+							<input type="radio" class="ts-sr" id={ "rs-size-" + strconv.Itoa(n) } name="size" value={ strconv.Itoa(n) } checked?={ n == v.Size }/>
+							<label class="ts-seg__item" for={ "rs-size-" + strconv.Itoa(n) }>{ strconv.Itoa(n) } px</label>
+						}
+					</div>
+				</fieldset>
+				@readerChoices("leading", "Line spacing", v.Leading, readerLeadingChoices)
+				@readerChoices("font", "Font", v.Font, readerFontChoices)
+				@readerChoices("hl", "Highlight", v.Hl, readerHlChoices)
+				@readerSwitch("word", "Underline each word", v.Word)
+				<p class="caption" data-ts-no-word hidden>Your browser shows the sentence only.</p>
+				@readerSwitch("follow", "Follow the voice", v.Follow)
+				@readerChoices("followStyle", "How the page follows", v.Style, readerStyleChoices)
+				@readerSwitch("returnAuto", "Return automatically", v.ReturnAuto)
+				@readerChoices("view", "View", v.View, readerViewChoices)
+				<noscript><button type="submit" class="ts-btn ts-btn--primary ts-btn--block">Save</button></noscript>
+			</form>
+		</div>
+	</div>
+}
