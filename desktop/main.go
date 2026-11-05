@@ -82,6 +82,7 @@ func run(dirs desktopshell.Dirs) error {
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: appID,
 			OnSecondInstanceLaunch: func(application.SecondInstanceData) {
+				log.Println("second launch: bringing the window forward")
 				if ui.win != nil {
 					ui.win.Restore()
 					ui.win.Focus()
