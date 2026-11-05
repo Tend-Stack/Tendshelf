@@ -494,6 +494,7 @@ func sweepRows() []sweepRow {
 		{Pattern: "GET /login", Method: http.MethodGet, Path: sweepStatic("/login"), Want: sweepSame(303), Loc: "/", Anon: 200},
 		// Me
 		sweepGet("GET /me", sweepStatic("/me"), sweepSame(200)),
+		sweepGet("GET /me/devices", sweepStatic("/me/devices"), sweepSame(200)),
 		sweepGet("GET /me/settings", sweepStatic("/me/settings"), sweepSame(200)),
 		sweepGet("GET /me/settings/{section}", sweepStatic("/me/settings/appearance"), sweepSame(200)),
 		sweepGet("GET /me/password", sweepStatic("/me/password"), sweepSame(200)),
@@ -559,7 +560,7 @@ func sweepRows() []sweepRow {
 		sweepPost("POST /me/reading/goal", sweepStatic("/me/reading/goal"), sweepFormOf(url.Values{"goal_books": {"12"}}), sweepSame(303), "/me/reading"),
 		sweepPost("POST /hx/me/nav", sweepStatic("/hx/me/nav"), sweepFormOf(url.Values{"nav": {"full"}}), sweepSame(200), ""),
 		sweepPost("POST /me/password", sweepStatic("/me/password"), sweepFormOf(url.Values{"current": {"not the password at all"}, "password": {"a brand new passphrase"}}), sweepSame(422), ""),
-		sweepPost("POST /me/sessions/{sid}/signout", func(e *sweepEnv, role int) string { return "/me/sessions/" + e.secondS[role] + "/signout" }, nil, sweepSame(303), "/me"),
+		sweepPost("POST /me/sessions/{sid}/signout", func(e *sweepEnv, role int) string { return "/me/sessions/" + e.secondS[role] + "/signout" }, nil, sweepSame(303), "/me/devices"),
 		sweepPost("POST /me/sessions/signout-others", sweepStatic("/me/sessions/signout-others"), nil, sweepSame(303), ""),
 		// Shelves, the person's own
 		sweepPost("POST /shelves", sweepStatic("/shelves"), sweepFormOf(url.Values{"name": {"Sweep new shelf"}}), shelfPostWant, ""),

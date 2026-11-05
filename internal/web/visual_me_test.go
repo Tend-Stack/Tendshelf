@@ -74,7 +74,7 @@ func TestVisualMePages(t *testing.T) {
 		for _, sec := range prefsSections {
 			caps = append(caps, capture{"settings-" + sec, "/me/settings/" + sec, sh.Theme, sh.Width})
 		}
-		caps = append(caps, capture{"profile", "/me", sh.Theme, sh.Width}, capture{"password", "/me/password", sh.Theme, sh.Width})
+		caps = append(caps, capture{"profile", "/me", sh.Theme, sh.Width}, capture{"devices", "/me/devices", sh.Theme, sh.Width}, capture{"password", "/me/password", sh.Theme, sh.Width})
 	}
 	for _, c := range caps {
 		t.Run(fmt.Sprintf("%s-%s-%d", c.name, c.theme, c.w), func(t *testing.T) {

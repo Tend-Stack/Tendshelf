@@ -294,7 +294,7 @@ func TestDeviceSignOutOwn(t *testing.T) {
 	}
 
 	rec := post("/me/devices/" + tok.Device.ID + "/signout")
-	if rec.Code != 303 || location(rec) != "/me" {
+	if rec.Code != 303 || location(rec) != "/me/devices" {
 		t.Fatalf("own device: %d %q", rec.Code, location(rec))
 	}
 	if rec := deviceBearerReq(a, http.MethodGet, "/api/v1/me", tok.Token, nil); rec.Code != 401 {

@@ -17,6 +17,7 @@ import (
 // person only, whatever their role: nothing takes a person id from the request.
 func (s *server) registerMe(mux *http.ServeMux) {
 	mux.HandleFunc("GET /me", s.getMe)
+	mux.HandleFunc("GET /me/devices", s.getDevices)
 	mux.HandleFunc("GET /me/settings", s.getSettings)
 	mux.HandleFunc("GET /me/settings/{section}", s.getSettingsSection)
 	mux.HandleFunc("POST /me/settings", s.postSettings)
@@ -39,10 +40,37 @@ func (s *server) getMe(w http.ResponseWriter, r *http.Request) {
 	s.prefsPage(w, r, http.StatusOK, "Profile", "profile", "account", false, pages.Profile(v), nil, pages.MeStyles...)
 }
 
-func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
+// ownDeviceRows reads the signed-in person's own browsers and apps; no id comes from the request.
+func (s *server) ownDeviceRows(r *http.Request) ([]pages.ProfileDevice, int, error) {
 	ctx := r.Context()
 	u := currentUser(r)
 	sess, _ := auth.SessionFrom(ctx)
+	list, err := s.sessions.ListForUser(ctx, u.ID, sess.Hash)
+	if err != nil {
+		return nil, 0, err
+	}
+	apps, err := s.devices.ListForUser(ctx, u.ID)
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, others := deviceRows(s.now(), list, apps, "/me", false)
+	return rows, others, nil
+}
+
+// getDevices is "Your devices": the person's sign-ins, nearly identical ones folded.
+func (s *server) getDevices(w http.ResponseWriter, r *http.Request) {
+	rows, others, err := s.ownDeviceRows(r)
+	if err != nil {
+		s.serverError(w, r, "devices", err)
+		return
+	}
+	v := pages.DevicesView{CSRF: s.csrf.TokenFrom(r.Context()), Lines: groupDevices(rows), Others: others}
+	s.prefsPage(w, r, http.StatusOK, devTitle, "profile", "devices", false, pages.Devices(v), nil, pages.MeStyles...)
+}
+
+func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
+	ctx := r.Context()
+	u := currentUser(r)
 	v := pages.ProfileView{
 		CSRF: s.csrf.TokenFrom(ctx), UserID: u.ID, Name: u.DisplayName, Role: roleLabel(string(u.Role)),
 		Version: s.version,
@@ -75,15 +103,11 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 	}
 	v.Stats = statsView(st, false, reads)
 
-	list, err := s.sessions.ListForUser(ctx, u.ID, sess.Hash)
+	_, others, err := s.ownDeviceRows(r)
 	if err != nil {
 		return v, err
 	}
-	apps, err := s.devices.ListForUser(ctx, u.ID)
-	if err != nil {
-		return v, err
-	}
-	v.Devices, v.Others = deviceRows(s.now(), list, apps, "/me", false)
+	v.DevicesLine = devicesLine(others)
 
 	if s.can.Can(ctx, u, share.ManageLibraries, share.Target{Kind: share.TargetServer}) {
 		if v.Libraries, err = s.librariesRow(ctx, r); err != nil {
@@ -290,7 +314,7 @@ func (s *server) postSessionSignOut(w http.ResponseWriter, r *http.Request) {
 	case !found: // unknown, malformed, or someone else's
 		s.notFound(w, r)
 	default:
-		http.Redirect(w, r, "/me", http.StatusSeeOther)
+		http.Redirect(w, r, "/me/devices", http.StatusSeeOther)
 	}
 }
 
@@ -305,7 +329,7 @@ func (s *server) postDeviceSignOut(w http.ResponseWriter, r *http.Request) {
 	case !ok:
 		s.notFound(w, r)
 	default:
-		http.Redirect(w, r, "/me", http.StatusSeeOther)
+		http.Redirect(w, r, "/me/devices", http.StatusSeeOther)
 	}
 }
 
@@ -319,5 +343,5 @@ func (s *server) postSignOutOthers(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "sign out others", err)
 		return
 	}
-	http.Redirect(w, r, "/me", http.StatusSeeOther)
+	http.Redirect(w, r, "/me/devices", http.StatusSeeOther)
 }

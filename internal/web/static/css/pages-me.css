@@ -89,3 +89,9 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
 .ts-stats__note { margin: var(--space-12) 0 0; color: var(--ink-muted); }
 /* The link under the Profile panel to the listening dashboard (decision 0014). */
 .ts-dash__more { display: inline-flex; align-items: center; min-height: var(--size-tap); margin-top: var(--space-4); color: var(--accent); text-decoration: none; }
+
+/* Your devices: nearly identical sign-ins fold into one line. */
+.ts-me__devgroup > summary { cursor: pointer; list-style: none; }
+.ts-me__devgroup > summary::-webkit-details-marker { display: none; }
+.ts-me__devgroup[open] > summary .ts-me__chev { transform: rotate(135deg); }
+.ts-me__devone { padding-left: 3.375rem; }

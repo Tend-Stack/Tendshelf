@@ -1,0 +1,77 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// DeviceLine is one line of "Your devices": a single browser or app, or, when Sessions has more
+// than one entry, several nearly identical sign-ins folded into one line. For a folded line the
+// embedded row carries the shared label, the count and the newest time.
+type DeviceLine struct {
+	ProfileDevice
+	Sessions []ProfileDevice
+}
+
+// DevicesView is what "Your devices" shows. The handler writes every sentence.
+type DevicesView struct {
+	CSRF   string
+	Lines  []DeviceLine
+	Others int
+}
+
+// deviceSignOut is the per-session sign-out form: it acts on that one session only.
+templ deviceSignOut(csrf string, d ProfileDevice) {
+	<form method="post" action={ templ.URL(d.Action) }>
+		<input type="hidden" name="_csrf" value={ csrf }/>
+		<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ d.Aria }>Sign out</button>
+	</form>
+}
+
+// Devices is "Your devices": everywhere the person is signed in, a sign-out for each.
+templ Devices(v DevicesView) {
+	<div class="ts-me">
+		<h1 class="title-2 ts-me__title">Your devices</h1>
+		<p class="body ts-me__lead">Everywhere you are signed in. Signing out of one leaves the others as they are.</p>
+		<section aria-label="Your devices" class="ts-me__section ts-group">
+			for _, l := range v.Lines {
+				if len(l.Sessions) > 1 {
+					<details class="ts-me__devgroup">
+						<summary class="ts-me__row ts-me__device">
+							<span class="ts-me__deviceicon" aria-hidden="true">
+								@components.Icon(l.Icon, false)
+							</span>
+							<span class="ts-me__rowtext">
+								<span class="body ts-me__rowtitle">{ l.Title }</span>
+								<span class="caption ts-me__lead">{ l.Meta }</span>
+							</span>
+							@meChevron()
+						</summary>
+						for _, d := range l.Sessions {
+							<div class="ts-me__row ts-me__devone">
+								<span class="body ts-me__rowtext">{ d.Meta }</span>
+								@deviceSignOut(v.CSRF, d)
+							</div>
+						}
+					</details>
+				} else {
+					<div class="ts-me__row ts-me__device">
+						<span class="ts-me__deviceicon" aria-hidden="true">
+							@components.Icon(l.Icon, false)
+						</span>
+						<span class="ts-me__rowtext">
+							<span class="body ts-me__rowtitle">{ l.Title }</span>
+							<span class="caption ts-me__lead">{ l.Meta }</span>
+						</span>
+						if !l.Current {
+							@deviceSignOut(v.CSRF, l.ProfileDevice)
+						}
+					</div>
+				}
+			}
+			if v.Others > 0 {
+				<form method="post" action="/me/sessions/signout-others" class="ts-me__others">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--quiet">Sign out everywhere else</button>
+				</form>
+			}
+		</section>
+	</div>
+}

@@ -97,7 +97,7 @@ func TestNavRedirectStaysOnSite(t *testing.T) {
 
 func TestNavKeyFor(t *testing.T) {
 	for path, want := range map[string]string{
-		"/": "home", "/libraries/lib_1": "library", "/me": "profile", "/me/settings": "profile", "/me/downloads": "downloads",
+		"/": "home", "/libraries/lib_1": "library", "/me": "profile", "/me/settings": "profile", "/me/devices": "profile", "/me/downloads": "downloads",
 		"/shelves": "shelves", "/shelves/sh_1": "shelf-sh_1", "/admin/users": "admin-users", "/admin/libraries": "admin-libraries", "/books/x": "",
 	} {
 		if got := navKeyFor(path); got != want {
