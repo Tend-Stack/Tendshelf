@@ -58,6 +58,7 @@ func (s *server) linkFrame(w http.ResponseWriter, r *http.Request, status int, t
 		Assets: s.assets,
 		Styles: pages.InviteStyles,
 		Player: m,
+		Shell:  shellFrom(r),
 	}, base, data, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render link page", "path", logPath(r), "err", err)

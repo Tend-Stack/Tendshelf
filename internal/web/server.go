@@ -312,11 +312,13 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status":  "ok",
 			"version": opts.Version,
+			"app":     "tendshelf",
+			"shell":   "1", // the desktop shell looks for this: the server knows ts_shell
 		})
 	})
 	s.registerInstall(outer)
-	outer.Handle("/", guarded)
-	return s, securityHeaders(outer), nil
+	outer.Handle("/", s.shellLink(guarded))
+	return s, SecurityHeaders(outer), nil
 }
 
 // sessionOrCookieBinding binds a CSRF token to the signed-in session, or to the ts_csrf cookie when
@@ -350,6 +352,7 @@ func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, 
 	var buf bytes.Buffer
 	showUsers, usersWaiting := s.usersLink(r)
 	theme, textSize, navRail, timeZone := s.lookFor(r)
+	shell := shellFrom(r)
 	err := components.Layout(components.Page{
 		Title:        title,
 		Current:      current,
@@ -369,6 +372,9 @@ func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, 
 		Person:       currentUser(r).ID,
 		ChunkBytes:   s.chunkBytes,
 		Offline:      offlineMsgs(),
+		Shell:        shell,
+		NoInstall:    shell != "",
+		NoOffline:    shell != "",
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render page", "path", logPath(r), "err", err)
@@ -387,11 +393,14 @@ func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, 
 func (s *server) frame(w http.ResponseWriter, r *http.Request, status int, title string, body templ.Component, styles ...string) {
 	var buf bytes.Buffer
 	err := components.Frame(components.Page{
-		Title:  title,
-		Theme:  s.themeFor(r),
-		CSRF:   s.csrf.TokenFrom(r.Context()),
-		Assets: s.assets,
-		Styles: styles,
+		Title:     title,
+		Theme:     s.themeFor(r),
+		CSRF:      s.csrf.TokenFrom(r.Context()),
+		Assets:    s.assets,
+		Styles:    styles,
+		Shell:     shellFrom(r),
+		NoInstall: shellFrom(r) != "",
+		NoOffline: shellFrom(r) != "",
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render frame", "path", logPath(r), "err", err)
@@ -454,7 +463,9 @@ func (s *server) forbidden(w http.ResponseWriter, r *http.Request) {
 const contentSecurityPolicy = "default-src 'self'; img-src 'self' data:; media-src 'self' blob:; " +
 	"script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 
-func securityHeaders(next http.Handler) http.Handler {
+// SecurityHeaders sets the CSP and the other fixed headers on every answer. Exported because the
+// desktop start page server (decision 0020) must send the same policy.
+func SecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("Content-Security-Policy", contentSecurityPolicy)

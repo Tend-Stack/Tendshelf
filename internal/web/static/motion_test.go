@@ -319,6 +319,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// 3 KB, the page module 3.25 KB, the download manager 5.5 KB (written in package B2).
 	"sw.js":      {3*1024 + 768, 24 * 1024}, // G6a (operator, 2026-11-04): reader text and shell, 3.5 KB; 3.53 KB with the slow-server fallback, reported
 	"offline.js": {3*1024 + 512, 24 * 1024}, // 3.34 KB with the retry on a slow server, reported
+	// M6 D2 (decision 0020, operator 2026-11-05): the desktop window script, loaded only under ts_shell=desktop; 1.25 KB approved.
+	"desktop.js": {1*1024 + 256, 16 * 1024},
 	// B2 measured 7.8 KB served for the whole manager (5.5 KB was the estimate); 8 KB approved by the operator on 2026-11-03.
 	"downloads.js": {8*1024 + 768, 40 * 1024}, // G6b: 8.5 KB approved (operator, 2026-11-04); measured 8.7 KB with its comments intact, reported
 	// M5 G6b (decision 0019, operator 2026-11-04): the text half of a download, loaded when a book may have text; 1.5 KB approved,
@@ -359,7 +361,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // M3b (decision 0013): statistics, Eyes-free and the shake check make it 55.75 KB; approved by the operator on 2026-11-04.
 // Measured together after S, E and K merged: 55.93 KB; the operator approved 56 KB on 2026-11-04.
 // Decision 0015 (adding books by upload): 61.5 KB, approved by the operator on 2026-11-04.
-const jsTotalGzip = 86 * 1024 // operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
+const jsTotalGzip = 87 * 1024 // M6 D2: the operator raised the ceiling to 87 KB (2026-11-05) for desktop.js; before that: operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

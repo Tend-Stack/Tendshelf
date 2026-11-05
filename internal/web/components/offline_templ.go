@@ -176,7 +176,7 @@ func OfflineScript(p Page) templ.Component {
 		}
 		ctx = templ.InitializeContext(ctx)
 		ctx = templ.ClearChildren(ctx)
-		if p.Assets.Has("js/offline.js") {
+		if !p.NoOffline && p.Assets.Has("js/offline.js") {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<script type=\"module\" async src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

@@ -13,6 +13,10 @@ type DownloadsView struct {
 	Active, Ready, Settings                      string
 	KeepOpen, Persist, Safari, Insecure, Install string
 	Messages                                     []DownloadMsg
+	// Shell and ShellNote replace the page inside an app window: it plays from the library or server
+	// and keeps no downloads.
+	Shell     bool
+	ShellNote string
 }
 
 func (v DownloadsView) attrs() templ.Attributes {
@@ -23,11 +27,11 @@ func (v DownloadsView) attrs() templ.Attributes {
 	return a
 }
 
-// Downloads is /me/downloads (docs/plans/m3-offline.md, board DownloadsPhone). The server renders
+// downloadsFull is /me/downloads (docs/plans/m3-offline.md, board DownloadsPhone). The server renders
 // the heading, the lead and the empty state, which is the whole page without JavaScript. Everything
 // else starts hidden: js/downloads.js shows it and fills the two list templates from the person's
 // download index (the DOM contract in the plan).
-templ Downloads(v DownloadsView) {
+templ downloadsFull(v DownloadsView) {
 	<div class="ts-downloads" { v.attrs()... }>
 		<h1 class="title-1 ts-downloads__title">{ v.Title }</h1>
 		<p class="caption ts-downloads__lead">{ v.Lead }</p>
@@ -111,4 +115,17 @@ templ Downloads(v DownloadsView) {
 			</li>
 		</template>
 	</div>
+}
+
+// Downloads is /me/downloads: the download manager in a browser, only the title and a plain
+// sentence inside the desktop app window (v.Shell).
+templ Downloads(v DownloadsView) {
+	if v.Shell {
+		<div class="ts-downloads">
+			<h1 class="title-1 ts-downloads__title">{ v.Title }</h1>
+			<p class="caption ts-downloads__lead">{ v.ShellNote }</p>
+		</div>
+	} else {
+		@downloadsFull(v)
+	}
 }

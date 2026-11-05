@@ -15,7 +15,9 @@ func (s *server) registerDownloads(mux *http.ServeMux) {
 // getDownloads is the Downloads page: the server draws the empty state and the DOM that
 // js/downloads.js fills with the downloads kept on this device.
 func (s *server) getDownloads(w http.ResponseWriter, r *http.Request) {
-	s.pageStyled(w, r, http.StatusOK, downloadsTitle, "downloads", pages.Downloads(downloadsView()), nil, "css/pages-me.css")
+	v := downloadsView()
+	v.Shell = shellFrom(r) == "desktop"
+	s.pageStyled(w, r, http.StatusOK, downloadsTitle, "downloads", pages.Downloads(v), nil, "css/pages-me.css")
 }
 
 // bookDownloadView is the Download pair of the book page: only for a person who may download the
