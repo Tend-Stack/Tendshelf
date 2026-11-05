@@ -24,6 +24,8 @@ type CardView struct {
 	// Progress is the share of a started, unfinished book, "1" to "99", for the thin line at the foot of
 	// the cover; empty draws no line. ProgressLabel ("42 % through") is its text alternative.
 	Progress, ProgressLabel string
+	// Left is the line under the byline on Profile ("4 h 2 m left", "Chapter 9 · 37 %"); empty draws nothing.
+	Left string
 }
 
 // coverSizes is the sizes attribute for a cover drawn at size: "fill" is the grid cell, any other

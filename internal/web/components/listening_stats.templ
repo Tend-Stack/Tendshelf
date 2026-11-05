@@ -43,14 +43,18 @@ templ ListeningStats(v ListeningStatsView) {
 		if v.Note != "" {
 			<p class="caption ts-stats__note">{ v.Note }</p>
 		}
-		if v.More != "" {
-			<a class="label ts-dash__more" href={ templ.SafeURL(v.MoreHref) }>{ v.More }</a>
-		}
-		if v.Also != "" {
-			<a class="label ts-dash__more" href={ templ.SafeURL(v.AlsoHref) }>{ v.Also }</a>
-		}
-		if v.Words != "" {
-			<a class="label ts-dash__more" href={ templ.SafeURL(v.WordsHref) }>{ v.Words }</a>
+		if v.More != "" || v.Also != "" || v.Words != "" {
+			<div class="ts-stats__links">
+				if v.More != "" {
+					<a class="label ts-dash__more" href={ templ.SafeURL(v.MoreHref) }>{ v.More }</a>
+				}
+				if v.Also != "" {
+					<a class="label ts-dash__more" href={ templ.SafeURL(v.AlsoHref) }>{ v.Also }</a>
+				}
+				if v.Words != "" {
+					<a class="label ts-dash__more" href={ templ.SafeURL(v.WordsHref) }>{ v.Words }</a>
+				}
+			</div>
 		}
 	</section>
 }

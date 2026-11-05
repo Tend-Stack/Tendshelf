@@ -32,7 +32,13 @@ func (s *server) homeHeroView(ctx context.Context, r *http.Request) (*pages.Home
 	if err != nil || len(ls) == 0 {
 		return nil, "", err
 	}
-	l := ls[0]
+	return s.heroFor(ctx, r, ls[0])
+}
+
+// heroFor builds the hero card of one book in progress, text or audio. It returns nil when the book
+// is gone (the caller then tries the next one). Home and Profile share it.
+func (s *server) heroFor(ctx context.Context, r *http.Request, l library.Listening) (*pages.HomeHeroView, string, error) {
+	u := currentUser(r)
 	if l.Format == library.BookText {
 		return s.textHeroView(ctx, r, l)
 	}

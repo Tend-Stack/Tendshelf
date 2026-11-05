@@ -64,7 +64,8 @@ type Page struct {
 const pagePrefix = "css/pages-"
 
 // noPrefetch lists page stylesheets too rarely visited to cost every page a request.
-var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css"}
+// pages-email.css joins them (decision 0021): Profile adds its own stylesheet, and no page may gain a request for it.
+var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css", "css/pages-email.css"}
 
 // withPrefetch returns p with the page stylesheets it does not link itself, so the head can ask the
 // browser to fetch them early: the first boosted visit to another page then finds them cached.

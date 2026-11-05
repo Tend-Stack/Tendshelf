@@ -39,6 +39,7 @@ var weightBudgets = map[string]weightBudget{
 	"book":        {HTML: 55296, CSS: 297984, JS: 194560, Font: 791552, Img: 29696, Requests: 55},
 	"listening":   {HTML: 164864, CSS: 297984, JS: 194560, Font: 791552, Img: 34816, Requests: 62},
 	"search":      {HTML: 59392, CSS: 297984, JS: 194560, Font: 791552, Img: 39936, Requests: 65},
+	"profile":     {HTML: 64512, CSS: 328704, JS: 197632, Font: 791552, Img: 57344, Requests: 62}, // decision 0021, set the same way from the first measurement (2026-11-05)
 	"settings":    {HTML: 49152, CSS: 297984, JS: 194560, Font: 791552, Img: 1024, Requests: 45},
 	"reader":      {HTML: 52224, CSS: 321536, JS: 234496, Font: 1075200, Img: 1024, Requests: 56}, // M5 RD4, set the same way from the first measurement (2026-11-05)
 	"admin-users": {HTML: 47104, CSS: 297984, JS: 194560, Font: 791552, Img: 1024, Requests: 45},
@@ -97,7 +98,7 @@ func TestPageWeight(t *testing.T) {
 		rl.a.h.ServeHTTP(w, r)
 	}))
 	t.Cleanup(rsrv.Close)
-	pages := append(sweepPerfPages(bookID), sweepPerfPage{"settings", "/me/settings"}, sweepPerfPage{"admin-users", "/admin/users"}, sweepPerfPage{"reader", rl.readPath("")})
+	pages := append(sweepPerfPages(bookID), sweepPerfPage{"settings", "/me/settings"}, sweepPerfPage{"profile", "/me"}, sweepPerfPage{"admin-users", "/admin/users"}, sweepPerfPage{"reader", rl.readPath("")})
 	report := map[string]any{}
 	for _, pg := range pages {
 		max := weightSample{}

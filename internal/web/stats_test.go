@@ -110,8 +110,8 @@ func TestStatsProfilePanel(t *testing.T) {
 	if !strings.Contains(page, `data-ts-tz="UTC"`) {
 		t.Error("the body does not carry the stored zone")
 	}
-	// It is the first panel of the pane.
-	if i, j := strings.Index(page, `aria-labelledby="pf-stats"`), strings.Index(page, `aria-labelledby="pf-mine"`); i < 0 || j < 0 || i > j {
+	// It comes before the account card.
+	if i, j := strings.Index(page, `aria-labelledby="pf-stats"`), strings.Index(page, `aria-labelledby="pf-account"`); i < 0 || j < 0 || i > j {
 		t.Errorf("the panel is not first: %d, %d", i, j)
 	}
 	// The member sees only their own numbers.

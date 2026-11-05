@@ -43,7 +43,7 @@ func TestPageStylesTravelInMain(t *testing.T) {
 		{"/shelves", []string{"pages-home", "pages-library", "pages-shelves"}},
 		{"/shelves/" + shelf, []string{"pages-home", "pages-library", "pages-shelves"}},
 		{"/shelves/" + shelf + "/delete", []string{"pages-home", "pages-library", "pages-shelves"}},
-		{"/me", []string{"pages-me", "pages-settings"}},
+		{"/me", []string{"pages-home", "pages-library", "pages-shelves", "pages-me", "pages-profile"}},
 		{"/me/settings", []string{"pages-me", "pages-settings"}},
 		{"/me/password", []string{"pages-onboard", "pages-me", "pages-settings"}},
 		{"/admin/libraries", adminStyles},

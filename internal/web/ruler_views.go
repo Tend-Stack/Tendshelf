@@ -17,6 +17,18 @@ type listenRuler struct {
 	Where, WhereShort string
 }
 
+// bookLeftText is the time left in a book of durMs from posMs at the person's speed ("6 h 40 m", "0 m" at the end).
+func bookLeftText(posMs, durMs int64, speed float64) string {
+	if speed <= 0 {
+		speed = 1
+	}
+	left := durationText(int64(float64(max(durMs-min(posMs, durMs), 0)) / speed))
+	if left == "" {
+		left = "0 m"
+	}
+	return left
+}
+
 // listenRulerFor builds the ruler for a position in a book of durMs, at the person's speed. Chapter
 // words appear only when the book has chapters.
 func listenRulerFor(chs []library.Chapter, posMs, durMs int64, speed float64) listenRuler {
@@ -30,10 +42,7 @@ func listenRulerFor(chs []library.Chapter, posMs, durMs int64, speed float64) li
 	if speed <= 0 {
 		speed = 1
 	}
-	bookLeft := durationText(int64(float64(max(dur-pos, 0)) / speed))
-	if bookLeft == "" {
-		bookLeft = "0 m"
-	}
+	bookLeft := bookLeftText(pos, dur, speed)
 	v.Label, v.Where = homeBookProgress, fmt.Sprintf(homeWhereBook, bookLeft)
 	v.WhereShort = fmt.Sprintf(bookWhereShortBook, bookLeft)
 	if cur := currentChapter(chs, pos); cur >= 0 {

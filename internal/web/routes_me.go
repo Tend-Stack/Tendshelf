@@ -37,7 +37,7 @@ func (s *server) getMe(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "profile", err)
 		return
 	}
-	s.prefsPage(w, r, http.StatusOK, "Profile", "profile", "account", false, pages.Profile(v), nil, pages.MeStyles...)
+	s.pageStyled(w, r, http.StatusOK, "Profile", "profile", pages.Profile(v), nil, pages.ProfileStyles...)
 }
 
 // ownDeviceRows reads the signed-in person's own browsers and apps; no id comes from the request.
@@ -125,12 +125,13 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 			return v, err
 		}
 	}
-	if s.canShelve(r) {
-		list, err := s.lib.ShelfCounts(ctx, s.scope(r), u.ID)
-		if err != nil {
+	if v.Books, err = s.profileBooksView(r, set.Speed); err != nil {
+		return v, err
+	}
+	if v.CanShelve = s.canShelve(r); v.CanShelve {
+		if v.ShelfRows, err = s.profileShelvesView(r); err != nil {
 			return v, err
 		}
-		v.Shelves = countText(len(list), "1 shelf", "%d shelves")
 	}
 	return v, nil
 }
