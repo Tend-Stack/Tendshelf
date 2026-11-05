@@ -254,6 +254,8 @@ func (s *server) postEbookUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := currentUser(r)
+	// The handler may hold a different request value than the one the CSRF check parsed; clean its own.
+	defer removeMultipart(r)
 	if r.MultipartForm == nil {
 		r.Body = http.MaxBytesReader(w, r.Body, 201<<20)
 		if err := r.ParseMultipartForm(1 << 20); err != nil && !errors.Is(err, http.ErrNotMultipart) {

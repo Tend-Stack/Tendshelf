@@ -114,6 +114,9 @@ func (c *CSRF) Middleware(next http.Handler) http.Handler {
 	cop := http.NewCrossOriginProtection()
 	cop.SetDenyHandler(c.Deny)
 	guarded := cop.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The token check parses a multipart body on this request value, which net/http never
+		// cleans (it removes only the files of the original request). Remove them here, on every path.
+		defer removeMultipart(r)
 		if !safeMethod(r.Method) && !c.tokenOK(w, r) {
 			c.Deny.ServeHTTP(w, r)
 			return
@@ -132,6 +135,13 @@ func (c *CSRF) Middleware(next http.Handler) http.Handler {
 		}
 		guarded.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), csrfBindingKey, binding)))
 	})
+}
+
+// removeMultipart deletes the temp files a multipart parse spooled to disk for r.
+func removeMultipart(r *http.Request) {
+	if r.MultipartForm != nil {
+		_ = r.MultipartForm.RemoveAll()
+	}
 }
 
 func (c *CSRF) secure(r *http.Request) bool {
