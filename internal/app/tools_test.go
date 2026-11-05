@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -33,14 +33,5 @@ func TestLocateToolsWarns(t *testing.T) {
 	tools = locateTools(media.Config{FFprobe: exe, FFmpeg: exe}, log)
 	if tools.FFprobe != exe || tools.FFmpeg != exe || buf.Len() != 0 {
 		t.Fatalf("tools = %+v, log = %q", tools, buf.String())
-	}
-}
-
-func TestRunStartsWithoutAudioTools(t *testing.T) {
-	dir := t.TempDir()
-	missing := filepath.Join(t.TempDir(), "no-such-ffprobe")
-	stop := startRun(t, "-data", dir, "-ffprobe", missing, "-ffmpeg", missing)
-	if err := stop(); err != nil {
-		t.Fatalf("run = %v", err)
 	}
 }

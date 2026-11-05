@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -14,16 +14,17 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
-const resetUsage = "usage: tendshelf reset-password [-data DIR] <username>"
+// ResetUsage is the usage line of the reset-password command.
+const ResetUsage = "usage: tendshelf reset-password [-data DIR] <username>"
 
-// runResetPassword is `tendshelf reset-password [-data DIR] <username>`: it gives the account a new
+// ResetPassword is `tendshelf reset-password [-data DIR] <username>`: it gives the account a new
 // generated password, signs it out everywhere, and prints the password once on stdout. Nothing
 // else is printed or logged about it. It works while the server runs: the database is in WAL mode
 // and the write waits for the server's own.
-func runResetPassword(ctx context.Context, args []string, stdout io.Writer) error {
+func ResetPassword(ctx context.Context, args []string, stdout io.Writer) error {
 	fs := flag.NewFlagSet("reset-password", flag.ContinueOnError)
-	dataFlag := fs.String("data", envOr("TENDSHELF_DATA", ""), "data folder; default is per user")
-	fs.Usage = func() { fmt.Fprintln(fs.Output(), resetUsage) }
+	dataFlag := fs.String("data", os.Getenv("TENDSHELF_DATA"), "data folder; default is per user")
+	fs.Usage = func() { fmt.Fprintln(fs.Output(), ResetUsage) }
 	var username string
 	for len(args) > 0 {
 		if err := fs.Parse(args); err != nil {
@@ -34,17 +35,17 @@ func runResetPassword(ctx context.Context, args []string, stdout io.Writer) erro
 			break
 		}
 		if username != "" {
-			return errors.New(resetUsage)
+			return errors.New(ResetUsage)
 		}
 		username, args = args[0], args[1:] // flags may also follow the name
 	}
 	if strings.TrimSpace(username) == "" {
-		return errors.New(resetUsage)
+		return errors.New(ResetUsage)
 	}
 
 	dataDir := *dataFlag
 	if dataDir == "" {
-		d, err := defaultDataDir()
+		d, err := DefaultDataDir()
 		if err != nil {
 			return err
 		}

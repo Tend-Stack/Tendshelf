@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"errors"
@@ -7,10 +7,10 @@ import (
 	"runtime"
 )
 
-// defaultDataDir is where the database lives when neither -data nor
+// DefaultDataDir is where the database lives when neither -data nor
 // TENDSHELF_DATA is set. It does not depend on the working directory, so the
 // server finds the same database wherever it is started.
-func defaultDataDir() (string, error) {
+func DefaultDataDir() (string, error) {
 	switch runtime.GOOS {
 	case "darwin":
 		if base, err := os.UserConfigDir(); err == nil {
