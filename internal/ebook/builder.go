@@ -1,6 +1,9 @@
 package ebook
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 // builder collects chapters and blocks for every parser, so IDs, offsets and front rules exist once.
 type builder struct {
@@ -17,6 +20,9 @@ type builder struct {
 
 	// dims reads the pixel size of an image by its zip path (EPUB only; nil elsewhere).
 	dims func(path string) (w, h int)
+
+	// pageTargets are the print-page labels with their part#id (EPUB only), resolved in Finish.
+	pageTargets []tocEntry
 }
 
 // extra is what an HTML block carries beyond text: its links (Link targets as part#id or URL) and the
@@ -173,7 +179,9 @@ func placeLinks(nr []nrune, idx []int, table []Link) []Link {
 
 // resolveLinks points every link at a block ID. A link to a part#id the book does not have is dropped
 // (its text stays); one that lands on a note block, or was marked as a note, opens as a footnote.
-func resolveLinks(chs []Chapter) {
+//
+// It returns the lookup it used: a "part#id" (or "part#" for a part's first block) to its block, or nil.
+func resolveLinks(chs []Chapter) func(to string) *Block {
 	target := map[string]*Block{}
 	partFirst := map[string]*Block{}
 	for ci := range chs {
@@ -190,6 +198,15 @@ func resolveLinks(chs []Chapter) {
 			}
 		}
 	}
+	lookup := func(to string) *Block {
+		t := target[to]
+		if t == nil {
+			if part, frag, ok := strings.Cut(to, "#"); ok && frag == "" {
+				t = partFirst[part]
+			}
+		}
+		return t
+	}
 	for ci := range chs {
 		for bi := range chs[ci].Blocks {
 			bl := &chs[ci].Blocks[bi]
@@ -199,12 +216,7 @@ func resolveLinks(chs []Chapter) {
 			kept := bl.Links[:0]
 			for _, l := range bl.Links {
 				if l.To != "" {
-					t := target[l.To]
-					if t == nil {
-						if part, frag, ok := strings.Cut(l.To, "#"); ok && frag == "" {
-							t = partFirst[part]
-						}
-					}
+					t := lookup(l.To)
 					if t == nil {
 						continue
 					}
@@ -219,6 +231,7 @@ func resolveLinks(chs []Chapter) {
 			bl.Links = kept
 		}
 	}
+	return lookup
 }
 
 // Finish drops empty chapters, numbers chapters and blocks, marks front matter and returns the
@@ -251,7 +264,11 @@ func (b *builder) Finish(meta Meta, pageCount int) (*Doc, error) {
 			chars += u16Len(bl.Text)
 		}
 	}
-	resolveLinks(chs)
+	lookup := resolveLinks(chs)
+	list := pageList(chs, b.pageTargets, lookup)
+	if len(list) > 0 {
+		pageCount = pageListCount(list)
+	}
 	if pageCount <= 0 {
 		pageCount = (chars + 1799) / 1800
 	}
@@ -261,7 +278,94 @@ func (b *builder) Finish(meta Meta, pageCount int) (*Doc, error) {
 	meta.Title = normalizeString(meta.Title)
 	meta.Subtitle = normalizeString(meta.Subtitle)
 	meta.Language = strings.TrimSpace(meta.Language)
-	return &Doc{V: DocV, Recipe: Recipe, Format: b.format, Layout: b.layout, Meta: meta, PageCount: pageCount, Chapters: chs}, nil
+	return &Doc{V: DocV, Recipe: Recipe, Format: b.format, Layout: b.layout, Meta: meta, PageCount: pageCount, PageList: list, Chapters: chs}, nil
+}
+
+// maxPageMarks and maxPageLabel bound what a book's page list may add to a document.
+const (
+	maxPageMarks = 20000
+	maxPageLabel = 16
+)
+
+// pageList turns page targets into marks. A target that lands on no block is dropped, so is a label that
+// is empty or longer than 16 runes. Marks are sorted by chapter and block; when several land on one block
+// the first (in the book's own order) wins, since a block is the finest place a page can start.
+func pageList(chs []Chapter, targets []tocEntry, lookup func(string) *Block) []PageMark {
+	if len(targets) == 0 {
+		return nil
+	}
+	type found struct {
+		c, p int
+		mark PageMark
+	}
+	var all []found
+	for _, t := range targets {
+		label := normalizeString(t.Text)
+		if n := len([]rune(label)); n < 1 || n > maxPageLabel {
+			continue
+		}
+		bl := lookup(t.Href)
+		if bl == nil {
+			continue
+		}
+		c, p, _, ok := ParseSID(bl.ID + ".s0")
+		if !ok {
+			continue
+		}
+		all = append(all, found{c, p, PageMark{Label: label, Block: bl.ID}})
+	}
+	sort.SliceStable(all, func(i, j int) bool {
+		if all[i].c != all[j].c {
+			return all[i].c < all[j].c
+		}
+		return all[i].p < all[j].p
+	})
+	var out []PageMark
+	for i, f := range all {
+		if i > 0 && all[i-1].c == f.c && all[i-1].p == f.p {
+			continue
+		}
+		if len(out) == maxPageMarks {
+			break
+		}
+		out = append(out, f.mark)
+	}
+	return out
+}
+
+// pageListCount is the number of pages the book says it has: the largest label that is a plain number,
+// else how many marks there are.
+func pageListCount(list []PageMark) int {
+	most := 0
+	for _, m := range list {
+		n := 0
+		for _, r := range m.Label {
+			if r < '0' || r > '9' || n > 1_000_000 {
+				n = 0
+				break
+			}
+			n = n*10 + int(r-'0')
+		}
+		most = max(most, n)
+	}
+	if most == 0 {
+		return len(list)
+	}
+	return most
+}
+
+// PageAt names the print page that block (0-based) of chapter (Chapter.Idx, 1-based) is on: the last mark
+// at or before it. It is "" before the first mark, and for a book with no page list.
+func PageAt(d *Doc, chapter, block int) string {
+	list := d.PageList
+	i := sort.Search(len(list), func(i int) bool {
+		c, p, _, ok := ParseSID(list[i].Block + ".s0")
+		return ok && (c > chapter || (c == chapter && p > block+1))
+	})
+	if i == 0 {
+		return ""
+	}
+	return list[i-1].Label
 }
 
 func itoa(n int) string {

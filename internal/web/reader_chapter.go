@@ -127,10 +127,7 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 	c := sel.Before
 	for bi := sel.From; bi < sel.To; bi++ {
 		b := ch.Blocks[bi]
-		pg := 0
-		if pc := rc.doc.PageCount; pc > 0 && total > 0 {
-			pg = min(pc, cum*pc/total+1)
-		}
+		pg := rsPageLabel(rc.doc, idx, bi, cum, total)
 		n := rsUnits(b.Text)
 		bv := pages.ReaderBlockView{Kind: b.Kind, ID: "b-" + b.ID, Pg: pg, C: c}
 		cum += n
@@ -148,7 +145,7 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 			}
 			bv.HTML = rdrInner(b, opts)
 		}
-		if v.Pg == 0 {
+		if v.Pg == "" {
 			v.Pg = pg
 		}
 		v.Blocks = append(v.Blocks, bv)
@@ -165,8 +162,8 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 		}
 		v.Overline = fmt.Sprintf(readerChapter, n)
 	}
-	if rc.doc.PageCount > 0 && v.Pg > 0 {
-		v.Page = fmt.Sprintf(readerPageOf, v.Pg, rc.doc.PageCount)
+	if rc.doc.PageCount > 0 && v.Pg != "" {
+		v.Page = fmt.Sprintf(readerPageLabel, v.Pg, rc.doc.PageCount)
 	}
 	if part > 0 {
 		ni, np, ok := rsNext(rc.doc, idx, part, len(parts))
@@ -304,4 +301,17 @@ func rsRuler(d *ebook.Doc, chap rdrChap) components.RulerView {
 		}
 	}
 	return v
+}
+
+// rsPageLabel is the page label of block bi (0-based) in chapter idx. A book with a page list answers with
+// its own labels, blank before the first. Without one it is the standard page, 1800 characters to a page
+// (cum characters before the block of total), as it always was.
+func rsPageLabel(d *ebook.Doc, idx, bi, cum, total int) string {
+	if len(d.PageList) > 0 {
+		return ebook.PageAt(d, idx, bi)
+	}
+	if d.PageCount > 0 && total > 0 {
+		return strconv.Itoa(min(d.PageCount, cum*d.PageCount/total+1))
+	}
+	return ""
 }

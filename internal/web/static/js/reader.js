@@ -125,7 +125,7 @@ export function mount(root) {
       chapter: Number(part.dataset.ch),
       inChapter: Number(block.dataset.c) + off, // characters of the chapter before the place
       charPos: Number(part.dataset.before) + Number(block.dataset.c) - first + off, // and of the book
-      page: Number(block.dataset.pg) || 0,
+      page: block.dataset.pg || "", // the book's own label when it has a page list, so "xii" works
       chars: Number(part.dataset.chars),
     };
   }

@@ -23,7 +23,9 @@ type EPUBOptions struct {
 	Lang            string
 	ISBN            string
 	Chapters        []EPUBChapter
-	PageList        int // number of page-list entries (v3 nav, v2 NCX pageList)
+	PageList        int      // number of page-list entries (v3 nav, v2 NCX pageList)
+	PageLabels      []string // when set, the page list is these labels pointing at PageHrefs (same length), instead of PageList
+	PageHrefs       []string
 	Rights          bool
 	Apple           bool
 	LCP             bool
@@ -61,6 +63,12 @@ func EPUB(t testing.TB, o EPUBOptions) []byte {
 			}
 			for _, p := range c.Paras {
 				body += "<p>" + esc(p) + "</p>"
+			}
+			if i == 0 {
+				// The page list's targets: one short block per page, each carrying the id the list points at.
+				for k := 1; k <= o.PageList; k++ {
+					body += fmt.Sprintf(`<p id="p%d">Page %d starts here.</p>`, k, k)
+				}
 			}
 		}
 		attrs := ""
@@ -105,10 +113,13 @@ func EPUB(t testing.TB, o EPUBOptions) []byte {
 		if lm.Len() > 0 {
 			nav.WriteString(`<nav epub:type="landmarks"><ol>` + lm.String() + `</ol></nav>`)
 		}
-		if o.PageList > 0 {
+		if o.PageList > 0 || len(o.PageLabels) > 0 {
 			nav.WriteString(`<nav epub:type="page-list"><ol>`)
 			for i := 1; i <= o.PageList; i++ {
 				nav.WriteString(fmt.Sprintf(`<li><a href="ch1.xhtml#p%d">%d</a></li>`, i, i))
+			}
+			for i, l := range o.PageLabels {
+				nav.WriteString(fmt.Sprintf(`<li><a href="%s">%s</a></li>`, o.PageHrefs[i], esc(l)))
 			}
 			nav.WriteString(`</ol></nav>`)
 		}
@@ -127,8 +138,11 @@ func EPUB(t testing.TB, o EPUBOptions) []byte {
 			ncx.WriteString(fmt.Sprintf(`<navPoint id="n%d" playOrder="%d"><navLabel><text>%s</text></navLabel><content src="ch%d.xhtml"/></navPoint>`, n, n, esc(c.Title), i+1))
 		}
 		ncx.WriteString(`</navMap>`)
-		if o.PageList > 0 {
+		if o.PageList > 0 || len(o.PageLabels) > 0 {
 			ncx.WriteString(`<pageList>`)
+			for i, l := range o.PageLabels {
+				ncx.WriteString(fmt.Sprintf(`<pageTarget id="pl%d" type="normal"><navLabel><text>%s</text></navLabel><content src="%s"/></pageTarget>`, i, esc(l), o.PageHrefs[i]))
+			}
 			for i := 1; i <= o.PageList; i++ {
 				ncx.WriteString(fmt.Sprintf(`<pageTarget id="pt%d" type="normal" value="%d"><navLabel><text>%d</text></navLabel><content src="ch1.xhtml#p%d"/></pageTarget>`, i, i, i, i))
 			}

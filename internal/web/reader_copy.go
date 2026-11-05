@@ -11,6 +11,7 @@ const (
 	readerMarksTitle   = "Highlights and notes"
 	readerMarksLead    = "Your highlights, notes and bookmarks in this book."
 	readerPageOf       = "p. %d of %d"
+	readerPageLabel    = "p. %s of %d"
 	readerNoteLabel    = "Your note"
 	readerHighlighted  = "Highlighted."
 	readerHlRemoved    = "Highlight removed."

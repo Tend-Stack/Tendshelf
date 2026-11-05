@@ -41,6 +41,14 @@ Recipe `tendshelf-ebook-v2` adds, all omitted when empty so a v1 document still 
 year and cover part. A link keeps only `http`, `https` and `mailto` outside the book; a link to an id the book does not have
 is dropped and its text stays. An inline span or link never ends its paragraph.
 
+Recipe `tendshelf-ebook-v3` adds `pageList`, omitted when empty: the book's own print pages as `{label, block}` marks in
+reading order (EPUB 3 `page-list` nav, EPUB 2 NCX `pageList`, and a PDF's page numbers). A target is a `part#id`, resolved
+through the same block anchors links use, so a page that starts inside a paragraph shows at the paragraph's start; one that
+lands on no block, or has an empty or over-16-character label, is dropped; of several on one block the first wins; at most
+20,000. `pageCount` is the largest numeric label, else the number of marks; without a list it is as before
+(ceil(characters / 1800)), and `data-pg` is the standard-page arithmetic. `ebook.PageAt(doc, chapter, block)` is the last
+mark at or before a block, blank before the first. A label is shown ("p. xii of 13") and never stored in a place.
+
 A new recipe never rewrites a document in place. At start-up and after every scan, a ready file with no edition for its
 present bytes and recipe goes back to pending; while it waits, the reader keeps serving its newest edition. When the new
 edition lands, in one transaction the person's highlights, bookmarks and reading positions move through `ebook.Reanchor`
