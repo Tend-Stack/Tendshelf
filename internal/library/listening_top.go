@@ -131,6 +131,40 @@ func (r *Repo) FinishedBetween(ctx context.Context, sc Scope, userID string, fro
 	if err != nil || len(rows) == 0 {
 		return nil, err
 	}
+	pairs := make([]finishedRow, len(rows))
+	for i, x := range rows {
+		pairs[i] = finishedRow{id: x.id, at: x.at}
+	}
+	return r.finishedCards(ctx, pairs)
+}
+
+type finishedRow struct {
+	id string
+	at int64
+}
+
+// FinishedLately lists the visible books the person finished in either format (audio in
+// progress, text in reading_positions), newest first, one row per book. A book finished in
+// both shows once, with the later date. Unlike FinishedBetween it has no date window, and the
+// listening and reading stats keep their own definitions.
+func (r *Repo) FinishedLately(ctx context.Context, sc Scope, userID string, limit int) ([]FinishedBook, error) {
+	w := visible(sc, true)
+	w.add(finishedAny, userID, userID)
+	const at = `MAX(COALESCE((SELECT p.finished_at FROM progress p WHERE p.user_id = ? AND p.book_id = b.id), 0),
+  COALESCE((SELECT r.finished_at FROM reading_positions r WHERE r.user_id = ? AND r.book_id = b.id), 0))`
+	rows, err := many(ctx, r.st.Reader(), func(s scanner) (finishedRow, error) {
+		var x finishedRow
+		return x, s.Scan(&x.id, &x.at)
+	}, `SELECT b.id, `+at+` AS fin_at`+fromVisible+` WHERE `+w.sql()+`
+  ORDER BY fin_at DESC, b.id LIMIT ?`,
+		append(append([]any{userID, userID}, w.args...), listeningLimit(limit))...)
+	if err != nil || len(rows) == 0 {
+		return nil, err
+	}
+	return r.finishedCards(ctx, rows)
+}
+
+func (r *Repo) finishedCards(ctx context.Context, rows []finishedRow) ([]FinishedBook, error) {
 	ids := make([]string, len(rows))
 	for i, x := range rows {
 		ids[i] = x.id
