@@ -30,12 +30,12 @@ func (s *server) registerEbookPairing(mux *http.ServeMux) {
 // textCtx is what the Text tab knows about the book beyond its files: the audiobook as a cover and
 // a key to compare with, and which file is whose edition.
 type textCtx struct {
-	userID, csrf  string
-	edit, canRead bool
-	canListen     bool
-	audio         *components.CardView
-	key           ebook.BookKey
-	chTitles      []string
+	userID, csrf               string
+	edit, canRead, canDownload bool
+	canListen                  bool
+	audio                      *components.CardView
+	key                        ebook.BookKey
+	chTitles                   []string
 	// bookEd and yourEd are file ids; multi is true when the book has two or more ready files.
 	bookEd, yourEd string
 	multi          bool
@@ -46,7 +46,7 @@ func (s *server) textContext(r *http.Request, book library.Book, edit bool, file
 	ctx := r.Context()
 	u := currentUser(r)
 	t := share.Target{Kind: share.TargetBook, ID: book.ID, LibraryID: book.LibraryID}
-	tc := &textCtx{userID: u.ID, csrf: s.csrf.TokenFrom(ctx), edit: edit, canRead: s.can.Can(ctx, u, share.ReadText, t),
+	tc := &textCtx{userID: u.ID, csrf: s.csrf.TokenFrom(ctx), edit: edit, canRead: s.can.Can(ctx, u, share.ReadText, t), canDownload: s.can.Can(ctx, u, share.ReadText, t) && s.can.Can(ctx, u, share.DownloadBook, t),
 		canListen: s.can.Can(ctx, u, share.ListenBook, t)}
 	ready := 0
 	for _, f := range files {

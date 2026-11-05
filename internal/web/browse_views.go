@@ -157,11 +157,19 @@ func trailingGroupStart(text []rune) int {
 	return -1
 }
 
+// cardLength is the length slot of a card: the duration of an audiobook, "Ebook" for a text book (it has no length).
+func cardLength(c library.BookCard) string {
+	if c.Kind == library.BookText {
+		return cardEbook
+	}
+	return durationText(c.DurationMs)
+}
+
 // cardView turns a book into what the cards, rows and spines draw.
 func cardView(c library.BookCard) components.CardView {
 	v := components.CardView{
 		ID: c.ID, Href: "/books/" + c.ID, Title: c.Title, SpineTitle: spineTitle(c.Title), Byline: bylineOf(c.Authors),
-		Duration: durationText(c.DurationMs), AriaLabel: c.Title,
+		Duration: cardLength(c), AriaLabel: c.Title,
 		WidthClass: spineWidth(c.DurationMs), HeightClass: spineHeight(c.ID),
 	}
 	if v.Byline != "" {
@@ -198,6 +206,8 @@ type browseQuery struct {
 	// Author, Narrator and Series are ids; Length is "short", "medium" or "long"; Title is the
 	// words a title must contain. All of them narrow the list and none changes the order.
 	Author, Narrator, Series, Length, Title string
+	// Format is "audio" or "text" (the Format filter); empty shows both.
+	Format string
 	// Show is "unfinished", "not_started" or "finished" (one at a time); it reads the person's own
 	// listening progress.
 	Show   string
@@ -229,14 +239,14 @@ func lengthRange(length string) (from, to int64) {
 
 // filtered reports whether any filter narrows the list.
 func (q browseQuery) filtered() bool {
-	return len(q.Genres) > 0 || q.Author != "" || q.Narrator != "" || q.Series != "" || q.Length != "" || q.Title != "" || q.Show != ""
+	return len(q.Genres) > 0 || q.Author != "" || q.Narrator != "" || q.Series != "" || q.Length != "" || q.Title != "" || q.Show != "" || q.Format != ""
 }
 
 func parseBrowseQuery(r *http.Request) browseQuery {
 	v := r.URL.Query()
 	q := browseQuery{Sort: library.ParseSort(v.Get("sort")), View: "grid", Cursor: v.Get("cursor")}
 	switch a := v.Get("add"); a {
-	case "author", "narrator", "series", "category", "length":
+	case "author", "narrator", "series", "category", "length", "format":
 		q.Add = a
 	}
 	if v.Get("view") == "list" {
@@ -257,6 +267,10 @@ func parseBrowseQuery(r *http.Request) browseQuery {
 	switch sh := v.Get("show"); sh {
 	case library.ShowUnfinished, library.ShowNotStarted, library.ShowFinished, library.ShowShared:
 		q.Show = sh
+	}
+	switch f := v.Get("format"); f {
+	case library.BookAudio, library.BookText:
+		q.Format = f
 	}
 	q.Title = strings.TrimSpace(v.Get("title"))
 	if utf8.RuneCountInString(q.Title) > library.MaxTitleRunes {
@@ -305,7 +319,7 @@ func (q browseQuery) href(path string, mod func(*browseQuery)) string {
 		v.Add("genre", g)
 	}
 	for _, f := range [...]struct{ k, v string }{{"author", q.Author}, {"narrator", q.Narrator}, {"series", q.Series},
-		{"length", q.Length}, {"show", q.Show}, {"title", q.Title}, {"add", q.Add}} {
+		{"length", q.Length}, {"format", q.Format}, {"show", q.Show}, {"title", q.Title}, {"add", q.Add}} {
 		if f.v != "" {
 			v.Set(f.k, f.v)
 		}
@@ -332,5 +346,5 @@ func (q *browseQuery) without(g string) {
 
 // clearFilters drops every filter. The order and the view stay.
 func (q *browseQuery) clearFilters() {
-	q.Genres, q.Author, q.Narrator, q.Series, q.Length, q.Show, q.Title = nil, "", "", "", "", "", ""
+	q.Genres, q.Author, q.Narrator, q.Series, q.Length, q.Format, q.Show, q.Title = nil, "", "", "", "", "", "", ""
 }

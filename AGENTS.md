@@ -144,7 +144,7 @@ was reused, extended or replaced.
   `dark`, `light`, `sepia` and `contrast` (7:1). Board HTML is reference markup, not code to paste.
 - Fonts are self-hosted (Fraunces, Fira Sans, Fira Mono); ignore the handoff's Google Fonts link.
 - Use the copy deck's words exactly; a missing string follows the voice rules in `BRAND.md` and is
-  listed in the report. 13 px is the smallest text. One resume button per book on any screen.
+  listed in the report. 13 px is the smallest text. One resume button per book on any screen: for a book in two formats it belongs to the format used last (`lastFormat`, the newer of the listening and reading places), and the other format is a plain secondary button with no place and no time.
 - No TV layouts and nothing from `screens/directions/`.
 
 ## NOTICES discipline

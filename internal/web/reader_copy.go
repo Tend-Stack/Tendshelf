@@ -7,7 +7,7 @@ const (
 	// From the deck.
 	readerClose        = "Close reader"
 	readerChapter      = "Chapter %d"
-	readerFrontOnly    = "text only, not narrated"
+	readerFrontOnly    = "Opening pages"
 	readerMarksTitle   = "Highlights and notes"
 	readerMarksLead    = "Your highlights, notes and bookmarks in this book."
 	readerPageOf       = "p. %d of %d"

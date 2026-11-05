@@ -89,7 +89,7 @@ templ userGrantRow(v AdminUserView, g GrantRow) {
 			</div>
 			<div class="ts-switch-row">
 				<span class="ts-switch-row__text">
-					<label class="ts-switch-row__label" for={ "rd-" + g.ID }>Can read along</label>
+					<label class="ts-switch-row__label" for={ "rd-" + g.ID }>Can read</label>
 				</span>
 				<input type="checkbox" role="switch" class="ts-switch" id={ "rd-" + g.ID } name="read" value="1" checked?={ g.Read }/>
 			</div>
@@ -171,7 +171,7 @@ templ userShareForm(v AdminUserView) {
 			</div>
 			<div class="ts-switch-row">
 				<span class="ts-switch-row__text">
-					<label class="ts-switch-row__label" for="us-rd">Can read along</label>
+					<label class="ts-switch-row__label" for="us-rd">Can read</label>
 				</span>
 				<input type="checkbox" role="switch" class="ts-switch" id="us-rd" name="read" value="1"/>
 			</div>

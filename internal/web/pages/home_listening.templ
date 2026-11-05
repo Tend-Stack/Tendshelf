@@ -15,6 +15,8 @@ type HomeHeroView struct {
 	// Where is "Chapter 12 · 18 min left in chapter · 6 h 40 m left in book".
 	Where string
 	Play  *components.PlayButtonView
+	// Read replaces Play for a book the person last read (nil otherwise).
+	Read *components.ReadButtonView
 	// ChaptersHref and ChaptersLabel make the desktop "Chapters" link.
 	ChaptersHref, ChaptersLabel string
 }
@@ -70,7 +72,12 @@ templ HomeHero(v *HomeHeroView) {
 							if v.Play != nil {
 								@components.PlayButton(*v.Play)
 							}
-							<a class="ts-btn ts-btn--secondary ts-hero__chapters" href={ templ.SafeURL(v.ChaptersHref) }>{ v.ChaptersLabel }</a>
+							if v.Read != nil {
+								@components.ReadButton(*v.Read)
+							}
+							if v.ChaptersHref != "" {
+								<a class="ts-btn ts-btn--secondary ts-hero__chapters" href={ templ.SafeURL(v.ChaptersHref) }>{ v.ChaptersLabel }</a>
+							}
 						</div>
 					</div>
 				</div>

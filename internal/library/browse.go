@@ -55,6 +55,8 @@ type ListQuery struct {
 	// literal). MinDurationMs is inclusive and MaxDurationMs exclusive; 0 leaves that side open.
 	Title                        string
 	MinDurationMs, MaxDurationMs int64
+	// Format keeps one kind of book: BookAudio or BookText; "" keeps both.
+	Format string
 	// HasCover keeps the books that have a cover file (the setup page's cover wall).
 	HasCover bool
 	// Show narrows to a person's listening state: ShowUnfinished (started, not finished),
@@ -113,6 +115,7 @@ type BookCard struct {
 	DurationMs, AddedAt            int64
 	PublishedYear                  int
 	Cover                          *CoverRef
+	Kind                           string // BookAudio or BookText
 }
 
 // BookPage is one page of a list. Next is "" on the last page; Total counts the whole filtered list.
@@ -231,6 +234,20 @@ func likeEscape(s string) string {
 }
 
 // where builds the list WHERE for q: scope, listable and every filter.
+// The Show predicates read both formats' places (one helper, decision 0018): listening progress and
+// reading positions. Each has two placeholders: the person, once per table.
+const (
+	// finishedAny: finished in either format.
+	finishedAny = `(EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NOT NULL)
+ OR EXISTS (SELECT 1 FROM reading_positions r WHERE r.user_id = ? AND r.book_id = b.id AND r.finished_at IS NOT NULL))`
+	// underWay: started and not finished in either format.
+	underWay = `(EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NULL AND p.position_ms > 0)
+ OR EXISTS (SELECT 1 FROM reading_positions r WHERE r.user_id = ? AND r.book_id = b.id AND r.finished_at IS NULL AND r.percent_bp > 0))`
+	// startedAny: a place past the start in either format, finished or not.
+	startedAny = `(EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND (p.finished_at IS NOT NULL OR p.position_ms > 0))
+ OR EXISTS (SELECT 1 FROM reading_positions r WHERE r.user_id = ? AND r.book_id = b.id AND (r.finished_at IS NOT NULL OR r.percent_bp > 0)))`
+)
+
 func where(sc Scope, q ListQuery) *whereClause {
 	return whereExcept(sc, q, "")
 }
@@ -260,11 +277,16 @@ func whereExcept(sc Scope, q ListQuery, skip string) *whereClause {
 	if q.HasCover {
 		w.add("b.cover_id IS NOT NULL")
 	}
+	switch q.Format {
+	case BookAudio, BookText:
+		w.add("b.kind = ?", q.Format)
+	}
+	// A length is a property of audio; a text book has none, so a length filter leaves it out.
 	if q.MinDurationMs > 0 {
-		w.add("b.duration_ms >= ?", q.MinDurationMs)
+		w.add("b.kind = 'audio' AND b.duration_ms >= ?", q.MinDurationMs)
 	}
 	if q.MaxDurationMs > 0 {
-		w.add("b.duration_ms < ?", q.MaxDurationMs)
+		w.add("b.kind = 'audio' AND b.duration_ms < ?", q.MaxDurationMs)
 	}
 	switch {
 	case q.Show == "":
@@ -275,13 +297,13 @@ func whereExcept(sc Scope, q ListQuery, skip string) *whereClause {
 	case q.UserID == "":
 		w.add("0") // checkShow refuses this; fail closed if a caller skips it
 	case q.Show == ShowUnfinished:
-		w.add("EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NULL AND p.position_ms > 0)", q.UserID)
+		w.add(underWay, q.UserID, q.UserID)
 	case q.Show == ShowNotStarted:
-		w.add("NOT EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND (p.finished_at IS NOT NULL OR p.position_ms > 0))", q.UserID)
+		w.add("NOT "+startedAny, q.UserID, q.UserID)
 	case q.Show == ShowNotFinished:
-		w.add("NOT EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NOT NULL)", q.UserID)
+		w.add("NOT "+finishedAny, q.UserID, q.UserID)
 	case q.Show == ShowFinished:
-		w.add("EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NOT NULL)", q.UserID)
+		w.add(finishedAny, q.UserID, q.UserID)
 	default:
 		w.add("0")
 	}
@@ -464,7 +486,7 @@ func (r *Repo) cards(ctx context.Context, ids []string) ([]BookCard, error) {
 		var year sql.NullInt64
 		var sha, mime, tint, accent sql.NullString
 		var cw, ch sql.NullInt64
-		err := s.Scan(&c.ID, &c.LibraryID, &c.Title, &c.Subtitle, &root, &c.DurationMs, &c.AddedAt, &year,
+		err := s.Scan(&c.ID, &c.LibraryID, &c.Title, &c.Subtitle, &root, &c.DurationMs, &c.AddedAt, &year, &c.Kind,
 			&sha, &mime, &tint, &cw, &ch, &accent)
 		if err != nil {
 			return struct{}{}, err
@@ -485,7 +507,7 @@ func (r *Repo) cards(ctx context.Context, ids []string) ([]BookCard, error) {
 		}
 		byID[c.ID] = &c
 		return struct{}{}, nil
-	}, `SELECT b.id, b.library_id, b.title, b.subtitle, b.root_path, b.duration_ms, b.added_at, b.published_year,
+	}, `SELECT b.id, b.library_id, b.title, b.subtitle, b.root_path, b.duration_ms, b.added_at, b.published_year, b.kind,
   c.sha256, c.mime, c.tint, c.width, c.height, c.accent_json
   FROM books b LEFT JOIN covers c ON c.id = b.cover_id WHERE b.id IN (`+marks+`)`, args...)
 	if err != nil {

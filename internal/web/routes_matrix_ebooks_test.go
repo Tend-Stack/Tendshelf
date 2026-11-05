@@ -75,7 +75,12 @@ func ebookSweepRows() []sweepRow {
 		return "/books/" + e.book.ID + "/text/" + e.ebookRefused[min(role, 1)] + "/dismiss"
 	}, sweepFormOf(url.Values{}), sweepStaff(http.StatusSeeOther, http.StatusNotFound), "")
 	dismiss.LocOf = func(e *sweepEnv) string { return "/books/" + e.book.ID + "/text" }
-	rows := []sweepRow{tab, poll, add, dismiss}
+	// The original file: a refused file is never served, to anyone (a ready one is in TestFormatsDownload).
+	file := sweepGet("GET /books/{id}/text/{fileID}/file", func(e *sweepEnv, _ int) string {
+		return "/books/" + e.book.ID + "/text/" + e.ebookRefused[0] + "/file"
+	}, [4]int{http.StatusNotFound, http.StatusNotFound, http.StatusNotFound, http.StatusNotFound})
+	file.Label = "ebook file"
+	rows := []sweepRow{tab, poll, add, dismiss, file}
 	acts := func(verb, key string, want [4]int) sweepRow {
 		r := sweepPost("POST /books/{id}/text/{fileID}/"+verb, func(e *sweepEnv, role int) string {
 			k := key

@@ -177,6 +177,10 @@ func (s *server) postQueue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if b.Kind == library.BookText {
+		fail(http.StatusNotFound, queueErrGone) // invariant 8: a text book is not a thing to play
+		return
+	}
 	if !s.queueable(r.Context(), b) {
 		fail(http.StatusConflict, queueErrUnplayable)
 		return

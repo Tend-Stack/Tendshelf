@@ -19,6 +19,7 @@ var iconShapes = map[string]string{
 	"sleep":        `<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>`,
 	"bookmark":     `<path d="M6.5 4h11v16.5L12 16.8l-5.5 3.7z"/>`,
 	"chapters":     `<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>`,
+	"book-open":    `<path d="M12 6.5C10.3 5.2 8 4.5 4 4.5v13c4 0 6.3.7 8 2 1.7-1.3 4-2 8-2v-13c-4 0-6.3.7-8 2zM12 6.5v13"/>`,
 	"output":       `<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/>`,
 	"share":        `<path d="M12 3v12M7 8l5-5 5 5M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/>`,
 	"invite":       `<circle cx="10" cy="8" r="4"/><path d="M3 21c1.4-4 4-6 7-6s5.6 2 7 6M19 8v6M16 11h6"/>`,

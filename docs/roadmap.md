@@ -592,6 +592,23 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   writes them; WebP ebook covers go through ffmpeg like folder ones. Next: RD1 fills `meta_json`; B2 and B3 add the surfaces.
 - **B2 Book surfaces**: book page, Home, cards, filters, API, the resume rule for two formats, the player's book icon.
   Exit: one primary resume per book at every width.
+  **Status (built 2026-11-04)**: `lastFormat` (the newer of the listening and reading places; a format without the right is never
+  primary) decides the one primary button on the book page: "Start listening", "Resume" and "Listen again", or "Start reading",
+  "Continue reading" (with `Chapter n · pct %`) and "Read again"; the other format is a plain secondary "Listen" or "Read".
+  A text book has its own page (no Chapters, Bookmarks, write sheet, queue menu or Download; its bare address opens the Text tab;
+  "Ebook · n pages" chip; the sentence "You can see this book, but reading it needs permission." with no button for a person without
+  `ReadText`), and `/hx/books/{id}/finished` marks it on the reading side. Home: `Repo.ContinueBooks` unions both formats, one row per
+  book, and the hero reads "Continue reading" with the time left at the person's own speed. Library: `format=` (Format filter, offered
+  once an ebook is visible), the four Show predicates read `reading_positions`, lengths leave text books out, cards say "Ebook" in the
+  length slot. `/api/v1/books/{id}` gains `kind`, `formats` and `reading`. `GET /books/{id}/text/{fileID}/file` gives back the original
+  file (needs `ReadText` and `DownloadBook`; ready files only). No link section or link route for a text book. The player's book icon:
+  `data-read-href`, `[data-ts-bar-read]` right of Chapters in the 1280 px bar and `[data-ts-full-read]` right of Chapters in the full
+  player (the phone's mini row is unchanged). Copy changed: "Also let them read", "Can read", "Opening pages" (was "text only, not
+  narrated"). Checks: `TestFormats*`, `TestPlayerRead*` (with `TestPlayerReadIconBrowser`), `TestRouteMatrix`, `TestVisualFormats`
+  (four widths, dark and light), the full `make a11y` (findings 0), `make player`, `make check`, `make build`. Limits: cards show no
+  progress bar (cards have none today); the series row on Home has no Read button for a text book; the book-icon click is checked by
+  href, the reader page by its own tests; `vision.md` still lists "Honest timing", a read-along line left for the docs sweep.
+  Deviations: no `speaker` icon (RD1 uses `output`); contrast theme gets a darker `ts-avatar--c4` (7:1 under 13 px initials).
 - **B3 Add books and `/admin/ebooks`**: ebooks by upload (0015 amended), PDF scanning, suggestions and "Could not be opened".
 - **RD1 Reader server**: document recipe v2 (links, images, metadata), chapter parts, images route, `/reading/{bookID}`,
   the speaker icon. Exit: a hostile EPUB puts no script, handler or style byte in any answer.

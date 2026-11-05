@@ -49,7 +49,7 @@ for (const name of ["close-player", "full-chapter", "full-cover", "full-title", 
   "full-back", "full-forward", "full-back-num", "full-forward-num", "full-toggle", "full-elapsed", "full-fine",
   "full-book-left", "full-speed", "full-book", "full-finish", "full-menu", "full-body", "chapters-sheet", "chapter-list",
   "chapter-row", "open-chapters", "speed-sheet", "sleep-sheet", "speed-range", "speed-out", "sleep-meta", "sleep-custom",
-  "sleep-minutes", "full-sleep-left", "full-toasts", "bookmark-toast", "open-speed", "open-sleep"]) {
+  "sleep-minutes", "full-sleep-left", "full-toasts", "bookmark-toast", "open-speed", "open-sleep", "full-read"]) {
   ui[name] = $(name);
 }
 const miniOpen = $("open", slot);
@@ -59,6 +59,7 @@ const bar = { // the desktop bar's extras
   sleep: $("bar-sleep", slot),
   sleepLeft: $("bar-sleep-left", slot),
   chapters: $("bar-chapters", slot),
+  read: $("bar-read", slot), // the book icon, beside the chapters icon
   expand: $("bar-expand", slot),
   volumeWrap: $("volume-wrap", slot),
   volume: $("volume", slot),
@@ -216,6 +217,11 @@ function syncExpand() {
 
 // What changes only when another book loads.
 function drawBook() {
+  // The book icon opens the reader; it shows only for a book that has an ebook the person may read.
+  for (const link of [bar.read, ui["full-read"]]) {
+    link.href = book.readHref || "/";
+    link.hidden = !book.readHref;
+  }
   setText("full-title", book.title);
   setText("full-author", book.author);
   if (book.cover && ui["full-cover"].getAttribute("src") !== book.cover) ui["full-cover"].src = book.cover;

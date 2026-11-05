@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
 
@@ -27,11 +28,14 @@ const (
 // The play link is left out when the person may not play the book.
 func (s *server) homeHeroView(ctx context.Context, r *http.Request) (*pages.HomeHeroView, string, error) {
 	u := currentUser(r)
-	ls, err := s.lib.ContinueListening(ctx, s.scope(r), u.ID, 1)
+	ls, err := s.lib.ContinueBooks(ctx, s.scope(r), u.ID, 1)
 	if err != nil || len(ls) == 0 {
 		return nil, "", err
 	}
 	l := ls[0]
+	if l.Format == library.BookText {
+		return s.textHeroView(ctx, r, l)
+	}
 	set, err := s.users.LoadSettings(ctx, u.ID)
 	if err != nil {
 		return nil, "", err
@@ -199,4 +203,64 @@ func sharedFrom(names []string) string {
 		return fmt.Sprintf(homeSharedFrom, fmt.Sprintf(homeSharedOne, names[0], names[1]))
 	}
 	return fmt.Sprintf(homeSharedFrom, fmt.Sprintf(homeSharedMany, names[0], names[1], len(names)-2))
+}
+
+// textHeroView is the hero for a book the person last read: "Continue reading", the place and the time left
+// at their own reading speed, and one Read button (the book's one resume button).
+func (s *server) textHeroView(ctx context.Context, r *http.Request, l library.Listening) (*pages.HomeHeroView, string, error) {
+	u := currentUser(r)
+	book, err := s.lib.Book(ctx, l.Book.ID)
+	if errors.Is(err, library.ErrNotFound) {
+		return nil, "", nil
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	v := &pages.HomeHeroView{
+		Cover: cardView(l.Book), Eyebrow: homeContinueReading, Title: l.Book.Title, Byline: bylineOf(l.Book.Authors),
+		BookHref:   "/books/" + l.Book.ID,
+		RulerLabel: readerRulerLabel, RulerNow: strconv.Itoa(l.PercentBP / 100),
+		Where: fmt.Sprintf(readWhere, l.ChapterIdx, l.PercentBP/100),
+	}
+	if left, ok := s.readingLeft(ctx, u.ID, l); ok {
+		v.Where = fmt.Sprintf(homeWhereReading, l.ChapterIdx, left.chapter, left.book)
+	}
+	ok, err := s.mayReadBook(ctx, u, book)
+	if err != nil {
+		return nil, "", err
+	}
+	if ok {
+		v.Read = &components.ReadButtonView{Href: readHref(book.ID), Label: readContinue}
+	}
+	return v, l.Book.ID, nil
+}
+
+// readingTimes are the time left in the chapter and in the book, as words.
+type readingTimes struct{ chapter, book string }
+
+// readingLeft is the time left at the person's reading speed. ok is false when the edition's size is not known.
+func (s *server) readingLeft(ctx context.Context, userID string, l library.Listening) (readingTimes, bool) {
+	if s.ebooks == nil || l.EditionID == "" {
+		return readingTimes{}, false
+	}
+	st := s.ebooks.Store()
+	ed, ok, err := st.Edition(ctx, l.EditionID)
+	if err != nil || !ok {
+		return readingTimes{}, false
+	}
+	chs, err := st.Chapters(ctx, l.EditionID)
+	if err != nil || l.ChapterIdx < 1 || l.ChapterIdx > len(chs) {
+		return readingTimes{}, false
+	}
+	start := 0
+	for _, c := range chs[:l.ChapterIdx-1] {
+		start += c.CharCount
+	}
+	cpm, _ := s.progress.ReadingSpeed(ctx, userID)
+	cpm = max(cpm, 1)
+	mins := func(chars int) int { return max((max(chars, 0)+cpm-1)/cpm, 1) }
+	return readingTimes{
+		chapter: fmt.Sprintf("%d min", mins(start+chs[l.ChapterIdx-1].CharCount-l.Char)),
+		book:    durationText(int64(mins(ed.CharCount-l.Char)) * 60_000),
+	}, true
 }

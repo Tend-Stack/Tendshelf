@@ -78,6 +78,8 @@ type ShareView struct {
 	// LinkForm is the share-link form, on a book's page only. Links are the active share links (a
 	// book's own on its page, all of them on /share). LinkCreated is the panel with the new
 	// address, shown once. LinkError is the form's error in plain words.
+	// NoLinks hides the link section: a text book has no link page.
+	NoLinks     bool
 	LinkForm    *ShareLinkForm
 	Links       []ShareLinkRow
 	LinkCreated *InviteLink
@@ -124,7 +126,9 @@ templ SharePage(v ShareView) {
 						@shareForm(v)
 					}
 				</section>
-				@shareLinks(v)
+				if !v.NoLinks {
+					@shareLinks(v)
+				}
 			</div>
 			<div class="ts-share__side">
 				@shareListening(v)
@@ -209,7 +213,7 @@ templ shareForm(v ShareView) {
 		</fieldset>
 		<div class="ts-switch-row ts-share__read">
 			<span class="ts-switch-row__text">
-				<label class="ts-switch-row__label" for="share-read">Also let them read along</label>
+				<label class="ts-switch-row__label" for="share-read">Also let them read</label>
 				<span class="ts-switch-row__hint">For books that have an ebook too. Their highlights and notes stay their own.</span>
 			</span>
 			<input type="checkbox" role="switch" class="ts-switch" id="share-read" name="read" value="1" checked?={ v.Read }/>

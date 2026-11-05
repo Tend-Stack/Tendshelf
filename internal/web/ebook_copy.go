@@ -4,7 +4,11 @@ package web
 // ProtectedPhone, Contents*) are used word for word. Lines marked "NEW" are not in the deck, follow
 // the voice rules in BRAND.md and are listed in the package report.
 const (
-	ebookTabLabel = "Text" // NEW
+	ebookTabLabel  = "Text"                // NEW
+	ebookDownload  = "Download this ebook" // NEW (B2)
+	ebookChip      = "Ebook"               // NEW (B2): header chip
+	ebookChipPage  = "Ebook · 1 page"
+	ebookChipPages = "Ebook · %d pages" // NEW (B2)
 
 	// Board: AddEbookDesktop, AddEbookPhone.
 	ebookAddTitle    = "Add an ebook"

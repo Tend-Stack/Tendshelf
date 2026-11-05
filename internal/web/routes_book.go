@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -84,6 +85,26 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 	}
 	if !textEdit && !textRead {
 		v.Tabs = slices.DeleteFunc(v.Tabs, func(t pages.BookTab) bool { return t.ID == "text" })
+	}
+	isText := book.Kind == library.BookText
+	if isText {
+		// An ebook has no chapters of sound and no listening bookmarks (its marks live in the reader), and its
+		// Text tab comes straight after About.
+		v.Tabs = slices.DeleteFunc(v.Tabs, func(t pages.BookTab) bool { return t.ID == "chapters" || t.ID == "bookmarks" })
+		slices.SortStableFunc(v.Tabs, func(a, b pages.BookTab) int { return tabRank(a.ID) - tabRank(b.ID) })
+		v.ChipDuration, v.ChipChapters = "", ""
+		v.Caption = joinNonEmpty(" · ", book.Publisher)
+		if tab == "about" && (textEdit || textRead) {
+			// The bare address of a text book opens its Text tab: there are no chapters of sound to show on About.
+			tab, v.Tab = "text", "text"
+			for i := range v.Tabs {
+				v.Tabs[i].Current = v.Tabs[i].ID == "text"
+				v.Tabs[i].Home = v.Tabs[i].ID == "text"
+			}
+		}
+	}
+	if textEdit || textRead {
+		v.ChipEbook = s.ebookChip(ctx, book.ID)
 	}
 	files, prog, canPlay, err := s.bookPlayData(r, book)
 	if err != nil {
@@ -200,8 +221,14 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 	}
 	switch tab {
 	case "about":
-		bookChapters(&v, d, false, play)
+		if !isText {
+			bookChapters(&v, d, false, play)
+		}
 	case "chapters":
+		if isText {
+			s.notFound(w, r)
+			return
+		}
 		bookChapters(&v, d, r.URL.Query().Get("all") == "1", play)
 	case "text":
 		if !textEdit && !textRead {
@@ -214,7 +241,7 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 			return
 		}
 	case "bookmarks":
-		if !listen {
+		if !listen || isText {
 			s.notFound(w, r)
 			return
 		}
@@ -414,4 +441,33 @@ func (s *server) getSeries(w http.ResponseWriter, r *http.Request) {
 		v.Total = t + bookInAll
 	}
 	s.pageStyled(w, r, http.StatusOK, sp.Name, "library", pages.Series(v), nil, pages.BookStyles...)
+}
+
+// tabRank orders a text book's tabs: About, Text, Details.
+func tabRank(id string) int {
+	switch id {
+	case "about":
+		return 0
+	case "text":
+		return 1
+	}
+	return 2
+}
+
+// ebookChip is the header chip of a book with an ebook: "Ebook · 312 pages", or "Ebook" while the page count is
+// not known.
+func (s *server) ebookChip(ctx context.Context, bookID string) string {
+	files, err := s.ebooks.Store().FilesForBook(ctx, bookID)
+	if err != nil {
+		return ebookChip
+	}
+	for _, f := range files {
+		if f.State != "ready" {
+			continue
+		}
+		if ed, ok, err := s.ebooks.Store().CurrentEdition(ctx, f.ID); err == nil && ok && ed.PageCount > 0 {
+			return countText(ed.PageCount, ebookChipPage, ebookChipPages)
+		}
+	}
+	return ebookChip
 }

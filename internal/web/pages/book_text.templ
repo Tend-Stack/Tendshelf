@@ -55,6 +55,8 @@ type TextFileView struct {
 	NotSame *TextActionView
 	// ReadHref opens the reader on this edition; ReadLabel is "Read". Empty when the person may not read.
 	ReadHref, ReadLabel string
+	// DownloadHref gives back the original file; empty unless the person may read and download the book.
+	DownloadHref, DownloadLabel string
 	// Chips say whose edition this is; Choose and MakeDefault change it (two or more editions).
 	Chips               []string
 	Choose, MakeDefault *TextActionView
@@ -182,6 +184,9 @@ templ EbookEdition(f TextFileView) {
 		}
 		if f.ReadHref != "" {
 			<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(f.ReadHref) }>{ f.ReadLabel }</a>
+		}
+		if f.DownloadHref != "" {
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(f.DownloadHref) } hx-boost="false" download>{ f.DownloadLabel }</a>
 		}
 		<ol class="ts-ebook__chapters">
 			for _, c := range f.Chapters {

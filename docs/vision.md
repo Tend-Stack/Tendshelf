@@ -24,10 +24,10 @@ it happens to run on their own machine.
 6. "When the details are wrong, I want to fix them once, from a good online match, field by field,
    and optionally save them into the file itself, safely."
 7. "When I come back after a pause, I want to hear the last few seconds again so I know where I am."
-8. "When I read along, I want the line being spoken to light up and the page to follow it, so that my
-   eyes and ears stay together without effort."
-9. "When I stop listening and pick up the text (or the other way round), I want to be at the same
-   sentence, so that switching formats never costs me my place."
+8. "When I read an ebook, I want it to open where I stopped, set in the type I chose, so that I read
+   instead of setting things up."
+9. "When a book comes in both formats, I want one book with one button for whichever I used last, so that
+   two formats never feel like two libraries."
 
 ## What "wow" means here
 
@@ -48,16 +48,12 @@ Measurable, not adjectives. Each is an acceptance target for the phase that deli
   folder of numbered MP3s, multi-disc folders) with no manual fixing.
 - **Sharing in two taps**: "Share this book" gives a link with an expiry; the guest listens on their phone
   without installing anything.
-- **The words follow the voice** (read-along, [reader.md](reader.md)): add an EPUB, PDF, DOCX or
-  other DRM-free ebook to a book you own and, after one background job, the sentence being spoken is
-  highlighted (and the word, where the browser allows it) and the page scrolls gently with it. Targets:
-  at least 95 % of narrated sentences highlighted within ±250 ms of the voice (measured on a
-  public-domain recording); the highlight moves within one animation frame of the player crossing a
-  sentence start; tap any sentence and it plays from there;
-  one **Back to the voice** button when you have scrolled away.
-- **Switch formats without losing your place**: read on the train, press play on the walk home and the
-  narrator starts at the sentence you were reading; stop listening and the text opens at the sentence
-  you last heard. One position, shared by every device.
+- **A book reader in the same place** ([decision 0018](decisions/0018-book-reader.md)): an ebook with no
+  audiobook is a book in the library, with a cover, a **Read** button and its own place. An ebook that
+  matches an audiobook joins it; the book page then offers one primary button for the format you used
+  last and a plain button for the other, and the player shows a book icon that opens the reader.
+- **Two formats, two places**: the listening place and the reading place never write each other. Reading
+  on the train does not move the narrator, and pressing play on the walk home does not move the page.
 - **Reading comfort for everyone**: Focus line (one sentence at a time in large type), a
   dyslexia-friendly font option, sizes to 250 %, sepia and night themes, all at WCAG AA contrast.
 - **Honest timing**: text that is not in the recording (front matter, an abridged cut, another edition's
@@ -68,8 +64,8 @@ Measurable, not adjectives. Each is an acceptance target for the phase that deli
 
 ## Not goals
 
-- A standalone ebook library and comics (Audiobookshelf does them). Ebooks are admitted only as the
-  text edition of an audiobook, for read-along ([decision 0001](decisions/0001-read-along.md)).
+- Comics and fixed-layout books, and a store. Ebooks are books here ([decision 0018](decisions/0018-book-reader.md)),
+  but only reflowable, DRM-free ones; there is no read-along (the voice and the words do not share a place).
 - Selling, DRM removal, or downloading from stores. Tendshelf refuses copy-protected audio and ebooks.
 - A social network. Sharing is private, person to person.
 - A cloud service run by us. Self-hosted only.

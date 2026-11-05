@@ -17,6 +17,8 @@ type PlayButtonView struct {
 	ShowsPlayer bool
 	// Icon names the picture of a Round button instead of the play triangle (the reader's speaker).
 	Icon string
+	// Secondary draws the plain button of the format that is not the person's last (the book page's "Listen").
+	Secondary bool
 }
 
 // playBtnIcon is the picture before the pause swap: the triangle, or the named icon when one is set.
@@ -28,6 +30,9 @@ func playBtnIcon(v PlayButtonView) string {
 }
 
 func playBtnClass(v PlayButtonView) string {
+	if v.Secondary {
+		return "ts-btn ts-btn--secondary"
+	}
 	if v.Round {
 		return "ts-iconbtn ts-iconbtn--tonal"
 	}

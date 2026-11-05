@@ -25,6 +25,7 @@ type PlayerMsgs struct {
 	// The full player (P1c-5a).
 	ChapterOf, LeftInChapter, LeftInBookMinutes, LeftInBookHours, LeftInBookBoth, SubtitleSep, ScrubLabel, ScrubValue, FineScrub string
 	ClosePlayer, PrevChapter, NextChapter, Speed, Sleep, Chapters           string
+	OpenReader                                                              string // the book icon: "Read this book"
 	Bookmark, MoreActions, GoToBook, MarkFinished, ChapterPlayed, OpenPlayer, Resume string
 	ScrubBubble, UpNext                                                      string
 
@@ -197,6 +198,9 @@ templ PlayerSlot(m PlayerMsgs) {
 				<button type="button" class="ts-iconbtn" data-ts-bar-chapters aria-haspopup="dialog" aria-label={ m.Chapters }>
 					@Icon("chapters", false)
 				</button>
+				<a class="ts-iconbtn" data-ts-bar-read href="/" hidden aria-label={ m.OpenReader }>
+					@Icon("book-open", false)
+				</a>
 				<button type="button" class="ts-iconbtn" data-ts-bar-bookmark aria-label={ m.BookmarkMoment } if m.Link { hidden }>
 					@Icon("bookmark", false)
 				</button>

@@ -232,7 +232,7 @@ func TestUsersGrants(t *testing.T) {
 		t.Fatal("grant not as asked")
 	}
 	page := e.get(e.owner, base).Body.String()
-	for _, w := range []string{"Family library", "Library · 3 books", "Until ", "Can read along", "Renew for 30 days"} {
+	for _, w := range []string{"Family library", "Library · 3 books", "Until ", "Can read", "Renew for 30 days"} {
 		if w == "Renew for 30 days" {
 			if strings.Contains(page, w) {
 				t.Fatalf("an active grant offers %q", w)
