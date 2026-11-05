@@ -214,7 +214,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 		Title: rc.book.Title, BookID: id, EditionID: rc.ed.ID,
 		CloseHref: "/books/" + id, CloseLabel: readerClose,
 		Chapter: chap.view, MarksModule: s.assetOr("js/reader-marks.js"), ReaderModule: s.assetOr("js/reader.js"), PagesModule: s.assetOr("js/reader-pages.js"),
-		Offline: &pages.ReaderOfflineView{Module: s.assetOr("js/reader-offline.js")},
+		SkimModule: s.assetOr("js/reader-skim.js"), Offline: &pages.ReaderOfflineView{Module: s.assetOr("js/reader-offline.js")},
 	}
 	rs, err := s.users.LoadReader(ctx, u.ID)
 	if err != nil {
@@ -238,7 +238,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 		Before: chap.view.Before, ChapterChars: chChars, Save: "/reading/" + id,
 		Flow: rs.Flow, Lang: rc.doc.Meta.Language,
 		Pages: rc.doc.PageCount, Chapters: len(rc.doc.Chapters), Words: readerWords(),
-		NotesSrc: s.assetOr("js/reader-notes.js"),
+		Skim: rsSkim(rc.doc), NotesSrc: s.assetOr("js/reader-notes.js"),
 	}
 	// The speaker: only with the right to listen and an audiobook to play. It starts at the audiobook's own
 	// saved place (never the reading place) and writes neither position itself.

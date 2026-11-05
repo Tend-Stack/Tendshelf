@@ -689,6 +689,7 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   "{n} % through" (hidden words beside the line). Checks: `TestSeriesFormats*`, `make check`, `make a11y` 0 findings,
   `make page-weight`, `TestPerfLibraryPage` median 194 ms (budget 300). Captures: `TestSeriesFormatsVisual`. Limits: Home's
   "New on the shelf" and person pages draw no line; no board shows the line.
+- **G4 Skim** (done, 2026-11-05; [plan](plans/m5-great-reader.md)): a range input over the dock's ruler names the chapter under the thumb and opens the book at that share of the text on release, leaving "Back to where I was". `bp` in the reader address (server rung in `reader_start.go`), `data-skim` (`reader_skim.go`), `reader-skim.js` (lazy), skim styles in `pages-reader.css`. Checks: `TestSkimStart`, `TestSkimBrowserJump/Keys/Offline`, `TestSkimVisual` (four themes, 390 and 1440), the `reader-skim` a11y state, `make check`, `make build`, `make a11y`. Limits: `reader-skim.js` 1,292 B against its 1,280 row and `reader.js` 6,440 B against 6,144 (main was 6,044), both reported for the operator; offline `bp` is ignored; a book of over 300 chapters keeps every nth in the tip and `ch` is then only a guess (the server still places `bp`). Next: G2.
 - **Later** (a note each in the plan): G1 look-up and word list, G2 reading stats, G3 print pages, G4 skim, G5 comfort,
   G6 offline reading, G7 collections and sending a book; then OPDS and KOReader sync.
 

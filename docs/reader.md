@@ -121,3 +121,16 @@ Where a person stands in a book is the place of the format used last (`standIn`,
 listening place and the reading place; a book finished in either format is finished. Home's "Your series in progress" row, the
 series tiles on the book page and the thin line at the foot of a started book's cover (library grid and list, series page, shelves)
 all read it. A row keeps one control: Read when reading was last, Play otherwise. Nothing here writes a place.
+
+## Skim (G4)
+
+The dock's ruler stays the picture; a transparent range input (`#reader-skim`, 0 to 10000, 44 px tall) lies over it and
+`reader.js` shows it once mounted and keeps its value at the place. The first pointer press, key or focus on it imports
+`reader-skim.js`. While it moves, the tip (`#reader-skim-tip`) and the input's `aria-valuetext` read "{chapter title} · {n} %",
+from `data-skim` on `#reader` (`[[characters before the chapter, title], ...]`, titles cut to 60 characters, at most 300
+entries). Letting go (or Enter) opens `/books/{id}/read?ch=N&bp=P`; the arrow keys move one percent, Home and End are the
+browser's, Escape puts the thumb back. A skim writes no place: it only stores `ts.back.<book>` (if not already set), so the
+"Back to where I was" chip of `reader-marks.js` appears on arrival and goes after three forward turns; reading on is what saves.
+On the server `bp` (an integer 0 to 10000, else ignored, and ignored beside `part`) wins over `ch` and opens the part holding
+the block at that share of the book's text, at its first sentence (`rsPlaceAtChars`); `at` still wins over `bp`. Offline the shell
+cannot place `bp` and `reader-offline.js` reads only `ch`: the chapter opens at its start, and the chip still leads back.

@@ -98,6 +98,7 @@ export function mount(root) {
   let active = 0; // milliseconds of visible reading since the last save
   let lastTurn = Date.now();
   let known = 0; // the newest place the server has told us of
+  let turns = 0; // forward turns since this page opened, which retire the chip that leads back after a skim or a link
 
   // ---- Finding the place ----
 
@@ -235,6 +236,7 @@ export function mount(root) {
     return parts.join(" ");
   }
 
+  const skimBar = document.getElementById("reader-skim");
   function paint() {
     if (!here) return;
     const total = Number(root.dataset.totalChars);
@@ -252,6 +254,7 @@ export function mount(root) {
     const percent = total ? Math.min(100, (here.charPos * 100) / total) : 0;
     ruler.querySelector(".ts-ruler__fill").style.setProperty("--ts-value", percent);
     ruler.setAttribute("aria-valuenow", Math.round(percent));
+    if (skimBar && document.activeElement !== skimBar) skimBar.value = Math.round(percent * 100); // the skim bar follows the place unless it is in use
   }
 
   // ---- Saving ----
@@ -315,9 +318,24 @@ export function mount(root) {
     active += Math.min(Date.now() - lastTurn, MAX_ACTIVE_MS);
     lastTurn = Date.now();
     dirty = true;
+    if (gone > 0 && ++turns >= 3) shell.querySelector(".ts-reader__back")?.remove(); // three turns on, the way back is no longer wanted
     paint();
     clearTimeout(timer);
     timer = setTimeout(save, SAVE_DELAY_MS);
+  }
+
+  // ---- The skim bar: shown at once, its script loaded on the first touch ----
+
+  if (skimBar) {
+    skimBar.hidden = false;
+    let loading = null;
+    const wake = (event) => {
+      const from = skimBar.value; // before the touch that woke it has moved the thumb
+      // The touch that woke the script may end before the script arrives: its end is kept as a promise.
+      const released = event.type === "pointerdown" ? new Promise((done) => addEventListener("pointerup", done, { once: true })) : null;
+      loading ??= import(skimBar.dataset.src).then((module) => module.skim(root, skimBar, { go, place: () => here, from, released }));
+    };
+    for (const type of ["pointerdown", "keydown", "focus"]) skimBar.addEventListener(type, wake, { signal: stop.signal });
   }
 
   // ---- Another device ----

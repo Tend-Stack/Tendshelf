@@ -4,3 +4,4 @@
 # The check ids are a11yChecks in internal/web/a11y_audit_test.go; the selector is the one findings.json
 # shows. Role, theme and width do not matter. A line that matches nothing in a full run fails the audit.
 text-200-clip * #reader-ch-2 -- A page of the reader is a column box: the rest of the part sits in the columns to its right and is reached by page turns or by switching to scrolling, so nothing is lost.
+contrast-control * #reader-skim -- The skim bar is a transparent range laid over the dock's ruler, which draws the line; its boundary is the thumb (accent fill on the ground) and a visible focus ring, so a border or fill on the 44 px bar itself would only hide the ruler.

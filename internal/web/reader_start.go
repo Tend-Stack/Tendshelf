@@ -55,6 +55,15 @@ func (s *server) rsStartPlace(ctx context.Context, u users.User, rc readerCtx, q
 			return pl, true, nil
 		}
 	}
+	// The skim bar (G4): bp is a place in the book in hundredths of a percent. It wins over ch, which only
+	// names the chapter the bar guessed. A bad value is ignored, as is any bp beside an explicit part.
+	if bp := q.Get("bp"); bp != "" && partGiven == 0 {
+		if n, err := strconv.Atoi(bp); err == nil && n >= 0 && n <= 10000 {
+			if at, ok := rsPlaceAtChars(rc.doc, n); ok {
+				return at, true, nil
+			}
+		}
+	}
 	if pl.Ch != 0 {
 		pl.Part = max(partGiven, 1)
 		if pl.Part > len(rsParts(rc.doc.Chapters[pl.Ch-1])) {
@@ -77,6 +86,26 @@ func (s *server) rsStartPlace(ctx context.Context, u users.User, rc readerCtx, q
 		}
 	}
 	return rsPlace{Ch: 1, Part: 1}, true, nil
+}
+
+// rsPlaceAtChars is the start of the block that holds the place bp (0 to 10000) of the way through the text of
+// d: its chapter, part and first sentence, offset 0. ok is false for a book with no text.
+func rsPlaceAtChars(d *ebook.Doc, bp int) (rsPlace, bool) {
+	_, total := rsCharsBefore(d, 0)
+	if total <= 0 {
+		return rsPlace{}, false
+	}
+	want := min(bp*total/10000, total-1) // 10000 is the end: the last block, not past it
+	for _, c := range d.Chapters {
+		for bi, b := range c.Blocks {
+			n := rsUnits(b.Text)
+			if want < n {
+				return rsPlace{Ch: c.Idx, Part: rsPartIndex(rsParts(c), bi), At: ebook.SentenceID(b.ID, 0)}, true
+			}
+			want -= n
+		}
+	}
+	return rsPlace{}, false
 }
 
 func atoiOr(s string, def int) int {
