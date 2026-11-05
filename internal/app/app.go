@@ -132,6 +132,8 @@ func Run(ctx context.Context, cfg Config) error {
 	go bk.Run(ctx)
 	// Expire stale uploads and clear their staging: the first sweep a minute after start, then hourly.
 	go uploads.Run(ctx)
+	// Sweep finished job rows, old audit entries and the online cover cache: first pass five minutes after start.
+	go runRetention(ctx, st, onlineClient, logger)
 	// Files scanned before waveforms existed (or while they were off) get their peaks in the
 	// background; a failure here costs only the waveform, never the start.
 	if n, err := peaks.Backfill(ctx); err != nil {

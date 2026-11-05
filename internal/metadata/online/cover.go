@@ -9,7 +9,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 )
 
 // imageKind names a picture by its first bytes ("jpeg", "png", "webp"), never by name or content type.
@@ -111,4 +113,59 @@ func writeAtomic(path string, data []byte) error {
 		return err
 	}
 	return nil
+}
+
+// CoverCacheLimit bounds the cover cache on disk: past it the oldest pictures go first.
+const CoverCacheLimit = 200 << 20
+
+// PruneCovers removes cached covers past their seven days, then the oldest ones until the folder is
+// within maxBytes. It touches only the *.img files this client wrote. It returns how many it removed.
+func (c *Client) PruneCovers(maxBytes int64) (int, error) {
+	if c.coverDir == "" {
+		return 0, nil
+	}
+	entries, err := os.ReadDir(c.coverDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	type pic struct {
+		path string
+		size int64
+		mod  time.Time
+	}
+	var keep []pic
+	var total int64
+	removed := 0
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".img") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		p := pic{filepath.Join(c.coverDir, e.Name()), info.Size(), info.ModTime()}
+		if c.now().Sub(p.mod) >= cacheTTL {
+			if os.Remove(p.path) == nil {
+				removed++
+			}
+			continue
+		}
+		keep = append(keep, p)
+		total += p.size
+	}
+	sort.Slice(keep, func(i, j int) bool { return keep[i].mod.Before(keep[j].mod) })
+	for _, p := range keep {
+		if total <= maxBytes {
+			break
+		}
+		if os.Remove(p.path) == nil {
+			removed++
+			total -= p.size
+		}
+	}
+	return removed, nil
 }
