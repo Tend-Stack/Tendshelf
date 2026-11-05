@@ -180,6 +180,20 @@ function shellShowing() {
   return !!document.querySelector("[data-ts-offline-shell]");
 }
 
+// Online but showing the shell means the server was too slow or failed once; it may answer now. The
+// same address is asked for again after a pause, until the real page arrives (each attempt that
+// ends in the shell again renders the banner, which arms the next one).
+const RETRY_AFTER_MS = 10000;
+let retryTimer = 0;
+
+function armRetry(retry) {
+  if (retryTimer) return;
+  retryTimer = setTimeout(() => {
+    retryTimer = 0;
+    if (navigator.onLine && shellShowing() && !retry.hidden) retry.click();
+  }, RETRY_AFTER_MS);
+}
+
 function renderBanner() {
   if (!banner) return;
   const offline = !navigator.onLine;
@@ -190,6 +204,7 @@ function renderBanner() {
   text.textContent = offline ? banner.dataset.tsMsgOffline : banner.dataset.tsMsgUnreachable;
   retry.hidden = !unreachable;
   retry.href = location.href;
+  if (unreachable) armRetry(retry);
 }
 
 window.addEventListener("offline", () => {

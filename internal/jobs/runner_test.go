@@ -41,7 +41,13 @@ func fastOptions() jobs.Options {
 // which runs before the store is closed.
 func newRunner(t *testing.T, st *db.Store, kinds ...jobs.Kind) *jobs.Runner {
 	t.Helper()
-	r, err := jobs.New(st, fastOptions())
+	return newRunnerWith(t, st, fastOptions(), kinds...)
+}
+
+// newRunnerWith is newRunner with explicit options.
+func newRunnerWith(t *testing.T, st *db.Store, o jobs.Options, kinds ...jobs.Kind) *jobs.Runner {
+	t.Helper()
+	r, err := jobs.New(st, o)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,11 +157,21 @@ func TestEnqueueAndRun(t *testing.T) {
 	}
 }
 
+// slowLease is fastOptions with a lease no scheduler stall can use up. With the 300 ms lease a runner
+// starved for that long on a loaded CI machine has its running job taken back by the sweep and run
+// again, which is a second attempt that has nothing to do with shutdown accounting.
+func slowLease() jobs.Options {
+	o := fastOptions()
+	o.Lease = 30 * time.Second
+	o.RenewEvery = 10 * time.Second
+	return o
+}
+
 func TestJobSurvivesRestart(t *testing.T) {
 	dir := t.TempDir()
 	st := openStore(t, dir)
 	started := make(chan *jobs.Task, 4)
-	r := newRunner(t, st, blocking("slow", started, false))
+	r := newRunnerWith(t, st, slowLease(), blocking("slow", started, false))
 	start(t, r)
 	id := enqueue(t, r, "slow", nil, jobs.EnqueueOptions{})
 	<-started
@@ -169,7 +185,7 @@ func TestJobSurvivesRestart(t *testing.T) {
 	st.Close()
 
 	st2 := openStore(t, dir)
-	r2 := newRunner(t, st2, quick("slow"))
+	r2 := newRunnerWith(t, st2, slowLease(), quick("slow"))
 	start(t, r2)
 	j = waitState(t, r2, id, jobs.StateDone)
 	if j.Attempts != 1 {
