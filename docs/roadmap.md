@@ -20,7 +20,7 @@ themes.
 | M3 Pocket | P4 | M3a built; phone check pending | |
 | M4 Details | P2 | Done 2026-11-03 | [plan](plans/m4-details.md) |
 | M5 Book reader | R1, R2, R4, X, B1-B3, RD1-RD4 | Pivoted 2026-11-04 ([decision 0018](decisions/0018-book-reader.md), [plan](plans/m5-book-reader.md)). R1, R2, R4 P1-P4 and X built; read-along removed. | Plan only. |
-| M6 Desktop | P5 | Not started | |
+| M6 Desktop | P5 | Built on Linux; own-desktop checks not run | [plan](plans/m6-desktop.md) |
 | M7 Research | P6 | Dropped (decision 0007) | |
 
 ## M0 Foundation
@@ -725,6 +725,29 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
 - `desktop/` module, Wails v3 pinned; connect-to-server and personal modes; media keys; tray.
 
 Exit: Linux build runs both modes in an isolated session; other platforms recorded as not verified.
+
+**M6 status (desktop, packages D1 to D7)**: built 2026-11-05 on Linux; the operator's own-desktop checks are not run. Plan
+[plans/m6-desktop.md](plans/m6-desktop.md), decision [0020](decisions/0020-desktop-shell.md), user notes [desktop.md](desktop.md).
+Scope: `internal/app` (the server's start-up, shared), `internal/desktopshell` (first-run picker, `/healthz` check),
+shell marking in the web layer (`ts_shell`, `data-shell="desktop"`, `desktop.js`), the `desktop/` module (Wails v3.0.0, personal
+and connect modes, tray, menu, persistent cookies, downloads), the `.deb`, and a desktop CI job.
+Checks, all in a private headless GNOME Shell (`scripts/isolated-display.sh`; nothing on the visible desktop), by `make
+desktop-exit` on the probe build (`production` tags plus `tendshelf_probe`), both modes, results in `.local/tests/desktop/`:
+`data-shell="desktop"` in both modes; no service worker; the Downloads link hidden (present in the markup, `display: none`);
+muted play and a seek to 120 s on `/stream`; the CSP header byte-identical to the server binary's; an outside link reaches
+`tendshelf:open` and the window stays on its origin; an attachment saved to the download folder; quit and relaunch keeps
+the sign-in (after SIGTERM in personal mode, after Quit in connect mode); a second launch hands over to the first; SIGTERM
+exits 0 within a second and closes the library's port; choosing connect after personal closes the library's port; the tray
+registered a StatusNotifierItem once the private shell's AppIndicator extension was enabled (the shell's settings are in
+memory, so the real session's `enabled-extensions` was unchanged, checked before and after); screenshots through
+`org.gnome.Shell.Screenshot`. The reader ran in the window on a synthetic EPUB (rows in `docs/manual-checks.md`, M5 table),
+which found one real WebKit bug, fixed in `pages-reader.css` (a bare `column-count: 1` made no columns, so Pages could not
+turn within a chapter); `make visual-webkit` passes in the private session.
+Limits, stated plainly: the tray cannot start a book without a user gesture (WebKit's autoplay rule); the real player's
+`mediaSession` handlers have not been seen firing from a real key (WebKit's own MPRIS player answered `Pause`, `Play` and
+`PlayPause` over D-Bus); there was no sound card, real keyboard, tray click, file chooser or `https` server in the session;
+the Chromium reader tests were not re-run after the CSS change (no Chromium here). macOS and Windows: not verified. Next
+step: the operator's desktop section of `docs/manual-checks.md`.
 
 ## M7 Research — dropped (decision 0007, 2026-11-02)
 
