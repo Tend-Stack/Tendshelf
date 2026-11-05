@@ -5,11 +5,16 @@ package components
 type ReadButtonView struct {
 	Href, Label, AriaLabel string
 	Secondary              bool
+	// Round draws the icon-only variant of a series row, named by AriaLabel.
+	Round bool
 }
 
 func readBtnClass(v ReadButtonView) string {
 	if v.Secondary {
 		return "ts-btn ts-btn--secondary"
+	}
+	if v.Round {
+		return "ts-iconbtn ts-iconbtn--tonal"
 	}
 	return "ts-btn ts-btn--primary ts-btn--lg"
 }
@@ -25,6 +30,8 @@ templ ReadButton(v ReadButtonView) {
 		}
 	>
 		@Icon("book-open", false)
-		<span>{ v.Label }</span>
+		if !v.Round {
+			<span>{ v.Label }</span>
+		}
 	</a>
 }

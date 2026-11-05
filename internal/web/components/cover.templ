@@ -21,6 +21,9 @@ type CardView struct {
 	// Current marks the card as the page the person is on (a series tile for the open book); the
 	// card gets aria-current="page".
 	Current bool
+	// Progress is the share of a started, unfinished book, "1" to "99", for the thin line at the foot of
+	// the cover; empty draws no line. ProgressLabel ("42 % through") is its text alternative.
+	Progress, ProgressLabel string
 }
 
 // coverSizes is the sizes attribute for a cover drawn at size: "fill" is the grid cell, any other
@@ -73,6 +76,12 @@ templ Cover(v CardView, size string) {
 			/>
 		} else {
 			<span class="ts-cover__title" aria-hidden="true">{ v.Title }</span>
+		}
+		if v.Progress != "" {
+			<span class="ts-cover__line" aria-hidden="true">
+				<span class="ts-cover__line-fill ts-value" data-ts-value={ v.Progress }></span>
+			</span>
+			<span class="ts-sr">{ v.ProgressLabel }</span>
 		}
 	</span>
 }

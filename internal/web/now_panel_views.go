@@ -99,7 +99,7 @@ func nowSeriesState(i, at int, books []library.BookCard, prog map[string]progres
 		}
 		return nowPanelYoureHere
 	}
-	state := seriesTileState(i, at, books, prog)
+	state := seriesTileState(i, at, books, prog, nil)
 	if state == bookTileUpNext || state == bookTileNotStarted {
 		if t := hoursMinutesText(books[i].DurationMs); t != "" {
 			state += nowPanelStateSep + t

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
@@ -44,6 +45,38 @@ type ReadingPosition struct {
 
 // Finished reports whether the person finished reading the book.
 func (p ReadingPosition) Finished() bool { return p.FinishedAt != 0 }
+
+// ReadingForBooks returns the person's reading places in the given books, keyed by book id; books
+// without one are absent. One query per chunk, and only the person's own rows.
+func (s *Service) ReadingForBooks(ctx context.Context, userID string, bookIDs []string) (map[string]ReadingPosition, error) {
+	out := make(map[string]ReadingPosition, len(bookIDs))
+	for len(bookIDs) > 0 {
+		n := min(len(bookIDs), forBooksChunk)
+		chunk := bookIDs[:n]
+		bookIDs = bookIDs[n:]
+		args := make([]any, 0, n+1)
+		args = append(args, userID)
+		for _, id := range chunk {
+			args = append(args, id)
+		}
+		rows, err := s.st.Reader().QueryContext(ctx, selectReading+` WHERE user_id = ? AND book_id IN (?`+strings.Repeat(",?", n-1)+`)`, args...)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			p, err := scanReading(rows)
+			if err != nil {
+				rows.Close()
+				return nil, err
+			}
+			out[p.BookID] = p
+		}
+		if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
 
 // ReadingSave is one save of a reading place.
 type ReadingSave struct {

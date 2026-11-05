@@ -239,7 +239,12 @@ func (s *server) getLibraryItems(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "library items", err)
 		return
 	}
-	s.fragment(w, r, http.StatusOK, pages.LibraryItems(browseItems(q, cur, page)))
+	v := browseItems(q, cur, page)
+	if err := s.withCardProgress(r.Context(), currentUser(r).ID, page.Books, v.Cards); err != nil {
+		s.serverError(w, r, "library items progress", err)
+		return
+	}
+	s.fragment(w, r, http.StatusOK, pages.LibraryItems(v))
 }
 
 func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
@@ -284,6 +289,10 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := s.libraryView(q, libs, cur, page)
+	if err := s.withCardProgress(r.Context(), currentUser(r).ID, page.Books, v.Cards); err != nil {
+		s.serverError(w, r, "library progress", err)
+		return
+	}
 	hasText, err := s.hasTextBooks(r, cur)
 	if err != nil {
 		s.serverError(w, r, "library formats", err)

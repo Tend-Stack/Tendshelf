@@ -126,7 +126,7 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 		s.serverError(w, r, "book rails", err)
 		return
 	}
-	bookRails(&v, d, rails.series, rails.seqs, rails.prog, rails.narrated)
+	bookRails(&v, d, rails.series, rails.seqs, rails.prog, rails.read, rails.narrated)
 	var overlineP *progress.Progress
 	if p, ok := rails.prog[d.Book.ID]; ok {
 		overlineP = &p
@@ -285,6 +285,7 @@ type bookRailReads struct {
 	series, narrated []library.BookCard
 	seqs             map[string]string
 	prog             map[string]progress.Progress
+	read             map[string]progress.ReadingPosition
 }
 
 // bookRailData reads the visible books of the book's first series (with their places), the person's
@@ -315,6 +316,9 @@ func (s *server) bookRailData(r *http.Request, d library.BookDetail) (bookRailRe
 		return out, err
 	}
 	out.prog = prog
+	if out.read, err = s.progress.ReadingForBooks(ctx, currentUser(r).ID, ids); err != nil {
+		return out, err
+	}
 	if len(d.Card.Narrators) > 0 {
 		page, err := s.lib.ListBooks(ctx, sc, library.ListQuery{NarratorID: d.Card.Narrators[0].ID, Limit: bookRailBooks + 1})
 		if err != nil {
@@ -439,6 +443,16 @@ func (s *server) getSeries(w http.ResponseWriter, r *http.Request) {
 	}
 	if t := hoursMinutesText(total); t != "" {
 		v.Total = t + bookInAll
+	}
+	if err := s.withCardProgress(ctx, currentUser(r).ID, sp.Books, v.Rows); err != nil {
+		s.serverError(w, r, "series progress", err)
+		return
+	}
+	for i := range v.Rows {
+		if v.Rows[i].ProgressLabel != "" {
+			// Rows were relabelled with the place in the series above; the percent is added after it.
+			v.Rows[i].AriaLabel = joinNonEmpty(" ", v.Rows[i].Byline, sp.Books[i].Title) + ", " + v.Rows[i].ProgressLabel
+		}
 	}
 	s.pageStyled(w, r, http.StatusOK, sp.Name, "library", pages.Series(v), nil, pages.BookStyles...)
 }

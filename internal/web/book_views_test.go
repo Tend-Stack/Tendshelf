@@ -35,7 +35,7 @@ func TestSeriesTileState(t *testing.T) {
 		{"no progress at all", 2, 0, nil, "Not started"},
 		{"clamps down to 99", 1, 0, map[string]progress.Progress{"b": {PositionMs: 99_900, DurationMs: 100_000}}, "99%"},
 	} {
-		if got := seriesTileState(c.i, c.at, books, c.prog); got != c.want {
+		if got := seriesTileState(c.i, c.at, books, c.prog, nil); got != c.want {
 			t.Errorf("%s: %q, want %q", c.name, got, c.want)
 		}
 	}

@@ -109,13 +109,19 @@ func (s *server) homeSeriesView(ctx context.Context, r *http.Request, heroID str
 	if err != nil {
 		return pages.HomeSeriesView{}, err
 	}
+	reads, err := s.progress.ReadingForBooks(ctx, u.ID, ids)
+	if err != nil {
+		return pages.HomeSeriesView{}, err
+	}
 	v := pages.HomeSeriesView{Title: homeSeriesTitle}
 	for _, sn := range rows {
-		started := sn.Started && sn.PositionMs > 0
+		started := sn.Started && (sn.PositionMs > 0 || sn.ReadBP > 0)
 		row := pages.HomeSeriesRowView{Cover: cardView(sn.Next), Name: sn.Series.Name, Href: "/series/" + sn.Series.ID}
 		if started {
 			pct := 0
-			if sn.Next.DurationMs > 0 {
+			if sn.ReadLast {
+				pct = sn.ReadBP / 100
+			} else if sn.Next.DurationMs > 0 {
 				pct = int(math.Round(float64(sn.PositionMs) * 100 / float64(sn.Next.DurationMs)))
 			}
 			row.Meta = fmt.Sprintf(homeSeriesLine, sn.NextIndex, sn.Total, sn.Next.Title, min(max(pct, 0), 100))
@@ -132,16 +138,29 @@ func (s *server) homeSeriesView(ctx context.Context, r *http.Request, heroID str
 				if x, ok := prog[sn.Next.ID]; ok {
 					p = &x
 				}
+				var rp *progress.ReadingPosition
+				if x, ok := reads[sn.Next.ID]; ok {
+					rp = &x
+				}
 				link, err := s.playLinkFor(ctx, u, book, p)
 				if err != nil {
 					return pages.HomeSeriesView{}, err
 				}
-				if link != nil {
-					label := homeSeriesStart
-					if started {
-						label = homeSeriesCont
-					}
-					row.Play = link.button(fmt.Sprintf(label, sn.Series.Name), true)
+				mayRead, err := s.mayReadBook(ctx, u, book)
+				if err != nil {
+					return pages.HomeSeriesView{}, err
+				}
+				label := homeSeriesStart
+				if started {
+					label = homeSeriesCont
+				}
+				aria := fmt.Sprintf(label, sn.Series.Name)
+				// One control per row: the format used last, never both.
+				if lastFormat(p, rp, link != nil, mayRead) == formatText {
+					row.Read = readButton(book, rp, false)
+					row.Read.Round, row.Read.AriaLabel = true, aria
+				} else if link != nil {
+					row.Play = link.button(aria, true)
 				}
 			}
 		}
