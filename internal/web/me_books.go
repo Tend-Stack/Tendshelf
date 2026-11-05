@@ -131,12 +131,7 @@ func (s *server) profileTiles(r *http.Request, ls []library.Listening, speed flo
 		case link != nil:
 			t.Play = link.button(fmt.Sprintf(rowResume, l.Book.Title), true)
 		}
-		switch {
-		case l.Format == library.BookText:
-			t.Card.Left = fmt.Sprintf(readWhere, l.ChapterIdx, l.PercentBP/100)
-		case l.DurationMs > 0:
-			t.Card.Left = fmt.Sprintf(bookWhereShortBook, bookLeftText(l.PositionMs, l.DurationMs, speed))
-		}
+		t.Card.Left = continueLeft(l, speed)
 		out = append(out, t)
 		cards = append(cards, l.Book)
 	}
@@ -151,6 +146,18 @@ func (s *server) profileTiles(r *http.Request, ls []library.Listening, speed flo
 		out[i].Card = views[i]
 	}
 	return out, nil
+}
+
+// continueLeft is the line under a book in progress: the chapter and percent of a text, the time left of
+// an audiobook, nothing when the length is not known. Profile's tiles and Home's row share it.
+func continueLeft(l library.Listening, speed float64) string {
+	switch {
+	case l.Format == library.BookText:
+		return fmt.Sprintf(readWhere, l.ChapterIdx, l.PercentBP/100)
+	case l.DurationMs > 0:
+		return fmt.Sprintf(bookWhereShortBook, bookLeftText(l.PositionMs, l.DurationMs, speed))
+	}
+	return ""
 }
 
 // profileShelvesView is the first shelves of the person, drawn with the Shelves page's own row.

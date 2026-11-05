@@ -74,9 +74,10 @@ func TestPageStylesTravelInMain(t *testing.T) {
 			if !regexp.MustCompile(`^<main id="main"[^>]*>\s*<link rel="stylesheet"`).MatchString(main) {
 				t.Error("the stylesheet links are not the first thing in #main")
 			}
-			// Every other page stylesheet is prefetched from the head, once.
+			// Every other page stylesheet is prefetched from the head, once. pages-folders, pages-invite and
+			// pages-upload are not (noPrefetch, decision 0021): the folder browser sheet carries its own link.
 			prefetched := swapNames(swapPagePrefetch, head)
-			for _, n := range []string{"pages-search", "pages-shelves", "pages-book", "pages-bookmarks", "pages-me", "pages-settings", "pages-folders"} {
+			for _, n := range []string{"pages-search", "pages-shelves", "pages-book", "pages-bookmarks", "pages-me", "pages-settings"} {
 				if slices.Contains(c.want, n) != !slices.Contains(prefetched, n) {
 					t.Errorf("%s: in #main %v, prefetched %v", n, slices.Contains(c.want, n), slices.Contains(prefetched, n))
 				}

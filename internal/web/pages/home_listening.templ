@@ -19,6 +19,10 @@ type HomeHeroView struct {
 	Read *components.ReadButtonView
 	// ChaptersHref and ChaptersLabel make the desktop "Chapters" link.
 	ChaptersHref, ChaptersLabel string
+	// Also are the next books in progress (Home's row of three covers, decision 0021) and AlsoHref is its
+	// "See all". HeroCard ignores them; HomeHero draws them under the card.
+	Also     []components.CardView
+	AlsoHref string
 }
 
 // HomeSeriesRowView is one line of "Your series in progress". Play is nil when the book is the hero
@@ -90,6 +94,19 @@ templ HomeHero(v *HomeHeroView) {
 	<div id="home-hero" hx-get="/hx/home/hero" hx-trigger="progress-saved from:body" hx-swap="outerHTML">
 		if v != nil {
 			@HeroCard(*v)
+			if len(v.Also) > 0 {
+				<section class="ts-home__row" aria-labelledby="home-also-title">
+					<div class="ts-home__rowhead">
+						<h2 id="home-also-title" class="section">Also in progress</h2>
+						<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.AlsoHref) }>See all</a>
+					</div>
+					<div class="ts-home__cards ts-home__cards--three">
+						for _, c := range v.Also {
+							@components.BookCard(c)
+						}
+					</div>
+				</section>
+			}
 		}
 	</div>
 }
