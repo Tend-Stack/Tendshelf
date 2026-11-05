@@ -22,7 +22,7 @@ type OfflineRow struct {
 	Meta  string
 	Ready bool
 	Play  *components.PlayButtonView
-	// Read opens the reader, for a book whose text is on this phone. Secondary when Play is set.
+	// Read opens the reader, for a book whose text is on this phone. In a row it is always the plain button.
 	Read *components.ReadButtonView
 }
 

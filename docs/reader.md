@@ -114,3 +114,12 @@ is up; the book title is the page's h1 and a chapter's title its h2. One allowli
 box, so the text of later columns lies outside it until a turn. `TestBRContrast` holds `--read-ink` on every highlight colour
 and the selection wash in every theme (decision 0016); `TestBRVisual` captures the states beside the boards;
 `TestBRLayoutTime` lays out a 40,000-unit part with the CPU throttled 4x (300 ms) and times turns (16 ms at p95).
+
+## Offline (G6, decision [0019](decisions/0019-offline-reading.md))
+
+The book page's Download keeps the audio and the text of the edition the person reads (both rights: `ReadText` and
+`DownloadBook`). `downloads-text.js` reads `GET /offline/books/{id}/manifest`, stores every chapter part and picture under the
+address the reader asks for, then the contents shell and the reader shell (`/offline/books/{id}/read`) last, so a half-stored book
+never opens. Offline, the worker answers those addresses and `reader-offline.js` fills the shell. The daily check compares the
+manifest `revision` (edition, the person's highlights, text bookmarks): a new one stores the text again, a 404 removes it, a failed
+request changes nothing. Highlights, notes, bookmarks, search and settings need the server. `/offline?text=` lists held books.

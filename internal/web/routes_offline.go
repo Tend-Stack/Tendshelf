@@ -214,7 +214,8 @@ func (s *server) getOffline(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "offline shell", err)
 		return
 	}
-	s.pageCached(w, r, http.StatusOK, "private, no-store", offlineTitle, "home", pages.Offline(v), nil)
+	// pages-home.css holds the shell's own rules (.ts-offline-home), which the shell never linked before.
+	s.pageCached(w, r, http.StatusOK, "private, no-store", offlineTitle, "home", pages.Offline(v), nil, "css/pages-home.css")
 }
 
 // offlineView builds the shell: the ready books first, then up to five recent unfinished ones that are
@@ -270,7 +271,7 @@ func (s *server) offlineView(r *http.Request, ids, textIDs []string) (pages.Offl
 				if err != nil {
 					return v, err
 				}
-				row.Read = &components.ReadButtonView{Href: readHref(book.ID), Label: readOther, AriaLabel: fmt.Sprintf(offlineReadAria, c.Title), Secondary: row.Play != nil}
+				row.Read = &components.ReadButtonView{Href: readHref(book.ID), Label: readOther, AriaLabel: fmt.Sprintf(offlineReadAria, c.Title), Secondary: true}
 				if row.Play == nil {
 					row.Meta = offlineReady
 					if rp != nil && !rp.Finished() && rp.PercentBP > 0 {
