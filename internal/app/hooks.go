@@ -1,13 +1,10 @@
-package main
+package app
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/Tend-Stack/tendshelf/internal/backups"
 	"github.com/Tend-Stack/tendshelf/internal/db"
@@ -52,7 +49,7 @@ func registerDetails(d deps) (*metadata.Service, *online.Client, error) {
 }
 
 // registerBackups is the hook for scheduled database copies: the db.backup job kind. The web handler
-// shows and starts them; main runs the schedule check once the runner is going.
+// shows and starts them; Run runs the schedule check once the runner is going.
 func registerBackups(d deps) (*backups.Service, error) {
 	svc := backups.New(d.st, d.runner, d.dataDir, nil, d.log)
 	if err := svc.Register(); err != nil {
@@ -87,51 +84,17 @@ func wireTextBooks(details *metadata.Service, covers *mediajobs.Covers, ebooks *
 	covers.TextCover = ebooks.CoverFor
 }
 
-// mediaFlags holds the command-line flags of the media jobs.
-type mediaFlags struct {
-	compatGiB *int
-	waveforms *bool
-}
-
-// addMediaFlags declares the media jobs' flags before the command line is parsed.
-func addMediaFlags(fs *flag.FlagSet) *mediaFlags {
-	return &mediaFlags{
-		compatGiB: fs.Int("compat-cache-gib", envOrInt("TENDSHELF_COMPAT_CACHE_GIB", 5),
-			"size cap of the compatibility-copy cache in GiB (at least 1)"),
-		waveforms: fs.Bool("waveforms", envOrBool("TENDSHELF_WAVEFORMS", true),
-			"draw waveforms behind the scrubber (decodes each audio file once in the background)"),
-	}
-}
-
-// envOrInt returns the integer in the environment variable key, or def if it is unset or not a
-// whole number.
-func envOrInt(key string, def int) int {
-	if n, err := strconv.Atoi(os.Getenv(key)); err == nil {
-		return n
-	}
-	return def
-}
-
-// envOrBool returns the boolean in the environment variable key (anything strconv.ParseBool reads),
-// or def if it is unset or not a boolean.
-func envOrBool(key string, def bool) bool {
-	if b, err := strconv.ParseBool(os.Getenv(key)); err == nil {
-		return b
-	}
-	return def
-}
-
 // registerMediaJobs is the hook for the media job kinds: cover pictures with thumbnails and
 // accent colours, compatibility copies and waveform peaks. Covers and peaks follow the scanner's
 // settled books. It returns the compatibility and waveform services so the web handler can request
 // and serve them, plus the covers service for online cover adoption and the write-details service.
-func registerMediaJobs(d deps, mf *mediaFlags) (*mediajobs.Compat, *mediajobs.Peaks, *mediajobs.Covers, *mediajobs.Writes, error) {
-	if *mf.compatGiB < 1 {
-		return nil, nil, nil, nil, fmt.Errorf("-compat-cache-gib must be at least 1, got %d", *mf.compatGiB)
+func registerMediaJobs(d deps, compatGiB int, waveforms bool) (*mediajobs.Compat, *mediajobs.Peaks, *mediajobs.Covers, *mediajobs.Writes, error) {
+	if compatGiB < 1 {
+		return nil, nil, nil, nil, fmt.Errorf("-compat-cache-gib must be at least 1, got %d", compatGiB)
 	}
 	covers := mediajobs.NewCovers(d.lib, d.tools, d.dataDir, d.runner, d.log)
-	compat := mediajobs.NewCompat(d.lib, d.tools, mediajobs.CompatDir(d.dataDir), int64(*mf.compatGiB)<<30, d.runner, d.log)
-	peaks := mediajobs.NewPeaks(d.lib, d.tools, mediajobs.PeaksDir(d.dataDir), d.runner, *mf.waveforms, d.log)
+	compat := mediajobs.NewCompat(d.lib, d.tools, mediajobs.CompatDir(d.dataDir), int64(compatGiB)<<30, d.runner, d.log)
+	peaks := mediajobs.NewPeaks(d.lib, d.tools, mediajobs.PeaksDir(d.dataDir), d.runner, waveforms, d.log)
 	d.scanner.OnBookSettled(covers.Follower())
 	d.scanner.OnScanFinished(covers.Finisher())
 	d.scanner.OnBookSettled(peaks.Follower())

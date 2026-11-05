@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -38,7 +38,7 @@ func TestResetPasswordCommand(t *testing.T) {
 	st.Close() // the command opens the file itself
 
 	var out bytes.Buffer
-	if err := runResetPassword(ctx, []string{"-data", dir, "ANA"}, &out); err != nil {
+	if err := ResetPassword(ctx, []string{"-data", dir, "ANA"}, &out); err != nil {
 		t.Fatalf("reset: %v", err)
 	}
 	re := regexp.MustCompile(`^New password for ana: ([0-9A-Z]{4}(?:-[0-9A-Z]{4}){3})\nSign in with it, then change it on your Profile\.\n$`)
@@ -87,16 +87,12 @@ func TestResetPasswordCommand(t *testing.T) {
 		"name first": {[]string{"nobody", "-data", dir}, `no account named "nobody"`},
 	} {
 		var o bytes.Buffer
-		err := runResetPassword(ctx, tc.args, &o)
+		err := ResetPassword(ctx, tc.args, &o)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("%s: err = %v, want %q", name, err, tc.want)
 		}
 		if o.Len() != 0 {
 			t.Errorf("%s: printed %q", name, o.String())
 		}
-	}
-	// `run` dispatches the subcommand.
-	if err := run(ctx, []string{"reset-password"}); err == nil || !strings.Contains(err.Error(), "usage: tendshelf reset-password") {
-		t.Errorf("run reset-password without a name = %v", err)
 	}
 }

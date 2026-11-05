@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -133,27 +132,6 @@ func TestRunOpensMigratesAndStops(t *testing.T) {
 	}
 }
 
-func TestDefaultDataDir(t *testing.T) {
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		t.Skip("covers the XDG branch")
-	}
-	xdg := t.TempDir()
-	t.Setenv("XDG_DATA_HOME", xdg)
-	if got, err := defaultDataDir(); err != nil || got != filepath.Join(xdg, "tendshelf") {
-		t.Fatalf("XDG_DATA_HOME: got %q, %v", got, err)
-	}
-	home := t.TempDir()
-	t.Setenv("XDG_DATA_HOME", "")
-	t.Setenv("HOME", home)
-	if got, err := defaultDataDir(); err != nil || got != filepath.Join(home, ".local", "share", "tendshelf") {
-		t.Fatalf("HOME: got %q, %v", got, err)
-	}
-	t.Setenv("HOME", "")
-	if _, err := defaultDataDir(); err == nil || !strings.Contains(err.Error(), "pass -data") {
-		t.Fatalf("no home: got %v", err)
-	}
-}
-
 func TestDataFlagDefaultsToEnvironment(t *testing.T) {
 	// TENDSHELF_DATA feeds the -data flag default; the flag wins when both are set.
 	envDir, flagDir := t.TempDir(), t.TempDir()
@@ -175,26 +153,16 @@ func TestDataFlagDefaultsToEnvironment(t *testing.T) {
 	}
 }
 
-func TestSetupURL(t *testing.T) {
-	for _, tc := range []struct{ addr, want string }{
-		{"127.0.0.1:8095", "http://127.0.0.1:8095/setup?code=ABCDE-FGHJK"},
-		{"0.0.0.0:8095", "http://localhost:8095/setup?code=ABCDE-FGHJK"},
-		{"[::]:8095", "http://localhost:8095/setup?code=ABCDE-FGHJK"},
-		{"[::1]:8095", "http://[::1]:8095/setup?code=ABCDE-FGHJK"},
-	} {
-		a, err := net.ResolveTCPAddr("tcp", tc.addr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := setupURL(a, "ABCDE-FGHJK"); got != tc.want {
-			t.Errorf("setupURL(%s) = %s, want %s", tc.addr, got, tc.want)
-		}
-	}
-}
-
 func TestRunRejectsBadTrustedProxy(t *testing.T) {
 	err := run(context.Background(), []string{"-data", t.TempDir(), "-addr", "127.0.0.1:0", "-trusted-proxy", "not-an-ip"})
 	if err == nil || !strings.Contains(err.Error(), "-trusted-proxy") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRunDispatchesResetPassword(t *testing.T) {
+	err := run(context.Background(), []string{"reset-password"})
+	if err == nil || !strings.Contains(err.Error(), "usage: tendshelf reset-password") {
+		t.Errorf("run reset-password without a name = %v", err)
 	}
 }
