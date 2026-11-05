@@ -272,3 +272,12 @@ Out of scope: a bundled dictionary, downloading dictionaries, look-up offline (a
 ## After the round
 
 The orchestrator: full `make check` on the merged tree, `make visual-full`, `make a11y`, the manual airplane check on the operator's phone with "Rules for the Summer", a tag decision. `docs/vision.md` and `docs/feature-map.md` take the statements that became true. OPDS and KOReader sync stay "Later still" in the first plan.
+
+## Operator answers (2026-11-04)
+
+- Budgets approved as planned: app JS 82 KB (83,968 B); `sw.js` 3.5, `downloads.js` 8.5, `reader-marks.js` 2.875,
+  `reader-offline.js` 2.25, `downloads-text.js` 1.5, `reader-skim.js` 1.25, `reader-comfort.js` 1, `reader-lookup.js`
+  0.75 KB; `pages-reader.css` 4.5 KB.
+- Progress on cards: yes, include optional step L4 (a thin bar on started books, audio and ebook alike).
+- Web search link in look-up: DuckDuckGo.
+- Defaults stand: offline text also needs "Can download"; no family stats view.
