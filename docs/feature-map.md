@@ -13,7 +13,7 @@ from general knowledge. Cells marked `?` are unverified guesses; check before qu
 | Move/rename detection keeping progress | Yes (ino-based) | n/a | P1 (size + quick hash) |
 | Copy-protected files refused and shown as such | Partial? (plays only decrypted) | n/a | P1 |
 | Multiple libraries and folders | Yes | n/a | P1 |
-| Standalone ebook library, comics | Yes (EPUB, PDF, MOBI, AZW3, CBR, CBZ) | No (Kindle is a separate app) | Not planned (ebooks only as a book's text edition, see Reading along) |
+| Ebooks as books in the library | Yes (EPUB, PDF, MOBI, AZW3, CBR, CBZ) | No (Kindle is a separate app) | Built (M5): an ebook is a book with its own cover, Read button and place; see Reading. Comics and fixed-layout books are not planned |
 | Podcasts (subscribe, download episodes) | Yes | Yes (Audible originals) | Later |
 | **Details and covers** | | | |
 | Details from folder names, file tags, sidecars (`.opf`, `.nfo`, `desc.txt`, `reader.txt`, `metadata.json`) | Yes | n/a | P1 (names, tags), P2 (sidecars) |
@@ -51,7 +51,7 @@ from general knowledge. Cells marked `?` are unverified guesses; check before qu
 | Automatic ebook-audiobook matching (folder, ISBN/ASIN, title + author), manual pairing | Partial (files in the same folder form one item) | Yes (by purchase) | R2 |
 | Reader typography: fonts, size, spacing, margins, themes | Partial: sans/serif, font scale, line spacing, text stroke, dark/sepia/light (`Reader.vue`) | Yes (dyslexia font ?) | R4 (incl. dyslexia-friendly font, night and high contrast) |
 | Highlights, notes and bookmarks in the text, one set per book (text range, private to the person) | No (no highlight model) | Partial? (Kindle highlights and Audible clips are separate) | R4 |
-| Reading place kept per book and device (a text anchor beside the audio position, never instead of it) | No: `ebookLocation`/`ebookProgress` stored beside the audio position (`MediaProgress.js`) | Yes (Whispersync for Voice) | R5 |
+| Reading place kept per book and device (a text anchor beside the audio position, never instead of it) | No: `ebookLocation`/`ebookProgress` stored beside the audio position (`MediaProgress.js`) | Yes (Whispersync for Voice) | R4 (built: the reading place is separate from the listening place and never moves it) |
 | **Collections** | | | |
 | "Because you listened to…" row (rule-based: same author, narrator, series, genre; no AI) | No | Yes (recommendations) | P1 |
 | Shelves / collections (user) | Collections (library-wide) + playlists (user) | Collections | P1 (personal shelves), P3 (shared shelves) |
