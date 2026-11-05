@@ -1,8 +1,12 @@
 // Tendshelf service worker (decision 0012). It answers only what is listed below; everything else
 // goes to the network untouched. The server puts `self.TS_BUILD = {build, assets};` in front of
-// this file, so the file itself stays the same for every build.
+// this file, so the file itself stays the same for every build. Decision 0019 adds the reader: a
+// downloaded book's chapter parts and pictures, and its reader shell for a navigation that cannot
+// reach the server. The worker stores nothing itself; the download does.
 const STATIC = "ts-static-" + self.TS_BUILD.build;
 const PERSON_PREFIX = "ts-person-";
+// The reader page of a book. Its shell is stored under this path (and with ?sheet=contents).
+const READER = /^\/books\/[^/]+\/read$/;
 
 // Paths the worker never touches: share links, invitations, the API, sign-in and sign-out, the
 // health check and the worker itself.
@@ -44,8 +48,16 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(cachedOrNetwork(request, url));
   } else if (/^\/hx\/player\/[^/]+$/.test(url.pathname)) {
     event.respondWith(freshOrCached(request, url));
-  } else if (request.mode === "navigate" || request.headers.get("HX-Boosted") === "true") {
-    event.respondWith(pageOrShell(request));
+  } else if (/^\/hx\/books\/[^/]+\/read\/chapters\/\d+$/.test(url.pathname)) {
+    event.respondWith(freshOrCached(request, url, url.pathname + url.search));
+  } else if (/^\/books\/[^/]+\/read\/images\/[^/]+$/.test(url.pathname)) {
+    event.respondWith(cachedOrNetwork(request, url));
+  } else if (
+    request.mode === "navigate" ||
+    request.headers.get("HX-Boosted") === "true" ||
+    (READER.test(url.pathname) && url.searchParams.get("sheet") === "contents")
+  ) {
+    event.respondWith(pageOrShell(request, url));
   }
 });
 
@@ -54,7 +66,7 @@ self.addEventListener("fetch", (event) => {
 // without a limit the app would never leave the splash screen. 4 s is longer than a slow mobile
 // round trip yet short enough to feel like a failure, not a freeze.
 const PAGE_DEADLINE_MS = 4000;
-// The player fragment is small and the stored copy is as good, so it gives up sooner.
+// The player fragment and a stored chapter part are small and the stored copy is as good, so they give up sooner.
 const PLAYER_DEADLINE_MS = 3000;
 
 // fetch() that gives up after `ms`. A timeout rejects like a network error, so callers fall back
@@ -116,13 +128,16 @@ async function cachedOrNetwork(request, url) {
 
 // ---- The book fragment: network-first once it has been stored ----
 
-async function freshOrCached(request, url) {
+// `key` is where the copy is stored: the path, or for a chapter part the path with its query.
+async function freshOrCached(request, url, key = url.pathname) {
   const cache = await personCache();
-  const cached = cache ? await cache.match(url.pathname) : undefined;
+  const cached = cache ? await cache.match(key) : undefined;
   if (!cached) return fetch(request);
+  // Known offline: do not wait for a network that cannot answer.
+  if (self.navigator.onLine === false) return cached;
   try {
     const fresh = await timedFetch(request, PLAYER_DEADLINE_MS);
-    if (fresh.status === 200 && !fresh.redirected) await cache.put(url.pathname, fresh.clone());
+    if (fresh.status === 200 && !fresh.redirected) await cache.put(key, fresh.clone());
     return fresh;
   } catch {
     return cached;
@@ -131,20 +146,23 @@ async function freshOrCached(request, url) {
 
 // ---- Pages: the network, and the offline shell when it cannot answer ----
 
-async function pageOrShell(request) {
+async function pageOrShell(request, url) {
   // Known offline: do not wait for a network that cannot answer.
-  if (self.navigator.onLine === false) return (await shell()) || Response.error();
+  if (self.navigator.onLine === false) return (await shell(url)) || Response.error();
   try {
     const response = await timedFetch(request, PAGE_DEADLINE_MS);
     if (response.status !== 502 && response.status !== 504) return response;
-    return (await shell()) || response;
+    return (await shell(url)) || response;
   } catch {
-    return (await shell()) || Response.error();
+    return (await shell(url)) || Response.error();
   }
 }
 
-async function shell() {
-  const saved = await stored("/offline");
+// A book's reader shell for a reader address (the contents sheet has its own copy), else /offline.
+async function shell(url) {
+  const reader = READER.test(url.pathname);
+  const key = url.pathname + (url.searchParams.get("sheet") === "contents" ? "?sheet=contents" : "");
+  const saved = (reader && (await stored(key))) || (await stored("/offline"));
   if (!saved) return null;
   const headers = new Headers(saved.headers);
   headers.set("X-Ts-Offline", "1");

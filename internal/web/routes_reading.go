@@ -246,7 +246,14 @@ func (s *server) postReading(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if chars > 0 || active > 0 {
-		if err := s.progress.AddReadingTime(ctx, u.ID, pos.BookID, f.Get("device_id"), chars, active, s.now().UnixMilli()); err != nil {
+		// Time counts on the day it was read: the save's own date, never ahead of the server; a date more
+		// than 30 days old counts now (decision 0019 point 8).
+		now := s.now().UnixMilli()
+		at := min(cu, now)
+		if now-at > 30*86_400_000 {
+			at = now
+		}
+		if err := s.progress.AddReadingTime(ctx, u.ID, pos.BookID, f.Get("device_id"), chars, active, at); err != nil {
 			s.serverError(w, r, "save reading time", err)
 			return
 		}

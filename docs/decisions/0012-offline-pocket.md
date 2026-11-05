@@ -1,6 +1,6 @@
 # 0012 Offline pocket (M3a): install, downloads, offline playback and sync
 
-Status: accepted (2026-11-03). Operator decisions, 2026-11-03: JS budget total 38.5 KB to 50.5 KB as
+Status: accepted (2026-11-03). Amended by [0019](0019-offline-reading.md). Operator decisions, 2026-11-03: JS budget total 38.5 KB to 50.5 KB as
 proposed (sw.js 3 KB, offline.js 3.25 KB, downloads.js 5.5 KB, player-full.js up to 12.75 KB); phone
 checks over Tailscale HTTPS (`tailscale serve`, set up by the operator); sign-out wipes everything
 (`Clear-Site-Data: "storage"` plus the in-page wipe); show the iOS storage note; keep "Remove finished

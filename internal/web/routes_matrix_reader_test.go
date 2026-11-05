@@ -104,6 +104,12 @@ func readerSweepRows() []sweepRow {
 			return "/books/" + e.book.ID + "/read/marks." + ext + q(e)
 		}, staff))
 	}
+	// G6a (decision 0019): the offline reading manifest and shell need ReadText and DownloadBook.
+	for _, tail := range []string{"manifest", "read"} {
+		rows = append(rows, sweepGet("GET /offline/books/{id}/"+tail, func(e *sweepEnv, _ int) string {
+			return "/offline/books/" + e.book.ID + "/" + tail
+		}, staff))
+	}
 	return rows
 }
 

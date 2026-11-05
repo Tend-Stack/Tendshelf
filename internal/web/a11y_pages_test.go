@@ -47,6 +47,7 @@ var a11ySkip = map[string]string{
 	"/uploads/{id}":                     "JSON (the upload status the uploader polls), not a page",
 	"/progress/{bookID}":                "JSON, not a page",
 	"/reading/{bookID}":                 "JSON (the reading place), not a page",
+	"/offline/books/{id}/read":          "the offline reader shell: the markup of /books/{id}/read without chapter text, audited there",
 	"/books/{id}/read/images/{blockID}": "a picture from the book, not a page",
 	"/admin/ebooks/{fileID}/file":       "the original bytes of an ebook file, as a download, not a page",
 	"/books/{id}/read/marks.md":         "a download of the person's own marks (RD3)",

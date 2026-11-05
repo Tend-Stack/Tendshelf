@@ -126,8 +126,20 @@ async function flushMarks() {
   return true;
 }
 
+// Reading places waiting to be sent (reader-offline.js keeps the queue; a sent record is only a local place).
+function unsentReading() {
+  return Object.values(readJSON("ts.offline.reading", {})).filter((record) => !record.sent);
+}
+
+// Sends them by the reader module, loaded only when there is something to send.
+async function flushReading() {
+  const src = banner && banner.dataset.tsReaderOfflineSrc;
+  if (!unsentReading().length || !src) return true;
+  return (await import(src)).flushReading(csrfToken());
+}
+
 function queued() {
-  return Object.keys(readJSON("ts.pending", {})).length + readJSON("ts.offline.marks", []).length;
+  return Object.keys(readJSON("ts.pending", {})).length + readJSON("ts.offline.marks", []).length + unsentReading().length;
 }
 
 async function flush() {
@@ -137,7 +149,7 @@ async function flush() {
   let ok = false;
   const had = queued() > 0;
   try {
-    ok = (await flushPending()) && (await flushMarks());
+    ok = (await flushPending()) && (await flushMarks()) && (await flushReading());
   } catch {
     ok = false;
   }

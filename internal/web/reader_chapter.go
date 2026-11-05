@@ -74,10 +74,15 @@ func (s *server) rsLinkTo(rc readerCtx) func(ebook.Link) (string, string, bool) 
 	}
 }
 
+// rsImageURL is the address of an EPUB picture block, the one the page, the worker and a download all use.
+func rsImageURL(rc readerCtx, b ebook.Block) string {
+	return "/books/" + rc.book.ID + "/read/images/" + b.ID + "?edition=" + url.QueryEscape(rc.ed.ID)
+}
+
 // rsImage is the markup of an EPUB picture: our address, never the publisher's. The picture is read out of the
 // file by the image route.
 func rsImage(rc readerCtx, b ebook.Block) string {
-	src := "/books/" + rc.book.ID + "/read/images/" + b.ID + "?edition=" + url.QueryEscape(rc.ed.ID)
+	src := rsImageURL(rc, b)
 	out := `<img class="ts-reader__image" src="` + html.EscapeString(src) + `" alt="` + html.EscapeString(b.Text) + `" loading="lazy"`
 	if b.ImgW > 0 && b.ImgH > 0 {
 		out += ` width="` + strconv.Itoa(b.ImgW) + `" height="` + strconv.Itoa(b.ImgH) + `"`

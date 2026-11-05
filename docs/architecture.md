@@ -523,6 +523,14 @@ this replaces the earlier sketch (app shell and visited pages in the cache, an I
   own `ts-person-<id>` cache, the stream, cover, peaks and player fragment of a downloaded book, plus the
   `/offline` shell for a navigation that cannot reach the server. Nothing else is cached or answered, and a
   change of person or a sign-out deletes the cache and the offline records.
+- **Offline reading** ([decision 0019](decisions/0019-offline-reading.md), amends the rule above): the worker also
+  answers a downloaded book's chapter parts and pictures from the person's cache (parts network-first with a
+  3 s limit, pictures cache-first) and, for a navigation to `/books/{id}/read` (or `?sheet=contents`) that
+  cannot reach the server, the stored reader shell. `GET /offline/books/{id}/manifest` (JSON: parts, images,
+  `revision`) and `GET /offline/books/{id}/read` (the reader page without chapter text, filled in by
+  `reader-offline.js`) need `ReadText` and `DownloadBook`. A reading place waits in
+  `localStorage["ts.offline.reading"]` (never `ts.pending`), written before any send and sent by `offline.js`
+  to `POST /reading/{id}` in slices; the time counts on the day of the save. `pages-reader.css` is in the precache.
 - **Browser storage** (all wiped on sign-out or a change of person): `ts.offline` (the download index per book),
   `ts.offline.person`, `ts.offline.prefs` (Remove finished books), `ts.offline.checkedAt` (the daily finished
   check), `ts.offline.marks` (queued bookmarks), `ts.pending` (queued positions), and `ts.offline.msgs` (the

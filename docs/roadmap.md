@@ -670,6 +670,15 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   `.ts-readdock__speed` and the "Honest timing" and Focus line copy in `vision.md`. Limits: WebKit was not driven (no
   `xvfb-run`; the check is in [manual checks](manual-checks.md#m5-book-reader-webkit-and-phone-rd4)); book cards show no
   progress bar for an ebook and Home's series rows have no Read button (not in RD4's scope).
+- **G6a Offline reading: server, worker, place queue** (done, 2026-11-05; [decision 0019](decisions/0019-offline-reading.md), [plan](plans/m5-great-reader.md)):
+  `GET /offline/books/{id}/manifest` and `/read` (need `ReadText` and `DownloadBook`); the worker answers a held book's chapter
+  parts (network first, 3 s), pictures (cache first) and its reader shell (also `?sheet=contents`) when the server cannot be
+  reached; `pages-reader.css` is back in the precache; `reader-offline.js` fills the shell and keeps the place queue
+  `ts.offline.reading` (written before any send, never `ts.pending`; `offline.js` sends it in slices); reading time is dated by the
+  save (30 days at most). Checks: `TestOffRead*` (Go and Chromium, including a stalled network that reaches the reader in under
+  15 s and a lost beacon whose place still lands) and the whole `TestOffline*` set. Limits: nothing stores the text yet (G6b: the
+  Download button, the daily revision check); the browser tests store it from page script; not tried on a phone (manual check
+  after G6b).
 - **Later** (a note each in the plan): G1 look-up and word list, G2 reading stats, G3 print pages, G4 skim, G5 comfort,
   G6 offline reading, G7 collections and sending a book; then OPDS and KOReader sync.
 

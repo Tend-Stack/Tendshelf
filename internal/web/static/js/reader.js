@@ -83,7 +83,6 @@ export function mount(root) {
   const copy = JSON.parse(root.dataset.copy || "{}");
   const shell = root.closest(".ts-readerpage");
   const bookId = root.dataset.book;
-  const pending = "ts.reading.pending." + bookId;
   const stop = new AbortController();
   // Every listener stops once the reader has left the page.
   const on = (target, type, run, options) =>
@@ -273,39 +272,35 @@ export function mount(root) {
     });
   }
 
-  // Send the place. When the page is going away (beacon) the browser queues it; a failed save waits in
-  // sessionStorage and goes out again when the connection returns.
+  // Tell reader-offline.js what happened to a save (it keeps the place queue, decision 0019): "place" before
+  // anything is sent, then "saved" when the server answered or "unsent" when it did not.
+  function tell(name, form) {
+    root.dispatchEvent(new CustomEvent("ts:reader:" + name, { detail: String(form) }));
+  }
+
+  // Send the place. The place reaches the queue first. When the page is going away (beacon) the browser
+  // queues the request and gives no answer, so the queue keeps the place until a later save is answered.
   async function save(beacon) {
     clearTimeout(timer);
     if (!dirty || !here) return;
     dirty = false;
     const form = body();
-    const sent = [chars, active];
+    chars = active = 0;
+    tell("place", form);
     if (beacon) {
-      chars = active = 0;
-      if (!navigator.sendBeacon(root.dataset.save, form)) sessionStorage.setItem(pending, form);
+      if (!navigator.onLine || !navigator.sendBeacon(root.dataset.save, form)) tell("unsent", form);
       return;
     }
     try {
       const res = await fetch(root.dataset.save, { method: "POST", body: form, headers: { "X-CSRF-Token": csrfToken() } });
       if (!res.ok) throw new Error(res.status);
-      chars -= sent[0];
-      active -= sent[1];
-      sessionStorage.removeItem(pending);
+      tell("saved", form);
       const answer = await res.json();
       known = Math.max(known, answer.reading.clientUpdatedAt);
       if (!answer.applied) other(answer.reading);
     } catch {
-      sessionStorage.setItem(pending, form);
+      tell("unsent", form);
     }
-  }
-
-  function resend() {
-    const form = sessionStorage.getItem(pending);
-    if (!form) return;
-    fetch(root.dataset.save, { method: "POST", body: form, headers: { "X-CSRF-Token": csrfToken() } })
-      .then((res) => res.ok && sessionStorage.removeItem(pending))
-      .catch(() => {});
   }
 
   // After a turn or a scroll step: learn the place, count what was read and save soon.
@@ -465,7 +460,6 @@ export function mount(root) {
     }
   });
   on(window, "pagehide", () => save(true));
-  on(window, "online", resend);
   if (document.fonts) on(document.fonts, "loadingdone", () => view && relay());
 
   setFlow().then(() => {
@@ -481,7 +475,6 @@ export function mount(root) {
       paint();
     }
     watch();
-    resend();
     ask(true);
     document.fonts?.ready.then(() => root.isConnected && relay());
   });

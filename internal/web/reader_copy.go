@@ -90,4 +90,5 @@ const (
 	readerPartFailed   = "This part did not load."
 	readerTryAgain     = "Try again"
 	readerBackToBook   = "Back to the book"
+	readerNeedsNet     = "That needs a connection."
 )
