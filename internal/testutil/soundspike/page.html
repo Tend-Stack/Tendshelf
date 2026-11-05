@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sound spike</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/spike.css">
+</head>
+<body>
+<h1>Sound spike</h1>
+<p>Throwaway test of docs/plans/sound-modes.md. Pick Plain or With sound chain, which also starts playing. A page that has used the chain cannot go back to Plain: reload first.</p>
+<audio id="audio" preload="auto" src="/audio/a"></audio>
+<button id="plain" type="button" aria-pressed="false">Plain (control)</button>
+<button id="chain" type="button" aria-pressed="false">With sound chain</button>
+<button id="speed1" type="button" aria-pressed="true">Speed 1</button>
+<button id="speed15" type="button" aria-pressed="false">Speed 1.5</button>
+<button id="silent" type="button" aria-pressed="false">Keep playing on silent</button>
+<button id="pause" type="button">Pause</button>
+<pre id="status" aria-live="polite"></pre>
+<script src="/spike.js" type="module"></script>
+</body>
+</html>
