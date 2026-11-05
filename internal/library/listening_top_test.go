@@ -203,3 +203,86 @@ VALUES (?, ?, 3600000, 3600000, ?, ?, ?, 'dev')`, user, book, at.UnixMilli(), at
 		t.Fatalf("empty period: %v", titles(got))
 	}
 }
+
+// finishedLatelySeed finishes A (audio only), B (text only), C (both, text later), D (both, audio later).
+func finishedLatelySeed(t *testing.T) (*library.Repo, map[string]library.Book) {
+	t.Helper()
+	r, st, _, f := listenSeed(t)
+	books := map[string]library.Book{}
+	for _, n := range []string{"A", "B", "C", "D", "E"} {
+		books[n] = librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: n, DurationMs: 3_600_000})
+	}
+	audio := func(user, title string, at int64) {
+		t.Helper()
+		if _, err := st.Writer().Exec(`INSERT INTO progress(user_id, book_id, position_ms, duration_ms, finished_at, client_updated_at, server_updated_at, device_id)
+VALUES (?, ?, 3600000, 3600000, ?, ?, ?, 'dev')`, user, books[title].ID, at, at, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	text := func(user, title string, at int64) {
+		t.Helper()
+		if _, err := st.Writer().Exec(`INSERT INTO reading_positions(user_id, book_id, chapter_idx, char_pos, percent_bp, finished_at, client_updated_at, server_updated_at, device_id)
+VALUES (?, ?, 1, 0, 10000, ?, ?, ?, 'dev')`, user, books[title].ID, at, at, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	audio(listenOwner, "A", 1000)
+	text(listenOwner, "B", 5000)
+	audio(listenOwner, "C", 2000)
+	text(listenOwner, "C", 6000)
+	audio(listenOwner, "D", 7000)
+	text(listenOwner, "D", 3000)
+	text(listenMember, "E", 9000) // someone else's
+	return r, books
+}
+
+func finishedTitles(l []library.FinishedBook) []string {
+	var out []string
+	for _, x := range l {
+		out = append(out, x.Book.Title)
+	}
+	return out
+}
+
+func TestFinishedLatelyEitherFormatOncePerBook(t *testing.T) {
+	r, _ := finishedLatelySeed(t)
+	got, err := r.FinishedLately(ctx, allScope, listenOwner, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"D", "C", "B", "A"}; !reflect.DeepEqual(finishedTitles(got), want) {
+		t.Fatalf("got %v, want %v", finishedTitles(got), want)
+	}
+	if got[0].At != 7000 || got[1].At != 6000 {
+		t.Fatalf("later date not used: %d, %d", got[0].At, got[1].At)
+	}
+}
+
+func TestFinishedLatelyAudioOnlyAndTextOnly(t *testing.T) {
+	r, _ := finishedLatelySeed(t)
+	got, err := r.FinishedLately(ctx, allScope, listenOwner, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, x := range finishedTitles(got) {
+		seen[x] = true
+	}
+	if !seen["A"] || !seen["B"] || seen["E"] {
+		t.Fatalf("audio-only A and text-only B must show, another person's E must not: %v", finishedTitles(got))
+	}
+	if got, _ = r.FinishedLately(ctx, allScope, listenOwner, 2); len(got) != 2 {
+		t.Fatalf("limit: %v", finishedTitles(got))
+	}
+}
+
+func TestFinishedLatelyLeavesOutBooksNotVisible(t *testing.T) {
+	r, books := finishedLatelySeed(t)
+	got, err := r.FinishedLately(ctx, listenScope(books["B"].ID, books["D"].ID), listenOwner, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"C", "A"}; !reflect.DeepEqual(finishedTitles(got), want) {
+		t.Fatalf("got %v, want %v", finishedTitles(got), want)
+	}
+}

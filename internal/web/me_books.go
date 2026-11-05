@@ -63,7 +63,7 @@ func (s *server) profileBooksView(r *http.Request, speed float64) (pages.Profile
 			return v, err
 		}
 	}
-	fin, err := s.lib.FinishedBetween(ctx, s.scope(r), u.ID, 0, s.now().UnixMilli()+1, profileFinishedN)
+	fin, err := s.lib.FinishedLately(ctx, s.scope(r), u.ID, profileFinishedN)
 	if err != nil {
 		return v, err
 	}
