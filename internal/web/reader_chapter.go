@@ -94,7 +94,7 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 	if err != nil {
 		return out, err
 	}
-	list, err := s.progress.Bookmarks(ctx, u.ID, rc.book.ID, false)
+	list, err := s.progress.TextBookmarks(ctx, u.ID, rc.book.ID)
 	if err != nil {
 		return out, err
 	}
@@ -210,7 +210,7 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, u, q := r.Context(), currentUser(r), r.URL.Query()
 	sheet := q.Get("sheet")
-	if sheet != "" && sheet != "contents" && sheet != "marks" && sheet != "reading" {
+	if sheet != "" && sheet != "contents" && sheet != "marks" && sheet != "reading" && sheet != "search" {
 		s.notFound(w, r)
 		return
 	}

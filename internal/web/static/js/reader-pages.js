@@ -80,7 +80,22 @@ export function pages(root, kit) {
   // Replace the part with a neighbour and land on its first or last page.
   async function cross(href, first, dir) {
     const next = await fetchPart(href);
-    if (!next) return false;
+    if (!next) {
+      const words = JSON.parse(root.dataset.copy);
+      const toast = document.createElement("div");
+      toast.className = "ts-toast";
+      toast.setAttribute("role", "status");
+      toast.append(words.failed);
+      const again = toast.appendChild(document.createElement("button"));
+      again.className = "ts-btn ts-btn--quiet";
+      again.textContent = words.retry;
+      again.addEventListener("click", () => {
+        toast.remove();
+        cross(href, first, dir);
+      });
+      document.getElementById("toasts").append(toast);
+      return false;
+    }
     parts.delete(href);
     section().replaceWith(next);
     if (window.htmx) window.htmx.process(next); // the scroll flow's sentinel needs it later

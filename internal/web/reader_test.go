@@ -399,7 +399,7 @@ func TestReaderBookmarkFromText(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("second bookmark: %d", rec.Code)
 	}
-	list, err := l.a.srv.progress.Bookmarks(context.Background(), l.ownerID, l.book.ID, false)
+	list, err := l.a.srv.progress.TextBookmarks(context.Background(), l.ownerID, l.book.ID)
 	if err != nil || len(list) != 2 {
 		t.Fatalf("bookmarks: %v %v", list, err)
 	}

@@ -121,7 +121,11 @@ func (s *server) ownBookmark(w http.ResponseWriter, r *http.Request) (progress.B
 		s.serverError(w, r, "load bookmark", err)
 		return bm, false
 	}
-	if _, ok := s.loadBook(w, r, bm.BookID, share.ListenBook); !ok {
+	need := share.ListenBook
+	if bm.SID != "" { // a place in the text answers to the right to read
+		need = share.ReadText
+	}
+	if _, ok := s.loadBook(w, r, bm.BookID, need); !ok {
 		return bm, false
 	}
 	return bm, true

@@ -331,6 +331,10 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// (the columns) loads only when pages are shown.
 	"reader.js":       {6 * 1024, 32 * 1024}, // OVERRUN: approved 4.5 KB; measured about 5.9 KB, the operator decides (see the RD2 report)
 	"reader-pages.js": {3 * 1024, 16 * 1024},
+	// M5 RD3 (operator, 2026-11-04): the marks toolbar, note dialog, bookmark, footnote links and search hit (2.75 KB);
+	// the footnote popup, loaded on the first footnote (1 KB).
+	"reader-marks.js": {2*1024 + 768, 16 * 1024},
+	"reader-notes.js": {1024, 8 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
