@@ -206,3 +206,8 @@ worse than Natural, Night comfortable beside someone asleep; (4) a mode on, then
 Full equalizer, skip silences, a volume boost above 100 %, per-book or per-device values, a Settings page row, the
 sleep fade or volume on iOS through Web Audio, server-side filtered copies, modes on share links, macOS and Windows
 checks. Suspending the context during a pause, unless the spike's step 2 shows a need.
+
+## Operator answers (2026-11-05)
+
+- Budget approved as planned, on condition that the phone spike passes: app JS 90 KB (92,160 B), `sound.js` 2,816 B, `player-full.js` 14,080 B, `player-fit.css` 1,280 B.
+- Defaults stand: a failed phone hides modes there with one plain sentence; share links get no modes.
