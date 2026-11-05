@@ -68,11 +68,13 @@ func (s *server) getReaderNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	blocks := rc.doc.Chapters[c-1].Blocks
-	targets := map[string]bool{}
-	for _, b := range blocks {
-		for _, l := range b.Links {
-			if l.Note {
-				targets[l.To] = true
+	targets := map[string]bool{} // every block a note link points at, in the whole book
+	for _, ch := range rc.doc.Chapters {
+		for _, b := range ch.Blocks {
+			for _, l := range b.Links {
+				if l.Note {
+					targets[l.To] = true
+				}
 			}
 		}
 	}
@@ -260,7 +262,7 @@ func (s *server) readerSearchSheet(r *http.Request, rc readerCtx, cur int) pages
 	}
 	return pages.ReaderSheetView{Kind: "search", Title: readerSearchTitle, CloseLabel: readerCloseSheet, BookID: rc.book.ID,
 		CloseHref: rc.href("ch", strconv.Itoa(cur)),
-		Search: &pages.ReaderSearchView{Action: "/books/" + rc.book.ID + "/read", EditionID: ed, Q: q,
+		Search: &pages.ReaderSearchView{Action: "/books/" + rc.book.ID + "/read", HxAction: "/hx/books/" + rc.book.ID + "/read/search", EditionID: ed, Q: q,
 			Label: readerSearchField, Button: readerSearchGo, Hits: s.readerHits(rc, q)}}
 }
 

@@ -110,6 +110,10 @@ func (s *server) readerCtx(w http.ResponseWriter, r *http.Request) (readerCtx, b
 		return readerCtx{}, false
 	}
 	rc, found, err := s.readerLoad(r.Context(), currentUser(r), book, r.FormValue("edition"))
+	if errors.Is(err, ebook.ErrDocCorrupt) || errors.Is(err, ebook.ErrDocTooLarge) {
+		s.readerTrouble(w, r, book.ID, err)
+		return rc, false
+	}
 	if err != nil {
 		s.serverError(w, r, "reader", err)
 		return rc, false

@@ -617,7 +617,17 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   restart at the chapter (RD1's `?ch=` ladder), RD3 can pass `at`. Deviation: "Mark as finished" posts to
   `/reading/{bookID}/finished` (the plan's `/hx/books/{id}/finished` answers 404 for text and writes listening
   progress). Next: RD3.
-- **RD3 Marks and more**: colours, notes, footnote popups, search, export, plain errors.
+- **RD3 Marks, footnotes, search, export, errors** (done): `reader-marks.js` (four highlight colours, Note, Copy, bookmark
+  this page, footnote links, "Back to where I was", offsets as `data-o` plus the offset inside the sentence) and the lazy
+  `reader-notes.js` (footnote popup, search-hit mark). The note dialog and every label are server-rendered. Bookmarks in the
+  text have `sid` and `edition_id`; `progress.Bookmarks` and the Bookmarks tab hold audio moments only, `TextBookmarks` and
+  the marks sheet the text ones (delete from the sheet), and `/api` bookmark JSON gains `sid` and `editionId`. Footnote popup
+  `GET /hx/books/{id}/read/note/{blockID}`; search `?sheet=search&q=` and `GET /hx/books/{id}/read/search` (accents, case
+  and white space folded, UTF-16 offsets, 200 hits, 80-character snippets, `::highlight(ts-hit)` on arrival); export
+  `GET /books/{id}/read/marks.md|.txt|.json`; a missing, damaged or too large document answers "Tendshelf cannot open this
+  book right now." (a toast for htmx) and a part that does not load offers "Try again". Limits: a note dot opens the marks
+  sheet (notes are changed there); the colour of an existing highlight is not changed in the UI (PATCH accepts it); the
+  back chip lasts until the next navigation; no original-file download exists to link from the error page. Next: RD4.
 - **RD4 Checks**: a11y, contrast, boards side by side, layout time, a manual WebKit and phone check.
 - **Later** (a note each in the plan): G1 look-up and word list, G2 reading stats, G3 print pages, G4 skim, G5 comfort,
   G6 offline reading, G7 collections and sending a book; then OPDS and KOReader sync.

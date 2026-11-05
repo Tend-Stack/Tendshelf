@@ -87,7 +87,7 @@ type ReaderHit struct {
 
 // ReaderSearchView is the search sheet: the form and, once there is a question, its answers.
 type ReaderSearchView struct {
-	Action, EditionID, Q, Label, Button string
+	Action, HxAction, EditionID, Q, Label, Button string
 	Hits                                ReaderHits
 }
 
@@ -163,16 +163,16 @@ templ Reader(v ReaderView) {
 			if v.Speaker != nil {
 				@components.PlayButton(*v.Speaker)
 			}
-			<a class="ts-iconbtn" href={ templ.SafeURL(v.SearchHref) } aria-label={ v.SearchLabel }>
+			<a class="ts-iconbtn" href={ templ.SafeURL(v.SearchHref) } hx-get={ v.SearchHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog" aria-label={ v.SearchLabel }>
 				@components.Icon("search", false)
 			</a>
-			<a class="ts-iconbtn" href={ templ.SafeURL(v.Footer.ContentsHref) } aria-label={ v.Footer.ContentsLabel }>
+			<a class="ts-iconbtn" href={ templ.SafeURL(v.Footer.ContentsHref) } hx-get={ v.Footer.ContentsHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog" aria-label={ v.Footer.ContentsLabel }>
 				@components.Icon("chapters", false)
 			</a>
 			<button type="button" class="ts-iconbtn" data-ts-mark="bookmark" aria-label={ v.BookmarkLabel }>
 				@components.Icon("bookmark", false)
 			</button>
-			<a class="ts-iconbtn" href={ templ.SafeURL(v.MarksHref) } aria-label={ v.MarksLabel }>
+			<a class="ts-iconbtn" href={ templ.SafeURL(v.MarksHref) } hx-get={ v.MarksHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog" aria-label={ v.MarksLabel }>
 				@components.Icon("edit", false)
 			</a>
 			<a
@@ -447,7 +447,7 @@ templ ReaderMarkGone(id string) {
 
 // ReaderSearchForm is the search sheet body: a plain GET form that also asks htmx for the answers alone.
 templ ReaderSearchForm(v ReaderSearchView) {
-	<form class="ts-reader__search" method="get" action={ templ.SafeURL(v.Action) } hx-get={ v.Action + "/search" } hx-target="#reader-hits" hx-swap="innerHTML" hx-push-url="false" hx-boost="false">
+	<form class="ts-reader__search" method="get" action={ templ.SafeURL(v.Action) } hx-get={ v.HxAction } hx-target="#reader-hits" hx-swap="innerHTML" hx-push-url="false" hx-boost="false">
 		<input type="hidden" name="sheet" value="search"/>
 		if v.EditionID != "" {
 			<input type="hidden" name="edition" value={ v.EditionID }/>

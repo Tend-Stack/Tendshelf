@@ -87,6 +87,19 @@ ArrowRight, PageDown and Space go forward, ArrowLeft, PageUp and Shift+Space bac
 the contents, `/` search (RD3). Keys are caught on `window` before `player.js`, and left alone in a field, a dialog or an open
 sheet. In scroll, taps in the middle toggle the chrome and the keys scroll a screen minus two lines.
 
+Marks (`reader-marks.js`, RD3): selecting text shows a toolbar with four colours (yellow, green, blue, pink), Note and Copy.
+A highlight is posted with `data-o` plus the characters before the point inside the sentence, so the server gets offsets
+in the block text. The note dialog (`#reader-note-dialog`) and all labels are rendered by the server. The bookmark button
+in the bar keeps the first sentence on screen (`POST /books/{id}/bookmarks` with `edition_id` and `sid`); text bookmarks
+show on the marks sheet, never on the audio Bookmarks tab. A footnote link (`data-note-href`) loads `reader-notes.js` and
+opens `GET /hx/books/{id}/read/note/{blockID}` as a dialog (the target block and the note blocks after it until another
+note's target, at most ten); Escape, the backdrop and Close shut it and focus returns to the link. Any other in-book link
+jumps and the next page offers "Back to where I was". Search is `?sheet=search&q=` (or the htmx fragment
+`/hx/books/{id}/read/search`): the whole phrase, folded for case, accents and white space, at least two characters, 200 hits
+at most, each with its chapter, an 80-character snippet and a link with `at`, `off` and `hit`, which marks the words with
+`::highlight(ts-hit)`. `GET /books/{id}/read/marks.md`, `.txt` and `.json` download the person's own highlights, notes and
+text bookmarks. A document that is missing, damaged or too large gives "Tendshelf cannot open this book right now."
+
 Progress: the ruler and `p. n of N` come from the block's `data-pg`, the time left from the person's own speed
 (`data-cpm`, characters per minute) and the characters remaining in the chapter and the book, in steps of five minutes, with
 "About" until three sessions have taught the speed. The last part carries "That's the end of the book." and a button

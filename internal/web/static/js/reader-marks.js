@@ -154,6 +154,7 @@ export function mount(menu) {
       const note = event.target.closest("a[data-note-href]");
       if (note) {
         event.preventDefault();
+        event.stopPropagation(); // htmx's boost sits on the link itself and would follow it
         try {
           (await import(reader.dataset.notesSrc)).open(note, () => remember(note));
         } catch {
@@ -164,7 +165,7 @@ export function mount(menu) {
       const jump = event.target.closest("a.ts-reader__link:not([target])");
       if (jump) remember(jump);
     },
-    opts,
+    { ...opts, capture: true }, // before the link's own boost handler
   );
 
   // ---- On arrival ----
