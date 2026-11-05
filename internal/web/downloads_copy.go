@@ -6,10 +6,11 @@ import "github.com/Tend-Stack/tendshelf/internal/web/pages"
 // Board and deck words are exact; the lines marked new follow the BRAND voice and are listed in
 // docs/copy-additions.md by the proof package. {tokens} are filled by js/downloads.js.
 const (
-	downloadsTitle    = "Downloads"
-	downloadsLead     = "Books saved here play without a connection."
-	downloadsEmpty    = "No downloads yet"
-	downloadsEmptyHow = "Download a book to listen without a connection."
+	downloadsTitle     = "Downloads"
+	downloadsLead      = "Books saved here play without a connection."
+	downloadsShellNote = "Downloads are for your phone or browser. This app plays straight from your library or server."
+	downloadsEmpty     = "No downloads yet"
+	downloadsEmptyHow  = "Download a book to listen without a connection."
 
 	downloadsStorage     = "Storage on this phone"
 	downloadsRemoveTitle = "Remove finished books"
@@ -64,6 +65,7 @@ func downloadsView() pages.DownloadsView {
 		Active: downloadsActive, Ready: downloadsReady, Settings: downloadsSettings,
 		KeepOpen: downloadsKeepOpen, Persist: downloadsPersist, Safari: downloadsSafari,
 		Insecure: downloadsInsecure, Install: downloadsInstall,
-		Messages: downloadsMessages,
+		Messages:  downloadsMessages,
+		ShellNote: downloadsShellNote,
 	}
 }

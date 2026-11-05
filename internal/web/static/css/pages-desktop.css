@@ -1,0 +1,20 @@
+/* The desktop app window (decision 0020): loaded only when the cookie ts_shell says "desktop". */
+
+/* An app has an arrow pointer on its controls, rows and cards; text links keep the hand. */
+html[data-shell="desktop"] button,
+html[data-shell="desktop"] [role="button"],
+html[data-shell="desktop"] [role="tab"],
+html[data-shell="desktop"] [role="switch"],
+html[data-shell="desktop"] summary,
+html[data-shell="desktop"] label,
+html[data-shell="desktop"] .ts-row__main,
+html[data-shell="desktop"] .ts-card,
+html[data-shell="desktop"] .ts-btn,
+html[data-shell="desktop"] .ts-iconbtn {
+  cursor: default;
+}
+
+/* The app plays from its library or server and keeps no downloads (the page says so). */
+html[data-shell="desktop"] a[href="/me/downloads"] {
+  display: none;
+}

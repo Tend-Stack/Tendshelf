@@ -10,6 +10,9 @@ templ LinkShell(p Page, base string, data *PlayerDataView, body templ.Component)
 	<!DOCTYPE html>
 	<html
 		lang="en"
+		if p.Shell != "" {
+			data-shell={ p.Shell }
+		}
 		if p.Theme != "" {
 			data-theme={ p.Theme }
 		}

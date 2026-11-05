@@ -50,6 +50,11 @@ type Page struct {
 	// NoInstall leaves out the install links (manifest, Home Screen icon and title). Share-link pages
 	// set it: they are not part of the installed app.
 	NoInstall bool
+	// Shell is "desktop", "ios" or "android" when the window is a Tendshelf app (cookie ts_shell), else "".
+	// It is written as data-shell on <html>. NoOffline keeps offline.js out of the page (no service
+	// worker inside an app window).
+	Shell     string
+	NoOffline bool
 
 	// prefetch is set by Layout: the page stylesheets this page does not link itself.
 	prefetch []string
@@ -59,7 +64,7 @@ type Page struct {
 const pagePrefix = "css/pages-"
 
 // noPrefetch lists page stylesheets too rarely visited to cost every page a request.
-var noPrefetch = []string{"css/pages-words.css"}
+var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css"}
 
 // withPrefetch returns p with the page stylesheets it does not link itself, so the head can ask the
 // browser to fetch them early: the first boosted visit to another page then finds them cached.
@@ -99,6 +104,9 @@ templ Layout(p Page, body templ.Component) {
 	<!DOCTYPE html>
 	<html
 		lang="en"
+		if p.Shell != "" {
+			data-shell={ p.Shell }
+		}
 		if p.Theme != "" {
 			data-theme={ p.Theme }
 		}
@@ -181,6 +189,10 @@ templ Head(p Page, extraCSS ...string) {
 		<script src={ p.Assets.URL("vendor/htmx-4.0.0.min.js") } defer></script>
 		<script type="module" src={ p.Assets.URL("js/shell.js") }></script>
 		<script type="module" src={ p.Assets.URL("js/copy.js") }></script>
+		if p.Shell == "desktop" {
+			<link rel="stylesheet" href={ p.Assets.URL("css/pages-desktop.css") }/>
+			<script type="module" src={ p.Assets.URL("js/desktop.js") }></script>
+		}
 	</head>
 }
 

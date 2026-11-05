@@ -37,7 +37,7 @@ templ OfflineBanner(p Page) {
 // OfflineScript loads offline.js on Layout and Frame pages (never on share-link pages). It is left
 // out while the file does not exist, so the page never names an unknown asset.
 templ OfflineScript(p Page) {
-	if p.Assets.Has("js/offline.js") {
+	if !p.NoOffline && p.Assets.Has("js/offline.js") {
 		<script type="module" async src={ p.Assets.URL("js/offline.js") }></script>
 	}
 }
