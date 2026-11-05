@@ -238,9 +238,9 @@ func identifiers(ids []string) Identifiers {
 type tocEntry struct{ Href, Text string }
 
 type navData struct {
-	TOC       []tocEntry
-	Landmarks map[string][]string // resolved path -> epub:type values
-	Pages     int
+	TOC         []tocEntry
+	Landmarks   map[string][]string // resolved path -> epub:type values
+	PageTargets []tocEntry          // print pages: Href is as written in the file until rebasePages
 }
 
 // parseNav reads an EPUB 3 navigation document.
@@ -273,7 +273,7 @@ func parseNav(data []byte, navDir string, lim Limits) (*navData, error) {
 				}
 				switch {
 				case strings.Contains(navType, "page-list"):
-					n.Pages++
+					n.PageTargets = append(n.PageTargets, tocEntry{Href: href, Text: txt})
 				case strings.Contains(navType, "landmarks"):
 					if p, ok := resolveRef(navDir, href); ok && ty != "" {
 						n.Landmarks[p] = append(n.Landmarks[p], strings.Fields(ty)...)
@@ -295,6 +295,7 @@ func parseNCX(data []byte, lim Limits) (*navData, error) {
 	d := newXMLBytes(data, lim)
 	n := &navData{Landmarks: map[string][]string{}}
 	var labels []string
+	var page *tocEntry // the pageTarget being read
 	for {
 		t, err := d.Next()
 		if err == io.EOF {
@@ -313,17 +314,26 @@ func parseNCX(data []byte, lim Limits) (*navData, error) {
 				if err != nil {
 					return nil, err
 				}
+				if page != nil && page.Text == "" {
+					page.Text = txt
+				}
 				if len(labels) > 0 && labels[len(labels)-1] == "" {
 					labels[len(labels)-1] = txt
 				}
 			case "content":
-				if len(labels) > 0 {
+				if page != nil {
+					page.Href = attr(v, "src")
+				} else if len(labels) > 0 {
 					n.TOC = append(n.TOC, tocEntry{Href: attr(v, "src"), Text: labels[len(labels)-1]})
 				}
 			case "pageTarget":
-				n.Pages++
+				page = &tocEntry{}
 			}
 		case xml.EndElement:
+			if v.Name.Local == "pageTarget" && page != nil {
+				n.PageTargets = append(n.PageTargets, *page)
+				page = nil
+			}
 			if v.Name.Local == "navPoint" && len(labels) > 0 {
 				labels = labels[:len(labels)-1]
 			}
@@ -397,13 +407,14 @@ func parseEPUB(zb *zipBox, lim Limits) (*Doc, error) {
 			if nd, err := zb.Read(p); err == nil {
 				if nv, err := parseNav(nd, dirOf(p), lim); err == nil {
 					nv.TOC = rebase(nv.TOC, dirOf(p))
+					nv.PageTargets = rebasePages(nv.PageTargets, dirOf(p))
 					nav = nv
 				}
 			}
 		}
 		break
 	}
-	if nav == nil || len(nav.TOC) == 0 || nav.Pages == 0 {
+	if nav == nil || len(nav.TOC) == 0 || len(nav.PageTargets) == 0 {
 		for _, it := range o.Items {
 			if !(it.Type == "application/x-dtbncx+xml" || (it.ID == o.SpineTOC && o.SpineTOC != "")) {
 				continue
@@ -412,14 +423,15 @@ func parseEPUB(zb *zipBox, lim Limits) (*Doc, error) {
 				if nd, err := zb.Read(p); err == nil {
 					if nv, err := parseNCX(nd, lim); err == nil {
 						nv.TOC = rebase(nv.TOC, dirOf(p))
+						nv.PageTargets = rebasePages(nv.PageTargets, dirOf(p))
 						if nav == nil {
 							nav = nv
 						} else {
 							if len(nav.TOC) == 0 {
 								nav.TOC = nv.TOC
 							}
-							if nav.Pages == 0 {
-								nav.Pages = nv.Pages
+							if len(nav.PageTargets) == 0 {
+								nav.PageTargets = nv.PageTargets
 							}
 						}
 					}
@@ -493,9 +505,8 @@ func parseEPUB(zb *zipBox, lim Limits) (*Doc, error) {
 			return nil, b.err
 		}
 	}
-	pages := 0
 	if nav != nil {
-		pages = nav.Pages
+		b.pageTargets = nav.PageTargets
 	}
 	meta := Meta{Title: o.Title, Authors: o.authors(), Language: o.Lang, Identifiers: identifiers(o.IDs)}
 	meta.Description = normalizeString(stripTags(o.Description))
@@ -504,7 +515,7 @@ func parseEPUB(zb *zipBox, lim Limits) (*Doc, error) {
 	meta.SeriesIndex = strings.TrimSpace(firstNonEmpty(o.SeriesIndex, o.positions[o.collID]))
 	meta.Year = yearOf(o.Date)
 	meta.CoverPart = o.coverPart(opfDir)
-	return b.Finish(meta, pages)
+	return b.Finish(meta, 0)
 }
 
 func hasProp(props, want string) bool {
@@ -523,6 +534,27 @@ func rebase(es []tocEntry, dir string) []tocEntry {
 		if p, ok := resolveRef(dir, e.Href); ok {
 			out = append(out, tocEntry{Href: p, Text: e.Text})
 		}
+	}
+	return out
+}
+
+// rebasePages is rebase for page targets: the fragment stays, as "part#id", because a page starts at an
+// id and not at the top of a part. A target with no fragment becomes "part#" (the part's first block).
+func rebasePages(es []tocEntry, dir string) []tocEntry {
+	out := make([]tocEntry, 0, len(es))
+	for _, e := range es {
+		p, ok := resolveRef(dir, e.Href)
+		if !ok {
+			continue
+		}
+		frag := ""
+		if i := strings.IndexByte(e.Href, '#'); i >= 0 {
+			frag = e.Href[i+1:]
+			if u, err := url.PathUnescape(frag); err == nil {
+				frag = u
+			}
+		}
+		out = append(out, tocEntry{Href: p + "#" + frag, Text: e.Text})
 	}
 	return out
 }

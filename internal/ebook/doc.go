@@ -15,21 +15,29 @@ import (
 // Recipe names the parsing rules that made a document; a change to any rule bumps it so editions are
 // read again. Segmenter names the sentence and word rules.
 const (
-	Recipe    = "tendshelf-ebook-v2"
+	Recipe    = "tendshelf-ebook-v3"
 	Segmenter = "tendshelf-segment-v1"
 	DocV      = 1
 )
 
 // Doc is the canonical document "tendshelf-doc-v1". Field order is the JSON order.
 type Doc struct {
-	V            int       `json:"v"`
-	Recipe       string    `json:"recipe"`
-	Format       string    `json:"format"`
-	SourceSHA256 string    `json:"sourceSha256"`
-	Layout       string    `json:"layout"`
-	Meta         Meta      `json:"meta"`
-	PageCount    int       `json:"pageCount"`
-	Chapters     []Chapter `json:"chapters"`
+	V            int        `json:"v"`
+	Recipe       string     `json:"recipe"`
+	Format       string     `json:"format"`
+	SourceSHA256 string     `json:"sourceSha256"`
+	Layout       string     `json:"layout"`
+	Meta         Meta       `json:"meta"`
+	PageCount    int        `json:"pageCount"`
+	PageList     []PageMark `json:"pageList,omitempty"` // recipe v3: the book's own print pages; absent in v2 and when the book has none
+	Chapters     []Chapter  `json:"chapters"`
+}
+
+// PageMark says that the print page Label starts at block Block (a block ID such as "c3.p12"). Marks are
+// in reading order; the label is the book's own ("xii", "47"), never a count.
+type PageMark struct {
+	Label string `json:"label"`
+	Block string `json:"block"`
 }
 
 // Meta is what the file says about itself.

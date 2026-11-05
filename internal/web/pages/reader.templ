@@ -12,13 +12,14 @@ var ReaderStyles = []string{"css/pages-reader.css"}
 // ReaderBlockView is one block of text. HTML is the already escaped inside (see web/reader_render.go).
 type ReaderBlockView struct {
 	Kind, ID, HTML string
-	Pg             int
+	Pg             string // the print page label ("xii", "47"), or "" when none is known
 	C              int // characters (UTF-16 units) before the block in its chapter; the paginator counts with it
 }
 
 // ReaderChapterView is one chapter of the text. NextFrag and NextHref are empty after the last chapter.
 type ReaderChapterView struct {
-	Idx, Pg        int
+	Idx            int
+	Pg             string
 	Part, Parts    int // this part of the chapter and how many there are
 	Before         int // characters of the book before this part
 	Overline, Page string
@@ -378,21 +379,21 @@ func readerSectionID(c ReaderChapterView) string {
 templ ReaderBlock(b ReaderBlockView, oob bool) {
 	switch b.Kind {
 		case "h":
-			<h3 id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</h3>
+			<h3 id={ b.ID } data-pg={ b.Pg } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</h3>
 		case "quote":
-			<blockquote id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }><p>@templ.Raw(b.HTML)</p></blockquote>
+			<blockquote id={ b.ID } data-pg={ b.Pg } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }><p>@templ.Raw(b.HTML)</p></blockquote>
 		case "li":
-			<p id={ b.ID } class="ts-reader__li" data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+			<p id={ b.ID } class="ts-reader__li" data-pg={ b.Pg } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
 		case "note":
-			<p id={ b.ID } class="ts-reader__note" data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+			<p id={ b.ID } class="ts-reader__note" data-pg={ b.Pg } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
 		case "img":
-			<p id={ b.ID } class="ts-reader__img" data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+			<p id={ b.ID } class="ts-reader__img" data-pg={ b.Pg } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
 		case "pre":
-			<pre id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</pre>
+			<pre id={ b.ID } data-pg={ b.Pg } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</pre>
 		case "hr":
 			<hr id={ b.ID } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }/>
 		default:
-			<p id={ b.ID } data-pg={ strconv.Itoa(b.Pg) } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+			<p id={ b.ID } data-pg={ b.Pg } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
 	}
 }
 

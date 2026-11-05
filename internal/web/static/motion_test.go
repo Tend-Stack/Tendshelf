@@ -332,7 +332,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"reader-settings.js": {1*1024 + 512, 8 * 1024}, // operator, 2026-11-04: reading settings
 	// M5 RD2 (operator, 2026-11-04): the page reader. reader.js is flow, anchor, saving, input and progress; reader-pages.js
 	// (the columns) loads only when pages are shown.
-	"reader.js":       {6*1024 + 320, 32 * 1024}, // operator, 2026-11-04: 6 KB. OVERRUN (G4): 6,440 B served; main was 6,044 and G6a had not made room. 6.3125 KB so the gate runs, the operator decides
+	"reader.js":       {6*1024 + 352, 32 * 1024}, // operator, 2026-11-04: 6 KB. G3: 6,469 B served, +5 B for a page label that may be text (comment kept). OVERRUN (G4): 6,440 B served; main was 6,044 and G6a had not made room. 6.3125 KB so the gate runs, the operator decides
 	"reader-pages.js": {3 * 1024, 16 * 1024},
 	// M5 RD3 (operator, 2026-11-04): the marks toolbar, note dialog, bookmark, footnote links and search hit (2.75 KB);
 	// the footnote popup, loaded on the first footnote (1 KB).

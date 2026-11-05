@@ -141,7 +141,32 @@ func parsePDF(ra io.ReaderAt, size int64, lim Limits) (doc *Doc, err error) {
 			meta.Authors = []string{a}
 		}
 	}
-	return b.Finish(meta, n)
+	var out *Doc
+	out, err = b.Finish(meta, n)
+	if err != nil {
+		return nil, err
+	}
+	out.PageList = pdfPageList(out)
+	return out, nil
+}
+
+// pdfPageList marks the first block of each PDF page, labelled with its page number. A page that has no
+// block of its own (a picture-only page) has no mark.
+func pdfPageList(d *Doc) []PageMark {
+	var out []PageMark
+	seen := map[string]bool{}
+	for _, c := range d.Chapters {
+		for _, bl := range c.Blocks {
+			if bl.Src == nil || !strings.HasPrefix(bl.Src.Part, "page:") || seen[bl.Src.Part] {
+				continue
+			}
+			seen[bl.Src.Part] = true
+			if len(out) < maxPageMarks {
+				out = append(out, PageMark{Label: strings.TrimPrefix(bl.Src.Part, "page:"), Block: bl.ID})
+			}
+		}
+	}
+	return out
 }
 
 // pdfPageLines turns one page's glyphs into lines, left to right inside each line.
