@@ -137,3 +137,20 @@ your own folder (for example `~/Books` "Rules for the Summer", EPUB, with its au
 | 8 | Contents, Search for a word, follow a hit. | The sheet opens over an inert page; the hit is marked on arrival. | | | |
 | 9 | Close the reader and open it again from Home. | It resumes on the same sentence. | | | |
 | 10 | Read past the end of a long chapter. | The next part loads without a jump. | | | |
+
+## Desktop media keys and tray (M6 D5, 2026-11-05)
+
+Probe result: WebKitGTK 6 publishes `org.mpris.MediaPlayer2.org.webkit.app-<hash>.Sandboxed.instance-N` on the session bus
+once a media element is really playing; `Pause`, `Play` and `PlayPause` over D-Bus changed `PlaybackStatus` as expected, so
+no Go fallback was built and `player.js` is untouched. The page's own `mediaSession` handlers (play, pause, previoustrack,
+nexttrack) are what WebKit calls. The isolated session had a private PipeWire null sink; the real key came from the shell's
+remote-desktop API. Limit: `play()` without a click is refused by WebKit's autoplay rule (`NotAllowedError`), so the tray's
+"Play or pause" can pause at any time but can start a book only after the person has pressed play once in the window.
+
+Operator check, on the real desktop (the isolated session has no media-key handler):
+
+1. `make desktop`, run `bin/tendshelf-desktop`, open a book and press its play button.
+2. Press the keyboard's Play/Pause key. Expected: audio pauses; press again, it resumes.
+3. Press Next and Previous. Expected: the chapter changes.
+4. With an AppIndicator extension on (Ubuntu ships one), click the tray icon: the window hides, then shows. The menu's
+   "Play or pause" pauses and resumes. Quit Tendshelf ends the app. Without the extension there is no icon and nothing else changes.
