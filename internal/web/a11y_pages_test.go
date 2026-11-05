@@ -201,7 +201,7 @@ func a11yStates() []a11yState {
 				panic(err)
 			}
 			return "/me/words"
-		}},
+		}, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {}},
 		// M5 G4: the skim bar in use, with its tip showing.
 		{Key: "reader-skim", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
 			tab.WaitFor(`document.getElementById("reader-skim") && !document.getElementById("reader-skim").hidden`, 8*time.Second)
