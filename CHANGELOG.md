@@ -4,6 +4,34 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+This will be **2026.2.0**; the date is added on release day. It brings offline use, uploads, a book reader,
+ebooks as books, and a desktop app.
+
+### What you can do
+
+- **Offline.** Install Tendshelf as an app and download a book, audio and text, to read or listen with no
+  connection. Your place and bookmarks sync when you are back online. Downloading and installing need HTTPS
+  ([docs/deploy.md](docs/deploy.md)).
+- **Add books by upload.** The owner can let people add books from the browser into one folder of a library
+  (off by default). Nothing is overwritten, and removing a book deletes only what the upload created.
+- **Ebooks are books.** An ebook has a cover, a Read button and its own place. An ebook that matches an
+  audiobook (same folder, ISBN or ASIN, or title and author) joins it automatically into one book; you can
+  also pair them by hand. Copy-protected ebooks are refused.
+- **The book reader.** Pages or scrolling; fonts, sizes, themes and a dyslexia-friendly option; highlights
+  in four colours with notes; search; contents; footnotes; a skim bar over the chapters; print page numbers
+  where the book has them; comfort options (keep the screen on, warm light, a bar that hides).
+- **Look-up and a word list.** Select a word to see definitions from dictionary files you add to the data
+  folder, search the web by tapping a link, and save words to a list. Nothing is bundled or fetched.
+- **Your listening and your reading.** A dashboard of the time you listened, your days, hours and finished
+  books, and the same for reading, with a yearly goal. It shows only your own data.
+- **Eyes-free.** A big-button screen for the car.
+- **Scheduled backups.** The owner can back up the database every day or every week, or on demand.
+- **A better Profile and a devices page.** Profile puts your books first, Home shows what else is in
+  progress, and "Your devices" lists the devices and browsers you are signed in on.
+- **Desktop app.** A Tendshelf window for Linux, with a tray icon and media keys, as a `.deb`
+  ([docs/desktop.md](docs/desktop.md)). It runs its own library or opens a server you already run.
+- **Accessibility audit.** Every page was checked at four widths and four themes for contrast, targets,
+  focus and zoom; the fixes are in this release.
 - **Book details.** Look up a book online and compare the results field by field before you apply them. Change or upload
   a cover. Author photos and bios. Read sidecar files that sit next to a book. Write details into the audio file with
   "Looks good", and Undo puts the original back.
@@ -15,6 +43,21 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
   filling only what is missing. A list shows the books that need a look.
 - **Fewer interruptions.** Actions no longer stop the book that is playing.
 - **Wide screens.** The app stops growing at 2560 px.
+
+### Known limits
+
+- The checks on real devices are not all run: iOS Safari for offline use, a screen reader (Orca, TalkBack,
+  VoiceOver), and the desktop app on the owner's own computer. See [docs/manual-checks.md](docs/manual-checks.md).
+- The desktop app is verified on Linux only; it has no offline downloads or auto-update.
+- Passkeys and OPDS are not built.
+
+### Upgrading
+
+This release uses database schema 23 (it was 9 in 2026.1.0). Before Tendshelf upgrades an existing database it
+writes a verified copy to `backups` in the data folder. Going back to an older version needs a backup: stop
+the server, delete `tendshelf.db-wal` and `tendshelf.db-shm`, and put the backup back as `tendshelf.db`; an
+older program refuses a database made by this one. Scheduled backups hold the database only, so to keep uploaded
+ebooks and covers copy the whole data folder.
 
 ## 2026.1.0
 
