@@ -126,6 +126,7 @@ func run(dirs desktopshell.Dirs) error {
 		KeyBindings:        zoomKeys(actions),
 	})
 	ui.bridge.exec = ui.win.ExecJS
+	setupTray(ui, assets)
 
 	// A saved mode starts straight away; the picker shows "Opening your library…" meanwhile.
 	if session.Begin() {

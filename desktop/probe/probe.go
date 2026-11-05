@@ -131,6 +131,10 @@ func js(s string) string {
 // libraryScript runs inside the library's (or server's) first page: it finishes the first-run
 // setup with fetch, adds the synthetic book, then checks the page, the cookie and muted playback.
 func libraryScript(library, code, origin string) string {
+	hold := "false"
+	if os.Getenv("TENDSHELF_PROBE_UNMUTED") != "" { // D5: real output, left playing so MPRIS can be read
+		hold = "true"
+	}
 	return `(async () => { ` + post + `
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const once = (el, name, ms) => new Promise((ok, no) => { const t = setTimeout(() => no(new Error("timeout " + name)), ms); el.addEventListener(name, () => { clearTimeout(t); ok(); }, {once: true}); });
@@ -175,6 +179,7 @@ try {
   if (stream) {
     const a = new Audio();
     a.muted = true;
+    window.tsProbeAudio = a;
     a.preload = "auto";
     a.src = stream;
     await once(a, "loadedmetadata", 20000);
@@ -186,7 +191,16 @@ try {
     await once(a, "seeked", 10000);
     for (let i = 0; i < 40 && a.currentTime < Math.min(120, a.duration - 5) + 1; i++) await wait(250);
     result.seekedTo = a.currentTime;
-    a.pause();
+    if (` + hold + `) {
+      // D5: the autoplay policy refuses unmuted play() without a click, so start muted, then unmute.
+      // A real key press, sent by the isolated shell's remote-desktop API, is the gesture.
+      window.addEventListener("keydown", () => { a.muted = false; if (a.paused) a.play(); }, {once: true});
+      for (let i = 0; i < 60 && a.muted; i++) await wait(500);
+      await wait(2000);
+      result.unmuted = {paused: a.paused, muted: a.muted, t: a.currentTime};
+    } else {
+      a.pause();
+    }
   }
 } catch (e) {
   result.error = String(e && e.message || e);
