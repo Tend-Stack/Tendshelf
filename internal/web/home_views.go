@@ -28,12 +28,45 @@ const (
 // The play link is left out when the person may not play the book.
 func (s *server) homeHeroView(ctx context.Context, r *http.Request) (*pages.HomeHeroView, string, error) {
 	u := currentUser(r)
-	ls, err := s.lib.ContinueBooks(ctx, s.scope(r), u.ID, 1)
+	ls, err := s.lib.ContinueBooks(ctx, s.scope(r), u.ID, homeAlsoMax+1)
 	if err != nil || len(ls) == 0 {
 		return nil, "", err
 	}
-	return s.heroFor(ctx, r, ls[0])
+	set, err := s.users.LoadSettings(ctx, u.ID)
+	if err != nil {
+		return nil, "", err
+	}
+	// The hero is the first book that can be drawn; up to three after it make the row under it.
+	for len(ls) > 0 {
+		hero, id, err := s.heroFor(ctx, r, ls[0])
+		if err != nil {
+			return nil, "", err
+		}
+		ls = ls[1:]
+		if hero == nil {
+			continue
+		}
+		rest := ls[:min(len(ls), homeAlsoMax)]
+		if len(rest) > 0 {
+			hero.Also = make([]components.CardView, len(rest))
+			cards := make([]library.BookCard, len(rest))
+			for i, l := range rest {
+				hero.Also[i] = cardView(l.Book)
+				hero.Also[i].Left = continueLeft(l, set.Speed)
+				cards[i] = l.Book
+			}
+			if err := s.withCardProgress(ctx, u.ID, cards, hero.Also); err != nil {
+				return nil, "", err
+			}
+			hero.AlsoHref = "/me"
+		}
+		return hero, id, nil
+	}
+	return nil, "", nil
 }
+
+// homeAlsoMax is how many covers sit in the row under the hero.
+const homeAlsoMax = 3
 
 // heroFor builds the hero card of one book in progress, text or audio. It returns nil when the book
 // is gone (the caller then tries the next one). Home and Profile share it.

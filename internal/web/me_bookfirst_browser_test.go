@@ -239,3 +239,27 @@ func mustAbs(t *testing.T, p string) string {
 	}
 	return a
 }
+
+// TestBookFirstHomeVisual captures Home with its row of three covers in dark and contrast at 390, 768, 1024
+// and 1440 (files bookfirst-home-{theme}-{width}.png).
+func TestBookFirstHomeVisual(t *testing.T) {
+	b := chromium(t)
+	out := visualDir(t, "chromium")
+	e, _ := bookfirstWorld(t)
+	base := themedServer(t, e.spy)
+	for _, th := range []string{"dark", "contrast"} {
+		for _, w := range []int{390, 768, 1024, 1440} {
+			t.Run(fmt.Sprintf("%s-%d", th, w), func(t *testing.T) {
+				tab := b.NewTab(w, 900, w == 390, false)
+				tab.Navigate(base + "/?theme=" + th)
+				tab.WaitFor(`document.querySelector("#home-also-title") !== null`, 10*time.Second)
+				var m browseProbe
+				tab.Eval(browseProbeJS, &m)
+				if m.Over || m.Theme != th || len(m.Small) > 0 || m.H1 != 1 {
+					t.Errorf("overflow %v, theme %q, small %v, h1 %d", m.Over, m.Theme, m.Small, m.H1)
+				}
+				tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("bookfirst-home-%s-%d.png", th, w)))
+			})
+		}
+	}
+}

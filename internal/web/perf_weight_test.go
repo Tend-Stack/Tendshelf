@@ -34,7 +34,7 @@ type weightBudget struct {
 // of each number, times 1.15, rounded up to the next KiB; requests are the maximum plus 2. Never raise
 // one without the operator.
 var weightBudgets = map[string]weightBudget{
-	"home":        {HTML: 68608, CSS: 297984, JS: 194560, Font: 1075200, Img: 33792, Requests: 61},
+	"home":        {HTML: 68608, CSS: 297984, JS: 194560, Font: 1075200, Img: 38912, Requests: 61}, // Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
 	"library":     {HTML: 87040, CSS: 297984, JS: 194560, Font: 791552, Img: 95232, Requests: 93},
 	"book":        {HTML: 55296, CSS: 297984, JS: 194560, Font: 791552, Img: 29696, Requests: 55},
 	"listening":   {HTML: 164864, CSS: 297984, JS: 194560, Font: 791552, Img: 34816, Requests: 62},
