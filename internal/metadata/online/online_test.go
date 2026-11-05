@@ -566,7 +566,8 @@ func TestOnlineAuthor(t *testing.T) {
 	}
 }
 
-// TestOnlineNoOtherClient walks the repository: no other package may open network connections.
+// TestOnlineNoOtherClient walks the repository: no other package may open network connections, except
+// internal/desktopshell/check.go (decision 0020).
 func TestOnlineNoOtherClient(t *testing.T) {
 	root := filepath.Join("..", "..", "..")
 	banned := []string{"http.Client{", "&http.Client", "http.DefaultClient", "http.Get(", "http.Post(", "net.Dial(", "net.DialTimeout("}
@@ -584,6 +585,9 @@ func TestOnlineNoOtherClient(t *testing.T) {
 		}
 		if !strings.HasSuffix(p, ".go") || strings.HasSuffix(p, "_test.go") {
 			return nil
+		}
+		if rel == "internal/desktopshell/check.go" {
+			return nil // the desktop shell's /healthz check, the one other client (decision 0020, AGENTS.md)
 		}
 		b, err := os.ReadFile(p)
 		if err != nil {

@@ -1,0 +1,64 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// DesktopStartStyles are the stylesheets of the desktop start page (the Frame adds the onboarding one).
+var DesktopStartStyles = []string{"css/pages-desktop.css"}
+
+// DesktopStartView is what the desktop app's first-run page shows (decision 0020). It is served by
+// internal/desktopshell, never by the web server.
+type DesktopStartView struct {
+	Token string // the per-process form token (hidden field _token)
+	// Busy shows "Opening your library…" instead of the two choices.
+	Busy bool
+	// Server is what the person typed in the address field.
+	Server string
+	// Error is a refusal in plain words ("" when there is none). It shows above the address field
+	// when the person typed one, else above the choices.
+	Error string
+	// Insecure asks for a second press: the address is plain http on a host outside the person's
+	// own network, so a password would travel unencrypted.
+	Insecure bool
+}
+
+// DesktopStart is the mode picker: this computer, or a server.
+templ DesktopStart(v DesktopStartView) {
+	@components.Brand()
+	if v.Busy {
+		<h1 class="title-1 ts-frame__title">Opening your library…</h1>
+		<p class="body-lg ts-frame__lead" role="status">This takes a moment.</p>
+	} else {
+		<h1 class="title-1 ts-frame__title">How do you want to use Tendshelf?</h1>
+		<form class="ts-pick-form" method="post" action="/start/personal">
+			<input type="hidden" name="_token" value={ v.Token }/>
+			if v.Error != "" && v.Server == "" {
+				@formError(v.Error)
+			}
+			<button type="submit" class="ts-pick">
+				<span class="ts-pick__title">Just on this computer</span>
+				<span class="ts-pick__sub">Your books stay here.</span>
+			</button>
+		</form>
+		<form class="ts-form ts-pick-connect" method="post" action="/start/connect">
+			<input type="hidden" name="_token" value={ v.Token }/>
+			<h2 class="ts-pick__title">Connect to a server</h2>
+			if v.Error != "" && v.Server != "" {
+				@formError(v.Error)
+			}
+			@components.TextField(components.Field{
+				ID: "server", Name: "server", Label: "Server address", Value: v.Server, Required: true, Plain: true,
+				Hint: "The address you use in your browser.", Autocomplete: "url",
+			})
+			if v.Insecure {
+				<input type="hidden" name="confirm" value="1"/>
+				<p class="ts-form__error" role="alert">
+					@components.Icon("alert", false)
+					Your password would travel unencrypted.
+				</p>
+				<button type="submit" class="ts-btn ts-btn--secondary ts-btn--lg ts-btn--block">Connect anyway</button>
+			} else {
+				<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Connect</button>
+			}
+		</form>
+	}
+}
