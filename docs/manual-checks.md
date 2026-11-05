@@ -37,16 +37,7 @@ shake needs a motion permission prompt on iOS.
 
 Dated runs (browser and version, date, who ran it, anything that surprised you):
 
-- 2026-11-04, operator, Android Chrome tab over `http://<LAN address>:8095` with the
-  "Insecure origins treated as secure" flag (not real HTTPS), build v2026.1.0-201.
-  1 partial: "Install app" made a shortcut that opens in full Chrome, not an app window; expected without a
-  real HTTPS address (Chrome only builds an installed app for a secure origin), recheck over Tailscale.
-  2 pass. 3: storage shown 10.7 GB, the downloaded book 878 MB; the "may clear downloads" line not recorded.
-  4 partial: the book played offline, but the page showed broken parts (details to collect; likely the
-  shortcut opening as a Chrome tab), recheck over HTTPS. 5 pass. 6 fail, fixed: the queued-bookmark toast
-  stayed until a reload (toasts inside the full player were never timed out; fixed in f8ba733 with
-  `TestPlayerToastLeavesInFullPlayer`). 7 pass. 8 pass. iOS not run.
-
+- 2026-11-02 and 2026-11-03: see the run below.
 
 ## Run 2026-11-02 (operator, Android Chrome over http on the LAN, build bea2035)
 
@@ -76,14 +67,14 @@ iOS Safari (a Safari tab, then the Home Screen app).
 
 | # | Step | Expected | Android Chrome | iOS Safari tab | iOS Home Screen app |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Install: Android, the Install Tendshelf button on Downloads or the browser menu; iOS, Share, Add to Home Screen. | The app opens in its own window with the Tendshelf icon (not a letter on a plain tile) and the name Tendshelf. On iOS Safari tab, Downloads shows the line about Safari clearing downloads after a week. | Pass, after a fix. In the Wails window (WebKitGTK 2.52, 1280 by 705) Auto opens in Scroll; with Pages, text fills the column, the first sentence is inside the box, no sideways page scroll. Before the fix WebKit made no columns at all (see below). | | |
-| 2 | Open a multi-file book, press Download. Watch Downloads: progress row, Pause download, Resume download. Keep the app open until it finishes. | The row shows "{done} of {total}", the bar moves, Pause then Resume continue where it stopped, the end shows "{title} is ready offline." and a Ready offline row. | Arrow keys and tap zones: pass (synthetic key and click events). Swipe: not run (touch). Whether the slide plays once: not checked. | | |
-| 3 | Open Downloads. | Storage numbers show; the "may clear downloads" line shows or not as `persist()` says. Write both below. | Not run: needs the window or phone turned sideways by hand. | | |
-| 4 | Turn on airplane mode. Close the app and open it cold. | The offline page shows: banner "You're offline...", "On this phone" with the book as Ready offline, others as Needs a connection. | Pass for theme (Sepia) and flow (Pages): both applied at once, and Sepia was still on after leaving the reader and coming back. Size and font not driven. | | |
-| 5 | Press play, seek into the second file, lock the phone for 2 minutes, unlock. | Sound plays from the start, the seek lands without an error or a gap, playback is still going after the unlock (or resumes on one tap). | Pass for a programmatic selection: the bar with four colours, Note, Look up and Copy appeared above it. Long press and the system menu: not run. | | |
-| 6 | Add a bookmark, then pause. | A toast says "Bookmarked at {time}. It saves when you're back online." | Pass for one colour (green) and one note: the wash and the note dot appeared. Other colours, the four themes' washes and the marks sheet: not run. | | |
-| 7 | Turn airplane mode off. | A "Back online. Your place and bookmarks are saved." toast; on the second device Resume starts within a few seconds of where the phone stopped, and the bookmark is in the book's Bookmarks tab. | Pass with the backdrop: popup opened, focus went inside and came back to the link, the page did not move. Escape: not run (a script's key event does not close a dialog). | | |
-| 8 | Sign out on the phone, then sign in again (as the same person, then as another person if you have one). | Downloads is empty after the next sign-in; nothing from the old session is left. | Pass: Contents opened with the page behind inert (4 entries); Search for 'zebra' listed one hit, and following it marked the word through the highlight registry. | | |
+| 1 | Install: Android, the Install Tendshelf button on Downloads or the browser menu; iOS, Share, Add to Home Screen. | The app opens in its own window with the Tendshelf icon (not a letter on a plain tile) and the name Tendshelf. On iOS Safari tab, Downloads shows the line about Safari clearing downloads after a week. | | | |
+| 2 | Open a multi-file book, press Download. Watch Downloads: progress row, Pause download, Resume download. Keep the app open until it finishes. | The row shows "{done} of {total}", the bar moves, Pause then Resume continue where it stopped, the end shows "{title} is ready offline." and a Ready offline row. | | | |
+| 3 | Open Downloads. | Storage numbers show; the "may clear downloads" line shows or not as `persist()` says. Write both below. | | | |
+| 4 | Turn on airplane mode. Close the app and open it cold. | The offline page shows: banner "You're offline...", "On this phone" with the book as Ready offline, others as Needs a connection. | | | |
+| 5 | Press play, seek into the second file, lock the phone for 2 minutes, unlock. | Sound plays from the start, the seek lands without an error or a gap, playback is still going after the unlock (or resumes on one tap). | | | |
+| 6 | Add a bookmark, then pause. | A toast says "Bookmarked at {time}. It saves when you're back online." | | | |
+| 7 | Turn airplane mode off. | A "Back online. Your place and bookmarks are saved." toast; on the second device Resume starts within a few seconds of where the phone stopped, and the bookmark is in the book's Bookmarks tab. | | | |
+| 8 | Sign out on the phone, then sign in again (as the same person, then as another person if you have one). | Downloads is empty after the next sign-in; nothing from the old session is left. | | | |
 
 Record the figures: the `estimate()` quota and usage Downloads shows, and whether `persist()` was granted
 (the line is absent when it was). Android: quota ____ , persist ____ . iOS Safari tab: quota ____ , persist
@@ -91,7 +82,17 @@ ____ . iOS Home Screen app: quota ____ , persist ____ . (iOS figures in the plan
 
 Dated runs (browser and version, date, who ran it, anything that surprised you):
 
--
+- 2026-11-04, operator (this is the M3a table, steps 1-8), Android Chrome tab over `http://<LAN address>:8095` with the
+  "Insecure origins treated as secure" flag (not real HTTPS), build v2026.1.0-201.
+  1 partial: "Install app" made a shortcut that opens in full Chrome, not an app window; expected without a
+  real HTTPS address (Chrome only builds an installed app for a secure origin), recheck over Tailscale.
+  2 pass. 3: storage shown 10.7 GB, the downloaded book 878 MB; the "may clear downloads" line not recorded.
+  4 partial: the book played offline, but the page showed broken parts (details to collect; likely the
+  shortcut opening as a Chrome tab), recheck over HTTPS. 5 pass. 6 fail, fixed: the queued-bookmark toast
+  stayed until a reload (toasts inside the full player were never timed out; fixed in f8ba733 with
+  `TestPlayerToastLeavesInFullPlayer`). 7 pass. 8 pass. iOS not run.
+- 2026-11-05, operator, Firefox over Tailscale: the page hang is fixed by the service worker change
+  (confirmed by the operator). Not a step of this table.
 
 Automated proof of the same surfaces lives in `internal/web/offline_browser_test.go`,
 `offline_downloads_browser_test.go` and `offline_proof_browser_test.go` (Chromium over CDP). What those
@@ -105,16 +106,16 @@ and Firefox on Ubuntu, TalkBack on Android Chrome, and VoiceOver on iOS Safari. 
 
 | # | Step | Expected | Orca + Firefox | TalkBack | VoiceOver |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Sign in. | Fields are announced with their labels; a wrong password error is announced. | Pass, after a fix. In the Wails window (WebKitGTK 2.52, 1280 by 705) Auto opens in Scroll; with Pages, text fills the column, the first sentence is inside the box, no sideways page scroll. Before the fix WebKit made no columns at all (see below). | | |
-| 2 | From Home, play a book with the keyboard only (or the screen reader's gestures). | One resume control, reachable, labelled; sound starts. | Arrow keys and tap zones: pass (synthetic key and click events). Swipe: not run (touch). Whether the slide plays once: not checked. | | |
-| 3 | Full player: every key (space, arrows, speed, sleep, chapters). | Each control works and announces its new state. | Not run: needs the window or phone turned sideways by hand. | | |
-| 4 | Open a sheet, then close it. | Focus moves inside on open and returns to the opener on close. | Pass for theme (Sepia) and flow (Pages): both applied at once, and Sepia was still on after leaving the reader and coming back. Size and font not driven. | | |
-| 5 | Trigger a toast (add a bookmark). | The toast text is announced once. | Pass for a programmatic selection: the bar with four colours, Note, Look up and Copy appeared above it. Long press and the system menu: not run. | | |
-| 6 | Go offline. | The offline banner is announced. | Pass for one colour (green) and one note: the wash and the note dot appeared. Other colours, the four themes' washes and the marks sheet: not run. | | |
-| 7 | Submit a form with an error (Add books, Settings). | The error is announced and linked to its field. | Pass with the backdrop: popup opened, focus went inside and came back to the link, the page did not move. Escape: not run (a script's key event does not close a dialog). | | |
-| 8 | Browser zoom 200 % and 400 % at 1280 px wide. | No lost content, no sideways scroll, controls usable. | Pass: Contents opened with the page behind inert (4 entries); Search for 'zebra' listed one hit, and following it marked the word through the highlight registry. | | |
-| 9 | Windows high-contrast / forced colours (Edge or Firefox). | Text, focus and control edges stay visible. | Pass: left for Home, reopened with no place in the address, same sentence on screen, Sepia kept. | | |
-| 10 | Move the scrubber and the volume by keys, without dragging. | Arrow keys change the value and announce it. | Partly: 80 page turns crossed from chapter 2 into chapter 3 with every sentence in order. A visual jump cannot be seen by a script; watch it by hand. | | |
+| 1 | Sign in. | Fields are announced with their labels; a wrong password error is announced. | | | |
+| 2 | From Home, play a book with the keyboard only (or the screen reader's gestures). | One resume control, reachable, labelled; sound starts. | | | |
+| 3 | Full player: every key (space, arrows, speed, sleep, chapters). | Each control works and announces its new state. | | | |
+| 4 | Open a sheet, then close it. | Focus moves inside on open and returns to the opener on close. | | | |
+| 5 | Trigger a toast (add a bookmark). | The toast text is announced once. | | | |
+| 6 | Go offline. | The offline banner is announced. | | | |
+| 7 | Submit a form with an error (Add books, Settings). | The error is announced and linked to its field. | | | |
+| 8 | Browser zoom 200 % and 400 % at 1280 px wide. | No lost content, no sideways scroll, controls usable. | | | |
+| 9 | Windows high-contrast / forced colours (Edge or Firefox). | Text, focus and control edges stay visible. | | | |
+| 10 | Move the scrubber and the volume by keys, without dragging. | Arrow keys change the value and announce it. | | | |
 
 ## M5 book reader: WebKit and phone (RD4)
 
@@ -201,3 +202,8 @@ nobody has played yet in that window (WebKit refuses `play()` without a click), 
 Dated runs (desktop, session type, WebKitGTK version, date, who ran it, anything that surprised you):
 
 -
+
+## Operator reports, 2026-11-05
+
+- Firefox hang on Tailscale: fixed by the worker change, confirmed by the operator.
+- Voice sound: it is the same in `ffplay`, so it is not the app.
