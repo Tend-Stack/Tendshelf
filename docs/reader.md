@@ -121,3 +121,11 @@ Where a person stands in a book is the place of the format used last (`standIn`,
 listening place and the reading place; a book finished in either format is finished. Home's "Your series in progress" row, the
 series tiles on the book page and the thin line at the foot of a started book's cover (library grid and list, series page, shelves)
 all read it. A row keeps one control: Read when reading was last, Play otherwise. Nothing here writes a place.
+## Offline (G6, decision [0019](decisions/0019-offline-reading.md))
+
+The book page's Download keeps the audio and the text of the edition the person reads (both rights: `ReadText` and
+`DownloadBook`). `downloads-text.js` reads `GET /offline/books/{id}/manifest`, stores every chapter part and picture under the
+address the reader asks for, then the contents shell and the reader shell (`/offline/books/{id}/read`) last, so a half-stored book
+never opens. Offline, the worker answers those addresses and `reader-offline.js` fills the shell. The daily check compares the
+manifest `revision` (edition, the person's highlights, text bookmarks): a new one stores the text again, a 404 removes it, a failed
+request changes nothing. Highlights, notes, bookmarks, search and settings need the server. `/offline?text=` lists held books.

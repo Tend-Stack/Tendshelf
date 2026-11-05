@@ -147,6 +147,13 @@ html[data-theme="contrast"] .is-tinted.ts-ink-deep { background: var(--surface);
 .ts-offline-home__list { margin: 0; padding: 0; list-style: none; }
 .ts-offline-home .ts-row.is-offline .ts-row__main { opacity: 0.55; }
 .ts-offline-home .ts-row.is-offline .ts-iconbtn { color: var(--ink-muted); }
+/* A held text book's Read button (G6b) sits in the row beside the play control. Beside Play on a phone it keeps
+   only its icon (its aria-label names it), so the title and "Ready offline" are not crowded out. */
+.ts-offline-home .ts-row [data-ts-read] { flex: none; margin-inline-start: var(--space-8); }
+@media (width < 481px) {
+  .ts-offline-home .ts-row:has([data-ts-play]) [data-ts-read] { min-width: 2.75rem; padding-inline: 0; }
+  .ts-offline-home .ts-row:has([data-ts-play]) [data-ts-read] > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 .ts-hero__head .ts-overline { overflow-wrap: anywhere; }
 
 /* Thin scrollbars on the side-scrolling rows for a mouse; a touch screen shows none (utilities.css). */

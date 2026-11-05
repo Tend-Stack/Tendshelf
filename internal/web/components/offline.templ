@@ -19,6 +19,9 @@ templ OfflineBanner(p Page) {
 		if p.Assets.Has("js/downloads.js") {
 			data-ts-downloads-src={ p.Assets.URL("js/downloads.js") }
 		}
+		if p.Assets.Has("js/downloads-text.js") {
+			data-ts-downloads-text-src={ p.Assets.URL("js/downloads-text.js") }
+		}
 		if p.Assets.Has("js/reader-offline.js") {
 			data-ts-reader-offline-src={ p.Assets.URL("js/reader-offline.js") }
 		}

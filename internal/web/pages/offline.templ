@@ -1,6 +1,11 @@
 package pages
 
-import "github.com/Tend-Stack/tendshelf/internal/web/components"
+import (
+	"context"
+	"io"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
 
 // OfflineRow is one book of the offline shell. Play is nil for a book that is not on this phone.
 type OfflineRow struct {
@@ -8,6 +13,8 @@ type OfflineRow struct {
 	Meta  string
 	Ready bool
 	Play  *components.PlayButtonView
+	// Read opens the reader, for a book whose text is on this phone. In a row it is always the plain button.
+	Read *components.ReadButtonView
 }
 
 // OfflineView is the page the service worker shows when the server cannot be reached
@@ -33,7 +40,7 @@ templ Offline(v OfflineView) {
 			<section aria-labelledby="offline-section">
 				<h2 id="offline-section" class="section">{ v.Section }</h2>
 				for _, row := range v.Rows {
-					@components.BookRowWith(row.Card, row.Meta, row.Ready, offlinePlay(row.Play))
+					@components.BookRowWith(row.Card, row.Meta, row.Ready, offlineActions(row))
 				}
 			</section>
 		}
@@ -41,10 +48,20 @@ templ Offline(v OfflineView) {
 	</div>
 }
 
-// offlinePlay is the round play control of a ready row, or nothing.
-func offlinePlay(v *components.PlayButtonView) templ.Component {
-	if v == nil {
+// offlineActions is the row's slot: the Read button, then the round play control, or nothing.
+func offlineActions(row OfflineRow) templ.Component {
+	if row.Play == nil && row.Read == nil {
 		return nil
 	}
-	return components.PlayButton(*v)
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if row.Read != nil {
+			if err := components.ReadButton(*row.Read).Render(ctx, w); err != nil {
+				return err
+			}
+		}
+		if row.Play != nil {
+			return components.PlayButton(*row.Play).Render(ctx, w)
+		}
+		return nil
+	})
 }

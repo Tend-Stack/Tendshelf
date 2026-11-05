@@ -203,10 +203,15 @@ func TestFormatsTextBookPage(t *testing.T) {
 			t.Errorf("%s: no Start reading button", name)
 		}
 		region := fmt2Region(t, body)
-		for _, w := range []string{"data-ts-play", "ts-split", "data-ts-download", "Add to queue"} {
+		// The Download control is there for a person who may download (G6b: the text is kept offline); the
+		// listening controls are not.
+		for _, w := range []string{"data-ts-play", "ts-split", "Add to queue"} {
 			if strings.Contains(region, w) {
 				t.Errorf("%s: %q on a text book", name, w)
 			}
+		}
+		if has := strings.Contains(region, `data-ts-download="`+l.tbook.ID+`"`); has != (name == "owner" || name == "admin") {
+			t.Errorf("%s: Download control = %v on a text book", name, has)
 		}
 		for _, w := range []string{path + "/chapters", path + "/bookmarks", "sheet=write"} {
 			if strings.Contains(body, w) {

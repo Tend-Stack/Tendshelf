@@ -281,3 +281,4 @@ The orchestrator: full `make check` on the merged tree, `make visual-full`, `mak
 - Progress on cards: yes, include optional step L4 (a thin bar on started books, audio and ebook alike).
 - Web search link in look-up: DuckDuckGo.
 - Defaults stand: offline text also needs "Can download"; no family stats view.
+- Script ceiling raised to 86 KB (operator, 2026-11-05); per-file rows follow the measured sizes with comments kept, reported per package.

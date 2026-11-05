@@ -689,6 +689,17 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   "{n} % through" (hidden words beside the line). Checks: `TestSeriesFormats*`, `make check`, `make a11y` 0 findings,
   `make page-weight`, `TestPerfLibraryPage` median 194 ms (budget 300). Captures: `TestSeriesFormatsVisual`. Limits: Home's
   "New on the shelf" and person pages draw no line; no board shows the line.
+- **G6b Offline reading: downloads and surfaces** (done, 2026-11-05; [decision 0019](decisions/0019-offline-reading.md), [plan](plans/m5-great-reader.md)):
+  one Download keeps the text as well as the audio. `downloads-text.js` (lazy) stores every chapter part and picture under the exact
+  addresses the reader asks for, then the contents shell and the reader shell last; `downloads.js` carries the `text` record (sizes
+  and progress add the text's share), `reseed()` sends `&text=`, and the daily check calls the manifest: a new `revision` stores it
+  again and drops stale addresses, 404 removes the text (the record too for a text-only book), a redirect or a network failure
+  changes nothing; a text-only book takes its finished date from the manifest. The book page shows Download for a text book when
+  the person has `ReadText` and `DownloadBook`; `/offline?text=` lists held text books with a Read button (secondary beside Play).
+  Checks: `TestOffDownload*` (Go and Chromium at 390 and 1440), the whole `TestOffline*` and `TestOffRead*` sets, `make check`,
+  `make a11y`, `make page-weight`. Limits: the sizes are over the approved rows (`downloads.js` 8.7 of 8.5 KB, `downloads-text.js`
+  2.2 of 1.5 KB; app JS 82.3 KB, 80.5 KB measured as the step); the manual airplane check on the operator's phone (Tailscale HTTPS,
+  "Rules for the Summer", Download, airplane mode, read, close, reconnect) is a recorded step for the orchestrator and is not run.
 - **Later** (a note each in the plan): G1 look-up and word list, G2 reading stats, G3 print pages, G4 skim, G5 comfort,
   G6 offline reading, G7 collections and sending a book; then OPDS and KOReader sync.
 

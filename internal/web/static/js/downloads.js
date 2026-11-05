@@ -2,7 +2,8 @@
 // Loaded by offline.js when a page has a download control or the Downloads list, or when a book is
 // still on its way. It saves each audio file into the person's cache in chunks, keeps the index in
 // localStorage["ts.offline"], draws the Downloads page and the book page's Download control, and
-// exposes window.tsDownloads for the tests and the other scripts.
+// exposes window.tsDownloads for the tests and the other scripts. The text of a book (decision 0019)
+// is stored by downloads-text.js, loaded when a book may have text.
 const root = document.documentElement;
 const person = root.dataset.tsPerson || "";
 const CHUNK = Number(root.dataset.tsChunk) || 4 << 20;
@@ -120,6 +121,27 @@ function openCache() {
   return caches.open("ts-person-" + person);
 }
 
+// downloads-text.js, loaded once when a book may have text (the banner carries its address).
+let textLoad = null;
+
+function textModule() {
+  const banner = document.getElementById("ts-offline");
+  const src = banner && banner.dataset.tsDownloadsTextSrc;
+  if (!src) return Promise.reject(new Error("no text module"));
+  textLoad ||= import(src).catch((e) => {
+    textLoad = null;
+    throw e;
+  });
+  return textLoad;
+}
+
+// Bytes of a record that are stored: its whole chunks and the text's share by items stored.
+function doneOf(r) {
+  const items = r.text ? r.text.parts.length + r.text.images.length : 0;
+  const text = items ? Math.round((r.text.bytes * r.text.have) / items) : 0;
+  return r.files.reduce((sum, f) => sum + haveBytes(f), 0) + text;
+}
+
 function chunkKey(file, n) {
   return file.key + (file.key.includes("?") ? "&" : "?") + "chunk=" + n;
 }
@@ -153,6 +175,7 @@ async function purge(record) {
   }
   await cache.delete("/hx/player/" + record.id);
   if (record.cover) await cache.delete(record.cover);
+  if (record.text) await (await textModule()).purge(cache, record);
 }
 
 async function put(cache, key, response) {
@@ -174,35 +197,48 @@ class Halt extends Error {
   }
 }
 
+// What the text module may use of this file: the queue's own helpers, so there is one put and one index.
+const kit = { openCache, put, patch, Halt, sleep, done: doneOf };
+
 async function start(bookId) {
   if (!supported) return;
   const known = readIndex().books[bookId];
   if (known && known.state !== "failed") return;
   if (known) await remove(bookId);
-  const res = await fetch("/api/v1/books/" + encodeURIComponent(bookId), { headers: { Accept: "application/json" } });
-  if (!res.ok) return;
-  const detail = await res.json();
-  if (!detail.permissions || !detail.permissions.download) return;
+  // The text half: null for a book with no text, or when this person may not download it.
+  const text = await textModule()
+    .then((m) => m.plan(bookId))
+    .catch(() => null);
+  let detail = null;
+  try {
+    const res = await fetch("/api/v1/books/" + encodeURIComponent(bookId), { headers: { Accept: "application/json" } });
+    if (res.ok) detail = await res.json();
+  } catch {
+    // a text book needs no detail; an audio book stops below
+  }
   const probe = document.createElement("audio");
-  const files = detail.files
-    .filter((f) => f.playable)
-    .map((f) => ({
-      id: f.id,
-      // A file this browser cannot play as it is takes the compatible version.
-      key: "/stream/" + f.id + (f.needsCompat && probe.canPlayType(f.mime) === "" ? "?compat=1" : ""),
-      mime: f.mime,
-      size: f.size,
-      chunks: Math.max(1, Math.ceil(f.size / CHUNK)),
-      have: 0,
-      etag: "",
-    }));
-  if (!files.length) return;
+  const files =
+    detail && detail.permissions && detail.permissions.download
+      ? detail.files
+          .filter((f) => f.playable)
+          .map((f) => ({
+            id: f.id,
+            // A file this browser cannot play as it is takes the compatible version.
+            key: "/stream/" + f.id + (f.needsCompat && probe.canPlayType(f.mime) === "" ? "?compat=1" : ""),
+            mime: f.mime,
+            size: f.size,
+            chunks: Math.max(1, Math.ceil(f.size / CHUNK)),
+            have: 0,
+            etag: "",
+          }))
+      : [];
+  if (!files.length && !text) return;
   const index = readIndex();
   index.books[bookId] = {
-    title: detail.book.title,
-    author: (detail.book.authors || []).map((p) => p.name).join(", "),
-    cover: "",
-    bytes: files.reduce((sum, f) => sum + f.size, 0),
+    title: detail ? detail.book.title : text.title,
+    author: detail ? (detail.book.authors || []).map((p) => p.name).join(", ") : text.author,
+    cover: files.length ? "" : text.cover,
+    bytes: files.reduce((sum, f) => sum + f.size, 0) + (text ? text.bytes : 0),
     done: 0,
     state: "waiting",
     error: "",
@@ -211,6 +247,17 @@ async function start(bookId) {
     finishedAt: 0,
     files,
   };
+  if (text) {
+    index.books[bookId].text = {
+      editionId: text.editionId,
+      revision: text.revision,
+      parts: text.parts,
+      images: text.images,
+      shell: "/books/" + bookId + "/read",
+      bytes: text.bytes,
+      have: 0,
+    };
+  }
   writeJSON(INDEX_KEY, index);
   emit(bookId);
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
@@ -323,8 +370,9 @@ async function runBook(id) {
     record.id = id;
     const room = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
     if (room && room.quota - room.usage < record.bytes - record.done + 16 * MiB) throw new Halt("failed", "space");
-    await keepPage(record);
+    if (record.files.length) await keepPage(record);
     for (let i = 0; i < record.files.length; i++) await runFile(id, i, controller.signal);
+    if (record.text) await (await textModule()).run(id, record, controller.signal, kit);
     patch(id, (r) => {
       r.state = "ready";
       r.error = "";
@@ -368,6 +416,7 @@ async function settle(id, e, signal) {
     r.net = net;
     if (state === "failed" && error === "space") {
       r.done = 0;
+      if (r.text) r.text.have = 0;
       for (const file of r.files) {
         file.have = 0;
         file.etag = "";
@@ -461,8 +510,8 @@ function save(id, i, file) {
   const record = patch(id, (r) => {
     r.files[i] = kept;
     r.note = "";
-    r.bytes = r.files.reduce((sum, f) => sum + f.size, 0);
-    r.done = r.files.reduce((sum, f) => sum + haveBytes(f), 0);
+    r.bytes = r.files.reduce((sum, f) => sum + f.size, 0) + (r.text ? r.text.bytes : 0);
+    r.done = doneOf(r);
   });
   if (!record) throw new DOMException("removed", "AbortError");
 }
@@ -512,8 +561,9 @@ async function fetchChunk(id, file, from, to, signal) {
 async function reseed() {
   if (!supported || !navigator.onLine) return;
   try {
-    const ready = list().filter((r) => r.state === "ready").slice(0, 200).map((r) => encodeURIComponent(r.id));
-    const res = await fetch("/offline?books=" + ready.join(","));
+    const ready = list().filter((r) => r.state === "ready").slice(0, 200);
+    const ids = (records) => records.map((r) => encodeURIComponent(r.id)).join(",");
+    const res = await fetch("/offline?books=" + ids(ready) + "&text=" + ids(ready.filter((r) => r.text)));
     if (res.ok && !res.redirected) await (await openCache()).put("/offline", res);
   } catch {
     // the shell is optional
@@ -532,10 +582,24 @@ async function checkFinished(force) {
   localStorage.setItem(CHECKED_KEY, String(Date.now()));
   for (const record of list().filter((r) => r.state === "ready")) {
     try {
-      const res = await fetch("/api/v1/progress/" + encodeURIComponent(record.id), { headers: { Accept: "application/json" } });
-      if (!res.ok) continue;
-      const p = (await res.json()).progress;
-      const finishedAt = p && p.finished ? p.finishedAt : 0;
+      let finishedAt = -1;
+      const text = await textModule()
+        .then((m) => m.refresh(record.id, record, kit))
+        .catch(() => "keep");
+      if (text === "gone") {
+        await dropText(record);
+        if (!record.files.length) continue;
+      } else if (!record.files.length) {
+        // A book with only text takes its finished date from the manifest.
+        if (!text || text === "keep") continue;
+        finishedAt = text.finishedAt;
+      }
+      if (finishedAt < 0) {
+        const res = await fetch("/api/v1/progress/" + encodeURIComponent(record.id), { headers: { Accept: "application/json" } });
+        if (!res.ok) continue;
+        const p = (await res.json()).progress;
+        finishedAt = p && p.finished ? p.finishedAt : 0;
+      }
       patch(record.id, (r) => {
         r.finishedAt = finishedAt;
       });
@@ -544,6 +608,18 @@ async function checkFinished(force) {
       return;
     }
   }
+}
+
+// The right to the text is gone: its copy goes, and with it the record of a book that had only text.
+async function dropText(record) {
+  const textual = await textModule().catch(() => null);
+  if (textual) await textual.purge(await openCache(), record);
+  if (!record.files.length) return remove(record.id);
+  patch(record.id, (r) => {
+    delete r.text;
+    r.bytes = r.files.reduce((sum, f) => sum + f.size, 0);
+    r.done = r.bytes;
+  });
 }
 
 // ---- The book page's Download control ----
@@ -613,7 +689,7 @@ function renderRow(record, template, listEl) {
     }
     row.querySelector("[data-ts-title]").textContent = record.title;
     const link = row.querySelector("[data-ts-link]");
-    if (link) link.href = "/books/" + encodeURIComponent(record.id);
+    if (link) link.href = "/books/" + encodeURIComponent(record.id) + (record.files.length ? "" : "/read");
   }
   row.querySelector("[data-ts-meta]").textContent = metaFor(record);
   const bar = row.querySelector("[data-ts-row-bar]");
@@ -724,7 +800,7 @@ document.addEventListener("ts:downloads:change", render);
 document.addEventListener("htmx:after:swap", render);
 if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("controllerchange", reseed);
 
-window.tsDownloads = { start, pause, resume, cancel, remove, list, debug };
+window.tsDownloads = { start, pause, resume, cancel, remove, list, debug, check: checkFinished };
 
 render();
 if (supported) {

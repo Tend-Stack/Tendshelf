@@ -19,7 +19,8 @@ func (s *server) getDownloads(w http.ResponseWriter, r *http.Request) {
 }
 
 // bookDownloadView is the Download pair of the book page: only for a person who may download the
-// book (share.DownloadBook) and only when it has a playable file (hasPlay, the play button's test).
+// book (share.DownloadBook) and only when it has something to keep: a playable file or readable text (hasPlay,
+// the play button's test or the right to read).
 func (s *server) bookDownloadView(r *http.Request, book library.Book, hasPlay bool) *pages.BookDownloadView {
 	target := share.Target{Kind: share.TargetBook, ID: book.ID, LibraryID: book.LibraryID}
 	if !hasPlay || !s.can.Can(r.Context(), currentUser(r), share.DownloadBook, target) {

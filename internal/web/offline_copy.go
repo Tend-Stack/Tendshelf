@@ -22,6 +22,7 @@ const (
 	offlineReadyPct   = "Ready offline · %d%%"
 	offlineNeedsNet   = "Needs a connection"
 	offlinePlayAria   = "Play %s"
+	offlineReadAria   = "Read %s"
 	downloadOffAnswer = "Downloads of this book are turned off."
 )
 
