@@ -184,3 +184,8 @@ Gates: as PR2, plus `TestBookFirstHomeVisual`: `bookfirst-home-{theme}-{width}.p
 Live refresh of the Profile lists; finished ebooks in "Finished lately"; session expiry or cleanup; a bulk "sign out these";
 Bookmarks, Finished or Downloads rows on Profile; changes to the admin person page, the admin Devices tab, `/api/v1`, the
 service worker, `/me/settings`, the library filters; anything under `desktop/`.
+
+## Operator answers (2026-11-05)
+
+- Board approved. Home row of three covers: yes (Home image budget may rise as PR3 measures; report the number).
+- "Finished lately" stays. Settings moves to one link in the Profile head, amending decision 0010.

@@ -1,5 +1,5 @@
 # 0021 Profile puts the person's books first
-Status: proposed (2026-11-05). Plan: `docs/plans/profile-redesign.md`. Board: `docs/design/boards/Profile.html`.
+Status: accepted (operator, 2026-11-05). Plan: `docs/plans/profile-redesign.md`. Board: `docs/design/boards/Profile.html`.
 Amends decision 0010 point 2 (Profile leaves the preferences window) and, under decision 0002, replaces the handoff's
 `ProfilePhone` board as the target for `/me`.
 
