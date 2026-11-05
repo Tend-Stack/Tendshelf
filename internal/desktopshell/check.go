@@ -27,6 +27,11 @@ var (
 // Words returns the sentence to show for err: the message of one of the errors above, else a
 // general line (details belong in the log, not on screen).
 func Words(err error) string {
+	// The desktop module's own failures (a library that will not open) carry their words.
+	var spoken interface{ Words() string }
+	if errors.As(err, &spoken) {
+		return spoken.Words()
+	}
 	for _, known := range []error{ErrAddress, ErrUnreachable, ErrCertificate, ErrNotTendshelf, ErrOldServer} {
 		if errors.Is(err, known) {
 			return known.Error()

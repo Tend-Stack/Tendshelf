@@ -211,14 +211,24 @@ func locateTools(cfg media.Config, log *slog.Logger) media.Tools {
 
 // describeOpenError turns a refusal into plain words that name the file and say
 // it was not changed.
+// openFailure keeps the plain-language message for the log and the cause for errors.Is, so the
+// desktop shell can tell a newer library from a foreign file.
+type openFailure struct {
+	msg   string
+	cause error
+}
+
+func (e *openFailure) Error() string { return e.msg }
+func (e *openFailure) Unwrap() error { return e.cause }
+
 func describeOpenError(err error, dataDir string) error {
 	var se *db.SchemaError
 	path := db.FilePath(dataDir)
 	switch {
 	case errors.As(err, &se) && errors.Is(err, db.ErrSchemaTooNew):
-		return fmt.Errorf("the database at %s was made by a newer version of Tendshelf (schema %d; this version reads up to %d). Install the newer version or choose another -data folder. The file was not changed.", path, se.Found, se.Supported)
+		return &openFailure{fmt.Sprintf("the database at %s was made by a newer version of Tendshelf (schema %d; this version reads up to %d). Install the newer version or choose another -data folder. The file was not changed.", path, se.Found, se.Supported), err}
 	case errors.Is(err, db.ErrNotTendshelf):
-		return fmt.Errorf("the file at %s is not a Tendshelf database. The file was not changed.", path)
+		return &openFailure{fmt.Sprintf("the file at %s is not a Tendshelf database. The file was not changed.", path), err}
 	}
 	return fmt.Errorf("open the database at %s: %w", path, err)
 }
