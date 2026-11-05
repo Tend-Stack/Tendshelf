@@ -41,15 +41,20 @@ func readerSwatches() []pages.ReaderSwatch {
 
 // readerTrouble answers a book whose document is missing, damaged or too large: plain words and the way back, the
 // detail only in the log. A fragment request gets a toast, never a page.
-func (s *server) readerTrouble(w http.ResponseWriter, r *http.Request, bookID string, cause error) {
+func (s *server) readerTrouble(w http.ResponseWriter, r *http.Request, rc readerCtx, cause error) {
+	bookID := rc.book.ID
 	slog.Warn("reader cannot open the document", "book", bookID, "err", cause)
 	if r.Header.Get("HX-Request") == "true" {
 		s.readerToast(w, r, http.StatusInternalServerError, readerCannotOpen)
 		return
 	}
-	s.pageStyled(w, r, http.StatusInternalServerError, readerCannotOpen, "",
-		pages.ReaderTrouble(pages.ReaderProblem{Title: readerCannotOpen, Message: readerCannotOpen, BackLabel: readerBackToBook, BackHref: "/books/" + bookID}),
-		nil, pages.ReaderStyles...)
+	v := pages.ReaderProblem{Title: readerCannotOpen, Message: readerCannotOpen, BackLabel: readerBackToBook, BackHref: "/books/" + bookID}
+	// The file may still be the person's to take (read and download rights, and still on disk): offer it, so a
+	// book Tendshelf cannot lay out can be opened in another app.
+	if rc.file.ID != "" && rc.file.MissingSince == 0 && s.mayDownloadText(r, rc.book) {
+		v.DownloadHref, v.DownloadLabel = ebookFileHref(bookID, rc.file.ID), ebookDownload
+	}
+	s.pageStyled(w, r, http.StatusInternalServerError, readerCannotOpen, "", pages.ReaderTrouble(v), nil, pages.ReaderStyles...)
 }
 
 // ---- Footnotes ----

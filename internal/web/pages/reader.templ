@@ -110,6 +110,7 @@ type ReaderSwatch struct{ Colour, Label string }
 // ReaderProblem is the plain page for a book that cannot be opened.
 type ReaderProblem struct {
 	Title, Message, BackLabel, BackHref string
+	DownloadHref, DownloadLabel          string // set only when the person may download the file
 }
 
 // ReaderContentsItem is a chapter in the contents.
@@ -503,6 +504,9 @@ templ ReaderTrouble(v ReaderProblem) {
 			<h1 class="title">{ v.Title }</h1>
 			<p class="body">{ v.Message }</p>
 			<a class="ts-btn" href={ templ.SafeURL(v.BackHref) }>{ v.BackLabel }</a>
+			if v.DownloadHref != "" {
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.DownloadHref) } hx-boost="false">{ v.DownloadLabel }</a>
+			}
 		</main>
 	</div>
 }
