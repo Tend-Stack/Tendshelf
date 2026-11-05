@@ -144,7 +144,15 @@ func TestJobsMissingFFmpegFailsAtOnce(t *testing.T) {
 	e, r, covers, _ := jobsEnv(t, tools, "")
 	covers.tools.FFmpeg = "" // before any job exists, so nothing runs concurrently with this
 	e.fake("B/01.m4b", mediatest.FakeFile{Cover: true})
-	e.scanAll() // the follower queues the book's cover job, which fails too
+	e.scanAll()
+	// The scan's own probe jobs may still be running on the runner, and the one that settles the book
+	// is the one that calls the follower. Wait for them, so the follower's cover job exists and has
+	// finished before the second one is queued: otherwise the follower can find the second job
+	// still waiting, skip the book, and leave one cover job instead of two.
+	idle(t, e)
+	if n := countJobs(t, e, `kind = ? AND state = 'failed' AND error_code = ?`, KindCover, media.CodeFFmpegMissing); n != 1 {
+		t.Fatalf("%d cover jobs failed from the follower, want 1", n)
+	}
 	id, err := r.Enqueue(bg, KindCover, CoverPayload{BookID: e.book("B").ID}, jobs.EnqueueOptions{})
 	if err != nil {
 		t.Fatal(err)
