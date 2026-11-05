@@ -97,7 +97,7 @@ func TestNativePressStates(t *testing.T) {
 			classes[m[1]] = true
 		}
 	}
-	for _, c := range strings.Fields("ts-option ts-chapter ts-selmenu__item ts-player-bar__item ts-mode__item") {
+	for _, c := range strings.Fields("ts-option ts-chapter ts-selmenu__item ts-player-bar__item") {
 		classes[c] = true
 	}
 	for _, c := range strings.Fields("ts-switch ts-input ts-select ts-check") { // their state is the feedback

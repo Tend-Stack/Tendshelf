@@ -98,9 +98,19 @@ jumps and the next page offers "Back to where I was". Search is `?sheet=search&q
 `/hx/books/{id}/read/search`): the whole phrase, folded for case, accents and white space, at least two characters, 200 hits
 at most, each with its chapter, an 80-character snippet and a link with `at`, `off` and `hit`, which marks the words with
 `::highlight(ts-hit)`. `GET /books/{id}/read/marks.md`, `.txt` and `.json` download the person's own highlights, notes and
-text bookmarks. A document that is missing, damaged or too large gives "Tendshelf cannot open this book right now."
+text bookmarks. A document that is missing, damaged or too large gives "Tendshelf cannot open this book right now." and, when the person may download, a link to the original file (`/books/{id}/text/{fileID}/file`), so the book can be opened in another app.
 
 Progress: the ruler and `p. n of N` come from the block's `data-pg`, the time left from the person's own speed
 (`data-cpm`, characters per minute) and the characters remaining in the chapter and the book, in steps of five minutes, with
 "About" until three sessions have taught the speed. The last part carries "That's the end of the book." and a button
 that marks the book finished; the reader never marks it itself.
+
+## Checks (RD4)
+
+The reader is in the accessibility audit: `reader-pages` and `reader-scroll` are pages (the owner reads in pages, an admin in
+scroll), and the four sheets, the footnote popup, the selection toolbar and the note dialog are states, each at four widths in
+four themes with 0 findings. Behind an open sheet the reader page is `inert`; its shell navigation is hidden while the reader
+is up; the book title is the page's h1 and a chapter's title its h2. One allowlist line stands: in Pages the part is a column
+box, so the text of later columns lies outside it until a turn. `TestBRContrast` holds `--read-ink` on every highlight colour
+and the selection wash in every theme (decision 0016); `TestBRVisual` captures the states beside the boards;
+`TestBRLayoutTime` lays out a 40,000-unit part with the CPU throttled 4x (300 ms) and times turns (16 ms at p95).

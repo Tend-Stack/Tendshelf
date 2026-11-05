@@ -539,6 +539,10 @@ func TestA11yAudit(t *testing.T) {
 			continue
 		}
 		run.States = append(run.States, s.Role+"/"+s.Key)
-		visit(s.Key, s.Role, e.url("player", s.Role)+s.Path(e), true, s.MinWidth, func(tab *cdp.Tab) { s.Prepare(t, tab, e) })
+		fixture := s.Fixture
+		if fixture == "" {
+			fixture = "player"
+		}
+		visit(s.Key, s.Role, e.url(fixture, s.Role)+s.Path(e), fixture == "player", s.MinWidth, func(tab *cdp.Tab) { s.Prepare(t, tab, e) })
 	}
 }

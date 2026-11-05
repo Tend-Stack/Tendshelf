@@ -110,6 +110,7 @@ type ReaderSwatch struct{ Colour, Label string }
 // ReaderProblem is the plain page for a book that cannot be opened.
 type ReaderProblem struct {
 	Title, Message, BackLabel, BackHref string
+	DownloadHref, DownloadLabel          string // set only when the person may download the file
 }
 
 // ReaderContentsItem is a chapter in the contents.
@@ -159,7 +160,7 @@ templ Reader(v ReaderView) {
 			<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } aria-label={ v.CloseLabel }>
 				@components.Icon("close", false)
 			</a>
-			<span class="ts-readerbar__title">{ v.Title }</span>
+			<h1 class="ts-readerbar__title">{ v.Title }</h1>
 			if v.Speaker != nil {
 				@components.PlayButton(*v.Speaker)
 			}
@@ -260,7 +261,7 @@ templ Reader(v ReaderView) {
 		<dialog id="reader-note-dialog" class="ts-readernote" aria-label={ v.Marks.Note }>
 			<form method="dialog">
 				<textarea name="note" rows="4" maxlength="2000" aria-label={ v.Marks.Note }></textarea>
-				<button type="submit" class="ts-btn" value="save">{ v.Marks.Save }</button>
+				<button type="submit" class="ts-btn ts-btn--primary" value="save">{ v.Marks.Save }</button>
 				<button type="submit" class="ts-btn ts-btn--quiet" value="cancel" formnovalidate>{ v.Marks.Cancel }</button>
 			</form>
 		</dialog>
@@ -300,7 +301,7 @@ templ ReaderChapter(c ReaderChapterView) {
 				<p>{ c.End.Text }</p>
 				<input type="hidden" name="_csrf" value={ c.End.CSRF }/>
 				<input type="hidden" name="finished" value="1"/>
-				<button type="submit" class="ts-btn">{ c.End.Label }</button>
+				<button type="submit" class="ts-btn ts-btn--primary">{ c.End.Label }</button>
 			</form>
 		}
 		if c.NextFrag != "" {
@@ -454,7 +455,7 @@ templ ReaderSearchForm(v ReaderSearchView) {
 		}
 		<label class="caption" for="reader-q">{ v.Label }</label>
 		<input id="reader-q" class="ts-input" type="search" name="q" value={ v.Q } autocomplete="off" enterkeyhint="search"/>
-		<button type="submit" class="ts-btn">{ v.Button }</button>
+		<button type="submit" class="ts-btn ts-btn--primary">{ v.Button }</button>
 	</form>
 	<div id="reader-hits" aria-live="polite">
 		@ReaderHitList(v.Hits)
@@ -503,6 +504,9 @@ templ ReaderTrouble(v ReaderProblem) {
 			<h1 class="title">{ v.Title }</h1>
 			<p class="body">{ v.Message }</p>
 			<a class="ts-btn" href={ templ.SafeURL(v.BackHref) }>{ v.BackLabel }</a>
+			if v.DownloadHref != "" {
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.DownloadHref) } hx-boost="false">{ v.DownloadLabel }</a>
+			}
 		</main>
 	</div>
 }

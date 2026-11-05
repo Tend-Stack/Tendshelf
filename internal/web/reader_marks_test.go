@@ -387,6 +387,13 @@ func TestReaderErrors(t *testing.T) {
 		if frag.Code != http.StatusInternalServerError || !strings.Contains(frag.Body.String(), "Tendshelf cannot open this book right now.") || strings.Contains(frag.Body.String(), "<html") {
 			t.Errorf("%s fragment: %d %s", name, frag.Code, frag.Body.String())
 		}
+		// The owner may download, so the page links the original file; a reader without that right is not offered it.
+		if !strings.Contains(body, `href="/books/`+l.book.ID+`/text/`+l.file.ID+`/file"`) || !strings.Contains(body, "Download this ebook") {
+			t.Errorf("%s page: no download link for the owner", name)
+		}
+		if rb := l.get(l.reader, l.readPath(""), false).Body.String(); strings.Contains(rb, "/file") || strings.Contains(rb, "Download this ebook") || !strings.Contains(rb, "Tendshelf cannot open") {
+			t.Errorf("%s page: a person who may not download was offered the file, or saw no message", name)
+		}
 		// People who may not read still get 404, not the sentence.
 		if c := l.get(l.noRead, l.readPath(""), false).Code; c != http.StatusNotFound {
 			t.Errorf("%s no can_read: %d", name, c)

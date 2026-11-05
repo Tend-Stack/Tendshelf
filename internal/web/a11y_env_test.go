@@ -26,6 +26,8 @@ type a11yEnv struct {
 	ShelfID, EmptyShelfID                  string
 	AdminLibID, AdminFolderID              string // the library of adminSeed
 	EbookFoundID                           string // the ready ebook no book has (the Ebooks to pair inbox)
+	ReaderBookID                           string // the reader fixture's book (brSeed)
+	ReaderLab                              *rdrLab
 	TextBookID                             string // a text book (an ebook with no audiobook), with a ready ebook
 	MemberID                               string
 	InviteToken, LinkToken                 string
@@ -189,5 +191,11 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	e.Player = playerApp(t)
 	e.Player.store(t, 100_000, "a11ydevice001", "Other device", 0, false)
 	e.URLs["player/owner"] = e.Player.URL
+
+	// reader: the synthetic book of brSeed. The owner reads in pages, the admin in scroll.
+	e.ReaderLab = brSeed(t)
+	e.ReaderBookID = e.ReaderLab.book.ID
+	as("reader/owner", e.ReaderLab.a, e.ReaderLab.owner)
+	as("reader/admin", e.ReaderLab.a, e.ReaderLab.admin)
 	return e
 }

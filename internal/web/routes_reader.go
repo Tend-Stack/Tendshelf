@@ -111,7 +111,7 @@ func (s *server) readerCtx(w http.ResponseWriter, r *http.Request) (readerCtx, b
 	}
 	rc, found, err := s.readerLoad(r.Context(), currentUser(r), book, r.FormValue("edition"))
 	if errors.Is(err, ebook.ErrDocCorrupt) || errors.Is(err, ebook.ErrDocTooLarge) {
-		s.readerTrouble(w, r, book.ID, err)
+		s.readerTrouble(w, r, rc, err)
 		return rc, false
 	}
 	if err != nil {
@@ -120,7 +120,7 @@ func (s *server) readerCtx(w http.ResponseWriter, r *http.Request) (readerCtx, b
 	}
 	if !found {
 		if rc.ed.ID != "" && rc.doc == nil { // the edition is on record but its document will not load
-			s.readerTrouble(w, r, book.ID, errReaderDoc)
+			s.readerTrouble(w, r, rc, errReaderDoc)
 			return rc, false
 		}
 		s.notFound(w, r)

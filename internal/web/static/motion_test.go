@@ -367,6 +367,9 @@ func TestJSBudget(t *testing.T) {
 		seen[name] = true
 		g := sentBytes(a)
 		total += g
+		if strings.HasPrefix(name, "reader") || name == "shell.js" {
+			t.Logf("js/%s %d gzip bytes", name, g)
+		}
 		limit, ok := jsBudgets[name]
 		if !ok {
 			t.Errorf("js/%s has no budget; add it to jsBudgets", name)
@@ -384,6 +387,7 @@ func TestJSBudget(t *testing.T) {
 			t.Logf("js/%s is budgeted but not present yet; skipped", name)
 		}
 	}
+	t.Logf("app JS %d gzip bytes of %d", total, jsTotalGzip)
 	if total > jsTotalGzip {
 		t.Errorf("app JS %d gzip bytes, budget %d", total, jsTotalGzip)
 	}

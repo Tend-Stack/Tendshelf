@@ -137,7 +137,13 @@ document.addEventListener("htmx:after:swap", (event) => {
 // Sheets live in #sheet, outside #main. Opening one (a swap into #sheet, or a full page load with
 // the sheet in it) focuses it; closing plays the exit motion, then returns focus to the opener.
 let opener = null;
+// The reader page is a full-screen layer; behind an open sheet it is inert, so Tab cannot land under the scrim.
+function holdReaderPage() {
+  const page = document.querySelector(".ts-readerpage");
+  if (page) page.inert = Boolean(document.querySelector("#sheet .ts-sheet"));
+}
 function focusSheet(source) {
+  holdReaderPage();
   const sheet = document.querySelector("#sheet .ts-sheet");
   if (!sheet) return;
   opener = source || null;
@@ -199,6 +205,7 @@ for (const type of ["touchend", "touchcancel"]) document.addEventListener(type, 
 // The answer may replace #sheet itself (an out-of-band swap) or empty it, so the body's own children
 // and the current #sheet's children are both watched.
 function returnFocusIfSheetGone() {
+  holdReaderPage();
   const region = document.getElementById("sheet");
   if (region && region.childElementCount > 0) return;
   // htmx finishes its own swap work (settling, restoring focus by id) after the mutation, so the
@@ -234,6 +241,7 @@ document.addEventListener("animationend", (event) => {
   if (el.classList.contains("is-leaving")) {
     const layer = el.classList.contains("ts-sheet") && el.closest(".ts-sheet-layer");
     (layer || el).remove();
+    holdReaderPage();
     if (layer && opener && opener.isConnected) opener.focus();
   } else if (el.classList.contains("ts-entering")) el.classList.remove("ts-entering");
 });

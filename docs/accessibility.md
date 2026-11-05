@@ -30,7 +30,7 @@ Latest full run (2026-11-04, main 7b111a2): 75 pages, 3 states, 37042 text nodes
 allowed 0, unmeasured 2378 (text over images or gradients that a flat colour read cannot judge).
 
 ## Allowlist
-Empty. An entry needs a written reason, and an entry that matches nothing in a full run fails the audit.
+One line (RD4): `text-200-clip` on `#reader-ch-2`. The reader in Pages lays a chapter part out in CSS columns inside a box, so at 200 % text the later columns lie beyond the box until a page turn (or Scroll, which has no such box). An entry needs a written reason, and an entry that matches nothing in a full run fails the audit.
 
 ## Known limits
 Not covered by the audit: forced-colors mode, placeholder contrast, PDF and ebook text, `/hx/` fragments not

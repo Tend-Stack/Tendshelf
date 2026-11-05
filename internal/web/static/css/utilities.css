@@ -20,7 +20,7 @@ a, button, [role="button"], input, select, summary, label { touch-action: manipu
 .ts-player__chapters { overscroll-behavior: contain; }
 .ts-scrub { touch-action: pan-y; }
 /* The interface is rigid, content is not: chrome cannot be selected, dragged or long-press-called-out. Safari still needs the prefix. */
-.ts-nav-tabbar, .ts-nav-rail, .ts-nav-side, .ts-player-slot, .ts-player__body, .ts-btn, .ts-iconbtn, .ts-chip, .ts-seg, .ts-tabs, .ts-mode, .ts-option,
+.ts-nav-tabbar, .ts-nav-rail, .ts-nav-side, .ts-player-slot, .ts-player__body, .ts-btn, .ts-iconbtn, .ts-chip, .ts-seg, .ts-tabs, .ts-option,
 .ts-chapter, .ts-card, .ts-row, .ts-selmenu, .ts-sheet__head, .ts-switch, .ts-check, label, summary, img {
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; }
 /* Fields and readable content stay selectable (on iOS an inherited none can make a field uneditable). */

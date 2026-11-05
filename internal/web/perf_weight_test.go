@@ -40,6 +40,7 @@ var weightBudgets = map[string]weightBudget{
 	"listening":   {HTML: 164864, CSS: 297984, JS: 194560, Font: 791552, Img: 34816, Requests: 62},
 	"search":      {HTML: 59392, CSS: 297984, JS: 194560, Font: 791552, Img: 39936, Requests: 65},
 	"settings":    {HTML: 49152, CSS: 297984, JS: 194560, Font: 791552, Img: 1024, Requests: 45},
+	"reader":      {HTML: 52224, CSS: 321536, JS: 234496, Font: 1075200, Img: 1024, Requests: 56}, // M5 RD4, set the same way from the first measurement (2026-11-05)
 	"admin-users": {HTML: 47104, CSS: 297984, JS: 194560, Font: 791552, Img: 1024, Requests: 45},
 }
 
@@ -89,7 +90,14 @@ func TestPageWeight(t *testing.T) {
 	t.Cleanup(srv.Close)
 	b := cdp.Start(t, chrome)
 
-	pages := append(sweepPerfPages(bookID), sweepPerfPage{"settings", "/me/settings"}, sweepPerfPage{"admin-users", "/admin/users"})
+	// M5 RD4: the reader, on its own small app (a text book with one synthetic EPUB), served as its owner.
+	rl := rdrSeed(t)
+	rsrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.AddCookie(rl.owner)
+		rl.a.h.ServeHTTP(w, r)
+	}))
+	t.Cleanup(rsrv.Close)
+	pages := append(sweepPerfPages(bookID), sweepPerfPage{"settings", "/me/settings"}, sweepPerfPage{"admin-users", "/admin/users"}, sweepPerfPage{"reader", rl.readPath("")})
 	report := map[string]any{}
 	for _, pg := range pages {
 		max := weightSample{}
@@ -102,7 +110,11 @@ func TestPageWeight(t *testing.T) {
 			if err := tab.Call("Network.setCacheDisabled", map[string]any{"cacheDisabled": true}, nil); err != nil {
 				t.Fatal(err)
 			}
-			tab.Navigate(srv.URL + pg.Path)
+			base := srv.URL
+			if pg.Name == "reader" {
+				base = rsrv.URL
+			}
+			tab.Navigate(base + pg.Path)
 			var s weightSample
 			tab.Eval(weightProbeJS, &s)
 			tab.Close()
@@ -112,7 +124,7 @@ func TestPageWeight(t *testing.T) {
 			max.Font, max.Img = maxI64(max.Font, s.Font), maxI64(max.Img, s.Img)
 			max.Requests = max2(max.Requests, s.Requests)
 		}
-		report[pg.Name] = map[string]any{"widths": perWidth, "max": max, "htmlCompressed": weightGzipSize(t, h, a, pg.Path)}
+		report[pg.Name] = map[string]any{"widths": perWidth, "max": max, "htmlCompressed": weightGzipSizeOf(t, pg.Name == "reader", h, a, rl, pg.Path)}
 		t.Logf("%-12s max: html %d css %d js %d font %d img %d requests %d", pg.Name, max.HTML, max.CSS, max.JS, max.Font, max.Img, max.Requests)
 
 		bud, ok := weightBudgets[pg.Name]
@@ -142,6 +154,19 @@ func TestPageWeight(t *testing.T) {
 }
 
 // weightGzipSize is the size the page's HTML would have if gzip were applied to it (reported only).
+// weightGzipSizeOf is weightGzipSize for the main app, or for the reader's own app when reader is true.
+func weightGzipSizeOf(t *testing.T, reader bool, h http.Handler, a *testApp, rl *rdrLab, path string) int {
+	t.Helper()
+	if !reader {
+		return weightGzipSize(t, h, a, path)
+	}
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	zw.Write(rl.get(rl.owner, path, false).Body.Bytes())
+	zw.Close()
+	return buf.Len()
+}
+
 func weightGzipSize(t *testing.T, h http.Handler, a *testApp, path string) int {
 	t.Helper()
 	rec := a.do(http.MethodGet, path, nil, nil, a.owner(t))

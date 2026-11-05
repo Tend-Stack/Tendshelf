@@ -36,6 +36,7 @@ type a11yPage struct {
 // MinWidth is the narrowest viewport the state exists at.
 type a11yState struct {
 	Key, Role string
+	Fixture   string // "" is "player"
 	Path      func(e *a11yEnv) string
 	Prepare   func(t *testing.T, tab *cdp.Tab, e *a11yEnv)
 	MinWidth  int
@@ -52,7 +53,6 @@ var a11ySkip = map[string]string{
 	"/books/{id}/read/marks.txt":        "a download of the person's own marks (RD3)",
 	"/books/{id}/read/marks.json":       "a download of the person's own marks (RD3)",
 	"/welcome":                          "redirects (303) to Home",
-	"/books/{id}/read":                  "the reader page, audited by the reader packages",
 	"/books/{id}/text/{fileID}/file":    "the original ebook file as a download, not a page",
 	"/s/{token}/stream/{audioFileID}":   "audio stream, not a page",
 	"/s/{token}/peaks/{audioFileID}":    "JSON waveform, not a page",
@@ -72,6 +72,9 @@ func a11yPages() []a11yPage {
 	book := func(suffix string) func(*a11yEnv) string {
 		return func(e *a11yEnv) string { return "/books/" + e.BookID + suffix }
 	}
+	rd := func(role string, q ...string) func(*a11yEnv) string {
+		return func(e *a11yEnv) string { return brPath(e.ReaderLab, q...) }
+	}
 	pages := []a11yPage{
 		row("home", "/{$}", a11yStatic("/"), both, "main", true),
 		row("libraries", "/libraries", a11yStatic("/libraries"), both, "main", true),
@@ -88,6 +91,10 @@ func a11yPages() []a11yPage {
 		// B2: a text book (the member holds can_read = 0 and sees the sentence that says so) and the library's ebooks.
 		row("book-ebook", "/books/{id}", func(e *a11yEnv) string { return "/books/" + e.TextBookID }, both, "main", true),
 		row("book-ebook-text", "/books/{id}/{tab}", func(e *a11yEnv) string { return "/books/" + e.TextBookID + "/text" }, owner, "main", true),
+		// M5 RD4: the reader. The owner reads in pages, the admin in scroll (two people, one book); each sheet is a
+		// page of its own address. The sheets, the footnote popup, the selection toolbar and the note dialog are in a11yStates.
+		row("reader-pages", "/books/{id}/read", rd("owner", "ch=2"), owner, "reader", false),
+		row("reader-scroll", "/books/{id}/read", rd("admin", "ch=2"), []string{"admin"}, "reader", false),
 		row("libraries-ebooks", "/libraries", a11yStatic("/libraries?format=text&view=list"), both, "main", true),
 		row("book-remove", "/books/{id}/remove", func(e *a11yEnv) string { return "/books/" + e.UploadBookID + "/remove" }, owner, "upload", true),
 		row("book-share", "/books/{id}/share", book("/share"), owner, "main", true),
@@ -155,6 +162,24 @@ func a11yStates() []a11yState {
 			efOpenMode(t, tab)
 			time.Sleep(450 * time.Millisecond)
 		}, MinWidth: 0},
+		// M5 RD4: the reader after a click, on the reader fixture.
+		// Each sheet is the reader page with a sheet open: the page behind is inert, so these are states.
+		{Key: "reader-contents", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2", "sheet=contents") }, Prepare: brSheetOpen},
+		{Key: "reader-marks", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2", "sheet=marks") }, Prepare: brSheetOpen},
+		{Key: "reader-settings", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2", "sheet=reading") }, Prepare: brSheetOpen},
+		{Key: "reader-search", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2", "sheet=search") }, Prepare: brSheetOpen},
+		{Key: "reader-footnote", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
+			tab.Eval(`document.querySelector("a[data-note-href]").click()`, nil)
+			tab.WaitFor(`document.querySelector("dialog.ts-readernote--note[open]") !== null`, 8*time.Second)
+		}},
+		{Key: "reader-selection", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
+			rnSelect(tab, e.ReaderLab.sids()[1], 2, 12)
+		}},
+		{Key: "reader-note", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
+			rnSelect(tab, e.ReaderLab.sids()[1], 2, 12)
+			tab.Eval(`document.querySelector('#reader-marks [data-ts-mark="note"]').click()`, nil)
+			tab.WaitFor(`document.getElementById("reader-note-dialog").open`, 5*time.Second)
+		}},
 		{Key: "now-panel", Role: "owner", Path: a11yStatic("/libraries"), Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
 			// As nowPanelOpen does: the bar plays first, then the player opens.
 			tab.WaitFor(`window.tsPlayer && window.tsPlayer.state().bookId !== "" && !document.getElementById("player").hidden`, 10*time.Second)
