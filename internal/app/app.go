@@ -157,6 +157,9 @@ func Run(ctx context.Context, cfg Config) error {
 		// can read this log can open the setup page.
 		info.SetupURL = setupURL(ln.Addr(), setupCode)
 		logger.Info("first run: open this link to create the owner account", "url", info.SetupURL)
+		if hint := setupHint(ln.Addr()); hint != "" {
+			logger.Info(hint)
+		}
 	}
 	if cfg.Ready != nil {
 		cfg.Ready(info)
@@ -209,6 +212,19 @@ func setupURL(a net.Addr, code string) string {
 		host = "localhost"
 	}
 	return "http://" + net.JoinHostPort(host, port) + "/setup?code=" + code
+}
+
+// setupHint says how to use the setup link when the server listens on every address, where the
+// link can only name localhost. It is empty for a specific address.
+func setupHint(a net.Addr) string {
+	host, _, err := net.SplitHostPort(a.String())
+	if err != nil {
+		return ""
+	}
+	if ip := net.ParseIP(host); host == "" || (ip != nil && ip.IsUnspecified()) {
+		return "from another computer, replace localhost in that link with this machine's address"
+	}
+	return ""
 }
 
 // locateTools finds ffprobe and ffmpeg. Missing tools are not fatal: books are still listed from

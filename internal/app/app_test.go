@@ -180,3 +180,16 @@ func TestSetupURL(t *testing.T) {
 		}
 	}
 }
+
+func TestSetupHint(t *testing.T) {
+	for addr, wantHint := range map[string]bool{"0.0.0.0:8095": true, "[::]:8095": true, "127.0.0.1:8095": false, "[::1]:8095": false} {
+		a, err := net.ResolveTCPAddr("tcp", addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := setupHint(a)
+		if (got != "") != wantHint || (wantHint && !strings.Contains(got, "replace localhost")) {
+			t.Errorf("setupHint(%s) = %q", addr, got)
+		}
+	}
+}
