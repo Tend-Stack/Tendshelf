@@ -151,7 +151,7 @@ html[data-theme="contrast"] .is-tinted.ts-ink-deep { background: var(--surface);
    only its icon (its aria-label names it), so the title and "Ready offline" are not crowded out. */
 .ts-offline-home .ts-row [data-ts-read] { flex: none; margin-inline-start: var(--space-8); }
 @media (width < 481px) {
-  .ts-offline-home .ts-row:has([data-ts-play]) [data-ts-read] { min-width: 44px; padding-inline: 0; }
+  .ts-offline-home .ts-row:has([data-ts-play]) [data-ts-read] { min-width: 2.75rem; padding-inline: 0; }
   .ts-offline-home .ts-row:has([data-ts-play]) [data-ts-read] > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 .ts-hero__head .ts-overline { overflow-wrap: anywhere; }
