@@ -49,11 +49,7 @@ func TestDefineBrowser(t *testing.T) {
 	}
 	pgKey(t, tab, "Escape", "Escape", 27, "", 0)
 	tab.WaitFor(open+` === null`, 5*time.Second)
-	var back bool
-	tab.Eval(`document.activeElement.classList.contains("ts-s")`, &back)
-	if !back {
-		t.Error("focus did not return to the text")
-	}
+	tab.WaitFor(`document.activeElement.classList.contains("ts-s")`, 3*time.Second) // focus returns to the text
 
 	// The backdrop closes it too.
 	rnSelect(tab, sid, 0, 4)

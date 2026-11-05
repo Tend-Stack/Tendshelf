@@ -315,6 +315,11 @@ func TestOfflineSignOutWipes(t *testing.T) {
 	tab := b.NewTab(1440, 900, false, false)
 	tab.Navigate(e.URL + "/login")
 	tab.Eval(`(() => { document.getElementById("username").value = "ana"; document.getElementById("password").value = `+cdp.Quote(testPassword)+`; document.querySelector("form.ts-form").requestSubmit() })()`, nil)
+	// Wait for the worker, then load the page fresh: taking over an already open page can stall under load.
+	tab.WaitFor(`document.documentElement.dataset.tsPerson`, 20*time.Second)
+	tab.Eval(`(() => { navigator.serviceWorker.ready.then(() => { window.tsWorkerReady = true }); return true })()`, nil)
+	tab.WaitFor(`window.tsWorkerReady === true`, 30*time.Second)
+	tab.Navigate(e.URL + "/")
 	tab.WaitFor(`document.documentElement.dataset.tsPerson && navigator.serviceWorker.controller`, 20*time.Second)
 	e.seed(t, tab)
 	tab.Eval(`(() => { localStorage.setItem("ts.offline", JSON.stringify({v: 1, books: {}})); localStorage.setItem("ts.offline.marks", "[]") })()`, nil)

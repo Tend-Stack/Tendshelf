@@ -58,6 +58,9 @@ type Page struct {
 // pagePrefix starts the static path of every per-page stylesheet.
 const pagePrefix = "css/pages-"
 
+// noPrefetch lists page stylesheets too rarely visited to cost every page a request.
+var noPrefetch = []string{"css/pages-words.css"}
+
 // withPrefetch returns p with the page stylesheets it does not link itself, so the head can ask the
 // browser to fetch them early: the first boosted visit to another page then finds them cached.
 func (p Page) withPrefetch() Page {
@@ -65,7 +68,7 @@ func (p Page) withPrefetch() Page {
 		return p
 	}
 	for _, name := range p.Assets.Names() {
-		if strings.HasPrefix(name, pagePrefix) && !slices.Contains(p.Styles, name) {
+		if strings.HasPrefix(name, pagePrefix) && !slices.Contains(p.Styles, name) && !slices.Contains(noPrefetch, name) {
 			p.prefetch = append(p.prefetch, name)
 		}
 	}
