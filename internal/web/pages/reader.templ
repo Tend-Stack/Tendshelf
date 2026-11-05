@@ -40,6 +40,7 @@ type ReaderEnd struct{ Text, Label, Action, CSRF string }
 // the sizes it needs for page numbers and time left, and where to save.
 type ReaderRoot struct {
 	At, Off, Flow, Save, Lang, Words string // Words is JSON: the sentences the client script shows
+	Skim                             string // JSON [[chars_before, title], ...] for the skim bar (reader-skim.js)
 	NotesSrc                         string // address of reader-notes.js, loaded on the first footnote
 	Cpm, TotalChars, ChapterChars    int
 	Pages, Chapters                  int // the book's standard pages (p. n of N) and its chapters
@@ -134,6 +135,7 @@ type ReaderView struct {
 	Look                        ReaderLook // the person's reading settings (reader.v1)
 	SettingsLabel, SettingsHref string     // the Aa link
 	SettingsModule              string     // address of reader-settings.js
+	SkimModule                  string     // address of reader-skim.js, imported on the first touch of the skim bar
 	SearchLabel, SearchHref     string
 	BookmarkLabel, BookmarkURL  string // the bookmark-this-page button and where its form posts
 	Offline                     *ReaderOfflineView // the offline reader (decision 0019); nil leaves it out
@@ -227,6 +229,7 @@ templ Reader(v ReaderView) {
 			data-copy={ v.Root.Words }
 			data-pages-src={ v.PagesModule }
 			data-notes-src={ v.Root.NotesSrc }
+			data-skim={ v.Root.Skim }
 			if v.ReaderModule != "" {
 				data-ts-module={ v.ReaderModule }
 			}
@@ -259,7 +262,11 @@ templ Reader(v ReaderView) {
 			></span>
 		}
 		<footer class="ts-readdock" id="reader-dock">
-			@components.Ruler(v.Footer.Ruler)
+			<div class="ts-readdock__ruler">
+				@components.Ruler(v.Footer.Ruler)
+				<input type="range" id="reader-skim" class="ts-skim" min="0" max="10000" step="1" value="0" aria-label={ v.Footer.Ruler.Label } data-src={ v.SkimModule } hidden/>
+				<output id="reader-skim-tip" class="ts-skim__tip" aria-hidden="true" hidden></output>
+			</div>
 			<div class="ts-readdock__row">
 				<span id="reader-page">{ v.Footer.PageLine }</span>
 				<span id="reader-left"></span>

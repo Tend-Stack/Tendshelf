@@ -138,3 +138,16 @@ address the reader asks for, then the contents shell and the reader shell (`/off
 never opens. Offline, the worker answers those addresses and `reader-offline.js` fills the shell. The daily check compares the
 manifest `revision` (edition, the person's highlights, text bookmarks): a new one stores the text again, a 404 removes it, a failed
 request changes nothing. Highlights, notes, bookmarks, search and settings need the server. `/offline?text=` lists held books.
+
+## Skim (G4)
+
+The dock's ruler stays the picture; a transparent range input (`#reader-skim`, 0 to 10000, 44 px tall) lies over it and
+`reader.js` shows it once mounted and keeps its value at the place. The first pointer press, key or focus on it imports
+`reader-skim.js`. While it moves, the tip (`#reader-skim-tip`) and the input's `aria-valuetext` read "{chapter title} · {n} %",
+from `data-skim` on `#reader` (`[[characters before the chapter, title], ...]`, titles cut to 60 characters, at most 300
+entries). Letting go (or Enter) opens `/books/{id}/read?ch=N&bp=P`; the arrow keys move one percent, Home and End are the
+browser's, Escape puts the thumb back. A skim writes no place: it only stores `ts.back.<book>` (if not already set), so the
+"Back to where I was" chip of `reader-marks.js` appears on arrival and goes after three forward turns; reading on is what saves.
+On the server `bp` (an integer 0 to 10000, else ignored, and ignored beside `part`) wins over `ch` and opens the part holding
+the block at that share of the book's text, at its first sentence (`rsPlaceAtChars`); `at` still wins over `bp`. Offline the shell
+cannot place `bp` and `reader-offline.js` reads only `ch`: the chapter opens at its start, and the chip still leads back.

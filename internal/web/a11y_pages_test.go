@@ -182,6 +182,15 @@ func a11yStates() []a11yState {
 			tab.Eval(`document.querySelector('#reader-marks [data-ts-mark="note"]').click()`, nil)
 			tab.WaitFor(`document.getElementById("reader-note-dialog").open`, 5*time.Second)
 		}},
+		// M5 G4: the skim bar in use, with its tip showing.
+		{Key: "reader-skim", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
+			tab.WaitFor(`document.getElementById("reader-skim") && !document.getElementById("reader-skim").hidden`, 8*time.Second)
+			// The script loads on the first touch; a key event stands for it, as the page may not hold focus here.
+			tab.Eval(`(() => { const bar = document.getElementById("reader-skim"); bar.focus(); bar.dispatchEvent(new Event("keydown")); })()`, nil)
+			time.Sleep(500 * time.Millisecond)
+			tab.Eval(`(() => { const bar = document.getElementById("reader-skim"); bar.value = 4500; bar.dispatchEvent(new Event("input", { bubbles: true })); })()`, nil)
+			tab.WaitFor(`!document.getElementById("reader-skim-tip").hidden`, 3*time.Second)
+		}},
 		{Key: "now-panel", Role: "owner", Path: a11yStatic("/libraries"), Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
 			// As nowPanelOpen does: the bar plays first, then the player opens.
 			tab.WaitFor(`window.tsPlayer && window.tsPlayer.state().bookId !== "" && !document.getElementById("player").hidden`, 10*time.Second)
