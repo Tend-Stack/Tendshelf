@@ -142,11 +142,11 @@ func Run(ctx context.Context, cfg Config) error {
 
 	srv := &http.Server{
 		Addr:              ln.Addr().String(),
-		Handler:           handler,
+		Handler:           web.WithBodyDeadline(handler),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
-		// No WriteTimeout: audio streams are long-lived. Per-handler deadlines
-		// are set with http.ResponseController where needed.
+		// No WriteTimeout: audio streams are long-lived. Requests with a body get a read deadline
+		// from web.WithBodyDeadline; the upload chunk route sets its own.
 		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelWarn),
 	}
 
