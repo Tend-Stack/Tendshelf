@@ -184,6 +184,7 @@ async function purge(record) {
   await cache.delete("/hx/player/" + record.id);
   if (record.cover) await cache.delete(record.cover);
   if (record.text) await (await textModule()).purge(cache, record);
+  tellWorker();
 }
 
 async function put(cache, key, response) {
@@ -379,6 +380,7 @@ async function runBook(id) {
     const room = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
     if (room && room.quota - room.usage < record.bytes - record.done + 16 * MiB) throw new Halt("failed", "space");
     if (record.files.length) await keepPage(record);
+    tellWorker();
     for (let i = 0; i < record.files.length; i++) await runFile(id, i, controller.signal);
     if (record.text) await (await textModule()).run(id, record, controller.signal, kit);
     patch(id, (r) => {

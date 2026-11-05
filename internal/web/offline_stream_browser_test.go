@@ -43,7 +43,7 @@ func (e *offlineEnv) probe(t *testing.T, tab *cdp.Tab, path string) streamProbe 
 func (e *offlineEnv) streams(t *testing.T, tab *cdp.Tab) []string {
 	t.Helper()
 	var s []string
-	tab.Eval(`window.__streams()`, &s)
+	tab.Eval(`window.__streams().then((all) => all && all.filter((k) => k.startsWith("/stream/")))`, &s)
 	return s
 }
 
@@ -87,6 +87,11 @@ func TestOfflineStreamStoredFromChunks(t *testing.T) {
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
 		t.Fatalf("stored streams = %v, want %v", got, want)
+	}
+	var all []string
+	tab.Eval(`window.__streams()`, &all)
+	if !slices.Contains(all, "/hx/player/"+e.book.ID) {
+		t.Errorf("the worker does not list the player fragment: %v", all)
 	}
 	for _, down := range []bool{false, true} {
 		e.setDown(t, tab, down)
@@ -140,7 +145,7 @@ func TestOfflineStreamRemovedDownload(t *testing.T) {
 	tab.Eval(offlineSeedJS, nil)
 	e.startDownload(t, tab)
 	tab.WaitFor(`window.tsDownloads.list()[0]?.state === "ready"`, 40*time.Second)
-	tab.WaitFor(`(async () => (await window.__streams()).length === 2)()`, 10*time.Second)
+	tab.WaitFor(`(async () => (await window.__streams()).filter((k) => k.startsWith("/stream/")).length === 2)()`, 10*time.Second)
 	if p := e.probe(t, tab, "/stream/"+e.files[0].ID); !p.Worker {
 		t.Fatalf("downloaded: %+v, want the worker's answer", p)
 	}

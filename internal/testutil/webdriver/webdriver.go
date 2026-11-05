@@ -73,6 +73,49 @@ func Start(t testing.TB, driver, browser string) *Session {
 // Attach opens a session against a driver that is already listening at base.
 func Attach(t testing.TB, base, browser string) *Session {
 	t.Helper()
+	caps := map[string]any{"capabilities": map[string]any{"alwaysMatch": map[string]any{
+		"browserName": "MiniBrowser",
+		"webkitgtk:browserOptions": map[string]any{
+			"binary": browser,
+			"args":   []string{"--automation"},
+		},
+	}}}
+	return attachWith(t, base, caps)
+}
+
+// StartFirefox runs geckodriver on a free port and opens a headless Firefox session with a
+// throwaway profile (geckodriver makes and removes it). prefs are set in that profile.
+func StartFirefox(t testing.TB, driver, browser string, prefs map[string]any) *Session {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+	cmd := exec.Command(driver, fmt.Sprintf("--port=%d", port))
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start %s: %v", driver, err)
+	}
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill() // the process this test started, by its own handle
+		_ = cmd.Wait()
+	})
+	options := map[string]any{"args": []string{"-headless"}, "prefs": prefs}
+	if browser != "" {
+		options["binary"] = browser // empty: the driver finds Firefox itself (the snap one needs this)
+	}
+	caps := map[string]any{"capabilities": map[string]any{"alwaysMatch": map[string]any{
+		"browserName":         "firefox",
+		"acceptInsecureCerts": true,
+		"moz:firefoxOptions":  options,
+	}}}
+	return attachWith(t, fmt.Sprintf("http://127.0.0.1:%d", port), caps)
+}
+
+// attachWith opens a session with the given capabilities against a driver listening at base.
+func attachWith(t testing.TB, base string, caps map[string]any) *Session {
+	t.Helper()
 	s := &Session{t: t, base: base, hc: &http.Client{Timeout: 60 * time.Second}}
 	deadline := time.Now().Add(10 * time.Second)
 	for {
@@ -84,13 +127,6 @@ func Attach(t testing.TB, base, browser string) *Session {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	caps := map[string]any{"capabilities": map[string]any{"alwaysMatch": map[string]any{
-		"browserName": "MiniBrowser",
-		"webkitgtk:browserOptions": map[string]any{
-			"binary": browser,
-			"args":   []string{"--automation"},
-		},
-	}}}
 	raw, err := s.do(http.MethodPost, "/session", caps)
 	if err != nil {
 		t.Fatalf("new session: %v", err)
