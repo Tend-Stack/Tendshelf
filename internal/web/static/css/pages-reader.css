@@ -1,5 +1,5 @@
-/* The book reader page (M5). Markup built by internal/web/pages/reader.templ and web/reader_render.go. The reader's
-   own rules come with the reader packages; this file holds the reading settings so the page needs one stylesheet. */
+/* The book reader page (M5). Markup built by internal/web/pages/reader.templ and web/reader_render.go. One stylesheet
+   holds the page, the pages layout (RD2) and the reading settings. */
 
 /* Reading settings (M5 R4 P4): what the choices do to the reader, and the sheet that holds them.
    reader-settings.js swaps these classes on every .ts-reader (the page and the sheet's preview) at once. */
@@ -46,10 +46,86 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 .ts-readset input.ts-switch:checked { background: var(--accent-fill); border-color: var(--accent); }
 .ts-readset input.ts-switch:checked::after { transform: translateX(1.25rem); background: var(--on-accent); }
 
-/* Top bar: close, title, speaker, contents, marks, settings. The title takes the free width and shortens. */
-.ts-readerbar { display: flex; align-items: center; gap: var(--space-4); }
+
+/* The page is its own screen over the app shell: bar, text, dock. Pages (CSS columns, laid out by reader-pages.js
+   from --ts-col, --ts-gap, --ts-cols and --ts-page-h) are the default below 1280 px; scroll is the plain layout and
+   what a browser without JavaScript gets. */
+/* .ts-main names its view transition, which makes it a stacking context that would keep the page under the tab bar. */
+.ts-main:has(.ts-readerpage) { view-transition-name: none; }
+.ts-readerpage { position: fixed; inset: 0; z-index: 12; display: flex; flex-direction: column; background: var(--ground); color: var(--ink); overscroll-behavior: none; }
+.ts-readerbar { flex: none; display: flex; align-items: center; gap: var(--space-4); padding: max(var(--space-8), env(safe-area-inset-top)) max(var(--space-16), env(safe-area-inset-right)) var(--space-8) max(var(--space-16), env(safe-area-inset-left)); border-bottom: 1px solid var(--line); }
 .ts-readerbar__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ts-readerbar .ts-iconbtn { min-width: var(--size-tap); min-height: var(--size-tap); }
+.ts-readerbar .ts-iconbtn:active, .ts-readdock a:active { transition: none; }
+.ts-readerbar, .ts-readdock, .ts-reader__end { -webkit-user-select: none; user-select: none; }
+
+/* Side margins are a setting; the page measures them back from the padding. */
+.ts-reader { --ts-pad: var(--space-24); }
+.ts-reader--margin-narrow { --ts-pad: var(--space-12); }
+.ts-reader--margin-wide { --ts-pad: var(--space-48); }
+.ts-reader--justify .ts-reader__text { text-align: justify; }
+.ts-reader--nohyph .ts-reader__text { hyphens: manual; -webkit-hyphens: manual; }
+.ts-readerpage > .ts-reader { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: none; box-sizing: border-box; padding: var(--space-24) max(var(--ts-pad), env(safe-area-inset-right)) var(--space-64) max(var(--ts-pad), env(safe-area-inset-left)); }
+
+/* Text blocks. */
+.ts-reader__text blockquote { margin: var(--space-16) 0; padding-left: var(--space-16); font-style: italic; box-shadow: inset 2px 0 0 var(--line-strong); }
+.ts-reader__text h3 { margin: var(--space-24) 0 var(--space-8); font: 600 1.125em/1.4 var(--font-sans); break-after: avoid; }
+.ts-reader__text pre { overflow-x: auto; overscroll-behavior: contain; font: 0.875rem/1.5 var(--font-mono); }
+.ts-reader__text hr { border: 0; border-top: 1px solid var(--line-strong); margin: var(--space-24) 0; }
+.ts-reader__text .ts-reader__li { padding-left: 1.4em; text-indent: 0; }
+.ts-reader__text .ts-reader__note, .ts-reader__text .ts-reader__img { font-size: 0.875rem; line-height: 1.5; color: var(--ink-muted); text-indent: 0; }
+.ts-reader__next, .ts-reader__end { display: flex; flex-direction: column; align-items: center; gap: var(--space-12); padding: var(--space-24) 0; text-align: center; }
+.ts-reader__next .ts-btn { text-decoration: none; }
+.ts-reader__end p { margin: 0; font-family: var(--font-serif); font-style: italic; }
+.ts-reader__bm { display: inline-block; width: 0.875rem; height: 0.875rem; margin: 0 2px; vertical-align: -0.1em; }
+.ts-reader__bm::before { content: ""; display: block; height: 100%; background: var(--accent); clip-path: polygon(0 0, 100% 0, 75% 50%, 100% 100%, 0 100%); }
+
+/* Pages. The part's section is the columns box and the scroller; a turn moves its scrollLeft by one page. The box is
+   exactly --ts-cols columns wide, so what lies right of it is the next page. Pictures and tables never outgrow a page. */
+.ts-reader--pages { overflow: hidden; padding-block: var(--space-16); touch-action: pan-y; }
+.ts-reader--pages .ts-reader__col { max-width: none; }
+.ts-reader--pages section[data-part] { box-sizing: content-box; width: calc(var(--ts-cols) * var(--ts-col) + (var(--ts-cols) - 1) * var(--ts-gap)); height: var(--ts-page-h); margin-inline: auto; overflow: hidden; column-count: var(--ts-cols); column-gap: var(--ts-gap); column-fill: auto; }
+.ts-reader--pages .ts-reader__prev, .ts-reader--pages .ts-reader__next { display: none; }
+.ts-reader--pages .ts-reader__image { max-height: var(--ts-page-h); object-fit: contain; break-inside: avoid; }
+.ts-reader--pages .ts-reader__img, .ts-reader--pages .ts-reader__chapter { break-inside: avoid; }
+.ts-reader--pages .ts-reader__chapter { break-after: avoid; }
+.ts-reader--pages .ts-reader__text pre { white-space: pre-wrap; overflow: visible; }
+.ts-reader__probe { position: absolute; visibility: hidden; width: var(--size-read-measure); min-width: var(--size-read-measure-min); pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) { .ts-readerpage > .ts-readerbar, .ts-readerpage > .ts-readdock { transition: opacity var(--duration-fast); } }
+
+/* Hidden chrome: the page keeps its size, so nothing re-lays. Focus brings the bar and dock back for a keyboard. */
+.ts-readerpage[data-chrome="off"] > :is(.ts-readerbar, .ts-readdock):not(:focus-within) { opacity: 0; pointer-events: none; }
+
+/* The dock keeps to the text column; its ruler fills with the book. */
+.ts-readerpage .ts-readdock { flex: none; padding-bottom: calc(var(--space-16) + env(safe-area-inset-bottom)); }
+.ts-readdock > * { width: 100%; max-width: var(--ts-text-w, 38rem); margin-inline: auto; box-sizing: border-box; }
+.ts-readdock__row { font-size: 0.8125rem; line-height: 1.125rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+#reader-page { white-space: nowrap; }
+#reader-left { text-align: end; }
+
+/* Selection toolbar above the selected words and the note dialog. */
+.ts-selmenu[hidden] { display: none; }
+.ts-readerpage .ts-selmenu { position: fixed; z-index: 14; }
+.ts-readernote { width: min(24rem, calc(100vw - 2rem)); padding: var(--space-16); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); background: var(--raised); color: var(--ink); }
+.ts-readernote::backdrop { background: color-mix(in srgb, var(--ground) 70%, transparent); }
+.ts-readernote form { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.ts-readernote textarea { flex: 1 0 100%; box-sizing: border-box; padding: var(--space-8); font: 1rem/1.5 var(--font-sans); color: var(--ink); background: var(--ground); border: 1px solid var(--line-strong); border-radius: var(--radius-control); }
+
+/* Contents and Highlights and notes sheets. */
+.ts-reader__toc, .ts-reader__marks { margin: 0; padding: 0; list-style: none; }
+.ts-reader__toc a { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-12); min-height: var(--size-tap); padding: var(--space-4) var(--space-8); color: inherit; text-decoration: none; }
+.ts-reader__toc a[aria-current] { font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+.ts-reader__mark { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); padding: var(--space-12) 0; border-bottom: 1px solid var(--line); }
+.ts-reader__mark form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); width: 100%; }
+.ts-reader__mark textarea { width: 100%; box-sizing: border-box; }
 
 /* Links and pictures in the text. A link is told apart by its underline, not by colour alone. */
 .ts-reader__link { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; }
 .ts-reader__image { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+
+@media (width >= 768px) {
+  .ts-reader { --ts-pad: var(--space-48); }
+  .ts-reader--margin-narrow { --ts-pad: var(--space-24); }
+  .ts-reader--margin-wide { --ts-pad: var(--space-64); }
+  .ts-readerbar { padding-inline: var(--space-24); }
+}

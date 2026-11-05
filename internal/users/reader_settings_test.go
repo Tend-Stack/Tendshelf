@@ -18,7 +18,9 @@ func TestReaderSettingsLoadSave(t *testing.T) {
 	if err != nil || got != DefaultReader {
 		t.Fatalf("defaults = %+v, %v", got, err)
 	}
-	want := ReaderSettings{Font: "dyslexic", Size: 26, Leading: "airy"}
+	want := DefaultReader
+	want.Font, want.Size, want.Leading = "dyslexic", 26, "airy"
+	want.Margin, want.Justify, want.Hyphens, want.Flow, want.TapSwap = "wide", true, false, "pages", true
 	if err := r.SaveReader(ctx, u.ID, want); err != nil {
 		t.Fatal(err)
 	}
@@ -35,6 +37,8 @@ func TestReaderSettingsLoadSave(t *testing.T) {
 		func(s *ReaderSettings) { s.Font = "comic" },
 		func(s *ReaderSettings) { s.Size = 19 },
 		func(s *ReaderSettings) { s.Leading = "" },
+		func(s *ReaderSettings) { s.Margin = "huge" },
+		func(s *ReaderSettings) { s.Flow = "" },
 	} {
 		bad := want
 		mod(&bad)
@@ -100,7 +104,8 @@ func TestXReaderSettingsOldJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := r.LoadReader(ctx, u.ID)
-	want := ReaderSettings{Font: "dyslexic", Size: 22, Leading: "airy"}
+	want := DefaultReader
+	want.Font, want.Size, want.Leading = "dyslexic", 22, "airy"
 	if err != nil || got != want {
 		t.Fatalf("old JSON = %+v, %v; want %+v", got, err, want)
 	}

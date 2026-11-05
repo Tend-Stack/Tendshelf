@@ -87,7 +87,11 @@ func readerSweepRows() []sweepRow {
 			return url.Values{"edition_id": {e.rdr.ed}, "chapter_idx": {"1"}, "sid": {"c1.p1.s0"}, "off": {"0"}, "quote": {"Alpha"},
 				"char_pos": {"3"}, "client_updated_at": {"1800000000000"}, "device_id": {"sweepdevice03"}}
 		}, staff, "")
-	return []sweepRow{page, chapter, create, patch, del, image, readingGet, readingPost}
+	// RD2: "Mark as finished" at the end of the book writes the reading place only.
+	finished := sweepPost("POST /reading/{bookID}/finished", func(e *sweepEnv, _ int) string { return "/reading/" + e.book.ID + "/finished" },
+		sweepFormOf(url.Values{"finished": {"1"}}), sweepStaff(http.StatusSeeOther, http.StatusNotFound), "")
+	finished.LocOf = func(e *sweepEnv) string { return "/books/" + e.book.ID }
+	return []sweepRow{page, chapter, create, patch, del, image, readingGet, readingPost, finished}
 }
 
 // TestRouteMatrixReaderGranted: a member and a guest with can_read reach the reader pages; with a grant that

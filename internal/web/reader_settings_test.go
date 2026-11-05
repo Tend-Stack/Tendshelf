@@ -134,7 +134,7 @@ func TestReaderSettingsSheet(t *testing.T) {
 	if strings.Contains(body, ` style="`) {
 		t.Error("inline style in the sheet")
 	}
-	for _, gone := range []string{`Underline each word`, `Follow the voice`, `Return automatically`, `Focus line`, `role="switch"`, `Highlight</legend>`, `data-ts-no-word`} {
+	for _, gone := range []string{`Underline each word`, `Follow the voice`, `Return automatically`, `Focus line`, `Highlight</legend>`, `data-ts-no-word`} {
 		if strings.Contains(body, gone) {
 			t.Errorf("sheet still has %q", gone)
 		}

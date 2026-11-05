@@ -87,7 +87,7 @@ func TestReaderPage(t *testing.T) {
 		t.Fatalf("default: %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{`id="reader"`, `id="reader-ch-2"`, `class="ts-reader__next"`, `hx-trigger="revealed, ts-reader-next"`,
+	for _, want := range []string{`id="reader"`, `id="reader-ch-2"`, `class="ts-reader__next"`, `hx-trigger="ts-reader-next"`,
 		`id="reader-dock"`, `id="reader-marks"`, `role="toolbar"`, `id="reader-hl-form"`, `aria-label="Close reader"`, `data-sid=`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page misses %q", want)
