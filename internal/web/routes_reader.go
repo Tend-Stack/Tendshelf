@@ -35,6 +35,7 @@ func (s *server) registerReader(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /hx/highlights/{id}", s.patchReaderHighlight)
 	mux.HandleFunc("DELETE /hx/highlights/{id}", s.deleteReaderHighlight)
 	s.registerReaderMarks(mux)
+	s.registerLookup(mux)
 }
 
 // readerDocCache keeps the last few parsed documents. Documents are content addressed, so a hit is always right.
@@ -238,7 +239,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 		Before: chap.view.Before, ChapterChars: chChars, Save: "/reading/" + id,
 		Flow: rs.Flow, Lang: rc.doc.Meta.Language,
 		Pages: rc.doc.PageCount, Chapters: len(rc.doc.Chapters), Words: readerWords(),
-		Skim: rsSkim(rc.doc), NotesSrc: s.assetOr("js/reader-notes.js"),
+		Skim: rsSkim(rc.doc), NotesSrc: s.assetOr("js/reader-notes.js"), LookupSrc: s.assetOr("js/reader-lookup.js"),
 	}
 	// The speaker: only with the right to listen and an audiobook to play. It starts at the audiobook's own
 	// saved place (never the reading place) and writes neither position itself.
@@ -261,6 +262,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	}
 	v.Marks = pages.ReaderMarksBar{
 		Label: readerSelLabel, Highlight: readerHighlight, Note: readerNote, Copy: readerCopy,
+		Lookup: lookupTitle, WordAction: "/hx/books/" + id + "/words",
 		Action: "/hx/books/" + id + "/highlights", CSRF: s.csrf.TokenFrom(ctx),
 		Count: fmt.Sprintf(readerMarksCount, len(hls)), Swatches: readerSwatches(), Save: readerSave, Cancel: readerCancel,
 	}

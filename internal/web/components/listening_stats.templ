@@ -16,6 +16,8 @@ type ListeningStatsView struct {
 	More, MoreHref string
 	// Also is the second link, "Your reading", shown when the person has read an ebook (G2).
 	Also, AlsoHref string
+	// Words is the third, "Your word list" (G1), shown beside Also.
+	Words, WordsHref string
 }
 
 // ListeningStats is the three numbers and, on Profile, the week's day marks. The marks are one
@@ -46,6 +48,9 @@ templ ListeningStats(v ListeningStatsView) {
 		}
 		if v.Also != "" {
 			<a class="label ts-dash__more" href={ templ.SafeURL(v.AlsoHref) }>{ v.Also }</a>
+		}
+		if v.Words != "" {
+			<a class="label ts-dash__more" href={ templ.SafeURL(v.WordsHref) }>{ v.Words }</a>
 		}
 	</section>
 }

@@ -1,0 +1,11 @@
+/* The word list (G1), on the listening page's header and tokens. */
+.ts-words__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ts-words__item { padding: var(--space-12) 0; border-bottom: 1px solid var(--line); }
+.ts-words__word { margin: 0; font: 500 1.25rem/1.75rem var(--font-serif); overflow-wrap: anywhere; }
+.ts-words__quote { margin: var(--space-4) 0 0; font: italic 1rem/1.5rem var(--font-serif); color: var(--ink-muted); overflow-wrap: anywhere; }
+.ts-words__meta { margin: var(--space-4) 0 0; display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); color: var(--ink-muted); }
+.ts-words__meta a { color: var(--accent); display: inline-flex; align-items: center; min-height: var(--size-tap); }
+.ts-words__actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.ts-words__actions form { margin: 0; }
+.ts-words__filter a { margin-inline-start: var(--space-8); color: var(--accent); }
+.ts-words__export { display: flex; flex-wrap: wrap; gap: var(--space-8); margin: var(--space-16) 0 0; }

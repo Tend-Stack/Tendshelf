@@ -151,3 +151,34 @@ browser's, Escape puts the thumb back. A skim writes no place: it only stores `t
 On the server `bp` (an integer 0 to 10000, else ignored, and ignored beside `part`) wins over `ch` and opens the part holding
 the block at that share of the book's text, at its first sentence (`rsPlaceAtChars`); `at` still wins over `bp`. Offline the shell
 cannot place `bp` and `reader-offline.js` reads only `ch`: the chapter opens at its start, and the chip still leads back.
+
+## Look-up and the word list (G1)
+
+Select a word in the reader and choose **Look up** (online only; the offline shell has no Look up). `reader-marks.js` imports
+`reader-lookup.js` on the first press, which asks `GET /hx/books/{id}/read/lookup?q=` for a dialog (`readerCtx`, so `share.Can(ReadText)`;
+`q` is 1 to 64 runes with a letter or digit, else a 422 toast). The dialog shows the entries from `internal/dict` as escaped text, a plain
+DuckDuckGo link (`https://duckduckgo.com/?q=` plus the selected word, `rel="noopener noreferrer"`, opens in a new tab only when tapped; nothing
+else is in it) and **Save word**, which fills the hidden `#reader-word-form` and posts `POST /hx/books/{id}/words`. A selection longer than 64
+runes or over two sentences looks up its first word. For a book whose edition language is English, a word that is not found is tried once
+without `-s`, `-es`, `-ies`, `-ed`, `-ing` or `-ly`; no other language is stemmed. Looking up never writes a reading place.
+
+**Adding a dictionary.** No dictionary is bundled and Tendshelf never downloads one. The owner puts files in `<data>/dictionaries/`; the folder
+is read at the first look-up and again whenever a file in it changes (name, size or time), so no restart is needed. At most eight are read
+(by file name); symbolic links and sub-folders are ignored; a damaged file is skipped and logged, never fatal. With none, the popup says "No
+dictionary on this server yet." and tells an administrator where to put one. Two formats, read from their published descriptions:
+
+- **StarDict**: `name.ifo` with `name.idx` or `name.idx.gz`, `name.dict` or the dictzip `name.dict.dz`, and an optional `name.syn`
+  (other spellings). 32-bit and 64-bit offsets (`idxoffsetbits`), `sametypesequence` or per-entry type bytes. Fields `m`, `l` and `t` are text;
+  `h`, `g` and `x` have their tags stripped (a script is dropped with its text); other types are skipped. `idxfilesize` in the `.ifo` must match.
+- **Text**: `name.tsv`, UTF-8, one `word<TAB>definition` a line; `\n` inside a definition is a line break.
+
+Words match folded on both sides (lower case, accents off). Bounds, since a dictionary file is untrusted: `.idx` 256 MiB after unpacking
+(a gzip bomb stops at the limit), `.syn` 64 MiB, TSV 64 MiB and 1 MiB a line, 2,000,000 headwords, an entry read at most 256 KiB and shown as
+at most 4,000 runes, three entries a dictionary, 30 seconds to read one index, a parser panic recovered. `.dict.dz` is read chunk by chunk
+(each chunk capped to its stated size), never unpacked whole. The package opens no network and writes nothing (`TestDictNoNetwork`).
+
+**The word list** (`/me/words`, linked from the profile's reading panel) is private: `word_list` (migration 0022) has one row per person, book
+and folded word; `library.WordList` joins through `visible()` so a revoked book's words stay stored and are not listed. A person keeps at most
+5,000 words ("Your word list is full."). Each row shows the word, the sentence, the book and "Go to the page" (when the edition and sentence
+are still known). `/me/words.md` and `/me/words.json` download the person's own list. A merge moves a text book's words to the audiobook (a
+word both held stays once, the audiobook's); a split sends the ebook edition's words back.

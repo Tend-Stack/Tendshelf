@@ -392,3 +392,25 @@ func TestDictHostile(t *testing.T) {
 		}
 	})
 }
+
+// TestDictNoNetwork: the package may not import anything that opens a connection or writes a file.
+func TestDictNoNetwork(t *testing.T) {
+	files, _ := filepath.Glob("*.go")
+	banned := []string{`"net"`, `"net/http"`, `"os/exec"`, `"net/smtp"`, `"net/rpc"`}
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		src, _ := os.ReadFile(name)
+		for _, b := range banned {
+			if strings.Contains(string(src), "\t"+b+"\n") {
+				t.Errorf("%s imports %s", name, b)
+			}
+		}
+		for _, w := range []string{"os.Create(", "os.WriteFile(", "os.Remove(", "os.Rename(", "os.OpenFile(", "os.MkdirAll("} {
+			if strings.Contains(string(src), w) {
+				t.Errorf("%s calls %s: the package writes nothing", name, w)
+			}
+		}
+	}
+}
