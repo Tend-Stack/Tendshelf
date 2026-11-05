@@ -99,3 +99,9 @@
 @media (width >= 768px) and (width < 1280px) {
   .ts-skeleton-cards { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
+
+/* The thin line at the foot of a started book's cover (audio and ebook alike). The cover clips it to its
+   corners. The words "42 % through" are in the .ts-sr text beside it; the line itself is decoration, and
+   its length (not its colour alone) shows the share. --ts-value is set by shell.js from data-ts-value. */
+.ts-cover__line { position: absolute; inset: auto 0 0 0; height: 0.1875rem; background: var(--line); }
+.ts-cover__line-fill { position: absolute; inset: 0 auto 0 0; background: var(--accent-fill); }

@@ -2,7 +2,6 @@ package web
 
 import (
 	"fmt"
-	"math"
 	"net/url"
 	"slices"
 	"strconv"
@@ -236,20 +235,30 @@ func bookOverline(d library.BookDetail, place string, p *progress.Progress, now 
 // seriesTileState is the line under a tile of the series rail. The first match wins: the open book,
 // finished, started (a rounded share of 1 to 99, or "Started" when the length is unknown), the book
 // right after the open one ("Next in series"), else "Not started".
-func seriesTileState(i, at int, books []library.BookCard, prog map[string]progress.Progress) string {
+//
+// Listening and reading both count: a book finished in either format is finished, and a started one shows
+// the share of the format used last.
+func seriesTileState(i, at int, books []library.BookCard, prog map[string]progress.Progress, read map[string]progress.ReadingPosition) string {
 	if i == at {
 		return bookThisBook
 	}
-	p, ok := prog[books[i].ID]
+	var p *progress.Progress
+	if x, ok := prog[books[i].ID]; ok {
+		p = &x
+	}
+	var rp *progress.ReadingPosition
+	if x, ok := read[books[i].ID]; ok {
+		rp = &x
+	}
+	st := standIn(p, rp, books[i].DurationMs)
 	switch {
-	case ok && p.Finished():
+	case st.Finished:
 		return bookTileFinished
-	case ok && p.PositionMs > 0:
-		if p.DurationMs <= 0 {
+	case st.Started:
+		if st.Percent < 0 {
 			return bookTileStarted
 		}
-		pct := int(math.Round(float64(p.PositionMs) * 100 / float64(p.DurationMs)))
-		return fmt.Sprintf(bookTilePercent, min(max(pct, 1), 99))
+		return fmt.Sprintf(bookTilePercent, min(max(st.Percent, 1), 99))
 	case i == at+1 && at >= 0:
 		return bookTileUpNext
 	}
@@ -259,7 +268,7 @@ func seriesTileState(i, at int, books []library.BookCard, prog map[string]progre
 // bookRails fills the two rails under the tabs: the tiles of the book's first series (series are the
 // visible books in reading order, seqs their places, prog the person's progress on them) and the
 // other books by the first narrator. Everything passed in was read with the person's scope.
-func bookRails(v *pages.BookView, d library.BookDetail, series []library.BookCard, seqs map[string]string, prog map[string]progress.Progress, narrated []library.BookCard) {
+func bookRails(v *pages.BookView, d library.BookDetail, series []library.BookCard, seqs map[string]string, prog map[string]progress.Progress, read map[string]progress.ReadingPosition, narrated []library.BookCard) {
 	if len(d.Series) > 0 && len(series) > 1 {
 		v.SeriesTitle = bookSeriesPrefix + d.Series[0].Name
 		v.SeriesHref = "/series/" + d.Series[0].ID
@@ -275,7 +284,7 @@ func bookRails(v *pages.BookView, d library.BookDetail, series []library.BookCar
 			label := bookSeqLabel(seqs[c.ID])
 			tile.Title = joinNonEmpty(" · ", label, c.Title)
 			tile.AriaLabel = tile.Title
-			tile.Byline = seriesTileState(i, at, series, prog)
+			tile.Byline = seriesTileState(i, at, series, prog, read)
 			if i == at {
 				tile.Current = true
 				if label != "" {
@@ -288,7 +297,9 @@ func bookRails(v *pages.BookView, d library.BookDetail, series []library.BookCar
 		}
 		// Start series: the first visible book not yet finished, unless that is the open book.
 		for _, c := range series {
-			if p, ok := prog[c.ID]; ok && p.Finished() {
+			p, hasP := prog[c.ID]
+			rp, hasR := read[c.ID]
+			if hasP && p.Finished() || hasR && rp.Finished() {
 				continue
 			}
 			if c.ID != d.Book.ID {

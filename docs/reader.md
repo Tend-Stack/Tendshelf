@@ -114,3 +114,10 @@ is up; the book title is the page's h1 and a chapter's title its h2. One allowli
 box, so the text of later columns lies outside it until a turn. `TestBRContrast` holds `--read-ink` on every highlight colour
 and the selection wash in every theme (decision 0016); `TestBRVisual` captures the states beside the boards;
 `TestBRLayoutTime` lays out a 40,000-unit part with the CPU throttled 4x (300 ms) and times turns (16 ms at p95).
+
+## Series and cards across formats (L)
+
+Where a person stands in a book is the place of the format used last (`standIn`, `card_progress.go`): the newer client time of the
+listening place and the reading place; a book finished in either format is finished. Home's "Your series in progress" row, the
+series tiles on the book page and the thin line at the foot of a started book's cover (library grid and list, series page, shelves)
+all read it. A row keeps one control: Read when reading was last, Play otherwise. Nothing here writes a place.

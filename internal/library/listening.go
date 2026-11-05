@@ -146,13 +146,17 @@ func (r *Repo) ContinueBooks(ctx context.Context, sc Scope, userID string, limit
 	return audio, nil
 }
 
-// SeriesNext is the book to listen to next in a series the person has started.
+// SeriesNext is the book to listen to or read next in a series the person has started, in either format.
 type SeriesNext struct {
 	Series SeriesRef
 	Next   BookCard
 	// Started is true when Next already has unfinished progress (resume), false when it is a fresh start.
 	Started    bool
 	PositionMs int64
+	// ReadBP is the reading place of Next in hundredths of a percent; ReadLast is true when that reading
+	// is newer than the listening, or there is no listening (the row then offers Read, not Play).
+	ReadBP   int
+	ReadLast bool
 	// NextIndex is the 1-based place of Next in the visible reading order of the series.
 	NextIndex int
 	// Done and Total count the finished and the visible books of the series.
@@ -161,8 +165,9 @@ type SeriesNext struct {
 	UpdatedAt int64
 }
 
-// SeriesInProgress lists, for each series with a visible book the person has touched, the book to
-// listen to next: the book they stopped in if unfinished, else the next one in reading order. A series
+// SeriesInProgress lists, for each series with a visible book the person has touched (listening or
+// reading), the book to continue: the book they stopped in if unfinished, else the next one in order.
+// A book read to the end counts as done, whichever format it was. A series
 // that is complete is left out. Newest activity first. The caller drops a series whose Next is the
 // hero book (one resume button per book).
 func (r *Repo) SeriesInProgress(ctx context.Context, sc Scope, userID string, limit int) ([]SeriesNext, error) {
@@ -171,23 +176,27 @@ func (r *Repo) SeriesInProgress(ctx context.Context, sc Scope, userID string, li
 		id, seq       string
 		has, finished bool
 		pos, updated  int64
+		readBP        int
+		readAt        int64 // client time of the reading place, 0 when none
+		listenAt      int64 // client time of the listening place, 0 when none
 	}
 	type series struct {
 		ref     SeriesRef
 		books   []entry
 		updated int64
 	}
-	args := append([]any{userID, userID}, w.args...)
+	args := append([]any{userID, userID, userID, userID}, w.args...)
 	var order []string
 	bySeries := map[string]*series{}
 	_, err := many(ctx, r.st.Reader(), func(s scanner) (struct{}, error) {
 		var sid, name string
 		var e entry
-		var has, fin int
-		if err := s.Scan(&sid, &name, &e.id, &e.seq, &has, &fin, &e.pos, &e.updated); err != nil {
+		var has, fin, rHas, rFin int
+		if err := s.Scan(&sid, &name, &e.id, &e.seq, &has, &fin, &e.pos, &e.listenAt, &rHas, &rFin, &e.readBP, &e.readAt); err != nil {
 			return struct{}{}, err
 		}
-		e.has, e.finished = has == 1, fin == 1
+		e.has, e.finished = has == 1 || rHas == 1, fin == 1 || rFin == 1
+		e.updated = max(e.listenAt, e.readAt)
 		sr := bySeries[sid]
 		if sr == nil {
 			sr = &series{ref: SeriesRef{ID: sid, Name: name}}
@@ -200,11 +209,15 @@ func (r *Repo) SeriesInProgress(ctx context.Context, sc Scope, userID string, li
 		sr.updated = max(sr.updated, e.updated)
 		return struct{}{}, nil
 	}, `SELECT bs.series_id, sr.name, b.id, bs.sequence, p.user_id IS NOT NULL, p.finished_at IS NOT NULL,
-  COALESCE(p.position_ms, 0), COALESCE(p.client_updated_at, 0)`+fromVisible+`
+  COALESCE(p.position_ms, 0), COALESCE(p.client_updated_at, 0),
+  rp.user_id IS NOT NULL, rp.finished_at IS NOT NULL, COALESCE(rp.percent_bp, 0), COALESCE(rp.client_updated_at, 0)`+fromVisible+`
   JOIN book_series bs ON bs.book_id = b.id JOIN series sr ON sr.id = bs.series_id
   LEFT JOIN progress p ON p.book_id = b.id AND p.user_id = ?
-  WHERE EXISTS (SELECT 1 FROM book_series bs2 JOIN progress p2 ON p2.book_id = bs2.book_id
-                WHERE bs2.series_id = bs.series_id AND p2.user_id = ?) AND `+w.sql()+`
+  LEFT JOIN reading_positions rp ON rp.book_id = b.id AND rp.user_id = ?
+  WHERE (EXISTS (SELECT 1 FROM book_series bs2 JOIN progress p2 ON p2.book_id = bs2.book_id
+                 WHERE bs2.series_id = bs.series_id AND p2.user_id = ?)
+         OR EXISTS (SELECT 1 FROM book_series bs3 JOIN reading_positions r3 ON r3.book_id = bs3.book_id
+                    WHERE bs3.series_id = bs.series_id AND r3.user_id = ?)) AND `+w.sql()+`
   ORDER BY bs.series_id, CASE WHEN bs.sequence GLOB '[0-9]*' THEN CAST(bs.sequence AS REAL) END ASC NULLS LAST,
   `+titleKey+` COLLATE NOCASE, b.id`, args...)
 	if err != nil {
@@ -286,6 +299,8 @@ func (r *Repo) SeriesInProgress(ctx context.Context, sc Scope, userID string, li
 		sn := SeriesNext{Series: p.sr.ref, Next: c, Started: p.started, NextIndex: p.index, Done: done, Total: len(p.sr.books), UpdatedAt: p.sr.updated}
 		if p.started {
 			sn.PositionMs = p.next.pos
+			sn.ReadBP = p.next.readBP
+			sn.ReadLast = p.next.readAt > 0 && p.next.readAt > p.next.listenAt
 		}
 		out = append(out, sn)
 	}

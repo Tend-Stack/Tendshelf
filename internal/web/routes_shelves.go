@@ -291,8 +291,16 @@ func (s *server) shelfPage(w http.ResponseWriter, r *http.Request, status int, r
 			v.ShareNote, v.ShareLabel = shelfSharedNote, shelfStopSharing
 		}
 	}
+	cards := make([]components.CardView, len(page.Books))
 	for i, b := range page.Books {
-		c := cardView(b)
+		cards[i] = cardView(b)
+	}
+	if err := s.withCardProgress(r.Context(), u.ID, page.Books, cards); err != nil {
+		s.serverError(w, r, "shelf progress", err)
+		return
+	}
+	for i, b := range page.Books {
+		c := cards[i]
 		if !own {
 			v.Items = append(v.Items, pages.ShelfItemView{Card: c})
 			continue

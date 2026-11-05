@@ -679,6 +679,16 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   15 s and a lost beacon whose place still lands) and the whole `TestOffline*` set. Limits: nothing stores the text yet (G6b: the
   Download button, the daily revision check); the browser tests store it from page script; not tried on a phone (manual check
   after G6b).
+- **L Leftovers: series across formats** (done, 2026-11-05; [plan](plans/m5-great-reader.md)): `SeriesInProgress` counts reading
+  as well as listening (a book read to the end is done, whichever format; `ReadBP`, `ReadLast` say which was newer);
+  Home's series row keeps one control, Round Read or Round Play by `lastFormat`, none for the hero's book or without a right;
+  series tiles on the book page show the share of the format used last and skip a book finished in either (`standIn`,
+  `progress.ReadingForBooks`). Step L4 (operator yes, 2026-11-04): a 3 px line at the foot of the cover of a started, unfinished
+  book on the library grid and list, series page and shelf rows, from the format used last, drawn by `Cover` (`pages-library.css`,
+  `ts-cover__line`; no core CSS growth), two queries per page and only the person's own rows; text alternative NEW
+  "{n} % through" (hidden words beside the line). Checks: `TestSeriesFormats*`, `make check`, `make a11y` 0 findings,
+  `make page-weight`, `TestPerfLibraryPage` median 194 ms (budget 300). Captures: `TestSeriesFormatsVisual`. Limits: Home's
+  "New on the shelf" and person pages draw no line; no board shows the line.
 - **Later** (a note each in the plan): G1 look-up and word list, G2 reading stats, G3 print pages, G4 skim, G5 comfort,
   G6 offline reading, G7 collections and sending a book; then OPDS and KOReader sync.
 

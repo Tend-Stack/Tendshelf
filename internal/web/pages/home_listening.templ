@@ -27,6 +27,8 @@ type HomeSeriesRowView struct {
 	Cover            components.CardView
 	Name, Meta, Href string
 	Play             *components.PlayButtonView
+	// Read replaces Play for a book the person last read (nil otherwise): the row keeps one control.
+	Read *components.ReadButtonView
 }
 
 // HomeSeriesView is the series row with its heading.
@@ -103,6 +105,9 @@ templ HomeSeries(v HomeSeriesView) {
 					</a>
 					if r.Play != nil {
 						@components.PlayButton(*r.Play)
+					}
+					if r.Read != nil {
+						@components.ReadButton(*r.Read)
 					}
 				</div>
 			}
