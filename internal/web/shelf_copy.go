@@ -9,6 +9,7 @@ const (
 	shelfAddLabel  = "Add to shelf"
 
 	// New.
+	shelfToRead        = "To read" // the plain shelf one tap makes (G7)
 	shelfTitle         = "Your shelves"
 	shelfSideNone      = "Shelves"
 	shelfSideAll       = "All shelves"

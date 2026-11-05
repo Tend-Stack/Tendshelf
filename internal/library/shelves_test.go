@@ -418,3 +418,20 @@ func TestShelfCascade(t *testing.T) {
 		t.Fatalf("rows after owner delete = %d", n)
 	}
 }
+
+func TestShelfNamed(t *testing.T) {
+	r, _, _, _ := shelfSeed(t, 0)
+	ctx := t.Context()
+	a, err := r.ShelfNamed(ctx, "us_a", "To read")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := r.ShelfNamed(ctx, "us_a", "to READ")
+	if err != nil || b.ID != a.ID {
+		t.Fatalf("second call: %v %v", b.ID, err)
+	}
+	c, err := r.ShelfNamed(ctx, "us_b", "To read")
+	if err != nil || c.ID == a.ID {
+		t.Fatalf("another person shares the shelf: %v", err)
+	}
+}

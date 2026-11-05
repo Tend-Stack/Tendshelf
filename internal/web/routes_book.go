@@ -434,11 +434,27 @@ func (s *server) getSeries(w http.ResponseWriter, r *http.Request) {
 		Authors:   bookLinks(bookUniquePeople(sp.Books, false, 2), "authors"),
 		Narrators: bookLinks(bookUniquePeople(sp.Books, true, 2), "narrators"),
 	}
-	for _, b := range sp.Books {
+	ids := make([]string, len(sp.Books))
+	for i, b := range sp.Books {
+		ids[i] = b.ID
+	}
+	prog, err := s.progress.ForBooks(ctx, currentUser(r).ID, ids)
+	if err != nil {
+		s.serverError(w, r, "series progress", err)
+		return
+	}
+	reads, err := s.progress.ReadingForBooks(ctx, currentUser(r).ID, ids)
+	if err != nil {
+		s.serverError(w, r, "series reading", err)
+		return
+	}
+	for i, b := range sp.Books {
 		total += b.DurationMs
 		c := cardView(b)
-		c.Byline = bookSeqLabel(seqs[b.ID])
-		c.AriaLabel = joinNonEmpty(" ", c.Byline, b.Title)
+		place := bookSeqLabel(seqs[b.ID])
+		// The line under a row says the place and where the person stands: listening and reading both count.
+		c.Byline = joinNonEmpty(" · ", place, seriesTileState(i, -1, sp.Books, prog, reads))
+		c.AriaLabel = joinNonEmpty(" ", place, b.Title)
 		v.Rows = append(v.Rows, c)
 	}
 	if t := hoursMinutesText(total); t != "" {
@@ -451,7 +467,7 @@ func (s *server) getSeries(w http.ResponseWriter, r *http.Request) {
 	for i := range v.Rows {
 		if v.Rows[i].ProgressLabel != "" {
 			// Rows were relabelled with the place in the series above; the percent is added after it.
-			v.Rows[i].AriaLabel = joinNonEmpty(" ", v.Rows[i].Byline, sp.Books[i].Title) + ", " + v.Rows[i].ProgressLabel
+			v.Rows[i].AriaLabel = joinNonEmpty(" ", bookSeqLabel(seqs[sp.Books[i].ID]), sp.Books[i].Title) + ", " + v.Rows[i].ProgressLabel
 		}
 	}
 	s.pageStyled(w, r, http.StatusOK, sp.Name, "library", pages.Series(v), nil, pages.BookStyles...)

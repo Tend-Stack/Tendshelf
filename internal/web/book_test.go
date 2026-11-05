@@ -399,7 +399,7 @@ func TestSeriesPage(t *testing.T) {
 	if got := browseTitles(body); strings.Join(got, ",") != "First,Second,Third" {
 		t.Errorf("order %v, want First, Second, Third", got)
 	}
-	for _, want := range []string{"Book 1 · 2 h", "Book 3 · 1 h", "3 h 30 m in all", ">Books in order<", "by ", "read by "} {
+	for _, want := range []string{"Book 1 · Not started · 2 h", "Book 3 · Not started · 1 h", "3 h 30 m in all", ">Books in order<", "by ", "read by "} {
 		if !strings.Contains(body, want) {
 			t.Errorf("series page lacks %q", want)
 		}

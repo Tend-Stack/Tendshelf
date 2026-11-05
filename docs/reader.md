@@ -172,3 +172,12 @@ Keep awake takes a screen wake lock while the page is visible, lets go after 10 
 leaves; a refusal or a missing API is silent. Auto-hide sets `data-chrome="off"` 3 s after the last pointer or key unless
 focus is in the bar or dock, a sheet or dialog is open, or text is selected. There is no brightness control: no web API sets
 the screen's brightness, and a dimming overlay would only lower contrast.
+
+## Series and shelves (G7)
+
+The last part of a book that belongs to a series ends with a quiet link, "Next in {series}: {title}", under the finished
+button (`reader_series.go`). It names the book after this one in the first series among the books the person can see, so a
+hidden book is skipped and its title never shows; the book page picks listening or reading. The series page rows carry the place
+and the person's state ("Book 2 · 42%"), listening and reading both counting. "To read" is an ordinary shelf made the first time
+the person taps it in the Add to shelf sheet (shown first, ticked when held); they may rename, empty or delete it, and the next tap
+makes a new one. Send a book by link is not part of this.

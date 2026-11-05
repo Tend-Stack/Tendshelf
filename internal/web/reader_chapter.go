@@ -230,6 +230,7 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "reader chapter", err)
 		return
 	}
+	s.readerNextBook(r, rc, chap.view.End)
 	v, err := s.readerView(r, rc, chap, pl)
 	if err != nil {
 		s.serverError(w, r, "reader view", err)
@@ -278,6 +279,7 @@ func (s *server) getReaderChapter(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "reader chapter fragment", err)
 		return
 	}
+	s.readerNextBook(r, rc, chap.view.End)
 	// A fragment is appended or swapped in place; the page-only previous link has no use there.
 	chap.view.PrevHref, chap.view.PrevLabel = "", ""
 	s.fragment(w, r, http.StatusOK, pages.ReaderChapter(chap.view))

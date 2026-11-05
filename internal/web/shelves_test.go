@@ -260,7 +260,7 @@ func TestShelfSheet(t *testing.T) {
 	for _, m := range pressed {
 		got[m[2]] = m[1]
 	}
-	if got["Sleep"] != "false" || got["Trip"] != "true" || len(got) != 2 {
+	if got["Sleep"] != "false" || got["Trip"] != "true" || got["To read"] != "false" || len(got) != 3 {
 		t.Fatalf("sheet toggles = %v", got)
 	}
 	if !strings.Contains(sheet, `action="/shelves/`+two+`/items/`+books[0].ID+`/remove"`) || !strings.Contains(sheet, `action="/shelves/`+one+`/items"`) || !strings.Contains(sheet, "Create and add") {

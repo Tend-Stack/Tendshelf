@@ -118,6 +118,32 @@ func (r *Repo) CreateShelf(ctx context.Context, ownerID, name string) (Shelf, er
 	return s, nil
 }
 
+// ShelfNamed returns ownerID's shelf called name (ignoring case), making it first when the person has none.
+// Two taps at once cannot make two: the unique name index refuses the second insert and the winner is read again.
+func (r *Repo) ShelfNamed(ctx context.Context, ownerID, name string) (Shelf, error) {
+	name, err := cleanShelfName(name)
+	if err != nil {
+		return Shelf{}, err
+	}
+	const q = `SELECT id FROM shelves WHERE owner_id = ? AND name = ? COLLATE NOCASE`
+	var id string
+	err = r.st.Reader().QueryRowContext(ctx, q, ownerID, name).Scan(&id)
+	if err == nil {
+		return r.Shelf(ctx, ownerID, id)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return Shelf{}, err
+	}
+	sh, err := r.CreateShelf(ctx, ownerID, name)
+	if errors.Is(err, ErrConflict) {
+		if err = r.st.Reader().QueryRowContext(ctx, q, ownerID, name).Scan(&id); err != nil {
+			return Shelf{}, err
+		}
+		return r.Shelf(ctx, ownerID, id)
+	}
+	return sh, err
+}
+
 // RenameShelf renames a shelf of ownerID.
 func (r *Repo) RenameShelf(ctx context.Context, ownerID, id, name string) error {
 	name, err := cleanShelfName(name)

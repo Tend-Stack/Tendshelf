@@ -559,6 +559,7 @@ func sweepRows() []sweepRow {
 		sweepPost("POST /me/sessions/signout-others", sweepStatic("/me/sessions/signout-others"), nil, sweepSame(303), ""),
 		// Shelves, the person's own
 		sweepPost("POST /shelves", sweepStatic("/shelves"), sweepFormOf(url.Values{"name": {"Sweep new shelf"}}), shelfPostWant, ""),
+		sweepPost("POST /books/{id}/to-read", sweepBookPath("/to-read"), nil, shelfBookWant, ""),
 		sweepPost("POST /shelves/{id}/rename", shelfOf("/rename", false), sweepFormOf(url.Values{"name": {"Renamed"}}), shelfPostWant, ""),
 		// Only staff share their own shelf; a member's own shelf and a guest's are 404.
 		sweepPost("POST /shelves/{id}/share", shelfOf("/share", false), sweepFormOf(url.Values{"shared": {"1"}}), sweepStaff(http.StatusSeeOther, http.StatusNotFound), ""),
