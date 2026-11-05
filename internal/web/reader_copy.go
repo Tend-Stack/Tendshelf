@@ -61,3 +61,33 @@ const (
 	readerGoThere      = "Go there"
 	readerStayHere     = "Stay here"
 )
+
+// NEW (RD3): footnotes, back chip, colours, bookmark, search, export and plain errors.
+const (
+	readerGoToNote     = "Go to the note"
+	readerFootnote     = "Footnote"
+	readerBack         = "Back to where I was"
+	readerHlYellow     = "Highlight in yellow"
+	readerHlGreen      = "Highlight in green"
+	readerHlBlue       = "Highlight in blue"
+	readerHlPink       = "Highlight in pink"
+	readerBookmarkPage = "Bookmark this page"
+	readerSave         = "Save"
+	readerCancel       = "Cancel"
+	readerSearch       = "Search in book"
+	readerSearchTitle  = "Search"
+	readerSearchField  = "Search this book"
+	readerSearchGo     = "Search"
+	readerSearchNone   = "Nothing in this book matches “%s”."
+	readerSearchShort  = "Type at least two characters."
+	readerSearchMax    = "Showing the first 200 matches."
+	readerSearchOpen   = "Open"
+	readerExport       = "Export highlights and notes"
+	readerExportMd     = "Markdown"
+	readerExportTxt    = "Plain text"
+	readerBmRemoved    = "Bookmark removed."
+	readerCannotOpen   = "Tendshelf cannot open this book right now."
+	readerPartFailed   = "This part did not load."
+	readerTryAgain     = "Try again"
+	readerBackToBook   = "Back to the book"
+)

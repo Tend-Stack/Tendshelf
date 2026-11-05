@@ -34,6 +34,7 @@ func (s *server) registerReader(mux *http.ServeMux) {
 	mux.HandleFunc("POST /hx/books/{id}/highlights", s.postReaderHighlight)
 	mux.HandleFunc("PATCH /hx/highlights/{id}", s.patchReaderHighlight)
 	mux.HandleFunc("DELETE /hx/highlights/{id}", s.deleteReaderHighlight)
+	s.registerReaderMarks(mux)
 }
 
 // readerDocCache keeps the last few parsed documents. Documents are content addressed, so a hit is always right.
@@ -114,11 +115,18 @@ func (s *server) readerCtx(w http.ResponseWriter, r *http.Request) (readerCtx, b
 		return rc, false
 	}
 	if !found {
+		if rc.ed.ID != "" && rc.doc == nil { // the edition is on record but its document will not load
+			s.readerTrouble(w, r, book.ID, errReaderDoc)
+			return rc, false
+		}
 		s.notFound(w, r)
 		return rc, false
 	}
 	return rc, true
 }
+
+// errReaderDoc is the log cause of a book whose document file is missing.
+var errReaderDoc = errors.New("reader: the document file is missing")
 
 // readerLoad opens the edition of a book the person may already read: the named one (it must be the current
 // edition of a ready file on this book) or the one they read by default. found is false when there is none.
@@ -189,7 +197,8 @@ func rdrSIDExists(d *ebook.Doc, sid string) (int, bool) {
 // readerWords is the copy the client script needs, as JSON on the reader root (reader.js has no words of its own).
 func readerWords() string {
 	b, _ := json.Marshal(map[string]string{"pageOf": readerPageOf, "ch": readerLeftChapter, "chAbout": readerLeftChapAbt,
-		"bk": readerLeftBook, "bkAbout": readerLeftBookAbt, "further": readerAnotherDev, "go": readerGoThere, "stay": readerStayHere})
+		"bk": readerLeftBook, "bkAbout": readerLeftBookAbt, "further": readerAnotherDev, "go": readerGoThere, "stay": readerStayHere,
+		"back": readerBack, "failed": readerPartFailed, "retry": readerTryAgain})
 	return string(b)
 }
 
@@ -206,6 +215,8 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	if err != nil {
 		return v, err
 	}
+	v.SearchLabel, v.SearchHref = readerSearch, rc.href("sheet", "search")
+	v.BookmarkLabel, v.BookmarkURL = readerBookmarkPage, "/books/"+id+"/bookmarks"
 	v.Look = readerLook(rs)
 	v.SettingsLabel, v.SettingsHref = readerSettings, rc.href("sheet", "reading")
 	v.SettingsModule = s.assetOr("js/reader-settings.js")
@@ -222,6 +233,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 		Before: chap.view.Before, ChapterChars: chChars, Save: "/reading/" + id,
 		Flow: rs.Flow, Lang: rc.doc.Meta.Language,
 		Pages: rc.doc.PageCount, Chapters: len(rc.doc.Chapters), Words: readerWords(),
+		NotesSrc: s.assetOr("js/reader-notes.js"),
 	}
 	// The speaker: only with the right to listen and an audiobook to play. It starts at the audiobook's own
 	// saved place (never the reading place) and writes neither position itself.
@@ -245,7 +257,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	v.Marks = pages.ReaderMarksBar{
 		Label: readerSelLabel, Highlight: readerHighlight, Note: readerNote, Copy: readerCopy,
 		Action: "/hx/books/" + id + "/highlights", CSRF: s.csrf.TokenFrom(ctx),
-		Count: fmt.Sprintf(readerMarksCount, len(hls)),
+		Count: fmt.Sprintf(readerMarksCount, len(hls)), Swatches: readerSwatches(), Save: readerSave, Cancel: readerCancel,
 	}
 	return v, nil
 }
@@ -255,6 +267,9 @@ func (s *server) readerSheet(r *http.Request, rc readerCtx, kind string, cur int
 	ctx, u, q := r.Context(), currentUser(r), r.URL.Query()
 	sv := pages.ReaderSheetView{Kind: kind, CloseLabel: readerCloseSheet, BookID: rc.book.ID,
 		CloseHref: rc.href("ch", strconv.Itoa(cur))}
+	if kind == "search" {
+		return s.readerSearchSheet(r, rc, cur), nil
+	}
 	if kind == "contents" {
 		sv.Title = readerTocTitle
 		n := 0
@@ -275,10 +290,15 @@ func (s *server) readerSheet(r *http.Request, rc readerCtx, kind string, cur int
 	if err != nil {
 		return sv, err
 	}
-	bms, err := s.progress.Bookmarks(ctx, u.ID, rc.book.ID, false)
+	bms, err := s.progress.TextBookmarks(ctx, u.ID, rc.book.ID)
 	if err != nil {
 		return sv, err
 	}
+	md, txt := "/books/"+rc.book.ID+"/read/marks.md", "/books/"+rc.book.ID+"/read/marks.txt"
+	if rc.explicit {
+		md, txt = md+"?edition="+url.QueryEscape(rc.ed.ID), txt+"?edition="+url.QueryEscape(rc.ed.ID)
+	}
+	sv.Exports = []pages.ReaderExport{{Label: readerExport + ": " + readerExportMd, Href: md}, {Label: readerExport + ": " + readerExportTxt, Href: txt}}
 	csrf := s.csrf.TokenFrom(ctx)
 	var hlItems, noteItems, bmItems []pages.ReaderMarkItem
 	for _, h := range hls {
@@ -289,7 +309,8 @@ func (s *server) readerSheet(r *http.Request, rc readerCtx, kind string, cur int
 		}
 	}
 	for _, b := range bms {
-		it := pages.ReaderMarkItem{ID: b.ID, BookID: rc.book.ID, Kind: readerKindBm, Note: b.Note}
+		it := pages.ReaderMarkItem{ID: b.ID, BookID: rc.book.ID, Kind: readerKindBm, Note: b.Note, Quote: rdrSentenceText(rc, b.EditionID, b.SID),
+			CSRF: csrf, DeleteHref: "/bookmarks/" + b.ID + "/delete", PostDelete: true, DeleteLabel: readerDelete}
 		if c, _, _, ok := ebook.ParseSID(b.SID); ok && b.EditionID == rc.ed.ID {
 			it.OpenHref = rc.href("ch", strconv.Itoa(c), "at", b.SID) + "#s-" + b.SID
 			it.OpenLabel = fmt.Sprintf(readerOpenPage, c)

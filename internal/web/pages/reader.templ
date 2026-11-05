@@ -40,6 +40,7 @@ type ReaderEnd struct{ Text, Label, Action, CSRF string }
 // the sizes it needs for page numbers and time left, and where to save.
 type ReaderRoot struct {
 	At, Off, Flow, Save, Lang, Words string // Words is JSON: the sentences the client script shows
+	NotesSrc                         string // address of reader-notes.js, loaded on the first footnote
 	Cpm, TotalChars, ChapterChars    int
 	Pages, Chapters                  int // the book's standard pages (p. n of N) and its chapters
 	Before                           int
@@ -49,6 +50,7 @@ type ReaderRoot struct {
 // ReaderMarkItem is one row of the "Highlights and notes" sheet.
 type ReaderMarkItem struct {
 	ID, BookID, Kind, Quote, Note string
+	PostDelete                    bool // a bookmark is removed by a POST, a highlight by DELETE
 	OpenLabel               string
 	OpenHref, DeleteHref    string
 	NoteHref, SaveLabel     string
@@ -71,6 +73,43 @@ type ReaderSheetView struct {
 	Chapters                                   []ReaderContentsItem
 	Filters                                    []ReaderFilter
 	Items                                      []ReaderMarkItem
+	Exports                                    []ReaderExport // download links of the marks sheet
+	Search                                     *ReaderSearchView
+}
+
+// ReaderExport is a download link of the marks sheet.
+type ReaderExport struct{ Label, Href string }
+
+// ReaderHit is one search result: the words around the match (the match itself in Hit) and where it opens.
+type ReaderHit struct {
+	Chapter, Before, Hit, After, Href string
+}
+
+// ReaderSearchView is the search sheet: the form and, once there is a question, its answers.
+type ReaderSearchView struct {
+	Action, EditionID, Q, Label, Button string
+	Hits                                ReaderHits
+}
+
+// ReaderHits is the answer list; the htmx search route returns just this.
+type ReaderHits struct {
+	Message string // nothing found or too short
+	Items   []ReaderHit
+	Note    string // shown after a full list (the cap)
+}
+
+// ReaderNoteView is a footnote popup: the note's paragraphs and the way to its place in the book.
+type ReaderNoteView struct {
+	Label, GoLabel, GoHref, CloseLabel string
+	Paras                              []string // already escaped inside (see web/reader_render.go)
+}
+
+// ReaderSwatch is one colour of the selection toolbar.
+type ReaderSwatch struct{ Colour, Label string }
+
+// ReaderProblem is the plain page for a book that cannot be opened.
+type ReaderProblem struct {
+	Title, Message, BackLabel, BackHref string
 }
 
 // ReaderContentsItem is a chapter in the contents.
@@ -94,6 +133,8 @@ type ReaderView struct {
 	Look                        ReaderLook // the person's reading settings (reader.v1)
 	SettingsLabel, SettingsHref string     // the Aa link
 	SettingsModule              string     // address of reader-settings.js
+	SearchLabel, SearchHref     string
+	BookmarkLabel, BookmarkURL  string // the bookmark-this-page button and where its form posts
 }
 
 // ReaderFooter is the line under the text: the page number and the link to the contents.
@@ -105,8 +146,10 @@ type ReaderFooter struct {
 // ReaderMarksBar is the selection toolbar and the hidden form it posts.
 type ReaderMarksBar struct {
 	Label, Highlight, Note, Copy string
-	Action, CSRF                         string
-	Count                                string
+	Action, CSRF                 string
+	Count                        string
+	Swatches                     []ReaderSwatch
+	Save, Cancel                 string // the note dialog's buttons
 }
 
 // Reader is the page: the top bar, the text, the footer and the selection toolbar.
@@ -120,11 +163,17 @@ templ Reader(v ReaderView) {
 			if v.Speaker != nil {
 				@components.PlayButton(*v.Speaker)
 			}
+			<a class="ts-iconbtn" href={ templ.SafeURL(v.SearchHref) } aria-label={ v.SearchLabel }>
+				@components.Icon("search", false)
+			</a>
 			<a class="ts-iconbtn" href={ templ.SafeURL(v.Footer.ContentsHref) } aria-label={ v.Footer.ContentsLabel }>
 				@components.Icon("chapters", false)
 			</a>
-			<a class="ts-iconbtn" href={ templ.SafeURL(v.MarksHref) } aria-label={ v.MarksLabel }>
+			<button type="button" class="ts-iconbtn" data-ts-mark="bookmark" aria-label={ v.BookmarkLabel }>
 				@components.Icon("bookmark", false)
+			</button>
+			<a class="ts-iconbtn" href={ templ.SafeURL(v.MarksHref) } aria-label={ v.MarksLabel }>
+				@components.Icon("edit", false)
 			</a>
 			<a
 				class="ts-iconbtn ts-aa"
@@ -156,6 +205,7 @@ templ Reader(v ReaderView) {
 			data-chapter-count={ strconv.Itoa(v.Root.Chapters) }
 			data-copy={ v.Root.Words }
 			data-pages-src={ v.PagesModule }
+			data-notes-src={ v.Root.NotesSrc }
 			if v.ReaderModule != "" {
 				data-ts-module={ v.ReaderModule }
 			}
@@ -178,7 +228,9 @@ templ Reader(v ReaderView) {
 			</div>
 		</footer>
 		<div id="reader-marks" class="ts-selmenu" role="toolbar" aria-label={ v.Marks.Label } if v.MarksModule != "" { data-ts-module={ v.MarksModule } } hidden>
-			<button type="button" class="ts-selmenu__item" data-ts-mark="highlight"><span class="ts-selmenu__swatch"></span>{ v.Marks.Highlight }</button>
+			for _, sw := range v.Marks.Swatches {
+				<button type="button" class="ts-selmenu__item ts-selmenu__item--swatch" data-ts-mark="highlight" data-colour={ sw.Colour } aria-label={ sw.Label }><span class="ts-selmenu__swatch" data-colour={ sw.Colour }></span></button>
+			}
 			<button type="button" class="ts-selmenu__item" data-ts-mark="note">
 				@components.Icon("edit", false)
 				{ v.Marks.Note }
@@ -199,6 +251,19 @@ templ Reader(v ReaderView) {
 			<input type="hidden" name="note"/>
 			<input type="hidden" name="client_id"/>
 		</form>
+		<form id="reader-bm-form" hidden hx-post={ v.BookmarkURL } hx-swap="none">
+			<input type="hidden" name="_csrf" value={ v.Marks.CSRF }/>
+			<input type="hidden" name="edition_id" value={ v.EditionID }/>
+			<input type="hidden" name="sid"/>
+			<input type="hidden" name="client_id"/>
+		</form>
+		<dialog id="reader-note-dialog" class="ts-readernote" aria-label={ v.Marks.Note }>
+			<form method="dialog">
+				<textarea name="note" rows="4" maxlength="2000" aria-label={ v.Marks.Note }></textarea>
+				<button type="submit" class="ts-btn" value="save">{ v.Marks.Save }</button>
+				<button type="submit" class="ts-btn ts-btn--quiet" value="cancel" formnovalidate>{ v.Marks.Cancel }</button>
+			</form>
+		</dialog>
 		<span id="reader-marks-count" hidden>{ v.Marks.Count }</span>
 	</div>
 }
@@ -288,7 +353,9 @@ templ ReaderSheet(v ReaderSheetView) {
 					@components.Icon("close", false)
 				</a>
 			</div>
-			if v.Kind == "contents" {
+			if v.Search != nil {
+				@ReaderSearchForm(*v.Search)
+			} else if v.Kind == "contents" {
 				<ol class="ts-reader__toc">
 					for _, c := range v.Chapters {
 						<li>
@@ -327,6 +394,13 @@ templ ReaderSheet(v ReaderSheetView) {
 						@ReaderMarkRow(it)
 					}
 				</ul>
+				if len(v.Exports) > 0 {
+					<div class="ts-reader__export">
+						for _, e := range v.Exports {
+							<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(e.Href) } download hx-boost="false">{ e.Label }</a>
+						}
+					</div>
+				}
 			}
 		</div>
 	</div>
@@ -353,7 +427,9 @@ templ ReaderMarkRow(it ReaderMarkItem) {
 				<button type="submit" class="ts-btn ts-btn--quiet">{ it.SaveLabel }</button>
 			</form>
 		}
-		if it.DeleteHref != "" {
+		if it.DeleteHref != "" && it.PostDelete {
+			<button type="button" class="ts-btn ts-btn--quiet" hx-post={ it.DeleteHref } hx-swap="none">{ it.DeleteLabel }</button>
+		} else if it.DeleteHref != "" {
 			<button type="button" class="ts-btn ts-btn--quiet" hx-delete={ it.DeleteHref } hx-swap="none">{ it.DeleteLabel }</button>
 		}
 	</li>
@@ -367,4 +443,66 @@ templ ReaderMarksCount(text string) {
 // ReaderMarkGone removes a row of the marks panel.
 templ ReaderMarkGone(id string) {
 	<li id={ "reader-mark-" + id } hx-swap-oob="delete"></li>
+}
+
+// ReaderSearchForm is the search sheet body: a plain GET form that also asks htmx for the answers alone.
+templ ReaderSearchForm(v ReaderSearchView) {
+	<form class="ts-reader__search" method="get" action={ templ.SafeURL(v.Action) } hx-get={ v.Action + "/search" } hx-target="#reader-hits" hx-swap="innerHTML" hx-push-url="false" hx-boost="false">
+		<input type="hidden" name="sheet" value="search"/>
+		if v.EditionID != "" {
+			<input type="hidden" name="edition" value={ v.EditionID }/>
+		}
+		<label class="caption" for="reader-q">{ v.Label }</label>
+		<input id="reader-q" class="ts-input" type="search" name="q" value={ v.Q } autocomplete="off" enterkeyhint="search"/>
+		<button type="submit" class="ts-btn">{ v.Button }</button>
+	</form>
+	<div id="reader-hits" aria-live="polite">
+		@ReaderHitList(v.Hits)
+	</div>
+}
+
+// ReaderHitList is the answers to a search.
+templ ReaderHitList(h ReaderHits) {
+	if h.Message != "" {
+		<p class="body">{ h.Message }</p>
+	}
+	if len(h.Items) > 0 {
+		<ol class="ts-reader__hits">
+			for _, it := range h.Items {
+				<li>
+					<a href={ templ.SafeURL(it.Href) } hx-boost="false">
+						<span class="caption">{ it.Chapter }</span>
+						<span>{ it.Before }<mark>{ it.Hit }</mark>{ it.After }</span>
+					</a>
+				</li>
+			}
+		</ol>
+	}
+	if h.Note != "" {
+		<p class="caption">{ h.Note }</p>
+	}
+}
+
+// ReaderNote is the footnote popup, a dialog the client opens as soon as it arrives.
+templ ReaderNote(v ReaderNoteView) {
+	<dialog class="ts-readernote ts-readernote--note" aria-label={ v.Label }>
+		for _, p := range v.Paras {
+			<p>@templ.Raw(p)</p>
+		}
+		<div class="ts-readernote__actions">
+			<a class="ts-btn" href={ templ.SafeURL(v.GoHref) } hx-boost="false">{ v.GoLabel }</a>
+			<button type="button" class="ts-btn ts-btn--quiet" data-close>{ v.CloseLabel }</button>
+		</div>
+	</dialog>
+}
+
+// ReaderTrouble is the page for a book that cannot be opened: plain words and the way back.
+templ ReaderTrouble(v ReaderProblem) {
+	<div class="ts-readerpage ts-readerpage--trouble">
+		<main class="ts-reader__trouble">
+			<h1 class="title">{ v.Title }</h1>
+			<p class="body">{ v.Message }</p>
+			<a class="ts-btn" href={ templ.SafeURL(v.BackHref) }>{ v.BackLabel }</a>
+		</main>
+	</div>
 }

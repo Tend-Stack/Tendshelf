@@ -241,9 +241,19 @@ func (s *Service) BookmarksByIDs(ctx context.Context, userID string, ids []strin
 	return out, nil
 }
 
-// Bookmarks lists the person's live bookmarks on a book, newest first; withNotes keeps only those with a note.
+// Bookmarks lists the person's live audio bookmarks on a book (the Bookmarks tab), newest first; withNotes keeps
+// only those with a note. A place in the text (sid set) belongs to the reader's marks sheet: see TextBookmarks.
 func (s *Service) Bookmarks(ctx context.Context, userID, bookID string, withNotes bool) ([]Bookmark, error) {
-	q := selectBookmark + ` WHERE user_id = ? AND book_id = ? AND deleted_at IS NULL`
+	return s.bookmarksWhere(ctx, userID, bookID, withNotes, ` AND sid IS NULL`)
+}
+
+// TextBookmarks lists the person's live bookmarks made in the text of a book, newest first.
+func (s *Service) TextBookmarks(ctx context.Context, userID, bookID string) ([]Bookmark, error) {
+	return s.bookmarksWhere(ctx, userID, bookID, false, ` AND sid IS NOT NULL`)
+}
+
+func (s *Service) bookmarksWhere(ctx context.Context, userID, bookID string, withNotes bool, extra string) ([]Bookmark, error) {
+	q := selectBookmark + ` WHERE user_id = ? AND book_id = ? AND deleted_at IS NULL` + extra
 	if withNotes {
 		q += ` AND note <> ''`
 	}
@@ -266,7 +276,7 @@ func (s *Service) Bookmarks(ctx context.Context, userID, bookID string, withNote
 // BookmarkCounts returns how many live bookmarks the person has on a book, and how many of them carry a note.
 func (s *Service) BookmarkCounts(ctx context.Context, userID, bookID string) (all, withNotes int, err error) {
 	err = s.st.Reader().QueryRowContext(ctx, `SELECT count(*), coalesce(sum(note <> ''), 0) FROM bookmarks
-WHERE user_id = ? AND book_id = ? AND deleted_at IS NULL`, userID, bookID).Scan(&all, &withNotes)
+WHERE user_id = ? AND book_id = ? AND deleted_at IS NULL AND sid IS NULL`, userID, bookID).Scan(&all, &withNotes)
 	return all, withNotes, err
 }
 

@@ -41,6 +41,7 @@ type rdrHl struct {
 	ID         string
 	Start, End int
 	HasNote    bool
+	Colour     string
 }
 
 // rdrBlockOf is the block id inside a sentence id ("c1.p3.s2" gives "c1.p3").
@@ -73,7 +74,7 @@ func rdrHlsFor(b ebook.Block, units int, hls []progress.Highlight) []rdrHl {
 		if start >= end {
 			continue
 		}
-		out = append(out, rdrHl{ID: h.ID, Start: start, End: end, HasNote: h.Note != ""})
+		out = append(out, rdrHl{ID: h.ID, Start: start, End: end, HasNote: h.Note != "", Colour: h.Colour})
 	}
 	return out
 }
@@ -192,7 +193,12 @@ func rdrInner(b ebook.Block, o rdrBlockOpts) string {
 		}
 	}
 	drop := o.DropCap
-	for _, p := range rdrSegments(b, rdrHlsFor(b, n, o.Hls), bms) {
+	hls := rdrHlsFor(b, n, o.Hls)
+	colour := map[string]string{}
+	for _, h := range hls {
+		colour[h.ID] = h.Colour
+	}
+	for _, p := range rdrSegments(b, hls, bms) {
 		if p.OpenSent {
 			sid := ebook.SentenceID(b.ID, p.Sent)
 			sb.WriteString(`<span class="ts-s" id="s-` + html.EscapeString(sid) + `" data-sid="` + html.EscapeString(sid) + `" data-o="` + strconv.Itoa(p.Start) + `">`)
@@ -201,7 +207,7 @@ func rdrInner(b ebook.Block, o rdrBlockOpts) string {
 			sb.WriteString("<" + s + ">")
 		}
 		for _, id := range p.Hls {
-			sb.WriteString(`<span class="ts-hl" data-hl="` + html.EscapeString(id) + `">`)
+			sb.WriteString(`<span class="ts-hl" data-hl="` + html.EscapeString(id) + `" data-colour="` + html.EscapeString(colour[id]) + `">`)
 		}
 		closeLink := ""
 		if p.Link != nil {

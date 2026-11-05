@@ -91,7 +91,20 @@ func readerSweepRows() []sweepRow {
 	finished := sweepPost("POST /reading/{bookID}/finished", func(e *sweepEnv, _ int) string { return "/reading/" + e.book.ID + "/finished" },
 		sweepFormOf(url.Values{"finished": {"1"}}), sweepStaff(http.StatusSeeOther, http.StatusNotFound), "")
 	finished.LocOf = func(e *sweepEnv) string { return "/books/" + e.book.ID }
-	return []sweepRow{page, chapter, create, patch, del, image, readingGet, readingPost, finished}
+	// RD3: the footnote popup, search and the marks export are reads of the text and answer to ReadText like the page.
+	note := sweepGet("GET /hx/books/{id}/read/note/{blockID}", func(e *sweepEnv, _ int) string {
+		return "/hx/books/" + e.book.ID + "/read/note/c1.p1" + q(e)
+	}, staff)
+	search := sweepGet("GET /hx/books/{id}/read/search", func(e *sweepEnv, _ int) string {
+		return "/hx/books/" + e.book.ID + "/read/search" + q(e) + "&q=alpha"
+	}, staff)
+	rows := []sweepRow{page, chapter, create, patch, del, image, readingGet, readingPost, finished, note, search}
+	for _, ext := range []string{"md", "txt", "json"} {
+		rows = append(rows, sweepGet("GET /books/{id}/read/marks."+ext, func(e *sweepEnv, _ int) string {
+			return "/books/" + e.book.ID + "/read/marks." + ext + q(e)
+		}, staff))
+	}
+	return rows
 }
 
 // TestRouteMatrixReaderGranted: a member and a guest with can_read reach the reader pages; with a grant that

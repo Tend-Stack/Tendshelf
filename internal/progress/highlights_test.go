@@ -296,7 +296,11 @@ func TestBookmarkTextPlace(t *testing.T) {
 		t.Errorf("unknown edition = %v", err)
 	}
 	list, err := svc.Bookmarks(ctx, u[0], b, false)
-	if err != nil || len(list) != 3 {
-		t.Errorf("list = %d, %v", len(list), err)
+	if err != nil || len(list) != 1 || list[0].SID != "" {
+		t.Errorf("audio list = %d, %v", len(list), err) // the Bookmarks tab holds audio moments only
+	}
+	text, err := svc.TextBookmarks(ctx, u[0], b)
+	if err != nil || len(text) != 2 {
+		t.Errorf("text list = %d, %v", len(text), err)
 	}
 }

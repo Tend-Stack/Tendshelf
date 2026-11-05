@@ -307,11 +307,14 @@ type apiBookmark struct {
 	CreatedAt  int64  `json:"createdAt"`
 	UpdatedAt  int64  `json:"updatedAt"`
 	DeletedAt  *int64 `json:"deletedAt"`
+	// A place in the text carries its edition and sentence id; both are left out for a moment in the audio.
+	EditionID string `json:"editionId,omitempty"`
+	SID       string `json:"sid,omitempty"`
 }
 
 func apiBookmarkOf(b progress.Bookmark) apiBookmark {
 	out := apiBookmark{ID: b.ID, ClientID: b.ClientID, BookID: b.BookID, PositionMs: b.PositionMs, Note: b.Note,
-		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt}
+		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt, EditionID: b.EditionID, SID: b.SID}
 	if b.DeletedAt != 0 {
 		out.DeletedAt = &b.DeletedAt
 	}
