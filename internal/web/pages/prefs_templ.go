@@ -18,7 +18,7 @@ var PrefsStyles = []string{"css/pages-settings.css"}
 // the same permission checks the sidebar uses, so the list only hides links and grants nothing.
 type PrefsNav struct {
 	// Current is the key of the category the page belongs to: account, playback, appearance,
-	// accessibility, privacy, users, libraries or email.
+	// accessibility, privacy, devices, users, libraries or email.
 	Current string
 	// Index is true on /me/settings itself: the list is the page on a phone, and Playback is the
 	// selected item beside it on a wide screen.
@@ -37,6 +37,7 @@ var prefsPersonal = []prefsItem{
 	{"appearance", "Appearance", "/me/settings/appearance"},
 	{"accessibility", "Easier to use", "/me/settings/accessibility"},
 	{"privacy", "Privacy", "/me/settings/privacy"},
+	{"devices", "Your devices", "/me/devices"},
 }
 
 // prefsCurrent is the aria-current value of an item: "page" on its own page, "true" for the
@@ -76,7 +77,7 @@ func prefsLink(n PrefsNav, key, label, href string) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.URL(href)).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 49, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 50, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -94,7 +95,7 @@ func prefsLink(n PrefsNav, key, label, href string) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templruntime.NewAttributeExpression(c).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 51, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 52, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
@@ -112,7 +113,7 @@ func prefsLink(n PrefsNav, key, label, href string) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 54, Col: 15}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 55, Col: 15}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -130,7 +131,7 @@ func prefsLink(n PrefsNav, key, label, href string) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(n.UsersWaiting)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 56, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 57, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -233,7 +234,7 @@ func PrefsShell(n PrefsNav, pane templ.Component) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(n.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 76, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 77, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -246,7 +247,7 @@ func PrefsShell(n PrefsNav, pane templ.Component) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(n.Role)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 77, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/prefs.templ`, Line: 78, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {

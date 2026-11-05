@@ -23,3 +23,14 @@ func roleLabel(role string) string {
 	}
 	return "Member"
 }
+
+// Copy of "Your devices" (profile redesign, decision 0021).
+const (
+	devTitle    = "Your devices"
+	devLead     = "Everywhere you are signed in. Signing out of one leaves the others as they are."
+	devSignIns  = "%d sign-ins · %s"
+	devLineOnly = "Only this device"
+	devLineOne  = "This device and 1 other"
+	devLineMany = "This device and %d others"
+	devOneAria  = "Sign out %s, %s"
+)

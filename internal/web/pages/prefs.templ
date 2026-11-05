@@ -9,7 +9,7 @@ var PrefsStyles = []string{"css/pages-settings.css"}
 // the same permission checks the sidebar uses, so the list only hides links and grants nothing.
 type PrefsNav struct {
 	// Current is the key of the category the page belongs to: account, playback, appearance,
-	// accessibility, privacy, users, libraries or email.
+	// accessibility, privacy, devices, users, libraries or email.
 	Current string
 	// Index is true on /me/settings itself: the list is the page on a phone, and Playback is the
 	// selected item beside it on a wide screen.
@@ -28,6 +28,7 @@ var prefsPersonal = []prefsItem{
 	{"appearance", "Appearance", "/me/settings/appearance"},
 	{"accessibility", "Easier to use", "/me/settings/accessibility"},
 	{"privacy", "Privacy", "/me/settings/privacy"},
+	{"devices", "Your devices", "/me/devices"},
 }
 
 // prefsCurrent is the aria-current value of an item: "page" on its own page, "true" for the

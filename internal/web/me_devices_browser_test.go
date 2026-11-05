@@ -42,7 +42,7 @@ func TestDevicesBrowser(t *testing.T) {
 			secondID := settingsDeviceID(t, second)
 
 			tab := b.NewTab(w, 900, w < 768, false)
-			tab.Navigate(devicesAsCookie(t, a, owner) + "/me")
+			tab.Navigate(devicesAsCookie(t, a, owner) + "/me/devices")
 			tab.WaitFor(`document.querySelector(".ts-me__device") !== null`, 10*time.Second)
 			var rows []string
 			tab.Eval(`[...document.querySelectorAll(".ts-me__device .ts-me__rowtitle")].map(e => e.textContent)`, &rows)
@@ -69,13 +69,13 @@ func TestDevicesBrowser(t *testing.T) {
 
 			// The second browser works, then the first signs it out.
 			second2 := b.NewTab(w, 900, w < 768, false)
-			second2.Navigate(devicesAsCookie(t, a, second) + "/me")
+			second2.Navigate(devicesAsCookie(t, a, second) + "/me/devices")
 			second2.WaitFor(`document.querySelector(".ts-me__device") !== null`, 10*time.Second)
 			playerClickSel(t, tab, `form[action="/me/sessions/`+secondID+`/signout"] button`)
 			usersWaitFor(t, "second browser signed out", func() bool {
 				return a.do(http.MethodGet, "/me", nil, nil, second).Code != http.StatusOK
 			})
-			second2.Navigate(devicesAsCookie(t, a, second) + "/me")
+			second2.Navigate(devicesAsCookie(t, a, second) + "/me/devices")
 			var path string
 			second2.Eval(`location.pathname`, &path)
 			if !strings.HasPrefix(path, "/login") {

@@ -307,7 +307,7 @@ func TestSessionSignOut(t *testing.T) {
 	d2 := settingsLogin(t, a, settingsChromeLinux)
 	d3 := settingsLogin(t, a, "curl/8")
 
-	page := a.do(http.MethodGet, "/me", nil, nil, owner).Body.String()
+	page := a.do(http.MethodGet, "/me/devices", nil, nil, owner).Body.String()
 	id2 := settingsDeviceID(t, d2)
 	for _, frag := range []string{"/me/sessions/" + id2 + "/signout", `aria-label="Sign out Chrome on Linux"`, "This device", "Sign out everywhere else", "A web browser"} {
 		if !strings.Contains(page, frag) {
@@ -332,7 +332,7 @@ func TestSessionSignOut(t *testing.T) {
 	}
 
 	// Another device.
-	if rec := settingsPost(t, a, owner, "/me/sessions/"+id2+"/signout", nil, false); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/me" {
+	if rec := settingsPost(t, a, owner, "/me/sessions/"+id2+"/signout", nil, false); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/me/devices" {
 		t.Fatalf("sign out device = %d %s", rec.Code, rec.Header().Get("Location"))
 	}
 	if rec := a.do(http.MethodGet, "/me", nil, nil, d2); rec.Code != http.StatusSeeOther {
@@ -344,7 +344,7 @@ func TestSessionSignOut(t *testing.T) {
 
 	// Everywhere else keeps this one.
 	d4 := settingsLogin(t, a, settingsChromeLinux)
-	if rec := settingsPost(t, a, owner, "/me/sessions/signout-others", nil, false); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/me" {
+	if rec := settingsPost(t, a, owner, "/me/sessions/signout-others", nil, false); rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/me/devices" {
 		t.Fatalf("sign out others = %d", rec.Code)
 	}
 	for name, ck := range map[string]*http.Cookie{"d3": d3, "d4": d4} {

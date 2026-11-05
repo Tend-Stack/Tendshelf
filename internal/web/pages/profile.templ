@@ -13,6 +13,10 @@ type ProfileDevice struct {
 	Current bool
 	// Icon is "phone" or "laptop"; Action is the sign-out form's URL (a browser session or an app).
 	Icon, Action string
+	// Session is true for a browser session (not an app): only those may fold into one line.
+	Session bool
+	// Aria is the sign-out button's label ("Sign out Chrome on Linux, 2 hours ago").
+	Aria string
 }
 
 // ProfileView is what Profile shows. The handler writes every sentence.
@@ -25,10 +29,9 @@ type ProfileView struct {
 	// Stats is the "Your listening" panel, the first of Profile.
 	Stats components.ListeningStatsView
 	// Banner is the line after a password change, or empty.
-	Banner  string
-	Devices []ProfileDevice
-	// Others is how many other browsers are signed in.
-	Others int
+	Banner string
+	// DevicesLine is the caption of the "Your devices" row ("This device and 8 others").
+	DevicesLine string
 	// Libraries is the "Your server" row for a person who manages libraries, or empty.
 	Libraries string
 	// UsersRow is the "Users & invites" row ("3 people · 1 invite waiting") for a person who may
@@ -105,30 +108,14 @@ templ Profile(v ProfileView) {
 			}
 		</section>
 		<section aria-labelledby="pf-dev" class="ts-me__section ts-group">
-			<h2 id="pf-dev" class="ts-overline">Your devices</h2>
-			for _, d := range v.Devices {
-				<div class="ts-me__row ts-me__device">
-					<span class="ts-me__deviceicon" aria-hidden="true">
-						@components.Icon(d.Icon, false)
-					</span>
-					<span class="ts-me__rowtext">
-						<span class="body ts-me__rowtitle">{ d.Title }</span>
-						<span class="caption ts-me__lead">{ d.Meta }</span>
-					</span>
-					if !d.Current {
-						<form method="post" action={ templ.URL(d.Action) }>
-							<input type="hidden" name="_csrf" value={ v.CSRF }/>
-							<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ "Sign out " + d.Title }>Sign out</button>
-						</form>
-					}
-				</div>
-			}
-			if v.Others > 0 {
-				<form method="post" action="/me/sessions/signout-others" class="ts-me__others">
-					<input type="hidden" name="_csrf" value={ v.CSRF }/>
-					<button type="submit" class="ts-btn ts-btn--quiet">Sign out everywhere else</button>
-				</form>
-			}
+			<h2 id="pf-dev" class="ts-sr">Devices</h2>
+			<a class="ts-me__row" href="/me/devices">
+				<span class="ts-me__rowtext">
+					<span class="body ts-me__rowtitle">Your devices</span>
+					<span class="caption ts-me__lead">{ v.DevicesLine }</span>
+				</span>
+				@meChevron()
+			</a>
 		</section>
 		if v.Libraries != "" || v.UsersRow != "" || v.Email || v.Backups != "" {
 			<section aria-labelledby="pf-srv" class="ts-me__section ts-group ts-me__hub">

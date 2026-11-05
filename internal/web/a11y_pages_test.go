@@ -112,6 +112,7 @@ func a11yPages() []a11yPage {
 		row("shelf-delete", "/shelves/{id}/delete", func(e *a11yEnv) string { return "/shelves/" + e.ShelfID + "/delete" }, owner, "main", true),
 		row("queue", "/queue", a11yStatic("/queue"), both, "main", true),
 		row("me", "/me", a11yStatic("/me"), both, "main", true),
+		row("me-devices", "/me/devices", a11yStatic("/me/devices"), both, "main", true),
 		row("me-settings", "/me/settings", a11yStatic("/me/settings"), both, "main", true),
 	}
 	sections := make([]string, 0, len(settingsSections))

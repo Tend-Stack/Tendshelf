@@ -44,7 +44,7 @@ func devicesSweepRows() []sweepRow {
 	nope.Anon = http.StatusUnauthorized
 
 	own := sweepPost("POST /me/devices/{did}/signout",
-		func(e *sweepEnv, role int) string { return "/me/devices/" + e.devices[role] + "/signout" }, nil, sweepSame(http.StatusSeeOther), "/me")
+		func(e *sweepEnv, role int) string { return "/me/devices/" + e.devices[role] + "/signout" }, nil, sweepSame(http.StatusSeeOther), "/me/devices")
 
 	staffPost := sweepStaff(http.StatusSeeOther, http.StatusNotFound)
 	onlyOwner := [4]int{http.StatusSeeOther, http.StatusNotFound, http.StatusNotFound, http.StatusNotFound}

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"net/url"
 	"sort"
 	"strconv"
@@ -90,7 +91,7 @@ func deviceRows(now time.Time, sessions []auth.SessionInfo, apps []auth.Device, 
 	var rest []entry
 	for _, si := range sessions {
 		label := deviceLabel(si.UserAgent)
-		d := pages.ProfileDevice{ID: si.PublicID, Icon: deviceIcon(si.UserAgent)}
+		d := pages.ProfileDevice{ID: si.PublicID, Icon: deviceIcon(si.UserAgent), Session: true}
 		if forAdmin {
 			d.Action = base + "/devices/" + si.PublicID + "/signout"
 		} else {
@@ -224,4 +225,52 @@ func timeZoneOnly(f url.Values) (string, bool) {
 		}
 	}
 	return zone[0], true
+}
+
+// groupDevices folds nearly identical browser sign-ins into one line. rows keeps its order (the
+// current device first, then newest first). A non-current browser session joins the line of the
+// first non-current session with the same Title, so a line sits where its newest session is. The
+// current device and apps never fold. A group of one is a plain line; a group's Meta is "6 sign-ins
+// · <newest time>".
+func groupDevices(rows []pages.ProfileDevice) []pages.DeviceLine {
+	var out []pages.DeviceLine
+	at := map[string]int{} // Title -> index in out of the line that can still take a session
+	for _, d := range rows {
+		d.Aria = "Sign out " + d.Title
+		if d.Current || !d.Session {
+			out = append(out, pages.DeviceLine{ProfileDevice: d})
+			continue
+		}
+		i, ok := at[d.Title]
+		if !ok {
+			at[d.Title] = len(out)
+			out = append(out, pages.DeviceLine{ProfileDevice: d, Sessions: []pages.ProfileDevice{d}})
+			continue
+		}
+		out[i].Sessions = append(out[i].Sessions, d)
+	}
+	for i := range out {
+		n := len(out[i].Sessions)
+		if n < 2 {
+			out[i].Sessions = nil
+			continue
+		}
+		out[i].Meta = fmt.Sprintf(devSignIns, n, out[i].Sessions[0].Meta)
+		for j := range out[i].Sessions {
+			sn := &out[i].Sessions[j]
+			sn.Aria = fmt.Sprintf(devOneAria, sn.Title, sn.Meta)
+		}
+	}
+	return out
+}
+
+// devicesLine is Profile's one line about devices: "This device and 8 others".
+func devicesLine(others int) string {
+	switch others {
+	case 0:
+		return devLineOnly
+	case 1:
+		return devLineOne
+	}
+	return fmt.Sprintf(devLineMany, others)
 }

@@ -39,7 +39,7 @@ func TestProfileDevicesMerged(t *testing.T) {
 	phone := deviceFor(t, a, ownerID, "Pixel 8", auth.KindMobile)
 	deviceFor(t, a, sweepUserID(t, a, member), "Their laptop", auth.KindDesktop)
 
-	page := a.do(http.MethodGet, "/me", nil, nil, owner).Body.String()
+	page := a.do(http.MethodGet, "/me/devices", nil, nil, owner).Body.String()
 	for _, frag := range []string{
 		"This device", "Chrome on Linux", "Pixel 8", "Phone app · Not used yet",
 		"/me/devices/" + phone + "/signout", `aria-label="Sign out Pixel 8"`, "Sign out everywhere else",
@@ -60,7 +60,7 @@ func TestProfileDevicesMerged(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("sign out app = %d", rec.Code)
 	}
-	if page = a.do(http.MethodGet, "/me", nil, nil, owner).Body.String(); strings.Contains(page, "Pixel 8") {
+	if page = a.do(http.MethodGet, "/me/devices", nil, nil, owner).Body.String(); strings.Contains(page, "Pixel 8") {
 		t.Error("the revoked app is still listed")
 	}
 }
