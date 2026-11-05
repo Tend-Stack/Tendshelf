@@ -50,6 +50,8 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 /* The page is its own screen over the app shell: bar, text, dock. Pages (CSS columns, laid out by reader-pages.js
    from --ts-col, --ts-gap, --ts-cols and --ts-page-h) are the default below 1280 px; scroll is the plain layout and
    what a browser without JavaScript gets. */
+/* .ts-main names its view transition, which makes it a stacking context that would keep the page under the tab bar. */
+.ts-main:has(.ts-readerpage) { view-transition-name: none; }
 .ts-readerpage { position: fixed; inset: 0; z-index: 12; display: flex; flex-direction: column; background: var(--ground); color: var(--ink); overscroll-behavior: none; }
 .ts-readerbar { flex: none; display: flex; align-items: center; gap: var(--space-4); padding: max(var(--space-8), env(safe-area-inset-top)) max(var(--space-16), env(safe-area-inset-right)) var(--space-8) max(var(--space-16), env(safe-area-inset-left)); border-bottom: 1px solid var(--line); }
 .ts-readerbar__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
@@ -96,8 +98,9 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 
 /* The dock keeps to the text column; its ruler fills with the book. */
 .ts-readerpage .ts-readdock { flex: none; padding-bottom: calc(var(--space-16) + env(safe-area-inset-bottom)); }
-.ts-readdock > * { width: 100%; max-width: var(--size-read-measure); margin-inline: auto; box-sizing: border-box; }
+.ts-readdock > * { width: 100%; max-width: var(--ts-text-w, 38rem); margin-inline: auto; box-sizing: border-box; }
 .ts-readdock__row { font-size: 0.8125rem; line-height: 1.125rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+#reader-page { white-space: nowrap; }
 #reader-left { text-align: end; }
 
 /* Selection toolbar above the selected words and the note dialog. */

@@ -4,9 +4,11 @@
 // place that is saved is a sentence and an offset (reader.js).
 
 const SLIDE_MS = 180;
+const SWIPE_PX = 48;
 
 export function pages(root, kit) {
   const col = root.querySelector(".ts-reader__col");
+  const shell = root.closest(".ts-readerpage");
   const section = () => root.querySelector("section[data-part]");
   // A hidden box in the text's own font. Its CSS widths (68ch and 45ch) tell us what a column may measure.
   const probe = document.createElement("div");
@@ -22,6 +24,7 @@ export function pages(root, kit) {
   // Set the column geometry from the reader's size and read the page count back.
   function lay() {
     const started = performance.now();
+    root.scrollTop = 0; // a #sentence address can scroll even a box that hides its overflow
     const css = getComputedStyle(root);
     const probeCss = getComputedStyle(probe);
     const width = root.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
@@ -37,6 +40,7 @@ export function pages(root, kit) {
     root.style.setProperty("--ts-gap", gap + "px");
     root.style.setProperty("--ts-page-h", Math.floor(height) + "px");
     step = cols * (column + gap);
+    shell.style.setProperty("--ts-text-w", step - gap + "px"); // the dock keeps to the width of the text
     count = Math.max(1, Math.ceil(section().scrollWidth / step)); // this read is the layout
     performance.measure("ts-reader-lay", { start: started, end: performance.now() });
   }
@@ -85,6 +89,22 @@ export function pages(root, kit) {
     return true;
   }
 
+  // A swipe of touch or pen: 48 px across and mostly sideways turns the page. A mouse drags to select text.
+  const done = new AbortController();
+  let from = null;
+  root.addEventListener("pointerdown", (event) => (from = event.pointerType === "mouse" ? null : [event.clientX, event.clientY]), { signal: done.signal });
+  root.addEventListener(
+    "pointerup",
+    (event) => {
+      if (!from) return;
+      const across = event.clientX - from[0];
+      const down = event.clientY - from[1];
+      from = null;
+      if (Math.abs(across) >= SWIPE_PX && Math.abs(across) > 1.5 * Math.abs(down)) kit.turn(across < 0 ? 1 : -1);
+    },
+    { signal: done.signal },
+  );
+
   root.classList.add("ts-reader--pages");
   lay();
 
@@ -113,7 +133,9 @@ export function pages(root, kit) {
     atEnd: () => page >= count - 1 && !section().dataset.nextHref,
     atStart: () => page === 0 && !section().dataset.prevHref,
     stop() {
+      done.abort();
       root.classList.remove("ts-reader--pages");
+      shell.style.removeProperty("--ts-text-w");
       section().scrollLeft = 0;
       probe.remove();
     },

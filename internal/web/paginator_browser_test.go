@@ -522,3 +522,31 @@ func TestPaginatorAutoFlow(t *testing.T) {
 		})
 	}
 }
+
+// In scroll the end of a part asks for the next one, and the place keeps following.
+func TestPaginatorScrollNext(t *testing.T) {
+	b := chromium(t)
+	l := pgSeed(t, 3, 12)
+	pgFlow(t, l, "scroll")
+	srv := pgServe(t, l)
+	tab := pgOpen(t, b, srv, l, 1440, 900, false, "ch=2")
+	tab.Eval(`document.getElementById("reader").scrollTop = document.getElementById("reader").scrollHeight`, nil)
+	tab.WaitFor(`document.getElementById("reader-ch-3") !== null`, 8*time.Second)
+	var starts int
+	tab.Eval(`document.querySelectorAll("section[data-part]").length`, &starts)
+	if starts != 2 {
+		t.Errorf("%d chapters in the page, want 2", starts)
+	}
+	// Beyond the first chapter, the place is the next chapter's.
+	tab.Eval(`document.getElementById("reader").scrollTop = document.getElementById("reader-ch-3").offsetTop + 200`, nil)
+	time.Sleep(500 * time.Millisecond)
+	tab.Eval(`window.dispatchEvent(new Event("pagehide"))`, nil)
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if p, ok, _ := l.a.srv.progress.Reading(context.Background(), l.ownerID, l.book.ID); ok && p.ChapterIdx == 3 {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Error("the saved place never moved into chapter 3")
+}

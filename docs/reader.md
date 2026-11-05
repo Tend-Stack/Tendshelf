@@ -60,6 +60,34 @@ the address (`at`, or `ch` and `part`), else the person's saved place on this ed
 quote, else its percent, else the first chapter that is not front matter. An EPUB picture is
 `/books/{id}/read/images/{blockID}`: JPEG, PNG, GIF or WebP by sniffing, nothing else, with `default-src 'none'; sandbox`.
 `GET` and `POST /reading/{bookID}` (the `/progress` rules, a form body for `sendBeacon`) read and save the reading place;
-the server works out the percent. The bar's speaker plays the audiobook from its own saved place and never moves the
+the server works out the percent. `POST /reading/{bookID}/finished` (`finished` 1 or 0) marks the book read or back to the
+start; it writes the reading place only. The bar's speaker plays the audiobook from its own saved place and never moves the
 reading place. Highlights, notes and bookmarks are stored as a sentence id and an offset plus the quote. Reading settings
-(font, size, line spacing, theme) are `reader.v1` in `user_settings`.
+(font, size, line spacing, margins, justify, hyphens, page or scroll, tap sides; the theme is the app's) are `reader.v1` in `user_settings`.
+
+## The client (`reader.js`, `reader-pages.js`)
+
+`reader.js` mounts from `data-ts-module` on `#reader`. The flow is the person's setting: `auto` shows pages below 1280 px
+and scroll above, `pages` and `scroll` force one. Pages (`reader-pages.js`, loaded only for pages) lay one chapter part out
+in CSS columns from `--ts-cols` (1 below 1024 px, 2 when both fit at 45ch), `--ts-col`, `--ts-gap` and `--ts-page-h`, set
+through the CSSOM; a turn moves the part's `scrollLeft` by one page, and the next or previous part is fetched from
+`data-next-href` and `data-prev-href` and replaces the section. A page number is only an index in the present layout.
+
+The place is the first text on screen: a binary search over the sentences by where they end, then over the characters of
+that sentence (about twenty layout reads). It is saved as the sentence id, the offset in its block, the next 64 characters,
+the chapter and the character position, 3 s after a turn, and by `sendBeacon` when the page is hidden or the person
+leaves; a failed save waits in `sessionStorage` until the connection returns. Opening a book writes nothing. A change of
+size, font, margin, setting or window takes the saved place, lays out again and shows it, so the place survives all of
+them. When the person comes back to the tab and another device holds a newer place, a toast offers "Go there" or "Stay
+here"; the reader never jumps by itself.
+
+Input: the outer quarters of the page turn it (mirrored by "Swap tap sides"), the middle shows or hides the bar and the
+dock, and a tap on a link, a highlight, a button or with a selection does nothing else; swipe 48 px with touch or pen; keys
+ArrowRight, PageDown and Space go forward, ArrowLeft, PageUp and Shift+Space back, `[` and `]` change chapter, `t` opens
+the contents, `/` search (RD3). Keys are caught on `window` before `player.js`, and left alone in a field, a dialog or an open
+sheet. In scroll, taps in the middle toggle the chrome and the keys scroll a screen minus two lines.
+
+Progress: the ruler and `p. n of N` come from the block's `data-pg`, the time left from the person's own speed
+(`data-cpm`, characters per minute) and the characters remaining in the chapter and the book, in steps of five minutes, with
+"About" until three sessions have taught the speed. The last part carries "That's the end of the book." and a button
+that marks the book finished; the reader never marks it itself.

@@ -5,8 +5,6 @@
 
 const SAVE_DELAY_MS = 3000;
 const MAX_ACTIVE_MS = 120000; // one turn counts at most two minutes of reading time
-const SWIPE_PX = 48;
-const TAP_PX = 10;
 
 const textNodes = (el) => {
   const found = [];
@@ -169,7 +167,8 @@ export function mount(root) {
     },
     show(sid, off) {
       const rect = locate(sid, off);
-      if (rect) root.scrollTop += rect.top - scrollTop() - 8;
+      if (sentence(sid) === root.querySelector(".ts-s")) root.scrollTop = 0; // the start of the book or chapter keeps its title
+      else if (rect) root.scrollTop += rect.top - scrollTop() - 8;
       return Boolean(rect);
     },
     // A screen minus two lines.
@@ -201,7 +200,7 @@ export function mount(root) {
       const keep = here && sentence(here.sid)?.closest("section");
       for (const part of root.querySelectorAll("section[data-part]")) if (keep && part !== keep) part.remove();
       const module = await import(root.dataset.pagesSrc);
-      view = module.pages(root, { locate });
+      view = module.pages(root, { locate, turn });
     } else {
       view = scrollFlow;
     }
@@ -359,7 +358,7 @@ export function mount(root) {
   // ---- Input ----
 
   async function turn(direction) {
-    if (busy) return;
+    if (busy || !view) return;
     busy = true;
     try {
       if (await (direction > 0 ? view.next() : view.prev())) moved();
@@ -368,8 +367,11 @@ export function mount(root) {
     }
   }
 
+  // A tap clears a selection before its click, so the selection is noted when the press starts.
+  let selected = false;
+  on(root, "pointerdown", () => (selected = !getSelection().isCollapsed));
   function tap(event) {
-    if (event.target.closest("a, button, input, textarea, select, .ts-hl") || !getSelection().isCollapsed) return;
+    if (event.target.closest("a, button, input, textarea, select, .ts-hl") || selected) return;
     const rect = root.getBoundingClientRect();
     const across = (event.clientX - rect.left) / rect.width;
     if (across >= 0.25 && across <= 0.75) {
@@ -380,19 +382,8 @@ export function mount(root) {
     }
   }
 
-  let down = null;
-  on(root, "pointerdown", (event) => {
-    down = event.isPrimary ? { x: event.clientX, y: event.clientY, at: event.timeStamp, kind: event.pointerType } : null;
-  });
-  on(root, "pointerup", (event) => {
-    const start = down;
-    down = null;
-    if (!start) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    if (flow === "pages" && start.kind !== "mouse" && Math.abs(dx) >= SWIPE_PX && Math.abs(dx) > 1.5 * Math.abs(dy)) turn(dx < 0 ? 1 : -1);
-    else if (Math.hypot(dx, dy) <= TAP_PX && event.timeStamp - start.at < 500) tap(event);
-  });
+  // A click is a tap or a mouse press; the browser keeps swipes and drags out of it. Swipes are in reader-pages.js.
+  on(root, "click", tap);
 
   // Keys, caught before player.js sees them. A field, a dialog or an open sheet keeps its own keys.
   on(
