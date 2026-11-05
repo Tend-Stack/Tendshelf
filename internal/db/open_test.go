@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -1119,5 +1120,35 @@ func TestMigration0011FileWrites(t *testing.T) {
 	}
 	if n := countRows(t, st.Reader(), "file_writes"); n != 3 {
 		t.Errorf("ledger rows after the book went = %d, want 3", n)
+	}
+}
+
+// A -wal file means the header is read through SQLite. Only "not a database" may read as foreign: a read
+// that fails for another reason must say so (a quick restart once got "does not belong to Tendshelf").
+func TestReadHeaderWithWAL(t *testing.T) {
+	t.Run("not a database", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), FileName)
+		if err := os.WriteFile(path, bytes.Repeat([]byte("not sqlite "), 400), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path+"-wal", []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := readHeader(path, 1); !errors.Is(err, ErrNotTendshelf) {
+			t.Fatalf("err = %v, want ErrNotTendshelf", err)
+		}
+	})
+	t.Run("other errors stay themselves", func(t *testing.T) {
+		notTendshelf := &SchemaError{Found: -1, Supported: 1, Err: ErrNotTendshelf}
+		boom := errors.New("read failed")
+		if got := headerErr(boom, notTendshelf); !errors.Is(got, boom) || errors.Is(got, ErrNotTendshelf) {
+			t.Fatalf("got %v", got)
+		}
+	})
+}
+
+func TestROWaitsOnLocks(t *testing.T) {
+	if !strings.Contains(roDSN("/x/tendshelf.db"), "busy_timeout") {
+		t.Fatal("the read-only DSN does not wait on locks")
 	}
 }

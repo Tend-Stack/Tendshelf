@@ -14,7 +14,8 @@ import (
 	"strings"
 	"time"
 
-	_ "modernc.org/sqlite" // the only importer of the driver; registers "sqlite"
+	"modernc.org/sqlite" // the only importer of the driver; registers "sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 )
 
 // FileName is the database file inside the data directory.
@@ -162,9 +163,20 @@ func readerDSN(path string) string {
 	return fileURI(path) + "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)&_pragma=query_only(1)"
 }
 
-func roDSN(path string) string { return fileURI(path) + "?mode=ro" }
+// roDSN waits on locks like the other DSNs: a server that is still closing must not read as an error.
+func roDSN(path string) string { return fileURI(path) + "?mode=ro&_pragma=busy_timeout(5000)" }
 
 var sqliteMagic = []byte("SQLite format 3\x00")
+
+// headerErr keeps "not a Tendshelf database" for a file SQLite itself says is not a database. Anything else
+// (a lock, a read error) is that error: telling someone their database is foreign when it is only busy is false.
+func headerErr(err error, notTendshelf error) error {
+	var se *sqlite.Error
+	if errors.As(err, &se) && se.Code()&0xff == sqlite3.SQLITE_NOTADB {
+		return notTendshelf
+	}
+	return err
+}
 
 // readHeader reads application_id and user_version without writing anything.
 //
@@ -194,10 +206,10 @@ func readHeader(path string, supported int) (h Header, exists bool, err error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := d.QueryRowContext(ctx, "PRAGMA application_id").Scan(&id); err != nil {
-			return Header{}, true, notTendshelf
+			return Header{}, true, headerErr(err, notTendshelf)
 		}
 		if err := d.QueryRowContext(ctx, "PRAGMA user_version").Scan(&uv); err != nil {
-			return Header{}, true, notTendshelf
+			return Header{}, true, headerErr(err, notTendshelf)
 		}
 		return Header{ApplicationID: id, UserVersion: uv}, true, nil
 	}
