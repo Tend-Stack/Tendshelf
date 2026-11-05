@@ -329,7 +329,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"reader-settings.js": {1*1024 + 512, 8 * 1024}, // operator, 2026-11-04: reading settings
 	// M5 RD2 (operator, 2026-11-04): the page reader. reader.js is flow, anchor, saving, input and progress; reader-pages.js
 	// (the columns) loads only when pages are shown.
-	"reader.js":       {6 * 1024, 32 * 1024}, // OVERRUN: approved 4.5 KB; measured about 5.9 KB, the operator decides (see the RD2 report)
+	"reader.js":       {6 * 1024, 32 * 1024}, // operator, 2026-11-04: 6 KB
 	"reader-pages.js": {3 * 1024, 16 * 1024},
 	// M5 RD3 (operator, 2026-11-04): the marks toolbar, note dialog, bookmark, footnote links and search hit (2.75 KB);
 	// the footnote popup, loaded on the first footnote (1 KB).
@@ -349,7 +349,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // M3b (decision 0013): statistics, Eyes-free and the shake check make it 55.75 KB; approved by the operator on 2026-11-04.
 // Measured together after S, E and K merged: 55.93 KB; the operator approved 56 KB on 2026-11-04.
 // Decision 0015 (adding books by upload): 61.5 KB, approved by the operator on 2026-11-04.
-const jsTotalGzip = 74*1024 + 256 // operator, 2026-11-04: 74.25 KB with the reader scripts. Earlier: 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
+const jsTotalGzip = 74*1024 + 512 // operator, 2026-11-04: 74.5 KB with the reader scripts. Earlier: 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

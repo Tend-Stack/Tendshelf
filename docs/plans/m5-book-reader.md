@@ -427,3 +427,4 @@ Gone: `ReadAlong*` (10), `FocusPhone`, `PreparingPhone`, `AlignFailPhone`, `Eyes
   `reader-marks.js` 2.75, `reader-settings.js` 1.5 KB; `pages-reader.css` 4 KB; `TestFontBudget` 1.6 MB.
 - Phone: the book icon sits in the full player only; the mini row stays as it is.
 - The other decisions take their defaults: PDFs in folders with no audio count as ebooks; new grants tick "read".
+- JS budget revised (operator, 2026-11-04): `reader.js` 6 KB, app JS total 74.5 KB (76,288 B).
