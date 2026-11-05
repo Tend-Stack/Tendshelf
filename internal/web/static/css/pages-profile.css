@@ -1,0 +1,73 @@
+/* Profile (decision 0021): the person's books first, then their listening and shelves, the account last.
+   Ported from docs/design/boards/Profile.html. rem and tokens only. */
+
+/* The page measures itself, not the screen (decision 0010, point 4): with the player panel open it is one column. */
+.ts-profile { container: profile / inline-size; display: flex; flex-direction: column; gap: var(--space-24); padding-bottom: var(--space-32); }
+.ts-profile__head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--space-12); row-gap: var(--space-4); align-items: center; }
+/* The avatar yields to the page at large text (22 cqi is more than its 4.5 rem on a phone) so Settings stays on screen. */
+.ts-profile__head > .ts-avatar { grid-row: 1 / span 2; width: min(4.5rem, 22cqi); height: min(4.5rem, 22cqi); }
+.ts-profile__who { display: contents; }
+.ts-profile__name { grid-column: 2; margin: 0; overflow-wrap: anywhere; }
+.ts-profile__head .ts-me__sub { grid-column: 2 / -1; grid-row: 2; }
+.ts-profile__settings { grid-column: 3; grid-row: 1; margin-right: calc(var(--space-12) * -1); text-decoration: none; }
+.ts-profile__cols { display: flex; flex-direction: column; gap: var(--space-32); }
+.ts-profile__books, .ts-profile__side { display: flex; flex-direction: column; gap: var(--space-24); min-width: 0; }
+.ts-profile__books .ts-home__hero { margin-block: 0; }
+.ts-profile__empty .ts-empty { margin-inline: 0; padding-inline: 0; align-items: flex-start; text-align: start; }
+.ts-profile .ts-stats { margin: 0; }
+.ts-profile .ts-me__signout { margin-top: var(--space-8); }
+.ts-profile .ts-me__foot { margin-top: var(--space-4); }
+/* A card of the side column. */
+.ts-profile__card { padding: var(--space-4) 1.125rem var(--space-8); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-profile__card .ts-row:last-child, .ts-profile__card li:last-child .ts-row, .ts-profile__card .ts-me__row:last-child { border-bottom: 0; }
+.ts-profile__card .ts-shelf-row__stack .ts-cover { box-shadow: 0 0 0 2px var(--surface); }
+.ts-profile__group { display: block; margin: 0; padding: var(--space-16) 0 var(--space-4); }
+.ts-profile .ts-stats__grid { align-items: end; }
+
+/* The books in progress. A phone row: cover, words, then the one resume control. Room for covers: a grid of
+   tiles with the control on the cover's corner. One control per book, the format used last. */
+.ts-pbooks { list-style: none; margin: 0; padding: 0; }
+.ts-pbook { container-type: inline-size; position: relative; display: flex; align-items: center; gap: var(--space-12); padding-block: var(--space-12); border-bottom: 1px solid var(--line); }
+.ts-pbook .ts-card { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); grid-template-rows: 1fr auto auto 1fr; column-gap: var(--space-12); flex: 1; min-width: 0; }
+.ts-pbook .ts-card__cover { grid-row: 1 / -1; align-self: center; }
+.ts-pbook .ts-cover, .ts-profile__done .ts-cover { box-shadow: var(--shadow-cover); }
+.ts-pbook .ts-card__title { grid-column: 2; grid-row: 1; align-self: end; font-family: var(--font-serif); font-size: 1rem; line-height: 1.375rem; }
+.ts-pbook .ts-card__author { grid-column: 2; }
+.ts-pbook > .ts-iconbtn { flex: none; }
+/* The phone shows five rows; See all opens the library's Unfinished list. */
+.ts-pbook:nth-child(n+6) { display: none; }
+.ts-pbook:last-child, .ts-pbook:nth-child(5) { border-bottom: 0; }
+/* Finished lately: covers only, three on a phone. */
+.ts-profile__done { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-16); margin-top: var(--space-8); }
+.ts-profile__done > :nth-child(n+4) { display: none; }
+
+@container profile (width >= 36rem) {
+  .ts-profile__name { font-size: 2rem; line-height: 2.375rem; }
+  .ts-pbooks { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: var(--space-24) var(--space-16); margin-top: var(--space-8); }
+  .ts-pbook { display: block; padding: 0; border-bottom: 0; }
+  .ts-pbook:nth-child(n+6) { display: block; }
+  .ts-pbook .ts-card { display: flex; flex-direction: column; gap: 0.125rem; }
+  .ts-pbook .ts-card__title { align-self: auto; margin-top: var(--space-8); }
+  .ts-pbook > .ts-iconbtn { position: absolute; top: calc(100cqi - var(--size-tap) - var(--space-12)); right: var(--space-8); box-shadow: var(--shadow-float); }
+  .ts-profile__done { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .ts-profile__done > :nth-child(n+4) { display: flex; }
+  .ts-profile__done .ts-card__title { font-size: 0.875rem; line-height: 1.25rem; }
+}
+/* One column with room to spare (768, 1024, or the player panel open): the side cards pair up. */
+@container profile (36rem <= width < 60rem) {
+  .ts-profile__side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .ts-profile__account, .ts-profile__side .ts-me__signout, .ts-profile__side .ts-me__foot { grid-column: 1 / -1; }
+}
+/* Two columns only when the page really has the room (61 rem at 1280 px with the sidebar). */
+@container profile (width >= 60rem) {
+  .ts-profile__cols { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: var(--space-32); align-items: start; }
+}
+
+/* The hero's cover never takes more than 40 % of the card, so at 200 % text the words keep their room
+   (Home's hero has the whole page width; here the card sits beside the side column). */
+@media (width >= 768px) and (width < 1280px) {
+  .ts-profile__books .ts-hero__top { grid-template-columns: min(9.5rem, 40%) minmax(0, 1fr); }
+}
+@media (width >= 1280px) {
+  .ts-profile__books .ts-hero__top { grid-template-columns: min(13.75rem, 40%) minmax(0, 1fr); }
+}

@@ -27,9 +27,9 @@ type ShelvesView struct {
 
 // ShelfItemView is one book on a shelf with the labels of its three buttons.
 type ShelfItemView struct {
-	Card                                                 components.CardView
-	First, Last                                          bool
-	UpLabel, DownLabel, RemoveLabel                      string
+	Card                            components.CardView
+	First, Last                     bool
+	UpLabel, DownLabel, RemoveLabel string
 }
 
 // ShelfView is one shelf: its books in shelf order, the rename form and the way to delete it.
@@ -71,20 +71,7 @@ templ Shelves(v ShelvesView) {
 			<ul class="ts-shelf-list">
 				for _, r := range v.Rows {
 					<li>
-						<a class="ts-row ts-shelf-row" href={ templ.SafeURL(r.Href) }>
-							<span class="ts-shelf-row__stack">
-								if len(r.Covers) == 0 {
-									<span class="ts-shelf-row__blank" aria-hidden="true">@components.Icon("library", false)</span>
-								}
-								for _, c := range r.Covers {
-									@components.Cover(c, "36")
-								}
-							</span>
-							<span class="ts-row__text">
-								<span class="ts-row__title">{ r.Name }</span>
-								<span class="ts-row__meta">{ r.Count }</span>
-							</span>
-						</a>
+						@ShelfRow(r)
 					</li>
 				}
 			</ul>
@@ -95,20 +82,7 @@ templ Shelves(v ShelvesView) {
 				<ul class="ts-shelf-list">
 					for _, r := range v.Shared {
 						<li>
-							<a class="ts-row ts-shelf-row" href={ templ.SafeURL(r.Href) }>
-								<span class="ts-shelf-row__stack">
-									if len(r.Covers) == 0 {
-										<span class="ts-shelf-row__blank" aria-hidden="true">@components.Icon("library", false)</span>
-									}
-									for _, c := range r.Covers {
-										@components.Cover(c, "36")
-									}
-								</span>
-								<span class="ts-row__text">
-									<span class="ts-row__title">{ r.Name }</span>
-									<span class="ts-row__meta">{ r.Count }</span>
-								</span>
-							</a>
+							@ShelfRow(r)
 						</li>
 					}
 				</ul>
@@ -137,17 +111,17 @@ templ Shelf(v ShelfView) {
 			<p class="caption ts-shelf-by">{ v.By }</p>
 		}
 		if !v.ReadOnly {
-		<div class="ts-shelf-tools">
-			<details class="ts-shelf-rename" open?={ v.RenameErr != "" }>
-				<summary class="ts-btn ts-btn--quiet">Rename</summary>
-				<form class="ts-shelf-form" method="post" action={ templ.URL("/shelves/" + v.ID + "/rename") }>
-					<input type="hidden" name="_csrf" value={ v.CSRF }/>
-					@components.TextField(components.Field{ID: "shelf-rename", Name: "name", Label: "Shelf name", Value: v.RenameValue, Error: v.RenameErr, Autocomplete: "off"})
-					<button type="submit" class="ts-btn ts-btn--secondary">Save</button>
-				</form>
-			</details>
-			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL("/shelves/" + v.ID + "/delete") }>Delete shelf</a>
-		</div>
+			<div class="ts-shelf-tools">
+				<details class="ts-shelf-rename" open?={ v.RenameErr != "" }>
+					<summary class="ts-btn ts-btn--quiet">Rename</summary>
+					<form class="ts-shelf-form" method="post" action={ templ.URL("/shelves/" + v.ID + "/rename") }>
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						@components.TextField(components.Field{ID: "shelf-rename", Name: "name", Label: "Shelf name", Value: v.RenameValue, Error: v.RenameErr, Autocomplete: "off"})
+						<button type="submit" class="ts-btn ts-btn--secondary">Save</button>
+					</form>
+				</details>
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL("/shelves/" + v.ID + "/delete") }>Delete shelf</a>
+			</div>
 		}
 		if v.CanShare {
 			<form class="ts-shelf-share" method="post" action={ templ.URL("/shelves/" + v.ID + "/share") }>
@@ -168,25 +142,25 @@ templ Shelf(v ShelfView) {
 					<li id={ "item-" + it.Card.ID } class="ts-shelf-item">
 						@components.BookRow(it.Card)
 						if !v.ReadOnly {
-						<div class="ts-shelf-item__tools">
-							if it.First {
-								<span class="ts-shelf-item__gap" aria-hidden="true"></span>
-							} else {
-								@shelfAction(v, it, "up", it.UpLabel)
-							}
-							if it.Last {
-								<span class="ts-shelf-item__gap" aria-hidden="true"></span>
-							} else {
-								@shelfAction(v, it, "down", it.DownLabel)
-							}
-							<form method="post" action={ templ.URL("/shelves/" + v.ID + "/items/" + it.Card.ID + "/remove") }>
-								<input type="hidden" name="_csrf" value={ v.CSRF }/>
-								<input type="hidden" name="next" value={ "/shelves/" + v.ID }/>
-								<button type="submit" class="ts-iconbtn" aria-label={ it.RemoveLabel }>
-									@components.Icon("close", false)
-								</button>
-							</form>
-						</div>
+							<div class="ts-shelf-item__tools">
+								if it.First {
+									<span class="ts-shelf-item__gap" aria-hidden="true"></span>
+								} else {
+									@shelfAction(v, it, "up", it.UpLabel)
+								}
+								if it.Last {
+									<span class="ts-shelf-item__gap" aria-hidden="true"></span>
+								} else {
+									@shelfAction(v, it, "down", it.DownLabel)
+								}
+								<form method="post" action={ templ.URL("/shelves/" + v.ID + "/items/" + it.Card.ID + "/remove") }>
+									<input type="hidden" name="_csrf" value={ v.CSRF }/>
+									<input type="hidden" name="next" value={ "/shelves/" + v.ID }/>
+									<button type="submit" class="ts-iconbtn" aria-label={ it.RemoveLabel }>
+										@components.Icon("close", false)
+									</button>
+								</form>
+							</div>
 						}
 					</li>
 				}
@@ -224,4 +198,23 @@ templ ShelfDelete(v ShelfDeleteView) {
 			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL("/shelves/" + v.ID) }>Keep it</a>
 		</form>
 	</div>
+}
+
+// ShelfRow is a shelf's line in a list: up to three covers, the name and the count, one link to the shelf.
+// The Shelves page and Profile's "Your shelves" card draw it.
+templ ShelfRow(r ShelfRowView) {
+	<a class="ts-row ts-shelf-row" href={ templ.SafeURL(r.Href) }>
+		<span class="ts-shelf-row__stack">
+			if len(r.Covers) == 0 {
+				<span class="ts-shelf-row__blank" aria-hidden="true">@components.Icon("library", false)</span>
+			}
+			for _, c := range r.Covers {
+				@components.Cover(c, "36")
+			}
+		</span>
+		<span class="ts-row__text">
+			<span class="ts-row__title">{ r.Name }</span>
+			<span class="ts-row__meta">{ r.Count }</span>
+		</span>
+	</a>
 }

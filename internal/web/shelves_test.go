@@ -367,7 +367,7 @@ func TestSidebarShelves(t *testing.T) {
 	if body := browseGet(a, "/me", false, guest).Body.String(); strings.Contains(body, "Your shelves") {
 		t.Error("a guest sees the Your shelves row on Profile")
 	}
-	if body := browseGet(a, "/me", false, ck).Body.String(); !strings.Contains(bookMain(body), "Your shelves") || !strings.Contains(bookMain(body), "13 shelves") {
+	if body := browseGet(a, "/me", false, ck).Body.String(); !strings.Contains(bookMain(body), "Your shelves") || !strings.Contains(bookMain(body), `href="/shelves"`) {
 		t.Error("Profile lacks the Your shelves row")
 	}
 }

@@ -43,47 +43,53 @@ type HomeBecauseView struct {
 	Cards       []components.CardView
 }
 
+// HeroCard is the "Continue listening" card itself, without the #home-hero wrapper: Home draws it inside
+// the wrapper, Profile draws it bare (Profile does not refresh while playing).
+templ HeroCard(v HomeHeroView) {
+	<section class="ts-hero ts-home__hero" aria-label={ v.Eyebrow }>
+		<div class="ts-hero__top">
+			<a class="ts-hero__cover ts-book-block" href={ templ.SafeURL(v.BookHref) } tabindex="-1" aria-hidden="true">
+				@components.Cover(v.Cover, "fill")
+			</a>
+			<div class="ts-hero__text">
+				<div class="ts-hero__head">
+					<span class="ts-overline ts-overline--accent" data-ts-hero-eyebrow>{ v.Eyebrow }</span>
+					<h2 class="ts-hero__title"><a href={ templ.SafeURL(v.BookHref) }>{ v.Title }</a></h2>
+					<p class="ts-hero__byline">
+						{ v.Byline }
+						if v.Narrator != "" {
+							<br/>
+							{ v.Narrator }
+						}
+					</p>
+				</div>
+				<div class="ts-hero__progress">
+					@components.Ruler(components.RulerView{Label: v.RulerLabel, Now: v.RulerNow, Ticks: v.Ticks})
+					<p class="ts-hero__where">{ v.Where }</p>
+				</div>
+				<div class="ts-hero__actions">
+					if v.Play != nil {
+						@components.PlayButton(*v.Play)
+					}
+					if v.Read != nil {
+						@components.ReadButton(*v.Read)
+					}
+					if v.ChaptersHref != "" {
+						<a class="ts-btn ts-btn--secondary ts-hero__chapters" href={ templ.SafeURL(v.ChaptersHref) }>{ v.ChaptersLabel }</a>
+					}
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
 // HomeHero is the hero card inside its #home-hero wrapper. The wrapper is always there, empty when
 // nothing is in progress, so the first save can fill it: it re-reads /hx/home/hero when progress is
 // saved (progress-saved on the body). Without JavaScript the card is just there, with a plain link.
 templ HomeHero(v *HomeHeroView) {
 	<div id="home-hero" hx-get="/hx/home/hero" hx-trigger="progress-saved from:body" hx-swap="outerHTML">
 		if v != nil {
-			<section class="ts-hero ts-home__hero" aria-label={ v.Eyebrow }>
-				<div class="ts-hero__top">
-					<a class="ts-hero__cover" href={ templ.SafeURL(v.BookHref) } tabindex="-1" aria-hidden="true">
-						@components.Cover(v.Cover, "fill")
-					</a>
-					<div class="ts-hero__text">
-						<div class="ts-hero__head">
-							<span class="ts-overline ts-overline--accent" data-ts-hero-eyebrow>{ v.Eyebrow }</span>
-							<h2 class="ts-hero__title"><a href={ templ.SafeURL(v.BookHref) }>{ v.Title }</a></h2>
-							<p class="ts-hero__byline">
-								{ v.Byline }
-								if v.Narrator != "" {
-									<br/>
-									{ v.Narrator }
-								}
-							</p>
-						</div>
-						<div class="ts-hero__progress">
-							@components.Ruler(components.RulerView{Label: v.RulerLabel, Now: v.RulerNow, Ticks: v.Ticks})
-							<p class="ts-hero__where">{ v.Where }</p>
-						</div>
-						<div class="ts-hero__actions">
-							if v.Play != nil {
-								@components.PlayButton(*v.Play)
-							}
-							if v.Read != nil {
-								@components.ReadButton(*v.Read)
-							}
-							if v.ChaptersHref != "" {
-								<a class="ts-btn ts-btn--secondary ts-hero__chapters" href={ templ.SafeURL(v.ChaptersHref) }>{ v.ChaptersLabel }</a>
-							}
-						</div>
-					</div>
-				</div>
-			</section>
+			@HeroCard(*v)
 		}
 	</div>
 }

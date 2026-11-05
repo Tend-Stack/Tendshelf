@@ -73,8 +73,8 @@ func TestSwapStylesBrowser(t *testing.T) {
 			swapstylesHas(t, tab, ".ts-sf", "rowGap", "12px")
 			swapstylesHas(t, tab, ".ts-sf .ts-chip", "textDecorationLine", "none")
 
-			// Profile (pages-me.css). The phone has no Shelves tab: its way to the shelves is the row
-			// on the Profile page. The desktop sidebar has the link itself.
+			// Profile (pages-me.css). The phone has no Shelves tab: its way to the shelves is the See all
+			// in the Your shelves card. The desktop sidebar has the link itself.
 			swapstylesClick(t, tab, `a[data-nav="/me"]`)
 			swapstylesPath(t, tab, "/me", `document.querySelector(".ts-me") !== null`)
 			swapstylesHas(t, tab, ".ts-me", "display", "flex")
@@ -89,7 +89,7 @@ func TestSwapStylesBrowser(t *testing.T) {
 
 			// Shelves: the form is a column with a gap (pages-shelves.css).
 			if vp.w < 768 {
-				swapstylesClick(t, tab, `a.ts-me__row[href="/shelves"]`)
+				swapstylesClick(t, tab, `.ts-profile__card a.ts-btn[href="/shelves"]`)
 			} else {
 				swapstylesClick(t, tab, `a[data-nav="/shelves"]`)
 			}

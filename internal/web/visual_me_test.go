@@ -21,7 +21,8 @@ import (
 // form in dark at 390 and 1440, and Settings in sepia and contrast at 390 and 1440. It fails on
 // horizontal overflow, a target under 44 px, an unlabelled input or a page without exactly one h1.
 // One more capture checks that the person's saved theme, not the cookie, sets data-theme. The
-// ProfilePhone and SettingsPhone boards are copied beside the captures for a side-by-side look.
+// SettingsPhone board is copied beside the captures for a side-by-side look (Profile has its own board and
+// captures: TestBookFirstVisual).
 // The theme and width combinations come from visualMatrix (fast by default, full with make visual-full);
 // the sentence above describes the full run.
 func TestVisualMePages(t *testing.T) {
@@ -50,7 +51,7 @@ func TestVisualMePages(t *testing.T) {
 	}
 	base := themedServer(t, app.signedIn(t))
 
-	for _, name := range []string{"ProfilePhone", "SettingsPhone"} {
+	for _, name := range []string{"SettingsPhone"} {
 		src, err := os.Open(filepath.Join("..", "..", "docs", "design", "tendshelf-handoff", "screens", "people", name+".png"))
 		if err != nil {
 			continue

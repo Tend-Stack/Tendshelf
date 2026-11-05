@@ -12,6 +12,9 @@ templ BookCard(v CardView) {
 		if v.Byline != "" {
 			<span class="ts-card__author ts-truncate">{ v.Byline }</span>
 		}
+		if v.Left != "" {
+			<span class="ts-card__author ts-num">{ v.Left }</span>
+		}
 	</a>
 }
 
