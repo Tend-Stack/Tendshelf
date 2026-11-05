@@ -223,7 +223,9 @@ func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree,
 			live = live || pre[i].MissingSince == 0
 		}
 		switch {
-		case errors.Is(werr, errFolderUnavailable), werr == nil && len(files) == 0 && (live || sc != nil):
+		// A folder that now holds only ebooks is not empty: the disk is there, and the ebooks must reach the sink
+		// (an upload of one ebook is scanned alone, with no audio under it).
+		case errors.Is(werr, errFolderUnavailable), werr == nil && len(files) == 0 && len(ebooks) == 0 && (live || sc != nil):
 			s.log.Warn("scan: folder unavailable or suddenly empty; nothing under it changes", "folder", walkRoot)
 			p.skip = append(p.skip, walkRoot)
 			res.FoldersSkipped++

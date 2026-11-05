@@ -18,6 +18,9 @@ const (
 	// KindEbook is an extension the scanner records as a text edition (internal/ebook). It is never
 	// probed and never becomes part of a book.
 	KindEbook
+	// KindLooseEbook is a PDF. It is an ebook only when its directory holds no audio (a booklet in an
+	// audiobook's folder stays ignored), so the scanner decides; everything else treats it like KindOther.
+	KindLooseEbook
 )
 
 var kinds = map[string]Kind{
@@ -25,7 +28,7 @@ var kinds = map[string]Kind{
 	"ogg": KindAudio, "opus": KindAudio, "wav": KindAudio, "aac": KindAudio, "webm": KindAudio,
 	"aax": KindProtected, "aaxc": KindProtected, "aa": KindProtected, "m4p": KindProtected,
 	"epub": KindEbook, "mobi": KindEbook, "azw3": KindEbook, "azw": KindEbook, "fb2": KindEbook,
-	"kfx": KindEbook, "kfx-zip": KindEbook,
+	"kfx": KindEbook, "kfx-zip": KindEbook, "pdf": KindLooseEbook,
 }
 
 // Classify returns the Kind of a file name or path by its lower-cased extension.

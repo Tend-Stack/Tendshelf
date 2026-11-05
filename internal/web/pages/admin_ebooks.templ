@@ -3,32 +3,51 @@ package pages
 import "github.com/Tend-Stack/tendshelf/internal/web/components"
 
 // InboxMatch is one audiobook an ebook might belong to: its title, byline, why it was offered, and
-// the "Choose" form. The handler writes every word.
+// the "Make one book" form. Note is the guard sentence when joining changes who can reach what. The
+// handler writes every word.
 type InboxMatch struct {
 	Title, Byline, Reason string
 	Action, CSRF, BookID  string
 	ChooseLabel, Aria     string
+	Note                  string
 }
 
-// InboxRow is one unpaired ebook on the inbox. Ready rows carry the best match and the link to the
-// pick page; the others carry only the sentence that says why they cannot be paired yet.
+// InboxAction is one button in a form of its own: a POST to Action with the token and, when BookID is set,
+// the audiobook it is about. Kind is the button style ("primary", "secondary" or "quiet").
+type InboxAction struct {
+	Action, Label, Aria, CSRF, Kind, BookID string
+}
+
+// InboxSuggestion is an ebook that may be the same book as an audiobook: the pairing card (with the guard
+// sentence as its warning) and the three answers.
+type InboxSuggestion struct {
+	ID                  string
+	Card                components.PairingCardView
+	Make, NotSame, Keep InboxAction
+	// PickHref is the page that searches every audiobook, for when the one offered is wrong.
+	PickHref, PickLabel string
+}
+
+// InboxRow is one ebook file Tendshelf could not open, or has not finished reading. DownloadHref is set for
+// a file that failed or looks damaged, for people who manage libraries.
 type InboxRow struct {
-	ID, Name, Meta, Note string
-	Match                *InboxMatch
-	PickHref, PickLabel  string
+	ID, Name, Meta, Note                    string
+	PickHref, PickLabel                     string
+	DownloadHref, DownloadLabel, DownloadAr string
 }
 
-// AdminEbooksView is the Ebooks to pair inbox.
+// AdminEbooksView is /admin/ebooks.
 type AdminEbooksView struct {
 	Title, Lead, Empty, Error string
-	Waiting            []InboxRow
-	KeptTitle, KeptLead string
-	Kept               []InboxRow
-	// More is "And {n} more." when the list is cut.
+	MaybeTitle, MaybeLead     string
+	Maybe                     []InboxSuggestion
+	CannotTitle               string
+	Cannot                    []InboxRow
+	// More is "And {n} more." when a list is cut.
 	More string
 }
 
-// AdminEbooks lists the ebooks with no audiobook: those waiting for one, then those kept on their own.
+// AdminEbooks lists the suggested merges of ebooks with audiobooks, then the files that could not be opened.
 templ AdminEbooks(v AdminEbooksView) {
 	<div class="ts-admin ts-admin--list">
 		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
@@ -36,16 +55,34 @@ templ AdminEbooks(v AdminEbooksView) {
 			<p class="body ts-users__error" role="alert">{ v.Error }</p>
 		}
 		<p class="body-lg ts-admin__lead">{ v.Lead }</p>
-		if len(v.Waiting) == 0 && len(v.Kept) == 0 {
+		if len(v.Maybe) == 0 && len(v.Cannot) == 0 {
 			<p class="body ts-admin__lead" role="status">{ v.Empty }</p>
 		}
-		if len(v.Waiting) > 0 {
-			@inboxList(v.Waiting)
+		if len(v.Maybe) > 0 {
+			<section aria-labelledby="inbox-maybe-h">
+				<h2 id="inbox-maybe-h" class="section">{ v.MaybeTitle }</h2>
+				<p class="caption ts-admin__lead">{ v.MaybeLead }</p>
+				<div class="ts-ebook__files">
+					for _, sg := range v.Maybe {
+						<div id={ "inbox-" + sg.ID }>
+							@components.PairingCard(sg.Card) {
+								<div class="ts-pair__actions">
+									@inboxActionForm(sg.Make)
+									@inboxActionForm(sg.NotSame)
+									@inboxActionForm(sg.Keep)
+									<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(sg.PickHref) }>{ sg.PickLabel }</a>
+								</div>
+							}
+						</div>
+					}
+				</div>
+			</section>
 		}
-		if len(v.Kept) > 0 {
-			<h2 class="section ts-inbox__kept">{ v.KeptTitle }</h2>
-			<p class="caption ts-admin__lead">{ v.KeptLead }</p>
-			@inboxList(v.Kept)
+		if len(v.Cannot) > 0 {
+			<section aria-labelledby="inbox-cannot-h">
+				<h2 id="inbox-cannot-h" class="section ts-inbox__kept">{ v.CannotTitle }</h2>
+				@inboxList(v.Cannot)
+			</section>
 		}
 		if v.More != "" {
 			<p class="caption ts-needs__more">{ v.More }</p>
@@ -66,22 +103,14 @@ templ inboxList(rows []InboxRow) {
 						<span class="caption ts-needs__outcome">{ r.Note }</span>
 					}
 				</div>
-				if r.Match != nil {
-					<div class="ts-inbox__match">
-						<span class="body">{ r.Match.Title }</span>
-						<span class="caption">
-							if r.Match.Byline != "" {
-								{ r.Match.Byline }
-								&nbsp;·&nbsp;
-							}
-							{ r.Match.Reason }
-						</span>
-						@inboxChooseForm(*r.Match)
-					</div>
-				}
 				if r.PickHref != "" {
 					<div class="ts-needs__actions">
 						<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(r.PickHref) }>{ r.PickLabel }</a>
+					</div>
+				}
+				if r.DownloadHref != "" {
+					<div class="ts-needs__actions">
+						<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(r.DownloadHref) } aria-label={ r.DownloadAr }>{ r.DownloadLabel }</a>
 					</div>
 				}
 			</li>
@@ -89,12 +118,23 @@ templ inboxList(rows []InboxRow) {
 	</ul>
 }
 
-// inboxChooseForm is "Choose" for one audiobook: a plain POST that carries the book's id.
+// inboxActionForm is one answer in its own plain POST form: htmx boosts it, and it works without JavaScript.
+templ inboxActionForm(a InboxAction) {
+	<form class="ts-pair__form" method="post" action={ templ.URL(a.Action) }>
+		<input type="hidden" name="_csrf" value={ a.CSRF }/>
+		if a.BookID != "" {
+			<input type="hidden" name="book" value={ a.BookID }/>
+		}
+		<button type="submit" class={ "ts-btn", "ts-btn--" + a.Kind } aria-label={ a.Aria }>{ a.Label }</button>
+	</form>
+}
+
+// inboxChooseForm is "Make one book" for one audiobook: a plain POST that carries the book's id.
 templ inboxChooseForm(m InboxMatch) {
 	<form class="ts-pair__form" method="post" action={ templ.URL(m.Action) }>
 		<input type="hidden" name="_csrf" value={ m.CSRF }/>
 		<input type="hidden" name="book" value={ m.BookID }/>
-		<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ m.Aria }>{ m.ChooseLabel }</button>
+		<button type="submit" class="ts-btn ts-btn--primary" aria-label={ m.Aria }>{ m.ChooseLabel }</button>
 	</form>
 }
 
@@ -111,7 +151,7 @@ type AdminEbookPickView struct {
 	ResultsTitle, NoResults                string
 	Results                                []InboxMatch
 	Searched                               bool
-	KeepAction, KeepLabel, CSRF            string
+	KeepAction, KeepLabel, KeepNote, CSRF  string
 }
 
 // AdminEbookPick offers the close matches, a search of the audiobooks and "Keep it as an ebook on its own".
@@ -153,6 +193,7 @@ templ AdminEbookPick(v AdminEbookPickView) {
 		<form class="ts-inbox__keep" method="post" action={ templ.URL(v.KeepAction) }>
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			<button type="submit" class="ts-btn ts-btn--quiet">{ v.KeepLabel }</button>
+			<p class="caption">{ v.KeepNote }</p>
 		</form>
 	</div>
 }
@@ -172,6 +213,9 @@ templ inboxMatches(ms []InboxMatch) {
 						}
 						{ m.Reason }
 					</span>
+					if m.Note != "" {
+						<span class="caption ts-needs__outcome">{ m.Note }</span>
+					}
 				</div>
 				@inboxChooseForm(m)
 			</li>

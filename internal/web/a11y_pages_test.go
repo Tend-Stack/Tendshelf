@@ -47,6 +47,7 @@ var a11ySkip = map[string]string{
 	"/progress/{bookID}":                "JSON, not a page",
 	"/reading/{bookID}":                 "JSON (the reading place), not a page",
 	"/books/{id}/read/images/{blockID}": "a picture from the book, not a page",
+	"/admin/ebooks/{fileID}/file":       "the original bytes of an ebook file, as a download, not a page",
 	"/welcome":                          "redirects (303) to Home",
 	"/books/{id}/read":                  "the reader page, audited by the reader packages",
 	"/books/{id}/text/{fileID}/file":    "the original ebook file as a download, not a page",

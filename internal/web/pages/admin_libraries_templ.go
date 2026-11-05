@@ -48,7 +48,7 @@ type AdminLibrariesView struct {
 	OnlineTitle, OnlineBody string
 	// Uploads is "Adding books from this device" (decision 0015); nil when uploads are not set up.
 	Uploads *AdminUploadsView
-	// EbooksHref and EbooksLabel link the Ebooks to pair inbox ("3 ebooks to pair"); empty when none wait.
+	// EbooksHref and EbooksLabel link /admin/ebooks ("Ebooks"), with no count; empty when ebooks are off.
 	EbooksHref, EbooksLabel string
 }
 

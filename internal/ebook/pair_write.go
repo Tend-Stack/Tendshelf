@@ -155,38 +155,67 @@ func insertNotSame(ctx context.Context, tx *sql.Tx, fileID, bookID, userID strin
 	return err
 }
 
-// NotSame records that an unpaired file is not this book, so no pairing offers it again.
+// ownFiles lists the files a "not the same book" or "keep it on its own" covers: the file itself when it has no
+// book, or every file of its text book (an EPUB and a MOBI of one title are one book). A file on an audiobook
+// is not covered: that is Unpair's.
+func ownFiles(ctx context.Context, tx *sql.Tx, fileID string) ([]string, error) {
+	rs, err := tx.QueryContext(ctx, `SELECT id FROM ebook_files WHERE id = ?1 AND book_id IS NULL
+UNION SELECT f.id FROM ebook_files f WHERE f.book_id = (SELECT x.book_id FROM ebook_files x JOIN books b ON b.id = x.book_id
+  WHERE x.id = ?1 AND b.kind = 'text')`, fileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rs.Close()
+	var ids []string
+	for rs.Next() {
+		var id string
+		if err := rs.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rs.Err()
+}
+
+// NotSame records that an unpaired file, or a text book's files, are not this audiobook, so no pairing or
+// suggestion offers it again. Nothing moves.
 func (s *Service) NotSame(ctx context.Context, fileID, bookID, userID string) error {
 	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		var one int
-		err := tx.QueryRowContext(ctx, `SELECT 1 FROM ebook_files WHERE id=? AND book_id IS NULL`, fileID).Scan(&one)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrFileNotFound
-		}
+		ids, err := ownFiles(ctx, tx, fileID)
 		if err != nil {
 			return err
+		}
+		if len(ids) == 0 {
+			return ErrFileNotFound
 		}
 		if ok, err := bookLive(ctx, tx, bookID); err != nil {
 			return err
 		} else if !ok {
 			return ErrBookNotFound
 		}
-		if err := insertNotSame(ctx, tx, fileID, bookID, userID, s.now().UnixMilli()); err != nil {
-			return err
+		for _, id := range ids {
+			if err := insertNotSame(ctx, tx, id, bookID, userID, s.now().UnixMilli()); err != nil {
+				return err
+			}
 		}
 		return s.audit(ctx, tx, userID, "ebook.not_same", fileID, map[string]string{"book": bookID})
 	})
 }
 
-// Keep marks an unpaired file as kept on its own: automatic pairing leaves it alone.
+// Keep marks an unpaired file, or a text book's files, as kept on their own: no automatic merge and no suggestion.
 func (s *Service) Keep(ctx context.Context, fileID, userID string) error {
 	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE ebook_files SET hold='kept', updated_at=? WHERE id=? AND book_id IS NULL`, s.now().UnixMilli(), fileID)
+		ids, err := ownFiles(ctx, tx, fileID)
 		if err != nil {
 			return err
 		}
-		if n, _ := res.RowsAffected(); n == 0 {
+		if len(ids) == 0 {
 			return ErrFileNotFound
+		}
+		for _, id := range ids {
+			if _, err := tx.ExecContext(ctx, `UPDATE ebook_files SET hold='kept', updated_at=? WHERE id=?`, s.now().UnixMilli(), id); err != nil {
+				return err
+			}
 		}
 		return s.audit(ctx, tx, userID, "ebook.keep", fileID, nil)
 	})

@@ -60,3 +60,26 @@ func TestScanEbookSplit(t *testing.T) {
 		t.Fatalf("sink scan = %+v", got[0])
 	}
 }
+
+// A PDF beside audio is a booklet and stays ignored; alone in its folder it is an ebook.
+func TestAddEbookPDFRule(t *testing.T) {
+	e := newEnv(t, mediatest.FakeTools(t))
+	var got []EbookScan
+	e.sc.OnEbooks(func(_ context.Context, es EbookScan) { got = append(got, es) })
+	writeEbookFixture(t, filepath.Join(e.root, "Alpha", "01.mp3"), "audio")
+	writeEbookFixture(t, filepath.Join(e.root, "Alpha", "booklet.pdf"), "pdf")
+	writeEbookFixture(t, filepath.Join(e.root, "Beta", "paper.pdf"), "pdf")
+	writeEbookFixture(t, filepath.Join(e.root, "Beta", "sub", "01.mp3"), "audio")
+	e.scan()
+	var names []string
+	for _, es := range got {
+		for _, fo := range es.Folders {
+			for _, f := range fo.Files {
+				names = append(names, f.RelDir+"/"+f.Name)
+			}
+		}
+	}
+	if len(names) != 1 || names[0] != "Beta/paper.pdf" {
+		t.Fatalf("ebooks = %v, want only Beta/paper.pdf", names)
+	}
+}

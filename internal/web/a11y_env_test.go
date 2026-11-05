@@ -133,6 +133,7 @@ func a11ySeed(t *testing.T) *a11yEnv {
 		}
 		placeEbook(t, a, tb, owner, "the-salt-road.epub", "ready", "")
 		e.TextBookID = tid
+		eadmSeedMaybe(t, a, bk, owner, card.Card.Authors[0].Name) // a "Maybe the same book" row on /admin/ebooks
 	}
 	memberCk := a.as(t, users.RoleMember)
 	e.MemberID = sweepUserID(t, a, memberCk)

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/ebook"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
@@ -120,6 +121,8 @@ type Service struct {
 	free    func(dir string) (uint64, error)
 	writeAt func(f *os.File, b []byte, off int64) error
 	crash   func(point string) error // returns an error to simulate a crash at a named point
+	// readEbook opens a staged ebook the way the library would (a test replaces it).
+	readEbook func(ctx context.Context, path, ext string) (*ebook.Doc, error)
 }
 
 // New returns the service. tools may lack ffprobe: placement then fails with ffprobe_missing.
@@ -136,6 +139,9 @@ func New(cfg Config, st *db.Store, repo *library.Repo, tools media.Tools, enq sc
 			return err
 		},
 		crash: func(string) error { return nil },
+		readEbook: func(ctx context.Context, path, ext string) (*ebook.Doc, error) {
+			return ebook.Read(ctx, path, ext, ebook.DefaultLimits())
+		},
 	}
 }
 

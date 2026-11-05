@@ -610,6 +610,17 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   href, the reader page by its own tests; `vision.md` still lists "Honest timing", a read-along line left for the docs sweep.
   Deviations: no `speaker` icon (RD1 uses `output`); contrast theme gets a darker `ts-avatar--c4` (7:1 under 13 px initials).
 - **B3 Add books and `/admin/ebooks`**: ebooks by upload (0015 amended), PDF scanning, suggestions and "Could not be opened".
+  **Status (built 2026-11-04)**: Add books takes ebooks and PDFs (manifest, zip and split count an ebook like audio;
+  `.kfx` refused by extension; placement opens each staged ebook with `ebook.Read`: DRM or unreadable refuses the whole upload
+  and deletes the staged bytes; name from the first audio's tags, else the first ebook's details, else the file name;
+  `upload.Removable` and `Remove` count ebook files, delete their rows before the book so none is revived). The scanner treats a
+  PDF as an ebook only when no audio sits in its directory (`media.KindLooseEbook`), and an ebook-only scoped scan reaches the
+  sink. `/admin/ebooks` is "Maybe the same book" (`ebook.Service.Suggestions`: a match the engine leaves or the guard refused,
+  filtered by `BookFilter`; "Make one book" runs `MergeBook`, "Not the same book" and "Keep it as an ebook on its own" are
+  remembered) and "Could not be opened" (files with no book; a failed or damaged file has a read-only download). A text book's Text
+  tab links "Find the audiobook". The libraries page links "Ebooks" with no count. Checks: `TestAddEbook*`, `TestEbookAdmin*`,
+  `TestSuggest*`, the route matrix, `make check`, `make build`, `make a11y`. Limits: the audiobook's Text tab no longer lists
+  suggestions (they live on `/admin/ebooks`); no bulk merge, no ebook upload through the API.
 - **RD1 Reader server**: document recipe v2 (links, images, metadata), chapter parts, images route, `/reading/{bookID}`,
   the speaker icon. Exit: a hostile EPUB puts no script, handler or style byte in any answer.
   **Status (built 2026-11-04)**: recipe `tendshelf-ebook-v2` (links with resolved targets, image sizes, description,

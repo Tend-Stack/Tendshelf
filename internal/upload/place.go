@@ -18,6 +18,7 @@ import (
 	"syscall"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/ebook"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/metadata"
@@ -150,7 +151,7 @@ func (s *Service) place(ctx context.Context, g guard, progress func(any), upload
 				return nil, s.plainFail(ctx, g, uploadID, err)
 			}
 			if refusedZip != "" {
-				return s.refuse(ctx, g, up, refusedZip)
+				return s.refuse(ctx, g, up, refusal{refusedZip, media.CodeDRM})
 			}
 			// A split changes the upload's label (the first folder's name).
 			if up, err = s.loadUpload(ctx, uploadID); err != nil {
@@ -161,7 +162,7 @@ func (s *Service) place(ctx context.Context, g guard, progress func(any), upload
 		if err != nil {
 			return nil, s.plainFail(ctx, g, uploadID, err)
 		}
-		if refused != "" {
+		if refused.file != "" {
 			return s.refuse(ctx, g, up, refused)
 		}
 		step("placing")
@@ -179,9 +180,17 @@ func (s *Service) place(ctx context.Context, g guard, progress func(any), upload
 // bookNames are the names the layout is built from.
 type bookNames struct{ author, title, series, seq string }
 
-// inspect probes every staged audio file. It returns the name of a file that is copy-protected
-// (the whole book is then refused), or the names for the layout (step e).
-func (s *Service) inspect(ctx context.Context, up uploadRow, files []fileRow) (bookNames, string, error) {
+// refusal names the staged file that stops a whole upload and why: media.CodeDRM for copy-protected
+// audio or ebooks, CodeUnreadable for an ebook Tendshelf cannot open.
+type refusal struct{ file, code string }
+
+// CodeUnreadable is the upload error code of an ebook that is damaged, empty of text, too large or of a
+// kind Tendshelf cannot open.
+const CodeUnreadable = "unreadable"
+
+// inspect probes every staged audio file and opens every staged ebook. It returns the file that is
+// copy-protected or unreadable (the whole book is then refused), or the names for the layout (step e).
+func (s *Service) inspect(ctx context.Context, up uploadRow, files []fileRow) (bookNames, refusal, error) {
 	var audio []fileRow
 	for _, f := range files {
 		if media.Classify(f.RelPath) == media.KindAudio {
@@ -195,11 +204,11 @@ func (s *Service) inspect(ctx context.Context, up uploadRow, files []fileRow) (b
 		var me *media.Error
 		switch {
 		case pr.Encrypted || (errors.As(err, &me) && me.Code == media.CodeDRM):
-			return bookNames{}, f.RelPath, nil
+			return bookNames{}, refusal{f.RelPath, media.CodeDRM}, nil
 		case ctx.Err() != nil:
-			return bookNames{}, "", context.Cause(ctx)
+			return bookNames{}, refusal{}, context.Cause(ctx)
 		case errors.Is(err, media.ErrNotFound) || (errors.As(err, &me) && me.Code == media.CodeFFprobeMissing):
-			return bookNames{}, "", &jobs.Error{Code: media.CodeFFprobeMissing, Text: media.ErrorText(media.CodeFFprobeMissing), Permanent: true, Err: err}
+			return bookNames{}, refusal{}, &jobs.Error{Code: media.CodeFFprobeMissing, Text: media.ErrorText(media.CodeFFprobeMissing), Permanent: true, Err: err}
 		case err != nil:
 			// A file that cannot be read must not be placed unchecked: it might be protected.
 			code := media.CodeProbeFailed
@@ -210,16 +219,50 @@ func (s *Service) inspect(ctx context.Context, up uploadRow, files []fileRow) (b
 			if text == "" {
 				text = "Tendshelf could not read one of the files."
 			}
-			return bookNames{}, "", &jobs.Error{Code: code, Text: text, Permanent: code == media.CodeNotAudio, Err: err}
+			return bookNames{}, refusal{}, &jobs.Error{Code: code, Text: text, Permanent: code == media.CodeNotAudio, Err: err}
 		}
 		if i == 0 || first == nil {
 			p := pr
 			first = &p
 		}
 	}
+	// Ebooks are opened the way the library will open them: a copy-protected or unreadable one refuses
+	// the whole upload before anything reaches the library folder. A PDF beside audio is a booklet the
+	// scanner ignores, so it is placed without being opened.
+	var firstDoc *ebook.Doc
+	var ebooks []fileRow
+	for _, f := range files {
+		if !isEbook(f.RelPath) || (len(audio) > 0 && ebook.ExtOf(f.RelPath) == "pdf") {
+			continue
+		}
+		ebooks = append(ebooks, f)
+	}
+	sort.Slice(ebooks, func(i, j int) bool { return ebooks[i].RelPath < ebooks[j].RelPath })
+	for _, f := range ebooks {
+		doc, err := s.readEbook(ctx, s.partPath(f.UploadID, f.ID), ebook.ExtOf(f.RelPath))
+		var rf *ebook.Refusal
+		switch {
+		case ctx.Err() != nil:
+			return bookNames{}, refusal{}, context.Cause(ctx)
+		case errors.As(err, &rf) && rf.Reason == ebook.ReasonDRM:
+			return bookNames{}, refusal{f.RelPath, media.CodeDRM}, nil
+		case err != nil:
+			s.log.Info("upload: an ebook could not be opened", "upload", up.ID, "err", err)
+			return bookNames{}, refusal{f.RelPath, CodeUnreadable}, nil
+		}
+		if firstDoc == nil {
+			firstDoc = doc
+		}
+	}
 	var d metadata.Details
-	if first != nil {
+	switch {
+	case first != nil:
 		d = metadata.FromTags(first.Tags, len(audio) == 1)
+	case firstDoc != nil:
+		d.Title, d.Authors = firstDoc.Meta.Title, firstDoc.Meta.Authors
+		if firstDoc.Meta.Series != "" {
+			d.Series = []metadata.SeriesRef{{Name: firstDoc.Meta.Series, Sequence: firstDoc.Meta.SeriesIndex}}
+		}
 	}
 	bn := metadata.ParseBookName(up.Label)
 	var n bookNames
@@ -237,18 +280,18 @@ func (s *Service) inspect(ctx context.Context, up uploadRow, files []fileRow) (b
 	} else {
 		n.series, n.seq = bn.Series, bn.Sequence
 	}
-	return n, "", nil
+	return n, refusal{}, nil
 }
 
 // refuse ends an upload whose staged audio is encrypted: nothing was written to the library
 // folder, and the staged bytes are deleted.
-func (s *Service) refuse(ctx context.Context, g guard, up uploadRow, file string) (any, error) {
+func (s *Service) refuse(ctx context.Context, g guard, up uploadRow, r refusal) (any, error) {
 	err := s.write(ctx, g, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `UPDATE uploads SET state = ?, refused_file = ?, error_code = ?, updated_at = ? WHERE id = ?`,
-			StateRefused, file, media.CodeDRM, s.nowMs(), up.ID); err != nil {
+			StateRefused, r.file, r.code, s.nowMs(), up.ID); err != nil {
 			return err
 		}
-		return s.audit(ctx, tx, up.CreatedBy, "upload.refuse", "upload:"+up.ID, map[string]string{"reason": media.CodeDRM, "file": file})
+		return s.audit(ctx, tx, up.CreatedBy, "upload.refuse", "upload:"+up.ID, map[string]string{"reason": r.code, "file": r.file})
 	})
 	if err != nil {
 		return nil, err

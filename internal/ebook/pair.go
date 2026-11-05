@@ -31,6 +31,8 @@ const (
 	ReasonTitle   Reason = "title"
 	ReasonAuthor  Reason = "author"
 	ReasonSimilar Reason = "similar"
+	// ReasonFolder is the same-folder rule: the ebook sits beside the audiobook's files.
+	ReasonFolder Reason = "folder"
 )
 
 // Candidate is one book an ebook might belong to.

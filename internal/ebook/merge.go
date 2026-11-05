@@ -220,18 +220,9 @@ AND book_id IN (SELECT id FROM books WHERE kind = 'text' AND missing_since IS NU
 		if !ok {
 			continue
 		}
-		to, by, ok := Decide(Match(ed.pairMeta(), audio, ns[f.ID], 0))
-		if !ok && f.Origin == "library" {
-			byDir, seen := folders[f.LibraryID]
-			if !seen {
-				if byDir, err = s.folderBooks(ctx, f.LibraryID); err != nil {
-					return err
-				}
-				folders[f.LibraryID] = byDir
-			}
-			if id, found := folderBook(byDir, f.Path, f.Ext); found && !ns[f.ID][id] {
-				to, by, ok = id, "folder", true
-			}
+		to, by, ok, err := s.autoTarget(ctx, f, ed, audio, ns[f.ID], folders)
+		if err != nil {
+			return err
 		}
 		if !ok || (onlyTo != "" && to != onlyTo) || (onlyFrom != "" && f.BookID != onlyFrom) {
 			continue
@@ -241,6 +232,38 @@ AND book_id IN (SELECT id FROM books WHERE kind = 'text' AND missing_since IS NU
 		}
 	}
 	return nil
+}
+
+// autoTarget is the audiobook the engine would merge this text book's default file into, and how it is
+// recorded: the deciding match, else the same-folder rule. folders caches the folder reads per library.
+func (s *Service) autoTarget(ctx context.Context, f File, ed Edition, audio []BookKey, ns map[string]bool,
+	folders map[string]map[string][]string) (to, by string, ok bool, err error) {
+	to, by, ok = Decide(Match(ed.pairMeta(), audio, ns, 0))
+	if ok || f.Origin != "library" {
+		return to, by, ok, nil
+	}
+	byDir, seen := folders[f.LibraryID]
+	if !seen {
+		if byDir, err = s.folderBooks(ctx, f.LibraryID); err != nil {
+			return "", "", false, err
+		}
+		folders[f.LibraryID] = byDir
+	}
+	if id, found := folderBook(byDir, f.Path, f.Ext); found && !ns[id] {
+		return id, "folder", true, nil
+	}
+	return "", "", false, nil
+}
+
+// GuardAllows says whether the automatic guard would let the text book `from` merge into `to`. A person's own
+// merge skips it; the page uses it to say first that grants on the text book go along.
+func (s *Service) GuardAllows(ctx context.Context, from, to string) (bool, error) {
+	var one int
+	err := s.db.Reader().QueryRowContext(ctx, `SELECT 1 WHERE `+mergeGuard, sql.Named("from", from), sql.Named("to", to)).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 // splitBook takes the files `ids` (all of one book, `book`) off it into a text book of their own, inside tx.
