@@ -17,8 +17,8 @@ func TestMigration0021FromPrevious(t *testing.T) {
 
 	st := mustOpen(t, dir)
 	defer st.Close()
-	if v := st.SchemaVersion(); v != 21 {
-		t.Fatalf("schema version = %d, want 21", v)
+	if v := st.SchemaVersion(); v != SchemaVersion {
+		t.Fatalf("schema version = %d, want %d", v, SchemaVersion)
 	}
 	var kind string
 	if err := st.Reader().QueryRow(`SELECT kind FROM books WHERE id = 'bk_1'`).Scan(&kind); err != nil || kind != "audio" {
