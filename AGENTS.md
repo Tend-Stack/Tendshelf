@@ -36,7 +36,8 @@ was reused, extended or replaced.
 - **CSS** is hand-written in `internal/web/static/css/` with custom properties for design tokens.
 - **SQLite** via the pure-Go driver, WAL mode, one database file in the data directory.
 - **Wails v3** for desktop, in a separate Go module under `desktop/` so the server binary never links
-  CGO, GTK or WebKit. Native mobile is later; the PWA comes first.
+  CGO, GTK or WebKit. Pages load from an http(s) origin, never Wails' asset scheme
+  (decision 0020). Native mobile is later; the PWA comes first.
 
 ## templ and HTMX conventions
 
@@ -111,8 +112,10 @@ was reused, extended or replaced.
 
 - **No telemetry**, analytics, crash reporting, update pings or third-party assets (fonts, CDNs, map
   tiles). The only outbound requests are user-initiated metadata lookups and cover downloads, through
-  `internal/metadata/online`, the only package that creates an `http.Client`. The one other outbound
+  `internal/metadata/online`, the only package in the server that creates an `http.Client`. The one other outbound
   connection is the admin-configured SMTP server for invitation emails (`internal/share/mail.go`).
+  The desktop shell also checks `/healthz` on the server the person typed, at Connect and at launch
+  (`internal/desktopshell`, decision 0020). That is its own client, and it sends no credentials.
 - All authorization goes through `share.Can(user, action, target)`. Listing and search queries filter
   by grants in SQL; never fetch everything and filter in Go (counts and search must not leak titles).
 - Session, invite and API tokens are random 32-byte values; only their SHA-256 is stored.

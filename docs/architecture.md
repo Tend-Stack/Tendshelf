@@ -549,10 +549,17 @@ highlights, notes and bookmarks by sentence id and offset. There is no audio tim
 ## Desktop (P5)
 
 `desktop/` module, Wails v3.0.0 (pinned), Linux on its default GTK 4 + WebKitGTK 6.0 (the `gtk3` tag is the
-legacy fallback; [decision 0003](decisions/0003-newest-versions.md)). Two
-modes: connect to a Tendshelf server (the window loads the server's pages; native media keys and tray),
-or personal mode running the same core in-process on a local library. See TendVox `docs/wails-v3.md`
-for origin guards and the audio gateway pattern.
+legacy fallback; [decision 0003](decisions/0003-newest-versions.md)). Two modes, decided in
+[decision 0020](decisions/0020-desktop-shell.md) and planned in `docs/plans/m6-desktop.md`:
+
+- **Pages always load from an http(s) origin.** Wails' asset handler (`wails://`) serves only the first-run
+  picker (`internal/desktopshell`); there it drops cookies and breaks `<audio>`, so no page runs there.
+- **Personal mode** runs `internal/app` in the desktop process on `127.0.0.1:<random port, then saved>`, with its
+  own data folder (never the server's default). Sign-in works as on any server.
+- **Connect mode** loads the typed server directly in the window. No proxy, and no rewriting of cookies or the CSP.
+  The shell checks `GET /healthz` first (no credentials); a server without `shell` support is refused.
+- `ts_shell=desktop` marks the window in both modes (`data-shell`); there is no service worker in it, and no
+  Wails runtime in pages. One bridge: `tendshelf:` messages to Go, a `ts:desktop` event back.
 
 ## Dependencies and approvals
 
