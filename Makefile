@@ -6,7 +6,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell git describe --tags --long --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
+.PHONY: desktop desktop-check isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
 
 generate:
 	$(GO) tool templ generate
@@ -118,3 +118,26 @@ clean:
 .PHONY: test-mediajobs-real
 test-mediajobs-real:
 	TENDSHELF_TEST_FFMPEG=1 $(GO) test -count=1 -run 'Real' ./internal/media/ ./internal/mediajobs/
+
+# The desktop window (decision 0020): a separate Go module, built with CGO against GTK 4 and WebKitGTK 6.
+# The server binary above never links any of it. Needs libgtk-4-dev and libwebkitgtk-6.0-dev.
+desktop:
+	$(GO) -C desktop build -trimpath -tags production -ldflags "-X main.version=$(VERSION)" -o ../bin/tendshelf-desktop .
+
+# Formatting, vet and race-enabled tests of the desktop module (needs the same libraries).
+desktop-check:
+	@out="$$(gofmt -l desktop)"; if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
+	$(GO) -C desktop vet -tags production ./...
+	$(GO) -C desktop vet -tags 'production tendshelf_probe' ./...
+	$(GO) -C desktop test -race -tags production ./...
+
+# Runs a command in a private, headless GNOME Shell (its own D-Bus and Wayland display, no install,
+# no sudo, nothing on the visible desktop): make isolated CMD="bin/tendshelf-desktop".
+CMD ?= bin/tendshelf-desktop
+isolated:
+	scripts/isolated-display.sh $(CMD)
+
+# The scripted probe build: the same window plus desktop/probe, which drives it through the isolated display.
+.PHONY: desktop-probe
+desktop-probe:
+	$(GO) -C desktop build -trimpath -tags 'production tendshelf_probe' -o ../bin/tendshelf-desktop-probe .
