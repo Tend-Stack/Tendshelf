@@ -91,6 +91,9 @@ func parsePDF(ra io.ReaderAt, size int64, lim Limits) (doc *Doc, err error) {
 	if n <= 0 {
 		return nil, damaged("pdf_no_pages")
 	}
+	if !pageTreeSane(r) {
+		return nil, damaged("pdf_page_tree")
+	}
 	start := time.Now()
 	var lines []pdfLine
 	letters := 0
@@ -170,6 +173,36 @@ func pdfPageList(d *Doc) []PageMark {
 }
 
 // pdfPageLines turns one page's glyphs into lines, left to right inside each line.
+// Limits on the page-tree walk: a real tree is a few levels deep, and a node budget bounds a wide one.
+const (
+	pdfTreeMaxDepth = 64
+	pdfTreeMaxNodes = 500000
+)
+
+// pageTreeSane walks /Kids from the root before r.Page does. r.Page follows a node that lists itself
+// forever, so a tree that is too deep (a loop always is) or too large reads as damaged.
+func pageTreeSane(r *pdf.Reader) bool {
+	budget := pdfTreeMaxNodes
+	var walk func(v pdf.Value, depth int) bool
+	walk = func(v pdf.Value, depth int) bool {
+		budget--
+		if depth > pdfTreeMaxDepth || budget < 0 {
+			return false
+		}
+		if v.Key("Type").Name() != "Pages" {
+			return true
+		}
+		kids := v.Key("Kids")
+		for i := 0; i < kids.Len(); i++ {
+			if !walk(kids.Index(i), depth+1) {
+				return false
+			}
+		}
+		return true
+	}
+	return walk(r.Trailer().Key("Root").Key("Pages"), 0)
+}
+
 func pdfPageLines(r *pdf.Reader, num int) []pdfLine {
 	pg := r.Page(num)
 	if pg.V.IsNull() {
