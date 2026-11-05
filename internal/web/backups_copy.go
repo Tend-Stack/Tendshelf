@@ -4,7 +4,7 @@ package web
 // rules in BRAND.md.
 const (
 	backupsTitle    = "Backups"
-	backupsIntro    = "Tendshelf keeps dated copies of its database: your people, progress, bookmarks and settings. Your audiobook files are not copied."
+	backupsIntro    = "Tendshelf keeps dated copies of its database: your people, progress, bookmarks and settings. Your audiobook files are not copied, and neither are uploaded ebooks and covers, which live in the data folder. To keep those too, copy the whole data folder."
 	backupsHeading  = "Automatic backups"
 	backupsOff      = "Off"
 	backupsDaily    = "Every day"
