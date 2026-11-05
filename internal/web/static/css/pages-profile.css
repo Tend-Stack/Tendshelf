@@ -47,6 +47,8 @@
   .ts-pbook { display: block; padding: 0; border-bottom: 0; }
   .ts-pbook:nth-child(n+6) { display: block; }
   .ts-pbook .ts-card { display: flex; flex-direction: column; gap: 0.125rem; }
+  /* The phone row centres the cover in its grid cell; in this column that shrank it to nothing in WebKit. */
+  .ts-pbook .ts-card__cover { align-self: stretch; }
   .ts-pbook .ts-card__title { align-self: auto; margin-top: var(--space-8); }
   .ts-pbook > .ts-iconbtn { position: absolute; top: calc(100cqi - var(--size-tap) - var(--space-12)); right: var(--space-8); box-shadow: var(--shadow-float); }
   .ts-profile__done { grid-template-columns: repeat(6, minmax(0, 1fr)); }

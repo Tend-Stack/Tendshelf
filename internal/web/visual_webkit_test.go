@@ -174,3 +174,126 @@ func TestVisualWebKitPages(t *testing.T) {
 	}
 	t.Logf("screenshots in %s", out)
 }
+
+// bookFirstProbeJS measures every book tile on a page: the cover box and, for the Profile's
+// "Also in progress" tiles, where the round resume button sits. WebKit once collapsed those covers
+// (container-type: inline-size on the tile), which Chromium never did.
+const bookFirstProbeJS = `(() => {
+	const box = (el) => { const r = el.getBoundingClientRect(); return {x: r.x, y: r.y, w: r.width, h: r.height}; };
+	const tiles = [];
+	for (const sel of [".ts-pbook", ".ts-profile__done > *", ".ts-grid--covers > *", ".ts-hero", ".ts-book-hero"]) {
+		for (const el of document.querySelectorAll(sel)) {
+			if (el.getBoundingClientRect().width === 0) { continue; }
+			const cover = el.querySelector(".ts-cover");
+			const btn = el.querySelector(":scope > .ts-iconbtn");
+			const img = el.querySelector(".ts-cover img");
+			tiles.push({sel: sel, loaded: img ? img.complete && img.naturalWidth > 0 : true, cover: cover ? box(cover) : null, btn: btn ? box(btn) : null, tile: box(el)});
+		}
+	}
+	return {tiles: tiles, over: document.documentElement.scrollWidth > window.innerWidth};
+})()`
+
+type bookFirstBox struct{ X, Y, W, H float64 }
+
+// TestBookFirstWebKitProfile opens /me with several books in progress and some finished in WebKitGTK
+// and checks every tile: the cover has height, and the round control sits inside the cover box.
+// Same opt-in as the other WebKit tests.
+func TestBookFirstWebKitProfile(t *testing.T) {
+	driver := os.Getenv("TENDSHELF_TEST_WEBKIT_DRIVER")
+	if driver == "" {
+		t.Skip("TENDSHELF_TEST_WEBKIT_DRIVER not set")
+	}
+	browser := os.Getenv("TENDSHELF_TEST_WEBKIT_BROWSER")
+	if browser == "" {
+		browser = defaultMiniBrowser
+	}
+	app := newTestApp(t)
+	app.owner(t)
+	browseSeed(t, app, 20)
+	all := share.Filter{SQL: "1=1"}
+	list, err := app.lib.ListBooks(context.Background(), library.Scope{Books: all, Libraries: all}, library.ListQuery{Limit: 12})
+	if err != nil || len(list.Books) < 12 {
+		t.Fatalf("seed: %v", err)
+	}
+	// The seeded audio files carry no duration, so no book would get a play control; give each its book's.
+	streamExec(t, app, `UPDATE audio_files SET duration_ms = (SELECT duration_ms FROM books WHERE books.id = audio_files.book_id), container = 'mp3', codec = 'mp3'`)
+	owner := ""
+	if err := app.st.Writer().QueryRowContext(context.Background(), `SELECT id FROM users WHERE role = 'owner'`).Scan(&owner); err != nil {
+		t.Fatal(err)
+	}
+	now := int64(1_800_000_000_000)
+	for i, b := range list.Books {
+		var finished any
+		pos := int64(600_000 + i*1000)
+		if i >= 7 {
+			finished, pos = now-int64(i)*1000, 3_000_000
+		}
+		streamExec(t, app, `INSERT INTO progress(user_id, book_id, position_ms, duration_ms, finished_at, client_updated_at, server_updated_at, device_id, device_label)
+VALUES (?,?,?,?,?,?,?,?,?)`, owner, b.ID, pos, 3_000_000, finished, now-int64(i)*1000, now-int64(i)*1000, "devicealpha1", "x")
+	}
+	signed := themedServer(t, app.signedIn(t))
+	out := visualDir(t, "webkit")
+	s := webdriver.Start(t, driver, browser)
+
+	pages := []struct{ name, path string }{
+		{"profile", "/me"},
+		{"library", "/libraries"},
+		{"home", "/"},
+		{"book", "/books/" + list.Books[0].ID},
+	}
+	for _, w := range []int{447, 1440} {
+		s.SetViewport(w, 900)
+		for _, pg := range pages {
+			t.Run(fmt.Sprintf("%s-%d", pg.name, w), func(t *testing.T) {
+				s.Navigate(signed + pg.path + "?theme=dark")
+				var m struct {
+					Over  bool `json:"over"`
+					Tiles []struct {
+						Sel    string        `json:"sel"`
+						Loaded bool          `json:"loaded"`
+						Cover  *bookFirstBox `json:"cover"`
+						Btn    *bookFirstBox `json:"btn"`
+						Tile   bookFirstBox  `json:"tile"`
+					} `json:"tiles"`
+				}
+				s.Eval(bookFirstProbeJS, &m)
+				if m.Over {
+					t.Errorf("horizontal overflow")
+				}
+				if pg.name == "profile" && len(m.Tiles) == 0 {
+					t.Fatalf("no tiles on the Profile")
+				}
+				buttons := 0
+				for i, tl := range m.Tiles {
+					if tl.Btn != nil {
+						buttons++
+					}
+					if tl.Cover == nil {
+						continue
+					}
+					if tl.Cover.H < 40 || tl.Cover.W < 40 {
+						t.Errorf("tile %d (%s): cover collapsed to %.0fx%.0f", i, tl.Sel, tl.Cover.W, tl.Cover.H)
+						continue
+					}
+					if !tl.Loaded {
+						t.Errorf("tile %d (%s): the cover image did not load or decode", i, tl.Sel)
+					}
+					// On a phone the control sits at the row's end, beside the cover; tiles put it on the cover.
+					if tl.Btn != nil && w >= 768 {
+						c, b := tl.Cover, tl.Btn
+						if b.X < c.X-1 || b.Y < c.Y-1 || b.X+b.W > c.X+c.W+1 || b.Y+b.H > c.Y+c.H+1 {
+							t.Errorf("tile %d (%s): button %+v is outside the cover %+v", i, tl.Sel, *b, *c)
+						}
+					}
+				}
+				if pg.name == "profile" && buttons == 0 {
+					t.Errorf("no tile has its round resume control, so its place was never checked")
+				}
+				// WebKit paints a decoded image a moment after it reports complete; a shot taken at once shows flat boxes.
+				s.ExecAsync(`const done = arguments[arguments.length - 1]; setTimeout(() => done(1), 1000);`, nil)
+				s.Screenshot(filepath.Join(out, fmt.Sprintf("bookfirst-%s-%d.png", pg.name, w)))
+			})
+		}
+	}
+	t.Logf("screenshots in %s", out)
+}
