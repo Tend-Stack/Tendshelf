@@ -49,4 +49,15 @@ const (
 	readerHlBad       = "That highlight could not be saved."
 	readerNoteLong    = "That note is too long."
 	readerRead        = "Read"
+	// NEW (RD2). The end of the book, and the time left line. %s is a time such as "12 min" (Intl formats it).
+	readerTheEnd       = "That's the end of the book."
+	readerMarkFinished = "Mark as finished"
+	readerFinished     = "Marked as finished."
+	readerLeftChapter  = "%s left in this chapter"
+	readerLeftChapAbt  = "About %s left in this chapter"
+	readerLeftBook     = "%s left in the book"
+	readerLeftBookAbt  = "About %s left in the book"
+	readerAnotherDev   = "You read further on %s."
+	readerGoThere      = "Go there"
+	readerStayHere     = "Stay here"
 )

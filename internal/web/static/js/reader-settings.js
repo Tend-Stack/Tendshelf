@@ -1,19 +1,27 @@
 // Reading settings (M5 R4 P4). A hidden marker on the reader page loads this, because the sheet lives
 // in #sheet, outside #main. A change is applied at once; htmx posts the same form to keep it per person.
-const LOOK = /^ts-reader--(sans|dyslexic|size-|leading-)/;
+const LOOK = /^ts-reader--(sans|dyslexic|size-|leading-|margin-|justify|nohyph|tapswap)/;
 
 export function mount(marker) {
   // Every .ts-reader: the page and the sheet's preview.
   const apply = (form) => {
     const data = new FormData(form);
     const get = (name) => data.getAll(name).pop();
-    const add = [`ts-reader--size-${get("size")}`, `ts-reader--leading-${get("leading")}`];
+    const add = [`ts-reader--size-${get("size")}`, `ts-reader--leading-${get("leading")}`, `ts-reader--margin-${get("margin")}`];
     if (get("font") !== "serif") add.push(`ts-reader--${get("font")}`);
+    // The switches: justified text and mirrored taps add a class, hyphens add one when they are off.
+    if (get("justify") === "1") add.push("ts-reader--justify");
+    if (get("hyphens") !== "1") add.push("ts-reader--nohyph");
+    if (get("tap_swap") === "1") add.push("ts-reader--tapswap");
     for (const el of document.querySelectorAll(".ts-reader")) {
       el.classList.remove(...[...el.classList].filter((c) => LOOK.test(c)));
       el.classList.add(...add);
     }
     if (get("theme")) document.documentElement.dataset.theme = get("theme");
+    // The page reader lays itself out again for the new look, and takes the new flow.
+    const page = document.getElementById("reader");
+    if (page) page.dataset.flow = get("flow");
+    document.dispatchEvent(new Event("ts-reader-look"));
   };
 
   // The listener stops for good once the marker has left the page.

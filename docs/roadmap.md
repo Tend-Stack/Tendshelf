@@ -624,6 +624,16 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   `ts-reader-next`. Next: RD2.
 - **RD2 Paginator**: `reader.js`, `reader-pages.js`, pages and scroll, tap zones, keys, swipe, time left from the person's
   speed, settings. Exit: the place survives a change of device size, font size and flow.
+  **Status (built 2026-11-04)**: `reader.js` (flow, anchor, saving, keys, taps, progress, the other-device offer) and
+  `reader-pages.js` (CSS columns, one part at a time, swipe), the page layout in `pages-reader.css`, five new reading
+  settings (Margins, Justify text, Hyphens, Page or scroll, Swap tap sides) in `reader.v1`, the end-of-book block, and
+  `POST /reading/{bookID}/finished`. Checks: `TestPaginator*`, `TestReaderInput*` (Chromium, `-tags dev`, 390 and 1440),
+  `TestReaderSettings*`, route matrix row, `TestJSBudget`, `TestCSSBudget`, `make check`, `make build`. Limits:
+  `reader.js` is over its approved 4.5 KB (see the budget note in `motion_test.go`; the app total holds); two columns
+  only from 1024 px and when both fit; no right-to-left; WebKit is RD4's manual check; a phone's pages after "Contents"
+  restart at the chapter (RD1's `?ch=` ladder), RD3 can pass `at`. Deviation: "Mark as finished" posts to
+  `/reading/{bookID}/finished` (the plan's `/hx/books/{id}/finished` answers 404 for text and writes listening
+  progress). Next: RD3.
 - **RD3 Marks and more**: colours, notes, footnote popups, search, export, plain errors.
 - **RD4 Checks**: a11y, contrast, boards side by side, layout time, a manual WebKit and phone check.
 - **Later** (a note each in the plan): G1 look-up and word list, G2 reading stats, G3 print pages, G4 skim, G5 comfort,

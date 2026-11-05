@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -185,6 +186,13 @@ func rdrSIDExists(d *ebook.Doc, sid string) (int, bool) {
 	return 0, false
 }
 
+// readerWords is the copy the client script needs, as JSON on the reader root (reader.js has no words of its own).
+func readerWords() string {
+	b, _ := json.Marshal(map[string]string{"pageOf": readerPageOf, "ch": readerLeftChapter, "chAbout": readerLeftChapAbt,
+		"bk": readerLeftBook, "bkAbout": readerLeftBookAbt, "further": readerAnotherDev, "go": readerGoThere, "stay": readerStayHere})
+	return string(b)
+}
+
 // readerView assembles the page around a chapter.
 func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPlace) (pages.ReaderView, error) {
 	ctx, u := r.Context(), currentUser(r)
@@ -192,7 +200,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	v := pages.ReaderView{
 		Title: rc.book.Title, BookID: id, EditionID: rc.ed.ID,
 		CloseHref: "/books/" + id, CloseLabel: readerClose,
-		Chapter: chap.view, MarksModule: s.assetOr("js/reader-marks.js"),
+		Chapter: chap.view, MarksModule: s.assetOr("js/reader-marks.js"), ReaderModule: s.assetOr("js/reader.js"), PagesModule: s.assetOr("js/reader-pages.js"),
 	}
 	rs, err := s.users.LoadReader(ctx, u.ID)
 	if err != nil {
@@ -212,7 +220,8 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	v.Root = pages.ReaderRoot{
 		At: pl.At, Off: strconv.Itoa(pl.Off), Cpm: cpm, Learned: learned, TotalChars: chap.total,
 		Before: chap.view.Before, ChapterChars: chChars, Save: "/reading/" + id,
-		Flow: "auto", Lang: rc.doc.Meta.Language,
+		Flow: rs.Flow, Lang: rc.doc.Meta.Language,
+		Pages: rc.doc.PageCount, Chapters: len(rc.doc.Chapters), Words: readerWords(),
 	}
 	// The speaker: only with the right to listen and an audiobook to play. It starts at the audiobook's own
 	// saved place (never the reading place) and writes neither position itself.

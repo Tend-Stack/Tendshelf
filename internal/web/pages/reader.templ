@@ -23,6 +23,8 @@ type ReaderChapterView struct {
 	Before         int // characters of the book before this part
 	Overline, Page string
 	Title          string
+	Chars          int        // characters of the whole chapter (the time left in it)
+	End            *ReaderEnd // the last part of the book carries the end-of-book block
 	Head           bool // the part carries the chapter's heading (the first part only)
 	Blocks         []ReaderBlockView
 	// PrevFrag and NextFrag are fragment addresses the client fetches (data-prev-href, data-next-href);
@@ -31,11 +33,15 @@ type ReaderChapterView struct {
 	NextFrag, NextHref, NextLabel string
 }
 
+// ReaderEnd is the end-of-book block: a sentence and the form that marks the book finished (the person does it, never the reader).
+type ReaderEnd struct{ Text, Label, Action, CSRF string }
+
 // ReaderRoot is what the client reads from the reader root: the place to open at, the reading speed,
 // the sizes it needs for page numbers and time left, and where to save.
 type ReaderRoot struct {
-	At, Off, Flow, Save, Lang        string
+	At, Off, Flow, Save, Lang, Words string // Words is JSON: the sentences the client script shows
 	Cpm, TotalChars, ChapterChars    int
+	Pages, Chapters                  int // the book's standard pages (p. n of N) and its chapters
 	Before                           int
 	Learned                          bool
 }
@@ -82,6 +88,7 @@ type ReaderView struct {
 	MarksLabel, MarksHref       string                     // the Highlights and notes sheet
 	Chapter                     ReaderChapterView
 	MarksModule                 string // address of reader-marks.js
+	ReaderModule, PagesModule   string // addresses of reader.js (flow, anchors, saving, input, progress) and reader-pages.js (the columns)
 	Footer                      ReaderFooter
 	Marks                       ReaderMarksBar
 	Look                        ReaderLook // the person's reading settings (reader.v1)
@@ -145,6 +152,13 @@ templ Reader(v ReaderView) {
 			data-chapter-chars={ strconv.Itoa(v.Root.ChapterChars) }
 			data-save={ v.Root.Save }
 			data-flow={ v.Root.Flow }
+			data-pages={ strconv.Itoa(v.Root.Pages) }
+			data-chapter-count={ strconv.Itoa(v.Root.Chapters) }
+			data-copy={ v.Root.Words }
+			data-pages-src={ v.PagesModule }
+			if v.ReaderModule != "" {
+				data-ts-module={ v.ReaderModule }
+			}
 			if v.Root.Lang != "" {
 				lang={ v.Root.Lang }
 			}
@@ -196,6 +210,7 @@ templ ReaderChapter(c ReaderChapterView) {
 		data-ch={ strconv.Itoa(c.Idx) }
 		data-part={ strconv.Itoa(c.Part) }
 		data-before={ strconv.Itoa(c.Before) }
+		data-chars={ strconv.Itoa(c.Chars) }
 		if c.PrevFrag != "" {
 			data-prev-href={ c.PrevFrag }
 		}
@@ -215,8 +230,16 @@ templ ReaderChapter(c ReaderChapterView) {
 				@ReaderBlock(b, false)
 			}
 		</div>
+		if c.End != nil {
+			<form class="ts-reader__end" method="post" action={ templ.URL(c.End.Action) } hx-post={ c.End.Action } hx-swap="none">
+				<p>{ c.End.Text }</p>
+				<input type="hidden" name="_csrf" value={ c.End.CSRF }/>
+				<input type="hidden" name="finished" value="1"/>
+				<button type="submit" class="ts-btn">{ c.End.Label }</button>
+			</form>
+		}
 		if c.NextFrag != "" {
-			<div class="ts-reader__next" hx-get={ c.NextFrag } hx-trigger="revealed, ts-reader-next" hx-swap="outerHTML">
+			<div class="ts-reader__next" hx-get={ c.NextFrag } hx-trigger="ts-reader-next" hx-swap="outerHTML">
 				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(c.NextHref) }>{ c.NextLabel }</a>
 			</div>
 		}
