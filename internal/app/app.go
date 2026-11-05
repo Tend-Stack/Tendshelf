@@ -172,9 +172,7 @@ func Run(ctx context.Context, cfg Config) error {
 		}
 	case <-ctx.Done():
 		logger.Info("shutting down")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		serveErr = srv.Shutdown(shutdownCtx)
-		cancel()
+		serveErr = stopServer(srv, 10*time.Second)
 	}
 
 	// Stop the runner after the server: running jobs are requeued or held.
@@ -184,6 +182,20 @@ func Run(ctx context.Context, cfg Config) error {
 		logger.Warn("job runner did not stop in time; unfinished jobs are recovered at the next start", "err", err)
 	}
 	return serveErr // st.Close runs on return
+}
+
+// stopServer lets open requests finish for up to grace, then closes what is left. A request still
+// open at the deadline is not an error: a stop that took the full grace and exited 1 made a normal
+// SIGTERM look like a crash.
+func stopServer(srv *http.Server, grace time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), grace)
+	defer cancel()
+	err := srv.Shutdown(ctx)
+	if errors.Is(err, context.DeadlineExceeded) {
+		_ = srv.Close()
+		return nil
+	}
+	return err
 }
 
 // setupURL is the link the owner opens on first run, with the setup code filled in. An address
