@@ -80,6 +80,9 @@ func (s *server) postReaderSettings(w http.ResponseWriter, r *http.Request) {
 	rsetBool(form, "justify", &next.Justify)
 	rsetBool(form, "hyphens", &next.Hyphens)
 	rsetBool(form, "tap_swap", &next.TapSwap)
+	rsetText(form, "warm", &next.Warm)
+	rsetBool(form, "keep_awake", &next.KeepAwake)
+	rsetBool(form, "auto_hide", &next.AutoHide)
 	if form.Has("size") {
 		n, err := strconv.Atoi(form.Get("size"))
 		if err != nil {
@@ -142,7 +145,7 @@ func readerLook(rs users.ReaderSettings) pages.ReaderLook {
 			class += " ts-reader--" + on.name
 		}
 	}
-	return pages.ReaderLook{Class: class}
+	return pages.ReaderLook{Class: class, KeepAwake: rs.KeepAwake, Warm: rs.Warm, AutoHide: rs.AutoHide}
 }
 
 // readingSheet builds the "Reading settings" sheet over the page the person is on.
@@ -163,5 +166,6 @@ func (s *server) readingSheet(r *http.Request, rc readerCtx, ch int) (pages.Read
 		Look: readerLook(rs), Theme: set.Theme, Font: rs.Font, Leading: rs.Leading,
 		Size: rs.Size, Large: set.TextSize == "large",
 		Margin: rs.Margin, Flow: rs.Flow, Justify: rs.Justify, Hyphens: rs.Hyphens, TapSwap: rs.TapSwap,
+		KeepAwake: rs.KeepAwake, Warm: rs.Warm, AutoHide: rs.AutoHide,
 	}, nil
 }

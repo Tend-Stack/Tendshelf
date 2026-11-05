@@ -225,6 +225,10 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	v.Look = readerLook(rs)
 	v.SettingsLabel, v.SettingsHref = readerSettings, rc.href("sheet", "reading")
 	v.SettingsModule = s.assetOr("js/reader-settings.js")
+	v.ComfortSrc = s.assetOr("js/reader-comfort.js")
+	if rs.KeepAwake || rs.Warm != "off" || rs.AutoHide {
+		v.ComfortModule = v.ComfortSrc // only a person who turned a comfort setting on loads it
+	}
 	v.Footer = pages.ReaderFooter{PageLine: chap.view.Page, ContentsLabel: readerContents, ContentsHref: rc.href("sheet", "contents"),
 		Ruler: rsRuler(rc.doc, chap)}
 	v.MarksLabel, v.MarksHref = readerMarksTitle, rc.href("sheet", "marks")
