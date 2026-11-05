@@ -151,7 +151,7 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 		if mayRead && lastFormat(p, rp, true, true) == formatText {
 			// The other format is a plain secondary button: no place, no queue menu.
 			textFirst = true
-			v.Button.Label, v.Button.FromStart, v.Button.Secondary = listenOther, false, true
+			v.Button.Label, v.Button.FromStart, v.Button.Secondary, v.Button.Large = listenOther, false, true, true
 		} else {
 			// Only a signed-in person reaches this page (a share link has its own page), so the queue
 			// menu always comes with the button.
@@ -163,6 +163,7 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	}
 	if mayRead {
 		v.Read = readButton(book, rp, !textFirst && v.Button != nil)
+		v.Read.Large = v.Read.Secondary
 		if textFirst {
 			v.ReadFirst = true
 			v.Ruler, v.Where, v.WhereShort = readRuler(rp)

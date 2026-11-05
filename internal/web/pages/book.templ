@@ -221,7 +221,7 @@ templ BookPlay(v *BookPlayView) {
 						<input type="hidden" name="_csrf" value={ v.CSRF }/>
 						<input type="hidden" name="finished" value={ v.MarkValue }/>
 						<input type="hidden" name="next" value={ v.Next }/>
-						<button type="submit" class="ts-btn ts-btn--quiet ts-book__mark">
+						<button type="submit" class="ts-btn ts-btn--secondary ts-btn--lg ts-book__mark">
 							@components.Icon("check", false)
 							<span class="ts-book__label">{ v.MarkLabel }</span>
 						</button>
@@ -239,7 +239,7 @@ templ BookPlay(v *BookPlayView) {
 templ bookDownload(v BookDownloadView) {
 	<button
 		type="button"
-		class="ts-btn ts-btn--quiet ts-book__download"
+		class="ts-btn ts-btn--secondary ts-btn--lg ts-book__download"
 		data-ts-download={ v.ID }
 		data-ts-msg-downloading={ v.Downloading }
 		data-ts-msg-waiting={ v.Waiting }
@@ -249,7 +249,7 @@ templ bookDownload(v BookDownloadView) {
 		<span class="ts-book__label">{ v.Label }</span>
 	</button>
 	<a
-		class="ts-btn ts-btn--quiet ts-book__download"
+		class="ts-btn ts-btn--secondary ts-btn--lg ts-book__download"
 		href={ templ.SafeURL(v.Href) }
 		data-ts-download-status
 		data-ts-msg-ready={ v.Ready }
@@ -264,7 +264,7 @@ templ bookDownload(v BookDownloadView) {
 
 // bookShareLink opens the Share & invite page for this book. A plain link: the page is a full page.
 templ bookShareLink(href string) {
-	<a class="ts-btn ts-btn--quiet ts-book__share" href={ templ.SafeURL(href) }>
+	<a class="ts-btn ts-btn--secondary ts-btn--lg ts-book__share" href={ templ.SafeURL(href) }>
 		@components.Icon("share", false)
 		<span class="ts-book__label">Share</span>
 	</a>
