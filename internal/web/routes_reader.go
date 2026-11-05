@@ -202,7 +202,7 @@ func rdrSIDExists(d *ebook.Doc, sid string) (int, bool) {
 func readerWords() string {
 	b, _ := json.Marshal(map[string]string{"pageOf": readerPageOf, "ch": readerLeftChapter, "chAbout": readerLeftChapAbt,
 		"bk": readerLeftBook, "bkAbout": readerLeftBookAbt, "further": readerAnotherDev, "go": readerGoThere, "stay": readerStayHere,
-		"back": readerBack, "failed": readerPartFailed, "retry": readerTryAgain})
+		"back": readerBack, "failed": readerPartFailed, "retry": readerTryAgain, "prev": readerPrevChapter, "needsNet": readerNeedsNet})
 	return string(b)
 }
 
@@ -214,6 +214,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 		Title: rc.book.Title, BookID: id, EditionID: rc.ed.ID,
 		CloseHref: "/books/" + id, CloseLabel: readerClose,
 		Chapter: chap.view, MarksModule: s.assetOr("js/reader-marks.js"), ReaderModule: s.assetOr("js/reader.js"), PagesModule: s.assetOr("js/reader-pages.js"),
+		Offline: &pages.ReaderOfflineView{Module: s.assetOr("js/reader-offline.js")},
 	}
 	rs, err := s.users.LoadReader(ctx, u.ID)
 	if err != nil {

@@ -150,7 +150,7 @@ export function mount(menu) {
     "click",
     async (event) => {
       // A note dot opens the marks sheet, where the note can be read and changed.
-      if (event.target.closest("[data-hl-note]")) return document.querySelector('.ts-readerbar a[href*="sheet=marks"]').click();
+      if (event.target.closest("[data-hl-note]")) return document.querySelector('.ts-readerbar a[href*="sheet=marks"]')?.click();
       const note = event.target.closest("a[data-note-href]");
       if (note) {
         event.preventDefault();

@@ -136,6 +136,18 @@ type ReaderView struct {
 	SettingsModule              string     // address of reader-settings.js
 	SearchLabel, SearchHref     string
 	BookmarkLabel, BookmarkURL  string // the bookmark-this-page button and where its form posts
+	Offline                     *ReaderOfflineView // the offline reader (decision 0019); nil leaves it out
+}
+
+// ReaderOfflineView is what reader-offline.js reads from its marker. Module is its address. The rest is set
+// only for a book's stored reader shell, which holds no chapter text: ReaderSrc is reader.js, Placed the
+// time of the place the shell was made with, StartCh and StartPart that place, Frag the chapter address with
+// {c} for the chapter, and PartStarts the first character of each part of the chapters that have several.
+type ReaderOfflineView struct {
+	Module, ReaderSrc, Frag, PartStarts string
+	Shell                               bool
+	Placed                              int64
+	StartCh, StartPart                  int
 }
 
 // ReaderFooter is the line under the text: the page number and the link to the contents.
@@ -164,18 +176,25 @@ templ Reader(v ReaderView) {
 			if v.Speaker != nil {
 				@components.PlayButton(*v.Speaker)
 			}
-			<a class="ts-iconbtn" href={ templ.SafeURL(v.SearchHref) } hx-get={ v.SearchHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog" aria-label={ v.SearchLabel }>
-				@components.Icon("search", false)
-			</a>
+			if v.SearchHref != "" {
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.SearchHref) } hx-get={ v.SearchHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog" aria-label={ v.SearchLabel }>
+					@components.Icon("search", false)
+				</a>
+			}
 			<a class="ts-iconbtn" href={ templ.SafeURL(v.Footer.ContentsHref) } hx-get={ v.Footer.ContentsHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog" aria-label={ v.Footer.ContentsLabel }>
 				@components.Icon("chapters", false)
 			</a>
-			<button type="button" class="ts-iconbtn" data-ts-mark="bookmark" aria-label={ v.BookmarkLabel }>
-				@components.Icon("bookmark", false)
-			</button>
+			if v.BookmarkURL != "" {
+				<button type="button" class="ts-iconbtn" data-ts-mark="bookmark" aria-label={ v.BookmarkLabel }>
+					@components.Icon("bookmark", false)
+				</button>
+			}
+			if v.MarksHref != "" {
 			<a class="ts-iconbtn" href={ templ.SafeURL(v.MarksHref) } hx-get={ v.MarksHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog" aria-label={ v.MarksLabel }>
 				@components.Icon("edit", false)
 			</a>
+			}
+			if v.SettingsHref != "" {
 			<a
 				class="ts-iconbtn ts-aa"
 				href={ templ.SafeURL(v.SettingsHref) }
@@ -187,6 +206,7 @@ templ Reader(v ReaderView) {
 				aria-haspopup="dialog"
 				aria-label={ v.SettingsLabel }
 			>Aa</a>
+			}
 		</header>
 		<article
 			id="reader"
@@ -215,11 +235,28 @@ templ Reader(v ReaderView) {
 			}
 		>
 			<div class="ts-reader__col" id="reader-text">
-				@ReaderChapter(v.Chapter)
+				if v.Offline == nil || !v.Offline.Shell {
+					@ReaderChapter(v.Chapter)
+				}
 			</div>
 		</article>
 		if v.SettingsModule != "" {
 			<span hidden data-ts-module={ v.SettingsModule }></span>
+		}
+		if v.Offline != nil && v.Offline.Module != "" {
+			<span
+				hidden
+				data-ts-module={ v.Offline.Module }
+				if v.Offline.Shell {
+					data-offline-shell
+					data-reader-src={ v.Offline.ReaderSrc }
+					data-placed={ strconv.FormatInt(v.Offline.Placed, 10) }
+					data-start-ch={ strconv.Itoa(v.Offline.StartCh) }
+					data-start-part={ strconv.Itoa(v.Offline.StartPart) }
+					data-frag={ v.Offline.Frag }
+					data-part-starts={ v.Offline.PartStarts }
+				}
+			></span>
 		}
 		<footer class="ts-readdock" id="reader-dock">
 			@components.Ruler(v.Footer.Ruler)
@@ -232,10 +269,12 @@ templ Reader(v ReaderView) {
 			for _, sw := range v.Marks.Swatches {
 				<button type="button" class="ts-selmenu__item ts-selmenu__item--swatch" data-ts-mark="highlight" data-colour={ sw.Colour } aria-label={ sw.Label }><span class="ts-selmenu__swatch" data-colour={ sw.Colour }></span></button>
 			}
+			if len(v.Marks.Swatches) > 0 {
 			<button type="button" class="ts-selmenu__item" data-ts-mark="note">
 				@components.Icon("edit", false)
 				{ v.Marks.Note }
 			</button>
+			}
 			<button type="button" class="ts-selmenu__item" data-ts-mark="copy">
 				@components.Icon("share", false)
 				{ v.Marks.Copy }

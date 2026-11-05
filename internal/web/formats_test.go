@@ -184,7 +184,7 @@ func TestFormatsMixedPage(t *testing.T) {
 		t.Errorf("listened last: %s", r)
 	}
 	// Without the right to read the text, only listening is drawn.
-	if r = page(l.noRead); strings.Contains(r, "data-ts-read") {
+	if r = page(l.noRead); strings.Contains(r, "data-ts-read ") {
 		t.Error("a person without can_read sees the Read button")
 	}
 }
@@ -236,7 +236,7 @@ func TestFormatsTextBookPage(t *testing.T) {
 			continue
 		}
 		b := rec.Body.String()
-		if !strings.Contains(b, readNeedsRight) || strings.Contains(b, "data-ts-read") || strings.Contains(b, readStart) {
+		if !strings.Contains(b, readNeedsRight) || strings.Contains(b, "data-ts-read ") || strings.Contains(b, readStart) {
 			t.Errorf("%s: wrong region", name)
 		}
 	}

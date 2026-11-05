@@ -168,6 +168,7 @@ func (s *server) manifestHandler() http.Handler {
 
 func (s *server) registerOffline(mux *http.ServeMux) {
 	mux.HandleFunc("GET /offline", s.getOffline)
+	s.registerOfflineRead(mux)
 	// Without this the catch-all answers every other method with 404.
 	mux.HandleFunc("/offline", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, HEAD")

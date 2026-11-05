@@ -119,11 +119,14 @@ was reused, extended or replaced.
 - The server binds `127.0.0.1:8095` by default; exposing it is an explicit setting.
 - The service worker (`/sw.js`, source `internal/web/static/js/sw.js`) answers only hashed `/static/` files and,
   from the signed-in person's own cache, `/stream/{id}` (with or without `?compat=1`), `/covers/{bookID}`,
-  `/peaks/{id}`, `/hx/player/{bookID}` and the `/offline` shell for a navigation that cannot reach the server.
-  It never caches or answers `/s/...`, `/invite/...`, `/login`, `/setup`, `/logout`, `/api/...`, any request
-  with `download=1`, any non-GET request, or any other page. It is never registered inside a Wails window, on
+  `/peaks/{id}`, `/hx/player/{bookID}`, `/hx/books/{id}/read/chapters/{idx}`, `/books/{id}/read/images/{blockID}`,
+  the `/offline` shell for a navigation that cannot reach the server, and the book's reader shell for a
+  navigation to `/books/{id}/read` (or `?sheet=contents`) that cannot reach it. It never caches or answers
+  `/s/...`, `/invite/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any request with
+  `download=1`, any non-GET request, or any other page. It is never registered inside a Wails window, on
   share-link pages or outside a secure context. Sign-out and a change of person delete that person's caches
-  and offline records (decision [0012](docs/decisions/0012-offline-pocket.md)).
+  and offline records (decisions [0012](docs/decisions/0012-offline-pocket.md),
+  [0019](docs/decisions/0019-offline-reading.md)).
 
 ## Accessibility and layout
 

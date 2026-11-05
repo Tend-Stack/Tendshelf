@@ -317,7 +317,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"copy.js": {1 * 1024, 16 * 1024},
 	// M3a offline pocket (decision 0012), approved by the operator on 2026-11-03: the service worker
 	// 3 KB, the page module 3.25 KB, the download manager 5.5 KB (written in package B2).
-	"sw.js":      {3 * 1024, 24 * 1024},
+	"sw.js":      {3*1024 + 512, 24 * 1024}, // G6a (operator, 2026-11-04): reader text and shell, 3.5 KB
 	"offline.js": {3*1024 + 256, 24 * 1024},
 	// B2 measured 7.8 KB served for the whole manager (5.5 KB was the estimate); 8 KB approved by the operator on 2026-11-03.
 	"downloads.js": {8 * 1024, 40 * 1024},
@@ -335,6 +335,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// the footnote popup, loaded on the first footnote (1 KB).
 	"reader-marks.js": {2*1024 + 768, 16 * 1024},
 	"reader-notes.js": {1024, 8 * 1024},
+	// M5 G6a (decision 0019, operator 2026-11-04): the offline reader and its place queue, 2.25 KB.
+	"reader-offline.js": {2*1024 + 256, 16 * 1024},
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.
@@ -349,7 +351,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // M3b (decision 0013): statistics, Eyes-free and the shake check make it 55.75 KB; approved by the operator on 2026-11-04.
 // Measured together after S, E and K merged: 55.93 KB; the operator approved 56 KB on 2026-11-04.
 // Decision 0015 (adding books by upload): 61.5 KB, approved by the operator on 2026-11-04.
-const jsTotalGzip = 74*1024 + 512 // operator, 2026-11-04: 74.5 KB with the reader scripts. Earlier: 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
+const jsTotalGzip = 77*1024 + 256 // operator, 2026-11-04: 77.25 KB after G6a (74.5 KB with the reader scripts before). Earlier: 12.5 (player.js) + 4.75 (shell.js) + 12.5 (player-full.js) + 7 (waveform.js) + 1 (now-panel.js), with the link mode on top
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()
