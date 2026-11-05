@@ -1,5 +1,5 @@
-// Offline reading (decision 0019): the place queue and the stored reader shell. A place is queued before
-// any send, because a beacon gives no answer.
+// Offline reading (decision 0019): the place queue and the stored reader shell. A reading place is written
+// to localStorage before any send, because a page-hide beacon gives no answer. offline.js sends the queue.
 const QUEUE = "ts.offline.reading";
 
 function load(key, fallback) {
@@ -20,7 +20,7 @@ function strip(form) {
   return fields.toString();
 }
 
-// An answered record with nothing left to count is finished.
+// A record whose place was answered and which has nothing left to count is finished.
 function settle(queue, id, form) {
   const record = queue[id];
   if (!record || record.form !== form || record.chars || record.active) return;
@@ -28,23 +28,24 @@ function settle(queue, id, form) {
   else delete queue[id];
 }
 
-// reader.js reports a save: "place" before any send, then "saved" or "unsent".
+// What reader.js says about a save: "place" before any send, then "saved" or "unsent".
 function note(name, id, detail) {
   const queue = load(QUEUE, {});
-  const record = queue[id];
+  const record = queue[id] || { chars: 0, active: 0 };
+  const fields = new URLSearchParams(detail);
   if (name === "place") {
-    queue[id] = { form: strip(detail), chars: record?.chars || 0, active: record?.active || 0, sent: false };
-  } else if (name === "saved") {
-    settle(queue, id, strip(detail));
-  } else if (record) {
-    const fields = new URLSearchParams(detail);
+    queue[id] = { form: strip(detail), chars: record.chars, active: record.active, sent: false };
+  } else if (name === "unsent" && queue[id]) {
     record.chars += Number(fields.get("chars_read")) || 0;
     record.active += Number(fields.get("active_ms")) || 0;
+  } else if (name === "saved") {
+    settle(queue, id, strip(detail));
   }
   localStorage.setItem(QUEUE, JSON.stringify(queue));
 }
 
-// Sends unsent records in slices within the per-save caps. False means try again later.
+// Sends every unsent record, a slice at a time within the server's per-save caps (200,000 characters and
+// 10 minutes). Returns false when sending should stop and be tried again.
 export async function flushReading(csrf) {
   for (const id of Object.keys(load(QUEUE, {}))) {
     let record = load(QUEUE, {})[id];
@@ -61,7 +62,7 @@ export async function flushReading(csrf) {
         return false;
       }
       if (res.redirected || res.status === 403 || res.status === 429 || res.status >= 500) return false;
-      // Answered, even if refused for good: take the slice off the record as it is now.
+      // Answered (200, or a refusal that will not change): take the slice off the record as it is now.
       const queue = load(QUEUE, {});
       const now = queue[id];
       if (!now) break;
@@ -75,7 +76,8 @@ export async function flushReading(csrf) {
   return true;
 }
 
-// The place the shell opens at: the address, else the queue when newer than the shell, else the shell's own.
+// The place the shell opens at: the address, else the queue when it is newer than the shell, else the
+// shell's own. The chapter and part come from the sentence id and the part starts the server wrote.
 function placeOf(marker, root) {
   const here = new URLSearchParams(location.search);
   const saved = new URLSearchParams(load(QUEUE, {})[root.dataset.book]?.form || "");
@@ -104,7 +106,7 @@ async function open(marker, root, copy) {
   }
   text.innerHTML = await res.text();
   window.htmx?.process(text);
-  // A fragment has no link to the part before it; the page has one.
+  // A fragment has no link back to the part before it; the page has one.
   const section = text.firstElementChild;
   const before = /chapters\/(\d+)\?(?:.*&)?(?:part=(\d+))?/.exec(section.dataset.prevHref || "");
   if (before) {
@@ -133,7 +135,7 @@ export function mount(marker) {
   for (const name of ["place", "unsent", "saved"]) {
     root.addEventListener("ts:reader:" + name, (event) => note(name, id, event.detail));
   }
-  // A reader request with no answer says so; stops once the marker has left.
+  // A request from the reader got no answer: say so. Stops once the marker has left.
   const stop = new AbortController();
   document.addEventListener(
     "htmx:error",
