@@ -1,7 +1,8 @@
 name: Tendshelf checks
 
 # The AGENTS.md gates on every push and PR: make check (gofmt, vet, race tests) and the
-# CGO-free build. No Node anywhere; no publishing or deployment.
+# CGO-free build. No Node anywhere; no publishing or deployment here. Release binaries are built only
+# when a v* tag is pushed, by release.yml.
 on:
   push:
     branches: [main]

@@ -1,0 +1,77 @@
+name: Tendshelf release
+
+# Runs only when a tag named v* is pushed (decision 0006: vYEAR.RELEASE.BUGFIX). It never runs on a push to
+# a branch or a pull request. It builds the CGO-free server for linux amd64 and arm64, builds the desktop
+# .deb for the runner's own architecture (arm64; the desktop needs CGO, GTK 4 and WebKitGTK 6, so it cannot
+# be cross-built here), writes SHA256SUMS and attaches everything to a Gitea release for the tag.
+#
+# What the operator must provide: a repository secret named RELEASE_TOKEN, a Gitea access token of the
+# account that may publish releases here, with the scope "write:repository". Without it the last step fails
+# and nothing is published. To release: git tag vYEAR.RELEASE.BUGFIX && git push origin vYEAR.RELEASE.BUGFIX.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: build binaries and publish the release
+    runs-on: [tend-ci, linux-arm64]
+    container:
+      image: docker.gitea.com/runner-images:ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      TAG: ${{ gitea.ref_name }}
+    steps:
+      - name: Check out the tag
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # checkout v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install the Go version declared by the module
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # setup-go v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Install make, curl and the desktop build libraries
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends make gcc libc6-dev pkg-config curl ca-certificates dpkg-dev libgtk-4-dev libwebkitgtk-6.0-dev
+      - name: Server binaries (CGO_ENABLED=0, version embedded)
+        run: |
+          mkdir -p dist
+          for arch in amd64 arm64; do
+            GOOS=linux GOARCH=$arch make build VERSION="$TAG" BIN="dist/tendshelf-${TAG}-linux-${arch}"
+          done
+      - name: Desktop .deb (arm64, the runner's architecture)
+        # A failure here must not stop the server release, so the step is allowed to fail.
+        continue-on-error: true
+        run: |
+          make deb VERSION="$TAG"
+          cp bin/tendshelf-desktop_*.deb dist/
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+      - name: Create the release and attach the files
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          API: ${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}
+        run: |
+          test -n "$RELEASE_TOKEN" || { echo "secret RELEASE_TOKEN is not set"; exit 1; }
+          curl -fsS -X POST "$API/releases" \
+            -H "Authorization: token $RELEASE_TOKEN" -H "Content-Type: application/json" \
+            -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"body\":\"See CHANGELOG.md for what is in this release and how to upgrade.\"}" \
+            -o release.json
+          id="$(grep -o '"id":[0-9]*' release.json | head -1 | cut -d: -f2)"
+          test -n "$id" || { echo "no release id in the answer"; head -c 300 release.json; exit 1; }
+          for f in dist/*; do
+            curl -fsS -X POST "$API/releases/$id/assets?name=$(basename "$f")" \
+              -H "Authorization: token $RELEASE_TOKEN" -F "attachment=@$f" -o /dev/null
+            echo "attached $(basename "$f")"
+          done
