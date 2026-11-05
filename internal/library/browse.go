@@ -240,9 +240,11 @@ const (
 	// finishedAny: finished in either format.
 	finishedAny = `(EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NOT NULL)
  OR EXISTS (SELECT 1 FROM reading_positions r WHERE r.user_id = ? AND r.book_id = b.id AND r.finished_at IS NOT NULL))`
-	// underWay: started and not finished in either format.
-	underWay = `(EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NULL AND p.position_ms > 0)
- OR EXISTS (SELECT 1 FROM reading_positions r WHERE r.user_id = ? AND r.book_id = b.id AND r.finished_at IS NULL AND r.percent_bp > 0))`
+	// underWay: started in either format and finished in neither (finished is one state per book).
+	underWay = `((EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND p.finished_at IS NULL AND p.position_ms > 0)
+ OR EXISTS (SELECT 1 FROM reading_positions r WHERE r.user_id = ? AND r.book_id = b.id AND r.finished_at IS NULL AND r.percent_bp > 0))
+ AND NOT EXISTS (SELECT 1 FROM progress pf WHERE pf.user_id = ? AND pf.book_id = b.id AND pf.finished_at IS NOT NULL)
+ AND NOT EXISTS (SELECT 1 FROM reading_positions rf WHERE rf.user_id = ? AND rf.book_id = b.id AND rf.finished_at IS NOT NULL))`
 	// startedAny: a place past the start in either format, finished or not.
 	startedAny = `(EXISTS (SELECT 1 FROM progress p WHERE p.user_id = ? AND p.book_id = b.id AND (p.finished_at IS NOT NULL OR p.position_ms > 0))
  OR EXISTS (SELECT 1 FROM reading_positions r WHERE r.user_id = ? AND r.book_id = b.id AND (r.finished_at IS NOT NULL OR r.percent_bp > 0)))`
@@ -297,7 +299,7 @@ func whereExcept(sc Scope, q ListQuery, skip string) *whereClause {
 	case q.UserID == "":
 		w.add("0") // checkShow refuses this; fail closed if a caller skips it
 	case q.Show == ShowUnfinished:
-		w.add(underWay, q.UserID, q.UserID)
+		w.add(underWay, q.UserID, q.UserID, q.UserID, q.UserID)
 	case q.Show == ShowNotStarted:
 		w.add("NOT "+startedAny, q.UserID, q.UserID)
 	case q.Show == ShowNotFinished:

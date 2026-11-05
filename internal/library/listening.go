@@ -39,6 +39,9 @@ func (r *Repo) ContinueListening(ctx context.Context, sc Scope, userID string, l
 	w.add("p.user_id = ?", userID)
 	w.add("p.finished_at IS NULL")
 	w.add("p.position_ms > 0") // a book marked "not started" leaves the shelf
+	// Finished is one state per book: finished in the other format hides it too, which also covers
+	// older data where only one format carries the mark (read at query time, no migration).
+	w.add("NOT EXISTS (SELECT 1 FROM reading_positions rf WHERE rf.user_id = p.user_id AND rf.book_id = b.id AND rf.finished_at IS NOT NULL)")
 	type row struct {
 		id                string
 		pos, dur, updated int64
@@ -93,6 +96,7 @@ func (r *Repo) ContinueBooks(ctx context.Context, sc Scope, userID string, limit
 	w.add("r.user_id = ?", userID)
 	w.add("r.finished_at IS NULL")
 	w.add("r.percent_bp > 0")
+	w.add("NOT EXISTS (SELECT 1 FROM progress pf WHERE pf.user_id = r.user_id AND pf.book_id = b.id AND pf.finished_at IS NOT NULL)")
 	type row struct {
 		id, edition       string
 		chapter, bp, char int

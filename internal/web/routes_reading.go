@@ -87,8 +87,8 @@ func (s *server) getReading(w http.ResponseWriter, r *http.Request) {
 }
 
 // postReadingFinished answers POST /reading/{bookID}/finished (finished=1, or 0 for "read again"): the person marks
-// the book read at the end of the text. It writes the reading place only; listening progress is never touched
-// (invariant 7), which is why the audiobook's /hx/books/{id}/finished is not used for text.
+// the book read at the end of the text. Finished is one state per book, so the listening side changes with it
+// when the person may listen (setFinishedBoth).
 func (s *server) postReadingFinished(w http.ResponseWriter, r *http.Request) {
 	b, ok := s.readingBook(w, r)
 	if !ok {
@@ -108,7 +108,7 @@ func (s *server) postReadingFinished(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "That did not work. Try again.", http.StatusBadRequest)
 		return
 	}
-	if _, err := s.progress.SetReadingFinished(r.Context(), currentUser(r).ID, b.ID, v == "1"); err != nil {
+	if err := s.setFinishedBoth(r.Context(), currentUser(r), b, v == "1"); err != nil {
 		s.serverError(w, r, "set reading finished", err)
 		return
 	}

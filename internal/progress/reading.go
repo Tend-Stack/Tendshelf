@@ -223,7 +223,8 @@ func (s *Service) SetReadingFinished(ctx context.Context, userID, bookID string,
 		if finished {
 			_, err = tx.ExecContext(ctx, `INSERT INTO reading_positions(user_id, book_id, chapter_idx, char_pos, percent_bp, finished_at,
 client_updated_at, server_updated_at, device_id) VALUES (?,?,1,0,?,?,?,?,?)
-ON CONFLICT(user_id, book_id) DO UPDATE SET percent_bp = excluded.percent_bp, finished_at = excluded.finished_at,
+ON CONFLICT(user_id, book_id) DO UPDATE SET percent_bp = excluded.percent_bp,
+  finished_at = COALESCE(reading_positions.finished_at, excluded.finished_at),
   client_updated_at = excluded.client_updated_at, server_updated_at = excluded.server_updated_at, device_id = excluded.device_id`,
 				userID, bookID, bp, finishedAt, c, nowMs, ServerDevice)
 		} else {
