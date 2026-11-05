@@ -18,3 +18,18 @@ html[data-shell="desktop"] .ts-iconbtn {
 html[data-shell="desktop"] a[href="/me/downloads"] {
   display: none;
 }
+
+/* The start page (served by internal/desktopshell): "Just on this computer" is one big button, the
+   server choice a form of the same weight. */
+.ts-pick-form { display: flex; flex-direction: column; gap: var(--space-12); margin: var(--space-24) 0 0; }
+.ts-pick {
+  box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-4);
+  width: 100%; min-height: 2.75rem; padding: var(--space-16);
+  font: inherit; text-align: left; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md);
+}
+.ts-pick:hover { background: var(--raised); }
+.ts-pick:active { background: var(--raised-hover); transform: scale(0.99); }
+.ts-pick__title { margin: 0; font-size: 1.0625rem; line-height: 1.5rem; font-weight: 600; }
+.ts-pick__sub { color: var(--ink-muted); }
+.ts-pick-connect { margin: var(--space-16) 0 0; padding: var(--space-16); gap: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
