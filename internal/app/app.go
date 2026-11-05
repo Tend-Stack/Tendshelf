@@ -132,6 +132,8 @@ func Run(ctx context.Context, cfg Config) error {
 	go bk.Run(ctx)
 	// Expire stale uploads and clear their staging: the first sweep a minute after start, then hourly.
 	go uploads.Run(ctx)
+	// Sweep finished job rows, old audit entries and the online cover cache: first pass five minutes after start.
+	go runRetention(ctx, st, onlineClient, logger)
 	// Files scanned before waveforms existed (or while they were off) get their peaks in the
 	// background; a failure here costs only the waveform, never the start.
 	if n, err := peaks.Backfill(ctx); err != nil {
@@ -142,11 +144,11 @@ func Run(ctx context.Context, cfg Config) error {
 
 	srv := &http.Server{
 		Addr:              ln.Addr().String(),
-		Handler:           handler,
+		Handler:           web.WithBodyDeadline(handler),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
-		// No WriteTimeout: audio streams are long-lived. Per-handler deadlines
-		// are set with http.ResponseController where needed.
+		// No WriteTimeout: audio streams are long-lived. Requests with a body get a read deadline
+		// from web.WithBodyDeadline; the upload chunk route sets its own.
 		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelWarn),
 	}
 
@@ -157,6 +159,9 @@ func Run(ctx context.Context, cfg Config) error {
 		// can read this log can open the setup page.
 		info.SetupURL = setupURL(ln.Addr(), setupCode)
 		logger.Info("first run: open this link to create the owner account", "url", info.SetupURL)
+		if hint := setupHint(ln.Addr()); hint != "" {
+			logger.Info(hint)
+		}
 	}
 	if cfg.Ready != nil {
 		cfg.Ready(info)
@@ -172,9 +177,7 @@ func Run(ctx context.Context, cfg Config) error {
 		}
 	case <-ctx.Done():
 		logger.Info("shutting down")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		serveErr = srv.Shutdown(shutdownCtx)
-		cancel()
+		serveErr = stopServer(srv, 10*time.Second)
 	}
 
 	// Stop the runner after the server: running jobs are requeued or held.
@@ -184,6 +187,20 @@ func Run(ctx context.Context, cfg Config) error {
 		logger.Warn("job runner did not stop in time; unfinished jobs are recovered at the next start", "err", err)
 	}
 	return serveErr // st.Close runs on return
+}
+
+// stopServer lets open requests finish for up to grace, then closes what is left. A request still
+// open at the deadline is not an error: a stop that took the full grace and exited 1 made a normal
+// SIGTERM look like a crash.
+func stopServer(srv *http.Server, grace time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), grace)
+	defer cancel()
+	err := srv.Shutdown(ctx)
+	if errors.Is(err, context.DeadlineExceeded) {
+		_ = srv.Close()
+		return nil
+	}
+	return err
 }
 
 // setupURL is the link the owner opens on first run, with the setup code filled in. An address
@@ -197,6 +214,19 @@ func setupURL(a net.Addr, code string) string {
 		host = "localhost"
 	}
 	return "http://" + net.JoinHostPort(host, port) + "/setup?code=" + code
+}
+
+// setupHint says how to use the setup link when the server listens on every address, where the
+// link can only name localhost. It is empty for a specific address.
+func setupHint(a net.Addr) string {
+	host, _, err := net.SplitHostPort(a.String())
+	if err != nil {
+		return ""
+	}
+	if ip := net.ParseIP(host); host == "" || (ip != nil && ip.IsUnspecified()) {
+		return "from another computer, replace localhost in that link with this machine's address"
+	}
+	return ""
 }
 
 // locateTools finds ffprobe and ffmpeg. Missing tools are not fatal: books are still listed from

@@ -3,10 +3,16 @@ GO       ?= go
 BIN      ?= bin/tendshelf
 ADDR     ?= 127.0.0.1:8095
 # Version tags are vYEAR.RELEASE.BUGFIX, e.g. v2026.1.0 (docs/decisions/0006-version-numbers.md).
-VERSION  ?= $(shell git describe --tags --long --always --dirty 2>/dev/null || echo dev)
+# --long keeps the commit count and hash for development builds; on an exact tag the "-0-g<hash>" is
+# dropped so a release shows the plain YEAR.RELEASE.FIX (a dirty tree keeps its "-dirty").
+VERSION  ?= $(shell (git describe --tags --long --always --dirty 2>/dev/null || echo dev) | sed -E 's/-0-g[0-9a-f]+//')
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: desktop desktop-check deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
+.PHONY: version desktopdesktop-check deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
+
+# Prints the version string builds embed.
+version:
+	@echo $(VERSION)
 
 generate:
 	$(GO) tool templ generate

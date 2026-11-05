@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -37,10 +38,57 @@ func backupBefore(ctx context.Context, w *sql.DB, dataDir string, old int, now t
 		os.Remove(dest)
 		return "", fmt.Errorf("verify backup: %w", err)
 	}
-	if err := rotateBackups(dir, backupKeep); err != nil {
+	if err := rotatePreMigration(dir, backupKeep, old); err != nil {
 		return dest, err
 	}
 	return dest, nil
+}
+
+// rotatePreMigration keeps the newest keep backups, except that the newest backup of every other
+// schema version is never removed. A migration that fails leaves the database as it was, so a
+// crash-loop backs up the same version on every start; without this rule those copies would rotate
+// away the backups of the earlier versions, the only way back.
+func rotatePreMigration(dir string, keep, current int) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	type bk struct {
+		name    string
+		version int
+		at      time.Time
+	}
+	var all []bk
+	for _, e := range entries {
+		m := backupName.FindStringSubmatch(e.Name())
+		if m == nil || e.IsDir() {
+			continue
+		}
+		at, err := time.Parse(backupStamp, m[2])
+		v, err2 := strconv.Atoi(m[1])
+		if err != nil || err2 != nil {
+			continue
+		}
+		all = append(all, bk{e.Name(), v, at})
+	}
+	sort.Slice(all, func(i, j int) bool {
+		if !all[i].at.Equal(all[j].at) {
+			return all[i].at.After(all[j].at)
+		}
+		return all[i].name > all[j].name
+	})
+	seen := map[int]bool{}
+	for i, b := range all {
+		newestOfVersion := !seen[b.version]
+		seen[b.version] = true
+		if i < keep || (b.version != current && newestOfVersion) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, b.name)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func verifyBackup(ctx context.Context, path string, old int) error {
