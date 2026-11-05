@@ -224,7 +224,7 @@ html[data-text-size="large"] .ts-tabs { flex-wrap: wrap; }
 .ts-skip { position: relative; }
 .ts-skip__num { position: absolute; font: 600 0.6875rem/1 var(--font-sans); top: 50%; left: 50%; transform: translate(-50%, -38%); pointer-events: none; }
 .ts-player-bar { display: flex; border: 1px solid var(--line-strong); border-radius: var(--radius-md); overflow: hidden; }
-.ts-player-bar__item { flex: 1; min-height: 3.75rem; border: 0; background: transparent; color: var(--ink); cursor: pointer; padding: 0;
+.ts-player-bar__item { flex: 1; min-height: 3.75rem; border: 0; text-decoration: none; background: transparent; color: var(--ink); cursor: pointer; padding: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: var(--font-sans); }
 .ts-player-bar__item + .ts-player-bar__item { border-left: 1px solid var(--line-strong); }
 .ts-player-bar__item:hover, .ts-player-bar__item.is-hover { background: var(--raised-hover); }
@@ -370,6 +370,7 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-avatar--c2 { background: #3b2f4a; }
 .ts-avatar--c3 { background: #2e3a2a; }
 .ts-avatar--c4 { background: #8c3b24; }
+[data-theme="contrast"] .ts-avatar--c4 { background: #7f3520; } /* 7:1 under the avatar initials at 13 px */
 .ts-avatar--c5 { background: var(--avatar-c5, #5a6b73); }
 .ts-role { display: inline-flex; align-items: center; gap: var(--space-4); height: 1.625rem; padding: 0 var(--space-8); border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong); color: var(--ink-muted); font-size: 0.8125rem; line-height: 1.125rem; font-weight: 500; }

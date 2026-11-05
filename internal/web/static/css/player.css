@@ -91,8 +91,6 @@
 .ts-player__bar { order: 2; margin-top: auto; flex: none; }
 .ts-player__barmark { display: none; }
 .ts-player-bar__item:focus-visible, .ts-player__menuitem:focus-visible, .ts-player__chrow:focus-visible, .ts-player__menu > summary:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
-/* The book item of the settings bar is a link to the reader, not a button. */
-a.ts-player-bar__item { text-decoration: none; }
 
 /* Scrubber: drawn from custom properties set by player-full.js */
 /* The book ruler above the chapter scrubber: not interactive, ticks at the chapter starts. */

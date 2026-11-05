@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"slices"
@@ -95,6 +94,14 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 		slices.SortStableFunc(v.Tabs, func(a, b pages.BookTab) int { return tabRank(a.ID) - tabRank(b.ID) })
 		v.ChipDuration, v.ChipChapters = "", ""
 		v.Caption = joinNonEmpty(" · ", book.Publisher)
+		if tab == "about" && (textEdit || textRead) {
+			// The bare address of a text book opens its Text tab: there are no chapters of sound to show on About.
+			tab, v.Tab = "text", "text"
+			for i := range v.Tabs {
+				v.Tabs[i].Current = v.Tabs[i].ID == "text"
+				v.Tabs[i].Home = v.Tabs[i].ID == "text"
+			}
+		}
 	}
 	if textEdit || textRead {
 		v.ChipEbook = s.ebookChip(ctx, book.ID)
@@ -459,7 +466,7 @@ func (s *server) ebookChip(ctx context.Context, bookID string) string {
 			continue
 		}
 		if ed, ok, err := s.ebooks.Store().CurrentEdition(ctx, f.ID); err == nil && ok && ed.PageCount > 0 {
-			return fmt.Sprintf(ebookChipPages, ed.PageCount)
+			return countText(ed.PageCount, ebookChipPage, ebookChipPages)
 		}
 	}
 	return ebookChip

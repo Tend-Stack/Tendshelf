@@ -7,7 +7,8 @@ const (
 	ebookTabLabel  = "Text"                // NEW
 	ebookDownload  = "Download this ebook" // NEW (B2)
 	ebookChip      = "Ebook"               // NEW (B2): header chip
-	ebookChipPages = "Ebook · %d pages"    // NEW (B2)
+	ebookChipPage  = "Ebook · 1 page"
+	ebookChipPages = "Ebook · %d pages" // NEW (B2)
 
 	// Board: AddEbookDesktop, AddEbookPhone.
 	ebookAddTitle    = "Add an ebook"
