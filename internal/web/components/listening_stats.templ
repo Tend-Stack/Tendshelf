@@ -14,6 +14,8 @@ type ListeningStatsView struct {
 	Note                    string
 	// More is the link under the panel to /me/listening (Profile only; the admin view leaves it empty).
 	More, MoreHref string
+	// Also is the second link, "Your reading", shown when the person has read an ebook (G2).
+	Also, AlsoHref string
 }
 
 // ListeningStats is the three numbers and, on Profile, the week's day marks. The marks are one
@@ -41,6 +43,9 @@ templ ListeningStats(v ListeningStatsView) {
 		}
 		if v.More != "" {
 			<a class="label ts-dash__more" href={ templ.SafeURL(v.MoreHref) }>{ v.More }</a>
+		}
+		if v.Also != "" {
+			<a class="label ts-dash__more" href={ templ.SafeURL(v.AlsoHref) }>{ v.Also }</a>
 		}
 	</section>
 }

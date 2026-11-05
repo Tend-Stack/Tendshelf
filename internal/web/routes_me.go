@@ -69,7 +69,11 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 	if err != nil {
 		return v, err
 	}
-	v.Stats = statsView(st, false)
+	reads, err := s.progress.HasReading(ctx, u.ID)
+	if err != nil {
+		return v, err
+	}
+	v.Stats = statsView(st, false, reads)
 
 	list, err := s.sessions.ListForUser(ctx, u.ID, sess.Hash)
 	if err != nil {

@@ -499,6 +499,7 @@ func sweepRows() []sweepRow {
 		sweepGet("GET /me/password", sweepStatic("/me/password"), sweepSame(200)),
 		sweepGet("GET /me/downloads", sweepStatic("/me/downloads"), sweepSame(200)),
 		sweepGet("GET /me/listening", sweepStatic("/me/listening"), sweepSame(200)),
+		sweepGet("GET /me/reading", sweepStatic("/me/reading"), sweepSame(200)),
 		sweepGet("GET /offline", sweepStatic("/offline"), sweepSame(200)),
 		// Shelves
 		sweepGet("GET /shelves", sweepStatic("/shelves"), shelfWant),
@@ -551,6 +552,7 @@ func sweepRows() []sweepRow {
 			"auto_rewind": {"0", "1"}, "next_in_series": {"0"}, "player_tint": {"0", "1"}, "big_buttons": {"0", "1"}, "text_size": {"standard"}}), sweepSame(303), ""),
 		sweepPost("POST /me/reader-settings", sweepStatic("/me/reader-settings"), sweepFormOf(url.Values{"size": {"20"}, "word": {"0", "1"}}), sweepSame(303), "/"),
 		sweepPost("POST /me/nav", sweepStatic("/me/nav"), sweepFormOf(url.Values{"nav": {"full"}}), sweepSame(303), ""),
+		sweepPost("POST /me/reading/goal", sweepStatic("/me/reading/goal"), sweepFormOf(url.Values{"goal_books": {"12"}}), sweepSame(303), "/me/reading"),
 		sweepPost("POST /hx/me/nav", sweepStatic("/hx/me/nav"), sweepFormOf(url.Values{"nav": {"full"}}), sweepSame(200), ""),
 		sweepPost("POST /me/password", sweepStatic("/me/password"), sweepFormOf(url.Values{"current": {"not the password at all"}, "password": {"a brand new passphrase"}}), sweepSame(422), ""),
 		sweepPost("POST /me/sessions/{sid}/signout", func(e *sweepEnv, role int) string { return "/me/sessions/" + e.secondS[role] + "/signout" }, nil, sweepSame(303), "/me"),

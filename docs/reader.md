@@ -105,6 +105,15 @@ Progress: the ruler and `p. n of N` come from the block's `data-pg`, the time le
 "About" until three sessions have taught the speed. The last part carries "That's the end of the book." and a button
 that marks the book finished; the reader never marks it itself.
 
+## Reading stats (`/me/reading`)
+
+"Your reading" is private to the signed-in person: time, days read, words a minute, books finished, a Time chart, a yearly goal
+and the covers finished in the period. Time comes from `reading_sessions.active_ms`, counted on the local day a session ended;
+speed is characters over five, shown as "About n" to the nearest 10; finished books come from `reading_positions.finished_at`.
+The goal is `{"goalBooks": n}` under `reading.v1` in `user_settings` (0 to 365, 0 is no goal). Covers go through `CardsByID` with
+the person's scope, so a revoked book's title never shows; its time and count stay. There is no family view. Listening and
+reading never write each other.
+
 ## Checks (RD4)
 
 The reader is in the accessibility audit: `reader-pages` and `reader-scroll` are pages (the owner reads in pages, an admin in

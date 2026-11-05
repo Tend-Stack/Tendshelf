@@ -26,10 +26,15 @@ type listeningIn struct {
 
 // listeningHref is the address of a period: the current one needs no date.
 func listeningHref(rng string, first time.Time, current bool) string {
+	return periodHref("/me/listening", rng, first, current)
+}
+
+// periodHref is listeningHref for any stats page.
+func periodHref(base, rng string, first time.Time, current bool) string {
 	if current {
-		return "/me/listening?range=" + rng
+		return base + "?range=" + rng
 	}
-	return "/me/listening?range=" + rng + "&at=" + first.Format("2006-01-02")
+	return base + "?range=" + rng + "&at=" + first.Format("2006-01-02")
 }
 
 func before2000(p progress.Period) bool { return p.First.Year() < listeningMinYear }
@@ -123,23 +128,26 @@ func dayDate(p progress.Period, i int) time.Time { return p.First.AddDate(0, 0, 
 // timeChart is Listening time: a bar per day (week, month) or per month (year). Days after today and
 // days without listening have no bar.
 func timeChart(in listeningIn) components.BarChartView {
-	l := in.L
-	p := l.Period
+	return barsByPeriod(in.L.Period, in.L.Days, in.L.DaysSoFar, in.Today)
+}
+
+// barsByPeriod draws ms per day of period p (days, one per day) as the Time chart of either stats page.
+func barsByPeriod(p progress.Period, days []int64, daysSoFar int, today time.Time) components.BarChartView {
 	v := components.BarChartView{Heads: []string{listenHeadDay, listenHeadTime}, Caption: listenCapDay}
 	var most int64
 	if p.Range == progress.RangeYear {
 		v.Heads[0], v.Caption = listenHeadMonth, listenCapMonth
-		months := yearMonths(l)
+		months := monthsOf(p, days)
 		for m, ms := range months {
 			name := time.Month(m + 1).String()
 			v.Bars = append(v.Bars, components.ChartBar{Label: name[:1], Title: name + ": " + weekTime(ms), Ms: ms})
 			most = max(most, ms)
-			if !p.First.AddDate(0, m, 0).After(in.Today) {
+			if !p.First.AddDate(0, m, 0).After(today) {
 				v.Rows = append(v.Rows, components.ChartRow{Head: name, Cells: []string{weekTime(ms)}})
 			}
 		}
 	} else {
-		for i, ms := range l.Days {
+		for i, ms := range days {
 			d := dayDate(p, i)
 			label := ""
 			switch {
@@ -150,7 +158,7 @@ func timeChart(in listeningIn) components.BarChartView {
 			}
 			v.Bars = append(v.Bars, components.ChartBar{Label: label, Title: dayTitle(d) + ": " + weekTime(ms), Ms: ms})
 			most = max(most, ms)
-			if i < l.DaysSoFar {
+			if i < daysSoFar {
 				v.Rows = append(v.Rows, components.ChartRow{Head: dayLong(d), Cells: []string{weekTime(ms)}})
 			}
 		}
@@ -161,10 +169,10 @@ func timeChart(in listeningIn) components.BarChartView {
 }
 
 // yearMonths sums a year's days by month.
-func yearMonths(l progress.Listening) [12]int64 {
+func monthsOf(p progress.Period, days []int64) [12]int64 {
 	var out [12]int64
-	for i, ms := range l.Days {
-		out[dayDate(l.Period, i).Month()-1] += ms
+	for i, ms := range days {
+		out[dayDate(p, i).Month()-1] += ms
 	}
 	return out
 }

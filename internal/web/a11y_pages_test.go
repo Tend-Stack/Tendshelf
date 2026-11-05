@@ -122,6 +122,7 @@ func a11yPages() []a11yPage {
 		row("me-password", "/me/password", a11yStatic("/me/password"), both, "main", true),
 		row("me-downloads", "/me/downloads", a11yStatic("/me/downloads"), both, "main", true),
 		row("me-listening", "/me/listening", a11yStatic("/me/listening"), both, "main", true),
+		row("reading-stats", "/me/reading", a11yStatic("/me/reading"), both, "main", true),
 		row("share", "/share", a11yStatic("/share"), owner, "main", true),
 		row("admin-libraries", "/admin/libraries", a11yStatic("/admin/libraries"), owner, "main", true),
 		row("admin-folder-new", "/admin/libraries/folders/new", a11yStatic("/admin/libraries/folders/new"), owner, "main", true),

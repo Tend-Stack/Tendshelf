@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
@@ -135,6 +136,15 @@ func a11ySeed(t *testing.T) *a11yEnv {
 		}
 		placeEbook(t, a, tb, owner, "the-salt-road.epub", "ready", "")
 		e.TextBookID = tid
+		// Reading stats: a few sessions over the last days and one finished book, so /me/reading has its charts.
+		for i, ago := range []time.Duration{50 * time.Hour, 26 * time.Hour, 3 * time.Hour} {
+			if err := a.srv.progress.AddReadingTime(ctx, owner, tid, "a11ydevice000001", 9000+int64(i)*400, 900_000, time.Now().Add(-ago).UnixMilli()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err := a.srv.progress.SetReadingFinished(ctx, owner, tid, true); err != nil {
+			t.Fatal(err)
+		}
 		eadmSeedMaybe(t, a, bk, owner, card.Card.Authors[0].Name) // a "Maybe the same book" row on /admin/ebooks
 	}
 	memberCk := a.as(t, users.RoleMember)

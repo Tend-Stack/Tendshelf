@@ -83,7 +83,7 @@ func statsLabel(days [7]progress.DayMark) string {
 
 // statsView turns the numbers into the words the panel shows. admin is the person page: no day
 // marks and no "only you" line.
-func statsView(st progress.Stats, admin bool) components.ListeningStatsView {
+func statsView(st progress.Stats, admin, reads bool) components.ListeningStatsView {
 	v := components.ListeningStatsView{
 		Title:         statsTitle,
 		WeekLabel:     statsWeek,
@@ -102,6 +102,9 @@ func statsView(st progress.Stats, admin bool) components.ListeningStatsView {
 	}
 	v.Note = statsPrivate
 	v.More, v.MoreHref = listenMore, "/me/listening"
+	if reads {
+		v.Also, v.AlsoHref = readMoreLink, readingStatsRoute
+	}
 	v.DaysLabel = statsLabel(st.Days)
 	for i, d := range st.Days {
 		v.Days = append(v.Days, components.StatsDay{Letter: string(statsDayLetters[i]), State: d.State})
