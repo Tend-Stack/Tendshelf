@@ -111,7 +111,10 @@ Amends AGENTS.md "Audio files are the user's" and architecture invariant 1.
 - Uploads by members or guests, and through the API or bearer tokens: the operator scoped it to owner and admin.
 - Replacing or adding files to an existing book: needs overwrite or merge rules; invariant 2 forbids it.
 - Converting, remuxing or merging formats: unchanged bytes go in; the scanner's rules decide the book.
-- Ebook uploads: R1 owns them (`/books/{id}/text`).
+- Ebook uploads: since M5 B3 Add books takes ebooks too (EPUB, MOBI, AZW3, AZW, FB2, PDF; `.kfx` and `.kfx-zip` are refused
+  by extension). Staged ebooks are opened with the library's reader during placement: a copy-protected one refuses the whole
+  upload and an unreadable one too, with the staged bytes deleted and nothing placed. TXT, MD, HTML and DOCX stay Text-tab
+  uploads (`/books/{id}/text`, R1). "Remove this book" counts live ebook files with a ledger path as well as audio.
 - Files changed by "Write details into the file" are kept by Remove (their quick hash differs).
 - Nested `.zip` files, encrypted zip entries and links inside archives are never extracted (U3).
 - Windows servers: the residual rename risk in point 9 does not exist there, and no Windows-only code is added.

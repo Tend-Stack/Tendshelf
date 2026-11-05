@@ -100,7 +100,9 @@ was reused, extended or replaced.
 - Ebook files (text editions, `docs/reader.md`) follow the same rules: library ebooks are
   read-only, uploads are kept byte-identical, merging an ebook book into an audiobook and "Not the same book"
   change database rows only and never open, write, rename or delete a file, and copy-protected ebooks (Adobe ADEPT, Apple, Readium LCP,
-  encrypted EPUB content, PDF `/Encrypt`, encrypted MOBI, any KFX) are refused, never decrypted.
+  encrypted EPUB content, PDF `/Encrypt`, encrypted MOBI, any KFX) are refused, never decrypted. Add books also takes ebooks
+  (`internal/upload`, same rules): a `.kfx` is refused before its bytes are sent, and a staged ebook that is copy-protected or
+  cannot be opened refuses the whole upload with its staged bytes deleted and nothing placed.
 - ffmpeg/ffprobe run with `-protocol_whitelist file,pipe` (ffmpeg also `-nostdin`; ffprobe has no such
   option and reads /dev/null), fixed argument lists (never a shell), a context deadline and output size
   limits.
