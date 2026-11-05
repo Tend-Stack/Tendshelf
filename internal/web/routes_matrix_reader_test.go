@@ -98,7 +98,14 @@ func readerSweepRows() []sweepRow {
 	search := sweepGet("GET /hx/books/{id}/read/search", func(e *sweepEnv, _ int) string {
 		return "/hx/books/" + e.book.ID + "/read/search" + q(e) + "&q=alpha"
 	}, staff)
-	rows := []sweepRow{page, chapter, create, patch, del, image, readingGet, readingPost, finished, note, search}
+	// G1: look-up and saving a word answer to ReadText like the page; the saved word is the caller's own.
+	lookup := sweepGet("GET /hx/books/{id}/read/lookup", func(e *sweepEnv, _ int) string {
+		return "/hx/books/" + e.book.ID + "/read/lookup" + q(e) + "&q=alpha"
+	}, staff)
+	word := sweepPost("POST /hx/books/{id}/words", func(e *sweepEnv, _ int) string { return "/hx/books/" + e.book.ID + "/words" },
+		sweepFormOf(url.Values{"word": {"alpha"}, "quote": {"Alpha beta."}}), staff, "")
+	word.HX = true
+	rows := []sweepRow{page, chapter, create, patch, del, image, readingGet, readingPost, finished, note, search, lookup, word}
 	for _, ext := range []string{"md", "txt", "json"} {
 		rows = append(rows, sweepGet("GET /books/{id}/read/marks."+ext, func(e *sweepEnv, _ int) string {
 			return "/books/" + e.book.ID + "/read/marks." + ext + q(e)

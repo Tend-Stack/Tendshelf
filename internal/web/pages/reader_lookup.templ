@@ -1,0 +1,55 @@
+package pages
+
+// ReaderLookupEntry is one definition: the dictionary it came from, its headword, and its paragraphs as plain text.
+type ReaderLookupEntry struct {
+	Dictionary, Word string
+	Paras            []string
+}
+
+// ReaderLookupView is the look-up popup (G1). Definitions are plain text and templ escapes them; the search link
+// carries the selected word and nothing else.
+type ReaderLookupView struct {
+	Title, Word                 string
+	Entries                     []ReaderLookupEntry
+	None, AdminHint             string // None is the sentence when nothing was found; AdminHint only for an administrator
+	SearchLabel, SearchHref     string
+	Outside                     string
+	SaveLabel, CloseLabel       string
+	CanSave                     bool
+}
+
+// ReaderLookup is the popup the client opens as soon as it arrives. The Save button only marks itself: the client
+// fills the reader's hidden word form and sends it, so the answer is a toast like every other reader action.
+templ ReaderLookup(v ReaderLookupView) {
+	<dialog class="ts-readernote ts-readernote--note ts-lookup" aria-labelledby="lookup-title" data-word={ v.Word }>
+		<h2 id="lookup-title" class="ts-lookup__title">{ v.Title }</h2>
+		<p class="ts-lookup__word">{ v.Word }</p>
+		for _, e := range v.Entries {
+			<section class="ts-lookup__entry">
+				<h3 class="ts-lookup__dict">{ e.Dictionary }</h3>
+				if e.Word != "" {
+					<p class="ts-lookup__head">{ e.Word }</p>
+				}
+				for _, p := range e.Paras {
+					<p>{ p }</p>
+				}
+			</section>
+		}
+		if len(v.Entries) == 0 {
+			<p>{ v.None }</p>
+			if v.AdminHint != "" {
+				<p class="caption">{ v.AdminHint }</p>
+			}
+		}
+		<p class="ts-lookup__web">
+			<a href={ templ.SafeURL(v.SearchHref) } target="_blank" rel="noopener noreferrer" hx-boost="false">{ v.SearchLabel }</a>
+			<span class="caption">{ v.Outside }</span>
+		</p>
+		<div class="ts-readernote__actions">
+			if v.CanSave {
+				<button type="button" class="ts-btn ts-btn--primary" data-save>{ v.SaveLabel }</button>
+			}
+			<button type="button" class="ts-btn ts-btn--quiet" data-close>{ v.CloseLabel }</button>
+		</div>
+	</dialog>
+}

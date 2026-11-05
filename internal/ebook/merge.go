@@ -115,6 +115,7 @@ AND `+mergeGuard, args...).Scan(&ok)
 			`UPDATE reading_sessions SET book_id=:to WHERE book_id=:from`,
 			`UPDATE highlights SET book_id=:to WHERE book_id=:from`,
 			`UPDATE bookmarks SET book_id=:to WHERE book_id=:from`,
+			`UPDATE OR IGNORE word_list SET book_id=:to WHERE book_id=:from`,
 			`UPDATE OR IGNORE shelf_items SET book_id=:to WHERE book_id=:from`,
 			`UPDATE OR IGNORE text_choices SET book_id=:to WHERE book_id=:from`,
 			`UPDATE merged_books SET to_id=:to WHERE to_id=:from`,
@@ -338,6 +339,7 @@ WHERE id IN (`+marks+`)`, append([]any{id, first.ID, now}, args...)...); err != 
 		`UPDATE OR REPLACE reading_positions SET book_id = ? WHERE ` + back,
 		`UPDATE highlights SET book_id = ? WHERE ` + back,
 		`UPDATE bookmarks SET book_id = ? WHERE ` + back,
+		`UPDATE OR IGNORE word_list SET book_id = ? WHERE ` + back,
 	} {
 		if _, err := tx.ExecContext(ctx, q, backArgs...); err != nil {
 			return "", err

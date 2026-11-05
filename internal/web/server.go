@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/a-h/templ"
@@ -27,6 +28,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/backups"
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/dict"
 	"github.com/Tend-Stack/tendshelf/internal/ebook"
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
@@ -123,6 +125,7 @@ type server struct {
 	ebooks     *ebook.Service
 	backups    *backups.Service
 	progress   *progress.Service
+	dicts      *dict.Set // dictionaries the owner added under <data>/dictionaries (G1)
 	mail       *share.Mail
 	mailLim    mailLimits
 	readerDocs readerDocCache // the last few parsed ebook documents (M5 R4 P2)
@@ -230,6 +233,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		proxies:    opts.TrustedProxies,
 		lib:        opts.Library,
 		dataDir:    opts.DataDir,
+		dicts:      dict.Open(filepath.Join(opts.DataDir, "dictionaries")),
 		jobs:       opts.Jobs,
 		version:    opts.Version,
 		now:        nowOrReal(opts.Now),
@@ -285,6 +289,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerDownloads(mux)
 	s.registerListening(mux)
 	s.registerReadingStats(mux)
+	s.registerWords(mux)
 	s.registerBackups(mux)
 	s.registerOffline(mux)
 	s.registerStream(mux)

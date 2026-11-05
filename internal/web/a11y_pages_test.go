@@ -3,6 +3,7 @@
 package web
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/testutil/cdp"
 )
 
@@ -53,6 +55,8 @@ var a11ySkip = map[string]string{
 	"/books/{id}/read/marks.md":         "a download of the person's own marks (RD3)",
 	"/books/{id}/read/marks.txt":        "a download of the person's own marks (RD3)",
 	"/books/{id}/read/marks.json":       "a download of the person's own marks (RD3)",
+	"/me/words.md":                      "a download of the person's own word list (G1)",
+	"/me/words.json":                    "a download of the person's own word list (G1)",
 	"/welcome":                          "redirects (303) to Home",
 	"/books/{id}/text/{fileID}/file":    "the original ebook file as a download, not a page",
 	"/s/{token}/stream/{audioFileID}":   "audio stream, not a page",
@@ -123,6 +127,7 @@ func a11yPages() []a11yPage {
 		row("me-downloads", "/me/downloads", a11yStatic("/me/downloads"), both, "main", true),
 		row("me-listening", "/me/listening", a11yStatic("/me/listening"), both, "main", true),
 		row("reading-stats", "/me/reading", a11yStatic("/me/reading"), both, "main", true),
+		row("words", "/me/words", a11yStatic("/me/words"), both, "main", true),
 		row("share", "/share", a11yStatic("/share"), owner, "main", true),
 		row("admin-libraries", "/admin/libraries", a11yStatic("/admin/libraries"), owner, "main", true),
 		row("admin-folder-new", "/admin/libraries/folders/new", a11yStatic("/admin/libraries/folders/new"), owner, "main", true),
@@ -182,6 +187,21 @@ func a11yStates() []a11yState {
 			tab.Eval(`document.querySelector('#reader-marks [data-ts-mark="note"]').click()`, nil)
 			tab.WaitFor(`document.getElementById("reader-note-dialog").open`, 5*time.Second)
 		}},
+		// M5 G1: the look-up popup with a definition, and the word list with a word in it.
+		{Key: "reader-lookup", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
+			lkDict(t, e.ReaderLab, "audit", "lantern\tA lamp with a case and a handle.\n")
+			tab.Eval(`(() => { const s = document.querySelector(".ts-s"); const w = document.createTreeWalker(s, NodeFilter.SHOW_TEXT); const n = w.nextNode(); const r = new Range(); r.setStart(n, 0); r.setEnd(n, Math.min(5, n.length)); getSelection().removeAllRanges(); getSelection().addRange(r); })()`, nil)
+			tab.WaitFor(`!document.getElementById("reader-marks").hidden`, 5*time.Second)
+			tab.Eval(`document.querySelector('#reader-marks [data-ts-mark="lookup"]').click()`, nil)
+			tab.WaitFor(`document.querySelector("dialog.ts-lookup[open]") !== null`, 8*time.Second)
+		}},
+		{Key: "words-list", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string {
+			l := e.ReaderLab
+			if _, _, err := l.a.srv.progress.AddWord(context.Background(), progress.Word{UserID: l.ownerID, BookID: l.book.ID, Word: "lantern", Quote: "A lantern in the window."}); err != nil {
+				panic(err)
+			}
+			return "/me/words"
+		}, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {}},
 		// M5 G4: the skim bar in use, with its tip showing.
 		{Key: "reader-skim", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
 			tab.WaitFor(`document.getElementById("reader-skim") && !document.getElementById("reader-skim").hidden`, 8*time.Second)

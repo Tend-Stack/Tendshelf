@@ -1,0 +1,80 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// WordsStyles are the stylesheets the word list page links.
+var WordsStyles = []string{"css/pages-home.css", "css/pages-listening.css", "css/pages-words.css"}
+
+// WordRow is one saved word: the word, the sentence it was in, the book, the way back to its page (empty when the
+// place is gone) and the form that removes it.
+type WordRow struct {
+	Word, Quote, Book, BookHref, When string
+	JumpHref, JumpLabel               string
+	DeleteAction, DeleteLabel         string
+}
+
+// WordsView is the word list page. The handler writes every word and address.
+type WordsView struct {
+	Back, BackHref, Title, Lead string
+	CSRF                        string
+	Rows                        []WordRow
+	Filter, FilterLabel         string // the sentence for a one-book list and the link that clears it
+	FilterHref                  string
+	MoreLabel, MoreHref         string
+	ExportMD, ExportMDLabel     string
+	ExportJSON, ExportJSONLabel string
+	EmptyTitle, EmptyBody       string
+	RemoveLabel                 string
+}
+
+// Words is the signed-in person's saved words, newest first.
+templ Words(v WordsView) {
+	<div class="ts-dash ts-words">
+		<a class="ts-dash__back" href={ templ.SafeURL(v.BackHref) }>
+			@dashChevron(true)
+			<span>{ v.Back }</span>
+		</a>
+		<h1 class="title-2 ts-dash__title">{ v.Title }</h1>
+		<p class="body ts-dash__muted ts-dash__lead">{ v.Lead }</p>
+		if v.Filter != "" {
+			<p class="body ts-words__filter">
+				{ v.Filter }
+				<a href={ templ.SafeURL(v.FilterHref) }>{ v.FilterLabel }</a>
+			</p>
+		}
+		if len(v.Rows) == 0 {
+			@components.EmptyState(v.EmptyTitle, v.EmptyBody, nil)
+		} else {
+			<ol class="ts-words__list">
+				for _, r := range v.Rows {
+					<li class="ts-words__item">
+						<p class="ts-words__word">{ r.Word }</p>
+						if r.Quote != "" {
+							<p class="ts-words__quote">{ r.Quote }</p>
+						}
+						<p class="caption ts-words__meta">
+							<a href={ templ.SafeURL(r.BookHref) }>{ r.Book }</a>
+							<span>{ r.When }</span>
+						</p>
+						<div class="ts-words__actions">
+							if r.JumpHref != "" {
+								<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(r.JumpHref) }>{ r.JumpLabel }</a>
+							}
+							<form method="post" action={ templ.URL(r.DeleteAction) }>
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ r.DeleteLabel }>{ v.RemoveLabel }</button>
+							</form>
+						</div>
+					</li>
+				}
+			</ol>
+			if v.MoreHref != "" {
+				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.MoreHref) }>{ v.MoreLabel }</a>
+			}
+			<p class="ts-words__export">
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ExportMD) } download hx-boost="false">{ v.ExportMDLabel }</a>
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ExportJSON) } download hx-boost="false">{ v.ExportJSONLabel }</a>
+			</p>
+		}
+	</div>
+}

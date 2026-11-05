@@ -108,7 +108,8 @@ export function mount(menu) {
   function act(kind, marked) {
     if (kind === "note") ask(marked);
     else if (kind === "copy") navigator.clipboard.writeText(marked.text);
-    else save(marked);
+    else if (kind === "lookup") import(reader.dataset.lookupSrc).then((m) => m.open(reader, marked));
+    else if (kind === "highlight") save(marked);
     hide();
   }
 

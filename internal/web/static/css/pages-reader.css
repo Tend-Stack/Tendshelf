@@ -176,3 +176,10 @@ body:has(.ts-readerpage) :is(#nav-tabbar, #nav-rail, #nav-side) { visibility: hi
 [data-theme="contrast"] .ts-readerpage[data-warm="on"]::after { content: none; }
 .ts-readset__more { display: flex; flex-direction: column; gap: var(--space-20); }
 .ts-readset__more summary { align-self: flex-start; cursor: pointer; }
+/* Look-up (G1): the popup is a note dialog with entries; the word is large, the dictionary's name small. */
+.ts-lookup { max-height: 85dvh; overflow-y: auto; overscroll-behavior: contain; }
+.ts-lookup__title, .ts-lookup__dict { margin: 0; font: 600 0.8125rem/1.25rem var(--font-sans); color: var(--ink-muted); }
+.ts-lookup__word { margin: 0 0 var(--space-8); font: 500 1.375rem/1.75rem var(--font-serif); overflow-wrap: anywhere; }
+.ts-lookup__head { font-weight: 600; }
+.ts-lookup__web { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-8); }
+.ts-lookup__web a { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--accent); }

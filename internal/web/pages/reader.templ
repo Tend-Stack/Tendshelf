@@ -43,6 +43,7 @@ type ReaderRoot struct {
 	At, Off, Flow, Save, Lang, Words string // Words is JSON: the sentences the client script shows
 	Skim                             string // JSON [[chars_before, title], ...] for the skim bar (reader-skim.js)
 	NotesSrc                         string // address of reader-notes.js, loaded on the first footnote
+	LookupSrc                        string // address of reader-lookup.js, loaded on the first Look up (G1)
 	Cpm, TotalChars, ChapterChars    int
 	Pages, Chapters                  int // the book's standard pages (p. n of N) and its chapters
 	Before                           int
@@ -164,6 +165,7 @@ type ReaderFooter struct {
 // ReaderMarksBar is the selection toolbar and the hidden form it posts.
 type ReaderMarksBar struct {
 	Label, Highlight, Note, Copy string
+	Lookup, WordAction           string // the Look up button's words and where the Save word form posts (G1)
 	Action, CSRF                 string
 	Count                        string
 	Swatches                     []ReaderSwatch
@@ -232,6 +234,7 @@ templ Reader(v ReaderView) {
 			data-copy={ v.Root.Words }
 			data-pages-src={ v.PagesModule }
 			data-notes-src={ v.Root.NotesSrc }
+			data-lookup-src={ v.Root.LookupSrc }
 			data-skim={ v.Root.Skim }
 			data-keep-awake={ strconv.FormatBool(v.Look.KeepAwake) }
 			data-warm={ v.Look.Warm }
@@ -290,12 +293,26 @@ templ Reader(v ReaderView) {
 				@components.Icon("edit", false)
 				{ v.Marks.Note }
 			</button>
+			<button type="button" class="ts-selmenu__item" data-ts-mark="lookup">
+				@components.Icon("search", false)
+				{ v.Marks.Lookup }
+			</button>
 			}
 			<button type="button" class="ts-selmenu__item" data-ts-mark="copy">
 				@components.Icon("share", false)
 				{ v.Marks.Copy }
 			</button>
 		</div>
+		if v.Marks.WordAction != "" {
+			<form id="reader-word-form" hidden hx-post={ v.Marks.WordAction } hx-swap="none">
+				<input type="hidden" name="_csrf" value={ v.Marks.CSRF }/>
+				<input type="hidden" name="edition_id" value={ v.EditionID }/>
+				<input type="hidden" name="word"/>
+				<input type="hidden" name="quote"/>
+				<input type="hidden" name="sid"/>
+				<input type="hidden" name="off"/>
+			</form>
+		}
 		<form id="reader-hl-form" hidden hx-post={ v.Marks.Action } hx-swap="none">
 			<input type="hidden" name="_csrf" value={ v.Marks.CSRF }/>
 			<input type="hidden" name="edition" value={ v.EditionID }/>
