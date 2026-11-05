@@ -98,7 +98,8 @@ a11y:
 	$(GO) test -count=1 -tags dev -timeout 45m -run '$(A11Y_RUN)' -v ./internal/web/
 
 # The same pages in WebKitGTK through WebKitWebDriver and MiniBrowser. MiniBrowser has no headless
-# mode: use `xvfb-run -a make visual-webkit` to keep the window off the desktop.
+# mode: run it as `scripts/isolated-display.sh make visual-webkit` (a private headless GNOME Shell, nothing on
+# the desktop; xvfb-run is not installed here).
 # Needs TENDSHELF_TEST_WEBKIT_DRIVER=/usr/bin/WebKitWebDriver (the browser defaults to the 4.1 MiniBrowser).
 visual-webkit:
 	$(GO) test -count=1 -tags dev -run 'VisualWebKit' ./internal/web/
@@ -145,3 +146,10 @@ isolated:
 .PHONY: desktop-probe
 desktop-probe:
 	$(GO) -C desktop build -trimpath -tags 'production tendshelf_probe' -o ../bin/tendshelf-desktop-probe .
+
+# The M6 exit run (plan D7): the probe window drives both modes in the private headless GNOME Shell and
+# writes .local/tests/desktop/exit-<time>/ (result.json per launch, driver.txt, shots/). Nothing opens on
+# the visible desktop; see desktop/probe/exit-run.sh.
+.PHONY: desktop-exit
+desktop-exit: build desktop-probe
+	scripts/isolated-display.sh desktop/probe/exit-run.sh

@@ -12,6 +12,9 @@
 //	TENDSHELF_PROBE_LIBRARY folder holding the synthetic book the probe adds
 //	TENDSHELF_PROBE_SERVER  connect mode: the test server's address
 //	TENDSHELF_PROBE_CODE    connect mode: the test server's setup code
+//	TENDSHELF_PROBE_PLAN    "" (first run), "relaunch" (saved mode: sign-in kept, then the reader)
+//	                        or "switch" (saved mode, then Change mode and a new choice)
+//	TENDSHELF_PROBE_STAY    set: the window stays open after "done"; the exit-run driver ends it
 package probe
 
 import (
@@ -28,7 +31,7 @@ import (
 // Attach returns the handler of the window's raw messages. It reports true for messages that are
 // the probe's own. exec runs a script in the window; origin is the session's origin; quit ends the
 // application once the script is done.
-func Attach(exec func(js string), origin func() string, quit func()) func(string) bool {
+func Attach(exec func(js string), origin func() string, change func(), quit func()) func(string) bool {
 	mode := os.Getenv("TENDSHELF_PROBE")
 	if mode != "personal" && mode != "connect" {
 		return nil
@@ -37,7 +40,7 @@ func Attach(exec func(js string), origin func() string, quit func()) func(string
 	if out == "" {
 		out = filepath.Join(".local", "tests", "desktop", time.Now().UTC().Format("20060102-150405"))
 	}
-	p := &run{mode: mode, out: out, exec: exec, origin: origin, quit: quit, results: map[string]any{}}
+	p := &run{mode: mode, out: out, exec: exec, origin: origin, change: change, quit: quit, results: map[string]any{}}
 	return p.handle
 }
 
@@ -46,11 +49,13 @@ type run struct {
 	out    string
 	exec   func(string)
 	origin func() string
+	change func()
 	quit   func()
 
-	mu      sync.Mutex
-	stage   int
-	results map[string]any
+	mu       sync.Mutex
+	stage    int
+	switched bool
+	results  map[string]any
 }
 
 // handle sees every message. A page load ("tendshelf:ready") moves the script one stage on.
@@ -62,6 +67,14 @@ func (p *run) handle(message string) bool {
 	case strings.HasPrefix(message, "tendshelf:probe "):
 		rest := strings.TrimPrefix(message, "tendshelf:probe ")
 		id, body, _ := strings.Cut(rest, " ")
+		if id == "switchNow" {
+			// The saved mode has loaded its page; open the picker as the menu's "Change mode or server…" does.
+			p.mu.Lock()
+			p.switched = true
+			p.mu.Unlock()
+			go p.change()
+			return true
+		}
 		p.record(id, body)
 		return true
 	}
@@ -73,12 +86,29 @@ func (p *run) pageLoaded() {
 	p.stage++
 	stage := p.stage
 	p.mu.Unlock()
+	if script := p.scriptFor(stage); script != "" {
+		p.exec(script)
+	}
+}
+
+// scriptFor picks the script for the stage-th page load of this launch (exit.go has the other plans).
+func (p *run) scriptFor(stage int) string {
+	switch os.Getenv("TENDSHELF_PROBE_PLAN") {
+	case "relaunch":
+		return relaunchScript()
+	case "switch":
+		p.mu.Lock()
+		switched := p.switched
+		p.mu.Unlock()
+		return switchScript(p.mode, switched, os.Getenv("TENDSHELF_PROBE_SERVER"))
+	}
 	switch stage {
 	case 1: // the picker
-		p.exec(pickerScript(p.mode, os.Getenv("TENDSHELF_PROBE_SERVER")))
+		return pickerScript(p.mode, os.Getenv("TENDSHELF_PROBE_SERVER"))
 	case 2: // the library or server, first page
-		p.exec(libraryScript(os.Getenv("TENDSHELF_PROBE_LIBRARY"), os.Getenv("TENDSHELF_PROBE_CODE"), p.origin()))
+		return libraryScript(os.Getenv("TENDSHELF_PROBE_LIBRARY"), os.Getenv("TENDSHELF_PROBE_CODE"), p.origin())
 	}
+	return ""
 }
 
 func (p *run) record(id, body string) {
@@ -149,6 +179,7 @@ async function submit(page, action, fields) {
   return {status: res.status, url: res.url, page: doc(await res.text())};
 }
 const result = {origin: ` + js(origin) + `, href: location.href, shell: document.documentElement.dataset.shell || ""};
+const startOrigin = location.origin;
 try {
   result.workers = navigator.serviceWorker ? (await navigator.serviceWorker.getRegistrations()).length : "none";
   let page = document;
@@ -170,6 +201,8 @@ try {
       const bp = doc(await (await fetch(book.getAttribute("href"), {credentials: "same-origin"})).text());
       const s = bp.querySelector('a[href^="/stream/"]');
       if (s) stream = s.getAttribute("href").split("#")[0];
+      result.bookHref = book.getAttribute("href");
+      result.attachment = result.bookHref + "/bookmarks/export?format=md";
     }
     if (!stream) await wait(1000);
   }
@@ -201,6 +234,36 @@ try {
     } else {
       a.pause();
     }
+  }
+  // D7: the content security policy the window received, for the driver to compare with the server's own.
+  result.csp = {};
+  for (const path of ["/healthz", "/login"]) {
+    result.csp[path] = (await fetch(path, {credentials: "same-origin"})).headers.get("content-security-policy");
+  }
+  // D7: the Downloads link exists in the page markup but the desktop style sheet hides it.
+  const mePage = doc(await (await fetch("/me", {credentials: "same-origin"})).text());
+  result.downloadsLinkInMarkup = !!mePage.querySelector('a[href="/me/downloads"]');
+  const probeLink = document.createElement("a");
+  probeLink.href = "/me/downloads";
+  document.body.append(probeLink);
+  result.downloadsLinkDisplay = getComputedStyle(probeLink).display;
+  probeLink.remove();
+  // D7: a link to another site is handed to the app ("tendshelf:open"); the driver's xdg-open stand-in logs it.
+  const outside = document.createElement("a");
+  outside.href = "https://example.org/probe-link";
+  outside.target = "_blank";
+  outside.textContent = "outside";
+  document.body.append(outside);
+  outside.click();
+  outside.remove();
+  await wait(1500);
+  result.stayedOnOrigin = location.origin === startOrigin;
+  // D7: an attachment (the bookmarks export) is saved by the window; the driver looks in the download folder.
+  if (result.attachment) {
+    reply("beforeDownload", result);
+    location.href = result.attachment;
+    await wait(4000);
+    result.afterDownloadHref = location.href;
   }
 } catch (e) {
   result.error = String(e && e.message || e);

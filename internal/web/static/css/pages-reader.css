@@ -81,10 +81,12 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 .ts-reader__bm::before { content: ""; display: block; height: 100%; background: var(--accent); clip-path: polygon(0 0, 100% 0, 75% 50%, 100% 100%, 0 100%); }
 
 /* Pages. The part's section is the columns box and the scroller; a turn moves its scrollLeft by one page. The box is
-   exactly --ts-cols columns wide, so what lies right of it is the next page. Pictures and tables never outgrow a page. */
+   exactly --ts-cols columns wide, so what lies right of it is the next page. Pictures and tables never outgrow a page.
+   column-width repeats the column width beside column-count: WebKit lays out nothing in columns for a bare
+   column-count: 1 (the phone case), so the next page never existed. The two agree, so other engines see no change. */
 .ts-reader--pages { overflow: hidden; padding-block: var(--space-16); touch-action: pan-y; }
 .ts-reader--pages .ts-reader__col { max-width: none; }
-.ts-reader--pages section[data-part] { box-sizing: content-box; width: calc(var(--ts-cols) * var(--ts-col) + (var(--ts-cols) - 1) * var(--ts-gap)); height: var(--ts-page-h); margin-inline: auto; overflow: hidden; column-count: var(--ts-cols); column-gap: var(--ts-gap); column-fill: auto; }
+.ts-reader--pages section[data-part] { box-sizing: content-box; width: calc(var(--ts-cols) * var(--ts-col) + (var(--ts-cols) - 1) * var(--ts-gap)); height: var(--ts-page-h); margin-inline: auto; overflow: hidden; column-count: var(--ts-cols); column-width: var(--ts-col); column-gap: var(--ts-gap); column-fill: auto; }
 .ts-reader--pages .ts-reader__prev, .ts-reader--pages .ts-reader__next { display: none; }
 .ts-reader--pages .ts-reader__image { max-height: var(--ts-page-h); object-fit: contain; break-inside: avoid; }
 .ts-reader--pages .ts-reader__img, .ts-reader--pages .ts-reader__chapter { break-inside: avoid; }

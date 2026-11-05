@@ -14,6 +14,7 @@ func attachProbe(ui *windowUI, s *Session) func(message string) bool {
 			}
 		},
 		s.Origin,
+		s.Change,
 		func() { ui.app.Quit() },
 	)
 }

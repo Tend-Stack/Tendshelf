@@ -76,14 +76,14 @@ iOS Safari (a Safari tab, then the Home Screen app).
 
 | # | Step | Expected | Android Chrome | iOS Safari tab | iOS Home Screen app |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Install: Android, the Install Tendshelf button on Downloads or the browser menu; iOS, Share, Add to Home Screen. | The app opens in its own window with the Tendshelf icon (not a letter on a plain tile) and the name Tendshelf. On iOS Safari tab, Downloads shows the line about Safari clearing downloads after a week. | | | |
-| 2 | Open a multi-file book, press Download. Watch Downloads: progress row, Pause download, Resume download. Keep the app open until it finishes. | The row shows "{done} of {total}", the bar moves, Pause then Resume continue where it stopped, the end shows "{title} is ready offline." and a Ready offline row. | | | |
-| 3 | Open Downloads. | Storage numbers show; the "may clear downloads" line shows or not as `persist()` says. Write both below. | | | |
-| 4 | Turn on airplane mode. Close the app and open it cold. | The offline page shows: banner "You're offline...", "On this phone" with the book as Ready offline, others as Needs a connection. | | | |
-| 5 | Press play, seek into the second file, lock the phone for 2 minutes, unlock. | Sound plays from the start, the seek lands without an error or a gap, playback is still going after the unlock (or resumes on one tap). | | | |
-| 6 | Add a bookmark, then pause. | A toast says "Bookmarked at {time}. It saves when you're back online." | | | |
-| 7 | Turn airplane mode off. | A "Back online. Your place and bookmarks are saved." toast; on the second device Resume starts within a few seconds of where the phone stopped, and the bookmark is in the book's Bookmarks tab. | | | |
-| 8 | Sign out on the phone, then sign in again (as the same person, then as another person if you have one). | Downloads is empty after the next sign-in; nothing from the old session is left. | | | |
+| 1 | Install: Android, the Install Tendshelf button on Downloads or the browser menu; iOS, Share, Add to Home Screen. | The app opens in its own window with the Tendshelf icon (not a letter on a plain tile) and the name Tendshelf. On iOS Safari tab, Downloads shows the line about Safari clearing downloads after a week. | Pass, after a fix. In the Wails window (WebKitGTK 2.52, 1280 by 705) Auto opens in Scroll; with Pages, text fills the column, the first sentence is inside the box, no sideways page scroll. Before the fix WebKit made no columns at all (see below). | | |
+| 2 | Open a multi-file book, press Download. Watch Downloads: progress row, Pause download, Resume download. Keep the app open until it finishes. | The row shows "{done} of {total}", the bar moves, Pause then Resume continue where it stopped, the end shows "{title} is ready offline." and a Ready offline row. | Arrow keys and tap zones: pass (synthetic key and click events). Swipe: not run (touch). Whether the slide plays once: not checked. | | |
+| 3 | Open Downloads. | Storage numbers show; the "may clear downloads" line shows or not as `persist()` says. Write both below. | Not run: needs the window or phone turned sideways by hand. | | |
+| 4 | Turn on airplane mode. Close the app and open it cold. | The offline page shows: banner "You're offline...", "On this phone" with the book as Ready offline, others as Needs a connection. | Pass for theme (Sepia) and flow (Pages): both applied at once, and Sepia was still on after leaving the reader and coming back. Size and font not driven. | | |
+| 5 | Press play, seek into the second file, lock the phone for 2 minutes, unlock. | Sound plays from the start, the seek lands without an error or a gap, playback is still going after the unlock (or resumes on one tap). | Pass for a programmatic selection: the bar with four colours, Note, Look up and Copy appeared above it. Long press and the system menu: not run. | | |
+| 6 | Add a bookmark, then pause. | A toast says "Bookmarked at {time}. It saves when you're back online." | Pass for one colour (green) and one note: the wash and the note dot appeared. Other colours, the four themes' washes and the marks sheet: not run. | | |
+| 7 | Turn airplane mode off. | A "Back online. Your place and bookmarks are saved." toast; on the second device Resume starts within a few seconds of where the phone stopped, and the bookmark is in the book's Bookmarks tab. | Pass with the backdrop: popup opened, focus went inside and came back to the link, the page did not move. Escape: not run (a script's key event does not close a dialog). | | |
+| 8 | Sign out on the phone, then sign in again (as the same person, then as another person if you have one). | Downloads is empty after the next sign-in; nothing from the old session is left. | Pass: Contents opened with the page behind inert (4 entries); Search for 'zebra' listed one hit, and following it marked the word through the highlight registry. | | |
 
 Record the figures: the `estimate()` quota and usage Downloads shows, and whether `persist()` was granted
 (the line is absent when it was). Android: quota ____ , persist ____ . iOS Safari tab: quota ____ , persist
@@ -105,38 +105,55 @@ and Firefox on Ubuntu, TalkBack on Android Chrome, and VoiceOver on iOS Safari. 
 
 | # | Step | Expected | Orca + Firefox | TalkBack | VoiceOver |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Sign in. | Fields are announced with their labels; a wrong password error is announced. | | | |
-| 2 | From Home, play a book with the keyboard only (or the screen reader's gestures). | One resume control, reachable, labelled; sound starts. | | | |
-| 3 | Full player: every key (space, arrows, speed, sleep, chapters). | Each control works and announces its new state. | | | |
-| 4 | Open a sheet, then close it. | Focus moves inside on open and returns to the opener on close. | | | |
-| 5 | Trigger a toast (add a bookmark). | The toast text is announced once. | | | |
-| 6 | Go offline. | The offline banner is announced. | | | |
-| 7 | Submit a form with an error (Add books, Settings). | The error is announced and linked to its field. | | | |
-| 8 | Browser zoom 200 % and 400 % at 1280 px wide. | No lost content, no sideways scroll, controls usable. | | | |
-| 9 | Windows high-contrast / forced colours (Edge or Firefox). | Text, focus and control edges stay visible. | | | |
-| 10 | Move the scrubber and the volume by keys, without dragging. | Arrow keys change the value and announce it. | | | |
+| 1 | Sign in. | Fields are announced with their labels; a wrong password error is announced. | Pass, after a fix. In the Wails window (WebKitGTK 2.52, 1280 by 705) Auto opens in Scroll; with Pages, text fills the column, the first sentence is inside the box, no sideways page scroll. Before the fix WebKit made no columns at all (see below). | | |
+| 2 | From Home, play a book with the keyboard only (or the screen reader's gestures). | One resume control, reachable, labelled; sound starts. | Arrow keys and tap zones: pass (synthetic key and click events). Swipe: not run (touch). Whether the slide plays once: not checked. | | |
+| 3 | Full player: every key (space, arrows, speed, sleep, chapters). | Each control works and announces its new state. | Not run: needs the window or phone turned sideways by hand. | | |
+| 4 | Open a sheet, then close it. | Focus moves inside on open and returns to the opener on close. | Pass for theme (Sepia) and flow (Pages): both applied at once, and Sepia was still on after leaving the reader and coming back. Size and font not driven. | | |
+| 5 | Trigger a toast (add a bookmark). | The toast text is announced once. | Pass for a programmatic selection: the bar with four colours, Note, Look up and Copy appeared above it. Long press and the system menu: not run. | | |
+| 6 | Go offline. | The offline banner is announced. | Pass for one colour (green) and one note: the wash and the note dot appeared. Other colours, the four themes' washes and the marks sheet: not run. | | |
+| 7 | Submit a form with an error (Add books, Settings). | The error is announced and linked to its field. | Pass with the backdrop: popup opened, focus went inside and came back to the link, the page did not move. Escape: not run (a script's key event does not close a dialog). | | |
+| 8 | Browser zoom 200 % and 400 % at 1280 px wide. | No lost content, no sideways scroll, controls usable. | Pass: Contents opened with the page behind inert (4 entries); Search for 'zebra' listed one hit, and following it marked the word through the highlight registry. | | |
+| 9 | Windows high-contrast / forced colours (Edge or Firefox). | Text, focus and control edges stay visible. | Pass: left for Home, reopened with no place in the address, same sentence on screen, Sepia kept. | | |
+| 10 | Move the scrubber and the volume by keys, without dragging. | Arrow keys change the value and announce it. | Partly: 80 page turns crossed from chapter 2 into chapter 3 with every sentence in order. A visual jump cannot be seen by a script; watch it by hand. | | |
 
 ## M5 book reader: WebKit and phone (RD4)
 
 Why manual: `make visual-webkit` drives the kitchen sink and eight pages through WebKitGTK's MiniBrowser, which has no
 headless mode; on 2026-11-05 the workstation had no `xvfb-run`, and running it would have put windows on the desktop, so the
-reader was not driven in WebKit. Chromium covers the reader (`make a11y`, `TestBRVisual`, `TestBRLayoutTime`). The reader
+reader was not driven in WebKit. Later that day (M6 D7) `scripts/isolated-display.sh` ran `make visual-webkit` in a private
+headless GNOME Shell, and the desktop exit run drove the reader inside the Wails window; the WebKit column below holds what a
+script could do. Chromium covers the reader (`make a11y`, `TestBRVisual`, `TestBRLayoutTime`). The reader
 relies on CSS columns for pages, `CSS.highlights` for a search hit, `inert` behind a sheet, `:has()` for the hidden shell
 navigation and `Element.animate` for the page slide; WebKit and the phone browsers are where those differ. Use a book from
 your own folder (for example `~/Books` "Rules for the Summer", EPUB, with its audiobook in the library); never commit it.
 
 | # | Step | Expected | WebKit (Epiphany or a Wails build) | iPhone Safari | Android Chrome |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Open the book from its page with Read, in Pages. | Text fills columns, no clipped line at the top or bottom, no sideways scroll. | | | |
-| 2 | Turn pages with the arrow keys, the tap zones and a swipe. | One page per turn, the slide plays once, the page line changes. | | | |
-| 3 | Turn the phone sideways, then back. | The place stays on the same sentence; a second column appears only from 1024 px. | | | |
-| 4 | Aa: change size, font, theme, then Scroll. | The page behind changes at once; the choices stay after a reload. | | | |
-| 5 | Select a few words (long press on the phone). | The toolbar with four colours, Note and Copy appears above the selection; the system menu does not hide it. | | | |
-| 6 | Highlight in each colour, add a note. | Washes are readable in dark, light, sepia and contrast; the note dot opens the marks sheet. | | | |
-| 7 | Open a footnote link, then close it with Escape or the backdrop. | Popup opens; focus returns to the link; the page does not move. | | | |
-| 8 | Contents, Search for a word, follow a hit. | The sheet opens over an inert page; the hit is marked on arrival. | | | |
-| 9 | Close the reader and open it again from Home. | It resumes on the same sentence. | | | |
-| 10 | Read past the end of a long chapter. | The next part loads without a jump. | | | |
+| 1 | Open the book from its page with Read, in Pages. | Text fills columns, no clipped line at the top or bottom, no sideways scroll. | Pass, after a fix. In the Wails window (WebKitGTK 2.52, 1280 by 705) Auto opens in Scroll; with Pages, text fills the column, the first sentence is inside the box, no sideways page scroll. Before the fix WebKit made no columns at all (see below). | | |
+| 2 | Turn pages with the arrow keys, the tap zones and a swipe. | One page per turn, the slide plays once, the page line changes. | Arrow keys and tap zones: pass (synthetic key and click events). Swipe: not run (touch). Whether the slide plays once: not checked. | | |
+| 3 | Turn the phone sideways, then back. | The place stays on the same sentence; a second column appears only from 1024 px. | Not run: needs the window or phone turned sideways by hand. | | |
+| 4 | Aa: change size, font, theme, then Scroll. | The page behind changes at once; the choices stay after a reload. | Pass for theme (Sepia) and flow (Pages): both applied at once, and Sepia was still on after leaving the reader and coming back. Size and font not driven. | | |
+| 5 | Select a few words (long press on the phone). | The toolbar with four colours, Note and Copy appears above the selection; the system menu does not hide it. | Pass for a programmatic selection: the bar with four colours, Note, Look up and Copy appeared above it. Long press and the system menu: not run. | | |
+| 6 | Highlight in each colour, add a note. | Washes are readable in dark, light, sepia and contrast; the note dot opens the marks sheet. | Pass for one colour (green) and one note: the wash and the note dot appeared. Other colours, the four themes' washes and the marks sheet: not run. | | |
+| 7 | Open a footnote link, then close it with Escape or the backdrop. | Popup opens; focus returns to the link; the page does not move. | Pass with the backdrop: popup opened, focus went inside and came back to the link, the page did not move. Escape: not run (a script's key event does not close a dialog). | | |
+| 8 | Contents, Search for a word, follow a hit. | The sheet opens over an inert page; the hit is marked on arrival. | Pass: Contents opened with the page behind inert (4 entries); Search for 'zebra' listed one hit, and following it marked the word through the highlight registry. | | |
+| 9 | Close the reader and open it again from Home. | It resumes on the same sentence. | Pass: left for Home, reopened with no place in the address, same sentence on screen, Sepia kept. | | |
+| 10 | Read past the end of a long chapter. | The next part loads without a jump. | Partly: 80 page turns crossed from chapter 2 into chapter 3 with every sentence in order. A visual jump cannot be seen by a script; watch it by hand. | | |
+
+WebKit run, 2026-11-05 (M6 D7, scripted, nobody watching): Wails v3.0.0 window, WebKitGTK 2.52.6, GTK 4.22.4, in a private
+headless GNOME Shell, a synthetic EPUB ("The Pager", three chapters, one footnote) beside a synthetic 180 s AAC audiobook,
+1280 by 705 px, personal and connect modes alike (same answers). Finding and fix: in Pages flow with one column (every phone,
+and a desktop window under 1024 px) WebKit treated `column-count: 1` as no columns, so the part's `scrollWidth` equalled one
+page and the reader believed every chapter was one page: arrow keys and taps jumped chapters, and the highlight and note steps
+failed. `pages-reader.css` now also sets `column-width: var(--ts-col)`; with the box exactly that wide, other engines lay out
+the same columns. Chromium was not available on this machine, so the Chromium reader tests were not re-run after the change;
+run `make a11y` and the reader browser tests where a Chromium exists. Not driven: touch, swipe, long press, rotation, the
+Escape key, size and font in Aa, the other three highlight colours, the four themes' washes. iPhone Safari and Android Chrome:
+not verified.
+
+`make visual-webkit` (kitchen sink and eight pages through MiniBrowser 4.1) passes in the private session (10.8 s). It needed
+one change to its helper: the private shell opens every window maximized and then refuses WebDriver's resize, so the helper
+un-maximizes the window through the private shell's Eval call, and only when `WAYLAND_DISPLAY` is `ts-desktop`.
 
 ## Desktop media keys and tray (M6 D5, 2026-11-05)
 
@@ -154,3 +171,33 @@ Operator check, on the real desktop (the isolated session has no media-key handl
 3. Press Next and Previous. Expected: the chapter changes.
 4. With an AppIndicator extension on (Ubuntu ships one), click the tray icon: the window hides, then shows. The menu's
    "Play or pause" pauses and resumes. Quit Tendshelf ends the app. Without the extension there is no icon and nothing else changes.
+
+## Desktop app on your own computer (M6 exit, 2026-11-05)
+
+Why manual: the exit run (`make desktop-exit`) drives the real window in a private headless GNOME Shell with no sound
+card, no real keyboard, no real tray, no real file chooser and a loopback `http` server. It proves the plumbing; these
+rows are what it cannot see. Run them on Ubuntu with `make desktop` then `bin/tendshelf-desktop`, or the `.deb` from
+`make deb`. Status: **not run**. Write what you saw in the Result column and date it under the table.
+
+Two limits the exit run found and kept, so do not be surprised by them: the tray's "Play or pause" cannot start a book
+nobody has played yet in that window (WebKit refuses `play()` without a click), and the page's own media-key handlers
+(`mediaSession`) have not been seen firing from a real key.
+
+| # | Step | Expected | Result |
+| --- | --- | --- | --- |
+| 1 | First launch: choose "Just on this computer", finish setup, add a folder of your own audiobooks. | The setup page opens with its code filled in; books appear; no window opens anywhere else. | |
+| 2 | Play a book (press its play button once), with real speakers or headphones. | Sound plays; the progress moves. | |
+| 3 | Press the keyboard's Play/Pause, Next and Previous keys, with another app focused. | Pause and resume; Next and Previous change the chapter. If nothing happens, note the desktop and session type (Wayland or X11). | |
+| 4 | Tray (Ubuntu's AppIndicator extension on): click the icon, then use its menu. | Click hides, then shows the window. "Play or pause" pauses and resumes a book you already started. "Quit Tendshelf" ends the app. | |
+| 5 | Same, with the extension off. | No icon; nothing else changes; closing the window quits. | |
+| 6 | Window: drag the native title bar, resize from every edge and corner, maximize, restore, double-click the bar. | All work like any app; nothing is "drag-free" or stuck; the window will not shrink below about 390 by 600. | |
+| 7 | Menu: Tendshelf, Change mode or server…; View, Zoom in, Zoom out, Actual size (and Ctrl +, -, 0). | The picker opens and your library keeps running until you choose; zoom changes at once and resets. | |
+| 8 | Connect mode against a real `https` server (a certificate from a real authority). | Sign-in works, play and seek work, reload keeps you signed in, quit and relaunch keeps you signed in. A self-signed certificate is refused with plain words. | |
+| 9 | On the Add books page, upload a book with the file chooser. | The native chooser opens, the upload shows progress and the book appears. (The exit run cannot drive a chooser.) | |
+| 10 | Open a link to another site from a book's details. | It opens in your own browser, not in the window. | |
+| 11 | Start a second copy from the launcher while the first runs. | The first window comes forward; no second window. | |
+| 12 | Quit, then start with ffmpeg missing (rename it for a minute). | One plain warning about ffmpeg; books are listed but do not play. | |
+
+Dated runs (desktop, session type, WebKitGTK version, date, who ran it, anything that surprised you):
+
+-
