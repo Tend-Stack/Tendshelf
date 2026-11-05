@@ -363,14 +363,24 @@ func TestIngestJob(t *testing.T) {
 	if ok, _ := e.svc.Store().ReadyForBook(bg, e.book("Book").ID); !ok {
 		t.Error("the book's ready ebook is not reported")
 	}
+}
 
-	// A file that vanished before the read fails with code missing.
+// A file that vanished before the read fails with code missing. The runner is held back until the
+// file is gone, so the job cannot claim it first (a running runner could read the file before the
+// removal and make the outcome ready).
+func TestIngestJobVanishedFile(t *testing.T) {
+	e := newIEnv(t, false)
 	gone := e.write("Book/gone.epub", sampleEPUB(t, "Gone"))
 	e.scan()
 	gf := e.fileAt(gone)
-	_ = os.Remove(gone)
-	if got := e.waitState(gf.ID); got.State != "failed" && got.State != "ready" {
-		t.Fatalf("vanished file = %+v", got)
+	if err := os.Remove(gone); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.runner.Start(bg); err != nil {
+		t.Fatal(err)
+	}
+	if got := e.waitState(gf.ID); got.State != "failed" || got.ErrorCode != "missing" {
+		t.Fatalf("vanished file = %+v, want failed with code missing", got)
 	}
 }
 
@@ -522,8 +532,15 @@ func TestIngestUploadRefusalDeletesBytes(t *testing.T) {
 	if r.State != "refused" || r.RefusedReason != ReasonDRM {
 		t.Fatalf("row = %+v", r)
 	}
-	if _, err := os.Stat(e.svc.storedPath(f.SHA256, "epub")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("refused upload bytes still stored: %v", err)
+	// The job drops the bytes after it writes the refusal, so the state can be seen a moment before they go.
+	var err2 error
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+		if _, err2 = os.Stat(e.svc.storedPath(f.SHA256, "epub")); errors.Is(err2, os.ErrNotExist) {
+			break
+		}
+	}
+	if !errors.Is(err2, os.ErrNotExist) {
+		t.Fatalf("refused upload bytes still stored: %v", err2)
 	}
 }
 
