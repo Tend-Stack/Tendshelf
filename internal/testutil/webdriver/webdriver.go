@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -24,6 +25,27 @@ type Session struct {
 	base string
 	id   string
 	hc   *http.Client
+
+	freed sync.Once
+}
+
+// freeWindowOnce un-maximizes the browser window in the private headless GNOME Shell of
+// scripts/isolated-display.sh (WAYLAND_DISPLAY=ts-desktop). That shell opens every window maximized and
+// then refuses WebDriver's resize ("Invalid width value"). Its unsafe mode allows one Shell.Eval call, and
+// the shell is private, so no other session is touched. Anywhere else this does nothing.
+func (s *Session) freeWindowOnce() {
+	s.freed.Do(func() {
+		if os.Getenv("WAYLAND_DISPLAY") != "ts-desktop" {
+			return
+		}
+		eval := "global.get_window_actors().forEach(a => a.meta_window.unmaximize(3))"
+		err := exec.Command("gdbus", "call", "--session", "--dest", "org.gnome.Shell", "--object-path", "/org/gnome/Shell",
+			"--method", "org.gnome.Shell.Eval", eval).Run()
+		if err != nil {
+			s.t.Logf("could not un-maximize the window in the private shell: %v", err)
+		}
+		time.Sleep(1500 * time.Millisecond) // the shell applies it a moment later
+	})
 }
 
 // Start runs the driver on a free port, opens a session with the browser binary and ends both when
@@ -170,6 +192,7 @@ func (s *Session) ExecAsync(script string, out any) {
 // window width, so a width below it fails the test instead of silently measuring another layout.
 func (s *Session) SetViewport(w, h int) {
 	s.t.Helper()
+	s.freeWindowOnce()
 	width, height := w, h
 	for attempt := 0; attempt < 2; attempt++ {
 		s.call(http.MethodPost, "/window/rect", map[string]any{"x": 0, "y": 0, "width": width, "height": height})
