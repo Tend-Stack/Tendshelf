@@ -2,9 +2,11 @@ package auth
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/netip"
 	"strings"
+	"sync"
 )
 
 // Proxies is the set of reverse proxies whose X-Forwarded-For and
@@ -65,6 +67,9 @@ func remoteAddr(r *http.Request) (netip.Addr, bool) {
 	return ap.Addr().Unmap().WithZone(""), true
 }
 
+// warnUntrustedForwarded makes the untrusted-proxy warning appear once per run.
+var warnUntrustedForwarded sync.Once
+
 // ClientIP returns the address of the client. It is the peer address unless the
 // peer is a trusted proxy, in which case it is the right-most
 // X-Forwarded-For entry that is not itself trusted. A malformed header falls
@@ -72,7 +77,17 @@ func remoteAddr(r *http.Request) (netip.Addr, bool) {
 // address can not be read at all.
 func (x Proxies) ClientIP(r *http.Request) netip.Addr {
 	peer, ok := remoteAddr(r)
-	if !ok || !x.trusts(peer) {
+	if !ok {
+		return peer
+	}
+	if !x.trusts(peer) {
+		if r.Header.Get("X-Forwarded-For") != "" {
+			warnUntrustedForwarded.Do(func() {
+				slog.Warn("a request carried X-Forwarded-For from a peer that is not a trusted proxy, so the header was ignored; "+
+					"behind a reverse proxy every visitor shares one address (sign-in limits hit everyone) and cookies lose Secure. "+
+					"Start with -trusted-proxy set to the proxy's address", "peer", peer.String())
+			})
+		}
 		return peer
 	}
 	var entries []string
