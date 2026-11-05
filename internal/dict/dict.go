@@ -96,9 +96,12 @@ func (d *dictionary) lookup(key string) []Entry {
 type Set struct {
 	dir string
 
-	mu    sync.Mutex
-	stamp string // what the folder looked like when it was read
+	mu    sync.Mutex // guards stamp and dicts only; never held while a file is read
+	stamp string     // what the folder looked like when it was read
 	dicts []*dictionary
+
+	loading sync.Mutex // one reload at a time
+	onLoad  func()     // test seam: runs at the start of every reload
 }
 
 // Open returns the set for dir (<data>/dictionaries). Nothing is read until the first Find or Count, and the
@@ -122,17 +125,41 @@ func (s *Set) Find(word string) []Entry {
 	return out
 }
 
-// current returns the dictionaries, reading the folder first when it changed.
+// current returns the dictionaries, reading the folder first when it changed. The reload runs outside
+// mu, so a slow folder never stalls a lookup: while one goroutine reloads, the others keep using the
+// set they had (they wait only when there is nothing to use yet).
 func (s *Set) current() []*dictionary {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	files := s.listing()
 	stamp := fmt.Sprint(files)
+	s.mu.Lock()
 	if s.stamp == stamp && s.stamp != "" {
+		defer s.mu.Unlock()
 		return s.dicts
 	}
-	s.stamp, s.dicts = stamp, s.load(files)
-	return s.dicts
+	old, haveOld := s.dicts, s.stamp != ""
+	s.mu.Unlock()
+	if haveOld {
+		if !s.loading.TryLock() {
+			return old
+		}
+	} else {
+		s.loading.Lock()
+	}
+	defer s.loading.Unlock()
+	s.mu.Lock()
+	if s.stamp == stamp { // another goroutine loaded this very state while we waited
+		defer s.mu.Unlock()
+		return s.dicts
+	}
+	s.mu.Unlock()
+	if s.onLoad != nil {
+		s.onLoad()
+	}
+	dicts := s.load(files)
+	s.mu.Lock()
+	s.stamp, s.dicts = stamp, dicts
+	s.mu.Unlock()
+	return dicts
 }
 
 // file is one regular file of the folder.
