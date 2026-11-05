@@ -135,13 +135,13 @@ func TestVisualShelfSheetLive(t *testing.T) {
 	tab.Navigate(srv + "/books/" + bookID)
 	tab.WaitFor(`window.htmx !== undefined`, 5*time.Second)
 	tab.Eval(`Array.from(document.querySelectorAll("main a")).find(a => a.textContent.trim() === "Add to shelf").click()`, nil)
-	tab.WaitFor(`document.querySelectorAll("#sheet .ts-shelf-sheet__toggle").length === 3`, 5*time.Second)
+	tab.WaitFor(`document.querySelectorAll("#sheet .ts-shelf-sheet__toggle").length === 4`, 5*time.Second)
 	var got struct {
 		Path    string
 		Pressed []string
 	}
 	tab.Eval(`({path: location.pathname, pressed: Array.from(document.querySelectorAll("#sheet .ts-shelf-sheet__toggle")).map(b => b.textContent.trim() + "=" + b.getAttribute("aria-pressed"))})`, &got)
-	if got.Path != "/books/"+bookID || len(got.Pressed) != 3 {
+	if got.Path != "/books/"+bookID || len(got.Pressed) != 4 {
 		t.Fatalf("after opening the sheet: %+v", got)
 	}
 	tab.Eval(`Array.from(document.querySelectorAll("#sheet .ts-shelf-sheet__toggle")).find(b => b.textContent.includes("Sleep")).click()`, nil)
