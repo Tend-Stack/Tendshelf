@@ -1,5 +1,5 @@
 # 0020 The desktop shell loads an http origin, not Wails' asset scheme
-Status: proposed (2026-11-05). Plan: `docs/plans/m6-desktop.md`.
+Status: accepted (operator, 2026-11-05). Plan: `docs/plans/m6-desktop.md`.
 
 ## Context
 `docs/architecture.md` says personal mode runs "the same core in-process"; the GoTHW Wails reference passes the

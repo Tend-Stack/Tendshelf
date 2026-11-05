@@ -215,3 +215,8 @@ D1 and D2 share no file: D1 owns `cmd/tendshelf`, `internal/app`; D2 owns `inter
 - Self-signed certificates: WebKit refuses; the check says so in plain words.
 - Flatpak, Snap, AppImage; bundled ffmpeg (not "nothing to keep up to date", and a licence question).
 - Using the personal library from a phone: it binds to loopback; run the server for that.
+
+## Operator answers (2026-11-05)
+
+- Decision 0020 approved, including the `/healthz` check by the desktop shell.
+- `desktop.js` 1.25 KB approved; app JS ceiling raised to 87 KB (89,088 B).
