@@ -6,7 +6,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell git describe --tags --long --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: desktop desktop-check isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
+.PHONY: desktop desktop-check deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
 
 generate:
 	$(GO) tool templ generate
@@ -123,6 +123,10 @@ test-mediajobs-real:
 # The server binary above never links any of it. Needs libgtk-4-dev and libwebkitgtk-6.0-dev.
 desktop:
 	$(GO) -C desktop build -trimpath -tags production -ldflags "-X main.version=$(VERSION)" -o ../bin/tendshelf-desktop .
+
+# The Debian package (decision 0020): plain dpkg-deb, no wails3 CLI. Output: bin/tendshelf-desktop_<describe>_<arch>.deb.
+deb: desktop
+	sh desktop/package/build-deb.sh
 
 # Formatting, vet and race-enabled tests of the desktop module (needs the same libraries).
 desktop-check:

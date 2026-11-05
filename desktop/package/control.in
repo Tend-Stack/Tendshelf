@@ -1,0 +1,14 @@
+Package: tendshelf-desktop
+Version: @VERSION@
+Section: sound
+Priority: optional
+Architecture: @ARCH@
+Installed-Size: @SIZE@
+Maintainer: Tendshelf <noreply@tendshelf.invalid>
+Depends: libgtk-4-1, libwebkitgtk-6.0-4, gstreamer1.0-plugins-good, gstreamer1.0-libav, ffmpeg
+Recommends: gnome-shell-extension-appindicator
+Homepage: https://github.com/Tend-Stack/tendshelf
+Description: Tendshelf desktop app
+ A window for your self-hosted audiobook shelf. It runs Tendshelf on this
+ computer or opens a Tendshelf server you already have. Its libraries and
+ ffmpeg come from apt, and it downloads nothing when it runs.

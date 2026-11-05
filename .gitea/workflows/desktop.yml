@@ -1,0 +1,58 @@
+name: Tendshelf desktop
+
+# The desktop module needs CGO, GTK 4 and WebKitGTK 6, so it has its own workflow and ci.yml stays
+# CGO-free. Compile, vet and test only: no windows, no packaging, no nightly row.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - "internal/app/**"
+      - "internal/desktopshell/**"
+      - "go.mod"
+      - ".gitea/workflows/desktop.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - "internal/app/**"
+      - "internal/desktopshell/**"
+      - "go.mod"
+      - ".gitea/workflows/desktop.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tendshelf-desktop-${{ gitea.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop:
+    name: make desktop-check and make desktop
+    runs-on: [tend-ci, linux-arm64]
+    container:
+      image: docker.gitea.com/runner-images:ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+    steps:
+      - name: Check out the exact candidate
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # checkout v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install the Go version declared by the module
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # setup-go v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Install the C toolchain, GTK 4 and WebKitGTK 6 headers
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends make gcc libc6-dev pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+      - name: Gate (gofmt, go vet, go test -race in desktop/)
+        run: make desktop-check
+      - name: Build the desktop binary
+        run: make desktop

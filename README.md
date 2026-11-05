@@ -123,6 +123,7 @@ with `libgtk-3-dev libwebkit2gtk-4.1-dev` is its legacy fallback).
 - [docs/feature-map.md](docs/feature-map.md): features against Audiobookshelf and Audible, by phase
 - [docs/architecture.md](docs/architecture.md): packages, data model, routes, streaming, jobs
 - [docs/roadmap.md](docs/roadmap.md): phases and their exit criteria
+- [docs/desktop.md](docs/desktop.md): the desktop app (install, modes, limits)
 - [docs/api.md](docs/api.md): the JSON API v1 (device tokens, library, progress and bookmark sync)
 - [CHANGELOG.md](CHANGELOG.md): what each release adds, its known limits and how to upgrade
 - [docs/copy-additions.md](docs/copy-additions.md): interface words that are not in the copy deck, for review
