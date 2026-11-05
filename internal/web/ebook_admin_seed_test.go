@@ -15,7 +15,7 @@ import (
 func eadmSeedMaybe(t *testing.T, a *testApp, book library.Book, userID, author string) {
 	t.Helper()
 	id, err := a.lib.CreateTextBook(context.Background(), library.TextBookIn{LibraryID: book.LibraryID, FolderID: book.FolderID,
-		RootPath: filepath.Join(a.dir, "ebooks", "ebf_a11y_maybe"), Title: "Maybe Almanac"})
+		RootPath: filepath.Join(a.dir, "ebooks", "ebf_a11y_maybe"), Title: "Maybe Almanac", ID: "bk_a11y_maybe"})
 	if err != nil {
 		t.Fatal(err)
 	}
