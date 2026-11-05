@@ -220,7 +220,7 @@ templ dashGoal(g ReadingGoalView) {
 		<input type="hidden" name="_csrf" value={ g.CSRF }/>
 		<label class="label" for="rst-goal">{ g.FieldLabel }</label>
 		<input id="rst-goal" class="ts-input ts-dash__goalfield" type="number" name="goal_books" min="0" max={ g.Max } step="1" inputmode="numeric" value={ g.Value }/>
-		<button class="ts-btn" type="submit">{ g.Save }</button>
+		<button class="ts-btn ts-btn--primary" type="submit">{ g.Save }</button>
 		if g.Error != "" {
 			<p class="meta ts-dash__goalerr" role="alert">{ g.Error }</p>
 		}

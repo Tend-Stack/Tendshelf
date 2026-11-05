@@ -8,7 +8,7 @@
 .ts-dash__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12); }
 .ts-dash__range .ts-seg__item { display: inline-flex; align-items: center; color: var(--ink-muted); text-decoration: none; }
 .ts-dash__range .ts-seg__item[aria-current="page"] { background: var(--raised); color: var(--ink); font-weight: 600; }
-.ts-dash__period { display: flex; align-items: center; gap: var(--space-4); }
+.ts-dash__period { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); } /* wraps at 200 % text */
 .ts-dash__period .ts-iconbtn { color: var(--ink); }
 .ts-dash__period .ts-icon { width: 1.25rem; height: 1.25rem; }
 .ts-dash__periodlabel { min-width: 7.5rem; text-align: center; font-variant-numeric: tabular-nums; }

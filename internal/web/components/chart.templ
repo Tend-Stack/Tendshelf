@@ -42,9 +42,11 @@ templ BarChart(v BarChartView) {
 	@ChartTable(v.Caption, v.Heads, v.Rows)
 }
 
-// ChartTable is the visually hidden table behind a chart or a heat grid, for a screen reader.
+// ChartTable is the visually hidden table behind a chart or a heat grid, for a screen reader. The wrapper
+// carries ts-sr because a table ignores width and overflow, so a hidden table alone would scroll the page at 200 % text.
 templ ChartTable(caption string, heads []string, rows []ChartRow) {
-	<table class="ts-sr">
+	<div class="ts-sr">
+	<table>
 		<caption>{ caption }</caption>
 		<thead>
 			<tr>
@@ -64,4 +66,5 @@ templ ChartTable(caption string, heads []string, rows []ChartRow) {
 			}
 		</tbody>
 	</table>
+	</div>
 }
