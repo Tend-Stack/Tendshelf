@@ -700,6 +700,17 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   `make a11y`, `make page-weight`. Limits: the sizes are over the approved rows (`downloads.js` 8.7 of 8.5 KB, `downloads-text.js`
   2.2 of 1.5 KB; app JS 82.3 KB, 80.5 KB measured as the step); the manual airplane check on the operator's phone (Tailscale HTTPS,
   "Rules for the Summer", Download, airplane mode, read, close, reconnect) is a recorded step for the orchestrator and is not run.
+- **G2 Reading stats** (done, 2026-11-05; [plan](plans/m5-great-reader.md), [decision 0014](decisions/0014-listening-dashboard.md)):
+  `GET /me/reading` ("Your reading") draws the person's own reading on the listening page's pieces: time, days read, words a minute
+  (about, characters over five, to 10), books finished, a Time chart, a yearly goal (`reading.v1` in `user_settings`, 0 to 365,
+  `POST /me/reading/goal`, 303 or a toast on htmx, 422 on junk) and the covers finished in the period, only through `CardsByID`
+  with the person's scope (a revoked book's cover goes, the count stays). Numbers come from `reading_sessions` and
+  `reading_positions.finished_at`, bound to the signed-in user; no family view, no migration, no new JavaScript. The profile
+  panel links to it once the person has read. `getListening` gave its range parsing to `listeningPeriod`; `timeChart` to
+  `barsByPeriod`. Checks: `TestReadStats*` (Go service, page, leak, goal, Chromium captures at 390, 768, 1024 and 1440 in four
+  themes), `reading-stats` in `make a11y`. Limits: `pages-listening.css` grew 416 B (2,809 B gzip of 3,072) for the goal form; the
+  streak is computed but not shown (decision 0013: not gamey); at most 12 finished covers are read before scope, so a revoked
+  book can leave fewer than 12.
 - **Later** (a note each in the plan): G1 look-up and word list, G2 reading stats, G3 print pages, G4 skim, G5 comfort,
   G6 offline reading, G7 collections and sending a book; then OPDS and KOReader sync.
 

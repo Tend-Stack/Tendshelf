@@ -74,7 +74,7 @@ func TestBarChartMarkup(t *testing.T) {
 	for _, want := range []string{
 		`class="ts-chart ts-chart--wide"`, `<span class="ts-chart__tick">2 h</span>`, `<span class="ts-chart__tick">1 h</span>`,
 		`aria-hidden="true" focusable="false"`, `<title>Sunday: 1 h</title>`, `preserveAspectRatio="none"`,
-		`<table class="ts-sr"><caption>Listening by day</caption>`, `<th scope="col">Day</th>`, `<th scope="row">Sunday</th><td>1 h 0 m</td>`,
+		`<div class="ts-sr"><table><caption>Listening by day</caption>`, `<th scope="col">Day</th>`, `<th scope="row">Sunday</th><td>1 h 0 m</td>`,
 		`class="ts-icon"`,
 	} {
 		if !strings.Contains(out, want) {

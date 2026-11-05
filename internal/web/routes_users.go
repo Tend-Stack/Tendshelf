@@ -205,7 +205,7 @@ func (s *server) personView(r *http.Request, t users.User, errMsg string) (pages
 	if err != nil {
 		return v, err
 	}
-	v.Stats = statsView(st, true)
+	v.Stats = statsView(st, true, false)
 	if !v.CanGrant {
 		return v, nil
 	}

@@ -109,15 +109,7 @@ func (s *Service) Listening(ctx context.Context, userID string, loc *time.Locati
 			l.DaysListened++
 		}
 	}
-	y, m, d := now.In(loc).Date()
-	switch off := int(time.Date(y, m, d, 0, 0, 0, 0, time.UTC).Sub(p.First).Hours()/24) + 1; {
-	case off <= 0:
-		l.DaysSoFar = 0
-	case off >= p.Days:
-		l.DaysSoFar = p.Days
-	default:
-		l.DaysSoFar = off
-	}
+	l.DaysSoFar = p.daysSoFar(now, loc)
 	if l.TotalMs > 0 {
 		l.SpeedPct = int((weighted/l.TotalMs+2)/5) * 5
 	}
@@ -130,6 +122,19 @@ func (s *Service) Listening(ctx context.Context, userID string, loc *time.Locati
 		return Listening{}, err
 	}
 	return l, nil
+}
+
+// daysSoFar is how many days of the period are up to and including today in loc: all if it is past, 0 if future.
+func (p Period) daysSoFar(now time.Time, loc *time.Location) int {
+	y, m, d := now.In(loc).Date()
+	switch off := int(time.Date(y, m, d, 0, 0, 0, 0, time.UTC).Sub(p.First).Hours()/24) + 1; {
+	case off <= 0:
+		return 0
+	case off >= p.Days:
+		return p.Days
+	default:
+		return off
+	}
 }
 
 // YearTotal is one calendar year of listening.

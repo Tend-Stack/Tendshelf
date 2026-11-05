@@ -8,7 +8,7 @@
 .ts-dash__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12); }
 .ts-dash__range .ts-seg__item { display: inline-flex; align-items: center; color: var(--ink-muted); text-decoration: none; }
 .ts-dash__range .ts-seg__item[aria-current="page"] { background: var(--raised); color: var(--ink); font-weight: 600; }
-.ts-dash__period { display: flex; align-items: center; gap: var(--space-4); }
+.ts-dash__period { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); } /* wraps at 200 % text */
 .ts-dash__period .ts-iconbtn { color: var(--ink); }
 .ts-dash__period .ts-icon { width: 1.25rem; height: 1.25rem; }
 .ts-dash__periodlabel { min-width: 7.5rem; text-align: center; font-variant-numeric: tabular-nums; }
@@ -82,6 +82,11 @@ a.ts-dash__topname::after { content: ""; position: absolute; inset: 0; }
 .ts-dash__meter { display: block; width: 100%; height: 0.25rem; margin-top: 0.25rem; }
 .ts-dash__track { fill: var(--raised); }
 .ts-dash__fill { fill: var(--accent-fill); }
+/* Yearly goal (Your reading): the label sits above a short number field and Save; an error sentence takes the row below. */
+.ts-dash__goal { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); margin-top: var(--space-12); }
+.ts-dash__goal .label, .ts-dash__goalerr { flex: 1 0 100%; margin: 0; }
+.ts-dash__goalfield { width: 6rem; }
+.ts-dash__goalerr { color: var(--danger); }
 /* Finished: covers flow in, newest first (BRAND: celebrate with covers, not words). Titles wrap to two
    lines and then clamp; the full title stays in the DOM, so it is the link's accessible name. */
 .ts-dash__done { display: flex; gap: var(--space-12); margin: var(--space-12) 0 0; padding: 0 0 var(--space-4); list-style: none; overflow-x: auto; overscroll-behavior: contain; }

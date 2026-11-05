@@ -34,30 +34,11 @@ func (s *server) getListening(w http.ResponseWriter, r *http.Request) {
 	}
 	loc := statsLocation(set.TimeZone)
 	now := s.now()
-	ly, lm, ld := now.In(loc).Date()
-	today := time.Date(ly, lm, ld, 0, 0, 0, 0, time.UTC)
-
-	rng := r.URL.Query().Get("range")
-	if rng == "" {
-		rng = progress.RangeMonth
-	}
-	day := today
-	if at := r.URL.Query().Get("at"); at != "" {
-		parsed, err := time.Parse("2006-01-02", at)
-		if err != nil || parsed.Year() < listeningMinYear {
-			s.notFound(w, r)
-			return
-		}
-		day = parsed
-	}
-	p, err := progress.PeriodOf(rng, day, loc)
-	if err != nil {
-		s.notFound(w, r)
+	p, today, ok := s.listeningPeriod(w, r, loc)
+	if !ok {
 		return
 	}
-	if cur, _ := progress.PeriodOf(rng, today, loc); p.First.After(cur.First) {
-		p = cur
-	}
+	rng := p.Range
 
 	l, err := s.progress.Listening(ctx, u.ID, loc, p, now)
 	if err != nil {
@@ -87,6 +68,36 @@ func (s *server) getListening(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.pageStyled(w, r, http.StatusOK, listenTitle, "profile", pages.Listening(listeningView(in)), nil, "css/pages-home.css", "css/pages-listening.css")
+}
+
+// listeningPeriod reads `range` and `at` and returns the period they pick and today's civil date in loc
+// (UTC midnight). It answers 404 itself and reports false for an unknown range or a bad `at`; an `at` after
+// today gives the current period. Both stats pages use it.
+func (s *server) listeningPeriod(w http.ResponseWriter, r *http.Request, loc *time.Location) (progress.Period, time.Time, bool) {
+	ly, lm, ld := s.now().In(loc).Date()
+	today := time.Date(ly, lm, ld, 0, 0, 0, 0, time.UTC)
+	rng := r.URL.Query().Get("range")
+	if rng == "" {
+		rng = progress.RangeMonth
+	}
+	day := today
+	if at := r.URL.Query().Get("at"); at != "" {
+		parsed, err := time.Parse("2006-01-02", at)
+		if err != nil || parsed.Year() < listeningMinYear {
+			s.notFound(w, r)
+			return progress.Period{}, today, false
+		}
+		day = parsed
+	}
+	p, err := progress.PeriodOf(rng, day, loc)
+	if err != nil {
+		s.notFound(w, r)
+		return progress.Period{}, today, false
+	}
+	if cur, _ := progress.PeriodOf(rng, today, loc); p.First.After(cur.First) {
+		p = cur
+	}
+	return p, today, true
 }
 
 // firstListened is the start of the person's first session, in their zone. YearTotals returns years

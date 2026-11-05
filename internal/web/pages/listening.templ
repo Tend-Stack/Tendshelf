@@ -46,6 +46,15 @@ type ListeningDone struct {
 	Date        string
 }
 
+// ReadingGoalView is the Yearly goal body of /me/reading: the sentence is the card's Say; this is the meter
+// (Percent is 0 to 100 as text, empty without a goal) and the one-field form that sets the goal.
+type ReadingGoalView struct {
+	Percent, BarLabel string
+	Action, CSRF      string
+	FieldLabel, Value string
+	Save, Max, Error  string
+}
+
 // ListeningCard is one card of the grid. Exactly one body is set.
 type ListeningCard struct {
 	ID, Title, Say string
@@ -55,6 +64,7 @@ type ListeningCard struct {
 	Clock          *ListeningClock
 	Lists          []ListeningTopList
 	Done           []ListeningDone
+	Goal           *ReadingGoalView
 }
 
 // ListeningView is the whole /me/listening page. Only Back, Title and Lead are set for a person who
@@ -179,6 +189,9 @@ templ dashCard(c ListeningCard) {
 				}
 			</div>
 		}
+		if c.Goal != nil {
+			@dashGoal(*c.Goal)
+		}
 		if len(c.Done) > 0 {
 			<ul class="ts-dash__done">
 				for _, d := range c.Done {
@@ -193,6 +206,25 @@ templ dashCard(c ListeningCard) {
 			</ul>
 		}
 	</section>
+}
+
+// dashGoal is the yearly goal: a meter when a goal is set, and a plain POST form that works without JavaScript.
+templ dashGoal(g ReadingGoalView) {
+	if g.Percent != "" {
+		<svg class="ts-dash__meter" viewBox="0 0 100 4" preserveAspectRatio="none" role="img" aria-label={ g.BarLabel }>
+			<rect class="ts-dash__track" x="0" y="0" width="100" height="4"></rect>
+			<rect class="ts-dash__fill" x="0" y="0" width={ g.Percent } height="4"></rect>
+		</svg>
+	}
+	<form class="ts-dash__goal" method="post" action={ templ.URL(g.Action) }>
+		<input type="hidden" name="_csrf" value={ g.CSRF }/>
+		<label class="label" for="rst-goal">{ g.FieldLabel }</label>
+		<input id="rst-goal" class="ts-input ts-dash__goalfield" type="number" name="goal_books" min="0" max={ g.Max } step="1" inputmode="numeric" value={ g.Value }/>
+		<button class="ts-btn ts-btn--primary" type="submit">{ g.Save }</button>
+		if g.Error != "" {
+			<p class="meta ts-dash__goalerr" role="alert">{ g.Error }</p>
+		}
+	</form>
 }
 
 templ dashClock(c ListeningClock) {
