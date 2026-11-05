@@ -160,7 +160,17 @@ func (e *offlineEnv) setDown(t *testing.T, tab *cdp.Tab, down bool) {
 
 // offlineSeedJS stores what a finished download holds, as the manager will (plan: Data shapes): the
 // book's fragment, its cover, every file in chunks with its completion entry, and the shell.
-const offlineSeedJS = `window.__seed = async (bookId) => {
+const offlineSeedJS = `
+// The completion entries the worker believes are stored (null while it has not looked), after it looks again.
+window.__streams = async () => {
+  const worker = (await navigator.serviceWorker.ready).active;
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = (e) => resolve(e.data);
+    worker.postMessage({ type: "streams" }, [channel.port2]);
+  });
+};
+window.__seed = async (bookId) => {
   const cache = await caches.open("ts-person-" + document.documentElement.dataset.tsPerson);
   const chunk = Number(document.documentElement.dataset.tsChunk);
   const html = await (await fetch("/hx/player/" + bookId)).text();
@@ -184,6 +194,7 @@ const offlineSeedJS = `window.__seed = async (bookId) => {
     await cache.put(key, new Response(null, { headers: { "Content-Type": type, "X-Ts-Size": String(size), "X-Ts-Chunk": String(chunk), "X-Ts-Chunks": String(n), ETag: etag } }));
   }
   await cache.put("/offline", await fetch("/offline?books=" + bookId));
+  await window.__streams(); // the worker looks at what is stored, as after a finished download
   return ids.length;
 }`
 

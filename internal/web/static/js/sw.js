@@ -29,7 +29,16 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "activate") self.skipWaiting();
+  const type = event.data && event.data.type;
+  if (type === "activate") self.skipWaiting();
+  // The download manager and the sign-out say the person cache changed: look again.
+  if (type === "stored") event.waitUntil(refreshStreams());
+  // Tests and diagnosis: what the worker believes is stored, once it has looked.
+  if (type === "streams" && event.ports[0]) {
+    event.waitUntil(
+      refreshStreams().then(() => event.ports[0].postMessage(streamsKnown ? [...streams] : null)),
+    );
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -43,6 +52,11 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/static/")) {
     event.respondWith(fromStatic(request, url));
   } else if (url.pathname.startsWith("/stream/")) {
+    // respondWith is decided here, at once. A book that is not stored goes to the server directly:
+    // answering it through fetch() here left cancelled Range requests open in Firefox until the
+    // site hung. Until the set of stored books is known, the worker answers as before, so a stored
+    // book is never refused.
+    if (streamsKnown && !streams.has(streamKey(url))) return;
     event.respondWith(fromChunks(request, url));
   } else if (url.pathname.startsWith("/covers/") || url.pathname.startsWith("/peaks/")) {
     event.respondWith(cachedOrNetwork(request, url));
@@ -200,8 +214,54 @@ function parseRange(header, size) {
   return { start: Number(m[1]), end: m[2] === "" ? size - 1 : Math.min(Number(m[2]), size - 1) };
 }
 
+// Where a file's completion entry is stored: the path, with ?compat=1 for the compatible copy.
+function streamKey(url) {
+  return url.pathname + (url.searchParams.get("compat") === "1" ? "?compat=1" : "");
+}
+
+// The completion entries of the person cache (the chunks have &chunk=n or ?chunk=n and are not
+// listed). Held in memory because the fetch event must decide synchronously. It is filled when the
+// worker starts (a stopped worker loses it) and again whenever the page says the cache changed.
+const streams = new Set();
+let streamsKnown = false;
+let looking = null;
+let lookAgain = false;
+
+function refreshStreams() {
+  if (looking) {
+    lookAgain = true;
+    return looking;
+  }
+  looking = (async () => {
+    try {
+      do {
+        lookAgain = false;
+        const cache = await personCache();
+        const found = new Set();
+        if (cache) {
+          for (const req of await cache.keys()) {
+            const u = new URL(req.url);
+            if (u.pathname.startsWith("/stream/") && !u.searchParams.has("chunk")) found.add(streamKey(u));
+          }
+        }
+        streams.clear();
+        for (const key of found) streams.add(key);
+        streamsKnown = true;
+      } while (lookAgain);
+    } catch {
+      // Unreadable: answer every stream as before.
+      streamsKnown = false;
+    } finally {
+      looking = null;
+    }
+  })();
+  return looking;
+}
+
+refreshStreams();
+
 async function fromChunks(request, url) {
-  const key = url.pathname + (url.searchParams.get("compat") === "1" ? "?compat=1" : "");
+  const key = streamKey(url);
   const cache = await personCache();
   const done = cache ? await cache.match(key) : undefined;
   if (!done) return fetch(request);

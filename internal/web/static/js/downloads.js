@@ -161,9 +161,17 @@ async function countChunks(cache, file) {
 // Deletes the file's chunks. The completion entry goes first, so it never stands without its chunks.
 async function dropFile(cache, file) {
   await cache.delete(file.key);
+  tellWorker();
   for (let n = 0; n < file.chunks; n++) await cache.delete(chunkKey(file, n));
   file.have = 0;
   file.etag = "";
+}
+
+// The worker answers /stream/ only for files it knows are stored, so it is told when that changes.
+function tellWorker() {
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.ready.then((r) => r.active && r.active.postMessage({ type: "stored" })).catch(() => {});
+  }
 }
 
 // Everything a book keeps in the cache: files, the player fragment, the cover and the peaks.
@@ -501,6 +509,7 @@ async function runFile(id, i, signal) {
       },
     }),
   );
+  tellWorker();
   save(id, i, file);
 }
 
