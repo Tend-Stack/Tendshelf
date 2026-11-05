@@ -115,3 +115,25 @@ and Firefox on Ubuntu, TalkBack on Android Chrome, and VoiceOver on iOS Safari. 
 | 8 | Browser zoom 200 % and 400 % at 1280 px wide. | No lost content, no sideways scroll, controls usable. | | | |
 | 9 | Windows high-contrast / forced colours (Edge or Firefox). | Text, focus and control edges stay visible. | | | |
 | 10 | Move the scrubber and the volume by keys, without dragging. | Arrow keys change the value and announce it. | | | |
+
+## M5 book reader: WebKit and phone (RD4)
+
+Why manual: `make visual-webkit` drives the kitchen sink and eight pages through WebKitGTK's MiniBrowser, which has no
+headless mode; on 2026-11-05 the workstation had no `xvfb-run`, and running it would have put windows on the desktop, so the
+reader was not driven in WebKit. Chromium covers the reader (`make a11y`, `TestBRVisual`, `TestBRLayoutTime`). The reader
+relies on CSS columns for pages, `CSS.highlights` for a search hit, `inert` behind a sheet, `:has()` for the hidden shell
+navigation and `Element.animate` for the page slide; WebKit and the phone browsers are where those differ. Use a book from
+your own folder (for example `~/Books` "Rules for the Summer", EPUB, with its audiobook in the library); never commit it.
+
+| # | Step | Expected | WebKit (Epiphany or a Wails build) | iPhone Safari | Android Chrome |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Open the book from its page with Read, in Pages. | Text fills columns, no clipped line at the top or bottom, no sideways scroll. | | | |
+| 2 | Turn pages with the arrow keys, the tap zones and a swipe. | One page per turn, the slide plays once, the page line changes. | | | |
+| 3 | Turn the phone sideways, then back. | The place stays on the same sentence; a second column appears only from 1024 px. | | | |
+| 4 | Aa: change size, font, theme, then Scroll. | The page behind changes at once; the choices stay after a reload. | | | |
+| 5 | Select a few words (long press on the phone). | The toolbar with four colours, Note and Copy appears above the selection; the system menu does not hide it. | | | |
+| 6 | Highlight in each colour, add a note. | Washes are readable in dark, light, sepia and contrast; the note dot opens the marks sheet. | | | |
+| 7 | Open a footnote link, then close it with Escape or the backdrop. | Popup opens; focus returns to the link; the page does not move. | | | |
+| 8 | Contents, Search for a word, follow a hit. | The sheet opens over an inert page; the hit is marked on arrival. | | | |
+| 9 | Close the reader and open it again from Home. | It resumes on the same sentence. | | | |
+| 10 | Read past the end of a long chapter. | The next part loads without a jump. | | | |

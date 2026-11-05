@@ -656,7 +656,20 @@ Book reader packages ([plan](plans/m5-book-reader.md)). Order: P4 merge, X, then
   book right now." (a toast for htmx) and a part that does not load offers "Try again". Limits: a note dot opens the marks
   sheet (notes are changed there); the colour of an existing highlight is not changed in the UI (PATCH accepts it); the
   back chip lasts until the next navigation; no original-file download exists to link from the error page. Next: RD4.
-- **RD4 Checks**: a11y, contrast, boards side by side, layout time, a manual WebKit and phone check.
+- **RD4 Captures, a11y, contrast, layout time** (done, 2026-11-05): the reader joins `make a11y` (`reader-pages`, `reader-scroll` as
+  pages; contents, marks, settings, search, footnote, selection toolbar and note dialog as states; four widths, four themes, 0
+  findings, one allowlist line for the paged column box). Fixes the audit found: the book title is the h1; the shell navigation
+  is hidden behind the reader and the reader page is `inert` behind a sheet (`shell.js`); plain `ts-btn` submit buttons are
+  primary (the browser's grey showed in the contrast theme); note dots are 44 px targets; the marks list's textareas and
+  chips are 44 px; the sheets get their height cap and width from `pages-reader.css` (they hung off the top of the screen).
+  Colours: contrast `--selection` 35 to 25 percent white (the blue highlight; decision 0016); every avatar colour passes
+  (`TestBRAvatarColours`). `TestBRContrast` crosses four highlight colours and the selection with every theme and ground.
+  `TestBRVisual` captures 10 states at four widths in four themes beside the boards; `TestBRLayoutTime` (`make perf`) lays
+  out a 39,618-unit part at 4x CPU in about 45 ms and times turns. `make page-weight` has a `reader` row. The error page
+  links the original file when the person may download. Swept: `.ts-mode`, `.ts-voicepill`, `.ts-focus`, `.ts-align`,
+  `.ts-readdock__speed` and the "Honest timing" and Focus line copy in `vision.md`. Limits: WebKit was not driven (no
+  `xvfb-run`; the check is in [manual checks](manual-checks.md#m5-book-reader-webkit-and-phone-rd4)); book cards show no
+  progress bar for an ebook and Home's series rows have no Read button (not in RD4's scope).
 - **Later** (a note each in the plan): G1 look-up and word list, G2 reading stats, G3 print pages, G4 skim, G5 comfort,
   G6 offline reading, G7 collections and sending a book; then OPDS and KOReader sync.
 
