@@ -1,0 +1,4 @@
+body { font: 18px/1.4 system-ui, sans-serif; margin: 1rem; background: #111; color: #eee; }
+button { display: block; width: 100%; min-height: 56px; margin: 0.5rem 0; font-size: 1.1rem; }
+button[aria-pressed="true"] { outline: 3px solid #6cf; }
+pre { white-space: pre-wrap; font-size: 13px; }
