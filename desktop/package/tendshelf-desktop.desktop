@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Tendshelf
+Comment=Your audiobook shelf
+Exec=tendshelf-desktop
+Icon=org.tendshelf.Tendshelf
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+StartupWMClass=org.tendshelf.Tendshelf
