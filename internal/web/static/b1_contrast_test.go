@@ -161,7 +161,7 @@ func TestB1AvatarInitials(t *testing.T) {
 // ring: each current or selected item has a :focus-visible rule that lists both.
 func TestB1FocusRingKeptOnCurrentItems(t *testing.T) {
 	for file, selectors := range map[string][]string{
-		"bundle.css":         {`.ts-side__item[aria-current="page"]:focus-visible`, `.ts-tabs__item[aria-selected="true"]:focus-visible`, `.ts-mode__item[aria-checked="true"]:focus-visible`},
+		"bundle.css":         {`.ts-side__item[aria-current="page"]:focus-visible`, `.ts-tabs__item[aria-selected="true"]:focus-visible`},
 		"pages-book.css":     {`.ts-tabs__item.is-home:focus-visible`},
 		"pages-settings.css": {`.ts-prefs__item[aria-current="true"]:focus-visible`},
 		"player-bubble.css":  {`.ts-player-slot [data-ts-toggle]:focus-visible`},

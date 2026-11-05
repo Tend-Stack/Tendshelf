@@ -54,10 +54,8 @@ Measurable, not adjectives. Each is an acceptance target for the phase that deli
   last and a plain button for the other, and the player shows a book icon that opens the reader.
 - **Two formats, two places**: the listening place and the reading place never write each other. Reading
   on the train does not move the narrator, and pressing play on the walk home does not move the page.
-- **Reading comfort for everyone**: Focus line (one sentence at a time in large type), a
-  dyslexia-friendly font option, sizes to 250 %, sepia and night themes, all at WCAG AA contrast.
-- **Honest timing**: text that is not in the recording (front matter, an abridged cut, another edition's
-  extra paragraph) is shown in grey, never highlighted with an invented time.
+- **Reading comfort for everyone**: pages or scrolling, a dyslexia-friendly font option, sizes to 250 %,
+  sepia and night themes, highlights in four colours, all at WCAG AA contrast.
 : one binary, under 100 MB RAM idle with a 2,000-book library (target; measure it),
   no background network traffic, nothing to keep up to date except the binary.
 - **Beautiful on a phone first**, at home on a 27-inch monitor, readable in sunlight and at night.

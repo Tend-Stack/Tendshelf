@@ -15,6 +15,9 @@ lightness, to the nearest value that passes on every background it sits on.
 | `--line-strong` | sepia | `#7e6e58` | `#7b6b55` | 2.94 -> 3.07 on a tinted card | same |
 | `--success` | sepia | `#1e6458` | `#1a6155` | 4.35 -> 4.55 on `--raised` | text token under 4.5:1 on the raised ground (found by `TestB1TokenContrast`) |
 | `--avatar-c5` (new) | contrast | `#5a6b73` (was hard-coded in `bundle.css`) | `#3e4e56` | 4.57 -> 7.12 under `#f1e8da` | initials under 7:1 |
+| `--selection` | contrast | `#ffffff59` (35 % white) | `#ffffff40` (25 % white) | 5.41 -> 7.6 under `--read-ink` on `--raised` (6.09 -> 9.2 on `--surface`) | the blue highlight is this wash; reader text on it needs 7:1 on every ground (M5 RD4, `TestBRContrast`). White at lower opacity: hue kept, lightness only |
+
+Every avatar colour in every theme is held to its threshold by `TestBRAvatarColours` (M5 RD4); none moved.
 
 Other themes keep `.ts-avatar--c5` at `#5a6b73` (4.57:1, passes AA).
 
