@@ -161,9 +161,17 @@ async function countChunks(cache, file) {
 // Deletes the file's chunks. The completion entry goes first, so it never stands without its chunks.
 async function dropFile(cache, file) {
   await cache.delete(file.key);
+  tellWorker();
   for (let n = 0; n < file.chunks; n++) await cache.delete(chunkKey(file, n));
   file.have = 0;
   file.etag = "";
+}
+
+// The worker answers /stream/ only for files it knows are stored, so it is told when that changes.
+function tellWorker() {
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.ready.then((r) => r.active && r.active.postMessage({ type: "stored" })).catch(() => {});
+  }
 }
 
 // Everything a book keeps in the cache: files, the player fragment, the cover and the peaks.
@@ -176,6 +184,7 @@ async function purge(record) {
   await cache.delete("/hx/player/" + record.id);
   if (record.cover) await cache.delete(record.cover);
   if (record.text) await (await textModule()).purge(cache, record);
+  tellWorker();
 }
 
 async function put(cache, key, response) {
@@ -371,6 +380,7 @@ async function runBook(id) {
     const room = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
     if (room && room.quota - room.usage < record.bytes - record.done + 16 * MiB) throw new Halt("failed", "space");
     if (record.files.length) await keepPage(record);
+    tellWorker();
     for (let i = 0; i < record.files.length; i++) await runFile(id, i, controller.signal);
     if (record.text) await (await textModule()).run(id, record, controller.signal, kit);
     patch(id, (r) => {
@@ -501,6 +511,7 @@ async function runFile(id, i, signal) {
       },
     }),
   );
+  tellWorker();
   save(id, i, file);
 }
 

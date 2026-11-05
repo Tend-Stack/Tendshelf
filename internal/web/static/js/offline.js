@@ -33,12 +33,20 @@ function csrfToken() {
 
 // ---- One person's data per browser ----
 
+// The worker keeps a list of the files it may answer; it looks again after the cache changed.
+function tellWorker() {
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.ready.then((r) => r.active && r.active.postMessage({ type: "stored" })).catch(() => {});
+  }
+}
+
 // Removes the downloads and every unsent save in this browser.
 async function wipe() {
   if ("caches" in window) {
     for (const name of await caches.keys()) {
       if (name.startsWith("ts-person-")) await caches.delete(name);
     }
+    tellWorker();
   }
   for (const key of Object.keys(localStorage)) {
     if (key.startsWith(OFFLINE_PREFIX) || key === "ts.pending") localStorage.removeItem(key);
@@ -56,6 +64,7 @@ async function settlePerson() {
       for (const name of await caches.keys()) {
         if (name.startsWith("ts-person-") && name !== "ts-person-" + person) await caches.delete(name);
       }
+      tellWorker();
     }
     if (person) localStorage.setItem("ts.offline.person", person);
   } catch {
