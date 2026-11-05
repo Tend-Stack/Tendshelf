@@ -5,12 +5,18 @@ package components
 type ReadButtonView struct {
 	Href, Label, AriaLabel string
 	Secondary              bool
+	// Large makes a secondary button as tall as the primary beside it (the book page and the Home hero);
+	// the plain 44 px secondary stays for compact rows such as the offline list.
+	Large bool
 	// Round draws the icon-only variant of a series row, named by AriaLabel.
 	Round bool
 }
 
 func readBtnClass(v ReadButtonView) string {
 	if v.Secondary {
+		if v.Large {
+			return "ts-btn ts-btn--secondary ts-btn--lg"
+		}
 		return "ts-btn ts-btn--secondary"
 	}
 	if v.Round {

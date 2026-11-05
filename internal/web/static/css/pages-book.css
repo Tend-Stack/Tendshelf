@@ -50,7 +50,7 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 .ts-book__play form { margin: 0; }
 .ts-book__play .ts-btn { text-decoration: none; }
 .ts-book__note { margin: 0; width: 100%; color: var(--ink-muted); }
-#book-play [data-ts-play], #book-play [data-ts-read] { display: flex; width: 100%; box-sizing: border-box; }
+#book-play [data-ts-play], #book-play [data-ts-read] { display: flex; width: 100%; }
 .ts-book__progress { display: flex; flex-direction: column; gap: 0.625rem; }
 .ts-book__where, .ts-book__whereshort { text-align: center; margin: 0; }
 .ts-book__whereshort { display: none; color: var(--ink-muted); }
@@ -122,7 +122,8 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   .ts-book__narr { display: inline; }
   .ts-book__sep { display: inline; color: var(--ink-muted); }
   .ts-book__acts { justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--space-8) var(--space-12); }
-  .ts-book__shelf, .ts-book__share, .ts-book__download { width: var(--size-tap); min-height: var(--size-tap); padding: 0; border: 0; border-radius: 50%; background: var(--raised); }
+  /* Tablet: icon-only secondary buttons, as tall as Read and Listen (the shared .ts-btn--secondary .ts-btn--lg look) */
+  .ts-book__shelf, .ts-book__share, .ts-book__download { width: 3.5rem; padding: 0; }
   .ts-book__shelf .ts-book__label, .ts-book__share .ts-book__label, .ts-book__download .ts-book__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .ts-book__tiles { justify-content: start; }
   .ts-book__acts form { display: flex; align-items: center; }
@@ -149,7 +150,7 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   .ts-book__chips { display: flex; justify-content: flex-start; }
   .ts-book__acts { display: contents; }
   #book-play [data-ts-play], #book-play [data-ts-read] { width: auto; }
-  .ts-book__shelf, .ts-book__share, .ts-book__download { width: auto; box-sizing: border-box; padding: 0 var(--space-32); min-height: 3.5rem; border: 1px solid var(--line); border-radius: var(--radius-control); }
+  .ts-book__shelf, .ts-book__share, .ts-book__download { width: auto; padding: 0 var(--space-32); }
   .ts-book__shelf .ts-book__label, .ts-book__share .ts-book__label, .ts-book__download .ts-book__label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   #book-tab-about, .ts-book__aboutdesc { display: none; }
   .ts-book__aboutchapters { display: block; }

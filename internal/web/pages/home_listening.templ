@@ -79,7 +79,7 @@ templ HeroCard(v HomeHeroView) {
 						@components.ReadButton(*v.Read)
 					}
 					if v.ChaptersHref != "" {
-						<a class="ts-btn ts-btn--secondary ts-hero__chapters" href={ templ.SafeURL(v.ChaptersHref) }>{ v.ChaptersLabel }</a>
+						<a class="ts-btn ts-btn--secondary ts-btn--lg ts-hero__chapters" href={ templ.SafeURL(v.ChaptersHref) }>{ v.ChaptersLabel }</a>
 					}
 				</div>
 			</div>

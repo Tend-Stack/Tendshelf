@@ -3,14 +3,12 @@ package web
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
@@ -142,8 +140,9 @@ func TestPaginatorEnd(t *testing.T) {
 	if err != nil || !found || !p.Finished() || p.PercentBP != 10000 {
 		t.Errorf("the reading place after finishing: %+v %v %v", p, found, err)
 	}
-	if pr, err := l.a.srv.progress.Get(context.Background(), l.ownerID, l.book.ID); !errors.Is(err, progress.ErrNotFound) || pr.ClientUpdatedAt != 0 {
-		t.Errorf("finishing the text touched the listening place: %+v %v", pr, err)
+	// Finished is one state per book: the owner may listen too, so the listening place is finished with it.
+	if pr, err := l.a.srv.progress.Get(context.Background(), l.ownerID, l.book.ID); err != nil || !pr.Finished() {
+		t.Errorf("finishing the text did not finish the listening place: %+v %v", pr, err)
 	}
 	// Read again: 0 puts it back to the start.
 	post(l.owner, url.Values{"finished": {"0"}}, true)

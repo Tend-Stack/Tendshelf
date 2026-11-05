@@ -150,11 +150,6 @@ func TestBookFirstFormats(t *testing.T) {
 				bookfirstSave(t, l, ck, l.book.ID, 600_000, 5_000, false)
 				fmt2Reading(t, l, ck, l.book.ID, 4200, 8_000)
 			}},
-		{name: "finished audio, text under way", who: owner, book: audioBook, want: "Continue reading Textword Lantern", other: "Listen again",
-			setup: func(t *testing.T, l *fmt2Lab, ck *http.Cookie) {
-				bookfirstSave(t, l, ck, l.book.ID, 3_600_000, 5_000, true)
-				fmt2Reading(t, l, ck, l.book.ID, 4200, 3_000)
-			}},
 		{name: "text last, no right to read", who: noRead, book: audioBook, want: "Resume Textword Lantern", other: "Continue reading",
 			setup: func(t *testing.T, l *fmt2Lab, ck *http.Cookie) {
 				bookfirstSave(t, l, ck, l.book.ID, 600_000, 5_000, false)

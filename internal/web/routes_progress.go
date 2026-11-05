@@ -262,12 +262,7 @@ func (s *server) postFinished(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "That did not work. Try again.", http.StatusBadRequest)
 		return
 	}
-	var err error
-	if b.Kind == library.BookText {
-		_, err = s.progress.SetReadingFinished(r.Context(), currentUser(r).ID, b.ID, v == "1")
-	} else {
-		_, err = s.progress.SetFinished(r.Context(), currentUser(r).ID, b.ID, v == "1", b.DurationMs)
-	}
+	err := s.setFinishedBoth(r.Context(), currentUser(r), b, v == "1")
 	if err != nil {
 		s.serverError(w, r, "set finished", err)
 		return

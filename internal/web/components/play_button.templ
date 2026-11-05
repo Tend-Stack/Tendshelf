@@ -19,6 +19,8 @@ type PlayButtonView struct {
 	Icon string
 	// Secondary draws the plain button of the format that is not the person's last (the book page's "Listen").
 	Secondary bool
+	// Large makes the secondary button as tall as a primary one (see ReadButtonView.Large).
+	Large bool
 }
 
 // playBtnIcon is the picture before the pause swap: the triangle, or the named icon when one is set.
@@ -31,6 +33,9 @@ func playBtnIcon(v PlayButtonView) string {
 
 func playBtnClass(v PlayButtonView) string {
 	if v.Secondary {
+		if v.Large {
+			return "ts-btn ts-btn--secondary ts-btn--lg"
+		}
 		return "ts-btn ts-btn--secondary"
 	}
 	if v.Round {
