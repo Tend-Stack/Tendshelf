@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -40,6 +41,7 @@ func (s *server) registerShelves(mux *http.ServeMux) {
 	mux.HandleFunc("POST /shelves/{id}/share", s.postShelfShare)
 	mux.HandleFunc("GET /shelves/{id}/delete", s.getShelfDelete)
 	mux.HandleFunc("POST /shelves/{id}/delete", s.postShelfDelete)
+	mux.HandleFunc("POST /books/{id}/to-read", s.postToRead)
 	mux.HandleFunc("POST /shelves/{id}/items", s.postShelfAdd)
 	mux.HandleFunc("POST /shelves/{id}/items/{bookID}/remove", s.postShelfRemove)
 	mux.HandleFunc("POST /shelves/{id}/items/{bookID}/move", s.postShelfMove)
@@ -436,6 +438,38 @@ func (s *server) postShelfAdd(w http.ResponseWriter, r *http.Request) {
 	s.shelfSeeOther(w, r, shelfNext(r, "/shelves/"+sh.ID))
 }
 
+// postToRead puts a book on the person's "To read" shelf, making the shelf the first time. Adding twice is
+// one row. It is an ordinary shelf afterwards: it may be renamed, deleted or removed from like any other.
+func (s *server) postToRead(w http.ResponseWriter, r *http.Request) {
+	if !s.parseForm(w, r) {
+		return
+	}
+	u := currentUser(r)
+	if !s.allow(w, r, share.UseShelves, share.Target{Kind: share.TargetShelf, OwnerID: u.ID}) {
+		return
+	}
+	b, ok := s.loadBook(w, r, r.PathValue("id"), share.ViewBook)
+	if !ok {
+		return
+	}
+	sh, err := s.lib.ShelfNamed(r.Context(), u.ID, shelfToRead)
+	if err == nil {
+		err = s.lib.AddToShelf(r.Context(), u.ID, sh.ID, b.ID)
+	}
+	switch {
+	case errors.Is(err, library.ErrLimit):
+		s.renderBook(w, r, b.ID, "about", http.StatusUnprocessableEntity, &shelfForm{err: shelfErrFull})
+		return
+	case errors.Is(err, library.ErrNotFound):
+		s.notFound(w, r)
+		return
+	case err != nil:
+		s.serverError(w, r, "to read", err)
+		return
+	}
+	s.shelfSeeOther(w, r, shelfNext(r, "/books/"+b.ID))
+}
+
 func (s *server) postShelfRemove(w http.ResponseWriter, r *http.Request) {
 	if !s.parseForm(w, r) {
 		return
@@ -511,6 +545,13 @@ func (s *server) shelfSheet(r *http.Request, bookID string, f *shelfForm) (templ
 	}
 	if f != nil {
 		v.NewName, v.Error = f.name, f.err
+	}
+	// "To read" comes first. Before the shelf exists a row stands in for it and posts to the one-tap route.
+	if i := slices.IndexFunc(list, func(x library.ShelfSummary) bool { return strings.EqualFold(x.Name, shelfToRead) }); i >= 0 {
+		first := list[i]
+		list = append([]library.ShelfSummary{first}, slices.Delete(list, i, i+1)...)
+	} else {
+		v.Shelves = append(v.Shelves, components.ShelfSheetRow{Name: shelfToRead, Action: "/books/" + bookID + "/to-read"})
 	}
 	for _, sh := range list {
 		row := components.ShelfSheetRow{ID: sh.ID, Name: sh.Name, On: on[sh.ID], Action: "/shelves/" + sh.ID + "/items"}

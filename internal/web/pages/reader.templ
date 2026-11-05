@@ -35,7 +35,7 @@ type ReaderChapterView struct {
 }
 
 // ReaderEnd is the end-of-book block: a sentence and the form that marks the book finished (the person does it, never the reader).
-type ReaderEnd struct{ Text, Label, Action, CSRF string }
+type ReaderEnd struct{ Text, Label, Action, CSRF, NextHref, NextLabel string }
 
 // ReaderRoot is what the client reads from the reader root: the place to open at, the reading speed,
 // the sizes it needs for page numbers and time left, and where to save.
@@ -357,6 +357,9 @@ templ ReaderChapter(c ReaderChapterView) {
 				<input type="hidden" name="_csrf" value={ c.End.CSRF }/>
 				<input type="hidden" name="finished" value="1"/>
 				<button type="submit" class="ts-btn ts-btn--primary">{ c.End.Label }</button>
+				if c.End.NextHref != "" {
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(c.End.NextHref) }>{ c.End.NextLabel }</a>
+				}
 			</form>
 		}
 		if c.NextFrag != "" {
