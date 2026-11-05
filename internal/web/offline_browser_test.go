@@ -42,6 +42,7 @@ type offlineEnv struct {
 	down   atomic.Bool
 	stall  atomic.Bool // pages and /hx/ answers hang until the test ends, as a VPN in airplane mode makes them
 	ended  chan struct{}
+	lag    atomic.Int64                // milliseconds a page or fragment waits before it is answered: a slow server, not a hung one
 	slow   atomic.Int64                // milliseconds each download=1 request waits, so a test can act mid-download
 	cookie atomic.Pointer[http.Cookie] // added to requests that carry no session of their own
 }
@@ -98,6 +99,13 @@ func offlineAppWith(t *testing.T, more func(*Options)) *offlineEnv {
 			case <-r.Context().Done():
 			}
 			return
+		}
+		if ms := e.lag.Load(); ms > 0 && offlineStalls(r.URL.Path) {
+			select {
+			case <-time.After(time.Duration(ms) * time.Millisecond):
+			case <-r.Context().Done():
+				return
+			}
 		}
 		if ms := e.slow.Load(); ms > 0 && r.URL.Query().Has("download") {
 			time.Sleep(time.Duration(ms) * time.Millisecond)

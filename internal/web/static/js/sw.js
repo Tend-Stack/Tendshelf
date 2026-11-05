@@ -149,12 +149,33 @@ async function freshOrCached(request, url, key = url.pathname) {
 async function pageOrShell(request, url) {
   // Known offline: do not wait for a network that cannot answer.
   if (self.navigator.onLine === false) return (await shell(url)) || Response.error();
+  // The request is not given a timeout of its own: whether it may be given up on depends on whether
+  // a shell is stored, and that is only known when the deadline passes.
+  const controller = new AbortController();
+  const network = fetch(request, { signal: controller.signal });
+  let timer;
+  const deadline = new Promise((resolve) => {
+    timer = setTimeout(resolve, PAGE_DEADLINE_MS, null);
+  });
   try {
-    const response = await timedFetch(request, PAGE_DEADLINE_MS);
+    let response = await Promise.race([network, deadline]);
+    if (response === null) {
+      // Too slow. A stored shell answers and the request is dropped. With no shell the person has
+      // nothing else to see, so a slow server is waited for; only a failed request is an error.
+      const saved = await shell(url);
+      if (saved) {
+        controller.abort();
+        network.catch(() => {});
+        return saved;
+      }
+      response = await network;
+    }
     if (response.status !== 502 && response.status !== 504) return response;
     return (await shell(url)) || response;
   } catch {
     return (await shell(url)) || Response.error();
+  } finally {
+    clearTimeout(timer);
   }
 }
 
