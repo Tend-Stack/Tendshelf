@@ -442,10 +442,11 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 /* Your highlights: a gold wash plus a gold underline, so colour is never the only cue */
 .ts-hl { background: var(--mark); box-shadow: inset 0 -2px 0 var(--mark-edge); -webkit-box-decoration-break: clone; box-decoration-break: clone; border-radius: 2px; }
 .ts-sel { background: var(--selection); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.ts-notedot { display: inline-flex; align-items: center; justify-content: center; position: relative; width: 1.375rem; height: 1.375rem; margin: 0 2px; vertical-align: 0.1em; border: 0; padding: 0;
-  border-radius: 50%; background: var(--accent-soft); color: var(--note-dot); cursor: pointer; }
-.ts-notedot::before { content: ""; position: absolute; inset: -0.6875rem; }
-.ts-notedot .ts-icon { width: 0.875rem; height: 0.875rem; stroke-width: 2; }
+/* The button is a full touch target; the dot the eye sees is drawn inside it, and negative margins keep the line height of the text. */
+.ts-notedot { display: inline-flex; align-items: center; justify-content: center; position: relative; width: var(--size-tap); height: var(--size-tap); margin: calc((1.5rem - var(--size-tap)) / 2); vertical-align: 0.1em; border: 0; padding: 0;
+  background: transparent; color: var(--note-dot); cursor: pointer; }
+.ts-notedot::before { content: ""; position: absolute; inset: calc((var(--size-tap) - 1.5rem) / 2); border-radius: 50%; background: var(--accent-soft); }
+.ts-notedot .ts-icon { position: relative; width: 0.875rem; height: 0.875rem; stroke-width: 2; }
 
 /* Selection menu: floats above the selection */
 .ts-selmenu { display: inline-flex; align-items: stretch; border-radius: var(--radius-md); background: var(--raised); border: 1px solid var(--line); box-shadow: var(--shadow-float); overflow: hidden; }

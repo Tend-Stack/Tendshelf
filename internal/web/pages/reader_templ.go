@@ -214,20 +214,20 @@ func Reader(v ReaderView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</a> <span class=\"ts-readerbar__title\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</a><h1 class=\"ts-readerbar__title\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(v.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/reader.templ`, Line: 163, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/reader.templ`, Line: 163, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</h1>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1007,14 +1007,14 @@ func Reader(v ReaderView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\"></textarea> <button type=\"submit\" class=\"ts-btn\" value=\"save\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\"></textarea> <button type=\"submit\" class=\"ts-btn ts-btn--primary\" value=\"save\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var55 string
 		templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(v.Marks.Save)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/reader.templ`, Line: 264, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/reader.templ`, Line: 264, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 		if templ_7745c5c3_Err != nil {
@@ -1327,14 +1327,14 @@ func ReaderChapter(c ReaderChapterView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "\"> <input type=\"hidden\" name=\"finished\" value=\"1\"> <button type=\"submit\" class=\"ts-btn\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "\"> <input type=\"hidden\" name=\"finished\" value=\"1\"> <button type=\"submit\" class=\"ts-btn ts-btn--primary\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var75 string
 			templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(c.End.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/reader.templ`, Line: 304, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/reader.templ`, Line: 304, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 			if templ_7745c5c3_Err != nil {
@@ -2733,14 +2733,14 @@ func ReaderSearchForm(v ReaderSearchView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 238, "\" autocomplete=\"off\" enterkeyhint=\"search\"> <button type=\"submit\" class=\"ts-btn\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 238, "\" autocomplete=\"off\" enterkeyhint=\"search\"> <button type=\"submit\" class=\"ts-btn ts-btn--primary\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var149 string
 		templ_7745c5c3_Var149, templ_7745c5c3_Err = templ.JoinStringErrs(v.Button)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/reader.templ`, Line: 458, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/reader.templ`, Line: 458, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var149))
 		if templ_7745c5c3_Err != nil {

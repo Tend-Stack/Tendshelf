@@ -54,7 +54,7 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 .ts-main:has(.ts-readerpage) { view-transition-name: none; }
 .ts-readerpage { position: fixed; inset: 0; z-index: 12; display: flex; flex-direction: column; background: var(--ground); color: var(--ink); overscroll-behavior: none; }
 .ts-readerbar { flex: none; display: flex; align-items: center; gap: var(--space-4); padding: max(var(--space-8), env(safe-area-inset-top)) max(var(--space-16), env(safe-area-inset-right)) var(--space-8) max(var(--space-16), env(safe-area-inset-left)); border-bottom: 1px solid var(--line); }
-.ts-readerbar__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ts-readerbar__title { margin: 0; font-size: inherit; line-height: inherit; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .ts-readerbar .ts-iconbtn { min-width: var(--size-tap); min-height: var(--size-tap); }
 .ts-readerbar .ts-iconbtn:active, .ts-readdock a:active { transition: none; }
 .ts-readerbar, .ts-readdock, .ts-reader__end { -webkit-user-select: none; user-select: none; }
@@ -117,7 +117,8 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 .ts-reader__toc a[aria-current] { font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .ts-reader__mark { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); padding: var(--space-12) 0; border-bottom: 1px solid var(--line); }
 .ts-reader__mark form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); width: 100%; }
-.ts-reader__mark textarea { width: 100%; box-sizing: border-box; }
+.ts-reader__mark textarea { width: 100%; box-sizing: border-box; min-height: 4.5rem; }
+#sheet .ts-chip-set .ts-chip { min-height: var(--size-tap); text-decoration: none; }
 
 /* Links and pictures in the text. A link is told apart by its underline, not by colour alone. */
 .ts-reader__link { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; }
@@ -151,3 +152,6 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 .ts-reader__hits mark { background: var(--mark); color: inherit; box-shadow: inset 0 -2px 0 var(--mark-edge); }
 .ts-reader__export { display: flex; flex-wrap: wrap; gap: var(--space-8); padding-top: var(--space-12); }
 .ts-reader__trouble { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); max-width: 32rem; margin: 20vh auto 0; padding: var(--space-16); }
+
+/* The reader is a full-screen layer over the shell: its navigation sits unreachable behind it, so it leaves the tab order and the screen reader's tree. */
+body:has(.ts-readerpage) :is(#nav-tabbar, #nav-rail, #nav-side) { visibility: hidden; }
