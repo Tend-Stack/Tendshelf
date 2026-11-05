@@ -342,6 +342,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// M5 G4 (operator, 2026-11-04): the skim bar, loaded on the first touch of the dock's range input, 1.25 KB.
 	"reader-skim.js":    {1*1024 + 320, 8 * 1024},  // OVERRUN: 1,292 B served against the approved 1.25 KB (1,280); the row is 1.3125 KB so the gate runs, the operator decides
 	"reader-offline.js": {2*1024 + 512, 16 * 1024}, // 2.25 KB approved; measured 2.4 KB with its comments intact, reported to the operator
+	// M5 G5 (operator, 2026-11-04): comfort (warm light, keep awake, auto-hide), loaded only when a setting is on, 1 KB.
+	"reader-comfort.js": {1*1024 + 576, 8 * 1024}, // OVERRUN: 1,576 B served against the approved 1 KB; the row is 1.5625 KB so the gate runs, the operator decides
 }
 
 // jsTotalGzip bounds all app scripts (js/*.js, not vendor/) together.

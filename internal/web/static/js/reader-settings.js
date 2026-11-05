@@ -21,6 +21,14 @@ export function mount(marker) {
     // The page reader lays itself out again for the new look, and takes the new flow.
     const page = document.getElementById("reader");
     if (page) page.dataset.flow = get("flow");
+    // Comfort (G5): the three settings are data attributes; the module is fetched only once one is on.
+    if (page) {
+      page.dataset.keepAwake = String(get("keep_awake") === "1");
+      page.dataset.warm = get("warm");
+      page.dataset.autoHide = String(get("auto_hide") === "1");
+      const comfort = page.dataset.keepAwake === "true" || page.dataset.warm !== "off" || page.dataset.autoHide === "true";
+      if (comfort && marker.dataset.comfortSrc) import(marker.dataset.comfortSrc).then((m) => m.mount(marker)).catch(() => {});
+    }
     document.dispatchEvent(new Event("ts-reader-look"));
   };
 

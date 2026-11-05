@@ -10,6 +10,9 @@ import (
 // root. The values come from users.ReaderSettings (M5 R4 P4).
 type ReaderLook struct {
 	Class string // extra classes of the reader root
+	// G5 comfort, as data attributes of the reader root: "true" or "false", and "off", "evening" or "always".
+	KeepAwake, AutoHide bool
+	Warm                string
 }
 
 // ReadingSheetView is the "Reading settings" sheet. Choices carry the person's current values.
@@ -24,6 +27,8 @@ type ReadingSheetView struct {
 	Margin, Flow                 string
 	Justify, Hyphens, TapSwap    bool
 	Large                        bool // large text mode: 26 joins the sizes
+	KeepAwake, AutoHide          bool   // G5 comfort
+	Warm                         string // "off", "evening" or "always"
 }
 
 type readerChoice struct{ Value, Label string }
@@ -33,6 +38,7 @@ var (
 	readerFontChoices    = []readerChoice{{"serif", "Serif"}, {"sans", "Sans"}, {"dyslexic", "OpenDyslexic"}}
 	readerMarginChoices  = []readerChoice{{"narrow", "Narrow"}, {"normal", "Normal"}, {"wide", "Wide"}}
 	readerFlowChoices    = []readerChoice{{"auto", "Automatic"}, {"pages", "Pages"}, {"scroll", "Scroll"}}
+	readerWarmChoices    = []readerChoice{{"off", "Off"}, {"evening", "In the evening"}, {"always", "Always"}}
 )
 
 func readerSizes(large bool) []int {
@@ -119,6 +125,12 @@ templ ReadingSheet(v ReadingSheetView) {
 				@readerSwitch("justify", "Justify text", v.Justify)
 				@readerSwitch("hyphens", "Hyphens", v.Hyphens)
 				@readerSwitch("tap_swap", "Swap tap sides", v.TapSwap)
+				<details class="ts-readset__more" open?={ v.KeepAwake || v.Warm != "off" || v.AutoHide }>
+					<summary class="ts-btn ts-btn--quiet">More</summary>
+					@readerSwitch("keep_awake", "Keep the screen on", v.KeepAwake)
+					@readerChoices("warm", "Warm light", v.Warm, readerWarmChoices)
+					@readerSwitch("auto_hide", "Hide the bar after a moment", v.AutoHide)
+				</details>
 				<noscript><button type="submit" class="ts-btn ts-btn--primary ts-btn--block">Save</button></noscript>
 			</form>
 		</div>

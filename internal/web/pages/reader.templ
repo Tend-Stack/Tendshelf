@@ -135,6 +135,8 @@ type ReaderView struct {
 	Look                        ReaderLook // the person's reading settings (reader.v1)
 	SettingsLabel, SettingsHref string     // the Aa link
 	SettingsModule              string     // address of reader-settings.js
+	ComfortSrc                  string     // address of reader-comfort.js, always set: reader-settings.js imports it when a setting is turned on
+	ComfortModule               string     // address of reader-comfort.js; set only when a comfort setting is on (G5)
 	SkimModule                  string     // address of reader-skim.js, imported on the first touch of the skim bar
 	SearchLabel, SearchHref     string
 	BookmarkLabel, BookmarkURL  string // the bookmark-this-page button and where its form posts
@@ -230,6 +232,9 @@ templ Reader(v ReaderView) {
 			data-pages-src={ v.PagesModule }
 			data-notes-src={ v.Root.NotesSrc }
 			data-skim={ v.Root.Skim }
+			data-keep-awake={ strconv.FormatBool(v.Look.KeepAwake) }
+			data-warm={ v.Look.Warm }
+			data-auto-hide={ strconv.FormatBool(v.Look.AutoHide) }
 			if v.ReaderModule != "" {
 				data-ts-module={ v.ReaderModule }
 			}
@@ -244,7 +249,10 @@ templ Reader(v ReaderView) {
 			</div>
 		</article>
 		if v.SettingsModule != "" {
-			<span hidden data-ts-module={ v.SettingsModule }></span>
+			<span hidden data-ts-module={ v.SettingsModule } data-comfort-src={ v.ComfortSrc }></span>
+		}
+		if v.ComfortModule != "" {
+			<span hidden data-ts-module={ v.ComfortModule }></span>
 		}
 		if v.Offline != nil && v.Offline.Module != "" {
 			<span

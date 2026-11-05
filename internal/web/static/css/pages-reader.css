@@ -169,3 +169,10 @@ body:has(.ts-readerpage) :is(#nav-tabbar, #nav-rail, #nav-side) { visibility: hi
 .ts-skim::-moz-range-thumb { width: 1rem; height: 1rem; box-sizing: border-box; border: 2px solid var(--ground); border-radius: 50%; background: var(--accent-fill); }
 .ts-skim:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); border-radius: var(--radius-control); }
 .ts-skim__tip { position: absolute; bottom: calc(100% + var(--space-4)); inset-inline-start: calc(var(--ts-value, 0) * 1%); transform: translateX(calc(var(--ts-value, 0) * -1%)); max-width: 100%; padding: var(--space-4) var(--space-8); border-radius: var(--radius-control); background: var(--surface); color: var(--ink); font-size: 0.8125rem; line-height: 1.125rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: var(--shadow-float); pointer-events: none; }
+
+/* Comfort (G5). Warm light is a multiplied wash of the theme's own highlight colour over the whole page: it can only
+   darken, never lighten, and the contrast theme never gets it. The "More" disclosure of the settings sheet. */
+.ts-readerpage[data-warm="on"]::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: color-mix(in srgb, var(--mark) 60%, transparent); mix-blend-mode: multiply; }
+[data-theme="contrast"] .ts-readerpage[data-warm="on"]::after { content: none; }
+.ts-readset__more { display: flex; flex-direction: column; gap: var(--space-20); }
+.ts-readset__more summary { align-self: flex-start; cursor: pointer; }

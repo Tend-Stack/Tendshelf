@@ -151,3 +151,16 @@ browser's, Escape puts the thumb back. A skim writes no place: it only stores `t
 On the server `bp` (an integer 0 to 10000, else ignored, and ignored beside `part`) wins over `ch` and opens the part holding
 the block at that share of the book's text, at its first sentence (`rsPlaceAtChars`); `at` still wins over `bp`. Offline the shell
 cannot place `bp` and `reader-offline.js` reads only `ch`: the chapter opens at its start, and the chip still leads back.
+
+## Comfort (G5)
+
+Three choices under "More" in the Reading settings sheet, all off by default and kept in `reader.v1` (`keepAwake`, `warm`
+`off`/`evening`/`always`, `autoHide`). They sit on `#reader` as `data-keep-awake`, `data-warm`, `data-auto-hide`; the script
+`reader-comfort.js` is on the page only when one is on (the settings marker carries `data-comfort-src`, and
+`reader-settings.js` imports it when a switch is turned on). Warm light sets `data-warm="on"` on `.ts-readerpage`
+(`always`, or `evening` from 20:00 to 05:59 on the device, looked at again every 5 minutes); `pages-reader.css` draws a
+multiplied 60 % wash of `--mark` over the page, never in the contrast theme (`TestComfortContrast` holds text at 4.5:1).
+Keep awake takes a screen wake lock while the page is visible, lets go after 10 minutes without input and when the page
+leaves; a refusal or a missing API is silent. Auto-hide sets `data-chrome="off"` 3 s after the last pointer or key unless
+focus is in the bar or dock, a sheet or dialog is open, or text is selected. There is no brightness control: no web API sets
+the screen's brightness, and a dimming overlay would only lower contrast.
