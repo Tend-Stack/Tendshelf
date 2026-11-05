@@ -183,7 +183,7 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	if s.canManageServerUsers(r) {
 		v.ShareHref = "/books/" + book.ID + "/share"
 	}
-	v.Download = s.bookDownloadView(r, book, v.Button != nil)
+	v.Download = s.bookDownloadView(r, book, v.Button != nil || mayRead)
 	return v, nil
 }
 
@@ -217,6 +217,8 @@ func (s *server) textPlayView(r *http.Request, book library.Book, v *pages.BookP
 	if s.canManageServerUsers(r) {
 		v.ShareHref = "/books/" + book.ID + "/share"
 	}
+	// A text book keeps its text offline: the same Download, with the same right to download.
+	v.Download = s.bookDownloadView(r, book, mayRead)
 	return v, nil
 }
 

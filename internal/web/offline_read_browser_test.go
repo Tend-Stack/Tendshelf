@@ -30,6 +30,7 @@ type ofrEnv struct {
 	stall  atomic.Bool
 	ended  chan struct{}
 	posts  atomic.Int64 // POST /reading/{id} requests that reached the server
+	slow   atomic.Int64 // milliseconds each chapter part waits, so a download test can act mid-way (G6b)
 	cookie atomic.Pointer[http.Cookie]
 }
 
@@ -51,6 +52,9 @@ func ofrApp(t *testing.T, chs []ebooktest.EPUBChapter, opt func(*ebooktest.EPUBO
 			case <-r.Context().Done():
 			}
 			return
+		}
+		if ms := e.slow.Load(); ms > 0 && strings.Contains(r.URL.Path, "/read/chapters/") {
+			time.Sleep(time.Duration(ms) * time.Millisecond)
 		}
 		if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/reading/") {
 			e.posts.Add(1)

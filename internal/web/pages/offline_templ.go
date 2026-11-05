@@ -9,7 +9,12 @@ package pages
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/Tend-Stack/tendshelf/internal/web/components"
+import (
+	"context"
+	"io"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
 
 // OfflineRow is one book of the offline shell. Play is nil for a book that is not on this phone.
 type OfflineRow struct {
@@ -17,6 +22,8 @@ type OfflineRow struct {
 	Meta  string
 	Ready bool
 	Play  *components.PlayButtonView
+	// Read opens the reader, for a book whose text is on this phone. Secondary when Play is set.
+	Read *components.ReadButtonView
 }
 
 // OfflineView is the page the service worker shows when the server cannot be reached
@@ -56,7 +63,7 @@ func Offline(v OfflineView) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(v.Greeting)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/offline.templ`, Line: 28, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/offline.templ`, Line: 35, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -69,7 +76,7 @@ func Offline(v OfflineView) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(v.Caption)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/offline.templ`, Line: 29, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/offline.templ`, Line: 36, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -92,7 +99,7 @@ func Offline(v OfflineView) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(v.Section)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/offline.templ`, Line: 34, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/offline.templ`, Line: 41, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -103,7 +110,7 @@ func Offline(v OfflineView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, row := range v.Rows {
-				templ_7745c5c3_Err = components.BookRowWith(row.Card, row.Meta, row.Ready, offlinePlay(row.Play)).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = components.BookRowWith(row.Card, row.Meta, row.Ready, offlineActions(row)).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -120,7 +127,7 @@ func Offline(v OfflineView) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(v.Note)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/offline.templ`, Line: 40, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/offline.templ`, Line: 47, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -134,12 +141,22 @@ func Offline(v OfflineView) templ.Component {
 	})
 }
 
-// offlinePlay is the round play control of a ready row, or nothing.
-func offlinePlay(v *components.PlayButtonView) templ.Component {
-	if v == nil {
+// offlineActions is the row's slot: the Read button, then the round play control, or nothing.
+func offlineActions(row OfflineRow) templ.Component {
+	if row.Play == nil && row.Read == nil {
 		return nil
 	}
-	return components.PlayButton(*v)
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if row.Read != nil {
+			if err := components.ReadButton(*row.Read).Render(ctx, w); err != nil {
+				return err
+			}
+		}
+		if row.Play != nil {
+			return components.PlayButton(*row.Play).Render(ctx, w)
+		}
+		return nil
+	})
 }
 
 var _ = templruntime.GeneratedTemplate

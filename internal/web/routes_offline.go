@@ -204,7 +204,12 @@ func (s *server) getOffline(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusBadRequest)
 		return
 	}
-	v, err := s.offlineView(r, ids)
+	textIDs, ok := offlineIDs(r.URL.Query().Get("text"))
+	if !ok {
+		s.errorPage(w, r, http.StatusBadRequest)
+		return
+	}
+	v, err := s.offlineView(r, ids, textIDs)
 	if err != nil {
 		s.serverError(w, r, "offline shell", err)
 		return
@@ -214,13 +219,14 @@ func (s *server) getOffline(w http.ResponseWriter, r *http.Request) {
 
 // offlineView builds the shell: the ready books first, then up to five recent unfinished ones that are
 // not on the phone, each group by last listened.
-func (s *server) offlineView(r *http.Request, ids []string) (pages.OfflineView, error) {
+func (s *server) offlineView(r *http.Request, ids, textIDs []string) (pages.OfflineView, error) {
 	ctx, u := r.Context(), currentUser(r)
 	v := pages.OfflineView{
 		Greeting: browseGreetingFor(u.DisplayName), Caption: offlineCaption, Section: offlineSection,
 		Note: offlineNote, EmptyTitle: offlineEmpty, EmptyBody: offlineEmptyBy,
 	}
-	cards, err := s.lib.CardsByID(ctx, s.scope(r), ids)
+	// A book that has text on the phone is listed too, so its card is looked up with the rest.
+	cards, err := s.lib.CardsByID(ctx, s.scope(r), slices.Concat(ids, textIDs))
 	if err != nil {
 		return v, err
 	}
@@ -239,23 +245,47 @@ func (s *server) offlineView(r *http.Request, ids []string) (pages.OfflineView, 
 		if err != nil {
 			return v, err
 		}
-		if !can {
-			continue
-		}
-		link := playLinkIn(book, files, p)
-		if link == nil { // no file this server will stream
-			continue
-		}
-		meta, err := s.offlineMeta(r, book, p)
-		if err != nil {
-			return v, err
-		}
-		play := link.button(fmt.Sprintf(offlinePlayAria, c.Title), true)
+		row := pages.OfflineRow{Card: cardView(c), Ready: true}
 		at := int64(0)
-		if p != nil {
-			at = p.ClientUpdatedAt
+		if can {
+			if link := playLinkIn(book, files, p); link != nil { // else no file this server will stream
+				row.Play = link.button(fmt.Sprintf(offlinePlayAria, c.Title), true)
+				row.Meta, err = s.offlineMeta(r, book, p)
+				if err != nil {
+					return v, err
+				}
+				if p != nil {
+					at = p.ClientUpdatedAt
+				}
+			}
 		}
-		have = append(have, ready{pages.OfflineRow{Card: cardView(c), Meta: meta, Ready: true, Play: play}, at})
+		// The text on the phone: a Read button for a book the person may read, beside the play button if there is one.
+		if slices.Contains(textIDs, c.ID) {
+			mayRead, err := s.mayReadBook(ctx, u, book)
+			if err != nil {
+				return v, err
+			}
+			if mayRead {
+				rp, err := s.readingOf(ctx, u.ID, book.ID)
+				if err != nil {
+					return v, err
+				}
+				row.Read = &components.ReadButtonView{Href: readHref(book.ID), Label: readOther, AriaLabel: fmt.Sprintf(offlineReadAria, c.Title), Secondary: row.Play != nil}
+				if row.Play == nil {
+					row.Meta = offlineReady
+					if rp != nil && !rp.Finished() && rp.PercentBP > 0 {
+						row.Meta = fmt.Sprintf(offlineReadyPct, rp.PercentBP/100)
+					}
+					if rp != nil {
+						at = rp.ClientUpdatedAt
+					}
+				}
+			}
+		}
+		if row.Play == nil && row.Read == nil {
+			continue
+		}
+		have = append(have, ready{row, at})
 	}
 	slices.SortStableFunc(have, func(a, b ready) int { return int(b.at - a.at) })
 	for _, h := range have {
@@ -266,7 +296,7 @@ func (s *server) offlineView(r *http.Request, ids []string) (pages.OfflineView, 
 		return v, err
 	}
 	held := map[string]bool{}
-	for _, id := range ids {
+	for _, id := range slices.Concat(ids, textIDs) {
 		held[id] = true
 	}
 	n := 0
