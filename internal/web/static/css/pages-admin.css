@@ -287,3 +287,5 @@ a.ts-users__item:hover { background: var(--raised); }
 .ts-libs__stack { flex-wrap: wrap; padding: var(--space-8) 0; }
 .ts-libs__path { max-width: 100%; min-width: 0; }
 .ts-libs__form > .ts-me__line:nth-last-child(2) { border-bottom: 0; }
+.ts-libs__needs a { display: inline-flex; align-items: center; min-height: var(--size-tap); }
+.ts-libs__scopes { gap: var(--space-4); }
