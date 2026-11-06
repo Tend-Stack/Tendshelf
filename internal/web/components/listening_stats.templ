@@ -18,6 +18,8 @@ type ListeningStatsView struct {
 	Also, AlsoHref string
 	// Words is the third, "Your word list" (G1), shown beside Also.
 	Words, WordsHref string
+	// Highlights is the fourth, "All my highlights" (R1), shown beside Words.
+	Highlights, HighlightsHref string
 }
 
 // ListeningStats is the three numbers and, on Profile, the week's day marks. The marks are one
@@ -43,7 +45,7 @@ templ ListeningStats(v ListeningStatsView) {
 		if v.Note != "" {
 			<p class="caption ts-stats__note">{ v.Note }</p>
 		}
-		if v.More != "" || v.Also != "" || v.Words != "" {
+		if v.More != "" || v.Also != "" || v.Words != "" || v.Highlights != "" {
 			<div class="ts-stats__links">
 				if v.More != "" {
 					<a class="label ts-dash__more" href={ templ.SafeURL(v.MoreHref) }>{ v.More }</a>
@@ -53,6 +55,9 @@ templ ListeningStats(v ListeningStatsView) {
 				}
 				if v.Words != "" {
 					<a class="label ts-dash__more" href={ templ.SafeURL(v.WordsHref) }>{ v.Words }</a>
+				}
+				if v.Highlights != "" {
+					<a class="label ts-dash__more" href={ templ.SafeURL(v.HighlightsHref) }>{ v.Highlights }</a>
 				}
 			</div>
 		}

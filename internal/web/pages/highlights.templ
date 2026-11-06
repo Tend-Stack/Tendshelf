@@ -1,0 +1,114 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// HighlightsStyles are the stylesheets the All my highlights page links.
+var HighlightsStyles = []string{"css/pages-listening.css", "css/pages-highlights.css"}
+
+// HighlightRow is one highlight: its quote and note, the colour by name, the book and chapter, and the way
+// back to its sentence (empty OpenHref when the edition is gone).
+type HighlightRow struct {
+	Quote, Note                 string
+	Colour, ColourName          string
+	Book, BookHref, Chapter     string
+	When                        string
+	OpenHref, OpenWord, OpenLabel string
+}
+
+// HighlightColour is one choice of the colour filter.
+type HighlightColour struct {
+	Value, Label string
+	Selected     bool
+}
+
+// HighlightsView is the whole /me/highlights page. The handler writes every word and address.
+type HighlightsView struct {
+	Back, BackHref, Title, Lead string
+	Action                      string // the form's address
+	SearchLabel, Query          string
+	ColourLabel                 string
+	Colours                     []HighlightColour
+	Book, ApplyLabel            string // Book is the hidden book id of a one-book list
+	Only, OnlyHref, AllLabel    string
+	Count                       string
+	Rows                        []HighlightRow
+	EmptyTitle, EmptyBody       string
+	NewerHref, NewerLabel       string
+	OlderHref, OlderLabel       string
+	ExportMD, ExportMDLabel     string
+	ExportJSON, ExportJSONLabel string
+}
+
+// Highlights is the signed-in person's highlights across books. Read-only: editing stays in the reader.
+templ Highlights(v HighlightsView) {
+	<div class="ts-dash ts-hlist">
+		<a class="ts-dash__back" href={ templ.SafeURL(v.BackHref) }>
+			@dashChevron(true)
+			<span>{ v.Back }</span>
+		</a>
+		<h1 class="title-2 ts-dash__title">{ v.Title }</h1>
+		<p class="body ts-dash__muted ts-dash__lead">{ v.Lead }</p>
+		<form class="ts-hlist__form" method="get" action={ templ.SafeURL(v.Action) } role="search">
+			<div class="ts-field">
+				<label class="ts-field__label" for="hl-q">{ v.SearchLabel }</label>
+				<input class="ts-input" id="hl-q" type="search" name="q" value={ v.Query } autocomplete="off"/>
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="hl-colour">{ v.ColourLabel }</label>
+				<select class="ts-select" id="hl-colour" name="colour">
+					for _, c := range v.Colours {
+						<option value={ c.Value } selected?={ c.Selected }>{ c.Label }</option>
+					}
+				</select>
+			</div>
+			if v.Book != "" {
+				<input type="hidden" name="book" value={ v.Book }/>
+			}
+			<button type="submit" class="ts-btn ts-btn--primary">{ v.ApplyLabel }</button>
+		</form>
+		if v.Only != "" {
+			<p class="body ts-hlist__only">
+				<span>{ v.Only }</span>
+				<a class="ts-hlist__link" href={ templ.SafeURL(v.OnlyHref) }>{ v.AllLabel }</a>
+			</p>
+		}
+		if len(v.Rows) == 0 {
+			@components.EmptyState(v.EmptyTitle, v.EmptyBody, nil)
+		} else {
+			<p class="caption ts-dash__muted" role="status">{ v.Count }</p>
+			<ol class="ts-hlist__list">
+				for _, r := range v.Rows {
+					<li class="ts-hlist__item" data-colour={ r.Colour }>
+						<blockquote class="ts-hlist__quote">{ r.Quote }</blockquote>
+						if r.Note != "" {
+							<p class="body ts-hlist__note">{ r.Note }</p>
+						}
+						<p class="caption ts-hlist__meta">
+							<span class="ts-hlist__colour">{ r.ColourName }</span>
+							<a class="ts-hlist__link" href={ templ.SafeURL(r.BookHref) }>{ r.Book }</a>
+							if r.Chapter != "" {
+								<span>{ r.Chapter }</span>
+							}
+							<span>{ r.When }</span>
+						</p>
+						<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(r.OpenHref) } aria-label={ r.OpenLabel }>{ r.OpenWord }</a>
+					</li>
+				}
+			</ol>
+			if v.NewerHref != "" || v.OlderHref != "" {
+				<nav class="ts-hlist__pages">
+					if v.NewerHref != "" {
+						<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.NewerHref) }>{ v.NewerLabel }</a>
+					}
+					if v.OlderHref != "" {
+						<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.OlderHref) }>{ v.OlderLabel }</a>
+					}
+				</nav>
+			}
+			<p class="ts-hlist__export">
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ExportMD) } download hx-boost="false">{ v.ExportMDLabel }</a>
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ExportJSON) } download hx-boost="false">{ v.ExportJSONLabel }</a>
+			</p>
+		}
+	</div>
+}

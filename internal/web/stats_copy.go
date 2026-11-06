@@ -105,6 +105,7 @@ func statsView(st progress.Stats, admin, reads bool) components.ListeningStatsVi
 	if reads {
 		v.Also, v.AlsoHref = readMoreLink, readingStatsRoute
 		v.Words, v.WordsHref = wordsTitle, wordsRoute
+		v.Highlights, v.HighlightsHref = highlightsLink, highlightsRoute
 	}
 	v.DaysLabel = statsLabel(st.Days)
 	for i, d := range st.Days {

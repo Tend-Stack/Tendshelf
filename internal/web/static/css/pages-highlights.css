@@ -1,0 +1,17 @@
+/* /me/highlights (R1), on the listening page's header and tokens. The colour edge repeats the reader's four colours
+   and the colour is also written by name in every row, so no information is by colour alone. */
+.ts-hlist__form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-12); }
+.ts-hlist__form .ts-field { flex: 1 1 12rem; }
+.ts-hlist__only { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-16); margin: 0; }
+.ts-hlist__link { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--accent); }
+.ts-hlist__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ts-hlist__item { --edge: var(--warning); padding: var(--space-12) 0 var(--space-12) var(--space-16); border-bottom: 1px solid var(--line); border-inline-start: 0.25rem solid var(--edge); }
+.ts-hlist__item[data-colour="green"] { --edge: var(--success); }
+.ts-hlist__item[data-colour="blue"] { --edge: var(--accent); }
+.ts-hlist__item[data-colour="pink"] { --edge: var(--danger); }
+.ts-hlist__quote { margin: 0; font: italic 1.125rem/1.625rem var(--font-serif); overflow-wrap: anywhere; }
+.ts-hlist__note { margin: var(--space-8) 0 0; overflow-wrap: anywhere; }
+.ts-hlist__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-12); margin: var(--space-4) 0; color: var(--ink-muted); }
+.ts-hlist__colour { font-weight: 600; color: var(--ink); }
+.ts-hlist__pages, .ts-hlist__export { display: flex; flex-wrap: wrap; gap: var(--space-8); margin: var(--space-16) 0 0; }
+.ts-hlist .ts-btn { max-width: 100%; height: auto; min-height: var(--size-tap); white-space: normal; overflow-wrap: anywhere; }

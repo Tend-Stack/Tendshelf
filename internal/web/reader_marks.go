@@ -320,9 +320,7 @@ func (s *server) getReaderMarksExport(w http.ResponseWriter, r *http.Request) {
 		list = append(list, rdrExport{Kind: "bookmark", Chapter: c, ChapterTitle: title(b.EditionID, c), Quote: rdrSentenceText(rc, b.EditionID, b.SID),
 			Note: b.Note, Created: day(b.CreatedAt), CreatedAt: b.CreatedAt, sid: b.SID})
 	}
-	slices.SortStableFunc(list, func(a, b rdrExport) int {
-		return cmp.Or(cmp.Compare(a.Chapter, b.Chapter), ebook.CompareSID(a.sid, b.sid), cmp.Compare(a.off, b.off), cmp.Compare(a.CreatedAt, b.CreatedAt))
-	})
+	sortMarks(list)
 	ext := r.URL.Path[strings.LastIndexByte(r.URL.Path, '.')+1:]
 	h := w.Header()
 	h.Set("Cache-Control", "no-store")
@@ -331,21 +329,13 @@ func (s *server) getReaderMarksExport(w http.ResponseWriter, r *http.Request) {
 	switch ext {
 	case "json":
 		h.Set("Content-Type", "application/json")
-		out := struct {
-			Book  string      `json:"book"`
-			Marks []rdrExport `json:"marks"`
-		}{rc.book.Title, list}
-		if out.Marks == nil {
-			out.Marks = []rdrExport{}
-		}
-		b, _ := json.MarshalIndent(out, "", "  ")
-		body = string(b) + "\n"
+		body = marksJSON(rc.book.Title, list)
 	case "md":
 		h.Set("Content-Type", "text/markdown; charset=utf-8")
-		body = rdrExportText(rc.book.Title, list, true)
+		body = marksMarkdown(rc.book.Title, list)
 	default:
 		h.Set("Content-Type", "text/plain; charset=utf-8")
-		body = rdrExportText(rc.book.Title, list, false)
+		body = marksText(rc.book.Title, list)
 	}
 	_, _ = w.Write([]byte(body))
 }
@@ -422,4 +412,43 @@ func rdrExportText(title string, list []rdrExport, md bool) string {
 		}
 	}
 	return b.String()
+}
+
+// sortMarks puts a book's marks in reading order: chapter, sentence, offset, then age.
+func sortMarks(list []rdrExport) {
+	slices.SortStableFunc(list, func(a, b rdrExport) int {
+		return cmp.Or(cmp.Compare(a.Chapter, b.Chapter), ebook.CompareSID(a.sid, b.sid), cmp.Compare(a.off, b.off), cmp.Compare(a.CreatedAt, b.CreatedAt))
+	})
+}
+
+// marksBook is one book's marks in the JSON export; the all-books export is a list of these.
+type marksBook struct {
+	Book  string      `json:"book"`
+	Marks []rdrExport `json:"marks"`
+}
+
+func newMarksBook(title string, list []rdrExport) marksBook {
+	if list == nil {
+		list = []rdrExport{}
+	}
+	return marksBook{Book: title, Marks: list}
+}
+
+// marksJSON, marksMarkdown and marksText are the one format of a book's exported marks, used by the reader's
+// per-book export and by "All my highlights".
+func marksJSON(title string, list []rdrExport) string {
+	b, _ := json.MarshalIndent(newMarksBook(title, list), "", "  ")
+	return string(b) + "\n"
+}
+
+func marksMarkdown(title string, list []rdrExport) string { return rdrExportText(title, list, true) }
+
+func marksText(title string, list []rdrExport) string { return rdrExportText(title, list, false) }
+
+// marksBooksJSON is the all-books export: the same per-book shape as marksJSON, one entry per book.
+func marksBooksJSON(list []marksBook) string {
+	b, _ := json.MarshalIndent(struct {
+		Books []marksBook `json:"books"`
+	}{list}, "", "  ")
+	return string(b) + "\n"
 }
