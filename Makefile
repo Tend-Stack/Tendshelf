@@ -42,13 +42,22 @@ fmt:
 vet:
 	$(GO) vet ./...
 
-# The commit gate: formatting, vet and race-enabled tests.
+# The commit gate: formatting, vet and race-enabled tests. It unsets TENDSHELF_TEST_BROWSER (the browser
+# tests then skip): with Chromium set, every browser test would run under -race and the web package
+# outgrows any sensible limit. The browser tests have their own target, `make browser`.
 check:
 	@out="$$(gofmt -l $$($(GO) list -f '{{.Dir}}' ./...))"; if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
 	$(GO) vet ./...
 	$(GO) vet -tags dev ./internal/web/...
-	$(GO) test -race -timeout 25m ./...
-	$(GO) test -race -timeout 25m -tags dev ./internal/web/...
+	env -u TENDSHELF_TEST_BROWSER $(GO) test -race -timeout 25m ./...
+	env -u TENDSHELF_TEST_BROWSER $(GO) test -race -timeout 25m -tags dev ./internal/web/...
+
+# Every Chromium test in internal/web except the three sets the nightly runs in steps of their own
+# (`make visual-full`, `make a11y`, `make page-weight`), so nothing runs twice. Needs TENDSHELF_TEST_BROWSER.
+# Without -race: the server side is race-tested by `make check`; the page's timing is what is under test here.
+# About 15 minutes on the workstation. `make visual`, `make a11y` and `make page-weight` still run their sets alone.
+browser:
+	$(GO) test -count=1 -tags dev -timeout 60m -skip 'Visual|TestA11y|TestPageWeight' ./internal/web/
 
 # Screenshots and motion checks in Chromium through its remote-debugging pipe (no driver, no module).
 # Needs TENDSHELF_TEST_BROWSER=/path/to/chrome. Output: .local/tests/visual/<run>/chromium/.
