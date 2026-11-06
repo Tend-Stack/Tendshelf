@@ -35,7 +35,8 @@ type Scanner struct {
 	finishers []Finisher
 	sinks     []EbookSink
 
-	afterProbe func() // test hook: runs between ffprobe and the write transaction
+	afterProbe  func() // test hook: runs between ffprobe and the write transaction
+	beforeApply func() // test hook: runs after the walk and before the write transaction
 }
 
 // New returns a Scanner. tools may lack ffprobe: files are still grouped into books, and every
@@ -281,6 +282,9 @@ func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree,
 		p.walked = append(p.walked, walkedFolder{folder: fo, files: kept})
 	}
 
+	if s.beforeApply != nil {
+		s.beforeApply()
+	}
 	var applied Result
 	err = s.repo.UpdateGuarded(ctx, guard, func(tx *library.Tx) error {
 		var err error
@@ -367,6 +371,25 @@ type bookGroup struct {
 // differences. It returns the counters it can know.
 func (s *Scanner) apply(tx *library.Tx, p *plan) (Result, error) {
 	var res Result
+	// A merge can land between the walk and this transaction: read the merged folders again here, and leave
+	// their files out of the diff, so the dropped copy is not added back as a new book.
+	merged, err := tx.MergedFolders(p.libraryID)
+	if err != nil {
+		return res, err
+	}
+	walked := p.walked
+	if len(merged) > 0 {
+		walked = make([]walkedFolder, 0, len(p.walked))
+		for _, w := range p.walked {
+			var left []Found
+			for _, g := range GroupFiles(w.folder.Path, w.files) {
+				if _, gone := merged[g.Root]; !gone {
+					left = append(left, g.Files...)
+				}
+			}
+			walked = append(walked, walkedFolder{folder: w.folder, files: left})
+		}
+	}
 	books, err := tx.BooksInLibrary(p.libraryID)
 	if err != nil {
 		return res, err
@@ -398,7 +421,7 @@ func (s *Scanner) apply(tx *library.Tx, p *plan) (Result, error) {
 	// The files found, in path order.
 	var items []*item
 	byPath := map[string]*item{}
-	for _, w := range p.walked {
+	for _, w := range walked {
 		for _, f := range w.files {
 			it := &item{f: f, folder: w.folder, hash: p.hashes[f.Path]}
 			items = append(items, it)
@@ -478,7 +501,7 @@ func (s *Scanner) apply(tx *library.Tx, p *plan) (Result, error) {
 	// 3. Books: one per group.
 	var groups []bookGroup
 	groupRoots := map[string]bool{}
-	for _, w := range p.walked {
+	for _, w := range walked {
 		for _, g := range GroupFiles(w.folder.Path, w.files) {
 			groups = append(groups, bookGroup{Group: g, folder: w.folder})
 			groupRoots[g.Root] = true

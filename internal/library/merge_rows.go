@@ -11,18 +11,19 @@ import (
 // through BindFor, which keeps only the arguments a statement mentions. Rows only: no file is opened.
 //
 // The newest reading place wins whichever format it was made in, and ties keep what the kept book already had.
+// Rows a phone syncs (places, bookmarks, highlights) get updated_at / server_updated_at = :now, so a `since=` sync sees them.
 // A row that would collide with one the kept book has (OR IGNORE) stays behind and goes with the dropped book.
 var MergeRowsSQL = []string{
 	`INSERT INTO reading_positions SELECT user_id, :to, edition_id, chapter_idx, sid, off, quote, char_pos, percent_bp, finished_at,
-  client_updated_at, server_updated_at, device_id, device_label FROM reading_positions WHERE book_id=:from AND true
+  client_updated_at, :now, device_id, device_label FROM reading_positions WHERE book_id=:from AND true
   ON CONFLICT(user_id, book_id) DO UPDATE SET edition_id=excluded.edition_id, chapter_idx=excluded.chapter_idx, sid=excluded.sid,
     off=excluded.off, quote=excluded.quote, char_pos=excluded.char_pos, percent_bp=excluded.percent_bp, finished_at=excluded.finished_at,
-    client_updated_at=excluded.client_updated_at, server_updated_at=excluded.server_updated_at, device_id=excluded.device_id,
+    client_updated_at=excluded.client_updated_at, server_updated_at=:now, device_id=excluded.device_id,
     device_label=excluded.device_label
   WHERE excluded.client_updated_at > reading_positions.client_updated_at`,
 	`UPDATE reading_sessions SET book_id=:to WHERE book_id=:from`,
-	`UPDATE highlights SET book_id=:to WHERE book_id=:from`,
-	`UPDATE bookmarks SET book_id=:to WHERE book_id=:from`,
+	`UPDATE highlights SET book_id=:to, updated_at=:now WHERE book_id=:from`,
+	`UPDATE bookmarks SET book_id=:to, updated_at=:now WHERE book_id=:from`,
 	`UPDATE OR IGNORE word_list SET book_id=:to WHERE book_id=:from`,
 	`UPDATE OR IGNORE shelf_items SET book_id=:to WHERE book_id=:from`,
 	`UPDATE OR IGNORE text_choices SET book_id=:to WHERE book_id=:from`,

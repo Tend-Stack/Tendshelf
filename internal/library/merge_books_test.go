@@ -343,3 +343,54 @@ func TestDupDeletingKeptBookFreesFolder(t *testing.T) {
 		t.Errorf("folder still remembered after the kept book was deleted: %v", m)
 	}
 }
+
+// A merge must bump the sync clocks of what it moves, or a phone asking since= never sees it.
+func TestDupMergeBumpsSyncClocks(t *testing.T) {
+	r, st, f := dupRepo(t)
+	keep, drop := dupAdd(t, r, f, "Keep", 2*dupHour), dupAdd(t, r, f, "Drop", 2*dupHour)
+	dupProgress(t, st, dupUser, drop.ID, 30*60_000, 100)
+	dupExec(t, st, `INSERT INTO bookmarks(id, user_id, book_id, position_ms, created_at, updated_at) VALUES ('bm_1', 'us_a', ?, 5, 1, 1)`, drop.ID)
+	dupExec(t, st, `INSERT INTO reading_positions(user_id, book_id, chapter_idx, char_pos, percent_bp, client_updated_at, server_updated_at, device_id) VALUES ('us_a', ?, 1, 0, 100, 5, 5, 'd')`, drop.ID)
+	// A newer place on a book the kept copy already has a place for.
+	dupProgress(t, st, dupMem, keep.ID, 1000, 50)
+	dupProgress(t, st, dupMem, drop.ID, 2000, 60)
+	before := int64(1_000_000) // far past every seeded clock
+	if err := r.MergeBooks(ctx, keep.ID, drop.ID, dupUser); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`SELECT server_updated_at FROM progress WHERE user_id = 'us_a' AND book_id = ?`,
+		`SELECT server_updated_at FROM progress WHERE user_id = 'us_b' AND book_id = ?`,
+		`SELECT updated_at FROM bookmarks WHERE id = 'bm_1' AND book_id = ?`,
+		`SELECT server_updated_at FROM reading_positions WHERE user_id = 'us_a' AND book_id = ?`,
+	} {
+		if got := dupInt(t, st, q, keep.ID); got < before {
+			t.Errorf("%s = %d, want at least %d", q, got, before)
+		}
+	}
+}
+
+// The same uploaded ebook on both copies used to break ebook_files_upload_once and fail the merge.
+func TestDupMergeSameUploadedEbookOnBoth(t *testing.T) {
+	r, st, f := dupRepo(t)
+	keep, drop := dupAdd(t, r, f, "Keep", 2*dupHour), dupAdd(t, r, f, "Drop", 2*dupHour)
+	add := func(id, book, sha string) {
+		dupExec(t, st, `INSERT INTO ebook_files(id, origin, library_id, book_id, ext, size, quick_hash, sha256, state, created_at, updated_at)
+VALUES (?, 'upload', ?, ?, 'epub', 10, ?, ?, 'ready', 1, 1)`, id, f.LibraryID, book, dupHash('q'), sha)
+	}
+	add("eb_k", keep.ID, dupHash('a'))
+	add("eb_d", drop.ID, dupHash('a'))
+	add("eb_o", drop.ID, dupHash('b'))
+	if err := r.MergeBooks(ctx, keep.ID, drop.ID, dupUser); err != nil {
+		t.Fatalf("merge: %v", err)
+	}
+	if n := dupInt(t, st, `SELECT count(*) FROM ebook_files WHERE book_id = ?`, keep.ID); n != 2 {
+		t.Errorf("ebook files on the kept book = %d, want 2", n)
+	}
+	if n := dupInt(t, st, `SELECT count(*) FROM ebook_files WHERE id = 'eb_k'`); n != 1 {
+		t.Error("the kept book's own row was dropped")
+	}
+	if n := dupInt(t, st, `SELECT count(*) FROM ebook_files WHERE id = 'eb_d'`); n != 0 {
+		t.Error("the colliding row stayed")
+	}
+}
