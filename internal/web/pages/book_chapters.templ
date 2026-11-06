@@ -1,0 +1,129 @@
+package pages
+
+import "strconv"
+
+// ChaptersStyles is the stylesheet of the chapter editor and its reset page.
+var ChaptersStyles = []string{"css/pages-chapters.css"}
+
+// ChaptersEditRow is one row of the form. Start and Title are the text as typed; Error is the
+// plain-words problem with this row, if any. PlayAtMs is -1 when the row has no valid start.
+type ChaptersEditRow struct {
+	Num                  int
+	Start, Title, Error  string
+	PlayAtMs             int64
+	StartLabel           string
+	NameLabel            string
+	ListenLabel          string
+	DeleteLabel          string
+	AddLabel             string
+	DeleteOp, AddOp      string
+}
+
+// ChaptersEditData is the data of the Edit chapters page.
+type ChaptersEditData struct {
+	CSRF, Action, BookID, BookTitle, BackHref string
+	Title, Lead, BackLabel                    string
+	Rev, Origin                               string
+	Rows                                      []ChaptersEditRow
+	// Saved, Error and Note are status lines; Error belongs to the whole list.
+	Saved, Error, Note string
+	// Words.
+	StartHead, NameHead, ListenWord, DeleteWord, AddWord, SaveLabel string
+	MoveTitle, MoveBy, MoveByHint, MoveFrom, MoveGo                 string
+	ShiftBy, ShiftFrom, ShiftError                                  string
+	ResetHref, ResetLabel                                           string
+}
+
+templ ChaptersEditView(v ChaptersEditData) {
+	<div class="ts-chapted">
+		<p class="ts-chapted__back"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.BackHref) }>{ v.BackLabel }</a></p>
+		<h1 class="title-1">{ v.Title }</h1>
+		<p class="body ts-chapted__book">{ v.BookTitle }</p>
+		<p class="body">{ v.Lead }</p>
+		if v.Saved != "" {
+			<p class="body ts-chapted__status" role="status">{ v.Saved }</p>
+		}
+		if v.Error != "" {
+			<p class="body ts-chapted__error" role="alert">{ v.Error }</p>
+		}
+		if v.Note != "" {
+			<p class="body ts-chapted__note">{ v.Note }</p>
+		}
+		<form class="ts-chapted__form" method="post" action={ templ.URL(v.Action) }>
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<input type="hidden" name="rev" value={ v.Rev }/>
+			<input type="hidden" name="origin" value={ v.Origin }/>
+			<input type="hidden" name="n" value={ strconv.Itoa(len(v.Rows)) }/>
+			// Enter in a field presses the first submit button, which must be Save and not a row's Delete.
+			<button type="submit" name="op" value="save" class="ts-chapted__enter" hidden>{ v.SaveLabel }</button>
+			<ol class="ts-chapted__rows">
+				for i, r := range v.Rows {
+					<li class="ts-chapted__row">
+						<div class="ts-chapted__fields">
+							<div class="ts-field ts-chapted__start">
+								<label class="ts-field__label" for={ "ched-start-" + strconv.Itoa(i) }>{ v.StartHead }</label>
+								<input class="ts-input" id={ "ched-start-" + strconv.Itoa(i) } type="text" inputmode="decimal" autocomplete="off" name={ "start_" + strconv.Itoa(i) } value={ r.Start } aria-label={ r.StartLabel }/>
+							</div>
+							<div class="ts-field ts-chapted__name">
+								<label class="ts-field__label" for={ "ched-title-" + strconv.Itoa(i) }>{ v.NameHead }</label>
+								<input class="ts-input" id={ "ched-title-" + strconv.Itoa(i) } type="text" autocomplete="off" name={ "title_" + strconv.Itoa(i) } value={ r.Title } aria-label={ r.NameLabel }/>
+							</div>
+						</div>
+						if r.Error != "" {
+							<p class="ts-field__error" role="alert">{ r.Error }</p>
+						}
+						<div class="ts-chapted__actions">
+							if r.PlayAtMs >= 0 {
+								<button type="button" class="ts-btn ts-btn--quiet" data-ts-play-at={ strconv.FormatInt(r.PlayAtMs, 10) } data-ts-book={ v.BookID } aria-label={ r.ListenLabel }>{ v.ListenWord }</button>
+							}
+							<button type="submit" name="op" value={ r.DeleteOp } class="ts-btn ts-btn--quiet" aria-label={ r.DeleteLabel }>{ v.DeleteWord }</button>
+							<button type="submit" name="op" value={ r.AddOp } class="ts-btn ts-btn--quiet" aria-label={ r.AddLabel }>{ v.AddWord }</button>
+						</div>
+					</li>
+				}
+			</ol>
+			<div class="ts-chapted__bar">
+				<button type="submit" name="op" value="save" class="ts-btn ts-btn--primary">{ v.SaveLabel }</button>
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.BackHref) }>{ v.BackLabel }</a>
+			</div>
+			<details class="ts-chapted__move" open?={ v.ShiftError != "" }>
+				<summary>{ v.MoveTitle }</summary>
+				<div class="ts-chapted__movebox">
+					<div class="ts-field">
+						<label class="ts-field__label" for="ched-shift-by">{ v.MoveBy }</label>
+						<span class="ts-field__hint" id="ched-shift-hint">{ v.MoveByHint }</span>
+						<input class="ts-input" id="ched-shift-by" type="text" inputmode="decimal" autocomplete="off" name="shift_by" value={ v.ShiftBy } aria-describedby="ched-shift-hint"/>
+					</div>
+					<div class="ts-field">
+						<label class="ts-field__label" for="ched-shift-from">{ v.MoveFrom }</label>
+						<input class="ts-input" id="ched-shift-from" type="text" inputmode="numeric" autocomplete="off" name="shift_from" value={ v.ShiftFrom }/>
+					</div>
+					if v.ShiftError != "" {
+						<p class="ts-field__error" role="alert">{ v.ShiftError }</p>
+					}
+					<button type="submit" name="op" value="shift" class="ts-btn ts-btn--secondary">{ v.MoveGo }</button>
+				</div>
+			</details>
+		</form>
+		if v.ResetHref != "" {
+			<p class="ts-chapted__reset"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ResetHref) }>{ v.ResetLabel }</a></p>
+		}
+	</div>
+}
+
+// ChaptersResetView asks before the edited chapters are replaced by the file chapters.
+type ChaptersResetView struct {
+	CSRF, Title, Body, Action, Confirm, Keep, Back string
+}
+
+templ ChaptersResetConfirm(v ChaptersResetView) {
+	<div class="ts-chapted ts-chapted--narrow">
+		<h1 class="title-1">{ v.Title }</h1>
+		<p class="body">{ v.Body }</p>
+		<form class="ts-chapted__bar" method="post" action={ templ.URL(v.Action) }>
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<button type="submit" class="ts-btn ts-btn--danger">{ v.Confirm }</button>
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.Back) }>{ v.Keep }</a>
+		</form>
+	</div>
+}

@@ -1,0 +1,18 @@
+/* The Edit chapters page and its reset confirmation (L3a). Only page rules; controls come from bundle.css. */
+.ts-chapted { display: flex; flex-direction: column; gap: var(--space-16); max-width: 52rem; padding: var(--space-16); }
+.ts-chapted--narrow { max-width: 36rem; }
+.ts-chapted__book { color: var(--ink-muted); }
+.ts-chapted__status { color: var(--ink); }
+.ts-chapted__error { color: var(--danger); }
+.ts-chapted__form { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-chapted__rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-chapted__row { display: flex; flex-direction: column; gap: var(--space-8); padding-bottom: var(--space-16); border-bottom: 1px solid var(--line); }
+.ts-chapted__fields { display: grid; grid-template-columns: 9rem 1fr; gap: var(--space-12); }
+.ts-chapted__fields .ts-field { max-width: none; }
+.ts-chapted__actions, .ts-chapted__bar { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: center; }
+.ts-chapted__move summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+.ts-chapted__movebox { display: flex; flex-direction: column; gap: var(--space-12); align-items: flex-start; }
+@media (width < 48rem) {
+  .ts-chapted__fields { grid-template-columns: 1fr; }
+}
+.ts-chapted__enter[hidden] { display: none; }

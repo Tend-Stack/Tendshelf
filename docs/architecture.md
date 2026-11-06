@@ -179,6 +179,17 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
   upload until `upload.place` moves or copies them into the library folder; removed when the upload ends, and swept
   hourly for uploads with no chunk for 24 h and for folders with no `uploads` row.
 
+- **Chapter edits (L3a)**: an edit is the `chapters` rows themselves, stored with source `user` (typed) or `online`
+  (a lookup), so the player, the API and bookmarks read them unchanged; it changes rows only and never a library file.
+  Invariant 2: once any row of a book has source `user` or `online`, `finalize` leaves the book's chapters alone
+  (`library.ChaptersOverridden`); only `scan.ResetChapters` (the "Go back to the chapters in the files" button) rebuilds
+  them from the files, and it refuses while a file still waits for its probe. Invariant 3: a scan never destroys an
+  edit and never clamps it, even when files vanish or shrink; a list that no longer fits the book (a last end more than
+  1 s past the duration) is refused by the write job (`chapter_fit`). A stored list is always whole: first start 0,
+  strictly rising starts, each end the next start, last end the duration (`library.BuildChapters`). The editor is
+  `/books/{id}/chapters/edit` (the plain `/books/{id}/chapters` is the book page's Chapters tab); Save is all or nothing
+  and refused when `library.ChaptersRev` of the stored rows differs from the form's `rev`.
+
 ## Background jobs
 
 Kinds: `scan.library`, `media.probe`, `media.cover`, `media.compat`, `metadata.local`,

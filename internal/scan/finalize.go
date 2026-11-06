@@ -29,7 +29,8 @@ func relKey(root, path string) string {
 // finalize settles a book from the rows in the database: play order, offsets, duration, chapters
 // and the refused reason. It is a pure function of those rows, writes only what differs, and does
 // nothing while any live file still waits for its probe. It must run inside the write transaction
-// that settled the book's last file. It reports settled = the book has at least one live file and
+// that settled the book's last file. A book whose chapters were edited keeps them (see
+// library.ChaptersOverridden); duration and refused reason still update. It reports settled = the book has at least one live file and
 // none waits for its probe, that is, the function ran past its early return.
 func finalize(tx *library.Tx, bookID string, _ int64) (bool, error) {
 	book, err := tx.Book(bookID)
@@ -133,11 +134,16 @@ func finalize(tx *library.Tx, bookID string, _ int64) (bool, error) {
 		}
 	}
 
-	chs := bookChapters(book.Title, tl)
 	old, err := tx.Chapters(bookID)
 	if err != nil {
 		return false, err
 	}
+	if library.ChaptersOverridden(old) {
+		// A person's edit (source user or online) is never touched by a scan, and never clamped:
+		// files that vanish or shrink must not destroy it. Reset is the only way back.
+		return true, nil
+	}
+	chs := bookChapters(book.Title, tl)
 	if !sameChapters(old, chs) {
 		if err := tx.ReplaceChapters(bookID, chs); err != nil {
 			return false, err
