@@ -6,6 +6,7 @@ import (
 	"math"
 	"mime"
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/Tend-Stack/tendshelf/internal/api"
@@ -304,9 +305,13 @@ type apiBookmark struct {
 	BookID     string `json:"bookId"`
 	PositionMs int64  `json:"positionMs"`
 	Note       string `json:"note"`
-	CreatedAt  int64  `json:"createdAt"`
-	UpdatedAt  int64  `json:"updatedAt"`
-	DeletedAt  *int64 `json:"deletedAt"`
+	// A clip has an end (a moment in the audio after positionMs); null for a plain bookmark. Kind is one of
+	// bookmark, favourite, quote, note, revisit.
+	EndMs     *int64 `json:"endMs"`
+	Kind      string `json:"kind"`
+	CreatedAt int64  `json:"createdAt"`
+	UpdatedAt int64  `json:"updatedAt"`
+	DeletedAt *int64 `json:"deletedAt"`
 	// A place in the text carries its edition and sentence id; both are left out for a moment in the audio.
 	EditionID string `json:"editionId,omitempty"`
 	SID       string `json:"sid,omitempty"`
@@ -318,6 +323,10 @@ func apiBookmarkOf(b progress.Bookmark) apiBookmark {
 	if b.DeletedAt != 0 {
 		out.DeletedAt = &b.DeletedAt
 	}
+	if b.EndMs > 0 {
+		out.EndMs = &b.EndMs
+	}
+	out.Kind = b.Kind
 	return out
 }
 
@@ -405,9 +414,11 @@ func (s *server) postAPIBookmark(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		PositionMs *int64 `json:"positionMs"`
-		Note       string `json:"note"`
-		ClientID   string `json:"clientId"`
+		PositionMs *int64  `json:"positionMs"`
+		Note       string  `json:"note"`
+		ClientID   string  `json:"clientId"`
+		EndMs      *int64  `json:"endMs"`
+		Kind       *string `json:"kind"`
 	}
 	if !apiJSONBody(w, r, apiBookmarkBody, &body) {
 		return
@@ -420,7 +431,15 @@ func (s *server) postAPIBookmark(w http.ResponseWriter, r *http.Request) {
 	if b.DurationMs > 0 {
 		pos = min(pos, b.DurationMs)
 	}
+	patch, ok := apiClipPatch(w, body.EndMs, body.Kind, b.DurationMs, pos)
+	if !ok {
+		return
+	}
 	bm, created, err := s.progress.AddBookmarkWithClientID(r.Context(), currentUser(r).ID, b.ID, pos, body.Note, body.ClientID)
+	if err == nil && created && (patch.EndMs != nil || patch.Kind != nil) {
+		// One shape to retry: the bookmark is made, then the clip fields are set on it.
+		bm, err = s.progress.UpdateBookmark(r.Context(), currentUser(r).ID, bm.ID, patch)
+	}
 	var inv *progress.InvalidError
 	switch {
 	case errors.As(err, &inv):
@@ -446,20 +465,31 @@ func (s *server) patchAPIBookmark(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Note *string `json:"note"`
+		Note  *string `json:"note"`
+		EndMs *int64  `json:"endMs"`
+		Kind  *string `json:"kind"`
 	}
 	if !apiJSONBody(w, r, apiBookmarkBody, &body) {
 		return
 	}
-	if body.Note == nil {
-		apiBadField(w, "note", "Send the note, or an empty one to clear it.")
+	if body.Note == nil && body.EndMs == nil && body.Kind == nil {
+		apiBadField(w, "note", "Send the note, the end or the kind. An empty note clears it; an end of 0 clears the end.")
 		return
 	}
-	out, err := s.progress.SetBookmarkNote(r.Context(), currentUser(r).ID, bm.ID, *body.Note)
+	var dur int64
+	if b, err := s.lib.Book(r.Context(), bm.BookID); err == nil {
+		dur = b.DurationMs
+	}
+	patch, ok := apiClipPatch(w, body.EndMs, body.Kind, dur, bm.PositionMs)
+	if !ok {
+		return
+	}
+	patch.Note = body.Note
+	out, err := s.progress.UpdateBookmark(r.Context(), currentUser(r).ID, bm.ID, patch)
 	var inv *progress.InvalidError
 	switch {
 	case errors.As(err, &inv):
-		apiBadField(w, "note", "That note is not valid or is too long.")
+		apiBadField(w, camelField(inv.Field), "That value is not valid.")
 	case errors.Is(err, progress.ErrNotFound):
 		s.notFound(w, r)
 	case err != nil:
@@ -467,6 +497,28 @@ func (s *server) patchAPIBookmark(w http.ResponseWriter, r *http.Request) {
 	default:
 		api.Write(w, http.StatusOK, apiBookmarkOf(out))
 	}
+}
+
+// apiClipPatch checks the clip fields of a bookmark write and clamps an end past the book to its length. It
+// answers 400 with the field itself, and returns false.
+func apiClipPatch(w http.ResponseWriter, end *int64, kind *string, durationMs, posMs int64) (progress.BookmarkPatch, bool) {
+	p := progress.BookmarkPatch{Kind: kind}
+	if kind != nil && !slices.Contains(progress.BookmarkKinds, *kind) {
+		apiBadField(w, "kind", "The kind must be bookmark, favourite, quote, note or revisit.")
+		return p, false
+	}
+	if end != nil {
+		e := *end
+		if durationMs > 0 && e > durationMs {
+			e = durationMs
+		}
+		if e < 0 || (e != 0 && e <= posMs) {
+			apiBadField(w, "endMs", "The end must be after the position, or 0 to clear it.")
+			return p, false
+		}
+		p.EndMs = &e
+	}
+	return p, true
 }
 
 func (s *server) deleteAPIBookmark(w http.ResponseWriter, r *http.Request) {

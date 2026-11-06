@@ -82,6 +82,11 @@ func bookmarkRow(b progress.Bookmark, chapters []library.Chapter, now time.Time)
 		ID: b.ID, BookID: b.BookID, WhenText: when, PlayAtMs: b.PositionMs, Note: b.Note,
 		DayText: bookmarkDayText(time.UnixMilli(b.CreatedAt).In(time.Local), now), NoNoteText: bookmarkNoNote,
 		EditHref: bookmarkSheetHref(b.BookID, b.ID), PlayLabel: bookmarkPlayFrom,
+		KindText: clipKindWord(b.Kind),
+	}
+	if b.EndMs > 0 {
+		v.ClipEndMs, v.PlayLabel = b.EndMs, clipPlay
+		v.LengthText = fmt.Sprintf(clipLength, clockText(b.EndMs-b.PositionMs))
 	}
 	if b.Note == "" {
 		v.EditLabel = bookmarkAddNote + " · " + when
@@ -102,9 +107,9 @@ func (s *server) bookmarksPanel(r *http.Request, d library.BookDetail) (pages.Bo
 	id := d.Book.ID
 	csrf := s.csrf.TokenFrom(ctx)
 	base := bookmarkTabHref(id)
-	only := q.Get("only") == "notes"
+	only, kind := bookmarkFilter(q)
 
-	list, err := s.progress.Bookmarks(ctx, u.ID, id, only)
+	all0, err := s.progress.Bookmarks(ctx, u.ID, id, false)
 	if err != nil {
 		return pages.BookmarksView{}, nil, err
 	}
@@ -117,16 +122,49 @@ func (s *server) bookmarksPanel(r *http.Request, d library.BookDetail) (pages.Bo
 		Heading: bookmarkHeading, ExportLabel: bookmarkExport, ExportHref: base + "?sheet=export",
 		ChipsLabel: bookmarkChipsLabel,
 		Chips: []pages.BookmarkChip{
-			{Label: fmt.Sprintf(bookmarkChipAll, all), Href: base, Current: !only},
-			{Label: fmt.Sprintf(bookmarkChipNotes, notes), Href: base + "?only=notes", Current: only},
+			{Label: fmt.Sprintf(bookmarkChipAll, all), Href: base, Current: only == "" && kind == ""},
+			{Label: fmt.Sprintf(bookmarkChipNotes, notes), Href: base + "?only=notes", Current: only == "notes"},
 		},
 		EmptyTitle: bookmarkEmptyTitle, EmptyBody: bookmarkEmptyBody,
 	}
-	if only {
-		v.EmptyTitle, v.EmptyBody = bookmarkEmptyNotes, ""
+	// The clip and kind chips appear once a bookmark uses them; the list is the person's own, so Go filters it.
+	clips, kinds := 0, map[string]int{}
+	for _, b := range all0 {
+		if b.EndMs > 0 {
+			clips++
+		}
+		kinds[b.Kind]++
 	}
-	for _, b := range list {
-		v.Rows = append(v.Rows, bookmarkRow(b, d.Chapters, now))
+	if clips > 0 {
+		v.Chips = append(v.Chips, pages.BookmarkChip{Label: fmt.Sprintf(clipChip, clips), Href: base + "?only=clips", Current: only == "clips"})
+	}
+	if len(kinds) > 1 || (len(kinds) == 1 && kinds["bookmark"] == 0) {
+		for _, k := range clipKinds {
+			if kinds[k.Value] > 0 {
+				v.Chips = append(v.Chips, pages.BookmarkChip{Label: fmt.Sprintf(clipChipKind, k.Label, kinds[k.Value]), Href: base + "?kind=" + k.Value, Current: kind == k.Value})
+			}
+		}
+	}
+	switch {
+	case only == "notes":
+		v.EmptyTitle, v.EmptyBody = bookmarkEmptyNotes, ""
+	case only == "clips":
+		v.EmptyTitle, v.EmptyBody = clipEmptyClips, ""
+	case kind != "":
+		v.EmptyTitle, v.EmptyBody = fmt.Sprintf(clipEmptyKind, clipKindWord(kind)), ""
+		if kind == "bookmark" {
+			v.EmptyTitle = fmt.Sprintf(clipEmptyKind, "a plain bookmark")
+		}
+	}
+	for _, b := range all0 {
+		if (only == "notes" && b.Note == "") || (only == "clips" && b.EndMs == 0) || (kind != "" && b.Kind != kind) {
+			continue
+		}
+		row := bookmarkRow(b, d.Chapters, now)
+		if row.ClipEndMs > 0 {
+			v.ClipScript = s.assets.URL("js/clip.js")
+		}
+		v.Rows = append(v.Rows, row)
 	}
 	// Without the player the button saves the person's stored place; no place, a hidden form the
 	// player shows once it has a live position.
@@ -162,14 +200,27 @@ func (s *server) bookmarksPanel(r *http.Request, d library.BookDetail) (pages.Bo
 		}
 		n, clock := bookmarkWhere(d.Chapters, b.PositionMs)
 		sv := pages.BookmarkSheetView{
+			ShowEnd: b.SID == "", KindLabel: clipKindName, EndLabel: clipEndLabel,
+			EndHint: fmt.Sprintf(clipEndHint, clockText(b.PositionMs)),
 			CSRF: csrf, Title: bookmarkSheetTitle, When: bookmarkWhenText(n, clock), Note: b.Note,
 			NoteLabel: bookmarkNoteLabel, SaveLabel: bookmarkSave, DeleteLabel: bookmarkDelete,
 			NoteAction: "/bookmarks/" + b.ID + "/note", DeleteAction: "/bookmarks/" + b.ID + "/delete",
 			CloseHref: base, CloseLabel: bookmarkClose, MaxRunes: progress.MaxNoteRunes,
 			Styles: s.sheetStyles(pages.BookmarkStyles...),
 		}
-		if q.Get("error") == "note_too_long" {
+		if b.EndMs > 0 {
+			sv.EndAt = clockText(b.EndMs)
+		}
+		for _, k := range clipKinds {
+			sv.Kinds = append(sv.Kinds, pages.BookmarkKindChoice{Value: k.Value, Label: k.Label, Checked: k.Value == b.Kind})
+		}
+		switch q.Get("error") {
+		case "note_too_long":
 			sv.Error = bookmarkErrTooLong
+		case "end_before_start":
+			sv.EndError = clipErrEnd
+		case "end_not_a_time":
+			sv.EndError = clipErrEndClock
 		}
 		return v, pages.BookmarkSheet(sv), nil
 	case "export":
@@ -253,6 +304,13 @@ func bookmarkExportBody(title string, chapters []library.Chapter, list []progres
 				lines = []string{"_" + bookmarkNoNote + "_"}
 			}
 		}
+		if tag := bookmarkTag(bm); tag != "" {
+			if markdown {
+				lines[0] = "_" + tag + "_ " + lines[0]
+			} else {
+				lines[0] = "[" + tag + "] " + lines[0]
+			}
+		}
 		if markdown {
 			b.WriteString("- **" + clock + "** " + lines[0] + "\n")
 			for _, l := range lines[1:] {
@@ -266,4 +324,31 @@ func bookmarkExportBody(title string, chapters []library.Chapter, list []progres
 		}
 	}
 	return b.String()
+}
+
+// bookmarkFilter reads the tab's filter from its address: only is "notes", "clips" or ""; kind is one of the
+// kinds or "". Anything else is no filter.
+func bookmarkFilter(q url.Values) (only, kind string) {
+	switch q.Get("only") {
+	case "notes", "clips":
+		only = q.Get("only")
+	}
+	for _, k := range clipKinds {
+		if q.Get("kind") == k.Value {
+			kind = k.Value
+		}
+	}
+	return only, kind
+}
+
+// bookmarkTag is what an export says of a bookmark beyond its note: its kind and the length of a clip, "" for a plain bookmark.
+func bookmarkTag(bm progress.Bookmark) string {
+	var parts []string
+	if w := clipKindWord(bm.Kind); w != "" {
+		parts = append(parts, w)
+	}
+	if bm.EndMs > 0 {
+		parts = append(parts, fmt.Sprintf(clipExportClip, clockText(bm.EndMs-bm.PositionMs)))
+	}
+	return strings.Join(parts, " · ")
 }

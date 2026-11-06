@@ -33,6 +33,17 @@
 .ts-bookmark-sheet__note { min-height: 7.5rem; resize: vertical; font: 400 1rem/1.5rem var(--font-sans); }
 .ts-bookmark-sheet__links { list-style: none; margin: 0; padding: 0 var(--space-4); display: flex; flex-direction: column; gap: var(--space-8); }
 
+/* Clips: the kind and length under a row's place and day, and the sheet's kind choice. The radios stay in
+   the page for a keyboard and a screen reader; the label is the target. The chosen kind is bold as well as filled. */
+.ts-mark__tags { display: flex; flex-wrap: wrap; gap: var(--space-8); margin: 0; font-size: 0.875rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ts-mark__kind { font-weight: 600; color: var(--ink); }
+.ts-bookmark-sheet__kinds { border: 0; margin: 0; padding: 0 var(--space-4); min-width: 0; }
+.ts-bookmark-sheet__kinds .ts-seg { flex-wrap: wrap; }
+.ts-bookmark-sheet__kind { position: relative; }
+.ts-bookmark-sheet__kind input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.ts-bookmark-sheet__kind:has(input:checked) { background: var(--raised); color: var(--ink); font-weight: 600; }
+.ts-bookmark-sheet__kind:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 @media (width >= 768px) {
   .ts-bookmarks__add { position: static; margin: var(--space-16) 0 0; padding: 0; background: none; max-width: 22.5rem; }
 }

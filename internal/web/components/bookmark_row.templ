@@ -9,6 +9,10 @@ type BookmarkRowView struct {
 	ID, WhenText, DayText, Note, NoNoteText, EditHref, EditLabel, PlayLabel string
 	PlayAtMs                                                                int64
 	BookID                                                                  string
+	// KindText names a kind other than the plain bookmark; LengthText is the length of a clip. ClipEndMs is
+	// the end of a clip in the Bookmarks tab (0 elsewhere, where a clip jumps to its start without the stop).
+	KindText, LengthText string
+	ClipEndMs            int64
 }
 
 // BookmarkRow is one bookmark: the place and day, the note (or "No note"), and the edit control.
@@ -21,8 +25,27 @@ templ BookmarkRow(v BookmarkRowView) {
 				<span>{ v.WhenText }</span>
 				<span aria-hidden="true">·</span>
 				<span>{ v.DayText }</span>
-				<button type="button" class="ts-mark__jump" data-ts-play-at={ strconv.FormatInt(v.PlayAtMs, 10) } data-ts-book={ v.BookID } hidden>{ v.PlayLabel }</button>
+				<button
+					type="button"
+					class="ts-mark__jump"
+					data-ts-play-at={ strconv.FormatInt(v.PlayAtMs, 10) }
+					data-ts-book={ v.BookID }
+					if v.ClipEndMs > 0 {
+						data-ts-clip-end={ strconv.FormatInt(v.ClipEndMs, 10) }
+					}
+					hidden
+				>{ v.PlayLabel }</button>
 			</div>
+			if v.KindText != "" || v.LengthText != "" {
+				<p class="ts-mark__tags">
+					if v.KindText != "" {
+						<span class="ts-mark__kind">{ v.KindText }</span>
+					}
+					if v.LengthText != "" {
+						<span class="ts-mark__length">{ v.LengthText }</span>
+					}
+				</p>
+			}
 			if v.Note != "" {
 				<p class="ts-mark__note">{ v.Note }</p>
 			} else {

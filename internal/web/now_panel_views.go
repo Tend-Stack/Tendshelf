@@ -237,7 +237,9 @@ func nowBookmarksView(d library.BookDetail, list []progress.Bookmark, total int,
 		if i == nowPanelMaxMarks {
 			break
 		}
-		v.Rows = append(v.Rows, bookmarkRow(b, d.Chapters, now))
+		row := bookmarkRow(b, d.Chapters, now)
+		row.ClipEndMs, row.PlayLabel = 0, bookmarkPlayFrom // the Now panel jumps to a clip's start, without the stop
+		v.Rows = append(v.Rows, row)
 	}
 	return v
 }
