@@ -115,6 +115,8 @@ class PlaybackService : MediaLibraryService() {
         nm.createNotificationChannel(android.app.NotificationChannel("debug", "Debug", android.app.NotificationManager.IMPORTANCE_LOW))
         val n = android.app.Notification.Builder(this, "debug").setSmallIcon(android.R.drawable.ic_media_play).setContentTitle("debug").build()
         startForeground(4242, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        // Normally the first controller to connect adds the session; here nobody has connected.
+        session?.let { addSession(it) }
         main.postDelayed({ nm.cancel(4242) }, 10_000)
     }
 

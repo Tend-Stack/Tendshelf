@@ -965,3 +965,9 @@ duplicates, library health, app keys and OPDS, KOReader sync, clips, listening h
 notifications, More menu and drop a book); the README feature list matches; `docs/manual-checks.md` has the "Desktop app on your own computer" table (X4 to X6,
 every row open); the GoTHW Wails note gained a Wails 3.1.0 section outside the repo. No code changed. Checks: `go build ./...`. Limits: the operator's rows
 are not run, so the CGO-free default (X6 step 2) has not been switched. Next step: the operator runs the desktop table.
+
+**A3 status (Android playback service, 2026-11-06)**: built on the branch `pkg-a3`, plan [plans/android-a2-a5.md](plans/android-a2-a5.md). A book is one
+Media3 window in book time (`ConcatenatingMediaSource2`, missing parts as silence); `BookPlayer` makes next and previous chapters and skip the person's
+interval; `BookEngine` starts books (a newer start cancels an older one) and publishes `ts.bookId`, `ts.chapterIdx`, `ts.error`; custom commands are for this app
+only; `PlayerRemote` is the seam. Pure logic (chapter jumps, start place, silent ranges, URLs) is in `shared`. Emulator checks (Parts, Single, Odd, speed, skip,
+notification, 30 min screen off, outage, revoked token, foreign package) passed; limits: no audible alignment measurement, fixture has no cover. Next step: A4.
