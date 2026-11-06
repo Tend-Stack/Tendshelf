@@ -15,6 +15,13 @@ import android.util.Log
  */
 class DebugProbe : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == "app.tendshelf.DEBUG_TOKEN8") {
+            // Test aid: the first 8 characters of the token go to a file in the app's private folder (read with run-as), so
+            // the checks can search logs, prefs and pages for them. Never logged.
+            val t = TokenStore(context).current()?.token
+            java.io.File(context.filesDir, "probe-token8").writeText(t?.take(8) ?: "")
+            return
+        }
         val web = WebHandle.current
         if (web == null) {
             Log.i(TAG, "no webview")
@@ -23,6 +30,8 @@ class DebugProbe : BroadcastReceiver() {
         Handler(Looper.getMainLooper()).post {
             when (intent.action) {
                 "app.tendshelf.DEBUG_EVAL" -> web.evaluateJavascript(intent.getStringExtra("js") ?: "null") { Log.i(TAG, "eval=$it") }
+                // Test aid: ends the page's session without touching the token, as an expired session would.
+                "app.tendshelf.DEBUG_COOKIES_CLEAR" -> android.webkit.CookieManager.getInstance().removeAllCookies(null)
                 "app.tendshelf.DEBUG_LOAD" -> web.loadUrl(intent.getStringExtra("url") ?: "about:blank")
             }
         }

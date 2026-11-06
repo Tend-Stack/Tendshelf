@@ -17,9 +17,9 @@ object ApiJson {
         null
     }
 
-    /** `{id}` of the person from GET /api/v1/me; the id is wanted, nothing else. */
+    /** `{user:{id},device:{...}}` from GET /api/v1/me; the person's id is wanted, nothing else. */
     fun meId(body: String): String? = try {
-        JSONObject(body).optString("id", "").ifEmpty { null }
+        JSONObject(body).getJSONObject("user").optString("id", "").ifEmpty { null }
     } catch (_: Exception) {
         null
     }

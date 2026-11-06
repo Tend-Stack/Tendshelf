@@ -35,6 +35,10 @@ class ConnectFlow(
 
     private var clearHistoryNext = false
     private var suppressAutoConnect = false
+
+    // True from beginConnect until a sign-in page (login, setup, consent) has finished: several pages can finish while
+    // the connect page is still loading, and none of them may start another connect.
+    private var connectLoading = false
     private val io = Executors.newSingleThreadExecutor()
 
     init {
@@ -42,6 +46,8 @@ class ConnectFlow(
             verifier = null
             state = State.NoServer
             clearHistoryNext = true
+            // A page that was loading when the wipe began may still finish; it must not start a connect on its own.
+            suppressAutoConnect = true
         }
     }
 
@@ -53,7 +59,9 @@ class ConnectFlow(
         }
         val held = store.current()
         if (held == null) {
-            beginConnect(o)
+            // Signed out, or a connect that never finished: the start page, with the address filled in.
+            suppressAutoConnect = true
+            showStart(StartState(o.text))
             return
         }
         state = State.Connected
@@ -150,6 +158,7 @@ class ConnectFlow(
         val v = Pkce.verifier(random)
         val challenge = Pkce.challenge(MessageDigest.getInstance("SHA-256").digest(v.toByteArray(Charsets.US_ASCII)))
         verifier = v
+        connectLoading = true
         state = if (store.hasToken()) State.Reconnecting else State.NeedsSignIn
         web.loadUrl(o.connectUrl(challenge))
     }
@@ -199,6 +208,7 @@ class ConnectFlow(
         if (!o.matches(url)) return
         val path = try { URI(url).rawPath ?: "" } catch (_: Exception) { return }
         val held = store.current()
+        if (signInPath(path)) connectLoading = false
         if (path == "/login" && held != null && state != State.Reconnecting) {
             io.execute {
                 when (api.me(o, held.token)) {
@@ -209,11 +219,11 @@ class ConnectFlow(
             }
             return
         }
-        if (state == State.Reconnecting && held != null && path != "/login" && !path.startsWith("/app/connect")) {
+        if (state == State.Reconnecting && held != null && !connectLoading && path != "/login" && !path.startsWith("/app/connect")) {
             beginConnect(o)
             return
         }
-        if (held == null && !suppressAutoConnect && state != State.Connecting && !signInPath(path)) beginConnect(o)
+        if (held == null && !suppressAutoConnect && !connectLoading && state != State.Connecting && !signInPath(path)) beginConnect(o)
     }
 
     private fun signInPath(path: String): Boolean =

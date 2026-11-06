@@ -24,9 +24,16 @@ class StartPages(private val context: Context) {
 
     private val loader = WebViewAssetLoader.Builder()
         .setDomain(HOST)
-        .addPathHandler("/start", WebViewAssetLoader.PathHandler { page("start.html", start()) })
-        .addPathHandler("/offline", WebViewAssetLoader.PathHandler { page("offline.html", offline()) })
+        // Handlers match by prefix (which must end in a slash), in this order: the assets folder first, then one handler
+        // for the two pages. Anything else gets no answer and the WebView would go to the network, which no page asks for.
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
+        .addPathHandler("/", WebViewAssetLoader.PathHandler { path ->
+            when (path) {
+                "start" -> page("start.html", start())
+                "offline" -> page("offline.html", offline())
+                else -> null
+            }
+        })
         .build()
 
     val startUrl: String get() = "https://$HOST/start"

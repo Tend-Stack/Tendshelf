@@ -5,6 +5,8 @@
             <intent-filter>
                 <action android:name="app.tendshelf.DEBUG_EVAL" />
                 <action android:name="app.tendshelf.DEBUG_LOAD" />
+                <action android:name="app.tendshelf.DEBUG_COOKIES_CLEAR" />
+                <action android:name="app.tendshelf.DEBUG_TOKEN8" />
             </intent-filter>
         </receiver>
     </application>
