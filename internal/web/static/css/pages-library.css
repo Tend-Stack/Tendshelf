@@ -6,15 +6,14 @@
 .ts-lib-head__title, .ts-lib-head__count { margin: 0; }
 .ts-lib-head__count { color: var(--ink-muted); }
 
-/* Controls: the title field, the Filter and Show chips, then Grid/List at the right. The field takes a full
+/* Controls: the title field, the Filter, Show and Sort chips, then Grid/List at the right. The field takes a full
    line below 768 px; the chips wrap rather than overflow at any text size. */
 .ts-lib-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--space-8) var(--space-12); }
-/* Order: title field, Filter, the kinds in use, then Show and Grid/List together at the right. */
+/* Order: title field, Filter, then Show, Sort and Grid/List together at the right. */
 .ts-lib-controls #lib-menu-show { order: 1; margin-left: auto; }
+.ts-lib-controls #lib-menu-sort { order: 1; }
 .ts-lib-controls .ts-seg { order: 2; }
 .ts-lib-menus { display: contents; }
-/* The kinds in use sit on the same line as Filter and Show and wrap only when the line is full. */
-.ts-lib-kinds, .ts-lib-kinds .ts-lib-filters { display: contents; }
 .ts-icon--sm { width: 1.125rem; height: 1.125rem; }
 .ts-lib-bar { flex: 1 1 100%; min-width: 0; }
 .ts-lib-bar .ts-filter-form { flex-direction: row; align-items: center; padding: 0; }
@@ -28,7 +27,6 @@
 .ts-lib-start { margin: 0; }
 
 /* Filters: chip menus are <details> (links inside, no script). A phone opens one on its own row. */
-.ts-lib-filters { align-items: center; }
 .ts-chipmenu { position: relative; }
 .ts-chipmenu > summary { list-style: none; cursor: pointer; user-select: none; }
 .ts-chipmenu > summary::-webkit-details-marker { display: none; }
@@ -47,13 +45,33 @@
 .ts-chipmenu__item.is-disabled { color: var(--ink-muted); cursor: default; }
 .ts-chipmenu__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-chipmenu__count { color: var(--ink-muted); font-size: 0.8125rem; }
-.ts-lib-match { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin: 0 0 var(--space-12); color: var(--ink-muted); }
+/* The Filter menu: one nested disclosure per kind. Only the open kind shows its list. */
+.ts-chipmenu__kind > summary { list-style: none; cursor: pointer; user-select: none; }
+.ts-chipmenu__kind > summary::-webkit-details-marker { display: none; }
+.ts-chipmenu__kind > summary .ts-icon { flex: none; }
+.ts-chipmenu__kind[open] > summary .ts-icon:last-child { transform: rotate(180deg); }
+.ts-chipmenu__kind > summary:hover { background: var(--raised-hover); }
+.ts-chipmenu__kind.is-on > summary { font-weight: 600; }
+.ts-chipmenu__kindhead .ts-chipmenu__name { flex: none; }
+.ts-chipmenu__chosen { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-muted); font-size: 0.8125rem; font-weight: 400; text-align: end; }
+.ts-chipmenu__list { padding-inline-start: var(--space-8); }
+.ts-chipmenu__list .ts-chipmenu__item { min-width: 0; }
+
+/* The active filter row: one chip per filter in use, each a link that removes only that filter, then
+   Clear all. It wraps on a phone; every target is 44 px tall. */
+.ts-lib-active { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); margin: 0 0 var(--space-12); }
+.ts-lib-fchip { max-width: min(100%, 22rem); box-sizing: border-box; background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+.ts-lib-fchip__kind { color: var(--ink-muted); }
+.ts-lib-fchip__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ts-lib-clear { min-height: var(--size-tap); }
 .ts-lib-results { min-width: 0; }
 .ts-lib-title { flex: 1 1 auto; min-width: 0; }
 
 @media (width < 768px) {
-  /* A phone keeps Filter, Show and Grid/List on one line; the kinds in use follow them. */
-  .ts-lib-kinds .ts-chipmenu { order: 3; }
+  /* A phone: Filter and Show side by side, then Sort with Grid/List at the right. */
+  .ts-lib-controls #lib-menu-show { margin-left: 0; }
+  .ts-lib-controls .ts-seg { margin-left: auto; }
+  /* A menu opens on its own full row. */
   .ts-chipmenu[open] { flex: 1 1 100%; }
   .ts-chipmenu[open] > summary { width: 100%; justify-content: space-between; box-sizing: border-box; }
   .ts-chipmenu__body { max-width: none; box-shadow: none; }
@@ -66,7 +84,7 @@
 }
 @media (width >= 768px) {
   .ts-chipmenu__body { position: absolute; top: 100%; left: 0; z-index: 5; }
-  .ts-chipmenu--end .ts-chipmenu__body, #lib-menu-show .ts-chipmenu__body { left: auto; right: 0; }
+  .ts-chipmenu--end .ts-chipmenu__body, #lib-menu-show .ts-chipmenu__body, #lib-menu-sort .ts-chipmenu__body { left: auto; right: 0; }
 }
 
 /* The list: a grid of cards, or rows */

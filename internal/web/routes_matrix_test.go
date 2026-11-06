@@ -412,6 +412,8 @@ func sweepRows() []sweepRow {
 		sweepGet("GET /libraries/{id}", id(libID, "/libraries/", ""), sweepStaff(200, 404)),
 		sweepGet("GET /hx/libraries/items", sweepStatic("/hx/libraries/items"), sweepSame(200)),
 		sweepGet("GET /hx/libraries/{id}/items", id(libID, "/hx/libraries/", "/items"), sweepStaff(200, 404)),
+		sweepGet("GET /hx/library-facets/{kind}", sweepStatic("/hx/library-facets/author"), sweepSame(200)),
+		sweepGet("GET /hx/library-facets/{id}/{kind}", id(libID, "/hx/library-facets/", "/author"), sweepStaff(200, 404)),
 		sweepGet("GET /search", sweepStatic("/search?q=Lantern"), sweepSame(200)),
 		// Books and people
 		sweepGet("GET /books/{id}", sweepBookPath(""), sweepStaff(200, 404)),

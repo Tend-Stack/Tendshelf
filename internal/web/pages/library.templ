@@ -23,15 +23,37 @@ type FilterOption struct {
 	Disabled bool
 }
 
-// MenuSection is a second titled group in a menu (the Show menu's "Sort by").
-type MenuSection struct {
-	Label   string
+// FilterKind is one kind of filter inside the Filter menu: a nested disclosure that holds the kind's
+// choices ("Author", "Series", "Length"). A kind with a long list (people, series, categories) does not
+// send the list with the page: LazyHref is a fragment address the menu loads the first time the kind
+// opens, and PageHref is the plain link that shows the list without JavaScript. An Open kind carries
+// its list in the page.
+type FilterKind struct {
+	// ID names the kind: the <details> element is lib-kind-<ID>.
+	ID, Label, AnyLabel, AnyHref string
+	// Chosen is the choice made, in words ("Elias Varn"); empty while none is.
+	Chosen  string
 	Options []FilterOption
+	// Counts shows each option's number of books.
+	Counts bool
+	// On is true while a choice is made.
+	On bool
+	// Open renders the kind expanded with its list in the page.
+	Open bool
+	// LazyHref loads the list on first open; PageHref is the no-JavaScript link that opens it.
+	LazyHref, PageHref string
 }
 
-// FilterMenu is one chip with its menu ("Author", "Series", "Length"). The chip reads "Author:
-// Imogen Hale" while a choice is made; AnyHref drops the choice. The menu is a <details> element and
-// its choices are links, so it works without JavaScript.
+// ActiveFilter is one chip of the active filter row: a link that removes only that filter. Kind is
+// "Author", Value is "Elias Varn"; Name is the accessible name ("Remove filter: Author Elias Varn").
+type ActiveFilter struct {
+	Kind, Value, Name, Href string
+}
+
+// FilterMenu is one chip with its menu ("Show", "Sort", "Filter"). The chip reads "Show: Unfinished"
+// while a choice is made; AnyHref drops the choice. The menu is a <details> element and its choices
+// are links, so it works without JavaScript. The Filter menu holds Kinds (a nested disclosure each)
+// instead of Options.
 type FilterMenu struct {
 	// ID names the menu: the <details> element is lib-menu-<ID>.
 	ID                             string
@@ -39,9 +61,9 @@ type FilterMenu struct {
 	// Icon is a leading icon for a chip that is not a value ("filter"); otherwise a check shows while On.
 	Icon    string
 	Options []FilterOption
-	// Sections are further groups under the first one.
-	Sections []MenuSection
-	// Counts shows each option's number of books (people, series and categories; not lengths).
+	// Kinds are the filter kinds of the Filter menu.
+	Kinds []FilterKind
+	// Counts shows each option's number of books.
 	Counts bool
 	// On is true while a choice is made.
 	On bool
@@ -67,18 +89,19 @@ type LibraryView struct {
 	FormAction string
 	// Libraries are the chips that switch between libraries; empty with a single library.
 	Libraries []LibChip
-	// HeaderLine is "912 books · 3 folders · 8,240 hours" (folders only for a person who manages libraries).
+	// HeaderLine is "912 books · 3 folders · 8,240 hours" (folders only for a person who manages
+	// libraries); while a filter is on it starts "15 of 912 books". It is the page's one count and a
+	// polite live region.
 	HeaderLine string
-	// Match is "16 books match", set only while a filter is on; it sits in the results region with
-	// the "Clear filters" link (ClearHref).
-	Match string
-	// FilterMenu is the "Filter" chip that lists the kinds; Kinds are the chips of the kinds in use
-	// (or the one the address asks to add).
+	// FilterMenu is the "Filter" chip: every kind with its choices. ShowMenu is the "Show" chip
+	// (Unfinished, Not started, Finished, Shared with you) and ShowValue the chosen one; SortMenu is
+	// the "Sort" chip.
 	FilterMenu FilterMenu
-	Kinds      []FilterMenu
-	// ShowMenu is the "Show" chip (Unfinished, Not started, Finished) and ShowValue the chosen one.
-	ShowMenu  FilterMenu
-	ShowValue string
+	ShowMenu   FilterMenu
+	ShowValue  string
+	SortMenu   FilterMenu
+	// Active are the chips of the active filter row, one per filter in use; empty while unfiltered.
+	Active []ActiveFilter
 	// TitleFilter is the text of the "Filter by title" field.
 	TitleFilter string
 	// Hidden are the person, narrator and series ids the forms carry; LengthValue is the chosen
@@ -90,7 +113,7 @@ type LibraryView struct {
 	GridHref, ListHref string
 	// SelectedGenres are the chosen ones, carried by the title form.
 	SelectedGenres []string
-	// ClearHref drops every filter and keeps the sort and the view; it is set only while a filter is on.
+	// ClearHref ("Clear all") drops every filter and keeps the sort and the view; it is set only while a filter is on.
 	ClearHref string
 	// StartHref is "Back to the start" and is set only on a page reached by a cursor.
 	StartHref string
@@ -138,7 +161,7 @@ templ titleForm(v LibraryView) {
 				hx-trigger="input changed delay:300ms, search"
 				hx-target="#library-results"
 				hx-select="#library-results"
-				hx-select-oob="#lib-menus, #lib-kinds"
+				hx-select-oob="#lib-menus, #lib-count:innerHTML"
 				hx-swap="outerHTML"
 				hx-push-url="true"
 				hx-include="closest form"
@@ -189,7 +212,11 @@ templ filterMenu(m FilterMenu) {
 			@chevron()
 		</summary>
 		<div class="ts-chipmenu__body">
-			if m.Titled {
+			if len(m.Kinds) > 0 {
+				for _, k := range m.Kinds {
+					@filterKind(k)
+				}
+			} else if m.Titled {
 				<div class="ts-chipmenu__group" role="group" aria-labelledby={ "lib-menu-" + m.ID + "-h" }>
 					<p class="ts-chipmenu__head" id={ "lib-menu-" + m.ID + "-h" }>{ m.Label }</p>
 					@menuAny(m)
@@ -205,15 +232,52 @@ templ filterMenu(m FilterMenu) {
 					}
 				</div>
 			}
-			for i, sec := range m.Sections {
-				<div class="ts-chipmenu__group" role="group" aria-labelledby={ "lib-menu-" + m.ID + "-s" + strconv.Itoa(i) }>
-					<p class="ts-chipmenu__head" id={ "lib-menu-" + m.ID + "-s" + strconv.Itoa(i) }>{ sec.Label }</p>
-					for _, o := range sec.Options {
-						@menuOption(m, o)
-					}
-				</div>
-			}
 		</div>
+	</details>
+}
+
+// kindMenu is the menu-shaped view of a kind, so its choices use the same lines as every menu.
+func kindMenu(k FilterKind) FilterMenu {
+	return FilterMenu{AnyHref: k.AnyHref, AnyLabel: k.AnyLabel, On: k.On, Counts: k.Counts}
+}
+
+// kindChoices is a kind's "Any ..." line and its choices.
+templ kindChoices(k FilterKind) {
+	@menuAny(kindMenu(k))
+	for _, o := range k.Options {
+		@menuOption(kindMenu(k), o)
+	}
+}
+
+// FilterKindChoices is the fragment a closed kind loads the first time it opens.
+templ FilterKindChoices(k FilterKind) {
+	@kindChoices(k)
+}
+
+// filterKind is one kind inside the Filter menu: a nested disclosure. The details share a name, so
+// opening one closes the others without a script. A kind with a long list loads it on first open
+// (htmx) and offers a plain link in place of that without JavaScript.
+templ filterKind(k FilterKind) {
+	<details id={ "lib-kind-" + k.ID } class={ "ts-chipmenu__kind", templ.KV("is-on", k.On) } name="lib-filter-kind" open?={ k.Open }>
+		<summary class="ts-chipmenu__item ts-chipmenu__kindhead">
+			<span class="ts-chipmenu__name">{ k.Label }</span>
+			if k.Chosen != "" {
+				<span class="ts-chipmenu__chosen">{ k.Chosen }</span>
+			}
+			@chevron()
+		</summary>
+		if k.LazyHref != "" && !k.Open {
+			<div class="ts-chipmenu__group ts-chipmenu__list" role="group" aria-label={ k.Label } hx-get={ k.LazyHref } hx-trigger={ "toggle from:#lib-kind-" + k.ID + " once" } hx-swap="innerHTML">
+				<noscript>
+					<a class="ts-chipmenu__item" href={ templ.SafeURL(k.PageHref) }>{ "Show the " + k.Label + " list" }</a>
+				</noscript>
+				<span class="ts-chipmenu__item is-disabled ts-chipmenu__loading">Loading</span>
+			</div>
+		} else {
+			<div class="ts-chipmenu__group ts-chipmenu__list" role="group" aria-label={ k.Label }>
+				@kindChoices(k)
+			</div>
+		}
 	</details>
 }
 
@@ -261,7 +325,7 @@ templ Library(v LibraryView) {
 	<div class="ts-library">
 		<header class="ts-lib-head">
 			<h1 class="title-1 ts-lib-head__title">{ v.Title }</h1>
-			<p class="caption ts-num ts-lib-head__count">{ v.HeaderLine }</p>
+			<p id="lib-count" class="caption ts-num ts-lib-head__count" role="status">{ v.HeaderLine }</p>
 			if v.AddBooksHref != "" {
 				<a class="ts-btn ts-btn--secondary ts-lib-head__add" href={ templ.SafeURL(v.AddBooksHref) }>{ v.AddBooksLabel }</a>
 			}
@@ -296,15 +360,7 @@ templ Library(v LibraryView) {
 			<div id="lib-menus" class="ts-lib-menus">
 				@filterMenu(v.FilterMenu)
 				@filterMenu(v.ShowMenu)
-			</div>
-			<div id="lib-kinds" class="ts-lib-kinds">
-				if len(v.Kinds) > 0 {
-					<div class="ts-chip-set ts-lib-filters" role="group" aria-label="Filters">
-						for _, m := range v.Kinds {
-							@filterMenu(m)
-						}
-					</div>
-				}
+				@filterMenu(v.SortMenu)
 			</div>
 			<div class="ts-seg" role="group" aria-label="View">
 				<a
@@ -330,11 +386,17 @@ templ Library(v LibraryView) {
 			</div>
 		</div>
 		<div id="library-results" class="ts-lib-results">
-			if v.Match != "" {
-				<p class="ts-lib-match">
-					<span class="caption ts-num" role="status">{ v.Match }</span>
-					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ClearHref) }>Clear filters</a>
-				</p>
+			if len(v.Active) > 0 {
+				<div class="ts-lib-active" role="group" aria-label="Active filters">
+					for _, f := range v.Active {
+						<a class="ts-chip ts-lib-fchip" href={ templ.SafeURL(f.Href) } aria-label={ f.Name }>
+							<span class="ts-lib-fchip__kind">{ f.Kind }</span>
+							<span class="ts-lib-fchip__value">{ f.Value }</span>
+							@components.Icon("close", false)
+						</a>
+					}
+					<a class="ts-btn ts-btn--quiet ts-lib-clear" href={ templ.SafeURL(v.ClearHref) }>Clear all</a>
+				</div>
 			}
 			if v.StartHref != "" {
 				<p class="ts-lib-start"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.StartHref) }>Back to the start</a></p>

@@ -376,13 +376,13 @@ func TestLibraryGenres(t *testing.T) {
 
 	body := html.UnescapeString(browseGet(a, "/libraries?add=category", false, nil).Body.String())
 	// The Category menu lists every genre as a toggle link; the Filter menu offers the kind.
-	for _, want := range []string{`href="/libraries?genre=Mystery"`, `id="lib-menu-filter"`, `id="lib-menu-category"`, `href="/libraries?add=category"`} {
+	for _, want := range []string{`href="/libraries?genre=Mystery"`, `id="lib-menu-filter"`, `id="lib-kind-category"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("genre menu lacks %q", want)
 		}
 	}
-	if strings.Contains(body, "Clear filters") {
-		t.Error("Clear filters without a filter")
+	if strings.Contains(body, "Clear all") {
+		t.Error("Clear all without a filter")
 	}
 
 	sel := html.UnescapeString(browseGet(a, "/libraries?genre=Mystery", false, nil).Body.String())
@@ -390,8 +390,8 @@ func TestLibraryGenres(t *testing.T) {
 		t.Errorf("genre=Mystery shows %v", titles)
 	}
 	// The chosen chip toggles off: its address drops the genre, and it says it is on.
-	if !strings.Contains(sel, `aria-current="true"`) || !strings.Contains(sel, `href="/libraries"`) || !strings.Contains(sel, "Clear filters") || !strings.Contains(sel, ">3 books match<") {
-		t.Error("selected genre chip, toggle address, Clear filters or count missing")
+	if !strings.Contains(sel, `aria-current="true"`) || !strings.Contains(sel, `href="/libraries"`) || !strings.Contains(sel, "Clear all") || !strings.Contains(sel, ">3 of 7 books") {
+		t.Error("selected genre chip, toggle address, Clear all or count missing")
 	}
 
 	// AND filter: only the book with both.
@@ -412,7 +412,7 @@ func TestLibraryGenres(t *testing.T) {
 
 	none := browseGet(a, "/libraries?genre=Mystery&genre=Romance", false, nil)
 	nb := html.UnescapeString(none.Body.String())
-	if none.Code != http.StatusOK || !strings.Contains(nb, "No books match these filters") || !strings.Contains(nb, ">Clear filters<") || !strings.Contains(nb, ">0 books match<") {
+	if none.Code != http.StatusOK || !strings.Contains(nb, "No books match these filters") || !strings.Contains(nb, ">Clear all<") || !strings.Contains(nb, ">0 of 7 books") {
 		t.Errorf("no-match state missing: %d", none.Code)
 	}
 	if strings.Contains(nb, "Your shelf is empty") || strings.Contains(nb, `id="library-grid"`) {

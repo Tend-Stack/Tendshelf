@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"html"
 	"image"
 	"image/color"
 	"image/png"
@@ -15,6 +16,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -290,17 +292,20 @@ func TestVisualLibraryFilters(t *testing.T) {
 	tab.Eval(`document.querySelectorAll("#library-grid .ts-card").length`, &total)
 	tab.Eval(`(() => { const i = document.getElementById("fb-title"); i.focus(); i.value = "the"; i.dispatchEvent(new Event("input", {bubbles: true})); })()`, nil)
 	tab.WaitFor(`location.search.includes("title=the")`, 5*time.Second)
-	tab.WaitFor(`Boolean(document.querySelector(".ts-lib-match"))`, 5*time.Second)
+	tab.WaitFor(`Boolean(document.querySelector(".ts-lib-active"))`, 5*time.Second)
 	var got struct {
-		Focus, Match, Links bool
-		Cards               int
-		Value               string
+		Focus, Count, Links, Chip, NoMatchLine bool
+		Cards                                  int
+		Value                                  string
 	}
-	tab.WaitFor(`document.querySelector("#lib-menu-filter a").href.includes("title=the")`, 5*time.Second)
-	tab.Eval(`({focus: document.activeElement && document.activeElement.id === "fb-title", match: /books? match/.test(document.querySelector(".ts-lib-match").textContent),
+	tab.WaitFor(`/ of /.test(document.getElementById("lib-count").textContent)`, 5*time.Second)
+	tab.WaitFor(`document.querySelector("#lib-kind-author [hx-get]").getAttribute("hx-get").includes("title=the")`, 5*time.Second)
+	tab.Eval(`({focus: document.activeElement && document.activeElement.id === "fb-title", count: /^\d+ of \d+ books/.test(document.getElementById("lib-count").textContent),
 		links: document.querySelector("#lib-menu-show a").href.includes("title=the"),
+		chip: document.querySelector(".ts-lib-fchip").getAttribute("aria-label") === "Remove filter: Title \u201cthe\u201d",
+		noMatchLine: Boolean(document.querySelector(".ts-lib-match")),
 		cards: document.querySelectorAll("#library-grid .ts-card").length, value: document.getElementById("fb-title").value})`, &got)
-	if !got.Focus || !got.Match || !got.Links || got.Cards == 0 || got.Cards >= total || got.Value != "the" {
+	if !got.Focus || !got.Count || !got.Links || !got.Chip || got.NoMatchLine || got.Cards == 0 || got.Cards >= total || got.Value != "the" {
 		t.Errorf("after typing: %+v (cards before %d)", got, total)
 	}
 	tab.Screenshot(filepath.Join(out, "browse-filter-title-1440.png"))
@@ -315,17 +320,18 @@ func TestVisualLibraryFilters(t *testing.T) {
 			t.Errorf("%d px, %s: the page scrolls sideways", w, step)
 		}
 	}
-	menuCheck := func(t *testing.T, tab *cdp.Tab, w int, id string, groups int) {
+	// menuCheck: one menu open, inside the screen, every link at least 44 px tall.
+	menuCheck := func(t *testing.T, tab *cdp.Tab, w int, id string) {
 		t.Helper()
 		var m struct {
 			Inside, Tall bool
-			Open, Groups int
+			Open         int
 		}
 		tab.Eval(`(() => { const body = document.querySelector("#`+id+` .ts-chipmenu__body"), r = body.getBoundingClientRect();
-			const items = [...body.querySelectorAll("a")];
+			const items = [...body.querySelectorAll("a, summary")];
 			return {inside: r.left >= 0 && r.right <= innerWidth, tall: items.length > 1 && items.every(a => a.getBoundingClientRect().height >= 43.5),
-			open: document.querySelectorAll("details[data-ts-chipmenu][open]").length, groups: body.querySelectorAll(".ts-chipmenu__group").length}; })()`, &m)
-		if !m.Inside || !m.Tall || m.Open != 1 || m.Groups < groups {
+			open: document.querySelectorAll("details[data-ts-chipmenu][open]").length}; })()`, &m)
+		if !m.Inside || !m.Tall || m.Open != 1 {
 			t.Errorf("%d px: %s %+v", w, id, m)
 		}
 	}
@@ -341,37 +347,98 @@ func TestVisualLibraryFilters(t *testing.T) {
 
 		tab.Eval(`document.querySelector("#lib-menu-filter summary").click()`, nil)
 		tab.WaitFor(`Boolean(document.querySelector("#lib-menu-filter[open] .ts-chipmenu__body"))`, 3*time.Second)
-		menuCheck(t, tab, w, "lib-menu-filter", 1)
 		noOverflow(t, tab, w, "filter menu")
 		shot("menu")
 
-		// Author: the kind opens its own menu, with the focus on its chip.
-		tab.Eval(`document.querySelector('#lib-menu-filter a[href*="add=author"]').click()`, nil)
-		tab.WaitFor(`location.search.includes("add=author") && Boolean(document.querySelector("#lib-menu-author[open]"))`, 5*time.Second)
-		tab.WaitFor(`document.activeElement === document.querySelector("#lib-menu-author summary")`, 3*time.Second)
-		menuCheck(t, tab, w, "lib-menu-author", 1)
-		noOverflow(t, tab, w, "author menu")
-		shot("add")
+		// Author: opening the kind loads its list inside the one menu; nothing else opens.
+		tab.Eval(`document.querySelector("#lib-kind-author summary").click()`, nil)
+		tab.WaitFor(`Boolean(document.querySelector("#lib-kind-author[open] .ts-chipmenu__list a[href*='author=']"))`, 5*time.Second)
+		menuCheck(t, tab, w, "lib-menu-filter")
+		noOverflow(t, tab, w, "author list")
+		shot("kind")
+		// Opening Length closes Author (one name).
+		tab.Eval(`document.querySelector("#lib-kind-length summary").click()`, nil)
+		tab.WaitFor(`!document.querySelector("#lib-kind-author").open`, 3*time.Second)
+		tab.Eval(`document.querySelector("#lib-kind-author summary").click()`, nil)
+		tab.WaitFor(`Boolean(document.querySelector("#lib-kind-author[open] .ts-chipmenu__list a[href*='author=']"))`, 3*time.Second)
 
-		tab.Eval(`document.querySelector("#lib-menu-author .ts-chipmenu__body a[href*='author=']").click()`, nil)
-		tab.WaitFor(`location.search.includes("author=") && Boolean(document.querySelector("#lib-menu-author.is-on"))`, 5*time.Second)
+		tab.Eval(`document.querySelector("#lib-kind-author .ts-chipmenu__list a[href*='author=']").click()`, nil)
+		tab.WaitFor(`location.search.includes("author=") && Boolean(document.querySelector(".ts-lib-active .ts-lib-fchip"))`, 5*time.Second)
 		noOverflow(t, tab, w, "author chosen")
 		shot("author")
 
 		tab.Eval(`document.querySelector("#lib-menu-show summary").click()`, nil)
 		tab.WaitFor(`Boolean(document.querySelector("#lib-menu-show[open] .ts-chipmenu__body"))`, 3*time.Second)
-		menuCheck(t, tab, w, "lib-menu-show", 2)
+		menuCheck(t, tab, w, "lib-menu-show")
 		noOverflow(t, tab, w, "show menu")
 		shot("show")
+
+		tab.Eval(`document.querySelector("#lib-menu-sort summary").click()`, nil)
+		tab.WaitFor(`Boolean(document.querySelector("#lib-menu-sort[open] .ts-chipmenu__body"))`, 3*time.Second)
+		menuCheck(t, tab, w, "lib-menu-sort")
+		noOverflow(t, tab, w, "sort menu")
+		shot("sort")
 		if w == 1440 {
 			tab.Eval(`document.dispatchEvent(new KeyboardEvent("keydown", {key: "Escape", bubbles: true}))`, nil)
 			tab.WaitFor(`document.querySelectorAll("details[data-ts-chipmenu][open]").length === 0 && document.activeElement.tagName === "SUMMARY"`, 3*time.Second)
-			tab.Eval(`document.querySelector("#lib-menu-show summary").click()`, nil)
-			tab.WaitFor(`Boolean(document.querySelector("#lib-menu-show[open]"))`, 3*time.Second)
+			tab.Eval(`document.querySelector("#lib-menu-sort summary").click()`, nil)
+			tab.WaitFor(`Boolean(document.querySelector("#lib-menu-sort[open]"))`, 3*time.Second)
 		}
 		// Sorting is a plain link too: Title orders the list and keeps the author.
-		tab.Eval(`[...document.querySelectorAll("#lib-menu-show .ts-chipmenu__body a")].find(a => a.textContent.trim() === "Title").click()`, nil)
+		tab.Eval(`[...document.querySelectorAll("#lib-menu-sort .ts-chipmenu__body a")].find(a => a.textContent.trim() === "Title").click()`, nil)
 		tab.WaitFor(`location.search.includes("sort=title") && location.search.includes("author=")`, 5*time.Second)
+		tab.WaitFor(`document.querySelector("#lib-menu-sort summary").textContent.includes("Sort: Title")`, 3*time.Second)
 		noOverflow(t, tab, w, "sorted")
+
+		// The chip removes only the author and keeps the sort; the row goes.
+		tab.Eval(`document.querySelector(".ts-lib-active .ts-lib-fchip").click()`, nil)
+		tab.WaitFor(`!location.search.includes("author=") && location.search.includes("sort=title") && !document.querySelector(".ts-lib-active")`, 5*time.Second)
+	}
+}
+
+// TestVisualLibraryActiveRow captures the filter row with three filters and long names at four widths
+// in dark and light, and fails on sideways scrolling or targets under 44 px in the row.
+func TestVisualLibraryActiveRow(t *testing.T) {
+	b := chromium(t)
+	app := newTestApp(t)
+	app.owner(t)
+	f := browseSeed(t, app, 40)
+	long, narr, ser := "Bartholomew Featherstonehaugh-Wetherby", "Wilhelmina Sutherland-Montgomery", "The Chronicles of the Seven Distant Lighthouses"
+	for i := 0; i < 5; i++ {
+		librarytest.AddBook(t, app.lib, f, librarytest.BookSpec{Title: fmt.Sprintf("Lighthouse Book %d", i+1), Authors: []string{long}, Narrators: []string{narr},
+			Series: ser, Sequence: strconv.Itoa(i + 1), Genres: []string{"Mystery"}, DurationMs: 3 * 3_600_000, AddedAt: int64(100+i) * 1000})
+	}
+	base := themedServer(t, app.signedIn(t))
+	out := visualDir(t, "chromium")
+	id := func(kind, name string) string {
+		raw := html.UnescapeString(browseGet(app, "/hx/library-facets/"+kind, true, nil).Body.String())
+		m := regexp.MustCompile(`href="[^"]*` + kind + `=([^&"]+)[^"]*"[^>]*><span class="ts-chipmenu__name">` + regexp.QuoteMeta(name)).FindStringSubmatch(raw)
+		if m == nil {
+			t.Fatalf("no %s %q in the list", kind, name)
+		}
+		return m[1]
+	}
+	query := "/libraries?author=" + id("author", long) + "&series=" + id("series", ser) + "&genre=Mystery&sort=title"
+	for _, theme := range [...]string{"dark", "light"} {
+		for _, w := range [...]int{390, 768, 1024, 1440} {
+			t.Run(fmt.Sprintf("%s-%d", theme, w), func(t *testing.T) {
+				tab := b.NewTab(w, 900, w == 390, false)
+				tab.Navigate(base + query + "&theme=" + theme)
+				tab.WaitFor(`window.htmx !== undefined`, 5*time.Second)
+				var m struct {
+					Over  bool
+					Chips int
+					Small []string
+					Count string
+				}
+				tab.Eval(`({over: document.documentElement.scrollWidth > innerWidth, chips: document.querySelectorAll(".ts-lib-fchip").length,
+					small: [...document.querySelectorAll(".ts-lib-active a")].filter(a => a.getBoundingClientRect().height < 43.5).map(a => a.textContent.trim()),
+					count: document.getElementById("lib-count").textContent})`, &m)
+				if m.Over || m.Chips != 3 || len(m.Small) > 0 || !strings.Contains(m.Count, " of ") {
+					t.Errorf("%+v", m)
+				}
+				tab.Screenshot(filepath.Join(out, fmt.Sprintf("browse-libfilter-row-%s-%d.png", theme, w)))
+			})
+		}
 	}
 }

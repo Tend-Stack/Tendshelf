@@ -68,6 +68,10 @@ const (
 	libCategoryAny  = "Any category"
 	libCategoryMore = "%s +%d"
 	libSortHeading  = "Sort by"
+	// New (filters rework): the Sort chip, the active filter row and its links.
+	libSortLabel    = "Sort"
+	libRemoveFilter = "Remove filter"
+	libClearAll     = "Clear all"
 	// NEW (B2): the Format filter and the card's length slot for an ebook.
 	libFormat    = "Format"
 	libFormatAny = "Any format"
@@ -79,16 +83,15 @@ var browseFormatOptions = []struct{ Value, Label string }{
 	{library.BookAudio, "Audiobooks"}, {library.BookText, "Ebooks"},
 }
 
-// browseSortChip is the short form of a sort on the Show chip ("Show · By title"); the default
-// order adds nothing.
-var browseSortChip = map[library.Sort]string{
-	library.SortTitle: "By title", library.SortAuthor: "By author", library.SortDuration: "By length",
-}
-
 // browseHeaderLine is the line under the Library title, from the board: "912 books · 3 folders ·
-// 8,240 hours". Only a person who manages libraries sees the folders.
-func browseHeaderLine(t library.Totals, folders bool) string {
-	parts := []string{browseCount(t.Books)}
+// 8,240 hours". Only a person who manages libraries sees the folders. While a filter is on it reads
+// "15 of 912 books": the page's one count.
+func browseHeaderLine(t library.Totals, folders, filtered bool, matches int) string {
+	books := browseCount(t.Books)
+	if filtered {
+		books = thousands(matches) + " of " + books
+	}
+	parts := []string{books}
 	if folders {
 		if t.Folders == 1 {
 			parts = append(parts, "1 folder")
@@ -103,14 +106,6 @@ func browseHeaderLine(t library.Totals, folders bool) string {
 		parts = append(parts, thousands(h)+" hours")
 	}
 	return strings.Join(parts, " · ")
-}
-
-// browseMatch is the count of a filtered list, from the board: "16 books match".
-func browseMatch(n int) string {
-	if n == 1 {
-		return "1 book matches"
-	}
-	return thousands(n) + " books match"
 }
 
 // browseLengthOptions are the length buckets in the order the menu lists them.
@@ -134,8 +129,7 @@ func browseEmpty(kind, clearHref string) *pages.EmptyView {
 	case "nothing-shared":
 		return &pages.EmptyView{Kind: kind, Title: browseNothingSharedHead, Body: browseNothingSharedBody}
 	case "no-match":
-		// "Clear filters" sits right above, in the match line, so the empty state does not repeat it.
-		return &pages.EmptyView{Kind: kind, Title: browseNoMatchTitle, Body: browseNoMatchBody}
+		return &pages.EmptyView{Kind: kind, Title: browseNoMatchTitle, Body: browseNoMatchBody, ActionLabel: libClearAll, ActionHref: clearHref}
 	}
 	return nil
 }
