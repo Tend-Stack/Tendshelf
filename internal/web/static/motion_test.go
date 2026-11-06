@@ -108,7 +108,7 @@ func TestCSSBudget(t *testing.T) {
 		// M3c B3: the phone action bar wraps at large text.
 		"css/pages-desktop.css": {3*1024 + 128, 24 * 1024}, // the root scrollbar below the title bar (decision 0023): 3,134 B measured, reported, not squeezed
 		"css/pages-home.css":    {3*1024 + 128, 24 * 1024}, // the spine title rule: 3,153 B measured, reported, not squeezed (operator pre-approval of reasonable raises)
-		"css/pages-book.css":    {3*1024 + 128, 24 * 1024}, // M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
+		"css/pages-book.css":    {3*1024 + 512, 24 * 1024}, // download progress bar: 3,452 B measured, reported, not squeezed; M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
 		"css/motion.css":        {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
 		"css/player.css": {4*1024 + 128, 24 * 1024}, // L1: the speed sheet note, 4,156 B measured (operator pre-approval of raises, 2026-11-05)
@@ -337,7 +337,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// A5b (ask, rewound, answer; operator approved the raise, 2026-11-06): 2,816 B set, measured 2,673 B, reported.
 	"native-audio.js": {2*1024 + 768, 8 * 1024},
 	// A7 (the Download button in the app's window, driven by the app): written for reading with its comments, reported.
-	"native-downloads.js": {1*1024 + 512, 8 * 1024},
+	"native-downloads.js": {2 * 1024, 8 * 1024},
 	// Decision 0023 (X2, operator 2026-11-05): the desktop app's title bar script, loaded only under ts_shell=desktop; 2,816 B approved.
 	// X4 (now playing, the More menu's switch, the theme): 3,578 B measured with its comments intact, 3,584 B set; over the approved 2,816 B, reported for the operator.
 	// X5 (drop a book: the zone, the hand-over to the uploader, two sets of words): 4,667 B measured with its comments intact, 4,736 B set; reported for the operator.
@@ -396,7 +396,7 @@ var jsAndroidFiles = map[string]bool{"native-audio.js": true, "native-downloads.
 
 // jsAndroidTotalGzip bounds the Android-only scripts together (operator approval for about 2 KB, 2026-11-06).
 // A7 adds native-downloads.js (the plan's budget note allows the raise): 4,096 B set; measured 3,983 B (native-audio.js plus native-downloads.js).
-const jsAndroidTotalGzip = 4 * 1024
+const jsAndroidTotalGzip = 4*1024 + 512 // download progress: 4,396 B measured, reported, not squeezed
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()
