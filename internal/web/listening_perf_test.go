@@ -168,22 +168,28 @@ VALUES (?, ?, 1, 1, ?, ?, ?, 'dev')`, u, books[rng.Intn(len(books))], day.UnixMi
 	if err := tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	run := func() time.Duration {
-		begin := time.Now()
-		rec := a.do(http.MethodGet, "/me/listening?range=year", nil, nil, owner)
-		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Year by year") {
-			t.Fatalf("page = %d", rec.Code)
+	// The year view and the listening history (first page and a later page by cursor) share the data.
+	for _, c := range []struct{ path, want string }{
+		{"/me/listening?range=year", "Year by year"},
+		{"/me/listening/history", "Go back here"},
+	} {
+		run := func() time.Duration {
+			begin := time.Now()
+			rec := a.do(http.MethodGet, c.path, nil, nil, owner)
+			if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), c.want) {
+				t.Fatalf("%s = %d", c.path, rec.Code)
+			}
+			return time.Since(begin)
 		}
-		return time.Since(begin)
-	}
-	run() // warm-up
-	var ms []float64
-	for i := 0; i < 5; i++ {
-		ms = append(ms, float64(run().Microseconds())/1000)
-	}
-	sort.Float64s(ms)
-	t.Logf("GET /me/listening?range=year on 4 x ~33,000 sessions (cpu %s): runs %v ms, median %.1f ms (budget 150 ms)", sweepCPUModel(), ms, ms[2])
-	if ms[2] > 150 {
-		t.Fatalf("median %.1f ms is over the 150 ms budget", ms[2])
+		run() // warm-up
+		var ms []float64
+		for i := 0; i < 5; i++ {
+			ms = append(ms, float64(run().Microseconds())/1000)
+		}
+		sort.Float64s(ms)
+		t.Logf("GET %s on 4 x ~33,000 sessions (cpu %s): runs %v ms, median %.1f ms (budget 150 ms)", c.path, sweepCPUModel(), ms, ms[2])
+		if ms[2] > 150 {
+			t.Fatalf("%s: median %.1f ms is over the 150 ms budget", c.path, ms[2])
+		}
 	}
 }

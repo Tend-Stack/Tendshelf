@@ -50,6 +50,9 @@ func listeningView(in listeningIn) pages.ListeningView {
 		Back: listenBack, BackHref: "/me", Title: listenTitle, Lead: statsPrivate, RangeLabel: listenRangeLabel,
 		PeriodLabel: periodLabel(p),
 	}
+	if l.Ever {
+		v.HistoryLabel, v.HistoryHref = timelineLink, "/me/listening/history"
+	}
 	if !l.Ever {
 		v.Empty = &pages.ListeningEmpty{Title: listenEmptyTitle, Body: listenEmptyBody, Action: listenEmptyAction, Href: "/libraries"}
 		return v
