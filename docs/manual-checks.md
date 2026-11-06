@@ -220,3 +220,24 @@ Needs a real KOReader (e-reader or desktop build), an EPUB and a PDF that are in
 | 4 | Do steps 2 and 3 with the PDF. | Pushing sets the reading place; pulling jumps to the page matching the Tendshelf place. | |
 | 5 | Turn the key off in Your devices, then push again. | KOReader reports that the login failed. | |
 
+## Desktop app on your own computer (X4 to X6)
+
+Needs the desktop build on a real Linux session with a sound card, a keyboard with media keys and a tray or panel that shows StatusNotifierItem icons, and a server with one audiobook and one ebook. Run the CGO build first (`make desktop-cgo`), then the CGO-free one (`make desktop`) for the last row. Nothing is marked passed until you run it.
+
+| # | Step | Expected | Result |
+| --- | --- | --- | --- |
+| 1 | Open a book and press play in the window. | Sound comes from the speakers. The bar, the tray and the Now playing panel show the same book and chapter. | |
+| 2 | Press the keyboard's Play/Pause, Next and Previous keys with the window in front, then with another application in front. | The book pauses, resumes and skips by the same seconds as the on-screen buttons, in both cases. | |
+| 3 | Minimise the window (or close it with Keep playing on) and press Play/Pause. | The hidden window keeps playing sound and the key still pauses it. | |
+| 4 | Click the tray icon, then Pause, Skip back and Skip forward in its menu. | The menu names the book. Each item acts once on the book. | |
+| 5 | Let a short book end, or set the sleep timer to stop it, with the window behind another one. Click the notification. | A notification appears at the end. Clicking it brings the window to the front. | |
+| 6 | In Files (Nautilus), drag one audiobook file onto the window, as an owner or admin of a library with uploads on. | Add books opens with the file chosen and the upload can start. | |
+| 7 | Drag a whole folder onto the window. | A toast says folders are not accepted; nothing is uploaded. | |
+| 8 | Drag a copy-protected file (`.aax`) onto the window. | It is refused with the Add books words and nothing is sent. | |
+| 9 | Press Ctrl+Q. | The window and the tray icon close, and the process exits (no leftover `tendshelf-desktop` in the process list). | |
+| 10 | Look at the app icon on the panel or dock and in the tray at 16 px and at 22 px. | Both are recognisable and not blurred, on a dark and a light panel. | |
+| 11 | Log in to an X11 session (not Wayland) and repeat steps 1, 2, 4, 9. | The title bar, drag, resize edges and maximise work; the tray and keys behave the same. | |
+| 12 | Open the app in real WebKit and play a book through the bar, the tray and the sleep timer. | `desktop-shell.js` reports the state to the tray; no console errors in the inspector. | |
+| 13 | On the CGO-free build, play a book for one hour with the window visible, seeking and pausing a few times. | No crash, hang or sound dropout; the process stays alive (the risk is WebKitGTK's garbage collector signal through purego). | |
+
+Do not switch `make desktop` to the CGO-free build until row 13 is recorded.
