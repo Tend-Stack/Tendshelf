@@ -32,9 +32,9 @@ var (
 var mergeBookRows = []string{
 	`INSERT INTO progress(user_id, book_id, position_ms, duration_ms, finished_at, client_updated_at, server_updated_at, device_id, device_label)
   SELECT user_id, :to, CASE WHEN :dur > 0 THEN MIN(position_ms, :dur) ELSE position_ms END, CASE WHEN :dur > 0 THEN :dur ELSE duration_ms END,
-    finished_at, client_updated_at, server_updated_at, device_id, device_label FROM progress WHERE book_id = :from AND true
+    finished_at, client_updated_at, :now, device_id, device_label FROM progress WHERE book_id = :from AND true
   ON CONFLICT(user_id, book_id) DO UPDATE SET position_ms = excluded.position_ms, duration_ms = excluded.duration_ms,
-    finished_at = excluded.finished_at, client_updated_at = excluded.client_updated_at, server_updated_at = excluded.server_updated_at,
+    finished_at = excluded.finished_at, client_updated_at = excluded.client_updated_at, server_updated_at = :now,
     device_id = excluded.device_id, device_label = excluded.device_label
   WHERE excluded.client_updated_at > progress.client_updated_at`,
 	`UPDATE listening_sessions SET book_id = :to WHERE book_id = :from`,
@@ -42,6 +42,10 @@ var mergeBookRows = []string{
 	`UPDATE OR IGNORE book_settings SET book_id = :to WHERE book_id = :from`,
 	`UPDATE OR IGNORE grants SET book_id = :to WHERE book_id = :from`,
 	`UPDATE share_links SET book_id = :to WHERE book_id = :from`,
+	// An uploaded ebook the kept book already has (same bytes) would break ebook_files_upload_once: drop the dropped
+	// copy's row and keep the kept book's. Upload rows have no library path and the bytes stay, shared by the kept row.
+	`DELETE FROM ebook_files WHERE book_id = :from AND origin = 'upload' AND sha256 IN
+    (SELECT sha256 FROM ebook_files k WHERE k.book_id = :to AND k.origin = 'upload')`,
 	// Ebook files attached to the dropped copy become editions of the kept one; the one-default-per-book rule holds.
 	`UPDATE ebook_files SET book_id = :to, merged_from = COALESCE(merged_from, :from), updated_at = :now,
     book_default = CASE WHEN book_default = 1 AND NOT EXISTS (SELECT 1 FROM ebook_files k WHERE k.book_id = :to AND k.book_default = 1)
@@ -169,6 +173,25 @@ func (r *Repo) RestoreMergedFolder(ctx context.Context, rootPath, userID string)
 // it to keep those folders out.
 func (r *Repo) MergedFolders(ctx context.Context, libraryID string) (map[string]string, error) {
 	rows, err := r.st.Reader().QueryContext(ctx, `SELECT root_path, to_id FROM merged_folders WHERE library_id = ?`, libraryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var p, to string
+		if err := rows.Scan(&p, &to); err != nil {
+			return nil, err
+		}
+		out[p] = to
+	}
+	return out, rows.Err()
+}
+
+// MergedFolders lists the merged-away folders of a library inside the transaction, as root path to the kept
+// book's id. The scan applies its diff with it, so a merge made after the walk still keeps its folder out.
+func (t *Tx) MergedFolders(libraryID string) (map[string]string, error) {
+	rows, err := t.tx.QueryContext(t.ctx, `SELECT root_path, to_id FROM merged_folders WHERE library_id = ?`, libraryID)
 	if err != nil {
 		return nil, err
 	}

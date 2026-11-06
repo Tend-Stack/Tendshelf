@@ -967,6 +967,16 @@ share-link pages stay in link mode and never call it). Tests: `TestSeriesNext`. 
   replace.
 - **A2 Shell** (2026-11-06, branch `pkg-a2`). Scope: connect flow (address page, https then http, one plain-http warning per origin), PKCE sign-in through the server's own page, the code taken by `shouldOverrideUrlLoading` on the 303 to `/app/connect/done` (the plan's guess held on the emulator: the callback fired for the redirect GET with `isRedirect=true` right after `POST /app/connect`, so the `shouldInterceptRequest` fallback was not needed), Keystore-held token (`TokenStore`), `AuthApi`, bundled start and offline pages through `WebViewAssetLoader` (no script), one navigation policy `shared/Navigation.kt`, sign-out that wipes token, cookies, storage, cache and history, file saves through the Storage Access Framework, parent-padding insets, back through `OnBackInvokedDispatcher`. Server S1: `/healthz` has `"connect":"1"`. Tools: `android/tools/test-server.sh`, `internal/testutil/androidseed`, debug-only `DebugProbe`. Dependency: `androidx.webkit` 1.18.0. Limits: bookmark export and book upload through the picker and a keyboard over a field were not exercised on the emulator; the release APK's ignoring of start extras was checked only by what it did not do (no request, no playback). Next step: A4.
 
+## Pre-release review fixes: library merge, scan, duplicates, health (2026-11-06)
+
+Branch `pkg-fix-library`. Reused `MergeRowsSQL`, `merged_folders`, `Repo.Duplicates`, `Repo.HealthPage`; extended, nothing parallel.
+- Merge now sets `updated_at` / `server_updated_at` to now on moved progress, reading places, bookmarks and highlights (`TestDupMergeBumpsSyncClocks`); the Android outbox already follows `merged_books` (`resolveBook`), unchanged.
+- Merge no longer fails when both copies hold the same uploaded ebook: the dropped copy's colliding `ebook_files` row is deleted first, the kept one stays (`TestDupMergeSameUploadedEbookOnBoth`). No file is touched.
+- Scan re-reads `merged_folders` inside the apply transaction (`TestMergedDuringScanKeepsFolderOut`).
+- `/admin/duplicates` groups by file signature in SQL, signs only books that share file count and size, and reads full rows only for the copies in a group: at 100,000 books x 12 files, 1.85 s and 466 MB became about 1.0 s and 139 MB (`TENDSHELF_TEST_PERF=1 go test ./internal/library -run TestPerf`).
+- Migration 0032 `book_health_index` (`books(folder_id, missing_since)`); the Libraries page asks `HealthTotal` (counts only, no preview rows). At 100,000 missing books the "missing" group went from 146 ms to 42 ms here (the review's 5.4 s was not reproduced on this machine); the page's total is about 90 ms.
+- Limits: timings are one machine; the review's 4.96 s / 5.4 s figures were not reproduced.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID

@@ -140,6 +140,7 @@ a browser session send `X-CSRF-Token`; a device token needs none. Order of check
 `{"items":[...],"next":string|null,"serverNow":ms}`, oldest change first, keyset-paged: follow `next` until it is
 null. Keep `serverNow` (less a few seconds for clock drift) as the next `since`. `since` is exclusive, default 0;
 a negative or non-numeric value is 400 `since`; a bad `cursor` is 400 `cursor`; `limit` 1..500, default 100.
+When the owner merges two copies of an audiobook, the places, bookmarks and highlights that move to the kept book get a new server time (now), so a phone asking with `since` receives them under the kept book's id; an offline phone's queued saves for the dropped id still land on the kept book.
 
 ### GET /api/v1/progress?since=&cursor=&limit=
 Progress rows whose server time is after `since`. Item shape as `progress` under the book endpoint (with `bookId`).
