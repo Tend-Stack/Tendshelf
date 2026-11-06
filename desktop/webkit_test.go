@@ -1,4 +1,4 @@
-//go:build linux && purego && !gtk3
+//go:build linux && !gtk3
 
 package main
 
@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// TestWindowUniquePath checks the CGO-free twin of ts_unique_path: a bare file name, and " (n)" before
+// TestWindowUniquePath checks the rule for a download name: a bare file name, and " (n)" before
 // the extension when the name is taken.
 func TestWindowUniquePath(t *testing.T) {
 	dir := t.TempDir()
