@@ -11,6 +11,26 @@ The read side is documented here (P3-9a); the sync side (progress, bookmarks) is
   `DELETE /api/v1/auth/token` signs the calling device out (204). A token works only under `/api/v1/`, is checked
   in the database on every request, and ends when the device is signed out, the person is disabled or the
   password changes. `GET /api/v1/me` answers `{"user","device"}`.
+- **Sign-in with a code** (the phone app, [decision 0026](decisions/0026-app-sign-in.md)): the app opens the server's
+  `/app/connect?challenge=` page inside its window; after the person signs in and taps Connect, the window takes a one-time
+  code from the redirect. `POST /api/v1/auth/token` with `{"code","verifier","name","kind":"mobile"}` (optionally with a bearer
+  token) trades it. The challenge is base64url (no padding) of the SHA-256 of the verifier; the verifier is 32 random bytes in
+  base64url, 43 characters (PKCE S256). A code lives 2 minutes, works once, and any wrong try burns it.
+
+  | Case | Answer |
+  | --- | --- |
+  | Good code, no bearer | `201 {"token","device","user"}`; the new window session is bound to the new device |
+  | Good code, bearer of the same person, kind `mobile` | `200 {"device","user"}` (no `token`): the session is bound to that device |
+  | `code` together with `username` or `password` | `400 invalid`, field `code` |
+  | `kind` is not `mobile` | `400 invalid`, field `kind` |
+  | Unknown, used, expired, wrong verifier, malformed, session gone, account disabled | `401 unauthorized`, always "This sign-in has expired. Start again from the app."; counts against the address |
+  | Bearer of another person, or not a `mobile` device | `409 conflict`; the code is burned |
+  | Dead bearer | `401` from the bearer check; the code is not used |
+  | The person already holds 50 apps | `409 conflict` (a reconnect still works) |
+  | 10 failures in 15 minutes from one address | `429 rate_limited` with `Retry-After`, before any lookup |
+
+  Ending the device (sign-out, admin revoke, password change, disabling the person, `DELETE /api/v1/auth/token`) also ends the
+  bound window session on its next request. A session that merely expires leaves the token alive.
 - **Browser session**: the `ts_session` cookie plus the CSRF token on unsafe methods. GET needs no token.
 - A request with both a bearer token and a session cookie is refused: `400 invalid`.
 - No credential: `401 unauthorized` (JSON, `WWW-Authenticate: Bearer`), never a redirect.
@@ -79,6 +99,7 @@ as on the page. Errors: 400 `limit` or `cursor`; 404 for a library the person ca
 `{"book":BookCard,"description","publisher","language","abridged","explicit","series":[...],"genres":[],"tags":[],"chapters":[{"idx","startMs","endMs","title"}],"files":[{"id","idx","offsetMs","durationMs","size","mime","needsCompat","playable","streamUrl","peaksUrl"}],"parts","missingParts","refused","missing","permissions":{"listen","download"},"progress":{...}|null}`.
 `files` and `progress` are empty/null unless the person may listen and the book is neither refused nor missing.
 `progress` is `{"bookId","positionMs","durationMs","finished","finishedAt","clientUpdatedAt","serverUpdatedAt","deviceId","deviceLabel"}`.
+`speed` is the person's own speed for this book, else their usual speed.
 `streamUrl` is `/api/v1/stream/{fileId}` (supports `Range`; `?compat=1` asks for a browser-friendly copy and
 answers 503 with `Retry-After` while it is made); `peaksUrl` is `/api/v1/peaks/{fileId}`. ETag. Errors: 404.
 
@@ -180,7 +201,10 @@ holds 100 books or the book has no file Tendshelf can play (refused, missing or 
 ### POST /api/v1/queue/next
 Autoplay: takes the first playable book off the front of the queue and answers `{"book":BookCard}`. Body optional
 (an empty body is fine), `{"ended":"<book id>"}` names the book that just finished; it is removed from the queue first.
-Books the person can no longer open or that cannot play are skipped. Nothing left to play: 204. Errors: 400 `ended`
+Books the person can no longer open or that cannot play are skipped. The answer carries `"source":"queue"`. Nothing left to play: 204.
+With `"series":true` (and `ended`), an empty queue falls through to the next book of `ended`'s first series that the person may
+listen to, when their "next in series" setting is on: `{"book":BookCard,"source":"series"}`. The queue is not touched by this
+branch. The last book, a text book, a hidden next book (it is skipped without a trace), the setting off, or no `series`: 204. Errors: 400 `ended`
 (longer than 64 characters), 415, 413, 400.
 
 ### POST /api/v1/queue/{bookID}/move
@@ -189,6 +213,28 @@ over; at either end nothing changes. 200 with the whole queue. 400 `dir`; 404 wh
 
 ### DELETE /api/v1/queue/{bookID}
 Takes the book off the queue: 204. 404 when the book is not queued or not visible.
+
+## App settings, per-book speed and Continue
+
+### GET /api/v1/settings, PATCH /api/v1/settings
+`{"speed","skipBackS","skipForwardS","autoRewind","nextInSeries"}`, `no-store`. PATCH takes any of the same keys (body at most
+4 KiB), keeps the rest, saves and answers the same shape. Unknown keys are ignored; the theme, text size and account settings are
+not here. A bad value is `400 invalid` with `field` set to the first bad key in the order above (nothing is saved): `speed` 0.5 to 3
+in steps of 0.05, `skipBackS` and `skipForwardS` 10, 15, 30 or 60, the two flags true or false. An empty body object is 200.
+
+### PUT /api/v1/books/{id}/speed
+`{"speed":1.5,"asUsual":false}`: remembers the person's speed for one book (204). With `asUsual` it becomes the usual speed and
+the book's own is dropped. 400 `speed`; 404 for a book the person cannot listen to (checked before the body).
+
+### GET /api/v1/continue?limit=
+`limit` 1 to 24 (default 12), otherwise `400 invalid` field `limit`. `{"items":[{"book":BookCard,"positionMs","durationMs","updatedAt"}]}`,
+`no-store`: audiobooks the person started and did not finish, most recent first. Books they may not listen to never appear.
+
+## The Connect page (not `/api/v1`)
+`GET /app/connect?challenge=`, `POST /app/connect` (hidden `challenge` and `_csrf`) and `GET /app/connect/done` are pages for the
+Android app's window, behind the sign-in gate and for a browser session only (a bearer token is refused: 401 "Device tokens work only
+for /api/v1"). Without the `ts_shell=android` mark they answer 403 with words and no form. A bad challenge is 404. The POST answers
+`303 /app/connect/done?code=...` (`no-store`); the page at that address never reads its query.
 
 ## OPDS catalogue and app keys (not `/api/v1`)
 

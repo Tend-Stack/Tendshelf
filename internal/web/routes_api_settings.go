@@ -24,7 +24,6 @@ const (
 	apiSettingsBadSpeed = "Speed must be from 0.5 to 3, in steps of 0.05."
 	apiSettingsBadSkip  = "Skip must be 10, 15, 30 or 60 seconds."
 	apiSettingsBadBool  = "This must be true or false."
-	apiSettingsBadNum   = "This must be a number."
 )
 
 func (s *server) registerAPISettings(mux *http.ServeMux) {

@@ -788,6 +788,18 @@ stub channel: an `.aax` is refused with the Add books words and sends nothing; u
 `desktop-shell.js` 4,667 B gzip (row 4,736 B) and the desktop total 5,823 B (ceiling 5,888 B), over the approved 2,816 and 4,096 B and reported; a folder drop and a real
 drag from Files are untested; the bar is kept across boosted visits, so a change of permission shows at the next full load. Next step: X6.
 
+## Android app: A1 server (decision 0026)
+
+**A1 status**: built 2026-11-06 on the branch `pkg-a1`. Plan [plans/android-a1.md](plans/android-a1.md), decision
+[0026](decisions/0026-app-sign-in.md). Scope: migration `0031_device_codes` (`device_codes`, `sessions.device_id`); `auth.IssueDeviceCode`,
+`SwapDeviceCode` and session binding (a revoked, pruned or signed-out device ends its window session; `/logout` and password changes end
+both halves; "sign out everywhere else" from the phone keeps the phone); `POST /api/v1/auth/token` with a code (201, or 200 on reconnect);
+`/app/connect` pages (no new stylesheet, plain form, 303 handoff); `GET`/`PATCH /api/v1/settings`, `PUT /api/v1/books/{id}/speed`,
+`GET /api/v1/continue`, `speed` in the book answer, series next on `POST /api/v1/queue/next` (opt-in); `/sw.js` 404 and `native-audio.js`
+in the Android window, no Downloads link there. Tests: `TestA1*` in `internal/auth`, `internal/db` and `internal/web` (every forbidden case
+of the plan, plus the route-matrix rows and the a11y page rows). Limits: nothing was run on a phone (A2 builds the app); the Connect pages
+are audited through the window-mark link; plain `http` is allowed and warned about. Next: A2, the Kotlin shell that uses this.
+
 ## M7 Research — dropped (decision 0007, 2026-11-02)
 
 ## Next stage (docs/plans/next-stage.md)
