@@ -38,6 +38,18 @@ html[data-shell="desktop"] a[href="/me/downloads"] {
    everything that hugs the top of the window starts below it. */
 html[data-shell="desktop"] { --desktop-bar: var(--size-tap); scroll-padding-top: var(--desktop-bar); }
 html[data-shell="desktop"] body { padding-top: var(--desktop-bar); }
+
+/* The page's own scrollbar starts below the title bar, not through it. WebKitGTK paints the root scrollbar with
+   these pseudo-elements; the track's top margin is the bar's height (2.75rem = --size-tap). Colours are tokens, so
+   all four themes follow; the thumb is --line-strong, 3:1 or more against --ground in each theme. The scrollbar's
+   own lane is the bar's colour with the bar's hairline on its last row, so the bar looks like it runs to the edge. */
+html[data-shell="desktop"] .ts-wbar-host { inset-inline-end: calc(100% - 100vw); }
+html[data-shell="desktop"]::-webkit-scrollbar { width: 0.875rem; height: 0.875rem; background: linear-gradient(var(--line), var(--line)) left 2.6875rem / 100% 0.0625rem no-repeat, var(--ground); }
+html[data-shell="desktop"]::-webkit-scrollbar-track { margin-block-start: 2.75rem; background: var(--ground); }
+html[data-shell="desktop"]::-webkit-scrollbar-corner { background: var(--ground); }
+html[data-shell="desktop"]::-webkit-scrollbar-thumb { min-height: 2.75rem; border: 0.25rem solid var(--ground); border-radius: 0.5rem; background-color: var(--line-strong); background-clip: padding-box; }
+html[data-shell="desktop"]::-webkit-scrollbar-thumb:hover { background-color: var(--ink-subtle); }
+html[data-shell="desktop"]::-webkit-scrollbar-thumb:active { background-color: var(--ink-muted); }
 .ts-wbar-host { position: fixed; z-index: 30; inset: 0 0 auto 0; }
 .ts-wbar { box-sizing: border-box; position: relative; flex: none; display: flex; align-items: center; height: var(--size-tap); padding-inline-start: var(--space-8); background: var(--ground); box-shadow: inset 0 -1px 0 var(--line); color: var(--ink); user-select: none; -webkit-user-select: none; }
 .ts-wbar__brand { display: flex; align-items: center; gap: var(--space-8); flex: none; min-width: 2.75rem; height: 100%; padding-inline-start: var(--space-8); box-sizing: border-box; color: inherit; text-decoration: none; }

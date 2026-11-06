@@ -106,9 +106,10 @@ func TestCSSBudget(t *testing.T) {
 		// M3c B3 adds the hit-area rule and the 200 % text wrapping rules: 3.25 KB (overrun 572 bytes, operator approved 2026-11-04).
 		"css/utilities.css": {3*1024 + 384, 24 * 1024}, // +128 B: no scrollbars on touch screens, iOS WebKit rule (operator, 2026-11-04)
 		// M3c B3: the phone action bar wraps at large text.
-		"css/pages-home.css": {3*1024 + 128, 24 * 1024}, // the spine title rule: 3,153 B measured, reported, not squeezed (operator pre-approval of reasonable raises)
-		"css/pages-book.css": {3*1024 + 128, 24 * 1024}, // M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
-		"css/motion.css":     {2 * 1024, 24 * 1024},
+		"css/pages-desktop.css": {3*1024 + 128, 24 * 1024}, // the root scrollbar below the title bar (decision 0023): 3,134 B measured, reported, not squeezed
+		"css/pages-home.css":    {3*1024 + 128, 24 * 1024}, // the spine title rule: 3,153 B measured, reported, not squeezed (operator pre-approval of reasonable raises)
+		"css/pages-book.css":    {3*1024 + 128, 24 * 1024}, // M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
+		"css/motion.css":        {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
 		"css/player.css": {4*1024 + 128, 24 * 1024}, // L1: the speed sheet note, 4,156 B measured (operator pre-approval of raises, 2026-11-05)
 		// The full player's fit below 1280 px (phone check, 2026-11-02): split from player.css to keep it at 4 KB.
