@@ -98,10 +98,24 @@ class PlaybackService : MediaLibraryService() {
     /** Debug builds only: drive the player from `am startservice` for the emulator checks. */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (BuildConfig.DEBUG && intent?.action == DEBUG_ACTION) {
+            keepAliveForDebug()
             debug(intent)
             return START_NOT_STICKY
         }
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    /**
+     * `am start-foreground-service` demands startForeground within seconds, and the emulator's lock screen
+     * keeps the app in the background. A throwaway notification satisfies that; the media notification takes
+     * over once a book plays, and this one is removed after 10 s. Debug builds only.
+     */
+    private fun keepAliveForDebug() {
+        val nm = getSystemService(android.app.NotificationManager::class.java)
+        nm.createNotificationChannel(android.app.NotificationChannel("debug", "Debug", android.app.NotificationManager.IMPORTANCE_LOW))
+        val n = android.app.Notification.Builder(this, "debug").setSmallIcon(android.R.drawable.ic_media_play).setContentTitle("debug").build()
+        startForeground(4242, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        main.postDelayed({ nm.cancel(4242) }, 10_000)
     }
 
     private fun debug(i: Intent) {
