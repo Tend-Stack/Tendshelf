@@ -168,6 +168,10 @@ templ PlayerFull(m PlayerMsgs) {
 						<output for="ts-speed-fine" class="ts-num" data-ts-speed-out></output>
 						<input id="ts-speed-fine" type="range" min="0.5" max="3" step="0.05" data-ts-speed-range/>
 					</div>
+					<div class="ts-player__forbook">
+						<p>{ m.SpeedForBook }</p>
+						<button type="button" class="ts-btn ts-btn--quiet" data-ts-speed-usual>{ m.SpeedMakeUsual }</button>
+					</div>
 				</section>
 			</div>
 			<div class="ts-player__sheetwrap" data-ts-sleep-sheet hidden>

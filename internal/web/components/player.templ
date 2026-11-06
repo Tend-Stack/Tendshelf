@@ -30,6 +30,7 @@ type PlayerMsgs struct {
 	ScrubBubble, UpNext                                                      string
 
 	// Speed, sleep timer, volume and the bookmark key (P1c-5b).
+	SpeedForBook, SpeedMakeUsual, JumpedFar, JumpedBack, SpeedUsualSet string
 	SpeedValue, SpeedLabel, SpeedFine, SleepTitle, SleepEndOfChapter, SleepMinutes string
 	SleepIn, SleepCustom, SleepCustomLabel, SleepStart, SleepTurnOff, SleepOffLabel string
 	SleepOnLabel, Sleeping, SleepFading, SleepFadingShake, PlusTen, Volume         string
@@ -96,6 +97,9 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 
 		"data-ts-msg-speed-value":         m.SpeedValue,
 		"data-ts-msg-speed-label":         m.SpeedLabel,
+		"data-ts-msg-jumped-far":          m.JumpedFar,
+		"data-ts-msg-speed-usual-set":     m.SpeedUsualSet,
+		"data-ts-msg-jumped-back":         m.JumpedBack,
 		"data-ts-msg-sleep-in":            m.SleepIn,
 		"data-ts-msg-sleep-off-label":     m.SleepOffLabel,
 		"data-ts-msg-sleep-on-label":      m.SleepOnLabel,

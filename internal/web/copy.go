@@ -272,7 +272,7 @@ const (
 	msgBackSeconds    = "Back {n} seconds"
 	msgForwardSeconds = "Forward {n} seconds"
 	msgChapterLeft    = "Chapter {n} · {m} min left"
-	msgRewound        = "Rewound 5 s after your break"
+	msgRewound        = "Rewound {s} s after your break"
 	msgCompatWait     = compatWaitText
 	msgCompatFailed   = "This book can't play in this browser."
 	msgSignedOut      = "You're signed out. Sign in to keep your place."
@@ -346,6 +346,11 @@ const (
 	msgSpeedValue        = "{v}×"
 	msgSpeedLabel        = "Playback speed, {v} times"
 	msgSpeedFine         = "Fine-tune"
+	msgSpeedForBook      = "This speed is for this book. Other books keep your usual speed."
+	msgSpeedMakeUsual    = "Make it my usual speed"
+	msgJumpedFar         = "Jumped too far?"
+	msgJumpedBack        = "Go back"
+	msgSpeedUsualSet     = "This is now your usual speed."
 	msgSleepTitle        = "Sleep timer"
 	msgSleepEndOfChapter = "End of chapter"
 	msgSleepMinutes      = "{n} min"
@@ -384,7 +389,7 @@ func playerMsgs() components.PlayerMsgs {
 		NextChapter: msgNextChapter, Speed: msgSpeed, Sleep: msgSleep, Chapters: msgChapters, Bookmark: msgBookmark,
 		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
 		OpenPlayer: msgOpenPlayer, Resume: playResume, ScrubBubble: msgScrubBubble,
-		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SleepTitle: msgSleepTitle,
+		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SpeedForBook: msgSpeedForBook, SpeedMakeUsual: msgSpeedMakeUsual, JumpedFar: msgJumpedFar, JumpedBack: msgJumpedBack, SpeedUsualSet: msgSpeedUsualSet, SleepTitle: msgSleepTitle,
 		SleepEndOfChapter: msgSleepEndOfChapter, SleepMinutes: msgSleepMinutes, SleepIn: msgSleepIn,
 		SleepCustom: msgSleepCustom, SleepCustomLabel: msgSleepCustomLabel, SleepStart: msgSleepStart,
 		SleepTurnOff: msgSleepTurnOff, SleepOffLabel: msgSleepOffLabel, SleepOnLabel: msgSleepOnLabel,

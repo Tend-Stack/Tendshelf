@@ -109,7 +109,7 @@ func TestCSSBudget(t *testing.T) {
 		"css/pages-book.css": {3*1024 + 128, 24 * 1024}, // M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
 		"css/motion.css":     {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
-		"css/player.css": {4 * 1024, 24 * 1024},
+		"css/player.css": {4*1024 + 128, 24 * 1024}, // L1: the speed sheet note, 4,156 B measured (operator pre-approval of raises, 2026-11-05)
 		// The full player's fit below 1280 px (phone check, 2026-11-02): split from player.css to keep it at 4 KB.
 		"css/player-fit.css": {1024, 24 * 1024},
 		// The phone bubble (operator, 2026-11-03): the same rules for phones and for Larger text up to 959 px.
@@ -301,12 +301,14 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// NP2 adds the hero's Show player to player.js (about 0.2 KB), so its share is 12.5 KB; the all-JS total stays 36 KB.
 	// Q3 (Up next autoplay): 12.75 KB, approved by the operator on 2026-11-03.
 	// M3b (decision 0013): Eyes-free hooks, 13 KB, approved by the operator on 2026-11-04.
-	"player.js": {13 * 1024, 64 * 1024},
+	// L2 (smart rewind curve from the server table) and the toast actions the undo needs: 13.125 KB, measured 13,361 B; operator pre-approval of raises, 2026-11-05.
+	"player.js": {13*1024 + 128, 64 * 1024},
 	// PB2 moved the desktop bar's wave seek and the volume pop into waveform.js: back to 12 KB (12.2 KB measured by gzip -c).
 	// P3-11a: sidePanel() (larger text never uses the side panel) is 12.03 KB, so 12.5 KB; to be approved by the operator.
 	// M3a (decision 0012): the offline bookmark queue; 12.75 KB, approved by the operator on 2026-11-03.
 	// M3b (decision 0013): the Eyes-free menu entry and lazy load, 13.25 KB, approved by the operator on 2026-11-04.
-	"player-full.js": {13*1024 + 256, 64 * 1024},
+	// L1 (the speed sheet saves per book) and L2 (the undo after a big move): 13.75 KB, measured 13,961 B; operator pre-approval of raises, 2026-11-05.
+	"player-full.js": {13*1024 + 704, 64 * 1024},
 	// W2: the waveform drawing (3.0 KB). PB2 folds in the desktop bar's wave (four layers, times, hover,
 	// drag, keys, retry backoff, hairline, volume pop): 7 KB, approved by the operator on 2026-11-02; 7.0 KB measured.
 	"waveform.js": {7 * 1024, 24 * 1024},
@@ -361,7 +363,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // M3b (decision 0013): statistics, Eyes-free and the shake check make it 55.75 KB; approved by the operator on 2026-11-04.
 // Measured together after S, E and K merged: 55.93 KB; the operator approved 56 KB on 2026-11-04.
 // Decision 0015 (adding books by upload): 61.5 KB, approved by the operator on 2026-11-04.
-const jsTotalGzip = 87*1024 + 512 // Firefox hang fix (2026-11-05): 87.5 KB, measured 87.48 KB with comments intact, reported; M6 D2: the operator raised the ceiling to 87 KB (2026-11-05) for desktop.js; before that: operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
+const jsTotalGzip = 88*1024 + 512 // L1+L2 (2026-11-05, operator pre-approved raises): 88.5 KB, measured 90,489 B; before that: 87.5 KB; Firefox hang fix (2026-11-05): 87.5 KB, measured 87.48 KB with comments intact, reported; M6 D2: the operator raised the ceiling to 87 KB (2026-11-05) for desktop.js; before that: operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

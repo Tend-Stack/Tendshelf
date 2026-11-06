@@ -10,7 +10,6 @@ const audio = document.getElementById("audio");
 const slot = document.getElementById("player");
 
 const BREAK_MS = 60000; // a pause this long counts as a break
-const REWIND_AFTER_BREAK_MS = 5000;
 const COMPAT_DEADLINE_MS = 600000; // how long to wait for a converted copy
 const SAVE_EVERY_MS = 10000;
 const FORM_TYPE = "application/x-www-form-urlencoded";
@@ -168,8 +167,8 @@ if (serverToasts) {
 // A toast for the other modules (offline, downloads, the full player). It leaves by itself, 4 s, or 8 s
 // for an error, and a tap dismisses it. It must not rely on the #toasts observer: in the full player
 // or Eyes-free the toast goes into their own region, which nothing else watches (operator, 2026-11-04).
-function timedToast(kind, text) {
-  const el = toast(kind, text);
+function timedToast(kind, text, actions) {
+  const el = toast(kind, text, actions);
   dismissLater(el, kind === "err" ? 8000 : 4000);
   listen(el, "click", () => dismissToast(el));
   return el;
@@ -196,6 +195,7 @@ function parseBook(el) {
     cover: d.coverUrl,
     durationMs: num(d.durationMs),
     autoRewind: d.autoRewind === "1",
+    rewind: (d.rewind || "").split(",").map((step) => step.split(":").map(Number)), // [pause ms, seconds], longest last
     skipBack: num(d.skipBackS) || 15,
     skipForward: num(d.skipForwardS) || 30,
     speed: clamp(num(d.speed) || 1, 0.5, 3),
@@ -434,16 +434,18 @@ function jumpChapter(delta) {
   emit("chapter");
 }
 
-// After a break: rewind a little (a setting) and look for a newer place on another device.
+// After a pause: rewind more the longer it was (a setting; the table comes from the server) and, after a
+// break, look for a newer place on another device.
 function afterBreak() {
   const away = idleAt ? Date.now() - idleAt : 0;
   idleAt = 0;
-  if (away < BREAK_MS) return;
-  if (book.autoRewind && bookPosition() > 0) {
-    seek(Math.max(0, bookPosition() - REWIND_AFTER_BREAK_MS), false);
-    hint(msg("rewound"));
+  let back = 0;
+  for (const [from, seconds] of book.rewind) if (away >= from) back = seconds;
+  if (back && book.autoRewind && bookPosition() > 0) {
+    seek(Math.max(0, bookPosition() - back * 1000), false);
+    hint(fill(msg("rewound"), { s: back }));
   }
-  checkRemote();
+  if (away >= BREAK_MS) checkRemote();
 }
 
 // audio.play() must run synchronously inside the click or key press, or browsers refuse it, so

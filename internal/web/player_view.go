@@ -82,6 +82,12 @@ func (s *server) playerView(ctx context.Context, u users.User, sc library.Scope,
 	if err != nil {
 		return components.PlayerDataView{}, err
 	}
+	// This book's own speed, if the person set one, beats their usual speed.
+	if sp, err := s.users.BookSpeed(ctx, u.ID, book.ID); err == nil {
+		set.Speed = sp
+	} else if !errors.Is(err, users.ErrNoBookSpeed) {
+		return components.PlayerDataView{}, err
+	}
 	v, err := s.bookPlayerView(ctx, sc, book, set, func(sha string) string { return coverURL(book.ID, sha, 512) })
 	if err != nil {
 		return v, err
@@ -134,7 +140,7 @@ func (s *server) bookPlayerView(ctx context.Context, sc library.Scope, book libr
 		ServerNow:  s.now().UnixMilli(),
 		Speed:      strconv.FormatFloat(set.Speed, 'f', 2, 64),
 		SkipBackS:  set.SkipBackS, SkipForwardS: set.SkipForwardS,
-		AutoRewind: set.AutoRewind,
+		AutoRewind: set.AutoRewind, Rewind: rewindAttr(),
 	}
 	if c := d.Card.Cover; c != nil {
 		v.CoverURL = cover(c.SHA)
