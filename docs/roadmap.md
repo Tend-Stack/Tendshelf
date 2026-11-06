@@ -792,6 +792,19 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
   restore steps on the Backups page (owner only). Checks: `TestWholeBackup*` (mirror, retention, disk full,
   read-back, refused folders, service and job errors, routes with forbidden cases, restore into an empty
   folder and start). Limits: no encryption of the backup folder; restore is by copying (no restore button).
+- **S4 Duplicates and merge** (2026-11-06, done). Scope: migration `0026_book_merges` (`merged_folders`,
+  `book_not_duplicates`), `library.MergeRowsSQL` shared with the ebook merge, `Repo.MergeBooks` (one transaction:
+  progress newest wins and capped at the kept length, sessions, queue, book settings, grants, share links, ebook
+  files, shelves, bookmarks, highlights, cover; refused for another library, a busy file write or a book that is
+  not an audiobook), `Repo.Duplicates` (same audio files by size and quick hash, then same title, first author and
+  first narrator within 60 s or 2 %), `MergePreview`, the scan leaving merged folders out (`BooksMerged`), old ids
+  landing on the kept book (page and API redirect, progress and bookmark writes), `/admin/duplicates` with
+  confirm, "Not the same" and "Copies you merged" (show a copy again, then scan). Checks: `TestDup*` (library,
+  every table with a key to books handled on purpose, tiers, scope, merge moves, chain, refusals), `TestMerged*`
+  (scan), `TestDup*` routes (roles, old ids, offline outbox, no right), `TestMigrationBookMerges*`, route matrix
+  rows. Limits: the dropped copy's folder stays on disk and is never deleted; moved data stays on the kept book
+  after "Show that copy again"; no cross-library or multi-way merge; a moved folder reappears as a new book.
+  Words not in the deck are in `docs/copy-additions.md`.
 
 ## Later
 

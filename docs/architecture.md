@@ -99,6 +99,8 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 | `ebook_not_same` (R2) | `ebook_file_id`, `book_id`, `user_id` NULL, `created_at`; PK (`ebook_file_id`, `book_id`) | "Not the same book": keeps folder and automatic pairing from offering that file for that book again. Cascades with the file and the book. |
 | `text_choices` (R2) | `user_id`, `book_id`, `ebook_file_id`, `updated_at`; PK (`user_id`, `book_id`) | A person's edition of a book (replaces the planned `edition.<bookID>` user setting). Removed when the file is unpaired or re-paired. |
 | `merged_books` (B1, 0021) | `from_id` PK, `to_id` (cascade with the book), `merged_at` | A merged-away text book id still answers: `/books/{id}` and `/books/{id}/read` answer 308 to `to_id` when the person may see it; a reading-position save lands on `to_id`. A split deletes the row and reuses the id. |
+| `merged_folders` (S4, 0026) | `root_path` PK, `library_id` (cascade), `from_id`, `to_id` (cascade with the kept book), `merged_by` NULL, `merged_at` | The folder of an audiobook copy that was merged into another. The scan reads it and leaves that folder out (nothing is added, hashed or taken for a moved file) while the merge stands; deleting the kept book frees it. "Show that copy again" deletes the row. |
+| `book_not_duplicates` (S4, 0026) | `a_id`, `b_id` (both cascade; `a_id < b_id`), `created_at`; PK (`a_id`,`b_id`) | "Not the same" on the Duplicates page. |
 | `reading_positions` (B1, 0021) | `user_id`, `book_id`, `edition_id` NULL, `chapter_idx`, `sid`, `off`, `quote`, `char_pos`, `percent_bp` (0..10000), `finished_at`, `client_updated_at`, `server_updated_at`, `device_id`, `device_label`; PK (`user_id`, `book_id`) | The text place of one person in one book (anchor, quote, percent; never a page number). Newest `client_updated_at` wins. Never written by listening, and listening never reads it. Private to `user_id`. |
 | `reading_sessions` (B1, 0021) | `id`, `user_id`, `book_id`, `device_id`, `started_at`, `ended_at`, `chars_read`, `active_ms` | Measures reading speed (`progress.ReadingSpeed`: last 30 sessions of at least a minute, 300 to 3000 characters a minute). A pause over 30 minutes opens a new session. |
 | `edition_chapters` (R1) | `edition_id`, `idx`, `title`, `src`, `front`, `word_count`, `sentence_count`, `text_sha256`; PK (`edition_id`,`idx`) | `text_sha256` over the normalised text drives re-anchoring of changed chapters only. |
@@ -255,6 +257,7 @@ the readable one):
 | `GET /admin/users`, `/admin/users/{id}`; `POST /admin/users/{id}/role`, `/disable`, `/enable`, `/stop`, `/grants`, `/grants/{gid}`, `/grants/{gid}/remove`, `/grants/{gid}/renew` | Users admin: role, turn an account off or on, stop sharing, grants (owner and admin; members and listeners get 404) |
 | `POST /admin/invites/{id}/cancel`, `/link`, `/email` | Cancel an invite, make a fresh link, open or send the invitation email (owner and admin) |
 | `GET /admin/email`; `POST /admin/email`, `/admin/email/test`, `/admin/email/off`; `GET /hx/admin/email/test/{id}` | Optional mail server settings and its test message (owner only) |
+| `GET /admin/duplicates`, `GET`/`POST /admin/duplicates/merge`, `POST /admin/duplicates/not-same`, `GET /admin/duplicates/merged`, `POST /admin/duplicates/merged/restore` (S4) | Copies of one audiobook, the merge confirm page and merge, "Not the same", and the folders merged away with "Show that copy again" (owner and admins; both books need `EditBook`) |
 | `GET /admin/backups`; `POST /admin/backups/schedule`, `/admin/backups/now`; job status through `GET /hx/jobs/{id}` | Scheduled database copies: schedule, "Back up now", the copy list (owner only; everyone else gets 404). To restore a copy: stop Tendshelf, replace `tendshelf.db` in the data folder with the copy and delete `tendshelf.db-wal` and `tendshelf.db-shm` if present, then start Tendshelf again. |
 | `POST /admin/libraries/{id}/auto-lookup`, `POST /admin/libraries/{id}/lookups`, `POST /admin/libraries/{id}/lookups/stop`, `GET /admin/libraries/{id}/lookups`, `POST /admin/libraries/{id}/lookups/{book}/dismiss` | Automatic and bulk lookups (AL-4): the per-library switch for new books, start and stop of "Look up all books", the "Books that need a look" list and dismissing one book (owner and admin) |
 | `POST /admin/libraries/scan`, `POST /admin/libraries/{id}/scan` | Rescan everything or one library (owner and admin) |
@@ -540,6 +543,23 @@ this replaces the earlier sketch (app shell and visited pages in the cache, an I
   to `POST /api/v1/progress/batch` and the bookmark endpoint on reconnect. iOS storage limits and eviction are
   stated in the UI (Safari may clear downloads after a week without a visit). With `read_text`, Download will also store chapter
   fragments and images (later, offline reading).
+
+## Merging two copies of an audiobook (S4)
+
+The owner or an admin merges one copy into another from `/admin/duplicates` (same library only, one pair at a time,
+never automatic). `library.Repo.MergeBooks` is one transaction and changes database rows only; no library file is
+opened, written, renamed or deleted, and the dropped copy's folder stays on disk. Every table with a foreign key to
+`books` is handled on purpose, and `TestDupEveryBookTableHandled` fails when a new one is not:
+
+- Moved onto the kept book: `progress` (newest `client_updated_at` wins, position capped at the kept length),
+  `listening_sessions`, `queue_items`, `book_settings`, `grants`, `share_links`, `ebook_files`, `ebook_not_same`,
+  and through `library.MergeRowsSQL` (shared with the text-book merge) `reading_positions`, `reading_sessions`,
+  `highlights`, `bookmarks`, `word_list`, `shelf_items`, `text_choices`, `merged_books`. Rows that would collide with
+  the kept book's own (`OR IGNORE`) stay behind and go with the dropped row.
+- Cascade with the dropped row: `audio_files`, `chapters`, `metadata_values`, `book_people`, `book_series`,
+  `book_labels`, `book_sidecars`, `book_lookups`, `book_not_duplicates`. The cover moves when the kept book has none.
+- `merged_books` keeps the old id answering (page and API redirect, progress and bookmark writes land on the kept
+  book under its right); `merged_folders` keeps the folder out of the scan.
 
 ## Reader
 
