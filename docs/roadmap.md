@@ -776,7 +776,15 @@ step: the operator's desktop section of `docs/manual-checks.md`.
   Libraries page. Checks: `TestWatch*` (debounce, new folders, hidden folders, schedule table, network
   folder, folder limit, mount gone and back, mount table, routes with forbidden cases, migration).
   Limits: Linux inotify per-user limits (a library past 20000 folders falls back to the schedule); the
-  scheduled scan counts any scan job as "last scanned". Next: S2.
+  scheduled scan counts any scan job as "last scanned".
+- **S2 Whole backups to a folder the owner chooses** (2026-11-05, done). Scope: `backup.folder` setting,
+  `backups.Mirror` (incremental by size and time through `tendshelf-backup/manifest.json`, copy through a
+  temporary name, read back and compared by SHA-256, 30 day grace for deleted files, newest 7 database copies,
+  `RESTORE.txt`), the folder refused inside the data folder or a library folder, a full disk reported as a
+  plain job error, a scheduled retry that does not pile up local copies, the Backup folder section and the
+  restore steps on the Backups page (owner only). Checks: `TestWholeBackup*` (mirror, retention, disk full,
+  read-back, refused folders, service and job errors, routes with forbidden cases, restore into an empty
+  folder and start). Limits: no encryption of the backup folder; restore is by copying (no restore button).
 
 ## Later
 

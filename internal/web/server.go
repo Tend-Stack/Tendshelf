@@ -221,6 +221,9 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 			return nil, nil, fmt.Errorf("web: backup job: %w", err)
 		}
 	}
+	if opts.Library != nil && bk.LibraryFolders == nil {
+		bk.LibraryFolders = func(ctx context.Context) ([]string, error) { return libraryFolderPaths(ctx, opts.Library) }
+	}
 	lk := hmac.New(sha256.New, key)
 	lk.Write([]byte("tendshelf share-link unlock v1"))
 	s := &server{
@@ -489,4 +492,23 @@ func (s *server) sheetStyles(names ...string) []string {
 		hrefs = append(hrefs, s.assets.URL(n))
 	}
 	return hrefs
+}
+
+// libraryFolderPaths lists every library folder, for the check that a backup folder is not inside one.
+func libraryFolderPaths(ctx context.Context, lib *library.Repo) ([]string, error) {
+	libs, err := lib.Libraries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, l := range libs {
+		fs, err := lib.Folders(ctx, l.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, f := range fs {
+			paths = append(paths, f.Path)
+		}
+	}
+	return paths, nil
 }

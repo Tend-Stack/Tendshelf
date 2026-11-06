@@ -4,8 +4,12 @@ package backups
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,6 +49,10 @@ type Service struct {
 	// (2 minutes). Tests shorten them.
 	Every, First time.Duration
 
+	// LibraryFolders returns the library folder paths; a backup folder inside one is refused. Nil
+	// means no library check (tests).
+	LibraryFolders func(ctx context.Context) ([]string, error)
+
 	mu sync.Mutex // makes "is one active, else queue one" a single step
 }
 
@@ -64,13 +72,138 @@ func (s *Service) Register() error {
 	return s.runner.Register(jobs.Kind{Name: Kind, Concurrency: 1, MaxAttempts: 1, Handler: s.handle})
 }
 
-func (s *Service) handle(ctx context.Context, _ *jobs.Task) (any, error) {
-	c, err := db.WriteCopy(ctx, s.st, s.dataDir, s.now())
-	if err != nil {
-		s.log.Warn("backup failed", "err", err)
-		return nil, &jobs.Error{Code: "backup_failed", Text: "The backup didn't finish. Check that the data folder has free space.", Permanent: true, Err: err}
+func (s *Service) handle(ctx context.Context, t *jobs.Task) (any, error) {
+	var p struct {
+		Reason string `json:"reason"`
 	}
-	return map[string]any{"name": c.Name, "bytes": c.Bytes}, nil
+	_ = json.Unmarshal(t.Payload, &p)
+	res, err := s.Backup(ctx, p.Reason)
+	if err == nil {
+		return res, nil
+	}
+	s.log.Warn("backup failed", "err", err)
+	switch {
+	case errors.Is(err, ErrDiskFull):
+		return res, &jobs.Error{Code: "backup_folder_full", Text: TextFolderFull, Permanent: true, Err: err}
+	case errors.Is(err, errFolderRefused):
+		return res, &jobs.Error{Code: "backup_folder_refused", Text: TextFolderRefused, Permanent: true, Err: err}
+	case errors.Is(err, errFolderStep):
+		return res, &jobs.Error{Code: "backup_folder_failed", Text: TextFolderFailed, Permanent: true, Err: err}
+	}
+	return nil, &jobs.Error{Code: "backup_failed", Text: "The backup didn't finish. Check that the data folder has free space.", Permanent: true, Err: err}
+}
+
+// Plain sentences for a backup that made its local copy but could not complete the backup folder.
+const (
+	TextFolderFull    = "The backup folder is full, so the copy stopped. Free some space there or choose another folder. The database copy in the data folder was made."
+	TextFolderRefused = "The backup folder can't be used any more: it is missing, can't be written to, or is now inside a library or the data folder. Choose it again. The database copy in the data folder was made."
+	TextFolderFailed  = "The copy to the backup folder didn't finish. Check that the folder is still there and has free space. The database copy in the data folder was made."
+)
+
+var (
+	errFolderRefused = errors.New("backups: the backup folder was refused")
+	errFolderStep    = errors.New("backups: copying to the backup folder failed")
+)
+
+// Result is what a finished backup job reports.
+type Result struct {
+	Name   string `json:"name"`
+	Bytes  int64  `json:"bytes"`
+	Folder bool   `json:"folder"`            // a backup folder is set and was filled
+	Files  int    `json:"files,omitempty"`   // files copied to it this time
+	Same   int    `json:"same,omitempty"`    // files already there
+	Gone   int    `json:"removed,omitempty"` // files removed after Grace
+	Copies int    `json:"copies,omitempty"`  // database copies placed in it
+}
+
+// Backup makes a verified database copy in the data folder and, when the owner set a backup folder,
+// mirrors the data folder's own files and the database copies into it. A scheduled run that follows a
+// failed one within retryAfter does not make another local copy, so retries cannot push good older
+// copies out of the newest-seven list.
+func (s *Service) Backup(ctx context.Context, reason string) (Result, error) {
+	var res Result
+	folder := s.Folder(ctx)
+	skipLocal := false
+	if reason == "scheduled" && folder != "" {
+		if c, ok, err := s.Latest(); err == nil && ok && s.now().Sub(c.At) < retryAfter {
+			skipLocal = true
+		}
+	}
+	if !skipLocal {
+		c, err := db.WriteCopy(ctx, s.st, s.dataDir, s.now())
+		if err != nil {
+			return res, err
+		}
+		res.Name, res.Bytes = c.Name, c.Bytes
+	}
+	if folder == "" {
+		return res, nil
+	}
+	libs, err := s.libraryFolders(ctx)
+	if err != nil {
+		return res, fmt.Errorf("%w: %v", errFolderStep, err)
+	}
+	if err := CheckFolder(folder, s.dataDir, libs); err != nil {
+		if errors.Is(err, ErrDiskFull) {
+			return res, err
+		}
+		return res, fmt.Errorf("%w: %v", errFolderRefused, err)
+	}
+	rep, err := Mirror(ctx, s.dataDir, folder, s.now())
+	res.Folder, res.Files, res.Same, res.Gone, res.Copies = true, rep.Copied, rep.Same, rep.Removed, rep.Copies
+	if err != nil {
+		if errors.Is(err, ErrDiskFull) {
+			return res, err
+		}
+		return res, fmt.Errorf("%w: %v", errFolderStep, err)
+	}
+	if err := db.PutSetting(ctx, s.st.Writer(), SettingFolderOK, s.now().UnixMilli()); err != nil {
+		return res, err
+	}
+	return res, nil
+}
+
+func (s *Service) libraryFolders(ctx context.Context) ([]string, error) {
+	if s.LibraryFolders == nil {
+		return nil, nil
+	}
+	return s.LibraryFolders(ctx)
+}
+
+// Folder returns the backup folder the owner chose, or "" when there is none.
+func (s *Service) Folder(ctx context.Context) string {
+	var v string
+	if ok, err := db.GetSetting(ctx, s.st.Reader(), SettingFolder, &v); err != nil || !ok {
+		return ""
+	}
+	return v
+}
+
+// SetFolder saves the backup folder after CheckFolder accepts it; "" turns it off. The error is one of
+// the ErrFolder* values (or ErrDiskFull) for a folder that is refused, and nothing is saved then.
+func (s *Service) SetFolder(ctx context.Context, path string) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return db.DeleteSetting(ctx, s.st.Writer(), SettingFolder)
+	}
+	libs, err := s.libraryFolders(ctx)
+	if err != nil {
+		return err
+	}
+	path = filepath.Clean(path)
+	if err := CheckFolder(path, s.dataDir, libs); err != nil {
+		return err
+	}
+	return db.PutSetting(ctx, s.st.Writer(), SettingFolder, path)
+}
+
+// FolderDone returns when the backup folder was last filled and verified; false if never.
+func (s *Service) FolderDone(ctx context.Context) (time.Time, bool) {
+	var ms int64
+	if ok, err := db.GetSetting(ctx, s.st.Reader(), SettingFolderOK, &ms); err != nil || !ok || ms <= 0 {
+		return time.Time{}, false
+	}
+	return time.UnixMilli(ms), true
 }
 
 // Schedule returns the saved schedule; a missing setting is daily.
@@ -129,17 +262,37 @@ func (s *Service) Latest() (db.Copy, bool, error) {
 	return list[0], true, nil
 }
 
+// lastDone is when the backup the schedule counts from was made: the newest database copy and, when a
+// backup folder is set, the last time that folder was filled, whichever is older.
+func (s *Service) lastDone(ctx context.Context) (time.Time, bool) {
+	c, ok, err := s.Latest()
+	if err != nil || !ok {
+		return time.Time{}, false
+	}
+	at := c.At
+	if s.Folder(ctx) != "" {
+		done, ok := s.FolderDone(ctx)
+		if !ok {
+			return time.Time{}, false
+		}
+		if done.Before(at) {
+			at = done
+		}
+	}
+	return at, true
+}
+
 // Next returns when the next scheduled copy is due, or false when the schedule is off.
 func (s *Service) Next(ctx context.Context) (time.Time, bool) {
 	p := Period(s.Schedule(ctx))
 	if p == 0 {
 		return time.Time{}, false
 	}
-	c, ok, err := s.Latest()
-	if err != nil || !ok {
+	at, ok := s.lastDone(ctx)
+	if !ok {
 		return s.now(), true
 	}
-	return c.At.Add(p - slack), true
+	return at.Add(p - slack), true
 }
 
 // Due reports whether a scheduled copy should be queued now.
@@ -156,11 +309,8 @@ func (s *Service) Due(ctx context.Context) (bool, error) {
 	} else if ok && j.State == jobs.StateFailed && s.now().Sub(j.UpdatedAt) < retryAfter {
 		return false, nil
 	}
-	c, ok, err := s.Latest()
-	if err != nil {
-		return false, err
-	}
-	return !ok || s.now().Sub(c.At) >= p-slack, nil
+	at, ok := s.lastDone(ctx)
+	return !ok || s.now().Sub(at) >= p-slack, nil
 }
 
 // Run checks whether a copy is due after First and then every Every, until ctx ends.

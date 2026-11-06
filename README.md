@@ -80,9 +80,21 @@ chooses another.
 
 Before the program upgrades an existing database it writes a verified copy to
 `backups/tendshelf-v<old>-<time>.db` and keeps the newest three. The owner can also schedule backups in
-the admin pages. They hold the database only. To go back to an older version: stop the server, delete
-`tendshelf.db-wal` and `tendshelf.db-shm` next to the database, and put a backup file back as `tendshelf.db`.
-A database made by a newer version is refused untouched, with a message that says so.
+the admin pages (Admin, Backups). Without a backup folder they hold the database only. To go back to an
+older version: stop the server, delete `tendshelf.db-wal` and `tendshelf.db-shm` next to the database, and put
+a backup file back as `tendshelf.db`. A database made by a newer version is refused untouched, with a message
+that says so.
+
+**Whole backups.** The owner can also choose a backup folder on another disk or a mounted network drive
+(Admin, Backups, Backup folder). Each scheduled or manual backup then also copies the data folder's own
+files into `tendshelf-backup/` there: `ebooks`, `covers`, `people`, `text` and `dictionaries`, only what
+changed since last time, each file read back and compared before it is kept. The newest 7 database copies
+sit beside them in `backups/`. A file you deleted stays in the backup for 30 days. Caches, half-finished
+uploads and your audio library are never copied. The folder may not be inside the data folder or a library
+folder. If the drive fills up the backup stops, says so on the Backups page, and the database copy in the
+data folder is still made. To restore: stop the server, copy the five folders from `tendshelf-backup/` into
+an empty data folder, copy the newest file in `tendshelf-backup/backups/` there as `tendshelf.db`, and start
+the server (the same steps are in `RESTORE.txt` in the backup folder).
 
 To back up everything by hand, copy the whole data folder while the server is stopped.
 

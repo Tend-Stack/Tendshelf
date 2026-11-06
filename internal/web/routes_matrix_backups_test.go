@@ -21,5 +21,7 @@ func backupsSweepRows() []sweepRow {
 		}
 		return "/admin/backups?job=" + id
 	}
-	return []sweepRow{sweepGet("GET /admin/backups", sweepStatic("/admin/backups"), page), schedule, now}
+	folder := sweepPost("POST /admin/backups/folder", sweepStatic("/admin/backups/folder"),
+		sweepFormOf(url.Values{"folder": {""}}), post, "/admin/backups?saved=nofolder")
+	return []sweepRow{sweepGet("GET /admin/backups", sweepStatic("/admin/backups"), page), schedule, now, folder}
 }
