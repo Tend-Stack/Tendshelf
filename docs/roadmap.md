@@ -984,3 +984,8 @@ released (`gtk_window_set_resizable` through purego). No full-screen mode exists
 monitor (`TS_MONITOR`) in the private shell: corner resize, edge and corner limits, Maximise fit and restore, an outside maximise
 and a saved-maximised start. Limits: Wayland does not centre the window (X11 does, not run here); real ultrawide hardware is
 manual-checks row 14 (open). Next step: the operator runs row 14.
+**A3 status (Android playback service, 2026-11-06)**: built on the branch `pkg-a3`, plan [plans/android-a2-a5.md](plans/android-a2-a5.md). A book is one
+Media3 window in book time (`ConcatenatingMediaSource2`, missing parts as silence); `BookPlayer` makes next and previous chapters and skip the person's
+interval; `BookEngine` starts books (a newer start cancels an older one) and publishes `ts.bookId`, `ts.chapterIdx`, `ts.error`; custom commands are for this app
+only; `PlayerRemote` is the seam. Pure logic (chapter jumps, start place, silent ranges, URLs) is in `shared`. Emulator checks (Parts, Single, Odd, speed, skip,
+notification, 30 min screen off, outage, revoked token, foreign package) passed; limits: no audible alignment measurement, fixture has no cover. Next step: A4.

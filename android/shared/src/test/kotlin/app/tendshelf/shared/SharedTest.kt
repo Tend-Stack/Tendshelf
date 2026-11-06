@@ -78,3 +78,87 @@ class ApiPathsTest {
         assertEquals("{\"username\":\"me\",\"password\":\"pa\\\"ss\\\\\\n\",\"name\":\"Pixel\",\"kind\":\"mobile\"}", body)
     }
 }
+
+class ChapterNavigationTest {
+    // Three 5-minute files; chapter 2 crosses the first file boundary (4:00 to 7:00).
+    private val chapters = listOf(
+        Chapter(0, 0, 120_000, "One"),
+        Chapter(1, 120_000, 240_000, "Two"),
+        Chapter(2, 240_000, 420_000, "Three"),
+        Chapter(3, 420_000, 900_000, "Four"),
+    )
+
+    @Test
+    fun nextTable() {
+        val cases = listOf(
+            0L to 120_000L,
+            119_999L to 120_000L,
+            120_000L to 240_000L,
+            300_000L to 420_000L, // inside the chapter that crosses a file
+            419_999L to 420_000L,
+            420_000L to null,
+            899_000L to null,
+        )
+        for ((at, want) in cases) assertEquals(want, nextChapterStart(chapters, at), "next($at)")
+    }
+
+    @Test
+    fun previousTable() {
+        val cases = listOf(
+            0L to 0L,
+            1_000L to 0L,
+            10_000L to 0L, // 10 s in restarts the first chapter
+            121_000L to 0L, // 1 s into two goes back one
+            125_000L to 120_000L, // 5 s in restarts
+            123_000L to 0L, // exactly 3 s counts as the start
+            123_001L to 120_000L,
+            300_000L to 240_000L, // across the file boundary
+            900_000L to 420_000L,
+        )
+        for ((at, want) in cases) assertEquals(want, previousChapterStart(chapters, at), "previous($at)")
+    }
+
+    @Test
+    fun noChapters() {
+        assertNull(nextChapterStart(emptyList(), 5))
+        assertEquals(0L, previousChapterStart(emptyList(), 5))
+    }
+
+    @Test
+    fun startPlaceRules() {
+        fun p(pos: Long, done: Boolean) = RemoteProgress(pos, done, 1, "d", "Phone")
+        assertEquals(500L, startPlace(p(9_000, false), 500))
+        assertEquals(9_000L, startPlace(p(9_000, false), null))
+        assertEquals(9_000L, startPlace(p(9_000, false), -1))
+        assertEquals(0L, startPlace(p(9_000, true), -1))
+        assertEquals(700L, startPlace(p(9_000, true), 700))
+        assertEquals(0L, startPlace(null, null))
+    }
+
+    @Test
+    fun silenceIsSkipped() {
+        val files = listOf(
+            AudioFile("a", 0, 0, 1000, "audio/mpeg", false),
+            AudioFile("b", 1, 1000, 1000, "audio/mpeg", false, playable = false),
+            AudioFile("c", 2, 2000, 1000, "audio/mpeg", false, playable = false),
+            AudioFile("d", 3, 3000, 1000, "audio/mpeg", false),
+        )
+        val ranges = silentRanges(files)
+        assertNull(skipSilence(ranges, 999))
+        assertEquals(3000L, skipSilence(ranges, 1000))
+        assertEquals(3000L, skipSilence(ranges, 2500))
+        assertNull(skipSilence(ranges, 3000))
+    }
+}
+
+class ApiPlaybackUrlsTest {
+    @Test
+    fun urlsStayOnTheOrigin() {
+        val p = ApiPaths("http://h:1/")
+        assertEquals("http://h:1/api/v1/stream/f1", p.streamUrl("f1"))
+        assertEquals("http://h:1/api/v1/stream/f1?compat=1", p.streamUrl("f1", true))
+        assertEquals("http://h:1/api/v1/covers/b1?w=512", p.coverUrl("b1", 512))
+        assertEquals("http://h:1/api/v1/settings", p.settingsUrl)
+        assertFailsWith<IllegalArgumentException> { p.coverUrl("a/../b", 512) }
+    }
+}

@@ -11,7 +11,13 @@ class ApiPaths(server: String) {
 
     fun bookUrl(bookId: String): String = "$base/api/v1/books/${segment(bookId)}"
 
-    fun streamUrl(fileId: String): String = "$base/api/v1/stream/${segment(fileId)}"
+    /** [compat] asks for the browser-friendly rendition, for files a phone cannot decode as stored. */
+    fun streamUrl(fileId: String, compat: Boolean = false): String =
+        "$base/api/v1/stream/${segment(fileId)}" + if (compat) "?compat=1" else ""
+
+    fun coverUrl(bookId: String, width: Int): String = "$base/api/v1/covers/${segment(bookId)}?w=$width"
+
+    val settingsUrl: String get() = "$base/api/v1/settings"
 
     /** The page the WebView opens: the shell mark makes the server treat the visitor as the Android app. */
     val shellUrl: String get() = "$base/?shell=android&next=/"

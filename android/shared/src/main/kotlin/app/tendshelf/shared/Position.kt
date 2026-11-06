@@ -33,3 +33,47 @@ object Position {
         return chapters.lastOrNull { it.startMs <= bookMs } ?: chapters.first()
     }
 }
+
+/** A chapter shorter than this into itself is "at the start": previous goes to the chapter before. */
+const val RESTART_WINDOW_MS = 3_000L
+
+/** The start of the chapter after the one holding [bookMs], or null in the last chapter. Chapters are in order. */
+fun nextChapterStart(chapters: List<Chapter>, bookMs: Long): Long? =
+    chapters.firstOrNull { it.startMs > bookMs }?.startMs
+
+/**
+ * Where "previous" goes: the start of this chapter when more than [RESTART_WINDOW_MS] into it, else the start
+ * of the chapter before (0 in the first one). Same rule as the web player's `jumpChapter`.
+ */
+fun previousChapterStart(chapters: List<Chapter>, bookMs: Long): Long {
+    val current = Position.chapterAt(chapters, bookMs) ?: return 0
+    if (bookMs - current.startMs > RESTART_WINDOW_MS) return current.startMs
+    return chapters.lastOrNull { it.startMs < current.startMs }?.startMs ?: 0
+}
+
+/** Where a book starts: [atMs] when given, else the stored place, and the beginning when it was finished. */
+fun startPlace(p: RemoteProgress?, atMs: Long?): Long = when {
+    atMs != null && atMs >= 0 -> atMs
+    p == null || p.finished -> 0
+    else -> p.positionMs.coerceAtLeast(0)
+}
+
+/** The book-time ranges (start inclusive, end exclusive) of files the server does not have. */
+fun silentRanges(files: List<AudioFile>): List<LongRange> =
+    files.filter { !it.playable }.map { it.offsetMs until it.offsetMs + it.durationMs }
+
+/**
+ * Where to jump when [bookMs] is inside a silent range: past its end, merging neighbouring silent ranges.
+ * Null when the place holds sound.
+ */
+fun skipSilence(ranges: List<LongRange>, bookMs: Long): Long? {
+    var at = bookMs
+    var moved = false
+    for (r in ranges.sortedBy { it.first }) {
+        if (at in r) {
+            at = r.last + 1
+            moved = true
+        }
+    }
+    return if (moved) at else null
+}
