@@ -54,7 +54,7 @@ func TestDeskBarOffsets(t *testing.T) {
 			t.Errorf("pages-desktop.css does not move %s below the bar", class)
 		}
 	}
-	if !strings.Contains(css, ".ts-side__brand { display: none; }") {
+	if !strings.Contains(css, ".ts-side__brand,\nhtml[data-shell=\"desktop\"] .ts-rail__brand { display: none; }") {
 		t.Error("the sidebar brand must go: the logo is in the bar")
 	}
 }
@@ -82,6 +82,35 @@ func TestDeskBudgetSplit(t *testing.T) {
 		}
 		if strings.Contains(string(a.Body), "export ") && name == "desktop.js" {
 			t.Errorf("js/%s should stay a plain module with no exports", name)
+		}
+	}
+}
+
+// TestDeskBarContrast: the bar's glyphs and words meet AA (7:1 in the contrast theme) in every state the
+// board shows: rest on the ground, hover and pressed on the quiet layers, Close hover and pressed on ember.
+func TestDeskBarContrast(t *testing.T) {
+	pairs := []struct{ name, fg, bg string }{
+		{"button at rest", "--ink-muted", "--ground"},
+		{"button hovered", "--ink", "--raised-hover"},
+		{"button pressed", "--ink", "--raised"},
+		{"place crumb", "--ink-muted", "--ground"},
+		{"crumb hovered", "--ink", "--ground"},
+		{"playing, second line", "--ink-muted", "--ground"},
+		{"playing, hovered", "--ink", "--raised-hover"},
+		{"menu item", "--ink", "--surface"},
+		{"menu shortcut", "--ink-muted", "--surface"},
+		{"menu item hovered", "--ink", "--raised-hover"},
+		{"menu shortcut hovered", "--ink-muted", "--raised-hover"},
+		{"Close hovered", "--on-accent", "--accent-fill"},
+		{"Close pressed", "--on-accent", "--accent-fill-pressed"},
+	}
+	for _, th := range b1Themes(t) {
+		for _, p := range pairs {
+			fg := b1Colour(t, th.get(t, p.fg))
+			bg := b1Colour(t, th.get(t, p.bg))
+			if got := b1Ratio(fg.over(bg), bg); got < th.min {
+				t.Errorf("%s: %s (%s on %s) is %.2f:1, want %.1f:1", th.name, p.name, p.fg, p.bg, got, th.min)
+			}
 		}
 	}
 }
