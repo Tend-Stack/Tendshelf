@@ -29,6 +29,7 @@ import androidx.media3.session.SessionResult
 import app.tendshelf.shared.Node
 import app.tendshelf.shared.allowedCommands
 import app.tendshelf.shared.parseNode
+import app.tendshelf.shared.mayRate
 import app.tendshelf.shared.speedCycle
 import app.tendshelf.shared.speedLabel
 import com.google.common.collect.ImmutableList
@@ -101,7 +102,7 @@ class PlaybackService : MediaLibraryService() {
         )
         session = MediaLibrarySession.Builder(this, player, SessionCallback())
             .setSessionActivity(open) // the notification tap opens the page again
-            .setMediaButtonPreferences(skipButtons(1.0))
+            .setMediaButtonPreferences(skipButtons(null)) // the phone gets Back and Forward; the speed button is the car's, per controller
             .build()
         engine = BookEngine(exo, player, http, main, io, { connections }) { extras -> putExtras { putAll(extras) } }
         sleep = SleepTimer(exo, player, getSystemService(android.hardware.SensorManager::class.java), main) { info ->
@@ -250,7 +251,14 @@ class PlaybackService : MediaLibraryService() {
         engine.onFailed = { kind -> tellCar(kind) }
         exo.addListener(object : Player.Listener {
             override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
-                session?.setMediaButtonPreferences(skipButtons(playbackParameters.speed.toDouble()))
+                if (BuildConfig.DEBUG) Log.i(TAG, "speed is now ${playbackParameters.speed}")
+                val s = session ?: return
+                // Only a car's controller shows the speed, so only it hears of a new speed.
+                for (c in s.connectedControllers) {
+                    if (s.isAutoCompanionController(c) || s.isAutomotiveController(c)) {
+                        s.setMediaButtonPreferences(c, skipButtons(playbackParameters.speed.toDouble()))
+                    }
+                }
             }
         })
     }
@@ -270,7 +278,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     /** Back and Forward beside the chapter buttons (D4), and the car's speed button (A8, D7). */
-    private fun skipButtons(speed: Double): ImmutableList<CommandButton> = ImmutableList.of(
+    private fun skipButtons(speed: Double?): ImmutableList<CommandButton> = ImmutableList.copyOf(listOfNotNull(
         CommandButton.Builder(CommandButton.ICON_SKIP_BACK)
             .setPlayerCommand(Player.COMMAND_SEEK_BACK)
             .setDisplayName("Back")
@@ -281,12 +289,14 @@ class PlaybackService : MediaLibraryService() {
             .setDisplayName("Forward")
             .setSlots(CommandButton.SLOT_OVERFLOW)
             .build(),
-        CommandButton.Builder(CommandButton.ICON_PLAYBACK_SPEED)
-            .setSessionCommand(SPEED_COMMAND)
-            .setDisplayName(speedLabel(speed))
-            .setSlots(CommandButton.SLOT_OVERFLOW)
-            .build(),
-    )
+        speed?.let {
+            CommandButton.Builder(CommandButton.ICON_PLAYBACK_SPEED)
+                .setSessionCommand(SPEED_COMMAND)
+                .setDisplayName(speedLabel(it))
+                .setSlots(CommandButton.SLOT_OVERFLOW)
+                .build()
+        },
+    ))
 
     /** For the debug start path only: nobody has connected, so nobody added the session. */
     internal fun registerSession() {
@@ -334,16 +344,16 @@ class PlaybackService : MediaLibraryService() {
             // Library commands only for those who may browse; custom commands for this app only, the speed button aside.
             val base = if (who.browse) MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS else MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS
             // Another app's controller gets no title, no timeline and no extras: it can play and pause, nothing it can read.
-            val players = if (who.readsPlayer) {
-                MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
-            } else {
-                MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
-                    .remove(Player.COMMAND_GET_METADATA)
-                    .remove(Player.COMMAND_GET_TIMELINE)
-                    .remove(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
-                    .remove(Player.COMMAND_GET_TRACKS)
-                    .build()
-            }
+            val players = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon().apply {
+                if (!who.readsPlayer) {
+                    remove(Player.COMMAND_GET_METADATA)
+                    remove(Player.COMMAND_GET_TIMELINE)
+                    remove(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
+                    remove(Player.COMMAND_GET_TRACKS)
+                }
+                // A rate comes only from this app's page; the car has its own button (D7).
+                if (!mayRate(controller.packageName == packageName)) remove(Player.COMMAND_SET_SPEED_AND_PITCH)
+            }.build()
             val commands = base.buildUpon().apply {
                 if (who.ownCommands) {
                     add(START_COMMAND)
@@ -359,6 +369,7 @@ class PlaybackService : MediaLibraryService() {
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(commands)
                 .setAvailablePlayerCommands(players)
+                .setMediaButtonPreferences(skipButtons(if (who.speed) exo.playbackParameters.speed.toDouble() else null))
                 .apply { if (who.readsPlayer) setSessionExtras(extras) }
                 .build()
         }
