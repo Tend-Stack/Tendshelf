@@ -142,7 +142,7 @@ func (e *lookupEnv) wait(id string) jobs.Job {
 // lookup runs a lookup job for the book and returns its result.
 func (e *lookupEnv) lookup(bookID string, q online.Query) metadata.LookupResult {
 	e.t.Helper()
-	id, err := e.svc.StartLookup(bg, bookID, q, false, "")
+	id, err := e.svc.StartLookup(bg, bookID, q, nil, "")
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -218,7 +218,7 @@ func TestLookupJob(t *testing.T) {
 	if err != nil || q.Title != "Plain Title" || q.Author != "Ann Author" {
 		t.Fatalf("prefilled query: %+v %v", q, err)
 	}
-	if _, err := e.svc.StartLookup(bg, id, online.Query{}, false, ""); !errors.Is(err, online.ErrEmptyQuery) {
+	if _, err := e.svc.StartLookup(bg, id, online.Query{}, nil, ""); !errors.Is(err, online.ErrEmptyQuery) {
 		t.Errorf("empty query: %v", err)
 	}
 	// An old cache row is pruned at the start of the job; a fresh one stays.
@@ -264,7 +264,7 @@ func TestLookupJob(t *testing.T) {
 	if e.count(`SELECT COUNT(*) FROM audit_log WHERE action = 'settings.online'`) != 1 {
 		t.Error("the switch is audited")
 	}
-	if _, err := e.svc.StartLookup(bg, id, q, false, ""); !errors.Is(err, metadata.ErrOnlineOff) {
+	if _, err := e.svc.StartLookup(bg, id, q, nil, ""); !errors.Is(err, metadata.ErrOnlineOff) {
 		t.Errorf("start while off: %v", err)
 	}
 	before := e.net.requests()
@@ -298,7 +298,7 @@ func TestLookupResultForOtherBook(t *testing.T) {
 	e.write("Bo Book/Second/s.m4b", mediatest.FakeFile{Tags: map[string]string{"album": "Second"}})
 	e.scanAndProbe()
 	other := e.book("Bo Book/Second")
-	jid, err := e.svc.StartLookup(bg, id, online.Query{Title: "The Test Match"}, false, "")
+	jid, err := e.svc.StartLookup(bg, id, online.Query{Title: "The Test Match"}, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}

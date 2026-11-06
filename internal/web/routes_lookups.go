@@ -100,7 +100,15 @@ func (s *server) postBulkStart(w http.ResponseWriter, r *http.Request) {
 		s.refuseSetting(w, r, http.StatusUnprocessableEntity, detailsFailed)
 		return
 	}
-	if _, err := s.details.StartBulk(r.Context(), l.ID, scope, r.PostFormValue("more") == "1", currentUser(r).ID); err != nil {
+	places, set := postedPlaces(r)
+	if !set {
+		places = s.savedPlaces(r)
+	}
+	if err := s.rememberPlaces(r, places, set); err != nil {
+		s.lookupFailed(w, r, "save places", err)
+		return
+	}
+	if _, err := s.details.StartBulk(r.Context(), l.ID, scope, places, currentUser(r).ID); err != nil {
 		s.lookupFailed(w, r, "start lookups", err)
 		return
 	}
@@ -232,7 +240,8 @@ func (s *server) lookupsView(ctx context.Context, r *http.Request, libs []librar
 		return nil, err
 	}
 	v := &pages.AdminLookupsView{AutoLabel: lookupAutoLabel, AutoHint: lookupAutoHint, Save: lookupAutoSave,
-		StartLabel: lookupStart, MoreLabel: detailsMoreLabel, ScopeLabel: lookupScopeLabel}
+		StartLabel: lookupStart, PlacesLegend: placesLegend, ScopeLabel: lookupScopeLabel,
+		Places: placeChoices(s.savedPlaces(r))}
 	for _, l := range libs {
 		row := pages.AdminLookupLibrary{ID: l.ID, Name: l.Name, Auto: l.AutoLookupAt > 0}
 		j, found, err := s.latestBulk(ctx, l.ID)

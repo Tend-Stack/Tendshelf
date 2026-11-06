@@ -242,26 +242,28 @@ func detailsTabHref(bookID string) string { return "/books/" + bookID + "/detail
 var logMarks = map[string][2]string{
 	online.StepWaiting: {"·", "Waiting: "},
 	online.StepRunning: {"▸", "Searching: "},
-	online.StepDone:    {"✓", "Done: "},
-	online.StepNone:    {"–", "Nothing found: "},
-	online.StepFailed:  {"✕", "Failed: "},
+	online.StepDone:    {"✓", "Result: "},
+	online.StepNone:    {"–", "Result: "},
+	online.StepFailed:  {"✕", "Problem: "},
 }
 
-// logFailure is a failed step in a few plain words; the sheet's message has the full sentence.
-func logFailure(code string) string {
+// logFailure is a failed step in plain words, naming the place: a pause for 429 and 5xx, a
+// network problem, or a short reason. Nothing here comes from the site's own answer; the details
+// go to the server log.
+func logFailure(place, code string) string {
 	switch code {
 	case "offline":
-		return "could not reach it"
-	case "busy":
-		return "asked for a pause"
+		return "Could not reach " + place + "."
+	case "busy", "server":
+		return place + " is busy right now, try again later."
 	case "too_large":
-		return "the answer was too large"
+		return "The answer from " + place + " was too large, so Tendshelf ignored it."
 	case "bad_answer":
-		return "sent an answer Tendshelf could not use"
+		return place + " sent an answer Tendshelf could not read."
 	case "refused":
-		return "not on the list of sites"
+		return place + " is not on the list of sites Tendshelf may ask."
 	}
-	return "had a problem"
+	return "Could not search " + place + ", try again later."
 }
 
 // logLines words the steps of a lookup, one line each.
@@ -276,6 +278,11 @@ func logLines(steps []online.Step) []pages.LogLine {
 		if st.Region != "" {
 			place += " (" + st.Region + ")"
 		}
+		if st.State == online.StepFailed {
+			// The sentence names the place itself, so the line is that sentence alone.
+			out = append(out, pages.LogLine{State: st.State, Mark: mark[0], Words: mark[1], Text: logFailure(st.Label, st.Code)})
+			continue
+		}
 		switch st.State {
 		case online.StepWaiting:
 			result = detailsLogWaiting
@@ -283,8 +290,6 @@ func logLines(steps []online.Step) []pages.LogLine {
 			result = countText(st.Count, detailsLogOne, detailsLogMany)
 		case online.StepNone:
 			result = detailsLogNone
-		case online.StepFailed:
-			result = logFailure(st.Code)
 		}
 		if st.Cached && (st.State == online.StepDone || st.State == online.StepNone) {
 			result += detailsLogSaved
@@ -308,17 +313,21 @@ func candidateMeta(c metadata.Candidate) string {
 }
 
 // lookupFailure is the plain-words reason a finished lookup found nothing, or "" when it simply
-// found no match: every site that was asked failed.
-func lookupFailure(res metadata.LookupResult) string {
+// found no match: every place that was asked failed, and each is named once with its own reason.
+func lookupFailure(res metadata.LookupResult, steps []online.Step) string {
 	if len(res.Errors) == 0 || len(res.Errors) < len(res.Searched) {
 		return ""
 	}
-	sites := make([]string, 0, len(res.Errors))
-	for p := range res.Errors {
-		sites = append(sites, p)
+	var seen []string
+	var lines []string
+	for _, st := range steps {
+		if st.State != online.StepFailed || slices.Contains(seen, st.Label) {
+			continue
+		}
+		seen = append(seen, st.Label)
+		lines = append(lines, logFailure(st.Label, st.Code))
 	}
-	slices.Sort(sites)
-	return (&online.Error{Code: res.Errors[sites[0]], Site: sites[0]}).Text()
+	return strings.Join(lines, " ")
 }
 
 // compareSheetView builds the compare sheet for a lookup job. The selected candidate is c (hasC);
@@ -357,7 +366,7 @@ func (s *server) compareSheetView(r *http.Request, cur library.BookDetail, j job
 	}
 	if len(cands) == 0 {
 		v.State, v.Message = "none", detailsNone
-		if m := lookupFailure(res); m != "" {
+		if m := lookupFailure(res, metadata.LookupSteps(j, res)); m != "" {
 			v.State, v.Message = "failed", m
 		}
 		return v, true, nil

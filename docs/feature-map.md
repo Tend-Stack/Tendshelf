@@ -18,7 +18,7 @@ from general knowledge. Cells marked `?` are unverified guesses; check before qu
 | **Details and covers** | | | |
 | Details from folder names, file tags, sidecars (`.opf`, `.nfo`, `desc.txt`, `reader.txt`, `metadata.json`) | Yes | n/a | P1 (names, tags), P2 (sidecars) |
 | Field-by-field source shown and kept | No? | n/a | P2 |
-| Online lookup: Audnexus/Audible, Google Books, Open Library, Apple Books | Yes (plus FantLab, MusicBrainz, AudiobookCovers) | n/a | P2 |
+| Online lookup: Audnexus/Audible by default; Open Library and Apple Books when you choose them | Yes (plus FantLab, MusicBrainz, AudiobookCovers) | n/a | P2 |
 | Field-by-field compare and merge with an online match | Partial (choose fields on apply) | n/a | P2 |
 | Custom metadata provider (HTTP spec) | Yes | n/a | Later |
 | Covers: embedded, folder image, online, upload | Yes | Yes | P1 (embedded, folder), P2 (online, upload) |

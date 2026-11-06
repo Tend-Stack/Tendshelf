@@ -19,8 +19,12 @@ type LookupSheetView struct {
 	QTitle, QAuthor, QASIN, QISBN    string
 	// Error is the refusal in plain words (nothing to look up); it shows under the title field.
 	Error                    string
+	// More opens the "Search more places" disclosure (a place was chosen); Places are its checkboxes
+	// and PlacesLegend names them. Audible is always asked, PlacesNote says so.
 	More                     bool
-	MoreTitle, MoreLabel     string
+	MoreTitle                string
+	PlacesLegend, PlacesNote string
+	Places                   []PlaceChoice
 	Styles                   []string
 }
 
@@ -32,6 +36,12 @@ type CompareRow struct {
 	NowMore, OnlineMore, NowImg, OnlineImg           string
 	NowYou                                           bool
 	Diff, Ticked, Disabled                           bool
+}
+
+// PlaceChoice is one checkbox of "Search more places": an optional book site, or "All" of them.
+type PlaceChoice struct {
+	Value, Label string
+	Checked      bool
 }
 
 // CompareCandidate is one match in the list of matches.
@@ -103,10 +113,17 @@ templ LookupSheet(v LookupSheetView) {
 				@components.TextField(components.Field{ID: "lkp-isbn", Name: "isbn", Label: v.ISBNLabel, Value: v.QISBN, Autocomplete: "off", Plain: true})
 				<details class="ts-lookup__more" open?={ v.More }>
 					<summary class="ts-btn ts-btn--quiet">{ v.MoreTitle }</summary>
-					<label class="ts-lookup__check">
-						<input type="checkbox" class="ts-check" name="more" value="1" checked?={ v.More }/>
-						<span>{ v.MoreLabel }</span>
-					</label>
+					<div class="ts-lookup__places" role="group" aria-labelledby="lkp-places">
+						<p id="lkp-places" class="label">{ v.PlacesLegend }</p>
+						for _, p := range v.Places {
+							<label class="ts-lookup__check" for={ "lkp-place-" + p.Value }>
+								<input type="checkbox" class="ts-check" id={ "lkp-place-" + p.Value } name="place" value={ p.Value } checked?={ p.Checked }/>
+								<span>{ p.Label }</span>
+							</label>
+						}
+						<p class="caption">{ v.PlacesNote }</p>
+					</div>
+					<input type="hidden" name="places_set" value="1"/>
 				</details>
 				<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ v.Submit }</button>
 			</form>

@@ -32,7 +32,6 @@ var slowSamples = []struct{ prefix, file string }{
 	{"https://api.audible.com/1.0/catalog/products", "audible_search.json"},
 	{"https://api.audnex.us/books/B0TESTBOOK", "audnexus_book.json"},
 	{"https://api.audnex.us/books/B0OTHER001", "audnexus_other.json"},
-	{"https://www.googleapis.com/books/v1/volumes", "google_books.json"},
 	{"https://openlibrary.org/search.json", "openlibrary_search.json"},
 	{"https://openlibrary.org/works/OL1W.json", "openlibrary_work.json"},
 	{"https://itunes.apple.com/search", "itunes.json"},
@@ -113,7 +112,7 @@ func TestLookupProgressBrowser(t *testing.T) {
 			kept("opening the Details tab")
 			tab.Eval(`document.querySelector(".ts-book__lookup").click()`, nil)
 			tab.WaitFor(`document.querySelector("#sheet form.ts-lookup") !== null`, 5*time.Second)
-			tab.Eval(`document.querySelector('#sheet input[name="more"]').click()`, nil)
+			tab.Eval(`document.querySelector('#sheet input[name="place"][value="all"]').click()`, nil)
 			tab.Eval(`document.querySelector('#sheet form.ts-lookup button[type="submit"]').click()`, nil)
 			tab.WaitFor(`document.querySelector("#sheet .ts-log__list") !== null`, 8*time.Second)
 			kept("starting the lookup")
@@ -152,12 +151,12 @@ func TestLookupProgressBrowser(t *testing.T) {
 			if m.Overflow || !m.Collapsed || !m.Privacy || m.Lines < 5 {
 				t.Errorf("finished sheet: %+v", m)
 			}
-			// Open the review: the log shows the four places, and nothing overflows the sheet.
+			// Open the review: the log shows the places, and nothing overflows the sheet.
 			tab.Eval(`document.querySelector("#sheet details.ts-log-review summary").click()`, nil)
 			tab.Eval(`({Overflow: document.documentElement.scrollWidth > window.innerWidth, Sheet: document.querySelector("#sheet .ts-sheet").scrollWidth > document.querySelector("#sheet .ts-sheet").clientWidth})`, &struct{ Overflow, Sheet bool }{})
 			var text string
 			tab.Eval(`document.querySelector("#sheet details.ts-log-review").textContent`, &text)
-			for _, want := range []string{"Audible catalogue", "Google Books", "Open Library", "Apple Books", "Only the title, author, ASIN and ISBN leave your server."} {
+			for _, want := range []string{"Audible catalogue", "Open Library", "Apple Books", "Only the title, author, ASIN and ISBN leave your server."} {
 				if !strings.Contains(text, want) {
 					t.Errorf("review lacks %q", want)
 				}

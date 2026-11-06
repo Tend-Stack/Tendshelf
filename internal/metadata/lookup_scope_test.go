@@ -64,7 +64,7 @@ func lookupScopeCase(t *testing.T, scope string) {
 	}
 
 	// The scope's job asks about exactly the books counted: the others keep their old record.
-	id, err := e.svc.StartBulk(bg, e.lib.ID, scope, false, "")
+	id, err := e.svc.StartBulk(bg, e.lib.ID, scope, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func lookupScopeCase(t *testing.T, scope string) {
 			t.Errorf("book %s touched = %v", b, touched)
 		}
 	}
-	if _, err := e.svc.StartBulk(bg, e.lib.ID, "everything", false, ""); !errors.Is(err, library.ErrInvalid) {
+	if _, err := e.svc.StartBulk(bg, e.lib.ID, "everything", nil, ""); !errors.Is(err, library.ErrInvalid) {
 		t.Errorf("an unknown scope: %v", err)
 	}
 }

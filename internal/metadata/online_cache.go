@@ -14,7 +14,7 @@ import (
 type sqlCache struct{ st *db.Store }
 
 // NewOnlineCache returns the online client's cache, backed by the database. The table accepts
-// the providers audnexus, audible, google, openlibrary and itunes.
+// the providers audnexus, audible, openlibrary and itunes (older copies from "google" stay readable and are never asked again).
 func NewOnlineCache(st *db.Store) online.Cache { return sqlCache{st} }
 
 func (c sqlCache) Get(ctx context.Context, provider, key string, maxAge time.Duration) ([]byte, bool, error) {

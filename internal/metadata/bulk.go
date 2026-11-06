@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand/v2"
-	"slices"
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
@@ -99,12 +98,8 @@ func (s *Service) SetCoverFill(f func(ctx context.Context, bookID, url string) e
 	s.coverFill = f
 }
 
-func bulkProviders(more bool) []string {
-	if more {
-		return slices.Clone(online.Providers)
-	}
-	return []string{"audnexus"}
-}
+// bulkProviders are the places a bulk run asks: the reliable source plus the chosen extras.
+func bulkProviders(extras []string) []string { return online.ChosenProviders(extras) }
 
 func (s *Service) onlineOn(ctx context.Context) (bool, error) {
 	if s.online == nil {
@@ -119,11 +114,11 @@ func (s *Service) auditLibrary(ctx context.Context, action, libraryID, userID st
 	})
 }
 
-// StartBulk queues a lookup of every book of the library not looked at in the last 30 days. Only
-// Audnexus is asked unless more is true. When such a job is already waiting or running it returns
+// StartBulk queues a lookup of every book of the library not looked at in the last 30 days. Audnexus is
+// asked, and the optional places in extras. When such a job is already waiting or running it returns
 // that job's id. It returns ErrOnlineOff when lookups are off and ErrNotFound for an unknown
 // library. The caller checks who may manage the library.
-func (s *Service) StartBulk(ctx context.Context, libraryID, scope string, more bool, userID string) (string, error) {
+func (s *Service) StartBulk(ctx context.Context, libraryID, scope string, extras []string, userID string) (string, error) {
 	if !ValidScope(scope) {
 		return "", library.ErrInvalid
 	}
@@ -148,12 +143,12 @@ func (s *Service) StartBulk(ctx context.Context, libraryID, scope string, more b
 			return j.ID, nil
 		}
 	}
-	id, err := s.jobs.Enqueue(ctx, KindOnlineBulk, BulkPayload{LibraryID: libraryID, Mode: BulkAll, Scope: scope, Providers: bulkProviders(more)},
+	id, err := s.jobs.Enqueue(ctx, KindOnlineBulk, BulkPayload{LibraryID: libraryID, Mode: BulkAll, Scope: scope, Providers: bulkProviders(extras)},
 		jobs.EnqueueOptions{CreatedBy: userID})
 	if err != nil {
 		return "", err
 	}
-	if err := s.auditLibrary(ctx, "library.lookups_start", libraryID, userID, map[string]any{"job": id, "scope": scope, "more": more}); err != nil {
+	if err := s.auditLibrary(ctx, "library.lookups_start", libraryID, userID, map[string]any{"job": id, "scope": scope, "places": CleanSources(extras)}); err != nil {
 		s.log.Warn("audit lookups start", "err", err)
 	}
 	return id, nil
@@ -286,9 +281,8 @@ func (s *Service) handleBulk(ctx context.Context, t *jobs.Task) (any, error) {
 	if err := json.Unmarshal(t.Payload, &p); err != nil || p.LibraryID == "" || (p.Mode != BulkAll && p.Mode != BulkNew) || !ValidScope(p.Scope) {
 		return nil, bulkBadPayload(err)
 	}
-	if len(p.Providers) == 0 {
-		p.Providers = []string{"audnexus"}
-	}
+	// A job queued before a place was retired (Google Books) still runs: only today's places are kept.
+	p.Providers = online.ChosenProviders(p.Providers)
 	if _, err := s.repo.Library(ctx, p.LibraryID); errors.Is(err, library.ErrNotFound) {
 		return BulkProgress{}, nil
 	} else if err != nil {
@@ -549,7 +543,7 @@ func (s *Service) maybeAuto(ctx context.Context, bookID string) {
 	if found && j.State == jobs.StateQueued {
 		return
 	}
-	_, err = s.jobs.Enqueue(ctx, KindOnlineBulk, BulkPayload{LibraryID: libraryID, Mode: BulkNew, Providers: bulkProviders(false)},
+	_, err = s.jobs.Enqueue(ctx, KindOnlineBulk, BulkPayload{LibraryID: libraryID, Mode: BulkNew, Providers: bulkProviders(nil)},
 		jobs.EnqueueOptions{NotBefore: s.now().Add(autoDelay)})
 	if err != nil {
 		s.log.Warn("queue lookup of new books", "library", libraryID, "err", err)

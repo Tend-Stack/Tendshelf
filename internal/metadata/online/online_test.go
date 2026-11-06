@@ -130,7 +130,6 @@ func newEnv(t *testing.T) *env {
 	e.net.on("https://api.audible.com/1.0/catalog/products", reply{body: sample(t, "audible_search.json")})
 	e.net.on("https://api.audnex.us/books/B0TESTBOOK", reply{body: sample(t, "audnexus_book.json")})
 	e.net.on("https://api.audnex.us/books/B0OTHER001", reply{body: sample(t, "audnexus_other.json")})
-	e.net.on("https://www.googleapis.com/books/v1/volumes", reply{body: sample(t, "google_books.json")})
 	e.net.on("https://openlibrary.org/search.json", reply{body: sample(t, "openlibrary_search.json")})
 	e.net.on("https://openlibrary.org/works/OL1W.json", reply{body: sample(t, "openlibrary_work.json")})
 	e.net.on("https://itunes.apple.com/search", reply{body: sample(t, "itunes.json")})
@@ -173,10 +172,6 @@ func TestOnlineParsers(t *testing.T) {
 	}
 	if got := parseAudibleProducts(sample(t, "audible_search.json")); strings.Join(got, "|") != "B0TESTBOOK|B0OTHER001" {
 		t.Errorf("products: %v", got)
-	}
-	g := parseGoogleBooks(sample(t, "google_books.json"))
-	if len(g) != 1 || g[0].ISBN != "9781234567897" || g[0].Year != 2023 || g[0].CoverURL != "https://books.google.com/t.jpg" || g[0].Rating != "4" || g[0].RatingCount != "57" {
-		t.Errorf("google: %+v", g)
 	}
 	o := parseOpenLibrarySearch(sample(t, "openlibrary_search.json"))
 	if len(o) != 1 || o[0].Authors[0].Name != "Ann Author" || o[0].Year != 2023 || o[0].CoverURL != "https://covers.openlibrary.org/b/olid/OL1M-M.jpg" || o[0].Rating != "3.91" {
@@ -253,7 +248,7 @@ func TestOnlineLookupRanksAndExact(t *testing.T) {
 	for _, b := range res.Candidates {
 		seen[b.Provider] = true
 	}
-	if len(seen) != 4 || len(res.Searched) != 4 || len(res.Errors) != 0 {
+	if len(seen) != 3 || len(res.Searched) != 3 || len(res.Errors) != 0 {
 		t.Errorf("providers: %v %v %v", seen, res.Searched, res.Errors)
 	}
 	for i := 1; i < len(res.Candidates); i++ {
@@ -469,8 +464,8 @@ func TestOnlineGuard(t *testing.T) {
 	if code(err) != "offline" || strings.Contains(err.Error(), "10.0.0.1") {
 		t.Errorf("offline: %v", err)
 	}
-	want := "Tendshelf could not reach Google Books. Check this computer's internet connection and try again."
-	if got := (&Error{Code: "offline", Site: "Google Books"}).Text(); got != want {
+	want := "Tendshelf could not reach Open Library. Check this computer's internet connection and try again."
+	if got := (&Error{Code: "offline", Site: "Open Library"}).Text(); got != want {
 		t.Errorf("text: %q", got)
 	}
 	e.net.fail = nil
@@ -623,5 +618,47 @@ func TestOnlineCoverHosts(t *testing.T) {
 		if got := isCoverHost(c.host); got != c.want {
 			t.Errorf("isCoverHost(%q) = %v, want %v", c.host, got, c.want)
 		}
+	}
+}
+
+func TestChosenProviders(t *testing.T) {
+	cases := []struct {
+		name string
+		in   []string
+		want string
+	}{
+		{"default is the reliable source only", nil, "audnexus"},
+		{"open library alone", []string{"openlibrary"}, "audnexus,openlibrary"},
+		{"apple books alone", []string{"itunes"}, "audnexus,itunes"},
+		{"both, in list order", []string{"itunes", "openlibrary"}, "audnexus,openlibrary,itunes"},
+		{"repeats once", []string{"itunes", "itunes"}, "audnexus,itunes"},
+		{"junk and the retired google are ignored", []string{"google", "bogus", "", "audnexus"}, "audnexus"},
+		{"junk beside a real place", []string{"google", "itunes"}, "audnexus,itunes"},
+	}
+	for _, c := range cases {
+		if got := strings.Join(ChosenProviders(c.in), ","); got != c.want {
+			t.Errorf("%s: %s, want %s", c.name, got, c.want)
+		}
+	}
+}
+
+func TestGoogleBooksIsGone(t *testing.T) {
+	if contains(Providers, "google") || label("google") != "google" {
+		t.Errorf("google is still a provider: %v", Providers)
+	}
+	if _, ok := apiHosts["www.googleapis.com"]; ok {
+		t.Error("the Google Books host is still allowed")
+	}
+	e := newEnv(t)
+	// A saved setting or queued job that still names google asks nothing for it and sends nothing.
+	res, err := e.c.Lookup(context.Background(), Query{Title: "The Test Match"}, []string{"google"})
+	if err != nil || len(res.Steps) != 0 || len(res.Searched) != 0 {
+		t.Errorf("google lookup: %v %+v", err, res)
+	}
+	if _, err := e.c.getJSON(context.Background(), "openlibrary", "https://www.googleapis.com/books/v1/volumes?q=x"); errorCode(err) != "refused" {
+		t.Errorf("host refused: %v", err)
+	}
+	if len(e.net.urls) != 0 {
+		t.Errorf("requests sent: %v", e.net.urls)
 	}
 }

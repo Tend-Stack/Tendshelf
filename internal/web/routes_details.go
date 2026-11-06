@@ -40,7 +40,8 @@ const lookupFieldRunes = 300
 // lookupForm is a lookup form as the person filled it, with its refusal.
 type lookupForm struct {
 	title, author, asin, isbn string
-	more                      bool
+	places                    []string
+	placesSet                 bool
 	err                       string
 }
 
@@ -118,7 +119,7 @@ func (s *server) detailsSheet(r *http.Request, d library.BookDetail, look *looku
 			if err != nil {
 				return nil, false, err
 			}
-			look = &lookupForm{title: prefill.Title, author: prefill.Author, asin: prefill.ASIN, isbn: prefill.ISBN}
+			look = &lookupForm{title: prefill.Title, author: prefill.Author, asin: prefill.ASIN, isbn: prefill.ISBN, places: s.savedPlaces(r)}
 		}
 		return pages.LookupSheet(s.lookupSheetView(r, id, look)), true, nil
 	}
@@ -148,7 +149,7 @@ func (s *server) lookupSheetView(r *http.Request, id string, f *lookupForm) page
 		Title: detailsSheetTitle, CloseLabel: detailsSheetClose, Intro: detailsQueryIntro, Submit: detailsQueryGo,
 		TitleLabel: detailsQueryTitle, AuthorLabel: detailsQueryAuthor, ASINLabel: detailsQueryASIN, ISBNLabel: detailsQueryISBN,
 		QTitle: f.title, QAuthor: f.author, QASIN: f.asin, QISBN: f.isbn, Error: f.err,
-		More: f.more, MoreTitle: detailsMoreTitle, MoreLabel: detailsMoreLabel,
+		More: len(f.places) > 0, MoreTitle: detailsMoreTitle, PlacesLegend: placesLegend, PlacesNote: placesNote, Places: placeChoices(f.places),
 		Styles: s.sheetStyles(pages.DetailsStyles...),
 	}
 }
@@ -163,13 +164,17 @@ func (s *server) postMatch(w http.ResponseWriter, r *http.Request) {
 	f := &lookupForm{
 		title: capRunes(r.PostFormValue("title")), author: capRunes(r.PostFormValue("author")),
 		asin: capRunes(r.PostFormValue("asin")), isbn: capRunes(r.PostFormValue("isbn")),
-		more: r.PostFormValue("more") == "1",
 	}
+	f.places, f.placesSet = postedPlaces(r)
 	q := online.Query{Title: f.title, Author: f.author, ASIN: f.asin, ISBN: f.isbn}
 	if pre, err := s.details.LookupQuery(r.Context(), book.ID); err == nil {
 		q.Language = pre.Language
 	}
-	jobID, err := s.details.StartLookup(r.Context(), book.ID, q, f.more, currentUser(r).ID)
+	var jobID string
+	err := s.rememberPlaces(r, f.places, f.placesSet)
+	if err == nil {
+		jobID, err = s.details.StartLookup(r.Context(), book.ID, q, f.places, currentUser(r).ID)
+	}
 	switch {
 	case errors.Is(err, online.ErrEmptyQuery):
 		f.err = detailsErrEmpty

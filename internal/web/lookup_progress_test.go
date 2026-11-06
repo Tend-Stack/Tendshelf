@@ -17,13 +17,13 @@ func compareSteps(running bool) []online.Step {
 		{Provider: "audnexus", Label: "Audible catalogue", Query: q, State: online.StepDone, Count: 2},
 		{Provider: "audnexus", Label: "Audnexus", Region: "US", Query: "B0SWEEP001", State: online.StepDone, Count: 1, Cached: true},
 		{Provider: "audnexus", Label: "Audnexus", Region: "US", Query: "B0SWEEP002", State: online.StepRunning},
-		{Provider: "google", Label: "Google Books", State: online.StepWaiting},
+		{Provider: "openlibrary", Label: "Open Library", State: online.StepWaiting},
 	}
 	if running {
 		return steps
 	}
 	steps[2].State, steps[2].Count = online.StepNone, 0
-	steps[3] = online.Step{Provider: "google", Label: "Google Books", Query: q, State: online.StepFailed, Code: "busy"}
+	steps[3] = online.Step{Provider: "openlibrary", Label: "Open Library", Query: q, State: online.StepFailed, Code: "busy"}
 	return steps
 }
 
@@ -54,10 +54,10 @@ func TestLookupProgressSheet(t *testing.T) {
 	}
 	var last int
 	for _, want := range []string{
-		`Audible catalogue — &#34;Sweepword Lantern&#34; by Imogen Sweepauthor — 2 books`,
-		`Audnexus (US) — B0SWEEP001 — 1 book (saved earlier)`,
+		`Audible catalogue — &#34;Sweepword Lantern&#34; by Imogen Sweepauthor — found 2 books`,
+		`Audnexus (US) — B0SWEEP001 — found 1 book (saved earlier)`,
 		`Audnexus (US) — B0SWEEP002`,
-		`Google Books — waiting`,
+		`Open Library — waiting`,
 		"Only the title, author, ASIN and ISBN leave your server.",
 		`hx-trigger="every 1s"`, `hx-swap="outerMorph"`,
 		`href="/books/` + id + `/details?sheet=compare&amp;job=` + job + `"`,
@@ -67,7 +67,7 @@ func TestLookupProgressSheet(t *testing.T) {
 		if i < 0 {
 			t.Errorf("waiting fragment lacks %q", want)
 		}
-		if strings.HasPrefix(want, "Audible") || strings.HasPrefix(want, "Audnexus") || strings.HasPrefix(want, "Google") {
+		if strings.HasPrefix(want, "Audible") || strings.HasPrefix(want, "Audnexus") || strings.HasPrefix(want, "Open Library") {
 			if i < last {
 				t.Errorf("%q is out of order", want)
 			}
@@ -99,7 +99,7 @@ func TestLookupProgressSheet(t *testing.T) {
 		if i < 0 || strings.HasPrefix(body[i:], `<details class="ts-log-review" open`) {
 			t.Fatalf("%s: no collapsed log", path)
 		}
-		for _, want := range []string{"How Tendshelf searched", "Google Books — &#34;Sweepword Lantern&#34; by Imogen Sweepauthor — asked for a pause", "Audnexus (US) — B0SWEEP002 — nothing found", "every 1s"} {
+		for _, want := range []string{"How Tendshelf searched", "Open Library is busy right now, try again later.", "Audnexus (US) — B0SWEEP002 — no match", "every 1s"} {
 			if !strings.Contains(body, want) && want != "every 1s" {
 				t.Errorf("%s lacks %q", path, want)
 			}

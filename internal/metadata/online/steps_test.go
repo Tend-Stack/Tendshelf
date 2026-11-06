@@ -75,7 +75,7 @@ func TestLookupProgressSearchPath(t *testing.T) {
 func TestLookupProgressMorePlaces(t *testing.T) {
 	e := newEnv(t)
 	var first []Step
-	res, err := e.c.LookupSteps(context.Background(), Query{Title: "The Test Match", Author: "Ann Author"}, Providers,
+	res, err := e.c.LookupSteps(context.Background(), Query{Title: "The Test Match", Author: "Ann Author"}, ChosenProviders([]string{"openlibrary", "itunes"}),
 		func(s []Step) {
 			if first == nil {
 				first = s
@@ -84,7 +84,7 @@ func TestLookupProgressMorePlaces(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(first) != 4 || first[0].State != StepWaiting || first[3].Label != "Apple Books" {
+	if len(first) != 3 || first[0].State != StepWaiting || first[2].Label != "Apple Books" {
 		t.Errorf("plan: %v", stepLines(first))
 	}
 	var labels []string
@@ -94,12 +94,12 @@ func TestLookupProgressMorePlaces(t *testing.T) {
 		}
 		labels = append(labels, s.Label)
 	}
-	// Audible steps come first, the other three follow in order, each placed after the one before.
+	// Audible steps come first, the other two follow in order, each placed after the one before.
 	n := len(labels)
-	if n < 5 || strings.Join(labels[n-3:], ",") != "Google Books,Open Library,Apple Books" || labels[0] != "Audible catalogue" {
+	if n < 4 || strings.Join(labels[n-2:], ",") != "Open Library,Apple Books" || labels[0] != "Audible catalogue" {
 		t.Errorf("order: %v", labels)
 	}
-	for _, s := range res.Steps[n-3:] {
+	for _, s := range res.Steps[n-2:] {
 		if s.Query != `"The Test Match" by Ann Author` || s.Count < 1 {
 			t.Errorf("step: %+v", s)
 		}
@@ -125,17 +125,28 @@ func TestLookupProgressCached(t *testing.T) {
 
 func TestLookupProgressProviderFailure(t *testing.T) {
 	e := newEnv(t)
-	e.net.routes = []route{{"https://www.googleapis.com/", func(int) reply { return reply{status: 429} }}}
-	res, err := e.c.Lookup(context.Background(), Query{Title: "The Test Match"}, []string{"google", "itunes"})
+	e.net.routes = append([]route{{"https://openlibrary.org/", func(int) reply { return reply{status: 429} }}}, e.net.routes...)
+	res, err := e.c.Lookup(context.Background(), Query{Title: "The Test Match"}, []string{"openlibrary", "itunes"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Errors["google"] != "busy" {
+	if res.Errors["openlibrary"] != "busy" {
 		t.Fatalf("errors: %v", res.Errors)
 	}
 	wantSteps(t, res.Steps,
-		`Google Books||failed|"The Test Match"|0|busy|false`,
-		`Apple Books||none|"The Test Match"|0||false`)
+		`Open Library||failed|"The Test Match"|0|busy|false`,
+		`Apple Books||done|"The Test Match"|1||false`)
+	// One place failing never hides another's results.
+	if len(res.Candidates) == 0 || res.Candidates[0].Provider != "itunes" {
+		t.Errorf("candidates: %+v", res.Candidates)
+	}
+	// A 5xx is its own code, and the other place still answers.
+	e = newEnv(t)
+	e.net.routes = append([]route{{"https://itunes.apple.com/", func(int) reply { return reply{status: 503} }}}, e.net.routes...)
+	res, _ = e.c.Lookup(context.Background(), Query{Title: "The Test Match"}, []string{"openlibrary", "itunes"})
+	if res.Errors["itunes"] != "server" || len(res.Candidates) == 0 || res.Candidates[0].Provider != "openlibrary" {
+		t.Errorf("5xx: %v %+v", res.Errors, res.Candidates)
+	}
 	// A network failure is a failed step, in the same words as the error.
 	e = newEnv(t)
 	e.net.fail = errors.New("no route")

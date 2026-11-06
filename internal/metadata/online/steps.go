@@ -174,11 +174,11 @@ func (q Query) titleAsk() string {
 	return ""
 }
 
-// askFor words what one provider is sent: Google Books and Open Library take the ISBN before the
-// title; the Apple store only the title and author.
+// askFor words what one provider is sent: Open Library takes the ISBN before the title;
+// the Apple store only the title and author.
 func (q Query) askFor(provider string) string {
 	switch provider {
-	case "google", "openlibrary":
+	case "openlibrary":
 		if q.ISBN != "" {
 			return q.ISBN
 		}

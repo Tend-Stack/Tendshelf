@@ -30,7 +30,7 @@ func lookupsSweepRows() []sweepRow {
 		mu.Lock()
 		defer mu.Unlock()
 		if queued[e] == "" {
-			id, err := e.a.srv.details.StartBulk(context.Background(), e.libID, "", false, "")
+			id, err := e.a.srv.details.StartBulk(context.Background(), e.libID, "", nil, "")
 			if err != nil {
 				e.t.Fatal(err)
 			}

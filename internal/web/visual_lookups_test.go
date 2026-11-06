@@ -68,7 +68,7 @@ func TestVisualLookups(t *testing.T) {
 	progress := func(state string, p metadata.BulkProgress) {
 		t.Helper()
 		if jobID == "" {
-			if jobID, err = app.srv.details.StartBulk(ctx, libID, "", false, ""); err != nil {
+			if jobID, err = app.srv.details.StartBulk(ctx, libID, "", nil, ""); err != nil {
 				t.Fatal(err)
 			}
 		}

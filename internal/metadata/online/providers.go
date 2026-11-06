@@ -1,4 +1,4 @@
-// Ports the Extractor extractor_online.py (parse_audnexus_book, parse_audible_products, parse_google_books, parse_openlibrary_search, parse_openlibrary_work, parse_itunes); see NOTICES.md.
+// Ports the Extractor extractor_online.py (parse_audnexus_book, parse_audible_products, parse_openlibrary_search, parse_openlibrary_work, parse_itunes); see NOTICES.md.
 
 package online
 
@@ -220,62 +220,6 @@ func contains(l []string, s string) bool {
 		}
 	}
 	return false
-}
-
-func parseGoogleBooks(raw json.RawMessage) []Book {
-	var out []Book
-	for _, it := range asList(asObj(decode(raw))["items"]) {
-		item := asObj(it)
-		vi := asObj(item["volumeInfo"])
-		if vi == nil {
-			continue
-		}
-		var isbn13, isbn10 string
-		for _, id := range asList(vi["industryIdentifiers"]) {
-			o := asObj(id)
-			switch o.s("type") {
-			case "ISBN_13":
-				if isbn13 == "" {
-					isbn13 = o.s("identifier")
-				}
-			case "ISBN_10":
-				if isbn10 == "" {
-					isbn10 = o.s("identifier")
-				}
-			}
-		}
-		isbn := isbn13
-		if isbn == "" {
-			isbn = isbn10
-		}
-		links := asObj(vi["imageLinks"])
-		cover := links.s("thumbnail")
-		if cover == "" {
-			cover = links.s("smallThumbnail")
-		}
-		b := newBook("google")
-		b.ID = item.s("id")
-		b.Title = vi.s("title")
-		b.Subtitle = vi.s("subtitle")
-		for _, n := range asList(vi["authors"]) {
-			if s := str(n); s != "" {
-				b.Authors = append(b.Authors, Person{Name: s})
-			}
-		}
-		b.Publisher = vi.s("publisher")
-		b.Year = year(vi.s("publishedDate"))
-		b.Description = vi.s("description")
-		b.ISBN = cleanISBN(isbn)
-		b.Language = vi.s("language")
-		b.CoverURL = strings.Replace(cover, "http:", "https:", 1)
-		for _, c := range asList(vi["categories"]) {
-			b.Genres = append(b.Genres, str(c))
-		}
-		b.Genres = dedupe(b.Genres)
-		b.Rating, b.RatingCount = ratingFields(vi["averageRating"], vi["ratingsCount"])
-		out = append(out, b)
-	}
-	return out
 }
 
 func parseOpenLibrarySearch(raw json.RawMessage) []Book {

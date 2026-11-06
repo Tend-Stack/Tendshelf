@@ -32,7 +32,6 @@ type Person struct{ Name, ASIN string }
 
 var providerLabels = map[string]string{
 	"audnexus":    "Audible (via Audnexus)",
-	"google":      "Google Books",
 	"openlibrary": "Open Library",
 	"itunes":      "Apple Books",
 }

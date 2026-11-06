@@ -15,6 +15,12 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
   On an address that only works on this computer (localhost) the page says so instead of drawing a code.
 - **A phone already signed in to the app can no longer join an invitation by mistake**, which used to leave the page and
   the app signed in as two different people.
+- **Book details search Audible first, and other places only when you choose them.** A normal search asks only Audible
+  (through Audnexus). "Search more places" now has a box for Open Library, one for Apple Books and one for All, and
+  Tendshelf remembers your choice. The "Look up" button on Libraries & scanning uses the same choice. Google Books is
+  gone: it refused Tendshelf's requests, and Tendshelf will not ask you for an API key. Each place now says what happened in
+  plain words, such as "Open Library is busy right now, try again later." or "Could not reach Apple Books.", and one
+  place failing never hides what another found.
 
 - **Tendshelf for Android has a release build.** `make apk` makes an APK whose version comes from the release tag, with
   a proper icon. It is signed with your own key when you provide one and left clearly unsigned when you do not. Two builds

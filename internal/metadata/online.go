@@ -133,10 +133,10 @@ func (s *Service) LookupQuery(ctx context.Context, bookID string) (online.Query,
 	return q, nil
 }
 
-// StartLookup queues a lookup of one book. Only Audnexus is asked unless more is true. It returns
+// StartLookup queues a lookup of one book. Audnexus is asked, and the optional places in extras. It returns
 // ErrOnlineOff when lookups are off or no client is set, online.ErrEmptyQuery when the query has
 // nothing to search for, and ErrNotFound for an unknown book. The caller checks who may edit.
-func (s *Service) StartLookup(ctx context.Context, bookID string, q online.Query, more bool, userID string) (string, error) {
+func (s *Service) StartLookup(ctx context.Context, bookID string, q online.Query, extras []string, userID string) (string, error) {
 	if s.online == nil {
 		return "", ErrOnlineOff
 	}
@@ -151,11 +151,7 @@ func (s *Service) StartLookup(ctx context.Context, bookID string, q online.Query
 	if strings.TrimSpace(q.Title) == "" && cleanASIN(q.ASIN) == "" && cleanISBN(q.ISBN) == "" {
 		return "", online.ErrEmptyQuery
 	}
-	providers := []string{"audnexus"}
-	if more {
-		providers = online.Providers
-	}
-	return s.jobs.Enqueue(ctx, KindOnline, LookupPayload{BookID: bookID, Query: q, Providers: providers}, jobs.EnqueueOptions{CreatedBy: userID})
+	return s.jobs.Enqueue(ctx, KindOnline, LookupPayload{BookID: bookID, Query: q, Providers: online.ChosenProviders(extras)}, jobs.EnqueueOptions{CreatedBy: userID})
 }
 
 func (s *Service) handleLookup(ctx context.Context, t *jobs.Task) (any, error) {
@@ -174,7 +170,8 @@ func (s *Service) handleLookup(ctx context.Context, t *jobs.Task) (any, error) {
 	if err := PruneOnlineCache(ctx, s.repo.Store(), s.now().Add(-onlineCacheAge)); err != nil {
 		return nil, err
 	}
-	res, err := s.online.LookupSteps(ctx, p.Query, p.Providers, func(steps []online.Step) { t.Progress(steps) })
+	// A job queued before a place was retired may still name it; only today's places are asked.
+	res, err := s.online.LookupSteps(ctx, p.Query, online.ChosenProviders(p.Providers), func(steps []online.Step) { t.Progress(steps) })
 	if errors.Is(err, online.ErrEmptyQuery) {
 		return nil, &jobs.Error{Code: "empty_query", Text: "There is nothing to look up. Add a title, ASIN or ISBN.", Permanent: true, Err: err}
 	}
