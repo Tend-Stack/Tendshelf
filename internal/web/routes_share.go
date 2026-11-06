@@ -395,7 +395,7 @@ func (s *server) createShare(w http.ResponseWriter, r *http.Request, bookID stri
 	if words != "" {
 		note = fmt.Sprintf(shareLinkNoteFor, inv.Name, words)
 	}
-	v.Created = &pages.InviteLink{Name: inv.Name, URL: s.inviteURL(r, tok), Title: fmt.Sprintf(shareLinkTitle, inv.Name), Note: note}
+	v.Created = &pages.InviteLink{Name: inv.Name, URL: s.inviteURL(r, tok), Title: fmt.Sprintf(shareLinkTitle, inv.Name), Note: note, QR: s.inviteQR(r, tok)}
 	s.renderShare(w, r, http.StatusOK, v)
 }
 

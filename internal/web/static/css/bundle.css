@@ -700,3 +700,10 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
     .ts-wave__needle { forced-color-adjust: none; background: CanvasText; }
   }
 }
+
+/* QR code (decision 0028): dark modules on a light plate in every theme. The plate carries its own
+   quiet zone inside the viewBox, so nothing here may add a coloured margin or change the fills. */
+.ts-qr { display: block; width: min(100%, 17.5rem); height: auto; shape-rendering: crispEdges; forced-color-adjust: none; }
+.ts-qr__paper { fill: var(--qr-paper); }
+.ts-qr__ink { fill: var(--qr-ink); }
+.ts-pair__qr { display: flex; justify-content: center; padding: var(--space-8) 0; }

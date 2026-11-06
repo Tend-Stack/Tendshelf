@@ -258,7 +258,7 @@ func DesktopBar(p Page) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if !p.Picker {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"ts-wbar__line\" aria-hidden=\"true\" data-wbar-line hidden><span class=\"ts-wbar__fill\"></span></div><div id=\"desktop-menu\" class=\"ts-wmenu\" role=\"menu\" aria-label=\"More\" data-wbar-menu hidden><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"change\">Change mode or server…</button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-in\">Zoom in<kbd>Ctrl +</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-out\">Zoom out<kbd>Ctrl -</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-reset\">Actual size<kbd>Ctrl 0</kbd></button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitemcheckbox\" aria-checked=\"false\" class=\"ts-wmenu__item\" data-wbar-do=\"keep\" data-wbar-keep hidden>Keep playing when I close the window<span class=\"ts-wmenu__check\" aria-hidden=\"true\"></span></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"keys\">Keyboard shortcuts<kbd>?</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"about\">About Tendshelf</button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"quit\">Quit Tendshelf<kbd>Ctrl Q</kbd></button></div><div class=\"ts-wdrop\" data-wbar-drop role=\"status\" hidden><div class=\"ts-wdrop__frame\"><span class=\"ts-wdrop__icon\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"ts-wbar__line\" aria-hidden=\"true\" data-wbar-line hidden><span class=\"ts-wbar__fill\"></span></div><div id=\"desktop-menu\" class=\"ts-wmenu\" role=\"menu\" aria-label=\"More\" data-wbar-menu hidden><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"change\">Change mode or server…</button> <a role=\"menuitem\" class=\"ts-wmenu__item\" href=\"/me/devices/add\">Add a phone…</a><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-in\">Zoom in<kbd>Ctrl +</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-out\">Zoom out<kbd>Ctrl -</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-reset\">Actual size<kbd>Ctrl 0</kbd></button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitemcheckbox\" aria-checked=\"false\" class=\"ts-wmenu__item\" data-wbar-do=\"keep\" data-wbar-keep hidden>Keep playing when I close the window<span class=\"ts-wmenu__check\" aria-hidden=\"true\"></span></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"keys\">Keyboard shortcuts<kbd>?</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"about\">About Tendshelf</button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"quit\">Quit Tendshelf<kbd>Ctrl Q</kbd></button></div><div class=\"ts-wdrop\" data-wbar-drop role=\"status\" hidden><div class=\"ts-wdrop__frame\"><span class=\"ts-wdrop__icon\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -278,7 +278,7 @@ func DesktopBar(p Page) templ.Component {
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(p.AddBooks)).ResolveURL(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/desktop_bar.templ`, Line: 95, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/desktop_bar.templ`, Line: 96, Col: 87}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 					if templ_7745c5c3_Err != nil {
@@ -296,7 +296,7 @@ func DesktopBar(p Page) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(p.AddBooks)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/desktop_bar.templ`, Line: 98, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/desktop_bar.templ`, Line: 99, Col: 101}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 				if templ_7745c5c3_Err != nil {

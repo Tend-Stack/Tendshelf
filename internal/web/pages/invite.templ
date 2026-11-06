@@ -23,6 +23,16 @@ type InviteView struct {
 	Note                string
 	// SignedInAs is the name of the person already signed in on this browser, or empty.
 	SignedInAs string
+	// QR, with QRSummary, sits in a closed <details> so a person on a computer can continue on a phone.
+	// Empty in the apps, on a phone's browser and on an address a phone cannot reach.
+	QR        *components.QRView
+	QRSummary string
+	// AppLink and AppLabel are the "Open in the app" button, only on an Android browser; AppNote is the
+	// sentence shown instead after the intent fell back (?noapp=1).
+	AppLink, AppLabel, AppNote string
+	// Bound is true when this phone's app is already signed in: there is no form, only BoundWords.
+	Bound      bool
+	BoundWords string
 }
 
 // Invite is the invite page: who sent it, what it opens and one button.
@@ -58,6 +68,34 @@ templ Invite(v InviteView) {
 		if v.SignedInAs != "" {
 			<p class="body ts-invite__signedin" role="status">You're signed in as { v.SignedInAs }. This invite is for someone new.</p>
 		}
+		if v.Bound {
+			<p class="body ts-invite__signedin" role="status">{ v.BoundWords }</p>
+		} else {
+			@inviteForm(v)
+		}
+		if v.AppLink != "" {
+			<a class="ts-btn ts-btn--secondary ts-btn--lg ts-btn--block" href={ templ.SafeURL(v.AppLink) } hx-boost="false">{ v.AppLabel }</a>
+		}
+		if v.AppNote != "" {
+			<p class="body" id="invite-noapp">{ v.AppNote }</p>
+		}
+		if v.QR != nil {
+			<details class="ts-invite__phone">
+				<summary class="ts-btn ts-btn--quiet">{ v.QRSummary }</summary>
+				<div class="ts-pair__qr">
+					@components.QR(*v.QR)
+				</div>
+			</details>
+		}
+		if v.SignedInAs != "" {
+			<a class="ts-btn ts-btn--quiet ts-btn--lg ts-btn--block" href="/">Back to your books</a>
+		} else if !v.Bound {
+			<p class="caption ts-invite__fine">No sign-up needed. Free, and private to your family.</p>
+		}
+	</div>
+}
+
+templ inviteForm(v InviteView) {
 		<form class="ts-invite__cta" method="post" action={ templ.URL("/invite/" + v.Token) } hx-boost="false">
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			if v.SignedInAs != "" {
@@ -69,12 +107,6 @@ templ Invite(v InviteView) {
 				</button>
 			}
 		</form>
-		if v.SignedInAs != "" {
-			<a class="ts-btn ts-btn--quiet ts-btn--lg ts-btn--block" href="/">Back to your books</a>
-		} else {
-			<p class="caption ts-invite__fine">No sign-up needed. Free, and private to your family.</p>
-		}
-	</div>
 }
 
 // InviteStateView is a page that says an invite link does not work, and why in plain words.
