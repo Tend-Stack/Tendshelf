@@ -122,6 +122,8 @@ object TextStore {
     /** One GET on the server's origin. [withCookie] false for static files. A redirect is returned, never followed. */
     private fun get(origin: Origin, path: String, withCookie: Boolean, limit: Long = MAX_ANSWER): Reply {
         if (!origin.matches(origin.text + path)) throw IOException("address outside the origin")
+        // The session cookie goes only to the connected server; a 404 from anything else deletes nothing.
+        if (withCookie && !ServerGate.ok(origin.text)) throw IOException("the address does not answer as the connected server")
         val conn = URL(origin.text + path).openConnection() as HttpURLConnection
         try {
             conn.instanceFollowRedirects = false

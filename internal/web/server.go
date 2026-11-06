@@ -324,6 +324,12 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	guarded := s.refuseMixed(s.bearer(auth.Middleware(ss, s.proxies)(s.csrf.Middleware(s.gate(mux)))))
 	outer := http.NewServeMux()
 	outer.Handle("GET /static/", assets.Handler())
+	// The install's public id: a one-way function of the CSRF key, so it is stable across restarts and
+	// reveals nothing. The Android app keeps it from the day it connects and acts on a 401 or a 404 only
+	// from the server that still says it.
+	idMac := hmac.New(sha256.New, key)
+	idMac.Write([]byte("tendshelf install id v1"))
+	installID := hex.EncodeToString(idMac.Sum(nil)[:16])
 	outer.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
@@ -333,6 +339,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 			"app":     "tendshelf",
 			"shell":   "1", // the desktop shell looks for this: the server knows ts_shell
 			"connect": "1", // the Android app looks for this: /app/connect and the code swap exist
+			"id":      installID,
 		})
 	})
 	s.registerInstall(outer)

@@ -2,6 +2,14 @@
 <resources>
     <string name="app_name">Tendshelf</string>
     <!-- Words not in the copy deck; listed in docs/copy-additions.md. -->
+    <string name="change_server_title">Change server?</string>
+    <string name="change_server_body">You are connected to %1$s. Connecting to %2$s signs this phone out of it.</string>
+    <plurals name="change_server_downloads">
+        <item quantity="one">%d downloaded book is removed from this phone.</item>
+        <item quantity="other">%d downloaded books are removed from this phone.</item>
+    </plurals>
+    <string name="change_server_unsent">Places that could not be sent are tried once more first, and any that still cannot be sent are lost.</string>
+    <string name="change_server_continue">Change server</string>
     <string name="http_warning_title">This address is not private</string>
     <string name="http_warning_body">This address is not private. Others on this network could see what you do here.</string>
     <string name="http_warning_public">Anyone along the way could see your password.</string>

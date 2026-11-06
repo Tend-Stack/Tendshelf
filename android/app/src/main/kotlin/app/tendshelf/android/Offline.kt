@@ -56,7 +56,22 @@ object Offline {
     private var manager: DownloadManager? = null
 
     /** Runs [work] on the one worker thread that does the slow parts. */
-    fun io(work: () -> Unit) = ioPool.execute(work)
+    fun io(work: () -> Unit) { safeIo(work) }
+
+    /**
+     * Every task of the worker goes through here. A full disk or a locked database throws on this thread, and an uncaught
+     * exception on a pool thread ends the process, and the sound with it. The task is lost, its state stays as it was, and
+     * the next foreground or daily check tries again.
+     */
+    private fun safeIo(work: () -> Unit) {
+        ioPool.execute {
+            try {
+                work()
+            } catch (e: Exception) {
+                Log.w(TAG, "offline: task failed: ${e.javaClass.simpleName}")
+            }
+        }
+    }
 
     /** Called on a worker thread with the book id whenever its state or progress moved. */
     @Volatile
@@ -67,6 +82,7 @@ object Offline {
     private fun coverFile(id: String) = File(File(root, "covers"), id)
 
     fun init(context: Context) {
+        ServerGate.init(context)
         synchronized(lock) {
             if (::app.isInitialized) return
             app = context.applicationContext
@@ -76,7 +92,7 @@ object Offline {
             OfflineNet.init(app)
         }
         // A wipe the last process did not finish is completed before anything else can use the cache.
-        if (prefs.getBoolean("wipePending", false)) ioPool.execute { finishWipe() }
+        if (prefs.getBoolean("wipePending", false)) safeIo { finishWipe() }
     }
 
     // ---- Cache and manager ----
@@ -89,10 +105,10 @@ object Offline {
         db ?: StandaloneDatabaseProvider(app).also { db = it }
 
     /** Opens a connection to the one server with the current token; the token is read when the connection is made. */
-    private val upstream = DataSource.Factory {
+    private val upstream = ServerGate.gated(DataSource.Factory {
         val headers = tokens.current()?.let { mapOf("Authorization" to "Bearer ${it.token}") } ?: emptyMap()
         DefaultHttpDataSource.Factory().setDefaultRequestProperties(headers).createDataSource()
-    }
+    })
 
     /** What the player reads a downloaded book through: the cache only reads, a book being streamed is never written. */
     fun readFactory(http: DataSource.Factory): DataSource.Factory = CacheDataSource.Factory()
@@ -119,7 +135,7 @@ object Offline {
     }
 
     private fun changed(book: String) {
-        ioPool.execute {
+        safeIo {
             try {
                 recompute(book)
             } catch (e: Exception) {
@@ -315,7 +331,7 @@ object Offline {
     /** A server page loaded: the session exists, so a text that waited for it goes on. Cheap when nothing waits. */
     fun onPageLoaded() {
         if (!::app.isInitialized) return
-        ioPool.execute { store.withText("signin").forEach { retryText(it) } }
+        safeIo { store.withText("signin").forEach { retryText(it) } }
     }
 
     private fun refuse(words: Int) {
@@ -324,7 +340,7 @@ object Offline {
 
     /** Drops the book's bytes, row and cover. */
     fun remove(book: String) {
-        ioPool.execute {
+        safeIo {
             try {
                 val ids = downloadsOf(manager(), book).map { it.request.id }
                 main.post { ids.forEach { manager().removeDownload(it) } }
@@ -342,7 +358,7 @@ object Offline {
     fun onForeground() {
         if (!::app.isInitialized) return
         prefs.edit().putBoolean("downloadsLimited", false).apply()
-        ioPool.execute {
+        safeIo {
             // A row with no download behind it (the process died before the requests were stored) cannot finish: Try again.
             for (r in store.all()) {
                 val active = r.state == OfflineState.QUEUED || r.state == OfflineState.DOWNLOADING || r.state == OfflineState.PAUSED
@@ -368,6 +384,10 @@ object Offline {
     /** At most once a day for each book (decision 0019, point 10): same files, new words; changed files, old; gone, removed. */
     private fun dailyCheck() {
         val conn = tokens.current() ?: return
+        // One probe for the whole loop: an address that does not answer as the connected server (another network, a
+        // plain 404 server) ends the check here, with nothing deleted and no token sent, and does not hold the worker.
+        if (store.all().none { it.state == OfflineState.READY || it.state == OfflineState.STALE }) return
+        if (!ServerGate.ok(conn.origin)) return
         val api = Api(conn.origin)
         val now = System.currentTimeMillis()
         for (row in store.all()) {
@@ -445,7 +465,7 @@ object Offline {
         prefs.edit().putBoolean("wipePending", true).commit()
         store.clear()
         // Half a second after the sound stopped, so a loader is not reading a cache that is being released.
-        ioPool.execute {
+        safeIo {
             Thread.sleep(500)
             finishWipe()
         }

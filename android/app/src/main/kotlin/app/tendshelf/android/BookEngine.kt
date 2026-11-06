@@ -172,7 +172,7 @@ class BookEngine(
         this.settings = settings
         player.load(manifest.title, manifest.author, manifest.chapters, settings, art)
         onBookStarted?.invoke(manifest.id, placeWrittenAt(manifest.progress, pending), atMs != null && atMs >= 0)
-        exo.setMediaSource(BookMedia.build(manifest, api.paths, http, downloaded), startPlace(manifest.progress, atMs, pending))
+        exo.setMediaSource(BookMedia.build(manifest, api.paths, ServerGate.gated(http), downloaded), startPlace(manifest.progress, atMs, pending))
         exo.setPlaybackSpeed(manifest.speed.toFloat())
         exo.prepare()
         exo.play()

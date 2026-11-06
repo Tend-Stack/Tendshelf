@@ -74,25 +74,36 @@ class NavigationTest {
             Triple("bundled connect, no address", "https://appassets.androidplatform.net/connect", Nav.Connect("")),
             Triple("bundled over http", "http://appassets.androidplatform.net/start", Nav.External),
         )
-        for ((name, url, want) in cases) assertEquals(want, decide(url, true, good, true), name)
+        for ((name, url, want) in cases) assertEquals(want, decide(url, true, good, true, url.startsWith("https://$BUNDLED_HOST")), name)
     }
 
     @Test
     fun decideDoneNeedsEverything() {
         val done = "https://good.example/app/connect/done?code=XYZ"
-        assertEquals(Nav.Block, decide(done, false, good, true), "subframe")
-        assertEquals(Nav.Block, decide(done, true, good, false), "nothing pending")
-        assertEquals(Nav.Block, decide("https://good.example/app/connect/done", true, good, true), "no code")
-        assertEquals(Nav.Block, decide("https://good.example/app/connect/done?code=", true, good, true), "empty code")
-        assertEquals(Nav.External, decide("https://evil.example/app/connect/done?code=XYZ", true, good, true), "other origin")
-        assertEquals(Nav.External, decide(done, true, null, true), "no origin chosen")
-        assertEquals(Nav.Stay, decide("https://good.example/app/connect/done/", true, good, true), "trailing slash is another page")
+        assertEquals(Nav.Block, decide(done, false, good, true, false), "subframe")
+        assertEquals(Nav.Block, decide(done, true, good, false, false), "nothing pending")
+        assertEquals(Nav.Block, decide("https://good.example/app/connect/done", true, good, true, false), "no code")
+        assertEquals(Nav.Block, decide("https://good.example/app/connect/done?code=", true, good, true, false), "empty code")
+        assertEquals(Nav.External, decide("https://evil.example/app/connect/done?code=XYZ", true, good, true, false), "other origin")
+        assertEquals(Nav.External, decide(done, true, null, true, false), "no origin chosen")
+        assertEquals(Nav.Stay, decide("https://good.example/app/connect/done/", true, good, true, false), "trailing slash is another page")
     }
 
     @Test
     fun decideSubframes() {
-        assertEquals(Nav.Block, decide("https://example.org/", false, good, true))
-        assertEquals(Nav.Stay, decide("https://good.example/x", false, good, true))
-        assertNotNull(decide("mailto:a@b.c", false, good, false))
+        assertEquals(Nav.Block, decide("https://example.org/", false, good, true, false))
+        assertEquals(Nav.Stay, decide("https://good.example/x", false, good, true, false))
+        assertNotNull(decide("mailto:a@b.c", false, good, false, false))
+    }
+
+    @Test
+    fun bundledCommandsAreObeyedOnlyFromABundledMainFrame() {
+        val b = "https://appassets.androidplatform.net"
+        for (path in listOf("/connect?address=evil.example", "/remove?id=x", "/play?id=x", "/toggle", "/start")) {
+            assertEquals(Nav.Block, decide(b + path, true, good, false, false), "from a book page: $path")
+            assertEquals(Nav.Block, decide(b + path, false, good, false, true), "subframe: $path")
+        }
+        assertEquals(Nav.RemoveBook("x"), decide("$b/remove?id=x", true, good, false, true))
+        assertEquals(Nav.External, decide("https://example.org/", true, good, false, false), "an outside link opens the browser")
     }
 }

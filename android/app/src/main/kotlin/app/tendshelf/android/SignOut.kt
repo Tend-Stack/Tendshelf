@@ -41,7 +41,9 @@ class SignOut(
         web.loadUrl(pages.startUrl)
         after?.invoke()
         val appContext = web.context.applicationContext
-        // A5 (D9): one try to send the saved places, then every row goes, whatever the answer.
+        // A session that merely ran out keeps its unsent places (ProgressWriter promises it): the token is dead, so
+        // nothing could be sent, and the next sign-in of the same person carries on. A chosen sign-out sends once and clears.
+        if (reason == R.string.signed_out) return
         io.execute {
             ProgressWriter.signOutFlush(appContext, conn)
             if (origin != null && token != null) api.revoke(origin, token)
@@ -61,14 +63,36 @@ class SignOut(
         web.clearFormData()
     }
 
-    /** The person chose another server: the old token is useless there, so it is revoked and everything is wiped. */
-    fun leave(oldOrigin: app.tendshelf.shared.Origin) {
-        val token = store.current()?.token
-        wipeLocal(true)
+    /**
+     * The person confirmed another server. In order: the sound stops; the unsent places go to the old server with the old
+     * connection (one try, rows kept); the old device is revoked; then the token, cookies, web storage and cache go, so the
+     * new server's pages start clean, and [done] runs on the main thread. The downloads and the saved rows go later, by
+     * [finishLeave], once the new sign-in has worked: a connect that fails loses nothing but the sign-in.
+     */
+    fun leave(oldOrigin: app.tendshelf.shared.Origin, done: () -> Unit) {
+        val conn = store.current()
+        stopPlayback()
         val appContext = web.context.applicationContext
         io.execute {
-            ProgressWriter.signOutFlush(appContext, null) // the rows belong to the old server
-            if (token != null) api.revoke(oldOrigin, token)
+            ProgressWriter.sendOnly(appContext, conn)
+            if (conn != null) api.revoke(oldOrigin, conn.token)
+            web.post {
+                store.clearToken()
+                CookieManager.getInstance().removeAllCookies(null)
+                CookieManager.getInstance().flush()
+                WebStorage.getInstance().deleteAllData()
+                web.clearCache(true)
+                web.clearHistory()
+                web.clearFormData()
+                done()
+            }
         }
+    }
+
+    /** The new server accepted the sign-in: the old server's downloads and any rows still unsent are dropped. */
+    fun finishLeave() {
+        Offline.wipe()
+        val appContext = web.context.applicationContext
+        io.execute { ProgressWriter.signOutFlush(appContext, null) }
     }
 }

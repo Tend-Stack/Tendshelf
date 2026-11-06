@@ -109,4 +109,5 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.media3.datasource)
     implementation(libs.androidx.webkit)
+    implementation(libs.androidx.core)
 }
