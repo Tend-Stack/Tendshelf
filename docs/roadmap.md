@@ -22,6 +22,7 @@ themes.
 | M5 Book reader | R1, R2, R4, X, B1-B3, RD1-RD4, G1-G7, L | **Built 2026-11-05** ([decision 0018](decisions/0018-book-reader.md), [plan](plans/m5-book-reader.md), [great reader](plans/m5-great-reader.md)). Ebooks as books with automatic pairing, the reader (pages, highlights, search, footnotes), offline reading, look-up and word list, reading stats, skim, comfort, print pages, series and shelves. Read-along was removed. **Operator checks open:** the reader on iPhone Safari and Android Chrome, and the offline-reading airplane check; WebKit was driven only in a scripted Wails window. | The M5 notes below; [manual-checks.md](manual-checks.md). |
 | M6 Desktop | P5 | Built on Linux (2026-11-05). **Open:** the operator's own-desktop checks (sound, tray click, file chooser, `https` server); macOS and Windows not verified. | [plan](plans/m6-desktop.md), M6 status below |
 | M7 Research | P6 | Dropped (decision 0007) | |
+| M8 Android | A0-A10 | In progress. A0 skeleton and playback proof: see its status note under "Android (M8)" below. | [decision 0024](decisions/0024-android-app.md), [plan](plans/android.md) |
 
 ## M0 Foundation
 
@@ -861,8 +862,7 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
 
 ## Later
 
-TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), native mobile
-(evaluate Wails v3 mobile when stable), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID
+TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID
 Connect, merge MP3 folder to M4B, custom metadata providers, Chromecast.
 
 - **L5 Clips** (2026-11-06, done; plan `docs/plans/next-server.md` section 8). Scope: migration `0029_clips` (`end_ms`,

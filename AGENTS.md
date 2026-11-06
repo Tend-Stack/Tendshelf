@@ -22,7 +22,10 @@ was reused, extended or replaced.
   `internal/ebook` only) and `github.com/ledongthuc/pdf` (PDF text layer, `internal/ebook/pdf.go` only). Approved for later phases
   (operator, 2026-11-03), each added with its `NOTICES.md` row: Wails v3 (desktop
   module only), fsnotify, go-webauthn and an OpenID Connect client; see "Dependencies and approvals" in
-  `docs/architecture.md`.
+  `docs/architecture.md`. Android (decision 0024), under `android/` only: Kotlin (through AGP), `androidx.media3`
+  (exoplayer, session, datasource), `androidx.webkit`, `androidx.core`, and `androidx.work` if downloads need it; every
+  other module needs approval. Each gets a `NOTICES.md` row and is pinned by Gradle dependency verification. The
+  "no build step" rule stays for the shipped server; Gradle is allowed under `android/` only, and fetches at build time only.
 - **One server binary**, pure Go (`CGO_ENABLED=0` must build). Static assets and migrations are embedded
   with `embed`. External programs: `ffmpeg` and `ffprobe` only, located via config or `PATH`
   ([decision 0018](docs/decisions/0018-book-reader.md)). Tendshelf never downloads runtimes or models.
@@ -32,13 +35,16 @@ was reused, extended or replaced.
 - **HTMX** is vendored as one static file (no CDN). Plain JavaScript is allowed only in
   `internal/web/static/js/` as ES modules loaded directly by the browser: the audio player, the
   service worker, offline storage, the book uploader (`upload.js`, loaded only on the Add books page,
-  decision 0015) and small progressive enhancements. No framework, no transpiling.
+  decision 0015) and small progressive enhancements. No framework, no transpiling. `native-audio.js` is loaded only in the Android shell
+  (`data-shell="android"`).
 - **CSS** is hand-written in `internal/web/static/css/` with custom properties for design tokens.
 - **SQLite** via the pure-Go driver, WAL mode, one database file in the data directory.
 - **Wails v3** for desktop, in a separate Go module under `desktop/` so the server binary never links
   CGO, GTK or WebKit. Pages load from an http(s) origin, never Wails' asset scheme
   (decision 0020). The window keeps GTK's decorations with a hidden titlebar, never `Frameless`
-  (decision 0023). Native mobile is later; the PWA comes first.
+  (decision 0023). **Android** is a separate Gradle project under `android/`: Kotlin, AndroidX and Media3,
+  built by the Gradle wrapper with no Android Studio and no Node. It never links into the server. No Google Play
+  services, Firebase or analytics. Other mobile platforms are later ([decision 0024](docs/decisions/0024-android-app.md)).
 
 ## templ and HTMX conventions
 
@@ -111,6 +117,8 @@ was reused, extended or replaced.
 
 ## Security and privacy
 
+- The Android app talks only to the server the person typed in, with no other outbound request. Sign-out deletes the
+  person's downloads. ("The only package that creates an `http.Client`" stays a server rule.)
 - **No telemetry**, analytics, crash reporting, update pings or third-party assets (fonts, CDNs, map
   tiles). The only outbound requests are user-initiated metadata lookups and cover downloads, through
   `internal/metadata/online`, the only package in the server that creates an `http.Client`. The one other outbound
@@ -152,6 +160,7 @@ was reused, extended or replaced.
 - Its `tokens.css` and `bundle.css` are the app's stylesheets (`internal/web/static/css/`); extend
   `bundle.css` with new `ts-` classes. No hard-coded colours, no inline styles; every page works in
   `dark`, `light`, `sepia` and `contrast` (7:1). Board HTML is reference markup, not code to paste.
+- The Android app's bundled start and offline pages use the same `tokens.css` and `bundle.css`, copied at build time.
 - Fonts are self-hosted (Fraunces, Fira Sans, Fira Mono); ignore the handoff's Google Fonts link.
 - Use the copy deck's words exactly; a missing string follows the voice rules in `BRAND.md` and is
   listed in the report. 13 px is the smallest text. One resume button per book on any screen: for a book in two formats it belongs to the format used last (`lastFormat`, the newer of the listening and reading places), and the other format is a plain secondary button with no place and no time.
@@ -176,6 +185,8 @@ get a row.
 - Page packages record a side-by-side check against their boards at 390, 768, 1024 and 1440 px using
   the opt-in capture helper (`TENDSHELF_TEST_BROWSER`, system Chromium driven from a Go test; no Node).
 - Captures are repeatable: to prove a change is pixel-identical, run `TENDSHELF_VISUAL_OUT=/tmp/before make visual`, make the change, run it again into `/tmp/after`, then `go run ./internal/testutil/capturediff /tmp/before /tmp/after` (prints the names that differ and "N of M identical"); `make visual-compare` runs the set twice and does the same. New visual tests must not put random values on screen (map order, `t.TempDir()` paths, random ids, tokens): use the `visualTempDir`/seeded-id helpers in `internal/web/visual_ids_dev_test.go`.
+- Android: `make apk-debug` builds the debug APK (`android/`, Gradle wrapper); an emulator checklist is recorded in the
+  roadmap's status note. A CI job comes with A10, gated on the Android SDK being on the runner.
 - Gates: `make check` (gofmt, `go vet`, `go test -race ./...`) and `make build`. Run both before a commit.
 - Size budgets for CSS and JS measure the gzip bytes the server sends (static assets are precompressed at start-up). Write JS and CSS for reading: one statement per line, names that say what they do, and a comment wherever the reason is not obvious. Never minify, squeeze or strip comments to meet a budget; report the overrun instead.
 - Do not report a check you did not run.
