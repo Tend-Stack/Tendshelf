@@ -15,10 +15,17 @@ checks are still open.
   book with one button for the format you used last. Copy-protected files are refused, never opened.
 - **A player and a reader.** Speed, sleep timer, chapters, bookmarks, an Eyes-free mode for the car; for
   ebooks pages or scrolling, highlights, notes, search, look-up in dictionaries you add, and a word list.
+- **Looking after the library.** Folders are watched and scanned on a schedule; whole backups to a folder you
+  choose; a chapter editor with online chapter lookup; duplicates you can merge; a library health page.
+- **Your own history.** Clips of a stretch of a book, a listening history with a way back to any moment, and all
+  your highlights and notes in one place, with search and Markdown or JSON downloads.
+- **Other apps.** App keys give an OPDS catalogue for ebook readers and a sync server for KOReader (the sync has
+  not yet been tried with a real KOReader).
 - **Offline.** Download a book (audio and text) and use it with no connection.
 - **Family.** Invite people, give each the libraries or books you choose, share a single book by an
   expiring link. Each person has their own place, shelves and statistics.
-- **Desktop app.** A window around Tendshelf for Linux ([docs/desktop.md](docs/desktop.md)).
+- **Desktop app.** A window around Tendshelf for Linux with its own title bar, tray, media keys, now playing,
+  notifications and drag-and-drop of books ([docs/desktop.md](docs/desktop.md)). Checks on a real desktop are open.
 - **No Node.js anywhere.** One Go program (SQLite built in), templ templates, HTMX and a little plain
   JavaScript. `ffmpeg` and `ffprobe` are the only outside programs.
 - **Private.** No telemetry, no tracking, no third-party fonts or CDNs. The server contacts the internet only

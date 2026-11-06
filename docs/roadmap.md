@@ -915,3 +915,9 @@ Connect, merge MP3 folder to M4B, custom metadata providers, Chromecast.
   (`clips-*`). JS: `clip.js` measured about 0.8 KB gzip (plan target 0.5 KB, with comments kept); app JS 90,143 B of
   the new 91,264 B ceiling (+640 B as planned). Limits: the stop follows `timeupdate` (about 250 ms steps); no audio
   export, no sharing, no waveform drag; a bad end on the sheet answers with a toast when it came through htmx.
+
+**Docs for the work after 2026.2.0 (2026-11-06)**: `CHANGELOG.md` has an Unreleased section (watch folders, whole backups, chapter editor and lookup,
+duplicates, library health, app keys and OPDS, KOReader sync, clips, listening history, all my highlights, the desktop title bar, now playing, tray,
+notifications, More menu and drop a book); the README feature list matches; `docs/manual-checks.md` has the "Desktop app on your own computer" table (X4 to X6,
+every row open); the GoTHW Wails note gained a Wails 3.1.0 section outside the repo. No code changed. Checks: `go build ./...`. Limits: the operator's rows
+are not run, so the CGO-free default (X6 step 2) has not been switched. Next step: the operator runs the desktop table.

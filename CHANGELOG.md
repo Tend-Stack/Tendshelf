@@ -2,6 +2,56 @@
 
 Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-numbers.md)). Dates are UTC.
 
+## Unreleased
+
+Added after 2026.2.0 was dated. Nothing here is tagged yet.
+
+### What you can do
+
+- **New books appear by themselves.** Tendshelf watches your library folders and scans after nothing has changed
+  for 45 seconds, so a book that is still being copied is not read half written. It also scans on a schedule (every
+  6 hours unless you choose another time). A network folder is only checked by the schedule.
+- **Whole backups.** The owner can choose a folder outside the data folder and the libraries. Tendshelf copies the
+  database and the cover and ebook files there, checks each copy, and keeps deleted files for 30 days. Restoring is by
+  copying; the Backups page lists the steps.
+- **Chapter editor.** Change the start and title of each chapter, add or delete chapters, move them all by some
+  time, or reset to the file's own. Edited chapters survive a rescan.
+- **Chapter lookup.** Ask an online source for a book's chapter titles and times by ASIN, compare them, and use
+  the titles and times or the titles only. Nothing is stored until you save.
+- **Duplicates and merge.** The owner and admins see books that look like the same audiobook, merge them (places,
+  bookmarks, highlights, shelves and shares move to the kept book), or mark them "Not the same". A merged copy can
+  be shown again.
+- **Library health.** One page lists books with missing files, files that cannot be opened, no chapters, no cover,
+  no online match or chapters past the end, each with a link to fix it.
+- **App keys and OPDS.** Make a key on Your devices and add your library to an ebook reader app that speaks OPDS
+  (a catalogue of your books, search and downloads).
+- **KOReader sync.** A second key lets KOReader push and pull your reading place for EPUB and PDF books. The place
+  lands near where you were, not on it. It has not yet been tried with a real KOReader.
+- **Clips.** Give a bookmark an end time to keep a stretch of a book, then press "Play this clip" and it stops at the
+  end. Bookmarks can be filtered by kind and are exported with their kind and length.
+- **Listening history.** "Where was I?" shows your listening sessions by day, with a button to go back to that
+  moment.
+- **All my highlights.** Every highlight and note from every book in one place, with search, colour and book
+  filters, and downloads as Markdown or JSON.
+- **Desktop app, new look.** The window has its own title bar (back, forward, where you are, now playing, minimise,
+  maximise, close) on a real window with the system's shadow, corners and resize edge, new icons, and a More menu
+  with change mode or server, zoom, Keep playing and About. The tray shows the book that is playing with Pause,
+  Skip back and Skip forward, and a notification tells you when a book ends or the sleep timer stops it while the
+  window is not in front.
+- **Drop a book.** Drag audio or ebook files onto the desktop window to open Add books with them already chosen
+  (owner or admin, in a library with uploads on). A folder is not accepted; copy-protected files are refused as before.
+
+### Known limits
+
+- Not tried on a real computer yet: sound from the desktop app in a hidden window, media keys, tray and
+  notification clicks, a drag from the file manager, the icons on a panel, X11, and a long playback on the build
+  without C. See [docs/manual-checks.md](docs/manual-checks.md).
+- KOReader sync has not met a real KOReader.
+- Whole backups are not encrypted, and there is no restore button.
+- Library health only reads; it does not fix.
+- Merged copies leave their folders on disk; there is no merge across libraries.
+- OPDS has no OPDS 2.0, no audio and no per-shelf feeds.
+
 ## 2026.2.0
 
 Released 2026-11-06. It brings offline use, uploads, a book reader, ebooks as books, and a desktop app.
