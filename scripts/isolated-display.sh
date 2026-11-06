@@ -7,7 +7,8 @@
 #
 # Usage: scripts/isolated-display.sh COMMAND [ARGS...]
 # The exit status is the command's. The shell's log is removed on success and kept (its path is
-# printed) on failure; TS_ISOLATED_LOG names it.
+# printed) on failure; TS_ISOLATED_LOG names it. TS_MONITOR sets the virtual monitor (WIDTHxHEIGHT, default
+# 1280x800), for example 2560x1000 to see how a window behaves on an ultrawide.
 set -u
 
 if [ "$#" -eq 0 ]; then
@@ -48,7 +49,7 @@ set -u
 noX11=--no-x11
 [ "${TS_X11:-}" = 1 ] && noX11=
 x11=""
-gnome-shell --headless --wayland $noX11 --wayland-display="$TS_DISPLAY" --virtual-monitor 1280x800 --unsafe-mode >>"$TS_LOG" 2>&1 &
+gnome-shell --headless --wayland $noX11 --wayland-display="$TS_DISPLAY" --virtual-monitor "${TS_MONITOR:-1280x800}" --unsafe-mode >>"$TS_LOG" 2>&1 &
 shell=$!
 ok=0
 for _ in $(seq 1 100); do
@@ -92,6 +93,7 @@ env -u DISPLAY -u WAYLAND_DISPLAY \
   TS_LOG="$log" \
   TS_DISPLAY="$display" \
   TS_X11="${TS_X11:-}" \
+  TS_MONITOR="${TS_MONITOR:-1280x800}" \
   dbus-run-session -- bash -c "$inner" isolated "$@" &
 session_pid=$!
 wait "$session_pid"

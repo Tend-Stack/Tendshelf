@@ -973,3 +973,14 @@ duplicates, library health, app keys and OPDS, KOReader sync, clips, listening h
 notifications, More menu and drop a book); the README feature list matches; `docs/manual-checks.md` has the "Desktop app on your own computer" table (X4 to X6,
 every row open); the GoTHW Wails note gained a Wails 3.1.0 section outside the repo. No code changed. Checks: `go build ./...`. Limits: the operator's rows
 are not run, so the CGO-free default (X6 step 2) has not been switched. Next step: the operator runs the desktop table.
+
+**Desktop window fit (2026-11-06)**: the desktop window is never wider than 1,920 px (`maxWidth`, matching `--size-app-max`).
+`fitWindow` caps a saved width; `MaxWidth` is set in the window options; the bar's Maximise is "fit to screen"
+(`fitTarget`, `windowfit.go`): a true maximise up to 1,920 px, otherwise 1,920 by the work-area height, with a second press
+restoring; a maximise from elsewhere (and a window saved as maximised) becomes the same fit; a fitted window shows Restore.
+Wails' GTK 4 max-size clamp does not act on a drag, so a drag past the limit locks the window at 1,920 px until the button is
+released (`gtk_window_set_resizable` through purego). No full-screen mode exists, and none was added. Checks: Go table tests
+(`fitWindow` rows, `fitTarget` for 1366x768 to 5120x1440, the tracker), `make desktop-exit` now also runs a 2560x1000 virtual
+monitor (`TS_MONITOR`) in the private shell: corner resize, edge and corner limits, Maximise fit and restore, an outside maximise
+and a saved-maximised start. Limits: Wayland does not centre the window (X11 does, not run here); real ultrawide hardware is
+manual-checks row 14 (open). Next step: the operator runs row 14.
