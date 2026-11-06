@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
@@ -31,6 +32,8 @@ func (s *server) registerBrowse(mux *http.ServeMux) {
 	mux.HandleFunc("GET /libraries/{id}", s.getLibrary)
 	mux.HandleFunc("GET /hx/libraries/items", s.getLibraryItems)
 	mux.HandleFunc("GET /hx/libraries/{id}/items", s.getLibraryItems)
+	mux.HandleFunc("GET /hx/library-facets/{kind}", s.getLibraryFacet)
+	mux.HandleFunc("GET /hx/library-facets/{id}/{kind}", s.getLibraryFacet)
 }
 
 // canManage reports whether the person sees scan banners and the "Add a folder" action.
@@ -299,7 +302,7 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.libraryFilters(&v, q, cur, facets, genres, hasText)
-	v.HeaderLine = browseHeaderLine(totals, s.canManage(r))
+	v.HeaderLine = browseHeaderLine(totals, s.canManage(r), q.filtered(), page.Total)
 	if v.AddBooksHref = s.addBooksHref(r, cur, libs); v.AddBooksHref != "" {
 		v.AddBooksLabel = uploadTitle
 	}
@@ -328,9 +331,6 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 		v.Title = cur.Name
 	}
 	v.FormAction = pagePath
-	if q.filtered() {
-		v.Match = browseMatch(page.Total)
-	}
 	reset := func(q *browseQuery) { q.Cursor = "" }
 	v.GridHref = q.href(pagePath, func(q *browseQuery) { reset(q); q.View = "grid" })
 	v.ListHref = q.href(pagePath, func(q *browseQuery) { reset(q); q.View = "list" })
@@ -359,26 +359,33 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 	return v
 }
 
-// libraryFilters adds the Filter and Show menus, the chips of the kinds in use and the values the
-// forms carry. Every choice is an address; a menu's "Any ..." link drops its own filter and keeps
-// the others. A kind chip shows only while its value is set or the address asks to add it (add=).
-func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *library.LibrarySummary, f libraryFacets, genres []library.Facet, hasText bool) {
-	pagePath, _ := browsePaths(cur)
-	set := func(apply func(*browseQuery)) string {
+// filterSet writes the address of the list with one change made, from the first page.
+func filterSet(q browseQuery, pagePath string) func(apply func(*browseQuery)) string {
+	return func(apply func(*browseQuery)) string {
 		return q.href(pagePath, func(q *browseQuery) { q.Cursor = ""; apply(q) })
 	}
-	people := func(id, label, any string, opts []library.NamedFacet, chosen string, assign func(*browseQuery, string)) pages.FilterMenu {
-		m := pages.FilterMenu{ID: id, Label: label, Chip: label, AnyLabel: any, Counts: true, On: chosen != "",
+}
+
+// libraryKinds builds every kind of filter with its choices: Author, Narrator, Series, Category,
+// Length and Format (Format only once the person can see an ebook, or has chosen one). Every choice is
+// an address; a kind's "Any ..." link drops its own filter and keeps the others. A kind with nothing
+// to choose is left out. Which choices are filled in follows the facets given: the page passes all of
+// them, a kind's fragment only its own.
+func libraryKinds(q browseQuery, cur *library.LibrarySummary, f libraryFacets, genres []library.Facet, hasText bool) []pages.FilterKind {
+	pagePath, _ := browsePaths(cur)
+	set := filterSet(q, pagePath)
+	people := func(id, label, any string, opts []library.NamedFacet, chosen string, assign func(*browseQuery, string)) pages.FilterKind {
+		k := pages.FilterKind{ID: id, Label: label, AnyLabel: any, Counts: true, On: chosen != "",
 			AnyHref: set(func(q *browseQuery) { assign(q, "") })}
 		for _, o := range opts {
 			oid := o.ID
-			m.Options = append(m.Options, pages.FilterOption{Name: o.Name, Count: o.Count, On: oid == chosen,
+			k.Options = append(k.Options, pages.FilterOption{Name: o.Name, Count: o.Count, On: oid == chosen,
 				Href: set(func(q *browseQuery) { assign(q, oid) })})
 			if oid == chosen {
-				m.Chip = label + ": " + o.Name
+				k.Chosen = o.Name
 			}
 		}
-		return m
+		return k
 	}
 	author := people("author", "Author", "Any author", f.Authors, q.Author, func(q *browseQuery, id string) { q.Author = id })
 	narrator := people("narrator", "Narrator", "Any narrator", f.Narrators, q.Narrator, func(q *browseQuery, id string) { q.Narrator = id })
@@ -398,7 +405,7 @@ func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *librar
 		on := q.hasGenre(g)
 		return pages.FilterOption{Name: g, Count: n, On: on, Href: toggle(g), Disabled: !on && len(q.Genres) >= browseMaxGenres}
 	}
-	category := pages.FilterMenu{ID: "category", Label: libCategory, Chip: libCategory, AnyLabel: libCategoryAny, Counts: true,
+	category := pages.FilterKind{ID: "category", Label: libCategory, AnyLabel: libCategoryAny, Counts: true,
 		On: len(q.Genres) > 0, AnyHref: set(func(q *browseQuery) { q.Genres = nil })}
 	listed := map[string]bool{}
 	for _, g := range genres {
@@ -414,58 +421,75 @@ func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *librar
 		}
 	}
 	if n := len(q.Genres); n == 1 {
-		category.Chip = libCategory + ": " + q.Genres[0]
+		category.Chosen = q.Genres[0]
 	} else if n > 1 {
-		category.Chip = libCategory + ": " + fmt.Sprintf(libCategoryMore, q.Genres[0], n-1)
+		category.Chosen = fmt.Sprintf(libCategoryMore, q.Genres[0], n-1)
 	}
 
-	length := pages.FilterMenu{ID: "length", Label: "Length", Chip: "Length", AnyLabel: "Any length", On: q.Length != "",
+	length := pages.FilterKind{ID: "length", Label: "Length", AnyLabel: "Any length", On: q.Length != "",
 		AnyHref: set(func(q *browseQuery) { q.Length = "" })}
 	for _, o := range browseLengthOptions {
 		val := o.Value
 		length.Options = append(length.Options, pages.FilterOption{Name: o.Label, Value: val, On: val == q.Length,
 			Href: set(func(q *browseQuery) { q.Length = val })})
 		if val == q.Length {
-			length.Chip = "Length: " + o.Label
+			length.Chosen = o.Label
 		}
 	}
 
-	// Format: audiobooks or ebooks. Offered once the person can see an ebook (or has chosen one).
-	format := pages.FilterMenu{ID: "format", Label: libFormat, Chip: libFormat, AnyLabel: libFormatAny, On: q.Format != "",
+	format := pages.FilterKind{ID: "format", Label: libFormat, AnyLabel: libFormatAny, On: q.Format != "",
 		AnyHref: set(func(q *browseQuery) { q.Format = "" })}
 	for _, o := range browseFormatOptions {
 		val := o.Value
 		format.Options = append(format.Options, pages.FilterOption{Name: o.Label, Value: val, On: val == q.Format,
 			Href: set(func(q *browseQuery) { q.Format = val })})
 		if val == q.Format {
-			format.Chip = libFormat + ": " + o.Label
+			format.Chosen = o.Label
 		}
 	}
 
-	// The Filter menu lists the available kinds; the kinds row shows those in use or asked for.
-	filter := pages.FilterMenu{ID: "filter", Icon: "filter", Label: libFilterGroup, Chip: libFilterChip}
+	var kinds []pages.FilterKind
 	for _, k := range [...]struct {
-		m      pages.FilterMenu
+		k      pages.FilterKind
 		always bool
 	}{{author, false}, {narrator, false}, {series, false}, {category, false}, {length, true}, {format, false}} {
-		if k.m.ID == "format" && !hasText && !k.m.On {
+		if k.k.ID == "format" && !hasText && !k.k.On {
 			continue
 		}
-		if !k.always && !k.m.On && len(k.m.Options) == 0 {
+		if !k.always && !k.k.On && len(k.k.Options) == 0 {
 			continue
 		}
-		id := k.m.ID
-		filter.Options = append(filter.Options, pages.FilterOption{Name: k.m.Label,
-			Href: set(func(q *browseQuery) { q.Add = id })})
-		if k.m.On || q.Add == id {
-			k.m.Open = q.Add == id
-			k.m.End = len(v.Kinds) >= 2
-			v.Kinds = append(v.Kinds, k.m)
+		kinds = append(kinds, k.k)
+	}
+	return kinds
+}
+
+// lazyKinds are the kinds whose lists are long enough to load on first open instead of riding in the page.
+var lazyKinds = map[string]bool{"author": true, "narrator": true, "series": true, "category": true}
+
+// libraryFilters adds the Filter, Show and Sort menus, the active filter row and the values the forms
+// carry. The Filter menu is one <details> with a nested disclosure per kind; a kind's list loads on
+// its first open (or rides in the page when the address says add=kind). Every choice is an address.
+func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *library.LibrarySummary, f libraryFacets, genres []library.Facet, hasText bool) {
+	pagePath, _ := browsePaths(cur)
+	set := filterSet(q, pagePath)
+	kinds := libraryKinds(q, cur, f, genres, hasText)
+
+	filter := pages.FilterMenu{ID: "filter", Icon: "filter", Label: libFilterGroup, Chip: libFilterChip}
+	for _, k := range kinds {
+		if lazyKinds[k.ID] {
+			k.PageHref = q.href(pagePath, func(q *browseQuery) { q.Cursor = ""; q.Add = k.ID })
+			k.LazyHref = q.href(facetPath(cur, k.ID), func(q *browseQuery) { q.Cursor = "" })
 		}
+		if q.Add == k.ID {
+			k.Open, filter.Open = true, true
+		}
+		filter.Kinds = append(filter.Kinds, k)
 	}
 	v.FilterMenu = filter
+	v.Active = activeFilters(q, pagePath, kinds)
 
-	// Show holds the show states, then the order. Only the show state makes the chip "on": a sort is not a filter.
+	// Show holds the listening states; Sort is its own chip and never counts as a filter.
 	show := pages.FilterMenu{ID: "show", Titled: true, Label: showLabel, Chip: showLabel, AnyLabel: showAny, On: q.Show != "",
 		AnyHref: set(func(q *browseQuery) { q.Show = "" })}
 	for _, o := range browseShowOptions {
@@ -476,17 +500,17 @@ func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *librar
 			show.Chip = showLabel + ": " + o.Label
 		}
 	}
-	if t := browseSortChip[q.Sort]; t != "" {
-		show.Chip += " \u00b7 " + t
-	}
-	sort := pages.MenuSection{Label: libSortHeading}
+	sort := pages.FilterMenu{ID: "sort", Titled: true, Label: libSortHeading, Chip: libSortLabel}
 	for _, o := range browseSortLabels {
 		sv := o.Sort
 		sort.Options = append(sort.Options, pages.FilterOption{Name: o.Label, Value: string(sv), On: sv == q.Sort,
 			Href: set(func(q *browseQuery) { q.Sort = sv })})
+		if sv == q.Sort {
+			sort.Chip = libSortLabel + ": " + o.Label
+		}
 	}
-	show.Sections = []pages.MenuSection{sort}
-	v.ShowMenu, v.ShowValue = show, q.Show
+	sort.End = true
+	v.ShowMenu, v.ShowValue, v.SortMenu = show, q.Show, sort
 
 	v.TitleFilter, v.LengthValue = q.Title, q.Length
 	for _, h := range [...]pages.HiddenField{{Name: "author", Value: q.Author}, {Name: "narrator", Value: q.Narrator}, {Name: "series", Value: q.Series},
@@ -498,6 +522,104 @@ func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *librar
 	if q.Sort != library.SortAdded { // the title form keeps the order
 		v.Hidden = append(v.Hidden, pages.HiddenField{Name: "sort", Value: string(q.Sort)})
 	}
+}
+
+// activeFilters is the active filter row: one chip per filter in use (each chosen category on its own,
+// and the typed title in quotes), each a link to the list without only that filter.
+func activeFilters(q browseQuery, pagePath string, kinds []pages.FilterKind) []pages.ActiveFilter {
+	set := filterSet(q, pagePath)
+	chosen := map[string]string{}
+	for _, k := range kinds {
+		chosen[k.ID] = k.Chosen
+	}
+	var out []pages.ActiveFilter
+	add := func(kind, value string, drop func(*browseQuery)) {
+		out = append(out, pages.ActiveFilter{Kind: kind, Value: value, Name: libRemoveFilter + ": " + strings.TrimSpace(kind+" "+value), Href: set(drop)})
+	}
+	if q.Author != "" {
+		add("Author", chosen["author"], func(q *browseQuery) { q.Author = "" })
+	}
+	if q.Series != "" {
+		add("Series", chosen["series"], func(q *browseQuery) { q.Series = "" })
+	}
+	if q.Narrator != "" {
+		add("Narrator", chosen["narrator"], func(q *browseQuery) { q.Narrator = "" })
+	}
+	for _, g := range q.Genres {
+		add(libCategory, g, func(q *browseQuery) { q.without(g) })
+	}
+	if q.Length != "" {
+		add("Length", chosen["length"], func(q *browseQuery) { q.Length = "" })
+	}
+	if q.Format != "" {
+		add(libFormat, chosen["format"], func(q *browseQuery) { q.Format = "" })
+	}
+	if q.Show != "" {
+		for _, o := range browseShowOptions {
+			if o.Value == q.Show {
+				add(showLabel, o.Label, func(q *browseQuery) { q.Show = "" })
+			}
+		}
+	}
+	if q.Title != "" {
+		add("Title", "\u201c"+q.Title+"\u201d", func(q *browseQuery) { q.Title = "" })
+	}
+	return out
+}
+
+// facetPath is the fragment address of one kind's list.
+func facetPath(cur *library.LibrarySummary, kind string) string {
+	if cur == nil {
+		return "/hx/library-facets/" + kind
+	}
+	return "/hx/library-facets/" + cur.ID + "/" + kind
+}
+
+// getLibraryFacet is the fragment a closed kind loads on its first open: that kind's "Any ..." line
+// and choices under the address's other filters. It reads only what that kind needs.
+func (s *server) getLibraryFacet(w http.ResponseWriter, r *http.Request) {
+	_, cur, ok := s.browseTarget(w, r)
+	if !ok {
+		return
+	}
+	kind := r.PathValue("kind")
+	if !lazyKinds[kind] {
+		s.notFound(w, r)
+		return
+	}
+	q := parseBrowseQuery(r)
+	lq := s.listQuery(currentUser(r), q, cur)
+	ctx, sc := r.Context(), s.scope(r)
+	var (
+		f      libraryFacets
+		genres []library.Facet
+		err    error
+	)
+	switch kind {
+	case "author":
+		f.Authors, err = s.lib.PeopleFacet(ctx, sc, lq, library.RoleAuthor, browseMenuMax)
+	case "narrator":
+		f.Narrators, err = s.lib.PeopleFacet(ctx, sc, lq, library.RoleNarrator, browseMenuMax)
+	case "series":
+		f.Series, err = s.lib.SeriesFacet(ctx, sc, lq, browseMenuMax)
+	case "category":
+		genres, err = s.lib.Genres(ctx, sc, curID(cur))
+	}
+	if errors.Is(err, library.ErrInvalid) {
+		s.fragment(w, r, http.StatusBadRequest, components.ErrorToast(browseBadCursorToast))
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "library facet", err)
+		return
+	}
+	for _, k := range libraryKinds(q, cur, f, genres, false) {
+		if k.ID == kind {
+			s.fragment(w, r, http.StatusOK, pages.FilterKindChoices(k))
+			return
+		}
+	}
+	s.fragment(w, r, http.StatusOK, pages.FilterKindChoices(pages.FilterKind{}))
 }
 
 // hasTextBooks reports whether the person can see any ebook in the shown library, which is when the

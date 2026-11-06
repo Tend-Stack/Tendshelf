@@ -8,6 +8,12 @@ Added after 2026.2.0 was dated. Nothing here is tagged yet.
 
 ### What you can do
 
+- **Library filters are easier to use.** One Filter menu now lists every kind (Author, Narrator, Series, Category,
+  Length, Format) and its choices together, so choosing a value is one step. While you filter, a row under the
+  controls shows one chip per filter, each with a cross that removes only that filter, and Clear all next to them
+  (it keeps your sort and view). Sort is its own control ("Sort: Recently added"), Show keeps only the listening
+  states, and the header reads "15 of 60 books" instead of a separate count. Saved links keep working.
+
 - **The desktop window stops at 1,920 px.** The pages already stop there, so a wider window on an ultrawide monitor
   only showed a blank strip. Dragging an edge or corner stops at 1,920 px, and Maximise fits the window to the screen:
   on a wider screen it is 1,920 px wide and as high as the screen, and pressing it again goes back.

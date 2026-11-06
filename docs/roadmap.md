@@ -999,3 +999,13 @@ Android Back asks the page first (sheet, dialog), then history; the page's `them
 checks a release APK. Plain `http` keeps the bridge (flagged for the operator). Sizes (gzip): `player.js` 13,755 B (cap 13.5 KB), `native-audio.js` 2,563 B in the new
 Android-only bucket (cap 2,688 B). Limits: no saves until A5 (position is not stored by native yet); the web sleep timer fails with the screen off until A6, so no build is
 handed out between A4 and A6. Next step: A5, then A6.
+notification, 30 min screen off, outage, revoked token, foreign package) passed; limits: no audible alignment measurement, fixture has no cover. Next step: A4.
+
+**Library filters rework (2026-11-06, branch `pkg-filters`)**: the Filter menu is one `<details>` with a nested disclosure per kind (Author, Narrator,
+Series, Category, Length, Format); choosing a value is one link. Reused: `FilterMenu`, the chipmenu `<details>`, `browseQuery.href`, `clearFilters`, the
+facet queries and the URL parameters (`add=kind` still parses and now opens that kind's list). Replaced: the kind chips row and the `lib-kinds` region, the
+"15 books match" line and the far-right "Clear filters". New: the active filter row (a remove link per filter, then "Clear all"), the Sort chip, one count in
+the header (`#lib-count`, a polite live region), and `GET /hx/library-facets/{kind}` (and `/{id}/{kind}`) that fills a closed kind on its first open;
+without JavaScript a link to `?add=kind` shows the list. Weight: the long lists (people, series, categories) are not in the page, so the library page HTML
+grew from 79,891 to 83,184 bytes at 2,000 books (budget 87,040; the kinds, their no-JavaScript links and the Sort chip), CSS by 1,354 bytes (269,991 of 297,984); listing every kind inline would have added about 25 KB. Checks: `TestLibraryFilterRow`, `TestLibFilter*`, `TestVisualLibraryFilters`, `TestVisualLibraryActiveRow`,
+route matrix rows. Limits: the Filter chip shows no count of active filters; on a phone Grid/List can sit alone on a row beside a long Sort chip.

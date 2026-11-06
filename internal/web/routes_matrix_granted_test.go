@@ -31,6 +31,7 @@ var sweepGrantedWant = func() map[string][4]int {
 		"GET /hx/books/{id}/play":                       ok,
 		"GET /libraries/{id}":                           ok,
 		"GET /hx/libraries/{id}/items":                  ok,
+		"GET /hx/library-facets/{id}/{kind}":            ok,
 		"GET /books/{id}":                               ok,
 		"GET /books/{id}/{tab} about":                   ok,
 		"GET /books/{id}/{tab} bookmarks":               ok,

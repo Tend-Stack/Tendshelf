@@ -16,7 +16,7 @@ func TestPlayShowFilterChips(t *testing.T) {
 	playBtnProgress(t, e, e.ownerID, e.book.ID, 50_000, 0, now)
 
 	body := playBtnGet(e, "/libraries?show=finished")
-	for _, w := range []string{"Show: Finished", "Zed Done", `href="/libraries?show=unfinished"`, `href="/libraries?show=not_started"`, "Clear filters", `href="/libraries"`} {
+	for _, w := range []string{"Show: Finished", "Zed Done", `href="/libraries?show=unfinished"`, `href="/libraries?show=not_started"`, "Clear all", `href="/libraries"`} {
 		if !strings.Contains(body, w) {
 			t.Errorf("show=finished lacks %q", w)
 		}
@@ -35,7 +35,7 @@ func TestPlayShowFilterChips(t *testing.T) {
 		}
 	}
 	// An unknown value is ignored, like length.
-	if body := playBtnGet(e, "/libraries?show=bogus"); !strings.Contains(body, "Progword Harbour") || !strings.Contains(body, "Zed Done") || strings.Contains(body, "Clear filters") {
+	if body := playBtnGet(e, "/libraries?show=bogus"); !strings.Contains(body, "Progword Harbour") || !strings.Contains(body, "Zed Done") || strings.Contains(body, "Clear all") {
 		t.Error("an unknown show value filtered the list")
 	}
 }

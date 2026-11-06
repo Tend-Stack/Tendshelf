@@ -81,55 +81,56 @@ func TestLibraryFiltersInURL(t *testing.T) {
 			t.Errorf("%s: %q, want %q", c.name, got, c.want)
 		}
 		if c.name == "unknown length is ignored" {
-			if strings.Contains(body, " books match") {
-				t.Errorf("%s: an ignored filter shows a match line", c.name)
+			if strings.Contains(body, "ts-lib-active") || strings.Contains(body, " of 4 books") {
+				t.Errorf("%s: an ignored filter shows the filter row or a filtered count", c.name)
 			}
 			continue
 		}
 		n := len(titles)
-		want := fmt.Sprintf(">%d books match<", n)
-		if n == 1 {
-			want = ">1 book matches<"
-		}
-		if !strings.Contains(body, want) || !strings.Contains(body, ">Clear filters<") {
-			t.Errorf("%s: lacks %q or Clear filters", c.name, want)
+		want := fmt.Sprintf(">%d of 4 books", n)
+		if !strings.Contains(body, want) || !strings.Contains(body, ">Clear all<") {
+			t.Errorf("%s: lacks %q or Clear all", c.name, want)
 		}
 	}
 
-	// No filter: no match line, no Clear filters in the results.
+	// No filter: no filter row, no Clear all, and the plain count.
 	_, plain := sweepList(t, a, "")
-	if strings.Contains(plain, " books match") || strings.Contains(plain, ">Clear filters<") {
-		t.Error("match line without a filter")
+	if strings.Contains(plain, " of 4 books") || strings.Contains(plain, ">Clear all<") || strings.Contains(plain, "ts-lib-active") {
+		t.Error("filter row or filtered count without a filter")
 	}
 
-	// Clear filters drops every filter and keeps the sort and the view.
+	// Clear all drops every filter and keeps the sort and the view.
 	_, body := sweepList(t, a, "?sort=title&view=list&author="+author+"&length=short&title=fog&genre=Mystery")
-	if !regexp.MustCompile(`<a class="ts-btn ts-btn--quiet" href="/libraries\?sort=title&view=list">Clear filters</a>`).MatchString(body) {
-		t.Errorf("Clear filters does not keep the sort and the view")
+	if !regexp.MustCompile(`<a class="ts-btn ts-btn--quiet ts-lib-clear" href="/libraries\?sort=title&view=list">Clear all</a>`).MatchString(body) {
+		t.Errorf("Clear all does not keep the sort and the view")
 	}
 
 	// The chips name the choice; every option is an address that keeps the other filters.
 	_, body = sweepList(t, a, "?author="+author+"&length=short&sort=title")
 	flat := strings.Join(strings.Fields(body), " ")
-	for _, want := range []string{"Author: Una Uno</span>", "Length: Under 5 hours</span>", ">Narrator<", ">Series<", ">Any author<", ">Any length<",
-		`href="/libraries?add=narrator&author=` + author + `&length=short&sort=title"`, // Narrator and Series sit in the Filter menu
-		`href="/libraries?add=series&author=` + author + `&length=short&sort=title"`,
-		`href="/libraries?length=short&sort=title"`,                        // Any author
-		`href="/libraries?author=` + author + `&sort=title"`,               // Any length
-		`href="/libraries?author=` + author + `&length=medium&sort=title"`, // another length
-		`class="ts-chipmenu is-on"`, `<details`, `<summary class="ts-chip">`} {
+	// The Filter menu holds every kind; the long lists load on first open, so only Length rides in the page.
+	for _, want := range []string{`<span class="ts-chipmenu__chosen">Una Uno</span>`, `<span class="ts-chipmenu__chosen">Under 5 hours</span>`,
+		`class="ts-chipmenu__name">Narrator<`, `class="ts-chipmenu__name">Series<`, ">Any length<",
+		`hx-get="/hx/library-facets/narrator?author=` + author + `&length=short&sort=title"`,
+		`href="/libraries?add=series&author=` + author + `&length=short&sort=title"`, // the no-JavaScript link
+		`href="/libraries?author=` + author + `&sort=title"`,                         // Any length
+		`href="/libraries?author=` + author + `&length=medium&sort=title"`,           // another length
+		`class="ts-chipmenu__kind is-on"`, `<details`, `<summary class="ts-chip">`} {
 		if !strings.Contains(flat, want) {
 			t.Errorf("chips lack %q", want)
 		}
 	}
-	// The narrator menu follows the author filter: Una Uno's two books have two narrators, 1 each.
+	// The narrator list follows the author filter: Una Uno's two books have two narrators, 1 each.
 	_, nb := sweepList(t, a, "?author="+author+"&add=narrator")
 	if !strings.Contains(nb, `class="ts-chipmenu__name">Nel Nox<`) || !strings.Contains(nb, `class="ts-chipmenu__name">Ola Oro<`) {
-		t.Error("narrator menu lacks its people")
+		t.Error("narrator list lacks its people")
 	}
-	// A menu lists its own choices ignoring its own filter, so the other author stays listed.
-	if !strings.Contains(body, `class="ts-chipmenu__name">Bo Bee<`) {
-		t.Error("the author menu hides the other authors")
+	if strings.Contains(body, `class="ts-chipmenu__name">Bo Bee<`) {
+		t.Error("a closed kind sends its list with the page")
+	}
+	// A list lists its own choices ignoring its own filter, so the other author stays listed.
+	if _, ab := sweepList(t, a, "?author="+author+"&add=author"); !strings.Contains(ab, `class="ts-chipmenu__name">Bo Bee<`) {
+		t.Error("the author list hides the other authors")
 	}
 	// The three length edges.
 	for _, want := range []string{"Under 5 hours", "5 to 15 hours", "Over 15 hours"} {
@@ -174,8 +175,8 @@ func TestLibraryResultsRegion(t *testing.T) {
 	// Results hold the match line, the grid and the sentinel; the field and the chips do not move.
 	i := strings.Index(body, `id="library-results"`)
 	results := body[i:]
-	if !strings.Contains(results, "books match") || !strings.Contains(results, `id="library-grid"`) {
-		t.Error("the results region lacks the count or the grid")
+	if !strings.Contains(results, "ts-lib-active") || !strings.Contains(results, `id="library-grid"`) {
+		t.Error("the results region lacks the filter row or the grid")
 	}
 	before := body[:i]
 	if !strings.Contains(before, `id="fb-title"`) || strings.Contains(results, `id="fb-title"`) {
@@ -183,7 +184,7 @@ func TestLibraryResultsRegion(t *testing.T) {
 	}
 	// The bar form and the title field swap the region and push the address.
 	for _, want := range []string{`hx-get="/libraries"`, `hx-target="#library-results"`, `hx-select="#library-results"`, `hx-swap="outerHTML"`,
-		`hx-push-url="true"`, `hx-trigger="input changed delay:300ms, search"`, `hx-include="closest form"`, `hx-select-oob="#lib-menus, #lib-kinds"`,
+		`hx-push-url="true"`, `hx-trigger="input changed delay:300ms, search"`, `hx-include="closest form"`, `hx-select-oob="#lib-menus, #lib-count:innerHTML"`,
 		`name="title"`, `value="fog"`, `<label class="ts-sr" for="fb-title">Filter by title</label>`, `placeholder="Filter this library by title"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("bar lacks %q", want)
@@ -220,14 +221,14 @@ func TestLibraryHeaderLine(t *testing.T) {
 	}
 	// The line counts the library, not the filter: a filter shows its own match line instead.
 	filtered := browseGet(a, "/libraries?title=one", false, nil).Body.String()
-	if !strings.Contains(filtered, ">2 books · 2 folders · 5 hours<") || !strings.Contains(filtered, ">1 book matches<") {
-		t.Error("a filter changed the header line or lacks its match line")
+	if !strings.Contains(filtered, ">1 of 2 books · 2 folders · 5 hours<") || strings.Contains(filtered, "match") {
+		t.Error("a filter did not turn the header line into the one count")
 	}
 	// One of each reads in the singular.
-	if got := browseHeaderLine(library.Totals{Books: 1, DurationMs: sweepHourMs, Folders: 1}, true); got != "1 book · 1 folder · 1 hour" {
+	if got := browseHeaderLine(library.Totals{Books: 1, DurationMs: sweepHourMs, Folders: 1}, true, false, 0); got != "1 book · 1 folder · 1 hour" {
 		t.Errorf("singular line %q", got)
 	}
-	if got := browseHeaderLine(library.Totals{Books: 912, DurationMs: 8240 * sweepHourMs, Folders: 3}, true); got != "912 books · 3 folders · 8,240 hours" {
+	if got := browseHeaderLine(library.Totals{Books: 912, DurationMs: 8240 * sweepHourMs, Folders: 3}, true, false, 0); got != "912 books · 3 folders · 8,240 hours" {
 		t.Errorf("board line %q", got)
 	}
 }
