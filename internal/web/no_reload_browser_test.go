@@ -157,8 +157,12 @@ func TestPrefsCategoriesKeepPlayingBrowser(t *testing.T) {
 			t.Errorf("%s: state %+v, want the book playing", step, s)
 		}
 	}
-	// Open the window through the sidebar's Profile link, then use only the list.
-	tab.Eval(`document.querySelector('a[href="/me/settings"], a[href="/me"]').click()`, nil)
+	// Open the window the way a person does: the sidebar's Profile link, then Settings on the profile page
+	// (Profile left the settings frame in the redesign, decision 0021). Then use only the list.
+	tab.Eval(`document.querySelector('a[href="/me"]').click()`, nil)
+	tab.WaitFor(`document.querySelector(".ts-profile__settings") !== null`, 8*time.Second)
+	check("profile opened")
+	tab.Eval(`document.querySelector(".ts-profile__settings").click()`, nil)
 	tab.WaitFor(`document.querySelector(".ts-prefs__item") !== null`, 8*time.Second)
 	check("settings opened")
 	for _, step := range []struct{ href, ready string }{
