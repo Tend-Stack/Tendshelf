@@ -303,4 +303,4 @@ a.ts-users__item:hover { background: var(--raised); }
 .ts-health__group { display: flex; flex-direction: column; gap: var(--space-8); }
 .ts-health__group .section { margin: 0; }
 .ts-health__pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
-.ts-health a:not(.ts-btn) { display: inline-flex; align-items: center; min-height: 44px; }
+.ts-health a:not(.ts-btn) { display: inline-flex; align-items: center; min-height: 2.75rem; }
