@@ -61,10 +61,10 @@
 .ts-player { --ts-tint: 70%; position: fixed; inset: 0; width: 100vw; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
   box-sizing: border-box; overflow: hidden; color: var(--ink); font-family: var(--font-sans); z-index: 8; touch-action: pan-y;
   background: linear-gradient(180deg, color-mix(in srgb, var(--cover-tint) var(--ts-tint), transparent) 0, color-mix(in srgb, var(--cover-tint) calc(var(--ts-tint) * 0.43), transparent) 33%, transparent 60%), var(--ground);
-  transform: translateY(var(--ts-drag, 0px)); }
+  transform: translateY(var(--ts-drag, 0px)); opacity: var(--ts-fade, 1); }
 .ts-player[data-tint="pale"] { --ts-tint: 25%; }
 .ts-player[data-tint="none"] { background: var(--ground); }
-.ts-player.is-settling { transition: transform var(--duration-slow) var(--easing-exit); }
+.ts-player.is-settling { transition: transform var(--duration-slow) var(--easing-exit), opacity var(--duration-slow) var(--easing-exit); }
 .ts-player::backdrop { background: var(--scrim); }
 .ts-player [hidden] { display: none; }
 .ts-player:not(.is-playing) [data-ts-icon-pause], .ts-player.is-playing [data-ts-icon-play] { display: none; }

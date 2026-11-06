@@ -6,6 +6,9 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### What you can do
 
+- **Swipe down to minimise the full player.** On a phone or tablet, drag down from anywhere on the player that is not a
+  button, a slider or a list and it follows your finger and fades; let go past a quarter of the screen, or flick, and it
+  closes, otherwise it springs back. The arrow is still there. Playback is not touched.
 - **Tendshelf for Android has a release build.** `make apk` makes an APK whose version comes from the release tag, with
   a proper icon. It is signed with your own key when you provide one and left clearly unsigned when you do not. Two builds
   of the same source give the same APK. The steps, including how to make your own key and how to upgrade, are in

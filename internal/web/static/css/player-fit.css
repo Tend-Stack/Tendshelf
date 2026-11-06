@@ -3,6 +3,10 @@
    tightens and the clock scales; very short landscape hides the cover and sets two columns. */
 @media (width < 1280px) {
   .ts-player { height: 100vh; height: 100dvh; }
+  /* Swipe down to minimise (player-full.js): the browser leaves vertical drags to the script, no pull-to-refresh or bounce.
+     The body scrolls only when it overflows (is-scrolling) and a chapter list always does; those keep the browser's pan. */
+  .ts-player, .ts-player__body { touch-action: none; overscroll-behavior: none; }
+  .ts-player__body.is-scrolling, .ts-player__chapters { touch-action: pan-y; }
   .ts-player__body { overscroll-behavior: contain; padding-inline: max(var(--space-20), env(safe-area-inset-left)) max(var(--space-20), env(safe-area-inset-right)); }
   .ts-player__block { flex: 0 1 16rem; min-height: 7.5rem; display: flex; justify-content: center; }
   .ts-player__cover { width: auto; height: 100%; aspect-ratio: 1; }
