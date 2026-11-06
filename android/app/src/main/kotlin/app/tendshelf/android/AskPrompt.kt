@@ -67,7 +67,7 @@ class AskPrompt(
     private fun post(ask: Ask) {
         val text = context.getString(R.string.continue_ask, clockText(ask.positionMs), ask.deviceLabel)
         val n = Notification.Builder(context, CHANNEL)
-            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setSmallIcon(R.drawable.ic_stat_tendshelf)
             .setContentTitle(text)
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .setAutoCancel(false)

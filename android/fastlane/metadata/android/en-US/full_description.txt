@@ -1,0 +1,11 @@
+Tendshelf is the Android app for your own Tendshelf server. It plays the audiobooks you keep on your own computer or NAS, keeps your place, and lets you read the matching ebook.
+
+You type the address of your server once and sign in. There is no account with us, no tracking and no advertising: the app talks only to the server you chose.
+
+What you can do:
+- Listen with chapters, a sleep timer, speed control and a car-friendly player (Android Auto).
+- Download books to the phone and listen or read with no connection.
+- Read ebooks in the same app, with your place kept across devices.
+- Pick up where you stopped, on this phone or any other.
+
+Tendshelf needs a Tendshelf server of your own. The server is free and open source, and runs on a computer you control.

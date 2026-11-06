@@ -41,7 +41,7 @@ class TsDownloadService : DownloadService(NOTIFICATION_ID, 1000L, CHANNEL, R.str
         nm.notify(
             LIMIT_ID,
             Notification.Builder(this, LIMIT_CHANNEL)
-                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                .setSmallIcon(R.drawable.ic_stat_tendshelf)
                 .setContentTitle(getString(R.string.downloads_paused))
                 .setAutoCancel(true)
                 .setContentIntent(openApp())

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- From internal/web/static/img/tendshelf-app-icon.svg (the glyph, drawn as paths). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+<group android:translateX="21" android:translateY="21" android:scaleX="0.6875" android:scaleY="0.6875"><group android:translateX="18" android:translateY="18" android:scaleX="1.25" android:scaleY="1.25">
+<path android:pathData="M9.5,8H15.5A2.5,2.5 0 0 1 18,10.5V37.5A2.5,2.5 0 0 1 15.5,40H9.5A2.5,2.5 0 0 1 7,37.5V10.5A2.5,2.5 0 0 1 9.5,8Z" android:strokeColor="#1A0F08" android:strokeWidth="3" android:strokeLineCap="round" />
+<path android:pathData="M7,15H18M7,33H18" android:strokeColor="#1A0F08" android:strokeWidth="2.5" android:strokeLineCap="round" />
+<path android:pathData="M18,24c2.6,-9 4.6,-9 7.2,0s4.6,9 7.2,0 3.4,-5.5 5.3,0 2.6,3 4.3,0" android:strokeColor="#1A0F08" android:strokeWidth="3" android:strokeLineCap="round" />
+</group></group>
+</vector>

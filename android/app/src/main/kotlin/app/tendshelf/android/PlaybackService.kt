@@ -152,7 +152,7 @@ class PlaybackService : MediaLibraryService() {
             nm.notify(
                 REFUSED_ID,
                 Notification.Builder(this@PlaybackService, PLAYBACK_CHANNEL)
-                    .setSmallIcon(android.R.drawable.ic_media_play)
+                    .setSmallIcon(R.drawable.ic_stat_tendshelf)
                     .setContentTitle(getString(R.string.keep_listening))
                     .setVisibility(Notification.VISIBILITY_PRIVATE)
                     .setAutoCancel(true)

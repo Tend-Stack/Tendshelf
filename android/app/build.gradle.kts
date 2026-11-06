@@ -4,6 +4,30 @@ plugins {
 
 // The bundled start and offline pages use the server's own stylesheets and fonts. They are copied from
 // internal/web/static at build time into a generated folder, never into git, so the two cannot drift.
+// Version (plan A10 D2): `-PtsVersion=2026.3.0` from the Git tag. versionCode = year * 100000 + release * 1000 + fix, so
+// it rises with every release and fits an Int for centuries. Without the property this is a development build.
+fun tsVersionCode(v: String): Int {
+    val m = Regex("""(\d{4})\.(\d{1,2})\.(\d{1,3})""").matchEntire(v)
+        ?: throw GradleException("tsVersion must be YEAR.RELEASE.FIX, for example 2026.3.0; got '$v'")
+    val (year, release, fix) = m.destructured.toList().map { it.toInt() }
+    if (release < 1 || release > 99 || fix > 999) throw GradleException("tsVersion out of range (release 1..99, fix 0..999): $v")
+    return year * 100000 + release * 1000 + fix
+}
+
+val tsVersion: String? = providers.gradleProperty("tsVersion").orNull
+val tsVersionName = tsVersion ?: "0.0.0-dev"
+val tsVersionCodeValue = if (tsVersion != null) tsVersionCode(tsVersion) else 1
+
+tasks.register("printVersionCode") {
+    val code = tsVersionCodeValue
+    doLast { println("versionCode=$code") }
+}
+
+// Signing (plan A10 D1): only from the environment, only when all four are set. Never from a file in the repository.
+val tsSigningNames = listOf("TS_ANDROID_KEYSTORE", "TS_ANDROID_KEYSTORE_PASSWORD", "TS_ANDROID_KEY_ALIAS", "TS_ANDROID_KEY_PASSWORD")
+val tsSigning = tsSigningNames.associateWith { System.getenv(it).orEmpty() }
+val tsSigned = tsSigning.values.all { it.isNotEmpty() }
+
 abstract class CopyShellAssets : DefaultTask() {
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -44,9 +68,26 @@ android {
         applicationId = "app.tendshelf.android"
         minSdk = 28 // Android Auto needs Android 9
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.0.0-a2"
+        versionCode = tsVersionCodeValue
+        versionName = tsVersionName
     }
+
+    // The signing key is the person's own; nothing here creates or stores one.
+    if (tsSigned) {
+        signingConfigs.create("release") {
+            storeFile = file(tsSigning.getValue("TS_ANDROID_KEYSTORE"))
+            storePassword = tsSigning.getValue("TS_ANDROID_KEYSTORE_PASSWORD")
+            keyAlias = tsSigning.getValue("TS_ANDROID_KEY_ALIAS")
+            keyPassword = tsSigning.getValue("TS_ANDROID_KEY_PASSWORD")
+        }
+    }
+
+    // Reproducible bytes (D3): no dependency block signed by Google, no Git state in the APK.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+    buildToolsVersion = "36.0.0"
 
     buildFeatures {
         buildConfig = true
@@ -55,6 +96,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            vcsInfo.include = false
+            // Never the debug key: without all four variables the APK stays unsigned (app-release-unsigned.apk).
+            if (tsSigned) signingConfig = signingConfigs.getByName("release")
         }
     }
 }
