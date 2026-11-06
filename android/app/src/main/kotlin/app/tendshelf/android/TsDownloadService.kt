@@ -8,7 +8,6 @@ import android.content.Intent
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
-import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Scheduler
 
@@ -29,10 +28,23 @@ class TsDownloadService : DownloadService(NOTIFICATION_ID, 1000L, CHANNEL, R.str
 
     override fun getScheduler(): Scheduler? = null
 
-    override fun getForegroundNotification(downloads: MutableList<Download>, notMetRequirements: Int): Notification =
-        DownloadNotificationHelper(this, CHANNEL).buildProgressNotification(
-            this, android.R.drawable.stat_sys_download, openApp(), null, downloads, notMetRequirements,
-        )
+    /** Our own progress, by the same whole-book bytes as the page; the helper averages per file and starts at nothing. */
+    override fun getForegroundNotification(downloads: MutableList<Download>, notMetRequirements: Int): Notification {
+        val b = Notification.Builder(this, CHANNEL)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setContentIntent(openApp())
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setShowWhen(false)
+        val now = Offline.notificationProgress(downloads)
+        when {
+            notMetRequirements != 0 -> b.setContentTitle(getString(R.string.downloads_channel)).setContentText(getString(R.string.downloads_waiting))
+            now == null -> b.setContentTitle(getString(R.string.downloads_channel)).setContentText(getString(R.string.downloads_waiting)).setProgress(0, 0, true)
+            now.second.known -> b.setContentTitle(now.first).setContentText(getString(R.string.downloads_percent, now.second.pct)).setProgress(100, now.second.pct, false)
+            else -> b.setContentTitle(now.first).setContentText(getString(R.string.downloads_working)).setProgress(0, 0, true)
+        }
+        return b.build()
+    }
 
     override fun onTimeout(startId: Int, fgsType: Int) {
         Offline.onTimeLimit()

@@ -121,10 +121,10 @@ fun encodeAsk(a: Ask?): String =
 /** "Rewound {s} s" once, after a resume that went back. */
 fun encodeRewound(s: Int): String = "{\"t\":\"rewound\",\"s\":${s.coerceIn(0, 3600)}}"
 
-/** How a book stands on the phone; [state] is one of `none`, `queued`, `downloading`, `paused`, `ready`, `failed`, `stale`. */
-fun encodeDl(bookId: String, state: String, pct: Int): String {
+/** How a book stands on the phone; [sized] false says the percent is not known yet (older pages ignore the extra field); [state] is one of `none`, `queued`, `downloading`, `paused`, `ready`, `failed`, `stale`. */
+fun encodeDl(bookId: String, state: String, pct: Int, sized: Boolean = true): String {
     val known = state in setOf("none", "queued", "downloading", "paused", "ready", "failed", "stale")
-    return "{\"t\":\"dl\",\"bookId\":${jsonString(bookId)},\"state\":\"${if (known) state else "none"}\",\"pct\":${pct.coerceIn(0, 100)}}"
+    return "{\"t\":\"dl\",\"bookId\":${jsonString(bookId)},\"state\":\"${if (known) state else "none"}\",\"pct\":${pct.coerceIn(0, 100)}${if (sized) "" else ",\"known\":false"}}"
 }
 
 fun encodeBack(): String = "{\"t\":\"back\"}"

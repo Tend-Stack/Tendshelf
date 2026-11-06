@@ -15,6 +15,7 @@
 .dl__row { display: flex; align-items: center; gap: var(--space-12); }
 .dl__row .ts-row__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dl__cover { width: 52px; height: 52px; border-radius: var(--radius-cover, 4px); object-fit: cover; background: var(--surface); flex-shrink: 0; }
+.dl__bar { width: 100%; height: 0.25rem; margin-top: var(--space-8); accent-color: var(--accent); }
 .dl__actions { display: flex; gap: var(--space-8); flex-wrap: wrap; }
 .dl h2 { margin: 0; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-muted); }
 .dl form { display: block; }

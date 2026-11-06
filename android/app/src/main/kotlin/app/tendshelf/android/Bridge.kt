@@ -222,8 +222,8 @@ class Bridge(
     fun pushDownload(bookId: String) {
         val p = proxy ?: return
         if (!started || flow() != ConnectFlow.State.Connected) return
-        val (state, pct) = Offline.view(bookId)
-        send(p, encodeDl(bookId, state, pct))
+        val v = Offline.view(bookId)
+        send(p, encodeDl(bookId, v.state, v.pct, v.known))
     }
 
     private fun pushState() {

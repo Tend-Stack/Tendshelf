@@ -51,6 +51,8 @@
     <string name="downloads_empty_how">Download a book to listen without a connection.</string>
     <string name="downloads_active">Downloading</string>
     <string name="downloads_ready">Ready offline</string>
+    <string name="downloads_percent">Downloading · %1$d%%</string>
+    <string name="downloads_working">Downloading…</string>
     <string name="downloads_waiting">Waiting</string>
     <string name="downloads_paused_row">Paused</string>
     <string name="downloads_failed_row">Didn\'t download. Open the book to try again.</string>
