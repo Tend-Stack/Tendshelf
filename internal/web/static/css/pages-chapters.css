@@ -12,6 +12,11 @@
 .ts-chapted__actions, .ts-chapted__bar { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: center; }
 .ts-chapted__move summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
 .ts-chapted__movebox { display: flex; flex-direction: column; gap: var(--space-12); align-items: flex-start; }
+/* Look up chapters (L3b): the ASIN form and the box that shows what Audnexus found. */
+.ts-chapted__lookup summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+.ts-chapted__lookupbox { display: flex; flex-direction: column; gap: var(--space-12); align-items: flex-start; }
+.ts-chapted__found { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-12); border: 1px solid var(--line); border-radius: var(--radius-control); }
+.ts-chapted__warn { font-weight: 600; }
 @media (width < 48rem) {
   .ts-chapted__fields { grid-template-columns: 1fr; }
 }

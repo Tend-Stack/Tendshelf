@@ -51,6 +51,7 @@ var jobViews = map[string]func(s *server, w http.ResponseWriter, r *http.Request
 	scan.KindScan:              (*server).getScanJob,
 	metadata.KindOnline:        (*server).getLookupJob,
 	metadata.KindAuthor:        (*server).getAuthorJob,
+	metadata.KindChapterLookup: (*server).getChapterLookupJob,
 	mediajobs.KindCoverAdopt:   (*server).getCoverAdoptJob,
 	mediajobs.KindWriteDetails: (*server).getWriteJob,
 	metadata.KindOnlineBulk:    (*server).getBulkJob,

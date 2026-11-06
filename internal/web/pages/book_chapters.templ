@@ -32,6 +32,26 @@ type ChaptersEditData struct {
 	MoveTitle, MoveBy, MoveByHint, MoveFrom, MoveGo                 string
 	ShiftBy, ShiftFrom, ShiftError                                  string
 	ResetHref, ResetLabel                                           string
+	// Notice is a status line about what the last step did, for example the chapters filled in.
+	Notice string
+	// Lookup is the "Look up chapters" form, nil when online lookups are off. Result is the answer
+	// of a lookup in this page, inside the editing form so its buttons carry the draft.
+	Lookup *ChaptersLookupForm
+	Result *ChaptersLookupResult
+}
+
+// ChaptersLookupForm is the disclosure that asks for an ASIN. Open shows it unfolded.
+type ChaptersLookupForm struct {
+	Action, CSRF, ASIN, Summary, Label, Hint, Go, Error string
+	Open                                                 bool
+}
+
+// ChaptersLookupResult is the box a chapter lookup answers in: waiting (it polls PollHref and
+// swaps itself), failed with Message, or done with the comparison and the buttons.
+type ChaptersLookupResult struct {
+	State, PollHref, Message, Found, Warn string
+	Job, UseAll, UseTitles, TitlesNote    string
+	CanTitles                             bool
 }
 
 templ ChaptersEditView(v ChaptersEditData) {
@@ -49,6 +69,26 @@ templ ChaptersEditView(v ChaptersEditData) {
 		if v.Note != "" {
 			<p class="body ts-chapted__note">{ v.Note }</p>
 		}
+		if v.Notice != "" {
+			<p class="body ts-chapted__status" role="status">{ v.Notice }</p>
+		}
+		if v.Lookup != nil {
+			<details class="ts-chapted__lookup" open?={ v.Lookup.Open }>
+				<summary>{ v.Lookup.Summary }</summary>
+				<form class="ts-chapted__lookupbox" method="post" action={ templ.URL(v.Lookup.Action) }>
+					<input type="hidden" name="_csrf" value={ v.Lookup.CSRF }/>
+					<div class="ts-field">
+						<label class="ts-field__label" for="chlk-asin">{ v.Lookup.Label }</label>
+						<span class="ts-field__hint" id="chlk-hint">{ v.Lookup.Hint }</span>
+						<input class="ts-input" id="chlk-asin" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="10" name="asin" value={ v.Lookup.ASIN } aria-describedby="chlk-hint"/>
+					</div>
+					if v.Lookup.Error != "" {
+						<p class="ts-field__error" role="alert">{ v.Lookup.Error }</p>
+					}
+					<button type="submit" class="ts-btn ts-btn--secondary">{ v.Lookup.Go }</button>
+				</form>
+			</details>
+		}
 		<form class="ts-chapted__form" method="post" action={ templ.URL(v.Action) }>
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			<input type="hidden" name="rev" value={ v.Rev }/>
@@ -56,6 +96,9 @@ templ ChaptersEditView(v ChaptersEditData) {
 			<input type="hidden" name="n" value={ strconv.Itoa(len(v.Rows)) }/>
 			// Enter in a field presses the first submit button, which must be Save and not a row's Delete.
 			<button type="submit" name="op" value="save" class="ts-chapted__enter" hidden>{ v.SaveLabel }</button>
+			if v.Result != nil {
+				@ChaptersLookupBox(*v.Result)
+			}
 			<ol class="ts-chapted__rows">
 				for i, r := range v.Rows {
 					<li class="ts-chapted__row">
@@ -126,4 +169,37 @@ templ ChaptersResetConfirm(v ChaptersResetView) {
 			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.Back) }>{ v.Keep }</a>
 		</form>
 	</div>
+}
+
+// ChaptersLookupBox is the lookup answer inside the editing form. While the job runs it polls
+// every two seconds; the poll sends the form's row count (n) so the box can say whether the
+// titles alone fit. Its buttons submit the form with op=lookup_all or op=lookup_titles and the job.
+templ ChaptersLookupBox(v ChaptersLookupResult) {
+	switch v.State {
+		case "wait":
+			<div id="chlk-result" class="ts-chapted__found" role="status" hx-get={ v.PollHref } hx-trigger="every 2s" hx-include="[name='n']" hx-swap="outerHTML">
+				<p class="body">{ v.Message }</p>
+			</div>
+		case "failed":
+			<div id="chlk-result" class="ts-chapted__found" role="status">
+				<p class="body">{ v.Message }</p>
+			</div>
+		default:
+			<div id="chlk-result" class="ts-chapted__found">
+				<input type="hidden" name="job" value={ v.Job }/>
+				<p class="body" role="status">{ v.Found }</p>
+				if v.Warn != "" {
+					<p class="body ts-chapted__warn">{ v.Warn }</p>
+				}
+				if !v.CanTitles {
+					<p class="caption">{ v.TitlesNote }</p>
+				}
+				<div class="ts-chapted__actions">
+					<button type="submit" name="op" value="lookup_all" class="ts-btn ts-btn--secondary">{ v.UseAll }</button>
+					if v.CanTitles {
+						<button type="submit" name="op" value="lookup_titles" class="ts-btn ts-btn--secondary">{ v.UseTitles }</button>
+					}
+				</div>
+			</div>
+	}
 }
