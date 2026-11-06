@@ -2,6 +2,8 @@ package app.tendshelf.android
 
 import app.tendshelf.shared.ApiPaths
 import app.tendshelf.shared.BatchItemResult
+import app.tendshelf.shared.BookCard
+import app.tendshelf.shared.ShelfCard
 import app.tendshelf.shared.Save
 import app.tendshelf.shared.batchBody
 import app.tendshelf.shared.queueNextBody
@@ -87,6 +89,28 @@ class Api(origin: String) {
     fun queueNext(token: String, ended: String): String? {
         val bytes = post(paths.queueNextUrl, token, queueNextBody(ended), 64 * 1024) ?: return null
         return JSONObject(String(bytes)).getJSONObject("book").getString("id")
+    }
+
+    // ---- The lists the car browses (A8). Each is one small GET; a failure is an exception for the caller to word. ----
+
+    fun continueList(token: String): List<BookCard> = ApiJson.itemBooks(String(get(paths.continueUrl(24), token, 1024 * 1024)))
+    fun queue(token: String): List<BookCard> = ApiJson.itemBooks(String(get(paths.queueUrl, token, 1024 * 1024)))
+    fun shelves(token: String): List<ShelfCard> = ApiJson.shelves(String(get(paths.shelvesUrl, token, 1024 * 1024)))
+
+    /** The first page of a shelf (48 books); a longer shelf is reached by search. */
+    fun shelf(token: String, shelfId: String): List<BookCard> = ApiJson.shelfBooks(String(get(paths.shelfUrl(shelfId), token, 2 * 1024 * 1024)))
+    fun search(token: String, query: String, limit: Int): List<BookCard> = ApiJson.searchBooks(String(get(paths.searchUrl(query, limit), token, 2 * 1024 * 1024)))
+
+    /** Saves the speed for one book. Best effort: the caller ignores a failure. */
+    fun putSpeed(token: String, bookId: String, speed: Double) {
+        val conn = open(paths.speedUrl(bookId), token)
+        conn.requestMethod = "PUT"
+        conn.doOutput = true
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.outputStream.use { it.write("{\"speed\":$speed}".toByteArray()) }
+        val code = conn.responseCode
+        conn.disconnect()
+        if (code !in 200..299) throw ApiException(code)
     }
 
     /** POST of JSON on a fresh connection; null for 204. */

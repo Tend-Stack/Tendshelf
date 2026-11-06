@@ -52,4 +52,14 @@
     <string name="downloads_remove">Remove</string>
     <string name="downloads_library">Open your library</string>
     <string name="downloads_offline_note">You\'re offline. These books still play.</string>
+    <string name="car_continue">Continue</string>
+    <string name="car_up_next">Up next</string>
+    <string name="car_shelves">Shelves</string>
+    <string name="car_downloaded">Downloaded</string>
+    <string name="car_sign_in">Open Tendshelf on your phone to sign in.</string>
+    <string name="car_no_connection">Can\'t reach your library. Downloaded books still play.</string>
+    <string name="car_not_found">I couldn\'t find that book.</string>
+    <string name="car_cant_play">That book can\'t play right now.</string>
+    <string name="car_keep_listening">Open Tendshelf on your phone to keep listening.</string>
+    <string name="car_nothing_here">Nothing here yet.</string>
 </resources>
