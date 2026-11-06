@@ -17,9 +17,16 @@ type HealthGroupView struct {
 	AllHref, AllLabel     string
 }
 
+// HealthChipView is one jump link of the summary at the top: a group's name, its count and where it is.
+type HealthChipView struct{ Label, Count, Href string }
+
 // AdminHealthView is /admin/health. With Single set the page shows one group and its paging links.
 type AdminHealthView struct {
 	Title, Lead, AllClear string
+	// SummaryTitle is "{n} things need a look" and Summary the jump links to each group; empty when nothing does
+	// or on a single group's page.
+	SummaryTitle, SummaryLabel string
+	Summary                    []HealthChipView
 	Groups                []HealthGroupView
 	Single                bool
 	BackHref, BackLabel   string
@@ -38,6 +45,16 @@ templ AdminHealth(v AdminHealthView) {
 				@components.Icon("check", false)
 				{ v.AllClear }
 			</p>
+		}
+		if len(v.Summary) > 0 {
+			<nav class="ts-health__summary" aria-label={ v.SummaryLabel }>
+				<p class="section ts-health__total">{ v.SummaryTitle }</p>
+				<ul class="ts-health__chips">
+					for _, c := range v.Summary {
+						<li><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(c.Href) }>{ c.Label } <span class="ts-num">{ c.Count }</span></a></li>
+					}
+				</ul>
+			</nav>
 		}
 		for _, g := range v.Groups {
 			<section class="ts-group ts-group--pad ts-health__group" aria-labelledby={ "health-h-" + g.ID }>

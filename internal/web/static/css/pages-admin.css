@@ -13,7 +13,6 @@
 .ts-admin__banner { margin: 0; }
 .ts-admin__banner .ts-icon { flex: none; width: 1.25rem; height: 1.25rem; color: var(--success); }
 
-.ts-admin__groups { margin-top: var(--space-8); }
 .ts-admin__summary:only-child { grid-column: 1 / -1; }
 .ts-admin__ready { display: flex; align-items: center; gap: var(--space-8); margin: 0; }
 .ts-admin__ready .ts-icon { flex: none; width: 1.25rem; height: 1.25rem; color: var(--success); }
@@ -23,24 +22,6 @@
 .ts-admin__actions .ts-btn { flex: 1 1 auto; justify-content: center; }
 .ts-admin__confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
 
-.ts-admin__section .caption { margin: 0; }
-.ts-admin__section .section { margin: 0; }
-
-/* Problem cards */
-.ts-problem {
-  display: flex; gap: var(--space-12); padding: var(--space-12);
-  border-radius: var(--radius-md); background: var(--raised);
-}
-.ts-problem__icon {
-  display: flex; flex: none; align-items: center; justify-content: center;
-  width: 2.25rem; height: 2.25rem; border-radius: 1.125rem; background: var(--surface); color: var(--ink-muted);
-}
-.ts-problem__icon .ts-icon { width: 1.25rem; height: 1.25rem; }
-.ts-problem__icon--missing, .ts-problem__icon--damaged { color: var(--warning); }
-.ts-problem__text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: var(--space-4); }
-.ts-problem__title { margin: 0; font-weight: 600; }
-.ts-problem__body { margin: 0; color: var(--ink-muted); }
-.ts-problem__list { margin: var(--space-4) 0 0; padding-left: var(--space-20); color: var(--ink-muted); overflow-wrap: anywhere; }
 
 /* Folder rows */
 .ts-folders { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -238,21 +219,13 @@ a.ts-users__item:hover { background: var(--raised); }
   .ts-users__invite { grid-column: 2; grid-row: 1 / span 3; align-self: center; margin-top: 0; }
 }
 
-/* "Book details from the internet": the on/off choice. */
-.ts-admin__online form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); }
-.ts-admin__choices { display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 0; border: 0; }
-.ts-admin__choice { display: flex; align-items: center; gap: var(--space-4); min-height: var(--size-tap); }
-
-/* Automatic and bulk lookups (AL-4): one row per library under "Book details from the internet", the
-   checkbox with its hint, and the list of books that need a look. */
-.ts-lookuplibs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); gap: var(--space-16); margin: var(--space-4) 0 0; padding: 0; list-style: none; }
-.ts-lookuplib { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); padding: var(--space-16); border-radius: var(--radius-md); background: var(--raised); }
-.ts-lookuplib__name { margin: 0; font-weight: 600; }
+/* The books-that-need-a-look rows (Library health, the lookups list). */
 .ts-lookuplib__needs { min-height: var(--size-tap); display: inline-flex; align-items: center; color: var(--accent); text-decoration: none; font-weight: 500; }
 .ts-lookuplib__needs:hover { text-decoration: underline; }
-.ts-lookuplib .ts-scan { align-self: stretch; margin-top: 0; }
 .ts-autolookup__hint { margin: 0; color: var(--ink-muted); }
 .ts-autolookup { display: flex; flex-direction: column; gap: var(--space-4); }
+.ts-admin__choices { display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 0; border: 0; }
+.ts-admin__choice { display: flex; align-items: center; gap: var(--space-4); min-height: var(--size-tap); }
 .ts-needs { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
 .ts-needs__row { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-12) 0; border-bottom: 1px solid var(--line); }
 .ts-needs__text { display: flex; flex-direction: column; }
@@ -265,20 +238,9 @@ a.ts-users__item:hover { background: var(--raised); }
 .ts-users__groups > section:only-of-type { grid-column: 1 / -1; }
 /* Two cards across once the pane has room; a card that says "wide" takes the whole row. */
 @container pane (width >= 44rem) {
-  .ts-admin__groups, .ts-users__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ts-users__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* Adding books from this device (decision 0015): radio rows, a plain form that works without script. */
-.ts-upset { display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-20); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
-.ts-upset .section, .ts-upset__lead { margin: 0; }
-.ts-upset__lead { color: var(--ink-muted); }
-.ts-upset__lib { display: flex; flex-direction: column; gap: var(--space-12); padding-top: var(--space-16); border-top: 1px solid var(--line); }
-.ts-upset__choices { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; padding: 0; border: 0; }
-.ts-upset__name { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-8); padding: 0; font-weight: 600; }
-.ts-upset__q { font-weight: 400; color: var(--ink-muted); }
-.ts-upset__choice { display: flex; align-items: center; gap: var(--space-12); min-height: var(--size-tap); }
-.ts-upset__choice .ts-check[type="radio"] { border-radius: 50%; }
-.ts-upset__err { margin: 0; }
 .ts-upset__btns { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 
 /* Duplicate books (S4): groups of copies, the confirm page and the list of merged copies. */
@@ -304,3 +266,23 @@ a.ts-users__item:hover { background: var(--raised); }
 .ts-health__group .section { margin: 0; }
 .ts-health__pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
 .ts-health a:not(.ts-btn) { display: inline-flex; align-items: center; min-height: 2.75rem; }
+
+/* The Libraries page (one content width, rows that save on change): a library is one section with
+   Folders, Watching, Online details and Adding books under it. Settings are rows; actions sit apart. */
+.ts-libs { gap: var(--space-12); }
+.ts-libs__sec, .ts-libs__lib { display: flex; flex-direction: column; gap: var(--space-12); margin-top: var(--space-16); }
+.ts-libs__name, .ts-libs__sub, .ts-libs .caption { margin: 0; }
+.ts-libs__sub { margin-top: var(--space-8); }
+.ts-libs__needs, .ts-libs__links { margin: 0; }
+.ts-libs__links { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); padding: 0; list-style: none; }
+.ts-libs__form { display: flex; flex-direction: column; }
+.ts-libs__foot { display: flex; align-items: center; justify-content: flex-end; min-height: 1.5rem; gap: var(--space-8); }
+.ts-saved { display: inline-flex; align-items: center; gap: var(--space-4); color: var(--ink-muted); }
+.ts-saved .ts-icon { width: 1rem; height: 1rem; color: var(--success); }
+.ts-libs__act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-16); }
+.ts-libs__act .ts-scan { flex: 1 1 16rem; margin-top: 0; }
+.ts-libs__lookup, .ts-libs__scopes { display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; }
+.ts-libs__lookup { gap: var(--space-4); }
+.ts-libs__scopes legend { padding: 0; margin-bottom: var(--space-4); }
+.ts-libs__stack { flex-wrap: wrap; padding: var(--space-8) 0; }
+.ts-libs__path { max-width: 100%; min-width: 0; }

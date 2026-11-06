@@ -176,6 +176,7 @@ func (s *server) renderAdminLibrariesFor(w http.ResponseWriter, r *http.Request,
 		s.serverError(w, r, "uploads setting", err)
 		return
 	}
+	fileSettings(&view)
 	if m := r.URL.Query().Get("marked"); m != "" {
 		var n int
 		if _, err := fmt.Sscanf(m, "%d", &n); err == nil && n >= 0 && n < 10_000_000 {
@@ -190,6 +191,7 @@ func (s *server) renderAdminLibrariesFor(w http.ResponseWriter, r *http.Request,
 	}
 	view.DuplicatesHref, view.DuplicatesLabel = "/admin/duplicates", dupTitle
 	view.HealthHref, view.HealthLabel = "/admin/health", healthTitle
+	view.NeedsHref = "/admin/health"
 	s.prefsPage(w, r, status, "Libraries & scanning", "admin-libraries", "libraries", false, pages.AdminLibraries(view), nil, adminStyles...)
 }
 
@@ -211,14 +213,11 @@ func (s *server) librariesView(ctx context.Context, r *http.Request, sc library.
 	if err != nil {
 		return v, err
 	}
-	views := map[string]*components.ScanStatusView{}
+	at := map[string]int{} // library id -> index in v.Libraries
 	for _, f := range folders {
-		af := pages.AdminFolder{
-			ID: f.ID, LibraryID: f.LibraryID, LibraryName: f.LibraryName, Path: f.Path,
-			Summary: booksText(f.Books) + " · " + sizeText(f.Bytes),
-		}
-		if _, ok := views[f.LibraryID]; !ok {
-			views[f.LibraryID] = nil
+		n, seen := at[f.LibraryID]
+		if !seen {
+			sec := pages.AdminLibrarySection{ID: f.LibraryID, Name: f.LibraryName}
 			if j, ok, err := s.jobs.ActiveFor(ctx, scan.KindScan, "library_id", f.LibraryID); err != nil {
 				return v, err
 			} else if ok {
@@ -226,20 +225,26 @@ func (s *server) librariesView(ctx context.Context, r *http.Request, sc library.
 				if err != nil {
 					return v, err
 				}
-				views[f.LibraryID] = &sv
+				sec.Scan = &sv
 			}
+			n = len(v.Libraries)
+			at[f.LibraryID] = n
+			v.Libraries = append(v.Libraries, sec)
 		}
-		af.Scan = views[f.LibraryID]
-		v.Folders = append(v.Folders, af)
+		v.Libraries[n].Folders = append(v.Libraries[n].Folders, pages.AdminFolder{
+			ID: f.ID, LibraryID: f.LibraryID, LibraryName: f.LibraryName, Path: f.Path,
+			Summary: booksText(f.Books) + " · " + sizeText(f.Bytes),
+		})
 	}
-	pr, err := s.lib.Problems(ctx, sc, 0)
+	health, err := s.lib.Health(ctx, sc, 1)
 	if err != nil {
 		return v, err
 	}
-	v.Problems = problemCards(pr)
-	if len(v.Problems) > 0 {
-		v.ProblemsTitle = problemsTitle(len(v.Problems))
+	total := 0
+	for _, h := range health {
+		total += h.Count
 	}
+	v.Needs = healthSummary(total)
 	return v, nil
 }
 
@@ -590,4 +595,40 @@ func booksText(n int) string {
 		return "1 book"
 	}
 	return thousands(n) + " books"
+}
+
+// fileSettings puts each library's watch, lookup and upload setting into that library's section.
+func fileSettings(v *pages.AdminLibrariesView) {
+	for i := range v.Libraries {
+		sec := &v.Libraries[i]
+		if v.Watch != nil {
+			for _, w := range v.Watch.Libraries {
+				if w.ID == sec.ID {
+					sec.Watch = &w
+				}
+			}
+		}
+		if v.Lookups != nil {
+			for _, l := range v.Lookups.Libraries {
+				if l.ID == sec.ID {
+					sec.Lookup = &l
+				}
+			}
+		}
+		if v.Uploads != nil {
+			for _, u := range v.Uploads.Libraries {
+				if u.ID == sec.ID {
+					sec.Upload = &u
+				}
+			}
+		}
+	}
+}
+
+// healthSummary is the short line on the Libraries page that links to Library health.
+func healthSummary(n int) string {
+	if n == 0 {
+		return healthNoneSummary
+	}
+	return problemsTitle(n)
 }

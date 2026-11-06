@@ -367,9 +367,12 @@ func (s *server) postAdminOnline(w http.ResponseWriter, r *http.Request) {
 	if !s.allow(w, r, share.ManageServer, share.Target{Kind: share.TargetServer}) {
 		return
 	}
-	on := r.PostFormValue("on")
+	if !s.parseForm(w, r) {
+		return
+	}
+	on := lastValue(r.PostForm["on"])
 	if on != "0" && on != "1" {
-		http.Error(w, detailsFailed, http.StatusUnprocessableEntity)
+		s.refuseSetting(w, r, http.StatusUnprocessableEntity, detailsFailed)
 		return
 	}
 	if err := metadata.SetOnlineEnabled(r.Context(), s.lib.Store(), on == "1", currentUser(r).ID); err != nil {

@@ -399,16 +399,15 @@ func TestAdminLibrariesPage(t *testing.T) {
 
 	body := adminHTMLUnescape(a.do(http.MethodGet, "/admin/libraries", nil, nil, owner).Body.String())
 	for _, want := range []string{
-		"Libraries &amp; scanning", "1 book ready to play", "No scan yet.", "3 things need a look",
-		"1 protected file was skipped", "“The Glass Orchard” is copy-protected, so Tendshelf can’t open it.",
-		"1 book is missing its files", "1 book has no cover", "Audiobooks", "1 book ·",
-		"This folder was emptied on purpose", "Scan now", "Add a folder",
+		"Libraries &amp; scanning", "1 book ready to play", "No scan yet.", "4 things need a look",
+		`href="/admin/health"`, "Audiobooks", "1 book ·", "Folders", "Watching",
+		"This folder was emptied on purpose", "Scan now", "Scan this library", "Add a folder",
 	} {
 		if !strings.Contains(strings.ReplaceAll(body, "&amp;", "&"), strings.ReplaceAll(want, "&amp;", "&")) {
 			t.Errorf("page lacks %q", want)
 		}
 	}
-	if strings.Contains(body, "hx-trigger") {
+	if strings.Contains(body, "every 2s") {
 		t.Error("an idle page polls")
 	}
 	// An active scan shows its status with a poller.

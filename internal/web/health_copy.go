@@ -17,6 +17,11 @@ const (
 	healthReviewDir   = "Review this folder"
 	healthUnreadable  = "Tendshelf could not read this file. Check it, then scan again."
 
+	healthRefusedDRM     = "Copy-protected, so Tendshelf can't open it. Nothing else is affected."
+	healthRefusedNoAudio = "No audio Tendshelf can play."
+	healthNoneSummary    = "Nothing needs a look."
+	healthSummaryLabel   = "What needs a look"
+
 	healthMissingHead = "Missing from disk"
 	healthMissingNote = "Tendshelf can't find these books' files. If a whole folder was emptied on purpose, you can say so."
 	healthRefusedHead = "Not opened"

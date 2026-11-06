@@ -284,14 +284,14 @@ func TestCompareOnlineSwitch(t *testing.T) {
 	if body := e.compareGet(sweepOwner, tab, nil).Body.String(); !strings.Contains(body, "Look up details online") {
 		t.Fatalf("the button is missing while lookups are on")
 	}
-	if body := e.compareGet(sweepOwner, "/admin/libraries", nil).Body.String(); !strings.Contains(body, "Book details from the internet") || !strings.Contains(body, "Never go online") {
+	if body := e.compareGet(sweepOwner, "/admin/libraries", nil).Body.String(); !strings.Contains(body, "Book details from the internet") || !strings.Contains(body, "Look up details when someone asks") {
 		t.Errorf("the owner does not see the switch")
 	}
 	// Only the owner may turn it off.
 	if rec := e.comparePost(t, sweepAdmin, "/admin/online", url.Values{"on": {"0"}}); rec.Code != http.StatusNotFound {
 		t.Fatalf("admin switch: %d, want 404", rec.Code)
 	}
-	if body := e.compareGet(sweepAdmin, "/admin/libraries", nil).Body.String(); strings.Contains(body, "Never go online") {
+	if body := e.compareGet(sweepAdmin, "/admin/libraries", nil).Body.String(); strings.Contains(body, "Look up details when someone asks") {
 		t.Errorf("the admin sees the owner's switch")
 	}
 	if rec := e.comparePost(t, sweepOwner, "/admin/online", url.Values{"on": {"maybe"}}); rec.Code != http.StatusUnprocessableEntity {

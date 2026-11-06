@@ -1,0 +1,13 @@
+package components
+
+// SettingSaved is the quiet "Saved" mark beside a setting that saves when it changes. The empty span is
+// on the page from the start so a screen reader hears it fill; the server answers a change with the same
+// span carrying the word. The id is the htmx target, so it starts with "saved-".
+templ SettingSaved(id, label string, saved bool) {
+	<span id={ id } class="ts-saved caption" role="status">
+		if saved {
+			@Icon("check", false)
+			{ label }
+		}
+	</span>
+}

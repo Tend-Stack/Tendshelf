@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
 
@@ -64,10 +66,35 @@ func healthRow(group string, h library.HealthRow, lookups bool) pages.HealthRowV
 		}
 	case library.HealthUnreadable:
 		row.Note = healthUnreadable
+	case library.HealthRefused:
+		row.Note = healthRefusedText(h.Refused)
+		fix(row.Href, healthOpenBook)
 	default:
 		fix(row.Href, healthOpenBook)
 	}
 	return row
+}
+
+// healthRefusedText says why a refused book is not opened, in one sentence.
+func healthRefusedText(reason string) string {
+	switch reason {
+	case library.RefusedDRM:
+		return healthRefusedDRM
+	case library.RefusedDamaged:
+		return scan.RefusalText(reason)
+	}
+	return healthRefusedNoAudio
+}
+
+// healthFirst are the groups that lead the page: the books a lookup or a cover can still help.
+var healthFirst = []string{library.HealthNoMatch, library.HealthNoCover}
+
+// healthRank is a group's place on the page: the leading groups first, the rest in their usual order.
+func healthRank(group string) int {
+	if i := slices.Index(healthFirst, group); i >= 0 {
+		return i
+	}
+	return len(healthFirst)
 }
 
 func (s *server) getHealth(w http.ResponseWriter, r *http.Request) {
@@ -89,6 +116,9 @@ func (s *server) getHealth(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, "library health", err)
 			return
 		}
+		slices.SortStableFunc(counts, func(a, b library.HealthCount) int {
+			return healthRank(a.Group) - healthRank(b.Group)
+		})
 		total := 0
 		for _, c := range counts {
 			total += c.Count
@@ -96,10 +126,15 @@ func (s *server) getHealth(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			v.Groups = append(v.Groups, healthGroupView(c.Group, c.Count, c.Rows, lookups))
+			head, _ := healthText(c.Group)
+			v.Summary = append(v.Summary, pages.HealthChipView{Label: head, Count: strconv.Itoa(c.Count), Href: "#health-h-" + c.Group})
 			g := &v.Groups[len(v.Groups)-1]
 			if c.Count > len(c.Rows) {
 				g.AllHref, g.AllLabel = "/admin/health?group="+c.Group, fmt.Sprintf(healthShowAll, c.Count)
 			}
+		}
+		if total > 0 {
+			v.SummaryTitle, v.SummaryLabel = problemsTitle(total), healthSummaryLabel
 		}
 		if total == 0 {
 			v.AllClear = healthAllClear

@@ -317,7 +317,7 @@ func TestUploadSetting(t *testing.T) {
 		}
 	}
 	rec := post(u.owner, u.folderID)
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/admin/libraries#uploads-h" || current() != u.folderID {
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/admin/libraries#uploads-"+u.libID || current() != u.folderID {
 		t.Fatalf("owner: %d %q setting %q", rec.Code, rec.Header().Get("Location"), current())
 	}
 	// The write check leaves no file behind.

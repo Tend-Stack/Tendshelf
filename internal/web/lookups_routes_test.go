@@ -149,7 +149,7 @@ func TestBulkStartStopAndPage(t *testing.T) {
 func TestBulkJobView(t *testing.T) {
 	e := sweepSeed(t)
 	ctx := context.Background()
-	id, err := e.a.srv.details.StartBulk(ctx, e.libID, false, "")
+	id, err := e.a.srv.details.StartBulk(ctx, e.libID, "", false, "")
 	if err != nil {
 		t.Fatal(err)
 	}
