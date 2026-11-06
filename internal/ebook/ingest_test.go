@@ -142,6 +142,24 @@ func (e *ienv) count(q string, args ...any) int {
 	return n
 }
 
+// waitIdle waits for the ingest job to end. A file turns ready just before its job does, and
+// EnqueuePending skips a file whose job still counts as active.
+func (e *ienv) waitIdle(t *testing.T) {
+	t.Helper()
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		active, err := e.svc.runner.ActiveKeys(context.Background(), KindIngest, "file_id")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(active) == 0 {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("the ingest job did not end")
+}
+
 // waitState waits for a file to leave pending.
 func (e *ienv) waitState(id string) File {
 	e.t.Helper()
