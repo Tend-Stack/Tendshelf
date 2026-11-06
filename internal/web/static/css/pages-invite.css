@@ -112,8 +112,10 @@ html[data-theme="contrast"] .ts-invite__band.is-tinted { background: none; }
 .ts-pair__status, .ts-pair__form { display: flex; flex-direction: column; gap: var(--space-12); align-items: flex-start; }
 .ts-pair__form .ts-input { max-width: 12rem; }
 .ts-pair__input { font-family: var(--font-mono); font-size: 1.5rem; letter-spacing: 0.25em; text-align: center; }
-.ts-pair__number { margin: 0; font: 600 3rem/1.2 var(--font-mono); letter-spacing: 0.25em; color: var(--ink); }
+.ts-invite .ts-pair__number { margin: 0; font: 600 3.5rem/1.2 var(--font-mono); letter-spacing: 0.25em; color: var(--ink); }
 .ts-invite__phone { display: flex; flex-direction: column; gap: var(--space-8); }
 .ts-invite__phone > summary { cursor: pointer; list-style: none; }
 .ts-invite__phone > summary::-webkit-details-marker { display: none; }
 .ts-me__add { align-self: flex-start; margin-top: var(--space-16); }
+.ts-invite #pair-status { display: flex; flex-direction: column; gap: var(--space-12); }
+.ts-invite #pair-status > h1, .ts-invite #pair-status > p { margin: 0; }

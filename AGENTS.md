@@ -139,11 +139,15 @@ was reused, extended or replaced.
   `/peaks/{id}`, `/hx/player/{bookID}`, `/hx/books/{id}/read/chapters/{idx}`, `/books/{id}/read/images/{blockID}`,
   the `/offline` shell for a navigation that cannot reach the server, and the book's reader shell for a
   navigation to `/books/{id}/read` (or `?sheet=contents`) that cannot reach it. It never caches or answers
-  `/s/...`, `/invite/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any request with
+  `/s/...`, `/invite/...`, `/pair/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any request with
   `download=1`, any non-GET request, or any other page. It is never registered inside a Wails window, inside the Android
   app's window (`/sw.js` answers 404 there), on share-link pages or outside a secure context. Sign-out and a change of person delete that person's caches
   and offline records (decisions [0012](docs/decisions/0012-offline-pocket.md),
   [0019](docs/decisions/0019-offline-reading.md)).
+
+- `tendshelf:` carries only a link, never a code (decision 0028): the app's one way in from outside is
+  `tendshelf://open?link=<address>`, treated as untrusted text, and no page or message ever offers a bare
+  `tendshelf:` link (the server's `intent:` address names the app's package).
 
 ## Accessibility and layout
 

@@ -789,6 +789,17 @@ stub channel: an `.aax` is refused with the Add books words and sends nothing; u
 `desktop-shell.js` 4,667 B gzip (row 4,736 B) and the desktop total 5,823 B (ceiling 5,888 B), over the approved 2,816 and 4,096 B and reported; a folder drop and a real
 drag from Files are untested; the bar is kept across boosted visits, so a change of permission shows at the next full load. Next step: X6.
 
+## Invitations in the app and QR sign-in: server (decision 0028)
+
+**Server status**: built 2026-11-06 on the branch `pkg-qr`. Plan [plans/invite-and-qr.md](plans/invite-and-qr.md) steps S1-S15.
+Migration `0033_device_pairings`; `internal/auth/pairing.go`; `rsc.io/qr` v0.2.0 in `internal/web/qr.go` only; `/me/devices/add`
+and the public `/pair` routes; QR in the invite panel and on the invite page; "Open in the app" on an Android browser;
+a connected app can no longer accept an invite (409). Tests: `TestPair*`, `TestInviteApp*`, `TestQR*` (a small independent QR
+decoder in `qr_decode_test.go` reads the drawn SVG back and checks the Reed-Solomon syndromes), `TestMigrationDevicePairings*`,
+matrix and a11y rows, `TestVisualPair` (dev). Limits: no real-phone scan yet (plan section 9); the Android package (A1-A9) is next;
+an invited person with no password whose session lapsed still cannot sign in on `/login` (reported, not designed here).
+Next: Android package.
+
 ## Android app: A1 server (decision 0026)
 
 **A1 status**: built 2026-11-06 on the branch `pkg-a1`. Plan [plans/android-a1.md](plans/android-a1.md), decision

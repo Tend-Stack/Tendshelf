@@ -42,7 +42,7 @@ type AddPhoneView struct {
 templ AddPhone(v AddPhoneView) {
 	<div class="ts-me ts-pair">
 		<h1 class="title-2 ts-me__title">{ v.Title }</h1>
-		if v.State != AddPhoneEnded {
+		if v.State != AddPhoneEnded && v.Lead != "" {
 			<p class="body ts-me__lead">{ v.Lead }</p>
 		}
 		if v.Insecure {

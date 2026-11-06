@@ -163,11 +163,11 @@ func (s *server) getAddPhoneStatus(w http.ResponseWriter, r *http.Request) {
 		v.Lead, v.Waiting, v.CheckLabel = addPhoneScan, addPhoneWaiting, addPhoneCheck
 	case auth.PairClaimed:
 		v.State = pages.AddPhoneClaimed
-		v.Lead = addPhoneIntro
+		v.Lead = ""
 		v.Claimed = fmt.Sprintf(addPhoneClaimed, p.PhoneName, p.PhoneIP)
 		v.NumberLabel, v.Approve, v.NotMine = addPhoneNumber, addPhoneApprove, addPhoneNotMine
 	default:
-		v.State, v.Claimed = pages.AddPhoneApproved, addPhoneApproved
+		v.State, v.Claimed, v.Lead = pages.AddPhoneApproved, addPhoneApproved, ""
 	}
 	s.addPhonePage(w, r, http.StatusOK, v)
 }
@@ -184,7 +184,7 @@ func (s *server) postAddPhoneApprove(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 		v := s.addPhoneView(r, pages.AddPhoneApproved)
-		v.Insecure, v.Claimed = false, addPhoneApproved
+		v.Insecure, v.Claimed, v.Lead = false, addPhoneApproved, ""
 		s.addPhonePage(w, r, http.StatusOK, v)
 	case errors.Is(err, auth.ErrPairMismatch):
 		v := s.addPhoneView(r, pages.AddPhoneEnded)
@@ -206,7 +206,7 @@ func (s *server) postAddPhoneCancel(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "cancel pairing", err)
 		return
 	}
-	s.redirect(w, r, "/me/devices")
+	s.answerPage(w, r, "/me/devices")
 }
 
 // ---- the phone ----
