@@ -13,6 +13,7 @@ require (
 	github.com/a-h/templ v0.3.1100 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
+	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/ledongthuc/pdf v0.0.0-20261020125853-5e46805f718e // indirect
