@@ -223,7 +223,7 @@ func (d dropsLast) Write(p []byte) (int, error) {
 	return d.w.Write(p)
 }
 
-// TestWholeBackupVerify: a copy that does not read back the same is refused and removed.
+// TestWholeBackupVerify: a copy that does not read back the same is refused, removed and counted.
 func TestWholeBackupVerify(t *testing.T) {
 	e := newEnv(t)
 	seedData(t, e.dir)
@@ -231,9 +231,9 @@ func TestWholeBackupVerify(t *testing.T) {
 	old := wrapDest
 	defer func() { wrapDest = old }()
 	wrapDest = func(w io.Writer) io.Writer { return dropsLast{w} }
-	_, err := Mirror(context.Background(), e.dir, target, e.now)
-	if err == nil || !strings.Contains(err.Error(), "did not read back") {
-		t.Fatalf("err = %v, want a read-back failure", err)
+	rep, err := Mirror(context.Background(), e.dir, target, e.now)
+	if err != nil || rep.Problems != 5 || rep.Copied != 0 {
+		t.Fatalf("rep = %+v, err = %v; want 5 refused copies counted and no error", rep, err)
 	}
 	root := filepath.Join(target, RootName)
 	if exists(filepath.Join(root, "ebooks", "ab", "book.epub")) || exists(filepath.Join(root, "ebooks", "ab", "book.epub"+partSuffix)) {

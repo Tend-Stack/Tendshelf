@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -126,6 +127,20 @@ type Report struct {
 	Removed int   // files removed after being gone from the data folder for Grace
 	Bytes   int64 // bytes copied this time
 	Copies  int   // database copies placed in the backup folder
+	// Problems counts files and folders that could not be read or copied this time. Each is logged; the
+	// rest of the backup went on. When a folder could not be read, nothing is removed from the backup.
+	Problems int
+}
+
+// ErrDriveMissing means the backup folder was filled before but its manifest is gone: the backup drive is
+// probably unplugged and an empty mount point is left behind. Nothing is written, so the system disk
+// cannot fill up with a copy meant for another drive.
+var ErrDriveMissing = errors.New("backups: the backup folder was filled before but has no backup in it now")
+
+// HasBackup reports whether the backup folder already holds a backup made by Mirror.
+func HasBackup(target string) bool {
+	_, err := os.Stat(filepath.Join(target, RootName, manifestName))
+	return err == nil
 }
 
 // entry is one file in the manifest.
@@ -187,17 +202,41 @@ func Mirror(ctx context.Context, dataDir, target string, now time.Time) (Report,
 		}
 	}()
 	removeParts(root)
+	// The database copies go first: they are the part that matters most, and one unreadable cover must not
+	// keep them out of the backup.
+	if err := mirrorCopies(ctx, dataDir, root, &rep); err != nil {
+		return rep, err
+	}
 	seen := map[string]bool{}
+	complete := true // false once any folder could not be listed: then nothing counts as gone
+	problem := func(what string, err error) {
+		rep.Problems++
+		slog.Warn("backups: skipped", "what", what, "err", err)
+	}
 	for _, name := range Mirrored {
 		src := filepath.Join(dataDir, name)
-		if _, err := os.Stat(src); err != nil {
+		if _, err := os.Lstat(src); err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				complete = false
+				problem(name, err)
+			}
 			continue
 		}
-		err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
+		// A link in place of the folder is followed to the real folder; the files keep their names under
+		// the link's own name, so swapping a folder for a link does not make its files look gone.
+		walkRoot, err := filepath.EvalSymlinks(src)
+		if err != nil {
+			complete = false
+			problem(name, err)
+			continue
+		}
+		err = filepath.WalkDir(walkRoot, func(p string, d fs.DirEntry, err error) error {
 			if cerr := ctx.Err(); cerr != nil {
 				return cerr
 			}
 			if err != nil {
+				complete = false
+				problem(p, err)
 				if d != nil && d.IsDir() {
 					return fs.SkipDir
 				}
@@ -206,20 +245,33 @@ func Mirror(ctx context.Context, dataDir, target string, now time.Time) (Report,
 			if !d.Type().IsRegular() { // folders are made as needed; links and devices are never followed
 				return nil
 			}
-			rel, err := filepath.Rel(dataDir, p)
+			rel, err := filepath.Rel(walkRoot, p)
 			if err != nil {
 				return nil
 			}
-			key := filepath.ToSlash(rel)
+			key := name + "/" + filepath.ToSlash(rel)
 			seen[key] = true
-			return mirrorFile(root, p, key, &m, &rep, now)
+			if err := mirrorFile(root, p, key, &m, &rep, now); err != nil {
+				if cerr := ctx.Err(); cerr != nil {
+					return cerr
+				}
+				if errors.Is(err, ErrDiskFull) {
+					return err
+				}
+				problem(p, err) // one bad file does not stop the others
+			}
+			return nil
 		})
 		if err != nil {
 			return rep, err
 		}
 	}
-	// Files gone from the data folder: keep them for Grace, then remove them.
+	// Files gone from the data folder: keep them for Grace, then remove them. Skipped when any folder
+	// could not be read, because then "not seen" does not mean "gone".
 	for key, e := range m.Files {
+		if !complete {
+			break
+		}
 		if seen[key] || strings.HasPrefix(key, "backups/") {
 			continue
 		}
@@ -233,10 +285,6 @@ func Mirror(ctx context.Context, dataDir, target string, now time.Time) (Report,
 			delete(m.Files, key)
 			rep.Removed++
 		}
-	}
-	// A file that came back stops counting as gone (mirrorFile cleared it when it copied or matched it).
-	if err := mirrorCopies(ctx, dataDir, root, &rep); err != nil {
-		return rep, err
 	}
 	if err := writeRestoreNote(root); err != nil {
 		return rep, diskErr(err)

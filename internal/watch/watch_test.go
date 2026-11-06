@@ -181,8 +181,9 @@ func TestWatchSchedule(t *testing.T) {
 		{"scanned long ago", library.Library{Watch: true, ScanIntervalMin: 360}, now.Add(-7 * time.Hour), true, false, 1},
 		{"schedule off", library.Library{Watch: true, ScanIntervalMin: 0}, now.Add(-100 * time.Hour), true, false, 0},
 		{"watch off", library.Library{Watch: false, ScanIntervalMin: 60}, now.Add(-100 * time.Hour), true, false, 0},
-		{"network without interval, recent", library.Library{Watch: true}, now.Add(-time.Hour), true, true, 0},
-		{"network without interval, old", library.Library{Watch: true}, now.Add(-7 * time.Hour), true, true, 1},
+		{"network set to never, recent", library.Library{Watch: true}, now.Add(-time.Hour), true, true, 0},
+		{"network set to never, old", library.Library{Watch: true}, now.Add(-700 * time.Hour), true, true, 0},
+		{"network with interval, old", library.Library{Watch: true, ScanIntervalMin: 360}, now.Add(-7 * time.Hour), true, true, 1},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

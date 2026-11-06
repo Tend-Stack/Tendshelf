@@ -86,3 +86,13 @@ func Enqueue(ctx context.Context, r *jobs.Runner, createdBy, libraryID string) (
 	}
 	return r.Enqueue(ctx, KindScan, ScanPayload{LibraryID: libraryID}, jobs.EnqueueOptions{CreatedBy: createdBy})
 }
+
+// Running reports whether a scan of the library is running now, as opposed to waiting to start. The folder
+// watcher uses it to keep a change it saw until that scan ends: the scan may have walked past the folder.
+func Running(ctx context.Context, r *jobs.Runner, libraryID string) (bool, error) {
+	j, ok, err := r.ActiveFor(ctx, KindScan, "library_id", libraryID)
+	if err != nil || !ok {
+		return false, err
+	}
+	return j.State == jobs.StateRunning, nil
+}

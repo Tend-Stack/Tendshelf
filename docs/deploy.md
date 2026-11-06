@@ -80,5 +80,7 @@ another machine give its address or a CIDR range (`-trusted-proxy 10.0.0.0/24`).
 ## Backups and upgrades
 
 Stop the server and copy the whole data folder (database, `ebooks`, `covers`, `dictionaries`, `backups`);
-the automatic backups hold the database only. Upgrading writes a copy of the database first; going back
+the automatic backups hold the database only unless a backup folder is set (Backups page), which also mirrors
+the ebooks, covers, people, text and dictionaries. If that drive is unplugged, the next backup refuses and says so
+instead of filling the system disk; choose the folder again on the Backups page to start a new backup there. Upgrading writes a copy of the database first; going back
 to an older version needs one of those copies (see the README).

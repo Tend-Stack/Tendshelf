@@ -181,3 +181,32 @@ func TestJobsBadPayloads(t *testing.T) {
 		t.Fatalf("probe of a vanished row = %+v", j)
 	}
 }
+
+// TestRunningTellsWaitingFromRunning: a scan that is only waiting is not "running"; the folder watcher
+// joins it. One that has started is, and the watcher keeps its change for a fresh scan.
+func TestRunningTellsWaitingFromRunning(t *testing.T) {
+	e := newEnv(t, media.Tools{})
+	r, err := jobs.New(e.st, jobs.Options{Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.sc = New(e.repo, media.Tools{}, r, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err := e.sc.Register(r); err != nil {
+		t.Fatal(err)
+	}
+	if running, err := Running(bg, r, e.lib.ID); err != nil || running {
+		t.Fatalf("Running with no scan = %v, %v", running, err)
+	}
+	if _, err := Enqueue(bg, r, "", e.lib.ID); err != nil {
+		t.Fatal(err)
+	}
+	if running, _ := Running(bg, r, e.lib.ID); running {
+		t.Error("a waiting scan counted as running")
+	}
+	if _, err := e.st.Writer().Exec(`UPDATE jobs SET state = 'running', lease_until = 9999999999999`); err != nil {
+		t.Fatal(err)
+	}
+	if running, _ := Running(bg, r, e.lib.ID); !running {
+		t.Error("a running scan was not reported")
+	}
+}
