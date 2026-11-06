@@ -104,7 +104,7 @@ func TestDeskBarBrowser(t *testing.T) {
 			  document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 			  return { opened, focused: focused && second, closed: document.querySelector("[data-wbar-menu]").hidden, focusBack: document.activeElement === more, items: items.length };
 			})()`, &menu)
-			if !menu.Opened || !menu.Focused || !menu.Closed || !menu.FocusBack || menu.Items != 7 {
+			if !menu.Opened || !menu.Focused || !menu.Closed || !menu.FocusBack || menu.Items != 8 {
 				t.Errorf("menu %+v", menu)
 			}
 
