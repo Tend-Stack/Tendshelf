@@ -46,7 +46,7 @@ Tags are `vYEAR.RELEASE.BUGFIX` (for example `v2026.1.0`; [decision 0006](docs/d
    the owner exists).
 2. Open the link. Create the owner account, name your server, and choose the folder that holds your
    audiobooks and ebooks. The first scan starts at once and its progress streams onto the page.
-3. Open Home. Your books appear as they are found. Add more folders later under Libraries.
+3. Open Home. Your books appear as they are found. Add more folders later under Libraries. Tendshelf then notices books you drop into a folder by itself (see "New books appear by themselves" below).
 
 If you forget the owner's password: `tendshelf reset-password [-data DIR] <username>` prints a new one
 once and signs that account out everywhere.
@@ -58,6 +58,17 @@ network, start it with `-addr 0.0.0.0:8095`, then open `http://<the computer's a
 That is enough to listen. **Offline downloads and installing Tendshelf as an app need HTTPS**, because
 browsers allow the service worker only there. A reverse proxy with a certificate, or
 `tailscale serve --bg 8095`, gives you that; [docs/deploy.md](docs/deploy.md) has the steps and examples.
+
+### New books appear by themselves
+
+Every library has "Watch for new books" (Admin, Libraries, Finding new books), on for new libraries and
+switched on for existing ones when you upgrade. Tendshelf watches the library folders for changes, waits
+until nothing has changed for 45 seconds (so a book that is still being copied is not read half written),
+and then runs the usual scan. It also scans on a schedule, every 6 hours unless you pick another time or
+Never, because a folder on a network drive (NFS, SMB/CIFS, sshfs, rclone and the like, such as a NAS mount)
+sends no change events. Such a folder is not watched at all, which also lets its disks sleep; only the
+schedule checks it. A scan only reads. If a drive or share is unmounted, Tendshelf skips the folder, keeps
+your books listed, and scans once when it returns.
 
 ### The data folder and backups
 

@@ -82,7 +82,7 @@ func (r *Repo) newLibrary(name string, scanIntervalMin int) (Library, error) {
 	if scanIntervalMin < 0 || scanIntervalMin > 10080 {
 		return Library{}, invalid("scan interval must be 0 to 10080 minutes")
 	}
-	return Library{ID: db.NewID("lib"), Name: name, ScanIntervalMin: scanIntervalMin, CreatedAt: r.nowMs()}, nil
+	return Library{ID: db.NewID("lib"), Name: name, ScanIntervalMin: scanIntervalMin, Watch: true, CreatedAt: r.nowMs()}, nil
 }
 
 func insertLibrary(ctx context.Context, tx *sql.Tx, l Library) error {

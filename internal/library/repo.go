@@ -10,11 +10,13 @@ import (
 // scanner is what *sql.Row and *sql.Rows share.
 type scanner interface{ Scan(dest ...any) error }
 
-const libraryCols = `id, name, scan_interval_min, created_at, COALESCE(auto_lookup_at, 0), COALESCE(upload_folder_id, '')`
+const libraryCols = `id, name, scan_interval_min, created_at, COALESCE(auto_lookup_at, 0), COALESCE(upload_folder_id, ''), watch`
 
 func scanLibrary(s scanner) (Library, error) {
 	var l Library
-	err := s.Scan(&l.ID, &l.Name, &l.ScanIntervalMin, &l.CreatedAt, &l.AutoLookupAt, &l.UploadFolderID)
+	var watch int
+	err := s.Scan(&l.ID, &l.Name, &l.ScanIntervalMin, &l.CreatedAt, &l.AutoLookupAt, &l.UploadFolderID, &watch)
+	l.Watch = watch != 0
 	return l, err
 }
 

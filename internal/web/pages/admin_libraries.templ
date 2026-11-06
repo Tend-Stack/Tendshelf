@@ -39,8 +39,25 @@ type AdminLibrariesView struct {
 	OnlineTitle, OnlineBody string
 	// Uploads is "Adding books from this device" (decision 0015); nil when uploads are not set up.
 	Uploads *AdminUploadsView
+	// Watch is "Finding new books" (S1): per library, watching and the scheduled scan; nil with no library.
+	Watch *AdminWatchView
 	// EbooksHref and EbooksLabel link /admin/ebooks ("Ebooks"), with no count; empty when ebooks are off.
 	EbooksHref, EbooksLabel string
+}
+
+// AdminWatchView is the section where each library's "Watch for new books" and scheduled scan are set.
+// The handler writes every word.
+type AdminWatchView struct {
+	Title, Lead, WatchLabel, EveryLabel, Save string
+	Choices                                   []Option
+	Libraries                                 []AdminWatchLibrary
+}
+
+// AdminWatchLibrary is one library's row: the switch, the interval in minutes ("0" = never) and the
+// plain sentence about how it is being kept up to date.
+type AdminWatchLibrary struct {
+	ID, Name, Every, Status string
+	Watch                   bool
 }
 
 // AdminUploadsView is the section where the owner picks, per library, the folder that receives
@@ -176,6 +193,9 @@ templ AdminLibraries(v AdminLibrariesView) {
 				}
 			</ul>
 		</section>
+		if v.Watch != nil {
+			@adminWatch(v)
+		}
 		if v.Online != nil || v.Lookups != nil {
 			<section class="ts-group ts-group--pad ts-group--wide ts-admin__section ts-admin__online" aria-labelledby="online-h">
 				<h2 id="online-h" class="section">{ v.OnlineTitle }</h2>
@@ -193,6 +213,37 @@ templ AdminLibraries(v AdminLibrariesView) {
 		}
 		</div>
 	</div>
+}
+
+// adminWatch is "Finding new books": a plain form for each library that works without script.
+templ adminWatch(v AdminLibrariesView) {
+	<section class="ts-group ts-group--pad ts-group--wide ts-admin__section" aria-labelledby="watch-h" id="watch">
+		<h2 id="watch-h" class="section">{ v.Watch.Title }</h2>
+		<p class="caption">{ v.Watch.Lead }</p>
+		<ul class="ts-lookuplibs">
+			for _, l := range v.Watch.Libraries {
+				<li class="ts-lookuplib">
+					<span class="body ts-lookuplib__name">{ l.Name }</span>
+					<form class="ts-lookuplib__form" method="post" action={ templ.SafeURL("/admin/libraries/" + l.ID + "/watch") }>
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<input type="hidden" name="on" value="0"/>
+						<label class="ts-admin__choice" for={ "watch-" + l.ID }>
+							<input type="checkbox" class="ts-check" id={ "watch-" + l.ID } name="on" value="1" aria-describedby={ "watch-status-" + l.ID } checked?={ l.Watch }/>
+							<span>{ v.Watch.WatchLabel }</span>
+						</label>
+						<label class="caption" for={ "watch-every-" + l.ID }>{ v.Watch.EveryLabel }</label>
+						<select id={ "watch-every-" + l.ID } name="every" class="ts-select">
+							for _, c := range v.Watch.Choices {
+								<option value={ c.Value } selected?={ c.Value == l.Every }>{ c.Label }</option>
+							}
+						</select>
+						<p id={ "watch-status-" + l.ID } class="caption">{ l.Status }</p>
+						<button type="submit" class="ts-btn ts-btn--secondary">{ v.Watch.Save }</button>
+					</form>
+				</li>
+			}
+		</ul>
+	</section>
 }
 
 // adminUploads is "Adding books from this device": a plain form for each library that works without

@@ -48,11 +48,15 @@ const (
 	ChapterUser    = "user"
 )
 
+// DefaultScanIntervalMin is the scheduled scan of a new library: every six hours.
+const DefaultScanIntervalMin = 360
+
 // Library is a named set of folders scanned together.
 type Library struct {
 	ID              string
 	Name            string
-	ScanIntervalMin int // 0 = scan only on request
+	ScanIntervalMin int  // scheduled fallback scan in minutes; 0 = never
+	Watch           bool // "Watch for new books": the folder watcher and the scheduled scan are on
 	CreatedAt       int64
 	AutoLookupAt    int64  // when "look up details online for new books" was turned on; 0 = off
 	UploadFolderID  string // the folder that receives uploads (decision 0015); "" = uploads off

@@ -767,8 +767,19 @@ step: the operator's desktop section of `docs/manual-checks.md`.
 
 ## M7 Research — dropped (decision 0007, 2026-11-02)
 
+## Next stage (docs/plans/next-stage.md)
+
+- **S1 Watch folders and a scheduled scan** (2026-11-05, done). Scope: `internal/watch` (fsnotify watcher,
+  45 s quiet period, mount-table detection of NFS/CIFS and similar, 6 h scheduled scan, skip and catch-up for
+  a missing folder), migration 0024 (`libraries.watch`; the unused `scan_interval_min` becomes the schedule),
+  `scan.Enqueue` shared by the button, the watcher and the schedule, a "Finding new books" section on the
+  Libraries page. Checks: `TestWatch*` (debounce, new folders, hidden folders, schedule table, network
+  folder, folder limit, mount gone and back, mount table, routes with forbidden cases, migration).
+  Limits: Linux inotify per-user limits (a library past 20000 folders falls back to the schedule); the
+  scheduled scan counts any scan job as "last scanned". Next: S2.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), native mobile
 (evaluate Wails v3 mobile when stable), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID
-Connect, folder watcher, merge MP3 folder to M4B, custom metadata providers, Chromecast.
+Connect, merge MP3 folder to M4B, custom metadata providers, Chromecast.

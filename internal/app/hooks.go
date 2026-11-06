@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/backups"
 	"github.com/Tend-Stack/tendshelf/internal/db"
@@ -16,6 +17,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/metadata/online"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
+	"github.com/Tend-Stack/tendshelf/internal/watch"
 )
 
 // deps is what features need to register their jobs and followers at start-up.
@@ -102,10 +104,7 @@ func registerMediaJobs(d deps, compatGiB int, waveforms bool) (*mediajobs.Compat
 	// After files were swapped or restored the library is scanned again: the same two calls as the
 	// admin Scan button (internal/web startScan), joining a scan that is already waiting.
 	writes.OnChanged = func(ctx context.Context, libraryID string) {
-		if _, ok, err := d.runner.ActiveFor(ctx, scan.KindScan, "library_id", libraryID); err != nil || ok {
-			return
-		}
-		if _, err := d.runner.Enqueue(ctx, scan.KindScan, scan.ScanPayload{LibraryID: libraryID}, jobs.EnqueueOptions{}); err != nil {
+		if _, err := scan.Enqueue(ctx, d.runner, "", libraryID); err != nil {
 			d.log.Warn("write details: could not queue a scan", "library", libraryID, "err", err)
 		}
 	}
@@ -113,4 +112,28 @@ func registerMediaJobs(d deps, compatGiB int, waveforms bool) (*mediajobs.Compat
 		return nil, nil, nil, nil, err
 	}
 	return compat, peaks, covers, writes, nil
+}
+
+// newWatcher is the hook for watch folders and the scheduled scan (S1). Both end in scan.Enqueue, the same
+// call as the admin Scan button, so there is one scanner. Run it once the runner is going.
+func newWatcher(d deps) *watch.Service {
+	return watch.New(watch.Config{
+		Source: d.lib,
+		Enqueue: func(ctx context.Context, libraryID string) error {
+			_, err := scan.Enqueue(ctx, d.runner, "", libraryID)
+			return err
+		},
+		LastScan: func(ctx context.Context, libraryID string) (time.Time, bool, error) {
+			j, ok, err := d.runner.LatestFor(ctx, scan.KindScan, "library_id", libraryID)
+			if err != nil || !ok {
+				return time.Time{}, false, err
+			}
+			switch j.State {
+			case jobs.StateQueued, jobs.StateRunning, jobs.StateHeld:
+				return time.Now(), true, nil // a scan is on its way: not due
+			}
+			return j.UpdatedAt, true, nil
+		},
+		Log: d.log,
+	})
 }
