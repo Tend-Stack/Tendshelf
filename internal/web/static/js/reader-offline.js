@@ -10,7 +10,11 @@ function load(key, fallback) {
   }
 }
 
+// The Android app stores the text itself (A9), where ts.offline does not exist, so every book counts as held.
+const inApp = document.documentElement.hasAttribute("data-shell");
+
 function held(id) {
+  if (inApp) return true;
   return !!load("ts.offline", {}).books?.[id]?.text;
 }
 
@@ -146,5 +150,5 @@ export function mount(marker) {
     { signal: stop.signal },
   );
   if (marker.hasAttribute("data-offline-shell")) open(marker, root, copy);
-  else if (navigator.onLine && held(id)) refreshShell(id).catch(() => {});
+  else if (!inApp && navigator.onLine && held(id)) refreshShell(id).catch(() => {});
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -256,6 +257,35 @@ func TestOffReadSessionDate(t *testing.T) {
 		}
 		if d := started - c.wantNear; d < -60_000 || d > 60_000 {
 			t.Errorf("%s: session started %d ms from %d", c.name, d, c.wantNear)
+		}
+	}
+}
+
+// TestOffReadAssetsCoverTheAppShell (A9): the manifest names every static file the stored shell for the Android app
+// refers to, native-audio.js and offline.js included, because no worker keeps them there.
+func TestOffReadAssetsCoverTheAppShell(t *testing.T) {
+	l := rsSeed(t, ofrEPUB(t))
+	m := ofrManifest(t, l.get(l.owner, "/offline/books/"+l.book.ID+"/manifest", false))
+	have := map[string]bool{}
+	for _, a := range m.Assets {
+		have[a] = true
+	}
+	rec := l.a.do(http.MethodGet, "/offline/books/"+l.book.ID+"/read", nil, nil, l.owner, a1Android)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("app shell: %d", rec.Code)
+	}
+	refs := regexp.MustCompile(`(?:src|href)="(/static/[^"]+)"`).FindAllStringSubmatch(rec.Body.String(), -1)
+	if len(refs) == 0 {
+		t.Fatal("the app shell names no static file")
+	}
+	for _, r := range refs {
+		if !have[r[1]] {
+			t.Errorf("the manifest lacks %s", r[1])
+		}
+	}
+	for _, want := range []string{"/js/native-audio.", "/js/offline."} {
+		if !strings.Contains(rec.Body.String(), want) {
+			t.Errorf("the app shell lacks %s", want)
 		}
 	}
 }

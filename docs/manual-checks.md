@@ -282,3 +282,9 @@ Needs the debug or release APK on a real phone, signed in to a server with a ser
 | A7-3 | Tap Sign out on the Profile page. Check Settings, Apps, Tendshelf, Storage. | Downloads are gone and the app's data is back to its small size. A session that merely ran out (revoke the device from another browser) keeps the downloads. | |
 | A7-4 | Sign in as someone else on the same phone. | The first person's downloads are gone before the second person sees any. | |
 | A7-5 | Fill the phone's storage, then try to download a long book. | "Not enough room on this phone for this book." and nothing is half stored. | |
+| A9-1 | In the app, open a book with text and tap Download on its page. Wait for Ready offline, switch on airplane mode, close the app from recents and open it. | The Downloads page lists the book with a Read button; Read opens the reader; pages turn, contents opens, pictures show, the time left is shown. Search, marks and settings are not offered. | |
+| A9-2 | Read three pages in airplane mode, close the app, switch the network on and open any page of the server. | Your place is on the server (open the book in a browser at the same place); the reading time shows once on the Reading page. | |
+| A9-3 | On a phone on mobile data with the server behind a VPN that is switched off, open the downloaded book. | The reader opens in about 2 seconds, with no long white screen. | |
+| A9-4 | Sign out on the Profile page, then look at Settings, Apps, Tendshelf, Storage. | The books' text is gone with the audio; the app's data is small again. | |
+| A9-5 | Switch the phone to a language and a font size at 200 % and open a downloaded book offline. | Text stays readable; the offline reader matches the online one. | |
+

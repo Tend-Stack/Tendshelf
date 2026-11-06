@@ -72,6 +72,8 @@ object Offline {
             app = context.applicationContext
             tokens = TokenStore(app)
             store = SqliteOfflineStore(app)
+            TextStore.init(app)
+            OfflineNet.init(app)
         }
         // A wipe the last process did not finish is completed before anything else can use the cache.
         if (prefs.getBoolean("wipePending", false)) ioPool.execute { finishWipe() }
@@ -181,8 +183,14 @@ object Offline {
     /** A book that plays from the phone: whole (or old, but whole) files and a stored answer. */
     fun playable(book: String): OfflineBook? {
         if (!::app.isInitialized) return null
-        return store.get(book)?.takeIf { it.state == OfflineState.READY || it.state == OfflineState.STALE }
+        return store.get(book)?.takeIf { (it.state == OfflineState.READY || it.state == OfflineState.STALE) && hasAudio(book) }
     }
+
+    /** A text-only book (A9) is kept as a row with no audio file: it can be read, never played. */
+    fun hasAudio(book: String): Boolean = expectedFiles(book) > 0
+
+    /** The reader page of a downloaded book whose text is whole, for the Downloads page's Read button; null when it has none. */
+    fun readable(book: String): Boolean = ::app.isInitialized && store.text(book)?.first == "ready"
 
     fun coverBytes(book: String): ByteArray? = coverFile(book).takeIf { it.isFile }?.readBytes()
 
@@ -193,6 +201,7 @@ object Offline {
         val conn = tokens.current() ?: return
         val existing = store.get(book)
         if (existing != null && existing.state != OfflineState.FAILED && existing.state != OfflineState.STALE) {
+            io { retryText(book) }
             changed(book)
             return
         }
@@ -206,7 +215,7 @@ object Offline {
                 is Plan.Ok -> p
                 Plan.NotAllowed -> return refuse(R.string.download_not_allowed)
                 Plan.NoRoom -> return refuse(R.string.download_no_room)
-                Plan.NothingToPlay -> return refuse(R.string.download_nothing)
+                Plan.NothingToPlay -> return addTextOnly(book, conn, api, manifest, text)
             }
             val cover = api.cover(conn.token, book)
             if (cover != null) coverFile(book).apply { parentFile?.mkdirs() }.writeBytes(cover)
@@ -230,6 +239,8 @@ object Offline {
                 for (r in requests) DownloadService.sendAddDownload(app, TsDownloadService::class.java, r, true)
             }
             changed(book)
+            // One Download (0019, point 1): the text follows the audio when the person may read and download it.
+            fetchText(book)
         } catch (e: ApiException) {
             Log.w(TAG, "download not started: server answered ${e.code}")
             refuse(if (e.code == 403) R.string.download_not_allowed else R.string.download_failed)
@@ -239,6 +250,72 @@ object Offline {
         } catch (e: Exception) {
             Log.w(TAG, "download not started: ${e.javaClass.simpleName}")
         }
+    }
+
+    /** A book with text and no audio: one row, ready once its text is whole. */
+    private fun addTextOnly(book: String, conn: Connection, api: Api, manifest: app.tendshelf.shared.BookManifest, manifestJson: String) {
+        val origin = tokens.origin ?: return
+        val got = TextStore.manifest(origin, book)
+        // No session cookie yet: the row is kept and the text goes on at the next page load (D1); anything else is a refusal.
+        if (got !is TextStore.Manifest.Ok && !(got is TextStore.Manifest.Not && got.result == TextResult.SIGNIN)) return refuse(R.string.download_nothing)
+        val tm = (got as? TextStore.Manifest.Ok)?.m
+        val cover = api.cover(conn.token, book)
+        if (cover != null) coverFile(book).apply { parentFile?.mkdirs() }.writeBytes(cover)
+        store.put(
+            OfflineBook(book, tokens.userId.orEmpty(), tm?.title?.ifEmpty { null } ?: manifest.title, tm?.author?.ifEmpty { null } ?: manifest.author, 0, tm?.bytes ?: 0, OfflineState.READY, 0, 0),
+            manifestJson,
+        )
+        if (tm == null) {
+            store.setText(book, "signin")
+            changed(book)
+            return
+        }
+        if (fetchText(book, tm) != TextResult.READY) {
+            store.remove(book)
+            coverFile(book).delete()
+            TextStore.remove(book)
+            refuse(R.string.download_failed)
+        }
+        changed(book)
+    }
+
+    /** Fetches a book's text and records how it went. [known] saves asking for the manifest twice. */
+    private fun fetchText(book: String, known: TextManifest? = null): TextResult {
+        val origin = tokens.origin ?: return TextResult.FAILED
+        store.setText(book, "fetching")
+        onChange?.invoke(book)
+        val result = try {
+            val tm = known ?: when (val r = TextStore.manifest(origin, book)) {
+                is TextStore.Manifest.Ok -> r.m
+                is TextStore.Manifest.Code -> null
+                is TextStore.Manifest.Not -> {
+                    store.setText(book, r.result.name.lowercase())
+                    return r.result
+                }
+            }
+            if (tm == null) TextResult.NONE else {
+                val free = StatFs(app.noBackupFilesDir.apply { mkdirs() }.path).availableBytes
+                TextStore.fetch(origin, tm, free).also { if (it == TextResult.READY) store.setText(book, "ready", tm.revision, tm.editionId) }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "text: ${e.javaClass.simpleName}")
+            TextResult.FAILED
+        }
+        if (result != TextResult.READY) store.setText(book, result.name.lowercase(), "", "")
+        onChange?.invoke(book)
+        return result
+    }
+
+    /** A book whose text stopped at sign-in or failed is tried again (at the next start, and for sign-in at the next page). */
+    private fun retryText(book: String) {
+        val now = store.text(book)?.first ?: return
+        if (now == "signin" || now == "failed" || now == "fetching") fetchText(book)
+    }
+
+    /** A server page loaded: the session exists, so a text that waited for it goes on. Cheap when nothing waits. */
+    fun onPageLoaded() {
+        if (!::app.isInitialized) return
+        ioPool.execute { store.withText("signin").forEach { retryText(it) } }
     }
 
     private fun refuse(words: Int) {
@@ -256,6 +333,7 @@ object Offline {
             }
             store.remove(book)
             coverFile(book).delete()
+            TextStore.remove(book)
             onChange?.invoke(book)
         }
     }
@@ -276,6 +354,7 @@ object Offline {
                     DownloadService.sendResumeDownloads(app, TsDownloadService::class.java, true)
                 }
             }
+            for (state in listOf("signin", "failed", "fetching")) store.withText(state).forEach { retryText(it) }
             dailyCheck()
         }
     }
@@ -308,11 +387,30 @@ object Offline {
                     }
                     Verdict.REMOVE, Verdict.NOTHING -> {}
                 }
+                checkText(row.bookId)
             } catch (e: ApiException) {
                 if (checkVerdict(e.code, null, null) == Verdict.REMOVE) remove(row.bookId)
             } catch (_: Exception) {
             }
             onChange?.invoke(row.bookId)
+        }
+        TextStore.prune(emptyList())
+    }
+
+    /** The text's own daily check (0019, point 10): other revision, fetch again with the shell last; 404, drop it; the rest changes nothing. */
+    private fun checkText(book: String) {
+        val origin = tokens.origin ?: return
+        val had = store.text(book) ?: return
+        if (had.first != "ready") return
+        when (val r = TextStore.manifest(origin, book)) {
+            is TextStore.Manifest.Ok -> if (r.m.revision != had.second) fetchText(book, r.m)
+            is TextStore.Manifest.Code -> {
+                TextStore.remove(book)
+                store.setText(book, "none", "", "")
+                // A text-only row has nothing left to offer.
+                if (!hasAudio(book)) remove(book)
+            }
+            is TextStore.Manifest.Not -> {}
         }
     }
 
@@ -378,6 +476,8 @@ object Offline {
             }
         }
         File(root, "covers").deleteRecursively()
+        File(root, "text").deleteRecursively()
+        File(root, "static").deleteRecursively()
         store.clear()
         prefs.edit().remove("settingsJson").putBoolean("wipePending", false).commit()
         Log.i(TAG, "offline: wiped")

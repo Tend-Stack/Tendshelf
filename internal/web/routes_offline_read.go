@@ -52,6 +52,9 @@ type offlineManifest struct {
 	FinishedAt int64    `json:"finishedAt"`
 	Parts      []string `json:"parts"`
 	Images     []string `json:"images"`
+	// Assets is the hashed static files the stored shell names (the worker's precache list); the Android app
+	// keeps them itself because no worker runs there (A9).
+	Assets []string `json:"assets"`
 }
 
 func (s *server) getOfflineManifest(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +63,7 @@ func (s *server) getOfflineManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, u := r.Context(), currentUser(r)
-	m := offlineManifest{BookID: rc.book.ID, EditionID: rc.ed.ID, Title: rc.book.Title, Parts: []string{}, Images: []string{}}
+	m := offlineManifest{BookID: rc.book.ID, EditionID: rc.ed.ID, Title: rc.book.Title, Parts: []string{}, Images: []string{}, Assets: s.assets.Precache()}
 	for i, ch := range rc.doc.Chapters {
 		for p := range rsParts(ch) {
 			m.Parts = append(m.Parts, rc.rsFragURL(i+1, p+1))
