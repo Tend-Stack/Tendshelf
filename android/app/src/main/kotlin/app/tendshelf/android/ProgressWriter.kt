@@ -88,7 +88,7 @@ class ProgressWriter(
                 }
             }
         })
-        disk.execute { outbox.releaseAllHeld() } // a question from a dead process is gone: newest wins
+        onDisk { outbox.releaseAllHeld() } // a question from a dead process is gone: newest wins
         try {
             cm?.registerDefaultNetworkCallback(network)
         } catch (e: Exception) {
@@ -113,6 +113,10 @@ class ProgressWriter(
     fun onTick(bookId: String) {
         val now = SystemClock.elapsedRealtime()
         if (now - lastSaveAt < TICK_MS) return
+        if (unsaved != null) {
+            record("retry") // the disk refused the last place: try again with the current one
+            return
+        }
         if (bookId == lastSavedBook && kotlin.math.abs(exo.currentPosition - lastSavedPos) < 1_000) {
             lastSaveAt = now
             return
@@ -130,6 +134,20 @@ class ProgressWriter(
         book = b
     }
 
+    /** A place the disk refused: the book and the listening time it carried. The position is read again at the retry. */
+    private class Unsaved(val bookId: String, val listened: Long)
+
+    @Volatile private var unsaved: Unsaved? = null
+
+    /** Disk work that must never end the process: any failure is logged by name and dropped. */
+    private fun onDisk(work: () -> Unit) = disk.execute {
+        try {
+            work()
+        } catch (e: Exception) {
+            Log.w(TAG, "outbox: disk task failed (${e.javaClass.simpleName})")
+        }
+    }
+
     private fun record(why: String) {
         val id = book()
         if (id.isEmpty() || exo.mediaItemCount == 0) return
@@ -143,11 +161,22 @@ class ProgressWriter(
         lastSaveAt = SystemClock.elapsedRealtime()
         lastSavedPos = pos
         lastSavedBook = id
-        disk.execute {
-            adopt(conn)
-            outbox.tick(id, pos, speed, listened, hold)
-            Offline.store.notePlace(id, pos, System.currentTimeMillis()) // a downloaded book keeps its place beside the row (D6)
-            Log.d(TAG, "outbox: saved ($why)")
+        onDisk {
+            try {
+                adopt(conn)
+                // A place that could not be written earlier is older than this one; its listening time is kept.
+                val before = unsaved?.takeIf { it.bookId == id }?.listened ?: 0L
+                outbox.tick(id, pos, speed, listened + before, hold)
+                Offline.store.notePlace(id, pos, System.currentTimeMillis()) // a downloaded book keeps its place beside the row (D6)
+                unsaved = null
+                Log.d(TAG, "outbox: saved ($why)")
+            } catch (e: Exception) {
+                // A full disk or a locked database: playing goes on, the place stays in memory and the next tick writes it again.
+                val before = unsaved?.takeIf { it.bookId == id }?.listened ?: 0L
+                unsaved = Unsaved(id, listened + before)
+                Log.w(TAG, "outbox: place not written (${e.javaClass.simpleName}), kept in memory")
+                return@onDisk
+            }
             flush()
         }
     }
@@ -172,7 +201,7 @@ class ProgressWriter(
     /** The question was answered: "Stay here" ([force]) wins on the server, otherwise the held place goes plain. */
     fun release(bookId: String, force: Boolean) {
         heldBook = null
-        disk.execute {
+        onDisk {
             outbox.release(bookId, force)
             flush()
         }
@@ -180,7 +209,7 @@ class ProgressWriter(
 
     fun dropHeld(bookId: String) {
         heldBook = null
-        disk.execute { outbox.dropHeld(bookId) }
+        onDisk { outbox.dropHeld(bookId) }
     }
 
     /** The newest unsent row of the book (the caller is on a worker thread). */
@@ -204,7 +233,16 @@ class ProgressWriter(
         }
     }
 
-    private fun flushLoop(): Boolean {
+    private fun flushLoop(): Boolean = try {
+        sendLoop()
+    } catch (e: Exception) {
+        // The outbox could not be read or settled (a full disk, a locked file): the rows stay, the next try is later.
+        Log.w(TAG, "outbox: flush failed (${e.javaClass.simpleName})")
+        retryLater()
+        false
+    }
+
+    private fun sendLoop(): Boolean {
         while (true) {
             val conn = connections().current()
             if (conn == null) {
@@ -221,6 +259,7 @@ class ProgressWriter(
                 Api(conn.origin).batch(conn.token, batch)
             } catch (e: ApiException) {
                 outbox.failed()
+                // Api only sends to the connected server (ServerGate), so this 401 is that server's. The rows stay.
                 when (e.code) {
                     401 -> main.post { onSignedOut?.invoke() }
                     429 -> retryIn(e.retryAfterS * 1000L)
@@ -260,7 +299,11 @@ class ProgressWriter(
             try {
                 flushLoop()
             } finally {
-                outbox.clear()
+                try {
+                    outbox.clear()
+                } catch (e: Exception) {
+                    Log.w(TAG, "outbox: not cleared (${e.javaClass.simpleName})")
+                }
             }
         }
     }
@@ -310,10 +353,46 @@ class ProgressWriter(
                         Log.i(TAG, "outbox: launch flush sent ${batch.size}")
                         if (applied.deleteSeqs.size < batch.size) break
                     }
+                } catch (e: Exception) {
+                    Log.w(TAG, "launch flush failed: ${e.javaClass.simpleName}")
                 } finally {
                     store.close()
                 }
             }.start()
+        }
+
+        /** How many places wait unsent in the outbox; 0 when it cannot be read. */
+        fun unsentCount(context: Context): Int {
+            val store = SqliteOutbox(context) { "" }
+            return try {
+                store.count()
+            } catch (e: Exception) {
+                0
+            } finally {
+                store.close()
+            }
+        }
+
+        /**
+         * A change of server: one try to send what waits to the old server with the old connection, on the calling
+         * worker thread. Every row stays; they are dropped by [signOutFlush] after the new sign-in has worked.
+         */
+        fun sendOnly(context: Context, conn: Connection?) {
+            if (conn == null) return
+            val store = SqliteOutbox(context) { conn.deviceId }
+            val outbox = Outbox(store) { System.currentTimeMillis() }
+            try {
+                while (true) {
+                    val batch = outbox.nextBatch()
+                    if (batch.isEmpty()) break
+                    val applied = outbox.settled(batch, Api(conn.origin).batch(conn.token, batch))
+                    if (applied.deleteSeqs.size < batch.size) break
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "leave flush failed: ${e.javaClass.simpleName}")
+            } finally {
+                store.close()
+            }
         }
 
         /**
@@ -334,8 +413,14 @@ class ProgressWriter(
                         }
                     }
                 }
+            } catch (e: Exception) {
+                Log.w(TAG, "sign-out flush failed: ${e.javaClass.simpleName}")
             } finally {
-                outbox.clear()
+                try {
+                    outbox.clear()
+                } catch (e: Exception) {
+                    Log.w(TAG, "outbox: not cleared (${e.javaClass.simpleName})")
+                }
                 store.close()
             }
         }

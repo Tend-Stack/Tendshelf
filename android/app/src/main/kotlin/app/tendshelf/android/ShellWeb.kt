@@ -10,6 +10,7 @@ import android.net.http.SslError
 import android.webkit.SslErrorHandler
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -31,7 +32,7 @@ object ShellWeb {
     const val FILE_CHOOSER = 4102
 
     @SuppressLint("SetJavaScriptEnabled")
-    fun configure(web: WebView, activity: Activity, store: TokenStore, pages: StartPages, flow: () -> ConnectFlow, onNavigated: () -> Unit, onStarted: () -> Unit, saver: FileSaver, chooser: FileChooser, onApp: (Nav) -> Unit, onLogout: () -> Unit) {
+    fun configure(web: WebView, activity: Activity, store: TokenStore, pages: StartPages, flow: () -> ConnectFlow, onNavigated: () -> Unit, onStarted: () -> Unit, saver: FileSaver, chooser: FileChooser, onApp: (Nav) -> Unit, onLogout: () -> Unit, onRendererGone: (WebView) -> Unit) {
         web.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -57,7 +58,7 @@ object ShellWeb {
         web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val f = flow()
-                when (val nav = decide(request.url.toString(), request.isForMainFrame, store.origin, f.codePending)) {
+                when (val nav = decide(request.url.toString(), request.isForMainFrame, store.origin, f.codePending, onBundledPage(view))) {
                     Nav.Stay -> return false
                     Nav.Block -> {}
                     Nav.External -> openOutside(activity, request.url)
@@ -66,6 +67,16 @@ object ShellWeb {
                     // The bundled Downloads page and its rows (A7): the activity acts, the WebView stays where it is.
                     Nav.Downloads, is Nav.PlayBook, is Nav.RemoveBook, Nav.TogglePlay -> onApp(nav)
                 }
+                return true
+            }
+
+            /**
+             * The browser engine's renderer died (out of memory, or killed). The default is to take the whole app down,
+             * and the app also holds the playback process, so say it was handled and let the activity build a new WebView
+             * when it is next on screen. The dead view is of no further use.
+             */
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                onRendererGone(view)
                 return true
             }
 
@@ -149,6 +160,12 @@ object ShellWeb {
                 view.loadUrl(pages.offlineUrl)
             }
         }
+    }
+
+    /** True only when the page on screen is one of the bundled pages (https on the bundled host). */
+    private fun onBundledPage(view: WebView): Boolean {
+        val u = Uri.parse(view.url ?: return false)
+        return u.scheme == "https" && u.host == BUNDLED_HOST
     }
 
     /** Hands an http(s) or mailto link to the system; the WebView stays where it is. */

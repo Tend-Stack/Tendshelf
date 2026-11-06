@@ -15,7 +15,8 @@ signed=1
 for v in TS_ANDROID_KEYSTORE TS_ANDROID_KEYSTORE_PASSWORD TS_ANDROID_KEY_ALIAS TS_ANDROID_KEY_PASSWORD; do
   [ -n "${!v:-}" ] || signed=0
 done
-(cd "$root/android" && ./gradlew --no-daemon assembleRelease "${args[@]}")
+# The Kotlin tests and Android lint (NewApi is fatal) gate the build: a release is never made from code they reject.
+(cd "$root/android" && ./gradlew --no-daemon :shared:test lintRelease assembleRelease "${args[@]}")
 out="$root/android/app/build/outputs/apk/release"
 dist="$root/android/build/dist"
 mkdir -p "$dist"

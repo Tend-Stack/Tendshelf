@@ -95,11 +95,13 @@ class ConnectFlow(
         state = State.Connecting
         io.execute {
             var found: Origin? = null
+            var foundId: String? = null
             var failure = Health.Unreachable
             for (c in candidates) {
                 val h = api.health(c)
                 if (h == Health.Ok) {
                     found = c
+                    foundId = api.identity(c)?.id
                     break
                 }
                 if (failure == Health.Unreachable) failure = h
@@ -109,7 +111,7 @@ class ConnectFlow(
                     state = if (store.hasToken()) State.Connected else State.NoServer
                     showStart(StartState(trimmed, healthWords(failure)))
                 } else {
-                    accept(found)
+                    accept(found, foundId)
                 }
             }
         }
@@ -124,7 +126,7 @@ class ConnectFlow(
         },
     )
 
-    private fun accept(o: Origin) {
+    private fun accept(o: Origin, id: String?) {
         if (o.plainHttp && !store.httpWarned(o)) {
             val body = activity.getString(R.string.http_warning_body) +
                 if (o.privateAddress) "" else " " + activity.getString(R.string.http_warning_public)
@@ -134,7 +136,7 @@ class ConnectFlow(
                 .setCancelable(false)
                 .setPositiveButton(R.string.http_warning_continue) { _, _ ->
                     store.markHttpWarned(o)
-                    proceed(o)
+                    proceed(o, id)
                 }
                 .setNegativeButton(R.string.http_warning_cancel) { _, _ ->
                     state = if (store.hasToken()) State.Connected else State.NoServer
@@ -142,21 +144,59 @@ class ConnectFlow(
                 }
                 .show()
         } else {
-            proceed(o)
+            proceed(o, id)
         }
     }
 
-    private fun proceed(o: Origin) {
+    private fun proceed(o: Origin, id: String?) {
         val old = store.origin
         if (old == o && store.hasToken()) {
             state = State.Connected
             web.loadUrl(o.homeUrl())
             return
         }
-        if (old != null && old != o) signOut.leave(old)
+        if (old != null && old != o && (store.hasToken() || Offline.store.all().isNotEmpty())) {
+            confirmLeave(old, o, id)
+            return
+        }
         store.origin = o
+        store.serverId = id
         beginConnect(o)
     }
+
+    /** Another server takes the downloads and the sign-in away, so the person is told what goes and chooses (A-fix 6). */
+    private fun confirmLeave(old: Origin, o: Origin, id: String?) {
+        io.execute {
+            val downloads = Offline.store.all().size
+            val unsent = ProgressWriter.unsentCount(activity.applicationContext)
+            ui {
+                val sb = StringBuilder(activity.getString(R.string.change_server_body, old.text.substringAfter("://"), o.text.substringAfter("://")))
+                if (downloads > 0) sb.append(' ').append(activity.resources.getQuantityString(R.plurals.change_server_downloads, downloads, downloads))
+                if (unsent > 0) sb.append(' ').append(activity.getString(R.string.change_server_unsent))
+                AlertDialog.Builder(activity)
+                    .setTitle(R.string.change_server_title)
+                    .setMessage(sb.toString())
+                    .setCancelable(false)
+                    .setPositiveButton(R.string.change_server_continue) { _, _ ->
+                        state = State.Connecting
+                        signOut.leave(old) {
+                            store.origin = o
+                            store.serverId = id
+                            leaving = true
+                            beginConnect(o)
+                        }
+                    }
+                    .setNegativeButton(R.string.http_warning_cancel) { _, _ ->
+                        state = if (store.hasToken()) State.Connected else State.NoServer
+                        showStart(StartState(old.text.removePrefix("http://")))
+                    }
+                    .show()
+            }
+        }
+    }
+
+    /** True from the confirmed change of server until the new sign-in has worked (then the old downloads go). */
+    private var leaving = false
 
     /** Opens the sign-in page that ends at the consent page, with a fresh challenge. */
     private fun beginConnect(o: Origin) {
@@ -187,7 +227,12 @@ class ConnectFlow(
             is Swap.Done -> {
                 val a = r.answer
                 // Someone else's downloads are gone before this person can reach anything (A7, invariant 2).
-                if (Offline.hasOtherPerson(a.userId)) Offline.wipe()
+                if (leaving) {
+                    leaving = false
+                    signOut.finishLeave()
+                } else if (Offline.hasOtherPerson(a.userId)) {
+                    Offline.wipe()
+                }
                 if (a.token != null) store.save(a.token!!, a.deviceId, a.userId) else store.saveIds(a.deviceId, a.userId)
                 state = State.Connected
                 clearHistoryNext = true

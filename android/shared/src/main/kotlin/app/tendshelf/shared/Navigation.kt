@@ -33,13 +33,19 @@ sealed interface Nav {
 
 const val BUNDLED_HOST = "appassets.androidplatform.net"
 
-/** The one navigation policy of the WebView (plan A2, invariants 1 and 4). Pure: values in, a verdict out. */
-fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolean): Nav {
+/**
+ * The one navigation policy of the WebView (plan A2, invariants 1 and 4). Pure: values in, a verdict out.
+ * [fromBundled] is true only when the page the person is looking at is one of the bundled pages. The bundled
+ * addresses (`/connect`, `/play`, `/remove`, `/toggle`) are commands, so a link in a book or any server page
+ * (page text is untrusted) must never reach them: they are obeyed only from the main frame of a bundled page.
+ */
+fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolean, fromBundled: Boolean): Nav {
     val scheme = url.substringBefore(':', "").lowercase()
     if (scheme == "mailto") return Nav.External
     if (scheme != "http" && scheme != "https") return Nav.Block
     val u = parseUrl(url) ?: return Nav.Block
     if (u.scheme == "https" && u.host == BUNDLED_HOST && u.port == null) {
+        if (!mainFrame || !fromBundled) return Nav.Block
         if (u.path == "/connect") return Nav.Connect(queryParam(u.query, "address") ?: "")
         if (u.path == "/toggle") return Nav.TogglePlay
         if (u.path == "/play" || u.path == "/remove") {

@@ -41,6 +41,14 @@ object ApiJson {
         null
     }
 
+    /** The `app` word and the install `id` of a healthz answer; null when it is not JSON. */
+    fun identity(body: String): app.tendshelf.shared.Identity? = try {
+        val j = JSONObject(body)
+        app.tendshelf.shared.Identity(j.optString("app").ifEmpty { null }, j.optString("id").ifEmpty { null })
+    } catch (_: Exception) {
+        null
+    }
+
     fun remoteProgress(it: JSONObject): RemoteProgress = RemoteProgress(
         it.getLong("positionMs"), it.getBoolean("finished"), it.getLong("clientUpdatedAt"),
         it.optString("deviceId"), it.optString("deviceLabel"),

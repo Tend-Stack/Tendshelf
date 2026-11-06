@@ -52,7 +52,7 @@ data class BookCard(val id: String, val title: String, val author: String, val d
 data class ShelfCard(val id: String, val name: String, val books: Int)
 
 /** What a controller may do (A8, D1 and D7). */
-data class Allowed(val browse: Boolean, val ownCommands: Boolean, val speed: Boolean)
+data class Allowed(val browse: Boolean, val ownCommands: Boolean, val speed: Boolean, val readsPlayer: Boolean)
 
 /**
  * Only trusted controllers browse (the system, Android Auto and its Assistant, a car's own app: [trusted],
@@ -61,7 +61,8 @@ data class Allowed(val browse: Boolean, val ownCommands: Boolean, val speed: Boo
  */
 fun allowedCommands(trusted: Boolean, auto: Boolean, own: Boolean): Allowed {
     val browse = trusted || auto || own
-    return Allowed(browse = browse, ownCommands = own, speed = browse)
+    // What is playing (title, timeline, session extras) is the person's own business: only those who may browse can read it.
+    return Allowed(browse = browse, ownCommands = own, speed = browse, readsPlayer = browse)
 }
 
 private val SpeedSteps = listOf(1.0, 1.25, 1.5, 1.75, 2.0, 0.75)

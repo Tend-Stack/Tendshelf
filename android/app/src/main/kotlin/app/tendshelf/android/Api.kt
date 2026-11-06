@@ -1,5 +1,6 @@
 package app.tendshelf.android
 
+import app.tendshelf.shared.readAtMost
 import app.tendshelf.shared.ApiPaths
 import app.tendshelf.shared.BatchItemResult
 import app.tendshelf.shared.BookCard
@@ -163,6 +164,8 @@ class Api(origin: String) {
     }
 
     private fun open(url: String, token: String?): HttpURLConnection {
+        // The bearer goes only to the server the phone was connected to (ServerGate).
+        if (token != null && !ServerGate.ok(paths.base)) throw IOException("the address does not answer as the connected server")
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.instanceFollowRedirects = false
         conn.connectTimeout = 10_000
@@ -177,7 +180,7 @@ class Api(origin: String) {
             conn.disconnect()
             throw ApiException(code)
         }
-        val bytes = conn.inputStream.use { it.readNBytes(limit + 1) }
+        val bytes = conn.inputStream.use { it.readAtMost(limit + 1) }
         if (bytes.size > limit) throw IOException("answer too large")
         return bytes
     }

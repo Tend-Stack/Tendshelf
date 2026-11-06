@@ -19,6 +19,12 @@ import app.tendshelf.shared.Save
 class SqliteOutbox(context: Context, private val deviceId: () -> String) :
     SQLiteOpenHelper(context.applicationContext, "outbox.db", null, 3), OutboxStore {
 
+    // Several helpers open outbox.db in one process (the writer, the launch flush, sign-out, the offline store). Their first
+    // opens would migrate at the same moment and one would fail on a lock, so opening goes through one process-wide lock.
+    override fun getWritableDatabase(): SQLiteDatabase = synchronized(OPEN_LOCK) { super.getWritableDatabase() }
+
+    override fun getReadableDatabase(): SQLiteDatabase = synchronized(OPEN_LOCK) { super.getReadableDatabase() }
+
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE saves (seq INTEGER PRIMARY KEY AUTOINCREMENT, device_id TEXT NOT NULL, book_id TEXT NOT NULL, " +
@@ -29,6 +35,10 @@ class SqliteOutbox(context: Context, private val deviceId: () -> String) :
         db.execSQL("CREATE INDEX saves_book ON saves(book_id, seq)")
         createOffline(db)
         addTextColumns(db)
+    }
+
+    private companion object {
+        val OPEN_LOCK = Any()
     }
 
     /** Version 2 adds the downloaded books, version 3 their text (A9); the unsent saves and the rows already there are untouched. */

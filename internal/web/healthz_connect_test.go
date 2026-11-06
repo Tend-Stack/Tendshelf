@@ -23,6 +23,15 @@ func TestA2HealthzAdvertisesConnect(t *testing.T) {
 			t.Errorf("healthz[%q] = %q, want %q", k, got[k], want)
 		}
 	}
+	if len(got["id"]) != 32 {
+		t.Errorf("healthz id = %q, want 32 hex characters", got["id"])
+	}
+	again := a.do(http.MethodGet, "/healthz", nil, nil)
+	var second map[string]string
+	_ = json.Unmarshal(again.Body.Bytes(), &second)
+	if second["id"] != got["id"] {
+		t.Error("healthz id changes between requests")
+	}
 	if _, ok := got["version"]; !ok {
 		t.Error("healthz has no version")
 	}

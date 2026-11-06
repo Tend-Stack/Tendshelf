@@ -291,3 +291,9 @@ Needs the debug or release APK on a real phone, signed in to a server with a ser
 | A10-2 | Build a later version signed with the same key and install it over the first. | It installs over it; downloads and sign-in stay. `apksigner verify -v --print-certs` shows the same SHA-256 as the first. | |
 | A10-3 | Run `make apk` with no key variables. | The output file ends in `-unsigned.apk` and the script says UNSIGNED; Android will not install it. | |
 | A10-4 | Push a test tag on a copy of the repository with the secrets set, then with them missing. | The server release is published both times; the `apk` job attaches a signed APK, or an `-unsigned.apk` with a plain message in its log. | |
+| AF-1 | On an Android 9, 10 and 11 phone or emulator, install and open the app, play a book, change the system font size. | No crash at launch; the page stays where it was after the size change. | |
+| AF-2 | Play a book, pause, swipe the app away in Recents, press the headset play button. | The book resumes (the `MediaButtonReceiver` path). | |
+| AF-3 | Join another network that has another server (or none) at the same address and open the app and the Downloads page. | Nothing is deleted, you are not signed out, and the other server never sees your token. | |
+| AF-4 | Fill the phone's storage to the last byte while a book plays. | Sound goes on; once there is room the place is saved. | |
+| AF-5 | Connect the phone to a different server. | A dialog names both and what goes; Cancel changes nothing; Change sends the saved places first and removes downloads only after the new sign-in. | |
+| AF-6 | Connect Android Auto and the system media controls while a book plays. | Browse, title, progress and buttons still work (another app cannot read them). | |

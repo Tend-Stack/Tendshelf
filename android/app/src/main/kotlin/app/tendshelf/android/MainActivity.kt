@@ -9,11 +9,13 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
-import android.view.WindowInsets
 import android.webkit.WebView
 import android.widget.FrameLayout
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -38,6 +40,7 @@ class MainActivity : Activity() {
     private var controller: ListenableFuture<MediaController>? = null
     private var remote: ControllerRemote? = null
     private var visible = false
+    private var rendererLost = false
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private var bridgeEnabled = true
     private var backCallback: OnBackInvokedCallback? = null
@@ -61,17 +64,18 @@ class MainActivity : Activity() {
         flow.onState = ::syncBridge
         saver = FileSaver(this) { store.origin }
         chooser = FileChooser(this)
-        ShellWeb.configure(web, this, store, pages, { flow }, ::updateBack, { bridge.pageStarted() }, saver, chooser, ::onApp) { signOut.logoutSeen = true }
+        ShellWeb.configure(web, this, store, pages, { flow }, ::updateBack, { bridge.pageStarted() }, saver, chooser, ::onApp, { signOut.logoutSeen = true }, ::onRendererGone)
 
         parent = FrameLayout(this)
         parent.setBackgroundResource(R.color.ground)
         parent.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         // Target 36 draws edge to edge. The parent pads for the bars, the cutout and the keyboard; the WebView never
         // overlaps one, so env(safe-area-inset-*) stays 0 on every WebView version.
-        parent.setOnApplyWindowInsetsListener { v, insets ->
-            val i = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime())
+        // androidx.core carries the API 30 types (WindowInsets.Type, getInsets(int), CONSUMED) back to API 28.
+        ViewCompat.setOnApplyWindowInsetsListener(parent) { v, insets ->
+            val i = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout() or WindowInsetsCompat.Type.ime())
             v.setPadding(i.left, i.top, i.right, i.bottom)
-            WindowInsets.CONSUMED
+            WindowInsetsCompat.CONSUMED
         }
         setContentView(parent)
 
@@ -86,9 +90,27 @@ class MainActivity : Activity() {
         if (server != null) flow.onAddress(server) else flow.launch()
     }
 
+    /**
+     * The WebView's renderer is gone. The view is dropped here and the activity is built again (a fresh WebView, the
+     * connect flow and the bridge with it) as soon as it is on screen; the playback service was never touched.
+     */
+    private fun onRendererGone(dead: WebView) {
+        if (dead !== web || rendererLost) return
+        rendererLost = true
+        WebHandle.current = null
+        bridge.detach()
+        parent.removeView(dead)
+        dead.destroy()
+        if (visible) main.post { recreate() }
+    }
+
     override fun onStart() {
         super.onStart()
         visible = true
+        if (rendererLost) {
+            main.post { recreate() }
+            return
+        }
         remote?.pageVisible(true)
         bridge.onStart()
         // Downloads that waited for the app to open go on now, from the front (A7, D2).
@@ -169,8 +191,9 @@ class MainActivity : Activity() {
         val color = Color.parseColor(hex)
         parent.setBackgroundColor(color)
         val light = Color.luminance(color) > 0.5f
-        val mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-        window.insetsController?.setSystemBarsAppearance(if (light) mask else 0, mask)
+        val bars = WindowCompat.getInsetsController(window, parent)
+        bars.isAppearanceLightStatusBars = light
+        bars.isAppearanceLightNavigationBars = light
     }
 
     /** The callback is registered only while there is history, so with none the system back (leave the app) applies. */
@@ -190,7 +213,7 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         controller?.let { MediaController.releaseFuture(it) }
         WebHandle.current = null
-        web.destroy()
+        if (!rendererLost) web.destroy()
         super.onDestroy()
     }
 

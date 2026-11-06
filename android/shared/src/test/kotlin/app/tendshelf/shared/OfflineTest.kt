@@ -77,21 +77,21 @@ class OfflineTest {
 
     @Test
     fun bundledPathsCarryOnlyValidIds() {
-        assertEquals(Nav.PlayBook("01HABC_d-1"), decide("$bundled/play?id=01HABC_d-1", true, origin, false))
-        assertEquals(Nav.RemoveBook("x"), decide("$bundled/remove?id=x", true, origin, false))
-        assertEquals(Nav.TogglePlay, decide("$bundled/toggle", true, origin, false))
+        assertEquals(Nav.PlayBook("01HABC_d-1"), decide("$bundled/play?id=01HABC_d-1", true, origin, false, true))
+        assertEquals(Nav.RemoveBook("x"), decide("$bundled/remove?id=x", true, origin, false, true))
+        assertEquals(Nav.TogglePlay, decide("$bundled/toggle", true, origin, false, true))
         for (bad in listOf("", "?id=", "?id=a%20b", "?id=a/b", "?id=..%2Fx", "?id=" + "a".repeat(65), "?x=1", "?id=a%3Cb")) {
-            assertEquals(Nav.Block, decide("$bundled/play$bad", true, origin, false), "play$bad")
-            assertEquals(Nav.Block, decide("$bundled/remove$bad", true, origin, false), "remove$bad")
+            assertEquals(Nav.Block, decide("$bundled/play$bad", true, origin, false, true), "play$bad")
+            assertEquals(Nav.Block, decide("$bundled/remove$bad", true, origin, false, true), "remove$bad")
         }
     }
 
     @Test
     fun webDownloadsOpensTheBundledPageInTheMainFrameOnly() {
-        assertEquals(Nav.Downloads, decide("http://10.0.2.2:8103/me/downloads", true, origin, false))
-        assertEquals(Nav.Stay, decide("http://10.0.2.2:8103/me/downloads", false, origin, false))
-        assertEquals(Nav.Stay, decide("http://10.0.2.2:8103/me", true, origin, false))
-        assertEquals(Nav.External, decide("http://evil.example/me/downloads", true, origin, false))
+        assertEquals(Nav.Downloads, decide("http://10.0.2.2:8103/me/downloads", true, origin, false, false))
+        assertEquals(Nav.Stay, decide("http://10.0.2.2:8103/me/downloads", false, origin, false, false))
+        assertEquals(Nav.Stay, decide("http://10.0.2.2:8103/me", true, origin, false, false))
+        assertEquals(Nav.External, decide("http://evil.example/me/downloads", true, origin, false, false))
     }
 
     @Test

@@ -37,6 +37,13 @@ class AuthApi {
         return if (h.connect) Health.Ok else Health.OldServer
     }
 
+    /** The Tendshelf identity at [origin] (`app`, `id`), or null when nothing answered 200 with JSON. Never sends a credential. */
+    fun identity(origin: Origin): app.tendshelf.shared.Identity? {
+        val r = call(origin.healthUrl(), "GET", null, null, 5_000) ?: return null
+        if (r.certificate || r.status != 200) return null
+        return ApiJson.identity(r.body)
+    }
+
     /** Exchange a code for a device. [bearer] is the token already held, when the phone is reconnecting. */
     fun swap(origin: Origin, code: String, verifier: String, name: String, bearer: String?): Swap {
         val r = call("${origin.text}/api/v1/auth/token", "POST", ApiJson.swapRequest(code, verifier, name), bearer, 15_000)
@@ -66,6 +73,8 @@ class AuthApi {
     private class Reply(val status: Int, val body: String, val certificate: Boolean = false)
 
     private fun call(url: String, method: String, json: String?, bearer: String?, timeoutMs: Int): Reply? {
+        // The bearer goes only to the server the phone was connected to (ServerGate); a stranger at the address gets nothing.
+        if (bearer != null && !ServerGate.ok(URL(url).let { "${it.protocol}://${it.authority}" })) return null
         val c = URL(url).openConnection() as HttpURLConnection
         return try {
             c.instanceFollowRedirects = false
