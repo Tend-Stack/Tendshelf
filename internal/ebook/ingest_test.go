@@ -163,7 +163,7 @@ func (e *ienv) waitIdle(t *testing.T) {
 // waitState waits for a file to leave pending.
 func (e *ienv) waitState(id string) File {
 	e.t.Helper()
-	deadline := time.Now().Add(15 * time.Second)
+	deadline := time.Now().Add(60 * time.Second) // a full `make check` under load has passed 15 s here
 	for time.Now().Before(deadline) {
 		if f := e.file(id); f.State != "pending" {
 			return f
