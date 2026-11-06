@@ -3,12 +3,8 @@ package main
 import (
 	"log/slog"
 
-	"github.com/Tend-Stack/tendshelf/internal/web/static"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
-
-// trayIcon is the picture in the notification area; it is the app icon the pages already ship.
-const trayIcon = "img/icon-192.png"
 
 // trayActions are what the tray does. Each one is a plain function, so tests call them without a
 // window or a desktop.
@@ -47,7 +43,7 @@ func toggleWindow(visible func() bool, a trayActions) {
 // setupTray adds the tray icon. Wails registers with the StatusNotifier watcher in the background;
 // on a desktop without one the icon simply does not appear and the window works as before. Closing
 // the window quits the app, so a desktop without a tray never strands a hidden app.
-func setupTray(ui *windowUI, assets *static.Set) {
+func setupTray(ui *windowUI) {
 	a := trayActions{
 		show: func() {
 			ui.win.Show()
@@ -60,10 +56,11 @@ func setupTray(ui *windowUI, assets *static.Set) {
 	}
 	tray := ui.app.SystemTray.New()
 	tray.SetTooltip("Tendshelf")
-	if icon, ok := assets.Asset(trayIcon); ok {
-		tray.SetIcon(icon.Body)
+	if light, dark := iconBytes(trayIconLight), iconBytes(trayIconDark); light != nil && dark != nil {
+		tray.SetIcon(light)
+		tray.SetDarkModeIcon(dark)
 	} else {
-		slog.Warn("tray icon missing", "name", trayIcon)
+		slog.Warn("tray icons missing")
 	}
 	menu := ui.app.Menu.New()
 	for _, e := range trayEntries(a) {

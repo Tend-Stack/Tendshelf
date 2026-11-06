@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -37,6 +38,21 @@ var installIcons = []installIcon{
 	{"img/apple-touch-icon.png", 180, true},
 }
 
+// desktopIconDir holds the extra pictures of the desktop app (decision 0023, X3). They live next to
+// the package files, not in the served assets, because no page uses them: the .deb installs the
+// sizes into the icon theme and the tray shows the 64 px marks.
+const desktopIconDir = "../../../desktop/package/icons/"
+
+// desktopIconSizes are the hicolor sizes below 192 and the 256 px one; 192 and 512 come from img/.
+var desktopIconSizes = []int{16, 22, 24, 32, 48, 64, 128, 256}
+
+// trayMarks are the two tray pictures: the cream mark for dark panels, a walnut mark (the brand's
+// --brand-walnut) for light ones. Both are the handoff's mark drawing with only the stroke changed.
+var trayMarks = []struct{ name, stroke string }{
+	{"tray-cream-64.png", "#F1E8DA"},
+	{"tray-walnut-64.png", "#5A4029"},
+}
+
 func TestRenderInstallIcons(t *testing.T) {
 	if os.Getenv("TENDSHELF_RENDER_ICONS") != "1" {
 		t.Skip("TENDSHELF_RENDER_ICONS=1 redraws the committed install icons")
@@ -62,6 +78,25 @@ func TestRenderInstallIcons(t *testing.T) {
 		}
 		tab.Navigate("data:text/html;charset=utf-8," + url.PathEscape(page))
 		tab.Screenshot(filepath.FromSlash(ic.name))
+	}
+	render := func(markup string, size int, out string) {
+		page := "<style>html,body{margin:0;background:transparent}svg{display:block;width:100vw;height:100vh}</style>" + markup
+		tab := b.NewTab(size, size, false, true)
+		if err := tab.Call("Emulation.setDefaultBackgroundColorOverride", map[string]any{"color": map[string]any{"r": 0, "g": 0, "b": 0, "a": 0}}, nil); err != nil {
+			t.Fatal(err)
+		}
+		tab.Navigate("data:text/html;charset=utf-8," + url.PathEscape(page))
+		tab.Screenshot(filepath.FromSlash(out))
+	}
+	for _, size := range desktopIconSizes {
+		render(string(svg), size, desktopIconDir+"icon-"+strconv.Itoa(size)+".png")
+	}
+	mark, err := files.ReadFile("img/tendshelf-mark-cream.svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range trayMarks {
+		render(strings.Replace(string(mark), "#F1E8DA", m.stroke, 1), 64, desktopIconDir+m.name)
 	}
 }
 

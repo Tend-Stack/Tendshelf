@@ -10,6 +10,7 @@ A window around Tendshelf, built with Wails v3 on GTK 4 and WebKitGTK 6. Design 
 apt brings `libgtk-4-1`, `libwebkitgtk-6.0-4`, `gstreamer1.0-plugins-good`, `gstreamer1.0-libav` and
 `ffmpeg`, so audio plays and books are read. The package has no install scripts and the app downloads
 nothing. On GNOME, `gnome-shell-extension-appindicator` (recommended) shows a tray icon.
+The `.deb` installs the app icon at 16, 22, 24, 32, 48, 64, 128, 192, 256 and 512 px plus a scalable SVG in the hicolor theme; the tray uses a walnut mark on light panels and a cream mark on dark ones (`desktop/package/icons/`, redrawn with `TENDSHELF_RENDER_ICONS=1`).
 
 Without the package, `make desktop` builds `bin/tendshelf-desktop`. `make desktop-purego` builds the same window with no C
 compiler and no `-dev` packages (experimental, [decision 0023](decisions/0023-desktop-experience.md)); GTK and WebKit must still be installed. Without ffmpeg on the `PATH` the app

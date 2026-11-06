@@ -1,11 +1,93 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"image"
+	_ "image/png" // registers the PNG decoder
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// iconSizes are the hicolor sizes the package installs as PNG; 192 and 512 come from the pages' assets.
+var iconSizes = []int{16, 22, 24, 32, 48, 64, 128, 192, 256, 512}
+
+// TestDeskIconsSizes: each committed desktop picture is a PNG of exactly its size, and the tray
+// marks are 64 px with a transparent corner.
+func TestDeskIconsSizes(t *testing.T) {
+	check := func(raw []byte, name string, size int, transparent bool) {
+		t.Helper()
+		img, format, err := image.Decode(bytes.NewReader(raw))
+		if err != nil || format != "png" {
+			t.Errorf("%s: not a PNG (%v)", name, err)
+			return
+		}
+		if b := img.Bounds(); b.Dx() != size || b.Dy() != size {
+			t.Errorf("%s is %dx%d, want %dx%d", name, b.Dx(), b.Dy(), size, size)
+		}
+		if _, _, _, a := img.At(0, 0).RGBA(); transparent && a != 0 {
+			t.Errorf("%s corner is not transparent", name)
+		}
+	}
+	for _, size := range iconSizes {
+		if size == 192 || size == 512 {
+			continue
+		}
+		name := fmt.Sprintf("package/icons/icon-%d.png", size)
+		raw, err := os.ReadFile(name)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+		check(raw, name, size, false)
+	}
+	for _, name := range []string{trayIconLight, trayIconDark} {
+		raw := iconBytes(name)
+		if raw == nil {
+			t.Errorf("%s is not embedded", name)
+			continue
+		}
+		check(raw, name, 64, true)
+	}
+}
+
+// TestDeskPackageIcons: the built .deb lists every icon size and the scalable drawing, and the
+// desktop file names the icon by its theme name. It needs dpkg-deb and the built binary
+// (make deb builds both); otherwise it is skipped.
+func TestDeskPackageIcons(t *testing.T) {
+	if _, err := exec.LookPath("dpkg-deb"); err != nil {
+		t.Skip("dpkg-deb not installed")
+	}
+	if _, err := os.Stat("../bin/tendshelf-desktop"); err != nil {
+		t.Skip("bin/tendshelf-desktop not built; run make desktop")
+	}
+	out := filepath.Join(t.TempDir(), "x.deb")
+	script := exec.Command("sh", "package/build-deb.sh")
+	script.Env = append(os.Environ(), "TENDSHELF_DEB_OUT="+out)
+	if raw, err := script.CombinedOutput(); err != nil {
+		t.Fatalf("build-deb.sh: %v\n%s", err, raw)
+	}
+	list, err := exec.Command("dpkg-deb", "-c", out).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, size := range iconSizes {
+		want := fmt.Sprintf("./usr/share/icons/hicolor/%dx%d/apps/org.tendshelf.Tendshelf.png", size, size)
+		if !strings.Contains(string(list), want) {
+			t.Errorf("deb lacks %s", want)
+		}
+	}
+	if want := "./usr/share/icons/hicolor/scalable/apps/org.tendshelf.Tendshelf.svg"; !strings.Contains(string(list), want) {
+		t.Errorf("deb lacks %s", want)
+	}
+	desk, err := os.ReadFile("package/tendshelf-desktop.desktop")
+	if err != nil || !strings.Contains(string(desk), "Icon=org.tendshelf.Tendshelf\n") {
+		t.Errorf("desktop file Icon line: %v", err)
+	}
+}
 
 // TestPackageControl checks the control template's required fields and that no maintainer script exists:
 // the package installs files and nothing else.

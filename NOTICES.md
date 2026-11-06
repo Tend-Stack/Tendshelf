@@ -50,6 +50,7 @@ Expected first entries (fill in when the port lands; do not pre-credit code that
 | `internal/web/static/fonts/OpenDyslexic-Bold.woff2` (SHA-256 `dd9fa9c7991113b0dddefe9506a30ad26b48e302b7a8fb91719a4726e8fde85b`; 120,356 B) | OpenDyslexic, same release and zip, `OpenDyslexic-Bold.woff2` | 0.910.12 rc2 | OFL-1.1 |
 | `internal/web/static/fonts/OpenDyslexic-Italic.woff2` (SHA-256 `eb6a1bacf7e7c87a08116af4cd00a82064fbe61647b9a0d4d70a339890268f88`; 112,360 B) | OpenDyslexic, same release and zip, `OpenDyslexic-Italic.woff2` | 0.910.12 rc2 | OFL-1.1 |
 | `internal/web/static/img/tendshelf-{mark-ember,mark-cream,app-icon}.svg` | Tendshelf design handoff (`docs/design/tendshelf-handoff/`), copied unchanged | n/a | AGPL-3.0-or-later (project asset) |
+| `desktop/package/icons/*.png` | Rendered from the handoff app icon and cream mark SVGs above by `TestRenderInstallIcons` (hicolor 16 to 256 px; tray marks 64 px, cream and walnut stroke) | n/a | AGPL-3.0-or-later (project asset) |
 | `internal/web/static/css/tokens.css`, `css/bundle.css` | Tendshelf design handoff, copied; changes: one `--font-mono` line, the P0b app-shell section | n/a | AGPL-3.0-or-later (project asset) |
 
 ## Go module dependencies
