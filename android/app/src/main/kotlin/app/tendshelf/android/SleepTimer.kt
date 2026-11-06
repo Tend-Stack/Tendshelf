@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.SystemClock
 import android.util.Log
 import androidx.media3.exoplayer.ExoPlayer
+import app.tendshelf.shared.Chapter
 import app.tendshelf.shared.ShakeDetector
 import app.tendshelf.shared.SleepClock
 import app.tendshelf.shared.SleepInfo
@@ -139,7 +140,18 @@ class SleepTimer(
         publishNow()
     }
 
-    private fun chapterEnd(): Long? = chapterEndFor(player.chapterList, exo.currentPosition)
+    /** A book with no chapters is one chapter (as the page treats it), so its end is the end of the book. */
+    private fun chapterEnd(): Long? {
+        val list = player.chapterList.ifEmpty {
+            val duration = exo.duration
+            if (duration > 0) listOf(Chapter(0, 0, duration, "")) else emptyList()
+        }
+        val end = chapterEndFor(list, exo.currentPosition) ?: return null
+        // The last chapter ends where the book does. Stop 1 s short, so the player never reaches its end and the queue
+        // is not asked (D6).
+        val duration = exo.duration
+        return if (duration > 1000) minOf(end, duration - 1000) else end
+    }
 
     private fun speed() = exo.playbackParameters.speed.toDouble().coerceAtLeast(0.1)
 

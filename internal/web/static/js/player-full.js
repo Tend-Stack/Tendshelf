@@ -645,6 +645,9 @@ function onNativeSleep() {
 function setSleep(choice, minutes) {
   if (nativeSleep()) {
     nativeSleep().sleep(choice === "off" || choice === "chapter" ? choice : String(Math.min(999, Math.max(1, Math.round(minutes)))));
+    // Shown at once; the app's answer, a moment later, replaces it (Eyes-free reads this right after the tap).
+    sleepState.mode = choice === "off" ? "off" : choice === "chapter" ? "chapter" : "minutes";
+    sleepState.choice = choice;
     return;
   }
   clearInterval(sleepTimer);
