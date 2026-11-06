@@ -313,7 +313,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// M3a (decision 0012): the offline bookmark queue; 12.75 KB, approved by the operator on 2026-11-03.
 	// M3b (decision 0013): the Eyes-free menu entry and lazy load, 13.25 KB, approved by the operator on 2026-11-04.
 	// L1 (the speed sheet saves per book) and L2 (the undo after a big move): 13.75 KB, measured 13,961 B; operator pre-approval of raises, 2026-11-05.
-	"player-full.js": {13*1024 + 704, 64 * 1024},
+	// A6 (sleep timer in the app; operator approved the raise, 2026-11-06): 14,400 B set, measured 14,372 B with its comments intact, reported.
+	"player-full.js": {14*1024 + 64, 64 * 1024},
 	// W2: the waveform drawing (3.0 KB). PB2 folds in the desktop bar's wave (four layers, times, hover,
 	// drag, keys, retry backoff, hairline, volume pop): 7 KB, approved by the operator on 2026-11-02; 7.0 KB measured.
 	"waveform.js": {7 * 1024, 24 * 1024},
