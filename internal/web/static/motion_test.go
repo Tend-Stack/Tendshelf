@@ -321,6 +321,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"offline.js": {3*1024 + 512, 24 * 1024}, // 3.34 KB with the retry on a slow server, reported
 	// M6 D2 (decision 0020, operator 2026-11-05): the desktop window script, loaded only under ts_shell=desktop; 1.25 KB approved.
 	"desktop.js": {1*1024 + 256, 16 * 1024},
+	// Decision 0023 (X2, operator 2026-11-05): the desktop app's title bar script, loaded only under ts_shell=desktop; 2,816 B approved.
+	"desktop-shell.js": {2816, 16 * 1024},
 	// B2 measured 7.8 KB served for the whole manager (5.5 KB was the estimate); 8 KB approved by the operator on 2026-11-03.
 	"downloads.js": {9*1024 + 64, 40 * 1024}, // Firefox hang fix: 8.8 KB, reported; G6b: 8.5 KB approved (operator, 2026-11-04); measured 8.7 KB with its comments intact, reported
 	// M5 G6b (decision 0019, operator 2026-11-04): the text half of a download, loaded when a book may have text; 1.5 KB approved,
@@ -363,13 +365,20 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // Decision 0015 (adding books by upload): 61.5 KB, approved by the operator on 2026-11-04.
 const jsTotalGzip = 87*1024 + 512 // Firefox hang fix (2026-11-05): 87.5 KB, measured 87.48 KB with comments intact, reported; M6 D2: the operator raised the ceiling to 87 KB (2026-11-05) for desktop.js; before that: operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
 
+// jsDesktopFiles are the scripts only the desktop app's window loads (a browser never receives them). They are
+// counted in jsDesktopTotalGzip, not in jsTotalGzip, so the browser ceiling means what browsers really load.
+var jsDesktopFiles = map[string]bool{"desktop.js": true, "desktop-shell.js": true}
+
+// jsDesktopTotalGzip bounds the desktop-only scripts together (decision 0023, operator 2026-11-05).
+const jsDesktopTotalGzip = 4096
+
 func TestJSBudget(t *testing.T) {
 	s, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
 	seen := map[string]bool{}
-	total := 0
+	total, desktopTotal := 0, 0
 	for _, source := range s.Names() {
 		if !strings.HasPrefix(source, "js/") || !strings.HasSuffix(source, ".js") {
 			continue
@@ -378,7 +387,11 @@ func TestJSBudget(t *testing.T) {
 		a, _ := s.Asset(source)
 		seen[name] = true
 		g := sentBytes(a)
-		total += g
+		if jsDesktopFiles[name] {
+			desktopTotal += g
+		} else {
+			total += g
+		}
 		if strings.HasPrefix(name, "reader") || name == "shell.js" {
 			t.Logf("js/%s %d gzip bytes", name, g)
 		}
@@ -402,5 +415,9 @@ func TestJSBudget(t *testing.T) {
 	t.Logf("app JS %d gzip bytes of %d", total, jsTotalGzip)
 	if total > jsTotalGzip {
 		t.Errorf("app JS %d gzip bytes, budget %d", total, jsTotalGzip)
+	}
+	t.Logf("desktop-only JS %d gzip bytes of %d", desktopTotal, jsDesktopTotalGzip)
+	if desktopTotal > jsDesktopTotalGzip {
+		t.Errorf("desktop-only JS %d gzip bytes, budget %d", desktopTotal, jsDesktopTotalGzip)
 	}
 }

@@ -1,0 +1,75 @@
+package components
+
+// DesktopBar is the desktop app's own title bar (decision 0023, board DesktopShell). The window hides
+// GTK's title bar, so this is the only bar: logo, Back and Forward, the place, what is playing, More
+// and the three window buttons. It is rendered only when the cookie ts_shell says "desktop", as the
+// first thing in <body> and outside #main, so a boosted swap never replaces it (hx-preserve keeps it
+// anyway). desktop-shell.js brings it to life; the words here are the only ones it shows. On the
+// app's own start page (Picker) there is no history, so no Back, Forward or More.
+templ DesktopBar(p Page) {
+	if p.Shell == "desktop" {
+		<div id="desktop-bar" class="ts-wbar-host" hx-preserve>
+			<header class="ts-wbar" data-wbar>
+				if p.Picker {
+					<span class="ts-wbar__brand">
+						<img class="ts-wbar__mark" src={ p.Assets.URL("img/tendshelf-mark-ember.svg") } alt=""/>
+						<span class="ts-wbar__word">Tendshelf</span>
+					</span>
+				} else {
+					<a class="ts-wbar__brand" href="/" aria-label="Tendshelf, Home">
+						<img class="ts-wbar__mark" src={ p.Assets.URL("img/tendshelf-mark-ember.svg") } alt=""/>
+						<span class="ts-wbar__word">Tendshelf</span>
+					</a>
+					<div class="ts-wbar__nav">
+						<button type="button" class="ts-wbar__btn" aria-label="Back" data-wbar-back disabled>
+							@Icon("nav-back", false)
+						</button>
+						<button type="button" class="ts-wbar__btn ts-wbar__fwd" aria-label="Forward" data-wbar-forward disabled>
+							@Icon("nav-forward", false)
+						</button>
+					</div>
+				}
+				<div class="ts-wbar__place">
+					<a class="ts-wbar__crumb" data-wbar-crumb if p.Crumb.Href == "" { hidden } else { href={ p.Crumb.Href } }>{ p.Crumb.Label }</a>
+					<span class="ts-wbar__sep" aria-hidden="true" data-wbar-sep if p.Crumb.Href == "" { hidden }>/</span>
+					<span class="ts-wbar__title" data-wbar-title>{ p.Title }</span>
+				</div>
+				if !p.Picker {
+					<a class="ts-wbar__now" href="/" data-wbar-now hidden>
+						@Icon("wave", false)
+						<span class="ts-cover ts-cover--24"><img alt="" width="24" height="24" data-wbar-cover hidden/></span>
+						<span class="ts-wbar__nowtext">
+							<span class="ts-wbar__nowtitle" data-wbar-nowtitle></span>
+							<span class="ts-wbar__nowsub" data-wbar-nowsub></span>
+						</span>
+					</a>
+					<button type="button" class="ts-wbar__btn" aria-label="More" aria-haspopup="menu" aria-expanded="false" aria-controls="desktop-menu" data-wbar-more>
+						@Icon("more", false)
+					</button>
+				}
+				<div class="ts-wbar__win" role="group" aria-label="Window">
+					<button type="button" class="ts-wbar__btn" aria-label="Minimise" data-wbar-do="minimise">
+						@Icon("window-minimise", false)
+					</button>
+					<button type="button" class="ts-wbar__btn" aria-label="Maximise" data-wbar-do="maximise" data-wbar-max>
+						@Icon("window-maximise", false)
+					</button>
+					<button type="button" class="ts-wbar__btn" aria-label="Restore" data-wbar-do="maximise" data-wbar-restore hidden>
+						@Icon("window-restore", false)
+					</button>
+					<button type="button" class="ts-wbar__btn ts-wbar__btn--close" aria-label="Close" data-wbar-do="close">
+						@Icon("close", false)
+					</button>
+				</div>
+			</header>
+			if !p.Picker {
+				<div class="ts-wbar__line" aria-hidden="true" data-wbar-line hidden><span class="ts-wbar__fill"></span></div>
+				<div id="desktop-menu" class="ts-wmenu" role="menu" aria-label="More" data-wbar-menu hidden>
+					<button type="button" role="menuitem" class="ts-wmenu__item" data-wbar-do="keys">Keyboard shortcuts<kbd>?</kbd></button>
+					<div class="ts-wmenu__sep" role="separator"></div>
+					<button type="button" role="menuitem" class="ts-wmenu__item" data-wbar-do="quit">Quit Tendshelf<kbd>Ctrl Q</kbd></button>
+				</div>
+			}
+		</div>
+	}
+}

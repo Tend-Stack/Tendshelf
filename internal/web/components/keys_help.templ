@@ -13,6 +13,10 @@ templ KeysHelp(m PlayerMsgs) {
 			<div class="ts-keys__row" if m.Link { hidden }><dt><kbd>G</kbd> then <kbd>L</kbd></dt><dd>{ m.KeysLibrary }</dd></div>
 			<div class="ts-keys__row" if m.Link { hidden }><dt><kbd>G</kbd> then <kbd>H</kbd></dt><dd>{ m.KeysHome }</dd></div>
 			<div class="ts-keys__row"><dt><kbd>?</kbd></dt><dd>{ m.KeysList }</dd></div>
+			if m.Desktop {
+				<div class="ts-keys__row"><dt><kbd>Alt</kbd> + <kbd>←</kbd> / <kbd>→</kbd></dt><dd>Back or forward</dd></div>
+				<div class="ts-keys__row"><dt><kbd>Ctrl</kbd> + <kbd>Q</kbd></dt><dd>Quit Tendshelf</dd></div>
+			}
 		</dl>
 		<form method="dialog"><button class="ts-btn">{ m.KeysClose }</button></form>
 	</dialog>

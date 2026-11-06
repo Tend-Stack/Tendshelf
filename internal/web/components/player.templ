@@ -11,6 +11,8 @@ import (
 type PlayerMsgs struct {
 	// Link is set on a share-link page: the controls that need an account are rendered hidden.
 	Link bool
+	// Desktop adds the window's rows to the keyboard sheet, in the desktop app only (decision 0023).
+	Desktop bool
 
 	// Eyes-free (M3b): its words and the addresses of its script and stylesheet, loaded on first use.
 	EyesFree                EyesFreeMsgs
@@ -42,6 +44,12 @@ type PlayerMsgs struct {
 
 	// The Now playing panel and the Home hero while its book plays (NP1).
 	ShowPlayer, NowPlaying string
+}
+
+// inShell returns the words for the shell the page is in: the desktop app's sheet has window rows.
+func (m PlayerMsgs) inShell(shell string) PlayerMsgs {
+	m.Desktop = shell == "desktop"
+	return m
 }
 
 // fillN puts n where a message has {n}; the templates use it for the sleep timer choices.

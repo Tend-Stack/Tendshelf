@@ -42,6 +42,14 @@ var iconShapes = map[string]string{
 	"sun":          `<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>`,
 	"sunrise":      `<path d="M4 18h16M7.5 18a4.5 4.5 0 0 1 9 0M12 6v4M5.6 11.6l1.4 1.4M18.4 11.6 17 13M9.5 8 12 5.5 14.5 8"/>`,
 	"sunset":       `<path d="M4 18h16M7.5 18a4.5 4.5 0 0 1 9 0M12 5.5V10M5.6 11.6l1.4 1.4M18.4 11.6 17 13M9.5 7.5 12 10l2.5-2.5"/>`,
+	// The desktop app's own title bar (decision 0023, board DesktopShell). Only that markup uses them.
+	"window-minimise": `<path d="M6 12h12"/>`,
+	"window-maximise": `<rect x="6.5" y="6.5" width="11" height="11" rx="2"/>`,
+	"window-restore":  `<rect x="5.5" y="8.5" width="10" height="10" rx="2"/><path d="M8.5 5.5h8a2 2 0 0 1 2 2v8"/>`,
+	"more":            `<circle cx="12" cy="5.5" r="0.9"/><circle cx="12" cy="12" r="0.9"/><circle cx="12" cy="18.5" r="0.9"/>`,
+	"nav-back":        `<path d="m14.5 5.5-6.5 6.5 6.5 6.5"/>`,
+	"nav-forward":     `<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>`,
+	"wave":            `<path d="M3 12c2-6 3.5-6 5.5 0s3.5 6 5.5 0 2.5-3.7 4 0 2 2 3.5 0"/>`,
 }
 
 // IconNames lists the available icon names.
