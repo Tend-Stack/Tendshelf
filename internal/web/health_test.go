@@ -160,3 +160,29 @@ func TestHealthLinkOnLibrariesPage(t *testing.T) {
 		t.Error("Libraries page lacks the Library health link")
 	}
 }
+
+// TestHealthLeadsWithProblems: the page opens with how many things need a look and a jump link to each
+// group, the cover group comes before the groups that need no one's choice, and a refused book says why.
+func TestHealthLeadsWithProblems(t *testing.T) {
+	e := hlthNew(t)
+	add := func(s librarytest.BookSpec) library.Book { return librarytest.AddBook(t, e.a.lib, e.folder, s) }
+	add(librarytest.BookSpec{Title: "Lost", MissingSince: 5})
+	add(librarytest.BookSpec{Title: "Locked", Refused: library.RefusedDRM})
+	add(librarytest.BookSpec{Title: "Bare", DurationMs: 1000})
+	_, body := e.get("/admin/health", e.owner)
+	if !strings.Contains(body, "things need a look") || !strings.Contains(body, `href="#health-h-`+library.HealthNoCover+`"`) {
+		t.Error("the summary and its jump links are missing")
+	}
+	if !strings.Contains(body, html.EscapeString(healthRefusedDRM)) {
+		t.Error("a refused book does not say why")
+	}
+	cover, missing := strings.Index(body, `id="health-h-no_cover"`), strings.Index(body, `id="health-h-missing"`)
+	if cover < 0 || missing < 0 || cover > missing {
+		t.Errorf("the cover group (%d) does not lead the missing one (%d)", cover, missing)
+	}
+	// The Libraries page keeps only a short summary that links here.
+	_, page := e.get("/admin/libraries", e.owner)
+	if !strings.Contains(page, `href="/admin/health">`) || strings.Contains(page, "Locked") {
+		t.Error("the Libraries page does not keep a short summary")
+	}
+}

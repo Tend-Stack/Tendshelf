@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 )
 
 // Outcomes recorded in book_lookups: how the last online lookup of a book ended.
@@ -23,6 +24,9 @@ const (
 const (
 	LookupModeAll = "all"
 	LookupModeNew = "new"
+	// The two narrower scopes of "all": books with something still missing, and books never looked up.
+	LookupModeMissing  = "missing"
+	LookupModeUnlooked = "unlooked"
 )
 
 // LookupRow is one book on the "needs a look" list.
@@ -68,12 +72,26 @@ const lookupEligible = ` FROM books b JOIN libraries l ON l.id = b.library_id
     AND NOT EXISTS (SELECT 1 FROM book_lookups k WHERE k.book_id = b.id
       AND (k.checked_at >= ? OR k.outcome IN ('chosen','dismissed')))`
 
+// lookupNotLately skips books with a settled outcome checked at or after the placeholder.
+const lookupNotLately = ` AND NOT EXISTS (SELECT 1 FROM book_lookups k WHERE k.book_id = b.id
+      AND k.outcome <> 'failed' AND k.checked_at >= ?)`
+
 // lookupMode adds the rule of one mode and returns its extra arguments.
 func lookupMode(mode string, skipBefore int64) (string, []any, error) {
 	switch mode {
 	case LookupModeAll:
-		return ` AND NOT EXISTS (SELECT 1 FROM book_lookups k WHERE k.book_id = b.id
-      AND k.outcome <> 'failed' AND k.checked_at >= ?)`, []any{skipBefore}, nil
+		return lookupNotLately, []any{skipBefore}, nil
+	case LookupModeMissing:
+		// A book "misses details" when it has no description, no cover or no author, and nobody has
+		// settled it: it holds no online or owner-typed value (a lookup would only mark it kept) and no
+		// lookup of the last 30 days is recorded. Chosen and dismissed books are excluded by lookupEligible.
+		return lookupNotLately + ` AND (b.description = '' OR b.cover_id IS NULL
+      OR NOT EXISTS (SELECT 1 FROM book_people bp WHERE bp.book_id = b.id AND bp.role = 'author'))
+    AND NOT EXISTS (SELECT 1 FROM metadata_values m WHERE m.book_id = b.id AND m.source IN ('online','user'))`, []any{skipBefore}, nil
+	case LookupModeUnlooked:
+		// Never looked up: no record at all, or only "failed" ones (the sites had trouble).
+		return lookupNotLately + ` AND NOT EXISTS (SELECT 1 FROM book_lookups k WHERE k.book_id = b.id AND k.outcome <> 'failed')`,
+			[]any{skipBefore}, nil
 	case LookupModeNew:
 		return ` AND l.auto_lookup_at IS NOT NULL AND b.added_at >= l.auto_lookup_at
     AND NOT EXISTS (SELECT 1 FROM book_lookups k WHERE k.book_id = b.id AND k.outcome <> 'failed')`, nil, nil
@@ -105,6 +123,20 @@ func (r *Repo) NextLookupBook(ctx context.Context, libraryID, mode string, runSt
 		return "", 0, err
 	}
 	return id, n, nil
+}
+
+// CountLookupBooks says how many books a bulk lookup of the given mode would ask about right now
+// (nothing counts as looked up during a run). It uses the very predicate NextLookupBook does, so the
+// number on the page and the job's own total cannot disagree.
+func (r *Repo) CountLookupBooks(ctx context.Context, libraryID, mode string, skipBefore int64) (int, error) {
+	extra, eargs, err := lookupMode(mode, skipBefore)
+	if err != nil {
+		return 0, err
+	}
+	var n int
+	err = r.st.Reader().QueryRowContext(ctx, `SELECT count(*)`+lookupEligible+extra,
+		append([]any{libraryID, int64(math.MaxInt64)}, eargs...)...).Scan(&n)
+	return n, err
 }
 
 // LookupCounts counts the books by outcome that the given job recorded.

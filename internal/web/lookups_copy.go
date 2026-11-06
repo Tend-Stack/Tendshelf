@@ -11,11 +11,12 @@ import (
 // The words of automatic and bulk lookups (AL-4). The owner's switch keeps its words in
 // details_copy.go.
 const (
-	lookupAutoLabel = "Look up details online for new books"
-	lookupAutoHint  = "Tendshelf sends each new book's title, author, ASIN and ISBN to Audible and Audnexus, and fills in only what is missing. Your files are not changed."
-	lookupAutoSave  = "Save"
-	lookupStart     = "Look up all books"
-	lookupStop      = "Stop"
+	lookupAutoLabel  = "Look up details online for new books"
+	lookupAutoHint   = "Tendshelf sends each new book's title, author, ASIN and ISBN to Audible and Audnexus, and fills in only what is missing. Your files are not changed."
+	lookupAutoSave   = "Save"
+	lookupStart      = "Look up"
+	lookupScopeLabel = "Which books to look up"
+	lookupStop       = "Stop"
 
 	lookupPausedBusy  = "Paused because Audible asked for a break. Continues at %s."
 	lookupPausedDaily = "Paused for today to stay within the sites' limits. Continues at %s."
@@ -71,3 +72,8 @@ func lookupStoppedText(p metadata.BulkProgress) string {
 }
 
 func lookupMoreText(n int) string { return "and " + strconv.Itoa(n) + " more" }
+
+// The three choices of what a lookup covers, each with how many books it would ask about right now.
+func lookupScopeMissing(n int) string  { return "Books missing details (" + thousands(n) + ")" }
+func lookupScopeUnlooked(n int) string { return "Books not looked up yet (" + thousands(n) + ")" }
+func lookupScopeAll(n int) string      { return "All books (" + thousands(n) + ")" }

@@ -1,15 +1,11 @@
 package web
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/Tend-Stack/tendshelf/internal/library"
-	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
-	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
 
 // Interface copy for the auth pages. The users and auth packages return codes; the words live here.
@@ -82,82 +78,6 @@ func pathMessage(code string) string {
 		return m
 	}
 	return "Tendshelf can't use that folder."
-}
-
-// quoted wraps a book title in the typographic quotes the board uses.
-func quoted(s string) string { return "“" + s + "”" }
-
-// titleList turns the capped list of a problem group into display lines, with a last line for the
-// books left out.
-func titleList(list []library.ProblemBook, total int) []string {
-	out := make([]string, 0, len(list)+1)
-	for _, b := range list {
-		out = append(out, b.Title)
-	}
-	if total > len(list) {
-		out = append(out, fmt.Sprintf("and %s more", thousands(total-len(list))))
-	}
-	return out
-}
-
-// problemCards writes the "things need a look" groups, in the order the board shows them.
-func problemCards(p library.Problems) []pages.ProblemCard {
-	var cards []pages.ProblemCard
-	if list := p.Refused[library.RefusedDRM]; len(list) > 0 {
-		n := p.RefusedCount[library.RefusedDRM]
-		c := pages.ProblemCard{Kind: "drm", Title: countText(n, "1 protected file was skipped", "%d protected files were skipped")}
-		if n == 1 {
-			c.Body = quoted(list[0].Title) + " is copy-protected, so Tendshelf can’t open it. Nothing else is affected. " +
-				"A copy without protection will be picked up automatically."
-		} else {
-			c.Body = "They're copy-protected, so Tendshelf can't open them. Nothing else is affected."
-			c.Titles = titleList(list, n)
-		}
-		cards = append(cards, c)
-	}
-	if list := p.Refused[library.RefusedDamaged]; len(list) > 0 {
-		n := p.RefusedCount[library.RefusedDamaged]
-		cards = append(cards, pages.ProblemCard{Kind: "damaged",
-			Title:  countText(n, "1 book couldn't be read", "%d books couldn't be read"),
-			Body:   scan.RefusalText(library.RefusedDamaged),
-			Titles: titleList(list, n)})
-	}
-	var none []library.ProblemBook
-	noneN := 0
-	for _, r := range []string{library.RefusedUnsupported, library.RefusedNoAudio} {
-		none = append(none, p.Refused[r]...)
-		noneN += p.RefusedCount[r]
-	}
-	if noneN > 0 {
-		cards = append(cards, pages.ProblemCard{Kind: "unsupported",
-			Title:  countText(noneN, "1 book has no audio Tendshelf can play", "%d books have no audio Tendshelf can play"),
-			Titles: titleList(none, noneN)})
-	}
-	if p.MissingCount > 0 {
-		c := pages.ProblemCard{Kind: "missing", Titles: titleList(p.Missing, p.MissingCount)}
-		if p.MissingCount == 1 {
-			c.Title = "1 book is missing its files"
-			c.Body = "Its files weren't found in the last scan. It comes back when the files do."
-		} else {
-			c.Title = fmt.Sprintf("%d books are missing their files", p.MissingCount)
-			c.Body = "Their files weren't found in the last scan. They come back when the files do."
-		}
-		cards = append(cards, c)
-	}
-	if n := p.NoCoverCount; n > 0 {
-		c := pages.ProblemCard{Kind: "nocover", Title: countText(n, "1 book has no cover", "%d books have no cover")}
-		switch {
-		case n == 1:
-			c.Body = quoted(p.NoCover[0].Title) + " had no picture in its files."
-		case n == 2:
-			c.Body = quoted(p.NoCover[0].Title) + " and " + quoted(p.NoCover[1].Title) + " had no picture in their files."
-		default:
-			c.Body = quoted(p.NoCover[0].Title) + ", " + quoted(p.NoCover[1].Title) + " and " +
-				thousands(n-2) + " more had no picture in their files."
-		}
-		cards = append(cards, c)
-	}
-	return cards
 }
 
 func problemsTitle(n int) string {

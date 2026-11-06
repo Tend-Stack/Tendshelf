@@ -35,11 +35,33 @@ const (
 	PauseDailyCap = "daily_cap"
 )
 
-// BulkPayload is the payload of a metadata.online_bulk job.
+// Scopes of a started bulk lookup: books missing details (the default), books never looked up, every book
+// not looked at lately.
+const (
+	ScopeMissing  = library.LookupModeMissing
+	ScopeUnlooked = library.LookupModeUnlooked
+	ScopeAll      = library.LookupModeAll
+)
+
+// BulkPayload is the payload of a metadata.online_bulk job. Scope narrows mode "all"; empty means all.
 type BulkPayload struct {
 	LibraryID string   `json:"library_id"`
 	Mode      string   `json:"mode"`
+	Scope     string   `json:"scope,omitempty"`
 	Providers []string `json:"providers"`
+}
+
+// ValidScope reports whether s names a scope of a started lookup; empty is "all".
+func ValidScope(s string) bool {
+	return s == "" || s == ScopeMissing || s == ScopeUnlooked || s == ScopeAll
+}
+
+// lookupMode is the library mode the job asks NextLookupBook with.
+func (p BulkPayload) lookupMode() string {
+	if p.Mode == BulkAll && (p.Scope == ScopeMissing || p.Scope == ScopeUnlooked) {
+		return p.Scope
+	}
+	return p.Mode
 }
 
 // BulkProgress is what a bulk job reports while it runs and returns when it ends. The counts come
@@ -101,7 +123,13 @@ func (s *Service) auditLibrary(ctx context.Context, action, libraryID, userID st
 // Audnexus is asked unless more is true. When such a job is already waiting or running it returns
 // that job's id. It returns ErrOnlineOff when lookups are off and ErrNotFound for an unknown
 // library. The caller checks who may manage the library.
-func (s *Service) StartBulk(ctx context.Context, libraryID string, more bool, userID string) (string, error) {
+func (s *Service) StartBulk(ctx context.Context, libraryID, scope string, more bool, userID string) (string, error) {
+	if !ValidScope(scope) {
+		return "", library.ErrInvalid
+	}
+	if scope == "" {
+		scope = ScopeAll
+	}
 	if on, err := s.onlineOn(ctx); err != nil {
 		return "", err
 	} else if !on {
@@ -120,15 +148,32 @@ func (s *Service) StartBulk(ctx context.Context, libraryID string, more bool, us
 			return j.ID, nil
 		}
 	}
-	id, err := s.jobs.Enqueue(ctx, KindOnlineBulk, BulkPayload{LibraryID: libraryID, Mode: BulkAll, Providers: bulkProviders(more)},
+	id, err := s.jobs.Enqueue(ctx, KindOnlineBulk, BulkPayload{LibraryID: libraryID, Mode: BulkAll, Scope: scope, Providers: bulkProviders(more)},
 		jobs.EnqueueOptions{CreatedBy: userID})
 	if err != nil {
 		return "", err
 	}
-	if err := s.auditLibrary(ctx, "library.lookups_start", libraryID, userID, map[string]any{"job": id, "more": more}); err != nil {
+	if err := s.auditLibrary(ctx, "library.lookups_start", libraryID, userID, map[string]any{"job": id, "scope": scope, "more": more}); err != nil {
 		s.log.Warn("audit lookups start", "err", err)
 	}
 	return id, nil
+}
+
+// ScopeCounts is how many books each scope of a started lookup would ask about right now.
+type ScopeCounts struct{ Missing, Unlooked, All int }
+
+// CountScopes counts the books of each scope for the library, with the rules the bulk job itself uses.
+func (s *Service) CountScopes(ctx context.Context, libraryID string) (ScopeCounts, error) {
+	skip := s.now().Add(-skipWindow).UnixMilli()
+	var c ScopeCounts
+	for scope, dst := range map[string]*int{ScopeMissing: &c.Missing, ScopeUnlooked: &c.Unlooked, ScopeAll: &c.All} {
+		n, err := s.repo.CountLookupBooks(ctx, libraryID, scope, skip)
+		if err != nil {
+			return ScopeCounts{}, err
+		}
+		*dst = n
+	}
+	return c, nil
 }
 
 // StopBulk cancels every waiting or running bulk lookup of the library. Books already looked up
@@ -238,7 +283,7 @@ func bulkBadPayload(err error) error {
 
 func (s *Service) handleBulk(ctx context.Context, t *jobs.Task) (any, error) {
 	var p BulkPayload
-	if err := json.Unmarshal(t.Payload, &p); err != nil || p.LibraryID == "" || (p.Mode != BulkAll && p.Mode != BulkNew) {
+	if err := json.Unmarshal(t.Payload, &p); err != nil || p.LibraryID == "" || (p.Mode != BulkAll && p.Mode != BulkNew) || !ValidScope(p.Scope) {
 		return nil, bulkBadPayload(err)
 	}
 	if len(p.Providers) == 0 {
@@ -275,7 +320,7 @@ func (r *bulkRun) publish(ctx context.Context) error {
 	pr.Matched, pr.NeedsLook, pr.NotFound = counts[library.LookupMatched], counts[library.LookupNeedsLook], counts[library.LookupNoMatch]
 	pr.Skipped, pr.Failed = counts[library.LookupKept]+counts[library.LookupNoQuery], counts[library.LookupFailed]
 	pr.Done = pr.Matched + pr.NeedsLook + pr.NotFound + pr.Skipped + pr.Failed
-	_, remaining, err := r.s.repo.NextLookupBook(ctx, r.p.LibraryID, r.p.Mode, r.runStart, r.skipBefore())
+	_, remaining, err := r.s.repo.NextLookupBook(ctx, r.p.LibraryID, r.p.lookupMode(), r.runStart, r.skipBefore())
 	if err != nil {
 		return err
 	}
@@ -342,7 +387,7 @@ func (r *bulkRun) run(ctx context.Context) (any, error) {
 			}
 			continue
 		}
-		bookID, _, err := s.repo.NextLookupBook(ctx, r.p.LibraryID, r.p.Mode, r.runStart, r.skipBefore())
+		bookID, _, err := s.repo.NextLookupBook(ctx, r.p.LibraryID, r.p.lookupMode(), r.runStart, r.skipBefore())
 		if err != nil {
 			return nil, err
 		}
@@ -362,7 +407,7 @@ func (r *bulkRun) run(ctx context.Context) (any, error) {
 		}
 		if w.For > 0 {
 			// No pause after the last book: there is no next request to space out.
-			if _, remaining, err := s.repo.NextLookupBook(ctx, r.p.LibraryID, r.p.Mode, r.runStart, r.skipBefore()); err != nil {
+			if _, remaining, err := s.repo.NextLookupBook(ctx, r.p.LibraryID, r.p.lookupMode(), r.runStart, r.skipBefore()); err != nil {
 				return nil, err
 			} else if remaining == 0 {
 				break

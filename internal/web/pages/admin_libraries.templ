@@ -7,16 +7,18 @@ type AdminFolder struct {
 	ID, LibraryID, LibraryName, Path string
 	// Summary is "{n} books · {size}".
 	Summary string
-	// Scan is the library's scan status while one is active, otherwise nil.
-	Scan *components.ScanStatusView
 }
 
-// ProblemCard is one group in "things need a look". The handler writes the sentences.
-type ProblemCard struct {
-	Kind   string // drm, damaged, unsupported, missing or nocover: picks the icon
-	Title  string
-	Body   string
-	Titles []string // book titles, shown as a list when present
+// AdminLibrarySection is one library's part of the page: its folders, scan status and its settings. A nil
+// pointer means the setting does not apply (lookups off, uploads not set up).
+type AdminLibrarySection struct {
+	ID, Name string
+	Folders  []AdminFolder
+	// Scan is the library's scan status while one is active, otherwise nil.
+	Scan   *components.ScanStatusView
+	Watch  *AdminWatchLibrary
+	Lookup *AdminLookupLibrary
+	Upload *AdminUploadLibrary
 }
 
 // AdminLibrariesView is the Libraries & scanning page.
@@ -26,20 +28,19 @@ type AdminLibrariesView struct {
 	Banner   string
 	Ready    string // "912 books ready to play"
 	LastScan string // "Last scan 2 hours ago found 2 new books." or "No scan yet."
-	Folders  []AdminFolder
-	Problems []ProblemCard
-	// ProblemsTitle is "{n} things need a look"; empty when nothing does.
-	ProblemsTitle string
-	// Online is the owner-only "Book details from the internet" section; nil for everyone else.
+	// Needs is the short summary of the books that need a look ("12 things need a look") and NeedsHref the
+	// Library health page that lists them.
+	Needs, NeedsHref string
+	Libraries        []AdminLibrarySection
+	// Online is the owner-only switch for lookups; nil for everyone else.
 	Online *AdminOnlineView
-	// Lookups is the per-library part of that section (automatic lookups, "Look up all books");
-	// nil when lookups are off. OnlineTitle and OnlineBody head the section for an admin, who
-	// does not see the owner's switch.
+	// Lookups holds the words of the per-library lookup settings; nil when lookups are off. OnlineTitle and
+	// OnlineBody head the section for an admin, who does not see the owner's switch.
 	Lookups                 *AdminLookupsView
 	OnlineTitle, OnlineBody string
-	// Uploads is "Adding books from this device" (decision 0015); nil when uploads are not set up.
+	// Uploads holds the words of "Adding books" (decision 0015); nil when uploads are not set up.
 	Uploads *AdminUploadsView
-	// Watch is "Finding new books" (S1): per library, watching and the scheduled scan; nil with no library.
+	// Watch holds the words of "Watching" (S1); nil with no library.
 	Watch *AdminWatchView
 	// EbooksHref and EbooksLabel link /admin/ebooks ("Ebooks"), with no count; empty when ebooks are off.
 	EbooksHref, EbooksLabel string
@@ -49,23 +50,23 @@ type AdminLibrariesView struct {
 	HealthHref, HealthLabel string
 }
 
-// AdminWatchView is the section where each library's "Watch for new books" and scheduled scan are set.
-// The handler writes every word.
+// AdminWatchView holds the words of "Watching". The handler writes every word.
 type AdminWatchView struct {
 	Title, Lead, WatchLabel, EveryLabel, Save string
 	Choices                                   []Option
-	Libraries                                 []AdminWatchLibrary
+	// Libraries is every library's setting; the handler files each under its library's section.
+	Libraries []AdminWatchLibrary
 }
 
-// AdminWatchLibrary is one library's row: the switch, the interval in minutes ("0" = never) and the
+// AdminWatchLibrary is one library's setting: the switch, the interval in minutes ("0" = never) and the
 // plain sentence about how it is being kept up to date.
 type AdminWatchLibrary struct {
 	ID, Name, Every, Status string
 	Watch                   bool
 }
 
-// AdminUploadsView is the section where the owner picks, per library, the folder that receives
-// uploaded books. An admin sees the same words read-only. The handler writes every word.
+// AdminUploadsView holds the words of "Adding books from this device" (decision 0015). An admin sees the
+// same words read-only. The handler writes every word.
 type AdminUploadsView struct {
 	Title, Lead, Where, Off, Save, OwnerOnly string
 	Owner                                    bool
@@ -84,18 +85,24 @@ type AdminUploadLibrary struct {
 // AdminUploadFolder is one choice: a folder of the library.
 type AdminUploadFolder struct{ ID, Path string }
 
-// AdminLookupsView is the library rows of "Book details from the internet". The handler writes
-// every word.
+// AdminLookupsView holds the words of "Online details". The handler writes every word.
 type AdminLookupsView struct {
-	AutoLabel, AutoHint, Save, StartLabel, MoreLabel string
-	Libraries                                        []AdminLookupLibrary
+	AutoLabel, AutoHint, Save, StartLabel, MoreLabel, ScopeLabel string
+	Libraries                                                    []AdminLookupLibrary
 }
 
-// AdminLookupLibrary is one library's row: the automatic setting, the start button or the running
-// status, and the link to the books that need a look (empty when none do).
+// AdminScope is one choice of what a lookup covers, with the live count in its label.
+type AdminScope struct {
+	Value, Label string
+	Checked      bool
+}
+
+// AdminLookupLibrary is one library's setting and action: the automatic switch, what a lookup covers,
+// the start button or the running status, and the link to the books that need a look (empty when none do).
 type AdminLookupLibrary struct {
 	ID, Name   string
 	Auto       bool
+	Scopes     []AdminScope
 	Status     *components.LookupBulkView
 	NeedsHref  string
 	NeedsLabel string
@@ -107,19 +114,10 @@ type AdminOnlineView struct {
 	On                                   bool
 }
 
-func problemIcon(kind string) string {
-	switch kind {
-	case "drm":
-		return "shield"
-	case "nocover":
-		return "grid"
-	}
-	return "alert"
-}
-
-// AdminLibraries lists the folders, starts scans and shows what needs a look.
+// AdminLibraries is the Libraries page: a summary, then one section for each library (folders, watching,
+// online details, adding books). Settings are rows that save when they change; actions sit apart.
 templ AdminLibraries(v AdminLibrariesView) {
-	<div class="ts-admin">
+	<div class="ts-admin ts-admin--list ts-libs">
 		<span class="ts-overline">Your server</span>
 		<h1 class="title-1 ts-admin__title">Libraries &amp; scanning</h1>
 		if v.Banner != "" {
@@ -128,22 +126,13 @@ templ AdminLibraries(v AdminLibrariesView) {
 				{ v.Banner }
 			</p>
 		}
-		<div class="ts-groups ts-admin__groups">
 		<section class="ts-group ts-group--pad ts-admin__summary" aria-label="Scanning">
 			<p class="label ts-admin__ready">
 				@components.Icon("check", false)
 				{ v.Ready }
 			</p>
 			<p class="caption ts-num ts-admin__last">{ v.LastScan }</p>
-			if v.EbooksHref != "" {
-				<div class="ts-admin__actions"><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.EbooksHref) }>{ v.EbooksLabel }</a></div>
-			}
-			if v.DuplicatesHref != "" {
-				<div class="ts-admin__actions"><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.DuplicatesHref) }>{ v.DuplicatesLabel }</a></div>
-			}
-			if v.HealthHref != "" {
-				<div class="ts-admin__actions"><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.HealthHref) }>{ v.HealthLabel }</a></div>
-			}
+			<p class="caption ts-libs__needs"><a href={ templ.SafeURL(v.NeedsHref) }>{ v.Needs }</a></p>
 			<div class="ts-admin__actions">
 				<form method="post" action="/admin/libraries/scan">
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
@@ -151,49 +140,48 @@ templ AdminLibraries(v AdminLibrariesView) {
 				</form>
 				<a class="ts-btn ts-btn--secondary" href="/admin/libraries/folders/new">Add a folder</a>
 			</div>
+			<ul class="ts-libs__links">
+				if v.EbooksHref != "" {
+					<li><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.EbooksHref) }>{ v.EbooksLabel }</a></li>
+				}
+				if v.DuplicatesHref != "" {
+					<li><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.DuplicatesHref) }>{ v.DuplicatesLabel }</a></li>
+				}
+				if v.HealthHref != "" {
+					<li><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.HealthHref) }>{ v.HealthLabel }</a></li>
+				}
+			</ul>
 		</section>
-		if len(v.Problems) > 0 {
-			<section class="ts-group ts-group--pad ts-admin__section" aria-labelledby="problems-h">
-				<h2 id="problems-h" class="section">{ v.ProblemsTitle }</h2>
-				for _, c := range v.Problems {
-					<article class="ts-problem">
-						<span class={ "ts-problem__icon ts-problem__icon--" + c.Kind } aria-hidden="true">
-							@components.Icon(problemIcon(c.Kind), false)
-						</span>
-						<div class="ts-problem__text">
-							<h3 class="body ts-problem__title">{ c.Title }</h3>
-							<p class="caption ts-problem__body">{ c.Body }</p>
-							if len(c.Titles) > 0 {
-								<ul class="caption ts-problem__list">
-									for _, t := range c.Titles {
-										<li>{ t }</li>
-									}
-								</ul>
-							}
-						</div>
-					</article>
+		if v.Online != nil || v.Lookups != nil {
+			<section class="ts-libs__sec" aria-labelledby="online-h">
+				<h2 id="online-h" class="title-3 ts-libs__name">{ v.OnlineTitle }</h2>
+				<p class="caption">{ v.OnlineBody }</p>
+				if v.Online != nil {
+					@adminOnlineSwitch(v)
 				}
 			</section>
 		}
-		<section class="ts-group ts-group--pad ts-group--wide ts-admin__section" aria-labelledby="folders-h">
-			<h2 id="folders-h" class="section">Folders</h2>
+		for _, l := range v.Libraries {
+			@adminLibrary(v, l)
+		}
+	</div>
+}
+
+// adminLibrary is one library: Folders, Watching, Online details and Adding books.
+templ adminLibrary(v AdminLibrariesView, l AdminLibrarySection) {
+	<section class="ts-libs__lib" aria-labelledby={ "lib-" + l.ID }>
+		<h2 id={ "lib-" + l.ID } class="title-3 ts-libs__name">{ l.Name }</h2>
+		<h3 class="section ts-libs__sub">Folders</h3>
+		<div class="ts-group">
 			<ul class="ts-folders">
-				for _, f := range v.Folders {
+				for _, f := range l.Folders {
 					<li class="ts-folder">
 						<span class="ts-folder__icon" aria-hidden="true">@components.Icon("folder", false)</span>
 						<div class="ts-folder__text">
-							<span class="body ts-folder__name">{ f.LibraryName }</span>
 							<span class="caption ts-folder__path">{ f.Path }</span>
 							<span class="caption ts-num ts-folder__meta">{ f.Summary }</span>
-							if f.Scan != nil {
-								@components.ScanStatus(*f.Scan)
-							}
 						</div>
 						<div class="ts-folder__actions">
-							<form method="post" action={ templ.SafeURL("/admin/libraries/" + f.LibraryID + "/scan") }>
-								<input type="hidden" name="_csrf" value={ v.CSRF }/>
-								<button type="submit" class="ts-btn ts-btn--secondary">Scan</button>
-							</form>
 							<details class="ts-folder__more">
 								<summary class="ts-btn ts-btn--quiet">More</summary>
 								<a class="ts-folder__link" href={ templ.SafeURL("/admin/folders/" + f.ID + "/emptied") }>This folder was emptied on purpose</a>
@@ -202,167 +190,174 @@ templ AdminLibraries(v AdminLibrariesView) {
 					</li>
 				}
 			</ul>
-		</section>
-		if v.Watch != nil {
-			@adminWatch(v)
-		}
-		if v.Online != nil || v.Lookups != nil {
-			<section class="ts-group ts-group--pad ts-group--wide ts-admin__section ts-admin__online" aria-labelledby="online-h">
-				<h2 id="online-h" class="section">{ v.OnlineTitle }</h2>
-				<p class="caption">{ v.OnlineBody }</p>
-				if v.Online != nil {
-					@adminOnlineSwitch(v)
-				}
-				if v.Lookups != nil {
-					@adminLookupRows(v)
-				}
-			</section>
-		}
-		if v.Uploads != nil {
-			@adminUploads(v)
-		}
 		</div>
+		<div class="ts-libs__act">
+			<form method="post" action={ templ.SafeURL("/admin/libraries/" + l.ID + "/scan") }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<button type="submit" class="ts-btn ts-btn--secondary">Scan this library</button>
+			</form>
+			if l.Scan != nil {
+				@components.ScanStatus(*l.Scan)
+			}
+		</div>
+		if l.Watch != nil && v.Watch != nil {
+			@adminWatch(v, *l.Watch)
+		}
+		if l.Lookup != nil && v.Lookups != nil {
+			@adminLookups(v, *l.Lookup)
+		}
+		if l.Upload != nil && v.Uploads != nil {
+			@adminUploads(v, *l.Upload)
+		}
+	</section>
+}
+
+// settingForm opens a setting that saves when it changes: htmx posts the form and fills the quiet "Saved"
+// mark with the given id; without script the Save button posts it plainly.
+templ settingForm(csrf, action, saved, save string) {
+	<form class="ts-libs__form" method="post" action={ templ.SafeURL(action) } hx-post={ action } hx-trigger="change" hx-sync="this:queue last" hx-target={ "#" + saved } hx-select={ "#" + saved } hx-swap="outerHTML">
+		<input type="hidden" name="_csrf" value={ csrf }/>
+		{ children... }
+		<div class="ts-libs__foot">
+			@components.SettingSaved(saved, "Saved", false)
+			<noscript><button type="submit" class="ts-btn ts-btn--secondary">{ save }</button></noscript>
+		</div>
+	</form>
+}
+
+// adminWatch is "Watching": the switch, the interval and the plain sentence about how the library is kept up to date.
+templ adminWatch(v AdminLibrariesView, l AdminWatchLibrary) {
+	<h3 class="section ts-libs__sub">Watching</h3>
+	<div class="ts-group">
+		@settingForm(v.CSRF, "/admin/libraries/"+l.ID+"/watch", "saved-watch-"+l.ID, v.Watch.Save) {
+			<div class="ts-switch-row ts-me__line">
+				<label class="ts-me__linetext" for={ "watch-" + l.ID }>
+					<span class="ts-switch-row__label">{ v.Watch.WatchLabel }</span>
+					<span class="ts-switch-row__hint" id={ "watch-status-" + l.ID }>{ l.Status }</span>
+				</label>
+				<input type="hidden" name="on" value="0"/>
+				<input type="checkbox" role="switch" class="ts-switch" id={ "watch-" + l.ID } name="on" value="1" aria-describedby={ "watch-status-" + l.ID } checked?={ l.Watch }/>
+			</div>
+			<div class="ts-switch-row ts-me__line">
+				<label class="ts-switch-row__label" for={ "watch-every-" + l.ID }>{ v.Watch.EveryLabel }</label>
+				<select id={ "watch-every-" + l.ID } name="every" class="ts-select ts-me__speed">
+					for _, c := range v.Watch.Choices {
+						<option value={ c.Value } selected?={ c.Value == l.Every }>{ c.Label }</option>
+					}
+				</select>
+			</div>
+		}
 	</div>
 }
 
-// adminWatch is "Finding new books": a plain form for each library that works without script.
-templ adminWatch(v AdminLibrariesView) {
-	<section class="ts-group ts-group--pad ts-group--wide ts-admin__section" aria-labelledby="watch-h" id="watch">
-		<h2 id="watch-h" class="section">{ v.Watch.Title }</h2>
-		<p class="caption">{ v.Watch.Lead }</p>
-		<ul class="ts-lookuplibs">
-			for _, l := range v.Watch.Libraries {
-				<li class="ts-lookuplib">
-					<span class="body ts-lookuplib__name">{ l.Name }</span>
-					<form class="ts-lookuplib__form" method="post" action={ templ.SafeURL("/admin/libraries/" + l.ID + "/watch") }>
-						<input type="hidden" name="_csrf" value={ v.CSRF }/>
-						<input type="hidden" name="on" value="0"/>
-						<label class="ts-admin__choice" for={ "watch-" + l.ID }>
-							<input type="checkbox" class="ts-check" id={ "watch-" + l.ID } name="on" value="1" aria-describedby={ "watch-status-" + l.ID } checked?={ l.Watch }/>
-							<span>{ v.Watch.WatchLabel }</span>
-						</label>
-						<label class="caption" for={ "watch-every-" + l.ID }>{ v.Watch.EveryLabel }</label>
-						<select id={ "watch-every-" + l.ID } name="every" class="ts-select">
-							for _, c := range v.Watch.Choices {
-								<option value={ c.Value } selected?={ c.Value == l.Every }>{ c.Label }</option>
-							}
-						</select>
-						<p id={ "watch-status-" + l.ID } class="caption">{ l.Status }</p>
-						<button type="submit" class="ts-btn ts-btn--secondary">{ v.Watch.Save }</button>
-					</form>
-				</li>
-			}
-		</ul>
-	</section>
-}
-
-// adminUploads is "Adding books from this device": a plain form for each library that works without
-// script. The owner chooses the folder that receives books or "Nowhere (off)"; an admin only reads.
-templ adminUploads(v AdminLibrariesView) {
-	<section class="ts-upset ts-group--wide" aria-labelledby="uploads-h" id="uploads">
-		<h2 id="uploads-h" class="section">{ v.Uploads.Title }</h2>
-		<p class="caption ts-upset__lead">{ v.Uploads.Lead }</p>
-		for _, l := range v.Uploads.Libraries {
-			if v.Uploads.Owner {
-				<form class="ts-upset__lib" method="post" action={ templ.SafeURL("/admin/libraries/" + l.ID + "/uploads") }>
-					<input type="hidden" name="_csrf" value={ v.CSRF }/>
-					<fieldset class="ts-upset__choices">
-						<legend class="body ts-upset__name">{ l.Name } <span class="caption ts-upset__q">{ v.Uploads.Where }</span></legend>
-						<label class="ts-upset__choice">
-							<input type="radio" class="ts-check" name="folder_id" value="" checked?={ l.Chosen == "" }/>
-							<span>{ v.Uploads.Off }</span>
-						</label>
-						for _, f := range l.Folders {
-							<label class="ts-upset__choice">
-								<input type="radio" class="ts-check" name="folder_id" value={ f.ID } checked?={ l.Chosen == f.ID }/>
-								<span class="ts-upset__path">{ f.Path }</span>
-							</label>
-						}
-					</fieldset>
-					if l.Error != "" {
-						<p class="ts-field__error ts-upset__err" role="alert">
-							@components.Icon("alert", false)
-							{ l.Error }
-						</p>
-					}
-					<div class="ts-upset__btns">
-						<button type="submit" class="ts-btn ts-btn--secondary">{ v.Uploads.Save }</button>
-						if l.AddHref != "" {
-							<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(l.AddHref) }>{ l.AddLabel }</a>
-						}
-					</div>
-				</form>
-			} else {
-				<div class="ts-upset__lib">
-					<p class="body ts-upset__name">{ l.Name } <span class="caption ts-upset__q">{ v.Uploads.Where }</span></p>
-					if l.ChosenPath != "" {
-						<p class="ts-upset__path">{ l.ChosenPath }</p>
-					} else {
-						<p>{ v.Uploads.Off }</p>
-					}
-					<p class="caption ts-upset__lead">{ v.Uploads.OwnerOnly }</p>
-					if l.AddHref != "" {
-						<div class="ts-upset__btns"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(l.AddHref) }>{ l.AddLabel }</a></div>
-					}
-				</div>
-			}
+// adminLookups is "Online details": the automatic switch (a setting) and, apart from it, the lookup action.
+templ adminLookups(v AdminLibrariesView, l AdminLookupLibrary) {
+	<h3 class="section ts-libs__sub">Online details</h3>
+	<div class="ts-group">
+		@settingForm(v.CSRF, "/admin/libraries/"+l.ID+"/auto-lookup", "saved-auto-"+l.ID, v.Lookups.Save) {
+			<div class="ts-switch-row ts-me__line">
+				<label class="ts-me__linetext" for={ "auto-" + l.ID }>
+					<span class="ts-switch-row__label">{ v.Lookups.AutoLabel }</span>
+					<span class="ts-switch-row__hint" id={ "auto-hint-" + l.ID }>{ v.Lookups.AutoHint }</span>
+				</label>
+				<input type="hidden" name="on" value="0"/>
+				<input type="checkbox" role="switch" class="ts-switch" id={ "auto-" + l.ID } name="on" value="1" aria-describedby={ "auto-hint-" + l.ID } checked?={ l.Auto }/>
+			</div>
 		}
-	</section>
-}
-
-// adminOnlineSwitch is the owner's on/off choice.
-templ adminOnlineSwitch(v AdminLibrariesView) {
-				<form method="post" action="/admin/online">
-					<input type="hidden" name="_csrf" value={ v.CSRF }/>
-					<fieldset class="ts-admin__choices">
-						<legend class="ts-sr">{ v.Online.Title }</legend>
-						<label class="ts-admin__choice">
-							<input type="radio" class="ts-check" name="on" value="1" checked?={ v.Online.On }/>
-							<span>{ v.Online.OnLabel }</span>
-						</label>
-						<label class="ts-admin__choice">
-							<input type="radio" class="ts-check" name="on" value="0" checked?={ !v.Online.On }/>
-							<span>{ v.Online.OffLabel }</span>
-						</label>
-					</fieldset>
-					<button type="submit" class="ts-btn ts-btn--secondary">{ v.Online.Save }</button>
-				</form>
-}
-
-// adminLookupRows is one row per library: the automatic setting, "Look up all books" or the running
-// status, and the link to the books that need a look.
-templ adminLookupRows(v AdminLibrariesView) {
-	<ul class="ts-lookuplibs">
-		for _, l := range v.Lookups.Libraries {
-			<li class="ts-lookuplib">
-				<span class="body ts-lookuplib__name">{ l.Name }</span>
-				<form class="ts-lookuplib__form" method="post" action={ templ.SafeURL("/admin/libraries/" + l.ID + "/auto-lookup") }>
-					<input type="hidden" name="_csrf" value={ v.CSRF }/>
-					<input type="hidden" name="on" value="0"/>
-					<label class="ts-admin__choice" for={ "auto-" + l.ID }>
-						<input type="checkbox" class="ts-check" id={ "auto-" + l.ID } name="on" value="1" aria-describedby={ "auto-hint-" + l.ID } checked?={ l.Auto }/>
-						<span>{ v.Lookups.AutoLabel }</span>
+	</div>
+	if l.Status != nil {
+		<div class="ts-libs__act">
+			@components.LookupBulkStatus(*l.Status)
+		</div>
+	}
+	if l.Status == nil || !l.Status.Active {
+		<form class="ts-libs__lookup" method="post" action={ templ.SafeURL("/admin/libraries/" + l.ID + "/lookups") }>
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<fieldset class="ts-libs__scopes">
+				<legend class="label">{ v.Lookups.ScopeLabel }</legend>
+				for _, sc := range l.Scopes {
+					<label class="ts-admin__choice" for={ "scope-" + sc.Value + "-" + l.ID }>
+						<input type="radio" class="ts-check" id={ "scope-" + sc.Value + "-" + l.ID } name="scope" value={ sc.Value } checked?={ sc.Checked }/>
+						<span class="ts-num">{ sc.Label }</span>
 					</label>
-					<p id={ "auto-hint-" + l.ID } class="caption ts-autolookup__hint">{ v.Lookups.AutoHint }</p>
-					<button type="submit" class="ts-btn ts-btn--secondary">{ v.Lookups.Save }</button>
-				</form>
-				if l.Status != nil {
-					@components.LookupBulkStatus(*l.Status)
 				}
-				if l.Status == nil || !l.Status.Active {
-					<form class="ts-lookuplib__form" method="post" action={ templ.SafeURL("/admin/libraries/" + l.ID + "/lookups") }>
-						<input type="hidden" name="_csrf" value={ v.CSRF }/>
-						<label class="ts-admin__choice" for={ "more-" + l.ID }>
-							<input type="checkbox" class="ts-check" id={ "more-" + l.ID } name="more" value="1"/>
-							<span>{ v.Lookups.MoreLabel }</span>
-						</label>
-						<button type="submit" class="ts-btn ts-btn--secondary">{ v.Lookups.StartLabel }</button>
-					</form>
-				}
+			</fieldset>
+			<label class="ts-admin__choice" for={ "more-" + l.ID }>
+				<input type="checkbox" class="ts-check" id={ "more-" + l.ID } name="more" value="1"/>
+				<span>{ v.Lookups.MoreLabel }</span>
+			</label>
+			<div class="ts-libs__act">
+				<button type="submit" class="ts-btn ts-btn--secondary">{ v.Lookups.StartLabel }</button>
 				if l.NeedsHref != "" {
 					<a class="ts-lookuplib__needs" href={ templ.SafeURL(l.NeedsHref) }>{ l.NeedsLabel }</a>
 				}
-			</li>
+			</div>
+		</form>
+	} else if l.NeedsHref != "" {
+		<a class="ts-lookuplib__needs" href={ templ.SafeURL(l.NeedsHref) }>{ l.NeedsLabel }</a>
+	}
+}
+
+// adminUploads is "Adding books": the owner chooses the folder that receives books or "Nowhere (off)" in a
+// row that saves on change; an admin only reads.
+templ adminUploads(v AdminLibrariesView, l AdminUploadLibrary) {
+	<h3 class="section ts-libs__sub" id={ "uploads-" + l.ID }>Adding books</h3>
+	<div class="ts-group">
+		if v.Uploads.Owner {
+			@settingForm(v.CSRF, "/admin/libraries/"+l.ID+"/uploads", "saved-uploads-"+l.ID, v.Uploads.Save) {
+				<div class="ts-switch-row ts-me__line ts-libs__stack">
+					<label class="ts-switch-row__label" for={ "upload-" + l.ID }>{ v.Uploads.Where }</label>
+					<select id={ "upload-" + l.ID } name="folder_id" class="ts-select ts-libs__path" aria-describedby={ "upload-lead-" + l.ID }>
+						<option value="" selected?={ l.Chosen == "" }>{ v.Uploads.Off }</option>
+						for _, f := range l.Folders {
+							<option value={ f.ID } selected?={ l.Chosen == f.ID }>{ f.Path }</option>
+						}
+					</select>
+				</div>
+			}
+		} else {
+			<div class="ts-switch-row ts-me__line ts-libs__stack">
+				<span class="ts-switch-row__label">{ v.Uploads.Where }</span>
+				if l.ChosenPath != "" {
+					<span class="ts-upset__path">{ l.ChosenPath }</span>
+				} else {
+					<span>{ v.Uploads.Off }</span>
+				}
+			</div>
 		}
-	</ul>
+	</div>
+	<p class="caption" id={ "upload-lead-" + l.ID }>
+		if v.Uploads.Owner {
+			{ v.Uploads.Lead }
+		} else {
+			{ v.Uploads.OwnerOnly }
+		}
+	</p>
+	if l.Error != "" {
+		<p class="ts-field__error" role="alert">
+			@components.Icon("alert", false)
+			{ l.Error }
+		</p>
+	}
+	if l.AddHref != "" {
+		<div class="ts-libs__act"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(l.AddHref) }>{ l.AddLabel }</a></div>
+	}
+}
+
+// adminOnlineSwitch is the owner's on/off choice. It changes which settings the page shows, so the page
+// is drawn again after a change.
+templ adminOnlineSwitch(v AdminLibrariesView) {
+	<form class="ts-libs__form" method="post" action="/admin/online" hx-post="/admin/online" hx-trigger="change" hx-sync="this:queue last" hx-target="#main" hx-select="#main" hx-swap="outerSync">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		<div class="ts-group">
+			<div class="ts-switch-row ts-me__line">
+				<label class="ts-me__linetext" for="online-on">
+					<span class="ts-switch-row__label">{ v.Online.OnLabel }</span>
+				</label>
+				<input type="hidden" name="on" value="0"/>
+				<input type="checkbox" role="switch" class="ts-switch" id="online-on" name="on" value="1" checked?={ v.Online.On }/>
+			</div>
+		</div>
+		<noscript><button type="submit" class="ts-btn ts-btn--secondary">{ v.Online.Save }</button></noscript>
+	</form>
 }

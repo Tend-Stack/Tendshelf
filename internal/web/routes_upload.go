@@ -204,24 +204,34 @@ func (s *server) postUploadSetting(w http.ResponseWriter, r *http.Request) {
 	if folderID != "" {
 		f, err := s.lib.Folder(ctx, folderID)
 		if err != nil || f.LibraryID != lib.ID {
-			s.renderAdminLibrariesFor(w, r, http.StatusUnprocessableEntity, "", lib.ID, uploadsCannotWrite)
+			s.refuseUpload(w, r, lib.ID)
 			return
 		}
 		if err := s.uploads.Writable(ctx, folderID); err != nil {
-			s.renderAdminLibrariesFor(w, r, http.StatusUnprocessableEntity, "", lib.ID, uploadsCannotWrite)
+			s.refuseUpload(w, r, lib.ID)
 			return
 		}
 	}
 	if err := s.lib.SetUploadFolder(ctx, lib.ID, folderID); err != nil {
 		if errors.Is(err, library.ErrNotFound) {
-			s.renderAdminLibrariesFor(w, r, http.StatusUnprocessableEntity, "", lib.ID, uploadsCannotWrite)
+			s.refuseUpload(w, r, lib.ID)
 			return
 		}
 		s.serverError(w, r, "upload setting", err)
 		return
 	}
 	s.audit(ctx, currentUser(r).ID, "library.uploads", "library:"+lib.ID, map[string]string{"folder_id": folderID})
-	s.answerPage(w, r, "/admin/libraries#uploads-h")
+	s.answerSetting(w, r, "/admin/libraries#uploads-"+lib.ID)
+}
+
+// refuseUpload answers a folder that cannot take uploads: a toast for a change made on the page, the
+// page with the reason under the library's choice for a plain post.
+func (s *server) refuseUpload(w http.ResponseWriter, r *http.Request, libID string) {
+	if r.Header.Get("HX-Request") == "true" {
+		s.refuseSetting(w, r, http.StatusUnprocessableEntity, uploadsCannotWrite)
+		return
+	}
+	s.renderAdminLibrariesFor(w, r, http.StatusUnprocessableEntity, "", libID, uploadsCannotWrite)
 }
 
 // postBookRemove removes a book Tendshelf added by upload: its unchanged files and the book. The

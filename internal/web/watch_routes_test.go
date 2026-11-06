@@ -32,7 +32,7 @@ func TestWatchRoutes(t *testing.T) {
 	e := sweepSeed(t)
 	path := "/admin/libraries/" + e.libID + "/watch"
 	body := e.compareGet(sweepOwner, "/admin/libraries", nil).Body.String()
-	for _, want := range []string{watchTitle, watchLabel, watchEveryLabel, watchStatusOn} {
+	for _, want := range []string{"Watching", watchLabel, watchEveryLabel, watchStatusOn} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Libraries page lacks %q", want)
 		}

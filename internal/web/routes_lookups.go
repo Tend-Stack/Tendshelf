@@ -72,20 +72,16 @@ func (s *server) postAutoLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The form sends a hidden 0 before the checkbox's 1, so the last value is the answer.
-	vals := r.PostForm["on"]
-	on := ""
-	if len(vals) > 0 {
-		on = vals[len(vals)-1]
-	}
+	on := lastValue(r.PostForm["on"])
 	if on != "0" && on != "1" {
-		http.Error(w, detailsFailed, http.StatusUnprocessableEntity)
+		s.refuseSetting(w, r, http.StatusUnprocessableEntity, detailsFailed)
 		return
 	}
 	if err := s.details.SetAutoLookup(r.Context(), l.ID, on == "1", currentUser(r).ID); err != nil {
 		s.lookupFailed(w, r, "auto lookup", err)
 		return
 	}
-	s.answerPage(w, r, "/admin/libraries")
+	s.answerSetting(w, r, "/admin/libraries")
 }
 
 func (s *server) postBulkStart(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +92,15 @@ func (s *server) postBulkStart(w http.ResponseWriter, r *http.Request) {
 	if !s.parseForm(w, r) {
 		return
 	}
-	if _, err := s.details.StartBulk(r.Context(), l.ID, r.PostFormValue("more") == "1", currentUser(r).ID); err != nil {
+	scope := r.PostFormValue("scope")
+	if scope == "" {
+		scope = metadata.ScopeMissing
+	}
+	if !metadata.ValidScope(scope) {
+		s.refuseSetting(w, r, http.StatusUnprocessableEntity, detailsFailed)
+		return
+	}
+	if _, err := s.details.StartBulk(r.Context(), l.ID, scope, r.PostFormValue("more") == "1", currentUser(r).ID); err != nil {
 		s.lookupFailed(w, r, "start lookups", err)
 		return
 	}
@@ -228,7 +232,7 @@ func (s *server) lookupsView(ctx context.Context, r *http.Request, libs []librar
 		return nil, err
 	}
 	v := &pages.AdminLookupsView{AutoLabel: lookupAutoLabel, AutoHint: lookupAutoHint, Save: lookupAutoSave,
-		StartLabel: lookupStart, MoreLabel: detailsMoreLabel}
+		StartLabel: lookupStart, MoreLabel: detailsMoreLabel, ScopeLabel: lookupScopeLabel}
 	for _, l := range libs {
 		row := pages.AdminLookupLibrary{ID: l.ID, Name: l.Name, Auto: l.AutoLookupAt > 0}
 		j, found, err := s.latestBulk(ctx, l.ID)
@@ -241,6 +245,15 @@ func (s *server) lookupsView(ctx context.Context, r *http.Request, libs []librar
 				return nil, err
 			}
 			row.Status = &sv
+		}
+		counts, err := s.details.CountScopes(ctx, l.ID)
+		if err != nil {
+			return nil, err
+		}
+		row.Scopes = []pages.AdminScope{
+			{Value: metadata.ScopeMissing, Label: lookupScopeMissing(counts.Missing), Checked: true},
+			{Value: metadata.ScopeUnlooked, Label: lookupScopeUnlooked(counts.Unlooked)},
+			{Value: metadata.ScopeAll, Label: lookupScopeAll(counts.All)},
 		}
 		if _, total, err := s.lib.NeedsLook(ctx, l.ID, 0); err != nil {
 			return nil, err

@@ -47,6 +47,7 @@ var healthCond = map[string]string{
 // HealthRow is one book under a group. FolderGone is true when no book of its folder is present any more.
 type HealthRow struct {
 	ID, Title, FolderID, LibraryID string
+	Refused                        string // refused reason (drm, damaged, unsupported, no_audio), empty when none
 	FolderGone                     bool
 }
 
@@ -62,7 +63,7 @@ func scanHealthRow(s scanner) (HealthRow, error) {
 		h           HealthRow
 		title, root string
 	)
-	err := s.Scan(&h.ID, &title, &root, &h.FolderID, &h.LibraryID, &h.FolderGone)
+	err := s.Scan(&h.ID, &title, &root, &h.FolderID, &h.LibraryID, &h.Refused, &h.FolderGone)
 	if title == "" {
 		title = filepath.Base(root)
 	}
@@ -87,7 +88,7 @@ func (r *Repo) HealthPage(ctx context.Context, sc Scope, group string, offset, l
 		return nil, n, nil
 	}
 	rows, err := many(ctx, r.st.Reader(), scanHealthRow,
-		`SELECT b.id, b.title, b.root_path, b.folder_id, b.library_id,
+		`SELECT b.id, b.title, b.root_path, b.folder_id, b.library_id, COALESCE(b.refused_reason, ''),
   NOT EXISTS (SELECT 1 FROM books p WHERE p.folder_id = b.folder_id AND p.missing_since IS NULL)`+from+
 			` ORDER BY b.sort_title COLLATE NOCASE, b.root_path LIMIT ? OFFSET ?`,
 		append(append([]any{}, wargs...), limit, offset)...)

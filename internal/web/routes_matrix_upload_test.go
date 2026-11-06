@@ -44,7 +44,8 @@ func uploadSweepRows() []sweepRow {
 		sweepSame(http.StatusNotFound), ""))
 	setting := sweepPost("POST /admin/libraries/{id}/uploads",
 		func(e *sweepEnv, _ int) string { return "/admin/libraries/" + e.libID + "/uploads" }, sweepFormOf(url.Values{"folder_id": {""}}),
-		sweepOwnerOnly(http.StatusSeeOther, http.StatusNotFound), "/admin/libraries#uploads-h")
+		sweepOwnerOnly(http.StatusSeeOther, http.StatusNotFound), "")
+	setting.LocOf = func(e *sweepEnv) string { return "/admin/libraries#uploads-" + e.libID }
 	remove := sweepPost("POST /books/{id}/remove", sweepBookPath("/remove"), sweepFormOf(url.Values{}),
 		staff(http.StatusConflict), "")
 	// The pages: the sweep's library takes no uploads and its books were not added by upload, so every

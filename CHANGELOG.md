@@ -13,6 +13,10 @@ Added after 2026.2.0 was dated. Nothing here is tagged yet.
   controls shows one chip per filter, each with a cross that removes only that filter, and Clear all next to them
   (it keeps your sort and view). Sort is its own control ("Sort: Recently added"), Show keeps only the listening
   states, and the header reads "15 of 60 books" instead of a separate count. Saved links keep working.
+- **Look up the books that need it.** On Libraries & scanning, "Look up" now asks which books: those missing details (the
+  default), those not looked up yet, or all, each with how many it covers. A book you reviewed and accepted is not asked
+  about again. The page is organised by library, with settings that save as you change them. The books that need a look
+  moved to Library health, which opens with a count and a link to each group.
 
 - **The desktop window stops at 1,920 px.** The pages already stop there, so a wider window on an ultrawide monitor
   only showed a blank strip. Dragging an edge or corner stops at 1,920 px, and Maximise fits the window to the screen:

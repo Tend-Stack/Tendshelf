@@ -74,10 +74,7 @@ func (s *server) postWatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The form sends a hidden 0 before the checkbox's 1, so the last value is the answer.
-	on := ""
-	if vals := r.PostForm["on"]; len(vals) > 0 {
-		on = vals[len(vals)-1]
-	}
+	on := lastValue(r.PostForm["on"])
 	every := -1
 	for _, c := range watchChoices {
 		if c.Value == r.PostForm.Get("every") {
@@ -85,7 +82,7 @@ func (s *server) postWatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if (on != "0" && on != "1") || every < 0 {
-		http.Error(w, watchErrValue, http.StatusUnprocessableEntity)
+		s.refuseSetting(w, r, http.StatusUnprocessableEntity, watchErrValue)
 		return
 	}
 	if err := s.lib.SetWatch(r.Context(), l.ID, on == "1", every); err != nil {
@@ -96,5 +93,5 @@ func (s *server) postWatch(w http.ResponseWriter, r *http.Request) {
 	if s.watcher != nil {
 		s.watcher.Nudge()
 	}
-	s.answerPage(w, r, "/admin/libraries")
+	s.answerSetting(w, r, "/admin/libraries")
 }
