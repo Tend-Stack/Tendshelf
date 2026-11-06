@@ -78,10 +78,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - name: Install make and unzip
+      - name: Install make, unzip and ffmpeg (the upload tests probe real files)
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends make unzip curl ca-certificates
+          apt-get install -y --no-install-recommends make unzip curl ca-certificates ffmpeg
       - name: Install the pinned Chromium and its libraries
         run: |
           set -euo pipefail

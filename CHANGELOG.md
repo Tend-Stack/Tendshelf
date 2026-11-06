@@ -2,10 +2,9 @@
 
 Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-numbers.md)). Dates are UTC.
 
-## Unreleased
+## 2026.2.0
 
-This will be **2026.2.0**; the date is added on release day. It brings offline use, uploads, a book reader,
-ebooks as books, and a desktop app.
+Released 2026-11-06. It brings offline use, uploads, a book reader, ebooks as books, and a desktop app.
 
 ### What you can do
 
