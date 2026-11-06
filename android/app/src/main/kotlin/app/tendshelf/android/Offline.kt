@@ -18,12 +18,15 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Requirements
+import app.tendshelf.shared.DownloadPercent
+import app.tendshelf.shared.FileProgress
 import app.tendshelf.shared.OfflineBook
 import app.tendshelf.shared.OfflineState
 import app.tendshelf.shared.PlayerSettings
 import app.tendshelf.shared.Plan
 import app.tendshelf.shared.Verdict
 import app.tendshelf.shared.checkVerdict
+import app.tendshelf.shared.downloadPercent
 import app.tendshelf.shared.downloadPlan
 import app.tendshelf.shared.fileComplete
 import java.io.File
@@ -143,6 +146,7 @@ object Offline {
             }
             onChange?.invoke(book)
         }
+        ensurePolling()
     }
 
     // ---- State ----
@@ -182,18 +186,81 @@ object Offline {
         return fileComplete(planned, key.endsWith(":c"), len, if (len > 0) cache().getCachedBytes(key, 0, len) else 0)
     }
 
-    /** `state` word and percent for the page. */
-    fun view(book: String): Pair<String, Int> {
-        val row = store.get(book) ?: return "none" to 0
-        val pct = if (row.state == OfflineState.READY || row.state == OfflineState.STALE) 100 else percent(book, row)
-        return row.state.name.lowercase() to pct
+    /** How a book stands for the page, the list and the notification: [state] word, [pct], and whether [pct] is known. */
+    data class DlView(val state: String, val pct: Int, val known: Boolean = true)
+
+    /** The last percent shown per book, so the number never goes back; and the poll's latest answer. */
+    private val floors = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val live = java.util.concurrent.ConcurrentHashMap<String, DownloadPercent>()
+
+    fun view(book: String): DlView {
+        val row = store.get(book) ?: return DlView("none", 0)
+        if (row.state == OfflineState.READY || row.state == OfflineState.STALE) {
+            floors.remove(book)
+            live.remove(book)
+            return DlView(row.state.name.lowercase(), 100)
+        }
+        val p = live[book] ?: progress(book, emptyList())
+        return DlView(row.state.name.lowercase(), p.pct, p.known)
     }
 
-    private fun percent(book: String, row: OfflineBook): Int = try {
-        val got = downloadsOf(manager(), book).sumOf { it.bytesDownloaded }
-        if (row.sizeBytes > 0) (got * 100 / row.sizeBytes).toInt().coerceIn(0, 99) else 0
+    /**
+     * Whole-book percent. Media3 writes a file's bytes to its index only when the state changes, so a running file is
+     * read from [running] (the manager's current downloads, which carry the bytes so far) and the rest from the index.
+     */
+    private fun progress(book: String, running: List<Download>): DownloadPercent = try {
+        val byId = LinkedHashMap<String, Download>()
+        downloadsOf(manager(), book).forEach { byId[it.request.id] = it }
+        running.filter { it.request.id.startsWith("$book|") }.forEach { byId[it.request.id] = it }
+        val files = byId.values.map { d ->
+            val planned = d.request.data.let { if (it.isEmpty()) 0L else String(it).toLongOrNull() ?: 0L }
+            FileProgress(planned, d.contentLength, d.bytesDownloaded, d.state == Download.STATE_COMPLETED)
+        }
+        // Files the manager has not been told about yet still weigh in with the manifest's size.
+        val missing = expectedFiles(book) - files.size
+        val all = if (missing > 0) files + List(missing) { FileProgress(0, 0, 0, false) } else files
+        val out = downloadPercent(all, floors[book] ?: 0)
+        floors[book] = out.pct
+        out
     } catch (_: Exception) {
-        0
+        DownloadPercent(floors[book] ?: 0, false)
+    }
+
+    // ---- Progress poll: once a second, only while a file is downloading ----
+
+    private var polling = false
+
+    /** Starts the poll if a file is downloading; the poll stops itself when none is, so nothing runs at rest. */
+    private fun ensurePolling() {
+        main.post {
+            if (polling || !::app.isInitialized) return@post
+            if (manager().currentDownloads.none { it.state == Download.STATE_DOWNLOADING }) return@post
+            polling = true
+            pollTick()
+        }
+    }
+
+    private fun pollTick() {
+        val running = manager().currentDownloads.toList()
+        if (running.none { it.state == Download.STATE_DOWNLOADING }) {
+            polling = false
+            return
+        }
+        safeIo {
+            for (book in running.mapNotNull { it.request.id.substringBefore('|', "").takeIf(String::isNotEmpty) }.distinct()) {
+                live[book] = progress(book, running)
+                onChange?.invoke(book)
+            }
+        }
+        main.postDelayed({ pollTick() }, 1000)
+    }
+
+    /** The one percent the notification shows: the book that is downloading, by the same bytes as the page. */
+    fun notificationProgress(downloads: List<Download>): Pair<String, DownloadPercent>? {
+        val first = downloads.firstOrNull { it.state == Download.STATE_DOWNLOADING } ?: return null
+        val book = first.request.id.substringBefore('|')
+        val title = store.get(book)?.title ?: return null
+        return title to progress(book, downloads)
     }
 
     /** A book that plays from the phone: whole (or old, but whole) files and a stored answer. */
@@ -236,6 +303,8 @@ object Offline {
             val cover = api.cover(conn.token, book)
             if (cover != null) coverFile(book).apply { parentFile?.mkdirs() }.writeBytes(cover)
             val place = manifest.progress
+            floors.remove(book)
+            live.remove(book)
             store.put(
                 OfflineBook(
                     book, tokens.userId.orEmpty(), manifest.title, manifest.author, manifest.durationMs, plan.total,
@@ -288,6 +357,8 @@ object Offline {
         }
         if (fetchText(book, tm) != TextResult.READY) {
             store.remove(book)
+            floors.remove(book)
+            live.remove(book)
             coverFile(book).delete()
             TextStore.remove(book)
             refuse(R.string.download_failed)
@@ -464,6 +535,8 @@ object Offline {
         if (!::app.isInitialized) return
         prefs.edit().putBoolean("wipePending", true).commit()
         store.clear()
+        floors.clear()
+        live.clear()
         // Half a second after the sound stopped, so a loader is not reading a cache that is being released.
         safeIo {
             Thread.sleep(500)

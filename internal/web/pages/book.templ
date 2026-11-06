@@ -63,7 +63,7 @@ type BookPlayView struct {
 type BookDownloadView struct {
 	ID, Label, Href string
 	// Downloading has a {pct} token; the rest are the status link's words per state.
-	Downloading, Waiting, Ready, Paused, Failed string
+	Downloading, Working, Waiting, Ready, Paused, Failed string
 }
 
 // BookView is the book page. The handler writes every word and address; the template only lays
@@ -242,11 +242,15 @@ templ bookDownload(v BookDownloadView) {
 		class="ts-btn ts-btn--secondary ts-btn--lg ts-book__download"
 		data-ts-download={ v.ID }
 		data-ts-msg-downloading={ v.Downloading }
+		data-ts-msg-working={ v.Working }
 		data-ts-msg-waiting={ v.Waiting }
 		hidden
 	>
 		@components.Icon("download", false)
 		<span class="ts-book__label">{ v.Label }</span>
+		<span class="ts-bar ts-book__dlbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" data-ts-download-bar hidden>
+			<span class="ts-bar__fill ts-value"></span>
+		</span>
 	</button>
 	<a
 		class="ts-btn ts-btn--secondary ts-btn--lg ts-book__download"

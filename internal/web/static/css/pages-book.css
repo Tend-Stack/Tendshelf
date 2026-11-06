@@ -160,3 +160,14 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   .ts-book__rails, .ts-book__panel.is-about .ts-book__rails { display: flex; margin-top: 0; }
   .ts-book__tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* The Download button's own progress bar (native-downloads.js): along the button's bottom edge. With no known total
+   (.ts-bar--busy) a short piece slides across; with reduced motion it stands still at half instead. */
+.ts-book__download { position: relative; overflow: hidden; }
+.ts-book__dlbar { position: absolute; inset: auto 0 0 0; height: 0.25rem; border-radius: 0; }
+.ts-book__dlbar[hidden] { display: none; }
+.ts-bar--busy .ts-bar__fill { inline-size: 35%; animation: ts-dl-busy 1.4s var(--easing-standard, ease-in-out) infinite; }
+@keyframes ts-dl-busy { from { left: -35%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .ts-bar--busy .ts-bar__fill { animation: none; inline-size: 50%; }
+}

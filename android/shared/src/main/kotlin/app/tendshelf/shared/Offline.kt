@@ -69,6 +69,42 @@ fun downloadPlan(m: BookManifest, paths: ApiPaths, freeBytes: Long): Plan {
 fun fileComplete(planned: Long, compat: Boolean, contentLength: Long, cachedBytes: Long): Boolean =
     contentLength > 0 && cachedBytes == contentLength && (compat || planned <= 0 || planned == contentLength)
 
+/** One file of a running download: the size the manifest listed, what the server announced, what has arrived. */
+data class FileProgress(val planned: Long, val contentLength: Long, val bytes: Long, val done: Boolean)
+
+/** [pct] is 0 to 99 while a download runs; [known] is false when no file's size is known, so [pct] means nothing yet. */
+data class DownloadPercent(val pct: Int, val known: Boolean)
+
+/**
+ * The whole book's percent: bytes that arrived over the book's total, each file weighted by the size the manifest
+ * listed. A file with no listed size takes the average weight of the others (or its announced length), so it cannot
+ * make the number jump. A file counts as whole only when it is done, so one still arriving stops at 99 % of itself
+ * (a browser-friendly rendition has no length up front and may run past the original's size). The number never goes
+ * below [previous] and never reaches 100: the Ready state says "done", not this.
+ */
+fun downloadPercent(files: List<FileProgress>, previous: Int): DownloadPercent {
+    val floor = previous.coerceIn(0, 99)
+    val sizes = files.map { if (it.planned > 0) it.planned else maxOf(it.contentLength, 0L) }
+    val knownSizes = sizes.filter { it > 0 }
+    if (files.isEmpty() || knownSizes.isEmpty()) return DownloadPercent(floor, false)
+    val average = knownSizes.sum() / knownSizes.size
+    var total = 0.0
+    var got = 0.0
+    for ((i, f) in files.withIndex()) {
+        val weight = (if (sizes[i] > 0) sizes[i] else average).toDouble()
+        val denominator = if (f.contentLength > 0) f.contentLength else f.planned
+        val fraction = when {
+            f.done -> 1.0
+            denominator > 0 -> (f.bytes.toDouble() / denominator).coerceIn(0.0, 0.99)
+            else -> 0.0
+        }
+        total += weight
+        got += weight * fraction
+    }
+    val pct = (got * 100 / total).toInt().coerceIn(0, 99)
+    return DownloadPercent(maxOf(pct, floor), true)
+}
+
 enum class Verdict { SAME, UPDATE, STALE, REMOVE, NOTHING }
 
 /**

@@ -108,7 +108,7 @@ class StartPages(private val context: Context) {
             "LIST" to list.toString(),
             "LIBRARY" to esc(context.getString(R.string.downloads_library)),
             "HOMEURL" to esc(homeUrl.ifEmpty { startUrl }),
-            "REFRESH" to if (active.any { it.state == OfflineState.DOWNLOADING || it.state == OfflineState.QUEUED }) "<meta http-equiv=\"refresh\" content=\"5\">" else "",
+            "REFRESH" to if (active.any { it.state == OfflineState.DOWNLOADING || it.state == OfflineState.QUEUED }) "<meta http-equiv=\"refresh\" content=\"2\">" else "",
         )
     }
 
@@ -120,9 +120,13 @@ class StartPages(private val context: Context) {
             val here = b.bookId == playingId
             val canPlay = b.state == OfflineState.READY || b.state == OfflineState.STALE
             val meta = esc(listOf(b.author, stateWords(b)).filter { it.isNotEmpty() }.joinToString(" \u00b7 "))
+            // A bar only while the percent is known; unknown shows the plain words, so nothing animates here.
+            val bar = Offline.view(b.bookId).takeIf { b.state == OfflineState.DOWNLOADING && it.known }?.let {
+                "<progress class=\"dl__bar\" max=\"100\" value=\"${it.pct}\" aria-label=\"${esc(context.getString(R.string.downloads_active))}\"></progress>"
+            }.orEmpty()
             val cover = if (Offline.coverBytes(b.bookId) != null) "<img class=\"dl__cover\" alt=\"\" src=\"/covers/$id\">" else ""
             out.append("<li class=\"ts-row dl__row\">$cover")
-            out.append("<span class=\"ts-row__text\"><span class=\"ts-row__title\">${esc(b.title)}</span><span class=\"ts-row__meta\">$meta</span></span>")
+            out.append("<span class=\"ts-row__text\"><span class=\"ts-row__title\">${esc(b.title)}</span><span class=\"ts-row__meta\">$meta</span>$bar</span>")
             out.append("<span class=\"dl__actions\">")
             // The two formats are two plain buttons: this page shows no place and no time, so neither one is "the resume button".
             if (Offline.readable(b.bookId) && homeOrigin.isNotEmpty()) {
@@ -141,7 +145,7 @@ class StartPages(private val context: Context) {
 
     private fun stateWords(b: OfflineBook): String = when (b.state) {
         OfflineState.QUEUED -> context.getString(R.string.downloads_waiting)
-        OfflineState.DOWNLOADING -> "${Offline.view(b.bookId).second}%"
+        OfflineState.DOWNLOADING -> Offline.view(b.bookId).let { if (it.known) context.getString(R.string.downloads_percent, it.pct) else context.getString(R.string.downloads_working) }
         OfflineState.PAUSED -> context.getString(R.string.downloads_paused_row)
         OfflineState.FAILED -> context.getString(R.string.downloads_failed_row)
         OfflineState.STALE -> context.getString(R.string.downloads_stale_row)

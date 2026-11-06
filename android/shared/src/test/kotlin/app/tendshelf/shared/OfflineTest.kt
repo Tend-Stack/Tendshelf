@@ -110,4 +110,43 @@ class OfflineTest {
         assertEquals("{\"t\":\"dl\",\"bookId\":\"b1\",\"state\":\"downloading\",\"pct\":40}", encodeDl("b1", "downloading", 40))
         assertEquals("{\"t\":\"dl\",\"bookId\":\"b1\",\"state\":\"none\",\"pct\":100}", encodeDl("b1", "<x>", 900))
     }
+
+    private fun fp(planned: Long, bytes: Long, len: Long = planned, done: Boolean = false) = FileProgress(planned, len, bytes, done)
+
+    @Test
+    fun percentIsWholeBookBytesOverTotal() {
+        // Three files of 10, 10 and 20 MiB: one whole, one half, one not started = 15 of 40 MiB.
+        val files = listOf(fp(10 * mib, 10 * mib, done = true), fp(10 * mib, 5 * mib), fp(20 * mib, 0))
+        assertEquals(DownloadPercent(37, true), downloadPercent(files, 0))
+    }
+
+    @Test
+    fun percentNeverGoesBackOrReaches100() {
+        assertEquals(60, downloadPercent(listOf(fp(10 * mib, mib)), 60).pct)
+        val done = listOf(fp(10 * mib, 10 * mib), fp(10 * mib, 10 * mib))
+        assertEquals(99, downloadPercent(done, 0).pct) // arrived but not marked whole: the Ready state decides
+        assertEquals(99, downloadPercent(listOf(fp(10 * mib, 99 * mib)), 0).pct)
+        assertEquals(99, downloadPercent(listOf(fp(10 * mib, 0)), 400).pct)
+    }
+
+    @Test
+    fun percentToleratesUnknownSizes() {
+        // A rendition with no listed size takes the average weight; it does not make the number jump.
+        val a = downloadPercent(listOf(fp(10 * mib, 5 * mib), fp(0, 0, len = -1)), 0)
+        assertEquals(DownloadPercent(25, true), a)
+        // Its bytes arriving past an unknown length stop at 99 % of that file.
+        val b = downloadPercent(listOf(fp(10 * mib, 10 * mib, done = true), fp(0, 50 * mib, len = -1)), 0)
+        assertEquals(DownloadPercent(50, true), b)
+        // Compat file: planned is the original's size, the announced length is the rendition's.
+        val c = downloadPercent(listOf(fp(10 * mib, 3 * mib, len = 6 * mib)), 0)
+        assertEquals(DownloadPercent(50, true), c)
+    }
+
+    @Test
+    fun percentUnknownWhenNothingIsKnown() {
+        assertEquals(DownloadPercent(0, false), downloadPercent(emptyList(), 0))
+        assertEquals(DownloadPercent(12, false), downloadPercent(listOf(fp(0, 5, len = -1)), 12))
+        assertEquals("{\"t\":\"dl\",\"bookId\":\"b\",\"state\":\"downloading\",\"pct\":0,\"known\":false}", encodeDl("b", "downloading", 0, false))
+        assertEquals("{\"t\":\"dl\",\"bookId\":\"b\",\"state\":\"downloading\",\"pct\":5}", encodeDl("b", "downloading", 5))
+    }
 }

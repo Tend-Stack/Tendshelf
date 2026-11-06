@@ -69,6 +69,22 @@ func TestNativeDownloadsBrowser(t *testing.T) {
 			if got := text("[data-ts-download] .ts-book__label"); got != "Downloading · 40%" {
 				t.Errorf("downloading label %q", got)
 			}
+			var now string
+			tab.Eval(`document.querySelector("[data-ts-download-bar]").getAttribute("aria-valuenow") + "/" + document.querySelector("[data-ts-download-bar]").hidden`, &now)
+			if now != "40/false" {
+				t.Errorf("progress bar %q, want 40/false", now)
+			}
+			// A total not known yet: plain words and a bar that is busy, not a stuck 0 %.
+			tab.Eval(fmt.Sprintf(`window.__push(%s)`, cdp.Quote(fmt.Sprintf(`{"t":"dl","bookId":%q,"state":"downloading","pct":0,"known":false}`, e.book.ID))), nil)
+			if got := text("[data-ts-download] .ts-book__label"); got != "Downloading…" {
+				t.Errorf("unknown-size label %q", got)
+			}
+			var busy bool
+			tab.Eval(`document.querySelector("[data-ts-download-bar]").classList.contains("ts-bar--busy")`, &busy)
+			if !busy {
+				t.Error("an unknown total shows no moving bar")
+			}
+			push("downloading", 40)
 			var disabled bool
 			tab.Eval(`document.querySelector("[data-ts-download]").disabled`, &disabled)
 			if !disabled {

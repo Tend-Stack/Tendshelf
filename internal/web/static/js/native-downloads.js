@@ -2,7 +2,8 @@
 //
 // The book page's Download button, driven by the app instead of by downloads.js (which needs chunks, a cache and
 // Web Locks that the app's window does not use). The app keeps the files and tells this page how the book stands:
-// {"t":"dl","bookId":"","state":"none|queued|downloading|paused|ready|failed|stale","pct":0}.
+// {"t":"dl","bookId":"","state":"none|queued|downloading|paused|ready|failed|stale","pct":0}, plus "known":false
+// while the app cannot yet tell how big the book is (an older app never sends it, and then the percent is known).
 // The words sent are "dl add <id>" and "dl ask <id>"; like native-audio.js this file builds no URL and reads no token.
 
 const native = window.tsNative;
@@ -20,7 +21,7 @@ function start(bridge) {
   // The page owns the first label ("Download"); the app owns everything after it.
   let firstLabel = "";
 
-  function show(state, pct) {
+  function show(state, pct, known) {
     const { button, link } = nodes();
     if (!button || !link) return;
     const label = button.querySelector(".ts-book__label");
@@ -32,17 +33,36 @@ function start(bridge) {
     link.hidden = !listed;
     // The link goes to the app's own Downloads page; htmx must not take the click.
     link.setAttribute("hx-boost", "false");
+    if (state !== "downloading" && state !== "queued") showBar(button, null);
     if (listed) {
       link.querySelector("[data-ts-download-label]").textContent = link.dataset["tsMsg" + (state === "paused" ? "Paused" : "Ready")];
     } else if (state === "downloading") {
-      label.textContent = button.dataset.tsMsgDownloading.replace("{pct}", String(pct));
+      // Without a known total the words say so and the bar keeps moving, instead of a stuck 0 %.
+      label.textContent = known ? button.dataset.tsMsgDownloading.replace("{pct}", String(pct)) : (button.dataset.tsMsgWorking || "Downloading…");
+      showBar(button, known ? pct : -1);
     } else if (state === "queued") {
       label.textContent = button.dataset.tsMsgWaiting;
+      showBar(button, null);
     } else if (state === "failed") {
       label.textContent = link.dataset.tsMsgFailed;
     } else {
       label.textContent = firstLabel;
     }
+  }
+
+  // The bar inside the button: a number is a share, -1 is "working, size not known yet", null hides it.
+  function showBar(button, pct) {
+    const bar = button.querySelector("[data-ts-download-bar]");
+    if (!bar) return;
+    bar.hidden = pct === null;
+    bar.classList.toggle("ts-bar--busy", pct === -1);
+    if (pct === null) return;
+    if (pct === -1) {
+      bar.removeAttribute("aria-valuenow");
+      return;
+    }
+    bar.setAttribute("aria-valuenow", String(pct));
+    bar.querySelector(".ts-bar__fill").style.setProperty("--ts-value", String(Math.max(0, Math.min(100, pct))));
   }
 
   const bookId = () => (nodes().button ? nodes().button.dataset.tsDownload : "");
@@ -59,7 +79,7 @@ function start(bridge) {
     } catch {
       return;
     }
-    if (message.t === "dl" && message.bookId === bookId()) show(String(message.state), Number(message.pct));
+    if (message.t === "dl" && message.bookId === bookId()) show(String(message.state), Number(message.pct), message.known !== false);
   });
 
   document.addEventListener("click", (event) => {

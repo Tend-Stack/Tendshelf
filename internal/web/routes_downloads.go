@@ -30,7 +30,7 @@ func (s *server) bookDownloadView(r *http.Request, book library.Book, hasPlay bo
 	}
 	return &pages.BookDownloadView{
 		ID: book.ID, Label: bookDownload, Href: "/me/downloads",
-		Downloading: "Downloading · {pct}%", Waiting: "Waiting",
+		Downloading: "Downloading · {pct}%", Working: "Downloading…", Waiting: "Waiting",
 		Ready: "Ready offline", Paused: "Paused", Failed: "Try again",
 	}
 }
