@@ -72,6 +72,23 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
         })
     }
 
+    /** Debug builds only: who asked for a speed (the stack names the caller), so a surprise speed can be traced. */
+    private fun traceSpeed(what: String, speed: Float) {
+        if (!BuildConfig.DEBUG) return
+        val who = Throwable().stackTrace.drop(2).take(6).joinToString(" < ") { "${it.className.substringAfterLast('.')}.${it.methodName}" }
+        android.util.Log.i("Tendshelf", "speed request $what=$speed by $who")
+    }
+
+    override fun setPlaybackSpeed(speed: Float) {
+        traceSpeed("setPlaybackSpeed", speed)
+        super.setPlaybackSpeed(speed)
+    }
+
+    override fun setPlaybackParameters(playbackParameters: androidx.media3.common.PlaybackParameters) {
+        traceSpeed("setPlaybackParameters", playbackParameters.speed)
+        super.setPlaybackParameters(playbackParameters)
+    }
+
     fun load(title: String, author: String, chapters: List<Chapter>, settings: PlayerSettings, art: ByteArray?) {
         this.title = title
         this.author = author

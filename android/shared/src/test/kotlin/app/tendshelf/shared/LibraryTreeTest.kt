@@ -39,13 +39,18 @@ class LibraryTreeTest {
         // trusted, auto, own
         val table = listOf(
             Triple(false, false, false) to Allowed(false, false, false, false), // any other installed app
-            Triple(true, false, false) to Allowed(true, false, true, true),
+            Triple(true, false, false) to Allowed(true, false, false, true),
             Triple(false, true, false) to Allowed(true, false, true, true),
-            Triple(false, false, true) to Allowed(true, true, true, true),
+            Triple(false, false, true) to Allowed(true, true, false, true),
             Triple(true, true, true) to Allowed(true, true, true, true),
         )
         for ((input, want) in table) assertEquals(want, allowedCommands(input.first, input.second, input.third), input.toString())
         assertFalse(allowedCommands(false, false, false).speed)
+        assertFalse(allowedCommands(trusted = true, auto = false, own = false).speed, "the system's controls get no speed button")
+        assertTrue(allowedCommands(trusted = false, auto = true, own = false).speed, "the car does")
+        assertFalse(allowedCommands(trusted = true, auto = false, own = true).speed, "nor does this app's own controller")
+        assertTrue(mayRate(true))
+        assertFalse(mayRate(false), "only this app's page sets a rate directly")
         assertFalse(allowedCommands(false, false, false).readsPlayer, "another app must not read what is playing")
     }
 

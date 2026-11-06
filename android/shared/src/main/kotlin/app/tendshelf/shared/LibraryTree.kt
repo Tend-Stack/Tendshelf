@@ -57,13 +57,18 @@ data class Allowed(val browse: Boolean, val ownCommands: Boolean, val speed: Boo
 /**
  * Only trusted controllers browse (the system, Android Auto and its Assistant, a car's own app: [trusted],
  * [auto]) and this app itself ([own]). Any other installed app gets playback commands and nothing from the library.
- * Custom commands are for this app only, except the speed button the car shows.
+ * Custom commands are for this app only, except the speed button the car shows. The car is [auto] alone: the system's
+ * own controllers are trusted and browse, but a phone's notification and lock screen get no speed button, and no
+ * controller but this app may set a rate (a stray tap must never change how fast a book plays).
  */
 fun allowedCommands(trusted: Boolean, auto: Boolean, own: Boolean): Allowed {
     val browse = trusted || auto || own
     // What is playing (title, timeline, session extras) is the person's own business: only those who may browse can read it.
-    return Allowed(browse = browse, ownCommands = own, speed = browse, readsPlayer = browse)
+    return Allowed(browse = browse, ownCommands = own, speed = auto, readsPlayer = browse)
 }
+
+/** The rate commands a controller may use: only this app's own page sets a speed directly; the car has its button. */
+fun mayRate(own: Boolean): Boolean = own
 
 private val SpeedSteps = listOf(1.0, 1.25, 1.5, 1.75, 2.0, 0.75)
 
