@@ -98,6 +98,7 @@ func run(dirs desktopshell.Dirs) error {
 
 	ui.app = application.New(application.Options{
 		Name:   "Tendshelf",
+		Icon:   appIcon(assets),
 		Assets: application.AssetOptions{Handler: desktopshell.New(desktopshell.Options{Starter: session, Assets: assets})},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: appID,
@@ -158,7 +159,7 @@ func run(dirs desktopshell.Dirs) error {
 	})
 	ui.bridge.exec = ui.win.ExecJS
 	trackWindow(ui, tracker, save)
-	setupTray(ui, assets)
+	setupTray(ui)
 
 	// A saved mode starts straight away; the picker shows "Opening your library…" meanwhile.
 	launch := session.Begin()
@@ -244,4 +245,12 @@ func showWindow(ui *windowUI, t *windowTracker) {
 	if t.isMaximised() {
 		ui.bridge.Send("maximised")
 	}
+}
+
+// appIcon is the 192 px app icon for a bare binary; the pages already ship it.
+func appIcon(assets *static.Set) []byte {
+	if a, ok := assets.Asset(appIconName); ok {
+		return a.Body
+	}
+	return nil
 }
