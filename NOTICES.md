@@ -77,6 +77,20 @@ Expected first entries (fill in when the port lands; do not pre-credit code that
 | github.com/mattn/go-isatty v0.0.24 | MIT | Dependency of modernc.org/sqlite (indirect). |
 | github.com/ncruces/go-strftime v1.1.0 | MIT | Dependency of modernc.org/sqlite (indirect). |
 
+## Android dependencies (`android/` only, decision 0024)
+
+Pinned by `android/gradle/verification-metadata.xml` and `android/gradle/libs.versions.toml`; fetched at build time from Google's
+Maven repository and Maven Central only. None is in the server binary.
+
+| Artifact | Licence | Why |
+| --- | --- | --- |
+| `androidx.media3:media3-exoplayer`, `-session`, `-datasource` 1.11.1 (with their own `media3-common`, `-container`, `-database`, `-decoder`, `-extractor`) | Apache-2.0 | Playback engine, media session and notification, and the HTTP data source with the bearer header (`PlaybackService`). Approved set |
+| `androidx.core:core` 1.9.0, `androidx.annotation` 1.8.0, `annotation-experimental` 1.3.1, `androidx.collection` 1.2.0, `androidx.concurrent:concurrent-futures` 1.2.0, `androidx.arch.core` 2.2.0, `androidx.lifecycle` (common, runtime, service) 2.8.0, `androidx.media:media` 1.7.0, `androidx.exifinterface` 1.3.6, `androidx.startup`, `androidx.tracing`, `androidx.versionedparcelable`, `androidx.profileinstaller` | Apache-2.0 | Pulled in by Media3 (`androidx.core` is in the approved set); not used directly |
+| `com.google.guava:guava` 33.3.1-android, `failureaccess` 1.0.2, `listenablefuture` 9999.0 | Apache-2.0 | Media3's `ListenableFuture` API |
+| `org.jetbrains.kotlin:kotlin-stdlib` 2.4.21 (and the jdk7/jdk8 shims 1.8.20), `org.jetbrains:annotations`, `org.jetbrains.kotlinx:kotlinx-coroutines-android` 1.7.3 | Apache-2.0 | Kotlin runtime (Kotlin is approved); coroutines come with Media3 and are not used directly |
+| Android Gradle Plugin 9.5.1, Kotlin Gradle Plugin 2.4.21, Gradle 9.8.2 (`android/gradle/wrapper/gradle-wrapper.jar`, SHA-256 of the distribution in `gradle-wrapper.properties`) | Apache-2.0 | Build tools only; not in the APK |
+| `org.jetbrains.kotlin:kotlin-test`, `kotlin-test-junit` 2.4.21, `junit:junit` 4.13.2, `org.hamcrest:hamcrest-core` 1.3 | Apache-2.0; EPL-1.0; BSD-3-Clause | Unit tests of the shared module only; not in the APK. Not on the approved list: reported for approval in A0 |
+
 ## Third-party services
 
 Online metadata providers (Audnexus, Audible catalogue, Google Books, Open Library, Apple iTunes Search)
