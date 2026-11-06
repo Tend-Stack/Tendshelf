@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import app.tendshelf.shared.Ask
 import app.tendshelf.shared.clockText
 
@@ -22,6 +23,9 @@ class AskPrompt(
     private val nm = context.getSystemService(NotificationManager::class.java)
     private var open: Ask? = null
 
+    /** Random per question: the service is exported, so a button press from another app must not answer it. */
+    private var nonce = 0L
+
     val isOpen: Boolean get() = open != null
 
     init {
@@ -35,6 +39,8 @@ class AskPrompt(
     fun show(ask: Ask) {
         if (open != null) return
         open = ask
+        nonce = java.security.SecureRandom().nextLong()
+        if (BuildConfig.DEBUG) Log.i("Tendshelf", "ask nonce=$nonce")
         writer.heldBook = ask.bookId
         val text = context.getString(R.string.continue_ask, clockText(ask.positionMs), ask.deviceLabel)
         val n = Notification.Builder(context, CHANNEL)
@@ -49,18 +55,17 @@ class AskPrompt(
     }
 
     private fun action(name: String, label: String): Notification.Action {
-        val intent = Intent(context, PlaybackService::class.java).setAction(name)
+        val intent = Intent(context, PlaybackService::class.java).setAction(name).putExtra(EXTRA_NONCE, nonce)
         val pi = PendingIntent.getService(context, name.hashCode(), intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return Notification.Action.Builder(null, label, pi).build()
     }
 
     /** True when [action] was one of ours. */
-    fun handle(action: String?): Boolean {
-        when (action) {
-            ACTION_HERE -> answer(keepHere = true)
-            ACTION_THERE -> answer(keepHere = false)
-            else -> return false
-        }
+    fun handle(intent: Intent?): Boolean {
+        val action = intent?.action
+        if (action != ACTION_HERE && action != ACTION_THERE) return false
+        // A press that does not carry this question's nonce is ignored (an old notification, another app).
+        if (open != null && intent.getLongExtra(EXTRA_NONCE, 0L) == nonce) answer(keepHere = action == ACTION_HERE)
         return true
     }
 
@@ -86,6 +91,7 @@ class AskPrompt(
     }
 
     companion object {
+        const val EXTRA_NONCE = "ts.ask.nonce"
         const val CHANNEL = "place"
         const val NOTIFICATION_ID = 4243
         const val ACTION_HERE = "app.tendshelf.ASK_STAY_HERE"

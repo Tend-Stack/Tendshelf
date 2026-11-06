@@ -41,6 +41,7 @@ class MainActivity : Activity() {
             setTurnScreenOn(true)
         }
         store = TokenStore(this)
+        ProgressWriter.flushOnce(this, store.current()) // rows a killed process left (A5, D10)
         val pages = StartPages(this)
         val api = AuthApi()
         web = WebView(this)

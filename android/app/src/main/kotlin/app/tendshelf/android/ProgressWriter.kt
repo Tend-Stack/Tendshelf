@@ -202,7 +202,11 @@ class ProgressWriter(
 
     private fun flushLoop(): Boolean {
         while (true) {
-            val conn = connections().current() ?: return false
+            val conn = connections().current()
+            if (conn == null) {
+                Log.d(TAG, "outbox: flush skipped, no sign-in")
+                return false
+            }
             adopt(conn)
             val batch = outbox.nextBatch()
             if (batch.isEmpty()) {
@@ -278,6 +282,35 @@ class ProgressWriter(
         private const val SEEK_SETTLE_MS = 2_000L
         private const val FIRST_BACKOFF_MS = 5_000L
         private const val MAX_BACKOFF_MS = 300_000L
+
+        /**
+         * Activity start (D10): rows left by a killed process go out now, on a worker thread, without a service. A
+         * place the server holds against them is left alone here; the next resume asks. Stops at the first failure.
+         */
+        fun flushOnce(context: Context, conn: Connection?) {
+            if (conn == null) return
+            Thread {
+                val store = SqliteOutbox(context) { conn.deviceId }
+                val outbox = Outbox(store) { System.currentTimeMillis() }
+                try {
+                    while (true) {
+                        val batch = outbox.nextBatch()
+                        if (batch.isEmpty()) break
+                        val applied = try {
+                            outbox.settled(batch, Api(conn.origin).batch(conn.token, batch))
+                        } catch (e: Exception) {
+                            outbox.failed()
+                            Log.w(TAG, "launch flush failed: ${e.javaClass.simpleName}")
+                            break
+                        }
+                        Log.i(TAG, "outbox: launch flush sent ${batch.size}")
+                        if (applied.deleteSeqs.size < batch.size) break
+                    }
+                } finally {
+                    store.close()
+                }
+            }.start()
+        }
 
         /**
          * Used by sign-out, which has no service: one try to send the rows of this sign-in on the calling worker

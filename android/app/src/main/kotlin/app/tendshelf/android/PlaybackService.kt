@@ -154,7 +154,7 @@ class PlaybackService : MediaLibraryService() {
 
     /** Debug builds only: drive the player from `am startservice` for the emulator checks. */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (::askPrompt.isInitialized && askPrompt.handle(intent?.action)) return START_NOT_STICKY
+        if (::askPrompt.isInitialized && askPrompt.handle(intent)) return START_NOT_STICKY
         if (BuildConfig.DEBUG && intent?.action == DEBUG_ACTION) {
             keepAliveForDebug()
             debug(intent)
@@ -186,7 +186,8 @@ class PlaybackService : MediaLibraryService() {
                     val token = i.getStringExtra("token")
                         ?: Api(server).signIn(i.getStringExtra("user").orEmpty(), i.getStringExtra("pass").orEmpty())
                     main.post {
-                        connections = ConnectionSource { Connection(server, token, "debug") }
+                        connections = ConnectionSource { Connection(server, token, i.getStringExtra("device") ?: "debug") }
+                        writer.flush() // the sign-in is known now (normally the token store has it at service start)
                         engine.start(i.getStringExtra("book").orEmpty(), if (i.hasExtra("at")) i.getLongExtra("at", -1) else null)
                     }
                 } catch (e: Exception) {
@@ -202,6 +203,7 @@ class PlaybackService : MediaLibraryService() {
             "back" -> player.seekBack()
             "forward" -> player.seekForward()
             "stop" -> engine.stopAndClear()
+            "flush" -> writer.flush()
             "outbox" -> Log.i(TAG, "outbox rows=${writer.rowCount()}")
             "dump" -> Log.i(
                 TAG, "dump pos=${exo.currentPosition} dur=${exo.duration} speed=${exo.playbackParameters.speed} " +
