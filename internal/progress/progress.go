@@ -145,6 +145,12 @@ func (s *Service) save(ctx context.Context, u Update, internal bool) (Result, er
 
 	var res Result
 	err := s.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		// An id that was merged away (a copy of the book merged into another) lands on the book that took over,
+		// so a client that still holds the old id, or an offline outbox, loses nothing.
+		var err error
+		if u.BookID, err = resolveBook(ctx, tx, u.BookID); err != nil {
+			return err
+		}
 		if u.Force {
 			var stored int64
 			switch err := tx.QueryRowContext(ctx, `SELECT client_updated_at FROM progress WHERE user_id = ? AND book_id = ?`,

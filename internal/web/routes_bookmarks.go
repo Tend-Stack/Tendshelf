@@ -53,7 +53,7 @@ func (s *server) postBookmark(w http.ResponseWriter, r *http.Request) {
 		s.postTextBookmark(w, r, edID, sid)
 		return
 	}
-	b, ok := s.loadBook(w, r, r.PathValue("id"), share.ListenBook)
+	b, ok := s.loadBook(w, r, s.followMerged(ctx, r.PathValue("id")), share.ListenBook)
 	if !ok {
 		return
 	}

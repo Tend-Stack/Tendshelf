@@ -1,0 +1,35 @@
+{
+  "reviews": [
+    {
+      "run_id": "htmx-settings-no-reload-with_skill",
+      "feedback": "Looks great",
+      "timestamp": "2026-11-03T18:29:18.407Z"
+    },
+    {
+      "run_id": "htmx-settings-no-reload-without_skill",
+      "feedback": "",
+      "timestamp": "2026-11-03T18:29:18.407Z"
+    },
+    {
+      "run_id": "native-feel-iphone-with_skill",
+      "feedback": "",
+      "timestamp": "2026-11-03T18:29:18.407Z"
+    },
+    {
+      "run_id": "native-feel-iphone-without_skill",
+      "feedback": "",
+      "timestamp": "2026-11-03T18:29:18.407Z"
+    },
+    {
+      "run_id": "wails-desktop-wrap-with_skill",
+      "feedback": "",
+      "timestamp": "2026-11-03T18:29:18.407Z"
+    },
+    {
+      "run_id": "wails-desktop-wrap-without_skill",
+      "feedback": "",
+      "timestamp": "2026-11-03T18:29:18.407Z"
+    }
+  ],
+  "status": "complete"
+}

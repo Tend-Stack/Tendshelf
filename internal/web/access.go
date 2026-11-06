@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -84,16 +85,20 @@ func (s *server) loadBook(w http.ResponseWriter, r *http.Request, id string, a s
 	return b, true
 }
 
-// redirectMerged answers for an id that no longer names a book. If the id belonged to a text book that was merged
-// into an audiobook, a GET of its page or reader goes (308) to the same address on the book that took over, but only
-// when the person may do the same thing to that book; otherwise it is the usual 404 and nothing is revealed.
+// redirectMerged answers for an id that no longer names a book. If the id belonged to a book that was merged into
+// another (a text book into an audiobook, or one copy of an audiobook into another), a GET of its page, its reader
+// or its API record goes (308) to the same address on the book that took over, but only when the person may do the
+// same thing to that book; otherwise it is the usual 404 and nothing is revealed.
 func (s *server) redirectMerged(w http.ResponseWriter, r *http.Request, id string, a share.Action) {
-	page, read := "/books/"+id, "/books/"+id+"/read"
-	if r.Method == http.MethodGet && (r.URL.Path == page || r.URL.Path == read) {
+	page, read, api := "/books/"+id, "/books/"+id+"/read", "/api/v1/books/"+id
+	if r.Method == http.MethodGet && (r.URL.Path == page || r.URL.Path == read || r.URL.Path == api) {
 		if to, ok := s.lib.MergedInto(r.Context(), id); ok {
 			if b, err := s.lib.Book(r.Context(), to); err == nil &&
 				s.can.Can(r.Context(), currentUser(r), a, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) {
 				dest := "/books/" + to + strings.TrimPrefix(r.URL.Path, page)
+				if r.URL.Path == api {
+					dest = "/api/v1/books/" + to
+				}
 				if r.URL.RawQuery != "" {
 					dest += "?" + r.URL.RawQuery
 				}
@@ -103,6 +108,16 @@ func (s *server) redirectMerged(w http.ResponseWriter, r *http.Request, id strin
 		}
 	}
 	s.notFound(w, r)
+}
+
+// followMerged returns the id of the book that took over a merged-away book, or id itself. Writes that a client
+// may have queued before a merge (progress, bookmarks) use it, so an offline outbox lands on the kept book; the
+// kept book's own right is then checked as usual.
+func (s *server) followMerged(ctx context.Context, id string) string {
+	if to, ok := s.lib.MergedInto(ctx, id); ok {
+		return to
+	}
+	return id
 }
 
 // coverURL is the address of a book's cover: /covers/<bookID>?w=<w>&v=<sha[:8]>. w 0 omits the

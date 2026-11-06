@@ -785,7 +785,7 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
   Limits: Linux inotify per-user limits (a library past 20000 folders falls back to the schedule); the
   scheduled scan counts any scan job as "last scanned".
 - **S5 App keys and OPDS** (2026-11-06, done). Scope: migration `app_keys` (`devices.kind` gains `opds` and `koreader`;
-  numbered 0026 in this worktree, renumber at merge), `token.NewTypable` (24 characters, `a-z2-7`),
+  numbered 0026), `token.NewTypable` (24 characters, `a-z2-7`),
   `auth.IssueKey`/`LookupKey`/`OwnKeys`/`KeyHash` (opds: SHA-256 of the key; koreader: SHA-256 of the hex MD5, for S6),
   `share.BookFilterFor` (one `EXISTS` per right, agrees with `Can`), `library.TextCatalogue`, `POST /me/app-keys` and an
   App keys section on Your devices, `keyAuth` (Basic, user name must match, 10 failures per 15 minutes per address, then 429),
@@ -812,6 +812,19 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
   busy reset, clock parsing); `TestChapterEditVisual` (390, 768, 1024, 1440). Limits: the editor address is
   `/chapters/edit` because `/books/{id}/chapters` is the Chapters tab (plan address collided); "move from" counts
   chapters from 1 and starts at 2; multi-file and FLAC books keep edits in the database only, and the page says so.
+- **S4 Duplicates and merge** (2026-11-06, done). Scope: migration `0027_book_merges` (`merged_folders`,
+  `book_not_duplicates`), `library.MergeRowsSQL` shared with the ebook merge, `Repo.MergeBooks` (one transaction:
+  progress newest wins and capped at the kept length, sessions, queue, book settings, grants, share links, ebook
+  files, shelves, bookmarks, highlights, cover; refused for another library, a busy file write or a book that is
+  not an audiobook), `Repo.Duplicates` (same audio files by size and quick hash, then same title, first author and
+  first narrator within 60 s or 2 %), `MergePreview`, the scan leaving merged folders out (`BooksMerged`), old ids
+  landing on the kept book (page and API redirect, progress and bookmark writes), `/admin/duplicates` with
+  confirm, "Not the same" and "Copies you merged" (show a copy again, then scan). Checks: `TestDup*` (library,
+  every table with a key to books handled on purpose, tiers, scope, merge moves, chain, refusals), `TestMerged*`
+  (scan), `TestDup*` routes (roles, old ids, offline outbox, no right), `TestMigrationBookMerges*`, route matrix
+  rows. Limits: the dropped copy's folder stays on disk and is never deleted; moved data stays on the kept book
+  after "Show that copy again"; no cross-library or multi-way merge; a moved folder reappears as a new book.
+  Words not in the deck are in `docs/copy-additions.md`.
 
 ## Later
 

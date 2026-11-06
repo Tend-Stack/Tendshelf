@@ -46,6 +46,12 @@ The read side is documented here (P3-9a); the sync side (progress, bookmarks) is
 - **Caching**: `GET /libraries`, `GET /books/{id}` and `GET /shelves` carry `ETag` (a hash of the body),
   `Cache-Control: private, no-cache`, `Vary: Authorization, Cookie`, and answer `304` to a matching
   `If-None-Match`. All other answers are `Cache-Control: no-store`.
+- **Merged ids** (S4): when two copies of one audiobook are merged, the dropped copy's id keeps answering.
+  `GET /api/v1/books/{id}` answers `308` with `Location: /api/v1/books/{keptId}`, but only when the person may
+  see the kept book; otherwise it is the usual 404. A progress save (`PUT /progress/{bookID}`, an item of
+  `POST /progress/batch`) or a bookmark (`POST /books/{id}/bookmarks`) sent to the old id is stored on the kept
+  book, under the kept book's right, so an offline outbox loses nothing. A batch result names the id the client
+  sent. Additive: a client that never meets a merged id sees no change.
 - **No CORS**: there are no `Access-Control-*` headers. The web app is same-origin; native and desktop clients
   call from native HTTP code and do not need them. Adding them would only widen what a hostile page could read.
 - **Visibility**: every endpoint answers for the signed-in person only. Hidden books never appear in a list, a
