@@ -1,0 +1,64 @@
+name: Tendshelf Android checks
+
+# The Kotlin unit tests (:shared:test) and Android lint with NewApi fatal, on every push that touches android/ or the
+# server files the app embeds, on the amd64 runner (Google's SDK tools are x86-64). The tag build runs the same gates
+# inside android/tools/make-apk.sh. The SDK comes from the same pinned command-line tools as release.yml (docs/android.md);
+# without the two variables the job says so and passes, as the release job does.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - "internal/web/static/**"
+      - ".gitea/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tendshelf-android-${{ gitea.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Kotlin tests and Android lint
+    runs-on: [tend-ci, linux-amd64]
+    container:
+      image: docker.gitea.com/runner-images:ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      TOOLS_URL: ${{ vars.TS_ANDROID_CMDLINE_TOOLS_URL }}
+      TOOLS_SHA256: ${{ vars.TS_ANDROID_CMDLINE_TOOLS_SHA256 }}
+    steps:
+      - name: Check out the candidate
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # checkout v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install Java 21 and tools
+        run: |
+          uname -m
+          apt-get update
+          apt-get install -y --no-install-recommends openjdk-21-jdk-headless unzip curl ca-certificates binutils
+      - name: Android SDK from the pinned command-line tools
+        run: |
+          if [ -z "$TOOLS_URL" ] || [ -z "$TOOLS_SHA256" ]; then
+            echo "::warning::Android checks SKIPPED, not passed: the variables TS_ANDROID_CMDLINE_TOOLS_URL and TS_ANDROID_CMDLINE_TOOLS_SHA256 are not set (docs/android.md)."
+            echo "SKIP_APK=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          curl -fsSL "$TOOLS_URL" -o "$RUNNER_TEMP/cmdline-tools.zip"
+          echo "$TOOLS_SHA256  $RUNNER_TEMP/cmdline-tools.zip" | sha256sum -c -
+          export ANDROID_HOME="$RUNNER_TEMP/android-sdk"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          unzip -q "$RUNNER_TEMP/cmdline-tools.zip" -d "$ANDROID_HOME/cmdline-tools"
+          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+      - name: Kotlin tests and lint
+        run: |
+          [ -z "${SKIP_APK:-}" ] || { echo "Android checks skipped (see the previous step)."; exit 0; }
+          android/tools/check-android.sh

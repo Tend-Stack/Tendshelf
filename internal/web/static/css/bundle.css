@@ -325,8 +325,11 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-dialog__actions { display: flex; justify-content: flex-end; gap: var(--space-8); flex-wrap: wrap; }
 
 /* Navigation */
-.ts-tabbar { display: flex; height: var(--size-tab-bar); box-sizing: border-box; padding: 0 var(--space-4) 0.625rem; background: var(--ground); border-top: 1px solid var(--line); }
-.ts-tabbar__item { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4);
+/* The bar grows with the text (rem) and never breaks a word: at a large text size the items keep their whole label and the bar scrolls sideways. */
+.ts-tabbar { display: flex; height: var(--size-tab-bar); box-sizing: border-box; padding: 0 var(--space-4) 0.625rem; background: var(--ground); border-top: 1px solid var(--line);
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+.ts-tabbar::-webkit-scrollbar { display: none; }
+.ts-tabbar__item { position: relative; flex: 1 0 auto; min-width: 0; padding: 0 var(--space-8); white-space: nowrap; overflow-wrap: normal; word-break: keep-all; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4);
   color: var(--ink-muted); text-decoration: none; font-size: 0.8125rem; line-height: 1rem; font-weight: 500; border-radius: var(--radius-md); }
 .ts-tabbar__item[aria-current="page"] { color: var(--accent); font-weight: 600; }
 .ts-tabbar__item[aria-current="page"]::before { content: ""; position: absolute; top: 0; left: 50%; width: 1.25rem; height: 0.1875rem; margin-left: -0.625rem; border-radius: 0 0 2px 2px; background: var(--accent); }

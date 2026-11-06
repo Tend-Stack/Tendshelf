@@ -1,5 +1,6 @@
 package app.tendshelf.android
 
+import app.tendshelf.shared.readAtMost
 import android.content.Context
 import android.util.Log
 import android.webkit.CookieManager
@@ -138,7 +139,7 @@ object TextStore {
             if (code !in 200..299) return Reply(code, ByteArray(0), "", null)
             val declared = conn.contentLengthLong
             if (declared > limit) throw IOException("answer too large")
-            val body = conn.inputStream.use { it.readNBytes(limit.toInt() + 1) }
+            val body = conn.inputStream.use { it.readAtMost(limit.toInt() + 1) }
             if (body.size > limit) throw IOException("answer too large")
             return Reply(code, body, conn.contentType ?: "application/octet-stream", conn.getHeaderField("Content-Security-Policy"))
         } finally {

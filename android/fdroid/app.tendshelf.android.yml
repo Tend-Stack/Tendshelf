@@ -1,4 +1,7 @@
-# Draft F-Droid build recipe (plan A10). Not submitted: the operator has not chosen a distribution channel.
+# DRAFT, NOT FOR SUBMISSION. F-Droid build recipe (plan A10). Not submitted: the operator has not chosen a distribution channel.
+# The tag below does not exist yet: v2026.4.0 was cut before the pre-release fixes (the Android 9 to 12 crashes, the
+# wrong-server guard) and builds an app with them still in it. Set versionName, versionCode, commit, gradleprops and
+# CurrentVersion to the first tag cut after them (versionCode = year * 100000 + release * 1000 + fix) before any submission.
 # Fill in the two <...> values and the signing key before any submission; nothing here is a real account or key.
 Categories:
   - Multimedia
@@ -12,16 +15,16 @@ RepoType: git
 Repo: <SOURCE_REPOSITORY_URL>.git
 
 Builds:
-  - versionName: 2026.3.0
-    versionCode: 202603000
-    commit: v2026.3.0
+  - versionName: 2026.4.0
+    versionCode: 202604000
+    commit: v2026.4.0 # NOT YET TAGGED: placeholder for the next release
     # The Gradle project is android/; the app copies the server's CSS and fonts from ../internal/web/static,
     # so the whole repository is needed, not only android/app.
     subdir: android/app
     gradle:
       - yes
     gradleprops:
-      - tsVersion=2026.3.0
+      - tsVersion=2026.4.0
 
 # Leave empty until the operator has made a key (docs/android.md). F-Droid then accepts only APKs signed by it, which
 # is what lets a reproducible build be published with the developer's own signature.
@@ -29,5 +32,5 @@ AllowedAPKSigningKeys:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 2026.3.0
-CurrentVersionCode: 202603000
+CurrentVersion: 2026.4.0
+CurrentVersionCode: 202604000

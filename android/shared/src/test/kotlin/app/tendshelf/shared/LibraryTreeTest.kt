@@ -38,14 +38,15 @@ class LibraryTreeTest {
     fun onlyTrustedControllersBrowse() {
         // trusted, auto, own
         val table = listOf(
-            Triple(false, false, false) to Allowed(false, false, false), // any other installed app
-            Triple(true, false, false) to Allowed(true, false, true),
-            Triple(false, true, false) to Allowed(true, false, true),
-            Triple(false, false, true) to Allowed(true, true, true),
-            Triple(true, true, true) to Allowed(true, true, true),
+            Triple(false, false, false) to Allowed(false, false, false, false), // any other installed app
+            Triple(true, false, false) to Allowed(true, false, true, true),
+            Triple(false, true, false) to Allowed(true, false, true, true),
+            Triple(false, false, true) to Allowed(true, true, true, true),
+            Triple(true, true, true) to Allowed(true, true, true, true),
         )
         for ((input, want) in table) assertEquals(want, allowedCommands(input.first, input.second, input.third), input.toString())
         assertFalse(allowedCommands(false, false, false).speed)
+        assertFalse(allowedCommands(false, false, false).readsPlayer, "another app must not read what is playing")
     }
 
     @Test

@@ -1,5 +1,6 @@
 package app.tendshelf.android
 
+import app.tendshelf.shared.readAtMost
 import app.tendshelf.shared.ApiPaths
 import app.tendshelf.shared.BatchItemResult
 import app.tendshelf.shared.BookCard
@@ -179,7 +180,7 @@ class Api(origin: String) {
             conn.disconnect()
             throw ApiException(code)
         }
-        val bytes = conn.inputStream.use { it.readNBytes(limit + 1) }
+        val bytes = conn.inputStream.use { it.readAtMost(limit + 1) }
         if (bytes.size > limit) throw IOException("answer too large")
         return bytes
     }

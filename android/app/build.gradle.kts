@@ -93,6 +93,15 @@ android {
         buildConfig = true
     }
 
+    // NewApi is fatal: minSdk is 28, and a call from a newer API level is a crash on the phones below it (readNBytes was one).
+    // lint-baseline.xml holds only the older findings of other kinds (Media3 opt-in marks, the back-gesture migration), so
+    // lintRelease passes today and fails on anything new. Nothing of kind NewApi may enter the baseline.
+    lint {
+        fatal += "NewApi"
+        abortOnError = true
+        baseline = file("lint-baseline.xml")
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

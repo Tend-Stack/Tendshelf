@@ -127,8 +127,19 @@ class PlaybackService : MediaLibraryService() {
     /** Session extras are one bundle: every writer merges into it, none replaces it. */
     internal fun putExtras(change: Bundle.() -> Unit) {
         val s = session ?: return
-        s.setSessionExtras(Bundle(s.sessionExtras).apply(change))
+        val next = Bundle(extras).apply(change)
+        extras = next
+        // Not the all-controllers call: the book, chapter and error are for those who may read the player.
+        for (c in s.connectedControllers) if (readsPlayer(s, c)) s.setSessionExtras(c, next)
     }
+
+    private var extras = Bundle()
+
+    private fun readsPlayer(session: MediaSession, c: MediaSession.ControllerInfo) = allowedCommands(
+        trusted = c.isTrusted,
+        auto = session.isAutoCompanionController(c) || session.isAutomotiveController(c),
+        own = c.packageName == packageName,
+    ).readsPlayer
 
     /**
      * The system said no to a foreground start (A5b D1). Media3 calls this on the main thread. The player stops
@@ -322,6 +333,17 @@ class PlaybackService : MediaLibraryService() {
             val who = allowed(session, controller)
             // Library commands only for those who may browse; custom commands for this app only, the speed button aside.
             val base = if (who.browse) MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS else MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS
+            // Another app's controller gets no title, no timeline and no extras: it can play and pause, nothing it can read.
+            val players = if (who.readsPlayer) {
+                MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
+            } else {
+                MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+                    .remove(Player.COMMAND_GET_METADATA)
+                    .remove(Player.COMMAND_GET_TIMELINE)
+                    .remove(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
+                    .remove(Player.COMMAND_GET_TRACKS)
+                    .build()
+            }
             val commands = base.buildUpon().apply {
                 if (who.ownCommands) {
                     add(START_COMMAND)
@@ -336,6 +358,8 @@ class PlaybackService : MediaLibraryService() {
             Log.i(TAG, "controller ${controller.packageName} trusted=${controller.isTrusted} browse=${who.browse}")
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(commands)
+                .setAvailablePlayerCommands(players)
+                .apply { if (who.readsPlayer) setSessionExtras(extras) }
                 .build()
         }
 
