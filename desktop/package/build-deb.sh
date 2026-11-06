@@ -5,6 +5,8 @@
 #   build-deb.sh                      build the package (run `make desktop` first; `make deb` does both)
 #   build-deb.sh --version <describe> print the plain version for a describe string, then stop
 set -eu
+# Containers can run with umask 000, and dpkg-deb refuses a control folder writable by everyone.
+umask 022
 
 plain_version() {
 	# v2026.1.0-366-g650d5a1-dirty -> 2026.1.0
