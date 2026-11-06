@@ -80,7 +80,12 @@ func TestKeysCommandList(t *testing.T) {
 		inPage = append(inPage, string(k[1]))
 	}
 	var inGo []string
+	// The window and tray commands are for desktop-shell.js (plan X2); desktop.js presses player buttons.
+	state := map[string]bool{"active": true, "inactive": true, "maximised": true, "restored": true, "tray": true}
 	for k := range commands {
+		if state[k] {
+			continue
+		}
 		inGo = append(inGo, k)
 	}
 	sort.Strings(inPage)

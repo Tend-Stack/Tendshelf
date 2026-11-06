@@ -67,6 +67,20 @@ type Config struct {
 	Mode   string `json:"mode"`
 	Server string `json:"server"`
 	Port   int    `json:"port"`
+
+	// The window (decision 0023). Size and maximised come back at the next start; Wayland ignores
+	// position, so none is kept. KeepPlaying is the opt-in "Keep playing when I close the window".
+	// Ground names the saved theme, so the window never flashes the wrong colour while it loads.
+	Window      Window `json:"window"`
+	KeepPlaying bool   `json:"keepPlaying"`
+	Ground      string `json:"ground"`
+}
+
+// Window is the saved size of the window. Zero means nothing was saved.
+type Window struct {
+	Width     int  `json:"width"`
+	Height    int  `json:"height"`
+	Maximised bool `json:"maximised"`
 }
 
 const schemaVersion = 1

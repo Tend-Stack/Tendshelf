@@ -131,6 +131,11 @@ test-mediajobs-real:
 desktop:
 	$(GO) -C desktop build -trimpath -tags production -ldflags "-X main.version=$(VERSION)" -o ../bin/tendshelf-desktop .
 
+# The same window without CGO (decision 0023, experimental): Wails' purego backend. No C compiler and no -dev
+# packages; the GTK and WebKit libraries are opened when the program starts, so they still have to be installed.
+desktop-purego:
+	CGO_ENABLED=0 $(GO) -C desktop build -trimpath -tags 'production purego' -ldflags "-X main.version=$(VERSION)" -o ../bin/tendshelf-desktop .
+
 # The Debian package (decision 0020): plain dpkg-deb, no wails3 CLI. Output: bin/tendshelf-desktop_<describe>_<arch>.deb.
 deb: desktop
 	sh desktop/package/build-deb.sh
@@ -141,6 +146,8 @@ desktop-check:
 	$(GO) -C desktop vet -tags production ./...
 	$(GO) -C desktop vet -tags 'production tendshelf_probe' ./...
 	$(GO) -C desktop test -race -tags production ./...
+	CGO_ENABLED=0 $(GO) -C desktop vet -tags 'production purego' ./...
+	CGO_ENABLED=0 $(GO) -C desktop test -tags 'production purego' .
 
 # Runs a command in a private, headless GNOME Shell (its own D-Bus and Wayland display, no install,
 # no sudo, nothing on the visible desktop): make isolated CMD="bin/tendshelf-desktop".
@@ -153,9 +160,20 @@ isolated:
 desktop-probe:
 	$(GO) -C desktop build -trimpath -tags 'production tendshelf_probe' -o ../bin/tendshelf-desktop-probe .
 
+# The exit run's hands (decision 0023, X1): real pointer and key events through Mutter's RemoteDesktop API.
+.PHONY: desktop-input
+desktop-input:
+	$(GO) -C desktop build -trimpath -tags tendshelf_probe -o ../bin/tendshelf-input ./probe/input
+
 # The M6 exit run (plan D7): the probe window drives both modes in the private headless GNOME Shell and
 # writes .local/tests/desktop/exit-<time>/ (result.json per launch, driver.txt, shots/). Nothing opens on
 # the visible desktop; see desktop/probe/exit-run.sh.
 .PHONY: desktop-exit
-desktop-exit: build desktop-probe
+desktop-exit: build desktop-probe desktop-input
 	scripts/isolated-display.sh desktop/probe/exit-run.sh
+
+# The window part of the exit run on X11: the private shell also starts Xwayland and the window runs with
+# GDK_BACKEND=x11 (decision 0023, X1). Only the window checks run.
+.PHONY: desktop-exit-x11
+desktop-exit-x11: build desktop-probe desktop-input
+	TS_X11=1 TENDSHELF_EXIT_ONLY=window TENDSHELF_WINDOW_BACKEND=x11 scripts/isolated-display.sh desktop/probe/exit-run.sh

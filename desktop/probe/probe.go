@@ -14,6 +14,7 @@
 //	TENDSHELF_PROBE_CODE    connect mode: the test server's setup code
 //	TENDSHELF_PROBE_PLAN    "" (first run), "relaunch" (saved mode: sign-in kept, then the reader)
 //	                        or "switch" (saved mode, then Change mode and a new choice)
+//	                        or "window" (the picker with a stand-in title bar, driven by real input; X1)
 //	TENDSHELF_PROBE_STAY    set: the window stays open after "done"; the exit-run driver ends it
 package probe
 
@@ -94,6 +95,8 @@ func (p *run) pageLoaded() {
 // scriptFor picks the script for the stage-th page load of this launch (exit.go has the other plans).
 func (p *run) scriptFor(stage int) string {
 	switch os.Getenv("TENDSHELF_PROBE_PLAN") {
+	case "window":
+		return windowScript()
 	case "relaunch":
 		return relaunchScript()
 	case "switch":

@@ -145,6 +145,257 @@ check_download() {
 portopen() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
 val() { jq -r "$2" "$out/$1/result.json" 2>/dev/null; } # val LAUNCH JQ-EXPR
 
+# ---- the window itself (decision 0023, X1): real pointer and keys through bin/tendshelf-input ----
+input_bin="$root/bin/tendshelf-input"
+ipid=""
+
+# iopen starts the input helper on a FIFO; icmd sends it one line and waits for its "ok".
+iopen() {
+  rm -f "$work/in.fifo" "$work/in.log"
+  mkfifo "$work/in.fifo"
+  "$input_bin" <"$work/in.fifo" >"$work/in.log" 2>"$work/in.err" &
+  ipid=$!
+  pids+=("$ipid")
+  exec 7>"$work/in.fifo"
+}
+icmd() {
+  local n
+  n="$(wc -l <"$work/in.log")"
+  echo "$*" >&7
+  for _ in $(seq 1 200); do
+    [ "$(wc -l <"$work/in.log")" -gt "$n" ] && return 0
+    kill -0 "$ipid" 2>/dev/null || return 1
+    sleep 0.05
+  done
+  return 1
+}
+iclose() {
+  echo quit >&7 2>/dev/null
+  exec 7>&-
+}
+
+# gone PID SECONDS: waits for a process to end.
+gone() {
+  local end=$((SECONDS + $2))
+  while kill -0 "$1" 2>/dev/null && [ "$SECONDS" -lt "$end" ]; do sleep 0.2; done
+  ! kill -0 "$1" 2>/dev/null
+}
+
+# calibrate N sets offx, offy: where the page's 0,0 is on the screen. Wayland tells a window nothing about
+# its place, so the pointer goes to a known spot and the page says where it landed.
+calibrate() {
+  icmd move 600 400
+  sleep 0.8
+  local px py
+  px="$(val "$1" '.pointer.x | floor')"
+  py="$(val "$1" '.pointer.y | floor')"
+  case "$px$py" in *[!0-9-]* | "") offx=""; offy=""; return 1 ;; esac
+  offx=$((600 - px))
+  offy=$((400 - py))
+}
+at() { icmd move $((offx + $1)) $((offy + $2)); } # at X Y: the pointer to page X,Y
+
+pngsize() { # pngsize FILE: "WxH" of a PNG, read from its header
+  od -An -tu1 -j16 -N8 "$1" 2>/dev/null | awk '{printf "%d x %d", $1*16777216+$2*65536+$3*256+$4, $5*16777216+$6*65536+$7*256+$8}'
+}
+
+window_suite() { # window_suite NAME [ENV=VALUE...]
+  local n="$1" h="$work/dh-$1" cfg w0 w1 sz
+  shift
+  mkdir -p "$h/config"
+  printf '{"schema":1,"window":{"width":900,"height":600}}\n' >"$h/config/desktop.json"
+  cfg="$h/config/desktop.json"
+  launch "$n" TENDSHELF_DESKTOP_HOME="$h" TENDSHELF_PROBE=personal TENDSHELF_PROBE_PLAN=window TENDSHELF_PROBE_STAY=1 "$@"
+  local wp=$pid
+  for _ in $(seq 1 120); do
+    [ "$(val "$n" '.ready')" = "true" ] && break
+    kill -0 "$wp" 2>/dev/null || break
+    sleep 0.5
+  done
+  if [ "$(val "$n" '.ready')" != "true" ]; then
+    check "$n.start" FAIL "the window never reported ready; see $out/$n/window.log"
+    return
+  fi
+  sleep 1
+
+  # Hidden until ready, and the saved size comes back (content 900 x 600; the shadow and border are outside it).
+  local ready_line shown_line
+  ready_line="$(grep -n 'first page ready' "$out/$n/window.log" | head -1 | cut -d: -f1)"
+  shown_line="$(grep -n 'window shown' "$out/$n/window.log" | head -1 | cut -d: -f1)"
+  if [ -n "$ready_line" ] && [ -n "$shown_line" ] && [ "$ready_line" -lt "$shown_line" ]; then
+    check "$n.hidden-until-ready" PASS "the window was shown after the page said ready ($(grep 'window shown' "$out/$n/window.log" | head -1 | cut -c1-120))"
+  else
+    check "$n.hidden-until-ready" FAIL "ready line ${ready_line:-none}, shown line ${shown_line:-none}"
+  fi
+  w0="$(val "$n" '.size.w')"
+  h0="$(val "$n" '.size.h')"
+  if [ "${w0:-0}" -ge 896 ] && [ "${w0:-0}" -le 904 ] && [ "${h0:-0}" -ge 596 ] && [ "${h0:-0}" -le 604 ]; then
+    check "$n.size-restored" PASS "page content ${w0}x${h0} for a saved 900x600"
+  else
+    check "$n.size-restored" FAIL "page content ${w0}x${h0} for a saved 900x600"
+  fi
+
+  iopen
+  icmd tap Shift_L
+  if ! calibrate "$n"; then
+    check "$n.pointer" FAIL "the page saw no pointer; input log: $(tail -2 "$work/in.err" | tr '\n' ' ')"
+    iclose
+    kill "$wp" 2>/dev/null
+    return
+  fi
+  say "calibration: the page's 0,0 is at screen $offx,$offy"
+
+  # Shadow: the window's capture with its frame against the page content. GTK draws the shadow and border outside.
+  at 450 22
+  icmd click
+  sleep 0.5
+  for frame in true false; do
+    gdbus call --session --dest org.gnome.Shell.Screenshot --object-path /org/gnome/Shell/Screenshot \
+      --method org.gnome.Shell.Screenshot.ScreenshotWindow "$frame" false false "$out/shots/$n-window-frame-$frame.png" >/dev/null 2>&1
+  done
+  local sf sn
+  sf="$(pngsize "$out/shots/$n-window-frame-true.png")"
+  sn="$(pngsize "$out/shots/$n-window-frame-false.png")"
+  case "$sf" in
+    "900 x 600" | "") check "$n.shadow" FAIL "window capture $sf is no larger than the page content ${w0}x${h0}: no shadow or border around it" ;;
+    *) check "$n.shadow" PASS "window capture with frame $sf, without $sn, around page content ${w0}x${h0}: the buffer is larger than the frame (shots/$n-window-frame-*.png)" ;;
+  esac
+
+  # Copy and paste in a field with no menu: type, select all, copy, collapse to the end, paste.
+  icmd tap a
+  icmd tap b
+  icmd tap c
+  icmd tap Control_L a
+  icmd tap Control_L c
+  icmd tap Right
+  icmd tap Control_L v
+  sleep 0.5
+  local fv
+  fv="$(val "$n" '.field')"
+  if [ "$fv" = "abcabc" ]; then check "$n.copy-paste" PASS "typed abc, copied, pasted: $fv"; else check "$n.copy-paste" FAIL "field holds '$fv', wanted abcabc"; fi
+
+  # Drag from the bar: the window must follow the pointer, so the page's place on screen moves by the pointer's travel.
+  # The first motion step happens before the drag starts, so 15 px of slack either way.
+  local ox=$offx oy=$offy
+  at 450 22
+  icmd btn 1 1
+  sleep 0.2
+  icmd rel 20 10
+  sleep 0.2
+  icmd rel 180 140
+  sleep 0.3
+  icmd btn 1 0
+  sleep 0.5
+  calibrate "$n" || true
+  if [ -n "$offx" ] && [ $((offx - ox)) -ge 185 ] && [ $((offx - ox)) -le 215 ] && [ $((offy - oy)) -ge 135 ] && [ $((offy - oy)) -le 165 ]; then
+    check "$n.drag" PASS "the window moved by $((offx - ox)),$((offy - oy)) for a pointer travel of 200,150"
+  else
+    check "$n.drag" FAIL "the window moved by $((${offx:-0} - ox)),$((${offy:-0} - oy)) for a pointer travel of 200,150 (Wayland and X11 may differ; see the shot)"
+  fi
+  shot "$n-after-drag"
+
+  # Double-click on the bar maximises, again restores; Go tells the page.
+  [ -n "$offx" ] || calibrate "$n"
+  at 200 22
+  icmd click
+  sleep 0.08
+  icmd click
+  sleep 1
+  if val "$n" '.events | index("maximised")' | grep -qv null; then check "$n.double-click-maximise" PASS "events: $(val "$n" '.events | join(",")')"; else check "$n.double-click-maximise" FAIL "events: $(val "$n" '.events | join(",")')"; fi
+  say "page size while maximised: $(val "$n" '.size | "\(.w)x\(.h)"')"
+  calibrate "$n" || true
+  at 200 22
+  icmd click
+  sleep 0.08
+  icmd click
+  sleep 1
+  if val "$n" '.events | index("restored")' | grep -qv null; then check "$n.double-click-restore" PASS "events: $(val "$n" '.events | join(",")')"; else check "$n.double-click-restore" FAIL "events: $(val "$n" '.events | join(",")')"; fi
+
+  # Edge resize with GTK's own border: the pointer in the shadow just outside the left edge (the drag put the right edge on the screen's edge; tried at
+  # 4, 8 and 12 px, inside GTK's resize zone), drag 120 px.
+  sleep 0.5
+  local d dw=0
+  w0="$(val "$n" '.size.w')"
+  check "$n.size-after-restore" INFO "page content $w0 wide after maximise and restore"
+  for d in 4 8 12; do
+    calibrate "$n" || true
+    w0="$(val "$n" '.size.w')"
+    at $((0 - d)) 300
+    sleep 0.3
+    icmd btn 1 1
+    sleep 0.2
+    icmd rel -60 0
+    icmd rel -60 0
+    sleep 0.3
+    [ "$d" = 8 ] && shot "$n-mid-resize"
+    icmd btn 1 0
+    sleep 0.8
+    w1="$(val "$n" '.size.w')"
+    dw=$((${w1:-0} - ${w0:-0}))
+    say "edge resize try at +${d}px: $w0 to $w1"
+    [ "$dw" -ge 100 ] && break
+  done
+  if [ "$dw" -ge 112 ] && [ "$dw" -le 128 ]; then
+    check "$n.edge-resize" PASS "page width $w0 to $w1 for a pointer travel of 120 (started ${d}px outside the left edge)"
+  else
+    check "$n.edge-resize" FAIL "page width $w0 to $w1 for a pointer travel of 120"
+  fi
+
+  # Our close button quits the window, and the size is saved.
+  calibrate "$n" || true
+  w1="$(val "$n" '.size.w')"
+  at $((w1 - 30)) 22
+  icmd click
+  if gone "$wp" 10; then
+    check "$n.close" PASS "the close button ended the window"
+  else
+    check "$n.close" FAIL "the window was still running 10 s after the close button"
+    kill "$wp" 2>/dev/null
+  fi
+  sz="$(jq -c .window "$cfg" 2>/dev/null)"
+  if [ "$(jq -r .window.width "$cfg" 2>/dev/null)" -ge $((w1 - 6)) ] 2>/dev/null; then
+    check "$n.size-saved" PASS "desktop.json window: $sz (page content was ${w1} wide)"
+  else
+    check "$n.size-saved" FAIL "desktop.json window: $sz (page content was ${w1} wide)"
+  fi
+  iclose
+
+  # A second start restores that size; Ctrl+Q quits.
+  launch "$n-again" TENDSHELF_DESKTOP_HOME="$h" TENDSHELF_PROBE=personal TENDSHELF_PROBE_PLAN=window TENDSHELF_PROBE_STAY=1 "$@"
+  wp=$pid
+  for _ in $(seq 1 120); do
+    [ "$(val "$n-again" '.ready')" = "true" ] && break
+    kill -0 "$wp" 2>/dev/null || break
+    sleep 0.5
+  done
+  w0="$(val "$n-again" '.size.w')"
+  if [ "${w0:-0}" -ge $((w1 - 6)) ] && [ "${w0:-0}" -le $((w1 + 6)) ]; then
+    check "$n.size-restored-again" PASS "page content ${w0} wide; the last close left ${w1}"
+  else
+    check "$n.size-restored-again" FAIL "page content ${w0} wide; the last close left ${w1}"
+  fi
+  iopen
+  calibrate "$n-again" || true
+  at 300 22
+  icmd click
+  sleep 0.5
+  icmd tap Control_L q
+  if gone "$wp" 10; then check "$n.ctrl-q" PASS "Ctrl+Q ended the window"; else check "$n.ctrl-q" FAIL "the window was still running 10 s after Ctrl+Q"; kill "$wp" 2>/dev/null; fi
+  iclose
+}
+
+backend="${TENDSHELF_WINDOW_BACKEND:-wayland}"
+if [ "$backend" = "x11" ]; then
+  [ -n "${DISPLAY:-}" ] || { check x11.window NOTRUN "no Xwayland display in the private session"; exit 0; }
+  window_suite win-x11 GDK_BACKEND=x11 DISPLAY="$DISPLAY"
+else
+  window_suite win-wayland
+fi
+if [ "${TENDSHELF_EXIT_ONLY:-}" = "window" ]; then
+  say "results in $out"
+  exit 0
+fi
+
 # ---- 0. the private session ----
 say "session: WAYLAND_DISPLAY=$WAYLAND_DISPLAY XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR GSETTINGS_BACKEND=${GSETTINGS_BACKEND:-unset}"
 real_ext="$(env -u DBUS_SESSION_BUS_ADDRESS XDG_CONFIG_HOME="$REAL_HOME/.config" GSETTINGS_BACKEND=dconf gsettings get org.gnome.shell enabled-extensions 2>&1 | cut -c1-200)"

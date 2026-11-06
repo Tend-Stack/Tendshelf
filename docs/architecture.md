@@ -548,7 +548,7 @@ highlights, notes and bookmarks by sentence id and offset. There is no audio tim
 
 ## Desktop (P5)
 
-`desktop/` module, Wails v3.0.0 (pinned), Linux on its default GTK 4 + WebKitGTK 6.0 (the `gtk3` tag is the
+`desktop/` module, Wails v3.1.0 (pinned; decision 0023), Linux on its default GTK 4 + WebKitGTK 6.0 (the `gtk3` tag is the
 legacy fallback; [decision 0003](decisions/0003-newest-versions.md)). Two modes, decided in
 [decision 0020](decisions/0020-desktop-shell.md) and planned in `docs/plans/m6-desktop.md`:
 
@@ -558,6 +558,18 @@ legacy fallback; [decision 0003](decisions/0003-newest-versions.md)). Two modes,
   own data folder (never the server's default). Sign-in works as on any server.
 - **Connect mode** loads the typed server directly in the window. No proxy, and no rewriting of cookies or the CSP.
   The shell checks `GET /healthz` first (no credentials); a server without `shell` support is refused.
+- **The window chrome** (decision 0023, plan X1). The window is created `Hidden`, GTK's titlebar is replaced by a hidden
+  empty widget (`desktop/titlebar.go`, three GTK calls through purego once `NativeWindow()` exists), and the window is
+  shown on the first page's `tendshelf:ready` (the picker's too) or after 3 s. GTK keeps the shadow, rounded corners and
+  resize border, and no resize code exists. Never `Frameless` (square, no shadow, own resize script).
+  `TENDSHELF_NATIVE_FRAME=1` keeps GTK's own bar. On Linux no menu is attached (`HideMenuBar` is empty there); Ctrl+Q is
+  a key binding. Size and maximised are saved on `WindowClosing` and at shutdown in `desktop.json` (`window`; Wayland
+  ignores position), clamped to the screen; `BackgroundColour` comes from `ground`, one of the four `--ground` values.
+- **One native-call file.** `desktop/nativelib.go` opens GTK 4, WebKitGTK, GObject and GLib once with `dlopen`;
+  `webkit.go` (cookies, downloads) and `titlebar.go` call them through purego, so `desktop/` holds no C in either build.
+- **Bridge additions**: `tendshelf:window minimise|maximise|close|quit` from the session's pages and the picker only
+  (table-driven, unknown verbs ignored); Go sends the fixed `ts:desktop` values `active`, `inactive`, `maximised`,
+  `restored` and `tray`. The picker hears the window's state, never a media key.
 - `ts_shell=desktop` marks the window in both modes (`data-shell`); there is no service worker in it, and no
   Wails runtime in pages. One bridge: `tendshelf:` messages to Go, a `ts:desktop` event back.
 
