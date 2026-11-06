@@ -223,6 +223,13 @@ class ConflictTest {
     }
 
     @Test
+    fun clock() {
+        assertEquals("1:20", clockText(80_000))
+        assertEquals("0:00", clockText(-5))
+        assertEquals("1:02:03", clockText(3_723_000))
+    }
+
+    @Test
     fun theAskNamesTheDevice() {
         assertEquals(Ask("b", 900_000, "Phone"), conflict("b", 0, remote(900_000), "me"))
         assertEquals("another device", conflict("b", 0, remote(900_000, label = ""), "me")!!.deviceLabel)

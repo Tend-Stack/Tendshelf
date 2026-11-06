@@ -25,4 +25,8 @@
     <string name="offline_retry">Try again</string>
     <string name="save_failed">Couldn\'t save that file.</string>
     <string name="ssl_error">This server\'s certificate isn\'t trusted, so Tendshelf won\'t open it.</string>
+    <string name="place_channel">Your place on another device</string>
+    <string name="continue_ask">You were at %1$s on %2$s. Continue there?</string>
+    <string name="continue_there">Continue there</string>
+    <string name="stay_here">Stay here</string>
 </resources>

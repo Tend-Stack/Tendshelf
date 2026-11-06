@@ -1,6 +1,10 @@
 package app.tendshelf.android
 
 import app.tendshelf.shared.ApiPaths
+import app.tendshelf.shared.BatchItemResult
+import app.tendshelf.shared.Save
+import app.tendshelf.shared.batchBody
+import app.tendshelf.shared.queueNextBody
 import app.tendshelf.shared.AudioFile
 import app.tendshelf.shared.BookManifest
 import app.tendshelf.shared.Chapter
@@ -12,7 +16,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /** The server answered with a status that is not a success. */
-class ApiException(val code: Int) : IOException("server answered $code")
+class ApiException(val code: Int, val retryAfterS: Int = 0) : IOException("server answered $code")
 
 /**
  * The native side's small HTTP client. It talks only to URLs built from [ApiPaths] on the one origin it is
@@ -36,7 +40,7 @@ class Api(origin: String) {
         val j = JSONObject(String(get(paths.settingsUrl, token, 64 * 1024)))
         return PlayerSettings(
             j.getDouble("speed"), j.getInt("skipBackS"), j.getInt("skipForwardS"),
-            j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"),
+            j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"), ApiJson.rewindSteps(j),
         )
     }
 
@@ -61,12 +65,7 @@ class Api(origin: String) {
         val authors = book.optJSONArray("authors")?.let { arr ->
             (0 until arr.length()).joinToString(", ") { arr.getJSONObject(it).getString("name") }
         }.orEmpty()
-        val progress = json.optJSONObject("progress")?.let {
-            RemoteProgress(
-                it.getLong("positionMs"), it.getBoolean("finished"), it.getLong("clientUpdatedAt"),
-                it.optString("deviceId"), it.optString("deviceLabel"),
-            )
-        }
+        val progress = json.optJSONObject("progress")?.let(ApiJson::remoteProgress)
         // The id in the answer is the live one when the asked-for id was merged into another book.
         val id = book.getString("id")
         return BookManifest(
@@ -76,6 +75,44 @@ class Api(origin: String) {
             author = authors,
             progress = progress,
         )
+    }
+
+    /** Sends unsent saves in order; the answer has one item per save. A failure is an exception, never a retry here. */
+    fun batch(token: String, saves: List<Save>): List<BatchItemResult> =
+        ApiJson.batchResults(String(post(paths.batchUrl, token, batchBody(saves), 1024 * 1024)!!))
+
+    /** The stored place of a book, or null when there is none. */
+    fun progress(token: String, bookId: String): RemoteProgress? =
+        JSONObject(String(get(paths.progressUrl(bookId), token, 64 * 1024))).optJSONObject("progress")?.let(ApiJson::remoteProgress)
+
+    /**
+     * Takes the next book off the queue (or the series) once [ended] is over: its id, or null for 204. Sent at
+     * most once: a lost answer must not pop a second book, so there is no retry here and no reused connection.
+     */
+    fun queueNext(token: String, ended: String): String? {
+        val bytes = post(paths.queueNextUrl, token, queueNextBody(ended), 64 * 1024) ?: return null
+        return JSONObject(String(bytes)).getJSONObject("book").getString("id")
+    }
+
+    /** POST of JSON on a fresh connection; null for 204. */
+    private fun post(url: String, token: String, body: String, limit: Int): ByteArray? {
+        val conn = open(url, token)
+        conn.requestMethod = "POST"
+        conn.doOutput = true
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Connection", "close") // no reused socket, so the platform never resends a POST by itself
+        conn.outputStream.use { it.write(body.toByteArray()) }
+        val code = conn.responseCode
+        if (code == 204) {
+            conn.disconnect()
+            return null
+        }
+        if (code == 429) {
+            val wait = conn.getHeaderField("Retry-After")?.toIntOrNull() ?: 30
+            conn.disconnect()
+            throw ApiException(code, wait.coerceIn(1, 300))
+        }
+        return read(conn, limit)
     }
 
     /** The cover as bytes (at most 2 MiB), or null when there is none or it cannot be read. */
