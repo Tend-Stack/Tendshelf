@@ -5,11 +5,15 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
+	"github.com/Tend-Stack/tendshelf/internal/metadata"
+	"github.com/Tend-Stack/tendshelf/internal/metadata/online"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
@@ -28,6 +32,7 @@ func (s *server) registerChapters(mux *http.ServeMux) {
 	mux.HandleFunc("POST /books/{id}/chapters", s.postChapters)
 	mux.HandleFunc("GET /books/{id}/chapters/reset", s.getChaptersReset)
 	mux.HandleFunc("POST /books/{id}/chapters/reset", s.postChaptersReset)
+	mux.HandleFunc("POST /books/{id}/chapters/lookup", s.postChaptersLookup)
 }
 
 // chedRow is one row of a draft as typed.
@@ -39,6 +44,9 @@ type chedDraft struct {
 	rows                            []chedRow
 	err, saved                      string
 	shiftBy, shiftFrom, shiftErrMsg string
+	// The lookup (L3b): the job whose answer the page shows, the typed ASIN, its error, and what
+	// the last "use" step did.
+	lookupJob, lookupASIN, lookupErr, notice string
 }
 
 // chaptersBook loads the book of a chapter route: 404 unless the person may edit it, it is an
@@ -73,6 +81,18 @@ func (s *server) getChapters(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("saved") == "1" {
 		dr.saved = chedSaved
 	}
+	if job := r.URL.Query().Get("lookup"); job != "" && s.details != nil {
+		// A job that is not a chapter lookup of this book is no job at all.
+		if _, _, err := s.details.ChapterLookupFor(r.Context(), job, d.Book.ID); err != nil {
+			if errors.Is(err, metadata.ErrNotFound) {
+				s.notFound(w, r)
+				return
+			}
+			s.serverError(w, r, "chapter lookup", err)
+			return
+		}
+		dr.lookupJob = job
+	}
 	s.renderChapters(w, r, d, dr)
 }
 
@@ -100,7 +120,20 @@ func (s *server) renderChapters(w http.ResponseWriter, r *http.Request, d librar
 		Rev: dr.rev, Origin: dr.origin, Saved: dr.saved, Error: dr.err,
 		StartHead: chedStart, NameHead: chedName, ListenWord: chedListen, DeleteWord: chedDelete, AddWord: chedAdd, SaveLabel: chedSave,
 		MoveTitle: chedMoveTitle, MoveBy: chedMoveBy, MoveByHint: chedMoveByHint, MoveFrom: chedMoveFrom, MoveGo: chedMoveGo,
-		ShiftBy: dr.shiftBy, ShiftFrom: dr.shiftFrom, ShiftError: dr.shiftErrMsg,
+		ShiftBy: dr.shiftBy, ShiftFrom: dr.shiftFrom, ShiftError: dr.shiftErrMsg, Notice: dr.notice,
+	}
+	if on, err := s.lookupsOn(r); err == nil && on {
+		asin := dr.lookupASIN
+		if asin == "" {
+			asin = d.Book.ASIN
+		}
+		v.Lookup = &pages.ChaptersLookupForm{Action: "/books/" + id + "/chapters/lookup", CSRF: v.CSRF, ASIN: asin,
+			Summary: chlkSummary, Label: chlkAsk, Hint: chlkHint, Go: chlkGo, Error: dr.lookupErr, Open: dr.lookupErr != "" || dr.lookupJob != ""}
+		if dr.lookupJob != "" {
+			if j, l, err := s.details.ChapterLookupFor(r.Context(), dr.lookupJob, id); err == nil {
+				v.Result = chaptersLookupBox(j, l, id, d.Book.DurationMs, len(dr.rows))
+			}
+		}
 	}
 	if v.ShiftFrom == "" {
 		v.ShiftFrom = "2"
@@ -182,6 +215,10 @@ func (s *server) postChapters(w http.ResponseWriter, r *http.Request) {
 		}
 	case "shift":
 		shiftChapters(&dr, d.Book.DurationMs)
+	case "lookup_all", "lookup_titles":
+		if !s.useChapterLookup(w, r, d, &dr, kind == "lookup_titles") {
+			return
+		}
 	}
 	s.renderChapters(w, r, d, dr)
 }
@@ -404,4 +441,160 @@ func (s *server) chaptersEditLink(r *http.Request, v *pages.BookView, d library.
 	if d.Book.DurationMs > 0 && s.can.Can(r.Context(), currentUser(r), share.EditBook, t) {
 		v.Chapters.EditHref, v.Chapters.EditLabel = "/books/"+d.Book.ID+"/chapters/edit", chedEditLink
 	}
+}
+
+var asinForm = regexp.MustCompile(`^[A-Z0-9]{10}$`)
+
+// postChaptersLookup starts a chapter lookup for the typed ASIN and goes to the page that shows its
+// answer. It is the only place a chapter lookup begins, and only from a press of the button.
+func (s *server) postChaptersLookup(w http.ResponseWriter, r *http.Request) {
+	d, ok := s.chaptersBook(w, r)
+	if !ok {
+		return
+	}
+	if on, err := s.lookupsOn(r); err != nil {
+		s.serverError(w, r, "online setting", err)
+		return
+	} else if !on {
+		s.notFound(w, r)
+		return
+	}
+	asin := strings.ToUpper(strings.TrimSpace(r.PostFormValue("asin")))
+	if !asinForm.MatchString(asin) {
+		dr := storedDraft(d)
+		dr.lookupASIN, dr.lookupErr = r.PostFormValue("asin"), chlkBadASIN
+		s.renderChapters(w, r, d, dr)
+		return
+	}
+	job, err := s.details.StartChapterLookup(r.Context(), d.Book.ID, asin, currentUser(r).ID)
+	switch {
+	case errors.Is(err, metadata.ErrOnlineOff), errors.Is(err, metadata.ErrNotFound):
+		s.notFound(w, r)
+	case errors.Is(err, online.ErrEmptyQuery):
+		dr := storedDraft(d)
+		dr.lookupASIN, dr.lookupErr = asin, chlkBadASIN
+		s.renderChapters(w, r, d, dr)
+	case err != nil:
+		s.serverError(w, r, "start chapter lookup", err)
+	default:
+		s.answerPage(w, r, "/books/"+d.Book.ID+"/chapters/edit?lookup="+job)
+	}
+}
+
+// chaptersLookupBox is the box for a job: waiting, failed with Audnexus's words, or the comparison.
+// n is how many rows the draft has now; titles alone fit only when the counts are equal.
+func chaptersLookupBox(j jobs.Job, l online.ChapterList, bookID string, durationMs int64, n int) *pages.ChaptersLookupResult {
+	switch j.State {
+	case jobs.StateDone:
+	case jobs.StateFailed, jobs.StateCancelled:
+		msg := j.ErrorText
+		if msg == "" {
+			msg = chlkFailed
+		}
+		return &pages.ChaptersLookupResult{State: "failed", Message: msg}
+	default:
+		return &pages.ChaptersLookupResult{State: "wait", Message: chlkWait, PollHref: "/hx/jobs/" + j.ID + "?book=" + bookID}
+	}
+	res := &pages.ChaptersLookupResult{State: "done", Job: j.ID, UseAll: chlkUseAll, UseTitles: chlkUseTitles, TitlesNote: chlkTitlesNote,
+		CanTitles: len(l.Chapters) == n,
+		Found:     fmt.Sprintf(chlkFound, len(l.Chapters), clockText(l.RuntimeMs), clockText(durationMs))}
+	if !l.Accurate || absInt64(l.RuntimeMs-durationMs) > 5000 {
+		res.Warn = chlkWarn
+	}
+	return res
+}
+
+func absInt64(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+// getChapterLookupJob is GET /hx/jobs/{id} for a chapter lookup: the result box again. The page that
+// polls names the book (?book=) and the draft's row count (?n=); the job must be that book's.
+func (s *server) getChapterLookupJob(w http.ResponseWriter, r *http.Request, j jobs.Job) {
+	book, ok := s.lookupBook(w, r, r.URL.Query().Get("book"))
+	if !ok {
+		return
+	}
+	j, l, err := s.details.ChapterLookupFor(r.Context(), j.ID, book.ID)
+	if errors.Is(err, metadata.ErrNotFound) {
+		s.notFound(w, r)
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "chapter lookup", err)
+		return
+	}
+	n, _ := strconv.Atoi(r.URL.Query().Get("n"))
+	s.fragment(w, r, http.StatusOK, pages.ChaptersLookupBox(*chaptersLookupBox(j, l, book.ID, book.DurationMs, n)))
+}
+
+// useChapterLookup fills the draft from the stored result of the job the form names, never from
+// values in the form. All rows replace the draft (rows at or past the end of the book are left out
+// and counted); titles-only keeps the draft's starts and needs equal counts. It returns false when
+// it has already answered.
+func (s *server) useChapterLookup(w http.ResponseWriter, r *http.Request, d library.BookDetail, dr *chedDraft, titlesOnly bool) bool {
+	if on, err := s.lookupsOn(r); err != nil {
+		s.serverError(w, r, "online setting", err)
+		return false
+	} else if !on {
+		s.notFound(w, r)
+		return false
+	}
+	j, l, err := s.details.ChapterLookupFor(r.Context(), r.PostFormValue("job"), d.Book.ID)
+	if errors.Is(err, metadata.ErrNotFound) {
+		s.notFound(w, r)
+		return false
+	}
+	if err != nil {
+		s.serverError(w, r, "chapter lookup", err)
+		return false
+	}
+	if j.State != jobs.StateDone || len(l.Chapters) == 0 {
+		dr.err = chlkNotReady
+		return true
+	}
+	title := func(i int) string {
+		t := strings.TrimSpace(l.Chapters[i].Title)
+		if r := []rune(t); len(r) > library.MaxChapterTitle {
+			t = strings.TrimSpace(string(r[:library.MaxChapterTitle]))
+		}
+		if t == "" {
+			t = fmt.Sprintf(bookChapterN, i+1)
+		}
+		return t
+	}
+	if titlesOnly {
+		if len(l.Chapters) != len(dr.rows) {
+			dr.err = chlkCountsDiff
+			return true
+		}
+		for i := range dr.rows {
+			dr.rows[i].title, dr.rows[i].err = title(i), ""
+		}
+		dr.notice = chlkFilledNames
+		return true
+	}
+	dr.rows, dr.origin = nil, "online"
+	dropped := 0
+	for i, c := range l.Chapters {
+		if c.StartMs >= d.Book.DurationMs {
+			dropped++
+			continue
+		}
+		dr.rows = append(dr.rows, chedRow{start: clockMsText(max(c.StartMs, 0)), title: title(i)})
+	}
+	dr.notice = chlkFilledAll
+	switch {
+	case dropped == 1:
+		dr.notice += chlkDropOne
+	case dropped > 1:
+		dr.notice += fmt.Sprintf(chlkDropMany, dropped)
+	}
+	if len(dr.rows) == 0 {
+		dr.rows = []chedRow{{start: clockMsText(0), title: d.Book.Title}}
+	}
+	return true
 }

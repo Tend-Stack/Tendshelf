@@ -188,6 +188,8 @@ func (e *Error) Text() string {
 		return fmt.Sprintf("%s is asking for a pause. Wait a minute and try again.", site)
 	case "too_large":
 		return fmt.Sprintf("The answer from %s was too large, so Tendshelf ignored it.", site)
+	case "no_chapters":
+		return "Audnexus has no chapters for this book."
 	case "bad_answer":
 		return fmt.Sprintf("%s sent an answer Tendshelf could not use.", site)
 	default:

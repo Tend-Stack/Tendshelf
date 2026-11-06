@@ -47,3 +47,25 @@ const (
 	chedErrMoveRow = "Choose a chapter to move from, the second one or later."
 	chedErrMoveBad = "Moving by that much would put a chapter out of order or past the end. Nothing was moved."
 )
+
+// Words of the chapter lookup (L3b), listed in docs/copy-additions.md.
+const (
+	chlkSummary     = "Look up chapters"
+	chlkAsk         = "Audible ASIN"
+	chlkHint        = "Ten letters and numbers, from the book's Audible page."
+	chlkGo          = "Look up"
+	chlkBadASIN     = "That does not look like an ASIN."
+	chlkWait        = "Asking Audnexus for the chapters."
+	chlkFailed      = "The chapter lookup did not work. Try again later."
+	chlkFound       = "Audnexus lists %d chapters, %s long. This book is %s long."
+	chlkWarn        = "These chapters may not line up with your recording. Check the times before you save, and use Move chapters if they are all early or late."
+	chlkUseAll      = "Use titles and times"
+	chlkUseTitles   = "Use titles only"
+	chlkTitlesNote  = "Titles only needs the same number of chapters as the list below has."
+	chlkNotReady    = "The chapters are not ready yet."
+	chlkCountsDiff  = "The number of chapters is not the same, so only titles and times can be used."
+	chlkFilledAll   = "Chapters filled in. Check them, then press Save chapters."
+	chlkFilledNames = "Titles filled in. Check them, then press Save chapters."
+	chlkDropOne     = " One chapter starts after the end of this book and was left out."
+	chlkDropMany    = " %d chapters start after the end of this book and were left out."
+)
