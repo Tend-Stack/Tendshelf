@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The page's ground colour (tokens.css ground, light and dark) behind the WebView and the bars. -->
+    <color name="ground">#f4eee3</color>
+</resources>

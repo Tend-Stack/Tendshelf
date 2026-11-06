@@ -17,8 +17,14 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
+        <!-- No Google traffic from the WebView: Safe Browsing and usage metrics are off (plan A2, invariant 5). -->
+        <meta-data android:name="android.webkit.WebView.EnableSafeBrowsing" android:value="false" />
+        <meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true" />
+
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:enableOnBackInvokedCallback="true"
             android:exported="true"
             android:launchMode="singleTop">
             <intent-filter>

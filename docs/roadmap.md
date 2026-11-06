@@ -948,6 +948,7 @@ share-link pages stay in link mode and never call it). Tests: `TestSeriesNext`. 
   the status bar (A2 does the safe areas). Android Auto not tried.
 - Unit tests of `shared` need `kotlin-test`, `junit` and `hamcrest` (not on the approved list; test-only, in `NOTICES.md`): approve or
   replace.
+- **A2 Shell** (2026-11-06, branch `pkg-a2`). Scope: connect flow (address page, https then http, one plain-http warning per origin), PKCE sign-in through the server's own page, the code taken by `shouldOverrideUrlLoading` on the 303 to `/app/connect/done` (the plan's guess held on the emulator: the callback fired for the redirect GET with `isRedirect=true` right after `POST /app/connect`, so the `shouldInterceptRequest` fallback was not needed), Keystore-held token (`TokenStore`), `AuthApi`, bundled start and offline pages through `WebViewAssetLoader` (no script), one navigation policy `shared/Navigation.kt`, sign-out that wipes token, cookies, storage, cache and history, file saves through the Storage Access Framework, parent-padding insets, back through `OnBackInvokedDispatcher`. Server S1: `/healthz` has `"connect":"1"`. Tools: `android/tools/test-server.sh`, `internal/testutil/androidseed`, debug-only `DebugProbe`. Dependency: `androidx.webkit` 1.18.0. Limits: bookmark export and book upload through the picker and a keyboard over a field were not exercised on the emulator; the release APK's ignoring of start extras was checked only by what it did not do (no request, no playback). Next step: A4.
 
 ## Later
 

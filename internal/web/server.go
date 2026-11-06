@@ -332,6 +332,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 			"version": opts.Version,
 			"app":     "tendshelf",
 			"shell":   "1", // the desktop shell looks for this: the server knows ts_shell
+			"connect": "1", // the Android app looks for this: /app/connect and the code swap exist
 		})
 	})
 	s.registerInstall(outer)

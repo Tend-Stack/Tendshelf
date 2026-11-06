@@ -1,4 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Tendshelf</string>
+    <!-- Words not in the copy deck; listed in docs/copy-additions.md. -->
+    <string name="http_warning_title">This address is not private</string>
+    <string name="http_warning_body">This address is not private. Others on this network could see what you do here.</string>
+    <string name="http_warning_public">Anyone along the way could see your password.</string>
+    <string name="http_warning_continue">Continue</string>
+    <string name="http_warning_cancel">Cancel</string>
+    <string name="start_title">Connect to your Tendshelf</string>
+    <string name="start_body">Type the address you use for your Tendshelf server.</string>
+    <string name="start_label">Address</string>
+    <string name="start_button">Connect</string>
+    <string name="start_hint">Like tendshelf.home:8095</string>
+    <string name="address_only">Type only the address, like tendshelf.home:8095.</string>
+    <string name="unreachable">Couldn\'t reach that server. Check the address and that it\'s running.</string>
+    <string name="certificate">That server\'s certificate isn\'t trusted, so Tendshelf won\'t connect.</string>
+    <string name="not_tendshelf">That address doesn\'t look like a Tendshelf server.</string>
+    <string name="old_server">That server needs updating before this app can use it.</string>
+    <string name="expired">This sign-in has expired. Start again from the app.</string>
+    <string name="other_person">This sign-in belongs to someone else. Start again from the app.</string>
+    <string name="signed_out">You were signed out. Sign in again to carry on.</string>
+    <string name="offline_title">Can\'t reach your server</string>
+    <string name="offline_body">Check your connection and that the server is running.</string>
+    <string name="offline_retry">Try again</string>
+    <string name="save_failed">Couldn\'t save that file.</string>
+    <string name="ssl_error">This server\'s certificate isn\'t trusted, so Tendshelf won\'t open it.</string>
 </resources>
