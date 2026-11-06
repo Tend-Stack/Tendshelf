@@ -139,3 +139,28 @@ func TestDeskBarCSP(t *testing.T) {
 		}
 	}
 }
+
+// TestDeskStateMenu: the More menu carries the board's lines, each with a verb Go knows, and Keep playing
+// starts hidden and off, a switch the window shows only when a tray exists.
+func TestDeskStateMenu(t *testing.T) {
+	out := renderShell(t, "layout", Page{Title: "Home", Shell: "desktop"})
+	menu := out[strings.Index(out, `id="desktop-menu"`):]
+	menu = menu[:strings.Index(menu, "</div></div>")+len("</div>")]
+	var verbs, names []string
+	for _, m := range regexp.MustCompile(`data-wbar-do="([a-z-]+)"`).FindAllStringSubmatch(menu, -1) {
+		verbs = append(verbs, m[1])
+	}
+	for _, m := range regexp.MustCompile(`role="menuitem(?:checkbox)?"[^>]*>([^<]+)`).FindAllStringSubmatch(menu, -1) {
+		names = append(names, m[1])
+	}
+	if got, want := strings.Join(verbs, ","), "change,zoom-in,zoom-out,zoom-reset,keep,keys,about,quit"; got != want {
+		t.Errorf("menu verbs = %s, want %s", got, want)
+	}
+	if got, want := strings.Join(names, "|"), "Change mode or server…|Zoom in|Zoom out|Actual size|Keep playing when I close the window|Keyboard shortcuts|About Tendshelf|Quit Tendshelf"; got != want {
+		t.Errorf("menu words = %s", got)
+	}
+	keep := regexp.MustCompile(`<button[^>]*data-wbar-keep[^>]*>`).FindString(menu)
+	if !strings.Contains(keep, `role="menuitemcheckbox"`) || !strings.Contains(keep, `aria-checked="false"`) || !strings.Contains(keep, " hidden") {
+		t.Errorf("Keep playing must start hidden and off: %s", keep)
+	}
+}

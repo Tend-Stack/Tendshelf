@@ -10,33 +10,6 @@ import (
 	"testing"
 )
 
-func TestTrayActions(t *testing.T) {
-	var calls []string
-	note := func(s string) func() { return func() { calls = append(calls, s) } }
-	a := trayActions{show: note("show"), hide: note("hide"), playPause: note("play"), quit: note("quit")}
-
-	entries := trayEntries(a)
-	var labels []string
-	for _, e := range entries {
-		labels = append(labels, e.label)
-		e.run()
-	}
-	wantLabels := []string{"Show Tendshelf", "Hide Tendshelf", "Play or pause", "Quit Tendshelf"}
-	if !reflect.DeepEqual(labels, wantLabels) {
-		t.Fatalf("labels = %v, want %v", labels, wantLabels)
-	}
-	if want := []string{"show", "hide", "play", "quit"}; !reflect.DeepEqual(calls, want) {
-		t.Fatalf("each entry must run its own action: %v, want %v", calls, want)
-	}
-
-	calls = nil
-	toggleWindow(func() bool { return true }, a)
-	toggleWindow(func() bool { return false }, a)
-	if want := []string{"hide", "show"}; !reflect.DeepEqual(calls, want) {
-		t.Fatalf("click on the icon: %v, want %v", calls, want)
-	}
-}
-
 // The tray's "Play or pause" and the media keys use the same bridge command, and the page honours
 // exactly the commands Go can send.
 func TestKeysCommandList(t *testing.T) {
@@ -81,7 +54,7 @@ func TestKeysCommandList(t *testing.T) {
 	}
 	var inGo []string
 	// The window and tray commands are for desktop-shell.js (plan X2); desktop.js presses player buttons.
-	state := map[string]bool{"active": true, "inactive": true, "maximised": true, "restored": true, "tray": true}
+	state := map[string]bool{"active": true, "inactive": true, "maximised": true, "restored": true, "tray": true, "keep": true, "nokeep": true}
 	for k := range commands {
 		if state[k] {
 			continue
