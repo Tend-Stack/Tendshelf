@@ -44,6 +44,9 @@ object ShellWeb {
             saveFormData = false
         }
         web.overScrollMode = android.view.View.OVER_SCROLL_NEVER
+        // The WebView draws its own scrollbar, which the page's styles cannot reach. A native app shows none.
+        web.isVerticalScrollBarEnabled = false
+        web.isHorizontalScrollBarEnabled = false
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
         web.setDownloadListener { url, _, contentDisposition, mimeType, _ -> saver.offer(url, contentDisposition, mimeType) }
         web.setOnLongClickListener {
