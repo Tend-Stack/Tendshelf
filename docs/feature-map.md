@@ -70,7 +70,7 @@ from general knowledge. Cells marked `?` are unverified guesses; check before qu
 | Installable PWA | Partial? | n/a | P4 |
 | Offline downloads | Yes (mobile apps) | Yes | P4 (PWA) |
 | Native desktop app | No | Windows (retired?) | P5 (Wails v3) |
-| Native mobile app | Yes (stalled) | Yes | Later (evaluate Wails v3 mobile; PWA first) |
+| Native mobile app | Yes (stalled) | Yes | M8 (Android: Kotlin shell with Media3; PWA until then; iPhone later) |
 | TV app | No | Yes (some TV platforms?) | Later (own layouts; not designed yet) |
 | **Feeds and integrations** | | | |
 | RSS/podcast feed of a book or series | Yes | No | Later |

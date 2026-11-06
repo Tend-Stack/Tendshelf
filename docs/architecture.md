@@ -47,6 +47,7 @@ is not an audio file or a cached image. ffmpeg/ffprobe are the only child proces
 | `internal/api` | JSON helpers of API v1 (envelope, errors, lists, ETag); the routes live in `internal/web` (`routes_api*.go`) and reuse the pages' library and share functions. |
 | `internal/ebook` | Ebook ingestion (R1): format detection, copy-protection check, one parser per format (EPUB 2/3 with SMIL, PDF text layer, TXT/Markdown, DOCX, HTML, FB2, DRM-free MOBI/AZW3), the canonical document `tendshelf-doc-v1` with stable IDs and source offsets, sentence segmenter, pairing scores. No HTTP, no model. |
 | `desktop/` (P5) | Separate Go module: Wails v3 shell. Not imported by the server. |
+| `android/` (M8) | Separate Gradle project: Kotlin app with a WebView shell and Media3 playback (decision 0024). A shared Kotlin module with no Android imports holds API and position logic. Not imported by the server; `make build` is unchanged. |
 
 Dependency direction: `web`, `api` → services (`library`, `progress`, `share`, `users`, `metadata`,
 `scan`, `jobs`, `ebook`) → `db`, `media`. `ebook` imports neither. Services never import `web` or `api`.
@@ -644,3 +645,5 @@ needed), a speech-recognition runtime (decision 0018).
 
 Later, **approved by the operator on 2026-11-03** (each with its `NOTICES.md` row in the commit that adds it): `github.com/go-webauthn/webauthn` (passkeys), `github.com/fsnotify/fsnotify`
 (folder watcher), `github.com/wailsapp/wails/v3` (desktop module only), an OpenID Connect client.
+
+Android, **approved by the operator on 2026-11-05** ([decision 0024](decisions/0024-android-app.md)), `android/` only, each with its `NOTICES.md` row and pinned by Gradle dependency verification: Kotlin (through AGP), `androidx.media3` (exoplayer, session, datasource), `androidx.webkit`, `androidx.core`, and `androidx.work` if downloads need it. Every other module needs approval. Gradle fetches at build time only.
