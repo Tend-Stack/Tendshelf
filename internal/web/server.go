@@ -109,6 +109,7 @@ type server struct {
 	sessions   *auth.Sessions
 	devices    *auth.Devices
 	apiLimiter *auth.Limiter // per device id: every bearer request counts, see bearer
+	keyLimiter *auth.Limiter // per client address: failed app-key sign-ins, see keyAuth
 	users      *users.Repo
 	can        *share.Checker
 	grants     *share.Grants
@@ -233,6 +234,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		sessions:   ss,
 		devices:    dv,
 		apiLimiter: auth.NewLimiter(apiRateMax, apiRateWindow, apiRateKeys, opts.Now),
+		keyLimiter: auth.NewLimiter(keyFailMax, keyFailWindow, apiRateKeys, opts.Now),
 		users:      ur,
 		can:        checker,
 		grants:     grants,
@@ -309,6 +311,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerReading(mux)
 	s.registerPlayer(mux)
 	s.registerAPI(mux)
+	s.registerAppKeys(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})
@@ -328,6 +331,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		})
 	})
 	s.registerInstall(outer)
+	s.registerOPDS(outer) // app-key surface: outside the cookie chain, see appauth.go
 	outer.Handle("/", s.shellLink(guarded))
 	return s, SecurityHeaders(outer), nil
 }

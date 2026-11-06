@@ -15,6 +15,8 @@ type DevicesView struct {
 	CSRF   string
 	Lines  []DeviceLine
 	Others int
+	// AppKeys is the App keys section under the list; the handler fills it.
+	AppKeys AppKeysView
 }
 
 // deviceSignOut is the per-session sign-out form: it acts on that one session only.
@@ -73,5 +75,6 @@ templ Devices(v DevicesView) {
 				</form>
 			}
 		</section>
+		@AppKeys(v.AppKeys)
 	</div>
 }
