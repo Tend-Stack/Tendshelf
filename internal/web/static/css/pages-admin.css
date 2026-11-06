@@ -298,3 +298,4 @@ a.ts-users__item:hover { background: var(--raised); }
 }
 /* A link inside a duplicate page is a tap target on its own, so it is at least 44 px tall. */
 .ts-dup a:not(.ts-btn) { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--ink); text-decoration: underline; }
+.ts-dup .ts-btn { max-width: 100%; white-space: normal; text-align: center; }

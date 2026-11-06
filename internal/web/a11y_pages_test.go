@@ -142,6 +142,9 @@ func a11yPages() []a11yPage {
 		row("admin-user-stop", "/admin/users/{id}/stop", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID + "/stop" }, owner, "main", true),
 		row("admin-email", "/admin/email", a11yStatic("/admin/email"), owner, "main", true),
 		row("admin-backups", "/admin/backups", a11yStatic("/admin/backups"), owner, "main", true),
+		row("admin-duplicates", "/admin/duplicates", a11yStatic("/admin/duplicates"), owner, "main", true),
+		row("admin-duplicate-merge", "/admin/duplicates/merge", func(e *a11yEnv) string { return a11yDupMergePath(e) }, owner, "main", true),
+		row("admin-duplicates-merged", "/admin/duplicates/merged", a11yStatic("/admin/duplicates/merged"), owner, "main", true),
 		row("login", "/login", a11yStatic("/login"), anon, "main", false),
 		row("invite", "/invite/{token}", func(e *a11yEnv) string { return "/invite/" + e.InviteToken }, anon, "main", false),
 		row("link", "/s/{token}", func(e *a11yEnv) string { return "/s/" + e.LinkToken }, anon, "main", false),
@@ -296,4 +299,25 @@ func TestA11yRouteCoverage(t *testing.T) {
 			t.Errorf("a11ySkip %s, which the source does not register", p)
 		}
 	}
+}
+
+// a11yDupMergePath is the confirm page for the first two audiobooks of the Harbour Lights library.
+func a11yDupMergePath(e *a11yEnv) string {
+	rows, err := e.Main.st.Reader().Query(`SELECT id FROM books WHERE library_id = ? AND kind = 'audio' ORDER BY added_at, id LIMIT 2`, e.LibID)
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			panic(err)
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) != 2 {
+		panic("a11y: the Harbour Lights library needs two audiobooks for the merge page")
+	}
+	return "/admin/duplicates/merge?keep=" + ids[0] + "&drop=" + ids[1]
 }
