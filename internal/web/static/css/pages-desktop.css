@@ -87,7 +87,10 @@ html[data-shell="desktop"] body { padding-top: var(--desktop-bar); }
 .ts-wdrop__icon { width: 3rem; height: 3rem; color: var(--accent); }
 .ts-wdrop__title, .ts-wdrop__lead { margin: 0; }
 .ts-wdrop__lead { max-width: 28rem; color: var(--ink-muted); }
-.ts-wbar__line[hidden], .ts-wbar__now[hidden], .ts-wbar__btn[hidden], .ts-wmenu[hidden] { display: none; }
+.ts-wbar__line[hidden], .ts-wbar__now[hidden], .ts-wbar__btn[hidden], .ts-wmenu[hidden], .ts-wmenu__item[hidden] { display: none; }
+/* On: filled, and a tick, so it is not told by colour alone. */
+.ts-wmenu__item[aria-checked="true"] .ts-wmenu__check { border-color: var(--accent-fill); background: var(--accent-fill); }
+.ts-wmenu__item[aria-checked="true"] .ts-wmenu__check::after { content: ""; display: block; width: 0.3125rem; height: 0.5625rem; margin: 0.0625rem auto 0; border: solid var(--on-accent); border-width: 0 0.125rem 0.125rem 0; transform: rotate(45deg); }
 .ts-wmenu__item:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
 .ts-wbar__crumb:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
 .ts-wbar__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

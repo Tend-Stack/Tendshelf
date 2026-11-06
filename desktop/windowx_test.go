@@ -20,6 +20,14 @@ func (f *fakeWindow) Minimise()       { f.calls = append(f.calls, "minimise") }
 func (f *fakeWindow) ToggleMaximise() { f.calls = append(f.calls, "maximise") }
 func (f *fakeWindow) Close()          { f.calls = append(f.calls, "close") }
 func (f *fakeWindow) Quit()           { f.calls = append(f.calls, "quit") }
+func (f *fakeWindow) ZoomIn()         { f.calls = append(f.calls, "zoom-in") }
+func (f *fakeWindow) ZoomOut()        { f.calls = append(f.calls, "zoom-out") }
+func (f *fakeWindow) ZoomReset()      { f.calls = append(f.calls, "zoom-reset") }
+func (f *fakeWindow) Change()         { f.calls = append(f.calls, "change") }
+func (f *fakeWindow) About()          { f.calls = append(f.calls, "about") }
+func (f *fakeWindow) KeepPlaying(on bool) {
+	f.calls = append(f.calls, map[bool]string{true: "keep-on", false: "keep-off"}[on])
+}
 
 // TestDeskBridgeWindow: the title bar's verbs run from the session's pages and from the picker,
 // never from another origin, and an unknown verb does nothing.
@@ -50,7 +58,7 @@ func TestDeskBridgeWindow(t *testing.T) {
 
 // TestDeskBridgeCommands: Go may send only the fixed list, and each is a plain constant script.
 func TestDeskBridgeCommands(t *testing.T) {
-	want := []string{"toggle", "back", "forward", "active", "inactive", "maximised", "restored", "tray"}
+	want := []string{"toggle", "back", "forward", "active", "inactive", "maximised", "restored", "tray", "keep", "nokeep"}
 	if len(commands) != len(want) {
 		t.Fatalf("commands has %d entries, want %d", len(commands), len(want))
 	}

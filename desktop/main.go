@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"sync/atomic"
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/app"
@@ -17,6 +18,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/web/static"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
 // version is set at build time (make desktop).
@@ -48,6 +50,28 @@ type windowUI struct {
 	app    *application.App
 	win    *application.WebviewWindow
 	bridge *Bridge
+
+	session  *Session
+	dirs     desktopshell.Dirs
+	version  string
+	tracker  *windowTracker
+	quitting atomic.Bool // a real Quit: the window must close, whatever Keep playing says
+	keep     atomic.Bool // Keep playing when I close the window (saved in desktop.json)
+	hasTray  bool        // a StatusNotifier watcher exists, so a hidden window can be found again
+	now      *nowWatcher
+}
+
+// quit ends the app. The flag tells the closing hook that this is not a hide.
+func (u *windowUI) quit() {
+	u.quitting.Store(true)
+	u.app.Quit()
+}
+
+// showWindow brings the window back from the tray, a minimise or a notification.
+func (u *windowUI) showWindow() {
+	u.win.Show()
+	u.win.Restore()
+	u.win.Focus()
 }
 
 // windowButtons is what the page's title bar buttons do (windowControl).
@@ -56,7 +80,24 @@ type windowButtons struct{ ui *windowUI }
 func (b windowButtons) Minimise()       { b.ui.win.Minimise() }
 func (b windowButtons) ToggleMaximise() { b.ui.win.ToggleMaximise() }
 func (b windowButtons) Close()          { b.ui.win.Close() }
-func (b windowButtons) Quit()           { b.ui.app.Quit() }
+func (b windowButtons) Quit()           { b.ui.quit() }
+func (b windowButtons) ZoomIn()         { b.ui.win.ZoomIn() }
+func (b windowButtons) ZoomOut()        { b.ui.win.ZoomOut() }
+func (b windowButtons) ZoomReset()      { b.ui.win.ZoomReset() }
+func (b windowButtons) Change()         { b.ui.session.Change() }
+
+func (b windowButtons) About() {
+	b.ui.app.Dialog.Info().SetTitle("About Tendshelf").
+		SetMessage("Tendshelf " + b.ui.version + "\nYour audiobooks and ebooks, in a window of their own.").Show()
+}
+
+// KeepPlaying saves the choice. It takes effect at once; the page already shows the new state.
+func (b windowButtons) KeepPlaying(on bool) {
+	b.ui.keep.Store(on)
+	if err := saveKeepPlaying(b.ui.dirs.File(), on); err != nil {
+		slog.Warn("could not save Keep playing", "err", err)
+	}
+}
 
 func (u *windowUI) Load(url string) {
 	u.bridge.Reset()
@@ -88,18 +129,24 @@ func run(dirs desktopshell.Dirs) error {
 		}
 	}
 
-	ui := &windowUI{}
+	ui := &windowUI{dirs: dirs, version: version, tracker: tracker}
 	session := NewSession(dirs, version, ui)
+	ui.session = session
 	ui.bridge = &Bridge{origin: session.Origin}
 	ui.bridge.win = windowButtons{ui}
+	ui.hasTray = hasTrayWatcher()
+	ui.keep.Store(saved.KeepPlaying && ui.hasTray)
+	notes := notifications.New()
 	reveal := newRevealer(func() { go showWindow(ui, tracker) }, showFallback)
 	ui.bridge.onLoad = reveal.Ready
 	probe := attachProbe(ui, session)
 
 	ui.app = application.New(application.Options{
-		Name:   "Tendshelf",
-		Icon:   appIcon(assets),
-		Assets: application.AssetOptions{Handler: desktopshell.New(desktopshell.Options{Starter: session, Assets: assets})},
+		Name: "Tendshelf",
+		Icon: appIcon(assets),
+		// Only Go calls this service; no page can reach Wails' runtime (TestDeskNotifyNotReachable).
+		Services: []application.Service{application.NewService(notes)},
+		Assets:   application.AssetOptions{Handler: desktopshell.New(desktopshell.Options{Starter: session, Assets: assets})},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: appID,
 			OnSecondInstanceLaunch: func(application.SecondInstanceData) {
@@ -130,7 +177,7 @@ func run(dirs desktopshell.Dirs) error {
 
 	actions := menuActions{
 		change:    session.Change,
-		quit:      func() { ui.app.Quit() },
+		quit:      ui.quit,
 		zoomIn:    func() { ui.win.ZoomIn() },
 		zoomOut:   func() { ui.win.ZoomOut() },
 		zoomReset: func() { ui.win.ZoomReset() },
@@ -159,7 +206,30 @@ func run(dirs desktopshell.Dirs) error {
 	})
 	ui.bridge.exec = ui.win.ExecJS
 	trackWindow(ui, tracker, save)
-	setupTray(ui)
+	tray := setupTray(ui)
+	ui.now = &nowWatcher{
+		active: func() bool { return inFront(tracker.isFocused(), ui.win.IsVisible(), ui.win.IsMinimised()) },
+		tray:   tray.Update,
+		notify: sendNote(notes),
+		ground: func(theme string) {
+			if err := saveGround(dirs.File(), theme); err != nil {
+				slog.Warn("could not save the theme", "err", err)
+			}
+		},
+	}
+	ui.bridge.onState = func(s nowState) {
+		if s.Stop != "" {
+			slog.Info("the page says playback stopped", "why", s.Stop, "focused", tracker.isFocused(), "visible", ui.win.IsVisible(), "minimised", ui.win.IsMinimised())
+		}
+		ui.now.Set(s)
+	}
+	ui.bridge.onPage = func() { // a page that has just loaded knows neither the tray nor the saved choice
+		if ui.hasTray {
+			ui.bridge.Send("tray")
+		}
+		ui.bridge.Send(map[bool]string{true: "keep", false: "nokeep"}[ui.keep.Load()])
+	}
+	notes.OnNotificationResponse(func(notifications.NotificationResult) { ui.showWindow() })
 
 	// A saved mode starts straight away; the picker shows "Opening your library…" meanwhile.
 	launch := session.Begin()
@@ -195,7 +265,15 @@ func trackWindow(ui *windowUI, t *windowTracker, save func()) {
 		t.setFocused(false)
 		ui.bridge.Send("inactive")
 	})
-	ui.win.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) { save() })
+	ui.win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		// Keep playing: while a book plays, closing hides the window and the tray brings it back.
+		if keepOnClose(ui.keep.Load(), ui.hasTray, ui.quitting.Load(), ui.now.Playing()) {
+			e.Cancel()
+			ui.win.Hide()
+			return
+		}
+		save()
+	})
 }
 
 // chromeReady is closed when the window's native chrome is set up (or has failed), so showing waits for it.

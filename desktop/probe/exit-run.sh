@@ -518,6 +518,63 @@ check personal.switch-stops-library INFO "port $pport is $now after the choice o
 shot personal-switch
 stopterm "$p3"
 
+# ---- 6. now playing (decision 0023, X4): tray menu over D-Bus, a notification, Wails' runtime out of reach ----
+# The window is the saved connect-mode one; the page says a made-up book is playing, minimises the window,
+# and says it ended. The tray is read from the AppIndicator watcher, the notification from the bus.
+nh="$work/dh-now"
+mkdir -p "$nh/config"
+printf '{"schema":1,"mode":"connect","server":"http://127.0.0.1:%s"}\n' "$port" >"$nh/config/desktop.json"
+nlog="$work/notify.log"
+: >"$nlog"
+if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+  dbus-monitor --session "type='method_call',interface='org.freedesktop.Notifications',member='Notify'" >"$nlog" 2>&1 &
+  pids+=("$!")
+fi
+launch now TENDSHELF_DESKTOP_HOME="$nh" TENDSHELF_PROBE=connect TENDSHELF_PROBE_PLAN=now TENDSHELF_PROBE_STAY=1
+pn=$pid
+for _ in $(seq 1 60); do [ "$(val now '.playing')" = "true" ] && break; sleep 0.5; done
+sleep 1
+if [ "$(val now '.playing')" != "true" ]; then
+  check now.page FAIL "the page never sent its state; see $out/now/window.log"
+else
+  check now.page PASS "$(val now '.origin | tostring' | cut -c1-120)"
+  if [ "$tray_note" = "watcher-present" ]; then
+    # The watcher lists the item as "<unique name>@/StatusNotifierItem"; the unique name is the one to ask.
+    item="$(gdbus call --session --dest org.kde.StatusNotifierWatcher --object-path /StatusNotifierWatcher \
+      --method org.freedesktop.DBus.Properties.Get org.kde.StatusNotifierWatcher RegisteredStatusNotifierItems 2>&1 |
+      grep -o "':[0-9.]*@" | tr -d "':@" | tail -1)"
+    item=":$item"
+    menupath="$(busctl --user get-property "$item" /StatusNotifierItem org.kde.StatusNotifierItem Menu 2>&1 | grep -o '"/[^"]*"' | tr -d '"' | head -1)"
+    layout="$(busctl --user call -- "$item" "${menupath:-/MenuBar}" com.canonical.dbusmenu GetLayout iias 0 -1 0 2>&1 | cut -c1-2500)"
+    echo "$layout" >"$out/now/tray-layout.txt"
+    missing=""
+    for want in "Probe & <b>Book</b>" "Chapter 2" "3 h left" "Pause" "Skip back" "Skip forward" "Show Tendshelf" "Quit Tendshelf"; do
+      case "$layout" in *"$want"*) ;; *) missing="$missing [$want]" ;; esac
+    done
+    if [ -z "$missing" ]; then check now.tray-menu PASS "read over D-Bus: Probe & <b>Book</b>, Chapter 2 and 3 h left, Pause, Skip back, Skip forward, Show, Quit"
+    else check now.tray-menu FAIL "missing:$missing; layout in $out/now/tray-layout.txt"; fi
+  else
+    check now.tray-menu NOTRUN "no StatusNotifierWatcher in the private session"
+  fi
+fi
+if waitdone now 40; then
+  check now.reach INFO "fetch from the session page to wails://localhost/wails/runtime: $(val now '.reach')"
+  case "$(val now '.reach')" in refused*) check now.notify-not-reachable PASS "$(val now '.reach')" ;; *) check now.notify-not-reachable FAIL "$(val now '.reach')" ;; esac
+else
+  check now.reach FAIL "no done answer"
+fi
+cp "$nlog" "$out/now/notify-bus.txt" 2>/dev/null
+if grep -q 'member=Notify' "$nlog" && grep -q 'Finished. Tendshelf has stopped.' "$nlog"; then
+  check now.notification PASS "$(grep -m1 'Finished' "$nlog" | cut -c1-200)"
+elif [ -s "$nlog" ]; then
+  check now.notification FAIL "the bus saw: $(head -c 300 "$nlog" | tr '\n' ' ')"
+else
+  check now.notification NOTRUN "nothing was seen on the notification service (no monitor or no service in the private session)"
+fi
+# the saved theme became the ground, and Keep playing is off by default
+check now.saved INFO "ground: $(jq -r .ground "$nh/config/desktop.json" 2>/dev/null), keepPlaying: $(jq -r .keepPlaying "$nh/config/desktop.json" 2>/dev/null)"
+stopterm "$pn"
+
 say "real GNOME enabled-extensions before: $real_ext"
 real_ext_after="$(env -u DBUS_SESSION_BUS_ADDRESS XDG_CONFIG_HOME="$REAL_HOME/.config" GSETTINGS_BACKEND=dconf gsettings get org.gnome.shell enabled-extensions 2>&1 | cut -c1-200)"
 say "real GNOME enabled-extensions after:  $real_ext_after"

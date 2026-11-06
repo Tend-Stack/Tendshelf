@@ -33,7 +33,7 @@ if (channel && host) {
   // The More menu: a button that opens a short list, arrow keys inside, Escape closes and gives focus back.
   const more = part("more");
   const menu = part("menu");
-  const items = () => [...menu.querySelectorAll("[role=menuitem]")];
+  const items = () => [...menu.querySelectorAll("[role^=menuitem]:not([hidden])")];
   const setMenu = (open) => {
     menu.hidden = !open;
     more.setAttribute("aria-expanded", String(open));
@@ -72,6 +72,11 @@ if (channel && host) {
     if (verb === "keys") {
       const sheet = document.getElementById("keys-help");
       if (sheet) sheet.showModal();
+    } else if (verb === "keep") {
+      // Keep playing is a switch: the page flips it at once, Go saves it.
+      const on = button.getAttribute("aria-checked") !== "true";
+      button.setAttribute("aria-checked", String(on));
+      post("tendshelf:window keep-" + (on ? "on" : "off"));
     } else {
       post("tendshelf:window " + verb);
     }
@@ -82,6 +87,10 @@ if (channel && host) {
   window.addEventListener("ts:desktop", (event) => {
     const state = event.detail;
     if (state === "active" || state === "inactive") document.documentElement.dataset.window = state;
+    // Go says a tray exists (only then Keep playing is offered) and whether the choice is on.
+    const keep = part("keep");
+    if (state === "tray" && keep) keep.hidden = false;
+    if ((state === "keep" || state === "nokeep") && keep) keep.setAttribute("aria-checked", String(state === "keep"));
     if (state === "maximised" || state === "restored") {
       part("max").hidden = state === "maximised";
       restore.hidden = state !== "maximised";
@@ -174,4 +183,49 @@ if (channel && host) {
     const watch = { subtree: true, childList: true, characterData: true, attributes: true };
     new MutationObserver(show).observe(player, { ...watch, attributeFilter: ["hidden", "src", "aria-label", "style"] });
   }
+
+  // Tell Go what is playing and which theme is on (decision 0023, point 10): the tray shows the book
+  // and the notifications know why playback stopped. Words are data; Go limits and escapes them.
+  // The place left changes every second, so it is sent at most every 5 s; anything else at once.
+  const root = document.documentElement;
+  const text = (name) => (player && player.querySelector("[data-ts-" + name + "]") || {}).textContent || "";
+  const sleepOn = () => !!window.tsPlayerFull && window.tsPlayerFull.sleepInfo().mode !== "off";
+  let stop = "";
+  let sleepWas = false;
+  let sentAt = 0;
+  let sentKey = null;
+  let sentLeft = "";
+  const tell = (event) => {
+    const detail = event && event.detail;
+    const playing = !!detail && detail.playing === true;
+    if (playing) stop = "";
+    else if (detail && detail.kind === "pause" && sentKey && JSON.parse(sentKey).playing) {
+      if (detail.durationMs && detail.positionMs >= detail.durationMs - 2000) stop = "end";
+      else if (sleepWas && !sleepOn()) stop = "sleep";
+    }
+    sleepWas = sleepOn();
+    const open = player && !player.hidden && text("title") !== "";
+    const light = matchMedia("(prefers-color-scheme: light)").matches;
+    const state = {
+      title: open ? text("title") : "",
+      chapter: open ? text("meta") : "",
+      left: open ? text("bar-left") : "",
+      playing: open && (detail ? playing : player.classList.contains("is-playing")),
+      theme: root.dataset.theme || (light ? "light" : "dark"),
+      canAdd: host.dataset.tsCanAdd === "true",
+      stop,
+    };
+    const { left, ...rest } = state;
+    const key = JSON.stringify(rest);
+    if (key === sentKey && (left === sentLeft || Date.now() - sentAt < 5000)) return;
+    sentKey = key;
+    sentLeft = left;
+    sentAt = Date.now();
+    post("tendshelf:state " + JSON.stringify(state));
+  };
+  document.addEventListener("ts:player:state", tell);
+  document.addEventListener("ts:player:tick", tell);
+  new MutationObserver(() => tell()).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+  if (player) new MutationObserver(() => tell()).observe(player, { attributes: true, attributeFilter: ["hidden"] });
+  tell();
 }

@@ -40,6 +40,8 @@ var commands = map[string]string{
 	"maximised": command("maximised"),
 	"restored":  command("restored"),
 	"tray":      command("tray"),
+	"keep":      command("keep"),
+	"nokeep":    command("nokeep"),
 }
 
 // windowControl is what the page's own title bar may ask of the window.
@@ -48,6 +50,12 @@ type windowControl interface {
 	ToggleMaximise()
 	Close()
 	Quit()
+	ZoomIn()
+	ZoomOut()
+	ZoomReset()
+	Change()
+	About()
+	KeepPlaying(on bool)
 }
 
 // windowVerbs maps the verbs of "tendshelf:window" to the window. Anything else is refused.
@@ -56,6 +64,15 @@ var windowVerbs = map[string]func(windowControl){
 	"maximise": func(w windowControl) { w.ToggleMaximise() },
 	"close":    func(w windowControl) { w.Close() },
 	"quit":     func(w windowControl) { w.Quit() },
+
+	// The More menu's other lines (decision 0023, point 5).
+	"zoom-in":    func(w windowControl) { w.ZoomIn() },
+	"zoom-out":   func(w windowControl) { w.ZoomOut() },
+	"zoom-reset": func(w windowControl) { w.ZoomReset() },
+	"change":     func(w windowControl) { w.Change() },
+	"about":      func(w windowControl) { w.About() },
+	"keep-on":    func(w windowControl) { w.KeepPlaying(true) },
+	"keep-off":   func(w windowControl) { w.KeepPlaying(false) },
 }
 
 // allowOpen decides whether a page may hand a link to the system. currentURI is the page that sent
@@ -84,11 +101,13 @@ func allowOpen(allowedOrigin, currentURI, target string) bool {
 
 // Bridge turns page messages into actions and sends media commands back.
 type Bridge struct {
-	origin func() string      // the session's origin
-	open   func(string) error // hands a link to the system
-	exec   func(js string)    // runs a script in the window
-	win    windowControl      // the page's own title bar buttons act on this
-	onLoad func()             // a first page, the session's or the picker's, says it is ready
+	origin  func() string      // the session's origin
+	open    func(string) error // hands a link to the system
+	exec    func(js string)    // runs a script in the window
+	win     windowControl      // the page's own title bar buttons act on this
+	onLoad  func()             // a first page, the session's or the picker's, says it is ready
+	onPage  func()             // every page of the session says it is ready: tell it the tray and the saved choices
+	onState func(nowState)     // the page says what is playing; a zero state means nothing is
 
 	mu       sync.Mutex
 	ready    bool // a page of the session said ready
@@ -109,6 +128,9 @@ func (b *Bridge) Handle(message, currentURI string) {
 			b.pickerUp = true
 			b.mu.Unlock()
 		}
+		if b.fromSession(currentURI) && b.onPage != nil {
+			b.onPage()
+		}
 		if b.fromSession(currentURI) || fromPicker(currentURI) {
 			if b.onLoad != nil {
 				b.onLoad()
@@ -118,6 +140,8 @@ func (b *Bridge) Handle(message, currentURI string) {
 		}
 	case strings.HasPrefix(message, msgWindow):
 		b.handleWindow(strings.TrimPrefix(message, msgWindow), currentURI)
+	case strings.HasPrefix(message, msgState):
+		b.handleState(strings.TrimPrefix(message, msgState), currentURI)
 	case strings.HasPrefix(message, msgOpen):
 		target := strings.TrimPrefix(message, msgOpen)
 		if !allowOpen(b.origin(), currentURI, target) {
@@ -152,6 +176,21 @@ func (b *Bridge) handleWindow(verb, currentURI string) {
 	run(b.win)
 }
 
+// handleState passes the page's playing state on. Only the session's pages may say it, and only
+// a state of the allowed size and shape counts.
+func (b *Bridge) handleState(body, currentURI string) {
+	if !b.fromSession(currentURI) || b.onState == nil {
+		slog.Warn("refused a state from the page", "bytes", len(body))
+		return
+	}
+	s, ok := parseState(body)
+	if !ok {
+		slog.Warn("ignored a state that is too large or not valid", "bytes", len(body))
+		return
+	}
+	b.onState(s)
+}
+
 func (b *Bridge) fromSession(currentURI string) bool {
 	origin := b.origin()
 	return origin != "" && strings.HasPrefix(currentURI, origin+"/")
@@ -163,10 +202,13 @@ func (b *Bridge) Reset() {
 	b.ready = false
 	b.pickerUp = false
 	b.mu.Unlock()
+	if b.onState != nil {
+		b.onState(nowState{}) // a new page has not said anything yet
+	}
 }
 
 // stateCommands tell the page about the window; the picker hears them too. The rest are media keys.
-var stateCommands = map[string]bool{"active": true, "inactive": true, "maximised": true, "restored": true, "tray": true}
+var stateCommands = map[string]bool{"active": true, "inactive": true, "maximised": true, "restored": true, "tray": true, "keep": true, "nokeep": true}
 
 // Send gives the page a command. It reports whether the page was ready: before that the
 // command is dropped, because nothing listens yet. The picker is never sent a media key.

@@ -65,7 +65,15 @@ templ DesktopBar(p Page) {
 			if !p.Picker {
 				<div class="ts-wbar__line" aria-hidden="true" data-wbar-line hidden><span class="ts-wbar__fill"></span></div>
 				<div id="desktop-menu" class="ts-wmenu" role="menu" aria-label="More" data-wbar-menu hidden>
+					<button type="button" role="menuitem" class="ts-wmenu__item" data-wbar-do="change">Change mode or server…</button>
+					<div class="ts-wmenu__sep" role="separator"></div>
+					<button type="button" role="menuitem" class="ts-wmenu__item" data-wbar-do="zoom-in">Zoom in<kbd>Ctrl +</kbd></button>
+					<button type="button" role="menuitem" class="ts-wmenu__item" data-wbar-do="zoom-out">Zoom out<kbd>Ctrl -</kbd></button>
+					<button type="button" role="menuitem" class="ts-wmenu__item" data-wbar-do="zoom-reset">Actual size<kbd>Ctrl 0</kbd></button>
+					<div class="ts-wmenu__sep" role="separator"></div>
+					<button type="button" role="menuitemcheckbox" aria-checked="false" class="ts-wmenu__item" data-wbar-do="keep" data-wbar-keep hidden>Keep playing when I close the window<span class="ts-wmenu__check" aria-hidden="true"></span></button>
 					<button type="button" role="menuitem" class="ts-wmenu__item" data-wbar-do="keys">Keyboard shortcuts<kbd>?</kbd></button>
+					<button type="button" role="menuitem" class="ts-wmenu__item" data-wbar-do="about">About Tendshelf</button>
 					<div class="ts-wmenu__sep" role="separator"></div>
 					<button type="button" role="menuitem" class="ts-wmenu__item" data-wbar-do="quit">Quit Tendshelf<kbd>Ctrl Q</kbd></button>
 				</div>

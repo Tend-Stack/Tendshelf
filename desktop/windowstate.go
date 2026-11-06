@@ -141,3 +141,36 @@ func (r *revealer) Ready() {
 		r.show()
 	})
 }
+
+// keepOnClose says whether closing the window hides it instead of quitting: only when the person
+// chose Keep playing, a tray exists, this is not a real Quit, and a book is playing. A hidden app
+// with nothing playing would only be forgotten.
+func keepOnClose(keep, tray, quitting, playing bool) bool {
+	return keep && tray && !quitting && playing
+}
+
+// saveGround writes the theme name into desktop.json so the next start opens on its ground.
+func saveGround(path, theme string) error {
+	cfg, err := desktopshell.Load(path)
+	if err != nil {
+		return err
+	}
+	if cfg.Ground == theme {
+		return nil
+	}
+	cfg.Ground = theme
+	return desktopshell.Save(path, cfg)
+}
+
+// saveKeepPlaying writes the Keep playing choice into desktop.json.
+func saveKeepPlaying(path string, on bool) error {
+	cfg, err := desktopshell.Load(path)
+	if err != nil {
+		return err
+	}
+	if cfg.KeepPlaying == on {
+		return nil
+	}
+	cfg.KeepPlaying = on
+	return desktopshell.Save(path, cfg)
+}
