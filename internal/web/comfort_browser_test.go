@@ -158,6 +158,8 @@ Object.defineProperty(navigator, "wakeLock", { configurable: true, value: { requ
   return lock;
 } } });`
 
+// The waits are deadlines on the true condition, not pauses: reader-comfort.js is fetched when the page
+// starts, and under -race on a busy runner that took longer than 5 s once.
 func TestComfortBrowserWake(t *testing.T) {
 	b := chromium(t)
 	for _, vp := range pgViewports {
@@ -167,23 +169,23 @@ func TestComfortBrowserWake(t *testing.T) {
 
 			// The lock is taken once, and let go when the person leaves the page through a boosted link.
 			tab := cfOpenWith(t, b, e, vp.w, vp.h, vp.mobile, cfFakeLock)
-			tab.WaitFor(`window.__locks.taken === 1`, 5*time.Second)
+			tab.WaitFor(`window.__locks.taken === 1`, 20*time.Second)
 			tab.Eval(`document.querySelector(".ts-readerbar a").click()`, nil)
 			tab.WaitFor(`document.getElementById("reader") === null`, 10*time.Second)
-			tab.WaitFor(`window.__locks.released === 1`, 5*time.Second)
+			tab.WaitFor(`window.__locks.released === 1`, 20*time.Second)
 
 			// Turning it off in the sheet lets go too: set it on, open, and switch off.
 			tab2 := cfOpenWith(t, b, e, vp.w, vp.h, vp.mobile, cfFakeLock)
-			tab2.WaitFor(`window.__locks.taken === 1`, 5*time.Second)
+			tab2.WaitFor(`window.__locks.taken === 1`, 20*time.Second)
 			tab2.Eval(`document.querySelector("a.ts-aa").click()`, nil)
-			tab2.WaitFor(`document.getElementById("rs-keep_awake") !== null`, 5*time.Second)
+			tab2.WaitFor(`document.getElementById("rs-keep_awake") !== null`, 20*time.Second)
 			tab2.Eval(`(() => { document.querySelector(".ts-readset__more").open = true; document.getElementById("rs-keep_awake").click(); })()`, nil)
-			tab2.WaitFor(`window.__locks.released === 1`, 5*time.Second)
+			tab2.WaitFor(`window.__locks.released === 1`, 20*time.Second)
 
 			// No API at all: nothing breaks, and the other settings still work.
 			cfSet(t, e, "warm", "always")
 			tab3 := cfOpenWith(t, b, e, vp.w, vp.h, vp.mobile, `Object.defineProperty(navigator, "wakeLock", { configurable: true, value: undefined });`)
-			tab3.WaitFor(`document.querySelector(".ts-readerpage").dataset.warm === "on"`, 5*time.Second)
+			tab3.WaitFor(`document.querySelector(".ts-readerpage").dataset.warm === "on"`, 20*time.Second)
 		})
 	}
 }
