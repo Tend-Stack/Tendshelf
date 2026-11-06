@@ -234,6 +234,8 @@ the book's own is dropped. 400 `speed`; 404 for a book the person cannot listen 
 `no-store`: audiobooks the person started and did not finish, most recent first. Books they may not listen to never appear.
 
 ## The Connect page (not `/api/v1`)
+Adding a phone by QR (decision 0028) adds pages only, no JSON route: `/me/devices/add...` for the signed-in person and the public `/pair/{token}`, `/pair/wait`, `/pair/finish` for the phone's window. A QR holds only `https://host/pair/{token}`; the token alone claims and gives no session, code or name. The last leg is the unchanged `303 /app/connect/done?code=` and `POST /api/v1/auth/token`. No token route changed.
+
 `GET /app/connect?challenge=`, `POST /app/connect` (hidden `challenge` and `_csrf`) and `GET /app/connect/done` are pages for the
 Android app's window, behind the sign-in gate and for a browser session only (a bearer token is refused: 401 "Device tokens work only
 for /api/v1"). Without the `ts_shell=android` mark they answer 403 with words and no form. A bad challenge is 404. The POST answers

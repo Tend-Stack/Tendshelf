@@ -16,7 +16,7 @@ import (
 // everyone is sent to /setup; otherwise anonymous visitors go to /login with a way back.
 func (s *server) gate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/setup" || r.URL.Path == "/login" || isInvitePath(r.URL.Path) || isLinkPath(r.URL.Path) {
+		if r.URL.Path == "/setup" || r.URL.Path == "/login" || isInvitePath(r.URL.Path) || isPairPath(r.URL.Path) || isLinkPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -127,6 +127,16 @@ func isInvitePath(p string) bool {
 	return !more || tail == "cover"
 }
 
+// pairPrefix starts the public pairing paths: /pair/{token}, /pair/wait and /pair/finish. Each
+// checks its own proof (the token, or the claim cookie) and changes nothing on a GET.
+const pairPrefix = "/pair/"
+
+// isPairPath reports whether p is /pair/ plus one non-empty segment.
+func isPairPath(p string) bool {
+	rest, ok := strings.CutPrefix(p, pairPrefix)
+	return ok && rest != "" && !strings.Contains(rest, "/")
+}
+
 // linkPrefix starts the share-link paths, public like the invite pages and for the same reason: the
 // token in the path is the credential.
 const linkPrefix = "/s/"
@@ -165,6 +175,9 @@ func logPath(r *http.Request) string {
 			return linkPrefix + "…/" + tail
 		}
 		return linkPrefix + "…"
+	}
+	if isPairPath(r.URL.Path) {
+		return pairPrefix + "…" // the token is the secret
 	}
 	rest, ok := strings.CutPrefix(r.URL.Path, invitePrefix)
 	if !ok {

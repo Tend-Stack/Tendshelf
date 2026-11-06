@@ -184,6 +184,10 @@
   /* The dark ink on a tinted spine or blank cover: the boards' spine text colour. Deeper than
      --brand-walnut, so mid-tone covers (pinks, blues, ambers) reach 4.5:1 and keep their colour. */
   --spine-ink: #2a1a0c;
+  /* A QR code is dark modules on a light plate in every theme: scanners read dark on light, so these
+     two stay fixed and no theme block overrides them (decision 0028). */
+  --qr-ink: #000;
+  --qr-paper: #fff;
   --space-4: 0.25rem;
   --space-8: 0.5rem;
   --space-12: 0.75rem;

@@ -61,6 +61,7 @@ var a11ySkip = map[string]string{
 	"/me/words.json":                    "a download of the person's own word list (G1)",
 	"/me/highlights.md":                 "a download of the person's own highlights (R1)",
 	"/me/highlights.json":               "a download of the person's own highlights (R1)",
+	"/pair/wait":                        "needs the claim cookie of a phone that claimed a code; its markup is captured by TestPairVisual and its words by TestPairHappy",
 	"/welcome":                          "redirects (303) to Home",
 	"/books/{id}/text/{fileID}/file":    "the original ebook file as a download, not a page",
 	"/s/{token}/stream/{audioFileID}":   "audio stream, not a page",
@@ -161,6 +162,12 @@ func a11yPages() []a11yPage {
 		row("admin-duplicate-merge", "/admin/duplicates/merge", func(e *a11yEnv) string { return a11yDupMergePath(e) }, owner, "main", true),
 		row("admin-duplicates-merged", "/admin/duplicates/merged", a11yStatic("/admin/duplicates/merged"), owner, "main", true),
 		row("login", "/login", a11yStatic("/login"), anon, "main", false),
+		row("me-devices-add", "/me/devices/add", a11yStatic("/me/devices/add"), both, "main", true),
+		row("me-devices-add-waiting", "/me/devices/add/{id}", func(e *a11yEnv) string { return "/me/devices/add/" + e.PairID }, owner, "main", true),
+		row("pair-handover", "/pair/{token}", func(e *a11yEnv) string { return "/pair/" + e.PairToken }, anon, "main", false),
+		row("pair-confirm", "/pair/{token}", func(e *a11yEnv) string {
+			return "/?shell=android&next=" + url.QueryEscape("/pair/"+e.PairToken+"?challenge="+a1Challenge+"&name=Pixel")
+		}, anon, "main", false),
 		row("invite", "/invite/{token}", func(e *a11yEnv) string { return "/invite/" + e.InviteToken }, anon, "main", false),
 		row("link", "/s/{token}", func(e *a11yEnv) string { return "/s/" + e.LinkToken }, anon, "main", false),
 		row("offline", "/offline", a11yStatic("/offline"), []string{"anon", "owner"}, "main", false),

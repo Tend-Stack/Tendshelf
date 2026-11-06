@@ -1,5 +1,5 @@
 # 0028 Invitations in the app, and QR codes for inviting and signing in
-Status: proposed; the operator approves the new module (`rsc.io/qr`). Plan: `docs/plans/invite-and-qr.md`. Parents: [0024](0024-android-app.md),
+Status: accepted (the operator approved `rsc.io/qr` v0.2.0, 2026-11-06). Plan: `docs/plans/invite-and-qr.md`. Parents: [0024](0024-android-app.md),
 [0026](0026-app-sign-in.md). This decision adds one narrow exception to 0026: a `tendshelf:` link may start a flow. It carries no code, and 0026's rule
 "no scheme or intent takes a code from outside" stands. It also keeps the rule "a device token never becomes a session".
 

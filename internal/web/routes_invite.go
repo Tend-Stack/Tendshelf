@@ -16,6 +16,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
 
@@ -195,6 +196,21 @@ func (s *server) getInvite(w http.ResponseWriter, r *http.Request) {
 	if u, signedIn := auth.UserFrom(r.Context()); signedIn {
 		v.SignedInAs = personName(u)
 	}
+	if sess, ok := auth.SessionFrom(r.Context()); ok && sess.DeviceID != "" {
+		v.Bound, v.BoundWords = true, inviteBoundNotice // a connected app: no form, so no second person
+	}
+	switch {
+	case androidBrowser(r):
+		if r.URL.Query().Get("noapp") == "1" {
+			v.AppNote = inviteNoApp
+		} else {
+			v.AppLink, v.AppLabel = appOpenURL(s.inviteURL(r, tok)), inviteOpenInApp
+		}
+	case shellFrom(r) == "" && reachableHost(r.Host):
+		if q, ok := qrView(s.inviteURL(r, tok), inviteQRLabel); ok {
+			v.QR, v.QRSummary = &q, inviteOnPhone
+		}
+	}
 	inviteHeaders(w)
 	s.frame(w, r, http.StatusOK, "You're invited", pages.Invite(v), pages.InviteStyles...)
 }
@@ -206,6 +222,12 @@ func (s *server) postInvite(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var prev *auth.Session
 	if sess, ok := auth.SessionFrom(ctx); ok {
+		if sess.DeviceID != "" {
+			// A connected app: its WebView and its token must stay one person. Nothing is accepted,
+			// so the invite stays unused and no account is made.
+			s.inviteState(w, r, http.StatusConflict, pages.InviteStateView{Title: inviteBoundNotice, Body: ""})
+			return
+		}
 		prev = &sess
 	}
 	l, inv, err := s.auth.AcceptInvite(ctx, r.PathValue("token"), s.proxies.ClientIP(r), r.UserAgent(), prev)
@@ -432,6 +454,18 @@ func (s *server) inviteActionError(w http.ResponseWriter, r *http.Request, err e
 	s.serverError(w, r, "invite change", err)
 }
 
+// inviteQR is the QR of an invite's address, or nil on an address a phone cannot reach (decision 0028,
+// D9) or when it cannot be drawn; the link beside it always shows.
+func (s *server) inviteQR(r *http.Request, tok string) *components.QRView {
+	if !reachableHost(r.Host) {
+		return nil
+	}
+	if q, ok := qrView(s.inviteURL(r, tok), inviteQRLabel); ok {
+		return &q
+	}
+	return nil
+}
+
 // postInviteLink replaces an invite's link and answers with a page that shows the new address in
 // a panel: the Users page, or the Share & invite page it was asked from (a valid "back"). It does
 // not redirect: the token must not enter a Location header or the history.
@@ -453,7 +487,7 @@ func (s *server) postInviteLink(w http.ResponseWriter, r *http.Request) {
 	}
 	inviteHeaders(w)
 	link := func(name string) *pages.InviteLink {
-		return &pages.InviteLink{Name: name, URL: s.inviteURL(r, tok), Title: fmt.Sprintf(shareNewLink, name), Note: shareOldLink}
+		return &pages.InviteLink{Name: name, URL: s.inviteURL(r, tok), Title: fmt.Sprintf(shareNewLink, name), Note: shareOldLink, QR: s.inviteQR(r, tok)}
 	}
 	if _, bookID, ok := validShareBack(r.PostForm.Get("back")); ok {
 		s.shareWithNewLink(w, r, bookID, id, link)

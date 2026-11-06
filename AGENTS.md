@@ -19,7 +19,7 @@ was reused, extended or replaced.
   Approved and in use: `modernc.org/sqlite` v1.61.1 and `github.com/a-h/templ` v0.3.1100 (runtime; the
   CLI runs through the `tool` directive in `go.mod`, one version source), `golang.org/x/net` v0.61.0
   (`html`, `html/charset`), `golang.org/x/text` v0.43.0 (`unicode/norm`, `encoding/...`; ebook reading,
-  `internal/ebook` only) and `github.com/ledongthuc/pdf` (PDF text layer, `internal/ebook/pdf.go` only). Approved for later phases
+  `internal/ebook` only) and `github.com/ledongthuc/pdf` (PDF text layer, `internal/ebook/pdf.go` only) and `rsc.io/qr` v0.2.0 (QR codes as SVG, `internal/web/qr.go` only, decision 0028). Approved for later phases
   (operator, 2026-11-03), each added with its `NOTICES.md` row: Wails v3 (desktop
   module only), fsnotify, go-webauthn and an OpenID Connect client; see "Dependencies and approvals" in
   `docs/architecture.md`. Android (decision 0024), under `android/` only: `kotlin-test`, `junit` and `hamcrest` for tests, Kotlin (through AGP), `androidx.media3`
@@ -139,11 +139,15 @@ was reused, extended or replaced.
   `/peaks/{id}`, `/hx/player/{bookID}`, `/hx/books/{id}/read/chapters/{idx}`, `/books/{id}/read/images/{blockID}`,
   the `/offline` shell for a navigation that cannot reach the server, and the book's reader shell for a
   navigation to `/books/{id}/read` (or `?sheet=contents`) that cannot reach it. It never caches or answers
-  `/s/...`, `/invite/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any request with
+  `/s/...`, `/invite/...`, `/pair/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any request with
   `download=1`, any non-GET request, or any other page. It is never registered inside a Wails window, inside the Android
   app's window (`/sw.js` answers 404 there), on share-link pages or outside a secure context. Sign-out and a change of person delete that person's caches
   and offline records (decisions [0012](docs/decisions/0012-offline-pocket.md),
   [0019](docs/decisions/0019-offline-reading.md)).
+
+- `tendshelf:` carries only a link, never a code (decision 0028): the app's one way in from outside is
+  `tendshelf://open?link=<address>`, treated as untrusted text, and no page or message ever offers a bare
+  `tendshelf:` link (the server's `intent:` address names the app's package).
 
 ## Accessibility and layout
 

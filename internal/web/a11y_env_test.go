@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
@@ -32,6 +33,7 @@ type a11yEnv struct {
 	TextBookID                             string // a text book (an ebook with no audiobook), with a ready ebook
 	MemberID                               string
 	InviteToken, LinkToken                 string
+	PairToken, PairID                      string // a waiting pairing of the owner's session (decision 0028)
 	UploadLibID, UploadBookID              string
 
 	Main, Upload, Fresh, Setup *testApp
@@ -171,6 +173,13 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if sess, _, _, err := auth.NewSessions(a.st, nil).Lookup(ctx, ownerCk.Value); err != nil {
+		t.Fatal(err)
+	} else if p, tok, err := a.srv.auth.StartPairing(ctx, sess, testAddr); err != nil {
+		t.Fatal(err)
+	} else {
+		e.PairToken, e.PairID = tok, p.ID
 	}
 	as("main/owner", a, ownerCk)
 	as("main/member", a, memberCk)

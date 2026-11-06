@@ -67,6 +67,9 @@ type InviteLink struct {
 	// Label and FieldID name the field; empty means "Invite link" and "invite-link" (a share link
 	// sets both).
 	Label, FieldID string
+	// QR is the invite's address as a QR code, shown under the sentences; nil on a share link and on
+	// an address a phone cannot reach.
+	QR *components.QRView
 }
 
 // usersLiveBars is the "Listening now" mark: three bars the stylesheet animates.
@@ -227,6 +230,11 @@ templ InviteLinkPanel(l InviteLink) {
 	<div class="ts-invite__link" role="status">
 		<h2 class="body ts-invite__linktitle">{ l.Title }</h2>
 		<p class="caption">{ l.Note }</p>
+		if l.QR != nil {
+			<div class="ts-pair__qr">
+				@components.QR(*l.QR)
+			</div>
+		}
 		<label class="caption" for={ inviteFieldID(l) }>{ inviteFieldLabel(l) }</label>
 		<input class="ts-input" id={ inviteFieldID(l) } type="text" readonly autofocus value={ l.URL }/>
 		<button type="button" class="ts-btn ts-btn--secondary" data-copy={ "#" + inviteFieldID(l) } hidden>Copy link</button>

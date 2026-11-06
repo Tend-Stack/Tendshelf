@@ -156,7 +156,7 @@ func TestDeskStateMenu(t *testing.T) {
 	if got, want := strings.Join(verbs, ","), "change,zoom-in,zoom-out,zoom-reset,keep,keys,about,quit"; got != want {
 		t.Errorf("menu verbs = %s, want %s", got, want)
 	}
-	if got, want := strings.Join(names, "|"), "Change mode or server…|Zoom in|Zoom out|Actual size|Keep playing when I close the window|Keyboard shortcuts|About Tendshelf|Quit Tendshelf"; got != want {
+	if got, want := strings.Join(names, "|"), "Change mode or server…|Add a phone…|Zoom in|Zoom out|Actual size|Keep playing when I close the window|Keyboard shortcuts|About Tendshelf|Quit Tendshelf"; got != want {
 		t.Errorf("menu words = %s", got)
 	}
 	keep := regexp.MustCompile(`<button[^>]*data-wbar-keep[^>]*>`).FindString(menu)

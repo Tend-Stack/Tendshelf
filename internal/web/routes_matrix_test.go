@@ -696,6 +696,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, ebookSweepRows()...)
 	rows = append(rows, ebookInboxSweepRows()...)
 	rows = append(rows, devicesSweepRows()...)
+	rows = append(rows, pairSweepRows()...)
 	rows = append(rows, emailSweepRows()...)
 	rows = append(rows, readerSweepRows()...)
 	rows = append(rows, backupsSweepRows()...)

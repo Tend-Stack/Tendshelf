@@ -281,6 +281,8 @@ the readable one):
 | `POST /hx/player/next` | Autoplay: the book that just ended is dropped and the next playable queued book starts (204 when the queue has nothing to play) |
 | `GET /api/v1/queue`, `POST /api/v1/queue`, `POST /api/v1/queue/next`, `POST /api/v1/queue/{bookID}/move`, `DELETE /api/v1/queue/{bookID}` | JSON Up next (see [api.md](api.md) "Up next (queue)") |
 | `GET /api/v1/settings`, `PATCH /api/v1/settings`, `PUT /api/v1/books/{id}/speed`, `GET /api/v1/continue` | JSON app settings, per-book speed and the Continue shelf (A1, see [api.md](api.md)) |
+| `GET/POST /me/devices/add`, `GET /me/devices/add/{id}`, `POST /me/devices/add/{id}/approve`, `POST /me/devices/add/{id}/cancel` | Add a phone by QR, on the signed-in device (decision 0028, migration 0033 `device_pairings`); each person for themselves, session only. |
+| `GET /pair/{token}`, `POST /pair/{token}`, `GET /pair/wait`, `POST /pair/finish` | The phone's side: public but a GET changes nothing; claim needs `ts_shell=android`, CSRF and the QR token; `ts_pair` cookie (HttpOnly, SameSite=Strict, Path=/pair, 3 minutes); finish ends in the 303 to `/app/connect/done`. |
 | `GET /app/connect`, `POST /app/connect`, `GET /app/connect/done` | The Connect page of the Android app (A1, [decision 0026](decisions/0026-app-sign-in.md)): one tap makes a one-time code bound to the app's PKCE challenge; `POST /api/v1/auth/token` trades it for a device token |
 | `GET /hx/home/hero`, `/hx/books/{id}/play` | Home hero refresh and the play region of a book page |
 | `POST /api/v1/progress/batch`, `GET /api/v1/progress`, `GET`, `POST /api/v1/books/{id}/bookmarks`, `GET /api/v1/bookmarks`, `PATCH`, `DELETE /api/v1/bookmarks/{id}` | JSON sync (full list under "JSON API v1" below and in [api.md](api.md)) |
@@ -648,6 +650,7 @@ PDF reader was chosen on fixtures in R1 (E2):
 | `golang.org/x/net/html` (**added in M5 R1 E1**, v0.61.0, also `html/charset`) | HTML5 tokenizing of EPUB XHTML, HTML files and MOBI/KF8 content (R1) | BSD-3; Go team |
 | `golang.org/x/text` (`unicode/norm`, `encoding/...`) (**added in M5 R1 E1**, v0.43.0) | NFC normalisation for matching (R1); charset decoding for FB2, HTML and text (R1) | BSD-3; Go team |
 | `github.com/ledongthuc/pdf` (**added in M5 R1 E2**, v0.0.0-20261020125853-5e46805f718e) | PDF text layer (R1): per-glyph position and size, ToUnicode CMaps, xref streams and incremental updates passed the four spike fixtures | BSD-3 (The Go Authors; licence read from the release); no context support, so the parser checks the deadline between pages; encrypted files are refused before it reads text. Limit: glyph widths of standard fonts without `/Widths` read as 0 |
+| `rsc.io/qr` (**added for decision 0028**, v0.2.0) | QR code encoding for the invite link and the add-a-phone code; standard library only; imported in `internal/web/qr.go` only | BSD-3 (Russ Cox; licence read from the module) |
 | Font vendored to `internal/web/static/fonts/` (woff2): OpenDyslexic | The one extra reader font (R4); the reader otherwise uses the design's Fraunces and Fira Sans | SIL OFL 1.1 (read from the v0.91.12 tag; built in R4 P4); `NOTICES.md` row |
 
 Considered and not chosen: `github.com/clipperhouse/uax29` (sentence segmentation; own rules handle

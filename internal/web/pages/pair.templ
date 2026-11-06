@@ -1,0 +1,230 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// Add a phone by QR code (decision 0028). Every sentence comes from the handler.
+
+// PairStyles are the stylesheets the pair pages add: the invite pages' own, which they share.
+var PairStyles = InviteStyles
+
+// Pairing states the owner's page shows.
+const (
+	AddPhoneIntro    = "intro"
+	AddPhoneWaiting  = "waiting"
+	AddPhoneClaimed  = "claimed"
+	AddPhoneApproved = "approved"
+	AddPhoneEnded    = "ended"
+	AddPhoneWords    = "words" // nothing to do here: only words (this computer's address, a proxy sign-in, too many tries)
+)
+
+// AddPhoneView is /me/devices/add on the signed-in device.
+type AddPhoneView struct {
+	CSRF, State, ID string
+	Title, Lead     string
+	// Button is the button of the intro and the ended page; the form makes a new code.
+	Button string
+	// QR and Link show while waiting, straight after the code was made; the token is not stored, so
+	// they cannot be shown again.
+	QR                               *components.QRView
+	Link, LinkLabel, CopyLabel       string
+	Waiting                          string
+	Poll                             bool
+	CheckLabel                       string
+	Claimed, NumberLabel             string
+	Approve, NotMine                 string
+	BackLabel                        string
+	// Insecure is true when this page came over plain http; InsecureWords is the line shown then.
+	Insecure      bool
+	InsecureWords string
+}
+
+// AddPhone is the owner's page: the intro, the code, the phone that claimed it and the number field.
+templ AddPhone(v AddPhoneView) {
+	<div class="ts-me ts-pair">
+		<h1 class="title-2 ts-me__title">{ v.Title }</h1>
+		if v.State != AddPhoneEnded && v.Lead != "" {
+			<p class="body ts-me__lead">{ v.Lead }</p>
+		}
+		if v.Insecure {
+			<p class="body" id="pair-warning">
+				@components.Icon("alert", false)
+				{ v.InsecureWords }
+			</p>
+		}
+		switch v.State {
+			case AddPhoneEnded:
+				<div id="pair-status" role="status" class="ts-pair__status">
+					<p class="body ts-me__lead">{ v.Lead }</p>
+				</div>
+				<form method="post" action="/me/devices/add" hx-boost="false" class="ts-pair__form">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--primary">{ v.Button }</button>
+				</form>
+			case AddPhoneIntro:
+				<form method="post" action="/me/devices/add" hx-boost="false" class="ts-pair__form">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--primary">{ v.Button }</button>
+				</form>
+			case AddPhoneWaiting:
+				<div id="pair-status" role="status" class="ts-pair__status" if v.Poll {
+					hx-get={ "/me/devices/add/" + v.ID }
+					hx-select="#pair-status"
+					hx-swap="outerHTML"
+					hx-trigger="every 2s"
+				}>
+					if v.QR != nil {
+						<div class="ts-pair__qr">
+							@components.QR(*v.QR)
+						</div>
+						<p class="body">{ v.Waiting }</p>
+						<label class="caption" for="pair-link">{ v.LinkLabel }</label>
+						<input class="ts-input" id="pair-link" type="text" readonly value={ v.Link }/>
+						<button type="button" class="ts-btn ts-btn--secondary" data-copy="#pair-link" hidden>{ v.CopyLabel }</button>
+						<p class="ts-sr" aria-live="polite" data-copy-status></p>
+					} else {
+						<p class="body">{ v.Waiting }</p>
+						<a class="ts-btn ts-btn--secondary" href={ templ.URL("/me/devices/add/" + v.ID) }>{ v.CheckLabel }</a>
+					}
+				</div>
+			case AddPhoneClaimed:
+				<div id="pair-status" role="status" class="ts-pair__status">
+					<p class="body-lg">{ v.Claimed }</p>
+					<form method="post" action={ templ.URL("/me/devices/add/" + v.ID + "/approve") } hx-boost="false" class="ts-pair__form">
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<label class="caption" for="pair-match">{ v.NumberLabel }</label>
+						<input class="ts-input ts-pair__input" id="pair-match" name="match" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" pattern="[0-9]{4}" required autofocus/>
+						<button type="submit" class="ts-btn ts-btn--primary">{ v.Approve }</button>
+					</form>
+					<form method="post" action={ templ.URL("/me/devices/add/" + v.ID + "/cancel") } hx-boost="false">
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<button type="submit" class="ts-btn ts-btn--quiet">{ v.NotMine }</button>
+					</form>
+				</div>
+			case AddPhoneApproved:
+				<div id="pair-status" role="status" class="ts-pair__status">
+					<p class="body-lg">{ v.Claimed }</p>
+				</div>
+		}
+		if v.BackLabel != "" {
+			<a class="ts-btn ts-btn--quiet" href="/me/devices">{ v.BackLabel }</a>
+		}
+	</div>
+}
+
+// PairHandoverView is /pair/{token} in a browser: the server's page that hands the address to the app.
+type PairHandoverView struct {
+	Title, Lead string
+	// AppLink is the intent: address of the button; empty when there is no button.
+	AppLink, AppLabel string
+	// Note is the sentence under the button ("The Tendshelf app isn't on this phone yet.").
+	Note string
+}
+
+// PairHandover is the page a phone's camera opens. It changes nothing; the button needs a tap.
+templ PairHandover(v PairHandoverView) {
+	<div class="ts-invite ts-invite__state">
+		<div class="ts-invite__brand">
+			@components.Brand()
+		</div>
+		<h1 class="title-1">{ v.Title }</h1>
+		<p class="body-lg">{ v.Lead }</p>
+		if v.AppLink != "" {
+			<a class="ts-btn ts-btn--primary ts-btn--lg" href={ templ.SafeURL(v.AppLink) } hx-boost="false">{ v.AppLabel }</a>
+		}
+		if v.Note != "" {
+			<p class="body">{ v.Note }</p>
+		}
+	</div>
+}
+
+// PairConfirmView is /pair/{token} inside the app: the question and one button.
+type PairConfirmView struct {
+	CSRF, Token, Challenge, Name       string
+	Title, Body, Address, Button       string
+	Insecure                           bool
+	InsecureWords                      string
+	PasswordLink, PasswordLabel        string
+}
+
+// PairConfirm asks "Add this phone to {server}?". The button is the phone's consent (a POST).
+templ PairConfirm(v PairConfirmView) {
+	<div class="ts-invite ts-invite__state">
+		<div class="ts-invite__brand">
+			@components.Brand()
+		</div>
+		<h1 class="title-1">{ v.Title }</h1>
+		<p class="body-lg">{ v.Body }</p>
+		<p class="body" id="pair-address">{ v.Address }</p>
+		if v.Insecure {
+			<p class="body" id="pair-warning">
+				@components.Icon("alert", false)
+				{ v.InsecureWords }
+			</p>
+		}
+		<form class="ts-invite__cta" method="post" action={ templ.URL("/pair/" + v.Token) } hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<input type="hidden" name="challenge" value={ v.Challenge }/>
+			<input type="hidden" name="name" value={ v.Name }/>
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">{ v.Button }</button>
+		</form>
+	</div>
+}
+
+// PairWaitView is /pair/wait: the number to type on the other device, then the Connect button.
+type PairWaitView struct {
+	CSRF, State        string
+	Title, Lead        string
+	Number             string
+	Poll               bool
+	CheckLabel         string
+	Button             string
+}
+
+// PairWait shows the number while the owner has not typed it, and "Connect as {name}" once they did.
+templ PairWait(v PairWaitView) {
+	<div class="ts-invite ts-invite__state">
+		<div class="ts-invite__brand">
+			@components.Brand()
+		</div>
+		<h1 class="title-1">{ v.Title }</h1>
+		<div id="pair-status" role="status" class="ts-pair__status" if v.Poll {
+			hx-get="/pair/wait"
+			hx-select="#pair-status"
+			hx-swap="outerHTML"
+			hx-trigger="every 2s"
+		}>
+			<p class="body-lg">{ v.Lead }</p>
+			if v.Number != "" {
+				<p class="ts-pair__number" aria-label={ v.Number }>{ v.Number }</p>
+				<a class="ts-btn ts-btn--quiet" href="/pair/wait">{ v.CheckLabel }</a>
+			}
+			if v.Button != "" {
+				<form class="ts-invite__cta" method="post" action="/pair/finish" hx-boost="false">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">{ v.Button }</button>
+				</form>
+			}
+		</div>
+	</div>
+}
+
+// PairEndedView is any pairing page whose code is dead. One page for every reason.
+type PairEndedView struct {
+	Title, Body, Link, LinkText string
+}
+
+// PairEnded says the code has ended and offers a password sign-in.
+templ PairEnded(v PairEndedView) {
+	<div class="ts-invite ts-invite__state">
+		<div class="ts-invite__brand">
+			@components.Brand()
+		</div>
+		<div id="pair-status" role="status">
+			<h1 class="title-1">{ v.Title }</h1>
+			<p class="body-lg">{ v.Body }</p>
+		</div>
+		if v.Link != "" {
+			<a class="ts-btn ts-btn--secondary ts-btn--lg" href={ templ.URL(v.Link) }>{ v.LinkText }</a>
+		}
+	</div>
+}

@@ -135,6 +135,7 @@ type server struct {
 	dicts      *dict.Set // dictionaries the owner added under <data>/dictionaries (G1)
 	mail       *share.Mail
 	mailLim    mailLimits
+	pairLim    *auth.Limiter  // pairings started per person: 10 an hour
 	readerDocs readerDocCache // the last few parsed ebook documents (M5 R4 P2)
 	chunkBytes int            // size of one offline download request, written on <html data-ts-chunk>
 	swBuild    string         // the id of this build of the assets, see static.Set.Build
@@ -261,6 +262,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		mail:       mailer,
 		chunkBytes: cmp.Or(opts.DownloadChunk, defaultDownloadChunk),
 		swBuild:    assets.Build(opts.Version),
+		pairLim:    auth.NewLimiter(10, time.Hour, 1024, opts.Now),
 		mailLim: mailLimits{
 			inviter: auth.NewLimiter(20, time.Hour, 1024, opts.Now),
 			address: auth.NewLimiter(3, 24*time.Hour, 1024, opts.Now),
@@ -288,6 +290,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerAdmin(mux)
 	s.registerUsers(mux)
 	s.registerInvites(mux)
+	s.registerPair(mux)
 	s.registerShare(mux)
 	s.registerLinks(mux)
 	s.registerEmail(mux)

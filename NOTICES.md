@@ -66,6 +66,7 @@ Expected first entries (fill in when the port lands; do not pre-credit code that
 | golang.org/x/crypto v0.58.0 | BSD-3-Clause | argon2id password hashing (`internal/users` only). |
 | golang.org/x/net v0.62.0 | BSD-3-Clause | HTML5 tokenizer (`html`) and charset detection (`html/charset`) for reading EPUB, HTML and MOBI text (`internal/ebook` only). |
 | github.com/ledongthuc/pdf v0.0.0-20261020125853-5e46805f718e | BSD-3-Clause (Copyright The Go Authors, from the Go PDF reader) | PDF text layer: pure-Go reader with per-glyph position and font size, used for reading PDF ebooks (`internal/ebook/pdf.go` only). Encrypted PDFs are refused before it reads any text. |
+| rsc.io/qr v0.2.0 | BSD-3-Clause | QR codes drawn as SVG for invitations and adding a phone (`internal/web/qr.go` only). |
 | golang.org/x/text v0.43.0 | BSD-3-Clause | Unicode NFC normalisation (`unicode/norm`) and legacy charset decoding (`encoding/...`: Windows-1251 FB2, Windows-1252 text, UTF-16) in `internal/ebook`. |
 | modernc.org/libc v1.79.1 | BSD-3-Clause | C runtime for the transpiled SQLite (indirect). |
 | modernc.org/mathutil v1.7.1 | BSD-3-Clause | Helper of modernc.org/libc (indirect). |

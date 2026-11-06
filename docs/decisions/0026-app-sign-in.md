@@ -52,3 +52,6 @@ Migration `0031_device_codes`: `sessions.device_id` and the `device_codes` table
 `ts_shell=android`, the CSP is unchanged, and older clients of `/api/v1` are unchanged. A2 must intercept `/app/connect/done` only
 for the exact chosen origin and main frame, clear the verifier after one swap, never share the WebView cookie jar with native HTTP, and
 keep `GET /api/v1/me` at launch (see the plan, section 8).
+
+## Addendum (decision 0028)
+A second way to reach the same last leg: an approved QR pairing (`device_pairings`) ends in a session and a `device_codes` row exactly as this flow does. A device token still never becomes a session, and no scheme or intent takes a code from outside; `tendshelf://` carries only a link.
