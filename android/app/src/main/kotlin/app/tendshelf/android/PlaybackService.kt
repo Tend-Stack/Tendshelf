@@ -8,38 +8,49 @@ import android.os.Looper
 import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
-import app.tendshelf.shared.Position
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.Executors
 
 /**
- * One ExoPlayer in one session, in a foreground service of type mediaPlayback. The activity only asks it
- * to start a book (custom command) and can die without stopping the sound. A0 plays the book's files in
- * order, so next and previous change file; chapters as next and previous are A3.
+ * One ExoPlayer in one session, in a foreground service of type mediaPlayback. A book is one window in book
+ * time (see [BookMedia]); [BookPlayer] makes next and previous chapters; [BookEngine] starts books. The
+ * activity only asks it to start a book (custom command, this app only) and can die without stopping the sound.
  */
+@UnstableApi
 class PlaybackService : MediaLibraryService() {
     private var session: MediaLibrarySession? = null
-    private lateinit var player: ExoPlayer
+    private lateinit var exo: ExoPlayer
+    private lateinit var player: BookPlayer
+    private lateinit var engine: BookEngine
     private val http = DefaultHttpDataSource.Factory()
     private val main = Handler(Looper.getMainLooper())
-    private val io = Executors.newSingleThreadExecutor()
+    private val io = Executors.newCachedThreadPool()
+
+    /** Where the engine finds the server and token. A2/A4 set it; debug starts set it from a sign-in. */
+    var connections = ConnectionSource { null }
 
     override fun onCreate() {
         super.onCreate()
-        player = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(http))
+        // Ride out a dropped network from the buffer: 5 minutes, time before size (D6).
+        val load = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(50_000, 300_000, 2_500, 5_000)
+            .setTargetBufferBytes(32 * 1024 * 1024)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+        exo = ExoPlayer.Builder(this)
+            .setLoadControl(load)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -50,13 +61,10 @@ class PlaybackService : MediaLibraryService() {
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK) // keeps CPU and Wi-Fi awake while streaming with the screen off
             .build()
-        player.addListener(object : Player.Listener {
+        player = BookPlayer(exo)
+        exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
-                Log.i(TAG, "state=$state index=${player.currentMediaItemIndex} pos=${player.currentPosition}")
-            }
-
-            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                Log.e(TAG, "player error", error)
+                Log.i(TAG, "state=$state pos=${exo.currentPosition}")
             }
         })
         val open = PendingIntent.getActivity(
@@ -66,29 +74,90 @@ class PlaybackService : MediaLibraryService() {
         )
         session = MediaLibrarySession.Builder(this, player, SessionCallback())
             .setSessionActivity(open) // the notification tap opens the page again
+            .setMediaButtonPreferences(skipButtons())
             .build()
+        engine = BookEngine(exo, player, http, main, io, { connections }) { extras -> session?.setSessionExtras(extras) }
     }
+
+    /** Back and Forward beside the chapter buttons (D4). */
+    private fun skipButtons(): ImmutableList<CommandButton> = ImmutableList.of(
+        CommandButton.Builder(CommandButton.ICON_SKIP_BACK)
+            .setPlayerCommand(Player.COMMAND_SEEK_BACK)
+            .setDisplayName("Back")
+            .setSlots(CommandButton.SLOT_OVERFLOW)
+            .build(),
+        CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD)
+            .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
+            .setDisplayName("Forward")
+            .setSlots(CommandButton.SLOT_OVERFLOW)
+            .build(),
+    )
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
 
+    /** Debug builds only: drive the player from `am startservice` for the emulator checks. */
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (BuildConfig.DEBUG && intent?.action == DEBUG_ACTION) {
+            debug(intent)
+            return START_NOT_STICKY
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun debug(i: Intent) {
+        when (i.getStringExtra("op")) {
+            "start" -> io.execute {
+                try {
+                    val server = i.getStringExtra("server") ?: BuildConfig.DEFAULT_SERVER
+                    val token = i.getStringExtra("token")
+                        ?: Api(server).signIn(i.getStringExtra("user").orEmpty(), i.getStringExtra("pass").orEmpty())
+                    main.post {
+                        connections = ConnectionSource { Connection(server, token, "debug") }
+                        engine.start(i.getStringExtra("book").orEmpty(), if (i.hasExtra("at")) i.getLongExtra("at", -1) else null)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "debug sign-in failed: ${e.javaClass.simpleName}")
+                }
+            }
+            "seek" -> player.seekTo(i.getLongExtra("ms", 0))
+            "speed" -> player.setPlaybackSpeed(i.getFloatExtra("speed", 1f))
+            "play" -> player.play()
+            "pause" -> player.pause()
+            "next" -> player.seekToNext()
+            "prev" -> player.seekToPrevious()
+            "back" -> player.seekBack()
+            "forward" -> player.seekForward()
+            "stop" -> engine.stopAndClear()
+            "dump" -> Log.i(
+                TAG, "dump pos=${exo.currentPosition} dur=${exo.duration} speed=${exo.playbackParameters.speed} " +
+                    "playing=${exo.isPlaying} state=${exo.playbackState} chapter=${player.chapterIdx} " +
+                    "title=${player.mediaMetadata.title} error=${session?.sessionExtras?.getString(BookEngine.EXTRA_ERROR)}",
+            )
+        }
+    }
+
     /** Swiping the app away must not stop a book that is playing. */
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (!player.playWhenReady || player.mediaItemCount == 0) stopSelf()
+        if (!exo.playWhenReady || exo.mediaItemCount == 0) stopSelf()
     }
 
     override fun onDestroy() {
         session?.release()
         session = null
-        player.release()
+        exo.release()
         io.shutdownNow()
         super.onDestroy()
     }
 
     private inner class SessionCallback : MediaLibrarySession.Callback {
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
-            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
-                .add(START_COMMAND)
-                .build()
+            // Custom commands are for this app only; Auto, System UI, headsets get the standard ones (invariant 3).
+            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon().apply {
+                if (controller.packageName == packageName) {
+                    add(START_COMMAND)
+                    add(STOP_COMMAND)
+                }
+            }.build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(commands)
                 .build()
@@ -100,54 +169,27 @@ class PlaybackService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
-            if (customCommand.customAction != START_ACTION) {
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+            if (controller.packageName != packageName) {
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
             }
-            val server = args.getString("server") ?: BuildConfig.DEFAULT_SERVER
-            val user = args.getString("user").orEmpty()
-            val pass = args.getString("pass").orEmpty()
-            val book = args.getString("book").orEmpty()
-            io.execute { startBook(server, user, pass, book) }
+            when (customCommand.customAction) {
+                START_ACTION -> engine.start(args.getString("book").orEmpty(), args.getLong("atMs", -1L).takeIf { it >= 0 })
+                STOP_ACTION -> {
+                    engine.stopAndClear()
+                    stopSelf()
+                }
+                else -> return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+            }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
     }
 
-    /** Signs in, reads the manifest and queues one item per file, each streamed with the bearer header. */
-    private fun startBook(server: String, user: String, pass: String, bookId: String) {
-        try {
-            val api = Api(server)
-            val token = api.signIn(user, pass)
-            val manifest = api.manifest(token, bookId)
-            http.setDefaultRequestProperties(mapOf("Authorization" to "Bearer $token"))
-            val items = manifest.files.map { f ->
-                val chapter = Position.chapterAt(manifest.chapters, f.offsetMs)
-                MediaItem.Builder()
-                    .setMediaId(f.id)
-                    .setUri(api.paths.streamUrl(f.id))
-                    .setMimeType(f.mime)
-                    .setMediaMetadata(
-                        MediaMetadata.Builder()
-                            .setTitle(chapter?.title ?: manifest.title)
-                            .setAlbumTitle(manifest.title)
-                            .setIsPlayable(true)
-                            .build(),
-                    )
-                    .build()
-            }
-            main.post {
-                player.setMediaItems(ImmutableList.copyOf(items))
-                player.prepare()
-                player.play()
-                Log.i(TAG, "started ${manifest.title}: ${items.size} files")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "could not start the book", e)
-        }
-    }
-
     companion object {
-        private const val TAG = "TendshelfA0"
+        private const val TAG = "Tendshelf"
         const val START_ACTION = "app.tendshelf.START_BOOK"
+        const val STOP_ACTION = "app.tendshelf.STOP_AND_CLEAR"
+        const val DEBUG_ACTION = "app.tendshelf.DEBUG_PLAYER"
         val START_COMMAND = SessionCommand(START_ACTION, Bundle.EMPTY)
+        val STOP_COMMAND = SessionCommand(STOP_ACTION, Bundle.EMPTY)
     }
 }
