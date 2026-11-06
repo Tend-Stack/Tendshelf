@@ -33,6 +33,7 @@ func (s *server) registerProgress(mux *http.ServeMux) {
 	mux.HandleFunc("GET /progress/{bookID}", s.getProgress)
 	mux.HandleFunc("POST /progress/{bookID}", s.postProgress)
 	mux.HandleFunc("POST /hx/books/{id}/finished", s.postFinished)
+	mux.HandleFunc("POST /hx/books/{id}/speed", s.postBookSpeed)
 }
 
 // writeJSON answers a JSON body that is never cached: it belongs to one person.

@@ -49,7 +49,7 @@ for (const name of ["close-player", "full-chapter", "full-cover", "full-title", 
   "full-back", "full-forward", "full-back-num", "full-forward-num", "full-toggle", "full-elapsed", "full-fine",
   "full-book-left", "full-speed", "full-book", "full-finish", "full-menu", "full-body", "chapters-sheet", "chapter-list",
   "chapter-row", "open-chapters", "speed-sheet", "sleep-sheet", "speed-range", "speed-out", "sleep-meta", "sleep-custom",
-  "sleep-minutes", "full-sleep-left", "full-toasts", "bookmark-toast", "open-speed", "open-sleep", "full-read"]) {
+  "sleep-minutes", "full-sleep-left", "full-toasts", "bookmark-toast", "open-speed", "open-sleep", "full-read", "speed-usual"]) {
   ui[name] = $(name);
 }
 const miniOpen = $("open", slot);
@@ -281,8 +281,11 @@ function endDrag(s, apply) {
   s.drag = null;
   s.root.classList.remove("is-dragging");
   ui["full-fine"].textContent = "";
-  if (apply) player.seek(d.ms);
-  else update("seek");
+  if (apply) {
+    scrubFrom = d.from;
+    player.seek(d.ms);
+    scrubFrom = -1;
+  } else update("seek");
 }
 
 // The chapter the scrubber shows: the one that holds the position.
@@ -312,7 +315,7 @@ const scrubKeys = {
     const rect = input.getBoundingClientRect();
     const chapter = chapterNow();
     const ms = chapter.start + clamp((event.clientX - rect.left) / rect.width, 0, 1) * (chapter.end - chapter.start);
-    s.drag = { rect, chapter, x: event.clientX, ms };
+    s.drag = { rect, chapter, x: event.clientX, ms, from: player.state().positionMs };
     s.root.classList.add("is-dragging");
     ui["full-fine"].textContent = msg("fineScrub");
     dragTo(s, event.clientX, event.clientY);
@@ -534,17 +537,20 @@ function drawSpeedSheet(speed) {
   if (document.activeElement !== ui["speed-range"]) ui["speed-range"].value = speed;
 }
 
-// Speed follows the person to other devices: POST /me/settings, quietly. A failure changes nothing
-// this session. A change waits a second for the next one; leaving the page sends it at once.
-function saveSpeed(leaving) {
+// Speed is remembered for this book and follows the person to other devices: POST /hx/books/{id}/speed,
+// quietly (the book's own speed; a book never changed plays at the usual speed). A failure changes
+// nothing this session. A change waits a second for the next one; leaving the page sends it at once.
+// The sheet's usual-speed button (makeUsual) sets the usual speed instead and the book follows it again.
+function saveSpeed(leaving, makeUsual) {
   clearTimeout(speedTimer);
-  if (!speedUnsaved || LINK) return;
+  if ((!speedUnsaved && !makeUsual) || LINK) return;
   speedUnsaved = false;
-  fetch("/me/settings", {
+  const state = player.state();
+  fetch("/hx/books/" + encodeURIComponent(state.bookId) + "/speed", {
     method: "POST",
     keepalive: leaving === true,
     headers: { "X-CSRF-Token": csrf(), "HX-Request": "true", "Content-Type": FORM_TYPE },
-    body: "speed=" + player.state().speed.toFixed(2),
+    body: "speed=" + state.speed.toFixed(2) + (makeUsual ? "&make_default=1" : ""),
   }).catch(() => {});
 }
 
@@ -563,6 +569,10 @@ ui["speed-sheet"].addEventListener("click", (event) => {
 });
 ui["speed-range"].addEventListener("input", () => changeSpeed(Number(ui["speed-range"].value)));
 addEventListener("pagehide", () => saveSpeed(true));
+ui["speed-usual"].addEventListener("click", () => {
+  saveSpeed(false, true);
+  player.toast("hint", msg("speedUsualSet"));
+});
 
 // ---- Sleep timer ----
 //
@@ -974,12 +984,66 @@ ui["full-finish"].addEventListener("submit", () => {
   ui["full-menu"].open = false;
 });
 
+// ---- Undo after a big move: a short offer to go back ----
+
+const FAR_JUMP_MS = 60000; // a seek over a minute away offers the undo, as does any chapter jump or scrub
+const SCRUB_MIN_MS = 2000; // a scrub that moved less than this is a tap, not a jump
+let lastMs = -1; // the place before the latest move: the last tick or state seen
+let scrubFrom = -1; // where a scrub began, set while its seek runs
+let chapterFrom = -1; // a small seek that a chapter jump may announce a moment later
+let undoing = false;
+let undoToast = null;
+
+function offerUndo(fromMs, bookId) {
+  dismissUndo();
+  undoToast = player.toast("hint", msg("jumpedFar"), [{
+    label: msg("jumpedBack"),
+    run: () => {
+      dismissUndo();
+      if (player.state().bookId !== bookId) return;
+      undoing = true; // going back is not a jump to undo again
+      player.seek(fromMs);
+      undoing = false;
+    },
+  }]);
+}
+
+function dismissUndo() {
+  if (undoToast) undoToast.remove();
+  undoToast = null;
+}
+
+// Called for every player event with its kind and the position it reports. A chapter jump seeks first
+// (emit "seek") and then says "chapter" in the same call, so a small jump is held back until it does.
+function trackJump(kind, ms, bookId) {
+  const from = scrubFrom >= 0 ? scrubFrom : lastMs;
+  if (kind === "seek" && !undoing && from >= 0) {
+    const far = Math.abs(ms - from) > FAR_JUMP_MS || (scrubFrom >= 0 && Math.abs(ms - from) > SCRUB_MIN_MS);
+    chapterFrom = from;
+    if (far) {
+      chapterFrom = -1;
+      offerUndo(from, bookId);
+    }
+  } else if (kind === "chapter" && chapterFrom >= 0 && !undoing) {
+    offerUndo(chapterFrom, bookId);
+    chapterFrom = -1;
+  } else if (kind === "load") {
+    dismissUndo();
+  }
+  if (kind !== "seek" && kind !== "chapter") chapterFrom = -1;
+  lastMs = kind === "load" ? -1 : ms;
+}
+
 // ---- Start-up ----
 
 function start() {
   player = window.tsPlayer;
-  document.addEventListener("ts:player:tick", () => update("tick"));
+  document.addEventListener("ts:player:tick", (event) => {
+    lastMs = event.detail.positionMs;
+    update("tick");
+  });
   document.addEventListener("ts:player:state", (event) => {
+    trackJump(event.detail.kind, event.detail.positionMs, event.detail.bookId);
     if (event.detail.kind === "load" || !book || event.detail.bookId !== book.id) {
       if (book && event.detail.bookId !== book.id) setSleep("off"); // another book: the timer was for this one
       book = player.info();

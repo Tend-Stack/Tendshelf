@@ -28,7 +28,7 @@ func speedWaitSheetClosed(tab *cdp.Tab, sel string) {
 // speedCountSettings wraps fetch so the test can see the speed saves.
 func speedCountSettings(tab *cdp.Tab) {
 	tab.Eval(`(() => { window.speedCalls = []; const f = window.fetch;
-	  window.fetch = (u, o) => { if (String(u).includes("/me/settings")) window.speedCalls.push(o.body); return f(u, o); }; })()`, nil)
+	  window.fetch = (u, o) => { if (String(u).includes("/speed")) window.speedCalls.push(o.body); return f(u, o); }; })()`, nil)
 }
 
 func speedCalls(tab *cdp.Tab) []string {
