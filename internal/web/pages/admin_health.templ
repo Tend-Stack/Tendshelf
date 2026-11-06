@@ -1,0 +1,81 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// HealthRowView is one book under a group. FixHref is empty when there is nothing to open; then Note says so.
+// The handler writes every word.
+type HealthRowView struct {
+	Title, Href            string
+	FixHref, FixLabel, Aria string
+	Note                   string
+}
+
+// HealthGroupView is one group: its heading, what it means, how many books, and some or all of them.
+type HealthGroupView struct {
+	ID, Head, Note, Count string
+	Rows                  []HealthRowView
+	AllHref, AllLabel     string
+}
+
+// AdminHealthView is /admin/health. With Single set the page shows one group and its paging links.
+type AdminHealthView struct {
+	Title, Lead, AllClear string
+	Groups                []HealthGroupView
+	Single                bool
+	BackHref, BackLabel   string
+	PrevHref, PrevLabel   string
+	NextHref, NextLabel   string
+	PageText              string
+}
+
+// AdminHealth lists the books that need a look, in groups, each with a way to fix it.
+templ AdminHealth(v AdminHealthView) {
+	<div class="ts-admin ts-admin--list ts-health">
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		<p class="body-lg ts-admin__lead">{ v.Lead }</p>
+		if v.AllClear != "" {
+			<p class="ts-banner ts-admin__banner" role="status">
+				@components.Icon("check", false)
+				{ v.AllClear }
+			</p>
+		}
+		for _, g := range v.Groups {
+			<section class="ts-group ts-group--pad ts-health__group" aria-labelledby={ "health-h-" + g.ID }>
+				<h2 id={ "health-h-" + g.ID } class="section">{ g.Head } <span class="ts-num">{ g.Count }</span></h2>
+				<p class="caption ts-admin__lead">{ g.Note }</p>
+				<ul class="ts-needs">
+					for _, r := range g.Rows {
+						<li class="ts-needs__row">
+							<div class="ts-needs__text">
+								<a class="body ts-needs__title" href={ templ.SafeURL(r.Href) }>{ r.Title }</a>
+								if r.Note != "" {
+									<span class="caption ts-needs__outcome">{ r.Note }</span>
+								}
+							</div>
+							if r.FixHref != "" {
+								<div class="ts-needs__actions">
+									<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(r.FixHref) } aria-label={ r.Aria }>{ r.FixLabel }</a>
+								</div>
+							}
+						</li>
+					}
+				</ul>
+				if g.AllHref != "" {
+					<p class="caption"><a href={ templ.SafeURL(g.AllHref) }>{ g.AllLabel }</a></p>
+				}
+			</section>
+		}
+		if v.Single {
+			<nav class="ts-health__pager" aria-label={ v.PageText }>
+				if v.PrevHref != "" {
+					<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.PrevHref) }>{ v.PrevLabel }</a>
+				}
+				<span class="caption ts-num">{ v.PageText }</span>
+				if v.NextHref != "" {
+					<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.NextHref) }>{ v.NextLabel }</a>
+				}
+			</nav>
+			<p class="caption"><a href={ templ.SafeURL(v.BackHref) }>{ v.BackLabel }</a></p>
+		}
+	</div>
+}

@@ -129,7 +129,7 @@ func (r *Repo) Problems(ctx context.Context, sc Scope, perGroup int) (Problems, 
 		}
 	}
 
-	noCover := ` AND ` + Listable("b") + ` AND b.cover_id IS NULL AND ` + noUnsettled
+	noCover := ` AND ` + noCoverCond
 	if err := rd.QueryRowContext(ctx, `SELECT count(*)`+from+noCover, wargs...).Scan(&p.NoCoverCount); err != nil {
 		return Problems{}, err
 	}

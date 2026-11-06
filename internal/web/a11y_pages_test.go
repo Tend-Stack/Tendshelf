@@ -145,6 +145,8 @@ func a11yPages() []a11yPage {
 		row("admin-email", "/admin/email", a11yStatic("/admin/email"), owner, "main", true),
 		row("admin-backups", "/admin/backups", a11yStatic("/admin/backups"), owner, "main", true),
 		row("admin-duplicates", "/admin/duplicates", a11yStatic("/admin/duplicates"), owner, "main", true),
+		row("admin-health", "/admin/health", a11yStatic("/admin/health"), owner, "main", true),
+		row("admin-health-group", "/admin/health", a11yStatic("/admin/health?group=no_cover"), owner, "main", true),
 		row("admin-duplicate-merge", "/admin/duplicates/merge", func(e *a11yEnv) string { return a11yDupMergePath(e) }, owner, "main", true),
 		row("admin-duplicates-merged", "/admin/duplicates/merged", a11yStatic("/admin/duplicates/merged"), owner, "main", true),
 		row("login", "/login", a11yStatic("/login"), anon, "main", false),
