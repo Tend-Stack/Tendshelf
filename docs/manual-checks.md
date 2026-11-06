@@ -252,3 +252,7 @@ Needs the debug or release APK on a real phone, signed in to a server with a ser
 | A5b-1 | Play a book, pause, lock the phone and wait an hour (deep Doze). Start a book from the car or a headset button. | Sound starts, or the notification says "Tap to keep listening"; never a silent hang. | |
 | A5b-2 | Change the place from another device, wait over a minute paused, then resume with the app open. | The page asks "You were at ... Continue there?" with the other device's name; nothing moves until you tap. | |
 | A5b-3 | Repeat with the screen off. | A notification asks the same question; opening the app shows one question on the page, not two. | |
+| A6-1 | Set a 15 minute timer, lock the phone and leave it. | Sound fades over the last 10 seconds and stops; the next Play is at full volume. | |
+| A6-2 | During the fade, shake the phone twice within a second (screen off, then on). | The sound comes back to full volume and the timer gains 10 minutes. | |
+| A6-3 | Set the timer, pause for a minute, play again; repeat at speed 2. | Paused time does not count; minutes are real minutes at any speed. | |
+| A6-4 | Choose "End of chapter" on the last chapter of a book with another one queued. | It stops just before the end and the queued book does not start. | |

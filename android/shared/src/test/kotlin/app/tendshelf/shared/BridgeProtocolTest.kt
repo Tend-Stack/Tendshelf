@@ -113,8 +113,8 @@ class BridgeProtocolTest {
         assertEquals("{\"t\":\"ask\",\"bookId\":\"b\",\"positionMs\":0,\"deviceLabel\":\"x\"}", encodeAsk(Ask("b", -9, "x")))
         assertEquals("{\"t\":\"rewound\",\"s\":5}", encodeRewound(5))
         assertEquals("{\"t\":\"rewound\",\"s\":0}", encodeRewound(-3))
-        // `background` crosses as the generic stream code.
-        assertEquals("{\"t\":\"error\",\"code\":\"stream\"}", encodeError("background"))
+        // `background` has its own word, so the page can say what to do.
+        assertEquals("{\"t\":\"error\",\"code\":\"background\"}", encodeError("background"))
     }
 
     @Test
@@ -128,5 +128,26 @@ class BridgeProtocolTest {
         var after = 0
         for (i in 0 until 100) if (b.take(2000)) after++
         assertEquals(30, after) // a long pause refills only to the burst size
+    }
+}
+
+class SleepBridgeTest {
+    @Test
+    fun sleepWords() {
+        assertEquals(BridgeMessage.Sleep("off", 0), parseBridge("sleep off"))
+        assertEquals(BridgeMessage.Sleep("plus", 0), parseBridge("sleep plus"))
+        assertEquals(BridgeMessage.Sleep("chapter", 0), parseBridge("sleep chapter"))
+        assertEquals(BridgeMessage.Sleep("30", 30), parseBridge("sleep 30"))
+        assertEquals(BridgeMessage.Sleep("999", 999), parseBridge("sleep 999"))
+        for (bad in listOf("sleep", "sleep 0", "sleep 1000", "sleep 05", "sleep -1", "sleep 1.5", "sleep 30 x", "sleep On", "sleep  30", "sleep ")) assertNull(parseBridge(bad), bad)
+    }
+
+    @Test
+    fun sleepJson() {
+        assertEquals("{\"t\":\"sleep\",\"mode\":\"off\",\"choice\":\"\",\"leftMs\":0,\"fading\":false}", encodeSleep(SleepInfo.OFF))
+        assertEquals(
+            "{\"t\":\"sleep\",\"mode\":\"chapter\",\"choice\":\"chapter\",\"leftMs\":1500,\"fading\":true}",
+            encodeSleep(SleepInfo(SleepMode.CHAPTER, "chapter", 1500, true)),
+        )
     }
 }

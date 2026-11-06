@@ -1035,6 +1035,8 @@ listen(document, "keydown", (event) => {
 listen(audio, "play", () => emit("play"));
 
 listen(audio, "playing", () => {
+  dismissToast(nativeToast);
+  nativeToast = null;
   heardSince = perfNow();
   idleAt = 0;
   render(true);
@@ -1110,9 +1112,11 @@ function playNext() {
   });
 }
 
+let nativeToast = null; // the app's "can't play" toast, removed once sound is back
 listen(audio, "error", () => {
   if (NATIVE) {
-    toast("err", msg("nativeFailed"));
+    dismissToast(nativeToast);
+    nativeToast = toast("err", audio.error && audio.error.background ? msg("nativeBackground") : msg("nativeFailed"));
     emit("error");
     return;
   }

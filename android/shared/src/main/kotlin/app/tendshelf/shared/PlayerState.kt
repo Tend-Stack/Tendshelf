@@ -19,4 +19,5 @@ data class PlayerSnapshot(
     val rewoundS: Int = 0,
     /** Counts resumes that went back, so two in a row of the same length are still two events. */
     val rewoundSeq: Int = 0,
+    val sleep: SleepInfo = SleepInfo.OFF,
 )

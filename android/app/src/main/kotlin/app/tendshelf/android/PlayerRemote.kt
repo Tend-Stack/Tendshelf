@@ -5,6 +5,8 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import app.tendshelf.shared.Ask
 import app.tendshelf.shared.PlayerSnapshot
+import app.tendshelf.shared.SleepInfo
+import app.tendshelf.shared.SleepMode
 
 /**
  * THE seam to the player. The web bar (through the A4 bridge) and a later native player screen are both
@@ -20,6 +22,9 @@ interface PlayerRemote {
 
     /** The person's answer to the place question: true keeps this place, false goes to the other one. */
     fun answer(keepHere: Boolean)
+
+    /** The page's sleep choice: `off`, `plus`, `chapter` or minutes as digits ([minutes] is 0 for the words). */
+    fun sleep(choice: String, minutes: Int)
 
     /** Whether the page is on screen (the activity is started), so the service knows where to ask. */
     fun pageVisible(visible: Boolean)
@@ -65,6 +70,13 @@ class ControllerRemote(private val controller: MediaController) : PlayerRemote {
         controller.sendCustomCommand(PlaybackService.ANSWER_COMMAND, Bundle().apply { putBoolean("keepHere", keepHere) })
     }
 
+    override fun sleep(choice: String, minutes: Int) {
+        controller.sendCustomCommand(PlaybackService.SLEEP_COMMAND, Bundle().apply {
+            putString("choice", choice)
+            putInt("minutes", minutes)
+        })
+    }
+
     override fun pageVisible(visible: Boolean) {
         controller.sendCustomCommand(PlaybackService.VISIBLE_COMMAND, Bundle().apply { putBoolean("visible", visible) })
     }
@@ -91,6 +103,16 @@ class ControllerRemote(private val controller: MediaController) : PlayerRemote {
             },
             rewoundS = x.getInt(PlaybackService.EXTRA_REWOUND),
             rewoundSeq = x.getInt(PlaybackService.EXTRA_REWOUND_SEQ),
+            sleep = SleepInfo(
+                mode = when (x.getString(PlaybackService.EXTRA_SLEEP_MODE)) {
+                    "minutes" -> SleepMode.MINUTES
+                    "chapter" -> SleepMode.CHAPTER
+                    else -> SleepMode.OFF
+                },
+                choice = x.getString(PlaybackService.EXTRA_SLEEP_CHOICE).orEmpty(),
+                leftMs = x.getLong(PlaybackService.EXTRA_SLEEP_LEFT),
+                fading = x.getBoolean(PlaybackService.EXTRA_SLEEP_FADING),
+            ),
         )
     }
 

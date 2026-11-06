@@ -1052,3 +1052,12 @@ The place question shows on the page while the activity is started and in the no
 `answer here|there` and the `ask` and `rewound` pushes extend the bridge (protocol still `hello 1`). `android/tools/emu.sh` holds the emulator helpers.
 Sizes (gzip): `player.js` 13,970 B (cap raised to 13.75 KB), `native-audio.js` 2,673 B (cap 2,816 B, Android bucket the same). Reused `AskPrompt`, `Resume`, `Bridge`, the toast;
 replaced nothing. Limits: deep Doze and OEM battery limits are phone checks.
+
+**A6 status (sleep timer, fade and shake in the app, 2026-11-06)**: built on the branch `pkg-a6`, plan [plans/android-a6-a10.md](plans/android-a6-a10.md). The timer now lives in the playback service
+(`SleepTimer.kt` over the pure `shared/Sleep.kt` `SleepClock` and `shared/Shake.kt` `ShakeDetector`, table-tested), so a dark screen or a stopped activity changes nothing. Bridge words `sleep off|plus|chapter|<1..999>`, push
+`{"t":"sleep"}`, session extras `ts.sleep.*`, command `app.tendshelf.SLEEP`; protocol still `hello 1`. The page (`player-full.js`) sends the choice and draws the push; it has no interval, fade or `devicemotion` in the app.
+Sleep beats the next book (`NextBook` is told not to ask the queue); a chapter timer on the last chapter rests 1 s before the end; a book with no chapters is one chapter, as on the page. Leftovers of A5b: the refused foreground
+start has its own code `background` and the message "Tendshelf can't start by itself while it is closed. Tap Play to listen."; the "can't play right now" toast is removed when sound starts. Sizes (gzip): `player-full.js` 14,443 B
+(cap 14,464 B), `native-audio.js` 2,790 B (cap 2,816 B, Android bucket the same), app total 91,317 B (cap 91,328 B). Reused: the sheet, card and words, `exo.volume`, session extras, `NextBook`; replaced in the app only: the page's `setInterval` timer.
+Emulator-proved (own build, port 8102): see the report. Limits: the shake was driven by the emulator's accelerometer, a real phone's strength and the OEM background sensor policy are phone checks (manual-checks A6); a chapter timer
+chosen while the service holds no book is ignored; nothing survives a killed process (D7). Next step: A7.

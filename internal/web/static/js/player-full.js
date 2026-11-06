@@ -592,6 +592,10 @@ const cards = [...document.querySelectorAll("[data-ts-sleep-card]")].map((el) =>
 }));
 const coarsePointer = matchMedia("(pointer: coarse)");
 
+// In the Android app the timer runs in the service (it must work with the screen off and the page gone). The
+// page only sends the choice and draws what the app pushes (the app bridge file, "nativesleep"); nothing here decides.
+const nativeSleep = () => window.tsNativeAudio;
+
 // Where the end-of-chapter choice ends: this chapter's end, or the next one's when almost there.
 function chapterEndNow() {
   const state = player.state();
@@ -602,6 +606,10 @@ function chapterEndNow() {
 
 // Milliseconds of listening left; for a chapter, what is left of it at the current speed.
 function sleepLeft() {
+  if (nativeSleep()) {
+    const running = player.state().playing && sleepState.mode !== "off";
+    return Math.max(0, sleepState.leftMs - (running ? performance.now() - sleepState.lastAt : 0));
+  }
   if (sleepState.mode === "chapter") {
     const state = player.state();
     return Math.max(0, sleepState.endMs - state.positionMs) / state.speed;
@@ -620,7 +628,28 @@ function askMotion() {
   }
 }
 
+// What the app pushed: the page just shows it. "custom" is any minutes that are not a row of the sheet.
+function onNativeSleep() {
+  const pushed = nativeSleep().sleepState;
+  const row = ui["sleep-sheet"].querySelector(`[data-ts-sleep-choice="${CSS.escape(pushed.choice)}"]`);
+  sleepState.mode = pushed.mode;
+  sleepState.choice = pushed.choice && !row ? "custom" : pushed.choice;
+  sleepState.leftMs = pushed.leftMs;
+  sleepState.lastAt = performance.now();
+  sleepState.fading = pushed.fading;
+  if (!pushed.fading) sleepState.said = false;
+  motionAllowed = true; // the app listens to the sensor during the fade
+  drawSleep();
+}
+
 function setSleep(choice, minutes) {
+  if (nativeSleep()) {
+    nativeSleep().sleep(choice === "off" || choice === "chapter" ? choice : String(Math.min(999, Math.max(1, Math.round(minutes)))));
+    // Shown at once; the app's answer, a moment later, replaces it (Eyes-free reads this right after the tap).
+    sleepState.mode = choice === "off" ? "off" : choice === "chapter" ? "chapter" : "minutes";
+    sleepState.choice = choice;
+    return;
+  }
   clearInterval(sleepTimer);
   sleepState.choice = choice;
   stopFade();
@@ -690,6 +719,10 @@ function finishSleep() {
 // "+10 min": minutes mode adds ten; a chapter timer turns into a ten-minute extension of what is left.
 function sleepPlus() {
   if (sleepState.mode === "off") return;
+  if (nativeSleep()) {
+    nativeSleep().sleep("plus");
+    return;
+  }
   sleepState.leftMs = sleepLeft() + PLUS_MS;
   sleepState.mode = "minutes";
   sleepState.choice = "";
@@ -1038,6 +1071,7 @@ function trackJump(kind, ms, bookId) {
 
 function start() {
   player = window.tsPlayer;
+  if (nativeSleep()) nativeSleep().addEventListener("nativesleep", onNativeSleep);
   document.addEventListener("ts:player:tick", (event) => {
     lastMs = event.detail.positionMs;
     update("tick");
@@ -1045,7 +1079,7 @@ function start() {
   document.addEventListener("ts:player:state", (event) => {
     trackJump(event.detail.kind, event.detail.positionMs, event.detail.bookId);
     if (event.detail.kind === "load" || !book || event.detail.bookId !== book.id) {
-      if (book && event.detail.bookId !== book.id) setSleep("off"); // another book: the timer was for this one
+      if (book && event.detail.bookId !== book.id && !nativeSleep()) setSleep("off"); // another book: the timer was for this one
       book = player.info();
       if (book) drawBook();
     }

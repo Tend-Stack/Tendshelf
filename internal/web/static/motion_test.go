@@ -313,7 +313,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// M3a (decision 0012): the offline bookmark queue; 12.75 KB, approved by the operator on 2026-11-03.
 	// M3b (decision 0013): the Eyes-free menu entry and lazy load, 13.25 KB, approved by the operator on 2026-11-04.
 	// L1 (the speed sheet saves per book) and L2 (the undo after a big move): 13.75 KB, measured 13,961 B; operator pre-approval of raises, 2026-11-05.
-	"player-full.js": {13*1024 + 704, 64 * 1024},
+	// A6 (sleep timer in the app; operator approved the raise, 2026-11-06): 14,464 B set, measured 14,443 B with its comments intact, reported.
+	"player-full.js": {14*1024 + 128, 64 * 1024},
 	// W2: the waveform drawing (3.0 KB). PB2 folds in the desktop bar's wave (four layers, times, hover,
 	// drag, keys, retry backoff, hairline, volume pop): 7 KB, approved by the operator on 2026-11-02; 7.0 KB measured.
 	"waveform.js": {7 * 1024, 24 * 1024},
@@ -379,7 +380,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // M3b (decision 0013): statistics, Eyes-free and the shake check make it 55.75 KB; approved by the operator on 2026-11-04.
 // Measured together after S, E and K merged: 55.93 KB; the operator approved 56 KB on 2026-11-04.
 // Decision 0015 (adding books by upload): 61.5 KB, approved by the operator on 2026-11-04.
-const jsTotalGzip = 89*1024 + 128 // L5 clip.js (2026-11-06, the plan raises the ceiling by 640 B): 91,264 B; L1+L2 (2026-11-05, operator pre-approved raises): 88.5 KB, measured 90,489 B; before that: 87.5 KB; Firefox hang fix (2026-11-05): 87.5 KB, measured 87.48 KB with comments intact, reported; M6 D2: the operator raised the ceiling to 87 KB (2026-11-05) for desktop.js; before that: operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
+const jsTotalGzip = 89*1024 + 192 // A6 (operator approved the raise, 2026-11-06): 91,328 B, measured 91,317 B, reported; L5 clip.js (2026-11-06, the plan raises the ceiling by 640 B): 91,264 B; L1+L2 (2026-11-05, operator pre-approved raises): 88.5 KB, measured 90,489 B; before that: 87.5 KB; Firefox hang fix (2026-11-05): 87.5 KB, measured 87.48 KB with comments intact, reported; M6 D2: the operator raised the ceiling to 87 KB (2026-11-05) for desktop.js; before that: operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
 
 // jsDesktopFiles are the scripts only the desktop app's window loads (a browser never receives them). They are
 // counted in jsDesktopTotalGzip, not in jsTotalGzip, so the browser ceiling means what browsers really load.
