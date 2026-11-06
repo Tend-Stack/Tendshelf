@@ -116,6 +116,12 @@ func (s *Service) insertBookmark(ctx context.Context, userID, bookID, editionID,
 	b = Bookmark{ID: db.NewID("bm"), UserID: userID, BookID: bookID, PositionMs: positionMs, Note: note, CreatedAt: now, UpdatedAt: now, ClientID: clientID, EditionID: editionID, SID: sid}
 	err = s.st.WriteTx(ctx, func(tx *sql.Tx) error {
 		created = false
+		// A merged-away book id lands on the book that took over (see resolveBook).
+		resolved, err := resolveBook(ctx, tx, bookID)
+		if err != nil {
+			return err
+		}
+		bookID, b.BookID = resolved, resolved
 		if clientID != "" {
 			old, err := scanBookmark(tx.QueryRowContext(ctx, selectBookmark+` WHERE client_id = ? ORDER BY (user_id = ?) DESC LIMIT 1`, clientID, userID))
 			switch {
@@ -144,7 +150,7 @@ func (s *Service) insertBookmark(ctx context.Context, userID, bookID, editionID,
 		if editionID != "" {
 			eid, bsid = editionID, sid
 		}
-		_, err := tx.ExecContext(ctx, `INSERT INTO bookmarks(id, user_id, book_id, position_ms, note, created_at, updated_at, client_id, edition_id, sid) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+		_, err = tx.ExecContext(ctx, `INSERT INTO bookmarks(id, user_id, book_id, position_ms, note, created_at, updated_at, client_id, edition_id, sid) VALUES (?,?,?,?,?,?,?,?,?,?)`,
 			b.ID, userID, bookID, positionMs, note, now, now, cid, eid, bsid)
 		created = err == nil
 		return err

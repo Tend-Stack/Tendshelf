@@ -102,28 +102,15 @@ AND `+mergeGuard, args...).Scan(&ok)
 			reason = o.reason
 		}
 		all := append(args, sql.Named("now", s.now().UnixMilli()), sql.Named("reason", reason))
-		for _, q := range []string{
+		stmts := append([]string{
 			`UPDATE ebook_files SET book_id=:to, merged_from=:from, paired_by=COALESCE(:reason,'person'), book_default=0, updated_at=:now WHERE book_id=:from`,
-			// Newest place wins, whichever format it was made in; ties keep what the audiobook already had.
-			`INSERT INTO reading_positions SELECT user_id, :to, edition_id, chapter_idx, sid, off, quote, char_pos, percent_bp, finished_at,
-  client_updated_at, server_updated_at, device_id, device_label FROM reading_positions WHERE book_id=:from AND true
-  ON CONFLICT(user_id, book_id) DO UPDATE SET edition_id=excluded.edition_id, chapter_idx=excluded.chapter_idx, sid=excluded.sid,
-    off=excluded.off, quote=excluded.quote, char_pos=excluded.char_pos, percent_bp=excluded.percent_bp, finished_at=excluded.finished_at,
-    client_updated_at=excluded.client_updated_at, server_updated_at=excluded.server_updated_at, device_id=excluded.device_id,
-    device_label=excluded.device_label
-  WHERE excluded.client_updated_at > reading_positions.client_updated_at`,
-			`UPDATE reading_sessions SET book_id=:to WHERE book_id=:from`,
-			`UPDATE highlights SET book_id=:to WHERE book_id=:from`,
-			`UPDATE bookmarks SET book_id=:to WHERE book_id=:from`,
-			`UPDATE OR IGNORE word_list SET book_id=:to WHERE book_id=:from`,
-			`UPDATE OR IGNORE shelf_items SET book_id=:to WHERE book_id=:from`,
-			`UPDATE OR IGNORE text_choices SET book_id=:to WHERE book_id=:from`,
-			`UPDATE merged_books SET to_id=:to WHERE to_id=:from`,
-			`INSERT OR REPLACE INTO merged_books(from_id, to_id, merged_at) VALUES (:from, :to, :now)`,
+		}, library.MergeRowsSQL...)
+		stmts = append(stmts,
 			// Cascades: choices, covers, details, labels, leftover shelf rows, grants, links.
 			`DELETE FROM books WHERE id=:from AND kind='text'`,
-		} {
-			if _, err := tx.ExecContext(ctx, q, bindFor(q, all)...); err != nil {
+		)
+		for _, q := range stmts {
+			if _, err := tx.ExecContext(ctx, q, library.BindFor(q, all)...); err != nil {
 				return err
 			}
 		}
@@ -138,17 +125,6 @@ AND `+mergeGuard, args...).Scan(&ok)
 		s.notifyCreated(ctx, to) // the audiobook has no cover: the cover job may take the ebook's
 	}
 	return merged, nil
-}
-
-// bindFor keeps the named arguments a statement uses: the driver refuses a named argument the SQL does not mention.
-func bindFor(q string, all []any) []any {
-	var out []any
-	for _, a := range all {
-		if n, ok := a.(sql.NamedArg); ok && strings.Contains(q, ":"+n.Name) {
-			out = append(out, a)
-		}
-	}
-	return out
 }
 
 // PairBook runs the automatic merge for one book after its details were read: an audiobook's title is only

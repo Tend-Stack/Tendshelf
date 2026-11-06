@@ -100,6 +100,8 @@ type Result struct {
 	UnreadableDirs  int `json:"unreadable_dirs"`
 	ProbesEnqueued  int `json:"probes_enqueued"`
 	BooksSettled    int `json:"books_settled"`
+	// BooksMerged counts folders left out because their book was merged into another copy (S4).
+	BooksMerged int `json:"books_merged"`
 }
 
 // RefusalText is the plain sentence for a book's refused reason, empty for any other reason.
@@ -193,6 +195,11 @@ func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree,
 		p.scope = sc.root
 	}
 	res.Folders = len(folders)
+	// Folders of copies that were merged away stay out of the sweep while the merge stands.
+	mergedRoots, err := s.repo.MergedFolders(ctx, libraryID)
+	if err != nil {
+		return res, err
+	}
 
 	for _, fo := range folders {
 		walkRoot := fo.Path
@@ -237,6 +244,20 @@ func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree,
 		res.SymlinksSkipped += st.Symlinks
 		res.UnreadableDirs += len(st.Unreadable)
 		p.skip = append(p.skip, st.Unreadable...)
+
+		// Immediately after grouping and before hashing or matching moved files: a merged folder's files are not
+		// seen at all, so they are not hashed, not added as a book and never taken for moved files of another book.
+		if len(mergedRoots) > 0 {
+			var left []Found
+			for _, g := range GroupFiles(fo.Path, files) {
+				if _, merged := mergedRoots[g.Root]; merged {
+					res.BooksMerged++
+					continue
+				}
+				left = append(left, g.Files...)
+			}
+			files = left
+		}
 
 		kept := files[:0]
 		for _, f := range files {
