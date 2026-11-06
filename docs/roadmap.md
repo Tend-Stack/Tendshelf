@@ -952,7 +952,7 @@ share-link pages stay in link mode and never call it). Tests: `TestSeriesNext`. 
     changed the state to PAUSED and PLAYING; previous went back (a first press restarts the file after 3 s, as Media3 does).
   - Activity finished with Back: the task was gone and the sound continued. Tapping the media notification brought `MainActivity` back
     and the server's sign-in page loaded in the WebView.
-- Not proved by the emulator: a real device's Doze and OEM battery limits (the emulator was never in Doze; the operator repeats the
+- Not proved by the emulator: a real device's Doze and OEM battery limits (correction, A5b: the shared emulator sits in light Doze for long spells, `mLightState=IDLE`, so the Doze firewall is tested there; deep Doze never comes (no motion sensor), so the operator repeats the
   screen-off test for an hour on a phone), real speaker or Bluetooth output, a killed process (the service shares the app's process;
   Back and task removal were tried, not `kill -9`), other Android versions, and a mobile network. The WebView page sits close under
   the status bar (A2 does the safe areas). Android Auto not tried.
@@ -1026,3 +1026,12 @@ route matrix rows. Limits: the Filter chip shows no count of active filters; on 
 /api/v1/settings` carry the read-only `rewindSteps` from `rewind.go`. The ask is a notification only until A4 lands the bridge (`ask`, `rewound`, `player.js`
 toast). Limits: no flush while the app is closed and no service (no WorkManager), the page half of D5, `answer` in `PlayerRemote`, the 1-hour repeat run. Next step: A4 merge,
 then the bridge half of A5.
+
+**A5b status (Android page half of A5, the refused foreground start, 2026-11-06)**: built on the branch `pkg-a5b`, plan [plans/android-a6-a10.md](plans/android-a6-a10.md).
+Step 0: the silent hang was the Doze firewall on the app's own process after the system refused a foreground start (`Background started FGS: Disallowed`); the A5
+hook `op dump` hid it by starting a foreground service. Fix: `MediaSessionService.Listener.onForegroundServiceStartNotAllowedException` stops the player at once
+(`ts.error=background`, `playWhenReady` false) and posts a "Tap to keep listening" notification (id 4244); debug reads are now `DEBUG_READ` broadcasts that start nothing.
+The place question shows on the page while the activity is started and in the notification otherwise (`ts.ask.*` extras, commands `ANSWER_ASK` and `PAGE_VISIBLE`);
+`answer here|there` and the `ask` and `rewound` pushes extend the bridge (protocol still `hello 1`). `android/tools/emu.sh` holds the emulator helpers.
+Sizes (gzip): `player.js` 13,970 B (cap raised to 13.75 KB), `native-audio.js` 2,673 B (cap 2,816 B, Android bucket the same). Reused `AskPrompt`, `Resume`, `Bridge`, the toast;
+replaced nothing. Limits: deep Doze and OEM battery limits are phone checks.
