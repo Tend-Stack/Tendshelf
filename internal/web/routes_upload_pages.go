@@ -337,3 +337,24 @@ func (s *server) addBooksHref(r *http.Request, cur *library.LibrarySummary, libs
 	}
 	return "/libraries/" + lib.ID + "/add"
 }
+
+// desktopAddBooks is where the desktop app's drop zone sends dropped files: the Add books page of the
+// first library that takes uploads and that this person may add to (share.Can, so owner or admin). It is
+// empty outside the desktop shell, when uploads are not set up, and when there is no such library; the
+// bar then shows no drop zone and says why on a drop. Nothing here lets a browser or a member add a book:
+// the page and every upload route check the same action again.
+func (s *server) desktopAddBooks(r *http.Request, shell string) string {
+	if shell != "desktop" || s.uploads == nil || currentUser(r).ID == "" {
+		return ""
+	}
+	libs, err := s.lib.Libraries(r.Context())
+	if err != nil {
+		return ""
+	}
+	for _, l := range libs {
+		if l.UploadFolderID != "" && s.can.Can(r.Context(), currentUser(r), share.AddBooks, share.Target{Kind: share.TargetLibrary, ID: l.ID, LibraryID: l.ID}) {
+			return "/libraries/" + l.ID + "/add"
+		}
+	}
+	return ""
+}

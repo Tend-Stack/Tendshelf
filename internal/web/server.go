@@ -394,6 +394,7 @@ func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, 
 		NoInstall:    shell != "",
 		NoOffline:    shell != "",
 		Crumb:        crumbFor(r.URL.Path),
+		AddBooks:     s.desktopAddBooks(r, shell),
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render page", "path", logPath(r), "err", err)
