@@ -32,7 +32,10 @@ type IngestResult struct {
 // Register adds the ingest job kind and removes upload temp files a crash left behind.
 func (s *Service) Register(r *jobs.Runner) error {
 	s.removeIncoming()
-	return r.Register(jobs.Kind{Name: KindIngest, Concurrency: 1, MaxAttempts: 2, Handler: s.handleIngest})
+	if err := r.Register(jobs.Kind{Name: KindIngest, Concurrency: 1, MaxAttempts: 2, Handler: s.handleIngest}); err != nil {
+		return err
+	}
+	return r.Register(jobs.Kind{Name: KindDigests, Concurrency: 1, MaxAttempts: 2, Handler: s.handleDigests})
 }
 
 // errDiscard rolls back a result whose file changed while it was being read.
@@ -85,6 +88,13 @@ func (s *Service) handleIngest(ctx context.Context, t *jobs.Task) (any, error) {
 	if err != nil {
 		return s.failRead(ctx, t, f, err)
 	}
+	// The name KOReader gives this file. A read failure leaves it empty; the digests job tries again.
+	var digest any
+	if d, err := PartialMD5(path); err != nil {
+		s.log.Warn("ebooks: could not make a document digest", "err", err)
+	} else {
+		digest = d
+	}
 	words, chars := 0, 0
 	for _, ch := range doc.Chapters {
 		for _, b := range ch.Blocks {
@@ -98,7 +108,7 @@ func (s *Service) handleIngest(ctx context.Context, t *jobs.Task) (any, error) {
 		}
 		now := s.now().UnixMilli()
 		res, err := tx.ExecContext(ctx, `UPDATE ebook_files SET state='ready', sha256=?, format=?, refused_reason=NULL,
-error_code=NULL, updated_at=? WHERE id=? AND quick_hash=? AND state='pending'`, doc.SourceSHA256, doc.Format, now, f.ID, f.QuickHash)
+error_code=NULL, partial_md5=?, updated_at=? WHERE id=? AND quick_hash=? AND state='pending'`, doc.SourceSHA256, doc.Format, digest, now, f.ID, f.QuickHash)
 		if err != nil {
 			return err
 		}

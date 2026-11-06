@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/token"
 	"github.com/Tend-Stack/tendshelf/internal/users"
@@ -20,9 +21,15 @@ func IsKeyKind(k DeviceKind) bool { return k == KindOPDS || k == KindKOReader }
 func KeyHash(kind DeviceKind, secret string) [32]byte {
 	if kind == KindKOReader {
 		sum := md5.Sum([]byte(secret)) // #nosec G401 -- see the import note
-		return sha256.Sum256([]byte(hex.EncodeToString(sum[:])))
+		return KeyHashFromMD5(hex.EncodeToString(sum[:]))
 	}
 	return sha256.Sum256([]byte(secret))
+}
+
+// KeyHashFromMD5 is the stored value for a koreader key when the MD5 is what arrived (the x-auth-key header of
+// KOReader's sync protocol): the SHA-256 of the lower-case hex MD5.
+func KeyHashFromMD5(md5hex string) [32]byte {
+	return sha256.Sum256([]byte(strings.ToLower(md5hex)))
 }
 
 // IssueKey creates an app key for userID inside the caller's transaction and returns the key, which is

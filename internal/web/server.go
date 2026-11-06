@@ -335,7 +335,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerInstall(outer)
 	s.registerOPDS(outer) // app-key surface: outside the cookie chain, see appauth.go
 	outer.Handle("/", s.shellLink(guarded))
-	return s, SecurityHeaders(outer), nil
+	return s, SecurityHeaders(s.kosyncFront(outer)), nil
 }
 
 // sessionOrCookieBinding binds a CSRF token to the signed-in session, or to the ts_csrf cookie when

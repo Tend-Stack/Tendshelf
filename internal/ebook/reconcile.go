@@ -76,7 +76,7 @@ func (s *Service) Reconcile(ctx context.Context, es scan.EbookScan) error {
 						_, err := tx.ExecContext(ctx, `UPDATE ebook_files SET mtime_ns=?, missing_since=NULL, updated_at=? WHERE id=?`, mtime, now, id)
 						return err
 					}
-					_, err := tx.ExecContext(ctx, `UPDATE ebook_files SET quick_hash=?, size=?, mtime_ns=?, sha256=NULL, format=NULL,
+					_, err := tx.ExecContext(ctx, `UPDATE ebook_files SET quick_hash=?, size=?, mtime_ns=?, sha256=NULL, format=NULL, partial_md5=NULL,
 state='pending', refused_reason=NULL, error_code=NULL, job_id=NULL, missing_since=NULL, updated_at=? WHERE id=?`,
 						qh, size, mtime, now, id)
 					return err
@@ -320,7 +320,7 @@ updated_at=? WHERE state='refused' AND error_code='not_yet'`, s.now().UnixMilli(
 			return err
 		}
 	}
-	return nil
+	return s.EnqueueDigests(ctx)
 }
 
 // EnqueueStale marks ready files for reading again when no edition exists for their present bytes and the

@@ -793,7 +793,15 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
   `serveEbookFile` split out of `getEbookFile`, decision 0025 and its `AGENTS.md` line. Checks: `TestAppKey*`, `TestOPDS*`,
   `TestBookFilterForAgreesWithCan`, `TestMigrationAppKeys*`, `TestTypable*`; captures `app-keys-*` at four widths and four
   themes, no overflow, targets 44 px. Limits: no OPDS 2.0 or PSE, no audio, no per-shelf feeds, no key scopes beyond two kinds,
-  keys do not expire by date. Next: S6 mounts `/kosync` on `keyAuth(KindKOReader, ...)`.
+  keys do not expire by date. Next: S6 (done below).
+- **S6 KOReader sync** (2026-11-06, done). Scope: migration `kosync` (`ebook_files.partial_md5` with its partial index, table
+  `kosync_progress`; numbered 0028), `ebook.PartialMD5` (KOReader's `partialMD5`), the digest set in the ingest job and
+  cleared by the reconcile of a changed file, the `ebook.digests` catch-up job (200 files a run, cursor so an unreadable file cannot loop, queued beside
+  `EnqueuePending`), `Doc.TotalUnits`, `progress.KosyncPut/Get` (10,000 rows a person), `/kosync` (`users/create` always 402, `users/auth`, `PUT` and `GET` of
+  `syncs/progress`) in front of the outer mux, `keyGuard` shared with OPDS (`keyAuth` is now a thin wrapper), `auth.KeyHashFromMD5`, the key page note. Inbound by
+  percentage through `AnchorAtChar` into `reading_positions` only when `share.Can(ReadText)` passes; outbound EPUB as the chapter start and PDF by page.
+  Checks: `TestKosync*`, `TestPartialMD5*`, `TestMigrationKosync*`; manual check on a real KOReader is open (`manual-checks.md`). Limits: the sync lands near the
+  place, not on it; the short EPUB pointer is a guess until the manual check; no statistics, highlights, file-name digests, audio or "link this file" page.
 - **S2 Whole backups to a folder the owner chooses** (2026-11-05, done). Scope: `backup.folder` setting,
   `backups.Mirror` (incremental by size and time through `tendshelf-backup/manifest.json`, copy through a
   temporary name, read back and compared by SHA-256, 30 day grace for deleted files, newest 7 database copies,

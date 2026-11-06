@@ -207,3 +207,16 @@ Dated runs (desktop, session type, WebKitGTK version, date, who ran it, anything
 
 - Firefox hang on Tailscale: fixed by the worker change, confirmed by the operator.
 - Voice sound: it is the same in `ffplay`, so it is not the app.
+
+## KOReader sync (S6)
+
+Needs a real KOReader (e-reader or desktop build), an EPUB and a PDF that are in a Tendshelf library, and a `KOReader sync` key from Your devices.
+
+| # | Step | Expected | Result |
+| --- | --- | --- | --- |
+| 1 | In KOReader open Progress sync, choose Custom sync server, enter the address from the key page, then choose Login (not Register) with your user name and the key. | "Logged in"; Register answers with the Tendshelf message and creates nothing. | |
+| 2 | Open the EPUB in KOReader, read some pages, then use Push progress now. | In Tendshelf the book shows a reading place from KOReader, in about the same chapter. | |
+| 3 | In Tendshelf read further in the same book on the web, then in KOReader use Pull progress from other devices. | KOReader offers the Tendshelf place and jumps to the start of that chapter or earlier (the known limit of the short pointer; a bad pointer leaves the page alone). | |
+| 4 | Do steps 2 and 3 with the PDF. | Pushing sets the reading place; pulling jumps to the page matching the Tendshelf place. | |
+| 5 | Turn the key off in Your devices, then push again. | KOReader reports that the login failed. | |
+
