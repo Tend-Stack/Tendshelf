@@ -10,6 +10,9 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import app.tendshelf.shared.BookManifest
+import app.tendshelf.shared.PlayerSettings
+import app.tendshelf.shared.Save
+import app.tendshelf.shared.placeWrittenAt
 import app.tendshelf.shared.silentRanges
 import app.tendshelf.shared.skipSilence
 import app.tendshelf.shared.startPlace
@@ -45,6 +48,20 @@ class BookEngine(
             player.onTick = v
         }
     var onEnded: (() -> Unit)? = null
+
+    /** Worker thread: the newest unsent save of a book, which may be newer than the stored place. */
+    var pendingFor: (String) -> Save? = { null }
+
+    /** Main thread, a book was loaded: its id, when the stored place was written, whether the start was given. */
+    var onBookStarted: ((String, Long?, Boolean) -> Unit)? = null
+
+    /** The settings of the loaded book. */
+    var settings: PlayerSettings = PlayerSettings(1.0, 30, 30, true, false)
+        private set
+    val currentBook: String get() = bookId
+
+    /** Main thread, just before the loaded book is replaced or cleared: save its place under its own id. */
+    var onBookChanging: (() -> Unit)? = null
 
     init {
         exo.addListener(object : Player.Listener {
@@ -92,7 +109,8 @@ class BookEngine(
                 val manifest = api.manifest(conn.token, book)
                 if (sequence.get() != mine) return@execute
                 val art = api.cover(conn.token, manifest.id)
-                main.post { if (sequence.get() == mine) begin(api, conn, manifest, settings, art, atMs) }
+                val pending = pendingFor(manifest.id)
+                main.post { if (sequence.get() == mine) begin(api, conn, manifest, settings, art, atMs, pending) }
             } catch (e: ApiException) {
                 Log.w(TAG, "could not start the book: server answered ${e.code}")
                 main.post { if (sequence.get() == mine) fail(if (e.code == 401) "signedOut" else "book") }
@@ -108,18 +126,21 @@ class BookEngine(
 
     private fun begin(
         api: Api, conn: Connection, manifest: BookManifest, settings: app.tendshelf.shared.PlayerSettings,
-        art: ByteArray?, atMs: Long?,
+        art: ByteArray?, atMs: Long?, pending: Save?,
     ) {
         if (manifest.files.none { it.playable }) {
             fail("book")
             return
         }
+        onBookChanging?.invoke()
         http.setDefaultRequestProperties(mapOf("Authorization" to "Bearer ${conn.token}"))
         bookId = manifest.id
         error = ""
         silent = silentRanges(manifest.files)
+        this.settings = settings
         player.load(manifest.title, manifest.author, manifest.chapters, settings, art)
-        exo.setMediaSource(BookMedia.build(manifest, api.paths, http), startPlace(manifest.progress, atMs))
+        onBookStarted?.invoke(manifest.id, placeWrittenAt(manifest.progress, pending), atMs != null && atMs >= 0)
+        exo.setMediaSource(BookMedia.build(manifest, api.paths, http), startPlace(manifest.progress, atMs, pending))
         exo.setPlaybackSpeed(manifest.speed.toFloat())
         exo.prepare()
         exo.play()
@@ -130,6 +151,7 @@ class BookEngine(
     /** Stop, forget the book and the credential (sign-out, switching server). */
     fun stopAndClear() {
         sequence.incrementAndGet()
+        onBookChanging?.invoke()
         exo.stop()
         exo.clearMediaItems()
         http.setDefaultRequestProperties(emptyMap())
@@ -139,6 +161,9 @@ class BookEngine(
         silent = emptyList()
         publishState()
     }
+
+    /** The server refused the token while saving. */
+    fun signedOut() = fail("signedOut")
 
     private fun fail(kind: String) {
         error = kind

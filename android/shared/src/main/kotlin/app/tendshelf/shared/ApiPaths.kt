@@ -17,6 +17,11 @@ class ApiPaths(server: String) {
 
     val settingsUrl: String get() = "$base/api/v1/settings"
 
+    val batchUrl: String get() = "$base/api/v1/progress/batch"
+    val queueNextUrl: String get() = "$base/api/v1/queue/next"
+
+    fun progressUrl(bookId: String): String = "$base/api/v1/progress/${segment(bookId)}"
+
     /** The page the WebView opens: the shell mark makes the server treat the visitor as the Android app. */
     val shellUrl: String get() = "$base/?shell=android&next=/"
 
@@ -42,3 +47,12 @@ fun jsonString(s: String): String {
     }
     return out.append('"').toString()
 }
+
+/** JSON body for `POST /api/v1/progress/batch`; the device token supplies the device id. */
+fun batchBody(saves: List<Save>): String = saves.joinToString(",", "{\"updates\":[", "]}") {
+    "{\"bookId\":${jsonString(it.bookId)},\"positionMs\":${it.positionMs},\"clientUpdatedAt\":${it.clientUpdatedAt}," +
+        "\"finished\":${it.finished},\"force\":${it.force},\"speed\":${it.speed},\"listenedMs\":${it.listenedMs}}"
+}
+
+/** JSON body for `POST /api/v1/queue/next` once [endedBookId] is over; the series is tried when the queue is empty. */
+fun queueNextBody(endedBookId: String): String = "{\"ended\":${jsonString(endedBookId)},\"series\":true}"

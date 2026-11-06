@@ -37,6 +37,9 @@ class PlaybackService : MediaLibraryService() {
         private set
     internal lateinit var engine: BookEngine
         private set
+    internal lateinit var writer: ProgressWriter
+        private set
+    private lateinit var askPrompt: AskPrompt
     private val http = DefaultHttpDataSource.Factory()
     internal val main = Handler(Looper.getMainLooper())
     internal val io = java.util.concurrent.Executors.newCachedThreadPool()
@@ -82,6 +85,62 @@ class PlaybackService : MediaLibraryService() {
             .setMediaButtonPreferences(skipButtons())
             .build()
         engine = BookEngine(exo, player, http, main, io, { connections }) { extras -> session?.setSessionExtras(extras) }
+        wireProgress()
+    }
+
+    /** A5: saving, rewinding, the place question and the next book. None of it needs a page. */
+    private fun wireProgress() {
+        val w = ProgressWriter(this, exo, { connections }, main)
+        writer = w
+        w.bookSource { engine.currentBook }
+        val ask = AskPrompt(this, w) { ms -> exo.seekTo(ms) }
+        askPrompt = ask
+        val resume = Resume(exo, { engine.settings }, { engine.currentBook })
+        val next = NextBook(this, w, { connections }, main, io) { id -> engine.start(id, null) }
+        var lastChapter = -2
+        engine.pendingFor = { id -> w.pending(id) }
+        engine.onBookChanging = { w.saveNow("book") }
+        engine.onBookStarted = { _, writtenAt, atGiven ->
+            ask.dismissPlain()
+            resume.bookLoaded(writtenAt, atGiven)
+            next.reset()
+            lastChapter = -2
+        }
+        engine.onPositionTick = {
+            val book = engine.currentBook
+            if (book.isNotEmpty()) {
+                val chapter = player.chapterIdx
+                if (lastChapter != -2 && chapter != lastChapter) w.saveNow("chapter")
+                lastChapter = chapter
+                w.onTick(book)
+            }
+        }
+        engine.onEnded = { next.ended(engine.currentBook, exo.currentPosition, exo.playbackParameters.speed.toDouble()) { exo.playbackState == Player.STATE_ENDED } }
+        w.onSignedOut = { engine.signedOut() }
+        w.onLost = { lost, conn ->
+            val book = engine.currentBook
+            if (!ask.isOpen) {
+                val local = if (lost.save.bookId == book) exo.currentPosition else lost.save.positionMs
+                app.tendshelf.shared.conflict(lost.save.bookId, local, lost.remote, conn.deviceId)?.let { ask.show(it) }
+            }
+        }
+        resume.checkRemote = { book ->
+            io.execute {
+                val conn = connections.current() ?: return@execute
+                try {
+                    val remote = Api(conn.origin).progress(conn.token, book)
+                    Log.i(TAG, "place check: remote ${if (remote == null) "none" else "found"}")
+                    main.post {
+                        if (!ask.isOpen && engine.currentBook == book) {
+                            app.tendshelf.shared.conflict(book, exo.currentPosition, remote, conn.deviceId)?.let { ask.show(it) }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "place check failed: ${e.javaClass.simpleName}")
+                }
+            }
+        }
+        resume.onRewound = { s -> session?.let { it.setSessionExtras(Bundle(it.sessionExtras).apply { putInt(EXTRA_REWOUND, s) }) } }
     }
 
     /** Back and Forward beside the chapter buttons (D4). */
@@ -107,16 +166,20 @@ class PlaybackService : MediaLibraryService() {
 
     /** Release builds have no debug start path: [DebugHooks] is a stub there, and the real one lives in src/debug. */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (::askPrompt.isInitialized && askPrompt.handle(intent)) return START_NOT_STICKY
         if (DebugHooks.onServiceStart(this, intent)) return START_NOT_STICKY
         return super.onStartCommand(intent, flags, startId)
     }
 
     /** Swiping the app away must not stop a book that is playing. */
     override fun onTaskRemoved(rootIntent: Intent?) {
+        writer.saveNow("task removed")
         if (!exo.playWhenReady || exo.mediaItemCount == 0) stopSelf()
     }
 
     override fun onDestroy() {
+        writer.saveNow("destroy")
+        writer.close()
         session?.release()
         session = null
         exo.release()
@@ -164,6 +227,7 @@ class PlaybackService : MediaLibraryService() {
         internal const val TAG = "Tendshelf"
         const val START_ACTION = "app.tendshelf.START_BOOK"
         const val STOP_ACTION = "app.tendshelf.STOP_AND_CLEAR"
+        const val EXTRA_REWOUND = "ts.rewoundS"
         val START_COMMAND = SessionCommand(START_ACTION, Bundle.EMPTY)
         val STOP_COMMAND = SessionCommand(STOP_ACTION, Bundle.EMPTY)
     }

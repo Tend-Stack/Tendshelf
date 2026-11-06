@@ -1019,3 +1019,10 @@ the header (`#lib-count`, a polite live region), and `GET /hx/library-facets/{ki
 without JavaScript a link to `?add=kind` shows the list. Weight: the long lists (people, series, categories) are not in the page, so the library page HTML
 grew from 79,891 to 83,184 bytes at 2,000 books (budget 87,040; the kinds, their no-JavaScript links and the Sort chip), CSS by 1,354 bytes (269,991 of 297,984); listing every kind inline would have added about 25 KB. Checks: `TestLibraryFilterRow`, `TestLibFilter*`, `TestVisualLibraryFilters`, `TestVisualLibraryActiveRow`,
 route matrix rows. Limits: the Filter chip shows no count of active filters; on a phone Grid/List can sit alone on a row beside a long Sort chip.
+**A5 status (Android progress outbox, 2026-11-06)**: built on the branch `pkg-a5`, plan [plans/android-a2-a5.md](plans/android-a2-a5.md). `shared` holds the outbox
+(coalescing, 2,000-row cap, held rows), the place rule (`conflict`, 60 s) and the smart-rewind table with tests; the app has `SqliteOutbox` (`outbox.db`),
+`ProgressWriter` (disk thread, then a net thread, backoff 5 s to 5 min, default-network callback, launch flush), `Resume` (rewind on `onIsPlayingChanged`), `AskPrompt`
+(private notification, two actions, per-question nonce) and `NextBook` (30 s wake lock, `finished` sent first, `/queue/next` asked once, never retried). S3: `GET`/`PATCH
+/api/v1/settings` carry the read-only `rewindSteps` from `rewind.go`. The ask is a notification only until A4 lands the bridge (`ask`, `rewound`, `player.js`
+toast). Limits: no flush while the app is closed and no service (no WorkManager), the page half of D5, `answer` in `PlayerRemote`, the 1-hour repeat run. Next step: A4 merge,
+then the bridge half of A5.

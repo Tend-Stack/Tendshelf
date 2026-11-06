@@ -49,4 +49,5 @@ data class PlayerSettings(
     val skipForwardS: Int,
     val autoRewind: Boolean,
     val nextInSeries: Boolean,
+    val rewindSteps: List<RewindStep> = DEFAULT_REWIND,
 )

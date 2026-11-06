@@ -26,12 +26,18 @@ class SignOut(
 
     fun run(reason: Int?) {
         val origin = store.origin
-        val token = store.current()?.token
+        val conn = store.current()
+        val token = conn?.token
         wipeLocal()
         pages.state = StartState(origin?.text ?: "", reason?.let(words))
         web.loadUrl(pages.startUrl)
         after?.invoke()
-        if (origin != null && token != null) io.execute { api.revoke(origin, token) }
+        val appContext = web.context.applicationContext
+        // A5 (D9): one try to send the saved places, then every row goes, whatever the answer.
+        io.execute {
+            ProgressWriter.signOutFlush(appContext, conn)
+            if (origin != null && token != null) api.revoke(origin, token)
+        }
     }
 
     /** Everything the page side and the token hold, without opening the start page. */
@@ -50,6 +56,10 @@ class SignOut(
     fun leave(oldOrigin: app.tendshelf.shared.Origin) {
         val token = store.current()?.token
         wipeLocal()
-        if (token != null) io.execute { api.revoke(oldOrigin, token) }
+        val appContext = web.context.applicationContext
+        io.execute {
+            ProgressWriter.signOutFlush(appContext, null) // the rows belong to the old server
+            if (token != null) api.revoke(oldOrigin, token)
+        }
     }
 }

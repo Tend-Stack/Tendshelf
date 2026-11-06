@@ -70,6 +70,8 @@ object DebugHooks {
             "back" -> player.seekBack()
             "forward" -> player.seekForward()
             "stop" -> service.engine.stopAndClear()
+            "flush" -> service.writer.flush()
+            "outbox" -> Log.i(PlaybackService.TAG, "outbox rows=${service.writer.rowCount()}")
             "dump" -> Log.i(
                 PlaybackService.TAG, "dump pos=${exo.currentPosition} dur=${exo.duration} speed=${exo.playbackParameters.speed} " +
                     "playing=${exo.isPlaying} state=${exo.playbackState} chapter=${player.chapterIdx} " +

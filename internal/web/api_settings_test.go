@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -31,6 +32,35 @@ func (e *syncEnv) a1Settings(t *testing.T, tok string) a1Settings {
 	return s
 }
 
+// S3: the table is the one in rewind.go, read-only (a PATCH value is ignored).
+func TestA5SettingsRewindSteps(t *testing.T) {
+	e := syncSeed(t)
+	type steps struct {
+		RewindSteps []struct {
+			FromMs  int64 `json:"fromMs"`
+			Seconds int   `json:"seconds"`
+		} `json:"rewindSteps"`
+	}
+	read := func(rec *httptest.ResponseRecorder) steps {
+		var s steps
+		apiDecode(t, rec, &s)
+		return s
+	}
+	check := func(label string, s steps) {
+		if len(s.RewindSteps) != len(rewindSteps) {
+			t.Fatalf("%s: rewindSteps = %+v", label, s.RewindSteps)
+		}
+		for i, want := range rewindSteps {
+			if got := s.RewindSteps[i]; got.FromMs != want.From.Milliseconds() || got.Seconds != want.Seconds {
+				t.Errorf("%s: step %d = %+v, want %v/%d", label, i, got, want.From, want.Seconds)
+			}
+		}
+	}
+	check("get", read(e.send(e.owner, http.MethodGet, "/api/v1/settings", "")))
+	check("patch", read(e.send(e.owner, http.MethodPatch, "/api/v1/settings", `{"rewindSteps":[{"fromMs":1,"seconds":99}]}`)))
+	check("after patch", read(e.send(e.owner, http.MethodGet, "/api/v1/settings", "")))
+}
+
 func TestA1SettingsReadAndPatch(t *testing.T) {
 	e := syncSeed(t)
 	if got := e.a1Settings(t, e.owner); got != (a1Settings{Speed: 1, SkipBackS: 15, SkipForwardS: 30, AutoRewind: true, NextInSeries: true}) {
@@ -39,7 +69,7 @@ func TestA1SettingsReadAndPatch(t *testing.T) {
 	// The answer holds the player keys and nothing else.
 	var keys map[string]any
 	apiDecode(t, e.send(e.owner, http.MethodGet, "/api/v1/settings", ""), &keys)
-	if len(keys) != 5 {
+	if len(keys) != 6 {
 		t.Errorf("keys = %v", keys)
 	}
 
