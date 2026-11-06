@@ -28,6 +28,9 @@ func TestDeskDropOnlyWhenAllowed(t *testing.T) {
 		if has := strings.Contains(got, `data-ts-can-add="true"`); has != tc.want {
 			t.Errorf("%s: data-ts-can-add present = %v, want %v", name, has, tc.want)
 		}
+		if has := strings.Contains(got, `aria-label="Add books"`); has != tc.want {
+			t.Errorf("%s: Add books button present = %v, want %v", name, has, tc.want)
+		}
 		if has := strings.Contains(got, "data-wbar-add") && strings.Contains(got, add); has != tc.want {
 			t.Errorf("%s: add link present = %v, want %v", name, has, tc.want)
 		}

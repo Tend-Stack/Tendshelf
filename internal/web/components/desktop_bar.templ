@@ -43,6 +43,11 @@ templ DesktopBar(p Page) {
 							<span class="ts-wbar__nowsub" data-wbar-nowsub></span>
 						</span>
 					</a>
+					if p.AddBooks != "" {
+						<a class="ts-wbar__btn" href={ templ.SafeURL(p.AddBooks) } aria-label="Add books" title="Add books">
+							@Icon("drop-in", false)
+						</a>
+					}
 					<button type="button" class="ts-wbar__btn" aria-label="More" aria-haspopup="menu" aria-expanded="false" aria-controls="desktop-menu" data-wbar-more>
 						@Icon("more", false)
 					</button>

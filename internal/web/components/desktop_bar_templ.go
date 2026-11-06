@@ -177,7 +177,38 @@ func DesktopBar(p Page) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<span class=\"ts-cover ts-cover--24\"><img alt=\"\" width=\"24\" height=\"24\" data-wbar-cover hidden></span> <span class=\"ts-wbar__nowtext\"><span class=\"ts-wbar__nowtitle\" data-wbar-nowtitle></span> <span class=\"ts-wbar__nowsub\" data-wbar-nowsub></span></span></a> <button type=\"button\" class=\"ts-wbar__btn\" aria-label=\"More\" aria-haspopup=\"menu\" aria-expanded=\"false\" aria-controls=\"desktop-menu\" data-wbar-more>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<span class=\"ts-cover ts-cover--24\"><img alt=\"\" width=\"24\" height=\"24\" data-wbar-cover hidden></span> <span class=\"ts-wbar__nowtext\"><span class=\"ts-wbar__nowtitle\" data-wbar-nowtitle></span> <span class=\"ts-wbar__nowsub\" data-wbar-nowsub></span></span></a> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if p.AddBooks != "" {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<a class=\"ts-wbar__btn\" href=\"")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var7 string
+					templ_7745c5c3_Var7, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(p.AddBooks)).ResolveURL(ctx)
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/desktop_bar.templ`, Line: 47, Col: 62}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" aria-label=\"Add books\" title=\"Add books\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = Icon("drop-in", false).Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</a>")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, " <button type=\"button\" class=\"ts-wbar__btn\" aria-label=\"More\" aria-haspopup=\"menu\" aria-expanded=\"false\" aria-controls=\"desktop-menu\" data-wbar-more>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -185,12 +216,12 @@ func DesktopBar(p Page) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</button>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</button>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"ts-wbar__win\" role=\"group\" aria-label=\"Window\"><button type=\"button\" class=\"ts-wbar__btn\" aria-label=\"Minimise\" data-wbar-do=\"minimise\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"ts-wbar__win\" role=\"group\" aria-label=\"Window\"><button type=\"button\" class=\"ts-wbar__btn\" aria-label=\"Minimise\" data-wbar-do=\"minimise\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -198,7 +229,7 @@ func DesktopBar(p Page) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</button> <button type=\"button\" class=\"ts-wbar__btn\" aria-label=\"Maximise\" data-wbar-do=\"maximise\" data-wbar-max>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</button> <button type=\"button\" class=\"ts-wbar__btn\" aria-label=\"Maximise\" data-wbar-do=\"maximise\" data-wbar-max>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -206,7 +237,7 @@ func DesktopBar(p Page) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</button> <button type=\"button\" class=\"ts-wbar__btn\" aria-label=\"Restore\" data-wbar-do=\"maximise\" data-wbar-restore hidden>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</button> <button type=\"button\" class=\"ts-wbar__btn\" aria-label=\"Restore\" data-wbar-do=\"maximise\" data-wbar-restore hidden>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -214,7 +245,7 @@ func DesktopBar(p Page) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</button> <button type=\"button\" class=\"ts-wbar__btn ts-wbar__btn--close\" aria-label=\"Close\" data-wbar-do=\"close\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</button> <button type=\"button\" class=\"ts-wbar__btn ts-wbar__btn--close\" aria-label=\"Close\" data-wbar-do=\"close\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -222,12 +253,12 @@ func DesktopBar(p Page) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</button></div></header>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</button></div></header>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if !p.Picker {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"ts-wbar__line\" aria-hidden=\"true\" data-wbar-line hidden><span class=\"ts-wbar__fill\"></span></div><div id=\"desktop-menu\" class=\"ts-wmenu\" role=\"menu\" aria-label=\"More\" data-wbar-menu hidden><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"change\">Change mode or server…</button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-in\">Zoom in<kbd>Ctrl +</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-out\">Zoom out<kbd>Ctrl -</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-reset\">Actual size<kbd>Ctrl 0</kbd></button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitemcheckbox\" aria-checked=\"false\" class=\"ts-wmenu__item\" data-wbar-do=\"keep\" data-wbar-keep hidden>Keep playing when I close the window<span class=\"ts-wmenu__check\" aria-hidden=\"true\"></span></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"keys\">Keyboard shortcuts<kbd>?</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"about\">About Tendshelf</button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"quit\">Quit Tendshelf<kbd>Ctrl Q</kbd></button></div><div class=\"ts-wdrop\" data-wbar-drop role=\"status\" hidden><div class=\"ts-wdrop__frame\"><span class=\"ts-wdrop__icon\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"ts-wbar__line\" aria-hidden=\"true\" data-wbar-line hidden><span class=\"ts-wbar__fill\"></span></div><div id=\"desktop-menu\" class=\"ts-wmenu\" role=\"menu\" aria-label=\"More\" data-wbar-menu hidden><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"change\">Change mode or server…</button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-in\">Zoom in<kbd>Ctrl +</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-out\">Zoom out<kbd>Ctrl -</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"zoom-reset\">Actual size<kbd>Ctrl 0</kbd></button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitemcheckbox\" aria-checked=\"false\" class=\"ts-wmenu__item\" data-wbar-do=\"keep\" data-wbar-keep hidden>Keep playing when I close the window<span class=\"ts-wmenu__check\" aria-hidden=\"true\"></span></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"keys\">Keyboard shortcuts<kbd>?</kbd></button> <button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"about\">About Tendshelf</button><div class=\"ts-wmenu__sep\" role=\"separator\"></div><button type=\"button\" role=\"menuitem\" class=\"ts-wmenu__item\" data-wbar-do=\"quit\">Quit Tendshelf<kbd>Ctrl Q</kbd></button></div><div class=\"ts-wdrop\" data-wbar-drop role=\"status\" hidden><div class=\"ts-wdrop__frame\"><span class=\"ts-wdrop__icon\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -235,63 +266,63 @@ func DesktopBar(p Page) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span><p class=\"title-3 ts-wdrop__title\">Drop to add to your library</p><p class=\"body ts-wdrop__lead\">Audiobooks and ebooks go into your uploads folder. Nothing else on your computer changes.</p></div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</span><p class=\"title-3 ts-wdrop__title\">Drop to add to your library</p><p class=\"body ts-wdrop__lead\">Audiobooks and ebooks go into your uploads folder. Nothing else on your computer changes.</p></div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if p.AddBooks != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<a class=\"ts-sr\" tabindex=\"-1\" aria-hidden=\"true\" href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<a class=\"ts-sr\" tabindex=\"-1\" aria-hidden=\"true\" href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var7 string
-					templ_7745c5c3_Var7, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(p.AddBooks)).ResolveURL(ctx)
+					var templ_7745c5c3_Var8 string
+					templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(p.AddBooks)).ResolveURL(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/desktop_bar.templ`, Line: 90, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/desktop_bar.templ`, Line: 95, Col: 87}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" data-wbar-add>Add books</a>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" data-wbar-add>Add books</a>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, " <template data-wbar-note=\"folder\">Tendshelf takes books as files here. Drop the files, or open <a href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, " <template data-wbar-note=\"folder\">Tendshelf takes books as files here. Drop the files, or open <a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				var templ_7745c5c3_Var8 string
-				templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(p.AddBooks)).ResolveURL(ctx)
+				var templ_7745c5c3_Var9 string
+				templ_7745c5c3_Var9, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(p.AddBooks)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/desktop_bar.templ`, Line: 93, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/desktop_bar.templ`, Line: 98, Col: 101}
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\">Add books</a> to add a folder.</template><template data-wbar-note=\"off\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\">Add books</a> to add a folder.</template><template data-wbar-note=\"off\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if p.Admin {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "Uploads are off, so there is nowhere to put a book. You can turn them on under <a href=\"/admin/libraries\">Libraries</a>.")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "Uploads are off, so there is nowhere to put a book. You can turn them on under <a href=\"/admin/libraries\">Libraries</a>.")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "Only the owner or an admin can add books.")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "Only the owner or an admin can add books.")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</template>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</template>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
