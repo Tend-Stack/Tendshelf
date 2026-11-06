@@ -23,7 +23,7 @@ const uploadProbeJS = `(() => {
     const r = el.getBoundingClientRect();
     if (r.width > 0 && r.height < 43.5) small.push((el.className || el.tagName) + ":" + Math.round(r.height));
   }
-  const unlabelled = [...document.querySelectorAll("main input:not([type=hidden])")].filter(i => !i.closest("label") && !i.getAttribute("aria-label")).map(i => i.name);
+  const unlabelled = [...document.querySelectorAll("main input:not([type=hidden])")].filter(i => !(i.labels && i.labels.length) && !i.getAttribute("aria-label")).map(i => i.name);
   return {over: document.documentElement.scrollWidth > innerWidth, theme: document.documentElement.dataset.theme || "", small, unlabelled, h1: document.querySelectorAll("main h1").length};
 })()`
 
