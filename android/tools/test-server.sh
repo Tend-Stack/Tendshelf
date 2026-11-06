@@ -48,6 +48,10 @@ done
 mkdir -p "$b/Odd"
 tone 60 700 "$b/Odd/Odd.opus" -c:a libopus -b:a 24k -metadata title="Odd" -metadata album="Odd" -metadata artist="Test Author"
 rm -f "$dir"/meta*.txt
+# WITH_EBOOKS=1 (A9): synthetic EPUBs (one with a picture; TXT is not a supported ebook format), written by a Go test so the files are never real books.
+if [ "${WITH_EBOOKS:-}" = 1 ]; then
+  (cd "$root" && ANDROID_EBOOK_DIR="$dir/books" go test ./internal/testutil/androidseed -run TestWriteEbooks -count=1 > /dev/null)
+fi
 
 "$dir/androidseed" -data "$dir/data" -books "$dir/books" -password "$pass"
 "$dir/tendshelf" -addr "127.0.0.1:$port" -data "$dir/data" > "$dir/server.log" 2>&1 &

@@ -255,16 +255,21 @@ object Offline {
     /** A book with text and no audio: one row, ready once its text is whole. */
     private fun addTextOnly(book: String, conn: Connection, api: Api, manifest: app.tendshelf.shared.BookManifest, manifestJson: String) {
         val origin = tokens.origin ?: return
-        val tm = when (val r = TextStore.manifest(origin, book)) {
-            is TextStore.Manifest.Ok -> r.m
-            else -> return refuse(R.string.download_nothing)
-        }
+        val got = TextStore.manifest(origin, book)
+        // No session cookie yet: the row is kept and the text goes on at the next page load (D1); anything else is a refusal.
+        if (got !is TextStore.Manifest.Ok && !(got is TextStore.Manifest.Not && got.result == TextResult.SIGNIN)) return refuse(R.string.download_nothing)
+        val tm = (got as? TextStore.Manifest.Ok)?.m
         val cover = api.cover(conn.token, book)
         if (cover != null) coverFile(book).apply { parentFile?.mkdirs() }.writeBytes(cover)
         store.put(
-            OfflineBook(book, tokens.userId.orEmpty(), tm.title.ifEmpty { manifest.title }, tm.author.ifEmpty { manifest.author }, 0, tm.bytes, OfflineState.READY, 0, 0),
+            OfflineBook(book, tokens.userId.orEmpty(), tm?.title?.ifEmpty { null } ?: manifest.title, tm?.author?.ifEmpty { null } ?: manifest.author, 0, tm?.bytes ?: 0, OfflineState.READY, 0, 0),
             manifestJson,
         )
+        if (tm == null) {
+            store.setText(book, "signin")
+            changed(book)
+            return
+        }
         if (fetchText(book, tm) != TextResult.READY) {
             store.remove(book)
             coverFile(book).delete()

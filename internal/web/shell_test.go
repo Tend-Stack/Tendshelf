@@ -130,8 +130,12 @@ func TestShellAttrOnAllFrames(t *testing.T) {
 			if got := strings.Contains(body, "js/desktop"); got != (shell == "desktop") {
 				t.Errorf("%s as %s: desktop.js present = %v", p.name, shell, got)
 			}
-			if strings.Contains(body, "manifest.webmanifest") || strings.Contains(body, "js/offline") {
-				t.Errorf("%s as %s: install link or offline.js present", p.name, shell)
+			if strings.Contains(body, "manifest.webmanifest") {
+				t.Errorf("%s as %s: install link present", p.name, shell)
+			}
+			// A9 (decision 0027): the Android app's pages carry offline.js (reading flush); no other shell does, and no link page.
+			if got := strings.Contains(body, "js/offline"); got != (shell == "android" && p.name != "link shell") {
+				t.Errorf("%s as %s: offline.js present = %v", p.name, shell, got)
 			}
 		}
 	}

@@ -618,6 +618,11 @@ legacy fallback; [decision 0003](decisions/0003-newest-versions.md)). Two modes,
   below it with `--desktop-bar` (`TestDeskBarOffsets` fails for a new full-screen layer). Budgets: `desktop.js` and
   `desktop-shell.js` count in `jsDesktopTotalGzip` (4,096 B approved; X4 measured 4,734 B and set 4,864 B, reported), not in the browser total.
   X4 adds `tendshelf:state <json>` (page to Go: title, chapter, left, playing, theme, canAdd, stop), the tray, notifications and Keep playing in `desktop/`.
+- The Android app has no service worker either (`/sw.js` answers 404 there, decision 0026), so it stores a downloaded book's text itself
+  and `shouldInterceptRequest` plays the worker's part (A9, [decision 0027](decisions/0027-offline-script-in-the-app.md)): the same
+  addresses 0019 lists, kept under `noBackupFilesDir/offline/text/<book>/` and `static/`, answered only for the exact stored origin, only
+  for GET, only while `GET /healthz` fails, with the stored `Content-Type` and CSP. It fetches with the WebView's session cookie; the
+  device token stays under `/api/v1/`. `offline.js` loads in the app (reading flush, bookmark queue) with its worker and download code off by `data-shell`.
 - `ts_shell=desktop` marks the window in both modes (`data-shell`); there is no service worker in it, and no
   Wails runtime in pages. One bridge: `tendshelf:` messages to Go, a `ts:desktop` event back.
 

@@ -127,7 +127,11 @@ object TextStore {
             conn.instanceFollowRedirects = false
             conn.connectTimeout = 10_000
             conn.readTimeout = 30_000
-            if (withCookie) cookie(origin)?.let { conn.setRequestProperty("Cookie", it) }
+            if (withCookie) {
+                // The stored pages are the app's own variant, so the shell mark goes with the session even if the jar lost it.
+                val jar = cookie(origin).orEmpty()
+                conn.setRequestProperty("Cookie", if (Regex("(^|; )ts_shell=").containsMatchIn(jar)) jar else (if (jar.isEmpty()) "" else "$jar; ") + "ts_shell=android")
+            }
             val code = conn.responseCode
             if (code !in 200..299) return Reply(code, ByteArray(0), "", null)
             val declared = conn.contentLengthLong
