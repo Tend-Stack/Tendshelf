@@ -3,6 +3,8 @@ package app.tendshelf.android
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
@@ -35,7 +37,11 @@ object DebugBrowse {
         val q = intent.getStringExtra("q").orEmpty()
         val main = ContextCompat.getMainExecutor(app)
         val token = SessionToken(app, ComponentName(app, PlaybackService::class.java))
-        val future = MediaBrowser.Builder(app, token).buildAsync()
+        val future = MediaBrowser.Builder(app, token).setListener(object : MediaBrowser.Listener {
+            override fun onError(controller: androidx.media3.session.MediaController, sessionError: androidx.media3.session.SessionError) {
+                Log.i(TAG, "error pushed code=${sessionError.code} message=${sessionError.message}")
+            }
+        }).buildAsync()
         future.addListener({
             val b = try {
                 future.get()
@@ -77,7 +83,8 @@ object DebugBrowse {
                     b.setMediaItem(MediaItem.Builder().setRequestMetadata(MediaItem.RequestMetadata.Builder().setSearchQuery(q).build()).build())
                     b.prepare()
                     b.play()
-                    main.execute { Log.i(TAG, "voice '$q' sent"); b.release() }
+                    Log.i(TAG, "voice '$q' sent")
+                    main.execute { Handler(Looper.getMainLooper()).postDelayed({ b.release() }, 8000) }
                 }
                 "play" -> {
                     b.setMediaItem(MediaItem.Builder().setMediaId(node).build())

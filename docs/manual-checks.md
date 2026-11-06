@@ -243,6 +243,27 @@ Needs the desktop build on a real Linux session with a sound card, a keyboard wi
 
 Do not switch `make desktop` to the CGO-free build until row 13 is recorded.
 
+## Android Auto (A8): what only a phone and a car can prove
+
+The emulator's Android Auto is a stub, so no head unit has run this app. Everything below needs a real phone with this build and either a car or the Desktop Head Unit
+(`$ANDROID_HOME/extras/google/auto/desktop-head-unit`) against a phone on USB: Android Auto settings, tap Version ten times, Developer settings, Unknown sources on,
+Start head unit server, then `adb forward tcp:5277 tcp:5277` and start the head unit. Signed in to a server with a queue, a shelf, a downloaded book and a book with a cover.
+
+| # | Step | Expected | Result |
+| --- | --- | --- | --- |
+| A8-1 | Open Tendshelf in the car's media list. | Four tabs: Continue, Up next, Shelves, Downloaded. Covers show on books that have one. Day and night look right. | |
+| A8-2 | Tap a book in Continue. | It plays from the place Tendshelf has (not from the start); the title is the chapter; Next and Previous move by chapter; the speed button reads 1.0x and steps 1.25x, 1.5x, 1.75x, 2.0x, 0.75x. | |
+| A8-3 | Say "Play <a book title> on Tendshelf", then a title you do not own. | The first plays; the second says "I couldn't find that book." and nothing changes. | |
+| A8-4 | Disconnect the phone from the car mid-chapter and connect again. | The last book resumes from its place when you press Play; nothing starts by itself on connecting. | |
+| A8-5 | Sign out on the phone, then open Tendshelf in the car. | "Open Tendshelf on your phone to sign in." instead of an empty or spinning list. | |
+| A8-6 | Airplane mode on the phone, then open Tendshelf in the car. | Downloaded and Continue work; Up next and Shelves say "Can't reach your library. Downloaded books still play." | |
+| A8-7 | Change the place from another device, then start the book in the car. | The question appears on the phone only; the book plays on in the car; nothing moves until you answer. | |
+| A8-8 | Lock the phone in a pocket for an hour, then start a book from the car at ignition. | Sound starts, or the car says "Open Tendshelf on your phone to keep listening."; never a silent hang. | |
+| A8-9 | Play with a radio, a call and a navigation prompt in turn. Use the steering-wheel buttons. | Pauses for the call, ducks for the prompt, steering-wheel next and previous move by chapter. | |
+| A8-10 | Tunnel: lose the network mid-chapter. | The 5 minute buffer plays on; no error in the car until it runs out. | |
+| A8-11 | Update Android Auto while the app is sideloaded (Unknown sources on). | Tendshelf is still listed and keeps its place. This alone decides how the app is distributed. | |
+| A8-12 | Open the voice and driving-mode limits of the car's screen: a shelf of 48 books. | The list is usable or the car trims it; note the car's make and any trimming. | |
+
 ## Android app (one row per package, from A5b)
 
 Needs the debug or release APK on a real phone, signed in to a server with a series of two short books and a long one.
