@@ -8,6 +8,10 @@ Added after 2026.2.0 was dated. Nothing here is tagged yet.
 
 ### What you can do
 
+- **The desktop window stops at 1,920 px.** The pages already stop there, so a wider window on an ultrawide monitor
+  only showed a blank strip. Dragging an edge or corner stops at 1,920 px, and Maximise fits the window to the screen:
+  on a wider screen it is 1,920 px wide and as high as the screen, and pressing it again goes back.
+
 - **New books appear by themselves.** Tendshelf watches your library folders and scans after nothing has changed
   for 45 seconds, so a book that is still being copied is not read half written. It also scans on a schedule (every
   6 hours unless you choose another time). A network folder is only checked by the schedule.

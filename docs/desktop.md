@@ -35,6 +35,28 @@ player), More and Minimise, Maximise and Close. More has Change mode or server, 
 close the window (shown only when your desktop has a tray), Keyboard shortcuts, About Tendshelf and Quit. Drag the bar to move the window; double-click it
 to maximise. If your desktop shows two bars or none, start it with `TENDSHELF_NATIVE_FRAME=1 tendshelf-desktop` for the system's own bar.
 
+### Never wider than 1,920 px
+
+The pages stop growing at 1,920 px (`--size-app-max`), so the window never goes wider either: a wider window on an
+ultrawide monitor would only show a blank strip. Dragging an edge or corner stops at 1,920 px, and the Maximise button
+becomes "fit to screen". On a screen no wider than 1,920 px it maximises as before. On a wider one it sets the window to
+1,920 px by the screen's usable height and centres it where the system lets an app place its window; pressing it
+again goes back to the earlier size. A maximise that did not come from the button (double-click on a system bar,
+Super+Up, a tiling key) becomes the same fit, and a window saved as maximised starts fitted. A fitted window shows
+Restore and is saved as maximised, with the size to return to kept. There is no full-screen mode, in the bar, the
+menu or a key. The rules are in `desktop/windowstate.go` (`maxWidth`, `fitWindow`, `fitTarget`), and `desktop/windowfit.go`.
+
+How it is done, because GTK 4 gives no help here: Wails' `MaxWidth` only bounds the sizes Wails sets itself (its
+clamp listens to `notify::default-width`, which a drag never changes), and `gtk_window_set_default_size` cannot make
+a window that is on screen smaller. So a drag past 1,920 px locks the window at 1,920 px (not resizable, through
+`gtk_window_set_resizable`) until the mouse button is let go, then unlocks it; the window stops at the limit instead
+of following the pointer. The fit uses the same lock to set its size.
+
+Sizes are logical pixels, the same as CSS pixels at 100 % page zoom. The screen's scale (HiDPI) is already out of them.
+At a page zoom above 100 % the page has fewer CSS pixels than the window, so no strip appears. Below 100 % a
+1,920 px window holds more than 1,920 CSS pixels and a strip returns beside the page; the window is not made
+narrower for that.
+
 ## Now playing
 
 While a book is loaded, the tray icon's menu names it (title, then chapter and time left), and offers Pause (only while it
@@ -68,4 +90,7 @@ uploads and that you may add to is used.
 - Keep playing and the tray depend on the desktop showing tray icons; without one the option is not offered and Close quits.
 - Whether sound continues in a hidden window, a real tray click and a real notification click are for the operator's own desktop.
 - A real drag from the file manager into the window is for the operator's own desktop; the tests drop generated files on the page in Chromium with the window channel stubbed.
+- Under Wayland an app cannot place its window, so the fit is 1,920 px wide and as high as the screen but sits where the
+  compositor puts it, not centred; a window already 1,920 px wide and low on the screen may not grow taller. X11 centres it.
+  An edge drag past the limit snaps back and ends that drag; press again to keep resizing.
 - macOS and Windows: not verified.

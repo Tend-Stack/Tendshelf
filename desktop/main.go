@@ -78,7 +78,7 @@ func (u *windowUI) showWindow() {
 type windowButtons struct{ ui *windowUI }
 
 func (b windowButtons) Minimise()       { b.ui.win.Minimise() }
-func (b windowButtons) ToggleMaximise() { b.ui.win.ToggleMaximise() }
+func (b windowButtons) ToggleMaximise() { b.ui.toggleMaximise() }
 func (b windowButtons) Close()          { b.ui.win.Close() }
 func (b windowButtons) Quit()           { b.ui.quit() }
 func (b windowButtons) ZoomIn()         { b.ui.win.ZoomIn() }
@@ -198,6 +198,7 @@ func run(dirs desktopshell.Dirs) error {
 		Height:             height,
 		MinWidth:           minWidth,
 		MinHeight:          minHeight,
+		MaxWidth:           maxWidth,
 		BackgroundColour:   groundColour(saved.Ground),
 		ZoomControlEnabled: true,
 		UseApplicationMenu: menuRow,
@@ -234,7 +235,7 @@ func run(dirs desktopshell.Dirs) error {
 	// A saved mode starts straight away; the picker shows "Opening your library…" meanwhile.
 	launch := session.Begin()
 	ui.app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
-		go prepareWindow(ui, saved.Window, os.Getenv("TENDSHELF_NATIVE_FRAME") == "1")
+		go prepareWindow(ui, tracker, saved.Window, os.Getenv("TENDSHELF_NATIVE_FRAME") == "1")
 		if launch {
 			go session.Launch()
 		}
@@ -247,15 +248,26 @@ func run(dirs desktopshell.Dirs) error {
 func trackWindow(ui *windowUI, t *windowTracker, save func()) {
 	ui.win.OnWindowEvent(events.Common.WindowDidResize, func(*application.WindowEvent) {
 		w, h := ui.win.Size()
-		t.resized(w, h, ui.win.IsMaximised())
+		if t.resized(w, h, ui.win.IsMaximised()) {
+			ui.bridge.Send("restored") // an edge drag ended a fitted window
+		}
+		ui.limitWidth(w, h)
 	})
 	ui.win.OnWindowEvent(events.Common.WindowMaximise, func(*application.WindowEvent) {
+		if t.isFitted() {
+			return
+		}
 		t.setMaximised(true)
+		if ui.maximiseNotFromButton() { // on a wide screen: unmaximise and fit instead; the fit tells the page
+			return
+		}
 		ui.bridge.Send("maximised")
 	})
 	ui.win.OnWindowEvent(events.Common.WindowUnMaximise, func(*application.WindowEvent) {
 		t.setMaximised(false)
-		ui.bridge.Send("restored")
+		if !t.isFitted() {
+			ui.bridge.Send("restored")
+		}
 	})
 	ui.win.OnWindowEvent(events.Common.WindowFocus, func(*application.WindowEvent) {
 		t.setFocused(true)
@@ -281,7 +293,7 @@ var chromeReady = make(chan struct{})
 
 // prepareWindow waits for the native window, which does not exist when ApplicationStarted fires,
 // then hides GTK's title bar, restores the size and releases showWindow.
-func prepareWindow(ui *windowUI, saved desktopshell.Window, nativeFrame bool) {
+func prepareWindow(ui *windowUI, tracker *windowTracker, saved desktopshell.Window, nativeFrame bool) {
 	defer close(chromeReady)
 	var handle = ui.win.NativeWindow()
 	for i := 0; handle == nil && i < 100; i++ {
@@ -300,6 +312,16 @@ func prepareWindow(ui *windowUI, saved desktopshell.Window, nativeFrame bool) {
 			ui.win.SetSize(w, h)
 		}
 		if saved.Maximised {
+			// Saved as maximised: on a screen wider than maxWidth that is the fit, not a full-width window.
+			if x, y, w, h, ok := ui.workArea(); ok {
+				if fx, fy, fw, fh, fit := fitTarget(x, y, w, h); fit {
+					ui.win.SetSize(fw, fh) // still hidden: the size lands at once, nothing to wait for
+					px, py := ui.win.Position()
+					ui.win.SetPosition(fx, fy)
+					tracker.fit(fw, fh, px, py)
+					return
+				}
+			}
 			ui.win.Maximise()
 		}
 	})

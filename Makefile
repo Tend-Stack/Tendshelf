@@ -186,6 +186,7 @@ desktop-input:
 .PHONY: desktop-exit
 desktop-exit: build desktop-probe desktop-input
 	scripts/isolated-display.sh desktop/probe/exit-run.sh
+	TS_MONITOR=2560x1000 TENDSHELF_EXIT_ONLY=limits scripts/isolated-display.sh desktop/probe/exit-run.sh
 
 # The window part of the exit run on X11: the private shell also starts Xwayland and the window runs with
 # GDK_BACKEND=x11 (decision 0023, X1). Only the window checks run.

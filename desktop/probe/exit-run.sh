@@ -384,7 +384,236 @@ window_suite() { # window_suite NAME [ENV=VALUE...]
   iclose
 }
 
+# The window limits on a monitor wider than 1,920 (run with TS_MONITOR=2560x1000, TENDSHELF_EXIT_ONLY=limits):
+# edge and corner drags stop at maxWidth, a corner drag resizes, the Maximise button and a maximise that did
+# not come from it fit the window to 1,920 instead of the full width.
+limits_suite() { # limits_suite NAME [ENV=VALUE...]
+  local n="$1" h="$work/dh-$1" cfg w0 h0 w1 h1 wp
+  shift
+  mkdir -p "$h/config"
+  printf '{"schema":1,"window":{"width":1700,"height":600}}\n' >"$h/config/desktop.json"
+  cfg="$h/config/desktop.json"
+  launch "$n" TENDSHELF_DESKTOP_HOME="$h" TENDSHELF_PROBE=personal TENDSHELF_PROBE_PLAN=window TENDSHELF_PROBE_STAY=1 "$@"
+  wp=$pid
+  for _ in $(seq 1 120); do
+    [ "$(val "$n" '.ready')" = "true" ] && break
+    kill -0 "$wp" 2>/dev/null || break
+    sleep 0.5
+  done
+  if [ "$(val "$n" '.ready')" != "true" ]; then
+    check "$n.start" FAIL "the window never reported ready; see $out/$n/window.log"
+    return
+  fi
+  sleep 1
+  iopen
+  calibrate "$n" || true
+  w0="$(val "$n" '.size.w')"
+  h0="$(val "$n" '.size.h')"
+  check "$n.start" INFO "page content ${w0}x${h0} on a monitor of ${TS_MONITOR:-?}"
+
+  # The bar's Maximise (double-click on the stand-in bar sends the same verb): fits 1,920 wide, not the monitor's width.
+  local hb d
+  hb="$h0"
+  calibrate "$n" || true
+  at 200 22
+  icmd click
+  sleep 0.08
+  icmd click
+  sleep 1.5
+  w1="$(val "$n" '.size.w')"
+  h1="$(val "$n" '.size.h')"
+  if [ "${w1:-0}" -eq 1920 ] && [ "${h1:-0}" -gt "$hb" ] && val "$n" '.events | index("maximised")' | grep -qv null; then
+    check "$n.maximise-fits" PASS "page content ${w1}x${h1} (monitor ${TS_MONITOR:-?}); events: $(val "$n" '.events | join(",")')"
+  else
+    check "$n.maximise-fits" FAIL "page content ${w1}x${h1}, wanted 1920 wide and taller than ${hb}; events: $(val "$n" '.events | join(",")')"
+  fi
+  shot "$n-fitted"
+  say "fitted window position: the page's 0,0 is at $offx,$offy before the fit (Wayland tells a window nothing about its place)"
+  calibrate "$n" || true
+  say "fitted window position: the page's 0,0 is now at $offx,$offy (centred on 2560 would be 320)"
+  at 200 22
+  icmd click
+  sleep 0.08
+  icmd click
+  sleep 1.5
+  w1="$(val "$n" '.size.w')"
+  h1="$(val "$n" '.size.h')"
+  if [ "${w1:-0}" -eq "$w0" ] && [ "${h1:-0}" -eq "$hb" ] && val "$n" '.events | index("restored")' | grep -qv null; then
+    check "$n.maximise-restores" PASS "page content back to ${w1}x${h1}; events: $(val "$n" '.events | join(",")')"
+  else
+    check "$n.maximise-restores" FAIL "page content ${w1}x${h1}, wanted ${w0}x${hb}; events: $(val "$n" '.events | join(",")')"
+  fi
+
+  # A corner drag (bottom right, in GTK's border just outside the corner) resizes both ways.
+  w0="$(val "$n" '.size.w')"
+  h0="$(val "$n" '.size.h')"
+  for d in 4 8 12; do
+    calibrate "$n" || true
+    at $((w0 + d)) $((h0 + d))
+    sleep 0.3
+    icmd btn 1 1
+    sleep 0.2
+    icmd rel 20 20
+    icmd rel 80 60
+    sleep 0.3
+    icmd btn 1 0
+    sleep 0.8
+    w1="$(val "$n" '.size.w')"
+    h1="$(val "$n" '.size.h')"
+    say "corner resize try at +${d}px: ${w0}x${h0} to ${w1}x${h1}"
+    [ $((${w1:-0} - ${w0:-0})) -ge 60 ] && break
+  done
+  if [ $((${w1:-0} - w0)) -ge 90 ] && [ $((${w1:-0} - w0)) -le 110 ] && [ $((${h1:-0} - h0)) -ge 70 ] && [ $((${h1:-0} - h0)) -le 90 ]; then
+    check "$n.corner-resize" PASS "page content ${w0}x${h0} to ${w1}x${h1} for a pointer travel of 100,80 (width and height both changed)"
+  else
+    check "$n.corner-resize" FAIL "page content ${w0}x${h0} to ${w1}x${h1} for a pointer travel of 100,80"
+  fi
+  shot "$n-corner"
+
+  # An edge drag past the limit stops at 1,920 (the right edge, 300 px further).
+  w0=$w1
+  h0=$h1
+  for d in 4 8 12; do
+    calibrate "$n" || true
+    at $((w0 + d)) 300
+    sleep 0.3
+    icmd btn 1 1
+    sleep 0.2
+    icmd rel 20 0
+    icmd rel 140 0
+    icmd rel 140 0
+    sleep 0.3
+    icmd btn 1 0
+    sleep 0.8
+    w1="$(val "$n" '.size.w')"
+    [ "${w1:-0}" -gt "$w0" ] && break
+  done
+  if [ "${w1:-0}" -eq 1920 ]; then
+    check "$n.edge-limit" PASS "page content ${w0} to ${w1} for a pointer travel of 300 (the limit is 1920)"
+  else
+    check "$n.edge-limit" FAIL "page content ${w0} to ${w1} for a pointer travel of 300 (wanted exactly 1920)"
+  fi
+  shot "$n-edge-limit"
+
+  # A corner drag past the limit: the width stays 1,920, the height still follows.
+  w0=$w1
+  for d in 4 8 12; do
+    calibrate "$n" || true
+    h0="$(val "$n" '.size.h')"
+    at $((w0 + d)) $((h0 + d))
+    sleep 0.3
+    icmd btn 1 1
+    sleep 0.2
+    icmd rel 20 20
+    icmd rel 140 60
+    icmd rel 140 0
+    sleep 0.3
+    icmd btn 1 0
+    sleep 0.8
+    h1="$(val "$n" '.size.h')"
+    [ "${h1:-0}" -gt "$h0" ] && break
+  done
+  w1="$(val "$n" '.size.w')"
+  if [ "${w1:-0}" -eq 1920 ] && [ "${h1:-0}" -gt "${h0:-0}" ]; then
+    check "$n.corner-limit" PASS "page content ${w0}x${h0} to ${w1}x${h1}: the width held at 1920, the height followed"
+  else
+    check "$n.corner-limit" FAIL "page content ${w0}x${h0} to ${w1}x${h1} (wanted width 1920, a taller window)"
+  fi
+
+  # The same fit again after drags: a window the person has resized by hand must fit too.
+  # The bar's Maximise (double-click on the stand-in bar sends the same verb): fits 1,920 wide, not the monitor's width.
+  hb="$(val "$n" '.size.h')"
+  calibrate "$n" || true
+  at 200 22
+  icmd click
+  sleep 0.08
+  icmd click
+  sleep 1.5
+  w1="$(val "$n" '.size.w')"
+  h1="$(val "$n" '.size.h')"
+  if [ "${w1:-0}" -eq 1920 ] && [ "${h1:-0}" -gt "$hb" ] && val "$n" '.events | index("maximised")' | grep -qv null; then
+    check "$n.maximise-fits-after-drag" PASS "page content ${w1}x${h1} (monitor ${TS_MONITOR:-?}); events: $(val "$n" '.events | join(",")')"
+  elif [ "${w1:-0}" -eq 1920 ] && val "$n" '.events | index("maximised")' | grep -qv null; then
+    check "$n.maximise-fits-after-drag" INFO "page content ${w1}x${h1}: already 1920 wide, and under Wayland the compositor owns the window's place, so it did not grow taller from where it sat (X11 moves it with SetPosition)"
+  else
+    check "$n.maximise-fits-after-drag" FAIL "page content ${w1}x${h1}, wanted 1920 wide; events: $(val "$n" '.events | join(",")')"
+  fi
+  shot "$n-fitted"
+  say "fitted window position: the page's 0,0 is at $offx,$offy before the fit (Wayland tells a window nothing about its place)"
+  calibrate "$n" || true
+  say "fitted window position: the page's 0,0 is now at $offx,$offy (centred on 2560 would be 320)"
+  at 200 22
+  icmd click
+  sleep 0.08
+  icmd click
+  sleep 1.5
+  w1="$(val "$n" '.size.w')"
+  h1="$(val "$n" '.size.h')"
+  if [ "${w1:-0}" -eq 1920 ] && [ "${h1:-0}" -eq "$hb" ] && val "$n" '.events | index("restored")' | grep -qv null; then
+    check "$n.maximise-restores-after-drag" PASS "page content back to ${w1}x${h1}; events: $(val "$n" '.events | join(",")')"
+  else
+    check "$n.maximise-restores-after-drag" FAIL "page content ${w1}x${h1}, wanted 1920x${hb}; events: $(val "$n" '.events | join(",")')"
+  fi
+
+  # A maximise that did not come from the button. Super+Up first (the window manager's own key); if the private
+  # shell does not act on it, the shell itself maximises the window over its (unsafe-mode) Eval, which is the same
+  # xdg-toplevel maximise request a double-click on a system title bar or a tiling key would send.
+  local before after
+  before="$(val "$n" '.events | length')"
+  icmd tap Super_L Up
+  sleep 2
+  after="$(val "$n" '.events | length')"
+  if [ "$after" = "$before" ] && [ "$(val "$n" '.events | last')" != "maximised" ]; then
+    say "Super+Up did not reach the window in the private shell; asking the shell to maximise it"
+    gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval \
+      'global.get_window_actors().forEach(a => a.meta_window.maximize(3))' >>"$report" 2>&1
+    sleep 2.5
+  fi
+  w1="$(val "$n" '.size.w')"
+  h1="$(val "$n" '.size.h')"
+  if [ "${w1:-0}" -eq 1920 ] && val "$n" '.events | last' | grep -q maximised && [ "$(grep -c 'window fitted' "$out/$n/window.log")" -ge 3 ]; then
+    check "$n.outside-maximise-fits" PASS "page content ${w1}x${h1} instead of the monitor's width; events: $(val "$n" '.events | join(",")')"
+  else
+    check "$n.outside-maximise-fits" FAIL "page content ${w1}x${h1}, wanted 1920 wide, last event maximised; events: $(val "$n" '.events | join(",")')"
+  fi
+  grep -c "window fitted" "$out/$n/window.log" | sed 's/^/log: fits so far: /' | tee -a "$report"
+  iclose
+
+  # Close from the window (Ctrl+Q); the saved state must say maximised (a fitted window is shown as Restore).
+  iopen
+  calibrate "$n" || true
+  at 300 22
+  icmd click
+  icmd tap Control_L q
+  gone "$wp" 10 || kill "$wp" 2>/dev/null
+  iclose
+  say "saved window: $(jq -c .window "$cfg" 2>/dev/null)"
+
+  # A window saved as maximised on a wide monitor starts fitted, not full width.
+  printf '{"schema":1,"window":{"width":900,"height":600,"maximised":true}}\n' >"$cfg"
+  launch "$n-saved" TENDSHELF_DESKTOP_HOME="$h" TENDSHELF_PROBE=personal TENDSHELF_PROBE_PLAN=window TENDSHELF_PROBE_STAY=1 "$@"
+  wp=$pid
+  for _ in $(seq 1 120); do
+    [ "$(val "$n-saved" '.ready')" = "true" ] && break
+    kill -0 "$wp" 2>/dev/null || break
+    sleep 0.5
+  done
+  sleep 1.5
+  w1="$(val "$n-saved" '.size.w')"
+  if [ "${w1:-0}" -eq 1920 ] && val "$n-saved" '.events | index("maximised")' | grep -qv null; then
+    check "$n.saved-maximised" PASS "started at ${w1} wide (monitor ${TS_MONITOR:-?}); events: $(val "$n-saved" '.events | join(",")')"
+  else
+    check "$n.saved-maximised" FAIL "started at ${w1} wide, wanted 1920; events: $(val "$n-saved" '.events | join(",")')"
+  fi
+  kill "$wp" 2>/dev/null
+}
+
 backend="${TENDSHELF_WINDOW_BACKEND:-wayland}"
+if [ "${TENDSHELF_EXIT_ONLY:-}" = "limits" ]; then
+  limits_suite win-limits
+  say "results in $out"
+  exit 0
+fi
 if [ "$backend" = "x11" ]; then
   [ -n "${DISPLAY:-}" ] || { check x11.window NOTRUN "no Xwayland display in the private session"; exit 0; }
   window_suite win-x11 GDK_BACKEND=x11 DISPLAY="$DISPLAY"

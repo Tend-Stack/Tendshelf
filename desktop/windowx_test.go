@@ -154,6 +154,8 @@ func TestDeskWindowStateRoundTrip(t *testing.T) {
 		{"negative", desktopshell.Window{Width: -5, Height: -5}, 1920, 1080, defaultWidth, defaultHeight},
 		{"screen unknown", desktopshell.Window{Width: 1000, Height: 700}, 0, 0, 1000, 700},
 		{"small screen", desktopshell.Window{}, 1024, 600, 1024, 600},
+		{"saved wider than the limit on an ultrawide", desktopshell.Window{Width: 3400, Height: 1000}, 3440, 1440, maxWidth, 1000},
+		{"exactly the limit", desktopshell.Window{Width: 1920, Height: 1000}, 5120, 1440, 1920, 1000},
 	} {
 		w, h := fitWindow(c.saved, c.sw, c.sh)
 		if w != c.wantW || h != c.wantH {
@@ -235,5 +237,51 @@ func TestDeskWindowKeys(t *testing.T) {
 	}
 	if got := strings.Join(calls, ","); got != "quit,in,in,out,reset" {
 		t.Fatalf("calls = %s", got)
+	}
+}
+
+// TestDeskFitTarget: a work area no wider than 1,920 is a true maximise; a wider one gets a 1,920
+// window as high as the area, centred across it.
+func TestDeskFitTarget(t *testing.T) {
+	for _, c := range []struct {
+		name                    string
+		x, y, w, h              int
+		fit                     bool
+		wantX, wantY, wantW, wH int
+	}{
+		{"1366x768", 0, 0, 1366, 768, false, 0, 0, 0, 0},
+		{"1920x1080", 0, 0, 1920, 1080, false, 0, 0, 0, 0},
+		{"2560x1440", 0, 0, 2560, 1440, true, 320, 0, 1920, 1440},
+		{"3440x1440", 0, 0, 3440, 1440, true, 760, 0, 1920, 1440},
+		{"5120x1440", 0, 0, 5120, 1440, true, 1600, 0, 1920, 1440},
+		{"panel and second monitor offset", 2560, 32, 2560, 1408, true, 2880, 32, 1920, 1408},
+	} {
+		x, y, w, h, fit := fitTarget(c.x, c.y, c.w, c.h)
+		if fit != c.fit || x != c.wantX || y != c.wantY || w != c.wantW || h != c.wH {
+			t.Errorf("%s: fitTarget = %d,%d %dx%d fit=%v, want %d,%d %dx%d fit=%v", c.name, x, y, w, h, fit, c.wantX, c.wantY, c.wantW, c.wH, c.fit)
+		}
+	}
+}
+
+// TestDeskFittedTracker: a fitted window shows Restore and saves as maximised, keeps the size to go
+// back to, and an edge drag ends the fit.
+func TestDeskFittedTracker(t *testing.T) {
+	tr := newWindowTracker(desktopshell.Window{Width: 1100, Height: 700})
+	tr.resized(1100, 700, false)
+	tr.fit(1920, 1440, 50, 60)
+	tr.resized(1500, 1440, false) // the intermediate size of the fit itself must not be a new normal size... until it differs
+	if tr.isFitted() {
+		t.Fatal("a resize to another size must end the fit")
+	}
+	tr = newWindowTracker(desktopshell.Window{Width: 1100, Height: 700})
+	tr.fit(1920, 1440, 50, 60)
+	if tr.resized(1920, 1440, false) || !tr.isFitted() || !tr.isMaximised() {
+		t.Fatal("the fitted size itself keeps the fit and shows Restore")
+	}
+	if s := tr.snapshot(); !s.Maximised || s.Width != 1100 || s.Height != 700 {
+		t.Fatalf("snapshot = %+v, want maximised and 1100x700", s)
+	}
+	if w, h, x, y := tr.unfit(); w != 1100 || h != 700 || x != 50 || y != 60 || tr.isMaximised() {
+		t.Fatalf("unfit = %d,%d at %d,%d maximised=%v", w, h, x, y, tr.isMaximised())
 	}
 }
