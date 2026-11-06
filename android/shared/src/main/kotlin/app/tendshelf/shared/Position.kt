@@ -51,12 +51,22 @@ fun previousChapterStart(chapters: List<Chapter>, bookMs: Long): Long {
     return chapters.lastOrNull { it.startMs < current.startMs }?.startMs ?: 0
 }
 
-/** Where a book starts: [atMs] when given, else the stored place, and the beginning when it was finished. */
-fun startPlace(p: RemoteProgress?, atMs: Long?): Long = when {
+/**
+ * Where a book starts: [atMs] when given, else the stored place, and the beginning when it was finished.
+ * A [pending] save not yet sent counts when it is newer than the stored place, as the web player's
+ * `useNewerPendingSave` does.
+ */
+fun startPlace(p: RemoteProgress?, atMs: Long?, pending: Save? = null): Long = when {
     atMs != null && atMs >= 0 -> atMs
+    pending != null && (p == null || pending.clientUpdatedAt > p.clientUpdatedAt) ->
+        if (pending.finished) 0 else pending.positionMs.coerceAtLeast(0)
     p == null || p.finished -> 0
     else -> p.positionMs.coerceAtLeast(0)
 }
+
+/** When the stored place was written, for the rewind after a break; null when there is none. */
+fun placeWrittenAt(p: RemoteProgress?, pending: Save?): Long? =
+    listOfNotNull(p?.clientUpdatedAt, pending?.clientUpdatedAt).maxOrNull()
 
 /** The book-time ranges (start inclusive, end exclusive) of files the server does not have. */
 fun silentRanges(files: List<AudioFile>): List<LongRange> =
