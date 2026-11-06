@@ -202,9 +202,11 @@ class ConnectFlow(
                         }
                     }
                     .setNegativeButton(R.string.http_warning_cancel) { _, _ ->
+                        // A link cancels back to the page behind it; a typed address goes back to the start page, as before.
+                        val fromLink = pending != null
                         pending = null
                         state = if (store.hasToken()) State.Connected else State.NoServer
-                        showStart(StartState(old.text.removePrefix("http://")))
+                        if (!fromLink) showStart(StartState(old.text.removePrefix("http://")))
                     }
                     .show()
             }
@@ -263,7 +265,12 @@ class ConnectFlow(
     fun onLink(text: String) {
         val h = parseHandoff(text)
         if (h == null) {
-            showJoin(activity.getString(R.string.link_only))
+            // A signed-in phone keeps its page: a stray link only gets a sentence, never a new screen.
+            if (store.hasToken()) {
+                AlertDialog.Builder(activity).setMessage(R.string.link_only).setPositiveButton(android.R.string.ok, null).show()
+            } else {
+                showJoin(activity.getString(R.string.link_only))
+            }
             return
         }
         if (store.hasToken() && store.origin == h.origin) {

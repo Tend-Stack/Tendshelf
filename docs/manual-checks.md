@@ -297,3 +297,10 @@ Needs the debug or release APK on a real phone, signed in to a server with a ser
 | AF-4 | Fill the phone's storage to the last byte while a book plays. | Sound goes on; once there is room the place is saved. | |
 | AF-5 | Connect the phone to a different server. | A dialog names both and what goes; Cancel changes nothing; Change sends the saved places first and removes downloads only after the new sign-in. | |
 | AF-6 | Connect Android Auto and the system media controls while a book plays. | Browse, title, progress and buttons still work (another app cannot read them). | |
+| QR-1 | Show an invite or "Add a phone" QR on a computer; point the stock camera of a Pixel and of a Samsung at it. | The camera offers the address; the server page opens in the browser (guess: both do). | |
+| QR-2 | On that page tap "Open in the app" in Chrome, Firefox and Samsung Internet, with the app running and not running. | The app opens once with "Connect to this server?" showing the exact address; the browser's fallback (not the Play Store) shows if the app is missing (guess). | |
+| QR-3 | Rotate the phone while that dialog is up, then press Back and open the app from Recents. | No second dialog; nothing connects. | |
+| QR-4 | Join from an invitation over `http` to a LAN address (not `localhost`). | Joining works, or the server's "This form expired" is seen (see roadmap, Android status). | |
+| QR-5 | Open `tendshelf://open?link=...` from another app or a web page while signed in. | Only the dialog or "already signed in" shows; nothing signs out. | |
+| QR-6 | Scan a dark-themed QR on a screen with the camera. | The code still reads. | |
+

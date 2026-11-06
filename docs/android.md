@@ -75,6 +75,12 @@ at the end of the job.
 
 From a computer: `adb install tendshelf-2026.3.0.apk`.
 
+On the first screen choose "I have a server" (type its address) or "I have an invitation" (paste the link you were sent). A link
+that opens the app from a browser's "Open in the app" button, or from `tendshelf://open?link=...`, goes the same way: the phone
+shows the exact address in a dialog ("Connect to this server?") and connects only after Connect. A link holds no password or
+code. A phone that is already signed in to that server refuses the link; for another server it asks before leaving the first
+one (decision [0028](decisions/0028-qr-sign-in.md)).
+
 ## Upgrade
 
 Install the new APK over the old one: downloads, places and the sign-in stay. This works only when both APKs are signed
