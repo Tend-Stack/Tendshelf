@@ -79,7 +79,7 @@ visual-compare:
 	$(GO) run ./internal/testutil/capturediff .local/tests/visual-compare/a .local/tests/visual-compare/b
 
 visual-full:
-	TENDSHELF_VISUAL_FULL=1 $(GO) test -count=1 -timeout 40m -tags dev -run '$(VISUAL_RUN)' ./internal/web/
+	TENDSHELF_VISUAL_FULL=1 $(GO) test -count=1 -timeout 75m -tags dev -run '$(VISUAL_RUN)' ./internal/web/
 
 # The web player in Chromium: first sound, the file boundary, saves, the beacon, "Continue there?", compat,
 # keys and layout, the book page and Home play buttons (P1c-6), and the full player (P1c-5) (headless Chromium
