@@ -1,5 +1,5 @@
 # 0024 Android app
-Status: proposed (2026-11-05). Needs the operator's approval, which also approves the rule changes below. Plan:
+Status: accepted (operator pre-approved recommendations, 2026-11-05). Needs the operator's approval, which also approves the rule changes below. Plan:
 `docs/plans/android.md`.
 
 ## Operator's words (2026-11-05)
