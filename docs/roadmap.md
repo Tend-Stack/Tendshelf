@@ -792,6 +792,16 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
   restore steps on the Backups page (owner only). Checks: `TestWholeBackup*` (mirror, retention, disk full,
   read-back, refused folders, service and job errors, routes with forbidden cases, restore into an empty
   folder and start). Limits: no encryption of the backup folder; restore is by copying (no restore button).
+- **L3a Chapter editor** (2026-11-06, done; plan `docs/plans/next-server.md` section 2). Scope: `library.BuildChapters`,
+  `ChaptersRev`, `ChaptersOverridden`; `finalize` keeps edited chapters (no clamping); `scan.ResetChapters`
+  (`ErrChaptersBusy`); the write job's `chapter_fit` refusal; the Edit chapters page `/books/{id}/chapters/edit`
+  (start and title per row, Listen, Delete, Add below, Move chapters, Reset with a confirm page), `POST
+  /books/{id}/chapters` (draft round trips, Save with `rev`), `pages-chapters.css`; the "Edit chapters" link on the
+  book's Chapters tab (EditBook only). No migration, no JS. Checks: `TestChapterEdit*` in library, scan, mediajobs
+  and web (roles, text book 404, drafts store nothing, save, stale rev, refusals, CSRF, boosted answers, reset and
+  busy reset, clock parsing); `TestChapterEditVisual` (390, 768, 1024, 1440). Limits: the editor address is
+  `/chapters/edit` because `/books/{id}/chapters` is the Chapters tab (plan address collided); "move from" counts
+  chapters from 1 and starts at 2; multi-file and FLAC books keep edits in the database only, and the page says so.
 
 ## Later
 

@@ -31,6 +31,7 @@ func (s *server) registerBook(mux *http.ServeMux) {
 	s.registerDetails(mux)
 	s.registerCoverPick(mux)
 	s.registerWrite(mux)
+	s.registerChapters(mux)
 	s.registerUploads(mux)
 	s.registerEbooks(mux)
 	s.registerAuthors(mux)
@@ -223,6 +224,7 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 	case "about":
 		if !isText {
 			bookChapters(&v, d, false, play)
+			s.chaptersEditLink(r, &v, d)
 		}
 	case "chapters":
 		if isText {
@@ -230,6 +232,7 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 			return
 		}
 		bookChapters(&v, d, r.URL.Query().Get("all") == "1", play)
+		s.chaptersEditLink(r, &v, d)
 	case "text":
 		if !textEdit && !textRead {
 			s.notFound(w, r)

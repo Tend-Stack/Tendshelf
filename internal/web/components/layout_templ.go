@@ -83,7 +83,7 @@ const pagePrefix = "css/pages-"
 // noPrefetch lists page stylesheets too rarely visited to cost every page a request.
 // pages-email.css joins them (decision 0021): Profile adds its own stylesheet, and no page may gain a request for it.
 // pages-invite, pages-folders and pages-upload join them for Home's row of three covers (three covers, three requests).
-var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css", "css/pages-email.css", "css/pages-invite.css", "css/pages-folders.css", "css/pages-upload.css"}
+var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css", "css/pages-email.css", "css/pages-invite.css", "css/pages-folders.css", "css/pages-upload.css", "css/pages-chapters.css"}
 
 // withPrefetch returns p with the page stylesheets it does not link itself, so the head can ask the
 // browser to fetch them early: the first boosted visit to another page then finds them cached.

@@ -24,6 +24,8 @@ type ChapterListView struct {
 	Rows                      []ChapterRow
 	ShowAllHref, ShowAllLabel string
 	BookID                    string
+	// EditHref and EditLabel make the "Edit chapters" link, only for people who may edit the book.
+	EditHref, EditLabel string
 }
 
 func chapterClass(c ChapterRow) string {
@@ -64,6 +66,11 @@ templ ChapterList(v ChapterListView) {
 			}
 		}
 	</ol>
+	if v.EditHref != "" {
+		<p class="ts-chapters__all">
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.EditHref) }>{ v.EditLabel }</a>
+		</p>
+	}
 	if v.ShowAllHref != "" {
 		<p class="ts-chapters__all">
 			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ShowAllHref) }>{ v.ShowAllLabel }</a>

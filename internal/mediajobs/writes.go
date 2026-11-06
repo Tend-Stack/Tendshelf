@@ -56,6 +56,7 @@ const (
 	WriteSwapFailed  = "swap_failed"
 	WriteInterrupted = "interrupted"
 	WriteAttention   = "needs_attention"
+	WriteChapterFit  = "chapter_fit"
 	VerifyAudio      = "verify_audio"
 	VerifyDuration   = "verify_duration"
 	VerifyChapters   = "verify_chapters"
@@ -77,6 +78,7 @@ var writeText = map[string]string{
 	WriteSwapFailed:  "Tendshelf could not put the new file in place, so the original was left as it was.",
 	WriteInterrupted: "Writing was interrupted, so the original was left as it was.",
 	WriteAttention:   "This file changed after the details were written, so Tendshelf kept the backup and did nothing more. Please look at the files in the folder.",
+	WriteChapterFit:  "The chapter list runs past the end of this book. Fix it on the Chapters page first.",
 	VerifyAudio:      "The copy's sound did not match the original, so the original was left as it was.",
 	VerifyDuration:   "The copy's length did not match the original, so the original was left as it was.",
 	VerifyChapters:   "The copy's chapters did not match what was meant to be written, so the original was left as it was.",
@@ -230,6 +232,19 @@ func (w *Writes) Preflight(ctx context.Context, bookID string) ([]WriteRefusal, 
 				out = append(out, refuse(f, WriteLeftover))
 			}
 			need[filepath.Dir(f.Path)] += st.Size() + st.Size()/20
+		}
+	}
+	if len(files) == 1 {
+		// A single-file, non-FLAC book carries its chapters into the file; an edited list that
+		// runs past the audio would be written as it is, so refuse it (L3a).
+		if format, ok := media.WriteFormat(files[0].Container, files[0].Path); ok && format != "flac" {
+			chs, cerr := w.repo.Chapters(ctx, bookID)
+			if cerr != nil {
+				return nil, cerr
+			}
+			if library.ChaptersPastDuration(chs, book.DurationMs) {
+				out = append(out, WriteRefusal{Code: WriteChapterFit, Text: writeText[WriteChapterFit]})
+			}
 		}
 	}
 	for dir, n := range need {

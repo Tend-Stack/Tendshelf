@@ -677,3 +677,54 @@ func TestFileWritesBusy(t *testing.T) {
 		t.Errorf("Start = %v", err)
 	}
 }
+
+// chedUserChapters stores an edited list on a book (source user).
+func chedUserChapters(t *testing.T, e *wenv, book library.Book, chs []library.Chapter) {
+	t.Helper()
+	if err := e.repo.Update(bg, func(tx *library.Tx) error { return tx.ReplaceChapters(book.ID, chs) }); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestChapterEditWriteFit(t *testing.T) {
+	e := newFakeWEnv(t)
+	book := e.fakeBook("Solo", 1, false)
+	chedUserChapters(t, e, book, []library.Chapter{
+		{Idx: 0, StartMs: 0, EndMs: 3000, Title: "A", Source: "user"},
+		{Idx: 1, StartMs: 3000, EndMs: book.DurationMs + 1001, Title: "B", Source: "user"}})
+	refs, err := e.w.Preflight(bg, book.ID)
+	if err != nil || len(refs) != 1 || refs[0].Code != WriteChapterFit {
+		t.Fatalf("preflight = %+v, %v", refs, err)
+	}
+	if _, err := e.w.Start(bg, book.ID, ""); err == nil {
+		t.Error("Start accepted a list that runs past the end")
+	}
+	// One second past is still fine.
+	chedUserChapters(t, e, book, []library.Chapter{
+		{Idx: 0, StartMs: 0, EndMs: 3000, Title: "A", Source: "user"},
+		{Idx: 1, StartMs: 3000, EndMs: book.DurationMs + 1000, Title: "B", Source: "user"}})
+	if refs, err := e.w.Preflight(bg, book.ID); err != nil || len(refs) != 0 {
+		t.Errorf("preflight at one second = %+v, %v", refs, err)
+	}
+}
+
+func TestChapterEditWriteCarriesTitles(t *testing.T) {
+	e := newFakeWEnv(t)
+	book := e.fakeBook("Solo", 1, false)
+	chedUserChapters(t, e, book, []library.Chapter{
+		{Idx: 0, StartMs: 0, EndMs: 2000, Title: "Mine one", Source: "user"},
+		{Idx: 1, StartMs: 2000, EndMs: book.DurationMs, Title: "Mine two", Source: "user"}})
+	j, err := e.start(book)
+	if err != nil || j.State != jobs.StateDone {
+		t.Fatalf("job = %+v, %v", j, err)
+	}
+	p, err := e.tools.Probe(bg, e.path("Solo/01.m4b"))
+	if err != nil || len(p.Chapters) != 2 || p.Chapters[0].Title != "Mine one" || p.Chapters[1].Title != "Mine two" {
+		t.Fatalf("written chapters = %+v, %v", p.Chapters, err)
+	}
+	e.scanAll()
+	got, err := e.repo.Chapters(bg, book.ID)
+	if err != nil || len(got) != 2 || got[0].Source != "user" || got[0].Title != "Mine one" {
+		t.Errorf("after the rescan: %+v, %v", got, err)
+	}
+}
