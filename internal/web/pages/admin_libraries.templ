@@ -227,7 +227,7 @@ templ settingForm(csrf, action, saved, save string) {
 
 // adminWatch is "Watching": the switch, the interval and the plain sentence about how the library is kept up to date.
 templ adminWatch(v AdminLibrariesView, l AdminWatchLibrary) {
-	<h3 class="section ts-libs__sub">{ v.Watch.Title }</h3>
+	<h3 class="section ts-libs__sub">Watching</h3>
 	<div class="ts-group">
 		@settingForm(v.CSRF, "/admin/libraries/"+l.ID+"/watch", "saved-watch-"+l.ID, v.Watch.Save) {
 			<div class="ts-switch-row ts-me__line">
@@ -301,7 +301,7 @@ templ adminLookups(v AdminLibrariesView, l AdminLookupLibrary) {
 // adminUploads is "Adding books": the owner chooses the folder that receives books or "Nowhere (off)" in a
 // row that saves on change; an admin only reads.
 templ adminUploads(v AdminLibrariesView, l AdminUploadLibrary) {
-	<h3 class="section ts-libs__sub" id={ "uploads-" + l.ID }>{ v.Uploads.Title }</h3>
+	<h3 class="section ts-libs__sub" id={ "uploads-" + l.ID }>Adding books</h3>
 	<div class="ts-group">
 		if v.Uploads.Owner {
 			@settingForm(v.CSRF, "/admin/libraries/"+l.ID+"/uploads", "saved-uploads-"+l.ID, v.Uploads.Save) {

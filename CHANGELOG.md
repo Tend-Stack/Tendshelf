@@ -8,6 +8,11 @@ Added after 2026.2.0 was dated. Nothing here is tagged yet.
 
 ### What you can do
 
+- **Look up the books that need it.** On Libraries & scanning, "Look up" now asks which books: those missing details (the
+  default), those not looked up yet, or all, each with how many it covers. A book you reviewed and accepted is not asked
+  about again. The page is organised by library, with settings that save as you change them. The books that need a look
+  moved to Library health, which opens with a count and a link to each group.
+
 - **The desktop window stops at 1,920 px.** The pages already stop there, so a wider window on an ultrawide monitor
   only showed a blank strip. Dragging an edge or corner stops at 1,920 px, and Maximise fits the window to the screen:
   on a wider screen it is 1,920 px wide and as high as the screen, and pressing it again goes back.

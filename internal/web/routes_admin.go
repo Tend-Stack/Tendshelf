@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -192,7 +193,7 @@ func (s *server) renderAdminLibrariesFor(w http.ResponseWriter, r *http.Request,
 	view.DuplicatesHref, view.DuplicatesLabel = "/admin/duplicates", dupTitle
 	view.HealthHref, view.HealthLabel = "/admin/health", healthTitle
 	view.NeedsHref = "/admin/health"
-	s.prefsPage(w, r, status, "Libraries & scanning", "admin-libraries", "libraries", false, pages.AdminLibraries(view), nil, adminStyles...)
+	s.prefsPage(w, r, status, "Libraries & scanning", "admin-libraries", "libraries", false, pages.AdminLibraries(view), nil, append(slices.Clone(adminStyles), "css/pages-me.css")...)
 }
 
 func (s *server) librariesView(ctx context.Context, r *http.Request, sc library.Scope) (pages.AdminLibrariesView, error) {

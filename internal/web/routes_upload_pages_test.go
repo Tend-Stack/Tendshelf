@@ -149,7 +149,7 @@ func TestUploadRowStates(t *testing.T) {
 func TestAdminUploadsSection(t *testing.T) {
 	u := newUploadApp(t)
 	owner := u.a.do(http.MethodGet, "/admin/libraries", nil, nil, u.owner).Body.String()
-	for _, want := range []string{`id="uploads-`+u.libID+`"`, "Adding books from this device", `name="folder_id"`, "Nowhere (off)", u.folderDir, "Where new books go", "Save",
+	for _, want := range []string{`id="uploads-` + u.libID + `"`, "Adding books", `name="folder_id"`, "Nowhere (off)", u.folderDir, "Where new books go", "Save",
 		`href="/libraries/` + u.libID + `/add"`} {
 		if !strings.Contains(owner, want) {
 			t.Errorf("owner section lacks %q", want)

@@ -820,6 +820,16 @@ share-link pages stay in link mode and never call it). Tests: `TestSeriesNext`. 
   folder, folder limit, mount gone and back, mount table, routes with forbidden cases, migration).
   Limits: Linux inotify per-user limits (a library past 20000 folders falls back to the schedule); the
   scheduled scan counts any scan job as "last scanned".
+- **Libraries page by library and smarter lookups** (2026-11-06, done). Scope: bulk lookup scopes `missing` (default),
+  `unlooked`, `all` in the job payload (`BulkPayload.Scope`, no migration: defined from `books`, `book_lookups` and
+  `metadata_values`), with live counts (`Service.CountScopes`, same SQL as the job); missing = no description, cover or
+  author and no online or owner-typed value, not chosen, dismissed or looked up in 30 days; unlooked = no settled lookup
+  on record. Problem cards left the Libraries page for a one-line summary; Library health leads with a count and jump
+  links, cover and no-match groups first, refused books say why. The Libraries page is one section per library (Folders,
+  Watching, Online details, Adding books); settings save on change with htmx (`SettingSaved`, plain form and Save without
+  script), actions sit apart. Checks: `TestLookupScope`, `TestLookupScopePage`, `TestSettingSavedFragment`,
+  `TestHealthLeadsWithProblems`, `TestLibrariesPageVisual` (dev tag). Limits: "missing" ignores the online cache (it is
+  keyed by query, not book); the Uploads setting changed from radios to a select.
 - **S5 App keys and OPDS** (2026-11-06, done). Scope: migration `app_keys` (`devices.kind` gains `opds` and `koreader`;
   numbered 0026), `token.NewTypable` (24 characters, `a-z2-7`),
   `auth.IssueKey`/`LookupKey`/`OwnKeys`/`KeyHash` (opds: SHA-256 of the key; koreader: SHA-256 of the hex MD5, for S6),

@@ -46,7 +46,7 @@ func TestPageStylesTravelInMain(t *testing.T) {
 		{"/me", []string{"pages-home", "pages-library", "pages-shelves", "pages-me", "pages-profile"}},
 		{"/me/settings", []string{"pages-me", "pages-settings"}},
 		{"/me/password", []string{"pages-onboard", "pages-me", "pages-settings"}},
-		{"/admin/libraries", adminStyles},
+		{"/admin/libraries", slices.Insert(slices.Clone(adminStyles), 2, "pages-me")},
 		{"/admin/libraries/folders/new", slices.Insert(slices.Clone(adminStyles), 2, "pages-folders")},
 		// The book page links the styles of its tabs and sheets whatever tab it opens on, because the
 		// tabs swap only #book-panel.
