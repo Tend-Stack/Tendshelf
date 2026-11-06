@@ -40,11 +40,27 @@ type apiSettings struct {
 	SkipForwardS int     `json:"skipForwardS"`
 	AutoRewind   bool    `json:"autoRewind"`
 	NextInSeries bool    `json:"nextInSeries"`
+	// RewindSteps is the smart-rewind table (rewind.go), read-only: a PATCH body's value is ignored.
+	RewindSteps []apiRewindStep `json:"rewindSteps"`
+}
+
+// apiRewindStep is one row of the table: a pause of at least FromMs rewinds Seconds.
+type apiRewindStep struct {
+	FromMs  int64 `json:"fromMs"`
+	Seconds int   `json:"seconds"`
+}
+
+func apiRewindSteps() []apiRewindStep {
+	out := make([]apiRewindStep, 0, len(rewindSteps))
+	for _, st := range rewindSteps {
+		out = append(out, apiRewindStep{FromMs: st.From.Milliseconds(), Seconds: st.Seconds})
+	}
+	return out
 }
 
 func apiSettingsOf(set users.Settings) apiSettings {
 	return apiSettings{Speed: set.Speed, SkipBackS: set.SkipBackS, SkipForwardS: set.SkipForwardS,
-		AutoRewind: set.AutoRewind, NextInSeries: set.NextInSeries}
+		AutoRewind: set.AutoRewind, NextInSeries: set.NextInSeries, RewindSteps: apiRewindSteps()}
 }
 
 func (s *server) writeAPISettings(w http.ResponseWriter, r *http.Request) {
