@@ -548,7 +548,7 @@ highlights, notes and bookmarks by sentence id and offset. There is no audio tim
 
 ## Desktop (P5)
 
-`desktop/` module, Wails v3.0.0 (pinned), Linux on its default GTK 4 + WebKitGTK 6.0 (the `gtk3` tag is the
+`desktop/` module, Wails v3.1.0 (pinned; decision 0023), Linux on its default GTK 4 + WebKitGTK 6.0 (the `gtk3` tag is the
 legacy fallback; [decision 0003](decisions/0003-newest-versions.md)). Two modes, decided in
 [decision 0020](decisions/0020-desktop-shell.md) and planned in `docs/plans/m6-desktop.md`:
 
