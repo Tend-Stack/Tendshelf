@@ -53,10 +53,12 @@ object DebugHooks {
             val exo = service.exo
             when (op) {
                 "outbox" -> Log.i(PlaybackService.TAG, "outbox rows=${service.writer.rowCount()}")
+                "jolt" -> service.sleep.jolt(20f) // as if the sensor had read a hard jolt (the shake fallback)
                 "dump" -> Log.i(
                     PlaybackService.TAG, "dump pos=${exo.currentPosition} dur=${exo.duration} speed=${exo.playbackParameters.speed} " +
                         "playing=${exo.isPlaying} pwr=${exo.playWhenReady} state=${exo.playbackState} chapter=${service.player.chapterIdx} " +
-                        "title=${service.player.mediaMetadata.title} error=${service.session?.sessionExtras?.getString(BookEngine.EXTRA_ERROR)}",
+                        "title=${service.player.mediaMetadata.title} error=${service.session?.sessionExtras?.getString(BookEngine.EXTRA_ERROR)} " +
+                        "vol=${exo.volume} sleep=${service.sleep.info}",
                 )
             }
         }

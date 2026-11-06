@@ -84,6 +84,8 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
         shownChapter = -1
     }
 
+    val chapterList: List<Chapter> get() = chapters
+
     val chapterIdx: Int get() = Position.chapterAt(chapters, exo.currentPosition)?.idx ?: -1
 
     private fun checkChapter() {

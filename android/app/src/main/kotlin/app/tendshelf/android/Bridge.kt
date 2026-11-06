@@ -18,7 +18,9 @@ import app.tendshelf.shared.TokenBucket
 import app.tendshelf.shared.encodeAsk
 import app.tendshelf.shared.encodeBack
 import app.tendshelf.shared.encodeError
+import app.tendshelf.shared.SleepInfo
 import app.tendshelf.shared.encodeRewound
+import app.tendshelf.shared.encodeSleep
 import app.tendshelf.shared.encodeState
 import app.tendshelf.shared.parseBridge
 
@@ -55,6 +57,7 @@ class Bridge(
     private var lastError = ""
     private var lastAsk: Ask? = null
     private var lastRewoundSeq = UNSET
+    private var lastSleepOn = false
     private var pendingBack: (() -> Unit)? = null
 
     /** True when the page can be asked to go back (it holds the object and the person is connected). */
@@ -160,6 +163,7 @@ class Bridge(
             }
             is BridgeMessage.Theme -> onTheme(msg.hex)
             is BridgeMessage.Answer -> r?.answer(msg.keepHere)
+            is BridgeMessage.Sleep -> r?.sleep(msg.choice, msg.minutes)
         }
     }
 
@@ -193,6 +197,9 @@ class Bridge(
             // `background` crosses as its own code (encodeError).
             if (s.error == "stream" || s.error == "book" || s.error == "background") send(p, encodeError(s.error))
         }
+        // The sleep timer: with every push while it runs, and once more when it turns off.
+        if (s.sleep != SleepInfo.OFF || lastSleepOn) send(p, encodeSleep(s.sleep))
+        lastSleepOn = s.sleep != SleepInfo.OFF
         if (s.ask != lastAsk) {
             // Only the changes cross: a question opens the toast, none closes it.
             if (s.ask != null || lastAsk != null) send(p, encodeAsk(s.ask))

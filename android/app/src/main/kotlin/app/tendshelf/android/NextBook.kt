@@ -28,7 +28,7 @@ class NextBook(
     }
 
     /** Main thread, on the player's end. [stillEnded] is checked again before the next book starts. */
-    fun ended(bookId: String, positionMs: Long, speed: Double, stillEnded: () -> Boolean) {
+    fun ended(bookId: String, positionMs: Long, speed: Double, askQueue: Boolean = true, stillEnded: () -> Boolean) {
         if (bookId.isEmpty() || handled == bookId) return
         handled = bookId
         val lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "tendshelf:nextbook").apply {
@@ -40,6 +40,10 @@ class NextBook(
             try {
                 val conn = connections().current()
                 val sent = writer.finishAndFlush(bookId, positionMs, speed, listened)
+                if (!askQueue) {
+                    Log.i(TAG, "next book: a sleep timer ended this book, queue not asked")
+                    return@execute
+                }
                 if (!sent || conn == null) {
                     Log.i(TAG, "next book: finished not sent, nothing popped")
                     return@execute

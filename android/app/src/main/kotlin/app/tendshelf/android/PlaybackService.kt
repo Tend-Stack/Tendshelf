@@ -44,6 +44,8 @@ class PlaybackService : MediaLibraryService() {
     internal lateinit var writer: ProgressWriter
         private set
     private lateinit var askPrompt: AskPrompt
+    internal lateinit var sleep: SleepTimer
+        private set
     private val http = DefaultHttpDataSource.Factory()
     internal val main = Handler(Looper.getMainLooper())
     internal val io = java.util.concurrent.Executors.newCachedThreadPool()
@@ -89,6 +91,14 @@ class PlaybackService : MediaLibraryService() {
             .setMediaButtonPreferences(skipButtons())
             .build()
         engine = BookEngine(exo, player, http, main, io, { connections }) { extras -> putExtras { putAll(extras) } }
+        sleep = SleepTimer(exo, player, getSystemService(android.hardware.SensorManager::class.java), main) { info ->
+            putExtras {
+                putString(EXTRA_SLEEP_MODE, info.mode.name.lowercase())
+                putString(EXTRA_SLEEP_CHOICE, info.choice)
+                putLong(EXTRA_SLEEP_LEFT, info.leftMs)
+                putBoolean(EXTRA_SLEEP_FADING, info.fading)
+            }
+        }
         wireProgress()
         setListener(RefusedListener())
         exo.addListener(object : Player.Listener {
@@ -154,6 +164,7 @@ class PlaybackService : MediaLibraryService() {
             ask.dismissPlain()
             resume.bookLoaded(writtenAt, atGiven)
             next.reset()
+            sleep.bookChanged()
             lastChapter = -2
         }
         engine.onPositionTick = {
@@ -165,7 +176,11 @@ class PlaybackService : MediaLibraryService() {
                 w.onTick(book)
             }
         }
-        engine.onEnded = { next.ended(engine.currentBook, exo.currentPosition, exo.playbackParameters.speed.toDouble()) { exo.playbackState == Player.STATE_ENDED } }
+        engine.onEnded = {
+            // A running sleep timer wins over the queue (D5): the book is finished, nothing new starts.
+            val askQueue = !sleep.endedBook()
+            next.ended(engine.currentBook, exo.currentPosition, exo.playbackParameters.speed.toDouble(), askQueue) { exo.playbackState == Player.STATE_ENDED }
+        }
         w.onSignedOut = { engine.signedOut() }
         w.onLost = { lost, conn ->
             val book = engine.currentBook
@@ -235,6 +250,7 @@ class PlaybackService : MediaLibraryService() {
     override fun onDestroy() {
         clearListener()
         nm().cancel(REFUSED_ID)
+        sleep.release()
         writer.saveNow("destroy")
         writer.close()
         session?.release()
@@ -253,6 +269,7 @@ class PlaybackService : MediaLibraryService() {
                     add(STOP_COMMAND)
                     add(ANSWER_COMMAND)
                     add(VISIBLE_COMMAND)
+                    add(SLEEP_COMMAND)
                 }
             }.build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
@@ -273,11 +290,13 @@ class PlaybackService : MediaLibraryService() {
                 START_ACTION -> engine.start(args.getString("book").orEmpty(), args.getLong("atMs", -1L).takeIf { it >= 0 })
                 STOP_ACTION -> {
                     Log.i(TAG, "stop and clear done")
+                    sleep.off()
                     engine.stopAndClear()
                     stopSelf()
                 }
                 ANSWER_ACTION -> askPrompt.answer(args.getBoolean("keepHere"))
                 VISIBLE_ACTION -> askPrompt.setPageVisible(args.getBoolean("visible"))
+                SLEEP_ACTION -> sleep.command(args.getString("choice").orEmpty(), args.getInt("minutes", 0))
                 else -> return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -295,9 +314,15 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_ASK_BOOK = "ts.ask.bookId"
         const val EXTRA_ASK_POSITION = "ts.ask.positionMs"
         const val EXTRA_ASK_DEVICE = "ts.ask.device"
+        const val SLEEP_ACTION = "app.tendshelf.SLEEP"
+        const val EXTRA_SLEEP_MODE = "ts.sleep.mode"
+        const val EXTRA_SLEEP_CHOICE = "ts.sleep.choice"
+        const val EXTRA_SLEEP_LEFT = "ts.sleep.leftMs"
+        const val EXTRA_SLEEP_FADING = "ts.sleep.fading"
         const val PLAYBACK_CHANNEL = "playback"
         const val REFUSED_ID = 4244
         val ANSWER_COMMAND = SessionCommand(ANSWER_ACTION, Bundle.EMPTY)
+        val SLEEP_COMMAND = SessionCommand(SLEEP_ACTION, Bundle.EMPTY)
         val VISIBLE_COMMAND = SessionCommand(VISIBLE_ACTION, Bundle.EMPTY)
         val START_COMMAND = SessionCommand(START_ACTION, Bundle.EMPTY)
         val STOP_COMMAND = SessionCommand(STOP_ACTION, Bundle.EMPTY)
