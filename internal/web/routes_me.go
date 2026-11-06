@@ -64,8 +64,13 @@ func (s *server) getDevices(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "devices", err)
 		return
 	}
-	v := pages.DevicesView{CSRF: s.csrf.TokenFrom(r.Context()), Lines: groupDevices(rows), Others: others}
-	s.prefsPage(w, r, http.StatusOK, devTitle, "profile", "devices", false, pages.Devices(v), nil, pages.MeStyles...)
+	keys, err := s.appKeysView(r)
+	if err != nil {
+		s.serverError(w, r, "app keys", err)
+		return
+	}
+	v := pages.DevicesView{CSRF: s.csrf.TokenFrom(r.Context()), Lines: groupDevices(rows), Others: others, AppKeys: keys}
+	s.prefsPage(w, r, http.StatusOK, devTitle, "profile", "devices", false, pages.Devices(v), nil, append(pages.MeStyles, pages.AppKeyStyles...)...)
 }
 
 func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {

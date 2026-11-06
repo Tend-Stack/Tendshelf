@@ -559,6 +559,7 @@ func sweepRows() []sweepRow {
 		sweepPost("POST /me/words/{id}/delete", sweepStatic("/me/words/wd_none/delete"), nil, sweepSame(404), ""),
 		sweepPost("POST /me/reading/goal", sweepStatic("/me/reading/goal"), sweepFormOf(url.Values{"goal_books": {"12"}}), sweepSame(303), "/me/reading"),
 		sweepPost("POST /hx/me/nav", sweepStatic("/hx/me/nav"), sweepFormOf(url.Values{"nav": {"full"}}), sweepSame(200), ""),
+		sweepPost("POST /me/app-keys", sweepStatic("/me/app-keys"), sweepFormOf(url.Values{"kind": {"web"}}), sweepSame(400), ""),
 		sweepPost("POST /me/password", sweepStatic("/me/password"), sweepFormOf(url.Values{"current": {"not the password at all"}, "password": {"a brand new passphrase"}}), sweepSame(422), ""),
 		sweepPost("POST /me/sessions/{sid}/signout", func(e *sweepEnv, role int) string { return "/me/sessions/" + e.secondS[role] + "/signout" }, nil, sweepSame(303), "/me/devices"),
 		sweepPost("POST /me/sessions/signout-others", sweepStatic("/me/sessions/signout-others"), nil, sweepSame(303), ""),
@@ -811,7 +812,8 @@ func sweepRegistered(t *testing.T) []string {
 			}
 			switch {
 			case p == "/", p == "GET /static/", p == "GET /healthz", p == "/sw.js", p == "/manifest.webmanifest",
-				strings.HasPrefix(path, "/dev/"), strings.HasPrefix(path, "/hx/dev/"):
+				strings.HasPrefix(path, "/dev/"), strings.HasPrefix(path, "/hx/dev/"),
+				path == "/opds" || strings.HasPrefix(path, "/opds/"): // app-key sign-in, not a cookie: opds_test.go covers it
 				continue
 			}
 			seen[p] = true

@@ -784,6 +784,16 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
   folder, folder limit, mount gone and back, mount table, routes with forbidden cases, migration).
   Limits: Linux inotify per-user limits (a library past 20000 folders falls back to the schedule); the
   scheduled scan counts any scan job as "last scanned".
+- **S5 App keys and OPDS** (2026-11-06, done). Scope: migration `app_keys` (`devices.kind` gains `opds` and `koreader`;
+  numbered 0026 in this worktree, renumber at merge), `token.NewTypable` (24 characters, `a-z2-7`),
+  `auth.IssueKey`/`LookupKey`/`OwnKeys`/`KeyHash` (opds: SHA-256 of the key; koreader: SHA-256 of the hex MD5, for S6),
+  `share.BookFilterFor` (one `EXISTS` per right, agrees with `Can`), `library.TextCatalogue`, `POST /me/app-keys` and an
+  App keys section on Your devices, `keyAuth` (Basic, user name must match, 10 failures per 15 minutes per address, then 429),
+  `/opds` (OPDS 1.2 Atom: front page, All books, Newest, search and OpenSearch description, 50 a page, files, covers),
+  `serveEbookFile` split out of `getEbookFile`, decision 0025 and its `AGENTS.md` line. Checks: `TestAppKey*`, `TestOPDS*`,
+  `TestBookFilterForAgreesWithCan`, `TestMigrationAppKeys*`, `TestTypable*`; captures `app-keys-*` at four widths and four
+  themes, no overflow, targets 44 px. Limits: no OPDS 2.0 or PSE, no audio, no per-shelf feeds, no key scopes beyond two kinds,
+  keys do not expire by date. Next: S6 mounts `/kosync` on `keyAuth(KindKOReader, ...)`.
 - **S2 Whole backups to a folder the owner chooses** (2026-11-05, done). Scope: `backup.folder` setting,
   `backups.Mirror` (incremental by size and time through `tendshelf-backup/manifest.json`, copy through a
   temporary name, read back and compared by SHA-256, 30 day grace for deleted files, newest 7 database copies,

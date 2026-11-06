@@ -119,7 +119,8 @@ was reused, extended or replaced.
   (`internal/desktopshell`, decision 0020). That is its own client, and it sends no credentials.
 - All authorization goes through `share.Can(user, action, target)`. Listing and search queries filter
   by grants in SQL; never fetch everything and filter in Go (counts and search must not leak titles).
-- Session, invite and API tokens are random 32-byte values; only their SHA-256 is stored.
+- Session, invite and API tokens are random 32-byte values; only their SHA-256 is stored. The one exception is an app key (OPDS, KOReader
+  sync): 24 typable characters from `a-z2-7` (120 bits), one surface each, rate limited, SHA-256 stored ([decision 0025](docs/decisions/0025-app-keys.md)).
 - The server binds `127.0.0.1:8095` by default; exposing it is an explicit setting.
 - The service worker (`/sw.js`, source `internal/web/static/js/sw.js`) answers only hashed `/static/` files and,
   from the signed-in person's own cache, `/stream/{id}` (with or without `?compat=1`), `/covers/{bookID}`,

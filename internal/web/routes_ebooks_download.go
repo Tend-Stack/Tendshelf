@@ -62,31 +62,42 @@ func (s *server) getEbookFile(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	f, found, err := s.ebooks.Store().File(r.Context(), r.PathValue("fileID"))
+	s.serveEbookFile(w, r, book, r.PathValue("fileID"), func() { s.notFound(w, r) })
+}
+
+// serveEbookFile sends one ready ebook file of the book, after the caller has decided the person may have it.
+// A refused, failed, pending, missing or foreign file, or one that is not a plain regular file, calls miss.
+// The OPDS route shares it (decision 0025) and passes a plain 404.
+func (s *server) serveEbookFile(w http.ResponseWriter, r *http.Request, book library.Book, fileID string, miss func()) {
+	if s.ebooks == nil {
+		miss()
+		return
+	}
+	f, found, err := s.ebooks.Store().File(r.Context(), fileID)
 	if err != nil {
 		s.serverError(w, r, "ebook file", err)
 		return
 	}
 	// A ready file of this book only: a refused, failed, pending, missing or foreign file is never served.
 	if !found || f.BookID != book.ID || f.State != "ready" || f.RefusedReason != "" || f.MissingSince != 0 {
-		s.notFound(w, r)
+		miss()
 		return
 	}
 	path := s.ebooks.FilePath(f) // an upload is read from our own copy, a library file from its folder
 	lfi, err := os.Lstat(path)
 	if err != nil || !lfi.Mode().IsRegular() {
-		s.notFound(w, r)
+		miss()
 		return
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		s.notFound(w, r)
+		miss()
 		return
 	}
 	defer file.Close()
 	fi, err := file.Stat()
 	if err != nil || !fi.Mode().IsRegular() || !os.SameFile(lfi, fi) {
-		s.notFound(w, r)
+		miss()
 		return
 	}
 	name := filepath.Base(path)

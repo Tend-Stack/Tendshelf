@@ -1,0 +1,85 @@
+package pages
+
+// AppKeyStyles is the stylesheet of the App keys section and page.
+var AppKeyStyles = []string{"css/pages-appkeys.css"}
+
+// AppKeyLine is one live key in the App keys section.
+type AppKeyLine struct {
+	Title  string
+	Meta   string
+	Action string // POST target that turns it off
+	Aria   string
+}
+
+// AppKeysView is the App keys section of "Your devices". The handler writes every sentence.
+type AppKeysView struct {
+	CSRF                                                              string
+	Heading, Lead, None, NameLabel, NameHint, KindLabel               string
+	KindOPDS, KindKO, Make, TurnOff                                   string
+	Keys                                                              []AppKeyLine
+}
+
+// AppKeyShownView is the one-time page that shows a new key and the setup words for the app.
+type AppKeyShownView struct {
+	Title, Lead, Note                  string
+	AddressLabel, Address              string
+	UserLabel, User, KeyLabel, Key     string
+	Back                               string
+}
+
+// AppKeys is the section: the live keys with a way to turn each off, and the form that makes one.
+templ AppKeys(v AppKeysView) {
+	<section aria-labelledby="akey-h" class="ts-me__section ts-group ts-akey ts-akey__section">
+		<h2 id="akey-h" class="section ts-akey__title">{ v.Heading }</h2>
+		<p class="caption ts-me__lead">{ v.Lead }</p>
+		if len(v.Keys) == 0 {
+			<p class="body ts-akey__none">{ v.None }</p>
+		}
+		for _, k := range v.Keys {
+			<div class="ts-me__row ts-akey__row">
+				<span class="ts-me__rowtext">
+					<span class="body ts-me__rowtitle">{ k.Title }</span>
+					<span class="caption ts-me__lead">{ k.Meta }</span>
+				</span>
+				<form method="post" action={ templ.URL(k.Action) }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ k.Aria }>{ v.TurnOff }</button>
+				</form>
+			</div>
+		}
+		<form method="post" action="/me/app-keys" class="ts-akey__form">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<div class="ts-field">
+				<label class="ts-field__label" for="akey-name">{ v.NameLabel }</label>
+				<input id="akey-name" name="name" type="text" class="ts-input" maxlength="64" autocomplete="off" aria-describedby="akey-name-hint"/>
+				<span class="ts-field__hint" id="akey-name-hint">{ v.NameHint }</span>
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="akey-kind">{ v.KindLabel }</label>
+				<select id="akey-kind" name="kind" class="ts-select">
+					<option value="opds">{ v.KindOPDS }</option>
+					<option value="koreader">{ v.KindKO }</option>
+				</select>
+			</div>
+			<button type="submit" class="ts-btn ts-btn--primary">{ v.Make }</button>
+		</form>
+	</section>
+}
+
+// AppKeyShown shows a new key once, with the words an app needs. Nothing here is ever stored.
+templ AppKeyShown(v AppKeyShownView) {
+	<div class="ts-me ts-akey">
+		<h1 class="title-2 ts-me__title">{ v.Title }</h1>
+		<p class="body ts-me__lead">{ v.Lead }</p>
+		<dl class="ts-group ts-group--pad ts-akey__facts">
+			<dt class="caption">{ v.AddressLabel }</dt>
+			<dd class="ts-akey__value">{ v.Address }</dd>
+			<dt class="caption">{ v.UserLabel }</dt>
+			<dd class="ts-akey__value">{ v.User }</dd>
+			<dt class="caption">{ v.KeyLabel }</dt>
+			<dd class="ts-akey__value ts-akey__key">{ v.Key }</dd>
+		</dl>
+		<p class="body ts-me__lead">{ v.Note }</p>
+		<a class="ts-btn ts-btn--secondary" href="/me/devices">{ v.Back }</a>
+	</div>
+}
