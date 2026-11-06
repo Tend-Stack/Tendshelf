@@ -31,6 +31,7 @@ type PlayerDataView struct {
 	Speed                           string // "1.25"
 	SkipBackS, SkipForwardS         int
 	AutoRewind                      bool
+	Rewind                          string // the pause-length table of the smart rewind, "10000:2,60000:5"
 	AccentDark, AccentLight         string
 	AccentSepia, Tint               string // Tint: the cover's colour for the full player's background fade
 	Files                           []PlayerFileView
@@ -68,6 +69,7 @@ templ PlayerData(v PlayerDataView) {
 		data-skip-back-s={ strconv.Itoa(v.SkipBackS) }
 		data-skip-forward-s={ strconv.Itoa(v.SkipForwardS) }
 		data-auto-rewind={ flagStr(v.AutoRewind) }
+		data-rewind={ v.Rewind }
 		if v.ReadHref != "" {
 			data-read-href={ v.ReadHref }
 		}

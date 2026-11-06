@@ -9,6 +9,7 @@ ebooks as books, and a desktop app.
 
 ### What you can do
 
+- **Speed for each book, and a rewind that fits the pause.** The Speed sheet now remembers the speed for the book you are in, on every device, and can make it your usual speed. When you press play again the player steps back 2, 5, 10 or 20 seconds, the longer you were away. After a chapter jump, a long seek or a scrub, "Jumped too far?" offers a way back.
 - **Offline.** Install Tendshelf as an app and download a book, audio and text, to read or listen with no
   connection. Your place and bookmarks sync when you are back online. Downloading and installing need HTTPS
   ([docs/deploy.md](docs/deploy.md)).

@@ -2,16 +2,13 @@ package db
 
 import "testing"
 
-// TestMigration0024FromPrevious: a v23 database keeps its libraries; each gains watch on, and a library
-// that had no schedule gets six hours while one with its own interval keeps it.
+const bookSettingsInsert = `INSERT INTO book_settings(user_id, book_id, speed, updated_at) VALUES (?, ?, ?, ?)`
+
+// TestMigration0024FromPrevious: a v23 database keeps its rows and gains an empty book_settings.
 func TestMigration0024FromPrevious(t *testing.T) {
 	dir := t.TempDir()
 	prev := openUpTo(t, 23, dir)
 	seed7(t, prev)
-	if _, err := prev.Writer().Exec(`INSERT INTO libraries(id, name, scan_interval_min, created_at) VALUES ('lib_own', 'Own', 90, 1)`); err != nil {
-		t.Fatal(err)
-	}
-	before := countRows(t, prev.Reader(), "libraries")
 	prev.Close()
 
 	st := mustOpen(t, dir)
@@ -19,30 +16,44 @@ func TestMigration0024FromPrevious(t *testing.T) {
 	if v := st.SchemaVersion(); v != SchemaVersion {
 		t.Fatalf("schema version = %d, want %d", v, SchemaVersion)
 	}
-	var n, off, six, ninety int
-	if err := st.Reader().QueryRow(`SELECT count(*), sum(watch = 0), sum(scan_interval_min = 360), sum(scan_interval_min = 90) FROM libraries`).Scan(&n, &off, &six, &ninety); err != nil {
+	for _, tbl := range []string{"libraries", "books", "progress"} {
+		if countRows(t, st.Reader(), tbl) != 1 {
+			t.Errorf("%s lost its row", tbl)
+		}
+	}
+	if n := countRows(t, st.Reader(), "book_settings"); n != 0 {
+		t.Errorf("book_settings has %d rows", n)
+	}
+	if _, err := st.Writer().Exec(bookSettingsInsert, "us_1", "bk_1", 1.5, 1); err != nil {
 		t.Fatal(err)
-	}
-	if n != before || off != 0 || ninety != 1 || six != n-1 {
-		t.Errorf("libraries = %d (was %d), watch off = %d, six hours = %d, ninety = %d", n, before, off, six, ninety)
-	}
-	if countRows(t, st.Reader(), "progress") != 1 {
-		t.Error("existing progress row was lost")
 	}
 }
 
-// TestMigration0024FromEmpty: a new library row defaults to watching, and the watch flag is 0 or 1 only.
+// TestMigration0024FromEmpty: one row per (person, book), a speed in range, and rows leave with the book.
 func TestMigration0024FromEmpty(t *testing.T) {
 	st := mustOpen(t, t.TempDir())
 	defer st.Close()
-	if _, err := st.Writer().Exec(`INSERT INTO libraries(id, name, created_at) VALUES ('lib_a', 'A', 1)`); err != nil {
+	seed7(t, st)
+	w := st.Writer()
+	if _, err := w.Exec(bookSettingsInsert, "us_1", "bk_1", 1.25, 1); err != nil {
 		t.Fatal(err)
 	}
-	var w int
-	if err := st.Reader().QueryRow(`SELECT watch FROM libraries WHERE id = 'lib_a'`).Scan(&w); err != nil || w != 1 {
-		t.Fatalf("watch = %d, %v; want 1", w, err)
+	for name, args := range map[string][]any{
+		"duplicate (user, book)": {"us_1", "bk_1", 1.5, 1},
+		"unknown book":           {"us_1", "bk_nope", 1.5, 1},
+		"unknown user":           {"us_nope", "bk_1", 1.5, 1},
+		"speed too low":          {"us_1", "bk_1", 0.4, 1},
+		"speed too high":         {"us_1", "bk_1", 3.1, 1},
+		"updated_at = 0":         {"us_1", "bk_1", 1.5, 0},
+	} {
+		if _, err := w.Exec(bookSettingsInsert, args...); err == nil {
+			t.Errorf("%s was accepted", name)
+		}
 	}
-	if _, err := st.Writer().Exec(`UPDATE libraries SET watch = 2`); err == nil {
-		t.Error("watch = 2 was accepted")
+	if _, err := w.Exec(`DELETE FROM books WHERE id = 'bk_1'`); err != nil {
+		t.Fatal(err)
+	}
+	if n := countRows(t, st.Reader(), "book_settings"); n != 0 {
+		t.Errorf("the book's speed stayed: %d rows", n)
 	}
 }

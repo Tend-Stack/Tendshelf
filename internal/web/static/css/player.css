@@ -206,3 +206,6 @@ html[data-text-size="large"] .ts-player-slot.is-covered { visibility: hidden; }
   }
 }
 .ts-player-bar__item.is-active > .ts-icon { display: none; }
+/* L1: the speed sheet says the speed is for this book, with one way to make it the usual speed. */
+.ts-player__forbook { display: grid; justify-items: start; gap: var(--space-4); padding: 0 var(--space-16) var(--space-16); }
+.ts-player__forbook p { margin: 0; font-size: 0.875rem; color: var(--ink-muted); }

@@ -307,8 +307,8 @@ func TestPlayerBrowserReloadAndRewind(t *testing.T) {
 	}
 	var hint string
 	tab.Eval(`(document.querySelector("#toasts .ts-toast--hint") || {textContent: ""}).textContent`, &hint)
-	if hint != msgRewound {
-		t.Errorf("hint %q, want %q", hint, msgRewound)
+	if hint != strings.Replace(msgRewound, "{s}", "5", 1) {
+		t.Errorf("hint %q, want %q", hint, strings.Replace(msgRewound, "{s}", "5", 1))
 	}
 }
 

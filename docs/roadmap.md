@@ -771,7 +771,7 @@ step: the operator's desktop section of `docs/manual-checks.md`.
 
 - **S1 Watch folders and a scheduled scan** (2026-11-05, done). Scope: `internal/watch` (fsnotify watcher,
   45 s quiet period, mount-table detection of NFS/CIFS and similar, 6 h scheduled scan, skip and catch-up for
-  a missing folder), migration 0024 (`libraries.watch`; the unused `scan_interval_min` becomes the schedule),
+  a missing folder), migration 0025 (`libraries.watch`; the unused `scan_interval_min` becomes the schedule),
   `scan.Enqueue` shared by the button, the watcher and the schedule, a "Finding new books" section on the
   Libraries page. Checks: `TestWatch*` (debounce, new folders, hidden folders, schedule table, network
   folder, folder limit, mount gone and back, mount table, routes with forbidden cases, migration).
