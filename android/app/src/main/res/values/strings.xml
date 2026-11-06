@@ -48,6 +48,7 @@
     <string name="downloads_failed_row">Didn\'t download. Open the book to try again.</string>
     <string name="downloads_stale_row">Needs updating</string>
     <string name="downloads_play">Play</string>
+    <string name="downloads_read">Read</string>
     <string name="downloads_pause">Pause</string>
     <string name="downloads_remove">Remove</string>
     <string name="downloads_library">Open your library</string>

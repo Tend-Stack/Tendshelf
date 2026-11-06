@@ -17,7 +17,7 @@ import app.tendshelf.shared.Save
  * only the current device's rows are ever returned, so one person's rows never go out under another's token.
  */
 class SqliteOutbox(context: Context, private val deviceId: () -> String) :
-    SQLiteOpenHelper(context.applicationContext, "outbox.db", null, 2), OutboxStore {
+    SQLiteOpenHelper(context.applicationContext, "outbox.db", null, 3), OutboxStore {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -28,11 +28,20 @@ class SqliteOutbox(context: Context, private val deviceId: () -> String) :
         )
         db.execSQL("CREATE INDEX saves_book ON saves(book_id, seq)")
         createOffline(db)
+        addTextColumns(db)
     }
 
-    /** Version 2 adds the downloaded books; the unsent saves of version 1 are untouched. */
+    /** Version 2 adds the downloaded books, version 3 their text (A9); the unsent saves and the rows already there are untouched. */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) createOffline(db)
+        if (oldVersion < 3) addTextColumns(db)
+    }
+
+    /** Where a book's stored text stands: none|fetching|ready|signin|failed, the revision stored and the edition it was made from. */
+    private fun addTextColumns(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE offline_books ADD COLUMN text_state TEXT NOT NULL DEFAULT 'none'")
+        db.execSQL("ALTER TABLE offline_books ADD COLUMN text_revision TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE offline_books ADD COLUMN edition_id TEXT NOT NULL DEFAULT ''")
     }
 
     private fun createOffline(db: SQLiteDatabase) {
@@ -205,5 +214,30 @@ class SqliteOfflineStore(context: Context) : OfflineStore {
     @Synchronized
     override fun clear() {
         helper.writableDatabase.delete("offline_books", null, null)
+    }
+
+    /** The text columns of one book: state word, revision, edition. */
+    @Synchronized
+    fun text(id: String): Triple<String, String, String>? =
+        helper.readableDatabase.rawQuery("SELECT text_state, text_revision, edition_id FROM offline_books WHERE book_id = ?", arrayOf(id))
+            .use { c -> if (c.moveToFirst()) Triple(c.getString(0), c.getString(1), c.getString(2)) else null }
+
+    /** Books whose text is in [state] (for the retry at the next start and the next page). */
+    @Synchronized
+    fun withText(state: String): List<String> =
+        helper.readableDatabase.rawQuery("SELECT book_id FROM offline_books WHERE text_state = ?", arrayOf(state))
+            .use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+
+    @Synchronized
+    fun setText(id: String, state: String, revision: String? = null, edition: String? = null) {
+        helper.writableDatabase.update(
+            "offline_books",
+            ContentValues().apply {
+                put("text_state", state)
+                if (revision != null) put("text_revision", revision)
+                if (edition != null) put("edition_id", edition)
+            },
+            "book_id = ?", arrayOf(id),
+        )
     }
 }

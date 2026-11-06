@@ -19,6 +19,8 @@ import android.webkit.WebViewClient
 import app.tendshelf.shared.BUNDLED_HOST
 import app.tendshelf.shared.Nav
 import app.tendshelf.shared.decide
+import app.tendshelf.shared.offlineRoute
+import java.io.FileInputStream
 
 /**
  * The WebView's settings and clients (plan A2 step 6). One navigation policy, `decide`, answers every main-frame
@@ -72,12 +74,43 @@ object ShellWeb {
                 // (never answered here): it is what tells a chosen sign-out, which deletes downloads, from an expired one.
                 val origin = store.origin
                 if (request.method == "POST" && origin != null && request.url.path == "/logout" && origin.matches(request.url.toString())) onLogout()
-                return pages.intercept(request.url)
+                pages.homeOrigin = origin?.text ?: "" // the bundled Downloads page links its Read buttons here
+                return pages.intercept(request.url) ?: storedAnswer(request)
             }
+
+            /**
+             * The stored text standing in for the worker (A9): only a GET, only the stored origin, only an address the store holds,
+             * and only while the server does not answer (invariant 5). Everything else goes to the network as it always did.
+             */
+            private fun storedAnswer(request: WebResourceRequest): WebResourceResponse? {
+                val origin = store.origin ?: return null
+                if (request.method != "GET") return null
+                val stored = stored(request.url) ?: return null
+                if (OfflineNet.reachable(origin)) return null
+                val type = stored.type
+                val mime = type.substringBefore(';').trim().ifEmpty { "application/octet-stream" }
+                val charset = Regex("charset=([A-Za-z0-9_-]+)", RegexOption.IGNORE_CASE).find(type)?.groupValues?.get(1)
+                val headers = HashMap<String, String>()
+                headers["Cache-Control"] = "no-store"
+                stored.csp?.let { headers["Content-Security-Policy"] = it }
+                return WebResourceResponse(mime, charset, 200, "OK", headers, FileInputStream(stored.file))
+            }
+
+            private fun stored(url: Uri): Stored? {
+                val origin = store.origin ?: return null
+                val route = offlineRoute(url.toString(), origin) ?: return null
+                return TextStore.lookup(route)
+            }
+
+            private var retried = ""
 
             override fun onPageFinished(view: WebView, url: String) {
                 onNavigated()
-                if (Uri.parse(url).host != BUNDLED_HOST) flow().onPageFinished(url)
+                retried = ""
+                if (Uri.parse(url).host != BUNDLED_HOST) {
+                    flow().onPageFinished(url)
+                    Offline.onPageLoaded()
+                }
             }
 
             override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) = onNavigated()
@@ -88,7 +121,18 @@ object ShellWeb {
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame && request.url.host != BUNDLED_HOST) goOffline(view)
+                if (request.isForMainFrame && request.url.host != BUNDLED_HOST) {
+                    // The server stopped answering inside the 10 s the last probe was remembered: ask again, and if the
+                    // page is stored it opens from the phone instead of the bundled page (A9, D2).
+                    OfflineNet.invalidate()
+                    val url = request.url.toString()
+                    if (retried != url && stored(request.url) != null) {
+                        retried = url
+                        view.loadUrl(url)
+                        return
+                    }
+                    goOffline(view)
+                }
             }
 
             override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {

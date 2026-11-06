@@ -29,6 +29,10 @@ class StartPages(private val context: Context) {
     @Volatile
     var homeUrl = ""
 
+    /** The server's origin (scheme, host, port) for a book's Read link; empty before a server is chosen. */
+    @Volatile
+    var homeOrigin = ""
+
     @Volatile
     var state = StartState()
 
@@ -120,7 +124,11 @@ class StartPages(private val context: Context) {
             out.append("<li class=\"ts-row dl__row\">$cover")
             out.append("<span class=\"ts-row__text\"><span class=\"ts-row__title\">${esc(b.title)}</span><span class=\"ts-row__meta\">$meta</span></span>")
             out.append("<span class=\"dl__actions\">")
-            if (canPlay) {
+            // The two formats are two plain buttons: this page shows no place and no time, so neither one is "the resume button".
+            if (Offline.readable(b.bookId) && homeOrigin.isNotEmpty()) {
+                out.append("<a class=\"ts-btn ts-btn--secondary\" href=\"${esc(homeOrigin)}/books/$id/read\">${esc(context.getString(R.string.downloads_read))}</a>")
+            }
+            if (canPlay && Offline.hasAudio(b.bookId)) {
                 val href = if (here) "/toggle" else "/play?id=$id"
                 val label = if (here && playing) R.string.downloads_pause else R.string.downloads_play
                 out.append("<a class=\"ts-btn ts-btn--secondary\" href=\"$href\">${esc(context.getString(label))}</a>")
