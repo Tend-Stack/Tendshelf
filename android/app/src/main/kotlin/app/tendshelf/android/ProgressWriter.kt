@@ -133,6 +133,8 @@ class ProgressWriter(
     private fun record(why: String) {
         val id = book()
         if (id.isEmpty() || exo.mediaItemCount == 0) return
+        // A finished book has its own `finished` row (NextBook); a plain place saved after it would un-finish it.
+        if (exo.playbackState == Player.STATE_ENDED) return
         val conn = connections().current() ?: return // no sign-in: nothing is saved under nobody's token
         val pos = exo.currentPosition
         val speed = exo.playbackParameters.speed.toDouble()
