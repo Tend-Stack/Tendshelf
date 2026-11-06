@@ -326,7 +326,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"sw.js":      {4*1024 + 512, 24 * 1024}, // Firefox hang fix (2026-11-05): 4.3 KB with the stored-file list, reported; G6a (operator, 2026-11-04): reader text and shell, 3.5 KB; 3.53 KB with the slow-server fallback, reported
 	"offline.js": {3*1024 + 512, 24 * 1024}, // 3.34 KB with the retry on a slow server, reported
 	// M6 D2 (decision 0020, operator 2026-11-05): the desktop window script, loaded only under ts_shell=desktop; 1.25 KB approved.
-	"desktop.js": {1*1024 + 256, 16 * 1024},
+	"desktop.js":      {1*1024 + 256, 16 * 1024},
+	"native-audio.js": {640, 4 * 1024}, // A1: a commented no-op for the Android window until A4 fills it; inside the app total
 	// Decision 0023 (X2, operator 2026-11-05): the desktop app's title bar script, loaded only under ts_shell=desktop; 2,816 B approved.
 	// X4 (now playing, the More menu's switch, the theme): 3,578 B measured with its comments intact, 3,584 B set; over the approved 2,816 B, reported for the operator.
 	// X5 (drop a book: the zone, the hand-over to the uploader, two sets of words): 4,667 B measured with its comments intact, 4,736 B set; reported for the operator.

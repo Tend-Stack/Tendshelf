@@ -146,6 +146,9 @@ func (s *server) deleteAPIQueue(w http.ResponseWriter, r *http.Request) {
 func (s *server) postAPIQueueNext(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Ended string `json:"ended"`
+		// Series opts in to the book after Ended in its series when the queue is empty (decision 0026).
+		// Without it an empty queue stays a 204, as it was for older apps.
+		Series bool `json:"series"`
 	}
 	// An empty body is fine here: "ended" is optional. Anything else must be JSON.
 	if r.ContentLength != 0 {
@@ -169,11 +172,66 @@ func (s *server) postAPIQueueNext(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err != nil:
 		s.serverError(w, r, "api queue next", err)
-	case !found:
-		w.WriteHeader(http.StatusNoContent)
+	case found:
+		api.Write(w, http.StatusOK, map[string]any{"book": card, "source": "queue"})
 	default:
-		api.Write(w, http.StatusOK, map[string]any{"book": card})
+		s.writeSeriesNext(w, r, body.Ended, body.Series)
 	}
+}
+
+// writeSeriesNext answers the empty-queue case of POST /api/v1/queue/next: the book after ended in its
+// first series, when the app asked (series), the person's "next in series" setting is on, and the book
+// is one the person may listen to and Tendshelf can play. Anything else is a 204. The queue is never
+// touched here, and a book the person cannot see never shows: the series is read through the scope SQL.
+func (s *server) writeSeriesNext(w http.ResponseWriter, r *http.Request, ended string, series bool) {
+	if !series || ended == "" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	ctx := r.Context()
+	u := currentUser(r)
+	set, err := s.users.LoadSettings(ctx, u.ID)
+	if err != nil {
+		s.serverError(w, r, "api series next", err)
+		return
+	}
+	if !set.NextInSeries {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	next, _, err := s.nextInSeries(r, ended)
+	if err != nil {
+		s.serverError(w, r, "api series next", err)
+		return
+	}
+	if next == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	b, err := s.lib.Book(ctx, next.ID)
+	if errors.Is(err, library.ErrNotFound) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "api series next", err)
+		return
+	}
+	if !s.can.Can(ctx, u, share.ListenBook, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) ||
+		b.RefusedReason != "" || b.MissingSince != 0 || b.Kind == library.BookText {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	d, err := s.lib.BookDetail(ctx, s.scope(r), b.ID)
+	if errors.Is(err, library.ErrNotFound) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "api series next", err)
+		return
+	}
+	api.Write(w, http.StatusOK, map[string]any{"book": apiCardOf(d.Card), "source": "series"})
 }
 
 // queueable reports whether a book can be queued: not refused, not missing and with an audio file.

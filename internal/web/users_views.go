@@ -216,7 +216,7 @@ func (s *server) addDevices(ctx context.Context, v *pages.UsersView, list []shar
 			continue
 		}
 		base := "/admin/users/" + id
-		rows, _ := deviceRows(now, bySession[id], byApp[id], base, true)
+		rows, _ := deviceRows(now, bySession[id], byApp[id], base, true, "")
 		g := pages.UsersDevices{Name: personName(p.User)}
 		switch {
 		case id == actor.ID:

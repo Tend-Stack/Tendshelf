@@ -280,6 +280,8 @@ the readable one):
 | `GET /hx/player/panel/{bookID}`, `/about`, `/bookmarks`, `/count`, `/chapter/{index}` | Now playing panel fragments (desktop, 1280 px and wider); the same book access as the book page, 404 otherwise |
 | `POST /hx/player/next` | Autoplay: the book that just ended is dropped and the next playable queued book starts (204 when the queue has nothing to play) |
 | `GET /api/v1/queue`, `POST /api/v1/queue`, `POST /api/v1/queue/next`, `POST /api/v1/queue/{bookID}/move`, `DELETE /api/v1/queue/{bookID}` | JSON Up next (see [api.md](api.md) "Up next (queue)") |
+| `GET /api/v1/settings`, `PATCH /api/v1/settings`, `PUT /api/v1/books/{id}/speed`, `GET /api/v1/continue` | JSON app settings, per-book speed and the Continue shelf (A1, see [api.md](api.md)) |
+| `GET /app/connect`, `POST /app/connect`, `GET /app/connect/done` | The Connect page of the Android app (A1, [decision 0026](decisions/0026-app-sign-in.md)): one tap makes a one-time code bound to the app's PKCE challenge; `POST /api/v1/auth/token` trades it for a device token |
 | `GET /hx/home/hero`, `/hx/books/{id}/play` | Home hero refresh and the play region of a book page |
 | `POST /api/v1/progress/batch`, `GET /api/v1/progress`, `GET`, `POST /api/v1/books/{id}/bookmarks`, `GET /api/v1/bookmarks`, `PATCH`, `DELETE /api/v1/bookmarks/{id}` | JSON sync (full list under "JSON API v1" below and in [api.md](api.md)) |
 
@@ -307,6 +309,10 @@ revoking, disabling or a password change work on the next call. A request with b
 cross-origin check still runs) and never get a `ts_csrf` cookie; cookie requests keep session + CSRF. A token dies
 after 180 days unused, a person holds at most 50, and rows revoked over 30 days ago are pruned on the next issue.
 Anonymous `/api/` requests get JSON 401, never a redirect.
+Sign-in by code (A1, decision 0026): `POST /api/v1/auth/token` also takes `{code, verifier, name, kind: "mobile"}`, a one-time code from
+`/app/connect` (migration 0031, table `device_codes`, hash only, 2 minutes, single use) and the PKCE verifier of the app that began.
+A good swap binds the page session to the device (`sessions.device_id`, enforced in `Sessions.Lookup`), so ending either half ends both.
+No route turns a bearer token into a cookie.
 The reference is `docs/api.md`. Shipped in P3-9a (read side): `POST|DELETE /auth/token`, `GET /me`, `GET /libraries`,
 `GET /books?...` and `GET /libraries/{id}/books?...` (the Library page's filters, keyset cursor, `limit` 1..120),
 `GET /books/{id}` (details, chapters, files with alias URLs, permissions, own progress), `GET /search?q=`,

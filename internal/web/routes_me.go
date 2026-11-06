@@ -53,7 +53,7 @@ func (s *server) ownDeviceRows(r *http.Request) ([]pages.ProfileDevice, int, err
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, others := deviceRows(s.now(), list, apps, "/me", false)
+	rows, others := deviceRows(s.now(), list, apps, "/me", false, sess.DeviceID)
 	return rows, others, nil
 }
 

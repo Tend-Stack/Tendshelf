@@ -96,6 +96,12 @@ func apiSweepRows() []sweepRow {
 		api(apiUnsafe("POST /api/v1/queue", http.MethodPost, sweepStatic("/api/v1/queue"), sweepSame(http.StatusUnsupportedMediaType))),
 		api(apiUnsafe("POST /api/v1/queue/next", http.MethodPost, sweepStatic("/api/v1/queue/next"), sweepSame(http.StatusUnsupportedMediaType))),
 		api(apiUnsafe("POST /api/v1/queue/{bookID}/move", http.MethodPost, bookPath("/api/v1/queue/", "/move"), staff415)),
+		// The app's settings, per-book speed and Continue shelf (A1). The unsafe rows send a form: 415 for
+		// everyone on settings, and the book check first on the speed row.
+		api(sweepGet("GET /api/v1/settings", sweepStatic("/api/v1/settings"), ok)),
+		api(apiUnsafe("PATCH /api/v1/settings", http.MethodPatch, sweepStatic("/api/v1/settings"), sweepSame(http.StatusUnsupportedMediaType))),
+		api(apiUnsafe("PUT /api/v1/books/{id}/speed", http.MethodPut, bookPath("/api/v1/books/", "/speed"), staff415)),
+		api(sweepGet("GET /api/v1/continue", sweepStatic("/api/v1/continue"), ok)),
 		api(apiUnsafe("DELETE /api/v1/queue/{bookID}", http.MethodDelete, bookPath("/api/v1/queue/", ""), sweepSame(http.StatusNotFound))),
 	}
 }

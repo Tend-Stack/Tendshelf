@@ -190,11 +190,17 @@ func (a *Service) Login(ctx context.Context, username, password string, ip netip
 	return out, nil
 }
 
-// Logout ends the session.
+// Logout ends the session. A session bound to a device takes the device with it: signing out of
+// the phone's page signs out the app too (decision 0026).
 func (a *Service) Logout(ctx context.Context, s Session) error {
 	return a.st.WriteTx(ctx, func(tx *sql.Tx) error {
 		if err := a.sessions.Delete(ctx, tx, s.Hash); err != nil {
 			return err
+		}
+		if s.DeviceID != "" && a.devices != nil {
+			if _, err := a.devices.Revoke(ctx, tx, s.UserID, s.DeviceID, a.ms()); err != nil {
+				return err
+			}
 		}
 		return db.Audit(ctx, tx, db.AuditEntry{At: a.ms(), UserID: s.UserID, Action: "auth.logout", Target: s.UserID})
 	})

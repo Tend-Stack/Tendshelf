@@ -261,11 +261,13 @@ func (d *Devices) Revoke(ctx context.Context, ex db.Execer, userID, id string, n
 
 // RevokeAll kills every live device of the person and returns how many.
 func (d *Devices) RevokeAll(ctx context.Context, ex db.Execer, userID string, nowMs int64) (int64, error) {
-	return revokeAllDevices(ctx, ex, userID, nowMs)
+	return revokeAllDevices(ctx, ex, userID, nowMs, "")
 }
 
-func revokeAllDevices(ctx context.Context, ex db.Execer, userID string, nowMs int64) (int64, error) {
-	res, err := ex.ExecContext(ctx, `UPDATE devices SET revoked_at = ?, token_hash = NULL WHERE user_id = ? AND revoked_at IS NULL`, nowMs, userID)
+// revokeAllDevices kills the person's live devices except the one with id keep; "" keeps none.
+func revokeAllDevices(ctx context.Context, ex db.Execer, userID string, nowMs int64, keep string) (int64, error) {
+	res, err := ex.ExecContext(ctx, `UPDATE devices SET revoked_at = ?, token_hash = NULL
+		WHERE user_id = ? AND revoked_at IS NULL AND id <> ?`, nowMs, userID, keep)
 	if err != nil {
 		return 0, err
 	}

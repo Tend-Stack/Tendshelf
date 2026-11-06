@@ -139,9 +139,9 @@ templ Layout(p Page, body templ.Component) {
 			@DesktopBar(p)
 			@OfflineBanner(p)
 			<div class="ts-shell">
-				@TabBar(p.Current)
-				@SideRail(p.Current)
-				@Sidebar(p.Current, p.Admin, UsersLink{Show: p.Users, Waiting: p.UsersWaiting}, p.Shelves, p.NavRail, p.CSRF, true)
+				@TabBar(p.Current, p.Shell)
+				@SideRail(p.Current, p.Shell)
+				@Sidebar(p.Current, p.Admin, UsersLink{Show: p.Users, Waiting: p.UsersWaiting}, p.Shelves, p.NavRail, p.CSRF, true, p.Shell)
 				<main
 					id="main"
 					class="ts-main"
@@ -218,6 +218,9 @@ templ Head(p Page, extraCSS ...string) {
 			<link rel="stylesheet" href={ p.Assets.URL("css/pages-desktop.css") }/>
 			<script type="module" src={ p.Assets.URL("js/desktop.js") }></script>
 			<script type="module" src={ p.Assets.URL("js/desktop-shell.js") }></script>
+		}
+		if p.Shell == "android" {
+			<script type="module" src={ p.Assets.URL("js/native-audio.js") }></script>
 		}
 	</head>
 }

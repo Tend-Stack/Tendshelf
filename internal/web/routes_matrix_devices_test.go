@@ -55,7 +55,15 @@ func devicesSweepRows() []sweepRow {
 		r.Label = label
 		return r
 	}
+	// The Connect page of the phone app (A1). The matrix sends no ts_shell mark, so a signed-in person
+	// gets the 403 page with no form, on GET and on POST alike; shell_android_test.go has the rest.
+	connectPath := "/app/connect?challenge=" + a1Challenge
+	connectGet := sweepGet("GET /app/connect", sweepStatic(connectPath), sweepSame(http.StatusForbidden))
+	connectPost := sweepPost("POST /app/connect", sweepStatic("/app/connect"),
+		sweepFormOf(url.Values{"challenge": {a1Challenge}}), sweepSame(http.StatusForbidden), "")
+	connectDone := sweepGet("GET /app/connect/done", sweepStatic("/app/connect/done"), sweepSame(http.StatusForbidden))
 	return []sweepRow{
+		connectGet, connectPost, connectDone,
 		tokenRow, del, me, nope, own,
 		admin("device", func(e *sweepEnv, _ int) string {
 			return "/admin/users/" + e.extra + "/devices/" + e.extraDevice + "/signout"

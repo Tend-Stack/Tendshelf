@@ -27,6 +27,7 @@ func (s *server) registerAPI(mux *http.ServeMux) {
 	s.registerAPIRead(mux)
 	s.registerAPISync(mux)
 	s.registerAPIQueue(mux)
+	s.registerAPISettings(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		api.Error(w, http.StatusNotFound, api.CodeNotFound, "There is nothing at this address.")
 	})
@@ -61,10 +62,15 @@ type tokenRequest struct {
 	Password string `json:"password"`
 	Name     string `json:"name"`
 	Kind     string `json:"kind"`
+	// Code and Verifier are the other way to sign in: a one-time code from /app/connect and the
+	// PKCE verifier of the app that started it (decision 0026). They exclude Username and Password.
+	Code     string `json:"code"`
+	Verifier string `json:"verifier"`
 }
 
 type tokenResponse struct {
-	Token  string    `json:"token"`
+	// Token is empty, and so left out, when a code only reconnected an app that already had a token.
+	Token  string    `json:"token,omitempty"`
 	Device apiDevice `json:"device"`
 	User   apiUser   `json:"user"`
 }
@@ -84,6 +90,10 @@ func (s *server) postAPIToken(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		api.Error(w, http.StatusBadRequest, api.CodeInvalid, "The request is not valid JSON.")
+		return
+	}
+	if in.Code != "" {
+		s.postAPITokenCode(w, r, in)
 		return
 	}
 	kind, ok := auth.ParseDeviceKind(in.Kind)
@@ -106,6 +116,55 @@ func (s *server) postAPIToken(w http.ResponseWriter, r *http.Request) {
 		slog.Error("issue device token", "err", err)
 		api.Error(w, http.StatusServiceUnavailable, api.CodeUnavailable, "Something went wrong on our side. Try again in a moment.")
 	default:
+		api.Write(w, http.StatusCreated, tokenResponse{Token: l.Token, Device: apiDeviceOf(l.Device), User: apiUserOf(l.User)})
+	}
+}
+
+// msgCodeExpired is the one answer to every code that does not work, so a guess learns nothing.
+const msgCodeExpired = "This sign-in has expired. Start again from the app."
+
+// postAPITokenCode trades a one-time code and its PKCE verifier for a mobile device token (201), or,
+// when the caller already holds a live token of the same person, rebinds the new web session to that
+// device (200, no token). A wrong code counts against the address on the same limiter as app keys
+// and is checked before any database read.
+func (s *server) postAPITokenCode(w http.ResponseWriter, r *http.Request, in tokenRequest) {
+	ip := s.proxies.ClientIP(r)
+	key := ip.String()
+	if ok, wait := s.keyLimiter.Allow(key); !ok {
+		w.Header().Set("Retry-After", strconv.Itoa(max(1, int((wait+time.Second-1)/time.Second))))
+		api.Error(w, http.StatusTooManyRequests, api.CodeRateLimited, "Too many attempts. Wait a little and try again.")
+		return
+	}
+	if in.Username != "" || in.Password != "" {
+		apiBadField(w, "code", "Send a code or a username and password, not both.")
+		return
+	}
+	if kind, ok := auth.ParseDeviceKind(in.Kind); !ok || kind != auth.KindMobile {
+		apiBadField(w, "kind", `A code signs in a "mobile" app only.`)
+		return
+	}
+	var caller *auth.Device
+	if d, ok := auth.DeviceFrom(r.Context()); ok {
+		caller = &d
+	}
+	l, err := s.auth.SwapDeviceCode(r.Context(), in.Code, in.Verifier, in.Name, caller, ip)
+	switch {
+	case errors.Is(err, auth.ErrBadCode):
+		s.keyLimiter.Fail(key)
+		api.Unauthorized(w, msgCodeExpired)
+	case errors.Is(err, auth.ErrCodeOtherPerson):
+		api.Error(w, http.StatusConflict, api.CodeConflict, "This sign-in belongs to someone else. Start again from the app.")
+	case errors.Is(err, auth.ErrTooManyDevices):
+		api.Error(w, http.StatusConflict, api.CodeConflict,
+			"This account has reached the limit of "+strconv.Itoa(auth.MaxLiveDevices)+" signed-in apps. Sign one out first.")
+	case err != nil:
+		slog.Error("swap device code", "err", err) // never the code
+		api.Error(w, http.StatusServiceUnavailable, api.CodeUnavailable, "Something went wrong on our side. Try again in a moment.")
+	case l.Token == "":
+		w.Header().Set("Cache-Control", "no-store")
+		api.Write(w, http.StatusOK, tokenResponse{Device: apiDeviceOf(l.Device), User: apiUserOf(l.User)})
+	default:
+		w.Header().Set("Cache-Control", "no-store")
 		api.Write(w, http.StatusCreated, tokenResponse{Token: l.Token, Device: apiDeviceOf(l.Device), User: apiUserOf(l.User)})
 	}
 }
