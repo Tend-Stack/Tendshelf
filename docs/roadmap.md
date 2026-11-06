@@ -859,6 +859,28 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
   Limits: read only, no fixing from the page; ebook problems stay on `/admin/ebooks`; no 100,000-file perf row (see
   report). Words not in the deck are in `docs/copy-additions.md`.
 
+- **L6 Listening timeline** (2026-11-06, done; plan section 9). Scope: migration `listening_recent` (index
+  `listening_sessions_recent` on user, ended_at DESC, id), `library/timeline.go` (`Repo.Timeline`: keyset on
+  ended_at and id, 50 a page, books through the scope in SQL, chapter found in Go from one batched read),
+  `GET /me/listening/history?book=&cursor=` grouped by day in the person's zone, a "Go back here" seek control per
+  session (no resume button), links "Where was I?" on `/me/listening` and "Listening history" on the Bookmarks tab.
+  No JS, new stylesheet `pages-timeline.css` (in `noPrefetch`). Checks: `TestTimeline*` (library: keyset, ties,
+  scope, revoked, chapter; web: roles, other person's rows, day grouping across midnight, paging, links),
+  `TestMigrationListeningRecent*`, the 4 x 33,000 session perf row (history 0.4 ms against 150 ms),
+  route matrix row, `TestTimelineVisual`. Limits: no night sleep, no editing or deleting sessions, no reading
+  sessions, no API route. Words not in the deck are in `docs/copy-additions.md`.
+
+- **R1 All my highlights** (2026-11-06, done; plan section 10). Scope: `library/highlights.go`
+  (`Repo.AllHighlights`: own live rows, books filtered by view and `ReadText` (`BookFilterFor`) in SQL, search with
+  escaped wildcards, colour, book, 50 a page with a total), `GET /me/highlights?q=&colour=&book=&page=`,
+  `/me/highlights.md` and `.json`, a link beside the word list on Profile. `reader_marks.go` now has `marksMarkdown`,
+  `marksText`, `marksJSON` and `sortMarks` shared with the per-book export (output unchanged), and `readerHref`
+  from `readerCtx.href`. No migration, no JS, new stylesheet `pages-highlights.css` (in `noPrefetch`). Checks:
+  `TestAllHighlights*` (library: scope, deleted, revoked, can_read=0, search with % and _, colour, paging; web:
+  roles, other person's rows, revoked book absent on page and exports, export contents and headers, per-book
+  export shape), route matrix rows, `TestHighlightsVisual`. Limits: read only (editing stays in the reader), no
+  text bookmarks here, no API. Words not in the deck are in `docs/copy-additions.md`.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), native mobile

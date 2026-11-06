@@ -29,6 +29,8 @@ type BookmarkToast struct{ Text, LinkHref, LinkLabel string }
 // BookmarksView is the Bookmarks tab of the book page. The handler writes every word and address.
 type BookmarksView struct {
 	Heading, ExportHref, ExportLabel, ChipsLabel string
+	// HistoryHref and HistoryLabel link to the listening history of this book (L6).
+	HistoryHref, HistoryLabel string
 	Chips                                        []BookmarkChip
 	Rows                                         []components.BookmarkRowView
 	EmptyTitle, EmptyBody                        string
@@ -84,6 +86,9 @@ templ BookmarksPanel(v BookmarksView) {
 		}
 		<div class="ts-bookmarks__head">
 			<h2 class="ts-bookmarks__title">{ v.Heading }</h2>
+			if v.HistoryHref != "" {
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.HistoryHref) }>{ v.HistoryLabel }</a>
+			}
 			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.ExportHref) } hx-get={ v.ExportHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog">
 				@components.Icon("share", false)
 				{ v.ExportLabel }

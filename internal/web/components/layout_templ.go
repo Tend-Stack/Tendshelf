@@ -84,8 +84,8 @@ const pagePrefix = "css/pages-"
 // pages-email.css joins them (decision 0021): Profile adds its own stylesheet, and no page may gain a request for it.
 // pages-invite, pages-folders and pages-upload join them for Home's row of three covers (three covers, three requests).
 // pages-onboard joins them for the same row: it dresses sign-in, setup and password pages, which a signed-in page never leads to.
-// pages-chapters and pages-appkeys join them: each belongs to one rarely opened page, and no page may gain a request for it.
-var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css", "css/pages-email.css", "css/pages-invite.css", "css/pages-folders.css", "css/pages-upload.css", "css/pages-onboard.css", "css/pages-chapters.css", "css/pages-appkeys.css"}
+// pages-chapters, pages-appkeys, pages-timeline and pages-highlights join them: each belongs to one rarely opened page, and no page may gain a request for it.
+var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css", "css/pages-email.css", "css/pages-invite.css", "css/pages-folders.css", "css/pages-upload.css", "css/pages-onboard.css", "css/pages-chapters.css", "css/pages-appkeys.css", "css/pages-timeline.css", "css/pages-highlights.css"}
 
 // withPrefetch returns p with the page stylesheets it does not link itself, so the head can ask the
 // browser to fetch them early: the first boosted visit to another page then finds them cached.

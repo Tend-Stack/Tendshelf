@@ -1,0 +1,78 @@
+package pages
+
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// TimelineRow is one session of the listening history. PlayAtMs is where "Go back here" seeks to.
+type TimelineRow struct {
+	BookHref, BookTitle string
+	Clock, Span         string
+	BookID, BackLabel   string
+	PlayAtMs            int64
+}
+
+// TimelineDay is a day heading with its sessions, newest first.
+type TimelineDay struct {
+	Label string
+	Rows  []TimelineRow
+}
+
+// TimelineView is the whole /me/listening/history page. The handler writes every word and address.
+type TimelineView struct {
+	Back, BackHref, Title, Lead string
+	BackHereWord, ToWord        string
+	Only, OnlyHref, AllLabel    string
+	Empty                       *ListeningEmpty
+	Days                        []TimelineDay
+	OlderHref, OlderLabel       string
+}
+
+// Timeline is /me/listening/history (L6): the person's own listening sessions by day. "Go back here" is the
+// chapter list's seek control (player.js reads data-ts-play-at), not a resume button.
+templ Timeline(v TimelineView) {
+	<div class="ts-dash ts-tl">
+		<a class="ts-dash__back" href={ templ.SafeURL(v.BackHref) }>
+			@dashChevron(true)
+			<span>{ v.Back }</span>
+		</a>
+		<h1 class="title-2 ts-dash__title">{ v.Title }</h1>
+		<p class="body ts-dash__muted ts-dash__lead">{ v.Lead }</p>
+		if v.Only != "" {
+			<p class="body ts-tl__only">
+				<span>{ v.Only }</span>
+				<a class="ts-tl__link" href={ templ.SafeURL(v.OnlyHref) }>{ v.AllLabel }</a>
+			</p>
+		}
+		if v.Empty != nil {
+			@listeningEmpty(*v.Empty)
+		}
+		for i, d := range v.Days {
+			<section class="ts-tl__day" aria-labelledby={ "tl-day-" + strconv.Itoa(i) }>
+				<h2 id={ "tl-day-" + strconv.Itoa(i) } class="section ts-tl__h">{ d.Label }</h2>
+				<ul class="ts-tl__list">
+					for _, r := range d.Rows {
+						<li class="ts-tl__row">
+							<div class="ts-tl__text">
+								<a class="ts-tl__book" href={ templ.SafeURL(r.BookHref) }>{ r.BookTitle }</a>
+								<p class="caption ts-tl__clock">{ r.Clock }</p>
+								<p class="body ts-tl__span">{ r.Span }</p>
+							</div>
+							<button type="button" class="ts-btn ts-btn--quiet" data-ts-play-at={ strconv.FormatInt(r.PlayAtMs, 10) } data-ts-book={ r.BookID } aria-label={ r.BackLabel }>{ v.BackHereWord }</button>
+						</li>
+					}
+				</ul>
+			</section>
+		}
+		if v.OlderHref != "" {
+			<a class="ts-btn ts-btn--quiet ts-tl__older" href={ templ.SafeURL(v.OlderHref) }>{ v.OlderLabel }</a>
+		}
+	</div>
+}
+
+// listeningEmpty is the empty state shared with the dashboard's wording of one link.
+templ listeningEmpty(e ListeningEmpty) {
+	@components.EmptyState(e.Title, e.Body, listeningAction(e.Action, e.Href))
+}

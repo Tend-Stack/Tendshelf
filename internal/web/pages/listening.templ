@@ -78,6 +78,7 @@ type ListeningView struct {
 	Earlier, Later ListeningStep
 	Empty          *ListeningEmpty
 	Quiet          string
+	HistoryLabel, HistoryHref string
 	Nums           []ListeningNum
 	Cards          []ListeningCard
 }
@@ -95,6 +96,9 @@ templ Listening(v ListeningView) {
 		</a>
 		<h1 class="title-2 ts-dash__title">{ v.Title }</h1>
 		<p class="body ts-dash__muted ts-dash__lead">{ v.Lead }</p>
+		if v.HistoryHref != "" {
+			<a class="ts-btn ts-btn--quiet ts-dash__history" href={ templ.SafeURL(v.HistoryHref) }>{ v.HistoryLabel }</a>
+		}
 		if v.Empty != nil {
 			@components.EmptyState(v.Empty.Title, v.Empty.Body, listeningAction(v.Empty.Action, v.Empty.Href))
 		} else {

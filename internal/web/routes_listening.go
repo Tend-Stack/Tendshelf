@@ -19,6 +19,7 @@ const (
 
 func (s *server) registerListening(mux *http.ServeMux) {
 	mux.HandleFunc("GET /me/listening", s.getListening)
+	mux.HandleFunc("GET /me/listening/history", s.getTimeline)
 }
 
 // getListening is "Your listening" (decision 0014): the signed-in person's own listening over a week,

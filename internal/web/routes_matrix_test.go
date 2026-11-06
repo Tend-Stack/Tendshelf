@@ -504,6 +504,10 @@ func sweepRows() []sweepRow {
 		sweepGet("GET /me/words", sweepStatic("/me/words"), sweepSame(200)),
 		sweepGet("GET /me/words.md", sweepStatic("/me/words.md"), sweepSame(200)),
 		sweepGet("GET /me/words.json", sweepStatic("/me/words.json"), sweepSame(200)),
+		sweepGet("GET /me/highlights", sweepStatic("/me/highlights"), sweepSame(200)),
+		sweepGet("GET /me/highlights.md", sweepStatic("/me/highlights.md"), sweepSame(200)),
+		sweepGet("GET /me/highlights.json", sweepStatic("/me/highlights.json"), sweepSame(200)),
+		sweepGet("GET /me/listening/history", sweepStatic("/me/listening/history"), sweepSame(200)),
 		sweepGet("GET /offline", sweepStatic("/offline"), sweepSame(200)),
 		// Shelves
 		sweepGet("GET /shelves", sweepStatic("/shelves"), shelfWant),

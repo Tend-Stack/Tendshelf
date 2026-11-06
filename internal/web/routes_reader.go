@@ -80,16 +80,26 @@ type readerCtx struct {
 
 // href is a reader address with the edition (when the address named it) and the given query pairs.
 func (rc readerCtx) href(kv ...string) string {
-	q := url.Values{}
+	ed := ""
 	if rc.explicit {
-		q.Set("edition", rc.ed.ID)
+		ed = rc.ed.ID
+	}
+	return readerHref(rc.book.ID, ed, kv...)
+}
+
+// readerHref is the reader address of a book: editionID (when not empty) and the key/value pairs become the
+// query, and a pair with an empty value is left out.
+func readerHref(bookID, editionID string, kv ...string) string {
+	q := url.Values{}
+	if editionID != "" {
+		q.Set("edition", editionID)
 	}
 	for i := 0; i+1 < len(kv); i += 2 {
 		if kv[i+1] != "" {
 			q.Set(kv[i], kv[i+1])
 		}
 	}
-	u := "/books/" + rc.book.ID + "/read"
+	u := "/books/" + bookID + "/read"
 	if len(q) > 0 {
 		u += "?" + q.Encode()
 	}

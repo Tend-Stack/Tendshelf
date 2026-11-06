@@ -1,0 +1,12 @@
+/* /me/listening/history (L6). Lives inside the dashboard frame (.ts-dash); tokens and rem only. */
+.ts-tl__only { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-16); margin: 0; }
+.ts-tl__link { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--ink); }
+.ts-tl__day { min-width: 0; }
+.ts-tl__h { margin: 0 0 var(--space-8); }
+.ts-tl__list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-tl__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-16); padding: var(--space-12) 1.125rem; }
+.ts-tl__row + .ts-tl__row { border-top: 1px solid var(--line); }
+.ts-tl__text { min-width: 0; flex: 1 1 14rem; }
+.ts-tl__book { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.ts-tl__clock, .ts-tl__span { margin: 0; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ts-tl__older { align-self: flex-start; }
