@@ -204,7 +204,7 @@ Autoplay: takes the first playable book off the front of the queue and answers `
 Books the person can no longer open or that cannot play are skipped. The answer carries `"source":"queue"`. Nothing left to play: 204.
 With `"series":true` (and `ended`), an empty queue falls through to the next book of `ended`'s first series that the person may
 listen to, when their "next in series" setting is on: `{"book":BookCard,"source":"series"}`. The queue is not touched by this
-branch. The last book, a text book, a hidden next book (it is skipped without a trace), the setting off, or no `series`: 204. Errors: 400 `ended`
+branch. The last book, a text book, a next book already finished, a hidden next book (it is skipped without a trace), the setting off, or no `series`: 204. Errors: 400 `ended`
 (longer than 64 characters), 415, 413, 400.
 
 ### POST /api/v1/queue/{bookID}/move

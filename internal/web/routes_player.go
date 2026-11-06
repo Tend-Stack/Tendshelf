@@ -78,7 +78,7 @@ func (s *server) getCurrentPlayer(w http.ResponseWriter, r *http.Request) {
 
 // postPlayerNext answers POST /hx/player/next: autoplay. It drops the book that just ended (form
 // field ended, optional) from Up next, pops the first book the person may play and answers with its
-// PlayerData fragment, or 204 when Up next has nothing to play. A book that cannot be built is
+// PlayerData fragment, or, when Up next is empty, the next book of the series (playerSeriesNext), or 204. A book that cannot be built is
 // skipped, at most QueueMax times.
 func (s *server) postPlayerNext(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, apiQueueBody)
@@ -105,10 +105,32 @@ func (s *server) postPlayerNext(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, "player next", err)
 	case !found:
-		w.WriteHeader(http.StatusNoContent)
+		s.playerSeriesNext(w, r, ended)
 	default:
 		s.fragment(w, r, http.StatusOK, components.PlayerData(v))
 	}
+}
+
+// playerSeriesNext is the empty-queue half of postPlayerNext: the next book of the ended book's series
+// (setting on, playable, not finished; see seriesNextBook), else 204. The queue always wins over it.
+func (s *server) playerSeriesNext(w http.ResponseWriter, r *http.Request, ended string) {
+	b, ok, err := s.seriesNextBook(r, ended)
+	if err == nil && ok {
+		var v components.PlayerDataView
+		v, err = s.playerView(r.Context(), currentUser(r), s.scope(r), b)
+		if err == nil {
+			s.fragment(w, r, http.StatusOK, components.PlayerData(v))
+			return
+		}
+		if errors.Is(err, library.ErrNotFound) {
+			err = nil
+		}
+	}
+	if err != nil {
+		s.serverError(w, r, "player series next", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // The Now playing panel (NP1): fragments for the desktop side panel. Each one loads the book with

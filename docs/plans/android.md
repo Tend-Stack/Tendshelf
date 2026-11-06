@@ -101,7 +101,7 @@ New in **A1**:
 | `GET/PATCH /api/v1/settings` | Speed, skip lengths, auto rewind, next in series, sound. Only the HTML settings form exists. |
 | Per-book speed in the API | From L1, so the app reads one value. |
 | `GET /api/v1/continue` | Auto's first row. Only the progress change feed exists. |
-| Next book answer | `POST /queue/next` covers the queue only; next in series lives behind `POST /hx/player/next`. Native must get both with the screen off. |
+| Next book answer | Built (A1, and the web player's `POST /hx/player/next` since 2026-11-06): both answer queue first, then series next (`series:true` in the API). Native must get both with the screen off. |
 | One-time code route and swap | The sign-in above. Handles `409` at the device limit. |
 | Shell behaviour for `android` | Load `native-audio.js`, hide Downloads where native replaces it, keep the CSP unchanged. |
 
