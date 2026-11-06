@@ -648,6 +648,7 @@ PDF reader was chosen on fixtures in R1 (E2):
 | `golang.org/x/net/html` (**added in M5 R1 E1**, v0.61.0, also `html/charset`) | HTML5 tokenizing of EPUB XHTML, HTML files and MOBI/KF8 content (R1) | BSD-3; Go team |
 | `golang.org/x/text` (`unicode/norm`, `encoding/...`) (**added in M5 R1 E1**, v0.43.0) | NFC normalisation for matching (R1); charset decoding for FB2, HTML and text (R1) | BSD-3; Go team |
 | `github.com/ledongthuc/pdf` (**added in M5 R1 E2**, v0.0.0-20261020125853-5e46805f718e) | PDF text layer (R1): per-glyph position and size, ToUnicode CMaps, xref streams and incremental updates passed the four spike fixtures | BSD-3 (The Go Authors; licence read from the release); no context support, so the parser checks the deadline between pages; encrypted files are refused before it reads text. Limit: glyph widths of standard fonts without `/Widths` read as 0 |
+| `rsc.io/qr` (**added for decision 0028**, v0.2.0) | QR code encoding for the invite link and the add-a-phone code; standard library only; imported in `internal/web/qr.go` only | BSD-3 (Russ Cox; licence read from the module) |
 | Font vendored to `internal/web/static/fonts/` (woff2): OpenDyslexic | The one extra reader font (R4); the reader otherwise uses the design's Fraunces and Fira Sans | SIL OFL 1.1 (read from the v0.91.12 tag; built in R4 P4); `NOTICES.md` row |
 
 Considered and not chosen: `github.com/clipperhouse/uax29` (sentence segmentation; own rules handle

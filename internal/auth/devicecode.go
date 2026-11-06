@@ -59,23 +59,34 @@ func validVerifier(v string) bool {
 // returns the raw code, which is shown once and kept nowhere. It first drops codes that expired and
 // any older code of this session, so a session holds at most one live code.
 func (a *Service) IssueDeviceCode(ctx context.Context, sess Session, challenge [32]byte, ip netip.Addr) (string, error) {
-	code, hash := NewToken()
+	var code string
 	err := a.st.WriteTx(ctx, func(tx *sql.Tx) error {
-		now := a.ms()
-		if _, err := tx.ExecContext(ctx, `DELETE FROM device_codes WHERE expires_at < ? OR session_hash = ?`, now, sess.Hash[:]); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO device_codes (code_hash, session_hash, challenge, created_at, expires_at)
-			VALUES (?, ?, ?, ?, ?)`, hash[:], sess.Hash[:], challenge[:], now, now+DeviceCodeTTL.Milliseconds()); err != nil {
-			return err
-		}
-		return db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: sess.UserID, Action: "auth.device_code_issued", Target: sess.UserID,
-			Detail: map[string]string{"ip": ip.String()}})
+		var err error
+		code, err = a.insertDeviceCode(ctx, tx, sess.Hash, sess.UserID, challenge, ip)
+		return err
 	})
 	if err != nil {
 		return "", err
 	}
 	return code, nil
+}
+
+// insertDeviceCode is the write behind IssueDeviceCode, inside the caller's transaction: it drops
+// expired codes and the session's older code, stores the new code's hash and audits it. Approving a
+// pairing (pairing.go) ends in the same write, so there is one kind of code.
+func (a *Service) insertDeviceCode(ctx context.Context, tx *sql.Tx, sessHash [32]byte, userID string, challenge [32]byte, ip netip.Addr) (string, error) {
+	code, hash := NewToken()
+	now := a.ms()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM device_codes WHERE expires_at < ? OR session_hash = ?`, now, sessHash[:]); err != nil {
+		return "", err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO device_codes (code_hash, session_hash, challenge, created_at, expires_at)
+		VALUES (?, ?, ?, ?, ?)`, hash[:], sessHash[:], challenge[:], now, now+DeviceCodeTTL.Milliseconds()); err != nil {
+		return "", err
+	}
+	err := db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: userID, Action: "auth.device_code_issued", Target: userID,
+		Detail: map[string]string{"ip": ip.String()}})
+	return code, err
 }
 
 // SwapDeviceCode trades a code and its verifier for a mobile device token. Every way of failing

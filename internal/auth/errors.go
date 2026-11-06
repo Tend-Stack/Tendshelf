@@ -25,6 +25,14 @@ var (
 	// ErrCodeOtherPerson means the code was made by a session of another person than the caller's
 	// device. The code is burned.
 	ErrCodeOtherPerson = errors.New("auth: code belongs to another person")
+	// ErrPairEnded is the one answer to every pairing that cannot go on: unknown, expired, already
+	// claimed, in the wrong state, owner session gone, person disabled. Nothing is made.
+	ErrPairEnded = errors.New("auth: this code has ended")
+	// ErrPairMismatch means the number typed did not match. The pairing is deleted.
+	ErrPairMismatch = errors.New("auth: the number did not match")
+	// ErrPairBound means the phone's own session is already bound to a device (a connected app), so it
+	// may not be made someone else's.
+	ErrPairBound = errors.New("auth: this phone is already signed in")
 	// ErrSetupCode means the first-run setup code did not match.
 	ErrSetupCode = errors.New("auth: wrong setup code")
 )
