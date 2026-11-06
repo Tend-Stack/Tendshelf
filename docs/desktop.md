@@ -22,7 +22,14 @@ warns once and lists books unread.
 - **Connect**: the window opens a Tendshelf server you already run. The server must be recent enough to
   answer `/healthz` with `shell` support; an older one is refused in plain words.
 
-The choice is saved in `~/.config/tendshelf-desktop/desktop.json`.
+The choice is saved in `~/.config/tendshelf-desktop/desktop.json`, with the window's size and whether it was
+maximised (the position is not kept: Wayland does not let an app place its window). Quit with Ctrl+Q.
+
+## The window
+
+The window opens when the first page is ready, at the size you left it, on the background of your theme. It has
+the system's shadow, rounded corners and resize border; the title bar is drawn by the page itself (decision 0023).
+If your desktop shows two bars or none, start it with `TENDSHELF_NATIVE_FRAME=1 tendshelf-desktop` for the system's own bar.
 
 ## Known limits
 

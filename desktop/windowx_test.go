@@ -30,13 +30,13 @@ func TestDeskBridgeWindow(t *testing.T) {
 	for _, verb := range []string{"minimise", "maximise", "close", "quit"} {
 		b.Handle(msgWindow+verb, session)
 	}
-	b.Handle(msgWindow+"close", pickerOrigin+"/")
+	b.Handle(msgWindow+"close", pickerOrigin+"wails/")
 	if got := strings.Join(fw.calls, ","); got != "minimise,maximise,close,quit,close" {
 		t.Fatalf("calls = %s", got)
 	}
 
 	fw.calls = nil
-	for _, from := range []string{"", "https://example.com/", "http://127.0.0.1:99/", "http://127.0.0.1:9.evil.example/", "wails://wailsx/", "file:///etc/passwd"} {
+	for _, from := range []string{"", "https://example.com/", "http://127.0.0.1:99/", "http://127.0.0.1:9.evil.example/", "file:///etc/passwd", "wails:/x", "xwails://wails/"} {
 		b.Handle(msgWindow+"quit", from)
 	}
 	for _, verb := range []string{"", "Quit", "minimise ", "destroy", "close; alert(1)", "quit extra"} {
@@ -72,6 +72,26 @@ func TestDeskBridgeCommands(t *testing.T) {
 	}
 }
 
+// TestDeskBridgePickerHears: the picker is told about the window, but never receives a media key.
+func TestDeskBridgePickerHears(t *testing.T) {
+	var ran []string
+	b := &Bridge{origin: func() string { return "http://127.0.0.1:9" }, exec: func(js string) { ran = append(ran, js) }}
+	if b.Send("maximised") {
+		t.Fatal("sent before any page was ready")
+	}
+	b.Handle(msgReady, pickerOrigin+"wails/")
+	if !b.Send("maximised") || !b.Send("active") {
+		t.Fatal("the picker did not hear the window's state")
+	}
+	if b.Send("toggle") || b.Send("back") || b.Send("forward") {
+		t.Fatal("the picker was sent a media key")
+	}
+	b.Reset()
+	if b.Send("restored") {
+		t.Fatal("a new page must say ready again")
+	}
+}
+
 // TestDeskBridgeLoad: a first page from the session or the picker releases the window; others do not.
 func TestDeskBridgeLoad(t *testing.T) {
 	var n atomic.Int32
@@ -82,7 +102,7 @@ func TestDeskBridgeLoad(t *testing.T) {
 		t.Fatal("a foreign page released the window")
 	}
 	b.Handle(msgReady, "http://127.0.0.1:9/")
-	b.Handle(msgReady, pickerOrigin+"/")
+	b.Handle(msgReady, pickerOrigin+"wails/")
 	if n.Load() != 2 {
 		t.Fatalf("loads = %d, want 2", n.Load())
 	}

@@ -160,9 +160,20 @@ isolated:
 desktop-probe:
 	$(GO) -C desktop build -trimpath -tags 'production tendshelf_probe' -o ../bin/tendshelf-desktop-probe .
 
+# The exit run's hands (decision 0023, X1): real pointer and key events through Mutter's RemoteDesktop API.
+.PHONY: desktop-input
+desktop-input:
+	$(GO) -C desktop build -trimpath -tags tendshelf_probe -o ../bin/tendshelf-input ./probe/input
+
 # The M6 exit run (plan D7): the probe window drives both modes in the private headless GNOME Shell and
 # writes .local/tests/desktop/exit-<time>/ (result.json per launch, driver.txt, shots/). Nothing opens on
 # the visible desktop; see desktop/probe/exit-run.sh.
 .PHONY: desktop-exit
-desktop-exit: build desktop-probe
+desktop-exit: build desktop-probe desktop-input
 	scripts/isolated-display.sh desktop/probe/exit-run.sh
+
+# The window part of the exit run on X11: the private shell also starts Xwayland and the window runs with
+# GDK_BACKEND=x11 (decision 0023, X1). Only the window checks run.
+.PHONY: desktop-exit-x11
+desktop-exit-x11: build desktop-probe desktop-input
+	TS_X11=1 TENDSHELF_EXIT_ONLY=window TENDSHELF_WINDOW_BACKEND=x11 scripts/isolated-display.sh desktop/probe/exit-run.sh

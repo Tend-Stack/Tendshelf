@@ -18,9 +18,10 @@ const (
 
 	maxOpenBytes = 2048
 
-	// pickerOrigin is where Wails serves the first-run picker. It is the only page that is not on the
+	// pickerOrigin is the scheme Wails serves the first-run picker on (the full address is not fixed,
+	// so only the scheme is compared). It is the only page that is not on the
 	// session's origin and may talk to the window.
-	pickerOrigin = "wails://wails"
+	pickerOrigin = "wails://"
 )
 
 // command builds the fixed script for one ts:desktop value.
@@ -89,8 +90,9 @@ type Bridge struct {
 	win    windowControl      // the page's own title bar buttons act on this
 	onLoad func()             // a first page, the session's or the picker's, says it is ready
 
-	mu    sync.Mutex
-	ready bool
+	mu       sync.Mutex
+	ready    bool // a page of the session said ready
+	pickerUp bool // the picker said ready: it hears the window's state, never the media keys
 }
 
 // Handle is the window's raw message handler.
@@ -102,8 +104,17 @@ func (b *Bridge) Handle(message, currentURI string) {
 			b.ready = true
 			b.mu.Unlock()
 		}
-		if (b.fromSession(currentURI) || fromPicker(currentURI)) && b.onLoad != nil {
-			b.onLoad()
+		if fromPicker(currentURI) {
+			b.mu.Lock()
+			b.pickerUp = true
+			b.mu.Unlock()
+		}
+		if b.fromSession(currentURI) || fromPicker(currentURI) {
+			if b.onLoad != nil {
+				b.onLoad()
+			}
+		} else {
+			slog.Debug("a page said ready from an origin the window does not know", "origin", currentURI)
 		}
 	case strings.HasPrefix(message, msgWindow):
 		b.handleWindow(strings.TrimPrefix(message, msgWindow), currentURI)
@@ -123,7 +134,7 @@ func (b *Bridge) Handle(message, currentURI string) {
 
 // fromPicker reports whether the page is the first-run picker that Wails serves.
 func fromPicker(currentURI string) bool {
-	return currentURI == pickerOrigin || strings.HasPrefix(currentURI, pickerOrigin+"/")
+	return strings.HasPrefix(currentURI, pickerOrigin)
 }
 
 // handleWindow runs one verb of the page's title bar. Only the session's pages and the picker may
@@ -150,18 +161,22 @@ func (b *Bridge) fromSession(currentURI string) bool {
 func (b *Bridge) Reset() {
 	b.mu.Lock()
 	b.ready = false
+	b.pickerUp = false
 	b.mu.Unlock()
 }
 
-// Send gives the page a media command. It reports whether the page was ready: before that the
-// command is dropped, because nothing listens yet.
+// stateCommands tell the page about the window; the picker hears them too. The rest are media keys.
+var stateCommands = map[string]bool{"active": true, "inactive": true, "maximised": true, "restored": true, "tray": true}
+
+// Send gives the page a command. It reports whether the page was ready: before that the
+// command is dropped, because nothing listens yet. The picker is never sent a media key.
 func (b *Bridge) Send(command string) bool {
 	js, ok := commands[command]
 	if !ok {
 		return false
 	}
 	b.mu.Lock()
-	ready := b.ready
+	ready := b.ready || (b.pickerUp && stateCommands[command])
 	b.mu.Unlock()
 	if !ready {
 		return false

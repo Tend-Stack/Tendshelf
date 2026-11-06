@@ -215,7 +215,8 @@ func prepareWindow(ui *windowUI, saved desktopshell.Window, nativeFrame bool) {
 				slog.Warn("keeping the system title bar", "err", err)
 			}
 		}
-		if screen := ui.app.Screen.GetPrimary(); screen != nil {
+		screen := ui.app.Screen.GetPrimary()
+		if screen != nil {
 			w, h := fitWindow(saved, screen.Size.Width, screen.Size.Height)
 			ui.win.SetSize(w, h)
 		}
@@ -233,6 +234,9 @@ func showWindow(ui *windowUI, t *windowTracker) {
 		slog.Warn("showing the window before its chrome is ready")
 	}
 	application.InvokeSync(func() { ui.win.Show() })
+	time.Sleep(300 * time.Millisecond)
+	w, h := ui.win.Size()
+	slog.Info("window shown", "width", w, "height", h, "maximised", ui.win.IsMaximised())
 	// The page started before the window could say whether it is in front or maximised.
 	if t.isFocused() {
 		ui.bridge.Send("active")

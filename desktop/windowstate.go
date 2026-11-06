@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 
@@ -136,6 +137,7 @@ func newRevealer(show func(), fallback time.Duration) *revealer {
 // Ready shows the window the first time it is called; later calls do nothing.
 func (r *revealer) Ready() {
 	r.once.Do(func() {
+		slog.Info("window: first page ready or fallback reached")
 		r.show()
 	})
 }

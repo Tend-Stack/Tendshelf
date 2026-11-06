@@ -37,7 +37,8 @@ was reused, extended or replaced.
 - **SQLite** via the pure-Go driver, WAL mode, one database file in the data directory.
 - **Wails v3** for desktop, in a separate Go module under `desktop/` so the server binary never links
   CGO, GTK or WebKit. Pages load from an http(s) origin, never Wails' asset scheme
-  (decision 0020). Native mobile is later; the PWA comes first.
+  (decision 0020). The window keeps GTK's decorations with a hidden titlebar, never `Frameless`
+  (decision 0023). Native mobile is later; the PWA comes first.
 
 ## templ and HTMX conventions
 
