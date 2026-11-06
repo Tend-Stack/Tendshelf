@@ -1,0 +1,48 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// AppConnectState says which of the three pages /app/connect shows.
+type AppConnectState int
+
+const (
+	// AppConnectAsk is the consent page: one button that makes the code.
+	AppConnectAsk AppConnectState = iota
+	// AppConnectNotInApp is shown to a browser; it has no form, so no code can come of it.
+	AppConnectNotInApp
+	// AppConnectDone is the page the app's window intercepts; a person normally never reads it.
+	AppConnectDone
+)
+
+// AppConnectView is what the Connect page shows (decision 0026). Words come from the caller. It never
+// carries a code: the code travels only in the redirect that follows the tap.
+type AppConnectView struct {
+	State     AppConnectState
+	CSRF      string
+	Challenge string // checked by the caller; written back as a hidden field
+	Insecure  bool   // the address is plain http
+	Title     string
+	Body      string
+	Button    string
+	Warning   string
+}
+
+// AppConnect is the page where the signed-in person connects the phone app.
+templ AppConnect(v AppConnectView) {
+	@components.Brand()
+	<h1 class="title-1 ts-frame__title">{ v.Title }</h1>
+	<p class="body-lg ts-frame__lead">{ v.Body }</p>
+	if v.State == AppConnectAsk {
+		if v.Insecure {
+			<p class="body ts-frame__lead" id="connect-warning">
+				@components.Icon("alert", false)
+				{ v.Warning }
+			</p>
+		}
+		<form class="ts-form" method="post" action="/app/connect" hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<input type="hidden" name="challenge" value={ v.Challenge }/>
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">{ v.Button }</button>
+		</form>
+	}
+}

@@ -14,6 +14,21 @@ var MainNav = []NavItem{
 	{"profile", "Profile", "/me", "profile"},
 }
 
+// navFor is MainNav for the window it is drawn in. The phone app has its own Downloads (decision 0026),
+// so its three navigations leave the web page out; every other window keeps the whole list.
+func navFor(shell string) []NavItem {
+	if shell != "android" {
+		return MainNav
+	}
+	out := make([]NavItem, 0, len(MainNav))
+	for _, it := range MainNav {
+		if it.Key != "downloads" {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
 // shelfHref is where a sidebar shelf link goes: the shelf, or the list of shelves for the entries
 // that have no id ("Shelves" when the person has none, "All shelves" after the first twelve).
 func shelfHref(s ShelfLink) string {
@@ -32,9 +47,9 @@ func shelfKey(s ShelfLink) string {
 }
 
 // TabBar is the phone's bottom navigation.
-templ TabBar(current string) {
+templ TabBar(current, shell string) {
 	<nav aria-label="Main" id="nav-tabbar" hx-preserve class="ts-tabbar ts-nav-tabbar">
-		for _, it := range MainNav {
+		for _, it := range navFor(shell) {
 			<a
 				href={ templ.SafeURL(it.Href) }
 				class="ts-tabbar__item"
@@ -51,12 +66,12 @@ templ TabBar(current string) {
 }
 
 // SideRail is the tablet navigation rail (768 to 1279 px).
-templ SideRail(current string) {
+templ SideRail(current, shell string) {
 	<nav aria-label="Main" id="nav-rail" hx-preserve class="ts-rail ts-nav-rail">
 		<span class="ts-rail__brand ts-brand">
 			@Mark()
 		</span>
-		for _, it := range MainNav {
+		for _, it := range navFor(shell) {
 			if it.Key == "profile" {
 				<span class="ts-rail__spacer"></span>
 			}
@@ -102,7 +117,7 @@ func navToggleLabel(rail bool) string {
 // its foot posts the next state. preserve keeps the element across boosted swaps (full page renders);
 // the fragment that answers the toggle leaves it off, because htmx 4 would otherwise put the OLD
 // preserved element back in place of the new one.
-templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, rail bool, csrf string, preserve bool) {
+templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, rail bool, csrf string, preserve bool, shell string) {
 	<nav
 		aria-label="Main"
 		id="nav-side"
@@ -116,7 +131,7 @@ templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, 
 			@Mark()
 			<span class="ts-side__label">Tendshelf</span>
 		</span>
-		for _, it := range MainNav {
+		for _, it := range navFor(shell) {
 			<a
 				href={ templ.SafeURL(it.Href) }
 				class="ts-side__item"

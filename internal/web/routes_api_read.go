@@ -9,6 +9,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
 // The read side of the JSON API. Every route below reuses the function the matching page calls
@@ -135,6 +136,8 @@ type apiBookDetail struct {
 	Kind    string      `json:"kind"`
 	Formats []string    `json:"formats"`
 	Reading *apiReading `json:"reading"`
+	// Speed is the person's own speed for this book, else their usual speed.
+	Speed float64 `json:"speed"`
 }
 
 type apiReading struct {
@@ -191,6 +194,18 @@ func (s *server) getAPIBook(w http.ResponseWriter, r *http.Request) {
 			p := apiProgressOf(*prog)
 			out.Progress = &p
 		}
+	}
+	set, err := s.users.LoadSettings(ctx, u.ID)
+	if err != nil {
+		s.serverError(w, r, "api book speed", err)
+		return
+	}
+	out.Speed = set.Speed
+	if sp, err := s.users.BookSpeed(ctx, u.ID, book.ID); err == nil {
+		out.Speed = sp
+	} else if !errors.Is(err, users.ErrNoBookSpeed) {
+		s.serverError(w, r, "api book speed", err)
+		return
 	}
 	out.Kind, out.Formats = book.Kind, []string{}
 	if out.Kind == "" {

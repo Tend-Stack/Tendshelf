@@ -315,6 +315,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerPlayer(mux)
 	s.registerAPI(mux)
 	s.registerAppKeys(mux)
+	s.registerAppConnect(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})

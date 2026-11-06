@@ -81,8 +81,8 @@ func appIcon(k auth.DeviceKind) string {
 // the rest by last activity, newest first. base is "/me" or "/admin/users/{id}"; the sign-out form
 // of a row is base + "/devices/{id}/signout" for an app, and for a browser "/me/sessions/{id}/signout"
 // on /me or the same devices path on an admin page (it takes either id). others counts the rows that
-// are not the current browser. Admin rows never carry a current browser.
-func deviceRows(now time.Time, sessions []auth.SessionInfo, apps []auth.Device, base string, forAdmin bool) ([]pages.ProfileDevice, int) {
+// are not the current browser or, with currentDevice set, the phone asking. Admin rows never carry a current browser.
+func deviceRows(now time.Time, sessions []auth.SessionInfo, apps []auth.Device, base string, forAdmin bool, currentDevice string) ([]pages.ProfileDevice, int) {
 	type entry struct {
 		row  pages.ProfileDevice
 		last int64
@@ -106,6 +106,19 @@ func deviceRows(now time.Time, sessions []auth.SessionInfo, apps []auth.Device, 
 		rest = append(rest, entry{d, si.LastSeenAt})
 	}
 	for _, a := range apps {
+		if currentDevice != "" && a.ID == currentDevice {
+			// The phone whose own window is asking: it leads the list and has no sign-out of its own
+			// here, like "This device" for a browser (decision 0026).
+			d := pages.ProfileDevice{ID: a.ID, Title: msgThisPhone, Meta: auth.KindLabel(a.Kind), Icon: appIcon(a.Kind),
+				Action: base + "/devices/" + a.ID + "/signout", Current: true}
+			if a.LastSeenAt > 0 {
+				d.Meta += " · " + agoText(now, time.UnixMilli(a.LastSeenAt))
+			}
+			if cur == nil {
+				cur = &d
+				continue
+			}
+		}
 		kind := auth.KindLabel(a.Kind)
 		meta := kind + " · " + msgNotUsedYet
 		if a.LastSeenAt > 0 {

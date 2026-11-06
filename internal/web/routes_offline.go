@@ -44,8 +44,21 @@ func (s *server) registerInstall(outer *http.ServeMux) {
 	if a, ok := s.assets.Asset("js/sw.js"); ok {
 		src = a.Body
 	}
-	outer.Handle("/sw.js", newServiceWorker(s.swBuild, s.assets.Precache(), src))
+	outer.Handle("/sw.js", noWorkerInApp(newServiceWorker(s.swBuild, s.assets.Precache(), src)))
 	outer.Handle("/manifest.webmanifest", s.manifestHandler())
+}
+
+// noWorkerInApp answers 404 to /sw.js inside the Android app's window (decision 0026, D10). The page
+// already leaves offline.js out there; this keeps a page that lost its script choice from
+// registering a worker anyway. Browsers and the desktop shell are not changed.
+func noWorkerInApp(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if shellFrom(r) == "android" {
+			http.NotFound(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // serviceWorker is the /sw.js answer: the build and asset list, then the worker source. It is built
