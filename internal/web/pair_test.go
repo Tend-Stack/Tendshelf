@@ -184,7 +184,7 @@ func TestPairHappy(t *testing.T) {
 		}
 	}
 	h := s.rec.Header()
-	if h.Get("Cache-Control") != "no-store" || h.Get("Referrer-Policy") != "no-referrer" || h.Get("X-Robots-Tag") != "noindex" {
+	if h.Get("Cache-Control") != "no-store" || h.Get("Referrer-Policy") != "same-origin" || h.Get("X-Robots-Tag") != "noindex" {
 		t.Errorf("owner headers: %v", h)
 	}
 
@@ -227,7 +227,7 @@ func TestPairHappy(t *testing.T) {
 	pwBefore := a.count(t, `SELECT COUNT(*) FROM audit_log WHERE action = 'auth.login' AND detail_json LIKE '%password%'`)
 	fin := s.finish(ph)
 	code := a1CodeOf(t, fin)
-	if fin.Header().Get("Cache-Control") != "no-store" || fin.Header().Get("Referrer-Policy") != "no-referrer" {
+	if fin.Header().Get("Cache-Control") != "no-store" || fin.Header().Get("Referrer-Policy") != "same-origin" {
 		t.Errorf("finish headers: %v", fin.Header())
 	}
 	if ph.jar[pairCookie] != nil || ph.jar[auth.CookieName] == nil {
@@ -775,7 +775,7 @@ func TestPairLeaks(t *testing.T) {
 	csp := pages["ended"].Header().Get("Content-Security-Policy")
 	for name, rec := range pages {
 		h := rec.Header()
-		if h.Get("Cache-Control") != "no-store" || h.Get("Referrer-Policy") != "no-referrer" || h.Get("X-Robots-Tag") != "noindex" {
+		if h.Get("Cache-Control") != "no-store" || h.Get("Referrer-Policy") != "same-origin" || h.Get("X-Robots-Tag") != "noindex" {
 			t.Errorf("%s: headers %v", name, h)
 		}
 		if h.Get("Content-Security-Policy") != csp || csp == "" {

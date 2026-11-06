@@ -133,7 +133,7 @@ func (e *linkEnv) get(path string, cookies ...*http.Cookie) *httptest.ResponseRe
 func linkAssertHeaders(t *testing.T, rec *httptest.ResponseRecorder, cache string) {
 	t.Helper()
 	h := rec.Header()
-	if h.Get("Referrer-Policy") != "no-referrer" || h.Get("X-Robots-Tag") != "noindex" || h.Get("Cache-Control") != cache {
+	if h.Get("Referrer-Policy") != "same-origin" || h.Get("X-Robots-Tag") != "noindex" || h.Get("Cache-Control") != cache {
 		t.Errorf("headers: Referrer-Policy %q, X-Robots-Tag %q, Cache-Control %q (want %q)",
 			h.Get("Referrer-Policy"), h.Get("X-Robots-Tag"), h.Get("Cache-Control"), cache)
 	}
@@ -239,7 +239,7 @@ func TestLinkMedia(t *testing.T) {
 	if rec.Code != http.StatusPartialContent || rec.Body.Len() != 100 {
 		t.Fatalf("ranged stream: %d, %d bytes", rec.Code, rec.Body.Len())
 	}
-	if rec.Header().Get("Cache-Control") != "private, no-store" || rec.Header().Get("Referrer-Policy") != "no-referrer" || rec.Header().Get("X-Robots-Tag") != "noindex" {
+	if rec.Header().Get("Cache-Control") != "private, no-store" || rec.Header().Get("Referrer-Policy") != "same-origin" || rec.Header().Get("X-Robots-Tag") != "noindex" {
 		t.Errorf("stream headers: %v", rec.Header())
 	}
 	if rec := e.get(base + "/stream/" + e.files[1].ID); rec.Code != http.StatusOK {

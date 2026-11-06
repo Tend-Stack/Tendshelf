@@ -79,7 +79,7 @@ func (s *server) postAppConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("Referrer-Policy", "same-origin")
 	http.Redirect(w, r, appDonePath+"?code="+url.QueryEscape(code), http.StatusSeeOther)
 }
 
@@ -90,6 +90,6 @@ func (s *server) getAppConnectDone(w http.ResponseWriter, r *http.Request) {
 		s.appConnectNotInApp(w, r)
 		return
 	}
-	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("Referrer-Policy", "same-origin")
 	s.appConnectPage(w, r, http.StatusOK, pages.AppConnectView{State: pages.AppConnectDone, Body: connectDone})
 }

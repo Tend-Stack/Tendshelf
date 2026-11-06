@@ -36,10 +36,12 @@ func (s *server) registerInvites(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/invites/{id}/cancel", s.postInviteCancel)
 }
 
-// inviteHeaders keeps the token out of referrers, search indexes and caches.
+// inviteHeaders keeps the token out of other sites' referrers, search indexes and caches. same-origin, not
+// no-referrer: with no-referrer a browser on plain http sends "Origin: null" with a form, and the cross-origin
+// check then refuses the page's own Join button.
 func inviteHeaders(w http.ResponseWriter) {
 	h := w.Header()
-	h.Set("Referrer-Policy", "no-referrer")
+	h.Set("Referrer-Policy", "same-origin")
 	h.Set("X-Robots-Tag", "noindex")
 	h.Set("Cache-Control", "no-store")
 }

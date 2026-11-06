@@ -106,7 +106,7 @@ func TestShareEmailWithOwnEmailApp(t *testing.T) {
 	if box := html.UnescapeString(body); !strings.Contains(box, "Hi Rosa,\n\nIt works") && !strings.Contains(box, "Hi Rosa,") {
 		t.Error("message box")
 	}
-	if rec.Header().Get("Referrer-Policy") != "no-referrer" || rec.Header().Get("Cache-Control") != "no-store" {
+	if rec.Header().Get("Referrer-Policy") != "same-origin" || rec.Header().Get("Cache-Control") != "no-store" {
 		t.Error("headers")
 	}
 	// Nothing went through a relay, the address is kept for the row, and the link is shown once.

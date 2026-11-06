@@ -107,7 +107,7 @@ func TestInvitePage(t *testing.T) {
 		}
 	}
 	h := rec.Header()
-	if h.Get("Referrer-Policy") != "no-referrer" || h.Get("X-Robots-Tag") != "noindex" || h.Get("Cache-Control") != "no-store" {
+	if h.Get("Referrer-Policy") != "same-origin" || h.Get("X-Robots-Tag") != "noindex" || h.Get("Cache-Control") != "no-store" {
 		t.Errorf("headers: %v", h)
 	}
 	if strings.Contains(body, "Sign out and use this invite") {

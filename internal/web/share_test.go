@@ -87,7 +87,7 @@ func TestSharePageCreateRoundTrip(t *testing.T) {
 	usersWant(t, rec, http.StatusOK, "create")
 	body := rec.Body.String()
 	tok := sharepageToken(t, body)
-	if location(rec) != "" || rec.Header().Get("Cache-Control") != "no-store" || rec.Header().Get("Referrer-Policy") != "no-referrer" {
+	if location(rec) != "" || rec.Header().Get("Cache-Control") != "no-store" || rec.Header().Get("Referrer-Policy") != "same-origin" {
 		t.Errorf("headers: loc=%q cc=%q rp=%q", location(rec), rec.Header().Get("Cache-Control"), rec.Header().Get("Referrer-Policy"))
 	}
 	if !strings.Contains(body, "Invite link for Rosa") || !strings.Contains(body, "It works once, for 7 days.") || !strings.Contains(body, "Invite someone else") {
