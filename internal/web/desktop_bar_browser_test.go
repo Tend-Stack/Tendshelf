@@ -81,7 +81,7 @@ func TestDeskBarBrowser(t *testing.T) {
 			  bar.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, buttons: 1 }));
 			  bar.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, buttons: 1 }));
 			  bar.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, detail: 2 }));
-			  return window.__posted.filter(m => m !== "wails:runtime:ready" && m !== "tendshelf:ready");
+			  return window.__posted.filter(m => m !== "wails:runtime:ready" && m !== "tendshelf:ready" && !m.startsWith("tendshelf:state "));
 			})()`, &posted)
 			want := "tendshelf:window minimise,tendshelf:window maximise,tendshelf:window close,wails:drag,tendshelf:window maximise"
 			if got := strings.Join(posted, ","); got != want {
@@ -96,7 +96,7 @@ func TestDeskBarBrowser(t *testing.T) {
 			tab.Eval(`(async () => {
 			  const more = document.querySelector("[data-wbar-more]");
 			  more.focus(); more.click();
-			  const items = [...document.querySelectorAll("[role=menuitem]")];
+			  const items = [...document.querySelectorAll("#desktop-menu [role^=menuitem]:not([hidden])")];
 			  const opened = !document.querySelector("[data-wbar-menu]").hidden && more.getAttribute("aria-expanded") === "true";
 			  const focused = document.activeElement === items[0];
 			  document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
@@ -104,7 +104,7 @@ func TestDeskBarBrowser(t *testing.T) {
 			  document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 			  return { opened, focused: focused && second, closed: document.querySelector("[data-wbar-menu]").hidden, focusBack: document.activeElement === more, items: items.length };
 			})()`, &menu)
-			if !menu.Opened || !menu.Focused || !menu.Closed || !menu.FocusBack || menu.Items != 2 {
+			if !menu.Opened || !menu.Focused || !menu.Closed || !menu.FocusBack || menu.Items != 7 {
 				t.Errorf("menu %+v", menu)
 			}
 

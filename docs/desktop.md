@@ -31,8 +31,23 @@ maximised (the position is not kept: Wayland does not let an app place its windo
 The window opens when the first page is ready, at the size you left it, on the background of your theme. It has
 the system's shadow, rounded corners and resize border; the title bar is drawn by the page itself (decision 0023).
 The bar has Back and Forward (also Alt+Left and Alt+Right), the page's place, the book that is playing (it opens the
-player), More (Keyboard shortcuts, Quit) and Minimise, Maximise and Close. Drag the bar to move the window; double-click it
+player), More and Minimise, Maximise and Close. More has Change mode or server, Zoom in, Zoom out, Actual size, Keep playing when I
+close the window (shown only when your desktop has a tray), Keyboard shortcuts, About Tendshelf and Quit. Drag the bar to move the window; double-click it
 to maximise. If your desktop shows two bars or none, start it with `TENDSHELF_NATIVE_FRAME=1 tendshelf-desktop` for the system's own bar.
+
+## Now playing
+
+While a book is loaded, the tray icon's menu names it (title, then chapter and time left), and offers Pause (only while it
+plays), Skip back and Skip forward, then Show Tendshelf and Quit; the icon's tooltip names the book too. With nothing loaded
+the menu is Show Tendshelf and Quit. The tray never starts a book: WebKit allows sound only after a click in the page.
+Clicking the icon shows or hides the window. The tray needs a StatusNotifier host (on GNOME, the AppIndicator extension).
+
+When a book ends, or the sleep timer stops it, and Tendshelf is not the window in front, a desktop notification says so;
+clicking it brings the window back. **Keep playing when I close the window** (More; off by default, and offered only when a
+tray exists) makes Close hide the window while a book plays, so the sound goes on and the tray icon brings it back. Quit
+(Ctrl+Q, the tray, More) always ends the app. The page's words reach the tray and the notification as data: at most 1,024
+bytes, cut to 200 characters, control characters dropped, `<`, `>` and `&` escaped (decision 0023, point 10). The theme you
+use is saved as the colour the window opens on.
 
 ## Known limits
 
@@ -40,4 +55,6 @@ to maximise. If your desktop shows two bars or none, start it with `TENDSHELF_NA
   `WEBKIT_DISABLE_DMABUF_RENDERER=1 tendshelf-desktop`.
 - A server with a self-signed certificate is refused by WebKit.
 - No offline downloads in the window (no service worker), no auto-update, no autostart.
+- Keep playing and the tray depend on the desktop showing tray icons; without one the option is not offered and Close quits.
+- Whether sound continues in a hidden window, a real tray click and a real notification click are for the operator's own desktop.
 - macOS and Windows: not verified.

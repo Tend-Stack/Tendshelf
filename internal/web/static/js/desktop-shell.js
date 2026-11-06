@@ -33,7 +33,7 @@ if (channel && host) {
   // The More menu: a button that opens a short list, arrow keys inside, Escape closes and gives focus back.
   const more = part("more");
   const menu = part("menu");
-  const items = () => [...menu.querySelectorAll("[role=menuitem]")];
+  const items = () => [...menu.querySelectorAll("[role^=menuitem]:not([hidden])")];
   const setMenu = (open) => {
     menu.hidden = !open;
     more.setAttribute("aria-expanded", String(open));

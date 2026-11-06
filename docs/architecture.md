@@ -609,7 +609,8 @@ legacy fallback; [decision 0003](decisions/0003-newest-versions.md)). Two modes,
   the window buttons and More, keeps Back and Forward by a position (`tsAt`) it writes into each history state, and
   copies the title, `#main[data-ts-crumb-href]` and the mini-player's book into the bar. Fixed and sticky layers move
   below it with `--desktop-bar` (`TestDeskBarOffsets` fails for a new full-screen layer). Budgets: `desktop.js` and
-  `desktop-shell.js` count in `jsDesktopTotalGzip` (4,096 B), not in the browser total.
+  `desktop-shell.js` count in `jsDesktopTotalGzip` (4,096 B approved; X4 measured 4,734 B and set 4,864 B, reported), not in the browser total.
+  X4 adds `tendshelf:state <json>` (page to Go: title, chapter, left, playing, theme, canAdd, stop), the tray, notifications and Keep playing in `desktop/`.
 - `ts_shell=desktop` marks the window in both modes (`data-shell`); there is no service worker in it, and no
   Wails runtime in pages. One bridge: `tendshelf:` messages to Go, a `ts:desktop` event back.
 

@@ -27,6 +27,11 @@ func noteFor(prev, cur nowState, windowActive bool) (title, body string, ok bool
 	return plainWords(cur.Title), noteEnd, true
 }
 
+// inFront says whether the person is looking at the window: it has focus, is shown and is not
+// minimised. A hidden window (Keep playing) or a minimised one is not in front, even where the
+// desktop sends no "lost focus" for it.
+func inFront(focused, visible, minimised bool) bool { return focused && visible && !minimised }
+
 // nowWatcher follows what the page says is playing and fans it out: the tray, the notifications and
 // the saved theme. Each is a function, so a test needs no desktop.
 type nowWatcher struct {
@@ -69,6 +74,7 @@ func (w *nowWatcher) Playing() bool {
 func sendNote(ns *notifications.NotificationService) func(title, body string) {
 	return func(title, body string) {
 		go func() {
+			slog.Info("showing a notification") // no words from the page in the log
 			err := ns.SendNotification(notifications.NotificationOptions{
 				ID:    "tendshelf-stopped", // one at a time: a new one replaces the last
 				Title: title,

@@ -120,3 +120,13 @@ func TestDeskNotifyRules(t *testing.T) {
 		t.Errorf("notes %v, drawn %d, grounds %d", notes, drawn, grounds)
 	}
 }
+
+// TestDeskNotifyInFront: only a focused, shown, unminimised window is in front.
+func TestDeskNotifyInFront(t *testing.T) {
+	for i := 0; i < 8; i++ {
+		f, v, m := i&1 != 0, i&2 != 0, i&4 != 0
+		if got, want := inFront(f, v, m), f && v && !m; got != want {
+			t.Errorf("inFront(%v,%v,%v) = %v", f, v, m, got)
+		}
+	}
+}

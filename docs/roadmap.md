@@ -772,6 +772,14 @@ at all. Checks: `make check`, `make build`, `make desktop-check`, `make desktop-
 real input in the private session. Limits: no sound card, real keys, tray click or file drag in the session; other desktops not tried. Next step:
 the operator's word on 0023 and the board; packages X1 to X6 after the release in flight.
 
+**Desktop experience X4, Now playing (2026-11-06)**: `desktop-shell.js` tells Go what is playing (`tendshelf:state`: title, chapter, left, playing,
+theme, canAdd, plus `stop` = `end` or `sleep`); `desktop/state.go` limits and escapes it; the tray (`tray.go`) shows the book, Pause, Skip back and Skip forward
+and rebuilds on change; notifications (Wails' notifications service) at book end and sleep stop when the window is not in front; Keep playing
+(`desktop.json` `keepPlaying`, offered only when a StatusNotifierWatcher exists, via godbus, `NOTICES.md`); the theme is saved as `ground`; More gained
+Change mode or server, Zoom in, Zoom out, Actual size, Keep playing and About Tendshelf (X2's gap). Checks: see the package report in the merge. Limits: `desktop-shell.js` is
+3,578 B gzip (approved 2,816 B) and the desktop total 4,734 B (approved 4,096 B), set to 3,584 B and 4,864 B and reported; sound in a hidden window, a real tray
+and notification click are for the operator's own desktop. Next step: X5, drop a book.
+
 ## M7 Research — dropped (decision 0007, 2026-11-02)
 
 ## Next stage (docs/plans/next-stage.md)

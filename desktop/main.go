@@ -208,7 +208,7 @@ func run(dirs desktopshell.Dirs) error {
 	trackWindow(ui, tracker, save)
 	tray := setupTray(ui)
 	ui.now = &nowWatcher{
-		active: tracker.isFocused,
+		active: func() bool { return inFront(tracker.isFocused(), ui.win.IsVisible(), ui.win.IsMinimised()) },
 		tray:   tray.Update,
 		notify: sendNote(notes),
 		ground: func(theme string) {
@@ -217,7 +217,12 @@ func run(dirs desktopshell.Dirs) error {
 			}
 		},
 	}
-	ui.bridge.onState = ui.now.Set
+	ui.bridge.onState = func(s nowState) {
+		if s.Stop != "" {
+			slog.Info("the page says playback stopped", "why", s.Stop, "focused", tracker.isFocused(), "visible", ui.win.IsVisible(), "minimised", ui.win.IsMinimised())
+		}
+		ui.now.Set(s)
+	}
 	ui.bridge.onPage = func() { // a page that has just loaded knows neither the tray nor the saved choice
 		if ui.hasTray {
 			ui.bridge.Send("tray")

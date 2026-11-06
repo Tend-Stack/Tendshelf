@@ -99,6 +99,8 @@ func (p *run) scriptFor(stage int) string {
 		return windowScript()
 	case "relaunch":
 		return relaunchScript()
+	case "now":
+		return nowScript()
 	case "switch":
 		p.mu.Lock()
 		switched := p.switched
