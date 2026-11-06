@@ -45,7 +45,7 @@ func (s *Sessions) ListAll(ctx context.Context, current [32]byte) ([]SessionInfo
 func (s *Sessions) list(ctx context.Context, current [32]byte, where string, args ...any) ([]SessionInfo, error) {
 	args = append([]any{s.now().UnixMilli()}, args...)
 	rows, err := s.st.Reader().QueryContext(ctx, `SELECT token_hash, user_id, user_agent, created_at, last_seen_at
-		FROM sessions WHERE expires_at >= ?`+where+` ORDER BY last_seen_at DESC, created_at DESC`, args...)
+		FROM sessions WHERE expires_at >= ? AND device_id IS NULL`+where+` ORDER BY last_seen_at DESC, created_at DESC`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,8 @@ func (s *Sessions) DeleteOthers(ctx context.Context, ex db.Execer, userID string
 }
 
 // SignOutOthers ends every other session of the signed-in person, revokes all their device
-// tokens (a token belongs to no browser, so none is "this one"), and records it.
+// tokens except the one this session is bound to (the phone does not sign itself out; a plain
+// browser has none, so every token goes), and records it.
 func (a *Service) SignOutOthers(ctx context.Context, sess Session) (int64, error) {
 	var n int64
 	err := a.st.WriteTx(ctx, func(tx *sql.Tx) error {
@@ -144,7 +145,7 @@ func (a *Service) SignOutOthers(ctx context.Context, sess Session) (int64, error
 		if n, err = a.sessions.DeleteOthers(ctx, tx, sess.UserID, sess.Hash); err != nil {
 			return err
 		}
-		devices, err := revokeAllDevices(ctx, tx, sess.UserID, a.ms())
+		devices, err := revokeAllDevices(ctx, tx, sess.UserID, a.ms(), sess.DeviceID)
 		if err != nil {
 			return err
 		}

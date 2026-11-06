@@ -19,6 +19,9 @@ type Session struct {
 	ExpiresAt  int64
 	LastSeenAt int64
 	UserAgent  string
+	// DeviceID is the device this session was swapped for (decision 0026), or "". While it is set the
+	// session lives only as long as that device does.
+	DeviceID string
 }
 
 // Sessions reads and writes the sessions table. Only the SHA-256 of a token is
@@ -71,11 +74,13 @@ func (s *Sessions) Lookup(ctx context.Context, tok string) (Session, users.User,
 	var sess Session
 	var u users.User
 	var role string
-	var disabled int
+	var disabled, deviceLive int
 	err := s.st.Reader().QueryRowContext(ctx, `SELECT s.created_at, s.expires_at, s.last_seen_at, s.user_agent,
+			COALESCE(s.device_id, ''),
+			EXISTS (SELECT 1 FROM devices d WHERE d.id = s.device_id AND d.revoked_at IS NULL),
 			u.id, u.username, u.display_name, COALESCE(u.email, ''), u.role, u.disabled, u.created_at, COALESCE(u.last_seen_at, 0)
 		FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`, hash[:]).Scan(
-		&sess.CreatedAt, &sess.ExpiresAt, &sess.LastSeenAt, &sess.UserAgent,
+		&sess.CreatedAt, &sess.ExpiresAt, &sess.LastSeenAt, &sess.UserAgent, &sess.DeviceID, &deviceLive,
 		&u.ID, &u.Username, &u.DisplayName, &u.Email, &role, &disabled, &u.CreatedAt, &u.LastSeenAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Session{}, users.User{}, false, ErrNoSession
@@ -97,6 +102,14 @@ func (s *Sessions) Lookup(ctx context.Context, tok string) (Session, users.User,
 	if u.Disabled {
 		return Session{}, users.User{}, false, ErrNoSession
 	}
+	// A session bound to a device ends with it: revoked, pruned or never there. One place, so every
+	// way of ending a device counts, including ones written later (decision 0026, D7).
+	if sess.DeviceID != "" && deviceLive == 0 {
+		if err := s.Delete(ctx, s.st.Writer(), hash); err != nil {
+			return Session{}, users.User{}, false, err
+		}
+		return Session{}, users.User{}, false, ErrNoSession
+	}
 	if nowMs-sess.LastSeenAt < RefreshAfter.Milliseconds() {
 		return sess, u, false, nil
 	}
@@ -116,6 +129,13 @@ func (s *Sessions) Lookup(ctx context.Context, tok string) (Session, users.User,
 	sess.LastSeenAt, sess.ExpiresAt = nowMs, newExpiry
 	u.LastSeenAt = nowMs
 	return sess, u, true, nil
+}
+
+// BindDevice ties the session to a device inside the caller's transaction. From then on Lookup
+// refuses the session once that device is no longer live.
+func (s *Sessions) BindDevice(ctx context.Context, ex db.Execer, hash [32]byte, deviceID string) error {
+	_, err := ex.ExecContext(ctx, `UPDATE sessions SET device_id = ? WHERE token_hash = ?`, deviceID, hash[:])
+	return err
 }
 
 // Delete removes one session.
@@ -145,6 +165,6 @@ func (s *Sessions) EndAllForUser(ctx context.Context, ex db.Execer, userID strin
 	if err != nil {
 		return 0, err
 	}
-	_, err = revokeAllDevices(ctx, ex, userID, nowMs)
+	_, err = revokeAllDevices(ctx, ex, userID, nowMs, "")
 	return n, err
 }

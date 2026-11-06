@@ -19,6 +19,12 @@ var (
 	ErrNoDevice = errors.New("auth: no valid device token")
 	// ErrTooManyDevices means the person already has MaxLiveDevices device tokens.
 	ErrTooManyDevices = errors.New("auth: too many devices")
+	// ErrBadCode is the one answer to every failed device-code swap: unknown, used, expired, wrong
+	// verifier, malformed, session gone or account disabled.
+	ErrBadCode = errors.New("auth: this sign-in has expired")
+	// ErrCodeOtherPerson means the code was made by a session of another person than the caller's
+	// device. The code is burned.
+	ErrCodeOtherPerson = errors.New("auth: code belongs to another person")
 	// ErrSetupCode means the first-run setup code did not match.
 	ErrSetupCode = errors.New("auth: wrong setup code")
 )
