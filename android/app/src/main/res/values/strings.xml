@@ -20,6 +20,17 @@
     <string name="start_label">Address</string>
     <string name="start_button">Connect</string>
     <string name="start_hint">Like tendshelf.home:8095</string>
+    <string name="start_server">I have a server</string>
+    <string name="start_invited">I have an invitation</string>
+    <string name="start_scan_hint">Have a code on another screen? Point your phone\'s camera at it.</string>
+    <string name="join_label">Invitation link</string>
+    <string name="join_hint">Paste the link you were sent</string>
+    <string name="join_button">Continue</string>
+    <string name="link_only">That doesn\'t look like an invitation link.</string>
+    <string name="link_connected">This phone is already signed in to that server. Sign out first to use this link.</string>
+    <string name="link_title">Connect to this server?</string>
+    <string name="link_body">Tendshelf will connect to %1$s. Only go on if you know this address.</string>
+    <string name="link_connect">Connect</string>
     <string name="address_only">Type only the address, like tendshelf.home:8095.</string>
     <string name="unreachable">Couldn\'t reach that server. Check the address and that it\'s running.</string>
     <string name="certificate">That server\'s certificate isn\'t trusted, so Tendshelf won\'t connect.</string>

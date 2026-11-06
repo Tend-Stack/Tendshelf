@@ -8,7 +8,7 @@
         errorLine2="                 ~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/MainActivity.kt"
-            line="142"
+            line="157"
             column="18"/>
     </issue>
 
@@ -19,7 +19,7 @@
         errorLine2="                                                     ~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/Offline.kt"
-            line="465"
+            line="536"
             column="54"/>
     </issue>
 
@@ -30,7 +30,7 @@
         errorLine2="                                                                             ~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/Offline.kt"
-            line="502"
+            line="575"
             column="78"/>
     </issue>
 
@@ -107,7 +107,7 @@
         errorLine2="                                                                                                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/PlaybackService.kt"
-            line="380"
+            line="391"
             column="128"/>
     </issue>
 
@@ -118,7 +118,7 @@
         errorLine2="                                                                                                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/PlaybackService.kt"
-            line="386"
+            line="397"
             column="142"/>
     </issue>
 
@@ -129,7 +129,7 @@
         errorLine2="                                                                                                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/PlaybackService.kt"
-            line="389"
+            line="400"
             column="121"/>
     </issue>
 
@@ -140,7 +140,7 @@
         errorLine2="                                                                                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/PlaybackService.kt"
-            line="392"
+            line="403"
             column="105"/>
     </issue>
 
@@ -151,7 +151,7 @@
         errorLine2="                                                                                                                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/PlaybackService.kt"
-            line="400"
+            line="411"
             column="137"/>
     </issue>
 
@@ -162,7 +162,7 @@
         errorLine2="                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/PlaybackService.kt"
-            line="449"
+            line="460"
             column="62"/>
     </issue>
 
@@ -173,7 +173,7 @@
         errorLine2="                                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/PlaybackService.kt"
-            line="464"
+            line="475"
             column="70"/>
     </issue>
 
@@ -338,7 +338,7 @@
         errorLine2="                       ~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="24"
+            line="27"
             column="24"/>
     </issue>
 
@@ -349,7 +349,7 @@
         errorLine2="                         ~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="25"
+            line="28"
             column="26"/>
     </issue>
 
@@ -360,7 +360,7 @@
         errorLine2="                        ^">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="51"
+            line="61"
             column="25"/>
     </issue>
 
@@ -371,7 +371,7 @@
         errorLine2="                                                                       ~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="77"
+            line="89"
             column="72"/>
     </issue>
 
@@ -382,7 +382,7 @@
         errorLine2="                      ~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="82"
+            line="94"
             column="23"/>
     </issue>
 
@@ -393,7 +393,7 @@
         errorLine2="                                                            ~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="158"
+            line="173"
             column="61"/>
     </issue>
 
@@ -404,7 +404,7 @@
         errorLine2="                            ~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="170"
+            line="185"
             column="29"/>
     </issue>
 
@@ -415,7 +415,7 @@
         errorLine2="                         ~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="171"
+            line="186"
             column="26"/>
     </issue>
 
@@ -426,7 +426,7 @@
         errorLine2="                                        ~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="171"
+            line="186"
             column="41"/>
     </issue>
 
@@ -437,8 +437,19 @@
         errorLine2="                                ~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="182"
+            line="197"
             column="33"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        pages.joinState = StartState(note = words)"
+        errorLine2="                          ~~~~~~~~~~">
+        <location
+            file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
+            line="320"
+            column="27"/>
     </issue>
 
     <issue
@@ -448,7 +459,7 @@
         errorLine2="                            ~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="232"
+            line="345"
             column="29"/>
     </issue>
 
@@ -459,7 +470,7 @@
         errorLine2="                           ~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="233"
+            line="346"
             column="28"/>
     </issue>
 
@@ -470,7 +481,7 @@
         errorLine2="                                   ~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="233"
+            line="346"
             column="36"/>
     </issue>
 
@@ -481,7 +492,7 @@
         errorLine2="                    ~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="234"
+            line="347"
             column="21"/>
     </issue>
 
@@ -492,7 +503,7 @@
         errorLine2="                            ~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="234"
+            line="347"
             column="29"/>
     </issue>
 
@@ -503,7 +514,7 @@
         errorLine2="                            ~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="244"
+            line="357"
             column="29"/>
     </issue>
 
@@ -514,7 +525,7 @@
         errorLine2="                                                    ~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ConnectFlow.kt"
-            line="268"
+            line="381"
             column="53"/>
     </issue>
 
@@ -1020,7 +1031,7 @@
         errorLine2="                                                                   ~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ShellWeb.kt"
-            line="189"
+            line="193"
             column="68"/>
     </issue>
 
@@ -1031,7 +1042,7 @@
         errorLine2="                                                                            ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ShellWeb.kt"
-            line="189"
+            line="193"
             column="77"/>
     </issue>
 
@@ -1042,7 +1053,7 @@
         errorLine2="                           ~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ShellWeb.kt"
-            line="199"
+            line="203"
             column="28"/>
     </issue>
 
@@ -1053,7 +1064,7 @@
         errorLine2="                                    ~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/ShellWeb.kt"
-            line="199"
+            line="203"
             column="37"/>
     </issue>
 
@@ -1086,7 +1097,7 @@
         errorLine2="         ~~~~~~~~">
         <location
             file="src/main/AndroidManifest.xml"
-            line="62"
+            line="80"
             column="10"/>
     </issue>
 
@@ -1097,7 +1108,7 @@
         errorLine2="         ~~~~~~~">
         <location
             file="src/main/AndroidManifest.xml"
-            line="45"
+            line="63"
             column="10"/>
     </issue>
 
@@ -1137,7 +1148,7 @@
         errorLine2="^">
         <location
             file="src/main/kotlin/app/tendshelf/android/Offline.kt"
-            line="34"
+            line="37"
             column="1"/>
     </issue>
 
@@ -1148,7 +1159,7 @@
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/kotlin/app/tendshelf/android/Offline.kt"
-            line="48"
+            line="51"
             column="5"/>
     </issue>
 
@@ -1214,7 +1225,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="63"
+            line="76"
             column="13"/>
     </issue>
 
@@ -1225,7 +1236,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values/strings.xml"
-            line="73"
+            line="86"
             column="13"/>
     </issue>
 

@@ -36,6 +36,10 @@ class StartPages(private val context: Context) {
     @Volatile
     var state = StartState()
 
+    /** The join page's note (and field, always empty: a pasted link is never put back on a page). */
+    @Volatile
+    var joinState = StartState()
+
     @Volatile
     var offlineAddress = ""
 
@@ -47,7 +51,9 @@ class StartPages(private val context: Context) {
         .addPathHandler("/covers/", WebViewAssetLoader.PathHandler { id -> cover(id) })
         .addPathHandler("/", WebViewAssetLoader.PathHandler { path ->
             when (path) {
-                "start" -> page("start.html", start())
+                "start" -> if (state.address.isEmpty() && state.note == null) page("choose.html", choose()) else page("start.html", start())
+                "server" -> page("start.html", start())
+                "join" -> page("join.html", join())
                 "offline" -> page("offline.html", downloads(true))
                 "downloads" -> page("offline.html", downloads(false))
                 else -> null
@@ -56,10 +62,30 @@ class StartPages(private val context: Context) {
         .build()
 
     val startUrl: String get() = "https://$HOST/start"
+    val joinUrl: String get() = "https://$HOST/join"
     val offlineUrl: String get() = "https://$HOST/offline"
     val downloadsUrl: String get() = "https://$HOST/downloads"
 
     fun intercept(uri: Uri): WebResourceResponse? = loader.shouldInterceptRequest(uri)
+
+    private fun choose(): Map<String, String> = mapOf(
+        "TITLE" to esc(context.getString(R.string.start_title)),
+        "SERVER" to esc(context.getString(R.string.start_server)),
+        "INVITED" to esc(context.getString(R.string.start_invited)),
+        "SCAN" to esc(context.getString(R.string.start_scan_hint)),
+    )
+
+    private fun join(): Map<String, String> {
+        val note = joinState.note?.let { "<p class=\"start__note\" role=\"alert\">${esc(it)}</p>" } ?: ""
+        return mapOf(
+            "TITLE" to esc(context.getString(R.string.start_invited)),
+            "NOTE" to note,
+            "LABEL" to esc(context.getString(R.string.join_label)),
+            "HINT" to esc(context.getString(R.string.join_hint)),
+            "BUTTON" to esc(context.getString(R.string.join_button)),
+            "SERVER" to esc(context.getString(R.string.start_server)),
+        )
+    }
 
     private fun start(): Map<String, String> {
         val s = state
@@ -72,6 +98,7 @@ class StartPages(private val context: Context) {
             "HINT" to esc(context.getString(R.string.start_hint)),
             "BUTTON" to esc(context.getString(R.string.start_button)),
             "ADDRESS" to esc(s.address),
+            "INVITED" to esc(context.getString(R.string.start_invited)),
         )
     }
 

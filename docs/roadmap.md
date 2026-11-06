@@ -798,7 +798,17 @@ a connected app can no longer accept an invite (409). Tests: `TestPair*`, `TestI
 decoder in `qr_decode_test.go` reads the drawn SVG back and checks the Reed-Solomon syndromes), `TestMigrationDevicePairings*`,
 matrix and a11y rows, `TestVisualPair` (dev). Limits: no real-phone scan yet (plan section 9); the Android package (A1-A9) is next;
 an invited person with no password whose session lapsed still cannot sign in on `/login` (reported, not designed here).
-Next: Android package.
+**Android status**: built 2026-11-06 on the branch `pkg-qr-android` (plan steps A1-A9). `Handoff.kt` (`parseHandoff`), `Origin.inviteUrl` and
+`pairUrl`, `Nav.Link` (obeyed only from a bundled main frame), `ConnectFlow.onLink` (always the native address dialog first, then
+the `/healthz` check on that exact address, then the invite or pair page inside the shell), the `tendshelf://open` filter in
+`MainActivity`, and the chooser and join pages. A phone that holds a token refuses a link for its own server, and a link for another
+server goes through the change-of-server dialog, so page and token cannot become different people. Checked on the emulator with `am start`
+(dialog, invite to a connected phone, change of server and Cancel, a stray link, the full pairing with the number typed on the owner
+side). Not checked: the system camera, Chrome's `intent:` hand-over, Samsung Internet (docs/manual-checks.md, QR-1 to QR-6).
+Limits: over plain `http` to a LAN address (not `localhost`) the invite and pair pages' `Referrer-Policy: no-referrer` makes
+Chromium send `Origin: null`, so the server answers "This form expired" to the join and claim POSTs; only `https` and loopback were
+exercised. Reported to the server owner of the plan.
+Next: real-phone checks.
 
 ## Android app: A1 server (decision 0026)
 

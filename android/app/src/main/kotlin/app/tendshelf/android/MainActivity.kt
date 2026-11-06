@@ -88,6 +88,20 @@ class MainActivity : Activity() {
         connectService()
         val server = DebugHooks.serverExtra(intent)
         if (server != null) flow.onAddress(server) else flow.launch()
+        handleLink(intent)
+    }
+
+    /**
+     * An opened `tendshelf://open?link=` address (the server page's intent: hand-over). Anything can fire this intent, so it
+     * only ever reaches the same address dialog as a pasted link: no token is read here, nothing connects without a tap.
+     * The data is cleared afterwards so a rebuilt activity or a return from the recents list cannot repeat it.
+     */
+    private fun handleLink(i: Intent?) {
+        val data = i?.data ?: return
+        val fromHistory = (i.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0
+        i.data = null
+        if (fromHistory || i.action != Intent.ACTION_VIEW || data.scheme != "tendshelf" || data.host != "open") return
+        flow.onLink(data.toString())
     }
 
     /**
@@ -127,6 +141,7 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleLink(intent)
     }
 
     @Deprecated("Deprecated in Java")

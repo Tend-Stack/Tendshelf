@@ -4,8 +4,11 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.os.Build
 import android.webkit.WebView
+import app.tendshelf.shared.Handoff
+import app.tendshelf.shared.Kind
 import app.tendshelf.shared.Origin
 import app.tendshelf.shared.Pkce
+import app.tendshelf.shared.parseHandoff
 import java.net.URI
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -39,6 +42,13 @@ class ConnectFlow(
     private var verifier: String? = null
     val codePending: Boolean get() = verifier != null
 
+    // The invitation or pairing link the person confirmed, held while the health check, the http warning and the
+    // change-of-server dialog run; begin() uses it once and clears it.
+    private var pending: Handoff? = null
+
+    // The token of the pairing whose sign-in page is loading; the same link arriving again changes nothing.
+    private var pairToken: String? = null
+
     private var clearHistoryNext = false
     private var suppressAutoConnect = false
 
@@ -50,6 +60,8 @@ class ConnectFlow(
     init {
         signOut.after = {
             verifier = null
+            pending = null
+            pairToken = null
             state = State.NoServer
             clearHistoryNext = true
             // A page that was loading when the wipe began may still finish; it must not start a connect on its own.
@@ -85,6 +97,7 @@ class ConnectFlow(
 
     /** The start page's form (or Try again): check the address, warn about plain http once, then connect. */
     fun onAddress(typed: String) {
+        pending = null
         val trimmed = typed.trim()
         val candidates = Origin.candidates(trimmed)
         if (candidates.isEmpty()) {
@@ -139,6 +152,7 @@ class ConnectFlow(
                     proceed(o, id)
                 }
                 .setNegativeButton(R.string.http_warning_cancel) { _, _ ->
+                    pending = null
                     state = if (store.hasToken()) State.Connected else State.NoServer
                     showStart(StartState(o.text.removePrefix("http://")))
                 }
@@ -151,6 +165,7 @@ class ConnectFlow(
     private fun proceed(o: Origin, id: String?) {
         val old = store.origin
         if (old == o && store.hasToken()) {
+            pending = null
             state = State.Connected
             web.loadUrl(o.homeUrl())
             return
@@ -161,7 +176,7 @@ class ConnectFlow(
         }
         store.origin = o
         store.serverId = id
-        beginConnect(o)
+        begin(o)
     }
 
     /** Another server takes the downloads and the sign-in away, so the person is told what goes and chooses (A-fix 6). */
@@ -183,12 +198,15 @@ class ConnectFlow(
                             store.origin = o
                             store.serverId = id
                             leaving = true
-                            beginConnect(o)
+                            begin(o)
                         }
                     }
                     .setNegativeButton(R.string.http_warning_cancel) { _, _ ->
+                        // A link cancels back to the page behind it; a typed address goes back to the start page, as before.
+                        val fromLink = pending != null
+                        pending = null
                         state = if (store.hasToken()) State.Connected else State.NoServer
-                        showStart(StartState(old.text.removePrefix("http://")))
+                        if (!fromLink) showStart(StartState(old.text.removePrefix("http://")))
                     }
                     .show()
             }
@@ -198,21 +216,116 @@ class ConnectFlow(
     /** True from the confirmed change of server until the new sign-in has worked (then the old downloads go). */
     private var leaving = false
 
-    /** Opens the sign-in page that ends at the consent page, with a fresh challenge. */
-    private fun beginConnect(o: Origin) {
+    /** What the confirmed address was for: an invitation, a pairing, or the plain sign-in. [pending] is used once. */
+    private fun begin(o: Origin) {
+        val h = pending
+        pending = null
+        when (h?.kind) {
+            Kind.Invite -> beginInvite(o, h.token)
+            Kind.Pair -> beginPair(o, h.token)
+            null -> beginConnect(o)
+        }
+    }
+
+    /** A fresh PKCE verifier is held; the challenge is returned for the page that will ask for the code. */
+    private fun newChallenge(): String {
         val random = ByteArray(32).also { SecureRandom().nextBytes(it) }
         val v = Pkce.verifier(random)
-        val challenge = Pkce.challenge(MessageDigest.getInstance("SHA-256").digest(v.toByteArray(Charsets.US_ASCII)))
         verifier = v
+        return Pkce.challenge(MessageDigest.getInstance("SHA-256").digest(v.toByteArray(Charsets.US_ASCII)))
+    }
+
+    /** Opens the sign-in page that ends at the consent page, with a fresh challenge. */
+    private fun beginConnect(o: Origin) {
+        val challenge = newChallenge()
         connectLoading = true
         state = if (store.hasToken()) State.Reconnecting else State.NeedsSignIn
         web.loadUrl(o.connectUrl(challenge))
+    }
+
+    /** The invitation page inside the shell. No verifier yet: the existing first-run rule opens the consent page once the person has joined. */
+    private fun beginInvite(o: Origin, token: String) {
+        connectLoading = true
+        suppressAutoConnect = false
+        state = State.NeedsSignIn
+        web.loadUrl(o.inviteUrl(token))
+    }
+
+    /** The pairing page inside the shell; the verifier is held now, its challenge goes in the page address (decision 0028). */
+    private fun beginPair(o: Origin, token: String) {
+        val challenge = newChallenge()
+        pairToken = token
+        connectLoading = true
+        suppressAutoConnect = false
+        state = State.NeedsSignIn
+        web.loadUrl(o.pairUrl(token, challenge, Build.MODEL))
+    }
+
+    /** The bundled join page's form, or an opened `tendshelf://open` link. Nothing is requested before the person taps Connect on the address. */
+    fun onLink(text: String) {
+        val h = parseHandoff(text)
+        if (h == null) {
+            // A signed-in phone keeps its page: a stray link only gets a sentence, never a new screen.
+            if (store.hasToken()) {
+                AlertDialog.Builder(activity).setMessage(R.string.link_only).setPositiveButton(android.R.string.ok, null).show()
+            } else {
+                showJoin(activity.getString(R.string.link_only))
+            }
+            return
+        }
+        if (store.hasToken() && store.origin == h.origin) {
+            // Already this server: joining or pairing would leave the page and the token as different people.
+            AlertDialog.Builder(activity).setMessage(R.string.link_connected).setPositiveButton(android.R.string.ok, null).show()
+            return
+        }
+        if (h.kind == Kind.Pair && pairToken == h.token && verifier != null) return
+        val body = StringBuilder(activity.getString(R.string.link_body, h.origin.text))
+        if (h.origin.plainHttp) {
+            body.append("\n\n").append(activity.getString(R.string.http_warning_body))
+            if (!h.origin.privateAddress) body.append(' ').append(activity.getString(R.string.http_warning_public))
+        }
+        val dialog = AlertDialog.Builder(activity)
+            .setTitle(R.string.link_title)
+            .setMessage(body.toString())
+            .setCancelable(true)
+            .setPositiveButton(R.string.link_connect) { _, _ ->
+                if (h.origin.plainHttp) store.markHttpWarned(h.origin)
+                checkAndProceed(h)
+            }
+            .setNegativeButton(R.string.http_warning_cancel, null)
+            .create()
+        dialog.show()
+        // A tap through an overlay from another app does not count.
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).filterTouchesWhenObscured = true
+    }
+
+    /** The person confirmed the exact address: only now does the first request go out, and it sends no credential. */
+    private fun checkAndProceed(h: Handoff) {
+        io.execute {
+            val health = api.health(h.origin)
+            val id = if (health == Health.Ok) api.identity(h.origin)?.id else null
+            ui {
+                if (health != Health.Ok) {
+                    showJoin(healthWords(health))
+                } else {
+                    pending = h
+                    proceed(h.origin, id)
+                }
+            }
+        }
+    }
+
+    /** The join page with one sentence of plain words above the field. */
+    fun showJoin(words: String) {
+        pages.joinState = StartState(note = words)
+        web.loadUrl(pages.joinUrl)
     }
 
     /** The one place a code is used: only reached through the navigation policy, main frame, with a verifier pending. */
     fun onCode(code: String) {
         val v = verifier ?: return
         verifier = null
+        pairToken = null
         val o = store.origin ?: return
         val bearer = store.current()?.token
         state = State.Connecting
@@ -280,7 +393,7 @@ class ConnectFlow(
     }
 
     private fun signInPath(path: String): Boolean =
-        path == "/login" || path == "/setup" || path == "/welcome" || path.startsWith("/invite/") || path.startsWith("/app/connect")
+        path == "/login" || path == "/setup" || path == "/welcome" || path.startsWith("/invite/") || path.startsWith("/pair/") || path.startsWith("/app/connect")
 
     private fun ui(block: () -> Unit) = activity.runOnUiThread(block)
 }

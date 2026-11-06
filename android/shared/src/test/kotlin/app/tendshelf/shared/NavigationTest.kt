@@ -99,11 +99,29 @@ class NavigationTest {
     @Test
     fun bundledCommandsAreObeyedOnlyFromABundledMainFrame() {
         val b = "https://appassets.androidplatform.net"
-        for (path in listOf("/connect?address=evil.example", "/remove?id=x", "/play?id=x", "/toggle", "/start")) {
+        for (path in listOf("/connect?address=evil.example", "/remove?id=x", "/play?id=x", "/toggle", "/start", "/link?link=https%3A%2F%2Fevil.example%2Finvite%2Fx")) {
             assertEquals(Nav.Block, decide(b + path, true, good, false, false), "from a book page: $path")
             assertEquals(Nav.Block, decide(b + path, false, good, false, true), "subframe: $path")
         }
         assertEquals(Nav.RemoveBook("x"), decide("$b/remove?id=x", true, good, false, true))
         assertEquals(Nav.External, decide("https://example.org/", true, good, false, false), "an outside link opens the browser")
+    }
+
+    @Test
+    fun linkIsObeyedOnlyFromABundledMainFrame() {
+        val b = "https://appassets.androidplatform.net/link?link=https%3A%2F%2Fa.example%2Finvite%2FX"
+        assertEquals(Nav.Link("https://a.example/invite/X"), decide(b, true, good, false, true))
+        assertEquals(Nav.Block, decide(b, true, good, false, false), "a book or server page")
+        assertEquals(Nav.Block, decide(b, false, good, false, true), "a subframe")
+        assertEquals(Nav.Link(""), decide("https://appassets.androidplatform.net/link", true, null, false, true))
+        // A server page linking to the app's own scheme never starts anything.
+        assertEquals(Nav.Block, decide("tendshelf://open?link=https%3A%2F%2Fa.example%2Finvite%2FX", true, good, false, false))
+    }
+
+    @Test
+    fun inviteAndPairUrls() {
+        val o = Origin.parse("https://a.example:8443")!!
+        assertEquals("https://a.example:8443/?shell=android&next=%2Finvite%2FTOK", o.inviteUrl("TOK"))
+        assertEquals("https://a.example:8443/?shell=android&next=%2Fpair%2FTOK%3Fchallenge%3DCH-_%26name%3DPixel%2B7", o.pairUrl("TOK", "CH-_", "Pixel 7"))
     }
 }
