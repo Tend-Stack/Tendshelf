@@ -29,7 +29,9 @@ maximised (the position is not kept: Wayland does not let an app place its windo
 
 The window opens when the first page is ready, at the size you left it, on the background of your theme. It has
 the system's shadow, rounded corners and resize border; the title bar is drawn by the page itself (decision 0023).
-If your desktop shows two bars or none, start it with `TENDSHELF_NATIVE_FRAME=1 tendshelf-desktop` for the system's own bar.
+The bar has Back and Forward (also Alt+Left and Alt+Right), the page's place, the book that is playing (it opens the
+player), More (Keyboard shortcuts, Quit) and Minimise, Maximise and Close. Drag the bar to move the window; double-click it
+to maximise. If your desktop shows two bars or none, start it with `TENDSHELF_NATIVE_FRAME=1 tendshelf-desktop` for the system's own bar.
 
 ## Known limits
 

@@ -570,6 +570,13 @@ legacy fallback; [decision 0003](decisions/0003-newest-versions.md)). Two modes,
 - **Bridge additions**: `tendshelf:window minimise|maximise|close|quit` from the session's pages and the picker only
   (table-driven, unknown verbs ignored); Go sends the fixed `ts:desktop` values `active`, `inactive`, `maximised`,
   `restored` and `tray`. The picker hears the window's state, never a media key.
+- **The bar** (decision 0023, plan X2). `components.DesktopBar` is the first child of `<body>` under `data-shell="desktop"`
+  only (Layout, Frame, LinkShell; the picker passes `Page.Picker` and gets no Back, Forward or More), outside `#main`
+  and `hx-preserve`. `desktop-shell.js` drags the window (`wails:drag` on the first move with the button held), runs
+  the window buttons and More, keeps Back and Forward by a position (`tsAt`) it writes into each history state, and
+  copies the title, `#main[data-ts-crumb-href]` and the mini-player's book into the bar. Fixed and sticky layers move
+  below it with `--desktop-bar` (`TestDeskBarOffsets` fails for a new full-screen layer). Budgets: `desktop.js` and
+  `desktop-shell.js` count in `jsDesktopTotalGzip` (4,096 B), not in the browser total.
 - `ts_shell=desktop` marks the window in both modes (`data-shell`); there is no service worker in it, and no
   Wails runtime in pages. One bridge: `tendshelf:` messages to Go, a `ts:desktop` event back.
 
