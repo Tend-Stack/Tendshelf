@@ -51,7 +51,6 @@ class MainActivity : Activity() {
         store = TokenStore(this)
         ProgressWriter.flushOnce(this, store.current()) // rows a killed process left (A5, D10)
         pages = StartPages(this)
-        pages.nowPlaying = { remote?.snapshot()?.let { it.bookId to it.playing } ?: Pair("", false) }
         val api = AuthApi()
         web = WebView(this)
         WebHandle.current = web
@@ -215,6 +214,8 @@ class MainActivity : Activity() {
             val r = ControllerRemote(c)
             remote = r
             if (visible) r.pageVisible(true)
+            // The page is drawn on a loader thread, which must not touch the controller: it reads this copy.
+            r.observe { pages.playingNow = Pair(it.bookId, it.playing) }
             bridge.remote = r
         }, mainExecutor)
     }

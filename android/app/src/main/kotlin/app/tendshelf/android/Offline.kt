@@ -265,6 +265,11 @@ object Offline {
         if (!::app.isInitialized) return
         prefs.edit().putBoolean("downloadsLimited", false).apply()
         ioPool.execute {
+            // A row with no download behind it (the process died before the requests were stored) cannot finish: Try again.
+            for (r in store.all()) {
+                val active = r.state == OfflineState.QUEUED || r.state == OfflineState.DOWNLOADING || r.state == OfflineState.PAUSED
+                if (active && downloadsOf(manager(), r.bookId).isEmpty()) store.setState(r.bookId, OfflineState.FAILED)
+            }
             if (store.all().any { it.state == OfflineState.QUEUED || it.state == OfflineState.DOWNLOADING || it.state == OfflineState.PAUSED }) {
                 main.post {
                     manager().resumeDownloads()
@@ -351,22 +356,30 @@ object Offline {
     fun hasOtherPerson(userId: String): Boolean = ::app.isInitialized && store.all().any { it.userId != userId }
 
     private fun finishWipe() {
-        synchronized(lock) {
-            try {
-                manager?.release()
-                manager = null
+        val live = synchronized(lock) { manager }
+        if (live != null) {
+            // A running process keeps its manager: Media3's download service holds on to the one it was given, and a
+            // released manager would make the next download fail on a dead thread. The manager removes the files it
+            // fetched, then any resource the cache still lists goes too.
+            live.removeAllDownloads()
+            val until = System.currentTimeMillis() + 10_000
+            while (System.currentTimeMillis() < until && !(live.isIdle && live.currentDownloads.isEmpty())) Thread.sleep(100)
+            synchronized(lock) { cache?.let { c -> c.keys.toList().forEach { c.removeResource(it) } } }
+        } else {
+            // A wipe the last process left half done: nothing is open, so the folder and the downloads database go.
+            synchronized(lock) {
+                // A player may have opened the cache for a streamed book; it is closed before its folder goes.
                 cache?.release()
                 cache = null
                 db?.close()
                 db = null
-            } catch (e: Exception) {
-                Log.w(TAG, "offline: release failed: ${e.javaClass.simpleName}")
+                app.deleteDatabase(StandaloneDatabaseProvider.DATABASE_NAME)
+                root.deleteRecursively()
             }
-            app.deleteDatabase(StandaloneDatabaseProvider.DATABASE_NAME)
-            root.deleteRecursively()
-            store.clear()
-            prefs.edit().remove("settingsJson").putBoolean("wipePending", false).commit()
         }
+        File(root, "covers").deleteRecursively()
+        store.clear()
+        prefs.edit().remove("settingsJson").putBoolean("wipePending", false).commit()
         Log.i(TAG, "offline: wiped")
     }
 }

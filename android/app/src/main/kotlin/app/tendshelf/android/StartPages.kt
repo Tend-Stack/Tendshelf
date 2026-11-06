@@ -23,7 +23,7 @@ data class StartState(val address: String = "", val note: String? = null)
 class StartPages(private val context: Context) {
     /** The playing book and whether it is playing, so its row offers Pause. Set by the activity. */
     @Volatile
-    var nowPlaying: () -> Pair<String, Boolean> = { "" to false }
+    var playingNow: Pair<String, Boolean> = Pair("", false)
 
     /** The server's home address, for the library link; empty before a server is chosen. */
     @Volatile
@@ -84,7 +84,7 @@ class StartPages(private val context: Context) {
      */
     private fun downloads(offline: Boolean): Map<String, String> {
         val books = Offline.store.all()
-        val (playingId, playing) = nowPlaying()
+        val (playingId, playing) = playingNow
         val active = books.filter { it.state == OfflineState.QUEUED || it.state == OfflineState.DOWNLOADING || it.state == OfflineState.PAUSED || it.state == OfflineState.FAILED }
         val ready = books.filter { it.state == OfflineState.READY || it.state == OfflineState.STALE }
         val list = StringBuilder()
@@ -116,7 +116,8 @@ class StartPages(private val context: Context) {
             val here = b.bookId == playingId
             val canPlay = b.state == OfflineState.READY || b.state == OfflineState.STALE
             val meta = esc(listOf(b.author, stateWords(b)).filter { it.isNotEmpty() }.joinToString(" \u00b7 "))
-            out.append("<li class=\"ts-row dl__row\"><img class=\"dl__cover\" alt=\"\" src=\"/covers/$id\">")
+            val cover = if (Offline.coverBytes(b.bookId) != null) "<img class=\"dl__cover\" alt=\"\" src=\"/covers/$id\">" else ""
+            out.append("<li class=\"ts-row dl__row\">$cover")
             out.append("<span class=\"ts-row__text\"><span class=\"ts-row__title\">${esc(b.title)}</span><span class=\"ts-row__meta\">$meta</span></span>")
             out.append("<span class=\"dl__actions\">")
             if (canPlay) {
