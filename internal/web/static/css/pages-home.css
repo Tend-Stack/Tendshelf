@@ -37,7 +37,9 @@
 /* Spines */
 .ts-spine { box-sizing: border-box; flex: none; overflow: hidden; background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); }
 .ts-spine:focus-visible { outline-offset: 2px; }
-.ts-spine__title { max-height: calc(100% - var(--space-16)); overflow: hidden; text-overflow: ellipsis; }
+/* A long title takes a second line, as on a real spine. An ellipsis would stand on its side here and read as a stray dot,
+   so a title too long for two lines stops at the end of a word; the link's label still has all of it. */
+.ts-spine__title { max-height: calc(100% - var(--space-16)); max-width: 2.3em; overflow: hidden; line-height: 1.15; white-space: normal; text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
 .ts-spine--ws { width: 2.875rem; }
 .ts-spine--wm { width: 3.125rem; }
 .ts-spine--wl { width: 3.5rem; }
