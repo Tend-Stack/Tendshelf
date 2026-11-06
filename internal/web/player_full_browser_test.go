@@ -69,6 +69,7 @@ func fullpDrag(t *testing.T, tab *cdp.Tab, x0, y0, x1, y1 float64) {
 	fullpMouse(t, tab, "mousePressed", x0, y0)
 	for i := 1; i <= 10; i++ {
 		f := float64(i) / 10
+		time.Sleep(30 * time.Millisecond) // slow enough not to be a flick
 		fullpMouse(t, tab, "mouseMoved", x0+(x1-x0)*f, y0+(y1-y0)*f)
 	}
 	fullpMouse(t, tab, "mouseReleased", x1, y1)

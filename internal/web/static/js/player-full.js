@@ -20,7 +20,10 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const VALUE_TEXT_EVERY_MS = 10000; // aria-valuetext changes at most this often while playing
 const SWIPE_MIN_PX = 8; // movement before a press becomes a swipe
 const SWIPE_OPEN_PX = 40; // swipe up on the bar opens the player
-const SWIPE_CLOSE_FRACTION = 0.3; // swipe down past this part of the screen closes it
+const SWIPE_CLOSE_FRACTION = 0.25; // swipe down past this part of the screen closes it
+const SWIPE_FLICK_PX = 48; // a quick flick closes it from this far ...
+const SWIPE_FLICK_SPEED = 0.8; // ... at this many px per ms
+const SWIPE_FADE = 0.5; // how much of the player fades out by the time it is dragged off the screen
 const SETTLE_MS = 250;
 const FORM_TYPE = "application/x-www-form-urlencoded";
 const SPEED_SAVE_MS = 1000; // a speed change is saved this long after the last one
@@ -363,6 +366,7 @@ function openPlayer(after) {
     slot.classList.add("is-covered");
     update("open");
     drawSleep();
+    markScrolls();
     if (after) after();
   };
   if (sidePanel()) show();
@@ -384,41 +388,79 @@ function closePlayer() {
   else morph("full", "mini", closeNow);
 }
 
-// A press that moves vertically becomes a swipe; onMove follows the finger, onEnd decides. The
-// document listens while the press lasts, so a mouse that leaves el is still followed, and a
-// button inside el still gets its click when the press never became a swipe.
-function swipe(el, enabled, onMove, onEnd) {
+// A press that moves vertically becomes a swipe; onMove follows the finger, onEnd decides (with
+// the distance and the speed in px per ms). The document listens while the press lasts, so a mouse
+// that leaves el is still followed, and a button inside el still gets its click when the press never
+// became a swipe. allow(event) can refuse a press; a mostly sideways press is never a swipe.
+function swipe(el, enabled, onMove, onEnd, allow) {
   el.addEventListener("pointerdown", (event) => {
-    if (!enabled() || (event.pointerType === "mouse" && event.button)) return;
-    const start = { x: event.clientX, y: event.clientY, live: false };
+    if (!enabled() || !event.isPrimary || (event.pointerType === "mouse" && event.button) || (allow && !allow(event))) return;
+    const start = { x: event.clientX, y: event.clientY, at: event.timeStamp, live: false, dead: false };
     const move = (e) => {
       const dy = e.clientY - start.y;
-      if (!start.live && (Math.abs(dy) < SWIPE_MIN_PX || Math.abs(dy) < Math.abs(e.clientX - start.x))) return;
-      start.live = true;
-      onMove(dy);
+      const dx = Math.abs(e.clientX - start.x);
+      if (start.dead) return;
+      if (!start.live && dx >= SWIPE_MIN_PX && dx > Math.abs(dy)) start.dead = true;
+      else if (start.live || (Math.abs(dy) >= SWIPE_MIN_PX && Math.abs(dy) >= dx)) {
+        start.live = true;
+        onMove(dy);
+      }
     };
     const stop = (e) => {
       for (const type of ["pointermove", "pointerup", "pointercancel"]) document.removeEventListener(type, type === "pointermove" ? move : stop);
-      if (start.live) onEnd(e.type === "pointercancel" ? 0 : e.clientY - start.y);
+      const dy = e.type === "pointercancel" ? 0 : e.clientY - start.y;
+      if (start.live) onEnd(dy, dy / Math.max(1, e.timeStamp - start.at));
     };
     for (const type of ["pointermove", "pointerup", "pointercancel"]) document.addEventListener(type, type === "pointermove" ? move : stop);
   });
 }
 
-// Moves the open player to px below its place, then closes it or springs back.
+// Moves the open player to px below its place (fading with it), then closes it or springs back.
+// With reduced motion nothing is animated: it just closes.
 function settle(px, closing) {
+  if (REDUCED.matches) {
+    moveTo(0);
+    if (closing) closeNow();
+    return;
+  }
   dialog.classList.add("is-settling");
-  dialog.style.setProperty("--ts-drag", px + "px");
+  moveTo(px);
   setTimeout(() => {
     dialog.classList.remove("is-settling");
-    dialog.style.setProperty("--ts-drag", "0px");
+    moveTo(0);
     if (closing) closeNow();
-  }, REDUCED.matches ? 0 : SETTLE_MS);
+  }, SETTLE_MS);
 }
 
-swipe(dialog.querySelector(".ts-player__head"), () => !sidePanel(),
-  (dy) => dialog.style.setProperty("--ts-drag", Math.max(0, dy) + "px"),
-  (dy) => (dy > dialog.offsetHeight * SWIPE_CLOSE_FRACTION ? settle(dialog.offsetHeight, true) : settle(0, false)));
+// --ts-drag moves the player, --ts-fade lets what is behind show through; player.css reads both.
+function moveTo(px) {
+  dialog.style.setProperty("--ts-drag", px + "px");
+  dialog.style.setProperty("--ts-fade", String(1 - SWIPE_FADE * Math.min(1, px / Math.max(1, dialog.offsetHeight))));
+}
+
+// The body scrolls on a very short or large-text screen; there a drag must stay free to scroll it (player-fit.css).
+function markScrolls() {
+  ui["full-body"].classList.toggle("is-scrolling", ui["full-body"].scrollHeight > ui["full-body"].clientHeight);
+}
+window.addEventListener("resize", markScrolls);
+
+// A touch swipe may start anywhere that is not a control, the scrubbers, an open sheet or a list
+// that is scrolled down. The header takes any pointer (it has no scrolling).
+const SWIPE_REFUSED = "button, a, input, select, textarea, summary, [role=slider], [data-ts-scrub], .ts-player__scrub, .ts-player__menubody";
+function swipeAllowed(event) {
+  const target = event.target;
+  if (target.closest(".ts-player__head")) return true;
+  if (event.pointerType !== "touch" || openName || target.closest(SWIPE_REFUSED)) return false;
+  for (let node = target; node && node !== dialog; node = node.parentElement) {
+    if (node.scrollTop > 0) return false;
+  }
+  return true;
+}
+
+swipe(dialog, () => !sidePanel(),
+  (dy) => REDUCED.matches || moveTo(Math.max(0, dy)),
+  (dy, speed) => (dy > dialog.offsetHeight * SWIPE_CLOSE_FRACTION || (dy > SWIPE_FLICK_PX && speed > SWIPE_FLICK_SPEED) ? settle(dialog.offsetHeight, true) : settle(0, false)),
+  swipeAllowed);
 swipe(slot.querySelector(".ts-mini"), () => !sidePanel() && !dialog.open, () => {}, (dy) => {
   if (dy < -SWIPE_OPEN_PX) openPlayer();
 });
