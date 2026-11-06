@@ -20,6 +20,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/a-h/templ"
@@ -385,6 +386,7 @@ func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, 
 		Shell:        shell,
 		NoInstall:    shell != "",
 		NoOffline:    shell != "",
+		Crumb:        crumbFor(r.URL.Path),
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render page", "path", logPath(r), "err", err)
@@ -511,4 +513,15 @@ func libraryFolderPaths(ctx context.Context, lib *library.Repo) ([]string, error
 		}
 	}
 	return paths, nil
+}
+
+// crumbFor is the page above a book, series, author, narrator or reader page. Only the desktop app's
+// title bar shows it (Layout writes it into #main under that shell alone).
+func crumbFor(path string) components.Crumb {
+	for _, prefix := range []string{"/books/", "/series/", "/authors/", "/narrators/"} {
+		if strings.HasPrefix(path, prefix) {
+			return components.Crumb{Label: "Library", Href: "/libraries"}
+		}
+	}
+	return components.Crumb{}
 }

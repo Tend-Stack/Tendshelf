@@ -765,6 +765,13 @@ Limits, stated plainly: the tray cannot start a book without a user gesture (Web
 the Chromium reader tests were not re-run after the CSS change (no Chromium here). macOS and Windows: not verified. Next
 step: the operator's desktop section of `docs/manual-checks.md`.
 
+**Wails 3.1.0 and the desktop experience (design, 2026-11-05)**: decision [0023](decisions/0023-desktop-experience.md), proposed; plan
+[plans/m7-desktop-experience.md](plans/m7-desktop-experience.md) (not the M7 below); board `docs/design/boards/DesktopShell.html`. Scope so far: the
+`desktop/` module on Wails v3.1.0, a CGO-free build (`make desktop-purego`, purego twin of the two WebKit calls), and a fix so `make desktop` builds
+at all. Checks: `make check`, `make build`, `make desktop-check`, `make desktop-exit` on CGO and CGO-free (each 11 PASS, 0 FAIL), a title bar spike with
+real input in the private session. Limits: no sound card, real keys, tray click or file drag in the session; other desktops not tried. Next step:
+the operator's word on 0023 and the board; packages X1 to X6 after the release in flight.
+
 ## M7 Research — dropped (decision 0007, 2026-11-02)
 
 ## Next stage (docs/plans/next-stage.md)

@@ -17,6 +17,7 @@ templ Frame(p Page, body templ.Component) {
 		@Head(p, frameStyles(p)...)
 		<body class="ts-frame">
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
+			@DesktopBar(p)
 			<main id="main" class="ts-frame__main" tabindex="-1">
 				@body
 			</main>

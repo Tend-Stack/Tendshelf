@@ -55,10 +55,18 @@ type Page struct {
 	// worker inside an app window).
 	Shell     string
 	NoOffline bool
+	// Crumb is the parent of a book, series, author or reader page. Only the desktop app's title bar shows
+	// it, as "Library / The Cartographer's Silence"; a browser never sees it (Layout only).
+	Crumb Crumb
+	// Picker marks the desktop app's own start page: its bar has no Back, Forward or More (Frame only).
+	Picker bool
 
 	// prefetch is set by Layout: the page stylesheets this page does not link itself.
 	prefetch []string
 }
+
+// Crumb is a link to the page above this one.
+type Crumb struct{ Label, Href string }
 
 // pagePrefix starts the static path of every per-page stylesheet.
 const pagePrefix = "css/pages-"
@@ -123,12 +131,22 @@ templ Layout(p Page, body templ.Component) {
 		@Head(p.withPrefetch(), layoutStyles()...)
 		<body data-ts-tz={ p.TimeZone } hx-boost:inherited="target:#main select:#main swap:outerSync transition:true" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
+			@DesktopBar(p)
 			@OfflineBanner(p)
 			<div class="ts-shell">
 				@TabBar(p.Current)
 				@SideRail(p.Current)
 				@Sidebar(p.Current, p.Admin, UsersLink{Show: p.Users, Waiting: p.UsersWaiting}, p.Shelves, p.NavRail, p.CSRF, true)
-				<main id="main" class="ts-main" tabindex="-1" hx-history-elt>
+				<main
+					id="main"
+					class="ts-main"
+					tabindex="-1"
+					hx-history-elt
+					if p.Shell == "desktop" && p.Crumb.Href != "" {
+						data-ts-crumb={ p.Crumb.Label }
+						data-ts-crumb-href={ p.Crumb.Href }
+					}
+				>
 					for _, css := range p.Styles {
 						<link rel="stylesheet" href={ p.Assets.URL(css) }/>
 					}
@@ -138,7 +156,7 @@ templ Layout(p Page, body templ.Component) {
 			@PlayerSlot(p.Player)
 			@PlayerFull(p.Player)
 			@Toasts()
-			@KeysHelp(p.Player)
+			@KeysHelp(p.Player.inShell(p.Shell))
 			<div id="sheet" class="ts-sheet-region">
 				if p.Sheet != nil {
 					@p.Sheet
@@ -194,6 +212,7 @@ templ Head(p Page, extraCSS ...string) {
 		if p.Shell == "desktop" {
 			<link rel="stylesheet" href={ p.Assets.URL("css/pages-desktop.css") }/>
 			<script type="module" src={ p.Assets.URL("js/desktop.js") }></script>
+			<script type="module" src={ p.Assets.URL("js/desktop-shell.js") }></script>
 		}
 	</head>
 }

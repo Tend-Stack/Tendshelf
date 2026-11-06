@@ -167,6 +167,7 @@ func (s *start) render(w http.ResponseWriter, r *http.Request, status int, v pag
 		Assets:    s.o.Assets,
 		Styles:    pages.DesktopStartStyles,
 		Shell:     "desktop",
+		Picker:    true,
 		NoInstall: true,
 		NoOffline: true,
 	}, pages.DesktopStart(v)).Render(r.Context(), &buf)

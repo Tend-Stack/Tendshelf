@@ -25,6 +25,7 @@ templ LinkShell(p Page, base string, data *PlayerDataView, body templ.Component)
 			}
 		>
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
+			@DesktopBar(p)
 			<main id="main" class="ts-frame__main" tabindex="-1">
 				@body
 			</main>
@@ -33,7 +34,7 @@ templ LinkShell(p Page, base string, data *PlayerDataView, body templ.Component)
 				@PlayerSlot(p.Player)
 				@PlayerFull(p.Player)
 				@Toasts()
-				@KeysHelp(p.Player)
+				@KeysHelp(p.Player.inShell(p.Shell))
 				<script type="module" async src={ p.Assets.URL("js/player.js") }></script>
 				<script type="module" async src={ p.Assets.URL("js/player-full.js") }></script>
 				<script type="module" async src={ p.Assets.URL("js/waveform.js") }></script>

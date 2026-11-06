@@ -11,7 +11,8 @@ apt brings `libgtk-4-1`, `libwebkitgtk-6.0-4`, `gstreamer1.0-plugins-good`, `gst
 `ffmpeg`, so audio plays and books are read. The package has no install scripts and the app downloads
 nothing. On GNOME, `gnome-shell-extension-appindicator` (recommended) shows a tray icon.
 
-Without the package, `make desktop` builds `bin/tendshelf-desktop`. Without ffmpeg on the `PATH` the app
+Without the package, `make desktop` builds `bin/tendshelf-desktop`. `make desktop-purego` builds the same window with no C
+compiler and no `-dev` packages (experimental, [decision 0023](decisions/0023-desktop-experience.md)); GTK and WebKit must still be installed. Without ffmpeg on the `PATH` the app
 warns once and lists books unread.
 
 ## Modes
@@ -21,7 +22,16 @@ warns once and lists books unread.
 - **Connect**: the window opens a Tendshelf server you already run. The server must be recent enough to
   answer `/healthz` with `shell` support; an older one is refused in plain words.
 
-The choice is saved in `~/.config/tendshelf-desktop/desktop.json`.
+The choice is saved in `~/.config/tendshelf-desktop/desktop.json`, with the window's size and whether it was
+maximised (the position is not kept: Wayland does not let an app place its window). Quit with Ctrl+Q.
+
+## The window
+
+The window opens when the first page is ready, at the size you left it, on the background of your theme. It has
+the system's shadow, rounded corners and resize border; the title bar is drawn by the page itself (decision 0023).
+The bar has Back and Forward (also Alt+Left and Alt+Right), the page's place, the book that is playing (it opens the
+player), More (Keyboard shortcuts, Quit) and Minimise, Maximise and Close. Drag the bar to move the window; double-click it
+to maximise. If your desktop shows two bars or none, start it with `TENDSHELF_NATIVE_FRAME=1 tendshelf-desktop` for the system's own bar.
 
 ## Known limits
 
