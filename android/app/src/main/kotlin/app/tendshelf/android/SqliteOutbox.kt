@@ -5,6 +5,9 @@ import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import app.tendshelf.shared.OfflineBook
+import app.tendshelf.shared.OfflineState
+import app.tendshelf.shared.OfflineStore
 import app.tendshelf.shared.OutboxStore
 import app.tendshelf.shared.Save
 
@@ -14,7 +17,7 @@ import app.tendshelf.shared.Save
  * only the current device's rows are ever returned, so one person's rows never go out under another's token.
  */
 class SqliteOutbox(context: Context, private val deviceId: () -> String) :
-    SQLiteOpenHelper(context.applicationContext, "outbox.db", null, 1), OutboxStore {
+    SQLiteOpenHelper(context.applicationContext, "outbox.db", null, 2), OutboxStore {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -24,9 +27,22 @@ class SqliteOutbox(context: Context, private val deviceId: () -> String) :
                 "held INTEGER NOT NULL DEFAULT 0)",
         )
         db.execSQL("CREATE INDEX saves_book ON saves(book_id, seq)")
+        createOffline(db)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    /** Version 2 adds the downloaded books; the unsent saves of version 1 are untouched. */
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) createOffline(db)
+    }
+
+    private fun createOffline(db: SQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE offline_books (book_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT NOT NULL, " +
+                "author TEXT NOT NULL, duration_ms INTEGER NOT NULL, size_bytes INTEGER NOT NULL, manifest TEXT NOT NULL, " +
+                "etag TEXT NOT NULL DEFAULT '', state TEXT NOT NULL, added_at INTEGER NOT NULL, " +
+                "checked_at INTEGER NOT NULL DEFAULT 0, place_ms INTEGER NOT NULL DEFAULT 0, place_at INTEGER NOT NULL DEFAULT 0)",
+        )
+    }
 
     private fun read(c: Cursor) = Save(
         c.getLong(0), c.getString(1), c.getLong(2), c.getLong(3), c.getInt(4) != 0, c.getInt(5) != 0,
@@ -105,4 +121,89 @@ class SqliteOutbox(context: Context, private val deviceId: () -> String) :
     /** Row count, for the debug log and the bound check. */
     @Synchronized
     fun count(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM saves", null).use { it.moveToFirst(); it.getInt(0) }
+}
+
+/** The downloaded books in `outbox.db` (table `offline_books`, A7). Covers and bytes live in files, not here. */
+class SqliteOfflineStore(context: Context) : OfflineStore {
+    private val helper = SqliteOutbox(context) { "" }
+
+    private fun read(c: Cursor) = OfflineBook(
+        c.getString(0), c.getString(1), c.getString(2), c.getString(3), c.getLong(4), c.getLong(5),
+        runCatching { OfflineState.valueOf(c.getString(6)) }.getOrDefault(OfflineState.FAILED), c.getLong(7), c.getLong(8),
+    )
+
+    private val columns = "book_id, user_id, title, author, duration_ms, size_bytes, state, place_ms, place_at"
+
+    @Synchronized
+    override fun all(): List<OfflineBook> =
+        helper.readableDatabase.rawQuery("SELECT $columns FROM offline_books ORDER BY added_at DESC", null)
+            .use { c -> buildList { while (c.moveToNext()) add(read(c)) } }
+
+    @Synchronized
+    override fun get(id: String): OfflineBook? =
+        helper.readableDatabase.rawQuery("SELECT $columns FROM offline_books WHERE book_id = ?", arrayOf(id))
+            .use { c -> if (c.moveToFirst()) read(c) else null }
+
+    @Synchronized
+    override fun put(b: OfflineBook, manifestJson: String) {
+        val v = ContentValues().apply {
+            put("book_id", b.bookId)
+            put("user_id", b.userId)
+            put("title", b.title)
+            put("author", b.author)
+            put("duration_ms", b.durationMs)
+            put("size_bytes", b.sizeBytes)
+            put("manifest", manifestJson)
+            put("state", b.state.name)
+            put("added_at", System.currentTimeMillis())
+            put("place_ms", b.placeMs)
+            put("place_at", b.placeAt)
+        }
+        helper.writableDatabase.insertWithOnConflict("offline_books", null, v, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    @Synchronized
+    override fun manifest(id: String): String? =
+        helper.readableDatabase.rawQuery("SELECT manifest FROM offline_books WHERE book_id = ?", arrayOf(id))
+            .use { c -> if (c.moveToFirst()) c.getString(0) else null }
+
+    /** Replaces the stored answer (the daily check found the same files); the state and the place stay. */
+    @Synchronized
+    fun setManifest(id: String, json: String, checkedAt: Long) {
+        helper.writableDatabase.update(
+            "offline_books", ContentValues().apply { put("manifest", json); put("checked_at", checkedAt) }, "book_id = ?", arrayOf(id),
+        )
+    }
+
+    @Synchronized
+    fun checkedAt(id: String): Long =
+        helper.readableDatabase.rawQuery("SELECT checked_at FROM offline_books WHERE book_id = ?", arrayOf(id))
+            .use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
+
+    @Synchronized
+    fun touchChecked(id: String, at: Long) {
+        helper.writableDatabase.update("offline_books", ContentValues().apply { put("checked_at", at) }, "book_id = ?", arrayOf(id))
+    }
+
+    @Synchronized
+    override fun setState(id: String, s: OfflineState) {
+        helper.writableDatabase.update("offline_books", ContentValues().apply { put("state", s.name) }, "book_id = ?", arrayOf(id))
+    }
+
+    @Synchronized
+    override fun notePlace(id: String, ms: Long, at: Long) {
+        helper.writableDatabase.update(
+            "offline_books", ContentValues().apply { put("place_ms", ms); put("place_at", at) }, "book_id = ?", arrayOf(id),
+        )
+    }
+
+    @Synchronized
+    override fun remove(id: String) {
+        helper.writableDatabase.delete("offline_books", "book_id = ?", arrayOf(id))
+    }
+
+    @Synchronized
+    override fun clear() {
+        helper.writableDatabase.delete("offline_books", null, null)
+    }
 }

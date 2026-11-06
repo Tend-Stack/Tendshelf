@@ -3,27 +3,30 @@ package components
 // NavItem is one main destination.
 type NavItem struct {
 	Key, Label, Href, Icon string
+	// NoBoost keeps the link a plain navigation: the Android app catches it before the page loads (A7).
+	NoBoost bool
 }
 
 // MainNav is the one list all three navigations render from, in order.
 var MainNav = []NavItem{
-	{"home", "Home", "/", "home"},
-	{"library", "Library", "/libraries", "library"},
-	{"search", "Search", "/search", "search"},
-	{"downloads", "Downloads", "/me/downloads", "download"},
-	{"profile", "Profile", "/me", "profile"},
+	{Key: "home", Label: "Home", Href: "/", Icon: "home"},
+	{Key: "library", Label: "Library", Href: "/libraries", Icon: "library"},
+	{Key: "search", Label: "Search", Href: "/search", Icon: "search"},
+	{Key: "downloads", Label: "Downloads", Href: "/me/downloads", Icon: "download"},
+	{Key: "profile", Label: "Profile", Href: "/me", Icon: "profile"},
 }
 
-// navFor is MainNav for the window it is drawn in. The phone app has its own Downloads (decision 0026),
-// so its three navigations leave the web page out; every other window keeps the whole list.
+// navFor is MainNav for the window it is drawn in. The phone app keeps the Downloads item (A7) but draws the list itself
+// from what the phone holds, so the link is a plain navigation (NoBoost) that the app's navigation policy catches.
 func navFor(shell string) []NavItem {
 	if shell != "android" {
 		return MainNav
 	}
-	out := make([]NavItem, 0, len(MainNav))
-	for _, it := range MainNav {
-		if it.Key != "downloads" {
-			out = append(out, it)
+	out := make([]NavItem, len(MainNav))
+	copy(out, MainNav)
+	for i := range out {
+		if out[i].Key == "downloads" {
+			out[i].NoBoost = true
 		}
 	}
 	return out
@@ -54,6 +57,9 @@ templ TabBar(current, shell string) {
 				href={ templ.SafeURL(it.Href) }
 				class="ts-tabbar__item"
 				data-nav={ it.Href }
+				if it.NoBoost {
+					hx-boost="false"
+				}
 				if it.Key == current {
 					aria-current="page"
 				}
@@ -79,6 +85,9 @@ templ SideRail(current, shell string) {
 				href={ templ.SafeURL(it.Href) }
 				class="ts-rail__item"
 				data-nav={ it.Href }
+				if it.NoBoost {
+					hx-boost="false"
+				}
 				if it.Key == current {
 					aria-current="page"
 				}
@@ -136,6 +145,9 @@ templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, 
 				href={ templ.SafeURL(it.Href) }
 				class="ts-side__item"
 				data-nav={ it.Href }
+				if it.NoBoost {
+					hx-boost="false"
+				}
 				if rail {
 					title={ it.Label }
 				}

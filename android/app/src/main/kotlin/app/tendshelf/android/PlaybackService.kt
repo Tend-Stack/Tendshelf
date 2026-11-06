@@ -56,6 +56,7 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
+        Offline.init(this)
         connections = TokenStore(this)
         // Ride out a dropped network from the buffer: 5 minutes, time before size (D6).
         val load = DefaultLoadControl.Builder()

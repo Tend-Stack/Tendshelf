@@ -10,6 +10,8 @@ data class AudioFile(
     val needsCompat: Boolean,
     /** False when the file is missing on the server; the player fills its length with silence. */
     val playable: Boolean = true,
+    /** The stored file's size in bytes; 0 when the server did not say. */
+    val size: Long = 0,
 )
 
 /** A chapter of the whole book; its times are book positions, not file positions. */
@@ -31,6 +33,8 @@ data class BookManifest(
     val coverUrl: String = "",
     val author: String = "",
     val progress: RemoteProgress? = null,
+    /** `permissions.download`: the person may keep this book on the phone. */
+    val mayDownload: Boolean = false,
 )
 
 /** The person's stored place in a book, from the server. */

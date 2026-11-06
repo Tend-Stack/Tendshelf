@@ -24,6 +24,7 @@ import com.google.common.util.concurrent.ListenableFuture
  * service plays. The web player bar is a remote control for it through [Bridge]. Start-intent extras and the
  * debug probe exist in debug builds only: their code lives in the debug source set ([DebugHooks]).
  */
+@androidx.media3.common.util.UnstableApi
 class MainActivity : Activity() {
     private lateinit var web: WebView
     private lateinit var flow: ConnectFlow
@@ -31,10 +32,13 @@ class MainActivity : Activity() {
     private lateinit var chooser: FileChooser
     private lateinit var store: TokenStore
     private lateinit var bridge: Bridge
+    private lateinit var pages: StartPages
+    private lateinit var signOut: SignOut
     private lateinit var parent: FrameLayout
     private var controller: ListenableFuture<MediaController>? = null
     private var remote: ControllerRemote? = null
     private var visible = false
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private var bridgeEnabled = true
     private var backCallback: OnBackInvokedCallback? = null
     private var backRegistered = false
@@ -43,19 +47,21 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         DebugHooks.onActivityCreate(this)
         bridgeEnabled = DebugHooks.bridgeEnabled(intent)
+        Offline.init(this)
         store = TokenStore(this)
         ProgressWriter.flushOnce(this, store.current()) // rows a killed process left (A5, D10)
-        val pages = StartPages(this)
+        pages = StartPages(this)
         val api = AuthApi()
         web = WebView(this)
         WebHandle.current = web
-        val signOut = SignOut(web, store, api, pages, { getString(it) }) { remote?.stopAndClear() }
+        signOut = SignOut(web, store, api, pages, { getString(it) }) { remote?.stopAndClear() }
         flow = ConnectFlow(this, web, store, api, pages, signOut)
         bridge = Bridge({ flow.state }, { store.origin }, ::applyTheme)
+        Offline.onChange = { id -> main.post { bridge.pushDownload(id) } }
         flow.onState = ::syncBridge
         saver = FileSaver(this) { store.origin }
         chooser = FileChooser(this)
-        ShellWeb.configure(web, this, store, pages, { flow }, ::updateBack, { bridge.pageStarted() }, saver, chooser)
+        ShellWeb.configure(web, this, store, pages, { flow }, ::updateBack, { bridge.pageStarted() }, saver, chooser, ::onApp) { signOut.logoutSeen = true }
 
         parent = FrameLayout(this)
         parent.setBackgroundResource(R.color.ground)
@@ -85,6 +91,8 @@ class MainActivity : Activity() {
         visible = true
         remote?.pageVisible(true)
         bridge.onStart()
+        // Downloads that waited for the app to open go on now, from the front (A7, D2).
+        if (store.current() != null) Offline.onForeground()
     }
 
     override fun onStop() {
@@ -120,6 +128,24 @@ class MainActivity : Activity() {
 
     /** The page gets the first say (a sheet or dialog it can close), then history, then the app leaves. */
     private fun back() = bridge.askBack { if (web.canGoBack()) web.goBack() else moveTaskToBack(true) }
+
+    /** The bundled Downloads page asked for something; the page is drawn again afterwards. */
+    private fun onApp(nav: app.tendshelf.shared.Nav) {
+        val r = remote
+        when (nav) {
+            app.tendshelf.shared.Nav.Downloads -> {}
+            is app.tendshelf.shared.Nav.PlayBook -> r?.start(nav.bookId, null)
+            app.tendshelf.shared.Nav.TogglePlay -> if (r?.snapshot()?.playing == true) r.pause() else r?.play()
+            is app.tendshelf.shared.Nav.RemoveBook -> {
+                if (r?.snapshot()?.bookId == nav.bookId) r.stopAndClear()
+                Offline.remove(nav.bookId)
+            }
+            else -> return
+        }
+        pages.homeUrl = store.origin?.homeUrl() ?: ""
+        // The removal and the start take a moment; the page is drawn after, from what the phone holds then.
+        web.postDelayed({ web.loadUrl(pages.downloadsUrl) }, if (nav is app.tendshelf.shared.Nav.Downloads) 0L else 400L)
+    }
 
     /** The bridge belongs to the connected state: attached before the first load there, gone at sign-out. */
     private fun syncBridge(state: ConnectFlow.State) {
@@ -188,6 +214,8 @@ class MainActivity : Activity() {
             val r = ControllerRemote(c)
             remote = r
             if (visible) r.pageVisible(true)
+            // The page is drawn on a loader thread, which must not touch the controller: it reads this copy.
+            r.observe { pages.playingNow = Pair(it.bookId, it.playing) }
             bridge.remote = r
         }, mainExecutor)
     }

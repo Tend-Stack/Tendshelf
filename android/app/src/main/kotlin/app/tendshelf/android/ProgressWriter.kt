@@ -146,6 +146,7 @@ class ProgressWriter(
         disk.execute {
             adopt(conn)
             outbox.tick(id, pos, speed, listened, hold)
+            Offline.store.notePlace(id, pos, System.currentTimeMillis()) // a downloaded book keeps its place beside the row (D6)
             Log.d(TAG, "outbox: saved ($why)")
             flush()
         }
@@ -158,6 +159,7 @@ class ProgressWriter(
             disk.submit<Boolean> {
                 adopt(conn)
                 outbox.finish(bookId, positionMs, speed, listened)
+                Offline.store.notePlace(bookId, positionMs, System.currentTimeMillis())
                 true
             }.get(5, TimeUnit.SECONDS)
             net.submit<Boolean> { flushLoop() }.get(40, TimeUnit.SECONDS)

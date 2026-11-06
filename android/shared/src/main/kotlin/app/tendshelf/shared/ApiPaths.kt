@@ -13,6 +13,10 @@ class ApiPaths(server: String) {
     fun streamUrl(fileId: String, compat: Boolean = false): String =
         "$base/api/v1/stream/${segment(fileId)}" + if (compat) "?compat=1" else ""
 
+    /** The stream address a download asks for: `?download=1` marks it for the server, `compat=1` as in [streamUrl]. */
+    fun downloadUrl(fileId: String, compat: Boolean = false): String =
+        "$base/api/v1/stream/${segment(fileId)}?download=1" + if (compat) "&compat=1" else ""
+
     fun coverUrl(bookId: String, width: Int): String = "$base/api/v1/covers/${segment(bookId)}?w=$width"
 
     val settingsUrl: String get() = "$base/api/v1/settings"

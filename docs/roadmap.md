@@ -1061,3 +1061,11 @@ start has its own code `background` and the message "Tendshelf can't start by it
 (cap 14,464 B), `native-audio.js` 2,790 B (cap 2,816 B, Android bucket the same), app total 91,317 B (cap 91,328 B). Reused: the sheet, card and words, `exo.volume`, session extras, `NextBook`; replaced in the app only: the page's `setInterval` timer.
 Emulator-proved (own build, port 8102): see the report. Limits: the shake was driven by the emulator's accelerometer, a real phone's strength and the OEM background sensor policy are phone checks (manual-checks A6); a chapter timer
 chosen while the service holds no book is ignored; nothing survives a killed process (D7). Next step: A7.
+
+**A7 status (downloads and the offline page, 2026-11-06)**: built on the branch `pkg-a7`, plan [plans/android-a6-a10.md](plans/android-a6-a10.md). Reused: Media3 `DownloadManager`/`SimpleCache`, `outbox.db`, `GET /api/v1/books/{id}` as the manifest,
+`?download=1`, `StartPages`, `decide`, the book page's Download nodes and words. Extended: `BookEngine` (a downloaded book starts from the stored answer without the network), `BookMedia` (cache read only, only for downloaded books), `SqliteOutbox`
+(version 2, table `offline_books`; the saves are kept), `SignOut`, `Bridge` (`dl add|remove|ask`, push `{"t":"dl"}`; protocol still `hello 1`), `navFor` (Downloads is back in the app's nav as an unboosted link). Replaced: the bundled `offline.html`, now the one
+downloads list (also "Downloads" online). New: `Offline.kt`, `TsDownloadService` (`dataSync`, no scheduler: downloads resume only from the visible activity, so none runs with the app closed), `shared/Offline.kt`, `native-downloads.js`.
+Sign-out and a change of person delete downloads: the page's own Sign out is seen as a POST to `/logout` (`shouldInterceptRequest`), a sign-in as another person (`user_id` differs) and a change of server wipe too; a session that only expired keeps them (D11).
+`READY` needs every file whole; a browser-friendly rendition is checked against the length the server announced, not the original's size (deviation from the plan). Limits: no Wi-Fi-only, no remove-finished, no covers for books without one; deep Doze and the 6-hour
+limit on a real phone are manual checks A7-1 to A7-5. Next step: A8.

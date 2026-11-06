@@ -24,11 +24,12 @@ import app.tendshelf.shared.decide
  * The WebView's settings and clients (plan A2 step 6). One navigation policy, `decide`, answers every main-frame
  * navigation; nothing is injected into any page; file and content access are off; no second window opens.
  */
+@androidx.media3.common.util.UnstableApi
 object ShellWeb {
     const val FILE_CHOOSER = 4102
 
     @SuppressLint("SetJavaScriptEnabled")
-    fun configure(web: WebView, activity: Activity, store: TokenStore, pages: StartPages, flow: () -> ConnectFlow, onNavigated: () -> Unit, onStarted: () -> Unit, saver: FileSaver, chooser: FileChooser) {
+    fun configure(web: WebView, activity: Activity, store: TokenStore, pages: StartPages, flow: () -> ConnectFlow, onNavigated: () -> Unit, onStarted: () -> Unit, saver: FileSaver, chooser: FileChooser, onApp: (Nav) -> Unit, onLogout: () -> Unit) {
         web.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -60,12 +61,19 @@ object ShellWeb {
                     Nav.External -> openOutside(activity, request.url)
                     is Nav.TakeCode -> f.onCode(nav.code)
                     is Nav.Connect -> f.onAddress(nav.address)
+                    // The bundled Downloads page and its rows (A7): the activity acts, the WebView stays where it is.
+                    Nav.Downloads, is Nav.PlayBook, is Nav.RemoveBook, Nav.TogglePlay -> onApp(nav)
                 }
                 return true
             }
 
-            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
-                pages.intercept(request.url)
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                // The page's own Sign out is a form POST to /logout. A POST has no navigation callback, so it is seen here
+                // (never answered here): it is what tells a chosen sign-out, which deletes downloads, from an expired one.
+                val origin = store.origin
+                if (request.method == "POST" && origin != null && request.url.path == "/logout" && origin.matches(request.url.toString())) onLogout()
+                return pages.intercept(request.url)
+            }
 
             override fun onPageFinished(view: WebView, url: String) {
                 onNavigated()

@@ -11,6 +11,7 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import app.tendshelf.shared.BookManifest
 import app.tendshelf.shared.PlayerSettings
+import app.tendshelf.shared.RemoteProgress
 import app.tendshelf.shared.Save
 import app.tendshelf.shared.placeWrittenAt
 import app.tendshelf.shared.silentRanges
@@ -101,10 +102,14 @@ class BookEngine(
             main.post { if (sequence.get() == mine) fail("signedOut") }
             return
         }
+        if (Offline.playable(book) != null) {
+            startDownloaded(book, atMs, conn, mine)
+            return
+        }
         io.execute {
             try {
                 val api = Api(conn.origin)
-                val settings = api.settings(conn.token)
+                val settings = api.settings(conn.token).also { Offline.saveSettings(it) }
                 if (sequence.get() != mine) return@execute
                 val manifest = api.manifest(conn.token, book)
                 if (sequence.get() != mine) return@execute
@@ -124,9 +129,33 @@ class BookEngine(
         }
     }
 
+    /**
+     * A downloaded book starts from what the phone holds, without touching the network (A7, D5): the stored answer, the last
+     * settings, the stored cover and the newest place written offline. The place question is asked after it starts, as usual.
+     */
+    private fun startDownloaded(book: String, atMs: Long?, conn: Connection, mine: Int) {
+        io.execute {
+            try {
+                val row = Offline.store.get(book)
+                val api = Api(conn.origin)
+                var manifest = api.parseManifest(Offline.store.manifest(book) ?: throw IOException("no stored answer"))
+                if (row != null && row.placeAt > (manifest.progress?.clientUpdatedAt ?: 0)) {
+                    manifest = manifest.copy(progress = RemoteProgress(row.placeMs, false, row.placeAt, conn.deviceId, ""))
+                }
+                val settings = Offline.loadSettings()
+                val art = Offline.coverBytes(book)
+                val pending = pendingFor(manifest.id)
+                main.post { if (sequence.get() == mine) begin(api, conn, manifest, settings, art, atMs, pending, true) }
+            } catch (e: Exception) {
+                Log.w(TAG, "could not read the downloaded book: ${e.javaClass.simpleName}")
+                main.post { if (sequence.get() == mine) fail("book") }
+            }
+        }
+    }
+
     private fun begin(
         api: Api, conn: Connection, manifest: BookManifest, settings: app.tendshelf.shared.PlayerSettings,
-        art: ByteArray?, atMs: Long?, pending: Save?,
+        art: ByteArray?, atMs: Long?, pending: Save?, downloaded: Boolean = false,
     ) {
         if (manifest.files.none { it.playable }) {
             fail("book")
@@ -140,7 +169,7 @@ class BookEngine(
         this.settings = settings
         player.load(manifest.title, manifest.author, manifest.chapters, settings, art)
         onBookStarted?.invoke(manifest.id, placeWrittenAt(manifest.progress, pending), atMs != null && atMs >= 0)
-        exo.setMediaSource(BookMedia.build(manifest, api.paths, http), startPlace(manifest.progress, atMs, pending))
+        exo.setMediaSource(BookMedia.build(manifest, api.paths, http, downloaded), startPlace(manifest.progress, atMs, pending))
         exo.setPlaybackSpeed(manifest.speed.toFloat())
         exo.prepare()
         exo.play()

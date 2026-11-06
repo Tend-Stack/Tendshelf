@@ -33,15 +33,20 @@ class Api(origin: String) {
         )
     }
 
-    fun manifest(token: String, bookId: String): BookManifest {
-        val json = JSONObject(String(get(paths.bookUrl(bookId), token, 4 * 1024 * 1024)))
+    fun manifest(token: String, bookId: String): BookManifest = parseManifest(fetchManifestJson(token, bookId))
+
+    /** The server's answer as text, so a download can keep it as it came. */
+    fun fetchManifestJson(token: String, bookId: String): String = String(get(paths.bookUrl(bookId), token, 4 * 1024 * 1024))
+
+    fun parseManifest(text: String): BookManifest {
+        val json = JSONObject(text)
         val book = json.getJSONObject("book")
         val files = json.getJSONArray("files").let { arr ->
             (0 until arr.length()).map {
                 val f = arr.getJSONObject(it)
                 AudioFile(
                     f.getString("id"), f.getInt("idx"), f.getLong("offsetMs"), f.getLong("durationMs"),
-                    f.getString("mime"), f.getBoolean("needsCompat"), f.optBoolean("playable", true),
+                    f.getString("mime"), f.getBoolean("needsCompat"), f.optBoolean("playable", true), f.optLong("size", 0),
                 )
             }
         }
@@ -63,6 +68,7 @@ class Api(origin: String) {
             coverUrl = if (book.isNull("cover")) "" else paths.coverUrl(id, 512),
             author = authors,
             progress = progress,
+            mayDownload = json.optJSONObject("permissions")?.optBoolean("download", false) ?: false,
         )
     }
 

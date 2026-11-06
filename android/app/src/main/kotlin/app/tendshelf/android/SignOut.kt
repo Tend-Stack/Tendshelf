@@ -8,8 +8,10 @@ import java.util.concurrent.Executors
 /**
  * Leaves nothing behind (plan A2, invariant 7): token, cookies, web storage, cache and history go; then the start
  * page opens with the address filled in. The revoke call is best effort and runs after the local wipe, with the token
- * read first. The service stops with it (A4). A7 adds the downloads.
+ * read first. The service stops with it (A4). The downloads go with an explicit sign-out (the page's own Sign out, seen as a POST to /logout), with a sign-in as
+ * someone else and with a change of server; a session that merely ran out keeps them (decision 0012, point 4).
  */
+@androidx.media3.common.util.UnstableApi
 class SignOut(
     private val web: WebView,
     private val store: TokenStore,
@@ -24,11 +26,17 @@ class SignOut(
     /** Called after the wipe, on the main thread, so the flow can reset itself. */
     var after: (() -> Unit)? = null
 
+    /** The page asked the server to sign out (POST /logout went by); a revoked sign-in that follows is a real sign-out. */
+    @Volatile
+    var logoutSeen = false
+
     fun run(reason: Int?) {
         val origin = store.origin
         val conn = store.current()
         val token = conn?.token
-        wipeLocal()
+        val downloads = logoutSeen || reason == R.string.other_person
+        logoutSeen = false
+        wipeLocal(downloads)
         pages.state = StartState(origin?.text ?: "", reason?.let(words))
         web.loadUrl(pages.startUrl)
         after?.invoke()
@@ -41,8 +49,9 @@ class SignOut(
     }
 
     /** Everything the page side and the token hold, without opening the start page. */
-    fun wipeLocal() {
+    fun wipeLocal(downloads: Boolean) {
         stopPlayback()
+        if (downloads) Offline.wipe()
         store.clearToken()
         CookieManager.getInstance().removeAllCookies(null)
         CookieManager.getInstance().flush()
@@ -55,7 +64,7 @@ class SignOut(
     /** The person chose another server: the old token is useless there, so it is revoked and everything is wiped. */
     fun leave(oldOrigin: app.tendshelf.shared.Origin) {
         val token = store.current()?.token
-        wipeLocal()
+        wipeLocal(true)
         val appContext = web.context.applicationContext
         io.execute {
             ProgressWriter.signOutFlush(appContext, null) // the rows belong to the old server
