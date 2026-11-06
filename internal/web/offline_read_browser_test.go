@@ -348,10 +348,18 @@ func TestOffReadBrowserSlices(t *testing.T) {
 	form := fmt.Sprintf("edition_id=%s&chapter_idx=2&sid=%s&off=0&quote=Sentence&char_pos=100&client_updated_at=%d&device_id=ofrslices001",
 		l.ed.ID, sid, time.Now().Add(-time.Hour).UnixMilli())
 	tab := b.NewTab(1440, 900, false, true)
+	// The first load only lets the page learn who is signed in (a change of person clears the queue). The
+	// record is then written at the start of the second page, before its scripts run. Writing it into a
+	// loaded page raced that page's own start-up flush, which could send a slice too (4 posts, not 3).
 	tab.Navigate(e.URL + "/libraries")
 	tab.WaitFor(`window.tsPlayer !== undefined`, 20*time.Second)
 	record := `{` + cdp.Quote(l.book.ID) + `: {form: ` + cdp.Quote(form) + `, chars: 150000, active: 1500000, sent: false}}`
-	tab.Eval(`localStorage.setItem("ts.offline.reading", JSON.stringify(`+record+`))`, nil)
+	_ = tab.Call("Page.enable", map[string]any{}, nil)
+	if err := tab.Call("Page.addScriptToEvaluateOnNewDocument", map[string]any{
+		"source": `localStorage.setItem("ts.offline.reading", JSON.stringify(` + record + `))`,
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
 	e.posts.Store(0)
 	tab.Navigate(e.URL + "/libraries")
 	tab.WaitFor(`JSON.parse(localStorage.getItem("ts.offline.reading") || "{}")[`+cdp.Quote(l.book.ID)+`] === undefined`, 15*time.Second)
