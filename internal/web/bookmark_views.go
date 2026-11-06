@@ -202,7 +202,7 @@ func (s *server) bookmarksPanel(r *http.Request, d library.BookDetail) (pages.Bo
 		sv := pages.BookmarkSheetView{
 			ShowEnd: b.SID == "", KindLabel: clipKindName, EndLabel: clipEndLabel,
 			EndHint: fmt.Sprintf(clipEndHint, clockText(b.PositionMs)),
-			CSRF: csrf, Title: bookmarkSheetTitle, When: bookmarkWhenText(n, clock), Note: b.Note,
+			CSRF:    csrf, Title: bookmarkSheetTitle, When: bookmarkWhenText(n, clock), Note: b.Note,
 			NoteLabel: bookmarkNoteLabel, SaveLabel: bookmarkSave, DeleteLabel: bookmarkDelete,
 			NoteAction: "/bookmarks/" + b.ID + "/note", DeleteAction: "/bookmarks/" + b.ID + "/delete",
 			CloseHref: base, CloseLabel: bookmarkClose, MaxRunes: progress.MaxNoteRunes,

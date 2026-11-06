@@ -199,8 +199,8 @@ templ BookmarkSheet(v BookmarkSheetView) {
 					<legend class="ts-field__label">{ v.KindLabel }</legend>
 					<div class="ts-seg">
 						for _, k := range v.Kinds {
-							<label class="ts-seg__item ts-bookmark-sheet__kind">
-								<input type="radio" name="kind" value={ k.Value } checked?={ k.Checked }/>
+							<label class="ts-seg__item ts-bookmark-sheet__kind" for={ "bms-kind-" + k.Value }>
+								<input type="radio" id={ "bms-kind-" + k.Value } name="kind" value={ k.Value } checked?={ k.Checked }/>
 								<span>{ k.Label }</span>
 							</label>
 						}

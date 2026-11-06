@@ -141,20 +141,20 @@ in request order; a failed item does not stop the others; a hidden or unknown bo
 ### GET /api/v1/books/{id}/bookmarks?notes=1&since=&cursor=
 Without `since` and `cursor`: the live bookmarks, newest first (`notes=1` keeps those with a note), `next` null.
 With either: the changes of this book after `since`, deleted ones included, up to 1000 a page.
-Bookmark: `{"id","clientId"?,"bookId","positionMs","note","createdAt","updatedAt","deletedAt":ms|null}`. A deleted one
+Bookmark: `{"id","clientId"?,"bookId","positionMs","note","endMs":ms|null,"kind","createdAt","updatedAt","deletedAt":ms|null}`. A clip is a bookmark with `endMs` (a moment in the audio after `positionMs`; `null` for a plain bookmark). `kind` is one of `bookmark` (the default), `favourite`, `quote`, `note`, `revisit`. A deleted one
 has `deletedAt` set and an empty note.
 
 ### POST /api/v1/books/{id}/bookmarks
-Body `{"positionMs"*,"note","clientId"}`. `positionMs` past the end is clamped to the book's length. 201 with the bookmark.
+Body `{"positionMs"*,"note","clientId","endMs","kind"}`; `endMs` past the end of the book is clamped to it. Unknown fields are ignored, so a body without `endMs` and `kind` makes a plain bookmark. `positionMs` past the end is clamped to the book's length. 201 with the bookmark.
 `clientId` (1 to 64 of letters, digits, `-`, `_`; the app's own ULID) makes a retry safe: the same person sending the same
 id for the same book gets the existing bookmark back with 200 and nothing new is saved. An id already used by another
-person or another book is 409 `conflict` (field `clientId`). 409 `conflict` also when the book holds its most bookmarks; 400 `note`, `clientId`, `positionMs`.
+person or another book is 409 `conflict` (field `clientId`). 409 `conflict` also when the book holds its most bookmarks; 400 `note`, `clientId`, `positionMs`, `endMs` (not after `positionMs`), `kind`. On a retry the existing bookmark is returned as it is.
 
 ### GET /api/v1/bookmarks?since=&cursor=&limit=
 Every bookmark of the person on any listable book changed or deleted after `since`, in a change feed (limit 1..500).
 
 ### PATCH /api/v1/bookmarks/{id}
-Body `{"note"*}` (empty clears it). 200 with the bookmark. Another person's, unknown or deleted bookmark: 404.
+Body `{"note","endMs","kind"}`, any of them (empty `note` clears it; `endMs` 0 clears the end). A body with none of them is 400 `note`; 400 `endMs` when the end is not after the position, 400 `kind` for an unknown kind. 200 with the bookmark; `updatedAt` moves, so the change feeds carry it. Another person's, unknown or deleted bookmark: 404.
 
 ### DELETE /api/v1/bookmarks/{id}
 Soft delete: 204; the id lives on as a tombstone in the feeds. 404 as for PATCH.
