@@ -8,7 +8,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell (git describe --tags --long --always --dirty 2>/dev/null || echo dev) | sed -E 's/-0-g[0-9a-f]+//')
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: version desktopdesktop-check deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
+.PHONY: version desktop desktop-check desktop-purego deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
 
 # Prints the version string builds embed.
 version:
