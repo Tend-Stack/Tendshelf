@@ -189,6 +189,7 @@ func (s *server) renderAdminLibrariesFor(w http.ResponseWriter, r *http.Request,
 		view.EbooksHref, view.EbooksLabel = "/admin/ebooks", inboxTitle
 	}
 	view.DuplicatesHref, view.DuplicatesLabel = "/admin/duplicates", dupTitle
+	view.HealthHref, view.HealthLabel = "/admin/health", healthTitle
 	s.prefsPage(w, r, status, "Libraries & scanning", "admin-libraries", "libraries", false, pages.AdminLibraries(view), nil, adminStyles...)
 }
 

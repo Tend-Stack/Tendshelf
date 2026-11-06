@@ -826,6 +826,17 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
   after "Show that copy again"; no cross-library or multi-way merge; a moved folder reappears as a new book.
   Words not in the deck are in `docs/copy-additions.md`.
 
+- **S3 Library health** (2026-11-06, done). Scope: `library/health.go` (`Repo.Health`, `Repo.HealthPage`; groups
+  missing, not opened, unreadable file, no chapters, no cover, no online match, chapters past the end; exact counts,
+  rows filtered in SQL by scope, 50 per page), `Problems` now shares `noCoverCond` with it, `GET /admin/health` (owner and
+  admins; others 404; unknown group 404) with a fix link per row (chapters page, book, the folder's emptied page when
+  the whole folder went, the library's lookups page when lookups are on; an unreadable file says so in words), and a
+  "Library health" button on `/admin/libraries`. No migration, no job, no JS. Checks: `TestHealth*` (library: every
+  group, scope, agreement with `Problems`, paging, text and unsettled books absent; web: roles, fix links, paging,
+  all-clear), route matrix and a11y rows, `TestHealthVisual` at 390, 768, 1024 and 1440 in dark and light.
+  Limits: read only, no fixing from the page; ebook problems stay on `/admin/ebooks`; no 100,000-file perf row (see
+  report). Words not in the deck are in `docs/copy-additions.md`.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), native mobile
