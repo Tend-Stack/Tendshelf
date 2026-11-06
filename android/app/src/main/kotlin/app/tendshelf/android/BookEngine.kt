@@ -61,6 +61,9 @@ class BookEngine(
         private set
     val currentBook: String get() = bookId
 
+    /** Main thread, a start or the player failed: the kind word (`signedOut`, `stream`, `book`, `background`). */
+    var onFailed: ((String) -> Unit)? = null
+
     /** Main thread, just before the loaded book is replaced or cleared: save its place under its own id. */
     var onBookChanging: (() -> Unit)? = null
 
@@ -204,6 +207,7 @@ class BookEngine(
         error = kind
         exo.playWhenReady = false
         publishState()
+        onFailed?.invoke(kind)
     }
 
     private fun errorOf(e: PlaybackException): String {

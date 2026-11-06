@@ -23,6 +23,11 @@
         <meta-data android:name="android.webkit.WebView.EnableSafeBrowsing" android:value="false" />
         <meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true" />
 
+        <!-- Android Auto: the app is a media app; the name is a string, no Google module is linked (A8). -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
@@ -50,5 +55,11 @@
             android:name=".TsDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Covers for the car (A8, D6). Exported because the car's process reads it; the caller's uid is checked in code. -->
+        <provider
+            android:name=".CoverProvider"
+            android:authorities="app.tendshelf.android.covers"
+            android:exported="true" />
     </application>
 </manifest>

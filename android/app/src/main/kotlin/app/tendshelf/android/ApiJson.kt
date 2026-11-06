@@ -1,6 +1,9 @@
 package app.tendshelf.android
 
 import app.tendshelf.shared.BatchItemResult
+import app.tendshelf.shared.BookCard
+import app.tendshelf.shared.ShelfCard
+import org.json.JSONArray
 import app.tendshelf.shared.DEFAULT_REWIND
 import app.tendshelf.shared.RemoteProgress
 import app.tendshelf.shared.RewindStep
@@ -63,6 +66,35 @@ object ApiJson {
                 o.optJSONObject("error")?.optString("code", "error"),
                 o.optJSONObject("progress")?.let(::remoteProgress),
             )
+        }
+    }
+
+    /** One `apiBookCard` from the server: id, title, authors, duration and whether it has a cover. */
+    fun bookCard(o: JSONObject): BookCard {
+        val authors = o.optJSONArray("authors")?.let { arr ->
+            (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("name")?.ifEmpty { null } }.joinToString(", ")
+        }.orEmpty()
+        return BookCard(o.getString("id"), o.getString("title"), authors, o.optLong("durationMs", 0), !o.isNull("cover") && o.has("cover"))
+    }
+
+    private fun cards(arr: JSONArray?, pick: (JSONObject) -> JSONObject?): List<BookCard> =
+        if (arr == null) emptyList() else (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(pick)?.let(::bookCard) }
+
+    /** `{"items":[{"book":{...}}]}` from /continue and /queue. */
+    fun itemBooks(body: String): List<BookCard> = cards(JSONObject(body).optJSONArray("items")) { it.optJSONObject("book") }
+
+    /** `{"books":[...]}` from /search. */
+    fun searchBooks(body: String): List<BookCard> = cards(JSONObject(body).optJSONArray("books")) { it }
+
+    /** `{"books":{"items":[...],"next":...},"shelf":{...}}` from /shelves/{id}. */
+    fun shelfBooks(body: String): List<BookCard> = cards(JSONObject(body).optJSONObject("books")?.optJSONArray("items")) { it }
+
+    /** `{"own":[...],"shared":[...]}` from /shelves: the person's own first. */
+    fun shelves(body: String): List<ShelfCard> {
+        val j = JSONObject(body)
+        return listOf("own", "shared").flatMap { key ->
+            val arr = j.optJSONArray(key) ?: return@flatMap emptyList()
+            (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }.map { ShelfCard(it.getString("id"), it.getString("name"), it.optInt("books", 0)) }
         }
     }
 

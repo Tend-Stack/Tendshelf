@@ -25,7 +25,7 @@ class DebugProbe : BroadcastReceiver() {
         }
         if (intent.action == "app.tendshelf.DEBUG_READ") {
             // Read-only: a broadcast to the running process, never a service start (A5b invariant 3).
-            DebugHooks.read(intent.getStringExtra("op"))
+            if (intent.getStringExtra("op") in DebugBrowse.OPS) DebugBrowse.run(context, intent) else DebugHooks.read(intent.getStringExtra("op"))
             return
         }
         val web = WebHandle.current

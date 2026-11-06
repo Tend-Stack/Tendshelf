@@ -11,18 +11,28 @@ import android.os.Looper
 import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
+import app.tendshelf.shared.Node
+import app.tendshelf.shared.allowedCommands
+import app.tendshelf.shared.parseNode
+import app.tendshelf.shared.speedCycle
+import app.tendshelf.shared.speedLabel
 import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.SettableFuture
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 
@@ -46,6 +56,7 @@ class PlaybackService : MediaLibraryService() {
     private lateinit var askPrompt: AskPrompt
     internal lateinit var sleep: SleepTimer
         private set
+    private lateinit var tree: LibraryTree
     private val http = DefaultHttpDataSource.Factory()
     internal val main = Handler(Looper.getMainLooper())
     internal val io = java.util.concurrent.Executors.newCachedThreadPool()
@@ -77,6 +88,7 @@ class PlaybackService : MediaLibraryService() {
             .setWakeMode(C.WAKE_MODE_NETWORK) // keeps CPU and Wi-Fi awake while streaming with the screen off
             .build()
         player = BookPlayer(exo)
+        tree = LibraryTree(this, { connections }, io, main)
         exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 Log.i(TAG, "state=$state pos=${exo.currentPosition}")
@@ -89,7 +101,7 @@ class PlaybackService : MediaLibraryService() {
         )
         session = MediaLibrarySession.Builder(this, player, SessionCallback())
             .setSessionActivity(open) // the notification tap opens the page again
-            .setMediaButtonPreferences(skipButtons())
+            .setMediaButtonPreferences(skipButtons(1.0))
             .build()
         engine = BookEngine(exo, player, http, main, io, { connections }) { extras -> putExtras { putAll(extras) } }
         sleep = SleepTimer(exo, player, getSystemService(android.hardware.SensorManager::class.java), main) { info ->
@@ -101,6 +113,7 @@ class PlaybackService : MediaLibraryService() {
             }
         }
         wireProgress()
+        wireCar()
         setListener(RefusedListener())
         exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
@@ -214,8 +227,39 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
-    /** Back and Forward beside the chapter buttons (D4). */
-    private fun skipButtons(): ImmutableList<CommandButton> = ImmutableList.of(
+    /** A8: a book chosen in a tree starts at the server's place; the speed button shows its speed; a failure is worded to the car. */
+    private fun wireCar() {
+        player.onBookChosen = { id -> engine.start(id, null) }
+        val prefs = getSharedPreferences(CAR_PREFS, MODE_PRIVATE)
+        val before = engine.onBookStarted
+        engine.onBookStarted = { id, writtenAt, atGiven ->
+            prefs.edit().putString(LAST_BOOK, id).apply() // D8: what a "resume" from a media button plays
+            before?.invoke(id, writtenAt, atGiven)
+        }
+        engine.onFailed = { kind -> tellCar(kind) }
+        exo.addListener(object : Player.Listener {
+            override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
+                session?.setMediaButtonPreferences(skipButtons(playbackParameters.speed.toDouble()))
+            }
+        })
+    }
+
+    /** Plain words to every connected car, not only a dark screen (invariant 4). Our own page already shows its own. */
+    private fun tellCar(kind: String) {
+        val s = session ?: return
+        val (code, words) = when (kind) {
+            "signedOut" -> SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED to R.string.car_sign_in
+            "background" -> SessionError.ERROR_SESSION_SETUP_REQUIRED to R.string.car_keep_listening
+            "stream" -> SessionError.ERROR_IO to R.string.car_no_connection
+            else -> SessionError.ERROR_UNKNOWN to R.string.car_cant_play
+        }
+        for (c in s.connectedControllers) {
+            if (c.packageName != packageName && CarAccess.allowed(c.uid)) s.sendError(c, SessionError(code, getString(words)))
+        }
+    }
+
+    /** Back and Forward beside the chapter buttons (D4), and the car's speed button (A8, D7). */
+    private fun skipButtons(speed: Double): ImmutableList<CommandButton> = ImmutableList.of(
         CommandButton.Builder(CommandButton.ICON_SKIP_BACK)
             .setPlayerCommand(Player.COMMAND_SEEK_BACK)
             .setDisplayName("Back")
@@ -224,6 +268,11 @@ class PlaybackService : MediaLibraryService() {
         CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD)
             .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
             .setDisplayName("Forward")
+            .setSlots(CommandButton.SLOT_OVERFLOW)
+            .build(),
+        CommandButton.Builder(CommandButton.ICON_PLAYBACK_SPEED)
+            .setSessionCommand(SPEED_COMMAND)
+            .setDisplayName(speedLabel(speed))
             .setSlots(CommandButton.SLOT_OVERFLOW)
             .build(),
     )
@@ -262,20 +311,103 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private inner class SessionCallback : MediaLibrarySession.Callback {
+        /** Who this controller is (A8, D1): trusted ones and Android Auto browse; any other app plays and nothing more. */
+        private fun allowed(session: MediaSession, c: MediaSession.ControllerInfo) = allowedCommands(
+            trusted = c.isTrusted,
+            auto = session.isAutoCompanionController(c) || session.isAutomotiveController(c),
+            own = c.packageName == packageName,
+        )
+
         override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
-            // Custom commands are for this app only; Auto, System UI, headsets get the standard ones (invariant 3).
-            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon().apply {
-                if (controller.packageName == packageName) {
+            val who = allowed(session, controller)
+            // Library commands only for those who may browse; custom commands for this app only, the speed button aside.
+            val base = if (who.browse) MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS else MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS
+            val commands = base.buildUpon().apply {
+                if (who.ownCommands) {
                     add(START_COMMAND)
                     add(STOP_COMMAND)
                     add(ANSWER_COMMAND)
                     add(VISIBLE_COMMAND)
                     add(SLEEP_COMMAND)
                 }
+                if (who.speed) add(SPEED_COMMAND)
             }.build()
+            if (who.browse) CarAccess.add(controller.uid)
+            Log.i(TAG, "controller ${controller.packageName} trusted=${controller.isTrusted} browse=${who.browse}")
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(commands)
                 .build()
+        }
+
+        override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
+            if (allowed(session, controller).browse) CarAccess.remove(controller.uid)
+        }
+
+        /** The timeline is the engine's: nobody else sets or edits it. Playback and seeking stay open (headsets, notification). */
+        override fun onPlayerCommandRequest(session: MediaSession, controller: MediaSession.ControllerInfo, playerCommand: Int): Int =
+            if (!allowed(session, controller).browse && (playerCommand == Player.COMMAND_SET_MEDIA_ITEM || playerCommand == Player.COMMAND_CHANGE_MEDIA_ITEMS)) {
+                SessionResult.RESULT_ERROR_PERMISSION_DENIED
+            } else {
+                SessionResult.RESULT_SUCCESS
+            }
+
+        override fun onGetLibraryRoot(session: MediaLibrarySession, browser: MediaSession.ControllerInfo, params: LibraryParams?): ListenableFuture<LibraryResult<MediaItem>> =
+            Futures.immediateFuture(
+                if (allowed(session, browser).browse) LibraryResult.ofItem(tree.rootItem(), params) else LibraryResult.ofError(LibraryResult.RESULT_ERROR_PERMISSION_DENIED),
+            )
+
+        override fun onGetChildren(
+            session: MediaLibrarySession, browser: MediaSession.ControllerInfo, parentId: String, page: Int, pageSize: Int, params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
+            if (allowed(session, browser).browse) tree.children(parentId, page, pageSize) else Futures.immediateFuture(LibraryResult.ofError(LibraryResult.RESULT_ERROR_PERMISSION_DENIED))
+
+        override fun onGetItem(session: MediaLibrarySession, browser: MediaSession.ControllerInfo, mediaId: String): ListenableFuture<LibraryResult<MediaItem>> =
+            if (allowed(session, browser).browse) tree.item(mediaId) else Futures.immediateFuture(LibraryResult.ofError(LibraryResult.RESULT_ERROR_PERMISSION_DENIED))
+
+        override fun onSearch(session: MediaLibrarySession, browser: MediaSession.ControllerInfo, query: String, params: LibraryParams?): ListenableFuture<LibraryResult<Void>> {
+            if (!allowed(session, browser).browse) return Futures.immediateFuture(LibraryResult.ofError(LibraryResult.RESULT_ERROR_PERMISSION_DENIED))
+            tree.runSearch(query) { n -> session.notifySearchResultChanged(browser, query, n, params) }
+            return Futures.immediateFuture(LibraryResult.ofVoid())
+        }
+
+        override fun onGetSearchResult(
+            session: MediaLibrarySession, browser: MediaSession.ControllerInfo, query: String, page: Int, pageSize: Int, params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
+            if (allowed(session, browser).browse) tree.search(query, page, pageSize) else Futures.immediateFuture(LibraryResult.ofError(LibraryResult.RESULT_ERROR_PERMISSION_DENIED))
+
+        /** A pick from a tree, a voice query (D4), or nothing at all from an app that may not browse. The engine starts the book (D3). */
+        override fun onSetMediaItems(
+            mediaSession: MediaSession, controller: MediaSession.ControllerInfo, mediaItems: MutableList<MediaItem>, startIndex: Int, startPositionMs: Long,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val none = MediaSession.MediaItemsWithStartPosition(emptyList(), 0, C.TIME_UNSET)
+            if (!allowed(mediaSession, controller).browse) return Futures.immediateFuture(none)
+            val first = mediaItems.firstOrNull() ?: return Futures.immediateFuture(none)
+            val query = first.requestMetadata.searchQuery
+            if (query.isNullOrBlank()) {
+                val books = mediaItems.filter { parseNode(it.mediaId) is Node.Book }
+                return Futures.immediateFuture(MediaSession.MediaItemsWithStartPosition(books, 0, C.TIME_UNSET))
+            }
+            val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            tree.voice(query) { found ->
+                if (found == null) {
+                    session?.sendError(controller, SessionError(SessionError.ERROR_NOT_SUPPORTED, getString(R.string.car_not_found)))
+                    future.set(none)
+                } else {
+                    future.set(MediaSession.MediaItemsWithStartPosition(listOf(found), 0, C.TIME_UNSET))
+                }
+            }
+            return future
+        }
+
+        /** A media button with nothing loaded (D8): the book that played last. Its place comes from the server, not from here. */
+        override fun onPlaybackResumption(mediaSession: MediaSession, controller: MediaSession.ControllerInfo, isForPlayback: Boolean): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val last = getSharedPreferences(CAR_PREFS, MODE_PRIVATE).getString(LAST_BOOK, null)
+            if (last == null || connections.current() == null) return Futures.immediateFailedFuture(UnsupportedOperationException("nothing to resume"))
+            val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            tree.item(last) { item ->
+                if (item == null) future.setException(UnsupportedOperationException("not found")) else future.set(MediaSession.MediaItemsWithStartPosition(listOf(item), 0, C.TIME_UNSET))
+            }
+            return future
         }
 
         override fun onCustomCommand(
@@ -284,7 +416,12 @@ class PlaybackService : MediaLibraryService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
-            if (controller.packageName != packageName) {
+            val who = allowed(session, controller)
+            if (customCommand.customAction == SPEED_ACTION && who.speed) {
+                cycleSpeed()
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            if (!who.ownCommands) {
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
             }
             when (customCommand.customAction) {
@@ -293,6 +430,8 @@ class PlaybackService : MediaLibraryService() {
                     Log.i(TAG, "stop and clear done")
                     sleep.off()
                     engine.stopAndClear()
+                    getSharedPreferences(CAR_PREFS, MODE_PRIVATE).edit().clear().apply() // the next person must not resume this one's book
+                    CoverProvider.wipe(this@PlaybackService)
                     stopSelf()
                 }
                 ANSWER_ACTION -> askPrompt.answer(args.getBoolean("keepHere"))
@@ -304,12 +443,31 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    /** The car's speed button (D7): next step, and the server remembers it for this book, best effort. */
+    private fun cycleSpeed() {
+        val next = speedCycle(exo.playbackParameters.speed.toDouble())
+        player.setPlaybackSpeed(next.toFloat())
+        val book = engine.currentBook
+        val conn = connections.current()
+        if (book.isEmpty() || conn == null) return
+        io.execute {
+            try {
+                Api(conn.origin).putSpeed(conn.token, book, next)
+            } catch (e: Exception) {
+                Log.w(TAG, "speed not saved: ${e.javaClass.simpleName}")
+            }
+        }
+    }
+
     companion object {
         internal const val TAG = "Tendshelf"
         const val START_ACTION = "app.tendshelf.START_BOOK"
         const val STOP_ACTION = "app.tendshelf.STOP_AND_CLEAR"
         const val ANSWER_ACTION = "app.tendshelf.ANSWER_ASK"
         const val VISIBLE_ACTION = "app.tendshelf.PAGE_VISIBLE"
+        const val SPEED_ACTION = "app.tendshelf.SPEED_CYCLE"
+        const val CAR_PREFS = "car"
+        const val LAST_BOOK = "lastBook"
         const val EXTRA_REWOUND = "ts.rewoundS"
         const val EXTRA_REWOUND_SEQ = "ts.rewoundSeq"
         const val EXTRA_ASK_BOOK = "ts.ask.bookId"
@@ -323,6 +481,7 @@ class PlaybackService : MediaLibraryService() {
         const val PLAYBACK_CHANNEL = "playback"
         const val REFUSED_ID = 4244
         val ANSWER_COMMAND = SessionCommand(ANSWER_ACTION, Bundle.EMPTY)
+        val SPEED_COMMAND = SessionCommand(SPEED_ACTION, Bundle.EMPTY)
         val SLEEP_COMMAND = SessionCommand(SLEEP_ACTION, Bundle.EMPTY)
         val VISIBLE_COMMAND = SessionCommand(VISIBLE_ACTION, Bundle.EMPTY)
         val START_COMMAND = SessionCommand(START_ACTION, Bundle.EMPTY)

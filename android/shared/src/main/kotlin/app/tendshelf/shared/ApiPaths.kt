@@ -24,6 +24,15 @@ class ApiPaths(server: String) {
     val batchUrl: String get() = "$base/api/v1/progress/batch"
     val queueNextUrl: String get() = "$base/api/v1/queue/next"
 
+    /** The lists the car browses (A8). */
+    fun continueUrl(limit: Int): String = "$base/api/v1/continue?limit=$limit"
+    val queueUrl: String get() = "$base/api/v1/queue"
+    val shelvesUrl: String get() = "$base/api/v1/shelves"
+    fun shelfUrl(shelfId: String): String = "$base/api/v1/shelves/${segment(shelfId)}"
+    fun searchUrl(query: String, limit: Int): String =
+        "$base/api/v1/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&limit=$limit"
+    fun speedUrl(bookId: String): String = "$base/api/v1/books/${segment(bookId)}/speed"
+
     fun progressUrl(bookId: String): String = "$base/api/v1/progress/${segment(bookId)}"
 
     /** The page the WebView opens: the shell mark makes the server treat the visitor as the Android app. */

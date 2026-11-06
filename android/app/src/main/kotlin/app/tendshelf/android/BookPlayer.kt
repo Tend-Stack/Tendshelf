@@ -4,15 +4,18 @@ import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import app.tendshelf.shared.Chapter
+import app.tendshelf.shared.Node
 import app.tendshelf.shared.PlayerSettings
 import app.tendshelf.shared.Position
 import app.tendshelf.shared.nextChapterStart
+import app.tendshelf.shared.parseNode
 import app.tendshelf.shared.previousChapterStart
 
 /**
@@ -33,6 +36,9 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
 
     /** Set when the wrapped player failed; the next play prepares again from the same place. */
     var failed = false
+
+    /** A book was chosen in a client's tree (A8, D3): the engine starts it. Null until the service wires it. */
+    var onBookChosen: ((String) -> Unit)? = null
 
     /** Called about twice a second while playing, and after a seek; A5 saves progress from it. */
     var onTick: (() -> Unit)? = null
@@ -163,6 +169,20 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
         val to = exo.currentPosition + seekForwardIncrement
         exo.seekTo(if (end != C.TIME_UNSET) to.coerceAtMost(end) else to)
         checkChapter()
+    }
+
+    // A client picks a book, not a file (A8, D3): `book:<id>` goes to the engine, which builds the one window and
+    // starts at the server's place. Anything else is ignored: the timeline is never edited from outside.
+    override fun setMediaItem(mediaItem: MediaItem) = choose(listOf(mediaItem))
+    override fun setMediaItem(mediaItem: MediaItem, startPositionMs: Long) = choose(listOf(mediaItem))
+    override fun setMediaItem(mediaItem: MediaItem, resetPosition: Boolean) = choose(listOf(mediaItem))
+    override fun setMediaItems(mediaItems: MutableList<MediaItem>) = choose(mediaItems)
+    override fun setMediaItems(mediaItems: MutableList<MediaItem>, resetPosition: Boolean) = choose(mediaItems)
+    override fun setMediaItems(mediaItems: MutableList<MediaItem>, startIndex: Int, startPositionMs: Long) = choose(mediaItems)
+
+    private fun choose(items: List<MediaItem>) {
+        val book = (items.firstOrNull()?.mediaId?.let(::parseNode) as? Node.Book)?.id ?: return
+        onBookChosen?.invoke(book)
     }
 
     override fun play() {
