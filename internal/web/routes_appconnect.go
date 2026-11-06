@@ -16,15 +16,13 @@ import (
 // take a browser session only: a device token is refused before it gets here (bearer.go). The window
 // mark ts_shell=android is not a credential; without it the page shows words and makes no code.
 
-const (
-	appConnectPath = "/app/connect"
-	appDonePath    = "/app/connect/done"
-)
+// appDonePath is where the 303 sends the app's window.
+const appDonePath = "/app/connect/done"
 
 func (s *server) registerAppConnect(mux *http.ServeMux) {
-	mux.HandleFunc("GET "+appConnectPath, s.getAppConnect)
-	mux.HandleFunc("POST "+appConnectPath, s.postAppConnect)
-	mux.HandleFunc("GET "+appDonePath, s.getAppConnectDone)
+	mux.HandleFunc("GET /app/connect", s.getAppConnect)
+	mux.HandleFunc("POST /app/connect", s.postAppConnect)
+	mux.HandleFunc("GET /app/connect/done", s.getAppConnectDone)
 }
 
 // appConnectPage renders one state of the page. Every answer is no-store (frame sets it).
