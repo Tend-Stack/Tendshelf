@@ -98,6 +98,7 @@ templ Home(v HomeView) {
 				}
 			</section>
 		}
+		@HomeAlso(v.Hero)
 		if len(v.Series.Rows) > 0 || v.Shared != nil {
 			<div class="ts-home__pair">
 				@HomeSeries(v.Series)

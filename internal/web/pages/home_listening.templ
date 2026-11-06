@@ -94,21 +94,41 @@ templ HomeHero(v *HomeHeroView) {
 	<div id="home-hero" hx-get="/hx/home/hero" hx-trigger="progress-saved from:body" hx-swap="outerHTML">
 		if v != nil {
 			@HeroCard(*v)
-			if len(v.Also) > 0 {
-				<section class="ts-home__row" aria-labelledby="home-also-title">
-					<div class="ts-home__rowhead">
-						<h2 id="home-also-title" class="section">Also in progress</h2>
-						<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.AlsoHref) }>See all</a>
-					</div>
-					<div class="ts-home__cards ts-home__cards--three">
-						for _, c := range v.Also {
-							@components.BookCard(c)
-						}
-					</div>
-				</section>
-			}
 		}
 	</div>
+}
+
+// HomeAlso is the other books in progress, in its #home-also wrapper below "New on the shelf". The
+// wrapper is always there, so a save can fill it.
+templ HomeAlso(v *HomeHeroView) {
+	<div id="home-also">
+		@homeAlsoRow(v)
+	</div>
+}
+
+// HomeHeroUpdate is what /hx/home/hero answers: the hero, and the row out of band, because a save can
+// move a book between the two.
+templ HomeHeroUpdate(v *HomeHeroView) {
+	@HomeHero(v)
+	<div id="home-also" hx-swap-oob="outerHTML">
+		@homeAlsoRow(v)
+	</div>
+}
+
+templ homeAlsoRow(v *HomeHeroView) {
+	if v != nil && len(v.Also) > 0 {
+		<section class="ts-home__row" aria-labelledby="home-also-title">
+			<div class="ts-home__rowhead">
+				<h2 id="home-also-title" class="section">Also in progress</h2>
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.AlsoHref) }>See all</a>
+			</div>
+			<div class="ts-home__cards ts-home__cards--three">
+				for _, c := range v.Also {
+					@components.BookCard(c)
+				}
+			</div>
+		</section>
+	}
 }
 
 // HomeSeries is "Your series in progress": a cover, the series, where the person is, and a round play

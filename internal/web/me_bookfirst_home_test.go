@@ -109,3 +109,20 @@ func TestBookFirstHomeRequests(t *testing.T) {
 		}
 	}
 }
+
+// TestBookFirstHomeOrder: "Also in progress" sits after "New on the shelf" (operator, 2026-11-05), and
+// the hero's update still refreshes it out of band.
+func TestBookFirstHomeOrder(t *testing.T) {
+	l := fmt2Seed(t)
+	bookfirstHeroBook(t, l, l.owner)
+	next := bookfirstAudio(t, l, "Next Up")
+	bookfirstSave(t, l, l.owner, next.ID, 600_000, 800_000, false)
+	body := l.get(l.owner, "/", false).Body.String()
+	recent, also := strings.Index(body, `id="row-recent"`), strings.Index(body, `id="home-also"`)
+	if recent < 0 || also < recent {
+		t.Fatalf("row-recent at %d, home-also at %d", recent, also)
+	}
+	if frag := l.get(l.owner, "/hx/home/hero", true).Body.String(); !strings.Contains(frag, `id="home-also" hx-swap-oob="outerHTML"`) {
+		t.Error("the update does not refresh the row")
+	}
+}

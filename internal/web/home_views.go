@@ -229,7 +229,7 @@ func (s *server) getHomeHero(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "home hero", err)
 		return
 	}
-	s.fragment(w, r, http.StatusOK, pages.HomeHero(v))
+	s.fragment(w, r, http.StatusOK, pages.HomeHeroUpdate(v))
 }
 
 // homeSharedView builds "Shared with you": the newest three visible shared books and who shared

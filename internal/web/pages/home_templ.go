@@ -261,6 +261,10 @@ func Home(v HomeView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
+		templ_7745c5c3_Err = HomeAlso(v.Hero).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
 		if len(v.Series.Rows) > 0 || v.Shared != nil {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"ts-home__pair\">")
 			if templ_7745c5c3_Err != nil {

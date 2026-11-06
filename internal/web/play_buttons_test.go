@@ -334,8 +334,10 @@ func TestHomeHeroAndRows(t *testing.T) {
 	if n := strings.Count(home, `class="ts-ruler__tick"`); n != 2 {
 		t.Errorf("ticks = %d, want one per chapter start after the first", n)
 	}
-	if hero := e.a.do(http.MethodGet, "/hx/home/hero", nil, nil, e.owner).Body.String(); !strings.Contains(home, hero) || strings.Contains(hero, "<html") {
-		t.Errorf("/hx/home/hero is not the inline hero:\n%s", hero)
+	// The answer also carries the row out of band; the hero part is what must match the page.
+	heroPart, _, _ := strings.Cut(e.a.do(http.MethodGet, "/hx/home/hero", nil, nil, e.owner).Body.String(), `<div id="home-also"`)
+	if !strings.Contains(home, heroPart) || strings.Contains(heroPart, "<html") {
+		t.Errorf("/hx/home/hero is not the inline hero:\n%s", heroPart)
 	}
 
 	// Series rows: both labels, and no play control when the next book is the hero's.
