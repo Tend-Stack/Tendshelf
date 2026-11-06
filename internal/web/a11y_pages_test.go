@@ -236,7 +236,7 @@ func a11yRoutesInSource(t *testing.T) []string {
 	suffixes := []string{"/cover", "/photo", "/export", "/cover/{n}", "manifest", ".png", ".ico"}
 	seen := map[string]bool{}
 	for _, f := range files {
-		if strings.HasSuffix(f, "_test.go") {
+		if strings.HasSuffix(f, "_test.go") || f == "routes_kosync.go" { // KOReader's JSON protocol, not a page
 			continue
 		}
 		b, err := os.ReadFile(f)
