@@ -4,6 +4,7 @@ package web
 
 import (
 	"context"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -117,6 +118,12 @@ func a11yPages() []a11yPage {
 		row("queue", "/queue", a11yStatic("/queue"), both, "main", true),
 		row("me", "/me", a11yStatic("/me"), both, "main", true),
 		row("me-devices", "/me/devices", a11yStatic("/me/devices"), both, "main", true),
+		// A1: the Connect pages exist only inside the Android app's window, so each is opened through the
+		// link that sets the window mark. The mark is a cookie and outlives the visit, so the last row
+		// takes it off again (shell=browser) before the pages after it are opened.
+		row("app-connect", "/app/connect", a11yStatic("/?shell=android&next="+url.QueryEscape("/app/connect?challenge="+a1Challenge)), owner, "main", false),
+		row("app-connect-done", "/app/connect/done", a11yStatic("/?shell=android&next="+url.QueryEscape("/app/connect/done")), owner, "main", false),
+		row("me-devices-after-app", "/me/devices", a11yStatic("/?shell=browser&next="+url.QueryEscape("/me/devices")), owner, "main", true),
 		row("me-settings", "/me/settings", a11yStatic("/me/settings"), both, "main", true),
 	}
 	sections := make([]string, 0, len(settingsSections))
