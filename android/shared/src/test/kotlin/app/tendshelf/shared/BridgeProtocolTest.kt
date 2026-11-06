@@ -130,3 +130,24 @@ class BridgeProtocolTest {
         assertEquals(30, after) // a long pause refills only to the burst size
     }
 }
+
+class SleepBridgeTest {
+    @Test
+    fun sleepWords() {
+        assertEquals(BridgeMessage.Sleep("off", 0), parseBridge("sleep off"))
+        assertEquals(BridgeMessage.Sleep("plus", 0), parseBridge("sleep plus"))
+        assertEquals(BridgeMessage.Sleep("chapter", 0), parseBridge("sleep chapter"))
+        assertEquals(BridgeMessage.Sleep("30", 30), parseBridge("sleep 30"))
+        assertEquals(BridgeMessage.Sleep("999", 999), parseBridge("sleep 999"))
+        for (bad in listOf("sleep", "sleep 0", "sleep 1000", "sleep 05", "sleep -1", "sleep 1.5", "sleep 30 x", "sleep On", "sleep  30", "sleep ")) assertNull(parseBridge(bad), bad)
+    }
+
+    @Test
+    fun sleepJson() {
+        assertEquals("{\"t\":\"sleep\",\"mode\":\"off\",\"choice\":\"\",\"leftMs\":0,\"fading\":false}", encodeSleep(SleepInfo.OFF))
+        assertEquals(
+            "{\"t\":\"sleep\",\"mode\":\"chapter\",\"choice\":\"chapter\",\"leftMs\":1500,\"fading\":true}",
+            encodeSleep(SleepInfo(SleepMode.CHAPTER, "chapter", 1500, true)),
+        )
+    }
+}

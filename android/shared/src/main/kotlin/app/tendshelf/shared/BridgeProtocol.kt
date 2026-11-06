@@ -28,6 +28,9 @@ sealed interface BridgeMessage {
 
     /** The page's answer to the place question: `answer here` keeps this place, `answer there` goes to the other one. */
     data class Answer(val keepHere: Boolean) : BridgeMessage
+
+    /** `sleep off`, `sleep plus`, `sleep chapter` or `sleep 1..999`. [choice] is `off`, `plus`, `chapter` or the digits; [minutes] is 0 for the first three. */
+    data class Sleep(val choice: String, val minutes: Int) : BridgeMessage
 }
 
 const val MAX_LENGTH = 128
@@ -54,8 +57,16 @@ fun parseBridge(raw: String?): BridgeMessage? {
         "back" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.Back(parts[1] == "1") else null
         "theme" -> if (parts.size == 2 && validHex(parts[1])) BridgeMessage.Theme(parts[1]) else null
         "answer" -> if (parts.size == 2 && (parts[1] == "here" || parts[1] == "there")) BridgeMessage.Answer(parts[1] == "here") else null
+        "sleep" -> if (parts.size == 2) sleepWord(parts[1]) else null
         else -> null
     }
+}
+
+/** 1 to 999 with no leading zero, or one of three words. */
+private fun sleepWord(w: String): BridgeMessage? = when {
+    w == "off" || w == "plus" || w == "chapter" -> BridgeMessage.Sleep(w, 0)
+    w.length in 1..3 && w.all { it.isAsciiDigit() } && w[0] != '0' -> BridgeMessage.Sleep(w, w.toInt())
+    else -> null
 }
 
 private fun validId(s: String): Boolean =
@@ -87,6 +98,11 @@ fun encodeState(s: PlayerSnapshot): String =
 /** Only three codes exist; anything else is `stream`, so no error text can cross. `background` is a refused foreground start. */
 fun encodeError(code: String): String =
     "{\"t\":\"error\",\"code\":${jsonString(if (code == "book" || code == "background") code else "stream")}}"
+
+/** The sleep timer for the page to draw. [leftMs] is real listening time; the page counts it down between pushes. */
+fun encodeSleep(s: SleepInfo): String =
+    "{\"t\":\"sleep\",\"mode\":\"${s.mode.name.lowercase()}\",\"choice\":${jsonString(s.choice)}," +
+        "\"leftMs\":${s.leftMs.coerceIn(0, 86_400_000L)},\"fading\":${s.fading}}"
 
 /**
  * The place question for the page's toast. [deviceLabel] is the one free-text field that crosses (D6): the server
