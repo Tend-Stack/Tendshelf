@@ -22,7 +22,7 @@ themes.
 | M5 Book reader | R1, R2, R4, X, B1-B3, RD1-RD4, G1-G7, L | **Built 2026-11-05** ([decision 0018](decisions/0018-book-reader.md), [plan](plans/m5-book-reader.md), [great reader](plans/m5-great-reader.md)). Ebooks as books with automatic pairing, the reader (pages, highlights, search, footnotes), offline reading, look-up and word list, reading stats, skim, comfort, print pages, series and shelves. Read-along was removed. **Operator checks open:** the reader on iPhone Safari and Android Chrome, and the offline-reading airplane check; WebKit was driven only in a scripted Wails window. | The M5 notes below; [manual-checks.md](manual-checks.md). |
 | M6 Desktop | P5 | Built on Linux (2026-11-05). **Open:** the operator's own-desktop checks (sound, tray click, file chooser, `https` server); macOS and Windows not verified. | [plan](plans/m6-desktop.md), M6 status below |
 | M7 Research | P6 | Dropped (decision 0007) | |
-| M8 Android | A0-A10 | In progress. A0 skeleton and playback proof: see its status note under "Android (M8)" below. | [decision 0024](decisions/0024-android-app.md), [plan](plans/android.md) |
+| M8 Android | A0-A10 | In progress. A0 (skeleton and playback proof) built 2026-11-06; see "M8 Android" below. | [decision 0024](decisions/0024-android-app.md), [plan](plans/android.md) |
 
 ## M0 Foundation
 
@@ -859,6 +859,39 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
   all-clear), route matrix and a11y rows, `TestHealthVisual` at 390, 768, 1024 and 1440 in dark and light.
   Limits: read only, no fixing from the page; ebook problems stay on `/admin/ebooks`; no 100,000-file perf row (see
   report). Words not in the deck are in `docs/copy-additions.md`.
+
+## M8 Android (decision 0024, plan `docs/plans/android.md`)
+
+- **A0 Skeleton and playback proof** (2026-11-06, built on the emulator). Scope: `android/` Gradle project (wrapper seeded from the
+  Gradle 9.8.2 distribution after checking its published SHA-256, `distributionSha256Sum` pinned; AGP 9.5.1, built-in Kotlin, Kotlin
+  2.4.21 for the shared module, Media3 1.11.1; `minSdk 28`, `targetSdk 36`; Gradle dependency verification on, every artifact pinned in
+  `android/gradle/verification-metadata.xml`); `shared/` (Kotlin, no Android imports: `ApiPaths`, `Position`, manifest types; 7 unit
+  tests pass); `app/` (`PlaybackService`: `MediaLibraryService` + ExoPlayer, foreground type `mediaPlayback`, bearer header on
+  `/api/v1/stream/{fileId}`; `MainActivity`: WebView at `/?shell=android&next=/`; hard-coded server `http://10.0.2.2:8097`, test-only
+  sign-in by `POST /api/v1/auth/token`, credentials and book id only through start-intent extras, never in the APK); `make apk-debug`;
+  `NOTICES.md` rows. Server untouched: the bearer stream needed no server change. Test server: own build on 127.0.0.1:8097, own data
+  folder under `.local/tests/android/a0/`, three synthetic 40-minute MP3 files as one book; stopped and deleted afterwards.
+- Acceptance, on `emulator-5554` (Pixel 9, Android 16, API 36):
+  - Builds from a clean clone with `ANDROID_HOME` set, an empty `GRADLE_USER_HOME`, no Android Studio: `make apk-debug`, 38 tasks, APK
+    13,241,043 bytes (12.6 MiB). The first attempt failed dependency verification on five POM/module files; fixed in the metadata.
+  - Screen asleep (`input keyevent 223`), 30 minutes, one `dumpsys media_session` sample a minute: 31 of 31 samples PLAYING, position
+    35,821 ms to 1,837,721 ms (+1,801,900 ms in 1,800 s). Second 30-minute run with the activity STOPPED (`dumpsys activity`
+    state=STOPPED): 31 of 31 PLAYING, 530,620 ms to 2,334,307 ms, crossing from Part 1 to Part 2 on its own. Logs
+    `lock-locked.log`, `lock-stopped.log` in the test folder. Limit: the emulator's lock screen has a credential that was not entered,
+    so the screen could not be kept on with the activity stopped; both runs had the screen asleep, so the two cases differ only in what
+    the activity was doing before (the first run's activity state was not logged). Two aborted runs (screen asleep too) are kept
+    as `lock-stopped-aborted-*.log`.
+  - `dumpsys activity services`: `isForeground=true types=0x00000002` (`mediaPlayback`).
+  - `cmd media_session dispatch` (the `media` shell command is absent on this image): next moved Part 1 to Part 2; pause and play
+    changed the state to PAUSED and PLAYING; previous went back (a first press restarts the file after 3 s, as Media3 does).
+  - Activity finished with Back: the task was gone and the sound continued. Tapping the media notification brought `MainActivity` back
+    and the server's sign-in page loaded in the WebView.
+- Not proved by the emulator: a real device's Doze and OEM battery limits (the emulator was never in Doze; the operator repeats the
+  screen-off test for an hour on a phone), real speaker or Bluetooth output, a killed process (the service shares the app's process;
+  Back and task removal were tried, not `kill -9`), other Android versions, and a mobile network. The WebView page sits close under
+  the status bar (A2 does the safe areas). Android Auto not tried.
+- Unit tests of `shared` need `kotlin-test`, `junit` and `hamcrest` (not on the approved list; test-only, in `NOTICES.md`): approve or
+  replace.
 
 ## Later
 
