@@ -87,6 +87,9 @@ function build(bridge) {
     } else if (message.t === "error") {
       failure = { code: message.code === "book" ? 3 : 2, background: message.code === "background" };
       fire("error");
+    } else if (message.t === "sleep") {
+      audio.sleepState = { mode: String(message.mode), choice: String(message.choice), leftMs: Number(message.leftMs), fading: message.fading === true };
+      fire("nativesleep");
     } else if (message.t === "ask") {
       audio.ask = { bookId: String(message.bookId), positionMs: Number(message.positionMs), deviceLabel: String(message.deviceLabel) };
       fire("nativeask");
@@ -147,6 +150,9 @@ function build(bridge) {
     return Promise.resolve();
   };
   audio.pause = () => send("pause");
+  // The sleep timer lives in the app: words are "off", "plus", "chapter" or minutes.
+  audio.sleep = (word) => send("sleep " + word);
+
   // The person's answer to the place question the app asked: "here" or "there".
   audio.answer = (word) => send("answer " + word);
 
