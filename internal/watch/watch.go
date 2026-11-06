@@ -54,6 +54,10 @@ type Config struct {
 	// LastScan returns when the library was last scanned; a scan that is queued or running counts as
 	// now. found is false when no scan is known.
 	LastScan func(ctx context.Context, libraryID string) (at time.Time, found bool, err error)
+	// Running reports whether a scan of the library is running right now (not merely waiting). A change
+	// seen while one runs is kept until it ends, because that scan may already have walked past the
+	// folder. Nil means never running.
+	Running func(ctx context.Context, libraryID string) (bool, error)
 	// Mounts returns the mount table (ReadMounts); nil means every folder is local.
 	Mounts func() []Mount
 	Log    *slog.Logger
@@ -75,7 +79,10 @@ type Service struct {
 
 	mu    sync.Mutex // guards modes
 	modes map[string]Mode
-	nudge chan struct{}
+
+	pmu      sync.Mutex // guards inflight
+	inflight map[string]*probeCall
+	nudge    chan struct{}
 
 	// Owned by the Run goroutine.
 	w     *fsnotify.Watcher
@@ -86,7 +93,17 @@ type Service struct {
 	quiet map[string]bool // libraries already logged as unavailable, so the log is not repeated
 }
 
+// probeCall is one look at a path that may still be running; later looks at the same path wait for it
+// instead of starting another goroutine, so a hung mount costs one goroutine, not one per check.
+type probeCall struct {
+	done chan struct{}
+	res  probeResult
+}
+
+type probeResult struct{ ok, net bool }
+
 type root struct {
+	real    string // the path with links resolved: what is actually watched
 	library string
 	limited bool // too many folders to watch: the schedule covers it
 }
@@ -104,7 +121,7 @@ func New(cfg Config) *Service {
 	}
 	return &Service{cfg: cfg, Quiet: 45 * time.Second, Tick: 5 * time.Second, ReconcileEvery: 5 * time.Minute,
 		DueEvery: 5 * time.Minute, First: 30 * time.Second, StatTimeout: 5 * time.Second, MaxDirs: 20000,
-		modes: map[string]Mode{}, nudge: make(chan struct{}, 1),
+		modes: map[string]Mode{}, inflight: map[string]*probeCall{}, nudge: make(chan struct{}, 1),
 		dirs: map[string]string{}, roots: map[string]root{}, dirty: map[string]time.Time{},
 		gone: map[string]bool{}, quiet: map[string]bool{}}
 }
@@ -203,6 +220,9 @@ func (s *Service) onEvent(ev fsnotify.Event) {
 
 // forget drops the bookkeeping for a directory and everything below it (the kernel already dropped the watches).
 func (s *Service) forget(dir string) {
+	if _, ok := s.dirs[dir]; !ok {
+		return // a file, or a folder never watched: nothing below it to drop
+	}
 	for d := range s.dirs {
 		if within(dir, d) {
 			delete(s.dirs, d)
@@ -215,6 +235,10 @@ func (s *Service) forget(dir string) {
 func (s *Service) addTree(dir, lib string) error {
 	if s.w == nil {
 		return errors.New("watch: no watcher")
+	}
+	// A library folder that is itself a link is walked from where it points; WalkDir would not follow it.
+	if real, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = real
 	}
 	return filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -245,12 +269,19 @@ func (s *Service) addTree(dir, lib string) error {
 
 // removeTree stops watching a folder and everything below it.
 func (s *Service) removeTree(dir string) {
+	targets := []string{dir}
+	if r, ok := s.roots[dir]; ok && r.real != "" && r.real != dir {
+		targets = append(targets, r.real)
+	}
 	for d := range s.dirs {
-		if within(dir, d) {
-			if s.w != nil {
-				s.w.Remove(d)
+		for _, t := range targets {
+			if within(t, d) {
+				if s.w != nil {
+					s.w.Remove(d)
+				}
+				delete(s.dirs, d)
+				break
 			}
-			delete(s.dirs, d)
 		}
 	}
 }
@@ -258,23 +289,38 @@ func (s *Service) removeTree(dir string) {
 // probe looks at one folder with a deadline: whether it is there as a directory, and whether it sits on
 // a network file system.
 func (s *Service) probe(path string, mounts []Mount) (available, network bool) {
-	type result struct{ ok, net bool }
-	ch := make(chan result, 1)
-	go func() {
-		real, err := filepath.EvalSymlinks(path)
-		if err != nil {
-			ch <- result{}
-			return
-		}
-		fi, err := os.Stat(real)
-		ch <- result{ok: err == nil && fi.IsDir(), net: IsNetwork(real, mounts)}
-	}()
+	s.pmu.Lock()
+	c, running := s.inflight[path]
+	if !running {
+		c = &probeCall{done: make(chan struct{})}
+		s.inflight[path] = c
+		go func() {
+			c.res = look(path, mounts)
+			s.pmu.Lock()
+			delete(s.inflight, path)
+			s.pmu.Unlock()
+			close(c.done)
+		}()
+	}
+	s.pmu.Unlock()
 	select {
-	case r := <-ch:
-		return r.ok, r.net
+	case <-c.done:
+		return c.res.ok, c.res.net
 	case <-time.After(s.StatTimeout):
 		return false, false
 	}
+}
+
+// look is the real look at a path; a test swaps it for one that hangs.
+var look = lookAt
+
+func lookAt(path string, mounts []Mount) probeResult {
+	real, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return probeResult{}
+	}
+	fi, err := os.Stat(real)
+	return probeResult{ok: err == nil && fi.IsDir(), net: IsNetwork(real, mounts)}
 }
 
 // Reconcile matches the watches to the libraries: it starts watching folders that are new, local and
@@ -318,7 +364,11 @@ func (s *Service) Reconcile(ctx context.Context) {
 				wanted[f.Path] = true
 				r, known := s.roots[f.Path]
 				if !known {
-					r = root{library: lib.ID}
+					r = root{library: lib.ID, real: f.Path}
+					if real, err := filepath.EvalSymlinks(f.Path); err == nil {
+						r.real = real
+					}
+					s.roots[f.Path] = r
 					if err := s.addTree(f.Path, lib.ID); err != nil {
 						s.cfg.Log.Warn("watch: cannot watch this folder, so it is checked on its schedule", "folder", f.Path, "err", err)
 						s.removeTree(f.Path)
@@ -370,6 +420,13 @@ func (s *Service) flush(ctx context.Context) {
 		if now.Sub(last) < s.Quiet {
 			continue
 		}
+		if s.cfg.Running != nil {
+			// A scan that is already walking may have passed the folder where the change happened, so
+			// joining it would lose the change. Keep it until that scan ends, then queue a fresh one.
+			if running, err := s.cfg.Running(ctx, lib); err == nil && running {
+				continue
+			}
+		}
 		delete(s.dirty, lib)
 		if !s.libraryThere(ctx, lib) {
 			s.cfg.Log.Info("watch: a folder is not available, so no scan was queued", "library", lib)
@@ -381,14 +438,11 @@ func (s *Service) flush(ctx context.Context) {
 	}
 }
 
-// Interval is the scheduled scan of a library in minutes: its own setting, or six hours for a library
-// on a network drive that has none (events do not arrive there, so the schedule is the only way).
-func Interval(lib library.Library, network bool) time.Duration {
-	min := lib.ScanIntervalMin
-	if min == 0 && network {
-		min = library.DefaultScanIntervalMin
-	}
-	return time.Duration(min) * time.Minute
+// Interval is the scheduled scan of a library: its own setting in minutes. Zero means Never, on a local
+// drive and on a network drive alike (migration 0025 turned the old "unset" zeros into six hours, and a
+// new library starts at six hours), so a network drive set to Never is left alone.
+func Interval(lib library.Library) time.Duration {
+	return time.Duration(lib.ScanIntervalMin) * time.Minute
 }
 
 // Due queues the scheduled scan of every watched library whose last scan is older than its interval.
@@ -415,7 +469,7 @@ func (s *Service) Due(ctx context.Context) {
 			there = there && ok
 			network = network || net
 		}
-		every := Interval(lib, network)
+		every := Interval(lib)
 		if every == 0 {
 			continue
 		}

@@ -23,9 +23,12 @@ const Kind = "db.backup"
 // Settings and schedule values.
 const (
 	SettingSchedule = "backup.schedule"
-	Off             = "off"
-	Daily           = "daily"
-	Weekly          = "weekly"
+	// SettingFolderFailed is the Unix ms of the last run that made its local copy but could not complete
+	// the backup folder; it is cleared when a run completes it. Retries read it to avoid piling up copies.
+	SettingFolderFailed = "backup.folder_failed_at"
+	Off                 = "off"
+	Daily               = "daily"
+	Weekly              = "weekly"
 
 	// slack lets a copy made a little early still count as the period's copy, so a run at the same
 	// clock time every day is not skipped by a few minutes of drift.
@@ -85,6 +88,8 @@ func (s *Service) handle(ctx context.Context, t *jobs.Task) (any, error) {
 	switch {
 	case errors.Is(err, ErrDiskFull):
 		return res, &jobs.Error{Code: "backup_folder_full", Text: TextFolderFull, Permanent: true, Err: err}
+	case errors.Is(err, ErrDriveMissing):
+		return res, &jobs.Error{Code: "backup_drive_missing", Text: TextDriveMissing, Permanent: true, Err: err}
 	case errors.Is(err, errFolderRefused):
 		return res, &jobs.Error{Code: "backup_folder_refused", Text: TextFolderRefused, Permanent: true, Err: err}
 	case errors.Is(err, errFolderStep):
@@ -97,6 +102,7 @@ func (s *Service) handle(ctx context.Context, t *jobs.Task) (any, error) {
 const (
 	TextFolderFull    = "The backup folder is full, so the copy stopped. Free some space there or choose another folder. The database copy in the data folder was made."
 	TextFolderRefused = "The backup folder can't be used any more: it is missing, can't be written to, or is now inside a library or the data folder. Choose it again. The database copy in the data folder was made."
+	TextDriveMissing  = "The backup drive may be unplugged: the backup folder is there but the earlier backup is not. Plug the drive in, or choose the folder again to start a new backup there. The database copy in the data folder was made."
 	TextFolderFailed  = "The copy to the backup folder didn't finish. Check that the folder is still there and has free space. The database copy in the data folder was made."
 )
 
@@ -107,27 +113,28 @@ var (
 
 // Result is what a finished backup job reports.
 type Result struct {
-	Name   string `json:"name"`
-	Bytes  int64  `json:"bytes"`
-	Folder bool   `json:"folder"`            // a backup folder is set and was filled
-	Files  int    `json:"files,omitempty"`   // files copied to it this time
-	Same   int    `json:"same,omitempty"`    // files already there
-	Gone   int    `json:"removed,omitempty"` // files removed after Grace
-	Copies int    `json:"copies,omitempty"`  // database copies placed in it
+	Name    string `json:"name"`
+	Bytes   int64  `json:"bytes"`
+	Folder  bool   `json:"folder"`            // a backup folder is set and was filled
+	Files   int    `json:"files,omitempty"`   // files copied to it this time
+	Same    int    `json:"same,omitempty"`    // files already there
+	Gone    int    `json:"removed,omitempty"` // files removed after Grace
+	Copies  int    `json:"copies,omitempty"`  // database copies placed in it
+	Skipped int    `json:"skipped,omitempty"` // files or folders that could not be read or copied
+	Note    string `json:"note,omitempty"`    // plain words about Skipped
 }
 
 // Backup makes a verified database copy in the data folder and, when the owner set a backup folder,
 // mirrors the data folder's own files and the database copies into it. A scheduled run that follows a
 // failed one within retryAfter does not make another local copy, so retries cannot push good older
-// copies out of the newest-seven list.
+// copies out of the newest-seven list. The failure is remembered in SettingFolderFailed, not guessed from
+// the age of the copy: a copy over an hour old is still the one the failed run made.
 func (s *Service) Backup(ctx context.Context, reason string) (Result, error) {
 	var res Result
 	folder := s.Folder(ctx)
 	skipLocal := false
 	if reason == "scheduled" && folder != "" {
-		if c, ok, err := s.Latest(); err == nil && ok && s.now().Sub(c.At) < retryAfter {
-			skipLocal = true
-		}
+		skipLocal = s.retryOfFailedFolder()
 	}
 	if !skipLocal {
 		c, err := db.WriteCopy(ctx, s.st, s.dataDir, s.now())
@@ -143,24 +150,56 @@ func (s *Service) Backup(ctx context.Context, reason string) (Result, error) {
 	if err != nil {
 		return res, fmt.Errorf("%w: %v", errFolderStep, err)
 	}
+	res, err = s.fillFolder(ctx, folder, libs, res)
+	if err != nil {
+		_ = db.PutSetting(ctx, s.st.Writer(), SettingFolderFailed, s.now().UnixMilli())
+		return res, err
+	}
+	_ = db.DeleteSetting(ctx, s.st.Writer(), SettingFolderFailed)
+	if err := db.PutSetting(ctx, s.st.Writer(), SettingFolderOK, s.now().UnixMilli()); err != nil {
+		return res, err
+	}
+	return res, nil
+}
+
+// fillFolder checks the backup folder and mirrors into it.
+func (s *Service) fillFolder(ctx context.Context, folder string, libs []string, res Result) (Result, error) {
 	if err := CheckFolder(folder, s.dataDir, libs); err != nil {
 		if errors.Is(err, ErrDiskFull) {
 			return res, err
 		}
 		return res, fmt.Errorf("%w: %v", errFolderRefused, err)
 	}
+	// Once filled, the folder must still hold its backup. A drive that lost its disk leaves an empty mount
+	// point on the system disk, and copying into it would fill that disk and then record success.
+	if _, filled := s.FolderDone(ctx); filled && !HasBackup(folder) {
+		return res, ErrDriveMissing
+	}
 	rep, err := Mirror(ctx, s.dataDir, folder, s.now())
-	res.Folder, res.Files, res.Same, res.Gone, res.Copies = true, rep.Copied, rep.Same, rep.Removed, rep.Copies
+	res.Folder, res.Files, res.Same, res.Gone, res.Copies, res.Skipped = true, rep.Copied, rep.Same, rep.Removed, rep.Copies, rep.Problems
+	if rep.Problems == 1 {
+		res.Note = "1 file could not be read, so it was left out. The rest was backed up."
+	} else if rep.Problems > 1 {
+		res.Note = fmt.Sprintf("%d files could not be read, so they were left out. The rest was backed up.", rep.Problems)
+	}
 	if err != nil {
 		if errors.Is(err, ErrDiskFull) {
 			return res, err
 		}
 		return res, fmt.Errorf("%w: %v", errFolderStep, err)
 	}
-	if err := db.PutSetting(ctx, s.st.Writer(), SettingFolderOK, s.now().UnixMilli()); err != nil {
-		return res, err
-	}
 	return res, nil
+}
+
+// retryOfFailedFolder reports whether the last run made its local copy and failed at the backup folder,
+// with that copy still fresh (under a day), so this retry leaves the copy history alone.
+func (s *Service) retryOfFailedFolder() bool {
+	var ms int64
+	if ok, err := db.GetSetting(context.Background(), s.st.Reader(), SettingFolderFailed, &ms); err != nil || !ok || ms <= 0 {
+		return false
+	}
+	c, ok, err := s.Latest()
+	return err == nil && ok && s.now().Sub(c.At) < 24*time.Hour
 }
 
 func (s *Service) libraryFolders(ctx context.Context) ([]string, error) {
@@ -194,6 +233,12 @@ func (s *Service) SetFolder(ctx context.Context, path string) error {
 	if err := CheckFolder(path, s.dataDir, libs); err != nil {
 		return err
 	}
+	// Saving a folder, even the same one again, starts it fresh: the next run fills it without asking for
+	// the earlier backup. This is how the owner starts over on purpose.
+	if err := db.DeleteSetting(ctx, s.st.Writer(), SettingFolderOK); err != nil {
+		return err
+	}
+	_ = db.DeleteSetting(ctx, s.st.Writer(), SettingFolderFailed)
 	return db.PutSetting(ctx, s.st.Writer(), SettingFolder, path)
 }
 

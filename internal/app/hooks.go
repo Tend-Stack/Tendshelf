@@ -123,6 +123,9 @@ func newWatcher(d deps) *watch.Service {
 			_, err := scan.Enqueue(ctx, d.runner, "", libraryID)
 			return err
 		},
+		Running: func(ctx context.Context, libraryID string) (bool, error) {
+			return scan.Running(ctx, d.runner, libraryID)
+		},
 		LastScan: func(ctx context.Context, libraryID string) (time.Time, bool, error) {
 			j, ok, err := d.runner.LatestFor(ctx, scan.KindScan, "library_id", libraryID)
 			if err != nil || !ok {

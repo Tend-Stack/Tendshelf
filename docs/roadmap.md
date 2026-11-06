@@ -856,6 +856,13 @@ share-link pages stay in link mode and never call it). Tests: `TestSeriesNext`. 
   restore steps on the Backups page (owner only). Checks: `TestWholeBackup*` (mirror, retention, disk full,
   read-back, refused folders, service and job errors, routes with forbidden cases, restore into an empty
   folder and start). Limits: no encryption of the backup folder; restore is by copying (no restore button).
+  Pre-release fixes (2026-11-06): a filled folder that lost its manifest is refused as an unplugged drive (saving the
+  folder again starts over); an unreadable data folder no longer ages its files out of the backup; database copies
+  are mirrored first and a bad file is counted, not fatal; a mirrored folder that is a link is followed; a retry
+  after a folder failure leaves the copy history alone (`backup.folder_failed_at`). Watcher: one probe in flight
+  per path, changes seen during a running scan are kept for the next, a linked library root is watched, "Never"
+  holds on network folders. Checks: `TestBackupDriveUnplugged`, `TestMirror*`, `TestRetryAfterFailedFolderKeepsHistory`,
+  `TestProbeOneInFlightPerPath`, `TestFlushKeepsChangeWhileScanRuns`, `TestWatchSymlinkedRoot`, `TestRunningTellsWaitingFromRunning`.
 - **L3a Chapter editor** (2026-11-06, done; plan `docs/plans/next-server.md` section 2). Scope: `library.BuildChapters`,
   `ChaptersRev`, `ChaptersOverridden`; `finalize` keeps edited chapters (no clamping); `scan.ResetChapters`
   (`ErrChaptersBusy`); the write job's `chapter_fit` refusal; the Edit chapters page `/books/{id}/chapters/edit`
