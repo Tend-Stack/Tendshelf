@@ -198,3 +198,23 @@ Reading apps use `/opds` ([decision 0025](decisions/0025-app-keys.md)). It is no
   50 entries a page with `first`, `previous` and `next` links. A person sees only books they may read and download; each entry has one
   acquisition link per ready ebook file and an image link.
 - **Files**: `/opds/books/{id}/file/{fileID}` (the ebook as stored), `/opds/covers/{id}?w=`. Anything not allowed is a plain `404`.
+
+## KOReader progress sync (not `/api/v1`)
+
+`/kosync` speaks the protocol of KOReader's `kosync` plugin ([decision 0025](decisions/0025-app-keys.md), plan S6). It sits in front of the outer mux so a
+server address typed with a trailing slash (`/kosync//users/auth`) is served, not redirected.
+
+- **Sign in**: headers `x-auth-user` (the user name, any case) and `x-auth-key` (the MD5 of a `koreader` app key, which KOReader sends for the "password").
+  The login password, an `opds` key, a revoked key or a key of another person is `401 {"code":2001,"message":"Unauthorized"}`. The shared failure limit
+  applies (10 in 15 minutes per address, then `429` with `Retry-After`).
+- `POST /kosync/users/create`: always `402 {"code":2002,...}`; nobody is created. Make the key in Tendshelf, then choose Login in KOReader.
+- `GET /kosync/users/auth`: `200 {"authorized":"OK"}`.
+- `PUT /kosync/syncs/progress`: JSON `document` (32 hex), `progress` (1 to 512 bytes), `percentage` (0 to 1), `device`, `device_id` (at most 64 each); body at most
+  8 KiB; otherwise `400 {"code":2003,"message":"Invalid fields"}`. The place is kept for that person and document. When a ready ebook file with that digest is on a book the
+  person may read, the percentage also becomes their reading place (device `KOReader`, `ko-` plus a hash of `device_id`); the usual newest-wins rule applies.
+  Answer `200 {"document":...,"timestamp":<seconds>}`.
+- `GET /kosync/syncs/progress/{document}`: the stored place (`progress`, `percentage`, `device`, `device_id`, `timestamp`). If the person's Tendshelf reading place for
+  the matching EPUB or PDF is newer, that is answered instead (`device` `Tendshelf`, `device_id` `tendshelf`): EPUB as `/body/DocFragment[N]/body` (the start of chapter N), PDF as the
+  page number. Nothing known: `200 {}`.
+- A document is named by KOReader's `partialMD5` (MD5 over 1024-byte samples at offset 0 and `1024<<2i`, i = 0..10), computed for each ready file by the ingest job and a
+  catch-up job (`ebook.digests`). At most 10,000 documents a person; the least recently updated are dropped.

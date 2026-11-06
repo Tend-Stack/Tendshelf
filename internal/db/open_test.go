@@ -213,7 +213,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+20 { // +15: book_sidecars, online_cache (0010), file_writes (0011), book_lookups, online_usage (0012), queue_items (0013), uploads, upload_files, upload_paths (0014), ebook_files, editions, edition_chapters (0016), ebook_not_same, text_choices (0017), highlights (0019), merged_books, reading_positions, reading_sessions (0021), word_list (0022), book_settings (0024); 0018's runtime_components, alignments and alignment_chapters are dropped again by 0020
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+21 { // +15: book_sidecars, online_cache (0010), file_writes (0011), book_lookups, online_usage (0012), queue_items (0013), uploads, upload_files, upload_paths (0014), ebook_files, editions, edition_chapters (0016), ebook_not_same, text_choices (0017), highlights (0019), merged_books, reading_positions, reading_sessions (0021), word_list (0022), book_settings (0024), kosync_progress (kosync); 0018's runtime_components, alignments and alignment_chapters are dropped again by 0020
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -607,6 +607,7 @@ var pinnedMigrations = map[int]string{
 	24: "c10e2510f2ea035d33667bba001a0a361aedbd01485292712b5bdee18ffa76b0",
 	25: "c89ac1c0967ae9fb68cb4232a02c8a76ff122ac8fa2bfdcb80e6fc06a9c7ccc4",
 	26: "4904ad3ce993bb92e7c0f8639243d80cf0f98991ba95457d1e73b09db946e36a",
+	27: "99ac854c8cbcbd6ea938fdd60013e4073bdcfc3131301c85976d82fc7eb70dda",
 }
 
 func TestMigrationsImmutable(t *testing.T) {

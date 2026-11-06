@@ -797,7 +797,8 @@ func sweepRegistered(t *testing.T) []string {
 	re := regexp.MustCompile(`(?:HandleFunc|Handle)\("([^"]+)"`)
 	seen := map[string]bool{}
 	for _, f := range files {
-		if strings.HasSuffix(f, "_test.go") || strings.HasSuffix(f, "_templ.go") {
+		if strings.HasSuffix(f, "_test.go") || strings.HasSuffix(f, "_templ.go") ||
+			f == "routes_kosync.go" { // KOReader's own protocol under /kosync, no cookie: kosync_test.go covers it
 			continue
 		}
 		src, err := os.ReadFile(f)

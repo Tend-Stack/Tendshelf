@@ -30,3 +30,8 @@ would make it impossible to type. Tendshelf has one place that already lists, ex
 Reversible: only new keys have the new shape; removing the feature means revoking them. A migration rebuilds `devices` once (no table
 has a foreign key to it), so the Android app's later handoff needs no second rebuild. Out of scope: OPDS 2.0, OPDS-PSE, audio in
 feeds, per-shelf feeds, key scopes beyond the two kinds, keys that expire by date.
+
+## Addendum (S6, KOReader sync)
+`/kosync` is the second surface a `koreader` key opens. It signs in with KOReader's own headers (`x-auth-user`, and `x-auth-key` = the MD5 of the key, which is what KOReader
+sends for the password), is answered in front of the outer mux so a doubled slash is not redirected, and shares the failure limit and the per-device limit with `/opds`.
+Unlike `/opds` it accepts PUT, but only to store a reading place the key's owner may have.

@@ -215,3 +215,15 @@ func WriteDoc(dir string, jsonBytes []byte) (string, error) {
 	}
 	return sha, nil
 }
+
+// TotalUnits is the number of UTF-16 units in the whole text of d (chapters and blocks in order): the
+// length AnchorAtChar and CharPos count along, so a percent times TotalUnits is a place for AnchorAtChar.
+func (d *Doc) TotalUnits() int {
+	total := 0
+	for ci := range d.Chapters {
+		for bi := range d.Chapters[ci].Blocks {
+			total += u16Len(d.Chapters[ci].Blocks[bi].Text)
+		}
+	}
+	return total
+}

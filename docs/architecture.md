@@ -437,7 +437,7 @@ and its `/hx/dev/*` fragments; release builds do not register them.
   Exactly one owner: the check and the insert share one write transaction and the `users_one_owner` index
   backs it up; the loser of a race gets "This server already has an owner" (409). After setup `/setup` is a 404.
 - Default deny: every path except `/static/*`, `/healthz`, `/setup`, `/login` and `/opds` (its own Basic sign-in with an app key, see
-  decision 0025; `/kosync` joins it in S6) needs a signed-in, enabled
+  decision 0025; `/kosync` joins it, signing in with KOReader's own headers, S6) needs a signed-in, enabled
   account. Anonymous visitors go to `/login?next=...` (303; for an htmx request, 204 with `HX-Redirect`, which
   makes htmx navigate the whole window); with no owner they go to `/setup`.
 - Sessions: 32 random bytes in an `HttpOnly`, `SameSite=Lax` cookie `ts_session` (`Secure` when served over TLS

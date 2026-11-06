@@ -21,5 +21,5 @@ const (
 	akeyKey        = "Key"
 	akeyBack       = "Back to your devices"
 	akeyOPDSNote   = "In your reading app, add a catalog (OPDS) with this address, your user name, and the key as the password."
-	akeyKONote     = "In KOReader, open the progress sync settings, choose a custom sync server with this address, and log in with your user name and the key as the password."
+	akeyKONote     = "In KOReader, open Progress sync, choose Custom sync server and enter this address, then choose Login (not Register) with your user name and the key as the password."
 )
