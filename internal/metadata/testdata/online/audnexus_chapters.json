@@ -1,0 +1,13 @@
+{
+  "asin": "B0TESTBOOK",
+  "brandIntroDurationMs": 2000,
+  "brandOutroDurationMs": 5000,
+  "chapters": [
+    {"lengthMs": 62000, "startOffsetMs": 0, "startOffsetSec": 0, "title": "Opening Credits"},
+    {"lengthMs": 900000, "startOffsetMs": 62000, "startOffsetSec": 62, "title": "Chapter 1"},
+    {"lengthMs": 840000, "startOffsetMs": 962000, "startOffsetSec": 962, "title": "Chapter 2"}
+  ],
+  "isAccurate": true,
+  "region": "us",
+  "runtimeLengthMs": 1802000
+}

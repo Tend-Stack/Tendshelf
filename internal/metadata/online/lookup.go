@@ -275,10 +275,7 @@ func (c *Client) searchAudnexus(ctx context.Context, q Query) ([]Book, error) {
 		}
 		rec.end(len(asins), nil)
 	}
-	order := append([]string(nil), audnexusRegions...)
-	if first, ok := langRegion[q.Language]; ok {
-		order = append([]string{first}, removeString(order, first)...)
-	}
+	order := regionOrder(q.Language)
 	// An ASIN from another country's store answers 404 in the default one, so with a given ASIN
 	// every store is tried in turn; otherwise only the first.
 	regions := order[:1]
@@ -307,6 +304,15 @@ func (c *Client) searchAudnexus(ctx context.Context, q Query) ([]Book, error) {
 		}
 	}
 	return out, nil
+}
+
+// regionOrder lists the Audnexus stores, the one that fits the book's language first.
+func regionOrder(language string) []string {
+	order := append([]string(nil), audnexusRegions...)
+	if first, ok := langRegion[language]; ok {
+		order = append([]string{first}, removeString(order, first)...)
+	}
+	return order
 }
 
 func removeString(l []string, s string) []string {
