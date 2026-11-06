@@ -21,6 +21,8 @@ func zoomKeys(a menuActions) map[string]func(application.Window) {
 		"ctrl+=":    run(a.zoomIn),
 		"ctrl+-":    run(a.zoomOut),
 		"ctrl+0":    run(a.zoomReset),
+		// The menu row is gone on Linux, and Quit lived there (decision 0023, point 5).
+		"ctrl+q": run(a.quit),
 	}
 }
 

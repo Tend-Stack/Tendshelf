@@ -45,7 +45,10 @@ chmod 700 "$base/run"
 # command, and stops the shell by its PID. Its exit status is the command's.
 inner='
 set -u
-gnome-shell --headless --wayland --no-x11 --wayland-display="$TS_DISPLAY" --virtual-monitor 1280x800 --unsafe-mode >>"$TS_LOG" 2>&1 &
+noX11=--no-x11
+[ "${TS_X11:-}" = 1 ] && noX11=
+x11=""
+gnome-shell --headless --wayland $noX11 --wayland-display="$TS_DISPLAY" --virtual-monitor 1280x800 --unsafe-mode >>"$TS_LOG" 2>&1 &
 shell=$!
 ok=0
 for _ in $(seq 1 100); do
@@ -59,6 +62,20 @@ if [ "$ok" != 1 ]; then
   exit 3
 fi
 sleep 1
+# With TS_X11=1 the shell also starts Xwayland; DISPLAY names its new socket, for a window run with GDK_BACKEND=x11.
+if [ "${TS_X11:-}" = 1 ]; then
+  # Mutter logs the public display; it also opens a second socket "for managed services" that clients must not use.
+  for _ in $(seq 1 50); do
+    x11="$(grep -o "public X11 display :[0-9]*" "$TS_LOG" | tail -1)"
+    x11="${x11##* }"
+    [ -n "$x11" ] && break
+    sleep 0.2
+  done
+  [ -n "$x11" ] && export DISPLAY="$x11"
+  for f in "$XDG_RUNTIME_DIR"/.mutter-Xwaylandauth.*; do
+    [ -f "$f" ] && export XAUTHORITY="$f"
+  done
+fi
 WAYLAND_DISPLAY="$TS_DISPLAY" GDK_BACKEND=wayland "$@"
 status=$?
 kill "$shell" 2>/dev/null
@@ -74,6 +91,7 @@ env -u DISPLAY -u WAYLAND_DISPLAY \
   GSETTINGS_BACKEND=memory \
   TS_LOG="$log" \
   TS_DISPLAY="$display" \
+  TS_X11="${TS_X11:-}" \
   dbus-run-session -- bash -c "$inner" isolated "$@" &
 session_pid=$!
 wait "$session_pid"
