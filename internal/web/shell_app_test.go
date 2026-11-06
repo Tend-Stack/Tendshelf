@@ -218,6 +218,10 @@ func TestA1ShellPage(t *testing.T) {
 	if strings.Contains(pb, "data-shell") {
 		t.Error("a browser page names a shell")
 	}
+	// A4: the app's one extra word is rendered in the app window only (A1, invariant 8).
+	if !strings.Contains(ab, "data-ts-msg-native-failed=") || strings.Contains(pb, "native-failed") {
+		t.Errorf("native-failed: android %v, browser %v", strings.Contains(ab, "data-ts-msg-native-failed="), strings.Contains(pb, "native-failed"))
+	}
 	if plain.Header().Get("Content-Security-Policy") == "" || plain.Header().Get("Content-Security-Policy") != app.Header().Get("Content-Security-Policy") {
 		t.Errorf("CSP differs: %q vs %q", plain.Header().Get("Content-Security-Policy"), app.Header().Get("Content-Security-Policy"))
 	}

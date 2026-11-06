@@ -21,7 +21,6 @@ import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import java.util.concurrent.Executors
 
 /**
  * One ExoPlayer in one session, in a foreground service of type mediaPlayback. A book is one window in book
@@ -30,19 +29,25 @@ import java.util.concurrent.Executors
  */
 @UnstableApi
 class PlaybackService : MediaLibraryService() {
-    private var session: MediaLibrarySession? = null
-    private lateinit var exo: ExoPlayer
-    private lateinit var player: BookPlayer
-    private lateinit var engine: BookEngine
+    internal var session: MediaLibrarySession? = null
+        private set
+    internal lateinit var exo: ExoPlayer
+        private set
+    internal lateinit var player: BookPlayer
+        private set
+    internal lateinit var engine: BookEngine
+        private set
     private val http = DefaultHttpDataSource.Factory()
-    private val main = Handler(Looper.getMainLooper())
-    private val io = Executors.newCachedThreadPool()
+    internal val main = Handler(Looper.getMainLooper())
+    internal val io = java.util.concurrent.Executors.newCachedThreadPool()
 
-    /** Where the engine finds the server and token. A2/A4 set it; debug starts set it from a sign-in. */
-    var connections = ConnectionSource { null }
+    /** Where the engine finds the server and token: the device token the connect flow stored (A4). */
+    @Volatile
+    var connections: ConnectionSource = ConnectionSource { null }
 
     override fun onCreate() {
         super.onCreate()
+        connections = TokenStore(this)
         // Ride out a dropped network from the buffer: 5 minutes, time before size (D6).
         val load = DefaultLoadControl.Builder()
             .setBufferDurationsMs(50_000, 300_000, 2_500, 5_000)
@@ -93,63 +98,17 @@ class PlaybackService : MediaLibraryService() {
             .build(),
     )
 
+    /** For the debug start path only: nobody has connected, so nobody added the session. */
+    internal fun registerSession() {
+        session?.let { addSession(it) }
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
 
-    /** Debug builds only: drive the player from `am startservice` for the emulator checks. */
+    /** Release builds have no debug start path: [DebugHooks] is a stub there, and the real one lives in src/debug. */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (BuildConfig.DEBUG && intent?.action == DEBUG_ACTION) {
-            keepAliveForDebug()
-            debug(intent)
-            return START_NOT_STICKY
-        }
+        if (DebugHooks.onServiceStart(this, intent)) return START_NOT_STICKY
         return super.onStartCommand(intent, flags, startId)
-    }
-
-    /**
-     * `am start-foreground-service` demands startForeground within seconds, and the emulator's lock screen
-     * keeps the app in the background. A throwaway notification satisfies that; the media notification takes
-     * over once a book plays, and this one is removed after 10 s. Debug builds only.
-     */
-    private fun keepAliveForDebug() {
-        val nm = getSystemService(android.app.NotificationManager::class.java)
-        nm.createNotificationChannel(android.app.NotificationChannel("debug", "Debug", android.app.NotificationManager.IMPORTANCE_LOW))
-        val n = android.app.Notification.Builder(this, "debug").setSmallIcon(android.R.drawable.ic_media_play).setContentTitle("debug").build()
-        startForeground(4242, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-        // Normally the first controller to connect adds the session; here nobody has connected.
-        session?.let { addSession(it) }
-        main.postDelayed({ nm.cancel(4242) }, 10_000)
-    }
-
-    private fun debug(i: Intent) {
-        when (i.getStringExtra("op")) {
-            "start" -> io.execute {
-                try {
-                    val server = i.getStringExtra("server") ?: BuildConfig.DEFAULT_SERVER
-                    val token = i.getStringExtra("token")
-                        ?: Api(server).signIn(i.getStringExtra("user").orEmpty(), i.getStringExtra("pass").orEmpty())
-                    main.post {
-                        connections = ConnectionSource { Connection(server, token, "debug") }
-                        engine.start(i.getStringExtra("book").orEmpty(), if (i.hasExtra("at")) i.getLongExtra("at", -1) else null)
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "debug sign-in failed: ${e.javaClass.simpleName}")
-                }
-            }
-            "seek" -> player.seekTo(i.getLongExtra("ms", 0))
-            "speed" -> player.setPlaybackSpeed(i.getFloatExtra("speed", 1f))
-            "play" -> player.play()
-            "pause" -> player.pause()
-            "next" -> player.seekToNext()
-            "prev" -> player.seekToPrevious()
-            "back" -> player.seekBack()
-            "forward" -> player.seekForward()
-            "stop" -> engine.stopAndClear()
-            "dump" -> Log.i(
-                TAG, "dump pos=${exo.currentPosition} dur=${exo.duration} speed=${exo.playbackParameters.speed} " +
-                    "playing=${exo.isPlaying} state=${exo.playbackState} chapter=${player.chapterIdx} " +
-                    "title=${player.mediaMetadata.title} error=${session?.sessionExtras?.getString(BookEngine.EXTRA_ERROR)}",
-            )
-        }
     }
 
     /** Swiping the app away must not stop a book that is playing. */
@@ -201,10 +160,9 @@ class PlaybackService : MediaLibraryService() {
     }
 
     companion object {
-        private const val TAG = "Tendshelf"
+        internal const val TAG = "Tendshelf"
         const val START_ACTION = "app.tendshelf.START_BOOK"
         const val STOP_ACTION = "app.tendshelf.STOP_AND_CLEAR"
-        const val DEBUG_ACTION = "app.tendshelf.DEBUG_PLAYER"
         val START_COMMAND = SessionCommand(START_ACTION, Bundle.EMPTY)
         val STOP_COMMAND = SessionCommand(STOP_ACTION, Bundle.EMPTY)
     }

@@ -46,9 +46,6 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.0.0-a2"
-        // Still read by PlaybackService (A3 owns it and drops it). MainActivity no longer uses it: the server is chosen on
-        // the connect page.
-        buildConfigField("String", "DEFAULT_SERVER", "\"http://10.0.2.2:8097\"")
     }
 
     buildFeatures {

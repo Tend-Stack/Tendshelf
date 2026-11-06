@@ -28,7 +28,7 @@ object ShellWeb {
     const val FILE_CHOOSER = 4102
 
     @SuppressLint("SetJavaScriptEnabled")
-    fun configure(web: WebView, activity: Activity, store: TokenStore, pages: StartPages, flow: () -> ConnectFlow, onNavigated: () -> Unit, saver: FileSaver, chooser: FileChooser) {
+    fun configure(web: WebView, activity: Activity, store: TokenStore, pages: StartPages, flow: () -> ConnectFlow, onNavigated: () -> Unit, onStarted: () -> Unit, saver: FileSaver, chooser: FileChooser) {
         web.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -74,7 +74,10 @@ object ShellWeb {
 
             override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) = onNavigated()
 
-            override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) = onNavigated()
+            override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+                onStarted()
+                onNavigated()
+            }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (request.isForMainFrame && request.url.host != BUNDLED_HOST) goOffline(view)

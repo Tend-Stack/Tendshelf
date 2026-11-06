@@ -6,7 +6,9 @@
 // properties only through style.setProperty. Every word shown comes from server-rendered
 // data-ts-msg-* attributes.
 
-const audio = document.getElementById("audio");
+// In the Android app the app plays the book and this page is its remote control (native-audio.js).
+const NATIVE = document.documentElement.dataset.shell === "android" && !!window.tsNative && !document.body.dataset.tsLink;
+const audio = NATIVE ? await nativeAudio() : document.getElementById("audio");
 const slot = document.getElementById("player");
 
 const BREAK_MS = 60000; // a pause this long counts as a break
@@ -315,6 +317,11 @@ function locate(ms) {
 }
 
 // Position in the current file; before the media loads, the start offset we asked for.
+function nativeAudio() {
+  if (window.tsNativeAudio) return window.tsNativeAudio;
+  return new Promise((resolve) => document.addEventListener("ts:native:ready", () => resolve(window.tsNativeAudio), { once: true }));
+}
+
 function localMs() {
   const known = current.loaded && audio.readyState >= 1;
   return known ? audio.currentTime * 1000 : current.startMs;
@@ -322,6 +329,7 @@ function localMs() {
 
 // Position in the whole book.
 function bookPosition() {
+  if (NATIVE) return book ? audio.bookMs : 0;
   if (!book || current.fileIdx < 0) return 0;
   return book.files[current.fileIdx].offset + localMs();
 }
@@ -399,6 +407,11 @@ function seek(ms, shouldPlay) {
   const lastMs = book.durationMs ? book.durationMs - 1 : Infinity;
   const target = locate(clamp(ms, 0, lastMs));
   if (!target) return;
+  if (NATIVE) {
+    audio.seekTo(clamp(ms, 0, lastMs));
+    emit("seek");
+    return;
+  }
 
   if (!current.loaded) {
     // nothing loaded yet: only remember where to start
@@ -451,6 +464,10 @@ function afterBreak() {
 // audio.play() must run synchronously inside the click or key press, or browsers refuse it, so
 // nothing here awaits before reaching it.
 function play() {
+  if (NATIVE) {
+    if (book) audio.start(book.id);
+    return;
+  }
   if (!book || current.fileIdx < 0) return;
   afterBreak();
   if (!current.loaded) {
@@ -592,6 +609,7 @@ function nearLastSave() {
 // Saves the position. kind: tick (every 10 s while playing), pause, seek, end (finished), force
 // (keep this place after the question), beacon (the page is being hidden).
 async function save(kind) {
+  if (NATIVE) return;
   if (!book || stopped || current.fileIdx < 0) return;
   if (audio.ended && kind !== "end") return; // a book that ended keeps its finished mark
   if (kind === "tick" && (prompting || nearLastSave())) return;
@@ -647,6 +665,7 @@ function signedOut() {
 // ---- Prompt: continue where another device left off ----
 
 async function checkRemote() {
+  if (NATIVE) return;
   if (!book || stopped || LINK) return;
   try {
     const res = await api(progressUrl(book.id));
@@ -715,7 +734,7 @@ function state() {
     playing: !audio.paused,
     speed: book.speed,
     volume: userVolume,
-    fileIdx: current.fileIdx,
+    fileIdx: NATIVE ? book.files.findLastIndex((f) => f.offset <= bookPosition()) : current.fileIdx,
     chapterIdx: chapterIndexAt(bookPosition()),
   };
 }
@@ -820,7 +839,7 @@ function revealPlayAtButtons() {
 
 // ---- Media Session: lock screen and headset controls ----
 
-const hasMediaSession = "mediaSession" in navigator;
+const hasMediaSession = !NATIVE && "mediaSession" in navigator;
 const mediaSessionActions = []; // the actions the browser accepted; read by tests
 
 function updateMediaSession() {
@@ -917,6 +936,7 @@ async function loadBook(id, options) {
     if (!fetched.stored || Math.abs(bookPosition() - fetched.stored.positionMs) > 2000) idleAt = 0;
     afterBreak();
   } else if (options && options.play) {
+    if (NATIVE && given !== undefined) audio.aim(given);
     play();
   }
   return true;
@@ -925,6 +945,7 @@ async function loadBook(id, options) {
 // The resume link names its file, so sound starts inside the click, before the fragment arrives.
 // The book data follows and takes over (loadBook).
 function startFromLink(data) {
+  if (NATIVE) return loadBook(data.tsPlay, { play: true });
   if (book) {
     save("pause");
     book = null;
@@ -1051,6 +1072,10 @@ function warmNextFile() {
 }
 
 listen(audio, "ended", () => {
+  if (NATIVE) {
+    emit("pause");
+    return;
+  }
   if (!book) return;
   accrueHeard(true);
   const next = nextPlayableIndex(current.fileIdx);
@@ -1081,6 +1106,11 @@ function playNext() {
 }
 
 listen(audio, "error", () => {
+  if (NATIVE) {
+    toast("err", msg("nativeFailed"));
+    emit("error");
+    return;
+  }
   if (!book || !current.loaded) return;
   const file = book.files[current.fileIdx];
   const unsupported = audio.error && audio.error.code === 4; // MEDIA_ERR_SRC_NOT_SUPPORTED
@@ -1127,6 +1157,17 @@ listen(document, "htmx:after:settle", () => {
 
 // Speed changes keep the voice's pitch; the stored level applies from the start.
 audio.preservesPitch = true;
+if (NATIVE) {
+  // The app is the truth: a book it plays that the page has not loaded is loaded now, and its speed is the page's.
+  listen(audio, "nativebook", () => loadBook(audio.nativeBookId));
+  listen(audio, "ratechange", () => {
+    if (book) {
+      book.speed = audio.playbackRate;
+      emit("speed");
+    }
+  });
+  audio.hello();
+}
 const canSetVolume = probeVolume();
 applyVolume();
 

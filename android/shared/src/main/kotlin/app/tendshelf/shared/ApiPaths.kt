@@ -7,8 +7,6 @@ package app.tendshelf.shared
 class ApiPaths(server: String) {
     val base: String = server.trim().trimEnd('/')
 
-    val tokenUrl: String get() = "$base/api/v1/auth/token"
-
     fun bookUrl(bookId: String): String = "$base/api/v1/books/${segment(bookId)}"
 
     /** [compat] asks for the browser-friendly rendition, for files a phone cannot decode as stored. */
@@ -21,11 +19,6 @@ class ApiPaths(server: String) {
 
     /** The page the WebView opens: the shell mark makes the server treat the visitor as the Android app. */
     val shellUrl: String get() = "$base/?shell=android&next=/"
-
-    /** JSON body for `POST /api/v1/auth/token` (kind `mobile`). */
-    fun tokenRequestBody(username: String, password: String, deviceName: String): String =
-        "{\"username\":${jsonString(username)},\"password\":${jsonString(password)}," +
-            "\"name\":${jsonString(deviceName)},\"kind\":\"mobile\"}"
 
     private fun segment(id: String): String {
         require(id.isNotEmpty() && id.none { it == '/' || it == '?' || it == '#' || it.isWhitespace() }) { "bad id" }

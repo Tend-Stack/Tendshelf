@@ -158,7 +158,7 @@ templ Layout(p Page, body templ.Component) {
 					@body
 				</main>
 			</div>
-			@PlayerSlot(p.Player)
+			@PlayerSlot(p.Player.inShell(p.Shell))
 			@PlayerFull(p.Player)
 			@Toasts()
 			@KeysHelp(p.Player.inShell(p.Shell))
