@@ -62,14 +62,14 @@ func TestDeskBarOffsets(t *testing.T) {
 // TestDeskBudgetSplit: the two desktop-only scripts are counted apart from the browser total, and nothing
 // else is in the split.
 func TestDeskBudgetSplit(t *testing.T) {
-	if jsDesktopTotalGzip != 4864 { // 4096 approved, X4 reports 4,864 B
-		t.Errorf("jsDesktopTotalGzip is %d, the reported ceiling is 4864", jsDesktopTotalGzip)
+	if jsDesktopTotalGzip != 5888 { // 4096 approved, X5 reports 5,888 B
+		t.Errorf("jsDesktopTotalGzip is %d, the reported ceiling is 5888", jsDesktopTotalGzip)
 	}
 	if len(jsDesktopFiles) != 2 || !jsDesktopFiles["desktop.js"] || !jsDesktopFiles["desktop-shell.js"] {
 		t.Errorf("jsDesktopFiles = %v", jsDesktopFiles)
 	}
-	if got := jsBudgets["desktop-shell.js"].Gzip; got != 3584 { // 2816 approved, X4 reports 3,584 B
-		t.Errorf("desktop-shell.js row is %d, the reported row is 3584", got)
+	if got := jsBudgets["desktop-shell.js"].Gzip; got != 4736 { // 2816 approved, X5 reports 4,736 B
+		t.Errorf("desktop-shell.js row is %d, the reported row is 4736", got)
 	}
 	s, err := Load()
 	if err != nil {

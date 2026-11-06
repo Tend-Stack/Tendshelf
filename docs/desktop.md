@@ -49,6 +49,16 @@ tray exists) makes Close hide the window while a book plays, so the sound goes o
 bytes, cut to 200 characters, control characters dropped, `<`, `>` and `&` escaped (decision 0023, point 10). The theme you
 use is saved as the colour the window opens on.
 
+## Dropping a book
+
+Drag audiobook or ebook files from your file manager onto the window. If you are the owner or an admin and a library takes
+uploads, a zone says "Drop to add to your library", and the files go to that library's Add books page, where the same
+uploader as in the browser takes them (one upload path, decision 0015): copy-protected files are refused with the same
+words, and nothing is kept. Escape or leaving the window hides the zone. A folder is not taken here; a toast points to
+Add books, which does take folders. When you cannot add books, or uploads are off, a drop shows plain words and, for an
+owner or admin, a link to Libraries. Dropping on the Add books page itself is that page's own. The first library that takes
+uploads and that you may add to is used.
+
 ## Known limits
 
 - If the window is blank or flickers on some graphics drivers, start it with
@@ -57,4 +67,5 @@ use is saved as the colour the window opens on.
 - No offline downloads in the window (no service worker), no auto-update, no autostart.
 - Keep playing and the tray depend on the desktop showing tray icons; without one the option is not offered and Close quits.
 - Whether sound continues in a hidden window, a real tray click and a real notification click are for the operator's own desktop.
+- A real drag from the file manager into the window is for the operator's own desktop; the tests drop generated files on the page in Chromium with the window channel stubbed.
 - macOS and Windows: not verified.

@@ -288,4 +288,5 @@ are not in the copy deck or on `DownloadsPhone` / `StateOffline`. Same voice rul
 | Skip back · Skip forward · Pause · Show Tendshelf · Quit Tendshelf · (paused) after a book's name in the tray tip | `desktop/tray.go` | Desktop app tray menu (X4) |
 | Finished. Tendshelf has stopped. · The sleep timer stopped playback. (the book's title is the notification's title) | `desktop/notify.go` | Desktop notifications at book end and sleep stop (X4) |
 | About Tendshelf · Tendshelf {version} · Your audiobooks and ebooks, in a window of their own. | `desktop/main.go` | Desktop About dialog (X4) |
+| Drop to add to your library · Audiobooks and ebooks go into your uploads folder. Nothing else on your computer changes. (the board's words) · Tendshelf takes books as files here. Drop the files, or open Add books to add a folder. · Uploads are off, so there is nowhere to put a book. You can turn them on under Libraries. · Only the owner or an admin can add books. | `internal/web/components/desktop_bar.templ` | Desktop app drop zone and its toasts (X5) |
 

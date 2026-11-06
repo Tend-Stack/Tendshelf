@@ -780,6 +780,14 @@ Change mode or server, Zoom in, Zoom out, Actual size, Keep playing and About Te
 3,578 B gzip (approved 2,816 B) and the desktop total 4,734 B (approved 4,096 B), set to 3,584 B and 4,864 B and reported; sound in a hidden window, a real tray
 and notification click are for the operator's own desktop. Next step: X5, drop a book.
 
+**Desktop experience X5, Drop a book (2026-11-06)**: the bar gets `data-ts-can-add` (owner or admin, `share.Can`, a library whose uploads are on; `desktopAddBooks`)
+and a hidden link to that library's Add books page; `desktop-shell.js` shows `ts-wdrop` on a file drag, keeps the dropped `File`s, goes to Add books by the page's
+own boosted link and hands them to its file input with a `change` event, so `internal/upload` and `upload.js` (unchanged) take them and refuse copy-protected files.
+A folder, or no permission, gives a toast. Checks: `TestDeskDropOnlyWhenAllowed` (owner, admin, member, guest, browser, uploads off), `TestDeskDropBrowser` (Chromium,
+stub channel: an `.aax` is refused with the Add books words and sends nothing; uploads off shows the words), the gates in the merge report. Limits:
+`desktop-shell.js` 4,667 B gzip (row 4,736 B) and the desktop total 5,823 B (ceiling 5,888 B), over the approved 2,816 and 4,096 B and reported; a folder drop and a real
+drag from Files are untested; the bar is kept across boosted visits, so a change of permission shows at the next full load. Next step: X6.
+
 ## M7 Research — dropped (decision 0007, 2026-11-02)
 
 ## Next stage (docs/plans/next-stage.md)

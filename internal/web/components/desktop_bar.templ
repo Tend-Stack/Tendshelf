@@ -8,7 +8,7 @@ package components
 // app's own start page (Picker) there is no history, so no Back, Forward or More.
 templ DesktopBar(p Page) {
 	if p.Shell == "desktop" {
-		<div id="desktop-bar" class="ts-wbar-host" hx-preserve>
+		<div id="desktop-bar" class="ts-wbar-host" hx-preserve if p.AddBooks != "" { data-ts-can-add="true" }>
 			<header class="ts-wbar" data-wbar>
 				if p.Picker {
 					<span class="ts-wbar__brand">
@@ -77,6 +77,28 @@ templ DesktopBar(p Page) {
 					<div class="ts-wmenu__sep" role="separator"></div>
 					<button type="button" role="menuitem" class="ts-wmenu__item" data-wbar-do="quit">Quit Tendshelf<kbd>Ctrl Q</kbd></button>
 				</div>
+				<div class="ts-wdrop" data-wbar-drop role="status" hidden>
+					<div class="ts-wdrop__frame">
+						<span class="ts-wdrop__icon">
+							@Icon("drop-in", false)
+						</span>
+						<p class="title-3 ts-wdrop__title">Drop to add to your library</p>
+						<p class="body ts-wdrop__lead">Audiobooks and ebooks go into your uploads folder. Nothing else on your computer changes.</p>
+					</div>
+				</div>
+				if p.AddBooks != "" {
+					<a class="ts-sr" tabindex="-1" aria-hidden="true" href={ templ.SafeURL(p.AddBooks) } data-wbar-add>Add books</a>
+				}
+				<template data-wbar-note="folder">
+					Tendshelf takes books as files here. Drop the files, or open <a href={ templ.SafeURL(p.AddBooks) }>Add books</a> to add a folder.
+				</template>
+				<template data-wbar-note="off">
+					if p.Admin {
+						Uploads are off, so there is nowhere to put a book. You can turn them on under <a href="/admin/libraries">Libraries</a>.
+					} else {
+						Only the owner or an admin can add books.
+					}
+				</template>
 			}
 		</div>
 	}

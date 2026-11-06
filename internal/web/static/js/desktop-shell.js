@@ -30,6 +30,78 @@ if (channel && host) {
   // A file dropped anywhere that is not a drop zone would make the window open it as a page.
   for (const type of ["dragover", "drop"]) window.addEventListener(type, (event) => event.preventDefault());
 
+  // Drop a book (decision 0023, X5). The bar only gathers the files; the Add books page's own uploader
+  // (upload.js) does the adding and gives the refusals, so a copy-protected file is refused as there.
+  // Only a person who may add books has data-ts-can-add; anyone else gets plain words on a drop.
+  const drop = part("drop");
+  const addLink = part("add");
+  const canAdd = () => host.dataset.tsCanAdd === "true";
+  const hasFiles = (event) => !!event.dataTransfer && [...event.dataTransfer.types].includes("Files");
+  const showDrop = (on) => {
+    drop.hidden = !on;
+  };
+  const say = (note) => {
+    const words = host.querySelector("template[data-wbar-note=" + note + "]");
+    const toasts = document.getElementById("toasts");
+    if (!words || !toasts) return;
+    const toast = document.createElement("div");
+    toast.className = "ts-toast";
+    toast.setAttribute("role", "alert");
+    toast.dataset.tsMs = "8000";
+    toast.append(words.content.cloneNode(true));
+    toasts.append(toast);
+  };
+  // Files wait here while the page changes to Add books (this file is not reloaded by a boosted visit).
+  let waiting = [];
+  const hand = async () => {
+    if (!waiting.length) return true;
+    const root = document.querySelector("#main [data-ts-module][data-ts-library]");
+    const input = root && root.querySelector("[data-ts-pick=files]");
+    if (!input) return false;
+    const list = new DataTransfer();
+    for (const file of waiting) list.items.add(file);
+    waiting = [];
+    // The uploader empties the input once it has taken the files. Until then its listener may not be
+    // mounted yet (the module loads after the swap), so offer the files again, a few times.
+    input.files = list.files;
+    for (let tries = 0; tries < 30 && input.files.length; tries++) {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      if (input.files.length) await new Promise((later) => setTimeout(later, 100));
+    }
+    return true;
+  };
+  if (drop) {
+    window.addEventListener("dragenter", (event) => {
+      if (canAdd() && hasFiles(event)) showDrop(true);
+    });
+    window.addEventListener("dragleave", (event) => {
+      if (!event.relatedTarget) showDrop(false);
+    });
+    window.addEventListener("dragend", () => showDrop(false));
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") showDrop(false);
+    });
+    window.addEventListener("drop", (event) => {
+      showDrop(false);
+      // A drop inside the Add books page itself is that page's own, and must not be added twice.
+      if (!hasFiles(event) || event.target.closest("[data-ts-library]")) return;
+      // Read the items now: they are gone once this handler returns.
+      const items = [...event.dataTransfer.items].filter((item) => item.kind === "file");
+      const folder = items.some((item) => item.webkitGetAsEntry && (item.webkitGetAsEntry() || {}).isDirectory);
+      if (!canAdd()) return say("off");
+      if (folder) return say("folder");
+      waiting = items.map((item) => item.getAsFile()).filter(Boolean);
+      if (!waiting.length) return;
+      hand().then((done) => {
+        if (done) return;
+        document.addEventListener("htmx:after:swap", function once() {
+          hand().then((arrived) => arrived && document.removeEventListener("htmx:after:swap", once));
+        });
+        addLink.click();
+      });
+    });
+  }
+
   // The More menu: a button that opens a short list, arrow keys inside, Escape closes and gives focus back.
   const more = part("more");
   const menu = part("menu");

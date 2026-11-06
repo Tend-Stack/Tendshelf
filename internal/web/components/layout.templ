@@ -58,6 +58,9 @@ type Page struct {
 	// Crumb is the parent of a book, series, author or reader page. Only the desktop app's title bar shows
 	// it, as "Library / The Cartographer's Silence"; a browser never sees it (Layout only).
 	Crumb Crumb
+	// AddBooks is the Add books page the desktop app's drop zone sends dropped files to; "" when this person
+	// may not add books anywhere (owner or admin, a library with uploads on). Desktop shell only.
+	AddBooks string
 	// Picker marks the desktop app's own start page: its bar has no Back, Forward or More (Frame only).
 	Picker bool
 
