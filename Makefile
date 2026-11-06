@@ -131,6 +131,11 @@ test-mediajobs-real:
 desktop:
 	$(GO) -C desktop build -trimpath -tags production -ldflags "-X main.version=$(VERSION)" -o ../bin/tendshelf-desktop .
 
+# The same window without CGO (decision 0023, experimental): Wails' purego backend. No C compiler and no -dev
+# packages; the GTK and WebKit libraries are opened when the program starts, so they still have to be installed.
+desktop-purego:
+	CGO_ENABLED=0 $(GO) -C desktop build -trimpath -tags 'production purego' -ldflags "-X main.version=$(VERSION)" -o ../bin/tendshelf-desktop .
+
 # The Debian package (decision 0020): plain dpkg-deb, no wails3 CLI. Output: bin/tendshelf-desktop_<describe>_<arch>.deb.
 deb: desktop
 	sh desktop/package/build-deb.sh
@@ -141,6 +146,8 @@ desktop-check:
 	$(GO) -C desktop vet -tags production ./...
 	$(GO) -C desktop vet -tags 'production tendshelf_probe' ./...
 	$(GO) -C desktop test -race -tags production ./...
+	CGO_ENABLED=0 $(GO) -C desktop vet -tags 'production purego' ./...
+	CGO_ENABLED=0 $(GO) -C desktop test -tags 'production purego' .
 
 # Runs a command in a private, headless GNOME Shell (its own D-Bus and Wayland display, no install,
 # no sudo, nothing on the visible desktop): make isolated CMD="bin/tendshelf-desktop".

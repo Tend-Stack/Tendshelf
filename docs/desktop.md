@@ -11,7 +11,8 @@ apt brings `libgtk-4-1`, `libwebkitgtk-6.0-4`, `gstreamer1.0-plugins-good`, `gst
 `ffmpeg`, so audio plays and books are read. The package has no install scripts and the app downloads
 nothing. On GNOME, `gnome-shell-extension-appindicator` (recommended) shows a tray icon.
 
-Without the package, `make desktop` builds `bin/tendshelf-desktop`. Without ffmpeg on the `PATH` the app
+Without the package, `make desktop` builds `bin/tendshelf-desktop`. `make desktop-purego` builds the same window with no C
+compiler and no `-dev` packages (experimental, [decision 0023](decisions/0023-desktop-experience.md)); GTK and WebKit must still be installed. Without ffmpeg on the `PATH` the app
 warns once and lists books unread.
 
 ## Modes

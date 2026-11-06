@@ -58,7 +58,8 @@ Expected first entries (fill in when the port lands; do not pre-credit code that
 | --- | --- | --- |
 | github.com/a-h/templ v0.3.1100 | MIT | templ runtime (`internal/web`); the CLI runs through `go tool`, not linked into the binary. |
 | modernc.org/sqlite v1.61.1 | BSD-3-Clause | Pure-Go SQLite driver (`internal/db` only). The SQLite C source it carries is public domain. |
-| github.com/wailsapp/wails/v3 v3.0.0 | MIT | The desktop window (`desktop/` module only, decision 0020; needs CGO, GTK 4 and WebKitGTK 6). The root module and the server binary never import it. Its own dependencies (adrg/xdg, godbus/dbus, google/uuid and others) are indirect and desktop-only. |
+| github.com/wailsapp/wails/v3 v3.1.0 | MIT | The desktop window (`desktop/` module only, decisions 0020 and 0023; built with CGO, or without it through its experimental purego backend, against GTK 4 and WebKitGTK 6). The root module and the server binary never import it. Its own dependencies (adrg/xdg, godbus/dbus, google/uuid and others) are indirect and desktop-only. |
+| github.com/ebitengine/purego v0.11.1 | Apache-2.0 | Calls WebKitGTK without cgo in the desktop window's CGO-free build (`desktop/webkit_purego.go`, decision 0023). Already part of Wails v3.1.0; the desktop module only, never the server binary. |
 | golang.org/x/crypto v0.58.0 | BSD-3-Clause | argon2id password hashing (`internal/users` only). |
 | golang.org/x/net v0.62.0 | BSD-3-Clause | HTML5 tokenizer (`html`) and charset detection (`html/charset`) for reading EPUB, HTML and MOBI text (`internal/ebook` only). |
 | github.com/ledongthuc/pdf v0.0.0-20261020125853-5e46805f718e | BSD-3-Clause (Copyright The Go Authors, from the Go PDF reader) | PDF text layer: pure-Go reader with per-glyph position and font size, used for reading PDF ebooks (`internal/ebook/pdf.go` only). Encrypted PDFs are refused before it reads any text. |
