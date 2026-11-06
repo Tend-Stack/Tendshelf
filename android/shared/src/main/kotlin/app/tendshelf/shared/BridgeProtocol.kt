@@ -25,6 +25,9 @@ sealed interface BridgeMessage {
 
     /** Lowercase `#rrggbb`. */
     data class Theme(val hex: String) : BridgeMessage
+
+    /** The page's answer to the place question: `answer here` keeps this place, `answer there` goes to the other one. */
+    data class Answer(val keepHere: Boolean) : BridgeMessage
 }
 
 const val MAX_LENGTH = 128
@@ -50,6 +53,7 @@ fun parseBridge(raw: String?): BridgeMessage? {
         "speed" -> if (parts.size == 2) speed(parts[1])?.let { BridgeMessage.Speed(it) } else null
         "back" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.Back(parts[1] == "1") else null
         "theme" -> if (parts.size == 2 && validHex(parts[1])) BridgeMessage.Theme(parts[1]) else null
+        "answer" -> if (parts.size == 2 && (parts[1] == "here" || parts[1] == "there")) BridgeMessage.Answer(parts[1] == "here") else null
         else -> null
     }
 }
@@ -80,8 +84,19 @@ fun encodeState(s: PlayerSnapshot): String =
         "\"durationMs\":${s.durationMs.coerceAtLeast(0)},\"playing\":${s.playing},\"buffering\":${s.buffering}," +
         "\"ended\":${s.ended},\"speed\":${speedText(s.speed)},\"chapterIdx\":${s.chapterIdx.coerceAtLeast(0)}}"
 
-/** Only two codes exist; anything else is `stream`, so no error text can cross. */
+/** Only two codes exist; anything else (`background` too) is `stream`, so no error text can cross. */
 fun encodeError(code: String): String = "{\"t\":\"error\",\"code\":${jsonString(if (code == "book") "book" else "stream")}}"
+
+/**
+ * The place question for the page's toast. [deviceLabel] is the one free-text field that crosses (D6): the server
+ * already gives the page that label, and the page sets it as text. A null [ask] closes the toast (empty bookId).
+ */
+fun encodeAsk(a: Ask?): String =
+    "{\"t\":\"ask\",\"bookId\":${jsonString(a?.bookId.orEmpty())},\"positionMs\":${(a?.positionMs ?: 0).coerceAtLeast(0)}," +
+        "\"deviceLabel\":${jsonString(a?.deviceLabel.orEmpty())}}"
+
+/** "Rewound {s} s" once, after a resume that went back. */
+fun encodeRewound(s: Int): String = "{\"t\":\"rewound\",\"s\":${s.coerceIn(0, 3600)}}"
 
 fun encodeBack(): String = "{\"t\":\"back\"}"
 

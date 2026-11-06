@@ -10,6 +10,7 @@ import android.util.Log
 /**
  * Debug builds only (src/debug): emulator checks drive the WebView from `am broadcast`.
  *   -a app.tendshelf.DEBUG_EVAL --es js '<expression>'  runs it and logs the result under TsProbe
+ *   -a app.tendshelf.DEBUG_READ --es op dump|outbox      logs the player or the outbox, changing no process state
  *   -a app.tendshelf.DEBUG_LOAD --es url <url>          calls loadUrl, which skips the navigation policy on purpose
  * The release APK has no copy of this class (checked with aapt2 on assembleRelease).
  */
@@ -20,6 +21,11 @@ class DebugProbe : BroadcastReceiver() {
             // the checks can search logs, prefs and pages for them. Never logged.
             val t = TokenStore(context).current()?.token
             java.io.File(context.filesDir, "probe-token8").writeText(t?.take(8) ?: "")
+            return
+        }
+        if (intent.action == "app.tendshelf.DEBUG_READ") {
+            // Read-only: a broadcast to the running process, never a service start (A5b invariant 3).
+            DebugHooks.read(intent.getStringExtra("op"))
             return
         }
         val web = WebHandle.current

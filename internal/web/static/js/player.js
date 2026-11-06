@@ -680,17 +680,22 @@ function maybeAskContinue(remote) {
   if (!remote || prompting || remote.finished) return;
   if (remote.deviceId === deviceId() || remote.deviceId === "server") return;
   if (Math.abs(remote.positionMs - bookPosition()) <= BREAK_MS) return;
+  askContinue(remote, () => seek(remote.positionMs), () => save("force"));
+}
 
+// The question's toast, one at a time. onThere and onHere run after it closes.
+let question = null;
+function closeQuestion() {
+  prompting = false;
+  if (question) dismissToast(question);
+  question = null;
+}
+function askContinue(remote, onThere, onHere) {
   prompting = true;
-  let question = null;
-  const close = () => {
-    prompting = false;
-    dismissToast(question);
-  };
   const text = fill(msg("continueAsk"), { time: clock(remote.positionMs), device: remote.deviceLabel || msg("otherDevice") });
   question = toast("status", text, [
-    { label: msg("continueThere"), run: () => { close(); seek(remote.positionMs); } },
-    { label: msg("stayHere"), run: () => { close(); save("force"); } },
+    { label: msg("continueThere"), run: () => { closeQuestion(); onThere(); } },
+    { label: msg("stayHere"), run: () => { closeQuestion(); onHere(); } },
   ]);
 }
 
@@ -1168,6 +1173,13 @@ if (NATIVE) {
   // The speed the app pushed before the book was loaded is taken once it is.
   listen(audio, "nativebook", () => loadBook(audio.nativeBookId).then(takeSpeed));
   listen(audio, "ratechange", takeSpeed);
+  // The app asks the place question; the answer goes back to it, and an empty book id closes the toast.
+  listen(audio, "nativeask", () => {
+    const ask = audio.ask;
+    if (!ask.bookId) return closeQuestion();
+    if (!prompting) askContinue(ask, () => audio.answer("there"), () => audio.answer("here"));
+  });
+  listen(audio, "nativerewound", () => hint(fill(msg("rewound"), { s: audio.rewoundS })));
   audio.hello();
 }
 const canSetVolume = probeVolume();

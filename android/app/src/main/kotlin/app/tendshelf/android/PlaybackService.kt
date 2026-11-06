@@ -1,5 +1,8 @@
 package app.tendshelf.android
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
@@ -16,6 +19,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
@@ -84,8 +88,54 @@ class PlaybackService : MediaLibraryService() {
             .setSessionActivity(open) // the notification tap opens the page again
             .setMediaButtonPreferences(skipButtons())
             .build()
-        engine = BookEngine(exo, player, http, main, io, { connections }) { extras -> session?.setSessionExtras(extras) }
+        engine = BookEngine(exo, player, http, main, io, { connections }) { extras -> putExtras { putAll(extras) } }
         wireProgress()
+        setListener(RefusedListener())
+        exo.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY) nm().cancel(REFUSED_ID)
+            }
+        })
+    }
+
+    private fun nm() = getSystemService(NotificationManager::class.java)
+
+    /** Session extras are one bundle: every writer merges into it, none replaces it. */
+    internal fun putExtras(change: Bundle.() -> Unit) {
+        val s = session ?: return
+        s.setSessionExtras(Bundle(s.sessionExtras).apply(change))
+    }
+
+    /**
+     * The system said no to a foreground start (A5b D1). Media3 calls this on the main thread. The player stops
+     * trying within the same turn, the page can say why, and a notification gives a tap back to the app, where
+     * the activity is on top and the next start is allowed.
+     */
+    private inner class RefusedListener : MediaSessionService.Listener {
+        override fun onForegroundServiceStartNotAllowedException() {
+            Log.w(TAG, "foreground start refused")
+            engine.refused()
+            val nm = nm()
+            nm.createNotificationChannel(NotificationChannel(PLAYBACK_CHANNEL, getString(R.string.playback_channel), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                setSound(null, null)
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            })
+            val open = PendingIntent.getActivity(
+                this@PlaybackService, 1,
+                Intent(this@PlaybackService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            nm.notify(
+                REFUSED_ID,
+                Notification.Builder(this@PlaybackService, PLAYBACK_CHANNEL)
+                    .setSmallIcon(android.R.drawable.ic_media_play)
+                    .setContentTitle(getString(R.string.keep_listening))
+                    .setVisibility(Notification.VISIBILITY_PRIVATE)
+                    .setAutoCancel(true)
+                    .setContentIntent(open)
+                    .build(),
+            )
+        }
     }
 
     /** A5: saving, rewinding, the place question and the next book. None of it needs a page. */
@@ -93,7 +143,7 @@ class PlaybackService : MediaLibraryService() {
         val w = ProgressWriter(this, exo, { connections }, main)
         writer = w
         w.bookSource { engine.currentBook }
-        val ask = AskPrompt(this, w) { ms -> exo.seekTo(ms) }
+        val ask = AskPrompt(this, w, { a -> putExtras { putAsk(a) } }) { ms -> exo.seekTo(ms) }
         askPrompt = ask
         val resume = Resume(exo, { engine.settings }, { engine.currentBook })
         val next = NextBook(this, w, { connections }, main, io) { id -> engine.start(id, null) }
@@ -140,7 +190,12 @@ class PlaybackService : MediaLibraryService() {
                 }
             }
         }
-        resume.onRewound = { s -> session?.let { it.setSessionExtras(Bundle(it.sessionExtras).apply { putInt(EXTRA_REWOUND, s) }) } }
+        resume.onRewound = { s ->
+            putExtras {
+                putInt(EXTRA_REWOUND, s)
+                putInt(EXTRA_REWOUND_SEQ, getInt(EXTRA_REWOUND_SEQ) + 1)
+            }
+        }
     }
 
     /** Back and Forward beside the chapter buttons (D4). */
@@ -178,6 +233,8 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        clearListener()
+        nm().cancel(REFUSED_ID)
         writer.saveNow("destroy")
         writer.close()
         session?.release()
@@ -194,6 +251,8 @@ class PlaybackService : MediaLibraryService() {
                 if (controller.packageName == packageName) {
                     add(START_COMMAND)
                     add(STOP_COMMAND)
+                    add(ANSWER_COMMAND)
+                    add(VISIBLE_COMMAND)
                 }
             }.build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
@@ -217,6 +276,8 @@ class PlaybackService : MediaLibraryService() {
                     engine.stopAndClear()
                     stopSelf()
                 }
+                ANSWER_ACTION -> askPrompt.answer(args.getBoolean("keepHere"))
+                VISIBLE_ACTION -> askPrompt.setPageVisible(args.getBoolean("visible"))
                 else -> return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -227,7 +288,17 @@ class PlaybackService : MediaLibraryService() {
         internal const val TAG = "Tendshelf"
         const val START_ACTION = "app.tendshelf.START_BOOK"
         const val STOP_ACTION = "app.tendshelf.STOP_AND_CLEAR"
+        const val ANSWER_ACTION = "app.tendshelf.ANSWER_ASK"
+        const val VISIBLE_ACTION = "app.tendshelf.PAGE_VISIBLE"
         const val EXTRA_REWOUND = "ts.rewoundS"
+        const val EXTRA_REWOUND_SEQ = "ts.rewoundSeq"
+        const val EXTRA_ASK_BOOK = "ts.ask.bookId"
+        const val EXTRA_ASK_POSITION = "ts.ask.positionMs"
+        const val EXTRA_ASK_DEVICE = "ts.ask.device"
+        const val PLAYBACK_CHANNEL = "playback"
+        const val REFUSED_ID = 4244
+        val ANSWER_COMMAND = SessionCommand(ANSWER_ACTION, Bundle.EMPTY)
+        val VISIBLE_COMMAND = SessionCommand(VISIBLE_ACTION, Bundle.EMPTY)
         val START_COMMAND = SessionCommand(START_ACTION, Bundle.EMPTY)
         val STOP_COMMAND = SessionCommand(STOP_ACTION, Bundle.EMPTY)
     }

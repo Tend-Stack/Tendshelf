@@ -34,6 +34,7 @@ class MainActivity : Activity() {
     private lateinit var parent: FrameLayout
     private var controller: ListenableFuture<MediaController>? = null
     private var remote: ControllerRemote? = null
+    private var visible = false
     private var bridgeEnabled = true
     private var backCallback: OnBackInvokedCallback? = null
     private var backRegistered = false
@@ -81,10 +82,14 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        visible = true
+        remote?.pageVisible(true)
         bridge.onStart()
     }
 
     override fun onStop() {
+        visible = false
+        remote?.pageVisible(false)
         bridge.onStop()
         super.onStop()
     }
@@ -182,6 +187,7 @@ class MainActivity : Activity() {
             }
             val r = ControllerRemote(c)
             remote = r
+            if (visible) r.pageVisible(true)
             bridge.remote = r
         }, mainExecutor)
     }

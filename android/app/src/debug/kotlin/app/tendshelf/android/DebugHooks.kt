@@ -26,11 +26,40 @@ object DebugHooks {
         activity.setTurnScreenOn(true)
     }
 
+    /** Set by the service start, read by [read]. Reads never start or foreground the service (A5b invariant 3). */
+    @Volatile
+    private var service: PlaybackService? = null
+
     fun onServiceStart(service: PlaybackService, intent: Intent?): Boolean {
+        this.service = service
         if (intent?.action != ACTION) return false
         keepAlive(service)
         run(service, intent)
         return true
+    }
+
+    /**
+     * Read-only probes for the emulator checks (`DEBUG_READ --es op dump|outbox`, from [DebugProbe]). They come by
+     * broadcast and touch nothing in the process state, unlike the `DEBUG_PLAYER` ops, which keep the service in
+     * the foreground and so hid the A5 hang they were meant to measure.
+     */
+    fun read(op: String?) {
+        val service = service
+        if (service == null) {
+            Log.i(PlaybackService.TAG, "read: no service")
+            return
+        }
+        service.main.post {
+            val exo = service.exo
+            when (op) {
+                "outbox" -> Log.i(PlaybackService.TAG, "outbox rows=${service.writer.rowCount()}")
+                "dump" -> Log.i(
+                    PlaybackService.TAG, "dump pos=${exo.currentPosition} dur=${exo.duration} speed=${exo.playbackParameters.speed} " +
+                        "playing=${exo.isPlaying} pwr=${exo.playWhenReady} state=${exo.playbackState} chapter=${service.player.chapterIdx} " +
+                        "title=${service.player.mediaMetadata.title} error=${service.session?.sessionExtras?.getString(BookEngine.EXTRA_ERROR)}",
+                )
+            }
+        }
     }
 
     /**
@@ -71,12 +100,6 @@ object DebugHooks {
             "forward" -> player.seekForward()
             "stop" -> service.engine.stopAndClear()
             "flush" -> service.writer.flush()
-            "outbox" -> Log.i(PlaybackService.TAG, "outbox rows=${service.writer.rowCount()}")
-            "dump" -> Log.i(
-                PlaybackService.TAG, "dump pos=${exo.currentPosition} dur=${exo.duration} speed=${exo.playbackParameters.speed} " +
-                    "playing=${exo.isPlaying} state=${exo.playbackState} chapter=${player.chapterIdx} " +
-                    "title=${player.mediaMetadata.title} error=${service.session?.sessionExtras?.getString(BookEngine.EXTRA_ERROR)}",
-            )
         }
     }
 }

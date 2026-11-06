@@ -87,6 +87,12 @@ function build(bridge) {
     } else if (message.t === "error") {
       failure = { code: message.code === "book" ? 3 : 2 };
       fire("error");
+    } else if (message.t === "ask") {
+      audio.ask = { bookId: String(message.bookId), positionMs: Number(message.positionMs), deviceLabel: String(message.deviceLabel) };
+      fire("nativeask");
+    } else if (message.t === "rewound") {
+      audio.rewoundS = Number(message.s);
+      fire("nativerewound");
     } else if (message.t === "back") {
       goBack();
     }
@@ -141,6 +147,8 @@ function build(bridge) {
     return Promise.resolve();
   };
   audio.pause = () => send("pause");
+  // The person's answer to the place question the app asked: "here" or "there".
+  audio.answer = (word) => send("answer " + word);
 
   // Starts the book: a plain play if the app already holds it and the page has no new place in mind.
   audio.start = (bookId) => {

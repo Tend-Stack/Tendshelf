@@ -94,6 +94,30 @@ class BridgeProtocolTest {
     }
 
     @Test
+    fun answerWordsAreStrict() {
+        assertEquals(BridgeMessage.Answer(true), parseBridge("answer here"))
+        assertEquals(BridgeMessage.Answer(false), parseBridge("answer there"))
+        for (bad in listOf("answer", "answer ", "answer  here", "answer here now", "answer HERE", "answer yes", "answer 1", "Answer here", "answer\there", "answerhere")) {
+            assertNull(parseBridge(bad), bad)
+        }
+    }
+
+    @Test
+    fun askAndRewoundAreFixedFields() {
+        assertEquals(
+            "{\"t\":\"ask\",\"bookId\":\"b1\",\"positionMs\":80000,\"deviceLabel\":\"Pixel \\\"7\\\" <b>\"}",
+            encodeAsk(Ask("b1", 80000, "Pixel \"7\" <b>")),
+        )
+        // No question: an empty book id, which closes the toast.
+        assertEquals("{\"t\":\"ask\",\"bookId\":\"\",\"positionMs\":0,\"deviceLabel\":\"\"}", encodeAsk(null))
+        assertEquals("{\"t\":\"ask\",\"bookId\":\"b\",\"positionMs\":0,\"deviceLabel\":\"x\"}", encodeAsk(Ask("b", -9, "x")))
+        assertEquals("{\"t\":\"rewound\",\"s\":5}", encodeRewound(5))
+        assertEquals("{\"t\":\"rewound\",\"s\":0}", encodeRewound(-3))
+        // `background` crosses as the generic stream code.
+        assertEquals("{\"t\":\"error\",\"code\":\"stream\"}", encodeError("background"))
+    }
+
+    @Test
     fun bucketAllowsThirtyAndRefills() {
         val b = TokenBucket(30, 0)
         var ok = 0

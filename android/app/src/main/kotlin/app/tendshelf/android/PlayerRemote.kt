@@ -3,6 +3,7 @@ package app.tendshelf.android
 import android.os.Bundle
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
+import app.tendshelf.shared.Ask
 import app.tendshelf.shared.PlayerSnapshot
 
 /**
@@ -16,6 +17,12 @@ interface PlayerRemote {
     fun pause()
     fun seek(bookMs: Long)
     fun setSpeed(speed: Double)
+
+    /** The person's answer to the place question: true keeps this place, false goes to the other one. */
+    fun answer(keepHere: Boolean)
+
+    /** Whether the page is on screen (the activity is started), so the service knows where to ask. */
+    fun pageVisible(visible: Boolean)
     fun snapshot(): PlayerSnapshot
     fun observe(listener: (PlayerSnapshot) -> Unit)
     fun release()
@@ -54,6 +61,14 @@ class ControllerRemote(private val controller: MediaController) : PlayerRemote {
         controller.sendCustomCommand(PlaybackService.STOP_COMMAND, Bundle.EMPTY)
     }
 
+    override fun answer(keepHere: Boolean) {
+        controller.sendCustomCommand(PlaybackService.ANSWER_COMMAND, Bundle().apply { putBoolean("keepHere", keepHere) })
+    }
+
+    override fun pageVisible(visible: Boolean) {
+        controller.sendCustomCommand(PlaybackService.VISIBLE_COMMAND, Bundle().apply { putBoolean("visible", visible) })
+    }
+
     override fun play() = controller.play()
     override fun pause() = controller.pause()
     override fun seek(bookMs: Long) = controller.seekTo(bookMs)
@@ -71,6 +86,11 @@ class ControllerRemote(private val controller: MediaController) : PlayerRemote {
             speed = controller.playbackParameters.speed.toDouble(),
             chapterIdx = x.getInt(BookEngine.EXTRA_CHAPTER, -1),
             error = x.getString(BookEngine.EXTRA_ERROR).orEmpty(),
+            ask = x.getString(PlaybackService.EXTRA_ASK_BOOK).orEmpty().takeIf { it.isNotEmpty() }?.let {
+                Ask(it, x.getLong(PlaybackService.EXTRA_ASK_POSITION), x.getString(PlaybackService.EXTRA_ASK_DEVICE).orEmpty())
+            },
+            rewoundS = x.getInt(PlaybackService.EXTRA_REWOUND),
+            rewoundSeq = x.getInt(PlaybackService.EXTRA_REWOUND_SEQ),
         )
     }
 
