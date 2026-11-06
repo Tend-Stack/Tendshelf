@@ -150,6 +150,7 @@ class PlaybackService : MediaLibraryService() {
             when (customCommand.customAction) {
                 START_ACTION -> engine.start(args.getString("book").orEmpty(), args.getLong("atMs", -1L).takeIf { it >= 0 })
                 STOP_ACTION -> {
+                    Log.i(TAG, "stop and clear done")
                     engine.stopAndClear()
                     stopSelf()
                 }

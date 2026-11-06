@@ -50,6 +50,7 @@ class ControllerRemote(private val controller: MediaController) : PlayerRemote {
     }
 
     override fun stopAndClear() {
+        android.util.Log.i("Tendshelf", "stop and clear asked")
         controller.sendCustomCommand(PlaybackService.STOP_COMMAND, Bundle.EMPTY)
     }
 

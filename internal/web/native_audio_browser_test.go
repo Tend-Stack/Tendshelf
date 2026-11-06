@@ -154,9 +154,11 @@ func TestNativeAudioReloadAndStart(t *testing.T) {
 	tab.WaitFor(`window.tsNativeAudio !== undefined`, 10*time.Second)
 	a4WaitSent(t, tab, "hello 1")
 	// The app is playing a book the page never loaded: nativebook loads it.
-	a4Push(tab, a4State(e.book.ID, 20000, true, "1.00"))
+	a4Push(tab, a4State(e.book.ID, 20000, true, "1.50"))
 	tab.WaitFor(`window.tsPlayer.state().bookId === `+cdp.Quote(e.book.ID), 8*time.Second)
 	tab.WaitFor(`window.tsPlayer.state().playing === true`, 5*time.Second)
+	// The speed pushed before the book was loaded is the page's speed once it is.
+	tab.WaitFor(`window.tsPlayer.state().speed === 1.5`, 5*time.Second)
 	var hidden bool
 	tab.Eval(`document.getElementById("player").hidden`, &hidden)
 	if hidden {

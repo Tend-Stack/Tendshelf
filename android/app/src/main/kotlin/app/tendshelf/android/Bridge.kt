@@ -120,8 +120,8 @@ class Bridge(
         if (!isMainFrame) return
         if (flow() != ConnectFlow.State.Connected) return
         // Exact, normalised compare (B5): a sandboxed document's origin is "null" and parses to nothing.
-        val from = Origin.parse(sourceOrigin.toString())
-        if (from == null || from != origin || from != currentOrigin()) return
+        val now = currentOrigin()
+        if (now == null || now != origin || !origin.sameSource(sourceOrigin.toString())) return
         if (message.type != WebMessageCompat.TYPE_STRING) return
         val msg = parseBridge(message.data)
         if (msg == null) {
@@ -202,6 +202,8 @@ class Bridge(
 
     private fun send(p: JavaScriptReplyProxy, text: String) {
         try {
+            // The length only: the log never holds what was sent.
+            Log.d(TAG, "bridge push ${text.length}")
             p.postMessage(text)
         } catch (_: Exception) {
             // The frame is gone; the next hello gives a new proxy.

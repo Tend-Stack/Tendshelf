@@ -1159,13 +1159,15 @@ listen(document, "htmx:after:settle", () => {
 audio.preservesPitch = true;
 if (NATIVE) {
   // The app is the truth: a book it plays that the page has not loaded is loaded now, and its speed is the page's.
-  listen(audio, "nativebook", () => loadBook(audio.nativeBookId));
-  listen(audio, "ratechange", () => {
+  const takeSpeed = () => {
     if (book) {
       book.speed = audio.playbackRate;
       emit("speed");
     }
-  });
+  };
+  // The speed the app pushed before the book was loaded is taken once it is.
+  listen(audio, "nativebook", () => loadBook(audio.nativeBookId).then(takeSpeed));
+  listen(audio, "ratechange", takeSpeed);
   audio.hello();
 }
 const canSetVolume = probeVolume();

@@ -19,7 +19,7 @@ data class Connection(val origin: String, val token: String, val deviceId: Strin
 fun interface ConnectionSource { fun current(): Connection? }
 ```
 
-**Emulator is shared.** Only one package on `emulator-5554` at a time; acceptance runs inside `flock -w 3600 .local/tests/android/emulator.lock`. Test servers: A2 port 8097, A3 8098, A4 8097, A5
+**Emulator is shared.** Only one package on `emulator-5554` at a time; acceptance runs inside `flock -w 3600 /home/rubirosa/Projects/Tendshelf/.local/android-emulator.lock` (the absolute path of the main checkout: a relative path differs per worktree, so A2 and A3 collided; both apps share one package id, so reinstall your own build inside the lock before each run). Test servers: A2 port 8097, A3 8098, A4 8097, A5
 8098, hostile pages 8099, all on 127.0.0.1 from the worktree's own build with `-addr`, under `.local/tests/android/<pkg>/<run-id>/`, deleted after the run. **Never port 8095, never `~/.local/share/tendshelf`.**
 Reached from the emulator as `http://10.0.2.2:<port>`.
 
