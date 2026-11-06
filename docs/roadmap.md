@@ -801,6 +801,13 @@ in the Android window, no Downloads link there. Tests: `TestA1*` in `internal/au
 of the plan, plus the route-matrix rows and the a11y page rows). Limits: nothing was run on a phone (A2 builds the app); the Connect pages
 are audited through the window-mark link; plain `http` is allowed and warned about. Next: A2, the Kotlin shell that uses this.
 
+**Next in series in the web player (fix, 2026-11-06, branch `pkg-series`)**: the setting had no effect in the browser because
+`POST /hx/player/next` only popped Up next. Now, with the queue empty, it answers with the player of the next book of `ended`'s first
+series (`playerSeriesNext`), through the same lookup the app uses (`seriesNextBook` in `routes_api_queue.go`, extracted from
+`writeSeriesNext`). Queue first; setting off, no right, text-only, refused, finished, last in series or no series: 204. The lookup
+now also skips a next book the person has already finished, for the app too. `player.js` is unchanged (it already posts `ended`;
+share-link pages stay in link mode and never call it). Tests: `TestSeriesNext`. Limits: no browser test (`make player` does not cover the end of a book).
+
 ## M7 Research — dropped (decision 0007, 2026-11-02)
 
 ## Next stage (docs/plans/next-stage.md)

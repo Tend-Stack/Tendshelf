@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
@@ -179,50 +180,60 @@ func (s *server) postAPIQueueNext(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// writeSeriesNext answers the empty-queue case of POST /api/v1/queue/next: the book after ended in its
-// first series, when the app asked (series), the person's "next in series" setting is on, and the book
-// is one the person may listen to and Tendshelf can play. Anything else is a 204. The queue is never
-// touched here, and a book the person cannot see never shows: the series is read through the scope SQL.
-func (s *server) writeSeriesNext(w http.ResponseWriter, r *http.Request, ended string, series bool) {
-	if !series || ended == "" {
-		w.WriteHeader(http.StatusNoContent)
-		return
+// seriesNextBook is the one lookup behind "next in series", for the app (POST /api/v1/queue/next) and the
+// web player (POST /hx/player/next): the book after ended in its first series, when the person's setting is
+// on and the book is one they may listen to, Tendshelf can play, and have not finished. ok is false for
+// anything else. The queue is never touched here, and a book the person cannot see never shows: the series
+// is read through the scope SQL.
+func (s *server) seriesNextBook(r *http.Request, ended string) (b library.Book, ok bool, err error) {
+	if ended == "" {
+		return b, false, nil
 	}
 	ctx := r.Context()
 	u := currentUser(r)
 	set, err := s.users.LoadSettings(ctx, u.ID)
-	if err != nil {
-		s.serverError(w, r, "api series next", err)
-		return
-	}
-	if !set.NextInSeries {
-		w.WriteHeader(http.StatusNoContent)
-		return
+	if err != nil || !set.NextInSeries {
+		return b, false, err
 	}
 	next, _, err := s.nextInSeries(r, ended)
-	if err != nil {
-		s.serverError(w, r, "api series next", err)
-		return
+	if err != nil || next == nil {
+		return b, false, err
 	}
-	if next == nil {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	b, err := s.lib.Book(ctx, next.ID)
+	b, err = s.lib.Book(ctx, next.ID)
 	if errors.Is(err, library.ErrNotFound) {
-		w.WriteHeader(http.StatusNoContent)
-		return
+		return b, false, nil
 	}
 	if err != nil {
-		s.serverError(w, r, "api series next", err)
-		return
+		return b, false, err
 	}
 	if !s.can.Can(ctx, u, share.ListenBook, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) ||
 		b.RefusedReason != "" || b.MissingSince != 0 || b.Kind == library.BookText {
+		return b, false, nil
+	}
+	p, err := s.progress.Get(ctx, u.ID, b.ID)
+	if errors.Is(err, progress.ErrNotFound) {
+		return b, true, nil
+	}
+	return b, err == nil && !p.Finished(), err
+}
+
+// writeSeriesNext answers the empty-queue case of POST /api/v1/queue/next when the app asked (series).
+// Anything but a playable next book is a 204.
+func (s *server) writeSeriesNext(w http.ResponseWriter, r *http.Request, ended string, series bool) {
+	if !series {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	d, err := s.lib.BookDetail(ctx, s.scope(r), b.ID)
+	b, ok, err := s.seriesNextBook(r, ended)
+	if err != nil {
+		s.serverError(w, r, "api series next", err)
+		return
+	}
+	if !ok {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	d, err := s.lib.BookDetail(r.Context(), s.scope(r), b.ID)
 	if errors.Is(err, library.ErrNotFound) {
 		w.WriteHeader(http.StatusNoContent)
 		return
