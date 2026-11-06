@@ -196,15 +196,15 @@ func TestA1ShellMarkChangesNoStatus(t *testing.T) {
 	}
 }
 
-// TestA1ShellPage: the Android window loads native-audio.js and not offline.js, has no Downloads link
-// and says data-shell; a browser page has none of that and the same security headers.
+// TestA1ShellPage: the Android window loads native-audio.js and native-downloads.js and not offline.js, keeps the
+// Downloads link as a plain navigation (A7: the app draws that page) and says data-shell; a browser page has none of that and the same security headers.
 func TestA1ShellPage(t *testing.T) {
 	a := newTestApp(t)
 	ck := a.owner(t)
 	plain := a.do(http.MethodGet, "/", nil, nil, ck)
 	app := a.do(http.MethodGet, "/", nil, nil, ck, a1Android)
 	pb, ab := plain.Body.String(), app.Body.String()
-	for _, want := range []string{`data-shell="android"`, "/js/native-audio."} {
+	for _, want := range []string{`data-shell="android"`, "/js/native-audio.", "/js/native-downloads."} {
 		if !strings.Contains(ab, want) || strings.Contains(pb, want) {
 			t.Errorf("%q: android %v, browser %v", want, strings.Contains(ab, want), strings.Contains(pb, want))
 		}
@@ -212,8 +212,16 @@ func TestA1ShellPage(t *testing.T) {
 	if strings.Contains(ab, "/js/offline.") || !strings.Contains(pb, "/js/offline.") {
 		t.Errorf("offline.js: android %v, browser %v", strings.Contains(ab, "/js/offline."), strings.Contains(pb, "/js/offline."))
 	}
-	if strings.Contains(ab, `href="/me/downloads"`) || !strings.Contains(pb, `href="/me/downloads"`) {
-		t.Error("the Downloads link is wrong in one of the pages")
+	// A7: both windows list Downloads; only the app's links are not boosted, because htmx navigations never reach the
+	// app's navigation policy. All three navigations carry the link (tab bar, rail, sidebar).
+	if !strings.Contains(ab, `href="/me/downloads"`) || !strings.Contains(pb, `href="/me/downloads"`) {
+		t.Error("the Downloads link is missing from one of the pages")
+	}
+	if n := strings.Count(ab, `data-nav="/me/downloads"`); n == 0 || strings.Count(ab, `data-nav="/me/downloads" hx-boost="false"`) != n {
+		t.Errorf("the app's Downloads links must all be unboosted (%d of them)", n)
+	}
+	if strings.Contains(pb, `data-nav="/me/downloads" hx-boost="false"`) {
+		t.Error("a browser's Downloads link is unboosted")
 	}
 	if strings.Contains(pb, "data-shell") {
 		t.Error("a browser page names a shell")
