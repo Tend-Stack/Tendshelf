@@ -84,8 +84,9 @@ fun encodeState(s: PlayerSnapshot): String =
         "\"durationMs\":${s.durationMs.coerceAtLeast(0)},\"playing\":${s.playing},\"buffering\":${s.buffering}," +
         "\"ended\":${s.ended},\"speed\":${speedText(s.speed)},\"chapterIdx\":${s.chapterIdx.coerceAtLeast(0)}}"
 
-/** Only two codes exist; anything else (`background` too) is `stream`, so no error text can cross. */
-fun encodeError(code: String): String = "{\"t\":\"error\",\"code\":${jsonString(if (code == "book") "book" else "stream")}}"
+/** Only three codes exist; anything else is `stream`, so no error text can cross. `background` is a refused foreground start. */
+fun encodeError(code: String): String =
+    "{\"t\":\"error\",\"code\":${jsonString(if (code == "book" || code == "background") code else "stream")}}"
 
 /**
  * The place question for the page's toast. [deviceLabel] is the one free-text field that crosses (D6): the server

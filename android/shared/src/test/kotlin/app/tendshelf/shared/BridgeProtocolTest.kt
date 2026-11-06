@@ -113,8 +113,8 @@ class BridgeProtocolTest {
         assertEquals("{\"t\":\"ask\",\"bookId\":\"b\",\"positionMs\":0,\"deviceLabel\":\"x\"}", encodeAsk(Ask("b", -9, "x")))
         assertEquals("{\"t\":\"rewound\",\"s\":5}", encodeRewound(5))
         assertEquals("{\"t\":\"rewound\",\"s\":0}", encodeRewound(-3))
-        // `background` crosses as the generic stream code.
-        assertEquals("{\"t\":\"error\",\"code\":\"stream\"}", encodeError("background"))
+        // `background` has its own word, so the page can say what to do.
+        assertEquals("{\"t\":\"error\",\"code\":\"background\"}", encodeError("background"))
     }
 
     @Test

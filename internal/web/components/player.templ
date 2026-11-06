@@ -18,6 +18,7 @@ type PlayerMsgs struct {
 	// rendered only there, so a browser's page is byte-identical (A1, invariant 8).
 	Android      bool
 	NativeFailed string
+	NativeBackground string
 
 	// Eyes-free (M3b): its words and the addresses of its script and stylesheet, loaded on first use.
 	EyesFree                EyesFreeMsgs
@@ -69,6 +70,7 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 	attrs := m.attrs()
 	if m.Android {
 		attrs["data-ts-msg-native-failed"] = m.NativeFailed
+		attrs["data-ts-msg-native-background"] = m.NativeBackground
 	}
 	return attrs
 }

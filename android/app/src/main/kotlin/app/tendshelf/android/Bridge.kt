@@ -190,7 +190,7 @@ class Bridge(
         // Errors cross as one of two fixed codes; `signedOut` does not (sign-out replaces the page).
         if (s.error != lastError) {
             lastError = s.error
-            // `background` crosses as the generic stream code (encodeError).
+            // `background` crosses as its own code (encodeError).
             if (s.error == "stream" || s.error == "book" || s.error == "background") send(p, encodeError(s.error))
         }
         if (s.ask != lastAsk) {

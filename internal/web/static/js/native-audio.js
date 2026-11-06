@@ -85,7 +85,7 @@ function build(bridge) {
         speed: Number(message.speed) || 1,
       });
     } else if (message.t === "error") {
-      failure = { code: message.code === "book" ? 3 : 2 };
+      failure = { code: message.code === "book" ? 3 : 2, background: message.code === "background" };
       fire("error");
     } else if (message.t === "ask") {
       audio.ask = { bookId: String(message.bookId), positionMs: Number(message.positionMs), deviceLabel: String(message.deviceLabel) };

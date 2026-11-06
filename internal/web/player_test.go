@@ -52,7 +52,7 @@ func TestPlayerSlotMarkup(t *testing.T) {
 		}
 	}
 	for _, name := range playerMsgNames(t) {
-		if name == "data-ts-msg-native-failed" {
+		if strings.HasPrefix(name, "data-ts-msg-native-") {
 			// Android app only (A4): rendered when the shell is android, checked in TestA1ShellPage; a browser page must not carry it.
 			if strings.Contains(body, name) {
 				t.Errorf("a browser page carries %s", name)
