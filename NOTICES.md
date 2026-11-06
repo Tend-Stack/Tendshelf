@@ -58,6 +58,7 @@ Expected first entries (fill in when the port lands; do not pre-credit code that
 | --- | --- | --- |
 | github.com/a-h/templ v0.3.1100 | MIT | templ runtime (`internal/web`); the CLI runs through `go tool`, not linked into the binary. |
 | modernc.org/sqlite v1.61.1 | BSD-3-Clause | Pure-Go SQLite driver (`internal/db` only). The SQLite C source it carries is public domain. |
+| github.com/fsnotify/fsnotify v1.10.1 | BSD-3-Clause | File-system change events for the folder watcher (`internal/watch`, S1; approved 2026-11-03). Watches are inotify handles on directories only, and nothing is written. |
 | github.com/wailsapp/wails/v3 v3.0.0 | MIT | The desktop window (`desktop/` module only, decision 0020; needs CGO, GTK 4 and WebKitGTK 6). The root module and the server binary never import it. Its own dependencies (adrg/xdg, godbus/dbus, google/uuid and others) are indirect and desktop-only. |
 | golang.org/x/crypto v0.58.0 | BSD-3-Clause | argon2id password hashing (`internal/users` only). |
 | golang.org/x/net v0.62.0 | BSD-3-Clause | HTML5 tokenizer (`html`) and charset detection (`html/charset`) for reading EPUB, HTML and MOBI text (`internal/ebook` only). |

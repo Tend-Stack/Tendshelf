@@ -205,7 +205,7 @@ WHERE `+where+` AND b.library_id = ? AND b.missing_since IS NULL AND a.missing_s
 // CreateLibraryWithFolder creates a library and its first folder in one transaction, with the rules
 // of CreateLibrary and AddFolder. When the folder is refused, no library is left behind.
 func (r *Repo) CreateLibraryWithFolder(ctx context.Context, name, path string) (Library, Folder, error) {
-	l, err := r.newLibrary(name, 0)
+	l, err := r.newLibrary(name, DefaultScanIntervalMin)
 	if err != nil {
 		return Library{}, Folder{}, err
 	}

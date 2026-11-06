@@ -163,3 +163,25 @@ func (r *Repo) AutoLookupDue(ctx context.Context, bookID string) (string, bool, 
 	}
 	return lib, due, nil
 }
+
+// SetWatch saves "Watch for new books" and the scheduled scan interval (minutes, 0 = never) of a
+// library. It is ErrInvalid for an interval outside 0 to 10080 and ErrNotFound for an unknown library.
+func (r *Repo) SetWatch(ctx context.Context, libraryID string, watch bool, intervalMin int) error {
+	if intervalMin < 0 || intervalMin > 10080 {
+		return invalid("scan interval must be 0 to 10080 minutes")
+	}
+	on := 0
+	if watch {
+		on = 1
+	}
+	return r.Update(ctx, func(t *Tx) error {
+		res, err := t.exec(`UPDATE libraries SET watch = ?, scan_interval_min = ? WHERE id = ?`, on, intervalMin, libraryID)
+		if err != nil {
+			return mapErr(err, "library")
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return fmt.Errorf("%w: library", ErrNotFound)
+		}
+		return nil
+	})
+}

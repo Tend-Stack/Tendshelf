@@ -38,6 +38,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/upload"
 	"github.com/Tend-Stack/tendshelf/internal/users"
+	"github.com/Tend-Stack/tendshelf/internal/watch"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 	"github.com/Tend-Stack/tendshelf/internal/web/static"
@@ -85,6 +86,9 @@ type Options struct {
 	// Backups makes and lists scheduled database copies; nil means the handler makes its own
 	// (tests) and registers the job kind on Jobs.
 	Backups *backups.Service
+	// Watcher is the folder watcher and scheduled scan. The Libraries page shows its mode and nudges it
+	// after a setting changes; nil means the page shows the saved setting only.
+	Watcher *watch.Service
 	// DownloadChunk is the size in bytes of one offline download request; zero means 4 MiB. Tests
 	// shrink it so a small fixture spans several chunks.
 	DownloadChunk int
@@ -122,6 +126,7 @@ type server struct {
 	covers     *mediajobs.Covers
 	writes     *mediajobs.Writes
 	uploads    *upload.Service
+	watcher    *watch.Service
 	ebooks     *ebook.Service
 	backups    *backups.Service
 	progress   *progress.Service
@@ -216,6 +221,9 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 			return nil, nil, fmt.Errorf("web: backup job: %w", err)
 		}
 	}
+	if opts.Library != nil && bk.LibraryFolders == nil {
+		bk.LibraryFolders = func(ctx context.Context) ([]string, error) { return libraryFolderPaths(ctx, opts.Library) }
+	}
 	lk := hmac.New(sha256.New, key)
 	lk.Write([]byte("tendshelf share-link unlock v1"))
 	s := &server{
@@ -243,6 +251,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		covers:     opts.Covers,
 		writes:     opts.Writes,
 		uploads:    opts.Uploads,
+		watcher:    opts.Watcher,
 		ebooks:     opts.Ebooks,
 		backups:    bk,
 		progress:   progress.New(opts.Store, opts.Now),
@@ -291,6 +300,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerReadingStats(mux)
 	s.registerWords(mux)
 	s.registerBackups(mux)
+	s.registerWatch(mux)
 	s.registerOffline(mux)
 	s.registerStream(mux)
 	s.registerPeaks(mux)
@@ -482,4 +492,23 @@ func (s *server) sheetStyles(names ...string) []string {
 		hrefs = append(hrefs, s.assets.URL(n))
 	}
 	return hrefs
+}
+
+// libraryFolderPaths lists every library folder, for the check that a backup folder is not inside one.
+func libraryFolderPaths(ctx context.Context, lib *library.Repo) ([]string, error) {
+	libs, err := lib.Libraries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, l := range libs {
+		fs, err := lib.Folders(ctx, l.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, f := range fs {
+			paths = append(paths, f.Path)
+		}
+	}
+	return paths, nil
 }

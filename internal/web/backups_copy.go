@@ -4,7 +4,7 @@ package web
 // rules in BRAND.md.
 const (
 	backupsTitle    = "Backups"
-	backupsIntro    = "Tendshelf keeps dated copies of its database: your people, progress, bookmarks and settings. Your audiobook files are not copied, and neither are uploaded ebooks and covers, which live in the data folder. To keep those too, copy the whole data folder."
+	backupsIntro    = "Tendshelf keeps dated copies of its database: your people, progress, bookmarks and settings. Choose a backup folder below to keep the files Tendshelf holds for you too: uploaded ebooks, covers, author pictures and dictionaries. Your audiobook files are never copied; they stay where you keep them."
 	backupsHeading  = "Automatic backups"
 	backupsOff      = "Off"
 	backupsDaily    = "Every day"
@@ -27,4 +27,29 @@ const (
 	backupsRestore1     = "Stop Tendshelf."
 	backupsRestore2     = "Replace tendshelf.db in the data folder with the copy, and delete tendshelf.db-wal and tendshelf.db-shm if they are there."
 	backupsRestore3     = "Start Tendshelf again."
+
+	// Whole backups (S2): the backup folder and its restore steps.
+	backupsFolderHeading = "Backup folder"
+	backupsFolderLead    = "Pick a folder on another disk or a mounted network drive. Each backup then also copies your uploaded ebooks, covers, author pictures and dictionaries there, and only what changed since the last time. Tendshelf keeps the newest 7 database copies in it, and keeps a file that you deleted for 30 days."
+	backupsFolderLabel   = "Folder (the full path)"
+	backupsFolderHint    = "Leave it empty to keep backups in the data folder only."
+	backupsFolderSave    = "Save folder"
+	backupsFolderSaved   = "Backup folder saved."
+	backupsFolderCleared = "Backups stay in the data folder only."
+	backupsFolderNever   = "Nothing has been copied to the backup folder yet"
+	backupsFolderLast    = "Last copy to the backup folder %s"
+	backupsErrRelative   = "Type the full path of a folder, starting with /."
+	backupsErrMissing    = "That folder doesn't exist."
+	backupsErrNotDir     = "That is a file, not a folder."
+	backupsErrInData     = "Pick a folder outside Tendshelf's data folder. A backup there would be lost with it."
+	backupsErrInLibrary  = "Pick a folder outside your libraries, so a backup never ends up among your books."
+	backupsErrNotWritten = "Tendshelf can't write to that folder."
+	backupsErrFull       = "That drive is full."
+	backupsWholeTitle    = "How to restore everything from the backup folder"
+	backupsWholeStep1    = "Stop Tendshelf. On a new computer, install it but don't start it yet."
+	backupsWholeStep2    = "Use an empty data folder, or move the old one aside."
+	backupsWholeStep3    = "Copy the folders ebooks, covers, people, text and dictionaries from the tendshelf-backup folder into the data folder."
+	backupsWholeStep4    = "Open the backups folder inside tendshelf-backup, copy the newest file into the data folder and rename it to tendshelf.db."
+	backupsWholeStep5    = "Start Tendshelf. Point your libraries at the same audiobook folders and they appear again."
+	backupsWholeNote     = "The same steps are in the file RESTORE.txt inside the backup folder."
 )

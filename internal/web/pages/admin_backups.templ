@@ -27,6 +27,17 @@ type AdminBackupsView struct {
 	Copies                                                []BackupCopyRow
 	Failure                                               string
 	Status                                                *BackupStatusView
+	// Folder is the whole-backup section (S2): the saved path, the typed one after a refusal, the
+	// refusal, the last-copy line and the restore steps for the backup folder.
+	Folder *BackupFolderView
+}
+
+// BackupFolderView is the "Backup folder" section. The handler writes every word.
+type BackupFolderView struct {
+	Heading, Lead, Label, Hint, Save string
+	Value, Error, LastLine           string
+	WholeTitle, WholeNote            string
+	WholeSteps                       []string
 }
 
 func backupStatusQuery(v BackupStatusView) string {
@@ -100,6 +111,37 @@ templ AdminBackups(v AdminBackupsView) {
 				}
 				<button type="submit" class="ts-btn ts-btn--primary">{ v.Save }</button>
 			</form>
+			if v.Folder != nil {
+				<form class="ts-group ts-group--pad ts-email__form ts-backups__folder" method="post" action="/admin/backups/folder" aria-labelledby="backup-folder-h">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<h2 id="backup-folder-h" class="section">{ v.Folder.Heading }</h2>
+					<p class="caption">{ v.Folder.Lead }</p>
+					<div class="ts-field">
+						<label class="ts-field__label" for="backup-folder">{ v.Folder.Label }</label>
+						<input
+							id="backup-folder"
+							name="folder"
+							type="text"
+							class="ts-input"
+							value={ v.Folder.Value }
+							autocomplete="off"
+							spellcheck="false"
+							aria-describedby="backup-folder-hint"
+							if v.Folder.Error != "" {
+								aria-invalid="true"
+							}
+						/>
+						<span class="ts-field__hint" id="backup-folder-hint">{ v.Folder.Hint }</span>
+						if v.Folder.Error != "" {
+							<span class="ts-field__hint ts-field__error" id="backup-folder-err" role="alert">{ v.Folder.Error }</span>
+						}
+					</div>
+					if v.Folder.LastLine != "" {
+						<p class="caption">{ v.Folder.LastLine }</p>
+					}
+					<button type="submit" class="ts-btn ts-btn--primary">{ v.Folder.Save }</button>
+				</form>
+			}
 			<section class="ts-group ts-group--pad ts-backups__copies" aria-labelledby="backup-copies-h">
 				<h2 id="backup-copies-h" class="section">{ v.CopiesH }</h2>
 				<p class="caption">{ v.DirLine }</p>
@@ -125,5 +167,16 @@ templ AdminBackups(v AdminBackupsView) {
 				}
 			</ol>
 		</details>
+		if v.Folder != nil {
+			<details class="ts-email__off">
+				<summary>{ v.Folder.WholeTitle }</summary>
+				<ol class="ts-backups__steps">
+					for _, st := range v.Folder.WholeSteps {
+						<li class="body">{ st }</li>
+					}
+				</ol>
+				<p class="caption">{ v.Folder.WholeNote }</p>
+			</details>
+		}
 	</div>
 }

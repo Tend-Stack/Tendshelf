@@ -74,3 +74,15 @@ func (s *Scanner) handleProbe(ctx context.Context, t *jobs.Task) (any, error) {
 	}
 	return map[string]string{"outcome": string(out)}, nil
 }
+
+// Enqueue queues a scan of a whole library, or returns the id of the one already waiting or running.
+// The admin buttons, the folder watcher and the scheduled scan all start scans through it, so there is
+// one scanner and at most one scan per library at a time. createdBy is a person's id or empty.
+func Enqueue(ctx context.Context, r *jobs.Runner, createdBy, libraryID string) (string, error) {
+	if j, ok, err := r.ActiveFor(ctx, KindScan, "library_id", libraryID); err != nil {
+		return "", err
+	} else if ok {
+		return j.ID, nil
+	}
+	return r.Enqueue(ctx, KindScan, ScanPayload{LibraryID: libraryID}, jobs.EnqueueOptions{CreatedBy: createdBy})
+}

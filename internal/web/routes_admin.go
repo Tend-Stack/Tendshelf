@@ -57,12 +57,7 @@ func (s *server) audit(ctx context.Context, userID, action, target string, detai
 
 // startScan queues a scan of the library, or returns the one already waiting or running.
 func (s *server) startScan(ctx context.Context, userID, libraryID string) (string, error) {
-	if j, ok, err := s.jobs.ActiveFor(ctx, scan.KindScan, "library_id", libraryID); err != nil {
-		return "", err
-	} else if ok {
-		return j.ID, nil
-	}
-	return s.jobs.Enqueue(ctx, scan.KindScan, scan.ScanPayload{LibraryID: libraryID}, jobs.EnqueueOptions{CreatedBy: userID})
+	return scan.Enqueue(ctx, s.jobs, userID, libraryID)
 }
 
 // scanView turns a scan job into what the status fragment shows. Active means the job is queued,
@@ -172,6 +167,10 @@ func (s *server) renderAdminLibrariesFor(w http.ResponseWriter, r *http.Request,
 		}
 		view.Online = &pages.AdminOnlineView{Title: adminOnlineTitle, Body: adminOnlineBody,
 			OnLabel: adminOnlineOn, OffLabel: adminOnlineOff, Save: adminOnlineSave, On: on}
+	}
+	if view.Watch, err = s.adminWatchView(r); err != nil {
+		s.serverError(w, r, "watch setting", err)
+		return
 	}
 	if view.Uploads, err = s.adminUploadsView(ctx, r, errLib, errText); err != nil {
 		s.serverError(w, r, "uploads setting", err)

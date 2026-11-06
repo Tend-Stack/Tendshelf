@@ -84,6 +84,7 @@ func Run(ctx context.Context, cfg Config) error {
 	if err != nil {
 		return err
 	}
+	watcher := newWatcher(d)
 	bk, err := registerBackups(d)
 	if err != nil {
 		return err
@@ -105,7 +106,7 @@ func Run(ctx context.Context, cfg Config) error {
 	}
 	setupCode := auth.NewSetupCode()
 	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: cfg.TrustedProxies,
-		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Ebooks: ebooks, Backups: bk, MailOptions: share.MailOptions{Logger: logger}})
+		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Ebooks: ebooks, Backups: bk, Watcher: watcher, MailOptions: share.MailOptions{Logger: logger}})
 	if err != nil {
 		return err
 	}
@@ -130,6 +131,8 @@ func Run(ctx context.Context, cfg Config) error {
 	go writes.Run(ctx)
 	// Scheduled database copies: the first check two minutes after start, then every 15 minutes.
 	go bk.Run(ctx)
+	// Watch library folders and run the scheduled scan: the first look 30 seconds after start.
+	go watcher.Run(ctx)
 	// Expire stale uploads and clear their staging: the first sweep a minute after start, then hourly.
 	go uploads.Run(ctx)
 	// Sweep finished job rows, old audit entries and the online cover cache: first pass five minutes after start.

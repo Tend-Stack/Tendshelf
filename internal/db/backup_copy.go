@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -22,9 +23,10 @@ var copyName = regexp.MustCompile(`^tendshelf-copy-v(\d+)-(\d{8}T\d{6}\.\d{3}Z)\
 
 // Copy is one scheduled or manual copy of the database.
 type Copy struct {
-	Name  string
-	At    time.Time
-	Bytes int64
+	Name    string
+	At      time.Time
+	Bytes   int64
+	Version int // the schema version in the name
 }
 
 // WriteCopy writes a verified VACUUM INTO copy to <dataDir>/backups/tendshelf-copy-v<n>-<UTC>.db and keeps
@@ -86,7 +88,8 @@ func ListCopies(dataDir string) ([]Copy, error) {
 		if err != nil {
 			continue
 		}
-		c := Copy{Name: e.Name(), At: at}
+		v, _ := strconv.Atoi(m[1])
+		c := Copy{Name: e.Name(), At: at, Version: v}
 		if fi, err := e.Info(); err == nil {
 			c.Bytes = fi.Size()
 		}
@@ -99,4 +102,11 @@ func ListCopies(dataDir string) ([]Copy, error) {
 		return out[i].Name > out[j].Name
 	})
 	return out, nil
+}
+
+// VerifyCopy opens the database file at path read-only and checks that it is a Tendshelf database of the
+// given schema version and passes SQLite's quick check. The whole-backup job uses it on a copy it has
+// just placed in the owner's backup folder.
+func VerifyCopy(ctx context.Context, path string, version int) error {
+	return verifyBackup(ctx, path, version)
 }
