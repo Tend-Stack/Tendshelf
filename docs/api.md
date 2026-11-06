@@ -183,3 +183,18 @@ over; at either end nothing changes. 200 with the whole queue. 400 `dir`; 404 wh
 
 ### DELETE /api/v1/queue/{bookID}
 Takes the book off the queue: 204. 404 when the book is not queued or not visible.
+
+## OPDS catalogue and app keys (not `/api/v1`)
+
+Reading apps use `/opds` ([decision 0025](decisions/0025-app-keys.md)). It is not part of `/api/v1`, is GET only, and sits outside the cookie chain.
+
+- **Key**: made on Your devices > App keys (`POST /me/app-keys`, fields `name`, `kind` = `opds` or `koreader`; 409 at the limit of 50 live
+  devices). The answer shows the 24-character key once, with `Cache-Control: no-store`. Turn it off with the device sign-out.
+- **Sign in**: HTTP Basic, the person's user name and the key. The login password, a bearer token or a session cookie never works; an `opds`
+  key never works anywhere else. Failure: `401` with `WWW-Authenticate: Basic realm="Tendshelf", charset="UTF-8"`; 10 failures in 15 minutes from one
+  address: `429` with `Retry-After`.
+- **Feeds** (OPDS 1.2, Atom, `application/atom+xml;profile=opds-catalog;kind=navigation|acquisition`, `Cache-Control: no-store`):
+  `/opds` (front page), `/opds/all?page=` (by title), `/opds/new?page=` (newest first), `/opds/search?q=&page=`, `/opds/search.xml` (OpenSearch).
+  50 entries a page with `first`, `previous` and `next` links. A person sees only books they may read and download; each entry has one
+  acquisition link per ready ebook file and an image link.
+- **Files**: `/opds/books/{id}/file/{fileID}` (the ebook as stored), `/opds/covers/{id}?w=`. Anything not allowed is a plain `404`.

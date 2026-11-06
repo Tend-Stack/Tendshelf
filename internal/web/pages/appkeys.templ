@@ -29,14 +29,14 @@ type AppKeyShownView struct {
 
 // AppKeys is the section: the live keys with a way to turn each off, and the form that makes one.
 templ AppKeys(v AppKeysView) {
-	<section aria-labelledby="akey-h" class="ts-me__section ts-group ts-akey">
+	<section aria-labelledby="akey-h" class="ts-me__section ts-group ts-akey ts-akey__section">
 		<h2 id="akey-h" class="section ts-akey__title">{ v.Heading }</h2>
 		<p class="caption ts-me__lead">{ v.Lead }</p>
 		if len(v.Keys) == 0 {
 			<p class="body ts-akey__none">{ v.None }</p>
 		}
 		for _, k := range v.Keys {
-			<div class="ts-me__row ts-me__device">
+			<div class="ts-me__row ts-akey__row">
 				<span class="ts-me__rowtext">
 					<span class="body ts-me__rowtitle">{ k.Title }</span>
 					<span class="caption ts-me__lead">{ k.Meta }</span>
@@ -80,6 +80,6 @@ templ AppKeyShown(v AppKeyShownView) {
 			<dd class="ts-akey__value ts-akey__key">{ v.Key }</dd>
 		</dl>
 		<p class="body ts-me__lead">{ v.Note }</p>
-		<a class="ts-btn" href="/me/devices">{ v.Back }</a>
+		<a class="ts-btn ts-btn--secondary" href="/me/devices">{ v.Back }</a>
 	</div>
 }
