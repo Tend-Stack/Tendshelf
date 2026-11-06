@@ -31,4 +31,25 @@
     <string name="stay_here">Stay here</string>
     <string name="playback_channel">Playback</string>
     <string name="keep_listening">Tap to keep listening</string>
+    <string name="downloads_channel">Downloads</string>
+    <string name="downloads_paused">Downloads paused. Open Tendshelf to finish.</string>
+    <string name="download_not_allowed">Downloads of this book are turned off.</string>
+    <string name="download_no_room">Not enough room on this phone for this book.</string>
+    <string name="download_nothing">This book has nothing to play yet.</string>
+    <string name="download_failed">Couldn\'t start that download. Try again.</string>
+    <string name="downloads_title">Downloads</string>
+    <string name="downloads_lead">Books saved here play without a connection.</string>
+    <string name="downloads_empty">No downloads yet</string>
+    <string name="downloads_empty_how">Download a book to listen without a connection.</string>
+    <string name="downloads_active">Downloading</string>
+    <string name="downloads_ready">Ready offline</string>
+    <string name="downloads_waiting">Waiting</string>
+    <string name="downloads_paused_row">Paused</string>
+    <string name="downloads_failed_row">Didn\'t download. Open the book to try again.</string>
+    <string name="downloads_stale_row">Needs updating</string>
+    <string name="downloads_play">Play</string>
+    <string name="downloads_pause">Pause</string>
+    <string name="downloads_remove">Remove</string>
+    <string name="downloads_library">Open your library</string>
+    <string name="downloads_offline_note">You\'re offline. These books still play.</string>
 </resources>

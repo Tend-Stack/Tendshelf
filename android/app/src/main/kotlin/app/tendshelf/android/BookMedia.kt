@@ -10,6 +10,7 @@ import androidx.media3.exoplayer.source.SilenceMediaSource
 import androidx.media3.extractor.DefaultExtractorsFactory
 import app.tendshelf.shared.ApiPaths
 import app.tendshelf.shared.BookManifest
+import app.tendshelf.shared.cacheKey
 
 /**
  * A book as one Media3 window (decision D1): the files are concatenated, so the player's position is the
@@ -18,7 +19,10 @@ import app.tendshelf.shared.BookManifest
  */
 @UnstableApi
 object BookMedia {
-    fun build(manifest: BookManifest, paths: ApiPaths, factory: DataSource.Factory): MediaSource {
+    fun build(manifest: BookManifest, paths: ApiPaths, network: DataSource.Factory, downloaded: Boolean = false): MediaSource {
+        // A downloaded book reads its files from the phone first; only such a book touches the cache, so another
+        // person's streamed book can never be answered from bytes that person did not ask the server for.
+        val factory = if (downloaded) Offline.readFactory(network) else network
         // Files without a Xing header seek by constant bitrate (D8); measured in the acceptance run.
         val extractors = DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true)
         val sources = ProgressiveMediaSource.Factory(factory, extractors).setLoadErrorHandlingPolicy(RetryPolicy())
@@ -27,7 +31,8 @@ object BookMedia {
         for (f in manifest.files.sortedBy { it.idx }) {
             if (f.playable) {
                 // A file the phone cannot decode as stored is always asked for in the browser's rendition (D6).
-                val item = MediaItem.Builder().setMediaId(f.id).setUri(paths.streamUrl(f.id, f.needsCompat)).build()
+                val item = MediaItem.Builder().setMediaId(f.id).setUri(paths.streamUrl(f.id, f.needsCompat))
+                    .setCustomCacheKey(if (downloaded) cacheKey(f.id, f.needsCompat) else null).build()
                 whole.add(sources.createMediaSource(item), f.durationMs)
             } else {
                 whole.add(SilenceMediaSource.Factory().setDurationUs(f.durationMs * 1000).createMediaSource(), f.durationMs)

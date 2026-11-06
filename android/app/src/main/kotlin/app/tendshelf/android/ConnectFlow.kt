@@ -186,6 +186,8 @@ class ConnectFlow(
         when (r) {
             is Swap.Done -> {
                 val a = r.answer
+                // Someone else's downloads are gone before this person can reach anything (A7, invariant 2).
+                if (Offline.hasOtherPerson(a.userId)) Offline.wipe()
                 if (a.token != null) store.save(a.token!!, a.deviceId, a.userId) else store.saveIds(a.deviceId, a.userId)
                 state = State.Connected
                 clearHistoryNext = true

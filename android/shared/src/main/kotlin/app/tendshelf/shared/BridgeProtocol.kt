@@ -31,6 +31,9 @@ sealed interface BridgeMessage {
 
     /** `sleep off`, `sleep plus`, `sleep chapter` or `sleep 1..999`. [choice] is `off`, `plus`, `chapter` or the digits; [minutes] is 0 for the first three. */
     data class Sleep(val choice: String, val minutes: Int) : BridgeMessage
+
+    /** `dl add <id>`, `dl remove <id>` or `dl ask <id>` (A7): keep a book on the phone, drop it, or ask how it stands. */
+    data class Download(val action: String, val bookId: String) : BridgeMessage
 }
 
 const val MAX_LENGTH = 128
@@ -58,9 +61,12 @@ fun parseBridge(raw: String?): BridgeMessage? {
         "theme" -> if (parts.size == 2 && validHex(parts[1])) BridgeMessage.Theme(parts[1]) else null
         "answer" -> if (parts.size == 2 && (parts[1] == "here" || parts[1] == "there")) BridgeMessage.Answer(parts[1] == "here") else null
         "sleep" -> if (parts.size == 2) sleepWord(parts[1]) else null
+        "dl" -> if (parts.size == 3 && validId(parts[2]) && parts[1] in DL_WORDS) BridgeMessage.Download(parts[1], parts[2]) else null
         else -> null
     }
 }
+
+private val DL_WORDS = setOf("add", "remove", "ask")
 
 /** 1 to 999 with no leading zero, or one of three words. */
 private fun sleepWord(w: String): BridgeMessage? = when {
@@ -69,7 +75,7 @@ private fun sleepWord(w: String): BridgeMessage? = when {
     else -> null
 }
 
-private fun validId(s: String): Boolean =
+fun validId(s: String): Boolean =
     s.length in 1..64 && s.all { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '_' || it == '-' }
 
 /** 1 to 12 ASCII digits, so no sign, no exponent and no overflow. */
@@ -114,6 +120,12 @@ fun encodeAsk(a: Ask?): String =
 
 /** "Rewound {s} s" once, after a resume that went back. */
 fun encodeRewound(s: Int): String = "{\"t\":\"rewound\",\"s\":${s.coerceIn(0, 3600)}}"
+
+/** How a book stands on the phone; [state] is one of `none`, `queued`, `downloading`, `paused`, `ready`, `failed`, `stale`. */
+fun encodeDl(bookId: String, state: String, pct: Int): String {
+    val known = state in setOf("none", "queued", "downloading", "paused", "ready", "failed", "stale")
+    return "{\"t\":\"dl\",\"bookId\":${jsonString(bookId)},\"state\":\"${if (known) state else "none"}\",\"pct\":${pct.coerceIn(0, 100)}}"
+}
 
 fun encodeBack(): String = "{\"t\":\"back\"}"
 

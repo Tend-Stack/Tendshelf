@@ -17,6 +17,18 @@ sealed interface Nav {
 
     /** The bundled start page's form: try this address. */
     data class Connect(val address: String) : Nav
+
+    /** The web Downloads address, or the bundled page's own link: open the bundled Downloads page. */
+    object Downloads : Nav
+
+    /** The bundled Downloads page's row: play this downloaded book. */
+    data class PlayBook(val bookId: String) : Nav
+
+    /** The bundled Downloads page: remove this book from the phone. */
+    data class RemoveBook(val bookId: String) : Nav
+
+    /** The bundled Downloads page: pause or resume the playing book. */
+    object TogglePlay : Nav
 }
 
 const val BUNDLED_HOST = "appassets.androidplatform.net"
@@ -29,6 +41,12 @@ fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolea
     val u = parseUrl(url) ?: return Nav.Block
     if (u.scheme == "https" && u.host == BUNDLED_HOST && u.port == null) {
         if (u.path == "/connect") return Nav.Connect(queryParam(u.query, "address") ?: "")
+        if (u.path == "/toggle") return Nav.TogglePlay
+        if (u.path == "/play" || u.path == "/remove") {
+            // An id outside the bridge's charset is refused, never loaded (A7).
+            val id = queryParam(u.query, "id")?.takeIf { validId(it) } ?: return Nav.Block
+            return if (u.path == "/play") Nav.PlayBook(id) else Nav.RemoveBook(id)
+        }
         return Nav.Stay
     }
     if (origin != null && u.scheme == origin.scheme && u.host == origin.host && u.port == origin.port) {
@@ -36,6 +54,7 @@ fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolea
             val code = queryParam(u.query, "code")
             return if (mainFrame && codePending && !code.isNullOrEmpty()) Nav.TakeCode(code) else Nav.Block
         }
+        if (mainFrame && u.path == "/me/downloads") return Nav.Downloads
         return Nav.Stay
     }
     return if (mainFrame) Nav.External else Nav.Block

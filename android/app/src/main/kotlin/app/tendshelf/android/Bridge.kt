@@ -16,6 +16,7 @@ import app.tendshelf.shared.Origin
 import app.tendshelf.shared.PlayerSnapshot
 import app.tendshelf.shared.TokenBucket
 import app.tendshelf.shared.encodeAsk
+import app.tendshelf.shared.encodeDl
 import app.tendshelf.shared.encodeBack
 import app.tendshelf.shared.encodeError
 import app.tendshelf.shared.SleepInfo
@@ -33,6 +34,7 @@ import app.tendshelf.shared.parseBridge
  * cookie could not already do from that page. Every message re-checks the main frame, the exact origin and the
  * [ConnectFlow] state, because the injection rule alone cannot tell a same-origin iframe from the page.
  */
+@androidx.media3.common.util.UnstableApi
 class Bridge(
     private val flow: () -> ConnectFlow.State,
     private val currentOrigin: () -> Origin?,
@@ -164,6 +166,12 @@ class Bridge(
             is BridgeMessage.Theme -> onTheme(msg.hex)
             is BridgeMessage.Answer -> r?.answer(msg.keepHere)
             is BridgeMessage.Sleep -> r?.sleep(msg.choice, msg.minutes)
+            is BridgeMessage.Download -> {
+                // A foreground data-sync start is allowed only while the activity is on the screen (A7, invariant 7).
+                if (msg.action == "add" && started) Offline.io { Offline.add(msg.bookId) }
+                if (msg.action == "remove") Offline.remove(msg.bookId)
+                pushDownload(msg.bookId)
+            }
         }
     }
 
@@ -208,6 +216,14 @@ class Bridge(
         if (lastRewoundSeq != UNSET && s.rewoundSeq != lastRewoundSeq && s.rewoundS > 0) send(p, encodeRewound(s.rewoundS))
         lastRewoundSeq = s.rewoundSeq
         tick()
+    }
+
+    /** How a book stands on the phone, for the Download button; sent for the asked-for book and whenever it moves. */
+    fun pushDownload(bookId: String) {
+        val p = proxy ?: return
+        if (!started || flow() != ConnectFlow.State.Connected) return
+        val (state, pct) = Offline.view(bookId)
+        send(p, encodeDl(bookId, state, pct))
     }
 
     private fun pushState() {

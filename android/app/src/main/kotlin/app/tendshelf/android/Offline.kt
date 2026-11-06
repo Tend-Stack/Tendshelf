@@ -1,0 +1,372 @@
+package app.tendshelf.android
+
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.os.StatFs
+import android.util.Log
+import android.widget.Toast
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.NoOpCacheEvictor
+import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.exoplayer.offline.Download
+import androidx.media3.exoplayer.offline.DownloadManager
+import androidx.media3.exoplayer.offline.DownloadRequest
+import androidx.media3.exoplayer.offline.DownloadService
+import androidx.media3.exoplayer.scheduler.Requirements
+import app.tendshelf.shared.OfflineBook
+import app.tendshelf.shared.OfflineState
+import app.tendshelf.shared.PlayerSettings
+import app.tendshelf.shared.Plan
+import app.tendshelf.shared.Verdict
+import app.tendshelf.shared.checkVerdict
+import app.tendshelf.shared.downloadPlan
+import app.tendshelf.shared.fileComplete
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
+
+/**
+ * The books kept on the phone (plan A7). One process-wide owner of the `SimpleCache` under `noBackupFilesDir/offline`
+ * (a cache directory may have one owner), the Media3 `DownloadManager` that fills it, and the rows in `outbox.db`.
+ *
+ * The token reaches the network as a header, made when each connection opens; it is never in a request, a key, a row or
+ * a log line. The manager starts paused and runs only after the visible activity resumes it (D2: no scheduler, so the
+ * system is never asked to start a data-sync service from the background).
+ */
+@UnstableApi
+object Offline {
+    private const val TAG = "Tendshelf"
+    private const val DAY_MS = 24L * 60 * 60 * 1000
+
+    private val lock = Any()
+    private lateinit var app: Context
+    private lateinit var tokens: TokenStore
+    lateinit var store: SqliteOfflineStore
+        private set
+    private val main = Handler(Looper.getMainLooper())
+    private val ioPool = Executors.newSingleThreadExecutor()
+    private var db: StandaloneDatabaseProvider? = null
+    private var cache: SimpleCache? = null
+    private var manager: DownloadManager? = null
+
+    /** Runs [work] on the one worker thread that does the slow parts. */
+    fun io(work: () -> Unit) = ioPool.execute(work)
+
+    /** Called on a worker thread with the book id whenever its state or progress moved. */
+    @Volatile
+    var onChange: ((String) -> Unit)? = null
+
+    private val prefs get() = app.getSharedPreferences("offline", Context.MODE_PRIVATE)
+    private val root get() = File(app.noBackupFilesDir, "offline")
+    private fun coverFile(id: String) = File(File(root, "covers"), id)
+
+    fun init(context: Context) {
+        synchronized(lock) {
+            if (::app.isInitialized) return
+            app = context.applicationContext
+            tokens = TokenStore(app)
+            store = SqliteOfflineStore(app)
+        }
+        // A wipe the last process did not finish is completed before anything else can use the cache.
+        if (prefs.getBoolean("wipePending", false)) ioPool.execute { finishWipe() }
+    }
+
+    // ---- Cache and manager ----
+
+    fun cache(): SimpleCache = synchronized(lock) {
+        cache ?: SimpleCache(File(root, "media"), NoOpCacheEvictor(), databaseProvider()).also { cache = it }
+    }
+
+    private fun databaseProvider(): StandaloneDatabaseProvider =
+        db ?: StandaloneDatabaseProvider(app).also { db = it }
+
+    /** Opens a connection to the one server with the current token; the token is read when the connection is made. */
+    private val upstream = DataSource.Factory {
+        val headers = tokens.current()?.let { mapOf("Authorization" to "Bearer ${it.token}") } ?: emptyMap()
+        DefaultHttpDataSource.Factory().setDefaultRequestProperties(headers).createDataSource()
+    }
+
+    /** What the player reads a downloaded book through: the cache only reads, a book being streamed is never written. */
+    fun readFactory(http: DataSource.Factory): DataSource.Factory = CacheDataSource.Factory()
+        .setCache(cache())
+        .setUpstreamDataSourceFactory(http)
+        .setCacheWriteDataSinkFactory(null)
+        .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+
+    fun manager(): DownloadManager = synchronized(lock) {
+        manager ?: DownloadManager(app, databaseProvider(), cache(), upstream, Executor { it.run() }).also { m ->
+            m.setMaxParallelDownloads(1) // one at a time keeps a home server calm (D4)
+            m.setMinRetryCount(120) // rides out a rendition that answers 503 while it is made
+            m.setRequirements(Requirements(Requirements.NETWORK))
+            m.pauseDownloads() // only the visible activity starts them again (D2)
+            m.addListener(object : DownloadManager.Listener {
+                override fun onDownloadChanged(downloadManager: DownloadManager, download: Download, finalException: Exception?) =
+                    changed(download.request.id.substringBefore('|'))
+
+                override fun onDownloadsPausedChanged(downloadManager: DownloadManager, downloadsPaused: Boolean) =
+                    store.all().forEach { changed(it.bookId) }
+            })
+            manager = m
+        }
+    }
+
+    private fun changed(book: String) {
+        ioPool.execute {
+            try {
+                recompute(book)
+            } catch (e: Exception) {
+                Log.w(TAG, "offline: state not updated: ${e.javaClass.simpleName}")
+            }
+            onChange?.invoke(book)
+        }
+    }
+
+    // ---- State ----
+
+    private fun downloadsOf(m: DownloadManager, book: String): List<Download> {
+        val out = ArrayList<Download>()
+        m.downloadIndex.getDownloads().use { c -> while (c.moveToNext()) c.download.let { if (it.request.id.startsWith("$book|")) out.add(it) } }
+        return out
+    }
+
+    private fun expectedFiles(book: String): Int =
+        store.manifest(book)?.let { runCatching { Api(tokens.origin?.text ?: "http://x").parseManifest(it).files.count { f -> f.playable } }.getOrNull() } ?: 0
+
+    /** Folds the files' Media3 states into the book's one state. `READY` only when every file is whole (invariant 1). */
+    private fun recompute(book: String) {
+        val row = store.get(book) ?: return
+        if (row.state == OfflineState.FAILED && downloadsOf(manager(), book).isEmpty()) return
+        val m = manager()
+        val ds = downloadsOf(m, book)
+        if (ds.isEmpty()) return
+        val next = when {
+            ds.any { it.state == Download.STATE_FAILED } -> OfflineState.FAILED
+            ds.all { it.state == Download.STATE_COMPLETED } && ds.size >= expectedFiles(book) ->
+                if (ds.all { whole(it) }) (if (row.state == OfflineState.STALE) OfflineState.STALE else OfflineState.READY) else OfflineState.FAILED
+            m.getDownloadsPaused() -> OfflineState.PAUSED
+            ds.any { it.state == Download.STATE_DOWNLOADING } -> OfflineState.DOWNLOADING
+            else -> OfflineState.QUEUED
+        }
+        if (next != row.state) store.setState(book, next)
+        Log.i(TAG, "offline: ${next.name.lowercase()}")
+    }
+
+    private fun whole(d: Download): Boolean {
+        val key = d.request.customCacheKey ?: return false
+        val planned = d.request.data.let { if (it.isEmpty()) 0L else String(it).toLongOrNull() ?: 0L }
+        val len = d.contentLength
+        return fileComplete(planned, key.endsWith(":c"), len, if (len > 0) cache().getCachedBytes(key, 0, len) else 0)
+    }
+
+    /** `state` word and percent for the page. */
+    fun view(book: String): Pair<String, Int> {
+        val row = store.get(book) ?: return "none" to 0
+        val pct = if (row.state == OfflineState.READY || row.state == OfflineState.STALE) 100 else percent(book, row)
+        return row.state.name.lowercase() to pct
+    }
+
+    private fun percent(book: String, row: OfflineBook): Int = try {
+        val got = downloadsOf(manager(), book).sumOf { it.bytesDownloaded }
+        if (row.sizeBytes > 0) (got * 100 / row.sizeBytes).toInt().coerceIn(0, 99) else 0
+    } catch (_: Exception) {
+        0
+    }
+
+    /** A book that plays from the phone: whole (or old, but whole) files and a stored answer. */
+    fun playable(book: String): OfflineBook? {
+        if (!::app.isInitialized) return null
+        return store.get(book)?.takeIf { it.state == OfflineState.READY || it.state == OfflineState.STALE }
+    }
+
+    fun coverBytes(book: String): ByteArray? = coverFile(book).takeIf { it.isFile }?.readBytes()
+
+    // ---- Actions (call from a worker thread) ----
+
+    /** Fetches the manifest, checks the right and the room, keeps the answer and the cover, and queues every file. */
+    fun add(book: String) {
+        val conn = tokens.current() ?: return
+        val existing = store.get(book)
+        if (existing != null && existing.state != OfflineState.FAILED && existing.state != OfflineState.STALE) {
+            changed(book)
+            return
+        }
+        try {
+            val api = Api(conn.origin)
+            val text = api.fetchManifestJson(conn.token, book)
+            val manifest = api.parseManifest(text)
+            if (manifest.id != book) return // a merged book is asked for by its live id
+            val free = StatFs(app.noBackupFilesDir.apply { mkdirs() }.path).availableBytes
+            val plan = when (val p = downloadPlan(manifest, api.paths, free)) {
+                is Plan.Ok -> p
+                Plan.NotAllowed -> return refuse(R.string.download_not_allowed)
+                Plan.NoRoom -> return refuse(R.string.download_no_room)
+                Plan.NothingToPlay -> return refuse(R.string.download_nothing)
+            }
+            val cover = api.cover(conn.token, book)
+            if (cover != null) coverFile(book).apply { parentFile?.mkdirs() }.writeBytes(cover)
+            val place = manifest.progress
+            store.put(
+                OfflineBook(
+                    book, tokens.userId.orEmpty(), manifest.title, manifest.author, manifest.durationMs, plan.total,
+                    OfflineState.QUEUED, place?.positionMs ?: 0, place?.clientUpdatedAt ?: 0,
+                ),
+                text,
+            )
+            val requests = plan.files.map {
+                // The request holds an address with no credential, a cache key and the size the manifest listed.
+                DownloadRequest.Builder("$book|${it.fileId}", android.net.Uri.parse(it.url))
+                    .setCustomCacheKey(it.cacheKey)
+                    .setData(it.size.toString().toByteArray())
+                    .build()
+            }
+            main.post {
+                manager().resumeDownloads()
+                for (r in requests) DownloadService.sendAddDownload(app, TsDownloadService::class.java, r, true)
+            }
+            changed(book)
+        } catch (e: ApiException) {
+            Log.w(TAG, "download not started: server answered ${e.code}")
+            refuse(if (e.code == 403) R.string.download_not_allowed else R.string.download_failed)
+        } catch (e: IOException) {
+            Log.w(TAG, "download not started: ${e.javaClass.simpleName}")
+            refuse(R.string.download_failed)
+        } catch (e: Exception) {
+            Log.w(TAG, "download not started: ${e.javaClass.simpleName}")
+        }
+    }
+
+    private fun refuse(words: Int) {
+        main.post { Toast.makeText(app, words, Toast.LENGTH_LONG).show() }
+    }
+
+    /** Drops the book's bytes, row and cover. */
+    fun remove(book: String) {
+        ioPool.execute {
+            try {
+                val ids = downloadsOf(manager(), book).map { it.request.id }
+                main.post { ids.forEach { manager().removeDownload(it) } }
+            } catch (e: Exception) {
+                Log.w(TAG, "offline: remove failed: ${e.javaClass.simpleName}")
+            }
+            store.remove(book)
+            coverFile(book).delete()
+            onChange?.invoke(book)
+        }
+    }
+
+    /** Called when the app comes to the front: the 6-hour timer starts again, and unfinished downloads go on (D2, D3). */
+    fun onForeground() {
+        if (!::app.isInitialized) return
+        prefs.edit().putBoolean("downloadsLimited", false).apply()
+        ioPool.execute {
+            if (store.all().any { it.state == OfflineState.QUEUED || it.state == OfflineState.DOWNLOADING || it.state == OfflineState.PAUSED }) {
+                main.post {
+                    manager().resumeDownloads()
+                    DownloadService.sendResumeDownloads(app, TsDownloadService::class.java, true)
+                }
+            }
+            dailyCheck()
+        }
+    }
+
+    /** The system's time limit for a data-sync service was reached: no progress is lost, the next run goes on by range. */
+    fun onTimeLimit() {
+        prefs.edit().putBoolean("downloadsLimited", true).apply()
+        manager().pauseDownloads()
+    }
+
+    /** At most once a day for each book (decision 0019, point 10): same files, new words; changed files, old; gone, removed. */
+    private fun dailyCheck() {
+        val conn = tokens.current() ?: return
+        val api = Api(conn.origin)
+        val now = System.currentTimeMillis()
+        for (row in store.all()) {
+            if (row.state != OfflineState.READY && row.state != OfflineState.STALE) continue
+            if (now - store.checkedAt(row.bookId) < DAY_MS) continue
+            try {
+                val text = api.fetchManifestJson(conn.token, row.bookId)
+                val fresh = api.parseManifest(text)
+                if (fresh.id != row.bookId) continue // a redirect: nothing changes
+                val old = store.manifest(row.bookId)?.let(api::parseManifest)
+                when (checkVerdict(200, old, fresh)) {
+                    Verdict.SAME -> store.touchChecked(row.bookId, now)
+                    Verdict.UPDATE -> store.setManifest(row.bookId, text, now)
+                    Verdict.STALE -> {
+                        store.setState(row.bookId, OfflineState.STALE)
+                        store.touchChecked(row.bookId, now)
+                    }
+                    Verdict.REMOVE, Verdict.NOTHING -> {}
+                }
+            } catch (e: ApiException) {
+                if (checkVerdict(e.code, null, null) == Verdict.REMOVE) remove(row.bookId)
+            } catch (_: Exception) {
+            }
+            onChange?.invoke(row.bookId)
+        }
+    }
+
+    // ---- Settings kept for an offline start ----
+
+    fun saveSettings(s: PlayerSettings) {
+        if (!::app.isInitialized) return
+        val j = org.json.JSONObject().put("speed", s.speed).put("skipBackS", s.skipBackS).put("skipForwardS", s.skipForwardS)
+            .put("autoRewind", s.autoRewind).put("nextInSeries", s.nextInSeries)
+        prefs.edit().putString("settingsJson", j.toString()).apply()
+    }
+
+    /** The last settings the server gave; the built-in ones before any. */
+    fun loadSettings(): PlayerSettings {
+        val text = prefs.getString("settingsJson", null) ?: return PlayerSettings(1.0, 30, 30, true, false)
+        return try {
+            val j = org.json.JSONObject(text)
+            PlayerSettings(j.getDouble("speed"), j.getInt("skipBackS"), j.getInt("skipForwardS"), j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"))
+        } catch (_: Exception) {
+            PlayerSettings(1.0, 30, 30, true, false)
+        }
+    }
+
+    // ---- Wipe ----
+
+    /**
+     * Sign-out, another person, another server: every downloaded byte, row and cover goes. The rows go now, so nothing
+     * can be offered or played; the pref makes the rest durable, so a process that dies halfway is finished at launch.
+     */
+    fun wipe() {
+        if (!::app.isInitialized) return
+        prefs.edit().putBoolean("wipePending", true).commit()
+        store.clear()
+        // Half a second after the sound stopped, so a loader is not reading a cache that is being released.
+        ioPool.execute {
+            Thread.sleep(500)
+            finishWipe()
+        }
+    }
+
+    fun hasOtherPerson(userId: String): Boolean = ::app.isInitialized && store.all().any { it.userId != userId }
+
+    private fun finishWipe() {
+        synchronized(lock) {
+            try {
+                manager?.release()
+                manager = null
+                cache?.release()
+                cache = null
+                db?.close()
+                db = null
+            } catch (e: Exception) {
+                Log.w(TAG, "offline: release failed: ${e.javaClass.simpleName}")
+            }
+            app.deleteDatabase(StandaloneDatabaseProvider.DATABASE_NAME)
+            root.deleteRecursively()
+            store.clear()
+            prefs.edit().remove("settingsJson").putBoolean("wipePending", false).commit()
+        }
+        Log.i(TAG, "offline: wiped")
+    }
+}
