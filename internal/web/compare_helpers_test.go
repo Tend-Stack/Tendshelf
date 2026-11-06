@@ -105,7 +105,7 @@ func compareFinishJob(t *testing.T, a *testApp, cn *compareNet, id string) {
 // returns the job id.
 func compareSeedJob(t *testing.T, e *sweepEnv, bookID string, done bool) string {
 	t.Helper()
-	id, err := e.a.srv.details.StartLookup(context.Background(), bookID, online.Query{Title: "Sweepword Lantern"}, false, "")
+	id, err := e.a.srv.details.StartLookup(context.Background(), bookID, online.Query{Title: "Sweepword Lantern"}, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}

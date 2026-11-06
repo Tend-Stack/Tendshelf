@@ -144,7 +144,7 @@ func detailsLogSteps(running bool) []online.Step {
 		{Provider: "audnexus", Label: "Audible catalogue", Query: q, State: online.StepDone, Count: 5},
 		{Provider: "audnexus", Label: "Audnexus", Region: "US", Query: "B0LIGHT001", State: online.StepDone, Count: 1, Cached: true},
 		{Provider: "audnexus", Label: "Audnexus", Region: "US", Query: "B0LIGHT002", State: online.StepNone},
-		{Provider: "google", Label: "Google Books", Query: q, State: online.StepFailed, Code: "busy"},
+		{Provider: "openlibrary", Label: "Open Library", Query: q, State: online.StepFailed, Code: "busy"},
 		{Provider: "openlibrary", Label: "Open Library", Query: q, State: online.StepRunning},
 		{Provider: "itunes", Label: "Apple Books", State: online.StepWaiting},
 	}
@@ -200,7 +200,7 @@ func TestVisualDetailsSheets(t *testing.T) {
 
 	// Three lookups: one still waiting, one that found matches and one that found nothing.
 	start := func() string {
-		id, err := app.srv.details.StartLookup(ctx, bookID, online.Query{Title: "The Lighthouse Keeper's Daughter"}, false, "")
+		id, err := app.srv.details.StartLookup(ctx, bookID, online.Query{Title: "The Lighthouse Keeper's Daughter"}, nil, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -236,6 +236,16 @@ func TestVisualDetailsSheets(t *testing.T) {
 		{"author", "/authors/" + authorID, "", true},
 		{"tab", book, ".ts-dpanel", false},
 	})
+
+	// "Search more places" open: a saved choice (Apple Books) opens the disclosure on the sheet.
+	var owner string
+	if err := app.st.Reader().QueryRow(`SELECT id FROM users WHERE role = 'owner'`).Scan(&owner); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.srv.details.SaveSources(ctx, owner, []string{"itunes"}); err != nil {
+		t.Fatal(err)
+	}
+	detailsCapture(t, b, base, out, []detailsShot{{"lookup-places", sheet("lookup"), ".ts-lookup", true}})
 }
 
 // TestVisualDetailsWrite captures the write sheet (ready, refused) and the pending panel with its

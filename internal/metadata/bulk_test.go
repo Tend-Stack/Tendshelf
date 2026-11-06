@@ -651,7 +651,7 @@ func TestBulkOnlineOff(t *testing.T) {
 	if err := metadata.SetOnlineEnabled(bg, e.st, false, ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.svc.StartBulk(bg, e.lib.ID, "", false, "us_1"); err == nil {
+	if _, err := e.svc.StartBulk(bg, e.lib.ID, "", nil, "us_1"); err == nil {
 		t.Error("StartBulk must refuse while lookups are off")
 	}
 	j := e.finished(e.enqueue(metadata.BulkAll))
@@ -763,14 +763,14 @@ func TestBulkStartStop(t *testing.T) {
 	e.addBooks(titles("Start One", "Start Two")...)
 	// Held back so the job stays queued while we look at it.
 	e.setHook(func(ctx context.Context, n int, d time.Duration) error { <-ctx.Done(); return ctx.Err() })
-	if _, err := e.svc.StartBulk(bg, "lib_none", "", false, "us_1"); err == nil {
+	if _, err := e.svc.StartBulk(bg, "lib_none", "", nil, "us_1"); err == nil {
 		t.Error("an unknown library must be refused")
 	}
-	id, err := e.svc.StartBulk(bg, e.lib.ID, "", false, "")
+	id, err := e.svc.StartBulk(bg, e.lib.ID, "", nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := e.svc.StartBulk(bg, e.lib.ID, "", true, "")
+	again, err := e.svc.StartBulk(bg, e.lib.ID, "", []string{"openlibrary", "itunes"}, "")
 	if err != nil || again != id {
 		t.Errorf("a second start gave %q, %v; want the running job %q", again, err, id)
 	}
@@ -864,11 +864,11 @@ func TestBulkUsageManual(t *testing.T) {
 	if err != nil || n != online.DailyCap+3 {
 		t.Errorf("usage = %d, %v; want %d (the catalogue and two books)", n, err, online.DailyCap+3)
 	}
-	if err := metadata.AddOnlineUsage(bg, e.st, day, map[string]int{"google": 2, "nowhere": 9}); err != nil {
+	if err := metadata.AddOnlineUsage(bg, e.st, day, map[string]int{"openlibrary": 2, "nowhere": 9}); err != nil {
 		t.Fatal(err)
 	}
-	if n, _ := metadata.OnlineUsage(bg, e.st.Reader(), day, "google"); n != 2 {
-		t.Errorf("google = %d", n)
+	if n, _ := metadata.OnlineUsage(bg, e.st.Reader(), day, "openlibrary"); n != 2 {
+		t.Errorf("openlibrary = %d", n)
 	}
 	if err := metadata.PruneOnlineUsage(bg, e.st, day+1); err != nil {
 		t.Fatal(err)

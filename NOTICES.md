@@ -18,7 +18,7 @@ other projects. Every port, vendored file or third-party dependency adds a row h
 | `internal/metadata/folder.go` | Audiobookshelf `server/utils/scandir.js` (`getBookDataFromDir`, `getSequence`, `getNarrator`, `getASIN`, `getPublishedYear`); TendVox Extractor `extractor_details.py` (`parse_folder_name`, `parse_book_name`, `clean_sequence`) | GPL-3.0 | Method port, idiomatic Go |
 | `internal/metadata/tags.go` | TendVox Extractor `extractor_details.py` (`meta_from_tags`, `clean_text`, `clean_asin`, `clean_isbn`, `clean_year`); Audiobookshelf `server/scanner/AudioFileScanner.js` (author tag order) | GPL-3.0 | Method port, idiomatic Go |
 | `internal/metadata/production.go` | TendVox Extractor `extractor_details.py` (`find_production`, `_FULL_CAST`, `_DRAMATIZED`) | GPL-3.0 | Method port, idiomatic Go |
-| `internal/metadata/online/*.go` | TendVox Extractor `extractor_online.py`; Audiobookshelf `server/providers/Audnexus.js`, `Audible.js`, `GoogleBooks.js`, `iTunes.js` | GPL-3.0 | Method port, idiomatic Go |
+| `internal/metadata/online/*.go` | TendVox Extractor `extractor_online.py`; Audiobookshelf `server/providers/Audnexus.js`, `Audible.js`, `iTunes.js` | GPL-3.0 | Method port, idiomatic Go |
 | `internal/textmatch/textmatch.go` (`Ratio`) | Python `difflib.SequenceMatcher` | PSF-2.0 | Algorithm re-implemented in Go |
 
 Expected first entries (fill in when the port lands; do not pre-credit code that does not exist):
@@ -27,7 +27,7 @@ Expected first entries (fill in when the port lands; do not pre-credit code that
   the combined work is distributed under AGPL-3.0-or-later). Likely sources:
   `server/utils/parsers/parseNameString.js`, `parseSeriesString.js`, `parseNfoMetadata.js`,
   `parseOpfMetadata.js`, `server/utils/scandir.js`, `server/scanner/AudioFileScanner.js`,
-  `server/scanner/BookScanner.js`, `server/providers/Audnexus.js`, `Audible.js`, `GoogleBooks.js`,
+  `server/scanner/BookScanner.js`, `server/providers/Audnexus.js`, `Audible.js`,
   `OpenLibrary.js`, `iTunes.js`.
 - **TendVox Extractor** (internal, same author): `extractor_details.py`, `extractor_online.py`,
   `extractor_db.py`, `extractor_pitch.py`, `extractor_measure.py`, `categories.json`. Those files
@@ -95,6 +95,6 @@ Maven repository and Maven Central only. None is in the server binary.
 
 ## Third-party services
 
-Online metadata providers (Audnexus, Audible catalogue, Google Books, Open Library, Apple iTunes Search)
+Online metadata providers (Audnexus, Audible catalogue, Open Library, Apple iTunes Search)
 are third-party services. Tendshelf contacts them only on an explicit user action, sends only a title,
 author, ASIN or ISBN, and follows their published rate limits.

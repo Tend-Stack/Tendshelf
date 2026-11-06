@@ -14,7 +14,6 @@ const (
 	detailsQueryIntro  = "Tendshelf will ask Audible's book catalogue. Nothing is sent until you press Look up."
 	detailsQueryGo     = "Look up"
 	detailsMoreTitle   = "Search more places"
-	detailsMoreLabel   = "Also search Google Books, Open Library and Apple Books"
 	detailsErrEmpty    = "Type a title, an ASIN or an ISBN to look up."
 
 	detailsWaiting    = "Looking up details…"
@@ -35,10 +34,10 @@ const (
 	detailsLogPrivacy = "Only the title, author, ASIN and ISBN leave your server."
 	detailsLogReview  = "How Tendshelf searched"
 	detailsLogWaiting = "waiting"
-	detailsLogNone    = "nothing found"
+	detailsLogNone    = "no match"
 	detailsLogSaved   = " (saved earlier)"
-	detailsLogOne     = "1 book"
-	detailsLogMany    = "%d books"
+	detailsLogOne     = "found 1 book"
+	detailsLogMany    = "found %d books"
 
 	detailsColField  = "Field"
 	detailsColNow    = "Now"

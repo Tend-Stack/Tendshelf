@@ -87,8 +87,9 @@ type AdminUploadFolder struct{ ID, Path string }
 
 // AdminLookupsView holds the words of "Online details". The handler writes every word.
 type AdminLookupsView struct {
-	AutoLabel, AutoHint, Save, StartLabel, MoreLabel, ScopeLabel string
-	Libraries                                                    []AdminLookupLibrary
+	AutoLabel, AutoHint, Save, StartLabel, PlacesLegend, ScopeLabel string
+	Places                                                          []PlaceChoice
+	Libraries                                                       []AdminLookupLibrary
 }
 
 // AdminScope is one choice of what a lookup covers, with the live count in its label.
@@ -282,10 +283,16 @@ templ adminLookups(v AdminLibrariesView, l AdminLookupLibrary) {
 					</label>
 				}
 			</fieldset>
-			<label class="ts-admin__choice" for={ "more-" + l.ID }>
-				<input type="checkbox" class="ts-check" id={ "more-" + l.ID } name="more" value="1"/>
-				<span>{ v.Lookups.MoreLabel }</span>
-			</label>
+			<fieldset class="ts-libs__scopes">
+				<legend class="label">{ v.Lookups.PlacesLegend }</legend>
+				for _, p := range v.Lookups.Places {
+					<label class="ts-admin__choice" for={ "place-" + p.Value + "-" + l.ID }>
+						<input type="checkbox" class="ts-check" id={ "place-" + p.Value + "-" + l.ID } name="place" value={ p.Value } checked?={ p.Checked }/>
+						<span>{ p.Label }</span>
+					</label>
+				}
+			</fieldset>
+			<input type="hidden" name="places_set" value="1"/>
 			<div class="ts-libs__act">
 				<button type="submit" class="ts-btn ts-btn--secondary">{ v.Lookups.StartLabel }</button>
 				if l.NeedsHref != "" {

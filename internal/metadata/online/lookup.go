@@ -12,7 +12,27 @@ import (
 )
 
 // Providers are the lookup sources, in the order a "search everywhere" run asks them.
-var Providers = []string{"audnexus", "google", "openlibrary", "itunes"}
+var Providers = []string{"audnexus", "openlibrary", "itunes"}
+
+// DefaultProviders is what a normal search asks: the reliable source only. Open Library and Apple
+// Books are asked only when the person chooses them (see ChosenProviders).
+var DefaultProviders = []string{"audnexus"}
+
+// ExtraProviders are the optional places, in the order they are listed and asked.
+var ExtraProviders = []string{"openlibrary", "itunes"}
+
+// ChosenProviders turns saved or posted choices into the providers a search asks: always the
+// reliable one first, then each chosen extra once, in list order. Unknown names (including the
+// retired "google") and the reliable one itself are ignored.
+func ChosenProviders(extras []string) []string {
+	out := append([]string(nil), DefaultProviders...)
+	for _, p := range ExtraProviders {
+		if contains(extras, p) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
 
 // audnexusRegions are the Audnexus stores; "" is the default (US).
 var audnexusRegions = []string{"", "fr", "de", "uk", "ca", "au", "it", "es", "in", "jp"}
@@ -190,24 +210,6 @@ func (c *Client) searchProvider(ctx context.Context, provider string, q Query) (
 
 func (c *Client) searchOther(ctx context.Context, provider string, q Query) ([]Book, error) {
 	switch provider {
-	case "google":
-		var query string
-		switch {
-		case q.ISBN != "":
-			query = "isbn:" + q.ISBN
-		case q.Title != "":
-			query = "intitle:" + q.Title
-			if q.Author != "" {
-				query += "+inauthor:" + q.Author
-			}
-		default:
-			return nil, nil
-		}
-		raw, err := c.getJSON(ctx, provider, "https://www.googleapis.com/books/v1/volumes?q="+quote(query, ":+")+"&maxResults=5")
-		if err != nil {
-			return nil, err
-		}
-		return capBooks(parseGoogleBooks(raw)), nil
 	case "openlibrary":
 		if q.Title == "" && q.ISBN == "" {
 			return nil, nil

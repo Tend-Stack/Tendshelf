@@ -33,15 +33,16 @@ const (
 
 // apiHosts are the sites a lookup may ask; the value is the plain name used in error texts.
 var apiHosts = map[string]string{
-	"api.audnex.us":      "Audnexus",
-	"api.audible.com":    "Audible",
-	"www.googleapis.com": "Google Books",
-	"openlibrary.org":    "Open Library",
-	"itunes.apple.com":   "Apple Books",
+	"api.audnex.us":    "Audnexus",
+	"api.audible.com":  "Audible",
+	"openlibrary.org":  "Open Library",
+	"itunes.apple.com": "Apple Books",
 }
 
 // coverHostSuffixes and coverHostsExact are the sites a cover picture may come from.
 // Audnexus author photos come from images-na.ssl-images-amazon.com (checked live 2026-11-03).
+// The Google hosts stay so a cover picture saved from a Google Books result keeps loading; Google Books
+// itself is no longer asked.
 var (
 	coverHostSuffixes = []string{".media-amazon.com", ".ssl-images-amazon.com", ".mzstatic.com", ".googleusercontent.com", ".gstatic.com", ".archive.org"}
 	coverHostsExact   = []string{"covers.openlibrary.org", "books.google.com", "archive.org"}

@@ -65,7 +65,7 @@ func TestChapterLookupReuseAndOtherBook(t *testing.T) {
 		t.Errorf("unknown job: %v", err)
 	}
 	// A lookup job of the details kind is not a chapter result.
-	lj, err := e.svc.StartLookup(bg, id, online.Query{Title: "The Test Match"}, false, "")
+	lj, err := e.svc.StartLookup(bg, id, online.Query{Title: "The Test Match"}, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}

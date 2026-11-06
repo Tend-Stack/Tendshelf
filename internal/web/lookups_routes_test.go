@@ -110,7 +110,7 @@ func TestAutoLookupRoutes(t *testing.T) {
 
 func TestBulkStartStopAndPage(t *testing.T) {
 	e := sweepSeed(t)
-	rec := e.comparePost(t, sweepOwner, lookupsLibraryPath(e, "lookups"), url.Values{"more": {"1"}})
+	rec := e.comparePost(t, sweepOwner, lookupsLibraryPath(e, "lookups"), url.Values{"places_set": {"1"}, "place": {"all"}})
 	if rec.Code != http.StatusSeeOther || location(rec) != "/admin/libraries" {
 		t.Fatalf("start: %d -> %q", rec.Code, location(rec))
 	}
@@ -120,7 +120,7 @@ func TestBulkStartStopAndPage(t *testing.T) {
 	}
 	var p metadata.BulkPayload
 	if err := json.Unmarshal(j.Payload, &p); err != nil || len(p.Providers) < 2 {
-		t.Errorf("the more box did not add providers: %+v %v", p, err)
+		t.Errorf("the All box did not add providers: %+v %v", p, err)
 	}
 	body := adminHTMLUnescape(e.compareGet(sweepOwner, "/admin/libraries", nil).Body.String())
 	for _, want := range []string{`hx-get="/hx/jobs/` + j.ID + `"`, `hx-trigger="every 2s"`, "Looking up 0 of 0 books", ">Stop<", lookupAutoHint} {
@@ -149,7 +149,7 @@ func TestBulkStartStopAndPage(t *testing.T) {
 func TestBulkJobView(t *testing.T) {
 	e := sweepSeed(t)
 	ctx := context.Background()
-	id, err := e.a.srv.details.StartBulk(ctx, e.libID, "", false, "")
+	id, err := e.a.srv.details.StartBulk(ctx, e.libID, "", nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -244,7 +244,7 @@ func TestCompareNoJS(t *testing.T) {
 	}
 	// A plain GET of the lookup sheet is prefilled from the book.
 	region = compareSheetRegion(e.compareGet(sweepOwner, "/books/"+e.book.ID+"/details?sheet=lookup", nil).Body.String())
-	for _, want := range []string{`value="Sweepword Lantern"`, "Search more places", "Also search Google Books, Open Library and Apple Books", `method="post"`} {
+	for _, want := range []string{`value="Sweepword Lantern"`, "Search more places", "Also search", `name="place" value="openlibrary"`, `name="place" value="itunes"`, `name="place" value="all"`, `for="lkp-place-all"`, "Audible is always searched.", `method="post"`} {
 		if !strings.Contains(region, want) {
 			t.Errorf("lookup sheet lacks %q", want)
 		}
