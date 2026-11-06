@@ -136,14 +136,26 @@ func (s *server) postBookmarkNote(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	_, err := s.progress.SetBookmarkNote(r.Context(), currentUser(r).ID, bm.ID, r.PostFormValue("note"))
+	patch, refuse := s.clipPatch(r, bm)
 	var invalid *progress.InvalidError
+	var err error
+	if refuse == "" {
+		_, err = s.progress.UpdateBookmark(r.Context(), currentUser(r).ID, bm.ID, patch)
+		if errors.As(err, &invalid) {
+			refuse = map[string]string{"note": "note_too_long", "end_ms": "end_before_start"}[invalid.Field]
+			if refuse == "" {
+				refuse = "note_too_long"
+			}
+		}
+	}
 	switch {
-	case errors.As(err, &invalid) && r.Header.Get("HX-Request") == "true":
-		s.bookmarkRefuse(w, r, http.StatusBadRequest, bookmarkErrTooLong)
+	case refuse != "" && r.Header.Get("HX-Request") == "true":
+		s.bookmarkRefuse(w, r, http.StatusBadRequest, map[string]string{
+			"note_too_long": bookmarkErrTooLong, "end_before_start": clipErrEnd, "end_not_a_time": clipErrEndClock,
+		}[refuse])
 		return
-	case errors.As(err, &invalid):
-		http.Redirect(w, r, bookmarkSheetHref(bm.BookID, bm.ID)+"&error=note_too_long", http.StatusSeeOther)
+	case refuse != "":
+		http.Redirect(w, r, bookmarkSheetHref(bm.BookID, bm.ID)+"&error="+refuse, http.StatusSeeOther)
 		return
 	case errors.Is(err, progress.ErrNotFound):
 		s.notFound(w, r)
@@ -157,6 +169,47 @@ func (s *server) postBookmarkNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, bookmarkTabHref(bm.BookID), http.StatusSeeOther)
+}
+
+// clipPatch reads the note sheet's form into a change. A field that is not in the form is left alone, so an old
+// client that posts only the note behaves as before; "end_at" present but empty clears the end. refuse is
+// the sheet's error code ("" when the form is fine). The end is a time in the whole book; past the end of the
+// book it is clamped to it. A place in the text takes no end.
+func (s *server) clipPatch(r *http.Request, bm progress.Bookmark) (p progress.BookmarkPatch, refuse string) {
+	_ = r.ParseForm()
+	if hasForm(r, "note") || !(hasForm(r, "kind") || hasForm(r, "end_at")) {
+		note := r.PostFormValue("note")
+		p.Note = &note
+	}
+	if hasForm(r, "kind") {
+		kind := r.PostFormValue("kind")
+		p.Kind = &kind
+	}
+	if !hasForm(r, "end_at") || bm.SID != "" {
+		return p, ""
+	}
+	text := strings.TrimSpace(r.PostFormValue("end_at"))
+	var end int64
+	if text != "" {
+		ms, ok := parseClock(text)
+		if !ok {
+			return p, "end_not_a_time"
+		}
+		end = ms
+		if b, err := s.lib.Book(r.Context(), bm.BookID); err == nil && b.DurationMs > 0 {
+			end = min(end, b.DurationMs)
+		}
+		if end <= bm.PositionMs {
+			return p, "end_before_start"
+		}
+	}
+	p.EndMs = &end
+	return p, ""
+}
+
+func hasForm(r *http.Request, key string) bool {
+	_, ok := r.PostForm[key]
+	return ok
 }
 
 func (s *server) postBookmarkDelete(w http.ResponseWriter, r *http.Request) {
@@ -210,8 +263,10 @@ func (s *server) bookmarkItemsOOB(r *http.Request, bookID string) (templ.Compone
 	// The list answers to the filter only; the sheet and "added" parts of the address are gone.
 	req := r.Clone(r.Context())
 	req.URL = &url.URL{Path: cur.Path}
-	if cur.Query().Get("only") == "notes" {
-		req.URL.RawQuery = "only=notes"
+	if only, kind := bookmarkFilter(cur.Query()); only != "" {
+		req.URL.RawQuery = "only=" + only
+	} else if kind != "" {
+		req.URL.RawQuery = "kind=" + kind
 	}
 	v, _, err := s.bookmarksPanel(req, library.BookDetail{Book: library.Book{ID: bookID}, Chapters: chapters})
 	if err != nil {

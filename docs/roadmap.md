@@ -864,3 +864,16 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), native mobile
 (evaluate Wails v3 mobile when stable), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID
 Connect, merge MP3 folder to M4B, custom metadata providers, Chromecast.
+
+- **L5 Clips** (2026-11-06, done; plan `docs/plans/next-server.md` section 8). Scope: migration `0029_clips` (`end_ms`,
+  `kind` on `bookmarks`; the orchestrator renumbers at merge), `progress.UpdateBookmark`/`BookmarkPatch`/`BookmarkKinds`
+  (`SetBookmarkNote` calls it; an end needs an audio bookmark and must be after the position), the note sheet's kind
+  radios and "Ends at" (`parseClock`, clamped to the book), the clip and kind chips and filters, kind and length on a
+  row, "Play this clip", exports with kind and length, `clip.js` (stops a clip at its end; loaded by the Bookmarks
+  tab only when a row is a clip; the Now panel jumps to a clip's start without the stop), API `endMs` and `kind`
+  (additive; `POST` and `PATCH`; `docs/api.md`). `player.js` and `player-full.js` unchanged. Checks: `TestClip*` in
+  progress, web (sheet, clamp, errors, roles, script only with a clip, filters, export, API) and db
+  (`TestMigrationClips*`); browser `TestClipBrowserStopsAtEnd`, `TestClipBrowserSeekDisarms`, `TestClipVisual`
+  (`clips-*`). JS: `clip.js` measured about 0.8 KB gzip (plan target 0.5 KB, with comments kept); app JS 90,143 B of
+  the new 91,264 B ceiling (+640 B as planned). Limits: the stop follows `timeupdate` (about 250 ms steps); no audio
+  export, no sharing, no waveform drag; a bad end on the sheet answers with a toast when it came through htmx.

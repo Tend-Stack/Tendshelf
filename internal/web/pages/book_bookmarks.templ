@@ -35,6 +35,14 @@ type BookmarksView struct {
 	// Add is hidden when the person has no stored place in the book (the player shows it later).
 	Add   *BookmarkAdd
 	Toast *BookmarkToast
+	// ClipScript is the address of js/clip.js, set only when a row is a clip; it stops a clip at its end.
+	ClipScript string
+}
+
+// BookmarkKindChoice is one radio of the kind choice on the note sheet.
+type BookmarkKindChoice struct {
+	Value, Label string
+	Checked      bool
 }
 
 // BookmarkSheetView is the note sheet of one bookmark.
@@ -44,6 +52,11 @@ type BookmarkSheetView struct {
 	NoteAction, DeleteAction                   string
 	CloseHref, CloseLabel                      string
 	MaxRunes                                   int
+	// A clip's end: ShowEnd is false for a place in the text. EndAt is the clock text ("" for none).
+	ShowEnd                                                bool
+	EndLabel, EndHint, EndAt, EndError                     string
+	KindLabel                                              string
+	Kinds                                                  []BookmarkKindChoice
 	// Styles are the stylesheet addresses the sheet carries (see components.SheetStyles).
 	Styles []string
 }
@@ -130,7 +143,18 @@ templ BookmarkItems(v BookmarksView, oob bool) {
 		} else {
 			<p class="ts-book__desc">{ v.EmptyTitle }</p>
 		}
+		if v.ClipScript != "" {
+			<script type="module" src={ v.ClipScript }></script>
+		}
 	</div>
+}
+
+// endDescribedBy names the hint, and the error when there is one, as the end field's description.
+func endDescribedBy(err string) string {
+	if err != "" {
+		return "bms-end-hint bms-end-error"
+	}
+	return "bms-end-hint"
 }
 
 // BookmarkSheet edits the note of one bookmark, or deletes the bookmark. Both forms post through
@@ -171,6 +195,42 @@ templ BookmarkSheet(v BookmarkSheetView) {
 						</p>
 					}
 				</div>
+				<fieldset class="ts-field ts-bookmark-sheet__kinds">
+					<legend class="ts-field__label">{ v.KindLabel }</legend>
+					<div class="ts-seg">
+						for _, k := range v.Kinds {
+							<label class="ts-seg__item ts-bookmark-sheet__kind" for={ "bms-kind-" + k.Value }>
+								<input type="radio" id={ "bms-kind-" + k.Value } name="kind" value={ k.Value } checked?={ k.Checked }/>
+								<span>{ k.Label }</span>
+							</label>
+						}
+					</div>
+				</fieldset>
+				if v.ShowEnd {
+					<div class="ts-field ts-bookmark-sheet__field">
+						<label class="ts-field__label" for="bms-end">{ v.EndLabel }</label>
+						<input
+							id="bms-end"
+							name="end_at"
+							type="text"
+							class="ts-input"
+							inputmode="numeric"
+							autocomplete="off"
+							value={ v.EndAt }
+							aria-describedby={ endDescribedBy(v.EndError) }
+							if v.EndError != "" {
+								aria-invalid="true"
+							}
+						/>
+						<p id="bms-end-hint" class="ts-field__hint">{ v.EndHint }</p>
+						if v.EndError != "" {
+							<p id="bms-end-error" class="ts-field__error">
+								@components.Icon("alert", false)
+								{ v.EndError }
+							</p>
+						}
+					</div>
+				}
 				<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ v.SaveLabel }</button>
 			</form>
 			<form class="ts-bookmark-sheet__form" method="post" action={ templ.URL(v.DeleteAction) } hx-post={ v.DeleteAction } hx-swap="none">

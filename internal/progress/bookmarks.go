@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -18,6 +19,8 @@ import (
 type Bookmark struct {
 	ID, UserID, BookID string
 	PositionMs         int64
+	EndMs              int64  // 0 for a plain bookmark; above PositionMs for a clip (a moment in the audio)
+	Kind               string // one of BookmarkKinds
 	Note               string
 	CreatedAt          int64
 	UpdatedAt          int64
@@ -44,12 +47,12 @@ func cleanNote(s string) (string, error) {
 	return s, nil
 }
 
-const selectBookmark = `SELECT id, user_id, book_id, position_ms, note, created_at, updated_at, deleted_at, coalesce(client_id, ''), coalesce(edition_id, ''), coalesce(sid, '') FROM bookmarks`
+const selectBookmark = `SELECT id, user_id, book_id, position_ms, note, created_at, updated_at, deleted_at, coalesce(client_id, ''), coalesce(edition_id, ''), coalesce(sid, ''), coalesce(end_ms, 0), kind FROM bookmarks`
 
 func scanBookmark(r rowScanner) (Bookmark, error) {
 	var b Bookmark
 	var del sql.NullInt64
-	err := r.Scan(&b.ID, &b.UserID, &b.BookID, &b.PositionMs, &b.Note, &b.CreatedAt, &b.UpdatedAt, &del, &b.ClientID, &b.EditionID, &b.SID)
+	err := r.Scan(&b.ID, &b.UserID, &b.BookID, &b.PositionMs, &b.Note, &b.CreatedAt, &b.UpdatedAt, &del, &b.ClientID, &b.EditionID, &b.SID, &b.EndMs, &b.Kind)
 	b.DeletedAt = del.Int64
 	if errors.Is(err, sql.ErrNoRows) {
 		return Bookmark{}, ErrNotFound
@@ -113,7 +116,7 @@ func (s *Service) insertBookmark(ctx context.Context, userID, bookID, editionID,
 		return Bookmark{}, false, err
 	}
 	now := s.nowMs()
-	b = Bookmark{ID: db.NewID("bm"), UserID: userID, BookID: bookID, PositionMs: positionMs, Note: note, CreatedAt: now, UpdatedAt: now, ClientID: clientID, EditionID: editionID, SID: sid}
+	b = Bookmark{ID: db.NewID("bm"), UserID: userID, BookID: bookID, PositionMs: positionMs, Kind: "bookmark", Note: note, CreatedAt: now, UpdatedAt: now, ClientID: clientID, EditionID: editionID, SID: sid}
 	err = s.st.WriteTx(ctx, func(tx *sql.Tx) error {
 		created = false
 		// A merged-away book id lands on the book that took over (see resolveBook).
@@ -291,24 +294,65 @@ func (s *Service) Bookmark(ctx context.Context, userID, id string) (Bookmark, er
 	return scanBookmark(s.st.Reader().QueryRowContext(ctx, selectBookmark+` WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, id, userID))
 }
 
+// BookmarkKinds is the closed list of kinds a bookmark can have; "bookmark" is the default.
+var BookmarkKinds = []string{"bookmark", "favourite", "quote", "note", "revisit"}
+
+// BookmarkPatch is a change to a live bookmark: a nil field stays as it is. EndMs 0 clears the end.
+type BookmarkPatch struct {
+	Note  *string
+	EndMs *int64
+	Kind  *string
+}
+
 // SetBookmarkNote replaces the note of a live bookmark of the person (an empty note clears it).
 func (s *Service) SetBookmarkNote(ctx context.Context, userID, id, note string) (Bookmark, error) {
-	note, err := cleanNote(note)
-	if err != nil {
-		return Bookmark{}, err
+	return s.UpdateBookmark(ctx, userID, id, BookmarkPatch{Note: &note})
+}
+
+// UpdateBookmark changes the note, the end and the kind of a live bookmark of the person in one write and
+// bumps updated_at, so the sync feed carries it. An end needs a moment in the audio (a text bookmark refuses it)
+// and must be after the position; an unknown kind is invalid. A bookmark that is not theirs is ErrNotFound.
+func (s *Service) UpdateBookmark(ctx context.Context, userID, id string, p BookmarkPatch) (Bookmark, error) {
+	var note string
+	if p.Note != nil {
+		var err error
+		if note, err = cleanNote(*p.Note); err != nil {
+			return Bookmark{}, err
+		}
+	}
+	if p.Kind != nil && !slices.Contains(BookmarkKinds, *p.Kind) {
+		return Bookmark{}, &InvalidError{"kind"}
+	}
+	if p.EndMs != nil && *p.EndMs < 0 {
+		return Bookmark{}, &InvalidError{"end_ms"}
 	}
 	now := s.nowMs()
 	var b Bookmark
-	err = s.st.WriteTx(ctx, func(tx *sql.Tx) error {
-		r, err := tx.ExecContext(ctx, `UPDATE bookmarks SET note = ?, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-			note, now, id, userID)
+	err := s.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		cur, err := scanBookmark(tx.QueryRowContext(ctx, selectBookmark+` WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, id, userID))
 		if err != nil {
 			return err
 		}
-		if n, err := r.RowsAffected(); err != nil {
+		if p.Note != nil {
+			cur.Note = note
+		}
+		if p.Kind != nil {
+			cur.Kind = *p.Kind
+		}
+		if p.EndMs != nil {
+			cur.EndMs = *p.EndMs
+			if cur.EndMs != 0 && (cur.SID != "" || cur.EndMs <= cur.PositionMs) {
+				return &InvalidError{"end_ms"}
+			}
+		}
+		var end any
+		if cur.EndMs != 0 {
+			end = cur.EndMs
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE bookmarks SET note = ?, end_ms = ?, kind = ?, updated_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+			cur.Note, end, cur.Kind, now, id, userID)
+		if err != nil {
 			return err
-		} else if n == 0 {
-			return ErrNotFound
 		}
 		b, err = scanBookmark(tx.QueryRowContext(ctx, selectBookmark+` WHERE id = ? AND user_id = ?`, id, userID))
 		return err

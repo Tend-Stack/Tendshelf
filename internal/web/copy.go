@@ -260,6 +260,40 @@ const (
 	bookmarkExportHeader = "Bookmarks and notes"
 )
 
+// L5 clips (New; listed in docs/copy-additions.md). A clip is a bookmark with an end.
+const (
+	clipPlay        = "Play this clip"
+	clipChip        = "Clips · %d"
+	clipChipKind    = "%s · %d"
+	clipKindName    = "Kind"
+	clipEndLabel    = "Ends at"
+	clipEndHint     = "Leave empty for a single moment. Counted from the start of the book, like 1:02:30. This clip starts at %s."
+	clipLength      = "Clip · %s"
+	clipExportClip  = "Clip %s"
+	clipErrEnd      = "The end must be after the start."
+	clipErrEndClock = "Write the end as minutes and seconds, like 12:30, or with hours, like 1:02:30."
+	clipEmptyKind   = "Nothing is saved as %s yet."
+	clipEmptyClips  = "No clips yet. Give a bookmark an end to make one."
+)
+
+// clipKinds are the kinds in the order the sheet and the chips list them.
+var clipKinds = []struct{ Value, Label string }{
+	{"bookmark", "Bookmark"}, {"favourite", "Favourite"}, {"quote", "Quote"}, {"note", "Note"}, {"revisit", "Revisit"},
+}
+
+// clipKindWord is the word for a kind, "" for the plain bookmark.
+func clipKindWord(kind string) string {
+	if kind == "bookmark" {
+		return ""
+	}
+	for _, k := range clipKinds {
+		if k.Value == kind {
+			return k.Label
+		}
+	}
+	return ""
+}
+
 // P1c-4 player. "Rewound 5 s after your break" and the hint style are in BRAND.md; "Chapter {n} · {m}
 // min left" follows the MiniPlayer board; the rest follows the voice rules. {name} marks a value the
 // player fills in.
