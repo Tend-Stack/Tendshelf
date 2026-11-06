@@ -23,7 +23,7 @@ func TestChapterEditVisual(t *testing.T) {
 	app.owner(t)
 	bookID := bookmarkVisualSeedChapters(t, app)
 	base := themedServer(t, app.signedIn(t))
-	shots := []visualShot{{"dark", 390}, {"dark", 768}, {"dark", 1024}, {"dark", 1440}, {"contrast", 390}, {"light", 1440}, {"sepia", 1024}}
+	shots := visualMatrix(true)
 	pages := []struct{ name, path string }{
 		{"page", "/books/" + bookID + "/chapters/edit"},
 		{"reset", "/books/" + bookID + "/chapters/reset"},

@@ -12,7 +12,7 @@
 .ts-chapted__actions, .ts-chapted__bar { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: center; }
 .ts-chapted__move summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
 .ts-chapted__movebox { display: flex; flex-direction: column; gap: var(--space-12); align-items: flex-start; }
-@media (max-width: 47.9375rem) {
+@media (width < 48rem) {
   .ts-chapted__fields { grid-template-columns: 1fr; }
 }
 .ts-chapted__enter[hidden] { display: none; }

@@ -46,6 +46,7 @@ type a11yState struct {
 
 // a11ySkip lists the registered GETs that are not full pages: a redirect, a file or JSON.
 var a11ySkip = map[string]string{
+	"/books/{id}/chapters/reset":        "the reset confirmation exists only for a book whose chapters were edited; captured by TestChapterEditVisual",
 	"/uploads/{id}":                     "JSON (the upload status the uploader polls), not a page",
 	"/progress/{bookID}":                "JSON, not a page",
 	"/reading/{bookID}":                 "JSON (the reading place), not a page",
@@ -91,6 +92,7 @@ func a11yPages() []a11yPage {
 		row("book-about", "/books/{id}/{tab}", book("/about"), both, "main", true),
 		row("book-chapters", "/books/{id}/{tab}", book("/chapters"), both, "main", true),
 		row("book-bookmarks", "/books/{id}/{tab}", book("/bookmarks"), both, "main", true),
+		row("book-chapters-edit", "/books/{id}/chapters/edit", book("/chapters/edit"), owner, "main", true),
 		row("book-details", "/books/{id}/{tab}", book("/details"), owner, "main", true),
 		row("book-text", "/books/{id}/{tab}", book("/text"), owner, "main", true),
 		// B2: a text book (the member holds can_read = 0 and sees the sentence that says so) and the library's ebooks.
