@@ -89,6 +89,7 @@ templ ReadingSheet(v ReadingSheetView) {
 				action={ templ.URL(v.Action) }
 				hx-post={ v.Action }
 				hx-trigger="change"
+				hx-sync="this:queue last"
 				hx-swap="none"
 				data-ts-reader-settings
 			>

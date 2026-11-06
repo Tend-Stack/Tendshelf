@@ -125,7 +125,7 @@ func TestReaderSettingsSheet(t *testing.T) {
 		t.Fatalf("sheet: %d", sheet.Code)
 	}
 	body := sheet.Body.String()
-	for _, want := range []string{`role="dialog"`, `Reading settings`, `data-ts-reader-settings`, `hx-post="/me/reader-settings"`, `hx-trigger="change"`,
+	for _, want := range []string{`role="dialog"`, `Reading settings`, `data-ts-reader-settings`, `hx-post="/me/reader-settings"`, `hx-trigger="change"`, `hx-sync="this:queue last"`,
 		`name="next"`, `<noscript>`, `OpenDyslexic`, `Sepia`, `Contrast`, `role="radiogroup"`, `value="light" checked`, `id="rs-size-22"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("sheet misses %q", want)
