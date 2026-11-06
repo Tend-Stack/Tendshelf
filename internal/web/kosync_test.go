@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/ebook/ebooktest"
@@ -154,7 +155,8 @@ func TestKosyncRefusals(t *testing.T) {
 	opdsKey := l.kosKey(t, l.ids["owner"], auth.KindOPDS)
 	revoked := l.kosKey(t, l.ids["reader"], auth.KindKOReader)
 	var revokedID string
-	if err := l.a.st.Reader().QueryRow(`SELECT id FROM devices WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 1`, l.ids["reader"]).Scan(&revokedID); err != nil {
+	hash := auth.KeyHash(auth.KindKOReader, revoked)
+	if err := l.a.st.Reader().QueryRow(`SELECT id FROM devices WHERE token_hash = ?`, hash[:]).Scan(&revokedID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := l.a.srv.devices.Revoke(context.Background(), l.a.st.Writer(), l.ids["reader"], revokedID, l.a.srv.now().UnixMilli()); err != nil {
@@ -360,10 +362,12 @@ func TestKosyncInboundLandsInTheRightChapter(t *testing.T) {
 		t.Error("another person's place was written")
 	}
 	// The start and the end of the book.
+	time.Sleep(2 * time.Millisecond) // the newest place wins, and two writes in one millisecond tie
 	l.as("reader", http.MethodPut, "/kosync/syncs/progress", kosPut(l.digest, "1", 0, "Kobo"))
 	if p, _ := l.reading("reader"); p.ChapterIdx != 1 {
 		t.Errorf("at 0 the chapter is %d", p.ChapterIdx)
 	}
+	time.Sleep(2 * time.Millisecond) // the newest place wins, and two writes in one millisecond tie
 	l.as("reader", http.MethodPut, "/kosync/syncs/progress", kosPut(l.digest, "9", 1, "Kobo"))
 	if p, _ := l.reading("reader"); p.ChapterIdx != 3 || p.PercentBP != 10000 {
 		t.Errorf("at 1 the place is %+v", p)
