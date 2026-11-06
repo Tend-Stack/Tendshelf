@@ -31,6 +31,15 @@ data class Origin(val scheme: String, val host: String, val port: Int?) {
     /** The page that signs in and then asks for a code, as A1's flow says: next is the escaped /app/connect path. */
     fun connectUrl(challenge: String): String = "$text/?shell=android&next=%2Fapp%2Fconnect%3Fchallenge%3D$challenge"
 
+    /** The sign-in page that ends at an invitation (A1 flow in decision 0028): `next` is the escaped /invite path. */
+    fun inviteUrl(token: String): String = "$text/?shell=android&next=%2Finvite%2F$token"
+
+    /** The same for a pairing: `next` holds /pair/TOKEN with the challenge and this phone's name, each escaped. */
+    fun pairUrl(token: String, challenge: String, name: String): String {
+        val inner = "/pair/$token?challenge=" + java.net.URLEncoder.encode(challenge, "UTF-8") + "&name=" + java.net.URLEncoder.encode(name, "UTF-8")
+        return "$text/?shell=android&next=" + java.net.URLEncoder.encode(inner, "UTF-8")
+    }
+
     companion object {
         /** An origin typed with its scheme; http and https only, nothing after the port but an optional slash. */
         fun parse(input: String): Origin? {

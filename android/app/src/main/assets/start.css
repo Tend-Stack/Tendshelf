@@ -8,6 +8,8 @@
   border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font: inherit; }
 .start input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .start .start__note { color: var(--danger); }
+.start .start__hint { font-size: 0.8125rem; }
+.start .start__quiet { align-self: center; display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 var(--space-12); color: var(--ink-muted); }
 
 /* The downloads list (A7): the offline page and the Downloads page share it. */
 .start.dl { justify-content: flex-start; padding-top: var(--space-24); }

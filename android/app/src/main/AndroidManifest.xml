@@ -40,6 +40,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- The server page's intent: hand-over (decision 0028). It carries a link and nothing else, and reaches the same
+                 address dialog as a pasted link. No https filter: App Links cannot work for a self-hosted address. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tendshelf" android:host="open" />
+            </intent-filter>
         </activity>
 
         <!-- A headset or car button after the process was killed: the system finds no live session and sends the key here,

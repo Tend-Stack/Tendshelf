@@ -21,6 +21,9 @@ sealed interface Nav {
     /** The web Downloads address, or the bundled page's own link: open the bundled Downloads page. */
     object Downloads : Nav
 
+    /** The bundled join page's form: this pasted text may be an invitation link. */
+    data class Link(val text: String) : Nav
+
     /** The bundled Downloads page's row: play this downloaded book. */
     data class PlayBook(val bookId: String) : Nav
 
@@ -47,6 +50,7 @@ fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolea
     if (u.scheme == "https" && u.host == BUNDLED_HOST && u.port == null) {
         if (!mainFrame || !fromBundled) return Nav.Block
         if (u.path == "/connect") return Nav.Connect(queryParam(u.query, "address") ?: "")
+        if (u.path == "/link") return Nav.Link(queryParam(u.query, "link") ?: "")
         if (u.path == "/toggle") return Nav.TogglePlay
         if (u.path == "/play" || u.path == "/remove") {
             // An id outside the bridge's charset is refused, never loaded (A7).

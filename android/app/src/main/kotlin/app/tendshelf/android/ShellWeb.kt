@@ -67,6 +67,7 @@ object ShellWeb {
                     Nav.External -> openOutside(activity, request.url)
                     is Nav.TakeCode -> f.onCode(nav.code)
                     is Nav.Connect -> f.onAddress(nav.address)
+                    is Nav.Link -> f.onLink(nav.text)
                     // The bundled Downloads page and its rows (A7): the activity acts, the WebView stays where it is.
                     Nav.Downloads, is Nav.PlayBook, is Nav.RemoveBook, Nav.TogglePlay -> onApp(nav)
                 }
