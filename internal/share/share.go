@@ -263,3 +263,39 @@ func (c *Checker) BookFilter(u users.User, alias string) Filter {
 func (c *Checker) LibraryFilter(u users.User, alias string) Filter {
 	return c.filter(u, alias, libraryCoversSQL)
 }
+
+// BookFilterFor limits a query on books (aliased alias) to the books u may do a to, agreeing with Can for
+// ViewBook, ReadText and DownloadText. Can takes the maximum of each right across all covering grants, so
+// the filter needs one EXISTS per right instead of one grant that has them all. Any other action matches nothing.
+func (c *Checker) BookFilterFor(u users.User, alias string, a Action) Filter {
+	checkAlias(alias)
+	var rights []string
+	switch a {
+	case ViewBook:
+		rights = []string{"1=1"}
+	case ReadText:
+		rights = []string{"share_g.can_read = 1"}
+	case DownloadText:
+		rights = []string{"share_g.can_download = 1", "share_g.can_read = 1"}
+	default:
+		return Filter{SQL: "0=1"}
+	}
+	if u.Disabled {
+		return Filter{SQL: "0=1"}
+	}
+	switch u.Role {
+	case users.RoleOwner, users.RoleAdmin:
+		return Filter{SQL: "1=1"}
+	case users.RoleMember, users.RoleGuest:
+	default:
+		return Filter{SQL: "0=1"}
+	}
+	nowMs := c.now().UnixMilli()
+	parts := make([]string, 0, 2)
+	var args []any
+	for _, r := range rights {
+		parts = append(parts, `EXISTS (SELECT 1 FROM grants share_g WHERE `+activeSQL+` AND `+coversSQL("share_g", alias)+` AND `+r+`)`)
+		args = append(args, u.ID, nowMs)
+	}
+	return Filter{SQL: strings.Join(parts, " AND "), Args: args}
+}
