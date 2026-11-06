@@ -2,9 +2,9 @@
 
 Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-numbers.md)). Dates are UTC.
 
-## Unreleased
+## 2026.3.0
 
-Added after 2026.2.0 was dated. Nothing here is tagged yet.
+Released 2026-11-06. It brings library care, chapter editing, reading apps, a clearer Library, and a desktop app with its own title bar.
 
 ### What you can do
 
@@ -66,6 +66,13 @@ Added after 2026.2.0 was dated. Nothing here is tagged yet.
 - Merged copies leave their folders on disk; there is no merge across libraries.
 - OPDS has no OPDS 2.0, no audio and no per-shelf feeds.
 
+### Upgrading
+
+This release uses database schema 32 (it was 24 in 2026.2.0). Before Tendshelf upgrades an existing database it
+writes a verified copy to `backups` in the data folder, and an older program refuses a database made by this one.
+Watching is on for every library after the upgrade, and a library with no schedule gets a scan every six hours; both
+are read-only on your files and can be changed under Libraries.
+
 ## 2026.2.0
 
 Released 2026-11-06. It brings offline use, uploads, a book reader, ebooks as books, and a desktop app.
@@ -117,7 +124,7 @@ Released 2026-11-06. It brings offline use, uploads, a book reader, ebooks as bo
 
 ### Upgrading
 
-This release uses database schema 23 (it was 9 in 2026.1.0). Before Tendshelf upgrades an existing database it
+This release uses database schema 24 (it was 9 in 2026.1.0). Before Tendshelf upgrades an existing database it
 writes a verified copy to `backups` in the data folder. Going back to an older version needs a backup: stop
 the server, delete `tendshelf.db-wal` and `tendshelf.db-shm`, and put the backup back as `tendshelf.db`; an
 older program refuses a database made by this one. Scheduled backups hold the database only, so to keep uploaded
