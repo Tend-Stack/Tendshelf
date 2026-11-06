@@ -123,6 +123,7 @@ class PlaybackService : MediaLibraryService() {
                 val conn = connections.current() ?: return@execute
                 try {
                     val remote = Api(conn.origin).progress(conn.token, book)
+                    Log.i(TAG, "place check: remote ${if (remote == null) "none" else "found"}")
                     main.post {
                         if (!ask.isOpen && engine.currentBook == book) {
                             app.tendshelf.shared.conflict(book, exo.currentPosition, remote, conn.deviceId)?.let { ask.show(it) }

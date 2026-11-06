@@ -54,10 +54,10 @@ class Resume(
     }
 
     private fun resumed() {
+        val wasFresh = fresh
+        fresh = false // the first sound after a load is the start, whatever came before it
         val since = idleAt ?: return
         idleAt = null
-        val wasFresh = fresh
-        fresh = false
         val away = (now() - since).coerceAtLeast(0)
         val s = settings()
         val step = rewindMs(away, s.rewindSteps, s.autoRewind)
