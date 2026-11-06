@@ -2,6 +2,15 @@
 
 Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-numbers.md)). Dates are UTC.
 
+## Unreleased
+
+### What you can do
+
+- **Tendshelf for Android has a release build.** `make apk` makes an APK whose version comes from the release tag, with
+  a proper icon. It is signed with your own key when you provide one and left clearly unsigned when you do not. Two builds
+  of the same source give the same APK. The steps, including how to make your own key and how to upgrade, are in
+  `docs/android.md`. A phone with a test build needs one uninstall before the first release APK.
+
 ## 2026.3.0
 
 Released 2026-11-06. It brings library care, chapter editing, reading apps, a clearer Library, and a desktop app with its own title bar.

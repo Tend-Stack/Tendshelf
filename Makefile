@@ -8,7 +8,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell (git describe --tags --long --always --dirty 2>/dev/null || echo dev) | sed -E 's/-0-g[0-9a-f]+//')
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: apk-debug version desktop desktop-check desktop-purego deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
+.PHONY: apk apk-debug version desktop desktop-check desktop-purego deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
 
 # Prints the version string builds embed.
 version:
@@ -19,6 +19,11 @@ generate:
 
 # Android debug APK (decision 0024): the Gradle wrapper in android/, ANDROID_HOME set, no Android Studio.
 # Gradle checks every dependency against android/gradle/verification-metadata.xml. Not part of check or build.
+# Android release APK (plan A10): version from the Git tag, signed only when the TS_ANDROID_* key variables are set, else
+# unsigned and named so. See docs/android.md. Not part of check or build.
+apk:
+	android/tools/make-apk.sh
+
 apk-debug:
 	cd android && ./gradlew --no-daemon assembleDebug
 	@ls -l android/app/build/outputs/apk/debug/app-debug.apk

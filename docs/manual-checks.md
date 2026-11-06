@@ -287,4 +287,7 @@ Needs the debug or release APK on a real phone, signed in to a server with a ser
 | A9-3 | On a phone on mobile data with the server behind a VPN that is switched off, open the downloaded book. | The reader opens in about 2 seconds, with no long white screen. | |
 | A9-4 | Sign out on the Profile page, then look at Settings, Apps, Tendshelf, Storage. | The books' text is gone with the audio; the app's data is small again. | |
 | A9-5 | Switch the phone to a language and a font size at 200 % and open a downloaded book offline. | Text stays readable; the offline reader matches the online one. | |
-
+| A10-1 | Make your own key as in docs/android.md, run `make apk` with the four variables set, then `adb install -r` the APK over a phone that has the test (debug) build. | Android refuses the update (different key). Uninstall Tendshelf, install the release APK: the app opens with the new icon and the server page asks you to connect. | |
+| A10-2 | Build a later version signed with the same key and install it over the first. | It installs over it; downloads and sign-in stay. `apksigner verify -v --print-certs` shows the same SHA-256 as the first. | |
+| A10-3 | Run `make apk` with no key variables. | The output file ends in `-unsigned.apk` and the script says UNSIGNED; Android will not install it. | |
+| A10-4 | Push a test tag on a copy of the repository with the secrets set, then with them missing. | The server release is published both times; the `apk` job attaches a signed APK, or an `-unsigned.apk` with a plain message in its log. | |

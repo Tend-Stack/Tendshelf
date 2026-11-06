@@ -75,3 +75,92 @@ jobs:
               -H "Authorization: token $RELEASE_TOKEN" -F "attachment=@$f" -o /dev/null
             echo "attached $(basename "$f")"
           done
+
+  # The Android APK (plan A10). A separate job after `release`, so nothing here can hold back or fail the server release
+  # (it is also continue-on-error). Without the signing secrets it builds the UNSIGNED APK, says so, and attaches it under
+  # a name that ends in -unsigned.apk; it never signs with a debug key. Google's Linux build tools are x86-64, so this
+  # runs on the amd64 runner. With the workstation VPN up the runner's containers have no internet, and this job fails then.
+  #
+  # What the operator provides (names only, no values here):
+  #   secrets   TS_ANDROID_KEYSTORE_B64 (the keystore file, base64), TS_ANDROID_KEYSTORE_PASSWORD, TS_ANDROID_KEY_ALIAS,
+  #             TS_ANDROID_KEY_PASSWORD. Without all four the APK stays unsigned.
+  #   variables TS_ANDROID_CMDLINE_TOOLS_URL and TS_ANDROID_CMDLINE_TOOLS_SHA256, the Android command-line tools
+  #             archive and its SHA-256 (docs/android.md). Without them the job stops with a plain message.
+  apk:
+    name: build, verify and attach the Android APK
+    needs: release
+    runs-on: [tend-ci, linux-amd64]
+    continue-on-error: true
+    container:
+      image: docker.gitea.com/runner-images:ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      TAG: ${{ gitea.ref_name }}
+      TOOLS_URL: ${{ vars.TS_ANDROID_CMDLINE_TOOLS_URL }}
+      TOOLS_SHA256: ${{ vars.TS_ANDROID_CMDLINE_TOOLS_SHA256 }}
+    steps:
+      - name: Check out the tag
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # checkout v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install Java 21 and tools
+        run: |
+          uname -m
+          apt-get update
+          apt-get install -y --no-install-recommends openjdk-21-jdk-headless unzip curl ca-certificates binutils
+      - name: Android SDK from the pinned command-line tools
+        run: |
+          if [ -z "$TOOLS_URL" ] || [ -z "$TOOLS_SHA256" ]; then
+            echo "Android build skipped: the variables TS_ANDROID_CMDLINE_TOOLS_URL and TS_ANDROID_CMDLINE_TOOLS_SHA256 are not set (docs/android.md)."
+            echo "SKIP_APK=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          curl -fsSL "$TOOLS_URL" -o "$RUNNER_TEMP/cmdline-tools.zip"
+          echo "$TOOLS_SHA256  $RUNNER_TEMP/cmdline-tools.zip" | sha256sum -c -
+          export ANDROID_HOME="$RUNNER_TEMP/android-sdk"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          unzip -q "$RUNNER_TEMP/cmdline-tools.zip" -d "$ANDROID_HOME/cmdline-tools"
+          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+      - name: Build, sign when the key is present, verify
+        env:
+          KEYSTORE_B64: ${{ secrets.TS_ANDROID_KEYSTORE_B64 }}
+          TS_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.TS_ANDROID_KEYSTORE_PASSWORD }}
+          TS_ANDROID_KEY_ALIAS: ${{ secrets.TS_ANDROID_KEY_ALIAS }}
+          TS_ANDROID_KEY_PASSWORD: ${{ secrets.TS_ANDROID_KEY_PASSWORD }}
+        run: |
+          [ -z "${SKIP_APK:-}" ] || { echo "Android build skipped (see the previous step)."; exit 0; }
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$TS_ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$TS_ANDROID_KEY_ALIAS" ] && [ -n "$TS_ANDROID_KEY_PASSWORD" ]; then
+            ks="$(mktemp)"
+            echo "$KEYSTORE_B64" | base64 -d > "$ks"
+            echo "KEYSTORE_FILE=$ks" >> "$GITHUB_ENV"
+            export TS_ANDROID_KEYSTORE="$ks"
+            echo "Signing key present: the APK will be signed."
+          else
+            unset TS_ANDROID_KEYSTORE TS_ANDROID_KEYSTORE_PASSWORD TS_ANDROID_KEY_ALIAS TS_ANDROID_KEY_PASSWORD
+            echo "Signing skipped: the TS_ANDROID_* secrets are not all set. The APK will be unsigned and named -unsigned.apk."
+          fi
+          android/tools/make-apk.sh "${TAG#v}"
+      - name: Remove the keystore file
+        if: always()
+        run: |
+          if [ -n "${KEYSTORE_FILE:-}" ]; then rm -f "$KEYSTORE_FILE"; fi
+      - name: Attach the APK to the release
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          API: ${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}
+        run: |
+          [ -z "${SKIP_APK:-}" ] || { echo "Nothing to attach."; exit 0; }
+          test -n "$RELEASE_TOKEN" || { echo "secret RELEASE_TOKEN is not set"; exit 1; }
+          curl -fsS "$API/releases/tags/$TAG" -H "Authorization: token $RELEASE_TOKEN" -o release.json
+          id="$(grep -o '"id":[0-9]*' release.json | head -1 | cut -d: -f2)"
+          test -n "$id" || { echo "no release id in the answer"; exit 1; }
+          for f in android/build/dist/*; do
+            curl -fsS -X POST "$API/releases/$id/assets?name=$(basename "$f")" \
+              -H "Authorization: token $RELEASE_TOKEN" -F "attachment=@$f" -o /dev/null
+            echo "attached $(basename "$f")"
+          done

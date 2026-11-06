@@ -1,0 +1,33 @@
+# Draft F-Droid build recipe (plan A10). Not submitted: the operator has not chosen a distribution channel.
+# Fill in the two <...> values and the signing key before any submission; nothing here is a real account or key.
+Categories:
+  - Multimedia
+License: AGPL-3.0-only
+SourceCode: <SOURCE_REPOSITORY_URL>
+IssueTracker: <SOURCE_REPOSITORY_URL>/issues
+
+AutoName: Tendshelf
+
+RepoType: git
+Repo: <SOURCE_REPOSITORY_URL>.git
+
+Builds:
+  - versionName: 2026.3.0
+    versionCode: 202603000
+    commit: v2026.3.0
+    # The Gradle project is android/; the app copies the server's CSS and fonts from ../internal/web/static,
+    # so the whole repository is needed, not only android/app.
+    subdir: android/app
+    gradle:
+      - yes
+    gradleprops:
+      - tsVersion=2026.3.0
+
+# Leave empty until the operator has made a key (docs/android.md). F-Droid then accepts only APKs signed by it, which
+# is what lets a reproducible build be published with the developer's own signature.
+AllowedAPKSigningKeys:
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 2026.3.0
+CurrentVersionCode: 202603000
