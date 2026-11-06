@@ -3,7 +3,7 @@ package library
 import (
 	"context"
 	"database/sql"
-	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/textmatch"
@@ -35,6 +35,8 @@ type DuplicateBook struct {
 	// Listeners is how many people have listening progress on the copy; Bookmarkers how many have bookmarks.
 	Listeners, Bookmarkers int
 
+	// sig is not the file list: it is the number of the same-audio group the book fell in (see Duplicates), "" for
+	// a book whose files nobody else has. author and narrator are normalised for matching.
 	sig, author, narrator string
 }
 
@@ -47,7 +49,6 @@ type DuplicateGroup struct {
 const dupBookSelect = `SELECT b.id, b.library_id, b.title, b.root_path, b.duration_ms, b.added_at,
   (SELECT count(*) FROM audio_files a WHERE a.book_id = b.id AND a.missing_since IS NULL),
   COALESCE((SELECT sum(a.size) FROM audio_files a WHERE a.book_id = b.id AND a.missing_since IS NULL), 0),
-  COALESCE((SELECT group_concat(a.size || ':' || a.quick_hash, ',') FROM audio_files a WHERE a.book_id = b.id AND a.missing_since IS NULL), ''),
   (SELECT count(*) FROM progress p WHERE p.book_id = b.id),
   (SELECT count(DISTINCT m.user_id) FROM bookmarks m WHERE m.book_id = b.id AND m.deleted_at IS NULL),
   COALESCE((SELECT p.name FROM book_people bp JOIN people p ON p.id = bp.person_id WHERE bp.book_id = b.id AND bp.role = 'author'
@@ -57,33 +58,101 @@ const dupBookSelect = `SELECT b.id, b.library_id, b.title, b.root_path, b.durati
 
 func scanDupBook(s scanner) (DuplicateBook, error) {
 	var b DuplicateBook
-	var sig string
-	err := s.Scan(&b.ID, &b.LibraryID, &b.Title, &b.RootPath, &b.DurationMs, &b.AddedAt, &b.Files, &b.Bytes, &sig,
+	err := s.Scan(&b.ID, &b.LibraryID, &b.Title, &b.RootPath, &b.DurationMs, &b.AddedAt, &b.Files, &b.Bytes,
 		&b.Listeners, &b.Bookmarkers, &b.author, &b.narrator)
-	if sig != "" {
-		parts := strings.Split(sig, ",")
-		sort.Strings(parts) // the order of the files does not matter, only which files there are
-		b.sig = strings.Join(parts, ",")
-	}
 	b.author, b.narrator = textmatch.Norm(b.author), textmatch.Norm(b.narrator)
 	return b, err
 }
 
-// Duplicates finds the groups of copies among the audiobooks the scope can list: one grouped read and one pass
-// in Go. Only books of one library are grouped. A pair marked "not the same" is not offered again.
+// dupSigSQL is the signature of a book's files: their size:quick-hash pairs, sorted, so the order of the files
+// does not matter, only which files there are. bookExpr names the book's id column or a parameter.
+func dupSigSQL(bookExpr string) string {
+	return `(SELECT group_concat(x, ',') FROM (SELECT a.size || ':' || a.quick_hash AS x FROM audio_files a
+  WHERE a.book_id = ` + bookExpr + ` AND a.missing_since IS NULL ORDER BY x))`
+}
+
+// dupLightSelect is the few columns grouping needs; counts and sizes are read later, for the copies in a group only.
+const dupLightSelect = `SELECT b.id, b.library_id, b.title, b.duration_ms, b.added_at,
+  COALESCE((SELECT p.name FROM book_people bp JOIN people p ON p.id = bp.person_id WHERE bp.book_id = b.id AND bp.role = 'author'
+    ORDER BY bp.idx, p.name, p.id LIMIT 1), ''),
+  COALESCE((SELECT p.name FROM book_people bp JOIN people p ON p.id = bp.person_id WHERE bp.book_id = b.id AND bp.role = 'narrator'
+    ORDER BY bp.idx, p.name, p.id LIMIT 1), '')`
+
+// Duplicates finds the groups of copies among the audiobooks the scope can list. The database groups the books
+// by file signature and returns only the ids that share one, so no signature is held per book; grouping reads
+// a few columns per book, and the full row (files, bytes, listeners) is read for the copies in a group only.
+// Only books of one library are grouped. A pair marked "not the same" is not offered again.
 func (r *Repo) Duplicates(ctx context.Context, sc Scope) ([]DuplicateGroup, error) {
 	w := visible(sc, true)
 	w.add("b.kind = 'audio'")
-	books, err := many(ctx, r.st.Reader(), scanDupBook,
-		dupBookSelect+fromVisible+` WHERE `+w.sql()+` ORDER BY b.library_id, b.added_at, b.id`, w.args...)
+	books, err := many(ctx, r.st.Reader(), func(s scanner) (DuplicateBook, error) {
+		var b DuplicateBook
+		err := s.Scan(&b.ID, &b.LibraryID, &b.Title, &b.DurationMs, &b.AddedAt, &b.author, &b.narrator)
+		b.author, b.narrator = textmatch.Norm(b.author), textmatch.Norm(b.narrator)
+		return b, err
+	}, dupLightSelect+fromVisible+` WHERE `+w.sql()+` ORDER BY b.library_id, b.added_at, b.id`, w.args...)
 	if err != nil {
 		return nil, err
+	}
+	// Books that share a signature within a library, one row of ids per signature. Only books that first share a
+	// file count and total size are given a signature, so the 12 files of every other book are never sorted.
+	shared, err := many(ctx, r.st.Reader(), func(s scanner) (string, error) {
+		var ids string
+		return ids, s.Scan(&ids)
+	}, `WITH c AS (SELECT b.id AS id, b.library_id AS lib, count(*) AS n, sum(a.size) AS bytes`+fromVisible+`
+    JOIN audio_files a ON a.book_id = b.id AND a.missing_since IS NULL WHERE `+w.sql()+` GROUP BY b.id),
+  d AS (SELECT lib, n, bytes FROM c GROUP BY lib, n, bytes HAVING count(*) > 1)
+SELECT group_concat(id) FROM (SELECT c.id AS id, c.lib AS lib, `+dupSigSQL("c.id")+` AS sig
+  FROM c JOIN d ON d.lib = c.lib AND d.n = c.n AND d.bytes = c.bytes) GROUP BY lib, sig HAVING count(*) > 1`, w.args...)
+	if err != nil {
+		return nil, err
+	}
+	group := make(map[string]string)
+	for n, ids := range shared {
+		for _, id := range strings.Split(ids, ",") {
+			group[id] = strconv.Itoa(n + 1)
+		}
+	}
+	for i := range books {
+		books[i].sig = group[books[i].ID]
 	}
 	pairs, err := r.notDuplicatePairs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return groupDuplicates(books, pairs), nil
+	groups := groupDuplicates(books, pairs)
+	return groups, r.hydrateDuplicates(ctx, groups)
+}
+
+// hydrateDuplicates fills the full row of every copy in the groups, in chunks of ids.
+func (r *Repo) hydrateDuplicates(ctx context.Context, groups []DuplicateGroup) error {
+	var ids []any
+	for _, g := range groups {
+		for _, b := range g.Books {
+			ids = append(ids, b.ID)
+		}
+	}
+	full := make(map[string]DuplicateBook, len(ids))
+	const chunk = 400
+	for lo := 0; lo < len(ids); lo += chunk {
+		part := ids[lo:min(lo+chunk, len(ids))]
+		rows, err := many(ctx, r.st.Reader(), scanDupBook,
+			dupBookSelect+` FROM books b WHERE b.id IN (`+strings.TrimSuffix(strings.Repeat("?,", len(part)), ",")+`)`, part...)
+		if err != nil {
+			return err
+		}
+		for _, b := range rows {
+			full[b.ID] = b
+		}
+	}
+	for gi := range groups {
+		for bi, b := range groups[gi].Books {
+			f := full[b.ID]
+			f.sig = b.sig
+			groups[gi].Books[bi] = f
+		}
+	}
+	return nil
 }
 
 // notDuplicatePairs is every "not the same" pair, as "a|b" with a < b.
@@ -248,7 +317,14 @@ func (r *Repo) MergePreview(ctx context.Context, keep, drop string) (MergePrevie
 		}
 		return p, ErrBookNotFound
 	}
-	p.SameAudio = p.Keep.sig != "" && p.Keep.sig == p.Drop.sig
+	var ks, ds sql.NullString
+	if err := rd.QueryRowContext(ctx, `SELECT `+dupSigSQL("?"), keep).Scan(&ks); err != nil {
+		return p, err
+	}
+	if err := rd.QueryRowContext(ctx, `SELECT `+dupSigSQL("?"), drop).Scan(&ds); err != nil {
+		return p, err
+	}
+	p.SameAudio = ks.Valid && ks.String != "" && ks == ds
 	count := func(dst *int, q string) {
 		if err == nil {
 			err = rd.QueryRowContext(ctx, q, sql.Named("from", drop), sql.Named("to", keep)).Scan(dst)

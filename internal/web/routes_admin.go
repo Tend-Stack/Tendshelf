@@ -237,13 +237,9 @@ func (s *server) librariesView(ctx context.Context, r *http.Request, sc library.
 			Summary: booksText(f.Books) + " · " + sizeText(f.Bytes),
 		})
 	}
-	health, err := s.lib.Health(ctx, sc, 1)
+	total, err := s.lib.HealthTotal(ctx, sc)
 	if err != nil {
 		return v, err
-	}
-	total := 0
-	for _, h := range health {
-		total += h.Count
 	}
 	v.Needs = healthSummary(total)
 	return v, nil

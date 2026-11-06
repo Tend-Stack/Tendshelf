@@ -160,3 +160,24 @@ func TestHealthScopeAndPaging(t *testing.T) {
 		t.Error("a present book is in the folder, FolderGone true")
 	}
 }
+
+// HealthTotal is the sum of the group counts, scoped like Health.
+func TestHealthTotalMatchesHealth(t *testing.T) {
+	r, _ := newRepo(t)
+	_, f := librarytest.NewLibrary(t, r, "Main", "/audio")
+	a := librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "A", DurationMs: 1000})
+	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "B", DurationMs: 1000})
+	hlthExec(t, r, `UPDATE books SET missing_since = 5 WHERE id = ?`, a.ID)
+	groups, err := r.Health(ctx, adminAllScope, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := 0
+	for _, g := range groups {
+		want += g.Count
+	}
+	got, err := r.HealthTotal(ctx, adminAllScope)
+	if err != nil || got != want || want == 0 {
+		t.Errorf("HealthTotal = %d, %v; Health sums to %d", got, err, want)
+	}
+}

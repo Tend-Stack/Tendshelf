@@ -163,3 +163,20 @@ func TestDupPreviewCounts(t *testing.T) {
 		t.Error("preview of a book with itself")
 	}
 }
+
+// Books with the same file count and total size but other hashes are not the same audio; the database only
+// signs books that share count and size, and that must not turn them into a group.
+func TestDupSameCountAndBytesButOtherHashes(t *testing.T) {
+	r, st, f := dupRepo(t)
+	one, two, three := dupAdd(t, r, f, "One", dupHour), dupAdd(t, r, f, "Two", dupHour), dupAdd(t, r, f, "Three", dupHour)
+	dupFiles(t, st, one.ID, "100:a", "200:b")
+	dupFiles(t, st, two.ID, "100:b", "200:a")
+	dupFiles(t, st, three.ID, "200:b", "100:a")
+	gs, err := r.Duplicates(ctx, allScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := dupGroupTitles(gs), []string{"same_audio:One+Three"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("groups = %v, want %v", got, want)
+	}
+}

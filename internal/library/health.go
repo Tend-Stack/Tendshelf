@@ -110,3 +110,19 @@ func (r *Repo) Health(ctx context.Context, sc Scope, perGroup int) ([]HealthCoun
 	}
 	return out, nil
 }
+
+// HealthTotal is the sum of every group's exact count, with no rows read. The Libraries page needs only this
+// number for its "needs a look" line, so it no longer fetches and sorts a preview of every group on each load.
+func (r *Repo) HealthTotal(ctx context.Context, sc Scope) (int, error) {
+	where, wargs := scopeWhere(sc)
+	total := 0
+	for _, g := range HealthGroups {
+		var n int
+		if err := r.st.Reader().QueryRowContext(ctx, `SELECT count(*) FROM books b JOIN libraries l ON l.id = b.library_id WHERE `+
+			where+` AND (`+healthCond[g]+`)`, wargs...).Scan(&n); err != nil {
+			return 0, err
+		}
+		total += n
+	}
+	return total, nil
+}
