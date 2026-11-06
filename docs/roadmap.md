@@ -812,6 +812,20 @@ the operator's word on 0023 and the board; packages X1 to X6 after the release i
   busy reset, clock parsing); `TestChapterEditVisual` (390, 768, 1024, 1440). Limits: the editor address is
   `/chapters/edit` because `/books/{id}/chapters` is the Chapters tab (plan address collided); "move from" counts
   chapters from 1 and starts at 2; multi-file and FLAC books keep edits in the database only, and the page says so.
+- **L3b Chapter lookup** (2026-11-06, done; plan `docs/plans/next-server.md` section 3). Scope: `online.Client.Chapters`
+  (Audnexus `/books/{asin}/chapters`, stores in `regionOrder(language)` order, at most three, a 404 tries the next,
+  all misses are `no_chapters`), `regionOrder` factored out of `searchAudnexus`; job kind `chapter_lookup`
+  (`StartChapterLookup` reuses a waiting job for the same book and ASIN, `ChapterLookupFor` rejects another book's job,
+  requests counted in `online_usage`); `POST /books/{id}/chapters/lookup`; the poll through `/hx/jobs/{id}?book=&n=`;
+  the "Look up chapters" disclosure on `/books/{id}/chapters/edit` (ASIN prefilled from the book) and the result box
+  with "Use titles and times" (`lookup_all`: replaces the draft, drops rows at or past the end and says how many,
+  origin `online`) and "Use titles only" (`lookup_titles`: equal counts only, starts kept). Rows always come from the
+  stored job result; nothing is stored until Save. No migration, no JS, no new stylesheet (rules added to
+  `pages-chapters.css`). Checks: `TestChapterLookup*` in online, metadata and web (roles, bad ASIN, lookups off,
+  poll states, forged and unknown jobs, drop past end, titles only, save stores `online`), the route matrix row,
+  `TestChapterLookupVisual` (390, 768, 1024, 1440; `chapters-lookup-*`). Limits: the lookup form is a separate form,
+  so pressing "Look up" discards unsaved edits; no scaling of times (Move chapters does that); bulk, automatic and
+  other providers are out of scope.
 - **S4 Duplicates and merge** (2026-11-06, done). Scope: migration `0027_book_merges` (`merged_folders`,
   `book_not_duplicates`), `library.MergeRowsSQL` shared with the ebook merge, `Repo.MergeBooks` (one transaction:
   progress newest wins and capped at the kept length, sessions, queue, book settings, grants, share links, ebook

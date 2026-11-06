@@ -16,5 +16,13 @@ func chapterSweepRows() []sweepRow {
 	reset := sweepPost("POST /books/{id}/chapters/reset", sweepBookPath("/chapters/reset"), sweepFormOf(url.Values{}),
 		sweepStaff(http.StatusSeeOther, http.StatusNotFound), "")
 	reset.LocOf = func(e *sweepEnv) string { return "/books/" + e.book.ID + "/chapters/edit" }
-	return []sweepRow{page, confirm, draft, reset}
+	// L3b: owner and admin start a lookup (a second press reuses the waiting job); the redirect names it.
+	lookup := sweepPost("POST /books/{id}/chapters/lookup", sweepBookPath("/chapters/lookup"), sweepFormOf(url.Values{"asin": {"B0TESTBOOK"}}),
+		sweepStaff(http.StatusSeeOther, http.StatusNotFound), "")
+	lookup.LocOf = func(e *sweepEnv) string {
+		var id string
+		_ = e.a.st.Reader().QueryRow(`SELECT id FROM jobs WHERE kind = 'chapter_lookup' ORDER BY created_at DESC, id DESC LIMIT 1`).Scan(&id)
+		return "/books/" + e.book.ID + "/chapters/edit?lookup=" + id
+	}
+	return []sweepRow{page, confirm, draft, reset, lookup}
 }
