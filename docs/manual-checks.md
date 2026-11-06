@@ -256,3 +256,8 @@ Needs the debug or release APK on a real phone, signed in to a server with a ser
 | A6-2 | During the fade, shake the phone twice within a second (screen off, then on). | The sound comes back to full volume and the timer gains 10 minutes. | |
 | A6-3 | Set the timer, pause for a minute, play again; repeat at speed 2. | Paused time does not count; minutes are real minutes at any speed. | |
 | A6-4 | Choose "End of chapter" on the last chapter of a book with another one queued. | It stops just before the end and the queued book does not start. | |
+| A7-1 | Download a three-file book on Wi-Fi, then turn on airplane mode, close the app from recents and open it. | The Downloads page lists the book; Play sounds within about 2 seconds; chapters and skip work; the screen off for 10 minutes keeps playing. | |
+| A7-2 | Start a download of a long book, lock the phone and leave it for an hour (deep Doze, and on Android 15 and later the 6 hour data-sync limit). | The notification keeps its progress; at the limit it says "Downloads paused. Open Tendshelf to finish." and opening the app finishes the book without starting over. | |
+| A7-3 | Tap Sign out on the Profile page. Check Settings, Apps, Tendshelf, Storage. | Downloads are gone and the app's data is back to its small size. A session that merely ran out (revoke the device from another browser) keeps the downloads. | |
+| A7-4 | Sign in as someone else on the same phone. | The first person's downloads are gone before the second person sees any. | |
+| A7-5 | Fill the phone's storage, then try to download a long book. | "Not enough room on this phone for this book." and nothing is half stored. | |
