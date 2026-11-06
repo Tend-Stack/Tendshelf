@@ -10,12 +10,15 @@ import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import app.tendshelf.shared.Ask
 import app.tendshelf.shared.BridgeMessage
 import app.tendshelf.shared.Origin
 import app.tendshelf.shared.PlayerSnapshot
 import app.tendshelf.shared.TokenBucket
+import app.tendshelf.shared.encodeAsk
 import app.tendshelf.shared.encodeBack
 import app.tendshelf.shared.encodeError
+import app.tendshelf.shared.encodeRewound
 import app.tendshelf.shared.encodeState
 import app.tendshelf.shared.parseBridge
 
@@ -50,6 +53,8 @@ class Bridge(
     private var bucket = TokenBucket(RATE, SystemClock.uptimeMillis())
     private var dropped = 0
     private var lastError = ""
+    private var lastAsk: Ask? = null
+    private var lastRewoundSeq = UNSET
     private var pendingBack: (() -> Unit)? = null
 
     /** True when the page can be asked to go back (it holds the object and the person is connected). */
@@ -106,6 +111,7 @@ class Bridge(
 
     fun onStop() {
         started = false
+        lastRewoundSeq = UNSET // a rewind heard with the screen off is not announced later
         main.removeCallbacks(ticker)
     }
 
@@ -136,6 +142,9 @@ class Bridge(
         when (msg) {
             BridgeMessage.Hello -> {
                 proxy = reply
+                // A new page knows nothing: it gets the open question again, and no old rewind.
+                lastAsk = null
+                lastRewoundSeq = UNSET
                 pushState()
             }
             is BridgeMessage.Start -> r?.start(msg.bookId, msg.atMs)
@@ -150,6 +159,7 @@ class Bridge(
                 if (!msg.handled) next?.invoke()
             }
             is BridgeMessage.Theme -> onTheme(msg.hex)
+            is BridgeMessage.Answer -> r?.answer(msg.keepHere)
         }
     }
 
@@ -180,8 +190,16 @@ class Bridge(
         // Errors cross as one of two fixed codes; `signedOut` does not (sign-out replaces the page).
         if (s.error != lastError) {
             lastError = s.error
-            if (s.error == "stream" || s.error == "book") send(p, encodeError(s.error))
+            // `background` crosses as the generic stream code (encodeError).
+            if (s.error == "stream" || s.error == "book" || s.error == "background") send(p, encodeError(s.error))
         }
+        if (s.ask != lastAsk) {
+            // Only the changes cross: a question opens the toast, none closes it.
+            if (s.ask != null || lastAsk != null) send(p, encodeAsk(s.ask))
+            lastAsk = s.ask
+        }
+        if (lastRewoundSeq != UNSET && s.rewoundSeq != lastRewoundSeq && s.rewoundS > 0) send(p, encodeRewound(s.rewoundS))
+        lastRewoundSeq = s.rewoundSeq
         tick()
     }
 
@@ -220,6 +238,7 @@ class Bridge(
         const val OBJECT = "tsNative"
         private const val TAG = "Tendshelf"
         private const val RATE = 30
+        private const val UNSET = -1
         private const val BACK_WAIT_MS = 150L
     }
 }

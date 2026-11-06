@@ -242,3 +242,13 @@ Needs the desktop build on a real Linux session with a sound card, a keyboard wi
 | 14 | On an ultrawide monitor (wider than 1,920 px, for example 3440 x 1440), open the app. Press Maximise on the bar, then again. Drag an edge and a corner out as far as they go. Double-click the bar, and press Super+Up. Close while fitted and start it again. | Maximise gives a window 1,920 px wide and as high as the screen (centred on X11), with the Restore icon; again goes back to the earlier size. Edges and corners stop at 1,920 px. The other maximises give the same fit, never a full-width window with a blank strip. The app restarts fitted. On a screen of 1,920 px or less, Maximise is a normal maximise. | |
 
 Do not switch `make desktop` to the CGO-free build until row 13 is recorded.
+
+## Android app (one row per package, from A5b)
+
+Needs the debug or release APK on a real phone, signed in to a server with a series of two short books and a long one.
+
+| # | Step | Expected | Result |
+| --- | --- | --- | --- |
+| A5b-1 | Play a book, pause, lock the phone and wait an hour (deep Doze). Start a book from the car or a headset button. | Sound starts, or the notification says "Tap to keep listening"; never a silent hang. | |
+| A5b-2 | Change the place from another device, wait over a minute paused, then resume with the app open. | The page asks "You were at ... Continue there?" with the other device's name; nothing moves until you tap. | |
+| A5b-3 | Repeat with the screen off. | A notification asks the same question; opening the app shows one question on the page, not two. | |

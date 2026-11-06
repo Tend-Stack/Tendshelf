@@ -13,15 +13,20 @@ import app.tendshelf.shared.clockText
 /**
  * "You were at {time} on {device}. Continue there?" when no page can show it (A5, D5): a private notification
  * with two actions. Nothing moves until a button is tapped. While it is open the book's saves are held, not
- * sent. Main thread only. The page's toast is the other half, and arrives with the bridge.
+ * sent. Main thread only. The question shows in exactly one place (A5b invariant 4): the page's toast while the
+ * activity is started, this notification otherwise. [publish] puts it in the session extras for the page.
  */
 class AskPrompt(
     private val context: Context,
     private val writer: ProgressWriter,
+    private val publish: (Ask?) -> Unit,
     private val seekTo: (Long) -> Unit,
 ) {
     private val nm = context.getSystemService(NotificationManager::class.java)
     private var open: Ask? = null
+
+    /** The activity is started, so the page shows the question and the notification stays away. */
+    private var pageVisible = false
 
     /** Random per question: the service is exported, so a button press from another app must not answer it. */
     private var nonce = 0L
@@ -42,12 +47,37 @@ class AskPrompt(
         nonce = java.security.SecureRandom().nextLong()
         if (BuildConfig.DEBUG) Log.i("Tendshelf", "ask nonce=$nonce")
         writer.heldBook = ask.bookId
+        publish(ask)
+        if (!pageVisible) post(ask)
+    }
+
+    /** Visible to stopped posts the notification; stopped to visible takes it back and republishes (one prompt only). */
+    fun setPageVisible(visible: Boolean) {
+        if (pageVisible == visible) return
+        pageVisible = visible
+        val ask = open ?: return
+        if (visible) {
+            nm.cancel(NOTIFICATION_ID)
+            publish(ask)
+        } else {
+            post(ask)
+        }
+    }
+
+    private fun post(ask: Ask) {
         val text = context.getString(R.string.continue_ask, clockText(ask.positionMs), ask.deviceLabel)
         val n = Notification.Builder(context, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(text)
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .setAutoCancel(false)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    context, 2,
+                    Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
+            )
             .addAction(action(ACTION_THERE, context.getString(R.string.continue_there)))
             .addAction(action(ACTION_HERE, context.getString(R.string.stay_here)))
             .build()
@@ -74,6 +104,7 @@ class AskPrompt(
         val ask = open ?: return
         open = null
         nm.cancel(NOTIFICATION_ID)
+        publish(null)
         if (keepHere) {
             writer.release(ask.bookId, force = true)
         } else {
@@ -87,6 +118,7 @@ class AskPrompt(
         val ask = open ?: return
         open = null
         nm.cancel(NOTIFICATION_ID)
+        publish(null)
         writer.release(ask.bookId, force = false)
     }
 
@@ -97,4 +129,11 @@ class AskPrompt(
         const val ACTION_HERE = "app.tendshelf.ASK_STAY_HERE"
         const val ACTION_THERE = "app.tendshelf.ASK_CONTINUE_THERE"
     }
+}
+
+/** The open question, or none, as session extras. */
+fun android.os.Bundle.putAsk(a: Ask?) {
+    putString(PlaybackService.EXTRA_ASK_BOOK, a?.bookId.orEmpty())
+    putLong(PlaybackService.EXTRA_ASK_POSITION, a?.positionMs ?: 0L)
+    putString(PlaybackService.EXTRA_ASK_DEVICE, a?.deviceLabel.orEmpty())
 }

@@ -162,6 +162,12 @@ class BookEngine(
         publishState()
     }
 
+    /**
+     * The system refused to let the service run in the foreground (a start from the background, A5b step 0).
+     * Nothing can play in that state, so stop trying: `ts.error` says `background` and a tap is the way back.
+     */
+    fun refused() = fail("background")
+
     /** The server refused the token while saving. */
     fun signedOut() = fail("signedOut")
 
