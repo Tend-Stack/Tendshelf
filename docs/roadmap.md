@@ -988,4 +988,14 @@ manual-checks row 14 (open). Next step: the operator runs row 14.
 Media3 window in book time (`ConcatenatingMediaSource2`, missing parts as silence); `BookPlayer` makes next and previous chapters and skip the person's
 interval; `BookEngine` starts books (a newer start cancels an older one) and publishes `ts.bookId`, `ts.chapterIdx`, `ts.error`; custom commands are for this app
 only; `PlayerRemote` is the seam. Pure logic (chapter jumps, start place, silent ranges, URLs) is in `shared`. Emulator checks (Parts, Single, Odd, speed, skip,
-notification, 30 min screen off, outage, revoked token, foreign package) passed; limits: no audible alignment measurement, fixture has no cover. Next step: A4.
+notification, 30 min screen off, outage, revoked token, foreign package) passed; limits: no audible alignment measurement, fixture has no cover.
+
+**A4 status (Android bridge, 2026-11-06)**: built on the branch `pkg-a4`. The web player is a remote control: `WebViewCompat.addWebMessageListener` adds the object
+`tsNative` for the one chosen origin in the connected state only; messages are plain words with a strict grammar (`shared/BridgeProtocol.kt`, 128 ASCII characters,
+30 a second), re-checked for main frame, exact origin and connected state; native pushes JSON built from fixed fields, once a second while playing and the activity is
+started, none while stopped. `native-audio.js` stands in for the media element; `player.js` has `NATIVE` branches (no save, no next-book request, no Media Session);
+Android Back asks the page first (sheet, dialog), then history; the page's `theme-color` colours the bars; sign-out stops the service. Removed: the password sign-in
+(`Api.signIn`, `tokenRequestBody`), `DEFAULT_SERVER`. The debug hooks moved to the debug source set (`DebugHooks`, a stub in `src/release`); `android/tools/check-release.sh`
+checks a release APK. Plain `http` keeps the bridge (flagged for the operator). Sizes (gzip): `player.js` 13,755 B (cap 13.5 KB), `native-audio.js` 2,563 B in the new
+Android-only bucket (cap 2,688 B). Limits: no saves until A5 (position is not stored by native yet); the web sleep timer fails with the screen off until A6, so no build is
+handed out between A4 and A6. Next step: A5, then A6.

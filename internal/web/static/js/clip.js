@@ -3,7 +3,7 @@
 // already handles. The Bookmarks tab loads this file only when it shows a clip. Without it a clip
 // simply plays on past its end.
 
-const audio = document.getElementById("audio");
+const audio = window.tsNativeAudio || document.getElementById("audio");
 const SLACK_MS = 1000; // how far past an edge still counts as playing through it, not a seek
 
 let armed = null; // { bookId, start, end, engaged }

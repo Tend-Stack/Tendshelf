@@ -58,7 +58,6 @@ class ApiPathsTest {
     @Test
     fun urls() {
         val api = ApiPaths(" http://10.0.2.2:8097/ ")
-        assertEquals("http://10.0.2.2:8097/api/v1/auth/token", api.tokenUrl)
         assertEquals("http://10.0.2.2:8097/api/v1/books/bk_1", api.bookUrl("bk_1"))
         assertEquals("http://10.0.2.2:8097/api/v1/stream/af_1", api.streamUrl("af_1"))
         assertEquals("http://10.0.2.2:8097/?shell=android&next=/", api.shellUrl)
@@ -74,8 +73,7 @@ class ApiPathsTest {
 
     @Test
     fun jsonBodyEscapes() {
-        val body = ApiPaths("http://h").tokenRequestBody("me", "pa\"ss\\\n", "Pixel")
-        assertEquals("{\"username\":\"me\",\"password\":\"pa\\\"ss\\\\\\n\",\"name\":\"Pixel\",\"kind\":\"mobile\"}", body)
+        assertEquals("\"pa\\\"ss\\\\\\n\"", jsonString("pa\"ss\\\n"))
     }
 }
 

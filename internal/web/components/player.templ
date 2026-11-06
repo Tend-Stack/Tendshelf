@@ -14,6 +14,11 @@ type PlayerMsgs struct {
 	// Desktop adds the window's rows to the keyboard sheet, in the desktop app only (decision 0023).
 	Desktop bool
 
+	// Android is the Android app's window, where the app plays the book. NativeFailed is its one extra word and is
+	// rendered only there, so a browser's page is byte-identical (A1, invariant 8).
+	Android      bool
+	NativeFailed string
+
 	// Eyes-free (M3b): its words and the addresses of its script and stylesheet, loaded on first use.
 	EyesFree                EyesFreeMsgs
 	EyesFreeJS, EyesFreeCSS string
@@ -50,6 +55,7 @@ type PlayerMsgs struct {
 // inShell returns the words for the shell the page is in: the desktop app's sheet has window rows.
 func (m PlayerMsgs) inShell(shell string) PlayerMsgs {
 	m.Desktop = shell == "desktop"
+	m.Android = shell == "android"
 	return m
 }
 
@@ -60,6 +66,14 @@ func fillN(s string, n int) string {
 
 // Attrs are the data-ts-msg-* attributes of #player, one per string player.js uses.
 func (m PlayerMsgs) Attrs() templ.Attributes {
+	attrs := m.attrs()
+	if m.Android {
+		attrs["data-ts-msg-native-failed"] = m.NativeFailed
+	}
+	return attrs
+}
+
+func (m PlayerMsgs) attrs() templ.Attributes {
 	return templ.Attributes{
 		"data-ts-msg-open":            m.Open,
 		"data-ts-msg-open-book":       m.OpenBook,

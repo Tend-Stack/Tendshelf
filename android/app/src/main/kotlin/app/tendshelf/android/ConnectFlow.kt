@@ -26,8 +26,14 @@ class ConnectFlow(
 ) {
     enum class State { NoServer, NeedsSignIn, Connecting, Connected, Reconnecting }
 
+    /** The bridge follows this: it attaches in Connected and detaches in NoServer (plan A4). */
+    var onState: ((State) -> Unit)? = null
+
     var state = State.NoServer
-        private set
+        private set(value) {
+            field = value
+            onState?.invoke(value)
+        }
 
     @Volatile
     private var verifier: String? = null

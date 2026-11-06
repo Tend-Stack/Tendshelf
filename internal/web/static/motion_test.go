@@ -305,7 +305,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// Q3 (Up next autoplay): 12.75 KB, approved by the operator on 2026-11-03.
 	// M3b (decision 0013): Eyes-free hooks, 13 KB, approved by the operator on 2026-11-04.
 	// L2 (smart rewind curve from the server table) and the toast actions the undo needs: 13.125 KB, measured 13,361 B; operator pre-approval of raises, 2026-11-05.
-	"player.js": {13*1024 + 128, 64 * 1024},
+	// A4 (Android bridge, 12 lines of NATIVE branches; operator approved about +300 B, 2026-11-06): 13.5 KB, measured 13,755 B by gzip -9, reported.
+	"player.js": {13*1024 + 512, 64 * 1024},
 	// PB2 moved the desktop bar's wave seek and the volume pop into waveform.js: back to 12 KB (12.2 KB measured by gzip -c).
 	// P3-11a: sidePanel() (larger text never uses the side panel) is 12.03 KB, so 12.5 KB; to be approved by the operator.
 	// M3a (decision 0012): the offline bookmark queue; 12.75 KB, approved by the operator on 2026-11-03.
@@ -328,8 +329,10 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"sw.js":      {4*1024 + 512, 24 * 1024}, // Firefox hang fix (2026-11-05): 4.3 KB with the stored-file list, reported; G6a (operator, 2026-11-04): reader text and shell, 3.5 KB; 3.53 KB with the slow-server fallback, reported
 	"offline.js": {3*1024 + 512, 24 * 1024}, // 3.34 KB with the retry on a slow server, reported
 	// M6 D2 (decision 0020, operator 2026-11-05): the desktop window script, loaded only under ts_shell=desktop; 1.25 KB approved.
-	"desktop.js":      {1*1024 + 256, 16 * 1024},
-	"native-audio.js": {640, 4 * 1024}, // A1: a commented no-op for the Android window until A4 fills it; inside the app total
+	"desktop.js": {1*1024 + 256, 16 * 1024},
+	// A4 (operator approved about 2 KB, 2026-11-06): the bridge's media-element stand-in, 2,688 B set, measured 2,599 B by gzip -9 with its comments
+	// intact, reported. Counted in jsAndroidTotalGzip, not in the app total: a browser never loads it.
+	"native-audio.js": {2*1024 + 640, 8 * 1024},
 	// Decision 0023 (X2, operator 2026-11-05): the desktop app's title bar script, loaded only under ts_shell=desktop; 2,816 B approved.
 	// X4 (now playing, the More menu's switch, the theme): 3,578 B measured with its comments intact, 3,584 B set; over the approved 2,816 B, reported for the operator.
 	// X5 (drop a book: the zone, the hand-over to the uploader, two sets of words): 4,667 B measured with its comments intact, 4,736 B set; reported for the operator.
@@ -383,13 +386,19 @@ var jsDesktopFiles = map[string]bool{"desktop.js": true, "desktop-shell.js": tru
 // jsDesktopTotalGzip bounds the desktop-only scripts together (decision 0023, operator 2026-11-05).
 const jsDesktopTotalGzip = 5888 // 4,096 approved; X4 set 4,864 B; X5 measured 5,823 B and sets 5,888 B (reported, awaits the operator)
 
+// jsAndroidFiles are the scripts only the Android app's window loads, counted apart as the desktop's are (A4).
+var jsAndroidFiles = map[string]bool{"native-audio.js": true}
+
+// jsAndroidTotalGzip bounds the Android-only scripts together (operator approval for about 2 KB, 2026-11-06).
+const jsAndroidTotalGzip = 2*1024 + 640
+
 func TestJSBudget(t *testing.T) {
 	s, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
 	seen := map[string]bool{}
-	total, desktopTotal := 0, 0
+	total, desktopTotal, androidTotal := 0, 0, 0
 	for _, source := range s.Names() {
 		if !strings.HasPrefix(source, "js/") || !strings.HasSuffix(source, ".js") {
 			continue
@@ -400,6 +409,8 @@ func TestJSBudget(t *testing.T) {
 		g := sentBytes(a)
 		if jsDesktopFiles[name] {
 			desktopTotal += g
+		} else if jsAndroidFiles[name] {
+			androidTotal += g
 		} else {
 			total += g
 		}
@@ -430,5 +441,9 @@ func TestJSBudget(t *testing.T) {
 	t.Logf("desktop-only JS %d gzip bytes of %d", desktopTotal, jsDesktopTotalGzip)
 	if desktopTotal > jsDesktopTotalGzip {
 		t.Errorf("desktop-only JS %d gzip bytes, budget %d", desktopTotal, jsDesktopTotalGzip)
+	}
+	t.Logf("Android-only JS %d gzip bytes of %d", androidTotal, jsAndroidTotalGzip)
+	if androidTotal > jsAndroidTotalGzip {
+		t.Errorf("Android-only JS %d gzip bytes, budget %d", androidTotal, jsAndroidTotalGzip)
 	}
 }

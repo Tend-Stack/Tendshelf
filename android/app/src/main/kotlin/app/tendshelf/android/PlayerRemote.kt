@@ -19,6 +19,9 @@ interface PlayerRemote {
     fun snapshot(): PlayerSnapshot
     fun observe(listener: (PlayerSnapshot) -> Unit)
     fun release()
+
+    /** Sign-out or another server: stop, forget the book and the credential, end the service. */
+    fun stopAndClear()
 }
 
 /** The remote over a Media3 controller connected to [PlaybackService]. */
@@ -44,6 +47,11 @@ class ControllerRemote(private val controller: MediaController) : PlayerRemote {
             putLong("atMs", atMs ?: -1L)
         }
         controller.sendCustomCommand(PlaybackService.START_COMMAND, args)
+    }
+
+    override fun stopAndClear() {
+        android.util.Log.i("Tendshelf", "stop and clear asked")
+        controller.sendCustomCommand(PlaybackService.STOP_COMMAND, Bundle.EMPTY)
     }
 
     override fun play() = controller.play()

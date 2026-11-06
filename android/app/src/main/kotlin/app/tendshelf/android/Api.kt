@@ -21,17 +21,6 @@ class ApiException(val code: Int) : IOException("server answered $code")
 class Api(origin: String) {
     val paths = ApiPaths(origin)
 
-    /** Debug-only sign-in through `POST /api/v1/auth/token`; returns the bearer token. Kept until A4. */
-    fun signIn(username: String, password: String): String {
-        val body = paths.tokenRequestBody(username, password, "Tendshelf Android debug")
-        val conn = open(paths.tokenUrl, null)
-        conn.requestMethod = "POST"
-        conn.doOutput = true
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.outputStream.use { it.write(body.toByteArray()) }
-        return JSONObject(String(read(conn))).getString("token")
-    }
-
     fun settings(token: String): PlayerSettings {
         val j = JSONObject(String(get(paths.settingsUrl, token, 64 * 1024)))
         return PlayerSettings(

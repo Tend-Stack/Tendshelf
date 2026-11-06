@@ -309,12 +309,14 @@ const (
 	msgRewound        = "Rewound {s} s after your break"
 	msgCompatWait     = compatWaitText
 	msgCompatFailed   = "This book can't play in this browser."
-	msgSignedOut      = "You're signed out. Sign in to keep your place."
-	msgSignIn         = "Sign in"
-	msgContinueAsk    = "You were at {time} on {device}. Continue there?"
-	msgOtherDevice    = "another device"
-	msgContinueThere  = "Continue there"
-	msgStayHere       = "Stay here"
+	// Android app only (A4): the app could not stream the book. Not in the copy deck; listed for review.
+	msgNativeFailed  = "This book can't play right now. Check your connection."
+	msgSignedOut     = "You're signed out. Sign in to keep your place."
+	msgSignIn        = "Sign in"
+	msgContinueAsk   = "You were at {time} on {device}. Continue there?"
+	msgOtherDevice   = "another device"
+	msgContinueThere = "Continue there"
+	msgStayHere      = "Stay here"
 
 	// P1c-5a full player: the board and the HANDOFF words; the rest follows the voice rules.
 	msgChapterOf     = "Chapter {n} of {total}"
@@ -412,7 +414,7 @@ func playerMsgs() components.PlayerMsgs {
 	return components.PlayerMsgs{
 		Open: msgPlayerOpen, OpenBook: msgOpenBook, MinLeft: msgMinLeft, PlayPrefix: msgPlayPrefix, PausePrefix: msgPausePrefix,
 		BackSeconds: msgBackSeconds, ForwardSeconds: msgForwardSeconds, ChapterLeft: msgChapterLeft,
-		Rewound: msgRewound, CompatWait: msgCompatWait, CompatFailed: msgCompatFailed,
+		Rewound: msgRewound, CompatWait: msgCompatWait, CompatFailed: msgCompatFailed, NativeFailed: msgNativeFailed,
 		SignedOut: msgSignedOut, SignIn: msgSignIn, ContinueAsk: msgContinueAsk, OtherDevice: msgOtherDevice,
 		ContinueThere: msgContinueThere, StayHere: msgStayHere,
 		KeysTitle: msgKeysTitle, KeysPlay: msgKeysPlay, KeysSkip: msgKeysSkip, KeysSearch: msgKeysSearch,

@@ -8,7 +8,7 @@ import java.util.concurrent.Executors
 /**
  * Leaves nothing behind (plan A2, invariant 7): token, cookies, web storage, cache and history go; then the start
  * page opens with the address filled in. The revoke call is best effort and runs after the local wipe, with the token
- * read first. A4 adds the service stop and A7 the downloads.
+ * read first. The service stops with it (A4). A7 adds the downloads.
  */
 class SignOut(
     private val web: WebView,
@@ -16,6 +16,8 @@ class SignOut(
     private val api: AuthApi,
     private val pages: StartPages,
     private val words: (Int) -> String,
+    /** Stops the sound and ends the service (A4). Null until the controller has connected. */
+    private val stopPlayback: () -> Unit,
 ) {
     private val io = Executors.newSingleThreadExecutor()
 
@@ -34,6 +36,7 @@ class SignOut(
 
     /** Everything the page side and the token hold, without opening the start page. */
     fun wipeLocal() {
+        stopPlayback()
         store.clearToken()
         CookieManager.getInstance().removeAllCookies(null)
         CookieManager.getInstance().flush()

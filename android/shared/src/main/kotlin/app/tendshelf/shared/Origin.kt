@@ -17,6 +17,13 @@ data class Origin(val scheme: String, val host: String, val port: Int?) {
         return u.scheme == scheme && u.host == host && u.port == port
     }
 
+    /**
+     * True when [sourceOrigin], as a WebView reports it for a message (scheme://host[:port], no path), is exactly this
+     * origin. Normalised by [parse], so case and a default port do not matter; a different port, a trailing dot, userinfo,
+     * another scheme, `null` (a sandboxed document) and anything unparsable are all false (bridge threat B5).
+     */
+    fun sameSource(sourceOrigin: String): Boolean = parse(sourceOrigin) == this
+
     fun healthUrl(): String = "$text/healthz"
     fun meUrl(): String = "$text/api/v1/me"
     fun homeUrl(): String = "$text/?shell=android&next=/"
