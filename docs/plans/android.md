@@ -198,3 +198,10 @@ Studio is absent and not needed. Nothing was installed for this plan.
 [timeline report](https://thehackernews.com/2026/06/google-sets-sept-30-deadline-for.html) ·
 [Auto sideloading guide](https://www.androidauthority.com/sideload-apps-on-android-auto-3681820/) ·
 [F-Droid thread](https://forum.f-droid.org/t/google-will-require-developer-verification-to-install-android-apps-including-sideloading/33123).
+
+## Operator answers (2026-11-05)
+
+- Approved: the hybrid app, then moving pages to native over time, starting with the player, then Home and the reader's page turns. Settings and admin stay web pages.
+- Approved additions after the first release: home screen widget, icon quick actions, shake to extend sleep, auto-download of the next book, a native offline library, sound modes and volume boost in the native engine, skip silences, read aloud with the device's text-to-speech.
+- Flutter considered and declined (2026-11-05): it means rewriting every screen in Dart, a third UI to maintain, and plugin-based audio and Android Auto. It also still needs a Mac for iPhone.
+- iPhone path: Kotlin Multiplatform. Keep API, sync, downloads and position logic in a shared module from A0, with no Android imports, so an iOS app can reuse it later. Apple playback and CarPlay stay native there. iOS needs a Mac, so it waits for one; the installed web app covers iPhone until then.
