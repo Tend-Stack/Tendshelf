@@ -135,7 +135,7 @@ templ settingsHead(v SettingsView, title string) {
 // settingsForm is the one form of a category: it saves on change, and posts the section so a plain
 // post comes back to the same page.
 templ settingsForm(v SettingsView) {
-	<form method="post" action="/me/settings" hx-post="/me/settings" hx-trigger="change" hx-swap="none" class="ts-me__form">
+	<form method="post" action="/me/settings" hx-post="/me/settings" hx-trigger="change" hx-sync="this:queue last" hx-swap="none" class="ts-me__form">
 		<input type="hidden" name="_csrf" value={ v.CSRF }/>
 		<input type="hidden" name="section" value={ v.Section }/>
 		<div class="ts-groups">

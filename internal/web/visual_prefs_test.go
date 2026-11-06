@@ -32,7 +32,7 @@ type prefsLayout struct {
 	Columns int  `json:"columns"`
 }
 
-// prefsPaths are the pages of the window: Profile, the list and the four categories.
+// prefsPaths are Profile (outside the frame) and the pages of the window: the list and the four categories.
 var prefsPaths = []string{"/me", "/me/settings", "/me/settings/playback", "/me/settings/appearance", "/me/settings/accessibility", "/me/settings/privacy"}
 
 func prefsName(p string) string {
@@ -70,6 +70,11 @@ func TestVisualPrefs(t *testing.T) {
 				m := capture(t, p, "dark", w, fmt.Sprintf("prefs-%s-dark-%d.png", prefsName(p), w))
 				wide := w >= 1024
 				switch {
+				case p == "/me":
+					// Profile is a page of its own since the redesign (decision 0021): no list, no pane.
+					if m.Nav || m.Pane {
+						t.Errorf("profile: nav %v pane %v, want no preferences frame", m.Nav, m.Pane)
+					}
 				case p == "/me/settings" && !wide:
 					if !m.Nav || m.Pane {
 						t.Errorf("one-column list: nav %v pane %v, want the list alone", m.Nav, m.Pane)
@@ -129,6 +134,9 @@ func TestVisualPrefs(t *testing.T) {
 		for _, p := range []string{"/me/settings/playback", "/me"} {
 			t.Run(fmt.Sprintf("large-%s-%d", prefsName(p), w), func(t *testing.T) {
 				m := capture(t, p, "dark", w, fmt.Sprintf("prefs-%s-large-%d.png", prefsName(p), w))
+				if p == "/me" {
+					return // Profile has no frame to keep or drop.
+				}
 				if w == 1440 && !m.Nav {
 					t.Errorf("large text at 1440: the list is gone, want two columns")
 				}

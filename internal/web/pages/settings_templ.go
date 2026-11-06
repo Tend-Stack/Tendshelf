@@ -658,7 +658,7 @@ func settingsForm(v SettingsView) templ.Component {
 		ctx = templ.InitializeContext(ctx)
 		templ_7745c5c3_Var33 := templ.GetChildren(ctx)
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<form method=\"post\" action=\"/me/settings\" hx-post=\"/me/settings\" hx-trigger=\"change\" hx-swap=\"none\" class=\"ts-me__form\"><input type=\"hidden\" name=\"_csrf\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<form method=\"post\" action=\"/me/settings\" hx-post=\"/me/settings\" hx-trigger=\"change\" hx-sync=\"this:queue last\" hx-swap=\"none\" class=\"ts-me__form\"><input type=\"hidden\" name=\"_csrf\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

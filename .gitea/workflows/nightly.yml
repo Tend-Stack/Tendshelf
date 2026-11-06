@@ -1,7 +1,9 @@
 name: Tendshelf nightly
 
-# The full checks that do not fit every push: the race suite, the real-ffmpeg media tests and the
-# browser screenshot matrix in a pinned Chromium. Operator decision 2026-11-01: a nightly failure
+# The full checks that do not fit every push, in two jobs that run side by side on the two runners:
+# "gate" (the race suite without a browser, then the real-ffmpeg media tests) and "browser" (every
+# Chromium test in a pinned Chromium, split into steps that do not overlap: the general browser tests,
+# the full screenshot matrix, the accessibility audit and the page weight). Operator decision 2026-11-01: a nightly failure
 # is fixed before the next feature push. Runs on the amd64 runner because Chrome for Testing has no
 # linux-arm64 build. No publishing, no deployment.
 on:
@@ -23,12 +25,12 @@ env:
   CFT_SHA256: "b711c720f774be355197f32edf37e0651418ba036d92446ee2da19ac017540a7"
 
 jobs:
-  nightly:
-    name: race suite, real media, browser matrix, accessibility
+  gate:
+    name: race suite and real media
     runs-on: [tend-ci, linux-amd64]
     container:
       image: docker.gitea.com/runner-images:ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     env:
       CI: "true"
     steps:
@@ -41,10 +43,45 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - name: Install make, the C compiler for -race, ffmpeg and unzip
+      - name: Install make, the C compiler for -race and ffmpeg
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends make gcc libc6-dev ffmpeg unzip curl ca-certificates
+          apt-get install -y --no-install-recommends make gcc libc6-dev ffmpeg
+      - name: Record toolchain and candidate identity
+        run: |
+          git rev-parse HEAD
+          go version
+          ffmpeg -version | head -1
+      - name: Gate (gofmt, vet, race tests; the browser tests skip)
+        run: make check
+      - name: Real-ffmpeg media, scan and cover tests
+        run: |
+          make test-media
+          make test-scan-real
+          make test-mediajobs-real
+
+  browser:
+    name: browser tests, screenshot matrix, accessibility
+    runs-on: [tend-ci, linux-amd64]
+    container:
+      image: docker.gitea.com/runner-images:ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      CI: "true"
+    steps:
+      - name: Check out the exact candidate
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # checkout v7
+        with:
+          persist-credentials: false
+      - name: Install the Go version declared by the module
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # setup-go v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Install make and unzip
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends make unzip curl ca-certificates
       - name: Install the pinned Chromium and its libraries
         run: |
           set -euo pipefail
@@ -73,15 +110,9 @@ jobs:
         run: |
           git rev-parse HEAD
           go version
-          ffmpeg -version | head -1
           "$TENDSHELF_TEST_BROWSER" --version
-      - name: Gate (gofmt, vet, race tests)
-        run: make check
-      - name: Real-ffmpeg media, scan and cover tests
-        run: |
-          make test-media
-          make test-scan-real
-          make test-mediajobs-real
+      - name: Browser tests (everything except the three sets below)
+        run: make browser
       - name: Browser screenshot matrix (all themes and widths)
         run: make visual-full
       - name: Accessibility audit (WCAG 2.2 AA, contrast theme 7:1)
