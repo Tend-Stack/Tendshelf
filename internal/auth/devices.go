@@ -21,9 +21,13 @@ const (
 	KindPWA     DeviceKind = "pwa"
 	KindDesktop DeviceKind = "desktop"
 	KindMobile  DeviceKind = "mobile"
+	// The two app-key kinds (decision 0025). They open one surface each and never sign in.
+	KindOPDS     DeviceKind = "opds"
+	KindKOReader DeviceKind = "koreader"
 )
 
-// ParseDeviceKind returns the kind named by s and whether it is one of the four.
+// ParseDeviceKind returns the kind named by s and whether it is one of the four sign-in kinds. The two
+// key kinds are left out on purpose, so POST /api/v1/auth/token cannot mint a key.
 func ParseDeviceKind(s string) (DeviceKind, bool) {
 	switch k := DeviceKind(s); k {
 	case KindWeb, KindPWA, KindDesktop, KindMobile:
@@ -41,6 +45,10 @@ func KindLabel(k DeviceKind) string {
 		return "Phone app"
 	case KindPWA:
 		return "Installed app"
+	case KindOPDS:
+		return "Book app"
+	case KindKOReader:
+		return "KOReader"
 	}
 	return "Web app"
 }
@@ -108,30 +116,39 @@ func DeviceName(raw string, kind DeviceKind) string {
 // token, which is shown once and never stored. It first retires tokens idle past DeviceIdleTTL and
 // prunes rows revoked long ago, then refuses with ErrTooManyDevices at MaxLiveDevices.
 func (d *Devices) Issue(ctx context.Context, tx *sql.Tx, userID, name string, kind DeviceKind) (string, Device, error) {
+	tok, hash := NewToken()
+	dev, err := d.insert(ctx, tx, userID, name, kind, hash)
+	if err != nil {
+		return "", Device{}, err
+	}
+	return tok, dev, nil
+}
+
+// insert prunes, checks the limit and stores one device row with the given hash. Issue and IssueKey share it.
+func (d *Devices) insert(ctx context.Context, tx *sql.Tx, userID, name string, kind DeviceKind, hash [32]byte) (Device, error) {
 	now := d.now().UnixMilli()
 	if _, err := tx.ExecContext(ctx, `DELETE FROM devices WHERE user_id = ? AND revoked_at IS NOT NULL AND revoked_at < ?`,
 		userID, now-revokedKeep.Milliseconds()); err != nil {
-		return "", Device{}, err
+		return Device{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE devices SET revoked_at = ?, token_hash = NULL
 		WHERE user_id = ? AND revoked_at IS NULL AND COALESCE(last_seen_at, created_at) < ?`,
 		now, userID, now-DeviceIdleTTL.Milliseconds()); err != nil {
-		return "", Device{}, err
+		return Device{}, err
 	}
 	var live int
 	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM devices WHERE user_id = ? AND revoked_at IS NULL`, userID).Scan(&live); err != nil {
-		return "", Device{}, err
+		return Device{}, err
 	}
 	if live >= MaxLiveDevices {
-		return "", Device{}, ErrTooManyDevices
+		return Device{}, ErrTooManyDevices
 	}
-	tok, hash := NewToken()
 	dev := Device{ID: db.NewID("dev"), UserID: userID, Name: DeviceName(name, kind), Kind: kind, CreatedAt: now}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO devices (id, user_id, name, kind, token_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
 		dev.ID, dev.UserID, dev.Name, string(dev.Kind), hash[:], dev.CreatedAt); err != nil {
-		return "", Device{}, err
+		return Device{}, err
 	}
-	return tok, dev, nil
+	return dev, nil
 }
 
 // Lookup finds the live device for a bearer token and its account. It returns ErrNoDevice when
@@ -143,6 +160,12 @@ func (d *Devices) Lookup(ctx context.Context, tok string) (Device, users.User, e
 	if !ok {
 		return Device{}, users.User{}, ErrNoDevice
 	}
+	return d.lookup(ctx, hash, "")
+}
+
+// lookup finds the live device with this hash. kind "" means a sign-in kind (never a key); otherwise
+// the row must be exactly that key kind, so a key of one surface never opens another.
+func (d *Devices) lookup(ctx context.Context, hash [32]byte, want DeviceKind) (Device, users.User, error) {
 	var dev Device
 	var u users.User
 	var role, kind string
@@ -150,7 +173,8 @@ func (d *Devices) Lookup(ctx context.Context, tok string) (Device, users.User, e
 	var lastSeen sql.NullInt64
 	err := d.st.Reader().QueryRowContext(ctx, `SELECT d.id, d.name, d.kind, d.created_at, d.last_seen_at,
 			u.id, u.username, u.display_name, COALESCE(u.email, ''), u.role, u.disabled, u.created_at, COALESCE(u.last_seen_at, 0)
-		FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token_hash = ? AND d.revoked_at IS NULL`, hash[:]).Scan(
+		FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token_hash = ? AND d.revoked_at IS NULL
+			AND CASE WHEN ? = '' THEN d.kind NOT IN ('opds', 'koreader') ELSE d.kind = ? END`, hash[:], string(want), string(want)).Scan(
 		&dev.ID, &dev.Name, &kind, &dev.CreatedAt, &lastSeen,
 		&u.ID, &u.Username, &u.DisplayName, &u.Email, &role, &disabled, &u.CreatedAt, &u.LastSeenAt)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -204,7 +228,7 @@ func (d *Devices) ListAll(ctx context.Context) ([]Device, error) {
 }
 
 func (d *Devices) list(ctx context.Context, where string, args ...any) ([]Device, error) {
-	rows, err := d.st.Reader().QueryContext(ctx, `SELECT `+deviceColumns+` FROM devices WHERE revoked_at IS NULL`+where+
+	rows, err := d.st.Reader().QueryContext(ctx, `SELECT `+deviceColumns+` FROM devices WHERE revoked_at IS NULL AND kind NOT IN ('opds', 'koreader')`+where+
 		` ORDER BY COALESCE(last_seen_at, created_at) DESC, id`, args...)
 	if err != nil {
 		return nil, err
