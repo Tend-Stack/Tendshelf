@@ -105,10 +105,9 @@ func TestMergedFilesAreNotMovedFilesOfAnotherBook(t *testing.T) {
 
 func TestMergedRestoreReturnsTheFolder(t *testing.T) {
 	e, _, dropRoot := mergedEnv(t)
-	lib := e.lib.ID
-	ok, err := e.repo.RestoreMergedFolder(bg, lib, dropRoot, "")
-	if err != nil || !ok {
-		t.Fatalf("restore = %v, %v", ok, err)
+	lib, err := e.repo.RestoreMergedFolder(bg, dropRoot, "")
+	if err != nil || lib != e.lib.ID {
+		t.Fatalf("restore = %q, %v", lib, err)
 	}
 	res := e.scan()
 	if res.BooksAdded != 1 || res.BooksMerged != 0 {

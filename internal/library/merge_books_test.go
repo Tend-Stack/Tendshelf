@@ -320,14 +320,14 @@ func TestDupRestoreMergedFolder(t *testing.T) {
 	if err := r.MergeBooks(ctx, keep.ID, drop.ID, dupUser); err != nil {
 		t.Fatal(err)
 	}
-	ok, err := r.RestoreMergedFolder(ctx, drop.LibraryID, drop.RootPath, dupUser)
-	if err != nil || !ok {
-		t.Fatalf("restore = %v, %v", ok, err)
+	lib, err := r.RestoreMergedFolder(ctx, drop.RootPath, dupUser)
+	if err != nil || lib != drop.LibraryID {
+		t.Fatalf("restore = %q, %v", lib, err)
 	}
 	if m, _ := r.MergedFolders(ctx, drop.LibraryID); len(m) != 0 {
 		t.Errorf("merged folders after restore = %v", m)
 	}
-	if ok, _ := r.RestoreMergedFolder(ctx, drop.LibraryID, drop.RootPath, dupUser); ok {
+	if lib, _ := r.RestoreMergedFolder(ctx, drop.RootPath, dupUser); lib != "" {
 		t.Error("a second restore reported a folder")
 	}
 }

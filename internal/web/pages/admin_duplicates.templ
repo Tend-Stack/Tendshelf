@@ -1,0 +1,191 @@
+package pages
+
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+// DupRow is one copy in a group. The first copy of a group is the suggested one to keep and has no actions;
+// every other copy can be merged into it or marked "not the same". The handler writes every word.
+type DupRow struct {
+	Title, Href, Path, Meta, People string
+	First                           bool
+	MergeHref, MergeLabel, MergeAria string
+	NotSameAction, NotSameLabel, NotSameAria string
+	A, B                            string
+}
+
+// DupGroup is copies of one book, with the reason they were grouped.
+type DupGroup struct {
+	Head, Note string
+	Rows       []DupRow
+}
+
+// AdminDuplicatesView is /admin/duplicates.
+type AdminDuplicatesView struct {
+	CSRF, Title, Lead, Empty, Banner, Suggested string
+	HiddenHref, HiddenLabel                     string
+	Groups                                      []DupGroup
+}
+
+// AdminDuplicates lists groups of copies of the same audiobook and offers a merge for each.
+templ AdminDuplicates(v AdminDuplicatesView) {
+	<div class="ts-admin ts-admin--list ts-dup">
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		if v.Banner != "" {
+			<p class="ts-banner ts-admin__banner" role="status">
+				@components.Icon("check", false)
+				{ v.Banner }
+			</p>
+		}
+		<p class="body-lg ts-admin__lead">{ v.Lead }</p>
+		if len(v.Groups) == 0 {
+			<p class="body ts-admin__lead" role="status">{ v.Empty }</p>
+		}
+		for i, g := range v.Groups {
+			<section class="ts-group ts-group--pad ts-dup__group" aria-labelledby={ "dup-h-" + strconv.Itoa(i) }>
+				<h2 id={ "dup-h-" + strconv.Itoa(i) } class="section">{ g.Head }</h2>
+				<p class="caption ts-admin__lead">{ g.Note }</p>
+				<ul class="ts-needs">
+					for _, r := range g.Rows {
+						<li class="ts-needs__row">
+							<div class="ts-needs__text">
+								<a class="body ts-needs__title" href={ templ.SafeURL(r.Href) }>{ r.Title }</a>
+								<span class="caption ts-needs__author ts-dup__path">{ r.Path }</span>
+								<span class="caption ts-needs__outcome ts-num">{ r.Meta }</span>
+								if r.People != "" {
+									<span class="caption ts-needs__outcome">{ r.People }</span>
+								}
+								if r.First {
+									<span class="caption ts-dup__tag">{ v.Suggested }</span>
+								}
+							</div>
+							if !r.First {
+								<div class="ts-needs__actions">
+									<a class="ts-btn ts-btn--primary" href={ templ.SafeURL(r.MergeHref) } aria-label={ r.MergeAria }>{ r.MergeLabel }</a>
+									<form class="ts-pair__form" method="post" action={ templ.URL(r.NotSameAction) }>
+										<input type="hidden" name="_csrf" value={ v.CSRF }/>
+										<input type="hidden" name="a" value={ r.A }/>
+										<input type="hidden" name="b" value={ r.B }/>
+										<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ r.NotSameAria }>{ r.NotSameLabel }</button>
+									</form>
+								</div>
+							}
+						</li>
+					}
+				</ul>
+			</section>
+		}
+		<p class="caption"><a href={ templ.SafeURL(v.HiddenHref) }>{ v.HiddenLabel }</a></p>
+	</div>
+}
+
+// DupCopy is one copy on the confirm page.
+type DupCopy struct {
+	Head, Title, Href, Path, Meta string
+}
+
+// AdminDupMergeView is /admin/duplicates/merge: the confirm page. With Error set it shows the refusal and no form.
+type AdminDupMergeView struct {
+	CSRF, Title, Lead, Error                string
+	Keep, Drop                              DupCopy
+	MovesHead                               string
+	Moves, Notes                            []string
+	KeepID, DropID                          string
+	Merge, Cancel, CancelHref, Swap, SwapHref string
+}
+
+// AdminDupMerge says what a merge does, in plain words, before it does it.
+templ AdminDupMerge(v AdminDupMergeView) {
+	<div class="ts-admin ts-admin--list ts-dup">
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		if v.Error != "" {
+			<p class="body ts-users__error" role="alert">{ v.Error }</p>
+		}
+		<p class="body-lg ts-admin__lead">{ v.Lead }</p>
+		<div class="ts-dup__pair">
+			@dupCopy(v.Keep)
+			@dupCopy(v.Drop)
+		</div>
+		<section class="ts-group ts-group--pad" aria-labelledby="dup-moves-h">
+			<h2 id="dup-moves-h" class="section">{ v.MovesHead }</h2>
+			<ul class="ts-dup__list">
+				for _, m := range v.Moves {
+					<li class="body">{ m }</li>
+				}
+			</ul>
+		</section>
+		for _, n := range v.Notes {
+			<p class="body ts-dup__note">{ n }</p>
+		}
+		if v.Merge != "" {
+			<form class="ts-dup__actions" method="post" action="/admin/duplicates/merge">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<input type="hidden" name="keep" value={ v.KeepID }/>
+				<input type="hidden" name="drop" value={ v.DropID }/>
+				<button type="submit" class="ts-btn ts-btn--primary">{ v.Merge }</button>
+				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.SwapHref) }>{ v.Swap }</a>
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.CancelHref) }>{ v.Cancel }</a>
+			</form>
+		} else {
+			<p><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.CancelHref) }>{ v.Cancel }</a></p>
+		}
+	</div>
+}
+
+templ dupCopy(c DupCopy) {
+	<section class="ts-group ts-group--pad ts-dup__copy">
+		<h2 class="section">{ c.Head }</h2>
+		<a class="body" href={ templ.SafeURL(c.Href) }>{ c.Title }</a>
+		<span class="caption ts-dup__path">{ c.Path }</span>
+		<span class="caption ts-num">{ c.Meta }</span>
+	</section>
+}
+
+// DupMergedRow is one folder that was merged away.
+type DupMergedRow struct {
+	Path, Kept, KeptHref, Action, Aria string
+}
+
+// AdminDupMergedView is /admin/duplicates/merged.
+type AdminDupMergedView struct {
+	CSRF, Title, Lead, Empty, Banner, Back, BackHref string
+	Rows                                             []DupMergedRow
+}
+
+// AdminDupMerged lists the folders Tendshelf leaves out because their copy was merged, with "Show that copy again".
+templ AdminDupMerged(v AdminDupMergedView) {
+	<div class="ts-admin ts-admin--list ts-dup">
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		if v.Banner != "" {
+			<p class="ts-banner ts-admin__banner" role="status">
+				@components.Icon("check", false)
+				{ v.Banner }
+			</p>
+		}
+		<p class="body-lg ts-admin__lead">{ v.Lead }</p>
+		if len(v.Rows) == 0 {
+			<p class="body ts-admin__lead" role="status">{ v.Empty }</p>
+		} else {
+			<ul class="ts-group ts-group--pad ts-needs">
+				for _, r := range v.Rows {
+					<li class="ts-needs__row">
+						<div class="ts-needs__text">
+							<span class="body ts-dup__path">{ r.Path }</span>
+							<a class="caption ts-needs__author" href={ templ.SafeURL(r.KeptHref) }>{ r.Kept }</a>
+						</div>
+						<div class="ts-needs__actions">
+							<form class="ts-pair__form" method="post" action="/admin/duplicates/merged/restore">
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<input type="hidden" name="root_path" value={ r.Path }/>
+								<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ r.Aria }>{ r.Action }</button>
+							</form>
+						</div>
+					</li>
+				}
+			</ul>
+		}
+		<p class="caption"><a href={ templ.SafeURL(v.BackHref) }>{ v.Back }</a></p>
+	</div>
+}

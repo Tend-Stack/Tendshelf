@@ -112,8 +112,8 @@ func (s *Service) Reading(ctx context.Context, userID, bookID string) (ReadingPo
 	return p, err == nil, err
 }
 
-// resolveBook follows a merged-away text book id to the book that took over, so a reader that was open
-// when the merge happened saves its place on the right book.
+// resolveBook follows a merged-away book id (a text book, or one copy of an audiobook) to the book that took
+// over, so a reader or player that was open, or an outbox queued, before the merge saves on the right book.
 func resolveBook(ctx context.Context, tx *sql.Tx, bookID string) (string, error) {
 	var to string
 	err := tx.QueryRowContext(ctx, `SELECT to_id FROM merged_books WHERE from_id = ?`, bookID).Scan(&to)

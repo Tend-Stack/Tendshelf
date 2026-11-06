@@ -149,22 +149,20 @@ func (r *Repo) MergeBooks(ctx context.Context, keep, drop, userID string) error 
 }
 
 // RestoreMergedFolder forgets a merged-away folder, so the next scan adds it again as a new book. What moved to
-// the kept book when the copies were merged stays there. It reports whether the folder was remembered.
-func (r *Repo) RestoreMergedFolder(ctx context.Context, libraryID, rootPath, userID string) (bool, error) {
-	ok := false
-	err := r.st.WriteTx(ctx, func(tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `DELETE FROM merged_folders WHERE library_id = ? AND root_path = ?`, libraryID, rootPath)
-		if err != nil {
-			return err
+// the kept book when the copies were merged stays there. It returns the folder's library, or "" when the folder
+// was not remembered.
+func (r *Repo) RestoreMergedFolder(ctx context.Context, rootPath, userID string) (libraryID string, err error) {
+	err = r.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		qerr := tx.QueryRowContext(ctx, `DELETE FROM merged_folders WHERE root_path = ? RETURNING library_id`, rootPath).Scan(&libraryID)
+		if errors.Is(qerr, sql.ErrNoRows) {
+			return nil
 		}
-		n, err := res.RowsAffected()
-		ok = n > 0
-		if err != nil || !ok {
-			return err
+		if qerr != nil {
+			return qerr
 		}
 		return db.Audit(ctx, tx, db.AuditEntry{At: r.nowMs(), UserID: userID, Action: "book.merge_undo", Target: "library:" + libraryID, Detail: map[string]any{"root": rootPath}})
 	})
-	return ok, err
+	return libraryID, err
 }
 
 // MergedFolders lists the folders merged away in a library, as root path to the kept book's id. A scan reads

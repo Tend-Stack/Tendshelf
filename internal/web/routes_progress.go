@@ -57,7 +57,7 @@ func jsonError(w http.ResponseWriter, status int, code, field string) {
 // playableFor loads a book the person may listen to. A hidden, unknown, refused or missing book is
 // library.ErrNotFound, whatever the reason, so a caller can answer the same 404 for all of them.
 func (s *server) playableFor(ctx context.Context, u users.User, id string) (library.Book, error) {
-	b, err := s.lib.Book(ctx, id)
+	b, err := s.lib.Book(ctx, s.followMerged(ctx, id))
 	if err != nil {
 		return library.Book{}, err
 	}
@@ -98,7 +98,7 @@ func progressJSON(p progress.Progress) map[string]any {
 
 // getProgress answers GET /progress/{bookID}: the signed-in person's own progress, or null.
 func (s *server) getProgress(w http.ResponseWriter, r *http.Request) {
-	b, ok := s.playableBook(w, r, r.PathValue("bookID"))
+	b, ok := s.playableBook(w, r, s.followMerged(r.Context(), r.PathValue("bookID")))
 	if !ok {
 		return
 	}
@@ -155,7 +155,7 @@ func (s *server) postProgress(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusUnsupportedMediaType, "unsupported", "")
 		return
 	}
-	b, ok := s.playableBook(w, r, r.PathValue("bookID"))
+	b, ok := s.playableBook(w, r, s.followMerged(r.Context(), r.PathValue("bookID")))
 	if !ok {
 		return
 	}
@@ -244,7 +244,7 @@ func (s *server) postFinished(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		b, ok = s.playableBook(w, r, r.PathValue("id"))
+		b, ok = s.playableBook(w, r, s.followMerged(r.Context(), r.PathValue("id")))
 	}
 	if !ok {
 		return

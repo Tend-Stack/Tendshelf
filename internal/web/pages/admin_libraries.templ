@@ -43,6 +43,8 @@ type AdminLibrariesView struct {
 	Watch *AdminWatchView
 	// EbooksHref and EbooksLabel link /admin/ebooks ("Ebooks"), with no count; empty when ebooks are off.
 	EbooksHref, EbooksLabel string
+	// DuplicatesHref and DuplicatesLabel link /admin/duplicates ("Duplicate books", S4).
+	DuplicatesHref, DuplicatesLabel string
 }
 
 // AdminWatchView is the section where each library's "Watch for new books" and scheduled scan are set.
@@ -133,6 +135,9 @@ templ AdminLibraries(v AdminLibrariesView) {
 			<p class="caption ts-num ts-admin__last">{ v.LastScan }</p>
 			if v.EbooksHref != "" {
 				<div class="ts-admin__actions"><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.EbooksHref) }>{ v.EbooksLabel }</a></div>
+			}
+			if v.DuplicatesHref != "" {
+				<div class="ts-admin__actions"><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.DuplicatesHref) }>{ v.DuplicatesLabel }</a></div>
 			}
 			<div class="ts-admin__actions">
 				<form method="post" action="/admin/libraries/scan">

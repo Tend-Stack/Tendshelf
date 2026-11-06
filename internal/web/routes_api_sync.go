@@ -150,7 +150,7 @@ func (s *server) apiSaveProgress(r *http.Request, b library.Book, in progressInp
 }
 
 func (s *server) putAPIProgress(w http.ResponseWriter, r *http.Request) {
-	b, ok := s.playableBook(w, r, r.PathValue("bookID"))
+	b, ok := s.playableBook(w, r, s.followMerged(r.Context(), r.PathValue("bookID")))
 	if !ok {
 		return
 	}
@@ -400,7 +400,7 @@ func (s *server) getAPIBookmarkFeed(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) postAPIBookmark(w http.ResponseWriter, r *http.Request) {
-	b, ok := s.loadBook(w, r, r.PathValue("id"), share.ListenBook)
+	b, ok := s.loadBook(w, r, s.followMerged(r.Context(), r.PathValue("id")), share.ListenBook)
 	if !ok {
 		return
 	}
