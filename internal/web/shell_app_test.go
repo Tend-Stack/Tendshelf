@@ -196,7 +196,7 @@ func TestA1ShellMarkChangesNoStatus(t *testing.T) {
 	}
 }
 
-// TestA1ShellPage: the Android window loads native-audio.js and native-downloads.js and not offline.js, keeps the
+// TestA1ShellPage: the Android window loads native-audio.js and native-downloads.js and offline.js (A9, decision 0027; its worker and download code stay off by data-shell), keeps the
 // Downloads link as a plain navigation (A7: the app draws that page) and says data-shell; a browser page has none of that and the same security headers.
 func TestA1ShellPage(t *testing.T) {
 	a := newTestApp(t)
@@ -209,7 +209,7 @@ func TestA1ShellPage(t *testing.T) {
 			t.Errorf("%q: android %v, browser %v", want, strings.Contains(ab, want), strings.Contains(pb, want))
 		}
 	}
-	if strings.Contains(ab, "/js/offline.") || !strings.Contains(pb, "/js/offline.") {
+	if !strings.Contains(ab, "/js/offline.") || !strings.Contains(pb, "/js/offline.") {
 		t.Errorf("offline.js: android %v, browser %v", strings.Contains(ab, "/js/offline."), strings.Contains(pb, "/js/offline."))
 	}
 	// A7: both windows list Downloads; only the app's links are not boosted, because htmx navigations never reach the

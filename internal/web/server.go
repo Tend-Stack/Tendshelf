@@ -394,7 +394,7 @@ func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, 
 		Offline:      offlineMsgs(),
 		Shell:        shell,
 		NoInstall:    shell != "",
-		NoOffline:    shell != "",
+		NoOffline:    noOfflineScript(shell),
 		Crumb:        crumbFor(r.URL.Path),
 		AddBooks:     s.desktopAddBooks(r, shell),
 	}, body).Render(r.Context(), &buf)
@@ -422,7 +422,7 @@ func (s *server) frame(w http.ResponseWriter, r *http.Request, status int, title
 		Styles:    styles,
 		Shell:     shellFrom(r),
 		NoInstall: shellFrom(r) != "",
-		NoOffline: shellFrom(r) != "",
+		NoOffline: noOfflineScript(shellFrom(r)),
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render frame", "path", logPath(r), "err", err)
@@ -535,3 +535,7 @@ func crumbFor(path string) components.Crumb {
 	}
 	return components.Crumb{}
 }
+
+// noOfflineScript keeps offline.js out of a shell window, except the Android app's: there it carries the reading
+// flush and the bookmark queue (A9, decision 0027) and its worker and download code stay off by data-shell.
+func noOfflineScript(shell string) bool { return shell != "" && shell != "android" }
