@@ -180,6 +180,10 @@ func a11ySeed(t *testing.T) *a11yEnv {
 		t.Fatal(err)
 	} else {
 		e.PairToken, e.PairID = tok, p.ID
+		// The audit takes longer than a pairing lasts: this one must outlive it.
+		if _, err := a.st.Writer().ExecContext(ctx, `UPDATE device_pairings SET expires_at = expires_at + 3600000 WHERE id = ?`, p.ID); err != nil {
+			t.Fatal(err)
+		}
 	}
 	as("main/owner", a, ownerCk)
 	as("main/member", a, memberCk)
