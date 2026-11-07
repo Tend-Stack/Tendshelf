@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/Tend-Stack/tendshelf/internal/share"
 )
 
 // Browse reads: the lists, cards, facets and detail pages the listener sees. Every query carries the
@@ -51,6 +53,9 @@ type ListQuery struct {
 	Sort                           Sort
 	Genres                         []string // every genre must match
 	AuthorID, NarratorID, SeriesID string
+	// AddedBy keeps the books one person's uploads published (upload_books, decision 0029). The caller decides
+	// whose id may be asked for; an unknown id matches nothing.
+	AddedBy string
 	// Title keeps the books whose title contains it, ignoring case (at most 100 runes; % and _ are
 	// literal). MinDurationMs is inclusive and MaxDurationMs exclusive; 0 leaves that side open.
 	Title                        string
@@ -263,6 +268,9 @@ func whereExcept(sc Scope, q ListQuery, skip string) *whereClause {
 	}
 	for _, g := range q.Genres {
 		w.add("EXISTS (SELECT 1 FROM book_labels x WHERE x.book_id = b.id AND x.kind = 'genre' AND x.value = ?)", g)
+	}
+	if q.AddedBy != "" && skip != "added" {
+		w.add(share.AddedBySQL("b"), q.AddedBy)
 	}
 	if q.AuthorID != "" && skip != "author" {
 		w.add("EXISTS (SELECT 1 FROM book_people x WHERE x.book_id = b.id AND x.role = 'author' AND x.person_id = ?)", q.AuthorID)

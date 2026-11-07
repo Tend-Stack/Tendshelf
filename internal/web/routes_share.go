@@ -313,11 +313,13 @@ func (s *server) inviteSpec(r *http.Request, bookID string) (share.InviteSpec, s
 			return spec, "", shareFormError(shareErrEmailBad)
 		}
 	}
-	switch role := users.Role(f.Get("role")); role {
-	case "", users.RoleGuest:
+	switch role := f.Get("role"); users.Kind(role) {
+	case "", users.KindGuest:
 		spec.Role = users.RoleGuest
-	case users.RoleMember, users.RoleAdmin:
-		spec.Role = role
+	case users.KindContributor:
+		spec.Role, spec.AddsBooks = users.RoleMember, true
+	case users.KindMember, users.KindAdmin:
+		spec.Role = users.Role(role)
 	default:
 		return spec, "", shareFormError(shareErrRole)
 	}

@@ -140,7 +140,7 @@ func (s *Service) local(ctx context.Context, tx *library.Tx, bookID string) (boo
 	}
 	single := len(files) == 1 && files[0].Path == b.RootPath
 
-	fromFolder := FromPath(folder.Path, b.RootPath, single)
+	fromFolder := FromPath(s.folderBase(ctx, folder, b.RootPath), b.RootPath, single)
 	fromFolder.fillProduction()
 	fromTags := FromTags(firstTags(files), single)
 	fromTags.fillProduction()
@@ -171,7 +171,7 @@ func (s *Service) localText(ctx context.Context, tx *library.Tx, b library.Book)
 	}
 	var fromFolder Details
 	if rel, err := filepath.Rel(folder.Path, b.RootPath); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
-		fromFolder = FromPath(folder.Path, b.RootPath, true)
+		fromFolder = FromPath(s.folderBase(ctx, folder, b.RootPath), b.RootPath, true)
 		fromFolder.fillProduction()
 	}
 	fromFile := Details{Title: tm.Title, Subtitle: tm.Subtitle, Authors: tm.Authors, Language: tm.Language, ISBN: tm.ISBN,
@@ -377,4 +377,14 @@ func syncGenres(tx *library.Tx, bookID string, genres []string) (bool, error) {
 		return false, nil
 	}
 	return true, tx.SetBookLabels(bookID, library.LabelGenre, genres)
+}
+
+// folderBase is where FromPath starts reading "Author/Series/Title" for a book: the library folder, or the
+// contributor's own folder ("Added by Ana") when the book lies inside one, so that name is never an author.
+func (s *Service) folderBase(ctx context.Context, folder library.Folder, bookRoot string) string {
+	p, err := s.repo.ContributorFolderOf(ctx, folder.ID, bookRoot)
+	if err != nil || p == "" {
+		return folder.Path
+	}
+	return p
 }

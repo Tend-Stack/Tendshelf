@@ -369,9 +369,9 @@ func (s *server) postPersonRole(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	to := users.Role(r.PostForm.Get("role"))
-	valid := to == users.RoleAdmin || to == users.RoleMember || to == users.RoleGuest
-	newRole := to
+	to := users.Kind(r.PostForm.Get("role"))
+	newRole, _, perr := users.ParseKind(string(to))
+	valid := perr == nil
 	if !valid {
 		newRole = ""
 	}
@@ -379,11 +379,11 @@ func (s *server) postPersonRole(w http.ResponseWriter, r *http.Request) {
 		if !valid {
 			return formError(usersErrRole)
 		}
-		from, err := s.users.SetRole(ctx, tx, actor.ID, id, to)
+		from, err := s.users.SetKind(ctx, tx, actor.ID, id, to)
 		if err != nil {
 			return err
 		}
-		if to == users.RoleAdmin && from != users.RoleAdmin {
+		if to == users.KindAdmin && from != users.KindAdmin {
 			// Admins see everything by role; grants left behind would come back on a demotion.
 			_, err = s.grants.RevokeAll(ctx, tx, actor, id)
 		}

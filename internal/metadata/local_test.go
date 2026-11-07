@@ -543,3 +543,36 @@ func TestSidecarFinisher(t *testing.T) {
 		t.Fatalf("%d jobs after removing desc.txt, want 1", n)
 	}
 }
+
+// TestLocalStartsAtTheContributorFolder (decision 0029): a book under "Added by Ana/Elias Varn/The Book" reads
+// author Elias Varn and no series once the folder is a contributor folder; without it the folder name would
+// be taken for the author.
+func TestLocalStartsAtTheContributorFolder(t *testing.T) {
+	for _, registered := range []bool{true, false} {
+		e := newEnv(t, mediatest.FakeTools(t))
+		e.write("Added by Ana/Elias Varn/The Book/01.mp3", mediatest.FakeFile{Container: "mp3", Codec: "mp3", BitRate: 64000})
+		e.scanAndProbe()
+		b := e.book("Added by Ana/Elias Varn/The Book")
+		if registered {
+			folders, _ := e.repo.Folders(bg, e.lib.ID)
+			if _, err := e.st.Writer().Exec(`INSERT INTO users(id, username, role, created_at) VALUES ('u1', 'ana', 'owner', 1)`); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := e.st.Writer().Exec(`INSERT INTO contributor_folders(folder_id, user_id, path, created_at) VALUES (?, 'u1', ?, 1)`,
+				folders[0].ID, filepath.Join(e.root, "Added by Ana")); err != nil {
+				t.Fatal(err)
+			}
+		}
+		e.local(b.ID)
+		people, _ := e.repo.BookPeople(bg, b.ID)
+		series, _ := e.repo.BookSeries(bg, b.ID)
+		authors := names(people, "author")
+		if registered {
+			if !reflect.DeepEqual(authors, []string{"Elias Varn"}) || len(series) != 0 {
+				t.Errorf("registered: authors %v series %+v", authors, series)
+			}
+		} else if !reflect.DeepEqual(authors, []string{"Added by Ana"}) {
+			t.Errorf("unregistered: authors %v (the control must show the folder name leaking)", authors)
+		}
+	}
+}
