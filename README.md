@@ -5,7 +5,7 @@ or the desktop app, and pick up exactly where you left off on any device. It has
 notes, a sleep timer, offline downloads, a book reader with highlights and search, a listening and
 reading dashboard, and sharing with family by link or invitation.
 
-**Current release: 2026.3.** See [CHANGELOG.md](CHANGELOG.md) for what each
+**Current release: 2026.4.** See [CHANGELOG.md](CHANGELOG.md) for what each
 release adds and its known limits, and [docs/roadmap.md](docs/roadmap.md) for what is built and which
 checks are still open.
 

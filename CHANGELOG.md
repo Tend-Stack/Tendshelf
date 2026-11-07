@@ -2,7 +2,10 @@
 
 Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-numbers.md)). Dates are UTC.
 
-## Unreleased
+## 2026.4.0
+
+Released 2026-11-07. It brings the Android app, adding a phone with a QR code, a chapter bar you can point at, and a
+full player that slides up and swipes away.
 
 ### What you can do
 
@@ -31,6 +34,11 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
   a proper icon. It is signed with your own key when you provide one and left clearly unsigned when you do not. Two builds
   of the same source give the same APK. The steps, including how to make your own key and how to upgrade, are in
   `docs/android.md`. A phone with a test build needs one uninstall before the first release APK.
+
+### Upgrading
+
+This release uses database schema 33 (it was 32 in 2026.3.0). Before Tendshelf upgrades an existing database it writes a
+verified copy to `backups` in the data folder, and an older program refuses a database made by this one.
 
 ## 2026.3.0
 
