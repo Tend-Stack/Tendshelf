@@ -2,6 +2,7 @@ package share
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +19,9 @@ import (
 //	u_shelf: shelf sh_adm            u_none: nothing
 //	u_exp: book bk_b1, expired       u_memshelf: shelf sh_mem (raw; Put refuses it)
 //	u_g (guest): book bk_b1, download and read   u_dis (disabled): library lib_a
+//	contributors (decision 0029): u_con has library lib_a and added bk_b1 (library lib_b, no grant);
+//	u_con2 has no grant and added bk_a2; u_condis (disabled) added bk_b2; u_stale is a plain member with a
+//	library lib_a grant and an upload_books row for bk_a1 (a demoted contributor).
 type fixture struct {
 	st    *db.Store
 	c     *Checker
@@ -48,13 +52,20 @@ func openFixture(t *testing.T) *fixture {
 		{"u_lib", users.RoleMember, false}, {"u_all", users.RoleMember, false}, {"u_shelf", users.RoleMember, false},
 		{"u_none", users.RoleMember, false}, {"u_exp", users.RoleMember, false}, {"u_memshelf", users.RoleMember, false},
 		{"u_g", users.RoleGuest, false}, {"u_dis", users.RoleMember, true},
+		{"u_con", users.RoleMember, false}, {"u_con2", users.RoleMember, false}, {"u_condis", users.RoleMember, true},
+		{"u_stale", users.RoleMember, false},
 	} {
 		d := 0
 		if u.disabled {
 			d = 1
 		}
-		f.exec(t, `INSERT INTO users(id, username, role, disabled, created_at) VALUES (?, ?, ?, ?, 1)`, u.id, u.id, string(u.role), d)
-		f.users[u.id] = users.User{ID: u.id, Username: u.id, Role: u.role, Disabled: u.disabled}
+		adds := strings.HasPrefix(u.id, "u_con")
+		a := 0
+		if adds {
+			a = 1
+		}
+		f.exec(t, `INSERT INTO users(id, username, role, disabled, adds_books, created_at) VALUES (?, ?, ?, ?, ?, 1)`, u.id, u.id, string(u.role), d, a)
+		f.users[u.id] = users.User{ID: u.id, Username: u.id, Role: u.role, Disabled: u.disabled, AddsBooks: adds}
 	}
 	f.exec(t, `INSERT INTO libraries(id, name, created_at) VALUES ('lib_a', 'A', 1), ('lib_b', 'B', 1)`)
 	f.exec(t, `INSERT INTO library_folders(id, library_id, path, created_at) VALUES ('lf_a', 'lib_a', '/a', 1), ('lf_b', 'lib_b', '/b', 1)`)
@@ -76,6 +87,12 @@ func openFixture(t *testing.T) *fixture {
 	f.grant(t, "u_memshelf", "shelf", "sh_mem", 0, 0, 0)
 	f.grant(t, "u_g", "book", "bk_b1", 1, 1, future)
 	f.grant(t, "u_dis", "library", "lib_a", 0, 0, 0)
+	f.grant(t, "u_con", "library", "lib_a", 0, 0, 0)
+	f.grant(t, "u_stale", "library", "lib_a", 0, 0, 0)
+	for _, r := range [][2]string{{"u_con", "bk_b1"}, {"u_con2", "bk_a2"}, {"u_condis", "bk_b2"}, {"u_stale", "bk_a1"}} {
+		f.exec(t, `INSERT INTO upload_books(root_path, upload_id, library_id, added_by, created_at) VALUES (?, ?, ?, ?, 1)`,
+			"/"+r[1], "up_"+r[1], fixtureBooks[r[1]], r[0])
+	}
 	return f
 }
 

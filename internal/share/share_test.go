@@ -10,7 +10,7 @@ import (
 
 var allActions = []Action{
 	ViewLibrary, ViewBook, ListenBook, DownloadBook, EditBook, ReadText, DownloadText,
-	ManageLibraries, ManageJobs, ManageUsers, ManageServer, UseShelves, ViewShelf, AddBooks,
+	ManageLibraries, ManageJobs, ManageUsers, ManageServer, UseShelves, ViewShelf, AddBooks, RemoveBook, WriteFiles,
 }
 
 // roleWant states what an owner or admin may do with an action on a target kind. Shelves of
@@ -332,5 +332,128 @@ func TestFilterAliasPanics(t *testing.T) {
 			}()
 			c.BookFilter(users.User{Role: users.RoleOwner}, alias)
 		}()
+	}
+}
+
+// TestCanContributors is the decision 0029 table for a contributor: their own books (upload_books) open
+// without a grant and may be edited and removed, other people's books never may, books of a granted library
+// only listen and look, AddBooks follows an active whole-library or whole-server grant, nobody writes files,
+// and a disabled contributor or a demoted one (a member with a stale upload_books row) has nothing extra.
+func TestCanContributors(t *testing.T) {
+	f := openFixture(t)
+	ctx := context.Background()
+	set := func(ids ...string) map[string]bool {
+		m := map[string]bool{}
+		for _, id := range ids {
+			m[id] = true
+		}
+		return m
+	}
+	for _, c := range []struct {
+		id          string
+		granted     map[string]bool // books a grant opens (view and listen only: the grants have no download or read)
+		own         map[string]bool
+		libs        map[string]bool // libraries ViewLibrary opens
+		addLibs     map[string]bool
+		addServer   bool
+		shelvesOpen bool
+	}{
+		{"u_con", set("bk_a1", "bk_a2"), set("bk_b1"), set("lib_a", "lib_b"), set("lib_a"), true, true},
+		{"u_con2", nil, set("bk_a2"), set("lib_a"), nil, true, true},
+		{"u_condis", nil, nil, nil, nil, false, false},
+		{"u_stale", set("bk_a1", "bk_a2"), nil, set("lib_a"), nil, false, true},
+	} {
+		u := f.user(c.id)
+		for _, name := range []string{"server", "library a", "library b", "book a1", "book a2", "book b1", "book b2", "own shelf", "shared shelf", "other shelf", "admin user"} {
+			tg := map[string]Target{
+				"server":       {Kind: TargetServer},
+				"library a":    {Kind: TargetLibrary, ID: "lib_a"},
+				"library b":    {Kind: TargetLibrary, ID: "lib_b"},
+				"book a1":      {Kind: TargetBook, ID: "bk_a1", LibraryID: "lib_a"},
+				"book a2":      {Kind: TargetBook, ID: "bk_a2", LibraryID: "lib_a"},
+				"book b1":      {Kind: TargetBook, ID: "bk_b1", LibraryID: "lib_b"},
+				"book b2":      {Kind: TargetBook, ID: "bk_b2", LibraryID: "lib_b"},
+				"own shelf":    {Kind: TargetShelf, ID: "sh1", OwnerID: u.ID},
+				"shared shelf": {Kind: TargetShelf, ID: "sh3", OwnerID: "u_other", Shared: true},
+				"other shelf":  {Kind: TargetShelf, ID: "sh2", OwnerID: "u_other"},
+				"admin user":   {Kind: TargetUser, ID: "x", Role: users.RoleAdmin},
+			}[name]
+			for _, a := range allActions {
+				var want bool
+				switch tg.Kind {
+				case TargetServer:
+					want = a == AddBooks && c.addServer
+				case TargetLibrary:
+					want = (a == ViewLibrary && c.libs[tg.ID]) || (a == AddBooks && c.addLibs[tg.ID])
+				case TargetBook:
+					own, granted := c.own[tg.ID], c.granted[tg.ID]
+					switch a {
+					case ViewBook, ListenBook:
+						want = own || granted
+					case DownloadBook, ReadText, DownloadText, EditBook, RemoveBook:
+						want = own
+					}
+				case TargetShelf:
+					switch {
+					case !c.shelvesOpen:
+					case name == "own shelf":
+						want = a == UseShelves || a == ViewShelf
+					case name == "shared shelf":
+						want = a == ViewShelf
+					}
+				}
+				if got := f.c.Can(ctx, u, a, tg); got != want {
+					t.Errorf("%s %s on %s: got %v want %v", c.id, a, name, got, want)
+				}
+			}
+		}
+	}
+	// A contributor's grant for AddBooks must be whole-library or whole-server: a book or shelf grant is not enough,
+	// and an expired one ends it.
+	f.exec(t, `DELETE FROM grants WHERE user_id = 'u_con'`)
+	f.grant(t, "u_con", "book", "bk_a1", 0, 0, 0)
+	if f.c.Can(ctx, f.user("u_con"), AddBooks, Target{Kind: TargetLibrary, ID: "lib_a"}) {
+		t.Error("a book grant let a contributor add books to its library")
+	}
+	f.exec(t, `DELETE FROM grants WHERE user_id = 'u_con'`)
+	f.grant(t, "u_con", "all", "", 0, 0, 0)
+	if !f.c.Can(ctx, f.user("u_con"), AddBooks, Target{Kind: TargetLibrary, ID: "lib_b"}) {
+		t.Error("a whole-server grant did not let a contributor add books")
+	}
+	f.exec(t, `UPDATE grants SET expires_at = ? WHERE user_id = 'u_con'`, f.t0.UnixMilli())
+	if f.c.Can(ctx, f.user("u_con"), AddBooks, Target{Kind: TargetLibrary, ID: "lib_b"}) {
+		t.Error("an ended grant still let a contributor add books")
+	}
+}
+
+// TestContributorLibraryFilter: a library nobody granted shows for the person who added a book there, with
+// only that book, and for nobody else.
+func TestContributorLibraryFilter(t *testing.T) {
+	f := openFixture(t)
+	if got := f.visibleLibraries(t, f.user("u_con")); !got["lib_a"] || !got["lib_b"] {
+		t.Errorf("u_con libraries = %v, want lib_a and lib_b", got)
+	}
+	books := f.visibleBooks(t, f.user("u_con"))
+	for id, want := range map[string]bool{"bk_a1": true, "bk_a2": true, "bk_b1": true, "bk_b2": false} {
+		if books[id] != want {
+			t.Errorf("u_con sees %s = %v, want %v", id, books[id], want)
+		}
+	}
+	for _, id := range []string{"u_none", "u_lib", "u_stale", "u_condis"} {
+		if f.visibleLibraries(t, f.user(id))["lib_b"] {
+			t.Errorf("%s sees lib_b", id)
+		}
+	}
+	if b := f.visibleBooks(t, f.user("u_con2")); len(b) != 1 || !b["bk_a2"] {
+		t.Errorf("u_con2 books = %v, want only bk_a2", b)
+	}
+	if b := f.visibleBooks(t, f.user("u_condis")); len(b) != 0 {
+		t.Errorf("a disabled contributor sees %v", b)
+	}
+	// A book inside a published folder is theirs too, a sibling with the same name prefix is not.
+	f.exec(t, `INSERT INTO books(id, library_id, folder_id, root_path, title, added_at, updated_at) VALUES ('bk_in', 'lib_b', 'lf_b', '/bk_b1/sub', 'in', 1, 1), ('bk_pre', 'lib_b', 'lf_b', '/bk_b1x', 'pre', 1, 1)`)
+	b := f.visibleBooks(t, f.user("u_con"))
+	if !b["bk_in"] || b["bk_pre"] {
+		t.Errorf("nested = %v, prefix sibling = %v", b["bk_in"], b["bk_pre"])
 	}
 }
