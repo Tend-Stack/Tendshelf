@@ -50,6 +50,10 @@ func usersSweepRows() []sweepRow {
 		get("GET /admin/users/{id}/disable", "", extra("/disable"), staff),
 		get("GET /admin/users/{id}/disable", "owner target", target(sweepOwner, "/disable"), none),
 		get("GET /admin/users/{id}/stop", "", extra("/stop"), staff),
+		// The extra member added no books, so the confirm goes back to the page (303) for staff.
+		get("GET /admin/users/{id}/books/remove", "", extra("/books/remove"), staffPost),
+		get("GET /admin/users/{id}/books/remove", "admin target", target(sweepAdmin, "/books/remove"), onlyOwner),
+		get("GET /admin/users/{id}/books/remove", "owner target", target(sweepOwner, "/books/remove"), none),
 
 		post("POST /admin/users/{id}/role", "", extra("/role"), url.Values{"role": {"guest"}}, staffPost, back(-1)),
 		post("POST /admin/users/{id}/role", "to admin", extra("/role"), url.Values{"role": {"admin"}}, onlyOwner, back(-1)),
@@ -59,6 +63,9 @@ func usersSweepRows() []sweepRow {
 		post("POST /admin/users/{id}/disable", "owner target", target(sweepOwner, "/disable"), nil, none, nil),
 		post("POST /admin/users/{id}/enable", "", extra("/enable"), nil, staffPost, back(-1)),
 		post("POST /admin/users/{id}/stop", "", extra("/stop"), nil, staffPost, back(-1)),
+		post("POST /admin/users/{id}/books/remove", "", extra("/books/remove"), nil, staffPost, back(-1)),
+		post("POST /admin/users/{id}/books/remove", "admin target", target(sweepAdmin, "/books/remove"), nil, onlyOwner, back(sweepAdmin)),
+		post("POST /admin/users/{id}/books/remove", "owner target", target(sweepOwner, "/books/remove"), nil, none, nil),
 		post("POST /admin/users/{id}/grants", "", extra("/grants"), url.Values{"scope": {"all"}, "download": {"1"}}, staffPost, back(-1)),
 		post("POST /admin/users/{id}/grants/{gid}", "", grant(""), url.Values{"download": {"1"}}, staffPost, back(-1)),
 		post("POST /admin/users/{id}/grants/{gid}/renew", "", grant("/renew"), nil, staffPost, back(-1)),

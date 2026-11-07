@@ -117,8 +117,7 @@ func (s *server) postPersonRemoveBooks(w http.ResponseWriter, r *http.Request) {
 		s.backToPerson(w, r, id)
 		return
 	}
-	payload, _ := json.Marshal(upload.RemoveAllPayload{UserID: id, By: actor.ID})
-	jobID, err := s.jobs.Enqueue(ctx, upload.KindRemoveAll, payload, jobs.EnqueueOptions{CreatedBy: actor.ID})
+	jobID, err := s.jobs.Enqueue(ctx, upload.KindRemoveAll, upload.RemoveAllPayload{UserID: id, By: actor.ID}, jobs.EnqueueOptions{CreatedBy: actor.ID})
 	if err != nil {
 		s.serverError(w, r, "remove all enqueue", err)
 		return

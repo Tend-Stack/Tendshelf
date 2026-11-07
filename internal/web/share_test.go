@@ -427,7 +427,7 @@ func TestSharePureWords(t *testing.T) {
 			t.Errorf("shareExpiry(%q) = %d, %v", c.in, ms, ok)
 		}
 	}
-	if got := shareRoleChoices(users.User{Role: users.RoleAdmin}, ""); len(got) != 2 || got[0].Value != "guest" || !got[0].On {
+	if got := shareRoleChoices(users.User{Role: users.RoleAdmin}, ""); len(got) != 3 || got[0].Value != "guest" || !got[0].On || got[2].Value != "contributor" {
 		t.Errorf("admin roles %+v", got)
 	}
 }
