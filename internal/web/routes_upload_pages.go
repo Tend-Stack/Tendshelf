@@ -249,11 +249,11 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	b, ok := s.loadBook(w, r, r.PathValue("id"), share.AddBooks)
+	b, ok := s.loadBook(w, r, r.PathValue("id"), share.RemoveBook)
 	if !ok {
 		return
 	}
-	if !s.uploads.Removable(r.Context(), b.ID) {
+	if !s.removableFor(r.Context(), currentUser(r), b.ID) {
 		s.notFound(w, r)
 		return
 	}

@@ -63,7 +63,7 @@ func TestMigrationContributorsChecks(t *testing.T) {
 	defer st.Close()
 	w := st.Writer()
 	for _, role := range []string{"owner", "admin", "guest"} {
-		if _, err := w.Exec(`INSERT INTO users(id, username, role, adds_books, created_at) VALUES ('u_`+role+`', '`+role+`', '`+role+`', 1, 1)`); err == nil {
+		if _, err := w.Exec(`INSERT INTO users(id, username, role, adds_books, created_at) VALUES ('u_` + role + `', '` + role + `', '` + role + `', 1, 1)`); err == nil {
 			t.Errorf("users: flag on %s was accepted", role)
 		}
 	}

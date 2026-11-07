@@ -42,7 +42,7 @@ func TestRemoveDeletesOnlyLedgerPaths(t *testing.T) {
 		t.Fatal("an uploaded, untouched book is not removable")
 	}
 	before := snapshot(t, filepath.Join(e.root, "Mine"))
-	res, err := e.svc.Remove(bg, me, bookID)
+	res, err := e.svc.Remove(bg, me, bookID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestRemoveDeletesOnlyLedgerPaths(t *testing.T) {
 func TestRemoveEmptiesWhatItMade(t *testing.T) {
 	e := newEnv(t, nil)
 	_, bookID := placedBook(t, e)
-	if _, err := e.svc.Remove(bg, me, bookID); err != nil {
+	if _, err := e.svc.Remove(bg, me, bookID, ""); err != nil {
 		t.Fatal(err)
 	}
 	if got := tree(t, e.root); len(got) != 0 {
@@ -94,7 +94,7 @@ func TestRemoveKeepsChangedAndAddedFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	mk(t, book, "notes.txt")
-	res, err := e.svc.Remove(bg, me, bookID)
+	res, err := e.svc.Remove(bg, me, bookID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestRemoveChangedAudioKeepsTheBook(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := len(e.enq.of(scan.KindScan))
-	res, err := e.svc.Remove(bg, me, bookID)
+	res, err := e.svc.Remove(bg, me, bookID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestRemovableOnlyWhenEveryAudioFileIsOurs(t *testing.T) {
 	if e.svc.Removable(bg, plain) {
 		t.Error("a scanned book is removable")
 	}
-	if _, err := e.svc.Remove(bg, me, plain); err == nil {
+	if _, err := e.svc.Remove(bg, me, plain, ""); err == nil {
 		t.Error("Remove deleted a book Tendshelf did not add")
 	}
 	if _, err := os.Stat(filepath.Join(e.root, "Plain", "Book", "a.m4b")); err != nil {
@@ -180,7 +180,7 @@ func TestRemovableOnlyWhenEveryAudioFileIsOurs(t *testing.T) {
 	if e.svc.Removable(bg, "bk_nope") {
 		t.Error("unknown book is removable")
 	}
-	if _, err := e.svc.Remove(bg, me, "bk_nope"); err == nil {
+	if _, err := e.svc.Remove(bg, me, "bk_nope", ""); err == nil {
 		t.Error("unknown book removed")
 	}
 }
@@ -197,7 +197,7 @@ func TestRemoveIgnoresLedgerRowsOutsideTheFolder(t *testing.T) {
   VALUES ('upp_evil', ?, ?, ?, 'file', 'present', 1, 1, 1, 1)`, uploadID, e.folder.ID, outside); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.svc.Remove(bg, me, bookID); err != nil {
+	if _, err := e.svc.Remove(bg, me, bookID, ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(outside); err != nil {

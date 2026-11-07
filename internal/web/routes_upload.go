@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/upload"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
@@ -234,6 +236,23 @@ func (s *server) refuseUpload(w http.ResponseWriter, r *http.Request, libID stri
 	s.renderAdminLibrariesFor(w, r, http.StatusUnprocessableEntity, "", libID, uploadsCannotWrite)
 }
 
+// removePlacedBy is the placedBy argument of upload.Remove for the person acting: owner and admin remove any
+// book Tendshelf added, everyone else (a contributor) only files their own uploads placed (decision 0029).
+func (s *server) removePlacedBy(u users.User) string {
+	if u.Role == users.RoleOwner || u.Role == users.RoleAdmin {
+		return ""
+	}
+	return u.ID
+}
+
+// removableFor is Removable for owner and admin and RemovableBy for a contributor.
+func (s *server) removableFor(ctx context.Context, u users.User, bookID string) bool {
+	if by := s.removePlacedBy(u); by != "" {
+		return s.uploads.RemovableBy(ctx, bookID, by)
+	}
+	return s.uploads.Removable(ctx, bookID)
+}
+
 // postBookRemove removes a book Tendshelf added by upload: its unchanged files and the book. The
 // page asks for a confirmation first; the service refuses a book it did not add.
 func (s *server) postBookRemove(w http.ResponseWriter, r *http.Request) {
@@ -241,11 +260,11 @@ func (s *server) postBookRemove(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	b, ok := s.loadBook(w, r, r.PathValue("id"), share.AddBooks)
+	b, ok := s.loadBook(w, r, r.PathValue("id"), share.RemoveBook)
 	if !ok {
 		return
 	}
-	if _, err := s.uploads.Remove(r.Context(), currentUser(r).ID, b.ID); err != nil {
+	if _, err := s.uploads.Remove(r.Context(), currentUser(r).ID, b.ID, s.removePlacedBy(currentUser(r))); err != nil {
 		var ue *upload.Error
 		if errors.As(err, &ue) && ue.Status != http.StatusNotFound {
 			if r.Header.Get("HX-Request") == "true" {

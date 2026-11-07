@@ -123,7 +123,16 @@ func (s *Service) place(ctx context.Context, g guard, progress func(any), upload
 	if up, err = s.loadUpload(ctx, uploadID); err != nil {
 		return nil, err
 	}
+	place := PlaceTop
 	if !published {
+		// Asked after recovery: a book already published is finished, not refused. A person who may no longer add
+		// books gets nothing placed and their staged bytes deleted.
+		if s.cfg.MayPlace != nil {
+			place = s.cfg.MayPlace(ctx, up.CreatedBy, up.LibraryID)
+		}
+		if place != PlaceTop && place != PlaceOwnFolder {
+			return s.refuse(ctx, g, up, refusal{code: "not_allowed"})
+		}
 		step("checking")
 		files, err := s.loadFiles(ctx, uploadID)
 		if err != nil {
@@ -166,7 +175,7 @@ func (s *Service) place(ctx context.Context, g guard, progress func(any), upload
 			return s.refuse(ctx, g, up, refused)
 		}
 		step("placing")
-		if err := s.build(ctx, g, up, lr, files, names); err != nil {
+		if err := s.build(ctx, g, up, lr, files, names, place); err != nil {
 			return nil, s.plainFail(ctx, g, uploadID, err)
 		}
 		if up, err = s.loadUpload(ctx, uploadID); err != nil {
@@ -357,7 +366,7 @@ func bookItems(files []fileRow) []item {
 }
 
 // build lays the book out, builds it in the hidden folder and publishes it (steps f to k).
-func (s *Service) build(ctx context.Context, g guard, up uploadRow, lr *lroot, files []fileRow, n bookNames) error {
+func (s *Service) build(ctx context.Context, g guard, up uploadRow, lr *lroot, files []fileRow, n bookNames, place Placement) error {
 	root := lr.path
 	roots, err := s.repo.BookRootsIn(ctx, up.FolderID)
 	if err != nil {
@@ -374,8 +383,19 @@ func (s *Service) build(ctx context.Context, g guard, up uploadRow, lr *lroot, f
 		return &jobs.Error{Code: "no_space", Text: "The library folder is full. Free some space, then press Try again.", Permanent: true, Err: err}
 	}
 	items := bookItems(files)
+	base := root
+	if place == PlaceOwnFolder {
+		var who string
+		err := s.st.Reader().QueryRowContext(ctx, `SELECT coalesce(nullif(display_name, ''), username) FROM users WHERE id = ?`, up.CreatedBy).Scan(&who)
+		if err != nil {
+			return err
+		}
+		if base, err = s.personFolder(ctx, g, lr, up.FolderID, up.CreatedBy, who); err != nil {
+			return err
+		}
+	}
 	for attempt := 0; attempt < 5; attempt++ {
-		parent, name, ok := layout(lr, n.author, n.series, n.seq, n.title, roots)
+		parent, name, ok := layoutIn(lr, base, n.author, n.series, n.seq, n.title, roots)
 		if !ok {
 			return &jobs.Error{Code: "layout", Text: "Tendshelf could not find a free place for this book in the library folder.", Permanent: true}
 		}
@@ -606,6 +626,13 @@ func (s *Service) commitPublish(ctx context.Context, g guard, uploadID, user, fi
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE uploads SET state = ?, book_path = ?, temp_path = NULL, error_code = NULL, updated_at = ? WHERE id = ?`,
 			StatePlaced, final, s.nowMs(), uploadID); err != nil {
+			return err
+		}
+		// Who added the book. No foreign keys: the row outlives the sweep, a rescan and a disabled account.
+		if _, err := tx.ExecContext(ctx, `INSERT INTO upload_books(root_path, upload_id, library_id, added_by, created_at)
+  SELECT ?, id, library_id, created_by, ? FROM uploads WHERE id = ?
+  ON CONFLICT(root_path) DO UPDATE SET upload_id = excluded.upload_id, library_id = excluded.library_id,
+  added_by = excluded.added_by, created_at = excluded.created_at`, final, s.nowMs(), uploadID); err != nil {
 			return err
 		}
 		return s.audit(ctx, tx, user, "upload.place", "upload:"+uploadID, map[string]string{"path": final})

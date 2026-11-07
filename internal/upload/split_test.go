@@ -232,7 +232,7 @@ func TestSplitRemoveLeavesTheOtherBook(t *testing.T) {
 	if err := e.st.Reader().QueryRow(`SELECT id FROM books WHERE root_path LIKE '%First Tale%' LIMIT 1`).Scan(&bookID); err != nil {
 		t.Fatalf("cannot find the first book: %v", err)
 	}
-	if _, err := e.svc.Remove(bg, me, bookID); err != nil {
+	if _, err := e.svc.Remove(bg, me, bookID, ""); err != nil {
 		t.Fatal(err)
 	}
 	got := strings.Join(tree(t, e.root), "\n")

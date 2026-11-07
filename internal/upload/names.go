@@ -151,7 +151,13 @@ func seqPrefix(seq string) string {
 // The last name gets " (2)" to " (99)" until it does not exist. It returns the parent directory
 // (which may not exist yet) and the leaf name; ok is false when no candidate works.
 func layout(lr *lroot, author, series, seq, title string, roots []string) (parent, name string, ok bool) {
-	root := lr.path
+	return layoutIn(lr, lr.path, author, series, seq, title, roots)
+}
+
+// layoutIn is layout starting at base, the top of the upload folder or a contributor's own folder inside it
+// (decision 0029), instead of the upload folder itself.
+func layoutIn(lr *lroot, base, author, series, seq, title string, roots []string) (parent, name string, ok bool) {
+	root := base
 	a := SafeName(author, "Unknown author")
 	t := SafeName(title, "Untitled book")
 	type cand struct {

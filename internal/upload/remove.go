@@ -13,6 +13,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
+	"github.com/Tend-Stack/tendshelf/internal/share"
 )
 
 // RemoveResult lists what "Remove this book" did: the files it deleted and the ones it kept
@@ -33,6 +34,28 @@ func (s *Service) Removable(ctx context.Context, bookID string) bool {
     UNION ALL
     SELECT path FROM ebook_files WHERE book_id = ?1 AND path IS NOT NULL AND missing_since IS NULL) a`, bookID).Scan(&live, &owned)
 	return err == nil && live > 0 && live == owned
+}
+
+// RemovableBy is Removable and, in addition, every live audio and library ebook file of the book lies inside a
+// book root that one of userID's uploads published (upload_books): a contributor removes only what they placed.
+func (s *Service) RemovableBy(ctx context.Context, bookID, userID string) bool {
+	if !s.Removable(ctx, bookID) {
+		return false
+	}
+	theirs, err := s.allFilesAddedBy(ctx, bookID, userID)
+	return err == nil && theirs
+}
+
+// allFilesAddedBy reports whether no live audio or library ebook file of the book lies outside userID's
+// upload_books roots.
+func (s *Service) allFilesAddedBy(ctx context.Context, bookID, userID string) (bool, error) {
+	var outside int
+	err := s.st.Reader().QueryRowContext(ctx, `SELECT COUNT(*) FROM (
+    SELECT path AS root_path FROM audio_files WHERE book_id = ? AND missing_since IS NULL
+    UNION ALL
+    SELECT path AS root_path FROM ebook_files WHERE book_id = ? AND path IS NOT NULL AND missing_since IS NULL) a
+  WHERE NOT `+share.AddedBySQL("a"), bookID, bookID, userID).Scan(&outside)
+	return err == nil && outside == 0, err
 }
 
 // ebookPaths lists the library paths of the book's ebook files, missing ones included.
@@ -59,7 +82,11 @@ func (s *Service) ebookPaths(ctx context.Context, bookID string) ([]string, erro
 // Folders the ledger created are removed deepest first, only when empty. The book's rows (and, by
 // cascade, everyone's progress, bookmarks and queue entries for it) go only when no audio file of
 // it is left on disk; otherwise a scoped scan brings the library in line.
-func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResult, error) {
+//
+// placedBy, when set, limits the removal to one person's books (decision 0029): every live audio and
+// library ebook file must lie inside a root that person's uploads published, otherwise 409 not_theirs and
+// nothing is touched. A contributor always removes with placedBy set to themselves; owner and admin pass "".
+func (s *Service) Remove(ctx context.Context, userID, bookID, placedBy string) (RemoveResult, error) {
 	res := RemoveResult{Deleted: []string{}, Kept: []string{}}
 	book, err := s.repo.Book(ctx, bookID)
 	if errors.Is(err, library.ErrNotFound) {
@@ -69,6 +96,13 @@ func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResu
 	}
 	if !s.Removable(ctx, bookID) {
 		return res, fail(409, "not_removable", "Tendshelf did not add this book, so it will not remove it.")
+	}
+	if placedBy != "" {
+		if theirs, err := s.allFilesAddedBy(ctx, bookID, placedBy); err != nil {
+			return res, err
+		} else if !theirs {
+			return res, fail(409, "not_theirs", "Someone else added part of this book, so only an admin can remove it.")
+		}
 	}
 	folder, err := s.repo.Folder(ctx, book.FolderID)
 	if err != nil {
@@ -170,6 +204,14 @@ func (s *Service) Remove(ctx context.Context, userID, bookID string) (RemoveResu
 	detail := map[string]any{"deleted": len(res.Deleted), "kept": len(res.Kept), "title": book.Title}
 	if !left {
 		err = s.repo.Update(ctx, func(tx *library.Tx) error { return tx.DeleteBookAndFiles(bookID) })
+		if err != nil {
+			return res, err
+		}
+		// The record of who added it goes with the book: its root and anything inside it.
+		err = s.write(ctx, nil, func(tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx, `DELETE FROM upload_books WHERE root_path = ?1 OR (root_path > ?1 || '/' AND root_path < ?1 || '0')`, book.RootPath)
+			return err
+		})
 		if err != nil {
 			return res, err
 		}

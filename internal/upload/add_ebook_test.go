@@ -205,7 +205,7 @@ func TestAddEbookRemove(t *testing.T) {
 	if !e.svc.Removable(bg, id) {
 		t.Fatal("an uploaded, untouched ebook is not removable")
 	}
-	res, err := e.svc.Remove(bg, me, id)
+	res, err := e.svc.Remove(bg, me, id, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestAddEbookRemoveKeepsChanged(t *testing.T) {
 	if err := os.WriteFile(file, []byte("my own copy, different"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	res, err := e.svc.Remove(bg, me, id)
+	res, err := e.svc.Remove(bg, me, id, "")
 	if err != nil {
 		t.Fatal(err)
 	}

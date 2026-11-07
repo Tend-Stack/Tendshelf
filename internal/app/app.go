@@ -100,7 +100,7 @@ func Run(ctx context.Context, cfg Config) error {
 		return err
 	}
 	// Adding books by upload (decision 0015): the staging store, the upload.place job and the sweep.
-	uploads := upload.New(upload.Config{DataDir: dataDir}, st, lib, tools, runner, logger)
+	uploads := upload.New(upload.Config{DataDir: dataDir, MayPlace: mayPlace(st)}, st, lib, tools, runner, logger)
 	if err := uploads.Register(runner); err != nil {
 		return err
 	}

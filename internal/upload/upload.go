@@ -59,6 +59,9 @@ type Config struct {
 	// failed ones included (60 GiB).
 	PerPerson int64
 	Now       func() time.Time
+	// MayPlace is asked again before a book is built, because a person can be demoted, switched off or
+	// ungranted while their bytes travel (decision 0029). nil means PlaceTop for everyone.
+	MayPlace func(ctx context.Context, userID, libraryID string) Placement
 }
 
 func (c *Config) defaults() {
@@ -145,9 +148,12 @@ func New(cfg Config, st *db.Store, repo *library.Repo, tools media.Tools, enq sc
 	}
 }
 
-// Register adds the upload.place job kind.
+// Register adds the upload.place and upload.remove_all job kinds.
 func (s *Service) Register(r *jobs.Runner) error {
-	return r.Register(jobs.Kind{Name: KindPlace, Concurrency: 1, MaxAttempts: 3, Handler: s.handlePlace})
+	if err := r.Register(jobs.Kind{Name: KindPlace, Concurrency: 1, MaxAttempts: 3, Handler: s.handlePlace}); err != nil {
+		return err
+	}
+	return r.Register(jobs.Kind{Name: KindRemoveAll, Concurrency: 1, MaxAttempts: 1, Handler: s.handleRemoveAll})
 }
 
 func (s *Service) nowMs() int64 { return s.cfg.Now().UnixMilli() }

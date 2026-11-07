@@ -169,7 +169,7 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 	if canCover {
 		v.CoverHref, v.CoverLabel = coverSheetHref(id, ""), coverChangeLink
 	}
-	if s.uploads != nil && s.can.Can(ctx, currentUser(r), share.AddBooks, target) && s.uploads.Removable(ctx, id) {
+	if s.uploads != nil && s.can.Can(ctx, currentUser(r), share.RemoveBook, target) && s.removableFor(ctx, currentUser(r), id) {
 		v.RemoveHref, v.RemoveLabel = "/books/"+id+"/remove", bookRemoveLabel
 	}
 	if r.URL.Query().Get("sheet") == "cover" {
@@ -188,7 +188,7 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 		}
 		sheet = pages.CoverSheet(cv)
 	}
-	canWrite := s.writes != nil && s.can.Can(ctx, currentUser(r), share.EditBook, target)
+	canWrite := s.writes != nil && s.can.Can(ctx, currentUser(r), share.WriteFiles, target)
 	if r.URL.Query().Get("sheet") == "write" {
 		if !canWrite {
 			s.notFound(w, r)

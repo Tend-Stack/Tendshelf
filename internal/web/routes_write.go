@@ -36,7 +36,7 @@ func (s *server) writeBook(w http.ResponseWriter, r *http.Request, id string) (l
 		s.notFound(w, r)
 		return library.Book{}, false
 	}
-	return s.loadBook(w, r, id, share.EditBook)
+	return s.loadBook(w, r, id, share.WriteFiles)
 }
 
 // answerBook ends an unsafe request that came from a sheet or the Details tab. A plain form is
