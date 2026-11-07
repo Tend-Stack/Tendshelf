@@ -175,7 +175,7 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 			return nil, err
 		}
 		lr := listenRulerFor(chs, p.PositionMs, book.DurationMs, set.Speed)
-		v.Ruler = &components.RulerView{Label: lr.Label, Now: lr.Now, Ticks: lr.Ticks}
+		v.Ruler = &components.RulerView{Label: lr.Label, Now: lr.Now, Ticks: lr.Ticks, Book: book.ID, Chapters: lr.Chapters, Current: lr.Current}
 		v.Where, v.WhereShort = lr.Where, lr.WhereShort
 	}
 	if s.canShelve(r) {

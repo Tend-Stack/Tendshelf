@@ -84,15 +84,15 @@ func TestFullPlayerBrowserChapterScrub(t *testing.T) {
 		t.Errorf("scrubber label %q", label)
 	}
 
-	// The book ruler is only a picture: no focus, hidden from a screen reader, six chapters' ticks.
+	// The book ruler is the chapter bar (chapter-bar.js): a slider over the six chapters with five ticks.
 	var ruler struct {
-		Hidden, Focusable bool
-		Ticks             int
+		Hidden, Slider, Focusable bool
+		Ticks, Max                int
 	}
 	phone.Eval(`(() => { const r = document.querySelector("#player-full [data-ts-ruler]");
-	  return {Hidden: r.getAttribute("aria-hidden") === "true", Focusable: r.tabIndex >= 0 || r.querySelector("a, button, input, [tabindex]") !== null,
-	    Ticks: r.querySelectorAll(".ts-ruler__tick").length}; })()`, &ruler)
-	if !ruler.Hidden || ruler.Focusable || ruler.Ticks != 5 {
+	  return {Hidden: r.getAttribute("aria-hidden") === "true", Slider: r.getAttribute("role") === "slider", Focusable: r.tabIndex === 0,
+	    Ticks: r.querySelectorAll(".ts-ruler__tick").length, Max: Number(r.getAttribute("aria-valuemax"))}; })()`, &ruler)
+	if ruler.Hidden || !ruler.Slider || !ruler.Focusable || ruler.Ticks != 5 || ruler.Max != 6 {
 		t.Errorf("book ruler: %+v", ruler)
 	}
 

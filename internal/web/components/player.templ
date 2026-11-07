@@ -36,6 +36,8 @@ type PlayerMsgs struct {
 	OpenReader                                                              string // the book icon: "Read this book"
 	Bookmark, MoreActions, GoToBook, MarkFinished, ChapterPlayed, OpenPlayer, Resume string
 	ScrubBubble, UpNext                                                      string
+	// The chapter bar (chapter-bar.js): its label in the full player, the tip, the spoken value and a chapter with no title.
+	ChBarLabel, ChBarTip, ChBarValue, ChBarUntitled string
 
 	// Speed, sleep timer, volume and the bookmark key (P1c-5b).
 	SpeedForBook, SpeedMakeUsual, JumpedFar, JumpedBack, SpeedUsualSet string
@@ -118,6 +120,10 @@ func (m PlayerMsgs) attrs() templ.Attributes {
 		"data-ts-msg-open-player":     m.OpenPlayer,
 		"data-ts-msg-resume":          m.Resume,
 		"data-ts-msg-scrub-bubble":    m.ScrubBubble,
+		"data-ts-msg-chbar-label":     m.ChBarLabel,
+		"data-ts-msg-chbar-tip":       m.ChBarTip,
+		"data-ts-msg-chbar-value":     m.ChBarValue,
+		"data-ts-msg-chbar-untitled":  m.ChBarUntitled,
 
 		"data-ts-msg-speed-value":         m.SpeedValue,
 		"data-ts-msg-speed-label":         m.SpeedLabel,

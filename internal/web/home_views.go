@@ -92,6 +92,7 @@ func (s *server) heroFor(ctx context.Context, r *http.Request, l library.Listeni
 	}
 	lr := listenRulerFor(chs, l.PositionMs, l.DurationMs, set.Speed)
 	v.RulerLabel, v.RulerNow, v.Ticks, v.Where = lr.Label, lr.Now, lr.Ticks, lr.Where
+	v.RulerBook, v.RulerChapters, v.RulerCurrent = l.Book.ID, lr.Chapters, lr.Current
 	book, err := s.lib.Book(ctx, l.Book.ID)
 	if errors.Is(err, library.ErrNotFound) {
 		return nil, "", nil
