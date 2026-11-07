@@ -103,16 +103,27 @@ func renewEnd(now time.Time) int64 {
 	return dayStart(now).AddDate(0, 0, 31).UnixMilli()
 }
 
-func roleWord(r users.Role) string {
-	switch r {
-	case users.RoleOwner:
+// kindWord is the word for a kind: Owner, Admin, Contributor, Member or Listener.
+func kindWord(k users.Kind) string {
+	switch k {
+	case users.KindOwner:
 		return usersRoleOwner
-	case users.RoleAdmin:
+	case users.KindAdmin:
 		return usersRoleAdmin
-	case users.RoleMember:
+	case users.KindContributor:
+		return usersRoleContributor
+	case users.KindMember:
 		return usersRoleMember
 	}
 	return usersRoleGuest
+}
+
+// inviteKind is the kind an invite creates.
+func inviteKind(inv share.Invite) users.Kind {
+	if inv.Role == users.RoleMember && inv.AddsBooks {
+		return users.KindContributor
+	}
+	return users.Kind(inv.Role)
 }
 
 func personName(u users.User) string {
@@ -171,7 +182,7 @@ func usersView(csrf string, now time.Time, actor users.User, list []share.Person
 		}
 		text, live := lastActiveText(now, p.LastActive, p.LastListen)
 		row := pages.UserRow{
-			ID: p.User.ID, Name: personName(p.User), RolePill: roleWord(p.User.Role), RoleKind: string(p.User.Role),
+			ID: p.User.ID, Name: personName(p.User), RolePill: kindWord(p.User.Kind()), RoleKind: string(p.User.Kind()),
 			Access: accessText(p), LastActive: text, Live: live, Month: monthText(p.MonthMs),
 			Devices: fmt.Sprint(p.Devices), You: p.User.ID == actor.ID, Off: p.User.Disabled,
 		}

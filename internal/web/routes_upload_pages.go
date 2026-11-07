@@ -55,12 +55,18 @@ func (s *server) getAddBooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	before, after, _ := strings.Cut(uploadLead, "{path}")
+	shown, needsJS := folder.Path, strings.Replace(uploadNeedsJS, "{path}", folder.Path, 1)
+	if me := currentUser(r); me.Contributor() {
+		// A contributor never sees a server path (decision 0029): the lead names only their folder.
+		before, shown, after, needsJS = s.contributorLead(ctx, me.ID, folder.Path), "", "", uploadNeedsJSContrib
+		folder.Path = ""
+	}
 	v := pages.AddBooksView{
 		LibraryID: lib.ID, LibraryName: lib.Name, BackHref: "/libraries/" + lib.ID,
-		Title: uploadTitle, LeadBefore: before, Folder: folder.Path, LeadAfter: after,
+		Title: uploadTitle, LeadBefore: before, Folder: shown, LeadAfter: after,
 		LibrariesLabel: uploadLibraries, PickHeading: uploadPickHeading, Files: uploadFiles, FolderPick: uploadFolder,
 		Hint: uploadHint, QueueHeading: uploadQueue, DropLine: uploadDrop, Several: uploadSeveral,
-		NeedsJS: strings.Replace(uploadNeedsJS, "{path}", folder.Path, 1),
+		NeedsJS: needsJS,
 		Module:  s.assets.URL("js/upload.js"), Messages: uploadMessages(),
 		Template: components.UploadRowView{State: "sending", Template: true, Words: uploadRowWords()},
 	}
@@ -85,6 +91,20 @@ func (s *server) getAddBooks(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.pageStyled(w, r, http.StatusOK, uploadTitle, "library", pages.AddBooks(v), nil, uploadStyles...)
+}
+
+// contributorLead is the lead line for a contributor: the name of their own folder inside the upload
+// folder once it exists, a general line before the first upload.
+func (s *server) contributorLead(ctx context.Context, userID, uploadPath string) string {
+	own, err := s.lib.ContributorFolders(ctx, userID)
+	if err == nil {
+		for _, p := range own {
+			if rel, err := filepath.Rel(uploadPath, p); err == nil && !strings.HasPrefix(rel, "..") && rel != "." {
+				return fmt.Sprintf(uploadLeadContrib, filepath.Base(p))
+			}
+		}
+	}
+	return uploadLeadContribFirst
 }
 
 // uploadFolder is the folder of the library that receives uploads; ok is false when uploads are off.
@@ -177,6 +197,9 @@ func (s *server) uploadRow(ctx context.Context, u upload.View, libName, folderPa
 		v.State, v.Line = "checking", uploadChecking
 	case upload.StatePlacing:
 		v.State, v.Line = "placing", "Putting it in "+folderPath
+		if folderPath == "" {
+			v.Line = uploadPlacingOwn
+		}
 	case upload.StatePlaced:
 		s.placedRow(ctx, &v, u, libName, folderPath)
 	case upload.StateRefused:

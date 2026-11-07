@@ -74,6 +74,9 @@ const (
 	libClearAll     = "Clear all"
 	// NEW (B2): the Format filter and the card's length slot for an ebook.
 	libFormat    = "Format"
+	libAddedBy   = "Added by" // NEW
+	libAddedAny  = "Anyone"   // NEW
+	libAddedYou  = "You"      // NEW
 	libFormatAny = "Any format"
 	cardEbook    = "Ebook"
 )

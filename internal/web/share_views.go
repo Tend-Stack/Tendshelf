@@ -84,15 +84,16 @@ func shareRoleChoices(actor users.User, selected string) []pages.ShareChoice {
 	if selected == "" {
 		selected = string(users.RoleGuest)
 	}
-	hints := map[users.Role]string{users.RoleGuest: shareListener, users.RoleMember: shareMemberHint, users.RoleAdmin: shareAdminHint}
-	may := map[users.Role]bool{}
-	for _, r := range share.ManageableInviteRoles(actor) {
-		may[r] = true
+	hints := map[users.Kind]string{users.KindGuest: shareListener, users.KindMember: shareMemberHint,
+		users.KindContributor: shareContributorHint, users.KindAdmin: shareAdminHint}
+	may := map[users.Kind]bool{}
+	for _, k := range share.ManageableInviteKinds(actor) {
+		may[k] = true
 	}
 	var out []pages.ShareChoice
-	for _, r := range []users.Role{users.RoleGuest, users.RoleMember, users.RoleAdmin} {
+	for _, r := range []users.Kind{users.KindGuest, users.KindMember, users.KindContributor, users.KindAdmin} {
 		if may[r] {
-			out = append(out, pages.ShareChoice{Value: string(r), Title: roleWord(r), Hint: hints[r], On: string(r) == selected})
+			out = append(out, pages.ShareChoice{Value: string(r), Title: kindWord(r), Hint: hints[r], On: string(r) == selected})
 		}
 	}
 	return out

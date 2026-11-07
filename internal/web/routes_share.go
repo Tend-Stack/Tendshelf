@@ -210,7 +210,7 @@ func (s *server) shareLists(r *http.Request, v *pages.ShareView, bookID string) 
 		if (p.User.Role != users.RoleMember && p.User.Role != users.RoleGuest) || p.User.Disabled || p.ActiveGrants < 1 {
 			continue
 		}
-		row := pages.ShareListener{ID: p.User.ID, Name: personName(p.User), RolePill: roleWord(p.User.Role), RoleKind: string(p.User.Role),
+		row := pages.ShareListener{ID: p.User.ID, Name: personName(p.User), RolePill: kindWord(p.User.Kind()), RoleKind: string(p.User.Kind()),
 			Line: shareListenerLine(p, now)}
 		if bookID == "" {
 			row.StopHref = "/admin/users/" + p.User.ID + "/stop?back=" + url.QueryEscape(v.Back)

@@ -84,5 +84,7 @@ const (
 	bookLabelChapters  = "Chapters"
 	bookLabelFiles     = "Files"
 	bookLabelAdded     = "Added"
+	bookLabelAddedBy   = "Added by" // NEW
+	bookAddedByYou     = "you"      // NEW: reads "Added by you"
 	bookLabelFolder    = "Folder"
 )

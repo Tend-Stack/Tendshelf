@@ -430,9 +430,9 @@ func (s *server) inviteRows(list []share.Invite) []pages.InviteRow {
 	loc := s.now().Location()
 	rows := make([]pages.InviteRow, 0, len(list))
 	for _, inv := range list {
-		meta := fmt.Sprintf(inviteNoEnd, roleWord(inv.Role))
+		meta := fmt.Sprintf(inviteNoEnd, kindWord(inviteKind(inv)))
 		if inv.ExpiresAt != 0 {
-			meta = fmt.Sprintf(inviteUntil, roleWord(inv.Role), time.UnixMilli(inv.ExpiresAt-1).In(loc).Format("2 Jan"))
+			meta = fmt.Sprintf(inviteUntil, kindWord(inviteKind(inv)), time.UnixMilli(inv.ExpiresAt-1).In(loc).Format("2 Jan"))
 		}
 		rows = append(rows, pages.InviteRow{ID: inv.ID, Name: inv.Name, Line: fmt.Sprintf(inviteWaiting, inv.Name), Meta: meta})
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
@@ -226,7 +227,14 @@ func addedByFilter(u users.User, id string) string {
 }
 
 // libraryFacets are the choices the Author, Narrator and Series menus list.
-type libraryFacets struct{ Authors, Narrators, Series []library.NamedFacet }
+type libraryFacets struct {
+	Authors, Narrators, Series []library.NamedFacet
+	// Added are the "Added by" choices (decision 0029): the people with books in view for an owner or admin,
+	// only "You" for a contributor who has a visible book of their own, nothing for anyone else.
+	// AddedCounts says whether the choices carry book counts.
+	Added       []library.NamedFacet
+	AddedCounts bool
+}
 
 func (s *server) libraryFacets(r *http.Request, lq library.ListQuery) (f libraryFacets, err error) {
 	ctx, sc := r.Context(), s.scope(r)
@@ -236,8 +244,47 @@ func (s *server) libraryFacets(r *http.Request, lq library.ListQuery) (f library
 	if f.Narrators, err = s.lib.PeopleFacet(ctx, sc, lq, library.RoleNarrator, browseMenuMax); err != nil {
 		return f, err
 	}
-	f.Series, err = s.lib.SeriesFacet(ctx, sc, lq, browseMenuMax)
+	if f.Series, err = s.lib.SeriesFacet(ctx, sc, lq, browseMenuMax); err != nil {
+		return f, err
+	}
+	f.Added, f.AddedCounts, err = s.addedFacet(r, lq)
 	return f, err
+}
+
+// addedFacet fills the "Added by" choices for the signed-in person. The own choice is always named "You".
+// A contributor learns only whether one of their own books is in view, never who else added books.
+func (s *server) addedFacet(r *http.Request, lq library.ListQuery) ([]library.NamedFacet, bool, error) {
+	ctx, u := r.Context(), currentUser(r)
+	var out []library.NamedFacet
+	counts := false
+	switch {
+	case u.Role == users.RoleOwner || u.Role == users.RoleAdmin:
+		list, err := s.lib.AddedByFacet(ctx, s.scope(r), lq, browseMenuMax)
+		if err != nil {
+			return nil, false, err
+		}
+		out, counts = list, true
+	case u.Contributor():
+		page, err := s.lib.ListBooks(ctx, s.scope(r), library.ListQuery{LibraryID: lq.LibraryID, UserID: u.ID, AddedBy: u.ID, Limit: 1})
+		if err != nil {
+			return nil, false, err
+		}
+		if len(page.Books) > 0 {
+			out = []library.NamedFacet{{ID: u.ID, Name: u.ID}}
+		}
+	}
+	if lq.AddedBy != "" && !slices.ContainsFunc(out, func(o library.NamedFacet) bool { return o.ID == lq.AddedBy }) {
+		// The chosen person stays listed so the choice can be taken off, even with no book in view.
+		if t, err := s.users.ByID(ctx, lq.AddedBy); err == nil {
+			out = append(out, library.NamedFacet{ID: t.ID, Name: personName(t)})
+		}
+	}
+	for i := range out {
+		if out[i].ID == u.ID {
+			out[i].Name = libAddedYou
+		}
+	}
+	return out, counts, nil
 }
 
 func (s *server) getLibraryItems(w http.ResponseWriter, r *http.Request) {
@@ -246,6 +293,7 @@ func (s *server) getLibraryItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := parseBrowseQuery(r)
+	q.Added = addedByFilter(currentUser(r), q.Added)
 	page, err := s.lib.ListBooks(r.Context(), s.scope(r), s.listQuery(currentUser(r), q, cur))
 	if errors.Is(err, library.ErrInvalid) {
 		s.fragment(w, r, http.StatusBadRequest, components.ErrorToast(browseBadCursorToast))
@@ -270,6 +318,7 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := parseBrowseQuery(r)
+	q.Added = addedByFilter(currentUser(r), q.Added)
 	sc := s.scope(r)
 	page, err := s.lib.ListBooks(ctx, sc, s.listQuery(currentUser(r), q, cur))
 	if errors.Is(err, library.ErrInvalid) {
@@ -461,11 +510,19 @@ func libraryKinds(q browseQuery, cur *library.LibrarySummary, f libraryFacets, g
 		}
 	}
 
+	added := people("added", libAddedBy, libAddedAny, f.Added, q.Added, func(q *browseQuery, id string) { q.Added = id })
+	added.Counts = f.AddedCounts
+	for _, o := range added.Options {
+		if o.On {
+			added.Chosen = o.Name
+		}
+	}
+
 	var kinds []pages.FilterKind
 	for _, k := range [...]struct {
 		k      pages.FilterKind
 		always bool
-	}{{author, false}, {narrator, false}, {series, false}, {category, false}, {length, true}, {format, false}} {
+	}{{author, false}, {narrator, false}, {series, false}, {category, false}, {length, true}, {format, false}, {added, false}} {
 		if k.k.ID == "format" && !hasText && !k.k.On {
 			continue
 		}
@@ -527,7 +584,7 @@ func (s *server) libraryFilters(v *pages.LibraryView, q browseQuery, cur *librar
 
 	v.TitleFilter, v.LengthValue = q.Title, q.Length
 	for _, h := range [...]pages.HiddenField{{Name: "author", Value: q.Author}, {Name: "narrator", Value: q.Narrator}, {Name: "series", Value: q.Series},
-		{Name: "format", Value: q.Format}} {
+		{Name: "format", Value: q.Format}, {Name: "added", Value: q.Added}} {
 		if h.Value != "" {
 			v.Hidden = append(v.Hidden, h)
 		}
@@ -567,6 +624,9 @@ func activeFilters(q browseQuery, pagePath string, kinds []pages.FilterKind) []p
 	if q.Format != "" {
 		add(libFormat, chosen["format"], func(q *browseQuery) { q.Format = "" })
 	}
+	if q.Added != "" {
+		add(libAddedBy, chosen["added"], func(q *browseQuery) { q.Added = "" })
+	}
 	if q.Show != "" {
 		for _, o := range browseShowOptions {
 			if o.Value == q.Show {
@@ -601,6 +661,7 @@ func (s *server) getLibraryFacet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := parseBrowseQuery(r)
+	q.Added = addedByFilter(currentUser(r), q.Added)
 	lq := s.listQuery(currentUser(r), q, cur)
 	ctx, sc := r.Context(), s.scope(r)
 	var (

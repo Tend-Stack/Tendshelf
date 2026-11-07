@@ -44,8 +44,24 @@ type AdminUserView struct {
 	Found     []Option
 	// Stats is the Listening panel: the three numbers of this person, never a title.
 	Stats components.ListeningStatsView
+	// Added is the "Books they added" section; the zero value hides it.
+	Added AddedBooksView
 	// Today is the earliest day the "Ends on" field takes (YYYY-MM-DD).
 	Today string
+}
+
+// AddedBooksView is the "Books they added" section of a person's page (decision 0029). Show is true when
+// the person added books or is a contributor.
+type AddedBooksView struct {
+	Show bool
+	// Title is the section heading; CountWords is "12 books", "1 book" or "No books yet".
+	Title, CountWords string
+	Count             int
+	// Folders are "Their folder: {path}" lines, one per upload folder; Note is the contributor line.
+	Folders                []string
+	Note                   string
+	SeeLabel, RemoveLabel  string
+	SeeHref, RemoveHref    string
 }
 
 // ConfirmView is a confirmation page (turn off an account, stop sharing).
@@ -236,6 +252,9 @@ templ AdminUser(v AdminUserView) {
 			</section>
 			@userShareForm(v)
 		}
+		if v.Added.Show {
+			@userAddedBooks(v.Added)
+		}
 		<section class="ts-users__account" aria-labelledby="us-acct">
 			<h2 id="us-acct" class="section">Account</h2>
 			if v.Off {
@@ -247,5 +266,39 @@ templ AdminUser(v AdminUserView) {
 				<a class="ts-btn ts-btn--danger" href={ templ.SafeURL("/admin/users/" + v.ID + "/disable") }>Turn off account</a>
 			}
 		</section>
+	</div>
+}
+
+// userAddedBooks is "Books they added": how many, where their folder is, a link to see them in the
+// library and the way to remove them all.
+templ userAddedBooks(a AddedBooksView) {
+	<section class="ts-users__added" aria-labelledby="us-added">
+		<h2 id="us-added" class="section">{ a.Title }</h2>
+		<p class="body ts-users__addedcount">{ a.CountWords }</p>
+		for _, f := range a.Folders {
+			<p class="caption ts-users__meta ts-users__addedfolder">{ f }</p>
+		}
+		if a.Note != "" {
+			<p class="caption ts-users__meta">{ a.Note }</p>
+		}
+		if a.Count > 0 {
+			<div class="ts-users__addedactions">
+				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(a.SeeHref) }>{ a.SeeLabel }</a>
+				<a class="ts-btn ts-btn--danger" href={ templ.SafeURL(a.RemoveHref) }>{ a.RemoveLabel }</a>
+			</div>
+		}
+	</section>
+}
+
+// AdminUserRemoveAll is the status page of "Remove all their books": the job fragment inside the
+// usual narrow admin page, with a way back to the person.
+templ AdminUserRemoveAll(title, backHref, backLabel string, st components.RemoveAllView) {
+	<div class="ts-admin ts-admin--narrow">
+		<a class="ts-admin__back" href={ templ.SafeURL(backHref) }>
+			@components.Icon("invite", false)
+			{ backLabel }
+		</a>
+		<h1 class="title-1">{ title }</h1>
+		@components.RemoveAllStatus(st)
 	</div>
 }

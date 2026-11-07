@@ -1,0 +1,79 @@
+package components
+
+import "strconv"
+
+// RemoveAllKept is one book "Remove all their books" left in place, with the reason in plain words.
+type RemoveAllKept struct {
+	Title, Reason string
+}
+
+// RemoveAllView is what RemoveAllStatus shows for one remove-all job. The handler writes every word.
+type RemoveAllView struct {
+	JobID string
+	// Active is true while the job waits or runs; an active status polls its own address every 2
+	// seconds, a finished or failed one renders without any polling attributes.
+	Active bool
+	// Progress is "Removing books… 3 of 12" while active.
+	Progress string
+	Percent  int
+	// Done is "Removed 9 books." once finished; Failed is the failure sentence.
+	Done, Failed string
+	// KeptHeading is "Kept 3 books"; it is empty when nothing stayed.
+	KeptHeading string
+	Kept        []RemoveAllKept
+	// Refresh is the plain link that reloads the status without JavaScript (or tries again after a failure).
+	Refresh, RefreshLabel string
+}
+
+// RemoveAllStatus is the fragment served at /hx/jobs/{id} for "Remove all their books": a progress
+// bar while it runs, the count removed and the books kept (each with its reason) when it ends.
+templ RemoveAllStatus(v RemoveAllView) {
+	<div
+		id={ "removeall-" + v.JobID }
+		class="ts-removeall"
+		if v.Active {
+			hx-get={ "/hx/jobs/" + v.JobID }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		if v.Active {
+			<p class="label ts-removeall__title">{ v.Progress }</p>
+			<progress
+				class="ts-scan__bar"
+				role="progressbar"
+				aria-label={ v.Progress }
+				aria-valuemin="0"
+				aria-valuemax="100"
+				aria-valuenow={ strconv.Itoa(v.Percent) }
+				max="100"
+				value={ strconv.Itoa(v.Percent) }
+			>{ strconv.Itoa(v.Percent) }%</progress>
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.Refresh) }>{ v.RefreshLabel }</a>
+		}
+		if v.Done != "" {
+			<p class="body ts-removeall__done" role="status">
+				@Icon("check", false)
+				{ v.Done }
+			</p>
+		}
+		if v.Failed != "" {
+			<p class="body ts-removeall__failed" role="alert">
+				@Icon("alert", false)
+				{ v.Failed }
+			</p>
+			<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.Refresh) }>{ v.RefreshLabel }</a>
+		}
+		if v.KeptHeading != "" {
+			<h2 class="section ts-removeall__kept">{ v.KeptHeading }</h2>
+			<ul class="ts-removeall__list">
+				for _, k := range v.Kept {
+					<li class="ts-removeall__item">
+						<span class="body">{ k.Title }</span>
+						<span class="caption ts-removeall__reason">{ k.Reason }</span>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}

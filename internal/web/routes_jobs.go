@@ -57,6 +57,7 @@ var jobViews = map[string]func(s *server, w http.ResponseWriter, r *http.Request
 	metadata.KindOnlineBulk:    (*server).getBulkJob,
 	backups.Kind:               (*server).getBackupJob,
 	upload.KindPlace:           (*server).getUploadJob,
+	upload.KindRemoveAll:       (*server).getRemoveAllJob,
 	ebook.KindIngest:           (*server).getIngestJob,
 }
 

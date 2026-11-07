@@ -18,9 +18,10 @@ const (
 	shareJustOneBook = "Just one book"
 	shareFindBook    = "Find a book" // NEW
 
-	shareMemberHint = "Can also make shelves." // decision 1, replaces the board's longer line
-	shareListener   = "Can listen, download and bookmark."
-	shareAdminHint  = "Can manage books, people and the server."
+	shareMemberHint      = "Can also make shelves."                                    // decision 1, replaces the board's longer line
+	shareContributorHint = "Can also add books, and edit or remove the ones they add." // NEW
+	shareListener        = "Can listen, download and bookmark."
+	shareAdminHint       = "Can manage books, people and the server."
 
 	shareDay1  = "1 day"
 	shareDay7  = "7 days"

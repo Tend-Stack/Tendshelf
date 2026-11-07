@@ -43,7 +43,13 @@ templ AddBooks(v AddBooksView) {
 			{ v.LibraryName }
 		</a>
 		<h1 class="title-1 ts-upload__title">{ v.Title }</h1>
-		<p class="body ts-upload__lead">{ v.LeadBefore }<span class="ts-upload__folder">{ v.Folder }</span>{ v.LeadAfter }</p>
+		<p class="body ts-upload__lead">
+			{ v.LeadBefore }
+			if v.Folder != "" {
+				<span class="ts-upload__folder">{ v.Folder }</span>
+			}
+			{ v.LeadAfter }
+		</p>
 		if len(v.Libraries) > 1 {
 			<nav class="ts-chip-set" aria-label={ v.LibrariesLabel }>
 				for _, l := range v.Libraries {

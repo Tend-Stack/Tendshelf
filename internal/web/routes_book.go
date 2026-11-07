@@ -12,6 +12,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 	"github.com/a-h/templ"
 )
@@ -264,6 +265,12 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 	case "details":
 		v.PanelTitle, v.PanelCoverCaption = detailsPanelTitle, detailsCoverCaption
 		v.Rows = bookDetailsView(d, s.canManage(r))
+		if row, ok, err := s.addedByRow(r, id); err != nil {
+			s.serverError(w, r, "book added by", err)
+			return
+		} else if ok {
+			v.Rows = append(v.Rows, row)
+		}
 		if canEdit {
 			if v.Edit, err = s.detailsEditView(r, id, lookups); err != nil {
 				s.serverError(w, r, "details controls", err)
@@ -503,4 +510,36 @@ func (s *server) ebookChip(ctx context.Context, bookID string) string {
 		}
 	}
 	return ebookChip
+}
+
+// addedByRow is the "Added by" line of the Details tab (decision 0029): "you" for the person's own book,
+// the person's name for an owner or admin (a link to their page when they may manage that person),
+// and nothing for anyone else, so a listener never learns who added a book.
+func (s *server) addedByRow(r *http.Request, bookID string) (pages.DetailRow, bool, error) {
+	ctx, me := r.Context(), currentUser(r)
+	by, err := s.lib.AddedBy(ctx, bookID)
+	if err != nil || by == "" {
+		return pages.DetailRow{}, false, err
+	}
+	row := pages.DetailRow{Label: bookLabelAddedBy}
+	if by == me.ID {
+		row.Value = bookAddedByYou
+		return row, true, nil
+	}
+	if me.Role != users.RoleOwner && me.Role != users.RoleAdmin {
+		return row, false, nil
+	}
+	t, err := s.users.ByID(ctx, by)
+	if errors.Is(err, users.ErrNotFound) {
+		return row, false, nil
+	}
+	if err != nil {
+		return row, false, err
+	}
+	if s.can.Can(ctx, me, share.ManageUsers, share.Target{Kind: share.TargetUser, ID: t.ID, Role: t.Role}) {
+		row.Links = []pages.Link{{Name: personName(t), Href: "/admin/users/" + t.ID}}
+	} else {
+		row.Value = personName(t)
+	}
+	return row, true, nil
 }

@@ -11,12 +11,16 @@ import (
 // (decision 0015, "Copy"; board UploadBooks). Lines marked new are not in the copy deck and are
 // listed in docs/copy-additions.md. {tokens} are filled by js/upload.js.
 const (
-	uploadTitle       = "Add books"
-	uploadLead        = "Books go into {path}, in a folder for each author."
-	uploadPickHeading = "Choose what to add"
-	uploadFiles       = "Choose files"
-	uploadFolder      = "Choose a folder"
-	uploadHint        = "Audio files, ebooks, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused. Archives inside archives are left out."
+	uploadTitle            = "Add books"
+	uploadLeadContrib      = "Books you add go into your own folder, %s."     // NEW
+	uploadLeadContribFirst = "Books you add go into a folder of your own."    // NEW
+	uploadNeedsJSContrib   = "Adding books needs JavaScript in this browser." // NEW
+	uploadPlacingOwn       = "Putting it in your folder"                      // NEW
+	uploadLead             = "Books go into {path}, in a folder for each author."
+	uploadPickHeading      = "Choose what to add"
+	uploadFiles            = "Choose files"
+	uploadFolder           = "Choose a folder"
+	uploadHint             = "Audio files, ebooks, pictures and book details files. Up to 50 GB a book. Copy-protected files are refused. Archives inside archives are left out."
 	// Plan U3: the drop line is the board's; the tick box, the "{n} books" header and the sentence about nested archives are new.
 	uploadDrop      = "Drop audio files or a folder here"
 	uploadSeveral   = "This folder holds several books"

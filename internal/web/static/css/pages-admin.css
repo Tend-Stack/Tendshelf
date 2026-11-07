@@ -289,3 +289,21 @@ a.ts-users__item:hover { background: var(--raised); }
 .ts-libs__form > .ts-me__line:nth-last-child(2) { border-bottom: 0; }
 .ts-libs__needs a { display: inline-flex; align-items: center; min-height: var(--size-tap); }
 .ts-libs__scopes { gap: var(--space-4); }
+
+/* "Books they added" on a person's page, and the status of "Remove all their books" (decision 0029). */
+.ts-users__added { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); margin-top: var(--space-8); }
+.ts-users__added .section { margin: 0; }
+.ts-users__added p { margin: 0; }
+.ts-users__addedfolder { overflow-wrap: anywhere; }
+.ts-users__addedactions { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-4); }
+.ts-removeall { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); margin-top: var(--space-8); width: 100%; }
+.ts-removeall p, .ts-removeall .section { margin: 0; }
+.ts-removeall .ts-scan__bar { width: 100%; }
+.ts-removeall__done, .ts-removeall__failed { display: flex; align-items: center; gap: var(--space-8); }
+.ts-removeall__failed { color: var(--danger); }
+.ts-removeall__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-8); width: 100%; }
+.ts-removeall__item {
+  display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--line); overflow-wrap: anywhere;
+}
+.ts-removeall__reason { color: var(--ink-muted); }

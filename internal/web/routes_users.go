@@ -155,20 +155,21 @@ func (s *server) loadPerson(w http.ResponseWriter, r *http.Request) (users.User,
 	return u, true
 }
 
-func rolesFor(s *server, r *http.Request, current users.Role) []pages.RoleChoice {
+func rolesFor(s *server, r *http.Request, current users.Kind) []pages.RoleChoice {
 	actor := currentUser(r)
 	all := []pages.RoleChoice{
-		{Value: string(users.RoleAdmin), Label: usersRoleAdmin, Hint: usersHintAdmin},
-		{Value: string(users.RoleMember), Label: usersRoleMember, Hint: usersHintMember},
-		{Value: string(users.RoleGuest), Label: usersRoleGuest, Hint: usersHintGuest},
+		{Value: string(users.KindAdmin), Label: usersRoleAdmin, Hint: usersHintAdmin},
+		{Value: string(users.KindContributor), Label: usersRoleContributor, Hint: usersHintContributor},
+		{Value: string(users.KindMember), Label: usersRoleMember, Hint: usersHintMember},
+		{Value: string(users.KindGuest), Label: usersRoleGuest, Hint: usersHintGuest},
 	}
 	var out []pages.RoleChoice
 	for _, c := range all {
-		role := users.Role(c.Value)
-		if role != current && !s.can.Can(r.Context(), actor, share.ManageUsers, share.Target{Kind: share.TargetUser, Role: role}) {
+		role, _, _ := users.ParseKind(c.Value)
+		if users.Kind(c.Value) != current && !s.can.Can(r.Context(), actor, share.ManageUsers, share.Target{Kind: share.TargetUser, Role: role}) {
 			continue
 		}
-		c.On = role == current
+		c.On = users.Kind(c.Value) == current
 		out = append(out, c)
 	}
 	return out
@@ -179,8 +180,8 @@ func (s *server) personView(r *http.Request, t users.User, errMsg string) (pages
 	ctx := r.Context()
 	now := s.now()
 	v := pages.AdminUserView{
-		CSRF: s.csrf.TokenFrom(ctx), ID: t.ID, Name: personName(t), RolePill: roleWord(t.Role), RoleKind: string(t.Role),
-		Error: errMsg, Roles: rolesFor(s, r, t.Role), Off: t.Disabled, Today: now.Format("2006-01-02"),
+		CSRF: s.csrf.TokenFrom(ctx), ID: t.ID, Name: personName(t), RolePill: kindWord(t.Kind()), RoleKind: string(t.Kind()),
+		Error: errMsg, Roles: rolesFor(s, r, t.Kind()), Off: t.Disabled, Today: now.Format("2006-01-02"),
 		CanGrant: t.Role == users.RoleMember || t.Role == users.RoleGuest,
 	}
 	people, err := s.grants.People(ctx, now.UnixMilli(), monthStart(now).UnixMilli())
@@ -206,6 +207,9 @@ func (s *server) personView(r *http.Request, t users.User, errMsg string) (pages
 		return v, err
 	}
 	v.Stats = statsView(st, true, false)
+	if v.Added, err = s.addedBooksView(r, t); err != nil {
+		return v, err
+	}
 	if !v.CanGrant {
 		return v, nil
 	}
