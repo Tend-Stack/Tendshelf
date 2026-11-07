@@ -152,6 +152,7 @@ func a11yPages() []a11yPage {
 		row("admin-ebook", "/admin/ebooks/{fileID}", func(e *a11yEnv) string { return "/admin/ebooks/" + e.EbookFoundID }, owner, "main", true),
 		row("admin-users", "/admin/users", a11yStatic("/admin/users"), owner, "main", true),
 		row("admin-user", "/admin/users/{id}", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID }, owner, "main", true),
+		row("admin-user-remove-all", "/admin/users/{id}/books/remove", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID + "/books/remove" }, owner, "main", true),
 		row("admin-user-disable", "/admin/users/{id}/disable", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID + "/disable" }, owner, "main", true),
 		row("admin-user-stop", "/admin/users/{id}/stop", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID + "/stop" }, owner, "main", true),
 		row("admin-email", "/admin/email", a11yStatic("/admin/email"), owner, "main", true),

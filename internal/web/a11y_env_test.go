@@ -155,6 +155,11 @@ func a11ySeed(t *testing.T) *a11yEnv {
 		VALUES ('gr_a11y_member', ?, 'library', ?, 0, 0, 1, 1)`, e.MemberID, e.LibID); err != nil {
 		t.Fatal(err)
 	}
+	// The member added the first book (decision 0029), so their page shows "Books they added" and the remove-all confirm opens.
+	if _, err := a.st.Writer().Exec(`INSERT INTO upload_books(root_path, upload_id, library_id, added_by, created_at)
+		SELECT root_path, 'up_a11y', library_id, ?, 1 FROM books WHERE id = ?`, e.MemberID, e.BookID); err != nil {
+		t.Fatal(err)
+	}
 	ownerUser, err := a.srv.users.ByID(ctx, owner)
 	if err != nil {
 		t.Fatal(err)
