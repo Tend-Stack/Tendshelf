@@ -66,7 +66,15 @@ func TestNativeDownloadsBrowser(t *testing.T) {
 				t.Errorf("queued label %q", text("[data-ts-download] .ts-book__label"))
 			}
 			push("downloading", 40)
-			if got := text("[data-ts-download] .ts-book__label"); got != "Downloading · 40%" {
+			if got := text("[data-ts-download-pct]"); got != "40%" || hidden("[data-ts-download-pct]") {
+				t.Errorf("percent overlay %q", got)
+			}
+			var named string
+			tab.Eval(`document.querySelector("[data-ts-download]").getAttribute("aria-label")`, &named)
+			if named != "Downloading · 40%" {
+				t.Errorf("button name %q", named)
+			}
+			if got := text("[data-ts-download] .ts-book__label"); got != "Download" {
 				t.Errorf("downloading label %q", got)
 			}
 			var now string

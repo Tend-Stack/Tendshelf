@@ -248,6 +248,7 @@ templ bookDownload(v BookDownloadView) {
 	>
 		@components.Icon("download", false)
 		<span class="ts-book__label">{ v.Label }</span>
+		<span class="ts-book__dlpct ts-num" aria-hidden="true" data-ts-download-pct hidden></span>
 		<span class="ts-bar ts-book__dlbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" data-ts-download-bar hidden>
 			<span class="ts-bar__fill ts-value"></span>
 		</span>

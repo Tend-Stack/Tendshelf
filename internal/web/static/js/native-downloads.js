@@ -34,11 +34,20 @@ function start(bridge) {
     // The link goes to the app's own Downloads page; htmx must not take the click.
     link.setAttribute("hx-boost", "false");
     if (state !== "downloading" && state !== "queued") showBar(button, null);
+    if (state !== "downloading") {
+      showPercent(button, null);
+      button.removeAttribute("aria-label");
+    }
     if (listed) {
       link.querySelector("[data-ts-download-label]").textContent = link.dataset["tsMsg" + (state === "paused" ? "Paused" : "Ready")];
     } else if (state === "downloading") {
       // Without a known total the words say so and the bar keeps moving, instead of a stuck 0 %.
-      label.textContent = known ? button.dataset.tsMsgDownloading.replace("{pct}", String(pct)) : (button.dataset.tsMsgWorking || "Downloading…");
+      // The row of buttons is tight, so the number sits on top of the button and the label keeps its width.
+      // A screen reader gets the whole sentence from the button's name; the overlay is hidden from it.
+      const words = known ? button.dataset.tsMsgDownloading.replace("{pct}", String(pct)) : (button.dataset.tsMsgWorking || "Downloading…");
+      label.textContent = known ? firstLabel : words;
+      button.setAttribute("aria-label", words);
+      showPercent(button, known ? pct : null);
       showBar(button, known ? pct : -1);
     } else if (state === "queued") {
       label.textContent = button.dataset.tsMsgWaiting;
@@ -48,6 +57,14 @@ function start(bridge) {
     } else {
       label.textContent = firstLabel;
     }
+  }
+
+  // The percent laid over the button; null hides it.
+  function showPercent(button, pct) {
+    const over = button.querySelector("[data-ts-download-pct]");
+    if (!over) return;
+    over.hidden = pct === null;
+    over.textContent = pct === null ? "" : pct + "%";
   }
 
   // The bar inside the button: a number is a share, -1 is "working, size not known yet", null hides it.

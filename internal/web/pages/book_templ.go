@@ -615,14 +615,14 @@ func bookDownload(v BookDownloadView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span> <span class=\"ts-bar ts-book__dlbar\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\"100\" data-ts-download-bar hidden><span class=\"ts-bar__fill ts-value\"></span></span></button> <a class=\"ts-btn ts-btn--secondary ts-btn--lg ts-book__download\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span> <span class=\"ts-book__dlpct ts-num\" aria-hidden=\"true\" data-ts-download-pct hidden></span> <span class=\"ts-bar ts-book__dlbar\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\"100\" data-ts-download-bar hidden><span class=\"ts-bar__fill ts-value\"></span></span></button> <a class=\"ts-btn ts-btn--secondary ts-btn--lg ts-book__download\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.Href)).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 257, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 258, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
 		if templ_7745c5c3_Err != nil {
@@ -635,7 +635,7 @@ func bookDownload(v BookDownloadView) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.Ready).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 259, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 260, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var24)
 		if templ_7745c5c3_Err != nil {
@@ -648,7 +648,7 @@ func bookDownload(v BookDownloadView) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.Paused).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 260, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 261, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 		if templ_7745c5c3_Err != nil {
@@ -661,7 +661,7 @@ func bookDownload(v BookDownloadView) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.Failed).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 261, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 262, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
 		if templ_7745c5c3_Err != nil {
@@ -708,7 +708,7 @@ func bookShareLink(href string) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(href)).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 271, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 272, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 		if templ_7745c5c3_Err != nil {
@@ -754,7 +754,7 @@ func bookShelfLink(href, label string) templ.Component {
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(href)).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 280, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 281, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 		if templ_7745c5c3_Err != nil {
@@ -767,7 +767,7 @@ func bookShelfLink(href, label string) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templruntime.NewAttributeExpression(href).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 281, Col: 15}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 282, Col: 15}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 		if templ_7745c5c3_Err != nil {
@@ -788,7 +788,7 @@ func bookShelfLink(href, label string) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 289, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 290, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -856,7 +856,7 @@ func Book(v BookView) templ.Component {
 				var templ_7745c5c3_Var36 string
 				templ_7745c5c3_Var36, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.BandTint).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 299, Col: 74}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 300, Col: 74}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
 				if templ_7745c5c3_Err != nil {
@@ -888,7 +888,7 @@ func Book(v BookView) templ.Component {
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.BackHref)).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 301, Col: 80}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 302, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
 		if templ_7745c5c3_Err != nil {
@@ -909,7 +909,7 @@ func Book(v BookView) templ.Component {
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(v.BackLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 303, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 304, Col: 16}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
@@ -935,7 +935,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var39 string
 			templ_7745c5c3_Var39, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.CoverHref)).ResolveURL(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 313, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 314, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var39)
 			if templ_7745c5c3_Err != nil {
@@ -948,7 +948,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var40 string
 			templ_7745c5c3_Var40, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.CoverHref).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 314, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 315, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
 			if templ_7745c5c3_Err != nil {
@@ -961,7 +961,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var41 string
 			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(v.CoverLabel)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 320, Col: 20}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 321, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {
@@ -984,7 +984,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var42 string
 			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(v.Overline)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 325, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 326, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 			if templ_7745c5c3_Err != nil {
@@ -1002,7 +1002,7 @@ func Book(v BookView) templ.Component {
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(v.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 327, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 328, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -1020,7 +1020,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var44 string
 			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(v.Subtitle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 329, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 330, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 			if templ_7745c5c3_Err != nil {
@@ -1047,7 +1047,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var45 string
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(v.BylineSep)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 334, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 335, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
@@ -1078,7 +1078,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var46 string
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.ChipSeriesHref)).ResolveURL(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 342, Col: 89}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 343, Col: 89}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 			if templ_7745c5c3_Err != nil {
@@ -1091,7 +1091,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var47 string
 			templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(v.ChipSeries)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 342, Col: 106}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 343, Col: 106}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 			if templ_7745c5c3_Err != nil {
@@ -1110,7 +1110,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var48 string
 			templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(v.ChipDuration)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 345, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 346, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 			if templ_7745c5c3_Err != nil {
@@ -1129,7 +1129,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var49 string
 			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(v.ChipEbook)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 348, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 349, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 			if templ_7745c5c3_Err != nil {
@@ -1148,7 +1148,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var50 string
 			templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(v.ChipChapters)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 351, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 352, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 			if templ_7745c5c3_Err != nil {
@@ -1167,7 +1167,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var51 string
 			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(v.ChipYear)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 354, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 355, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 			if templ_7745c5c3_Err != nil {
@@ -1186,7 +1186,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var52 string
 			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(v.ChipPublisher)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 357, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 358, Col: 85}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 			if templ_7745c5c3_Err != nil {
@@ -1209,7 +1209,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(v.Caption)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 361, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 362, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
@@ -1236,7 +1236,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var54 string
 			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(v.Banner)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 366, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 367, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 			if templ_7745c5c3_Err != nil {
@@ -1286,7 +1286,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var55 string
 			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(v.Intro)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 386, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 387, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 			if templ_7745c5c3_Err != nil {
@@ -1304,7 +1304,7 @@ func Book(v BookView) templ.Component {
 				var templ_7745c5c3_Var56 string
 				templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(v.MoreLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 389, Col: 87}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 390, Col: 87}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 				if templ_7745c5c3_Err != nil {
@@ -1317,7 +1317,7 @@ func Book(v BookView) templ.Component {
 				var templ_7745c5c3_Var57 string
 				templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(v.LessLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 389, Col: 136}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 390, Col: 136}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 				if templ_7745c5c3_Err != nil {
@@ -1330,7 +1330,7 @@ func Book(v BookView) templ.Component {
 				var templ_7745c5c3_Var58 string
 				templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(v.Rest)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 390, Col: 40}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 391, Col: 40}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 				if templ_7745c5c3_Err != nil {
@@ -1362,7 +1362,7 @@ func Book(v BookView) templ.Component {
 				var templ_7745c5c3_Var59 string
 				templ_7745c5c3_Var59, templ_7745c5c3_Err = templruntime.NewAttributeExpression("book-tab-" + t.ID).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 400, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 401, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var59)
 				if templ_7745c5c3_Err != nil {
@@ -1393,7 +1393,7 @@ func Book(v BookView) templ.Component {
 				var templ_7745c5c3_Var62 string
 				templ_7745c5c3_Var62, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(t.Href)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 402, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 403, Col: 34}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var62)
 				if templ_7745c5c3_Err != nil {
@@ -1406,7 +1406,7 @@ func Book(v BookView) templ.Component {
 				var templ_7745c5c3_Var63 string
 				templ_7745c5c3_Var63, templ_7745c5c3_Err = templruntime.NewAttributeExpression(t.Href).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 403, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 404, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var63)
 				if templ_7745c5c3_Err != nil {
@@ -1439,7 +1439,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var64 string
 			templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.JoinStringErrs(t.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 412, Col: 15}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 413, Col: 15}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var64))
 			if templ_7745c5c3_Err != nil {
@@ -1483,7 +1483,7 @@ func Book(v BookView) templ.Component {
 			var templ_7745c5c3_Var67 string
 			templ_7745c5c3_Var67, templ_7745c5c3_Err = templruntime.NewAttributeExpression("book-tab-" + v.Tab).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 415, Col: 132}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 416, Col: 132}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var67)
 			if templ_7745c5c3_Err != nil {
@@ -1600,7 +1600,7 @@ func bookAbout(v BookView) templ.Component {
 			var templ_7745c5c3_Var69 string
 			templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinStringErrs(v.Intro)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 448, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 449, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var69))
 			if templ_7745c5c3_Err != nil {
@@ -1618,7 +1618,7 @@ func bookAbout(v BookView) templ.Component {
 				var templ_7745c5c3_Var70 string
 				templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(v.MoreLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 451, Col: 85}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 452, Col: 85}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
 				if templ_7745c5c3_Err != nil {
@@ -1631,7 +1631,7 @@ func bookAbout(v BookView) templ.Component {
 				var templ_7745c5c3_Var71 string
 				templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(v.LessLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 451, Col: 134}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 452, Col: 134}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 				if templ_7745c5c3_Err != nil {
@@ -1644,7 +1644,7 @@ func bookAbout(v BookView) templ.Component {
 				var templ_7745c5c3_Var72 string
 				templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(v.Rest)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 452, Col: 38}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 453, Col: 38}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 				if templ_7745c5c3_Err != nil {
@@ -1704,7 +1704,7 @@ func bookRails(v BookView) templ.Component {
 				var templ_7745c5c3_Var74 string
 				templ_7745c5c3_Var74, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.SeriesHref)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 470, Col: 86}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 471, Col: 86}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var74)
 				if templ_7745c5c3_Err != nil {
@@ -1717,7 +1717,7 @@ func bookRails(v BookView) templ.Component {
 				var templ_7745c5c3_Var75 string
 				templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(v.SeriesTitle)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 470, Col: 104}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 471, Col: 104}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 				if templ_7745c5c3_Err != nil {
@@ -1735,7 +1735,7 @@ func bookRails(v BookView) templ.Component {
 					var templ_7745c5c3_Var76 string
 					templ_7745c5c3_Var76, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.StartHref)).ResolveURL(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 472, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 473, Col: 87}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var76)
 					if templ_7745c5c3_Err != nil {
@@ -1748,7 +1748,7 @@ func bookRails(v BookView) templ.Component {
 					var templ_7745c5c3_Var77 string
 					templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(v.StartLabel)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 472, Col: 104}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 473, Col: 104}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
 					if templ_7745c5c3_Err != nil {
@@ -1782,7 +1782,7 @@ func bookRails(v BookView) templ.Component {
 				var templ_7745c5c3_Var78 string
 				templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(v.NarratedTitle)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 485, Col: 68}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 486, Col: 68}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
 				if templ_7745c5c3_Err != nil {
@@ -1842,7 +1842,7 @@ func bookChapters(v BookView) templ.Component {
 			var templ_7745c5c3_Var80 string
 			templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(v.NoChaptersText)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 502, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 503, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
 			if templ_7745c5c3_Err != nil {
@@ -1886,7 +1886,7 @@ func bookDetails(v BookView) templ.Component {
 			var templ_7745c5c3_Var82 string
 			templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(r.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 510, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 511, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
 			if templ_7745c5c3_Err != nil {
@@ -1911,7 +1911,7 @@ func bookDetails(v BookView) templ.Component {
 					var templ_7745c5c3_Var83 string
 					templ_7745c5c3_Var83, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(l.Href)).ResolveURL(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 517, Col: 38}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 518, Col: 38}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var83)
 					if templ_7745c5c3_Err != nil {
@@ -1924,7 +1924,7 @@ func bookDetails(v BookView) templ.Component {
 					var templ_7745c5c3_Var84 string
 					templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.JoinStringErrs(l.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 517, Col: 49}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 518, Col: 49}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var84))
 					if templ_7745c5c3_Err != nil {
@@ -1939,7 +1939,7 @@ func bookDetails(v BookView) templ.Component {
 				var templ_7745c5c3_Var85 string
 				templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinStringErrs(r.Value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 520, Col: 15}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 521, Col: 15}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var85))
 				if templ_7745c5c3_Err != nil {
@@ -1993,7 +1993,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 			var templ_7745c5c3_Var87 string
 			templ_7745c5c3_Var87, templ_7745c5c3_Err = templ.JoinStringErrs(v.PanelTitle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 540, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 541, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var87))
 			if templ_7745c5c3_Err != nil {
@@ -2019,7 +2019,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var88 string
 				templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(v.Edit.Applied)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 544, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 545, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
 				if templ_7745c5c3_Err != nil {
@@ -2046,7 +2046,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var89 string
 				templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(v.Write.Note)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 550, Col: 19}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 551, Col: 19}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
 				if templ_7745c5c3_Err != nil {
@@ -2069,7 +2069,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var90 string
 				templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(v.Write.Attention.Text)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 556, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 557, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
 				if templ_7745c5c3_Err != nil {
@@ -2087,7 +2087,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var91 string
 					templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(v.Write.Attention.Folder)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 558, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 559, Col: 68}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
 					if templ_7745c5c3_Err != nil {
@@ -2116,7 +2116,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var92 string
 					templ_7745c5c3_Var92, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.Edit.LookupHref)).ResolveURL(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 568, Col: 47}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 569, Col: 47}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var92)
 					if templ_7745c5c3_Err != nil {
@@ -2129,7 +2129,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var93 string
 					templ_7745c5c3_Var93, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.Edit.LookupHref).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 569, Col: 34}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 570, Col: 34}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var93)
 					if templ_7745c5c3_Err != nil {
@@ -2142,7 +2142,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var94 string
 					templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinStringErrs(v.Edit.LookupLabel)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 575, Col: 28}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 576, Col: 28}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
 					if templ_7745c5c3_Err != nil {
@@ -2155,7 +2155,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var95 string
 					templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.JoinStringErrs(v.Edit.LookupCaption)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 576, Col: 48}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 577, Col: 48}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var95))
 					if templ_7745c5c3_Err != nil {
@@ -2174,7 +2174,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var96 string
 					templ_7745c5c3_Var96, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.Write.OpenHref)).ResolveURL(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 583, Col: 46}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 584, Col: 46}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var96)
 					if templ_7745c5c3_Err != nil {
@@ -2187,7 +2187,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var97 string
 					templ_7745c5c3_Var97, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.Write.OpenHref).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 584, Col: 33}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 585, Col: 33}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var97)
 					if templ_7745c5c3_Err != nil {
@@ -2200,7 +2200,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var98 string
 					templ_7745c5c3_Var98, templ_7745c5c3_Err = templ.JoinStringErrs(v.Write.OpenLabel)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 590, Col: 27}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 591, Col: 27}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var98))
 					if templ_7745c5c3_Err != nil {
@@ -2213,7 +2213,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var99 string
 					templ_7745c5c3_Var99, templ_7745c5c3_Err = templ.JoinStringErrs(v.Write.OpenCaption)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 591, Col: 47}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 592, Col: 47}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var99))
 					if templ_7745c5c3_Err != nil {
@@ -2232,7 +2232,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var100 string
 					templ_7745c5c3_Var100, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.CoverHref)).ResolveURL(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 598, Col: 41}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 599, Col: 41}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var100)
 					if templ_7745c5c3_Err != nil {
@@ -2245,7 +2245,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var101 string
 					templ_7745c5c3_Var101, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.CoverHref).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 599, Col: 28}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 600, Col: 28}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var101)
 					if templ_7745c5c3_Err != nil {
@@ -2258,7 +2258,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var102 string
 					templ_7745c5c3_Var102, templ_7745c5c3_Err = templ.JoinStringErrs(v.CoverLabel)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 605, Col: 22}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 606, Col: 22}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var102))
 					if templ_7745c5c3_Err != nil {
@@ -2271,7 +2271,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 					var templ_7745c5c3_Var103 string
 					templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.JoinStringErrs(v.PanelCoverCaption)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 606, Col: 47}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 607, Col: 47}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var103))
 					if templ_7745c5c3_Err != nil {
@@ -2295,7 +2295,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var104 string
 				templ_7745c5c3_Var104, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(v.RemoveHref)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 612, Col: 100}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 613, Col: 100}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var104)
 				if templ_7745c5c3_Err != nil {
@@ -2308,7 +2308,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var105 string
 				templ_7745c5c3_Var105, templ_7745c5c3_Err = templ.JoinStringErrs(v.RemoveLabel)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 612, Col: 118}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 613, Col: 118}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var105))
 				if templ_7745c5c3_Err != nil {
@@ -2327,7 +2327,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var106 string
 				templ_7745c5c3_Var106, templ_7745c5c3_Err = templ.JoinStringErrs(v.Edit.ResetTitle)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 616, Col: 76}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 617, Col: 76}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var106))
 				if templ_7745c5c3_Err != nil {
@@ -2340,7 +2340,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var107 string
 				templ_7745c5c3_Var107, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.URL(v.Edit.ResetAction)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 617, Col: 63}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 618, Col: 63}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var107)
 				if templ_7745c5c3_Err != nil {
@@ -2353,7 +2353,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var108 string
 				templ_7745c5c3_Var108, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.Edit.ResetAction).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 617, Col: 94}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 618, Col: 94}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var108)
 				if templ_7745c5c3_Err != nil {
@@ -2366,7 +2366,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var109 string
 				templ_7745c5c3_Var109, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.Edit.CSRF).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 618, Col: 59}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 619, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var109)
 				if templ_7745c5c3_Err != nil {
@@ -2379,7 +2379,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var110 string
 				templ_7745c5c3_Var110, templ_7745c5c3_Err = templ.JoinStringErrs(v.Edit.ResetBody)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 619, Col: 43}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 620, Col: 43}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var110))
 				if templ_7745c5c3_Err != nil {
@@ -2392,7 +2392,7 @@ func bookDetailsPanel(v BookView) templ.Component {
 				var templ_7745c5c3_Var111 string
 				templ_7745c5c3_Var111, templ_7745c5c3_Err = templ.JoinStringErrs(v.Edit.ResetButton)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 620, Col: 95}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/book.templ`, Line: 621, Col: 95}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var111))
 				if templ_7745c5c3_Err != nil {

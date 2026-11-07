@@ -166,6 +166,9 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 .ts-book__download { position: relative; }
 .ts-book__dlbar { position: absolute; inset: auto 0 0 0; height: 0.25rem; border-radius: 0; }
 .ts-book__dlbar[hidden] { display: none; }
+/* The percent covers the button rather than joining the tight row of actions: its width never moves a neighbour. */
+.ts-book__dlpct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: inherit; background: var(--raised); color: var(--ink); font-weight: 600; font-size: 1rem; }
+.ts-book__dlpct[hidden] { display: none; }
 .ts-bar--busy .ts-bar__fill { inline-size: 35%; animation: ts-dl-busy 1.4s var(--easing-standard, ease-in-out) infinite; }
 @keyframes ts-dl-busy { from { left: -35%; } to { left: 100%; } }
 @media (prefers-reduced-motion: reduce) {
