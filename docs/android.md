@@ -101,14 +101,20 @@ checks the versionCode rule.
 ## Store metadata
 
 `android/fastlane/metadata/android/en-US/` holds the title, descriptions and a changelog per versionCode, in the layout
-F-Droid reads and Play tools accept. `android/fdroid/app.tendshelf.android.yml` is a draft F-Droid recipe with the source
-address and the allowed signing key left empty. Neither is submitted anywhere; the choice of channel is open. Screenshots
-and a 512 px icon PNG are not included yet (they need a synthetic library on a device).
+F-Droid reads and Play tools accept. `android/fdroid/app.tendshelf.android.yml` is the F-Droid recipe: the GitHub source,
+the release certificate's SHA-256 as the one allowed signing key, and `Binaries:` pointing at the APK on each GitHub
+release, so F-Droid publishes the operator-signed APK when its own build from the tag matches it. The channel is F-Droid
+(operator, 2026-11-07). Screenshots and a 512 px icon PNG are not included yet (they need a synthetic library on a device).
+
+To submit, from the operator's own GitLab account: fork `https://gitlab.com/fdroid/fdroiddata`, copy the recipe to
+`metadata/app.tendshelf.android.yml`, and open a merge request titled "New app: Tendshelf". The F-Droid pipeline on that
+request builds the tag; read its log for scanner findings or a mismatch with the release APK. Each later release needs
+only its tag, its GitHub APK and a `changelogs/<versionCode>.txt` (`UpdateCheckMode: Tags` finds new versions).
 
 ## Checks before a release
 
 - `android/tools/check-android.sh` runs `:shared:test` and `lintRelease`. `.gitea/workflows/android.yml` runs it on every push that touches `android/`, and `make-apk.sh` runs it before the tag build. Both need the two `TS_ANDROID_CMDLINE_TOOLS_*` variables; without them the job says it was skipped, which is not a pass.
 - Lint has `NewApi` fatal (minSdk is 28). `app/lint-baseline.xml` holds the older findings of other kinds; never add a `NewApi` entry, fix the call.
 - The app sends the token, and acts on a 401 or 404, only to an address whose `/healthz` says `app: tendshelf` with the install id saved at connect time (`ServerGate`).
-- The F-Droid recipe is a draft for v2026.4.0; it is not submitted until a distribution channel is chosen.
+- The F-Droid recipe names v2026.4.0; F-Droid's own build of the tag must match the GitHub APK (`android/tools/repro-check.sh` checks reproducibility here).
 

@@ -1,0 +1,1 @@
+Release 2026.4.0, the first of the Android app. Add a phone with a QR code, a chapter bar you can point at, and a full player that slides up and swipes away.

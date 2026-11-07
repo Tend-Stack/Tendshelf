@@ -1,18 +1,20 @@
-# DRAFT, NOT FOR SUBMISSION. F-Droid build recipe (plan A10). Not submitted: the operator has not chosen a distribution channel.
-# v2026.4.0 is the first release with the Android app (tagged 2026-11-07, after the pre-release fixes). For a later
+# F-Droid build recipe (plan A10), ready to submit as metadata/app.tendshelf.android.yml in fdroiddata (operator chose
+# F-Droid, 2026-11-07; docs/android.md says how). v2026.4.0 is the first release with the Android app. For a later
 # release, set versionName, versionCode, commit, gradleprops and CurrentVersion to its tag
 # (versionCode = year * 100000 + release * 1000 + fix).
-# Fill in the two <...> values and the signing key before any submission; nothing here is a real account or key.
 Categories:
   - Multimedia
 License: AGPL-3.0-only
-SourceCode: <SOURCE_REPOSITORY_URL>
-IssueTracker: <SOURCE_REPOSITORY_URL>/issues
+SourceCode: https://github.com/Tend-Stack/Tendshelf
+IssueTracker: https://github.com/Tend-Stack/Tendshelf/issues
 
 AutoName: Tendshelf
 
 RepoType: git
-Repo: <SOURCE_REPOSITORY_URL>.git
+Repo: https://github.com/Tend-Stack/Tendshelf.git
+# The signed APK attached to each GitHub release. F-Droid rebuilds from source, and publishes this APK only when its
+# build matches it byte for byte apart from the signature (android/tools/repro-check.sh checks the same here).
+Binaries: https://github.com/Tend-Stack/Tendshelf/releases/download/v%v/tendshelf-%v.apk
 
 Builds:
   - versionName: 2026.4.0
@@ -26,9 +28,9 @@ Builds:
     gradleprops:
       - tsVersion=2026.4.0
 
-# Leave empty until the operator has made a key (docs/android.md). F-Droid then accepts only APKs signed by it, which
-# is what lets a reproducible build be published with the developer's own signature.
-AllowedAPKSigningKeys:
+# The SHA-256 of the operator's release certificate (docs/android.md). F-Droid accepts only APKs signed by it, which is
+# what lets a reproducible build be published with the developer's own signature.
+AllowedAPKSigningKeys: 221e61dc9644e5feb1a17b42e31d86c508a47c986aa0df6451cae203c6e0b6f2
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
