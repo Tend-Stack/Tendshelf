@@ -110,5 +110,5 @@ and a 512 px icon PNG are not included yet (they need a synthetic library on a d
 - `android/tools/check-android.sh` runs `:shared:test` and `lintRelease`. `.gitea/workflows/android.yml` runs it on every push that touches `android/`, and `make-apk.sh` runs it before the tag build. Both need the two `TS_ANDROID_CMDLINE_TOOLS_*` variables; without them the job says it was skipped, which is not a pass.
 - Lint has `NewApi` fatal (minSdk is 28). `app/lint-baseline.xml` holds the older findings of other kinds; never add a `NewApi` entry, fix the call.
 - The app sends the token, and acts on a 401 or 404, only to an address whose `/healthz` says `app: tendshelf` with the install id saved at connect time (`ServerGate`).
-- The F-Droid recipe is a draft and names a tag that does not exist yet.
+- The F-Droid recipe is a draft for v2026.4.0; it is not submitted until a distribution channel is chosen.
 
