@@ -174,6 +174,23 @@ func (e *ienv) waitState(id string) File {
 	return File{}
 }
 
+// waitDocGone waits for an older document to leave the disk: the job removes it just after it marks
+// the file ready, so a test that saw "ready" can still be ahead of the removal.
+func (e *ienv) waitDocGone(sha string) {
+	e.t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		_, err := os.Stat(DocPath(e.svc.textDir(), sha))
+		if os.IsNotExist(err) {
+			return
+		}
+		if time.Now().After(deadline) {
+			e.t.Fatalf("the older document is still on disk: %v", err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func (e *ienv) setState(id, state string) {
 	e.t.Helper()
 	if _, err := e.st.Writer().Exec(`UPDATE ebook_files SET state=?, job_id=NULL WHERE id=?`, state, id); err != nil {

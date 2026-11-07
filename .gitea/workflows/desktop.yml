@@ -1,23 +1,24 @@
 name: Tendshelf desktop
 
 # The desktop module needs CGO, GTK 4 and WebKitGTK 6, so it has its own workflow and ci.yml stays
-# CGO-free. Compile, vet and test only: no windows, no packaging, no nightly row.
+# CGO-free. Compile, vet and test only: no windows, no packaging, no nightly row. The desktop module
+# links the server's packages, so any change under internal/ or to the root go.mod can break it.
 on:
   push:
     branches: [main]
     paths:
       - "desktop/**"
-      - "internal/app/**"
-      - "internal/desktopshell/**"
+      - "internal/**"
       - "go.mod"
+      - "go.sum"
       - ".gitea/workflows/desktop.yml"
   pull_request:
     branches: [main]
     paths:
       - "desktop/**"
-      - "internal/app/**"
-      - "internal/desktopshell/**"
+      - "internal/**"
       - "go.mod"
+      - "go.sum"
       - ".gitea/workflows/desktop.yml"
   workflow_dispatch:
 

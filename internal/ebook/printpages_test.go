@@ -2,7 +2,6 @@ package ebook
 
 import (
 	"bytes"
-	"os"
 	"strings"
 	"testing"
 
@@ -216,9 +215,7 @@ VALUES ('u1','b1',?,1,'c1.p2.s0',9,'quiet morning in the harbour',30,500,5,5,'de
 	if got := ppMarks(nd); got != "iv@c1.p2 5@c1.p3" {
 		t.Errorf("marks = %q", got)
 	}
-	if _, err := os.Stat(DocPath(e.svc.textDir(), oldSHA)); !os.IsNotExist(err) {
-		t.Errorf("the v2 document is still on disk: %v", err)
-	}
+	e.waitDocGone(oldSHA)
 	var hed, bed, ped *string
 	var hsid, bsid, psid string
 	var hoff, hend, poff int

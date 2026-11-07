@@ -1,9 +1,7 @@
 package ebook
 
 import (
-	"os"
 	"testing"
-	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/ebook/ebooktest"
 )
@@ -75,18 +73,7 @@ VALUES ('u1','b1',?,1,'c1.p3.s0',9,'quiet morning in the harbour',30,500,5,5,'de
 	if err := e.st.Reader().QueryRow(`SELECT id, recipe FROM editions WHERE ebook_file_id = ?`, f.ID).Scan(&newID, &recipe); err != nil || recipe != Recipe {
 		t.Fatalf("edition %q recipe %q err %v", newID, recipe, err)
 	}
-	// The job removes the older document just after it marks the file ready, so give it a moment.
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		_, err := os.Stat(DocPath(e.svc.textDir(), oldSHA))
-		if os.IsNotExist(err) {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("the older document is still on disk: %v", err)
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	e.waitDocGone(oldSHA)
 	type hl struct {
 		ed       *string
 		sid      string
