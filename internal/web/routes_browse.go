@@ -209,7 +209,20 @@ func (s *server) listQuery(u users.User, q browseQuery, cur *library.LibrarySumm
 	from, to := lengthRange(q.Length)
 	return library.ListQuery{LibraryID: curID(cur), Sort: q.Sort, Genres: q.Genres, Cursor: q.Cursor, Limit: browsePageSize,
 		AuthorID: q.Author, NarratorID: q.Narrator, SeriesID: q.Series, Title: q.Title, MinDurationMs: from, MaxDurationMs: to,
-		Format: q.Format, Show: q.Show, UserID: u.ID}
+		Format: q.Format, Show: q.Show, UserID: u.ID, AddedBy: addedByFilter(u, q.Added)}
+}
+
+// addedByFilter is the "Added by" choice the person may use: any id for an owner or admin, only their own for
+// everyone else (decision 0029). Anything else is dropped, so the filter never tells whether another
+// person added books.
+func addedByFilter(u users.User, id string) string {
+	switch {
+	case id == "":
+		return ""
+	case u.Role == users.RoleOwner || u.Role == users.RoleAdmin || id == u.ID:
+		return id
+	}
+	return ""
 }
 
 // libraryFacets are the choices the Author, Narrator and Series menus list.

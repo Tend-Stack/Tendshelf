@@ -70,7 +70,7 @@ func (s *server) getAddBooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, l := range libs {
-		if l.UploadFolderID != "" {
+		if l.UploadFolderID != "" && s.can.Can(ctx, currentUser(r), share.AddBooks, share.Target{Kind: share.TargetLibrary, ID: l.ID, LibraryID: l.ID}) {
 			v.Libraries = append(v.Libraries, pages.LibChip{Name: l.Name, Href: "/libraries/" + l.ID + "/add", Current: l.ID == lib.ID})
 		}
 	}

@@ -206,6 +206,9 @@ type browseQuery struct {
 	// Author, Narrator and Series are ids; Length is "short", "medium" or "long"; Title is the
 	// words a title must contain. All of them narrow the list and none changes the order.
 	Author, Narrator, Series, Length, Title string
+	// Added is the id of the person whose uploads published the books (decision 0029). listQuery drops
+	// another person's id unless the viewer is an owner or admin.
+	Added string
 	// Format is "audio" or "text" (the Format filter); empty shows both.
 	Format string
 	// Show is "unfinished", "not_started" or "finished" (one at a time); it reads the person's own
@@ -239,7 +242,7 @@ func lengthRange(length string) (from, to int64) {
 
 // filtered reports whether any filter narrows the list.
 func (q browseQuery) filtered() bool {
-	return len(q.Genres) > 0 || q.Author != "" || q.Narrator != "" || q.Series != "" || q.Length != "" || q.Title != "" || q.Show != "" || q.Format != ""
+	return len(q.Genres) > 0 || q.Author != "" || q.Narrator != "" || q.Series != "" || q.Added != "" || q.Length != "" || q.Title != "" || q.Show != "" || q.Format != ""
 }
 
 func parseBrowseQuery(r *http.Request) browseQuery {
@@ -259,7 +262,7 @@ func parseBrowseQuery(r *http.Request) browseQuery {
 		}
 		return s
 	}
-	q.Author, q.Narrator, q.Series = id("author"), id("narrator"), id("series")
+	q.Author, q.Narrator, q.Series, q.Added = id("author"), id("narrator"), id("series"), id("added")
 	switch l := v.Get("length"); l {
 	case "short", "medium", "long":
 		q.Length = l
@@ -318,7 +321,7 @@ func (q browseQuery) href(path string, mod func(*browseQuery)) string {
 	for _, g := range q.Genres {
 		v.Add("genre", g)
 	}
-	for _, f := range [...]struct{ k, v string }{{"author", q.Author}, {"narrator", q.Narrator}, {"series", q.Series},
+	for _, f := range [...]struct{ k, v string }{{"author", q.Author}, {"narrator", q.Narrator}, {"series", q.Series}, {"added", q.Added},
 		{"length", q.Length}, {"format", q.Format}, {"show", q.Show}, {"title", q.Title}, {"add", q.Add}} {
 		if f.v != "" {
 			v.Set(f.k, f.v)
@@ -346,5 +349,5 @@ func (q *browseQuery) without(g string) {
 
 // clearFilters drops every filter. The order and the view stay.
 func (q *browseQuery) clearFilters() {
-	q.Genres, q.Author, q.Narrator, q.Series, q.Length, q.Format, q.Show, q.Title = nil, "", "", "", "", "", "", ""
+	q.Genres, q.Author, q.Narrator, q.Series, q.Added, q.Length, q.Format, q.Show, q.Title = nil, "", "", "", "", "", "", "", ""
 }
