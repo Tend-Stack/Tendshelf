@@ -315,7 +315,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// M3b (decision 0013): the Eyes-free menu entry and lazy load, 13.25 KB, approved by the operator on 2026-11-04.
 	// L1 (the speed sheet saves per book) and L2 (the undo after a big move): 13.75 KB, measured 13,961 B; operator pre-approval of raises, 2026-11-05.
 	// A6 (sleep timer in the app; operator approved the raise, 2026-11-06): 14,464 B set, measured 14,443 B with its comments intact, reported.
-	"player-full.js": {15 * 1024, 64 * 1024}, // chapter bar (2026-11-06): the seek event through the scrubber's undo path, 15,265 B measured; swipe down anywhere on the touch player (2026-11-06): 15,155 B measured, comments intact, was 14,464
+	"player-full.js": {15*1024 + 256, 64 * 1024}, // the player rises as a real slide (2026-11-07, 125 B over, reported not squeezed); before that: chapter bar (2026-11-06): the seek event through the scrubber's undo path, 15,265 B measured; swipe down anywhere on the touch player (2026-11-06): 15,155 B measured, comments intact, was 14,464
 	// W2: the waveform drawing (3.0 KB). PB2 folds in the desktop bar's wave (four layers, times, hover,
 	// drag, keys, retry backoff, hairline, volume pop): 7 KB, approved by the operator on 2026-11-02; 7.0 KB measured.
 	"waveform.js": {7 * 1024, 24 * 1024},
