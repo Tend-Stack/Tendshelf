@@ -118,3 +118,95 @@ func TestSetDisabled(t *testing.T) {
 		}
 	})
 }
+
+func TestSetKind(t *testing.T) {
+	ctx := context.Background()
+	set := func(t *testing.T, r *Repo, by, id string, to Kind) (Kind, error) {
+		var from Kind
+		err := inTx(t, r, func(tx *sql.Tx) error {
+			var e error
+			from, e = r.SetKind(ctx, tx, by, id, to)
+			return e
+		})
+		return from, err
+	}
+	t.Run("the whole round", func(t *testing.T) {
+		r := newRepo(t, Options{})
+		seedPeople(t, r)
+		steps := []struct {
+			to, from Kind
+			role     Role
+			adds     bool
+		}{
+			{KindContributor, KindMember, RoleMember, true},
+			{KindContributor, KindContributor, RoleMember, true}, // unchanged: no audit row
+			{KindMember, KindContributor, RoleMember, false},
+			{KindContributor, KindMember, RoleMember, true},
+			{KindAdmin, KindContributor, RoleAdmin, false},
+			{KindContributor, KindAdmin, RoleMember, true},
+			{KindGuest, KindContributor, RoleGuest, false},
+		}
+		for _, s := range steps {
+			from, err := set(t, r, "o", "m", s.to)
+			if err != nil || from != s.from {
+				t.Fatalf("to %s: from %q, err %v, want from %q", s.to, from, err, s.from)
+			}
+			u, _ := r.ByID(ctx, "m")
+			if u.Role != s.role || u.AddsBooks != s.adds {
+				t.Fatalf("to %s: role %q adds %v", s.to, u.Role, u.AddsBooks)
+			}
+		}
+		if n := auditCount(t, r, "user.role"); n != 6 {
+			t.Fatalf("audit rows = %d, want 6", n)
+		}
+	})
+	refused := []struct {
+		name, by, id string
+		to           Kind
+		want         error
+	}{
+		{"owner fixed", "a", "o", KindMember, ErrOwnerFixed},
+		{"nobody becomes owner", "o", "m", KindOwner, ErrOwnerFixed},
+		{"self", "o", "o", KindAdmin, ErrSelf},
+		{"unknown kind", "o", "m", Kind("root"), ErrRole},
+		{"unknown person", "o", "zz", KindContributor, ErrNotFound},
+	}
+	for _, c := range refused {
+		t.Run(c.name, func(t *testing.T) {
+			r := newRepo(t, Options{})
+			seedPeople(t, r)
+			if _, err := set(t, r, c.by, c.id, c.to); !errors.Is(err, c.want) {
+				t.Fatalf("err = %v, want %v", err, c.want)
+			}
+			if n := auditCount(t, r, "user.role"); n != 0 {
+				t.Fatalf("audit rows = %d", n)
+			}
+		})
+	}
+	t.Run("SetRole keeps the flag only for a member", func(t *testing.T) {
+		r := newRepo(t, Options{})
+		seedPeople(t, r)
+		set(t, r, "o", "m", KindContributor)
+		if err := inTx(t, r, func(tx *sql.Tx) error { _, e := r.SetRole(ctx, tx, "o", "m", RoleGuest); return e }); err != nil {
+			t.Fatal(err)
+		}
+		if u, _ := r.ByID(ctx, "m"); u.AddsBooks || u.Kind() != KindGuest {
+			t.Fatalf("after SetRole guest: %+v", u)
+		}
+	})
+	t.Run("Contributor needs member, flag and enabled", func(t *testing.T) {
+		for _, u := range []struct {
+			u    User
+			want bool
+		}{
+			{User{Role: RoleMember, AddsBooks: true}, true},
+			{User{Role: RoleMember, AddsBooks: true, Disabled: true}, false},
+			{User{Role: RoleMember}, false},
+			{User{Role: RoleAdmin, AddsBooks: true}, false},
+		} {
+			if got := u.u.Contributor(); got != u.want {
+				t.Errorf("%+v = %v", u.u, got)
+			}
+		}
+	})
+}

@@ -29,6 +29,7 @@ type User struct {
 	DisplayName string
 	Email       string
 	Role        Role
+	AddsBooks   bool // a member who also adds books of their own (decision 0029)
 	Disabled    bool
 	CreatedAt   int64 // Unix milliseconds UTC
 	LastSeenAt  int64 // 0 when never seen
@@ -40,7 +41,7 @@ var (
 	ErrOwnerExists = errors.New("users: the server already has an owner")
 	ErrOwnerFixed  = errors.New("users: the owner's role and account cannot change")
 	ErrSelf        = errors.New("users: nobody changes their own role or account here")
-	ErrRole        = errors.New("users: a role must be admin, member or guest")
+	ErrRole        = errors.New("users: a role must be admin, contributor, member or guest")
 )
 
 // Options configures a Repo. The zero value is production-ready.
@@ -117,19 +118,63 @@ func (r *Repo) OwnerExists(ctx context.Context) (bool, error) {
 	return exists, err
 }
 
-const userColumns = `id, username, display_name, COALESCE(email, ''), role, disabled, created_at, COALESCE(last_seen_at, 0)`
+const userColumns = `id, username, display_name, COALESCE(email, ''), role, disabled, created_at, COALESCE(last_seen_at, 0), adds_books`
 
 func scanUser(row interface{ Scan(...any) error }, extra ...any) (User, error) {
 	var u User
 	var role string
-	var disabled int
-	dst := append([]any{&u.ID, &u.Username, &u.DisplayName, &u.Email, &role, &disabled, &u.CreatedAt, &u.LastSeenAt}, extra...)
+	var disabled, adds int
+	dst := append([]any{&u.ID, &u.Username, &u.DisplayName, &u.Email, &role, &disabled, &u.CreatedAt, &u.LastSeenAt, &adds}, extra...)
 	if err := row.Scan(dst...); err != nil {
 		return User{}, err
 	}
 	u.Role = Role(role)
 	u.Disabled = disabled != 0
+	u.AddsBooks = adds != 0 && u.Role == RoleMember
 	return u, nil
+}
+
+// Contributor reports whether the account is a member who adds books and is switched on. It is the only
+// test of "contributor" in Go (decision 0029).
+func (u User) Contributor() bool {
+	return u.Role == RoleMember && u.AddsBooks && !u.Disabled
+}
+
+// Kind is what pages and forms call a person: the role, with a contributor told apart from a member.
+type Kind string
+
+// The five kinds.
+const (
+	KindOwner       Kind = "owner"
+	KindAdmin       Kind = "admin"
+	KindContributor Kind = "contributor"
+	KindMember      Kind = "member"
+	KindGuest       Kind = "guest"
+)
+
+// Kind derives the kind from the role and the flag. A disabled contributor is still a contributor here;
+// only Contributor() looks at disabled.
+func (u User) Kind() Kind {
+	if u.Role == RoleMember && u.AddsBooks {
+		return KindContributor
+	}
+	return Kind(u.Role)
+}
+
+// ParseKind turns a form value into the role and flag it stands for: admin, contributor, member or guest.
+// Anything else, the owner included, is ErrRole.
+func ParseKind(s string) (Role, bool, error) {
+	switch Kind(s) {
+	case KindAdmin:
+		return RoleAdmin, false, nil
+	case KindContributor:
+		return RoleMember, true, nil
+	case KindMember:
+		return RoleMember, false, nil
+	case KindGuest:
+		return RoleGuest, false, nil
+	}
+	return "", false, ErrRole
 }
 
 // ByUsername finds an account by username (case-insensitive) and returns its
@@ -209,12 +254,49 @@ func (r *Repo) SetRole(ctx context.Context, tx *sql.Tx, byID, id string, to Role
 		return u.Role, nil
 	}
 	now := r.nowMs()
-	if _, err := tx.ExecContext(ctx, `UPDATE users SET role = ? WHERE id = ?`, string(to), id); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET role = ?1, adds_books = CASE WHEN ?1 = 'member' THEN adds_books ELSE 0 END WHERE id = ?2`, string(to), id); err != nil {
 		return "", err
 	}
 	err = db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: byID, Action: "user.role", Target: "user:" + id,
 		Detail: map[string]any{"from": u.Role, "to": to}})
 	return u.Role, err
+}
+
+// SetKind is SetRole that also knows the contributor: to is admin, contributor, member or guest. The same
+// guards hold (ErrOwnerFixed, ErrSelf, ErrRole); role and flag change in one UPDATE, an unchanged kind writes
+// nothing, and the audit row "user.role" carries the kinds. It returns the kind the account had.
+func (r *Repo) SetKind(ctx context.Context, tx *sql.Tx, byID, id string, to Kind) (Kind, error) {
+	if to == Kind(RoleOwner) {
+		return "", ErrOwnerFixed
+	}
+	role, adds, err := ParseKind(string(to))
+	if err != nil {
+		return "", err
+	}
+	if id == byID {
+		return "", ErrSelf
+	}
+	u, err := r.ByIDTx(ctx, tx, id)
+	if err != nil {
+		return "", err
+	}
+	if u.Role == RoleOwner {
+		return "", ErrOwnerFixed
+	}
+	from := u.Kind()
+	if from == to {
+		return from, nil
+	}
+	flag := 0
+	if adds {
+		flag = 1
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET role = ?, adds_books = ? WHERE id = ?`, string(role), flag, id); err != nil {
+		return "", err
+	}
+	err = db.Audit(ctx, tx, db.AuditEntry{At: r.nowMs(), UserID: byID, Action: "user.role", Target: "user:" + id,
+		Detail: map[string]any{"from": from, "to": to}})
+	return from, err
 }
 
 // SetDisabled turns the account id off or back on inside tx and writes a "user.disable" or

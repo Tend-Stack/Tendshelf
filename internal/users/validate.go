@@ -13,6 +13,7 @@ import (
 type NewUser struct {
 	Username, DisplayName, Email, Password string
 	Role                                   Role
+	AddsBooks                              bool // a member who adds books (CreateInvited only)
 }
 
 // FieldErrors maps a form field to a short error code. The web layer turns

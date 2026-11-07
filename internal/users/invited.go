@@ -25,7 +25,14 @@ func (r *Repo) CreateInvited(ctx context.Context, tx *sql.Tx, n NewUser, hash st
 	default:
 		return User{}, ErrRole
 	}
-	u := User{ID: db.NewID("usr"), DisplayName: n.DisplayName, Email: n.Email, Role: n.Role, CreatedAt: r.nowMs()}
+	if n.AddsBooks && n.Role != RoleMember {
+		return User{}, ErrRole
+	}
+	u := User{ID: db.NewID("usr"), DisplayName: n.DisplayName, Email: n.Email, Role: n.Role, AddsBooks: n.AddsBooks, CreatedAt: r.nowMs()}
+	adds := 0
+	if n.AddsBooks {
+		adds = 1
+	}
 	var email, pw any
 	if u.Email != "" {
 		email = u.Email
@@ -35,8 +42,8 @@ func (r *Repo) CreateInvited(ctx context.Context, tx *sql.Tx, n NewUser, hash st
 	}
 	for range 5 {
 		u.Username = SuggestUsername(n.DisplayName)
-		_, err := tx.ExecContext(ctx, `INSERT INTO users (id, username, display_name, email, role, password_hash, disabled, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, 0, ?)`, u.ID, u.Username, u.DisplayName, email, string(u.Role), pw, u.CreatedAt)
+		_, err := tx.ExecContext(ctx, `INSERT INTO users (id, username, display_name, email, role, password_hash, disabled, created_at, adds_books)
+			VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, u.ID, u.Username, u.DisplayName, email, string(u.Role), pw, u.CreatedAt, adds)
 		if err == nil {
 			return u, nil
 		}
