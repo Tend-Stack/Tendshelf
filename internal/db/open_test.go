@@ -213,7 +213,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+27 { // +15: book_sidecars, online_cache (0010), file_writes (0011), book_lookups, online_usage (0012), queue_items (0013), uploads, upload_files, upload_paths (0014), ebook_files, editions, edition_chapters (0016), ebook_not_same, text_choices (0017), highlights (0019), merged_books, reading_positions, reading_sessions (0021), word_list (0022), book_settings (0024), merged_folders, book_not_duplicates (0026); 0018's runtime_components, alignments and alignment_chapters are dropped again by 0020; kosync_progress; device_codes (0031); device_pairings (0033); contributor_folders, upload_books (0034)
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+28 { // +15: book_sidecars, online_cache (0010), file_writes (0011), book_lookups, online_usage (0012), queue_items (0013), uploads, upload_files, upload_paths (0014), ebook_files, editions, edition_chapters (0016), ebook_not_same, text_choices (0017), highlights (0019), merged_books, reading_positions, reading_sessions (0021), word_list (0022), book_settings (0024), merged_folders, book_not_duplicates (0026); 0018's runtime_components, alignments and alignment_chapters are dropped again by 0020; kosync_progress; device_codes (0031); device_pairings (0033); contributor_folders, upload_books (0034); sign_in_links (0035)
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -615,6 +615,7 @@ var pinnedMigrations = map[int]string{
 	32: "be5d9ebc8dad7d2486cc3cc58dd84f5b7befd7789f6ce648e7d59c8bae875bc4",
 	33: "46b80873b4674cfc039d1e4bfdf6926b4f14f0f2a3de32982de9c9208129b752",
 	34: "29342dcdec639b7038f7326287d0a2b882d3b5ec7b1d5d8d01c428b5d34f951c",
+	35: "ec6b2ed80c385e54b0263ec808ce8d841ee8b15e38d1802c51523f721b06c80b",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
