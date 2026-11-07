@@ -12,6 +12,8 @@ import (
 type listenRuler struct {
 	Label, Now string
 	Ticks      []string
+	// Chapters and Current (1-based, 0 before the first chapter) let the ruler pick a chapter.
+	Chapters, Current int
 	// Where is the long line ("Chapter 12 · 18 min left in chapter · 6 h 40 m left in book");
 	// WhereShort is the tablet's short one ("Chapter 12 · 18 min left", or "6 h 40 m left").
 	Where, WhereShort string
@@ -45,7 +47,9 @@ func listenRulerFor(chs []library.Chapter, posMs, durMs int64, speed float64) li
 	bookLeft := bookLeftText(pos, dur, speed)
 	v.Label, v.Where = homeBookProgress, fmt.Sprintf(homeWhereBook, bookLeft)
 	v.WhereShort = fmt.Sprintf(bookWhereShortBook, bookLeft)
+	v.Chapters = len(chs)
 	if cur := currentChapter(chs, pos); cur >= 0 {
+		v.Current = cur + 1
 		left := int64(math.Ceil(float64(max(chs[cur].EndMs-pos, 0)) / speed / 60_000))
 		v.Label = fmt.Sprintf(homeRulerChapter, cur+1, len(chs))
 		v.Where = fmt.Sprintf(homeWhere, cur+1, max(left, 1), bookLeft)

@@ -12,6 +12,9 @@ type HomeHeroView struct {
 	// Ticks are the chapter starts as 0 to 100 percentages (text, for data-ts-value).
 	RulerLabel, RulerNow string
 	Ticks                []string
+	// RulerBook, RulerChapters and RulerCurrent let the ruler pick a chapter (chapter-bar.js).
+	RulerBook                       string
+	RulerChapters, RulerCurrent int
 	// Where is "Chapter 12 · 18 min left in chapter · 6 h 40 m left in book".
 	Where string
 	Play  *components.PlayButtonView
@@ -68,7 +71,7 @@ templ HeroCard(v HomeHeroView) {
 					</p>
 				</div>
 				<div class="ts-hero__progress">
-					@components.Ruler(components.RulerView{Label: v.RulerLabel, Now: v.RulerNow, Ticks: v.Ticks})
+					@components.Ruler(components.RulerView{Label: v.RulerLabel, Now: v.RulerNow, Ticks: v.Ticks, Book: v.RulerBook, Chapters: v.RulerChapters, Current: v.RulerCurrent})
 					<p class="ts-hero__where">{ v.Where }</p>
 				</div>
 				<div class="ts-hero__actions">

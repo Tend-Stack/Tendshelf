@@ -1021,7 +1021,7 @@ listen(slot, "click", (event) => {
 listen(document, "keydown", (event) => {
   if (!book || event.ctrlKey || event.metaKey || event.altKey) return;
   const target = event.target instanceof Element ? event.target : document.body;
-  const inField = target.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])");
+  const inField = target.closest("input, textarea, select, [data-ts-chbar], [contenteditable]:not([contenteditable=false])"); // the chapter bar keeps the arrows and Space
   if (inField || document.querySelector("dialog[open]:not(.ts-player), #sheet .ts-sheet")) return; // the full player is not a blocker
   if (event.key === " " && !target.closest("button, a, summary, [role=button]")) toggle();
   else if (event.key === "ArrowLeft") skip(-1);
@@ -1198,10 +1198,19 @@ function info() {
   };
 }
 
+// A book's chapters without loading it (the chapter bar on Home asks when a person points at it).
+// Null when the book cannot be fetched.
+async function peekBook(id) {
+  const fetched = await fetchBook(id);
+  if (!fetched) return null;
+  return { id: fetched.id, durationMs: fetched.durationMs, chapters: fetched.chapters };
+}
+
 // The public surface; debug is for tests only.
 window.tsPlayer = {
   state,
   info,
+  peek: peekBook,
   load: loadBook,
   play,
   pause,

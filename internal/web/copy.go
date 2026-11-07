@@ -257,6 +257,11 @@ const (
 	msgScrubValue           = "Chapter {n}, {m} minutes {s} seconds elapsed"
 	msgFineScrub            = "Drag up for fine control"
 	msgScrubBubble          = "Chapter {n} · {title} · {t}"
+	// The chapter bar: {title} and {t} (where the chapter starts, a clock) in the tip; {n} of {m} when spoken.
+	msgChBarLabel    = "Book progress by chapter"
+	msgChBarTip      = "{title} · {t}"
+	msgChBarValue    = "Chapter {n} of {m}: {title}"
+	msgChBarUntitled = "Chapter {n}"
 	// The desktop bar's chapter waveform (PB1); {t} is a clock, {d} a spoken-short distance. U+2212 is a true minus.
 	msgWaveLabel       = "Position in chapter {n}"
 	msgWaveValue       = "{t} of {total}, chapter {n}, {title}"
@@ -346,7 +351,7 @@ func playerMsgs() components.PlayerMsgs {
 		ScrubValue: msgScrubValue, FineScrub: msgFineScrub, ClosePlayer: msgClosePlayer, PrevChapter: msgPrevChapter,
 		NextChapter: msgNextChapter, Speed: msgSpeed, Sleep: msgSleep, Chapters: msgChapters, Bookmark: msgBookmark,
 		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
-		OpenPlayer: msgOpenPlayer, Resume: playResume, ScrubBubble: msgScrubBubble,
+		OpenPlayer: msgOpenPlayer, Resume: playResume, ScrubBubble: msgScrubBubble, ChBarLabel: msgChBarLabel, ChBarTip: msgChBarTip, ChBarValue: msgChBarValue, ChBarUntitled: msgChBarUntitled,
 		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SpeedForBook: msgSpeedForBook, SpeedMakeUsual: msgSpeedMakeUsual, JumpedFar: msgJumpedFar, JumpedBack: msgJumpedBack, SpeedUsualSet: msgSpeedUsualSet, SleepTitle: msgSleepTitle,
 		SleepEndOfChapter: msgSleepEndOfChapter, SleepMinutes: msgSleepMinutes, SleepIn: msgSleepIn,
 		SleepCustom: msgSleepCustom, SleepCustomLabel: msgSleepCustomLabel, SleepStart: msgSleepStart,

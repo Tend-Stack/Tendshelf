@@ -111,7 +111,7 @@ func TestCSSBudget(t *testing.T) {
 		"css/pages-book.css":    {3*1024 + 128, 24 * 1024}, // M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
 		"css/motion.css":        {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
-		"css/player.css": {4*1024 + 128, 24 * 1024}, // L1: the speed sheet note, 4,156 B measured (operator pre-approval of raises, 2026-11-05)
+		"css/player.css": {4*1024 + 192, 24 * 1024}, // chapter bar (2026-11-06): the ruler's taller target, 4,265 B measured; L1: the speed sheet note, 4,156 B measured (operator pre-approval of raises, 2026-11-05)
 		// The full player's fit below 1280 px (phone check, 2026-11-02): split from player.css to keep it at 4 KB.
 		"css/player-fit.css": {1024 + 128, 24 * 1024}, // swipe-down touch-action rules (2026-11-06): 1,143 B measured
 		// The phone bubble (operator, 2026-11-03): the same rules for phones and for Larger text up to 959 px.
@@ -154,7 +154,7 @@ func TestCSSBudget(t *testing.T) {
 	// 18.5 KB: the operator approved the raise on 2026-11-03 for the 2560 px app cap and the range-syntax
 	// breakpoints (18,563 bytes at the time).
 	// 19.5 KB: native feel (decision 0011), approved by the operator on 2026-11-03.
-	const coreBudget = 21 * 1024 // offline banner (operator, 2026-11-03: 19.75 KB); M3c B1 focus rings and B3 hit areas and large-text wrapping: 20.875 KB, operator approved 2026-11-04; +128 B for no scrollbars on touch screens (operator, 2026-11-04)
+	const coreBudget = 21*1024 + 256 // chapter bar (2026-11-06): the ruler as a 44 px picker, its tip and mark: 21,576 B measured, reported, not squeezed; offline banner (operator, 2026-11-03: 19.75 KB); M3c B1 focus rings and B3 hit areas and large-text wrapping: 20.875 KB, operator approved 2026-11-04; +128 B for no scrollbars on touch screens (operator, 2026-11-04)
 	if coreGzip > coreBudget {
 		t.Errorf("core CSS %d gzip bytes, budget %d (raw %d)", coreGzip, coreBudget, coreRaw)
 	}
@@ -307,14 +307,15 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// L2 (smart rewind curve from the server table) and the toast actions the undo needs: 13.125 KB, measured 13,361 B; operator pre-approval of raises, 2026-11-05.
 	// A4 (Android bridge, 12 lines of NATIVE branches; operator approved about +300 B, 2026-11-06): 13.5 KB, measured 13,755 B by gzip -9, reported.
 	// A5b (the place question from the app, a shared askContinue; operator approved the raise, 2026-11-06): 13.75 KB, measured 13,970 B by the test's gzip, reported.
-	"player.js": {13*1024 + 768, 64 * 1024},
+	"player.js":      {14 * 1024, 64 * 1024},    // chapter bar (2026-11-06): peek() for the chapters of a book that is not loaded, and the bar keeps the arrows: 14,161 B measured, comments intact,
+	"chapter-bar.js": {4*1024 + 512, 24 * 1024}, // chapter bar (2026-11-06): hover, focus and press tip, click, tap and keys on every chapter ruler: 4,505 B measured, comments intact
 	// PB2 moved the desktop bar's wave seek and the volume pop into waveform.js: back to 12 KB (12.2 KB measured by gzip -c).
 	// P3-11a: sidePanel() (larger text never uses the side panel) is 12.03 KB, so 12.5 KB; to be approved by the operator.
 	// M3a (decision 0012): the offline bookmark queue; 12.75 KB, approved by the operator on 2026-11-03.
 	// M3b (decision 0013): the Eyes-free menu entry and lazy load, 13.25 KB, approved by the operator on 2026-11-04.
 	// L1 (the speed sheet saves per book) and L2 (the undo after a big move): 13.75 KB, measured 13,961 B; operator pre-approval of raises, 2026-11-05.
 	// A6 (sleep timer in the app; operator approved the raise, 2026-11-06): 14,464 B set, measured 14,443 B with its comments intact, reported.
-	"player-full.js": {14*1024 + 832, 64 * 1024}, // swipe down anywhere on the touch player (2026-11-06): 15,155 B measured, comments intact, was 14,464
+	"player-full.js": {15 * 1024, 64 * 1024}, // chapter bar (2026-11-06): the seek event through the scrubber's undo path, 15,265 B measured; swipe down anywhere on the touch player (2026-11-06): 15,155 B measured, comments intact, was 14,464
 	// W2: the waveform drawing (3.0 KB). PB2 folds in the desktop bar's wave (four layers, times, hover,
 	// drag, keys, retry backoff, hairline, volume pop): 7 KB, approved by the operator on 2026-11-02; 7.0 KB measured.
 	"waveform.js": {7 * 1024, 24 * 1024},
@@ -382,7 +383,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // M3b (decision 0013): statistics, Eyes-free and the shake check make it 55.75 KB; approved by the operator on 2026-11-04.
 // Measured together after S, E and K merged: 55.93 KB; the operator approved 56 KB on 2026-11-04.
 // Decision 0015 (adding books by upload): 61.5 KB, approved by the operator on 2026-11-04.
-const jsTotalGzip = 89*1024 + 1024 // Swipe down to minimise (2026-11-06): 92,160 B, measured 92,113 B with comments intact, was 91,456, reported; A9 (within the pre-approved reasonable raises, 2026-11-06): 91,456 B, measured 91,401 B on the A9 branch; A6 was 91,328 B, measured 91,317 B, reported; L5 clip.js (2026-11-06, the plan raises the ceiling by 640 B): 91,264 B; L1+L2 (2026-11-05, operator pre-approved raises): 88.5 KB, measured 90,489 B; before that: 87.5 KB; Firefox hang fix (2026-11-05): 87.5 KB, measured 87.48 KB with comments intact, reported; M6 D2: the operator raised the ceiling to 87 KB (2026-11-05) for desktop.js; before that: operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
+const jsTotalGzip = 95 * 1024 // Chapter bar (2026-11-06): 97,280 B, measured 96,805 B with comments intact (chapter-bar.js 4,505 B), was 92,160, reported; Swipe down to minimise (2026-11-06): 92,160 B, measured 92,113 B with comments intact, was 91,456, reported; A9 (within the pre-approved reasonable raises, 2026-11-06): 91,456 B, measured 91,401 B on the A9 branch; A6 was 91,328 B, measured 91,317 B, reported; L5 clip.js (2026-11-06, the plan raises the ceiling by 640 B): 91,264 B; L1+L2 (2026-11-05, operator pre-approved raises): 88.5 KB, measured 90,489 B; before that: 87.5 KB; Firefox hang fix (2026-11-05): 87.5 KB, measured 87.48 KB with comments intact, reported; M6 D2: the operator raised the ceiling to 87 KB (2026-11-05) for desktop.js; before that: operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
 
 // jsDesktopFiles are the scripts only the desktop app's window loads (a browser never receives them). They are
 // counted in jsDesktopTotalGzip, not in jsTotalGzip, so the browser ceiling means what browsers really load.

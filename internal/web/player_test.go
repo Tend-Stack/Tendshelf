@@ -13,7 +13,7 @@ import (
 func playerMsgNames(t *testing.T) []string {
 	t.Helper()
 	var camel [][]string
-	for _, name := range []string{"player.js", "player-full.js"} {
+	for _, name := range []string{"player.js", "player-full.js", "chapter-bar.js"} {
 		js, err := os.ReadFile("static/js/" + name)
 		if err != nil {
 			t.Fatal(err)

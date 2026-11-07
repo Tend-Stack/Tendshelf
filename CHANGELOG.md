@@ -6,6 +6,9 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### What you can do
 
+- **Pick a chapter on the chapter bar.** Point at the thin chapter line (in the player, the side player, on Home and on a book's
+  page) and a small label names the chapter and where it starts; hold a finger on it to see the same. Click or tap to go to
+  that chapter (Go back is offered); on Home it starts the book there. Keyboard: arrows choose, Enter goes.
 - **Swipe down to minimise the full player.** On a phone or tablet, drag down from anywhere on the player that is not a
   button, a slider or a list and it follows your finger and fades; let go past a quarter of the screen, or flick, and it
   closes, otherwise it springs back. The arrow is still there. Playback is not touched.

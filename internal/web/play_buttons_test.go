@@ -323,7 +323,7 @@ func TestHomeHeroAndRows(t *testing.T) {
 	for _, w := range []string{
 		"Continue listening", "Progword Harbour", `Pia Progauthor`,
 		"Chapter 2 · 1 min left in chapter · 1 m left in book",
-		`aria-label="Book progress, chapter 2 of 3"`, `aria-valuenow="38.9"`, `class="ts-ruler__fill ts-value" data-ts-value="38.9"`,
+		`aria-label="Book progress, chapter 2 of 3"`, `role="slider"`, `aria-valuenow="2"`, `data-ts-chbar`, `class="ts-ruler__fill ts-value" data-ts-value="38.9"`,
 		`class="ts-ruler__tick" data-ts-value="33.3"`, `class="ts-ruler__tick" data-ts-value="66.7"`,
 		`>Resume</span>`, `href="/books/` + e.book.ID + `/chapters"`,
 	} {

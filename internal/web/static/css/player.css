@@ -70,7 +70,7 @@
 .ts-player:not(.is-playing) [data-ts-icon-pause], .ts-player.is-playing [data-ts-icon-play] { display: none; }
 .ts-player__body { position: relative; display: flex; flex-direction: column; box-sizing: border-box; height: 100%; max-width: 35rem; margin-inline: auto; overflow-y: auto;
   padding: calc(var(--space-12) + env(safe-area-inset-top)) var(--space-20) calc(var(--space-24) + env(safe-area-inset-bottom)); }
-.ts-player__head { display: flex; align-items: center; justify-content: space-between; flex: none; height: 3rem; margin-inline: calc(var(--space-8) * -1); touch-action: none; }
+.ts-player__head { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; flex: none; height: 3rem; margin-inline: calc(var(--space-8) * -1); touch-action: none; }
 .ts-player__tools, .ts-player__menu { display: flex; align-items: center; position: relative; }
 .ts-player__chapter { position: absolute; top: calc(var(--space-12) + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); line-height: 3rem; color: var(--ink); white-space: nowrap; pointer-events: none; }
 .ts-player__block { align-self: center; flex: none; margin-top: var(--space-16); }
@@ -93,7 +93,7 @@
 .ts-player-bar__item:focus-visible, .ts-player__menuitem:focus-visible, .ts-player__chrow:focus-visible, .ts-player__menu > summary:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 
 /* Scrubber: drawn from custom properties set by player-full.js */
-/* The book ruler above the chapter scrubber: not interactive, ticks at the chapter starts. */
+/* The book ruler above the chapter scrubber: ticks at the chapter starts; chapter-bar.js makes it a chapter picker. */
 .ts-player__ruler { --scrub-fill: var(--cover-accent); }
 .ts-player__ruler-ticks { position: absolute; inset: 0; pointer-events: none; }
 .ts-player__ruler .ts-ruler__tick { left: var(--at); }

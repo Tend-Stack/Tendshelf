@@ -340,6 +340,16 @@ const scrubKeys = {
   });
 }
 
+// The chapter bar (chapter-bar.js) asks for a jump to a chapter start; it goes through the scrubber's
+// path, so a jump over two seconds away offers the undo.
+document.addEventListener("ts:chapterbar:seek", (event) => {
+  if (!book || event.detail.bookId !== book.id) return;
+  event.preventDefault();
+  scrubFrom = player.state().positionMs;
+  player.seek(event.detail.ms);
+  scrubFrom = -1;
+});
+
 // ---- Opening, closing, swiping ----
 
 // Runs change inside a view transition where the browser has them, so the cover glides between
@@ -446,7 +456,7 @@ window.addEventListener("resize", markScrolls);
 
 // A touch swipe may start anywhere that is not a control, the scrubbers, an open sheet or a list
 // that is scrolled down. The header takes any pointer (it has no scrolling).
-const SWIPE_REFUSED = "button, a, input, select, textarea, summary, [role=slider], [data-ts-scrub], .ts-player__scrub, .ts-player__menubody";
+const SWIPE_REFUSED = "button, a, input, select, textarea, summary, [role=slider], [data-ts-chbar], [data-ts-scrub], .ts-player__scrub, .ts-player__menubody";
 function swipeAllowed(event) {
   const target = event.target;
   if (target.closest(".ts-player__head")) return true;
