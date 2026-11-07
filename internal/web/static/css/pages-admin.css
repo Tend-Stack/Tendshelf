@@ -216,6 +216,8 @@ a.ts-users__item:hover { background: var(--raised); }
 @container pane (width >= 36rem) {
   .ts-users__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-24); align-items: center; }
   .ts-users__head > :not(.ts-users__invite) { grid-column: 1; }
+  /* The role pill keeps its own width in the grid instead of stretching across the column. */
+  .ts-users__head > .ts-role { justify-self: start; }
   .ts-users__invite { grid-column: 2; grid-row: 1 / span 3; align-self: center; margin-top: 0; }
 }
 
