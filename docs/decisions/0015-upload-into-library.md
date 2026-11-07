@@ -44,7 +44,7 @@ Amends AGENTS.md "Audio files are the user's" and architecture invariant 1.
    it lets the server write to the owner's disk. Turning it on checks the folder is writable by creating and
    removing `.tendshelf-write-check-<random>`. Admins see the setting read-only.
 2. **Who uploads.** New action `share.AddBooks` (`books.add`) on the library target: owner and admin (the role switch
-   in `Can`), never by grant. Refusal is 404, like every other route.
+   in `Can`), never by grant. Refusal is 404, like every other route. Superseded in part by 0029 (contributors).
 3. **Where the screen lives: one page, two doors.** `GET /libraries/{id}/add` ("Add books"). Doors: an "Add books"
    button in the Library page header (owner and admin, when that library, or for `/libraries` at least one library,
    takes uploads; with several such libraries the page shows a library chooser) and an "Add books" link in the new

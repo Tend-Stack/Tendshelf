@@ -31,7 +31,7 @@ const activeForRowSQL = `share_g.user_id = u.id AND (share_g.expires_at IS NULL 
 // People lists every account in one query: owner first, then by name. nowMs decides which grants
 // are still in force; monthStartMs starts the "this month" total.
 func (r *Grants) People(ctx context.Context, nowMs, monthStartMs int64) ([]Person, error) {
-	q := `SELECT u.id, u.username, u.display_name, COALESCE(u.email, ''), u.role, u.disabled, u.created_at, COALESCE(u.last_seen_at, 0),
+	q := `SELECT u.id, u.username, u.display_name, COALESCE(u.email, ''), u.role, u.disabled, u.created_at, COALESCE(u.last_seen_at, 0), u.adds_books,
 		coalesce((SELECT max(ls.ended_at) FROM listening_sessions ls WHERE ls.user_id = u.id), 0),
 		coalesce((SELECT sum(ls.listened_ms) FROM listening_sessions ls WHERE ls.user_id = u.id AND ls.started_at >= ?2), 0),
 		(SELECT count(*) FROM sessions se WHERE se.user_id = u.id AND se.expires_at >= ?1)
@@ -57,13 +57,14 @@ func (r *Grants) People(ctx context.Context, nowMs, monthStartMs int64) ([]Perso
 	for rows.Next() {
 		var p Person
 		var role, scope string
-		var disabled, every int
-		err := rows.Scan(&p.User.ID, &p.User.Username, &p.User.DisplayName, &p.User.Email, &role, &disabled, &p.User.CreatedAt, &p.User.LastSeenAt,
+		var disabled, every, adds int
+		err := rows.Scan(&p.User.ID, &p.User.Username, &p.User.DisplayName, &p.User.Email, &role, &disabled, &p.User.CreatedAt, &p.User.LastSeenAt, &adds,
 			&p.LastListen, &p.MonthMs, &p.Devices, &p.Grants, &p.ActiveGrants, &every, &p.Books, &scope, &p.FirstName)
 		if err != nil {
 			return nil, err
 		}
 		p.User.Role, p.User.Disabled = users.Role(role), disabled != 0
+		p.User.AddsBooks = adds != 0 && p.User.Role == users.RoleMember
 		p.Everything, p.FirstScope = every != 0, GrantScope(scope)
 		p.LastActive = max(p.User.LastSeenAt, p.LastListen)
 		out = append(out, p)

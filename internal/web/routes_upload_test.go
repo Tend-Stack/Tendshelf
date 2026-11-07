@@ -185,6 +185,10 @@ func TestUploadRoutesRefuse(t *testing.T) {
 		{"finish", http.MethodPost, "/uploads/" + id + "/finish", "", nil},
 		{"cancel", http.MethodPost, "/uploads/" + id + "/cancel", "", nil},
 	}
+	contributor := u.a.as(t, users.RoleMember) // a contributor with no grant adds nothing anywhere
+	if _, err := u.a.st.Writer().Exec(`UPDATE users SET adds_books = 1 WHERE id = ?`, sweepUserID(t, u.a, contributor)); err != nil {
+		t.Fatal(err)
+	}
 	// Roles that may not: a member, a guest, another admin (for the upload routes of someone else's
 	// upload), a disabled account and a visitor.
 	for _, who := range []struct {
@@ -195,6 +199,7 @@ func TestUploadRoutesRefuse(t *testing.T) {
 	}{
 		{"member", u.member, http.StatusNotFound, ""},
 		{"guest", u.guest, http.StatusNotFound, ""},
+		{"contributor without a grant", contributor, http.StatusNotFound, ""},
 		{"another admin", u.admin2, http.StatusNotFound, "create"},
 		{"visitor", nil, http.StatusUnauthorized, ""},
 	} {
@@ -359,7 +364,11 @@ func TestBookRemoveRefusals(t *testing.T) {
 		u.a.h.ServeHTTP(rec, r)
 		return rec
 	}
-	for name, ck := range map[string]*http.Cookie{"member": u.member, "guest": u.guest} {
+	contributor := u.a.as(t, users.RoleMember)
+	if _, err := u.a.st.Writer().Exec(`UPDATE users SET adds_books = 1 WHERE id = ?`, sweepUserID(t, u.a, contributor)); err != nil {
+		t.Fatal(err)
+	}
+	for name, ck := range map[string]*http.Cookie{"member": u.member, "guest": u.guest, "contributor": contributor} {
 		if rec := post(ck, b.ID); rec.Code != http.StatusNotFound {
 			t.Errorf("%s: %d", name, rec.Code)
 		}

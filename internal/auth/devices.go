@@ -169,14 +169,14 @@ func (d *Devices) lookup(ctx context.Context, hash [32]byte, want DeviceKind) (D
 	var dev Device
 	var u users.User
 	var role, kind string
-	var disabled int
+	var adds, disabled int
 	var lastSeen sql.NullInt64
 	err := d.st.Reader().QueryRowContext(ctx, `SELECT d.id, d.name, d.kind, d.created_at, d.last_seen_at,
-			u.id, u.username, u.display_name, COALESCE(u.email, ''), u.role, u.disabled, u.created_at, COALESCE(u.last_seen_at, 0)
+			u.id, u.username, u.display_name, COALESCE(u.email, ''), u.role, u.disabled, u.created_at, COALESCE(u.last_seen_at, 0), u.adds_books
 		FROM devices d JOIN users u ON u.id = d.user_id WHERE d.token_hash = ? AND d.revoked_at IS NULL
 			AND CASE WHEN ? = '' THEN d.kind NOT IN ('opds', 'koreader') ELSE d.kind = ? END`, hash[:], string(want), string(want)).Scan(
 		&dev.ID, &dev.Name, &kind, &dev.CreatedAt, &lastSeen,
-		&u.ID, &u.Username, &u.DisplayName, &u.Email, &role, &disabled, &u.CreatedAt, &u.LastSeenAt)
+		&u.ID, &u.Username, &u.DisplayName, &u.Email, &role, &disabled, &u.CreatedAt, &u.LastSeenAt, &adds)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Device{}, users.User{}, ErrNoDevice
 	}
@@ -186,6 +186,7 @@ func (d *Devices) lookup(ctx context.Context, hash [32]byte, want DeviceKind) (D
 	dev.UserID, dev.Kind = u.ID, DeviceKind(kind)
 	dev.LastSeenAt = lastSeen.Int64
 	u.Role, u.Disabled = users.Role(role), disabled != 0
+	u.AddsBooks = adds != 0 && u.Role == users.RoleMember
 	if u.Disabled {
 		return Device{}, users.User{}, ErrNoDevice
 	}

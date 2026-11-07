@@ -74,14 +74,14 @@ func (s *Sessions) Lookup(ctx context.Context, tok string) (Session, users.User,
 	var sess Session
 	var u users.User
 	var role string
-	var disabled, deviceLive int
+	var adds, disabled, deviceLive int
 	err := s.st.Reader().QueryRowContext(ctx, `SELECT s.created_at, s.expires_at, s.last_seen_at, s.user_agent,
 			COALESCE(s.device_id, ''),
 			EXISTS (SELECT 1 FROM devices d WHERE d.id = s.device_id AND d.revoked_at IS NULL),
-			u.id, u.username, u.display_name, COALESCE(u.email, ''), u.role, u.disabled, u.created_at, COALESCE(u.last_seen_at, 0)
+			u.id, u.username, u.display_name, COALESCE(u.email, ''), u.role, u.disabled, u.created_at, COALESCE(u.last_seen_at, 0), u.adds_books
 		FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`, hash[:]).Scan(
 		&sess.CreatedAt, &sess.ExpiresAt, &sess.LastSeenAt, &sess.UserAgent, &sess.DeviceID, &deviceLive,
-		&u.ID, &u.Username, &u.DisplayName, &u.Email, &role, &disabled, &u.CreatedAt, &u.LastSeenAt)
+		&u.ID, &u.Username, &u.DisplayName, &u.Email, &role, &disabled, &u.CreatedAt, &u.LastSeenAt, &adds)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Session{}, users.User{}, false, ErrNoSession
 	}
@@ -90,6 +90,7 @@ func (s *Sessions) Lookup(ctx context.Context, tok string) (Session, users.User,
 	}
 	sess.Hash, sess.UserID = hash, u.ID
 	u.Role, u.Disabled = users.Role(role), disabled != 0
+	u.AddsBooks = adds != 0 && u.Role == users.RoleMember
 
 	now := s.now()
 	nowMs := now.UnixMilli()

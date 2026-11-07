@@ -94,7 +94,9 @@ was reused, extended or replaced.
   file" job, which stream-copies to a temporary file, verifies audio hash, duration, chapters and tags,
   keeps the original as a backup and supports Undo. (2) Adding books by upload
   ([decision 0015](docs/decisions/0015-upload-into-library.md)), only in `internal/upload`: it writes only
-  into the one folder the owner chose for uploads in that library (off by default), only creates new
+  into the one folder the owner chose for uploads in that library (off by default), and a contributor's
+  uploads only into that person's own folder inside it
+  ([decision 0029](docs/decisions/0029-contributors.md)), only creates new
   folders and files, records every path before creating it in `upload_paths`, builds the book inside a
   hidden `.tendshelf-upload-<id>` folder and publishes it by one rename to a name that did not exist, and
   never overwrites, renames or deletes anything it did not create. "Remove this book" deletes only
@@ -127,6 +129,8 @@ was reused, extended or replaced.
   (`internal/desktopshell`, decision 0020). That is its own client, and it sends no credentials.
 - All authorization goes through `share.Can(user, action, target)`. Listing and search queries filter
   by grants in SQL; never fetch everything and filter in Go (counts and search must not leak titles).
+- A contributor is a member with `users.adds_books = 1` (decision 0029). They edit, look up and remove only books their own uploads placed (`upload_books`,
+  read inside `share.Can`, never from the request), never write into a library file, and remove only files they placed.
 - Session, invite and API tokens are random 32-byte values; only their SHA-256 is stored. The one exception is an app key (OPDS, KOReader
   sync): 24 typable characters from `a-z2-7` (120 bits), one surface each, rate limited, SHA-256 stored ([decision 0025](docs/decisions/0025-app-keys.md)).
 - **A device token never becomes a session.** No route takes a bearer token and answers with a cookie, so a token reaches
