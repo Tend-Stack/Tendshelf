@@ -44,13 +44,14 @@ templ NewPassword(v NewPasswordView) {
 		<p class="body-lg">{ v.Lead }</p>
 		<form class="ts-form" method="post" action="/me/new-password" hx-boost="false">
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
-			<input type="text" class="ts-sr" name="username" value={ v.Username } autocomplete="username" readonly tabindex="-1" aria-hidden="true"/>
+			<label class="ts-sr" for="username">Username</label>
+			<input type="text" class="ts-sr" id="username" name="username" value={ v.Username } autocomplete="username" readonly tabindex="-1" aria-hidden="true"/>
 			@components.TextField(components.Field{
 				ID: "password", Name: "password", Label: v.Label, Type: "password",
 				Autocomplete: "new-password", Hint: "At least 10 characters.", Error: v.Error, Required: true, Autofocus: true,
 			})
 			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">{ v.Button }</button>
 		</form>
-		<p class="caption ts-invite__fine"><a href="/">{ v.Skip }</a></p>
+		<a class="ts-btn ts-btn--quiet ts-btn--lg ts-btn--block" href="/">{ v.Skip }</a>
 	</div>
 }

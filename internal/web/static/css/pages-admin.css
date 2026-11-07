@@ -311,3 +311,5 @@ a.ts-users__item:hover { background: var(--raised); }
 .ts-removeall__reason { color: var(--ink-muted); }
 /* At 200 % text a long label wraps inside its button instead of pushing the page sideways. */
 .ts-users__addedactions .ts-btn { white-space: normal; max-width: 100%; height: auto; min-height: 2.75rem; text-align: center; }
+/* "Make a sign-in link" is a long button label: at 200 % text it wraps instead of pushing the page wide. */
+.ts-users__account .ts-btn { max-width: 100%; white-space: normal; text-align: center; }

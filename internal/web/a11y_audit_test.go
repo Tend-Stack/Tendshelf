@@ -5,6 +5,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -438,7 +439,7 @@ func TestA11yAudit(t *testing.T) {
 			case status != 200 && role == "member":
 				run.addUnmeasured(base, []a11yFinding{{Check: "load-error", Selector: "document", Detail: fmt.Sprintf("status %d for the member, page skipped", status)}})
 				continue
-			case status != 200:
+			case status != 200 && status != a11yExpectStatus[key]:
 				run.add(base, []a11yFinding{{Check: "load-error", Selector: "document", Detail: fmt.Sprintf("status %d, want 200", status)}})
 				continue
 			}
@@ -546,3 +547,7 @@ func TestA11yAudit(t *testing.T) {
 		visit(s.Key, s.Role, e.url(fixture, s.Role)+s.Path(e), fixture == "player", s.MinWidth, func(tab *cdp.Tab) { s.Prepare(t, tab, e) })
 	}
 }
+
+// a11yExpectStatus lists the pages whose right answer is not 200: the page for a sign-in link that
+// does not work is a 404 by design (decision 0030), and its markup is audited all the same.
+var a11yExpectStatus = map[string]int{"signin-broken": http.StatusNotFound}
