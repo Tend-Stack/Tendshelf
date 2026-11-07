@@ -21,6 +21,7 @@ import (
 var (
 	pairTokenRe  = regexp.MustCompile(`/pair/([A-Za-z0-9_-]{43})`)
 	pairIDRe     = regexp.MustCompile(`/me/devices/add/([A-Za-z0-9_]+)`)
+	pairMarkupRe = regexp.MustCompile(`(?s)<script.*?</script>|<style.*?</style>|<[^>]*>`)
 	pairNumberRe = regexp.MustCompile(`ts-pair__number" aria-label="(\d{4})"`)
 )
 
@@ -155,6 +156,13 @@ func (s *pairShow) finish(p *phone) *httptest.ResponseRecorder {
 
 func (s *pairShow) rows() int { return s.a.count(s.t, `SELECT COUNT(*) FROM device_pairings`) }
 
+// pageShows reports whether number is in the words on the page. Four random digits turn up by
+// chance inside ids and hashed file names, so the markup is taken out first.
+func pageShows(body, number string) bool {
+	text := pairMarkupRe.ReplaceAllString(body, " ")
+	return regexp.MustCompile(`\b` + number + `\b`).MatchString(text)
+}
+
 // claimed runs the flow to the point where the phone shows the number; it returns the number.
 func (s *pairShow) claimed(p *phone) string {
 	s.t.Helper()
@@ -207,7 +215,7 @@ func TestPairHappy(t *testing.T) {
 	}
 	// The owner's poll: a phone claimed, so a page; the phone's own poll: nothing changed.
 	st := a.do(http.MethodGet, "/me/devices/add/"+s.id, nil, func(r *http.Request) { r.Header.Set("HX-Request", "true") }, owner)
-	if st.Code != http.StatusOK || !strings.Contains(st.Body.String(), "Pixel 8 wants to sign in as you, from") || strings.Contains(st.Body.String(), number) ||
+	if st.Code != http.StatusOK || !strings.Contains(st.Body.String(), "Pixel 8 wants to sign in as you, from") || pageShows(st.Body.String(), number) ||
 		!strings.Contains(st.Body.String(), `autocomplete="one-time-code"`) || !strings.Contains(st.Body.String(), `maxlength="4"`) || !strings.Contains(st.Body.String(), "Not my phone") {
 		t.Fatalf("owner claimed page = %d %s", st.Code, st.Body)
 	}
@@ -221,7 +229,7 @@ func TestPairHappy(t *testing.T) {
 		t.Fatalf("approve = %d", rec.Code)
 	}
 	wait := ph.do(http.MethodGet, "/pair/wait", nil, nil)
-	if !strings.Contains(wait.Body.String(), "Connect as Ana Reyes") || strings.Contains(wait.Body.String(), number) {
+	if !strings.Contains(wait.Body.String(), "Connect as Ana Reyes") || pageShows(wait.Body.String(), number) {
 		t.Fatalf("approved page = %s", wait.Body)
 	}
 	pwBefore := a.count(t, `SELECT COUNT(*) FROM audit_log WHERE action = 'auth.login' AND detail_json LIKE '%password%'`)
