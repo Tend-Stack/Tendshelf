@@ -20,7 +20,7 @@ const (
 	PeaksFloorDB = 60
 
 	peaksBase      = 5 * time.Minute
-	peaksMaxMs     = 48 * 3600 * 1000
+	peaksMaxMs     = 500 * 3600 * 1000 // 3.6 MB of bins; omnibus editions run past 48 hours
 	peaksMagic     = "TSPK"
 	peaksHeaderLen = 16
 	peaksBinSample = PeaksRate * PeaksBinMs / 1000
@@ -135,12 +135,19 @@ func peakLevel(sum int64, n int) byte {
 	return byte(math.Max(0, math.Min(255, v)))
 }
 
+// peaksCapBins is how many bins Peaks keeps before it stops ffmpeg: twice the probed duration plus
+// ten minutes, so a wrong probe still finishes, but never past peaksMaxMs, which bounds memory for a
+// file that decodes forever.
+func peaksCapBins(durationMs int64) int {
+	capMs := min(2*durationMs+600000, peaksMaxMs)
+	return int(capMs/PeaksBinMs) + 1
+}
+
 // Peaks decodes src once and reduces it to loudness bins. durationMs is the probed duration; it
 // sizes the deadline and the cap on decoded audio. A protected file is refused before ffmpeg runs.
 func (t Tools) Peaks(ctx context.Context, src string, durationMs int64) (Peaks, error) {
 	timeout := peaksBase + time.Duration(durationMs/20)*time.Millisecond
-	capMs := min(2*durationMs+600000, peaksMaxMs)
-	red := newPeakReducer(int(capMs/PeaksBinMs) + 1)
+	red := newPeakReducer(peaksCapBins(durationMs))
 	err := t.ffmpegTo(ctx, src, timeout, peaksArgs(src), red, true)
 	if red.over {
 		return Peaks{}, newError(CodeFFmpegFailed, errPeaksTooLong.Error(), errPeaksTooLong)

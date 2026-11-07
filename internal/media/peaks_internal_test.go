@@ -82,6 +82,29 @@ func TestPeakReducerCap(t *testing.T) {
 	}
 }
 
+func TestPeaksCapBins(t *testing.T) {
+	hour := int64(3600 * 1000)
+	for _, tc := range []struct {
+		name       string
+		durationMs int64
+		want       int
+	}{
+		{"unknown duration", 0, 1201},
+		{"ten hours", 10 * hour, int((20*hour+600000)/PeaksBinMs) + 1},
+		// A 52 hour omnibus edition must fit: a 48 hour ceiling refused these.
+		{"52 hours", 52 * hour, int((104*hour+600000)/PeaksBinMs) + 1},
+		{"past the ceiling", 400 * hour, int(peaksMaxMs/PeaksBinMs) + 1},
+	} {
+		got := peaksCapBins(tc.durationMs)
+		if got != tc.want {
+			t.Errorf("%s: %d bins, want %d", tc.name, got, tc.want)
+		}
+		if tc.durationMs > 0 && tc.durationMs <= peaksMaxMs && int64(got)*PeaksBinMs < tc.durationMs {
+			t.Errorf("%s: cap %d bins is shorter than the audio", tc.name, got)
+		}
+	}
+}
+
 func TestPeaksEncodeDecode(t *testing.T) {
 	p := Peaks{BinMs: PeaksBinMs, Values: []byte{0, 1, 170, 255}}
 	enc := p.Encode()
