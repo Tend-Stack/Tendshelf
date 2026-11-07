@@ -5,6 +5,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
 	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/upload"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
 // uploadProbeJS finds what a page of this package can get wrong: sideways scrolling, a wrong theme,
@@ -163,6 +165,54 @@ func TestUploadVisual(t *testing.T) {
 				tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("upload-%s-%s-%d.png", pg.name, theme, w)))
 			})
 		}
+	}
+	// A contributor (decision 0029): the lead names their own folder, never a server path.
+	ck := a.as(t, users.RoleMember)
+	cid := sweepUserID(t, a, ck)
+	var folderID string
+	if err := a.st.Reader().QueryRow(`SELECT upload_folder_id FROM libraries WHERE id = ?`, libID).Scan(&folderID); err != nil {
+		t.Fatal(err)
+	}
+	var uploadDir string
+	if err := a.st.Reader().QueryRow(`SELECT path FROM library_folders WHERE id = ?`, folderID).Scan(&uploadDir); err != nil {
+		t.Fatal(err)
+	}
+	streamExec(t, a, `UPDATE users SET display_name = 'Ines Moreno', adds_books = 1 WHERE id = ?`, cid)
+	streamExec(t, a, `INSERT INTO grants(id, user_id, scope, library_id, created_at, updated_at) VALUES ('gv_up', ?, 'library', ?, 1, 1)`, cid, libID)
+	streamExec(t, a, `INSERT INTO contributor_folders(folder_id, user_id, path, created_at) VALUES (?, ?, ?, 1)`,
+		folderID, cid, filepath.Join(uploadDir, "Added by Ines Moreno"))
+	contrib := themedServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.AddCookie(&http.Cookie{Name: ck.Name, Value: ck.Value})
+		a.h.ServeHTTP(w, r)
+	}))
+	for _, sh := range shots {
+		theme, w := sh.Theme, sh.Width
+		t.Run(fmt.Sprintf("contributor-%s-%d", theme, w), func(t *testing.T) {
+			tab := b.NewTab(w, 900, w == 390, false)
+			tab.Navigate(contrib + "/libraries/" + libID + "/add?theme=" + theme)
+			time.Sleep(300 * time.Millisecond)
+			var m struct {
+				Over  bool     `json:"over"`
+				Small []string `json:"small"`
+				H1    int      `json:"h1"`
+				Lead  string   `json:"lead"`
+			}
+			tab.Eval(uploadProbeJS, &m)
+			tab.Eval(`document.querySelector(".ts-upload__lead").textContent.trim()`, &m.Lead)
+			if m.Over {
+				t.Errorf("horizontal overflow")
+			}
+			if len(m.Small) > 0 {
+				t.Errorf("targets under 44 px: %v", m.Small)
+			}
+			if m.H1 != 1 {
+				t.Errorf("%d h1 elements", m.H1)
+			}
+			if m.Lead != "Books you add go into your own folder, Added by Ines Moreno." {
+				t.Errorf("lead = %q", m.Lead)
+			}
+			tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("upload-contributor-%s-%d.png", theme, w)))
+		})
 	}
 	// The board beside them, in the same two themes.
 	for _, theme := range []string{"dark", "light"} {

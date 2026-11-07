@@ -1003,6 +1003,16 @@ Branch `pkg-fix-library`. Reused `MergeRowsSQL`, `merged_folders`, `Repo.Duplica
 - Migration 0032 `book_health_index` (`books(folder_id, missing_since)`); the Libraries page asks `HealthTotal` (counts only, no preview rows). At 100,000 missing books the "missing" group went from 146 ms to 42 ms here (the review's 5.4 s was not reproduced on this machine); the page's total is about 90 ms.
 - Limits: timings are one machine; the review's 4.96 s / 5.4 s figures were not reproduced.
 
+## Contributors (decision 0029, plan `docs/plans/contributors.md`; P1 server, P2 pages, 2026-11-07)
+
+**Scope.** A new kind of person, the Contributor (a member with `users.adds_books = 1`), who adds books into a folder of their own, edits, looks up and removes only the books their uploads placed, and never writes into a library file. P1 (server): migration 0034, `share.Can` rules, `upload_books`, contributor folders, the `upload.remove_all` job. P2 (pages): Contributor in the invite and role pickers and on every role pill (`kindWord`), "Books they added" on the person page, the confirm and status pages of "Remove all their books" (`routes_users_books.go`, `components.RemoveAllStatus`, polling `/hx/jobs/{id}`), the Library "Added by" filter (not lazy; owner and admin get the people, a contributor only "You"), "Added by" on the book's Details tab, and the contributor lead on Add books (no server path, also in the "Putting it in" row). Reused: the person page, `confirmPage`, `jobViews`, the filter menu kinds, the Details rows. New CSS is in `pages-admin.css` (not `bundle.css`).
+
+**Checks.** httptest: confirm, start, status and refusals for every kind, CSRF, job view for another admin, pickers, the details, look-up and cover routes on own and other books (the P1 gap), Added by menu and book line, Add books lead; route matrix rows for the two new routes. Captures at 390, 768, 1024 and 1440 in four themes (fast matrix) for the person page, confirm, status, share picker, the Added by menu and the contributor Add books page.
+
+**Limits.** No per-library switch or per-person size limit; books whose upload rows were swept before migration 0034 have no "Added by"; no translations yet (separate package); "Added by" is not in the API, OPDS or the Android app.
+
+**Next.** A scribe package for the translations of the new strings; an emulator pass on the Android app signing in as a contributor.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID

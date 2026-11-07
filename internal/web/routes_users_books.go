@@ -71,7 +71,7 @@ func (s *server) getPersonRemoveBooks(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, "remove all status", err)
 			return
 		}
-		title := fmt.Sprintf(usersRemoveTitle, personName(t))
+		title := fmt.Sprintf(usersRemoveStatusTitle, personName(t))
 		s.prefsPage(w, r, http.StatusOK, title, "admin-users", "users", false,
 			pages.AdminUserRemoveAll(title, "/admin/users/"+t.ID, personName(t), removeAllView(j, "/admin/users/"+t.ID+"/books/remove?job="+j.ID)), nil, adminStyles...)
 		return

@@ -26,6 +26,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
 	"github.com/Tend-Stack/tendshelf/internal/testutil/cdp"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
 // browsePalette are the cover colours of the boards.
@@ -281,6 +282,24 @@ func TestVisualLibraryFilters(t *testing.T) {
 	app := newTestApp(t)
 	app.owner(t)
 	browseSeed(t, app, 60)
+	// Two people added books (decision 0029), so the Filter menu has an "Added by" kind.
+	ownerID := sweepUserID(t, app, app.owner(t))
+	ines := sweepUserID(t, app, app.as(t, users.RoleMember))
+	for _, q := range []struct {
+		sql  string
+		args []any
+	}{
+		{`UPDATE users SET display_name = 'Ines Moreno', adds_books = 1 WHERE id = ?`, []any{ines}},
+		{`UPDATE users SET display_name = 'Daniel Reyes' WHERE id = ?`, []any{ownerID}},
+		{`INSERT INTO upload_books(root_path, upload_id, library_id, added_by, created_at)
+  SELECT root_path, 'up_vis_' || id, library_id, ?, 1 FROM (SELECT * FROM books ORDER BY id LIMIT 12)`, []any{ines}},
+		{`INSERT INTO upload_books(root_path, upload_id, library_id, added_by, created_at)
+  SELECT root_path, 'up_vis_' || id, library_id, ?, 1 FROM (SELECT * FROM books ORDER BY id LIMIT 5 OFFSET 12)`, []any{ownerID}},
+	} {
+		if _, err := app.st.Writer().Exec(q.sql, q.args...); err != nil {
+			t.Fatal(err)
+		}
+	}
 	srv := httptest.NewServer(app.signedIn(t))
 	t.Cleanup(srv.Close)
 	out := visualDir(t, "chromium")
@@ -356,6 +375,12 @@ func TestVisualLibraryFilters(t *testing.T) {
 		menuCheck(t, tab, w, "lib-menu-filter")
 		noOverflow(t, tab, w, "author list")
 		shot("kind")
+		// Added by: not a lazy kind, so its choices ride in the page.
+		tab.Eval(`document.querySelector("#lib-kind-added summary").click()`, nil)
+		tab.WaitFor(`Boolean(document.querySelector("#lib-kind-added[open] .ts-chipmenu__list a[href*='added=']"))`, 3*time.Second)
+		menuCheck(t, tab, w, "lib-menu-filter")
+		noOverflow(t, tab, w, "added by list")
+		shot("added")
 		// Opening Length closes Author (one name).
 		tab.Eval(`document.querySelector("#lib-kind-length summary").click()`, nil)
 		tab.WaitFor(`!document.querySelector("#lib-kind-author").open`, 3*time.Second)

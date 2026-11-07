@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
+	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
+	"github.com/Tend-Stack/tendshelf/internal/upload"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
@@ -111,6 +113,50 @@ func TestVisualUsersPages(t *testing.T) {
 	if _, err := app.st.Writer().Exec(`UPDATE devices SET created_at = created_at - CASE name WHEN 'Living room speaker' THEN 2000 ELSE 1000 END WHERE user_id = ?`, rosa); err != nil {
 		t.Fatal(err)
 	}
+	// A contributor with two books they added, a folder of their own and a finished remove-all
+	// job that kept one book (decision 0029). The folder is a fixed string so no temp path shows.
+	ines := sweepUserID(t, app, app.as(t, users.RoleMember))
+	var folderID, libID string
+	if err := app.st.Reader().QueryRow(`SELECT id, library_id FROM library_folders ORDER BY id LIMIT 1`).Scan(&folderID, &libID); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := app.st.Reader().Query(`SELECT root_path, title FROM books ORDER BY title LIMIT 2`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var kept []string
+	for n := 0; rows.Next(); n++ {
+		var root, title string
+		if err := rows.Scan(&root, &title); err != nil {
+			t.Fatal(err)
+		}
+		kept = append(kept, title)
+		if _, err := app.st.Writer().Exec(`INSERT INTO upload_books(root_path, upload_id, library_id, added_by, created_at) VALUES (?, ?, ?, ?, 1)`,
+			root, fmt.Sprintf("up_vis%d", n), libID, ines); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = rows.Close()
+	for q, args := range map[string][]any{
+		`UPDATE users SET display_name = 'Ines Moreno', adds_books = 1 WHERE id = ?`:                                                 {ines},
+		`INSERT INTO contributor_folders(folder_id, user_id, path, created_at) VALUES (?, ?, '/audiobooks/Added by Ines Moreno', 1)`: {folderID, ines},
+	} {
+		if _, err := app.st.Writer().Exec(q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := app.runner.Register(jobs.Kind{Name: upload.KindRemoveAll, Concurrency: 1, MaxAttempts: 1,
+		Handler: func(context.Context, *jobs.Task) (any, error) { return nil, nil }}); err != nil {
+		t.Fatal(err)
+	}
+	jobID, err := app.runner.Enqueue(context.Background(), upload.KindRemoveAll, upload.RemoveAllPayload{UserID: ines, By: "x"}, jobs.EnqueueOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := `{"removed":3,"kept":[{"book_id":"b1","title":"` + kept[0] + `","reason":"changed"},{"book_id":"b2","title":"` + kept[1] + `","reason":"not_theirs"}]}`
+	if _, err := app.st.Writer().Exec(`UPDATE jobs SET state = 'done', result_json = ? WHERE id = ?`, result, jobID); err != nil {
+		t.Fatal(err)
+	}
 	base := themedServer(t, app.signedIn(t))
 
 	for _, name := range []string{"UsersPage", "UsersTablet", "UsersPhone"} {
@@ -131,6 +177,9 @@ func TestVisualUsersPages(t *testing.T) {
 		{"person-search", "/admin/users/" + rosa + "?q=Salt"},
 		{"confirm-stop", "/admin/users/" + rosa + "/stop"},
 		{"confirm-disable", "/admin/users/" + rosa + "/disable"},
+		{"contributor", "/admin/users/" + ines},
+		{"confirm-remove-all", "/admin/users/" + ines + "/books/remove"},
+		{"remove-all-done", "/admin/users/" + ines + "/books/remove?job=" + jobID},
 	}
 	for _, pg := range pgs {
 		for _, sh := range visualMatrix(true) {

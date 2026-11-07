@@ -2,6 +2,21 @@
 
 Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-numbers.md)). Dates are UTC.
 
+## Unreleased
+
+### What you can do
+
+- **Invite someone as a Contributor.** Next to Listener, Member and Admin there is now Contributor: a person who listens like a
+  member and can also add books. Their books go into a folder of their own inside the upload folder, and they can fix the details,
+  look up the book online, change the cover and remove the books they added, never anyone else's. They add books only to a whole
+  library (or the whole server) that was shared with them and where uploads are on. You can make a member a Contributor, or the
+  other way round, on the person's page.
+- **See who added a book.** Owners and admins get an "Added by" choice in the Library's Filter menu and a line on the book's page;
+  a Contributor sees "You" and "Added by you" for their own books. Nobody else is told who added a book.
+- **Remove all the books a person added.** On a person's page, "Books they added" shows how many there are, a link to see them in
+  the Library and "Remove all their books". Tendshelf asks first, deletes only the files it placed for that person that nobody has
+  changed, and tells you which books stayed and why.
+
 ## 2026.4.0
 
 Released 2026-11-07. It brings the Android app, adding a phone with a QR code, a chapter bar you can point at, and a
