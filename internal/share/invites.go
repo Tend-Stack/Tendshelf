@@ -44,6 +44,7 @@ type InviteGrant struct {
 type InviteSpec struct {
 	Name, Email, Note string
 	Role              users.Role
+	AddsBooks         bool // a contributor invite: Role member plus the flag (decision 0029)
 	Grants            []InviteGrant
 	ExpiresAt         int64 // Unix milliseconds; 0 means until the inviter stops it
 	MaxUses           int   // 0 means 1
@@ -53,6 +54,7 @@ type InviteSpec struct {
 type Invite struct {
 	ID, CreatedBy, InviterName, Name, Email, Note string
 	Role                                          users.Role
+	AddsBooks                                     bool
 	Grants                                        []InviteGrant
 	ExpiresAt                                     int64
 	MaxUses, UseCount                             int
@@ -122,6 +124,21 @@ func ManageableInviteRoles(u users.User) []users.Role {
 	return nil
 }
 
+// ManageableInviteKinds lists the kinds u may invite: the owner admins, contributors, members and guests,
+// an admin contributors, members and guests, anyone else (or a disabled account) nobody.
+func ManageableInviteKinds(u users.User) []users.Kind {
+	if u.Disabled {
+		return nil
+	}
+	switch u.Role {
+	case users.RoleOwner:
+		return []users.Kind{users.KindAdmin, users.KindContributor, users.KindMember, users.KindGuest}
+	case users.RoleAdmin:
+		return []users.Kind{users.KindContributor, users.KindMember, users.KindGuest}
+	}
+	return nil
+}
+
 func inviteRole(role users.Role) bool {
 	return role == users.RoleAdmin || role == users.RoleMember || role == users.RoleGuest
 }
@@ -143,20 +160,22 @@ func (r *Invites) mayInvite(ctx context.Context, tx *sql.Tx, inviterID string, r
 
 const inviteColumns = `i.id, i.created_by, coalesce(nullif(u.display_name, ''), u.username), i.name, coalesce(i.email, ''), i.note, i.role,
 	i.grants_json, coalesce(i.expires_at, 0), i.max_uses, i.use_count, coalesce(i.revoked_at, 0), i.created_at, i.updated_at,
-	coalesce(i.mail_job_id, ''), coalesce(j.state, ''), coalesce(j.error_code, '')`
+	coalesce(i.mail_job_id, ''), coalesce(j.state, ''), coalesce(j.error_code, ''), i.adds_books`
 
 const inviteFrom = ` FROM invites i JOIN users u ON u.id = i.created_by LEFT JOIN jobs j ON j.id = i.mail_job_id`
 
 func scanInvite(row rowScanner) (Invite, error) {
 	var inv Invite
 	var role, grantsJSON string
+	var adds int
 	err := row.Scan(&inv.ID, &inv.CreatedBy, &inv.InviterName, &inv.Name, &inv.Email, &inv.Note, &role, &grantsJSON,
 		&inv.ExpiresAt, &inv.MaxUses, &inv.UseCount, &inv.RevokedAt, &inv.CreatedAt, &inv.UpdatedAt,
-		&inv.MailJobID, &inv.MailState, &inv.MailCode)
+		&inv.MailJobID, &inv.MailState, &inv.MailCode, &adds)
 	if err != nil {
 		return Invite{}, err
 	}
 	inv.Role = users.Role(role)
+	inv.AddsBooks = adds != 0
 	if err := json.Unmarshal([]byte(grantsJSON), &inv.Grants); err != nil {
 		return Invite{}, err
 	}
@@ -233,6 +252,13 @@ func (r *Invites) Create(ctx context.Context, tx *sql.Tx, by users.User, s Invit
 	if err != nil {
 		return Invite{}, "", err
 	}
+	if s.AddsBooks && s.Role != users.RoleMember {
+		return Invite{}, "", ErrInviteRefused
+	}
+	adds := 0
+	if s.AddsBooks {
+		adds = 1
+	}
 	now := r.now().UnixMilli()
 	s, err = checkSpec(s, now)
 	if err != nil {
@@ -259,12 +285,12 @@ func (r *Invites) Create(ctx context.Context, tx *sql.Tx, by users.User, s Invit
 		exp = s.ExpiresAt
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO invites(id, token_hash, created_by, name, email, note, role, grants_json, expires_at,
-		max_uses, use_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-		id, hash[:], inviter.ID, s.Name, email, s.Note, string(s.Role), string(raw), exp, s.MaxUses, now, now); err != nil {
+		max_uses, use_count, created_at, updated_at, adds_books) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+		id, hash[:], inviter.ID, s.Name, email, s.Note, string(s.Role), string(raw), exp, s.MaxUses, now, now, adds); err != nil {
 		return Invite{}, "", err
 	}
 	if err := db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: inviter.ID, Action: "invite.create", Target: "invite:" + id,
-		Detail: map[string]any{"role": s.Role, "grants": len(s.Grants), "expires_at": s.ExpiresAt, "max_uses": s.MaxUses}}); err != nil {
+		Detail: map[string]any{"role": s.Role, "adds_books": s.AddsBooks, "grants": len(s.Grants), "expires_at": s.ExpiresAt, "max_uses": s.MaxUses}}); err != nil {
 		return Invite{}, "", err
 	}
 	inv, err := scanInvite(tx.QueryRowContext(ctx, `SELECT `+inviteColumns+inviteFrom+` WHERE i.id = ?`, id))
@@ -497,7 +523,7 @@ func (r *Invites) Accept(ctx context.Context, tx *sql.Tx, hash [32]byte, passwor
 	if n, err := res.RowsAffected(); err != nil || n != 1 {
 		return users.User{}, Invite{}, ErrInviteUsedUp
 	}
-	u, err := r.users.CreateInvited(ctx, tx, users.NewUser{DisplayName: inv.Name, Email: inv.Email, Role: inv.Role}, passwordHash)
+	u, err := r.users.CreateInvited(ctx, tx, users.NewUser{DisplayName: inv.Name, Email: inv.Email, Role: inv.Role, AddsBooks: inv.AddsBooks}, passwordHash)
 	if err != nil {
 		return users.User{}, Invite{}, err
 	}

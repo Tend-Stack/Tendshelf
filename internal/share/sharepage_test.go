@@ -27,7 +27,7 @@ func TestCoveringBook(t *testing.T) {
 		want []string
 	}{
 		{"bk_a1", []string{"u_all", "u_con", "u_dis", "u_lib", "u_stale"}}, // a member's raw shelf holds bk_a1 but covers nothing
-		{"bk_b1", []string{"u_all", "u_g"}},            // u_exp's grant has ended
+		{"bk_b1", []string{"u_all", "u_g"}},                                // u_exp's grant has ended
 		{"bk_b2", []string{"u_all", "u_shelf"}},
 	} {
 		got, err := g.CoveringBook(context.Background(), c.book, now)

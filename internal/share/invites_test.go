@@ -518,3 +518,63 @@ func TestInviteFeatured(t *testing.T) {
 		t.Errorf("member-owned shelf features %q", id)
 	}
 }
+
+// TestInviteContributor: an owner or an admin invites a contributor (member plus the flag), accepting makes
+// an account with the flag, the flag with any other role is refused, and a member cannot invite one.
+func TestInviteContributor(t *testing.T) {
+	e := newInviteEnv(t)
+	for _, by := range []string{"u_own", "u_adm"} {
+		s := memberSpec(InviteGrant{Scope: GrantLibrary, Target: "lib_a"})
+		s.AddsBooks = true
+		inv, tok := e.mustCreate(t, by, s)
+		if !inv.AddsBooks || inv.Role != users.RoleMember {
+			t.Fatalf("%s: invite %+v", by, inv)
+		}
+		u, _, err := e.accept(tok)
+		if err != nil || !u.AddsBooks || !u.Contributor() || u.Kind() != users.KindContributor {
+			t.Fatalf("%s: accept %v %+v", by, err, u)
+		}
+		var flag int
+		if err := e.f.st.Reader().QueryRow(`SELECT adds_books FROM users WHERE id = ?`, u.ID).Scan(&flag); err != nil || flag != 1 {
+			t.Errorf("%s: stored flag = %d, %v", by, flag, err)
+		}
+	}
+	// an invite without the flag stays a plain member
+	_, tok := e.mustCreate(t, "u_adm", memberSpec())
+	if u, _, err := e.accept(tok); err != nil || u.AddsBooks {
+		t.Errorf("plain member invite: %v %+v", err, u)
+	}
+	for _, role := range []users.Role{users.RoleGuest, users.RoleAdmin} {
+		if _, _, err := e.create("u_own", InviteSpec{Name: "X", Role: role, AddsBooks: true}); !errors.Is(err, ErrInviteRefused) {
+			t.Errorf("flag with %s: %v", role, err)
+		}
+	}
+	for _, by := range []string{"u_lib", "u_con", "u_g"} {
+		s := memberSpec()
+		s.AddsBooks = true
+		if _, _, err := e.create(by, s); !errors.Is(err, ErrInviteRefused) {
+			t.Errorf("%s invited a contributor: %v", by, err)
+		}
+	}
+	want := map[string][]users.Kind{
+		"u_own": {users.KindAdmin, users.KindContributor, users.KindMember, users.KindGuest},
+		"u_adm": {users.KindContributor, users.KindMember, users.KindGuest},
+		"u_con": nil,
+		"u_lib": nil,
+		"u_g":   nil,
+		"u_dis": nil,
+	}
+	for id, w := range want {
+		if got := ManageableInviteKinds(e.f.user(id)); strings.Join(kindStrings(got), ",") != strings.Join(kindStrings(w), ",") {
+			t.Errorf("%s kinds = %v, want %v", id, got, w)
+		}
+	}
+}
+
+func kindStrings(ks []users.Kind) []string {
+	out := make([]string, len(ks))
+	for i, k := range ks {
+		out[i] = string(k)
+	}
+	return out
+}
