@@ -108,6 +108,22 @@ func TestPlayerCloseButtonSlidesDown(t *testing.T) {
 	}
 }
 
+// A close during the rise, such as Android Back pressed at once, is honoured and not swallowed.
+func TestPlayerCloseDuringRise(t *testing.T) {
+	e := playerApp(t)
+	tab := fullpOpen(t, e, 390, 844, false)
+	tab.Eval(`document.querySelector("[data-ts-open]").click(); document.querySelector("#player-full [data-ts-close-player]").click()`, nil)
+	tab.WaitFor(`document.querySelector("dialog.ts-player[open]") === null`, 3*time.Second)
+	tab.Eval(`document.querySelector("[data-ts-open]").click()`, nil)
+	tab.WaitFor(`document.querySelector("dialog.ts-player[open]") !== null`, 3*time.Second)
+	time.Sleep(600 * time.Millisecond)
+	var y float64
+	tab.Eval(`new DOMMatrix(getComputedStyle(document.getElementById("player-full")).transform).m42`, &y)
+	if y != 0 {
+		t.Errorf("the player opens again and rests %v px below its place", y)
+	}
+}
+
 func TestPlayerReducedMotionIsInstant(t *testing.T) {
 	e := playerApp(t)
 	tab := fullpOpen(t, e, 390, 844, true)

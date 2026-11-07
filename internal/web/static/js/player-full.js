@@ -353,8 +353,10 @@ document.addEventListener("ts:chapterbar:seek", (event) => {
 // ---- Opening, closing, swiping ----
 
 // True while the full screen player slides (up when it opens, down when it closes or springs back).
-// A press must not start a swipe then, and a second close is ignored.
+// A press must not start a swipe then.
 let sliding = false;
+// The timer that ends the slide now under way. A close can take over a rise or a spring-back.
+let slideTimer = 0;
 // True once a close has started, until the dialog is shut.
 let leaving = false;
 
@@ -381,7 +383,7 @@ function openPlayer(after) {
     dialog.getBoundingClientRect(); // commit the start position, so the transition has somewhere to start from
     dialog.classList.add("is-rising");
     dialog.style.setProperty("--ts-drag", "0px");
-    setTimeout(() => {
+    slideTimer = setTimeout(() => {
       dialog.classList.remove("is-rising");
       sliding = false;
     }, SETTLE_MS);
@@ -399,10 +401,10 @@ function closeNow() {
   back.focus({ preventScroll: true });
 }
 
-// The button, Escape and Android back slide the player down like a finished swipe. A close while
-// the player is already sliding is ignored.
+// The button, Escape and Android back slide the player down like a finished swipe. A close during
+// the rise is honoured: it turns back from wherever the player has got to. A second close is ignored.
 function closePlayer() {
-  if (!dialog.open || leaving || sliding) return;
+  if (!dialog.open || leaving) return;
   if (sidePanel()) closeNow();
   else settle(dialog.offsetHeight, true);
 }
@@ -442,11 +444,13 @@ function settle(px, closing) {
     if (closing) closeNow();
     return;
   }
+  clearTimeout(slideTimer);
   if (closing) leaving = true;
   sliding = true;
+  dialog.classList.remove("is-rising");
   dialog.classList.add("is-settling");
   moveTo(px);
-  setTimeout(() => {
+  slideTimer = setTimeout(() => {
     sliding = false;
     dialog.classList.remove("is-settling");
     moveTo(0);

@@ -47,7 +47,9 @@ VALUES ('h1','u1','b1',?,1,'c1.p3.s0',9,'c1.p3.s0',22,'quiet morning','a ',' in'
 	pairTExec(e, `INSERT INTO reading_positions(user_id, book_id, edition_id, chapter_idx, sid, off, quote, char_pos, percent_bp, client_updated_at, server_updated_at, device_id)
 VALUES ('u1','b1',?,1,'c1.p3.s0',9,'quiet morning in the harbour',30,500,5,5,'dev')`, oldID)
 
-	// Stale: pending, but the old edition still answers.
+	// Stale: pending, but the old edition still answers. The first ingest's job must have ended, or
+	// EnqueuePending takes it for the job that will do this file and adds none.
+	e.waitIdle(t)
 	if err := e.svc.EnqueueStale(bg); err != nil {
 		t.Fatal(err)
 	}
