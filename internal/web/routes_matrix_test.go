@@ -320,6 +320,9 @@ type sweepRow struct {
 	NoCSRF bool
 	// HX sends the request as htmx does (HX-Request: true).
 	HX bool
+	// Addr, when set, is the client address of the request (host:port). Public rows that cost the
+	// address a failure on the shared sign-in limiter use their own, so they cannot lock out later rows.
+	Addr string
 }
 
 func (r sweepRow) name() string {
@@ -686,6 +689,7 @@ func sweepRows() []sweepRow {
 			nil, sweepStaff(http.StatusSeeOther, http.StatusNotFound), ""))
 	rows = append(rows, post...)
 	rows = append(rows, usersSweepRows()...)
+	rows = append(rows, signInSweepRows()...)
 	rows = append(rows, invitesSweepRows()...)
 	rows = append(rows, shareSweepRows()...)
 	rows = append(rows, detailsSweepRows()...)
@@ -717,13 +721,23 @@ func (e *sweepEnv) send(t *testing.T, row sweepRow, role int, token bool) *httpt
 	t.Helper()
 	pathRole := max(role, 0)
 	path := row.Path(e, pathRole)
-	var hx func(*http.Request)
+	var hx, anon func(*http.Request)
 	if row.HX {
 		hx = func(r *http.Request) { r.Header.Set("HX-Request", "true") }
 	}
+	if row.Addr != "" {
+		anon = func(r *http.Request) { r.RemoteAddr = row.Addr }
+		prev := hx
+		hx = func(r *http.Request) {
+			if prev != nil {
+				prev(r)
+			}
+			anon(r)
+		}
+	}
 	if row.Method == http.MethodGet {
 		if role < 0 {
-			return e.a.do(http.MethodGet, path, nil, nil)
+			return e.a.do(http.MethodGet, path, nil, anon)
 		}
 		return e.a.do(http.MethodGet, path, nil, hx, e.ck[role])
 	}
@@ -738,7 +752,7 @@ func (e *sweepEnv) send(t *testing.T, row sweepRow, role int, token bool) *httpt
 		if token {
 			form.Set("_csrf", tok)
 		}
-		return e.a.do(row.Method, path, form, nil, c)
+		return e.a.do(row.Method, path, form, anon, c)
 	}
 	if token {
 		form.Set("_csrf", e.a.tokenFor(t, e.ck[role]))

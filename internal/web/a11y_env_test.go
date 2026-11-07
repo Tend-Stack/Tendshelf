@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,6 +36,7 @@ type a11yEnv struct {
 	MemberID                               string
 	InviteToken, LinkToken                 string
 	PairToken, PairID                      string // a waiting pairing of the owner's session (decision 0028)
+	SignInToken, SignInPanelID             string // an unspent sign-in link; the person whose page "main/panel" shows a new one (decision 0030)
 	UploadLibID, UploadBookID              string
 
 	Main, Upload, Fresh, Setup *testApp
@@ -192,6 +195,7 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	}
 	as("main/owner", a, ownerCk)
 	as("main/member", a, memberCk)
+	a11ySignIn(t, e, a, ownerCk, serve, as)
 	serve("main/anon", a.h)
 
 	// upload: the Add books page and its queue.
@@ -226,4 +230,56 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	as("reader/owner", e.ReaderLab.a, e.ReaderLab.owner)
 	as("reader/admin", e.ReaderLab.a, e.ReaderLab.admin)
 	return e
+}
+
+// a11ySignIn seeds sign-in links (decision 0030): an unspent link (the confirm page), a person who
+// spent one ("main/linked": /me/new-password opens for them), and "main/panel", a server that turns a
+// visit to the member's page into the POST that makes a link, so the page with the one-time panel is
+// audited too.
+func a11ySignIn(t *testing.T, e *a11yEnv, a *testApp, ownerCk *http.Cookie, serve func(string, http.Handler), as func(string, *testApp, *http.Cookie)) {
+	t.Helper()
+	ctx := context.Background()
+	owner := sweepUserID(t, a, ownerCk)
+	withPassword := func() string {
+		id := sweepUserID(t, a, a.as(t, users.RoleMember))
+		hash, err := a.srv.users.HashPassword(ctx, "an old password 1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		streamExec(t, a, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, id)
+		return id
+	}
+	link := func(id string) string {
+		var tok string
+		err := a.st.WriteTx(ctx, func(tx *sql.Tx) error {
+			var err error
+			tok, _, err = a.srv.auth.MakeSignInLink(ctx, tx, owner, id)
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return tok
+	}
+	e.SignInToken = link(withPassword())
+	l, _, err := a.srv.auth.SpendSignInLink(ctx, link(withPassword()), testAddr, "a11y", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	as("main/linked", a, &http.Cookie{Name: auth.CookieName, Value: l.Token})
+	e.SignInPanelID = e.MemberID
+	serve("main/panel", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/admin/users/"+e.SignInPanelID {
+			form := url.Values{"_csrf": {a.tokenFor(t, ownerCk)}}
+			req := httptest.NewRequest(http.MethodPost, r.URL.Path+"/signin-link", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Host = r.Host
+			for _, c := range r.Cookies() {
+				req.AddCookie(c)
+			}
+			r = req
+		}
+		r.AddCookie(&http.Cookie{Name: ownerCk.Name, Value: ownerCk.Value})
+		a.h.ServeHTTP(w, r)
+	}))
 }

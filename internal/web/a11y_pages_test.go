@@ -170,6 +170,10 @@ func a11yPages() []a11yPage {
 			return "/?shell=android&next=" + url.QueryEscape("/pair/"+e.PairToken+"?challenge="+a1Challenge+"&name=Pixel")
 		}, anon, "main", false),
 		row("invite", "/invite/{token}", func(e *a11yEnv) string { return "/invite/" + e.InviteToken }, anon, "main", false),
+		row("signin-confirm", "/signin/{token}", func(e *a11yEnv) string { return "/signin/" + e.SignInToken }, anon, "main", false),
+		row("signin-broken", "/signin/{token}", a11yStatic("/signin/"+strings.Repeat("A", 43)), anon, "main", false),
+		row("me-new-password", "/me/new-password", a11yStatic("/me/new-password"), []string{"linked"}, "main", false),
+		row("admin-user-signin-panel", "/admin/users/{id}", func(e *a11yEnv) string { return "/admin/users/" + e.SignInPanelID }, []string{"panel"}, "main", true),
 		row("link", "/s/{token}", func(e *a11yEnv) string { return "/s/" + e.LinkToken }, anon, "main", false),
 		row("offline", "/offline", a11yStatic("/offline"), []string{"anon", "owner"}, "main", false),
 		row("setup", "/setup", a11yStatic("/setup"), anon, "fresh", false),

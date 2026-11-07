@@ -800,6 +800,11 @@ a connected app can no longer accept an invite (409). Tests: `TestPair*`, `TestI
 decoder in `qr_decode_test.go` reads the drawn SVG back and checks the Reed-Solomon syndromes), `TestMigrationDevicePairings*`,
 matrix and a11y rows, `TestVisualPair` (dev). Limits: no real-phone scan yet (plan section 9); the Android package (A1-A9) is next;
 an invited person with no password whose session lapsed still cannot sign in on `/login` (reported, not designed here).
+**Sign-in links status** (decision 0030, plan `docs/plans/sign-in-links.md`): built 2026-11-07 on `pkg-signin-plan`. Migration 0035 `sign_in_links`;
+`internal/auth/signin_links.go`; `/signin/{token}`, `/me/new-password`, `POST /admin/users/{id}/signin-link`; the person page shows the username,
+the one-time panel with QR and the open-until line; `/login` says where to go; sw.js passes `/signin/`. Checks: `TestSignIn*`, `TestSetPasswordFromLink*`,
+`TestMigrationSignInLinks*`, `TestNewPasswordOrdinarySession404`, matrix and a11y rows, `TestVisualSignIn` (dev). Limits: not emailed; no
+self-service forgot-password; the owner's recovery stays the command line; no sign-in links inside the Android app; translations are a separate package.
 **Android status**: built 2026-11-06 on the branch `pkg-qr-android` (plan steps A1-A9). `Handoff.kt` (`parseHandoff`), `Origin.inviteUrl` and
 `pairUrl`, `Nav.Link` (obeyed only from a bundled main frame), `ConnectFlow.onLink` (always the native address dialog first, then
 the `/healthz` check on that exact address, then the invite or pair page inside the shell), the `tendshelf://open` filter in

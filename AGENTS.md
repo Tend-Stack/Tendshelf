@@ -131,7 +131,7 @@ was reused, extended or replaced.
   by grants in SQL; never fetch everything and filter in Go (counts and search must not leak titles).
 - A contributor is a member with `users.adds_books = 1` (decision 0029). They edit, look up and remove only books their own uploads placed (`upload_books`,
   read inside `share.Can`, never from the request), never write into a library file, and remove only files they placed.
-- Session, invite and API tokens are random 32-byte values; only their SHA-256 is stored. The one exception is an app key (OPDS, KOReader
+- Session, invite, sign-in link and API tokens are random 32-byte values; only their SHA-256 is stored. The one exception is an app key (OPDS, KOReader
   sync): 24 typable characters from `a-z2-7` (120 bits), one surface each, rate limited, SHA-256 stored ([decision 0025](docs/decisions/0025-app-keys.md)).
 - **A device token never becomes a session.** No route takes a bearer token and answers with a cookie, so a token reaches
   `/api/v1/` only and never a page, `/hx/`, `/admin` or `/me` route. The phone app signs in on the server's own page and trades a
@@ -143,7 +143,7 @@ was reused, extended or replaced.
   `/peaks/{id}`, `/hx/player/{bookID}`, `/hx/books/{id}/read/chapters/{idx}`, `/books/{id}/read/images/{blockID}`,
   the `/offline` shell for a navigation that cannot reach the server, and the book's reader shell for a
   navigation to `/books/{id}/read` (or `?sheet=contents`) that cannot reach it. It never caches or answers
-  `/s/...`, `/invite/...`, `/pair/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any request with
+  `/s/...`, `/invite/...`, `/pair/...`, `/signin/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any request with
   `download=1`, any non-GET request, or any other page. It is never registered inside a Wails window, inside the Android
   app's window (`/sw.js` answers 404 there), on share-link pages or outside a secure context. Sign-out and a change of person delete that person's caches
   and offline records (decisions [0012](docs/decisions/0012-offline-pocket.md),
