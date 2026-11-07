@@ -8,6 +8,8 @@ type LoginView struct {
 	Username  string
 	Next      string // already checked with auth.SafeNext
 	FormError string
+	// NoPassword is the line under the form about asking for a sign-in link.
+	NoPassword string
 }
 
 // Login is the sign-in page.
@@ -31,4 +33,7 @@ templ Login(v LoginView) {
 		})
 		<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Sign in</button>
 	</form>
+	if v.NoPassword != "" {
+		<p class="caption">{ v.NoPassword }</p>
+	}
 }

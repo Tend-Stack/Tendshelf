@@ -153,7 +153,7 @@ func (s *server) getLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.frame(w, r, http.StatusOK, "Sign in", pages.Login(pages.LoginView{
-		CSRF: s.csrf.TokenFrom(r.Context()), Next: next,
+		CSRF: s.csrf.TokenFrom(r.Context()), Next: next, NoPassword: loginNoPassword,
 	}))
 }
 
@@ -178,7 +178,7 @@ func (s *server) postLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	l, err := s.auth.Login(r.Context(), username, r.PostFormValue("password"), s.proxies.ClientIP(r), r.UserAgent(), prev)
 
-	view := pages.LoginView{CSRF: s.csrf.TokenFrom(r.Context()), Username: strings.TrimSpace(username), Next: next}
+	view := pages.LoginView{CSRF: s.csrf.TokenFrom(r.Context()), Username: strings.TrimSpace(username), Next: next, NoPassword: loginNoPassword}
 	if len(view.Username) > 64 {
 		view.Username = ""
 	}

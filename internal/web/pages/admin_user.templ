@@ -48,6 +48,14 @@ type AdminUserView struct {
 	Added AddedBooksView
 	// Today is the earliest day the "Ends on" field takes (YYYY-MM-DD).
 	Today string
+	// Username is the line "Username: rosa" (with "· No password yet" when it has none); NoPassword
+	// is kept for tests and callers that need to know.
+	Username   string
+	NoPassword bool
+	// SignInOpen is the line "A sign-in link is open until ..." or empty. SignInLink is the panel shown
+	// once after a link was made. SignInLabel and SignInHelp are the button and the sentence under it.
+	SignInOpen, SignInLabel, SignInHelp string
+	SignInLink                          *InviteLink
 }
 
 // AddedBooksView is the "Books they added" section of a person's page (decision 0029). Show is true when
@@ -212,6 +220,9 @@ templ AdminUser(v AdminUserView) {
 			<h1 class="title-1 ts-admin__title">{ v.Name }</h1>
 			<span class={ "ts-role", templ.KV("ts-role--owner", v.RoleKind == "owner") }>{ v.RolePill }</span>
 			<p class="caption ts-users__sub">{ v.Meta }</p>
+			if v.Username != "" {
+				<p class="caption ts-users__sub">{ v.Username }</p>
+			}
 		</header>
 		if v.Error != "" {
 			<p class="ts-users__error" role="alert">{ v.Error }</p>
@@ -263,6 +274,16 @@ templ AdminUser(v AdminUserView) {
 					<button type="submit" class="ts-btn ts-btn--secondary">Turn account back on</button>
 				</form>
 			} else {
+				if v.SignInLink != nil {
+					@InviteLinkPanel(*v.SignInLink)
+				} else if v.SignInOpen != "" {
+					<p class="caption ts-users__meta">{ v.SignInOpen }</p>
+				}
+				<form method="post" action={ templ.URL("/admin/users/" + v.ID + "/signin-link") }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--secondary">{ v.SignInLabel }</button>
+					<p class="caption ts-users__meta">{ v.SignInHelp }</p>
+				</form>
 				<a class="ts-btn ts-btn--danger" href={ templ.SafeURL("/admin/users/" + v.ID + "/disable") }>Turn off account</a>
 			}
 		</section>

@@ -1,0 +1,56 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// Sign-in links (decision 0030). Every sentence comes from the handler.
+
+// SignInConfirmView is GET /signin/{token}: "Sign in to {server}?". Opening the address changes
+// nothing; the button is the POST that uses the link up.
+type SignInConfirmView struct {
+	CSRF, Token, ServerName string
+	Title, Body, Button     string
+}
+
+// SignInConfirm asks the person to confirm the sign-in.
+templ SignInConfirm(v SignInConfirmView) {
+	<div class="ts-invite ts-invite__state">
+		<div class="ts-invite__brand">
+			@components.Brand()
+		</div>
+		<h1 class="title-1">{ v.Title }</h1>
+		<p class="body-lg">{ v.Body }</p>
+		<form class="ts-invite__cta" method="post" action={ templ.URL("/signin/" + v.Token) } hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">{ v.Button }</button>
+		</form>
+	</div>
+}
+
+// NewPasswordView is /me/new-password: choose a password without the old one, after a sign-in link.
+type NewPasswordView struct {
+	CSRF, Username, Error string
+	Title, Lead, Label    string
+	Button, Skip          string
+}
+
+// NewPassword asks for the new password. The username sits in a field only a password manager sees,
+// so it saves the pair together.
+templ NewPassword(v NewPasswordView) {
+	<div class="ts-invite ts-invite__keep">
+		<div class="ts-invite__brand">
+			@components.Brand()
+		</div>
+		<h1 class="title-1">{ v.Title }</h1>
+		<p class="body-lg">{ v.Lead }</p>
+		<form class="ts-form" method="post" action="/me/new-password" hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<input type="text" class="ts-sr" name="username" value={ v.Username } autocomplete="username" readonly tabindex="-1" aria-hidden="true"/>
+			@components.TextField(components.Field{
+				ID: "password", Name: "password", Label: v.Label, Type: "password",
+				Autocomplete: "new-password", Hint: "At least 10 characters.", Error: v.Error, Required: true, Autofocus: true,
+			})
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">{ v.Button }</button>
+		</form>
+		<p class="caption ts-invite__fine"><a href="/">{ v.Skip }</a></p>
+	</div>
+}

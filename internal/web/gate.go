@@ -10,13 +10,13 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 )
 
-// gate is default deny: every path except /setup, /login and the invite and share links (the static files and /healthz never get
+// gate is default deny: every path except /setup, /login and the invite, sign-in and share links (the static files and /healthz never get
 // here) needs a signed-in, non-disabled person. The auth middleware already dropped sessions of
 // disabled accounts, so "signed in" is just "has a user in the context". With no owner yet,
 // everyone is sent to /setup; otherwise anonymous visitors go to /login with a way back.
 func (s *server) gate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/setup" || r.URL.Path == "/login" || isInvitePath(r.URL.Path) || isPairPath(r.URL.Path) || isLinkPath(r.URL.Path) {
+		if r.URL.Path == "/setup" || r.URL.Path == "/login" || isInvitePath(r.URL.Path) || isPairPath(r.URL.Path) || isSignInPath(r.URL.Path) || isLinkPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -137,6 +137,16 @@ func isPairPath(p string) bool {
 	return ok && rest != "" && !strings.Contains(rest, "/")
 }
 
+// signInPrefix starts the public sign-in link path (decision 0030): /signin/{token}. A GET only checks
+// the link; the POST spends it. Every failure gives the same page.
+const signInPrefix = "/signin/"
+
+// isSignInPath reports whether p is /signin/ plus one non-empty segment.
+func isSignInPath(p string) bool {
+	rest, ok := strings.CutPrefix(p, signInPrefix)
+	return ok && rest != "" && !strings.Contains(rest, "/")
+}
+
 // linkPrefix starts the share-link paths, public like the invite pages and for the same reason: the
 // token in the path is the credential.
 const linkPrefix = "/s/"
@@ -178,6 +188,9 @@ func logPath(r *http.Request) string {
 	}
 	if isPairPath(r.URL.Path) {
 		return pairPrefix + "…" // the token is the secret
+	}
+	if isSignInPath(r.URL.Path) {
+		return signInPrefix + "…" // the token is the secret
 	}
 	rest, ok := strings.CutPrefix(r.URL.Path, invitePrefix)
 	if !ok {

@@ -31,6 +31,7 @@ func (s *server) registerUsers(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/users/{id}/disable", s.getPersonDisable)
 	mux.HandleFunc("POST /admin/users/{id}/disable", s.postPersonDisable)
 	mux.HandleFunc("POST /admin/users/{id}/enable", s.postPersonEnable)
+	mux.HandleFunc("POST /admin/users/{id}/signin-link", s.postPersonSignInLink)
 	mux.HandleFunc("POST /admin/users/{id}/devices/{did}/signout", s.postPersonDeviceSignOut)
 	mux.HandleFunc("POST /admin/users/{id}/grants", s.postGrantAdd)
 	mux.HandleFunc("POST /admin/users/{id}/grants/{gid}", s.postGrantUpdate)
@@ -184,6 +185,9 @@ func (s *server) personView(r *http.Request, t users.User, errMsg string) (pages
 		Error: errMsg, Roles: rolesFor(s, r, t.Kind()), Off: t.Disabled, Today: now.Format("2006-01-02"),
 		CanGrant: t.Role == users.RoleMember || t.Role == users.RoleGuest,
 	}
+	if err := s.signInPersonView(r, t, &v); err != nil {
+		return v, err
+	}
 	people, err := s.grants.People(ctx, now.UnixMilli(), monthStart(now).UnixMilli())
 	if err != nil {
 		return v, err
@@ -252,10 +256,18 @@ func (s *server) personView(r *http.Request, t users.User, errMsg string) (pages
 
 // renderPerson answers with the person's page and the given status.
 func (s *server) renderPerson(w http.ResponseWriter, r *http.Request, status int, t users.User, errMsg string) {
+	s.renderPersonWith(w, r, status, t, errMsg, nil)
+}
+
+// renderPersonWith is renderPerson with a last edit to the view, such as the one-time sign-in panel.
+func (s *server) renderPersonWith(w http.ResponseWriter, r *http.Request, status int, t users.User, errMsg string, edit func(*pages.AdminUserView)) {
 	v, err := s.personView(r, t, errMsg)
 	if err != nil {
 		s.serverError(w, r, "person page", err)
 		return
+	}
+	if edit != nil {
+		edit(&v)
 	}
 	s.prefsPage(w, r, status, v.Name, "admin-users", "users", false, pages.AdminUser(v), nil, append(slices.Clone(adminStyles), "css/pages-me.css")...)
 }
@@ -387,6 +399,9 @@ func (s *server) postPersonRole(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		if _, err := s.auth.RevokeSignInLinks(ctx, tx, id, "role"); err != nil {
+			return err
+		}
 		if to == users.KindAdmin && from != users.KindAdmin {
 			// Admins see everything by role; grants left behind would come back on a demotion.
 			_, err = s.grants.RevokeAll(ctx, tx, actor, id)
@@ -426,6 +441,9 @@ func (s *server) postPersonDisable(w http.ResponseWriter, r *http.Request) {
 	}
 	done := s.changePerson(w, r, id, "", func(ctx context.Context, tx *sql.Tx, actor, t users.User) error {
 		if err := s.users.SetDisabled(ctx, tx, actor.ID, id, true); err != nil {
+			return err
+		}
+		if _, err := s.auth.RevokeSignInLinks(ctx, tx, id, "disabled"); err != nil {
 			return err
 		}
 		n, err := s.sessions.EndAllForUser(ctx, tx, id, s.now().UnixMilli())
