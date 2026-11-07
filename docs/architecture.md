@@ -366,9 +366,10 @@ Full player (P1c-5a, `static/js/player-full.js`, a second async module, no impor
 `<dialog id="player-full" class="ts-player" hx-preserve>` in `Layout` after `#player`. It never touches `#audio`: it reads
 `window.tsPlayer` (`info()`, `state()`, `seek`, `skip`, `chapter`, `play`, `toggle`) and the `ts:player:state`, `ts:player:tick`
 and `ts:player:ready` events (player.js fires ready once the API exists, because both modules load async). Below 1280 px it
-opens with `showModal()` (focus trap, Escape, focus back on the opener; the bar is hidden by `is-covered`) inside a view
-transition that glides the cover (`view-transition-name: ts-now-cover`, named only during the transition; none with reduced
-motion); from 1280 px it is a non-modal 400 px side panel and the bar stays. The mini open link (kept `hx-boost="false"`) and a
+opens with `showModal()` (focus trap, Escape, focus back on the opener; the bar is hidden by `is-covered`) and the real
+dialog rises from below the screen to its place in 250 ms (`is-rising`, transform only, opaque the whole way, no view
+transition; the content is filled before the first frame), the reverse of how it closes (the button, Escape and Android back
+run the same slide down as a finished swipe); with reduced motion it opens and closes at once; from 1280 px it is a non-modal 400 px side panel and the bar stays. The mini open link (kept `hx-boost="false"`) and a
 swipe up on the bar open it; the chevron, Escape and a swipe down on the header close it (`--ts-drag` follows the finger;
 under 30 % of the height it springs back). The cover accent and tint reach CSS only as `--cover-accent` and `--cover-tint`
 on `#player-full` (`style.setProperty`, validated as `#rrggbb`, per `data-theme` or the system scheme, removed for the contrast

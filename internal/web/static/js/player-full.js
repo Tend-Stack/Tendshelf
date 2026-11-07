@@ -352,50 +352,59 @@ document.addEventListener("ts:chapterbar:seek", (event) => {
 
 // ---- Opening, closing, swiping ----
 
-// Runs change inside a view transition where the browser has them, so the cover glides between
-// the bar and the player. from and to name who owns the shared "ts-now-cover" before and after.
-function morph(from, to, change) {
-  if (!document.startViewTransition || REDUCED.matches) {
-    change();
-    return;
-  }
-  root.classList.add("ts-vt-" + from);
-  document.startViewTransition(() => {
-    root.classList.replace("ts-vt-" + from, "ts-vt-" + to);
-    change();
-  }).finished.finally(() => root.classList.remove("ts-vt-" + to, "ts-vt-" + from));
-}
+// True while the full screen player slides (up when it opens, down when it closes or springs back).
+// A press must not start a swipe then, and a second close is ignored.
+let sliding = false;
+// True once a close has started, until the dialog is shut.
+let leaving = false;
 
-// after runs once the player is open (the phone opens it inside a view transition).
+// after runs once the player is open. On a phone or tablet the real dialog rises from below the
+// screen, the reverse of how a swipe closes it; the side panel just appears.
 function openPlayer(after) {
-  if (!book || dialog.open) return;
+  if (!book || dialog.open || leaving) return;
   opener = document.activeElement;
-  const show = () => {
-    if (sidePanel()) dialog.show();
-    else dialog.showModal();
-    slot.classList.add("is-covered");
-    update("open");
-    drawSleep();
-    markScrolls();
-    if (after) after();
-  };
-  if (sidePanel()) show();
-  else morph("mini", "full", show);
+  const rise = !sidePanel() && !REDUCED.matches;
+  // Start fully below the screen and fully opaque, before the dialog is first painted.
+  if (rise) {
+    dialog.style.setProperty("--ts-drag", window.innerHeight + "px");
+    dialog.style.setProperty("--ts-fade", "1");
+  }
+  if (sidePanel()) dialog.show();
+  else dialog.showModal();
+  slot.classList.add("is-covered");
+  // All content is filled in this same task, so nothing pops in while the player slides.
+  update("open");
+  drawSleep();
+  markScrolls();
+  if (rise) {
+    sliding = true;
+    dialog.getBoundingClientRect(); // commit the start position, so the transition has somewhere to start from
+    dialog.classList.add("is-rising");
+    dialog.style.setProperty("--ts-drag", "0px");
+    setTimeout(() => {
+      dialog.classList.remove("is-rising");
+      sliding = false;
+    }, SETTLE_MS);
+  }
+  if (after) after();
 }
 
 function closeNow() {
   closeSheet(false);
   slot.classList.remove("is-covered");
   dialog.close();
+  leaving = false;
   syncExpand();
   const back = opener && opener.isConnected && opener !== document.body ? opener : miniOpen;
   back.focus({ preventScroll: true });
 }
 
+// The button, Escape and Android back slide the player down like a finished swipe. A close while
+// the player is already sliding is ignored.
 function closePlayer() {
-  if (!dialog.open) return;
+  if (!dialog.open || leaving || sliding) return;
   if (sidePanel()) closeNow();
-  else morph("full", "mini", closeNow);
+  else settle(dialog.offsetHeight, true);
 }
 
 // A press that moves vertically becomes a swipe; onMove follows the finger, onEnd decides (with
@@ -433,9 +442,12 @@ function settle(px, closing) {
     if (closing) closeNow();
     return;
   }
+  if (closing) leaving = true;
+  sliding = true;
   dialog.classList.add("is-settling");
   moveTo(px);
   setTimeout(() => {
+    sliding = false;
     dialog.classList.remove("is-settling");
     moveTo(0);
     if (closing) closeNow();
@@ -467,7 +479,7 @@ function swipeAllowed(event) {
   return true;
 }
 
-swipe(dialog, () => !sidePanel(),
+swipe(dialog, () => !sidePanel() && !sliding && !leaving,
   (dy) => REDUCED.matches || moveTo(Math.max(0, dy)),
   (dy, speed) => (dy > dialog.offsetHeight * SWIPE_CLOSE_FRACTION || (dy > SWIPE_FLICK_PX && speed > SWIPE_FLICK_SPEED) ? settle(dialog.offsetHeight, true) : settle(0, false)),
   swipeAllowed);

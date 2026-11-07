@@ -6,6 +6,8 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### What you can do
 
+- **The full player slides up from the bottom.** On a phone or tablet it now rises over a quarter of a second, the way it
+  slides down when you close it, instead of fading in. The arrow, Escape and Back slide it down too.
 - **Pick a chapter on the chapter bar.** Point at the thin chapter line (in the player, the side player, on Home and on a book's
   page) and a small label names the chapter and where it starts; hold a finger on it to see the same. Click or tap to go to
   that chapter (Go back is offered); on Home it starts the book there. Keyboard: arrows choose, Enter goes.

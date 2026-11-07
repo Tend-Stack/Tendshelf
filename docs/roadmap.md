@@ -24,6 +24,8 @@ themes.
 | M7 Research | P6 | Dropped (decision 0007) | |
 | M8 Android | A0-A10 | In progress. A0 (skeleton and playback proof) built 2026-11-06; see "M8 Android" below. | [decision 0024](decisions/0024-android-app.md), [plan](plans/android.md) |
 
+**Full player motion (2026-11-06).** On a phone or tablet the full player now rises from the bottom over 250 ms (the real dialog, transform only, opaque, no view transition) and the arrow, Escape and Back slide it down like a finished swipe; reduced motion is instant. This replaces the handoff's shared-cover morph at the operator's request. Checks: `make player` (`player_rise_browser_test.go` at 390 px), `make a11y`, `make page-weight`. Not verified: a real Android WebView.
+
 ## M0 Foundation
 
 ### P0a Data and jobs

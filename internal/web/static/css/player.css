@@ -65,7 +65,11 @@
 .ts-player[data-tint="pale"] { --ts-tint: 25%; }
 .ts-player[data-tint="none"] { background: var(--ground); }
 .ts-player.is-settling { transition: transform var(--duration-slow) var(--easing-exit), opacity var(--duration-slow) var(--easing-exit); }
+/* Opening: the player rises from below the screen, opaque the whole way, only transform moves (player-full.js). */
+.ts-player.is-rising { transition: transform var(--duration-slow) var(--easing-expand); }
 .ts-player::backdrop { background: var(--scrim); }
+.ts-player.is-rising::backdrop { animation: ts-backdrop-in var(--duration-slow) var(--easing-expand); }
+@keyframes ts-backdrop-in { from { opacity: 0; } }
 .ts-player [hidden] { display: none; }
 .ts-player:not(.is-playing) [data-ts-icon-pause], .ts-player.is-playing [data-ts-icon-play] { display: none; }
 .ts-player__body { position: relative; display: flex; flex-direction: column; box-sizing: border-box; height: 100%; max-width: 35rem; margin-inline: auto; overflow-y: auto;
@@ -122,17 +126,13 @@
 .ts-player__chnum, .ts-player__chtime { color: var(--ink-muted); font-size: 0.875rem; }
 .ts-player__chdone { display: flex; color: var(--accent); }
 
-/* The shared cover glides between the bar and the player (view transition, see player-full.js) */
-.ts-vt-mini .ts-mini__cover, .ts-vt-full .ts-player__cover { view-transition-name: ts-now-cover; }
-::view-transition-group(ts-now-cover) { animation-duration: var(--duration-slow); animation-timing-function: var(--easing-expand); }
 /* A page swap must not paint over the player: the swap's cross-fade group of #main sits above the
    page snapshot, so the bar and the side panel get groups of their own, which paint after it. They
-   are unchanged, so nothing visibly animates. Not while the player opens or closes (the cover's
-   own transition runs then). */
-html:not(.ts-vt-mini, .ts-vt-full) .ts-player-slot { view-transition-name: ts-bar; }
+   are unchanged, so nothing visibly animates. */
+.ts-player-slot { view-transition-name: ts-bar; }
 @media (width >= 1280px) {
   :where(html:not([data-text-size="large"])) {
-    &:not(.ts-vt-mini, .ts-vt-full) dialog.ts-player[open] { view-transition-name: ts-panel; }
+    dialog.ts-player[open] { view-transition-name: ts-panel; }
   }
 }
 .ts-mini { touch-action: none; }
@@ -155,7 +155,7 @@ html[data-text-size="large"] .ts-player-slot.is-covered { visibility: hidden; }
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ts-player.is-settling { transition: none; }
+  .ts-player.is-settling, .ts-player.is-rising { transition: none; }
 }
 
 /* P1c-5b: sheets, sleep card, desktop bar speed, sleep and volume */
