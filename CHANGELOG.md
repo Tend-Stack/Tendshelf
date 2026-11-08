@@ -16,6 +16,12 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
   reader's bottom bar; "Voice and speed" picks the voice and a speed from 0.8× to 2×. If you scroll away, "Back to the voice"
   takes you back. It keeps going into the next chapter and stops at the end of the book. The text never leaves your device, and
   only voices that run on the device are offered. In the Android app it uses the phone's own voices.
+- **Skip silence in the Android app.** Settings, Playback has "Skip silence", which shortens long pauses while you listen. Your place
+  and chapters stay where they were; the time it counts as listened is the time you actually spent. It works in the app only.
+- **Turn pages with the volume buttons in the Android app.** In the reader's settings, under More, "Turn pages with the volume buttons"
+  makes volume down the next page and volume up the previous one, also while a book plays. Everywhere else the buttons change the volume.
+- **The screen stays on while you read in the Android app**, when the reader's keep-awake setting is on. As in the browser, it lets the screen sleep again after
+  10 minutes without a touch, and when you leave the reader.
 
 ### Upgrading
 
