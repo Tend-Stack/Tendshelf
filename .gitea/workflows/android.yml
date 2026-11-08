@@ -1,6 +1,6 @@
 name: Tendshelf Android checks
 
-# The Kotlin unit tests (:shared:test) and Android lint with NewApi fatal, on every push that touches android/ or the
+# The Kotlin unit tests (:shared:jvmTest) and Android lint with NewApi fatal, on every push that touches android/ or the
 # server files the app embeds, on the amd64 runner (Google's SDK tools are x86-64). The tag build runs the same gates
 # inside android/tools/make-apk.sh. The SDK comes from the same pinned command-line tools as release.yml (docs/android.md);
 # without the two variables the job says so and passes, as the release job does.

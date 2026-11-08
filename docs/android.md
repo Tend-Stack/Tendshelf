@@ -145,8 +145,18 @@ Three things a page cannot do alone (decision [0033](decisions/0033-android-feel
 
 ## Checks before a release
 
-- `android/tools/check-android.sh` runs `:shared:test` and `lintRelease`. `.gitea/workflows/android.yml` runs it on every push that touches `android/`, and `make-apk.sh` runs it before the tag build. Both need the two `TS_ANDROID_CMDLINE_TOOLS_*` variables; without them the job says it was skipped, which is not a pass.
+- `android/tools/check-android.sh` runs `:shared:jvmTest` and `lintRelease`. `.gitea/workflows/android.yml` runs it on every push that touches `android/`, and `make-apk.sh` runs it before the tag build. Both need the two `TS_ANDROID_CMDLINE_TOOLS_*` variables; without them the job says it was skipped, which is not a pass.
 - Lint has `NewApi` fatal (minSdk is 28). `app/lint-baseline.xml` holds the older findings of other kinds; never add a `NewApi` entry, fix the call.
 - The app sends the token, and acts on a 401 or 404, only to an address whose `/healthz` says `app: tendshelf` with the install id saved at connect time (`ServerGate`).
 - The F-Droid recipe names v2026.4.0; F-Droid's own build of the tag must match the GitHub APK (`android/tools/repro-check.sh` checks reproducibility here).
 
+
+## iOS later
+
+`android/shared` is a Kotlin Multiplatform module that targets only the JVM today (`jvm()`), so an iOS app can add
+`iosArm64()` and `iosSimulatorArm64()` later without moving code. Almost everything is in `commonMain`: API paths,
+positions, the sync outbox, origin and link rules, and a pure-Kotlin form-urlencoder (`FormUrl.kt`, checked against
+`java.net.URLEncoder` and `URLDecoder` in `jvmTest`). One `expect`/`actual` pair exists, `parseRawUri` (`RawUri.kt`),
+whose JVM `actual` wraps `java.net.URI`; an iOS `actual` must wrap a strict parser of its own, never a hand-written
+one. `Io.kt` stays in `jvmMain` because it uses `java.io`. The iOS targets cannot be linked on Linux, so adding them
+needs macOS with Xcode. Tests run with `:shared:jvmTest`.

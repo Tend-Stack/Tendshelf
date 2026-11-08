@@ -79,4 +79,4 @@ fun speedCycle(current: Double): Double {
 }
 
 /** "1.25x" the way the button says it; a whole speed keeps one decimal ("1.0x"). */
-fun speedLabel(speed: Double): String = (if (speed % 1.0 == 0.0) "%.1f".format(java.util.Locale.ROOT, speed) else speed.toString()) + "x"
+fun speedLabel(speed: Double): String = speed.toString() + "x" // Double.toString keeps one decimal on a whole speed ("1.0")

@@ -1,6 +1,5 @@
 package app.tendshelf.shared
 
-import java.net.URLDecoder
 
 sealed interface Nav {
     /** Load it in the WebView. */
@@ -74,7 +73,7 @@ private fun queryParam(query: String?, name: String): String? {
     if (query == null) return null
     for (pair in query.split('&')) {
         val key = pair.substringBefore('=')
-        if (key == name) return try { URLDecoder.decode(pair.substringAfter('=', ""), "UTF-8") } catch (_: Exception) { null }
+        if (key == name) return try { formUrlDecode(pair.substringAfter('=', "")) } catch (_: Exception) { null }
     }
     return null
 }

@@ -1,7 +1,6 @@
 package app.tendshelf.shared
 
-// java.net.URI is the one JVM type this module uses, for strict URL parsing in matches(); no Android import.
-import java.net.URI
+// URL parsing goes through the expect/actual parseRawUri (java.net.URI on the JVM); no Android import.
 
 /** The scheme, host and port of the server the person chose. Host is lowercased, IPv6 keeps its brackets, the default port is null. */
 data class Origin(val scheme: String, val host: String, val port: Int?) {
@@ -36,8 +35,8 @@ data class Origin(val scheme: String, val host: String, val port: Int?) {
 
     /** The same for a pairing: `next` holds /pair/TOKEN with the challenge and this phone's name, each escaped. */
     fun pairUrl(token: String, challenge: String, name: String): String {
-        val inner = "/pair/$token?challenge=" + java.net.URLEncoder.encode(challenge, "UTF-8") + "&name=" + java.net.URLEncoder.encode(name, "UTF-8")
-        return "$text/?shell=android&next=" + java.net.URLEncoder.encode(inner, "UTF-8")
+        val inner = "/pair/$token?challenge=" + formUrlEncode(challenge) + "&name=" + formUrlEncode(name)
+        return "$text/?shell=android&next=" + formUrlEncode(inner)
     }
 
     companion object {
@@ -89,7 +88,7 @@ internal class ParsedUrl(val scheme: String, val host: String, val port: Int?, v
 /** http(s) URLs only, strictly: userinfo, backslashes and unparsable text give null. The port is null when it is the scheme's default. */
 internal fun parseUrl(url: String): ParsedUrl? {
     if (url.any { it == '\\' || it.isWhitespace() }) return null
-    val uri = try { URI(url) } catch (_: Exception) { return null }
+    val uri = parseRawUri(url) ?: return null
     val scheme = uri.scheme?.lowercase() ?: return null
     if (scheme != "http" && scheme != "https") return null
     if (uri.rawUserInfo != null) return null

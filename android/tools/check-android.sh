@@ -6,4 +6,4 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 : "${ANDROID_HOME:?ANDROID_HOME is not set}"
 cd "$root/android"
-./gradlew --no-daemon :shared:test lintRelease
+./gradlew --no-daemon :shared:jvmTest lintRelease

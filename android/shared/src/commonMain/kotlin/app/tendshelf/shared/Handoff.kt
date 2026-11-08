@@ -1,6 +1,5 @@
 package app.tendshelf.shared
 
-import java.net.URLDecoder
 
 enum class Kind { Invite, Pair }
 
@@ -24,11 +23,11 @@ fun parseHandoff(text: String): Handoff? {
     } ?: return null
     var link = word.trimEnd('.', ',', ';', ':', ')', '>')
     if (link.lowercase().startsWith("tendshelf://")) {
-        val u = try { java.net.URI(link) } catch (_: Exception) { return null }
+        val u = parseRawUri(link) ?: return null
         if (u.scheme?.lowercase() != "tendshelf" || u.host?.lowercase() != "open") return null
         val raw = u.rawQuery ?: return null
         val value = raw.split('&').firstOrNull { it.substringBefore('=') == "link" } ?: return null
-        link = try { URLDecoder.decode(value.substringAfter('=', ""), "UTF-8") } catch (_: Exception) { return null }
+        link = try { formUrlDecode(value.substringAfter('=', "")) } catch (_: Exception) { return null }
         val l = link.lowercase()
         if (!l.startsWith("https://") && !l.startsWith("http://")) return null
     }

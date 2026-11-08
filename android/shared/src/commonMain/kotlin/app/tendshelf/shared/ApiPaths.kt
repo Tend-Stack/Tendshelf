@@ -30,7 +30,7 @@ class ApiPaths(server: String) {
     val shelvesUrl: String get() = "$base/api/v1/shelves"
     fun shelfUrl(shelfId: String): String = "$base/api/v1/shelves/${segment(shelfId)}"
     fun searchUrl(query: String, limit: Int): String =
-        "$base/api/v1/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&limit=$limit"
+        "$base/api/v1/search?q=${formUrlEncode(query)}&limit=$limit"
     fun speedUrl(bookId: String): String = "$base/api/v1/books/${segment(bookId)}/speed"
 
     fun progressUrl(bookId: String): String = "$base/api/v1/progress/${segment(bookId)}"
@@ -54,7 +54,7 @@ fun jsonString(s: String): String {
             c == '\n' -> out.append("\\n")
             c == '\r' -> out.append("\\r")
             c == '\t' -> out.append("\\t")
-            c < ' ' -> out.append("\\u%04x".format(c.code))
+            c < ' ' -> out.append("\\u" + c.code.toString(16).padStart(4, '0'))
             else -> out.append(c)
         }
     }
