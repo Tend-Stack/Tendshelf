@@ -30,7 +30,7 @@ func TestPageStylesTravelInMain(t *testing.T) {
 	book := "/books/" + f.book.ID
 	bm := bookmarkAdd(t, f, f.ownerID, f.book.ID, 100_000, "A note", time.Now())
 
-	browse := []string{"pages-admin", "pages-home", "pages-library"}
+	browse := []string{"pages-admin", "pages-home", "pages-spines", "pages-library"}
 	bookStyles := []string{"pages-home", "pages-library", "pages-book", "pages-shelves", "pages-bookmarks"}
 	adminStyles := []string{"pages-onboard", "pages-admin", "pages-settings"}
 	cases := []struct {

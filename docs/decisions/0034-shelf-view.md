@@ -37,5 +37,5 @@ No JavaScript. Every slot's margin box is exactly one zone high, so each flex li
 repeating background on the list. The last row's plank runs the full width, however few books stand on it.
 
 ## Not chosen
-Covers facing out (they hide the thickness this view exists to show, and add images to a view that has none); a stored view
-preference (Grid and List live in the address only; the same holds here); books that lean; grouping by series (there is no series sort).
+Covers facing out (they hide the thickness this view exists to show, and add images to a view that has none); books that lean; grouping by series (there is no series sort).
+Amended by the lead (2026-11-08): the view is kept per person as `library.view` in `user_settings`, set by `POST /me/library-view` (the control is a form of three buttons, so it works without JavaScript); a bare Library address opens in it, an explicit `view=` wins, and large text shows the grid whatever is saved.

@@ -572,6 +572,7 @@ func sweepRows() []sweepRow {
 			"auto_rewind": {"0", "1"}, "next_in_series": {"0"}, "player_tint": {"0", "1"}, "big_buttons": {"0", "1"}, "text_size": {"standard"}}), sweepSame(303), ""),
 		sweepPost("POST /me/reader-settings", sweepStatic("/me/reader-settings"), sweepFormOf(url.Values{"size": {"20"}, "word": {"0", "1"}}), sweepSame(303), "/"),
 		sweepPost("POST /me/nav", sweepStatic("/me/nav"), sweepFormOf(url.Values{"nav": {"full"}}), sweepSame(303), ""),
+		sweepPost("POST /me/library-view", sweepStatic("/me/library-view"), sweepFormOf(url.Values{"view": {"grid"}, "next": {"/libraries?sort=title"}}), sweepSame(303), "/libraries?sort=title"),
 		sweepPost("POST /me/words/{id}/delete", sweepStatic("/me/words/wd_none/delete"), nil, sweepSame(404), ""),
 		sweepPost("POST /me/reading/goal", sweepStatic("/me/reading/goal"), sweepFormOf(url.Values{"goal_books": {"12"}}), sweepSame(303), "/me/reading"),
 		sweepPost("POST /hx/me/nav", sweepStatic("/hx/me/nav"), sweepFormOf(url.Values{"nav": {"full"}}), sweepSame(200), ""),

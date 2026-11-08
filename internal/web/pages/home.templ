@@ -37,7 +37,7 @@ type HomeView struct {
 
 // BrowseStyles are the stylesheets Home and Library link after the shared ones; the scan banner
 // reuses the status styles of the Libraries page.
-var BrowseStyles = []string{"css/pages-admin.css", "css/pages-home.css", "css/pages-library.css"}
+var BrowseStyles = []string{"css/pages-admin.css", "css/pages-home.css", "css/pages-spines.css", "css/pages-library.css"}
 
 // emptyAction is the one link or button under an empty state's text.
 templ emptyAction(e EmptyView) {
@@ -89,12 +89,11 @@ templ Home(v HomeView) {
 						}
 					</div>
 				} else {
-					<div class="ts-shelf ts-shelf--scroll" role="list" data-ts-fit>
+					<ul class="ts-shelf ts-shelf--scroll" role="list" data-ts-fit>
 						for _, b := range v.New {
 							@components.Spine(b)
 						}
-					</div>
-					<div class="ts-shelf__plank"></div>
+					</ul>
 				}
 			</section>
 		}

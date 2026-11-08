@@ -137,6 +137,7 @@ func TestVisualWebKitPages(t *testing.T) {
 		{"home", signed, "/", browseProbeJS},
 		{"library", signed, "/libraries", browseProbeJS},
 		{"library-list", signed, "/libraries?view=list", browseProbeJS},
+		{"library-shelf", signed, "/libraries?view=shelf", browseProbeJS},
 		{"book", signed, "/books/" + books.Books[0].ID, browseProbeJS},
 		{"search", signed, "/search?q=lantern", browseProbeJS},
 		{"settings", signed, "/me/settings", browseProbeJS},

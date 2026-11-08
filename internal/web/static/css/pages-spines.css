@@ -1,0 +1,56 @@
+/* The shelf (decision 0034): Home's "New on the shelf" and the Library's Shelf view draw the same components.Spine
+   in the same .ts-shelf. A book is as thick as it is long (ts-spine--w1..w12, from the server's spineWidth) and as tall as a hash
+   of its series or id (ts-spine--h1..h5). Tokens only; the cover tint arrives as .is-tinted from shell.js (pages-home.css). */
+.ts-shelf {
+  --spine-w-inc: 0.3rem; --spine-h-min: 9.25rem; --spine-h-inc: 0.5rem;
+  --shelf-zone: calc(var(--spine-h-min) + 4 * var(--spine-h-inc) + 0.5rem); /* tallest book, plus room for the lift and the ribbon */
+  --shelf-plank: 0.5rem; --shelf-air: 1.75rem;
+  --plank: var(--brand-walnut);
+  --plank-light: color-mix(in oklab, var(--brand-walnut) 72%, var(--brand-paper));
+  --plank-dark: color-mix(in oklab, var(--brand-walnut) 70%, var(--spine-ink));
+  --plank-cast: color-mix(in oklab, var(--spine-ink) 24%, transparent);
+  --book-cast: color-mix(in oklab, var(--spine-ink) 30%, transparent);
+  display: flex; align-items: flex-end; margin: 0; padding: 0 0 var(--shelf-plank); list-style: none;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  background-image: linear-gradient(to bottom, transparent var(--shelf-zone),
+    var(--plank-light) var(--shelf-zone), var(--plank-light) calc(var(--shelf-zone) + 1px),
+    var(--plank) calc(var(--shelf-zone) + 1px), var(--plank) calc(var(--shelf-zone) + var(--shelf-plank) - 1px),
+    var(--plank-dark) calc(var(--shelf-zone) + var(--shelf-plank) - 1px), var(--plank-dark) calc(var(--shelf-zone) + var(--shelf-plank)),
+    var(--plank-cast) calc(var(--shelf-zone) + var(--shelf-plank)), transparent calc(var(--shelf-zone) + var(--shelf-plank) + 0.75rem));
+  background-size: 100% calc(var(--shelf-zone) + var(--shelf-plank) + var(--shelf-air)); background-repeat: repeat-y;
+}
+.ts-shelf--wrap { flex-wrap: wrap; row-gap: calc(var(--shelf-plank) + var(--shelf-air)); }
+.ts-shelf--scroll { margin-top: var(--space-8); padding-inline: var(--space-4); overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+.ts-shelf__slot { --book-h: calc(var(--spine-h-min) + var(--h) * var(--spine-h-inc)); flex: none; width: calc(var(--size-tap) + var(--w) * var(--spine-w-inc)); height: var(--book-h); margin-top: calc(var(--shelf-zone) - var(--book-h)); }
+.ts-shelf__slot[hidden] { display: none; }
+.ts-shelf__more { flex: 0 0 100%; height: var(--shelf-zone); display: flex; align-items: center; justify-content: center; }
+.ts-shelf .ts-more.htmx-request .ts-more__loading { display: none; }
+.ts-spine { display: block; box-sizing: border-box; height: 100%; padding-inline: 0.1875rem; text-decoration: none; -webkit-user-drag: none; -webkit-tap-highlight-color: transparent; }
+.ts-spine:focus-visible { position: relative; z-index: 1; outline: 2px solid transparent; border-radius: var(--radius-cover); box-shadow: var(--focus-ring); }
+.ts-spine__book { position: relative; box-sizing: border-box; display: flex; align-items: center; justify-content: center; height: 100%; border: 1px solid transparent; border-radius: var(--radius-cover) var(--radius-cover) 1px 1px; box-shadow: 1px 0 3px var(--book-cast); transition: transform var(--duration-fast) var(--easing-standard); }
+.ts-spine__book:not(.is-tinted) { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
+.ts-spine__book::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background-image: linear-gradient(to right, color-mix(in oklab, var(--brand-paper) 16%, transparent), transparent 6%, transparent 88%, color-mix(in oklab, var(--spine-ink) 30%, transparent)); }
+.ts-spine:focus-visible .ts-spine__book { transform: translateY(-0.25rem); }
+.ts-spine:active .ts-spine__book { transform: scale(0.98); transition-duration: 0s; }
+@media (hover: hover) { .ts-spine:hover .ts-spine__book { transform: translateY(-0.25rem); } .ts-spine:active:hover .ts-spine__book { transform: scale(0.98); } }
+@media (prefers-reduced-motion: reduce) { .ts-spine__book { transition: none; } .ts-spine .ts-spine__book, .ts-spine:hover .ts-spine__book, .ts-spine:focus-visible .ts-spine__book, .ts-spine:active .ts-spine__book { transform: none; } }
+.ts-spine__text { position: relative; display: flex; flex-direction: column; align-items: center; max-height: calc(100% - var(--space-16)); overflow: hidden; writing-mode: vertical-rl; transform: rotate(180deg); }
+/* An ellipsis would stand on its side here, so a title too long for two lines stops at the end of a word; the link's name has all of it. */
+.ts-spine__title { max-width: 2.5em; overflow: hidden; font: 400 var(--spine-title, 0.8125rem)/1.25 var(--font-serif); text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
+.ts-spine__author { font: 400 0.8125rem/1.15 var(--font-sans); white-space: nowrap; }
+.ts-spine__ribbon { position: absolute; top: -0.25rem; left: 0.375rem; width: 0.4375rem; height: 1.625rem; background: var(--accent-fill); box-shadow: 0 0 0 1px var(--ground); }
+.ts-spine__book.is-finished { padding-bottom: var(--space-20); }
+.ts-spine__done { position: absolute; bottom: var(--space-4); left: 50%; width: 1rem; height: 1rem; margin-left: -0.5rem; }
+.ts-spine__done .ts-icon { display: block; width: 1rem; height: 1rem; }
+.ts-spine--w1 { --w: 0; } .ts-spine--w2 { --w: 1; } .ts-spine--w3 { --w: 2; } .ts-spine--w4 { --w: 3; }
+.ts-spine--w5 { --w: 4; --spine-title: 0.9375rem; } .ts-spine--w6 { --w: 5; --spine-title: 0.9375rem; }
+.ts-spine--w7 { --w: 6; --spine-title: 0.9375rem; } .ts-spine--w8 { --w: 7; --spine-title: 0.9375rem; }
+.ts-spine--w9 { --w: 8; --spine-title: 1.125rem; } .ts-spine--w10 { --w: 9; --spine-title: 1.125rem; }
+.ts-spine--w11 { --w: 10; --spine-title: 1.125rem; } .ts-spine--w12 { --w: 11; --spine-title: 1.125rem; }
+.ts-spine--h1 { --h: 0; } .ts-spine--h2 { --h: 1; } .ts-spine--h3 { --h: 2; } .ts-spine--h4 { --h: 3; } .ts-spine--h5 { --h: 4; }
+/* Bands: a long book (step 7 up, 13.4 hours) wears a pair of rules at head and foot. */
+:is(.ts-spine--w7, .ts-spine--w8, .ts-spine--w9, .ts-spine--w10, .ts-spine--w11, .ts-spine--w12) .ts-spine__book::after { content: ""; position: absolute; inset: var(--space-8) 0; pointer-events: none; border-block: 0.1875rem double color-mix(in oklab, currentColor 40%, transparent); }
+html[data-theme="contrast"] .ts-shelf { --plank: var(--line-strong); --plank-light: var(--line-strong); --plank-dark: var(--line-strong); --plank-cast: transparent; --book-cast: transparent; }
+html[data-theme="contrast"] .ts-spine__book::before { display: none; }
+@media (width >= 768px) { .ts-shelf { --spine-w-inc: 0.35rem; --spine-h-min: 10rem; } }
+@media (width >= 1280px) { .ts-shelf { --spine-w-inc: 0.4rem; --spine-h-min: 10.5rem; --spine-h-inc: 0.5625rem; } }

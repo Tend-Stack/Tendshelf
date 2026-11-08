@@ -35,7 +35,7 @@ type weightBudget struct {
 // one without the operator.
 var weightBudgets = map[string]weightBudget{
 	// Chapter bar (2026-11-06): chapter-bar.js is loaded on every page; JS raised 1 KiB (reader 2 KiB) from 194,649 B and 236,355 B measured, comments intact, reported.
-	"home":        {HTML: 68608, CSS: 297984, JS: 195584, Font: 1075200, Img: 38912, Requests: 61}, // Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
+	"home":        {HTML: 71680, CSS: 297984, JS: 195584, Font: 1075200, Img: 38912, Requests: 63}, // Shelf spines (decision 0034): HTML raised to 71,680 B from 70,120 B measured (li, link and spans per spine), requests +2 for pages-spines.css. Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
 	"library":     {HTML: 87040, CSS: 297984, JS: 195584, Font: 791552, Img: 95232, Requests: 93},
 	"book":        {HTML: 55296, CSS: 297984, JS: 195584, Font: 791552, Img: 29696, Requests: 55},
 	"listening":   {HTML: 164864, CSS: 297984, JS: 195584, Font: 791552, Img: 34816, Requests: 62},

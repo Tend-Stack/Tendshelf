@@ -49,6 +49,7 @@ const (
 	keyTextSize     = "ui.text_size"
 	keyNav          = "ui.nav"
 	keyTimeZone     = "ui.time_zone"
+	keyLibraryView  = "library.view"
 )
 
 func validTheme(t string) bool {
@@ -64,6 +65,9 @@ func validTextSize(t string) bool { return t == "" || t == "standard" || t == "l
 
 // validNav accepts "" as well: a Settings built without a nav state (older callers) means full.
 func validNav(n string) bool { return n == "" || n == "full" || n == "rail" }
+
+// ValidLibraryView reports whether v is one of the Library's views: "grid", "list" or "shelf".
+func ValidLibraryView(v string) bool { return v == "grid" || v == "list" || v == "shelf" }
 
 // ValidTimeZone reports whether s names a zone Tendshelf can load. "" and "Local" are not names.
 func ValidTimeZone(s string) bool {
@@ -287,6 +291,24 @@ func (r *Repo) SaveTimeZone(ctx context.Context, userID, zone string) error {
 	})
 }
 
+// SaveLibraryView writes library.view alone: the Library opens in this view when the address names
+// none. It is a separate key outside Settings, so the Settings page never rewrites it.
+func (r *Repo) SaveLibraryView(ctx context.Context, userID, view string) error {
+	if !ValidLibraryView(view) {
+		return ErrInvalidSetting
+	}
+	raw, err := json.Marshal(view)
+	if err != nil {
+		return err
+	}
+	return r.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO user_settings (user_id, key, value_json, updated_at) VALUES (?, ?, ?, ?)
+			ON CONFLICT(user_id, key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at`,
+			userID, keyLibraryView, string(raw), r.nowMs())
+		return err
+	})
+}
+
 // Theme reads ui.theme alone: one indexed read for every page render. It returns "" when the
 // person has not chosen one.
 func (r *Repo) Theme(ctx context.Context, userID string) (string, error) {
@@ -308,12 +330,12 @@ func (r *Repo) Theme(ctx context.Context, userID string) (string, error) {
 
 // Look is the part of a person's settings every page render needs: the theme and the text size.
 // An absent or invalid value is "".
-type Look struct{ Theme, TextSize, Nav, TimeZone string }
+type Look struct{ Theme, TextSize, Nav, TimeZone, LibraryView string }
 
-// Look reads ui.theme, ui.text_size, ui.nav and ui.time_zone in one query.
+// Look reads ui.theme, ui.text_size, ui.nav, ui.time_zone and library.view in one query.
 func (r *Repo) Look(ctx context.Context, userID string) (Look, error) {
 	rows, err := r.st.Reader().QueryContext(ctx,
-		`SELECT key, value_json FROM user_settings WHERE user_id = ? AND key IN (?, ?, ?, ?)`, userID, keyTheme, keyTextSize, keyNav, keyTimeZone)
+		`SELECT key, value_json FROM user_settings WHERE user_id = ? AND key IN (?, ?, ?, ?, ?)`, userID, keyTheme, keyTextSize, keyNav, keyTimeZone, keyLibraryView)
 	if err != nil {
 		return Look{}, err
 	}
@@ -337,6 +359,8 @@ func (r *Repo) Look(ctx context.Context, userID string) (Look, error) {
 			l.Nav = v
 		case k == keyTimeZone && ValidTimeZone(v):
 			l.TimeZone = v
+		case k == keyLibraryView && ValidLibraryView(v):
+			l.LibraryView = v
 		}
 	}
 	return l, rows.Err()

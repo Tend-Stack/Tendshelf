@@ -25,6 +25,7 @@ const (
 	bookSeriesOf       = "Book %s of %d"
 	bookFinishedIn     = "finished in %s"
 	bookTilePercent    = "%d%%"
+	cardFinished       = "finished"      // NEW: hidden words of the check on a finished book's spine
 	cardThrough        = "%d %% through" // NEW: hidden words of the thin line on a started book's cover
 	bookTileUpNext     = "Next in series"
 	bookTileNotStarted = "Not started"

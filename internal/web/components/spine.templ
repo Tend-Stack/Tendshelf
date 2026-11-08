@@ -1,33 +1,58 @@
 package components
 
-func spineClass(v CardView) string {
-	c := "ts-spine"
+func spineSlotClass(v CardView) string {
+	c := "ts-shelf__slot"
 	if v.WidthClass != "" {
 		c += " " + v.WidthClass
 	}
 	if v.HeightClass != "" {
 		c += " " + v.HeightClass
 	}
+	return c
+}
+
+func spineBookClass(v CardView) string {
+	c := "ts-spine__book"
 	if v.InkClass != "" {
 		c += " " + v.InkClass
+	}
+	if v.Finished {
+		c += " is-finished"
 	}
 	return c
 }
 
-// Spine is one book standing on a shelf. It sits in an element with role="list" (listitem here), is
-// named like the board's ("{title} by {authors}") and links to the book. Its colour is the cover's
-// tint, applied by shell.js; without the tint (no JavaScript, no readable ink, or the contrast
-// theme) it is a surface-coloured spine with the ink colour.
+// Spine is one book standing on a shelf (decision 0034): a list item holding a link. The item is the
+// slot whose width is the book's thickness and whose 3 px of padding on each side belong to the
+// link, so a thin book has no dead space around it. The link is named "{title} by {authors},
+// {length}" (and its progress), and the visible book inside it is the cover's tint, applied by
+// shell.js; without the tint (no JavaScript, no readable ink, or the contrast theme) it is a
+// surface-coloured book with the ink colour. The ribbon marks a book in progress, the check a
+// finished one.
 templ Spine(v CardView) {
-	<a
-		role="listitem"
-		class={ spineClass(v) }
-		href={ templ.SafeURL(v.Href) }
-		aria-label={ v.AriaLabel }
-		if v.Tint != "" {
-			data-ts-tint={ v.Tint }
-		}
-	>
-		<span class="ts-spine__title">{ v.SpineTitle }</span>
-	</a>
+	<li class={ spineSlotClass(v) }>
+		<a class="ts-spine" href={ templ.SafeURL(v.Href) } aria-label={ v.SpineLabel }>
+			<span
+				class={ spineBookClass(v) }
+				if v.Tint != "" {
+					data-ts-tint={ v.Tint }
+				}
+			>
+				if v.Progress != "" {
+					<span class="ts-spine__ribbon"></span>
+				}
+				<span class="ts-spine__text">
+					<span class="ts-spine__title">{ v.SpineTitle }</span>
+					if v.SpineAuthor != "" {
+						<span class="ts-spine__author">{ v.SpineAuthor }</span>
+					}
+				</span>
+				if v.Finished {
+					<span class="ts-spine__done">
+						@Icon("check", false)
+					</span>
+				}
+			</span>
+		</a>
+	</li>
 }

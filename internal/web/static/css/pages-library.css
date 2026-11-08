@@ -6,10 +6,10 @@
 .ts-lib-head__title, .ts-lib-head__count { margin: 0; }
 .ts-lib-head__count { color: var(--ink-muted); }
 
-/* Controls: the title field, the Filter, Show and Sort chips, then Grid/List at the right. The field takes a full
+/* Controls: the title field, the Filter, Show and Sort chips, then the view choices at the right. The field takes a full
    line below 768 px; the chips wrap rather than overflow at any text size. */
 .ts-lib-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--space-8) var(--space-12); }
-/* Order: title field, Filter, then Show, Sort and Grid/List together at the right. */
+/* Order: title field, Filter, then Show, Sort and the view choices together at the right. */
 .ts-lib-controls #lib-menu-show { order: 1; margin-left: auto; }
 .ts-lib-controls #lib-menu-sort { order: 1; }
 .ts-lib-controls .ts-seg { order: 2; }
@@ -68,7 +68,7 @@
 .ts-lib-title { flex: 1 1 auto; min-width: 0; }
 
 @media (width < 768px) {
-  /* A phone: Filter and Show side by side, then Sort with Grid/List at the right. */
+  /* A phone: Filter and Show side by side, then Sort with the view choices at the right. */
   .ts-lib-controls #lib-menu-show { margin-left: 0; }
   .ts-lib-controls .ts-seg { margin-left: auto; }
   /* A menu opens on its own full row. */
@@ -76,7 +76,7 @@
   .ts-chipmenu[open] > summary { width: 100%; justify-content: space-between; box-sizing: border-box; }
   .ts-chipmenu__body { max-width: none; box-shadow: none; }
 }
-/* Below 1024 px the row is too narrow for the words: Grid/List keep their names for a screen reader and
+/* Below 1024 px the row is too narrow for the words: the view choices keep their names for a screen reader and
    show only the icons. */
 @media (width < 1024px) {
   .ts-lib-controls .ts-seg__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

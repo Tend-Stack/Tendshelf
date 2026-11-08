@@ -108,9 +108,13 @@ type LibraryView struct {
 	// length bucket ("short", "medium", "long" or "").
 	Hidden      []HiddenField
 	LengthValue string
-	// View is "grid" or "list"; GridHref and ListHref switch.
-	View               string
-	GridHref, ListHref string
+	// View is "grid", "list" or "shelf". The view choice is a form post (it saves the choice, library.view):
+	// ViewNext is the page address without a view, CSRF the token for the no-JavaScript post, and
+	// ShelfOffered false under large text, which never draws spines.
+	View         string
+	ViewNext     string
+	CSRF         string
+	ShelfOffered bool
 	// SelectedGenres are the chosen ones, carried by the title form.
 	SelectedGenres []string
 	// ClearHref ("Clear all") drops every filter and keeps the sort and the view; it is set only while a filter is on.
@@ -130,8 +134,8 @@ type LibraryView struct {
 // the "Show books" button sends it. The other filters ride along as hidden fields.
 templ titleForm(v LibraryView) {
 	<form class="ts-filter-form" method="get" action={ templ.SafeURL(v.FormAction) }>
-		if v.View == "list" {
-			<input type="hidden" name="view" value="list"/>
+		if v.View != "grid" {
+			<input type="hidden" name="view" value={ v.View }/>
 		}
 		for _, h := range v.Hidden {
 			<input type="hidden" name={ h.Name } value={ h.Value }/>
@@ -301,11 +305,22 @@ templ libraryItems(v LibraryView) {
 	for _, c := range v.Cards {
 		if v.View == "list" {
 			@components.BookRow(c)
+		} else if v.View == "shelf" {
+			@components.Spine(c)
 		} else {
 			@components.BookCard(c)
 		}
 	}
-	if v.MoreURL != "" {
+	if v.MoreURL != "" && v.View == "shelf" {
+		<li class="ts-shelf__more">
+			<a class="ts-more" href={ templ.SafeURL(v.MoreURL) } hx-get={ v.MoreHX } hx-trigger="revealed" hx-target="closest li" hx-swap="outerHTML" hx-push-url="false">
+				<span class="ts-more__label">Show more</span>
+				<span class="ts-more__loading">
+					@components.SkeletonCards(3)
+				</span>
+			</a>
+		</li>
+	} else if v.MoreURL != "" {
 		<a class="ts-more" href={ templ.SafeURL(v.MoreURL) } hx-get={ v.MoreHX } hx-trigger="revealed" hx-target="this" hx-swap="outerHTML" hx-push-url="false">
 			<span class="ts-more__label">Show more</span>
 			<span class="ts-more__loading">
@@ -362,28 +377,48 @@ templ Library(v LibraryView) {
 				@filterMenu(v.ShowMenu)
 				@filterMenu(v.SortMenu)
 			</div>
-			<div class="ts-seg" role="group" aria-label="View">
-				<a
+			<form class="ts-seg" method="post" action="/me/library-view" role="group" aria-label="View">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<input type="hidden" name="next" value={ v.ViewNext }/>
+				<button
 					class="ts-seg__item"
-					href={ templ.SafeURL(v.GridHref) }
-					if v.View != "list" {
+					type="submit"
+					name="view"
+					value="grid"
+					if v.View == "grid" {
 						aria-current="true"
 					}
 				>
 					@components.Icon("grid", false)
 					<span class="ts-seg__text">Grid</span>
-				</a>
-				<a
+				</button>
+				<button
 					class="ts-seg__item"
-					href={ templ.SafeURL(v.ListHref) }
+					type="submit"
+					name="view"
+					value="list"
 					if v.View == "list" {
 						aria-current="true"
 					}
 				>
 					@listIcon()
 					<span class="ts-seg__text">List</span>
-				</a>
-			</div>
+				</button>
+				if v.ShelfOffered {
+					<button
+						class="ts-seg__item"
+						type="submit"
+						name="view"
+						value="shelf"
+						if v.View == "shelf" {
+							aria-current="true"
+						}
+					>
+						@components.Icon("library", false)
+						<span class="ts-seg__text">Shelf</span>
+					</button>
+				}
+			</form>
 		</div>
 		<div id="library-results" class="ts-lib-results">
 			if len(v.Active) > 0 {
@@ -404,12 +439,18 @@ templ Library(v LibraryView) {
 			if v.Empty != nil {
 				@Empty(*v.Empty)
 			} else {
-				<div
-					id="library-grid"
-					class={ "ts-lib-items", templ.KV("ts-grid ts-grid--covers", v.View != "list"), templ.KV("ts-lib-rows", v.View == "list") }
-				>
-					@libraryItems(v)
-				</div>
+				if v.View == "shelf" {
+					<ul id="library-grid" class="ts-lib-items ts-shelf ts-shelf--wrap" role="list">
+						@libraryItems(v)
+					</ul>
+				} else {
+					<div
+						id="library-grid"
+						class={ "ts-lib-items", templ.KV("ts-grid ts-grid--covers", v.View != "list"), templ.KV("ts-lib-rows", v.View == "list") }
+					>
+						@libraryItems(v)
+					</div>
+				}
 			}
 		</div>
 	</div>

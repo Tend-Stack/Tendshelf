@@ -98,7 +98,7 @@ func TestHomeNewOnShelf(t *testing.T) {
 		t.Fatalf("status %d", rec.Code)
 	}
 	body := rec.Body.String()
-	if got := strings.Count(body, `role="listitem"`); got != homeShelfMax {
+	if got := strings.Count(body, `class="ts-spine"`); got != homeShelfMax {
 		t.Fatalf("%d spines, want %d", got, homeShelfMax)
 	}
 	// The row is marked for shell.js, which hides the spines that do not fit.
@@ -116,7 +116,7 @@ func TestHomeNewOnShelf(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		`aria-label="Book 045 by Imogen Hale"`, `aria-label="Book 006 by Imogen Hale"`,
+		`aria-label="Book 045 by Imogen Hale,`, `aria-label="Book 006 by Imogen Hale,`,
 		`id="row-recent"`, `New on the shelf`, `href="/libraries?sort=added"`, `See all`, `Welcome back, Ana`,
 	} {
 		if !strings.Contains(body, want) {
@@ -340,13 +340,13 @@ func TestLibrarySortsAndView(t *testing.T) {
 
 	// The sort and the view live in the addresses of the controls.
 	body := html.UnescapeString(browseGet(a, "/libraries?sort=title", false, nil).Body.String())
-	for _, want := range []string{`href="/libraries?sort=title"`, `href="/libraries?sort=title&view=list"`, ">Title<"} {
+	for _, want := range []string{`href="/libraries?sort=title"`, `name="next" value="/libraries?sort=title"`, `name="view" value="list"`, ">Title<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("sort=title page lacks %q", want)
 		}
 	}
 	list := html.UnescapeString(browseGet(a, "/libraries?view=list&sort=duration", false, nil).Body.String())
-	for _, want := range []string{`class="ts-row"`, "Zed Zimmer · 3 h", "Yan Young · 1 h 30 m", `href="/libraries?sort=duration"`, ">Length<"} {
+	for _, want := range []string{`class="ts-row"`, "Zed Zimmer · 3 h", "Yan Young · 1 h 30 m", `name="next" value="/libraries?sort=duration"`, ">Length<"} {
 		if !strings.Contains(list, want) {
 			t.Errorf("list view lacks %q", want)
 		}
@@ -656,24 +656,6 @@ func TestSpineInk(t *testing.T) {
 	}
 }
 
-func TestSpineSizes(t *testing.T) {
-	for _, c := range []struct {
-		ms   int64
-		want string
-	}{{0, "ts-spine--ws"}, {4 * 3_600_000, "ts-spine--ws"}, {5 * 3_600_000, "ts-spine--wm"}, {14 * 3_600_000, "ts-spine--wm"}, {15 * 3_600_000, "ts-spine--wl"}} {
-		if got := spineWidth(c.ms); got != c.want {
-			t.Errorf("spineWidth(%d) = %s, want %s", c.ms, got, c.want)
-		}
-	}
-	seen := map[string]bool{}
-	for _, id := range []string{"a", "b", "c", "d"} {
-		seen[spineHeight("bk_"+id)] = true
-	}
-	if len(seen) != 3 || spineHeight("") != "ts-spine--h2" || spineHeight("bk_a") != spineHeight("bk_a") {
-		t.Errorf("heights %v", seen)
-	}
-}
-
 var (
 	browseScripts    = regexp.MustCompile(`<script\b[^>]*>`)
 	browseScriptsSrc = regexp.MustCompile(`<script\b[^>]*\bsrc=[^>]*>`)
@@ -749,10 +731,10 @@ VALUES (?,?,?,?,?,?,?,?,?)`, owner, books[2].ID, 180000, 180000, now, now, now, 
 VALUES (?,?,?,?,?,?,?,?,?)`, owner, books[1].ID, 60000, 180000, nil, now, now, "devicealpha1", "x")
 
 	body := browseGet(a, "/", false, nil).Body.String()
-	if strings.Contains(body, `aria-label="Book 003 by Imogen Hale"`) {
+	if strings.Contains(body, `aria-label="Book 003 by Imogen Hale,`) {
 		t.Errorf("the finished book is on New on the shelf")
 	}
-	for _, want := range []string{`aria-label="Book 002 by Imogen Hale"`, `aria-label="Book 001 by Imogen Hale"`} {
+	for _, want := range []string{`aria-label="Book 002 by Imogen Hale,`, `aria-label="Book 001 by Imogen Hale,`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("New on the shelf lacks %q", want)
 		}

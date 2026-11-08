@@ -44,7 +44,7 @@ func TestHomeSpineShortTitle(t *testing.T) {
 	body := browseGet(a, "/", false, nil).Body.String()
 	for _, want := range []string{
 		`<span class="ts-spine__title">Kiss and Don&#39;t Tell</span>`,
-		`aria-label="Kiss and Don&#39;t Tell (The Vancouver Agitators #1) (Unabridged) by Imogen Hale"`,
+		`aria-label="Kiss and Don&#39;t Tell (The Vancouver Agitators #1) (Unabridged) by Imogen Hale, 10 m"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %s", want)

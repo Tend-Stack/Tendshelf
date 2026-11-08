@@ -74,6 +74,11 @@ func (s *server) withCardProgress(ctx context.Context, userID string, cards []li
 			rp = &x
 		}
 		st := standIn(p, rp, c.DurationMs)
+		if st.Finished {
+			views[i].Finished = true
+			views[i].SpineLabel += ", " + cardFinished
+			continue
+		}
 		if !st.Started || st.Percent < 1 {
 			continue
 		}
@@ -81,6 +86,7 @@ func (s *server) withCardProgress(ctx context.Context, userID string, cards []li
 		views[i].Progress = fmt.Sprint(pct)
 		views[i].ProgressLabel = fmt.Sprintf(cardThrough, pct)
 		views[i].AriaLabel += ", " + views[i].ProgressLabel
+		views[i].SpineLabel += ", " + views[i].ProgressLabel
 	}
 	return nil
 }

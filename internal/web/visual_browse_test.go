@@ -184,6 +184,7 @@ func TestVisualBrowsePages(t *testing.T) {
 		{"home", seededBase, "/"},
 		{"library-grid", seededBase, "/libraries"},
 		{"library-list", seededBase, "/libraries?view=list"},
+		{"library-shelf", seededBase, "/libraries?view=shelf"},
 		{"library-add-author", seededBase, "/libraries?add=author"},
 		{"library-show-sort", seededBase, "/libraries?sort=title&show=unfinished"},
 		{"library-nomatch", seededBase, "/libraries?genre=Mystery&genre=Romance"},
@@ -195,7 +196,7 @@ func TestVisualBrowsePages(t *testing.T) {
 		{"home-scanning", scanningBase, "/"},
 	}
 	for _, pg := range pgs {
-		for _, sh := range visualMatrix(pg.name == "home" || pg.name == "library-grid") {
+		for _, sh := range visualMatrix(pg.name == "home" || pg.name == "library-grid" || pg.name == "library-shelf") {
 			theme, w := sh.Theme, sh.Width
 			t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
 				tab := b.NewTab(w, 900, w == 390, false)

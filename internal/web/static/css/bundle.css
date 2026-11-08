@@ -435,12 +435,6 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-check[type="radio"] { border-radius: 50%; }
 .ts-check[type="radio"]:checked::after { width: 0.625rem; height: 0.625rem; border: 0; border-radius: 50%; background: var(--on-accent); transform: none; }
 
-/* Spines on a shelf */
-.ts-shelf { display: flex; align-items: flex-end; gap: 0.375rem; }
-.ts-spine { display: flex; align-items: center; justify-content: center; border-radius: 0.1875rem 0.1875rem 1px 1px; text-decoration: none; box-shadow: inset -4px 0 0 #00000038; }
-.ts-spine__title { writing-mode: vertical-rl; transform: rotate(180deg); font: 400 0.8125rem/1 var(--font-serif); white-space: nowrap; }
-.ts-shelf__plank { height: 0.375rem; border-radius: 2px; background: var(--brand-walnut); box-shadow: 0 6px 14px #00000059; }
-
 @media (prefers-reduced-motion: reduce) {
   .ts-spinner, .ts-skeleton::after, .ts-eq span { animation: none; }
   .ts-btn, .ts-iconbtn, .ts-bar__fill, .ts-ring__fill, .ts-scrub__needle { transition: none; }
