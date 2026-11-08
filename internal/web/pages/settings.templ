@@ -54,10 +54,10 @@ func speedLabel(v float64) string {
 	return strconv.FormatFloat(v, 'f', 2, 64) + "×"
 }
 
-// speedSteps is 0.50 to 3.00 in steps of 0.05.
+// speedSteps is 0.50 to 3.50 in steps of 0.05.
 func speedSteps() []float64 {
-	out := make([]float64, 0, 51)
-	for i := 10; i <= 60; i++ {
+	out := make([]float64, 0, 61)
+	for i := 10; i <= 70; i++ {
 		out = append(out, float64(i)/20)
 	}
 	return out

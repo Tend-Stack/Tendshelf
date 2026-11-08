@@ -78,7 +78,7 @@ func ValidTimeZone(s string) bool {
 func validTimeZoneSetting(s string) bool { return s == "" || ValidTimeZone(s) }
 
 func validSpeed(v float64) bool {
-	if math.IsNaN(v) || v < 0.5 || v > 3.0 {
+	if math.IsNaN(v) || v < 0.5 || v > 3.5 {
 		return false
 	}
 	return math.Abs(v*20-math.Round(v*20)) < 1e-6

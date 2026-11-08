@@ -618,6 +618,7 @@ var pinnedMigrations = map[int]string{
 	35: "ec6b2ed80c385e54b0263ec808ce8d841ee8b15e38d1802c51523f721b06c80b",
 	36: "3d11968b8125e5392bcb1bab5816df50fffdf433c8dfb201fffa21b3df8e790c",
 	37: "f25a3d4c48bcacad617201e69d2dfd0c2e2a16b6a35a4eef3d2f52f53028dd0b",
+	38: "46edcf3e921d01fe0d273b345110885d4d1d9728be6f0b5964ca4347921811f6",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
@@ -716,7 +717,7 @@ func TestMigration0006Constraints(t *testing.T) {
 		"empty device id":       `UPDATE progress SET device_id = ''`,
 		"long note":             `UPDATE bookmarks SET note = '` + strings.Repeat("n", 2001) + `'`,
 		"speed below range":     `UPDATE listening_sessions SET speed_pct = 40`,
-		"speed above range":     `UPDATE listening_sessions SET speed_pct = 301`,
+		"speed above range":     `UPDATE listening_sessions SET speed_pct = 351`,
 		"session ends early":    `UPDATE listening_sessions SET ended_at = 0`,
 		"negative listened":     `UPDATE listening_sessions SET listened_ms = -1`,
 		"finished at zero":      `UPDATE progress SET finished_at = 0`,

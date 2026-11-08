@@ -118,7 +118,7 @@ private fun parseSay(raw: String): BridgeMessage? {
     val voice = raw.substring(c + 1, d)
     val text = raw.substring(d + 1)
     if (nText.length !in 1..9 || nText[0] == '0' || !nText.all { it.isAsciiDigit() }) return null
-    val rate = speed(rateText) ?: return null
+    val rate = speed(rateText, 300) ?: return null // read aloud keeps its own 3.00 ceiling
     // validId also allows a bare "-" (the page's "no place" word); a voice id must hold a letter or a digit.
     if (!validId(voice) || voice.none { it.isLetterOrDigit() }) return null
     if (!validSayText(text)) return null
@@ -159,11 +159,11 @@ fun validId(s: String): Boolean =
 private fun millis(s: String): Long? =
     if (s.length in 1..12 && s.all { it in '0'..'9' }) s.toLong() else null
 
-/** `d.dd`, 0.50 to 3.00 in steps of 0.05. */
-private fun speed(s: String): Double? {
+/** `d.dd`, 0.50 to 3.50 in steps of 0.05. */
+private fun speed(s: String, maxHundredths: Int = 350): Double? {
     if (s.length != 4 || s[1] != '.' || !s[0].isAsciiDigit() || !s[2].isAsciiDigit() || !s[3].isAsciiDigit()) return null
     val hundredths = (s[0] - '0') * 100 + (s[2] - '0') * 10 + (s[3] - '0')
-    if (hundredths < 50 || hundredths > 300 || hundredths % 5 != 0) return null
+    if (hundredths < 50 || hundredths > maxHundredths || hundredths % 5 != 0) return null
     return hundredths / 100.0
 }
 
@@ -227,7 +227,7 @@ fun encodePageKey(next: Boolean): String = "{\"t\":\"pagekey\",\"dir\":\"${if (n
 fun encodeBack(): String = "{\"t\":\"back\"}"
 
 private fun speedText(speed: Double): String {
-    val h = if (speed.isNaN()) 100 else Math.round((speed * 100).coerceIn(50.0, 300.0)).toInt()
+    val h = if (speed.isNaN()) 100 else Math.round((speed * 100).coerceIn(50.0, 350.0)).toInt()
     return "${h / 100}.${(h % 100).toString().padStart(2, '0')}"
 }
 

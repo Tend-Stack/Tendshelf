@@ -200,7 +200,7 @@ function parseBook(el) {
     rewind: (d.rewind || "").split(",").map((step) => step.split(":").map(Number)), // [pause ms, seconds], longest last
     skipBack: num(d.skipBackS) || 15,
     skipForward: num(d.skipForwardS) || 30,
-    speed: clamp(num(d.speed) || 1, 0.5, 3),
+    speed: clamp(num(d.speed) || 1, 0.5, 3.5),
     accents: { dark: d.accentDark, light: d.accentLight, sepia: d.accentSepia }, // cover colours for the full player
     tint: d.tint || "",
     readHref: d.readHref || "", // the book's reader, empty without an ebook the person may read
@@ -537,7 +537,7 @@ function probeVolume() {
 
 function setSpeed(value) {
   if (!book) return;
-  book.speed = clamp(Math.round(value * 20) / 20, 0.5, 3); // steps of 0.05
+  book.speed = clamp(Math.round(value * 20) / 20, 0.5, 3.5); // steps of 0.05
   audio.defaultPlaybackRate = book.speed;
   audio.playbackRate = book.speed;
   emit("speed");

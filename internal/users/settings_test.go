@@ -38,10 +38,10 @@ func TestSettingsValidate(t *testing.T) {
 	}{
 		{"defaults", DefaultSettings, true},
 		{"speed min", mod(func(s *Settings) { s.Speed = 0.5 }), true},
-		{"speed max", mod(func(s *Settings) { s.Speed = 3.0 }), true},
+		{"speed max 3.5", mod(func(s *Settings) { s.Speed = 3.5 }), true},
 		{"speed 1.15", mod(func(s *Settings) { s.Speed = 1.15 }), true},
 		{"speed 0.49", mod(func(s *Settings) { s.Speed = 0.49 }), false},
-		{"speed 3.01", mod(func(s *Settings) { s.Speed = 3.01 }), false},
+		{"speed 3.55", mod(func(s *Settings) { s.Speed = 3.55 }), false},
 		{"speed 1.07", mod(func(s *Settings) { s.Speed = 1.07 }), false},
 		{"skip back 20", mod(func(s *Settings) { s.SkipBackS = 20 }), false},
 		{"skip forward 20", mod(func(s *Settings) { s.SkipForwardS = 20 }), false},

@@ -40,7 +40,7 @@ Measurable, not adjectives. Each is an acceptance target for the phase that deli
   4:12:30 on your laptop, continue there?" when two devices disagree by more than a minute.
 - **Lock screen like a native app**: title, chapter, cover, play/pause, skip by the user's interval,
   chapter next/previous (Media Session API).
-- **Comfort details Audible users expect**: speed 0.5x to 3.0x in 0.05 steps with pitch kept, sleep
+- **Comfort details Audible users expect**: speed 0.5x to 3.5x in 0.05 steps with pitch kept, sleep
   timer by minutes or end of chapter with a gentle fade and shake-to-extend where the device allows it,
   automatic short rewind after a pause, chapter-relative progress ("12 min left in chapter"), "time left
   at this speed".

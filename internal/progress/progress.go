@@ -133,7 +133,7 @@ func (s *Service) save(ctx context.Context, u Update, internal bool) (Result, er
 		return Result{}, &InvalidError{"client_updated_at"}
 	case u.ListenedMs < 0:
 		return Result{}, &InvalidError{"listened_ms"}
-	case u.ListenedMs > 0 && !(u.Speed >= 0.5 && u.Speed <= 3.0):
+	case u.ListenedMs > 0 && !(u.Speed >= 0.5 && u.Speed <= 3.5):
 		return Result{}, &InvalidError{"speed"}
 	}
 	if u.DurationMs > 0 && u.PositionMs > u.DurationMs {

@@ -166,7 +166,7 @@ func TestProgressValidation(t *testing.T) {
 		{"client_updated_at", func(x *progress.Update) { x.ClientUpdatedAt = 0 }},
 		{"listened_ms", func(x *progress.Update) { x.ListenedMs = -1 }},
 		{"speed", func(x *progress.Update) { x.ListenedMs = 1000; x.Speed = 0 }},
-		{"speed", func(x *progress.Update) { x.ListenedMs = 1000; x.Speed = 3.01 }},
+		{"speed", func(x *progress.Update) { x.ListenedMs = 1000; x.Speed = 3.55 }},
 		{"speed", func(x *progress.Update) { x.ListenedMs = 1000; x.Speed = 0.49 }},
 	}
 	for _, c := range cases {
