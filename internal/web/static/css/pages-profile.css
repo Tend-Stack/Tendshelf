@@ -12,6 +12,8 @@
 /* Account and Settings: two real buttons, each opening a menu of links (a <details>, closed by shell.js).
    Under the name on a phone, at the head's right edge once the page has room. */
 .ts-profile__menus { grid-column: 1 / -1; grid-row: 3; display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-8); }
+.ts-profile__menus .ts-profile__menu[open] { flex: 0 0 auto; }
+.ts-profile__menus .ts-profile__menu[open] > summary { width: auto; justify-content: flex-start; }
 .ts-profile__menu > summary { display: inline-flex; align-items: center; gap: var(--space-8); min-height: var(--size-tap); }
 .ts-profile__menu > summary .ts-icon { width: 1rem; height: 1rem; }
 /* The menus float over the page at every width and never leave the screen (the library's phone layout puts them in the flow). */
