@@ -93,6 +93,7 @@ Maven repository and Maven Central only. None is in the server binary.
 | `com.google.guava:guava` 33.3.1-android, `failureaccess` 1.0.2, `listenablefuture` 9999.0 | Apache-2.0 | Media3's `ListenableFuture` API |
 | `org.jetbrains.kotlin:kotlin-stdlib` 2.4.21 (and the jdk7/jdk8 shims 1.8.20), `org.jetbrains:annotations`, `org.jetbrains.kotlinx:kotlinx-coroutines-android` 1.7.3 | Apache-2.0 | Kotlin runtime (Kotlin is approved); coroutines come with Media3 and are not used directly |
 | Android Gradle Plugin 9.5.1, Kotlin Gradle Plugin 2.4.21, Gradle 9.8.2 (`android/gradle/wrapper/gradle-wrapper.jar`, SHA-256 of the distribution in `gradle-wrapper.properties`) | Apache-2.0 | Build tools only; not in the APK |
+| `org.jetbrains.kotlinx:kotlinx-serialization-json` 1.12.0 (with `kotlinx-serialization-core` and `kotlinx-serialization-bom` 1.12.0) and the Kotlin serialization compiler plugin 2.4.21 (`org.jetbrains.kotlin.plugin.serialization`) | Apache-2.0 | `android/shared` `commonMain` only: reads and writes the app's JSON (server answers, kept settings, stored-text index) so the parsers can serve a later iOS app; reaches the APK through `shared`. Approved by the operator 2026-11-08. |
 | `org.jetbrains.kotlin:kotlin-test`, `kotlin-test-junit` 2.4.21, `junit:junit` 4.13.2, `org.hamcrest:hamcrest-core` 1.3 | Apache-2.0; EPL-1.0; BSD-3-Clause | Unit tests of the shared module only; not in the APK. Not on the approved list: reported for approval in A0 |
 
 ## Third-party services

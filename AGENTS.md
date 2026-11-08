@@ -23,7 +23,7 @@ was reused, extended or replaced.
   (operator, 2026-11-03), each added with its `NOTICES.md` row: Wails v3 (desktop
   module only), fsnotify, go-webauthn and an OpenID Connect client; see "Dependencies and approvals" in
   `docs/architecture.md`. Android (decision 0024), under `android/` only: `kotlin-test`, `junit` and `hamcrest` for tests, Kotlin (through AGP), `androidx.media3`
-  (exoplayer, session, datasource), `androidx.webkit`, `androidx.core`, and `androidx.work` if downloads need it; every
+  (exoplayer, session, datasource), `androidx.webkit`, `androidx.core`, `androidx.work` if downloads need it, and `kotlinx-serialization-json` (with the Kotlin serialization compiler plugin), `android/shared` only (operator, 2026-11-08); every
   other module needs approval. Each gets a `NOTICES.md` row and is pinned by Gradle dependency verification. The
   "no build step" rule stays for the shipped server; Gradle is allowed under `android/` only, and fetches at build time only.
 - **One server binary**, pure Go (`CGO_ENABLED=0` must build). Static assets and migrations are embedded
