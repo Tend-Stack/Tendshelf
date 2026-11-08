@@ -216,6 +216,34 @@ held probe, found with `Runner.ActiveKeys` (so a crash only costs a re-queue, wi
 migration). Finalize in the settling tx: the probe that settles a book's last unread file finalises the
 book (play order, offsets, duration, chapters, refused reason) in that same write transaction.
 
+### Scan at scale (measured)
+
+`TestScaleLibrary` (`internal/scan/scale_test.go`) scans a synthetic tree with the fake ffprobe, the real
+SQLite store and the job runner at its production settings (`scan.library` one at a time, `media.probe` two at
+a time). The mix: 70 % one `.m4b` in `Author/Title/`, 20 % numbered multi-part folders of 10 to 40 `.mp3`
+files, 10 % in `Author/Series/Book N/`. A reader asks for the first page of the library list every 25 ms
+while the work runs. It is opt-in and `make check` skips it. Measured 2026-11-08 on an AMD Ryzen AI Max+ 395
+(32 threads), 122 GB RAM, NVMe ext4, Linux. The fake ffprobe starts a process per file like the real one but
+does no decoding, so real probes will be slower; "slow probe" adds 20 ms per file as a stand-in for a slow
+network share. The walk has no hook for a slow `stat`, so slow directory listings were not simulated.
+
+| Measure | 5,000 books, 34,697 files | 1,000 books, 6,980 files, slow probe (20 ms) |
+| --- | --- | --- |
+| First scan (walk, hash, write books) | 8.4 s | 1.1 s |
+| Until every probe has settled | 1 min 19 s | 1 min 29 s |
+| Rescan with nothing changed | 0.61 s, 0 rows written | 0.12 s, 0 rows written |
+| Rows written: scan / probes and jobs | 135,881 / 77,138 | 24,456 / 21,109 |
+| Peak Go heap | 70.5 MiB | 18.7 MiB |
+| Library list p50 / p95 / max during the scan | 5.4 / 7.0 / 9.9 ms | 0.5 / 1.9 / 2.4 ms |
+| Library list p50 / p95 / max during the probes | 6.2 / 7.9 / 15.6 ms | 1.7 / 2.5 / 4.3 ms |
+| Library list p50 / p95 / max when idle | 5.8 / 6.6 / 7.9 ms | 1.8 / 2.4 / 2.7 ms |
+
+Command: `TENDSHELF_TEST_SCALE=5000 go test -count=1 -timeout 30m -run TestScaleLibrary -v ./internal/scan/`;
+the second column adds `TENDSHELF_TEST_SCALE=1000 TENDSHELF_TEST_SCALE_PROBE_MS=20`. Reading it: browsing stays
+smooth while a scan runs (the reader and the single writer do not block each other); the slowest part is the
+probe queue, about 2.2 ms per file at two at a time, so it grows with the file count and with how slow
+the storage answers. Peak heap is the server process only, not the ffprobe processes.
+
 ## HTTP routes
 
 Pages (GET; full page; navigation via `hx-boost` selecting `#main`):

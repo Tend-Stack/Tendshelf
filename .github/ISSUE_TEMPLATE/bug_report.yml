@@ -1,0 +1,46 @@
+name: Bug report
+description: Something does not work the way you expect
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time. **Please do not paste sign-in tokens, app keys, invitation or share
+        links, or the address of your server.** Remove them from anything you attach, including logs and
+        screenshots.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Run `tendshelf -version` on the server and paste what it prints.
+      placeholder: v2026.5.0
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and app
+      description: For example "Pixel 8, Android app", "Firefox on a laptop", "Linux desktop app".
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: What did you do, and what did you see?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: What the server log says
+      description: |
+        The few lines around the problem are enough. Before you paste, remove tokens, links and addresses.
+        Leave this empty if you do not have the log.
+      render: text
