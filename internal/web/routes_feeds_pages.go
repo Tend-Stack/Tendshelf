@@ -176,4 +176,3 @@ func (s *server) feedsView(r *http.Request) (pages.FeedsView, error) {
 	}
 	return v, nil
 }
-
