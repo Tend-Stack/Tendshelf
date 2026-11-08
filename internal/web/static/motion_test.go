@@ -120,9 +120,10 @@ func TestCSSBudget(t *testing.T) {
 		"css/now-panel.css": {3 * 1024, 24 * 1024},
 		// The Users and invite pages share this file (list, person page, pending invites, the Invite someone
 		// header); P3-4b's header rules took it past 3 KB, so it gets 4 KB rather than being squeezed.
-		"css/pages-admin.css":    {4*1024 + 512, 24 * 1024},
-		"css/pages-chapters.css": {2 * 1024, 24 * 1024},     // L3a: the chapter editor
-		"css/pages-reader.css":   {5*1024 + 128, 32 * 1024}, // read aloud (decision 0032, R1): 4,958 B measured, plan row 5,248 B; the reading settings and the book reader; 4.5 KB approved 2026-11-04, 4.53 KB measured with comfort and look-up together, reported, 4.5 KB with the skim bar (G4)
+		"css/pages-admin.css":       {4*1024 + 512, 24 * 1024},
+		"css/pages-downloadall.css": {1024, 24 * 1024},         // L10 Download all
+		"css/pages-chapters.css":    {2 * 1024, 24 * 1024},     // L3a: the chapter editor
+		"css/pages-reader.css":      {5*1024 + 128, 32 * 1024}, // read aloud (decision 0032, R1): 4,958 B measured, plan row 5,248 B; the reading settings and the book reader; 4.5 KB approved 2026-11-04, 4.53 KB measured with comfort and look-up together, reported, 4.5 KB with the skim bar (G4)
 	}
 	var coreGzip, coreRaw int
 	for _, name := range s.Names() {
@@ -338,7 +339,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// A5b (ask, rewound, answer; operator approved the raise, 2026-11-06): 2,816 B set, measured 2,673 B, reported.
 	"native-audio.js": {2*1024 + 768, 8 * 1024},
 	// A7 (the Download button in the app's window, driven by the app): written for reading with its comments, reported.
-	"native-downloads.js": {2 * 1024, 8 * 1024},
+	"native-downloads.js": {2*1024 + 768, 8 * 1024}, // L10 Download all: 2,743 B measured, reported, not squeezed
 	// R2 (read aloud in the app, decision 0032): the engine reader-aloud.js expects, over the bridge.
 	"native-feel.js":   {1*1024 + 448, 8 * 1024}, // decision 0033: 1,459 B measured, plan 1,280 B; OVERRUN reported, not squeezed
 	"native-speech.js": {1*1024 + 768, 8 * 1024}, // 1,753 B measured with its comments intact; over the 1,280 B planned, reported, not squeezed
@@ -347,10 +348,12 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// X5 (drop a book: the zone, the hand-over to the uploader, two sets of words): 4,667 B measured with its comments intact, 4,736 B set; reported for the operator.
 	"desktop-shell.js": {4736, 16 * 1024},
 	// B2 measured 7.8 KB served for the whole manager (5.5 KB was the estimate); 8 KB approved by the operator on 2026-11-03.
-	"downloads.js": {9*1024 + 64, 40 * 1024}, // Firefox hang fix: 8.8 KB, reported; G6b: 8.5 KB approved (operator, 2026-11-04); measured 8.7 KB with its comments intact, reported
+	"downloads.js": {9*1024 + 256, 40 * 1024}, // L10 Download all driver: 9,447 B measured, reported; // Firefox hang fix: 8.8 KB, reported; G6b: 8.5 KB approved (operator, 2026-11-04); measured 8.7 KB with its comments intact, reported
 	// M5 G6b (decision 0019, operator 2026-11-04): the text half of a download, loaded when a book may have text; 1.5 KB approved,
 	// measured 2.2 KB with its comments intact, reported to the operator.
 	"downloads-text.js": {2*1024 + 256, 16 * 1024},
+	// L10 (Download all on a series or shelf, shared by the browser and the Android app): loaded only on a page with the control.
+	"downloads-all.js": {2*1024 + 768, 16 * 1024},
 	// M3b (decision 0013): the Eyes-free dialog, loaded on first use; 3 KB, approved by the operator on 2026-11-04.
 	"eyes-free.js": {3 * 1024, 24 * 1024},
 	// Decision 0015: the resumable uploader, loaded only on the Add books page; 5 KB, approved by the operator on 2026-11-04.
@@ -387,7 +390,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 // M3b (decision 0013): statistics, Eyes-free and the shake check make it 55.75 KB; approved by the operator on 2026-11-04.
 // Measured together after S, E and K merged: 55.93 KB; the operator approved 56 KB on 2026-11-04.
 // Decision 0015 (adding books by upload): 61.5 KB, approved by the operator on 2026-11-04.
-const jsTotalGzip = 100 * 1024 // Read aloud (decision 0032, R1): 102,400 B, measured 101,920 B with comments intact (reader-aloud.js 4,508 B, reader.js +302 B), was 97,280, plan row 99 KB (101,376) overrun, reported; Chapter bar (2026-11-06): 97,280 B, measured 96,805 B with comments intact (chapter-bar.js 4,505 B), was 92,160, reported; Swipe down to minimise (2026-11-06): 92,160 B, measured 92,113 B with comments intact, was 91,456, reported; A9 (within the pre-approved reasonable raises, 2026-11-06): 91,456 B, measured 91,401 B on the A9 branch; A6 was 91,328 B, measured 91,317 B, reported; L5 clip.js (2026-11-06, the plan raises the ceiling by 640 B): 91,264 B; L1+L2 (2026-11-05, operator pre-approved raises): 88.5 KB, measured 90,489 B; before that: 87.5 KB; Firefox hang fix (2026-11-05): 87.5 KB, measured 87.48 KB with comments intact, reported; M6 D2: the operator raised the ceiling to 87 KB (2026-11-05) for desktop.js; before that: operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
+const jsTotalGzip = 105216 // L10 Download all: 105,134 B measured, reported, not squeezed; was 102,400; Read aloud (decision 0032, R1): 102,400 B, measured 101,920 B with comments intact (reader-aloud.js 4,508 B, reader.js +302 B), was 97,280, plan row 99 KB (101,376) overrun, reported; Chapter bar (2026-11-06): 97,280 B, measured 96,805 B with comments intact (chapter-bar.js 4,505 B), was 92,160, reported; Swipe down to minimise (2026-11-06): 92,160 B, measured 92,113 B with comments intact, was 91,456, reported; A9 (within the pre-approved reasonable raises, 2026-11-06): 91,456 B, measured 91,401 B on the A9 branch; A6 was 91,328 B, measured 91,317 B, reported; L5 clip.js (2026-11-06, the plan raises the ceiling by 640 B): 91,264 B; L1+L2 (2026-11-05, operator pre-approved raises): 88.5 KB, measured 90,489 B; before that: 87.5 KB; Firefox hang fix (2026-11-05): 87.5 KB, measured 87.48 KB with comments intact, reported; M6 D2: the operator raised the ceiling to 87 KB (2026-11-05) for desktop.js; before that: operator ceiling 86 KB (2026-11-05); 84 KB after G6b and G4, measured with the comments intact; the operator's ceiling is 86 KB (2026-11-05)
 
 // jsDesktopFiles are the scripts only the desktop app's window loads (a browser never receives them). They are
 // counted in jsDesktopTotalGzip, not in jsTotalGzip, so the browser ceiling means what browsers really load.
@@ -401,7 +404,7 @@ var jsAndroidFiles = map[string]bool{"native-audio.js": true, "native-downloads.
 
 // jsAndroidTotalGzip bounds the Android-only scripts together (operator approval for about 2 KB, 2026-11-06).
 // A7 adds native-downloads.js (the plan's budget note allows the raise): 4,096 B set; measured 3,983 B (native-audio.js plus native-downloads.js).
-const jsAndroidTotalGzip = 7*1024 + 768 // read aloud: 6,345 B measured (plan 6,144), reported, not squeezed // download progress: 4,396 B measured, reported, not squeezed
+const jsAndroidTotalGzip = 8*1024 + 640 // L10 Download all in the app: 8,745 B measured, reported, not squeezed // read aloud: 6,345 B measured (plan 6,144), reported, not squeezed // download progress: 4,396 B measured, reported, not squeezed
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()

@@ -1,0 +1,8 @@
+/* Download all on a series or shelf page: the button, its progress line with Stop, and the confirm dialog. */
+.ts-dlall { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-16); margin: var(--space-12) 0; }
+.ts-dlall[hidden], .ts-dlall [hidden] { display: none; }
+.ts-dlall__status { margin: 0; color: var(--ink-muted); }
+/* The dialog is centred by the browser; the shared .ts-dialog sets display:flex, which must not show a closed one. */
+.ts-dlall__dialog:not([open]) { display: none; }
+.ts-dlall__dialog { margin: auto; color: var(--ink); width: min(27.5rem, calc(100vw - var(--space-32))); }
+.ts-dlall__dialog::backdrop { background: var(--scrim); }

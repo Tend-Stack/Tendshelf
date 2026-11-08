@@ -10,6 +10,7 @@ import (
 
 func (s *server) registerDownloads(mux *http.ServeMux) {
 	mux.HandleFunc("GET /me/downloads", s.getDownloads)
+	s.registerDownloadAll(mux)
 }
 
 // getDownloads is the Downloads page: the server draws the empty state and the DOM that

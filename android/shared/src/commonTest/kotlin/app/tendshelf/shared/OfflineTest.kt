@@ -95,6 +95,16 @@ class OfflineTest {
     }
 
     @Test
+    fun downloadRoomWordAndAnswer() {
+        assertEquals(BridgeMessage.DownloadRoom, parseBridge("dl room"))
+        for (bad in listOf("dl room ", "dl room b1", "dl  room", "dl ROOM")) assertNull(parseBridge(bad), bad)
+        // The answer keeps the spare free, and never goes below zero.
+        assertEquals("{\"t\":\"room\",\"bytes\":${1000L * 1024 * 1024 - SPARE_BYTES}}", encodeRoom(1000L * 1024 * 1024))
+        assertEquals("{\"t\":\"room\",\"bytes\":0}", encodeRoom(SPARE_BYTES - 1))
+        assertEquals("{\"t\":\"room\",\"bytes\":0}", encodeRoom(-5))
+    }
+
+    @Test
     fun downloadWords() {
         assertEquals(BridgeMessage.Download("add", "b1"), parseBridge("dl add b1"))
         assertEquals(BridgeMessage.Download("remove", "b-1_x"), parseBridge("dl remove b-1_x"))

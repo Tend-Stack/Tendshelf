@@ -17,6 +17,7 @@ const supported = !!person && isSecureContext && "caches" in window;
 const controllers = new Map(); // bookId -> AbortController of the download that is running
 const debug = { failNextPut: "" };
 let running = false;
+let quiet = false; // a "Download all" batch is running: its own line speaks, not one toast per book
 let rate = 0; // bytes per second, a moving average over the last chunks
 
 // ---- The index of downloads ----
@@ -101,6 +102,7 @@ function words(key, vars) {
 }
 
 async function say(kind, key, record) {
+  if (quiet) return;
   loadMessages();
   if (!msgs[key]) {
     try {
@@ -769,9 +771,43 @@ async function renderStorage() {
   section.querySelector("[data-ts-safari-note]").hidden = !ios;
 }
 
+// "Download all" (downloads-all.js, loaded when a page has the control): this browser's driver is the queue above.
+let allLoad = null;
+
+function renderAll() {
+  const banner = document.getElementById("ts-offline");
+  const src = banner && banner.dataset.tsDownloadsAllSrc;
+  if (!supported || !src || allLoad || !document.querySelector("[data-ts-download-all]")) return;
+  allLoad = import(src).then((m) => m.mount(allDriver));
+}
+
+function stateOf(record) {
+  if (!record) return "none";
+  return record.state === "ready" || record.state === "failed" ? record.state : "pending";
+}
+
+const allDriver = {
+  usable: () => supported,
+  // A book that failed is not held: asking again retries it.
+  have: async (ids) => new Set(ids.filter((id) => stateOf(readIndex().books[id]) !== "none" && stateOf(readIndex().books[id]) !== "failed")),
+  async room(bytes) {
+    const e = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+    const free = e ? Math.max(0, e.quota - e.usage) : Infinity;
+    return { ok: free >= bytes + 16 * MiB, free };
+  },
+  add: (id) => start(id),
+  stop: (ids) => ids.forEach((id) => remove(id)),
+  states: (ids) => new Map(ids.map((id) => [id, stateOf(readIndex().books[id])])),
+  onChange: (callback) => document.addEventListener("ts:downloads:change", callback),
+  quiet: (on) => {
+    quiet = on;
+  },
+};
+
 function render() {
   renderBookControls();
   renderPage();
+  renderAll();
 }
 
 // ---- Wiring ----

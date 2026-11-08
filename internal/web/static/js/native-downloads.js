@@ -96,6 +96,11 @@ function start(bridge) {
     } catch {
       return;
     }
+    if (message.t === "dl") {
+      standing.set(message.bookId, String(message.state));
+      for (const callback of listeners) callback();
+    }
+    if (message.t === "room" && roomAnswer) roomAnswer(Number(message.bytes) || 0);
     if (message.t === "dl" && message.bookId === bookId()) show(String(message.state), Number(message.pct), message.known !== false);
   });
 
@@ -105,8 +110,70 @@ function start(bridge) {
     bridge.postMessage("dl add " + button.dataset.tsDownload);
   });
 
+  // ---- Download all (downloads-all.js): the app's own queue, driven with the same words ----
+
+  const standing = new Map(); // book id -> the last state the app pushed
+  const listeners = [];
+  let roomAnswer = null;
+  let allLoad = null;
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Resolves with the app's answer to "dl room" (the bytes it can still give downloads), or null when it never comes.
+  function room() {
+    return new Promise((resolve) => {
+      roomAnswer = (bytes) => resolve(bytes);
+      bridge.postMessage("dl room");
+      setTimeout(() => resolve(null), 2000);
+    }).finally(() => {
+      roomAnswer = null;
+    });
+  }
+
+  const driver = {
+    usable: () => true,
+    // Asks how each book stands and waits a moment for the answers; a book that does not answer is not held.
+    async have(ids) {
+      for (const id of ids) {
+        standing.delete(id);
+        bridge.postMessage("dl ask " + id);
+      }
+      for (let i = 0; i < 15 && ids.some((id) => !standing.has(id)); i++) await wait(100);
+      return new Set(ids.filter((id) => !["none", "failed", undefined].includes(standing.get(id))));
+    },
+    async room(bytes) {
+      const free = await room();
+      return { ok: free === null || free >= bytes, free: free === null ? 0 : free };
+    },
+    // The app answers "dl add" with the state at that moment (none) before it has fetched the book; wait for the
+    // next state, which comes once the book is queued or refused (a refusal never comes: give up after a while).
+    async add(id) {
+      standing.delete(id);
+      bridge.postMessage("dl add " + id);
+      for (let i = 0; i < 60 && (!standing.has(id) || standing.get(id) === "none"); i++) await wait(100);
+    },
+    stop: (ids) => ids.forEach((id) => bridge.postMessage("dl remove " + id)),
+    states: (ids) => new Map(ids.map((id) => [id, stateOf(standing.get(id))])),
+    onChange: (callback) => listeners.push(callback),
+    quiet: () => {},
+  };
+
+  function stateOf(state) {
+    if (state === "ready" || state === "stale") return "ready";
+    if (state === "failed") return "failed";
+    return state === undefined || state === "none" ? "none" : "pending";
+  }
+
+  function loadAll() {
+    const banner = document.getElementById("ts-offline");
+    const src = banner && banner.dataset.tsDownloadsAllSrc;
+    if (allLoad || !src || !document.querySelector("[data-ts-download-all]")) return;
+    allLoad = import(src).then((m) => m.mount(driver));
+  }
+
   // A new page (or a swapped one) asks how its book stands; the app answers with a "dl" push.
   document.addEventListener("htmx:after:swap", ask);
+  document.addEventListener("htmx:after:swap", loadAll);
   document.addEventListener("ts:native:ready", ask);
   ask();
+  loadAll();
 }

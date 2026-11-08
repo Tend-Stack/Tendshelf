@@ -434,6 +434,7 @@ func sweepRows() []sweepRow {
 		// with or without the library grant.
 		sweepGet("GET /books/{id}/feed", sweepBookPath("/feed"), sweepStaff(200, 404)),
 		sweepGet("GET /series/{id}/feed", id(func(e *sweepEnv) string { return e.series }, "/series/", "/feed"), sweepStaff(200, 404)),
+		sweepGet("GET /series/{id}/download-list", id(func(e *sweepEnv) string { return e.series }, "/series/", "/download-list"), sweepStaff(200, 404)),
 		sweepGet("GET /covers/{bookID}", id(bookID, "/covers/", "?w=320"), sweepStaff(200, 404)),
 		// Stream (P1c-2)
 		sweepGet("GET /stream/{audioFileID}", sweepAudioPath(0, ""), sweepStaff(200, 404)),
@@ -522,6 +523,8 @@ func sweepRows() []sweepRow {
 		sweepGet("GET /shelves", sweepStatic("/shelves"), shelfWant),
 		sweepGet("GET /shelves/{id}", shelfOf("", false), shelfWant),
 		sweepGet("GET /shelves/{id}/delete", shelfOf("/delete", false), shelfWant),
+		// Download all (L10): a shelf's list is the owner's own; the member holds no download right here, so theirs is empty.
+		sweepGet("GET /shelves/{id}/download-list", shelfOf("/download-list", false), shelfWant),
 
 		// Query modes: the same expectations as their page
 		{Pattern: "GET /admin/libraries/folders/new", Label: "?browse=", Method: http.MethodGet, Want: sweepStaff(200, 404),
@@ -663,6 +666,9 @@ func sweepRows() []sweepRow {
 	other.Label = "someone else's shelf"
 	rows = append(rows, other)
 	other = sweepGet("GET /shelves/{id}/delete", shelfOf("/delete", true), sweepSame(404))
+	other.Label = "someone else's shelf"
+	rows = append(rows, other)
+	other = sweepGet("GET /shelves/{id}/download-list", shelfOf("/download-list", true), sweepSame(404))
 	other.Label = "someone else's shelf"
 	rows = append(rows, other)
 

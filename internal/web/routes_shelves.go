@@ -293,6 +293,9 @@ func (s *server) shelfPage(w http.ResponseWriter, r *http.Request, status int, r
 			v.ShareNote, v.ShareLabel = shelfSharedNote, shelfStopSharing
 		}
 	}
+	if items, err := s.lib.ShelfDownloadItems(r.Context(), s.feedScope(u), sh.OwnerID, sh.ID); err == nil {
+		v.DownloadAll = downloadAllView("/shelves/"+sh.ID+"/download-list", len(items))
+	}
 	cards := make([]components.CardView, len(page.Books))
 	for i, b := range page.Books {
 		cards[i] = cardView(b)
@@ -320,7 +323,7 @@ func (s *server) shelfPage(w http.ResponseWriter, r *http.Request, status int, r
 	if cursor != "" {
 		v.StartHref = path
 	}
-	s.pageStyled(w, r, status, sh.Name, "shelf-"+sh.ID, pages.Shelf(v), nil, pages.ShelfStyles...)
+	s.pageStyled(w, r, status, sh.Name, "shelf-"+sh.ID, pages.Shelf(v), nil, append(append([]string(nil), pages.ShelfStyles...), "css/pages-downloadall.css")...)
 }
 
 // postShelfShare turns sharing of the person's own shelf on or off. Only staff share; anyone else,

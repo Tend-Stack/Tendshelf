@@ -45,6 +45,8 @@ type ShelfView struct {
 	// ShareNote and ShareLabel are the words of the note and the one button.
 	ReadOnly, CanShare, Shared bool
 	By, ShareNote, ShareLabel  string
+	// DownloadAll is the Download all control; nil when the person may download no audio book on the shelf.
+	DownloadAll *DownloadAllView
 }
 
 // ShelfDeleteView is the confirmation before a shelf goes.
@@ -107,6 +109,9 @@ templ Shelf(v ShelfView) {
 			<h1 class="title-1 ts-lib-head__title">{ v.Name }</h1>
 			<p class="caption ts-num ts-lib-head__count" role="status">{ v.Count }</p>
 		</header>
+		if v.DownloadAll != nil {
+			@DownloadAll(*v.DownloadAll)
+		}
 		if v.ReadOnly {
 			<p class="caption ts-shelf-by">{ v.By }</p>
 		}

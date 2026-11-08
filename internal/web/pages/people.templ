@@ -110,6 +110,8 @@ type SeriesView struct {
 	Rows                        []components.CardView
 	// FeedHref opens the Podcast feed page; empty when the person may not download any book of the series.
 	FeedHref string
+	// DownloadAll is the Download all control; nil when the person may download no audio book of the series.
+	DownloadAll *DownloadAllView
 }
 
 // Series renders a series page.
@@ -136,6 +138,9 @@ templ Series(v SeriesView) {
 			}
 			if v.FeedHref != "" {
 				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.FeedHref) }>Podcast feed</a>
+			}
+			if v.DownloadAll != nil {
+				@DownloadAll(*v.DownloadAll)
 			}
 			if v.Description != "" {
 				<p class="ts-book__desc ts-person__desc">{ v.Description }</p>

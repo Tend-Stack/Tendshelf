@@ -15,6 +15,7 @@ import app.tendshelf.shared.BridgeMessage
 import app.tendshelf.shared.Origin
 import app.tendshelf.shared.ReaderFeel
 import app.tendshelf.shared.encodePageKey
+import app.tendshelf.shared.encodeRoom
 import app.tendshelf.shared.PlayerSnapshot
 import app.tendshelf.shared.TokenBucket
 import app.tendshelf.shared.encodeAsk
@@ -194,6 +195,7 @@ class Bridge(
             is BridgeMessage.Wake -> feel.awake(msg.on)?.let(onKeepScreenOn)
             is BridgeMessage.PageKeys -> feel.keys(msg.on)
             is BridgeMessage.Quiet -> r?.setSkipQuiet(msg.on)
+            BridgeMessage.DownloadRoom -> sendTo(reply, encodeRoom(Offline.freeBytes()))
             BridgeMessage.TtsVoices -> speech.voices { sendTo(reply, it) }
             BridgeMessage.TtsStop -> speech.stop(silent = true)
             is BridgeMessage.Say -> if (started) speech.say(msg) { sendTo(reply, it) }
