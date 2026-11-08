@@ -12,6 +12,7 @@ type ReaderLook struct {
 	Class string // extra classes of the reader root
 	// G5 comfort, as data attributes of the reader root: "true" or "false", and "off", "evening" or "always".
 	KeepAwake, AutoHide bool
+	VolumeKeys          bool // Android app only (decision 0033)
 	Warm                string
 }
 
@@ -28,6 +29,7 @@ type ReadingSheetView struct {
 	Justify, Hyphens, TapSwap    bool
 	Large                        bool // large text mode: 26 joins the sizes
 	KeepAwake, AutoHide          bool   // G5 comfort
+	VolumeKeys, InApp            bool   // decision 0033: the switch shows only in the Android app
 	Warm                         string // "off", "evening" or "always"
 }
 
@@ -126,11 +128,14 @@ templ ReadingSheet(v ReadingSheetView) {
 				@readerSwitch("justify", "Justify text", v.Justify)
 				@readerSwitch("hyphens", "Hyphens", v.Hyphens)
 				@readerSwitch("tap_swap", "Swap tap sides", v.TapSwap)
-				<details class="ts-readset__more" open?={ v.KeepAwake || v.Warm != "off" || v.AutoHide }>
+				<details class="ts-readset__more" open?={ v.KeepAwake || v.Warm != "off" || v.AutoHide || (v.InApp && v.VolumeKeys) }>
 					<summary class="ts-btn ts-btn--quiet">More</summary>
 					@readerSwitch("keep_awake", "Keep the screen on", v.KeepAwake)
 					@readerChoices("warm", "Warm light", v.Warm, readerWarmChoices)
 					@readerSwitch("auto_hide", "Hide the bar after a moment", v.AutoHide)
+					if v.InApp {
+						@readerSwitch("volume_keys", "Turn pages with the volume buttons", v.VolumeKeys)
+					}
 				</details>
 				<noscript><button type="submit" class="ts-btn ts-btn--primary ts-btn--block">Save</button></noscript>
 			</form>

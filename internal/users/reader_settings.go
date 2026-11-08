@@ -21,9 +21,10 @@ type ReaderSettings struct {
 	Flow    string `json:"flow"`    // "auto" (pages below 1280 px, scroll above), "pages" or "scroll"
 	TapSwap bool   `json:"tapSwap"` // the left and right tap zones swap, for left-handers
 	// G5 (comfort): all off by default.
-	KeepAwake bool   `json:"keepAwake"` // the screen stays on while the reader is open
-	Warm      string `json:"warm"`      // "off", "evening" (20:00 to 06:00 on the device) or "always"
-	AutoHide  bool   `json:"autoHide"`  // the bar and dock hide a few seconds after the last touch
+	KeepAwake  bool   `json:"keepAwake"`  // the screen stays on while the reader is open
+	Warm       string `json:"warm"`       // "off", "evening" (20:00 to 06:00 on the device) or "always"
+	AutoHide   bool   `json:"autoHide"`   // the bar and dock hide a few seconds after the last touch
+	VolumeKeys bool   `json:"volumeKeys"` // Android app only: the volume buttons turn pages (decision 0033)
 }
 
 // DefaultReader applies to every field a person has not set.
@@ -78,7 +79,7 @@ func parseReader(raw string) ReaderSettings {
 	str("flow", &out.Flow, "auto", "pages", "scroll")
 	str("warm", &out.Warm, "off", "evening", "always")
 	for key, dst := range map[string]*bool{"justify": &out.Justify, "hyphens": &out.Hyphens, "tapSwap": &out.TapSwap,
-		"keepAwake": &out.KeepAwake, "autoHide": &out.AutoHide} {
+		"keepAwake": &out.KeepAwake, "autoHide": &out.AutoHide, "volumeKeys": &out.VolumeKeys} {
 		var v bool
 		if json.Unmarshal(m[key], &v) == nil {
 			*dst = v

@@ -27,6 +27,8 @@ type SettingsView struct {
 	SkipForwardS int
 	AutoRewind   bool
 	NextInSeries bool
+	// SkipQuiet and InApp: the skip-silence switch shows only in the Android app (decision 0033).
+	SkipQuiet, InApp bool
 	PlayerTint   bool
 	BigButtons   bool
 	// TextSize is standard or large.
@@ -220,6 +222,9 @@ templ SettingsPane(v SettingsView) {
 					<div class="ts-group">
 						@switchRow("st-rewind", "auto_rewind", "Rewind a little after a break", "After 5 minutes or more, go back 5 s so you never lose the thread.", v.AutoRewind)
 						@switchRow("st-next", "next_in_series", "Play the next book in a series", "When a book ends.", v.NextInSeries)
+						if v.InApp {
+							@switchRow("st-quiet", "skip_quiet", "Skip silence", "Shortens long pauses in the reading. Works in this app only.", v.SkipQuiet)
+						}
 					</div>
 				}
 			}

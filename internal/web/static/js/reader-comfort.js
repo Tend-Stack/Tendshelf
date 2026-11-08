@@ -35,10 +35,12 @@ export function mount() {
   let idle = false;
   let idleTimer = 0;
   const release = (l) => Promise.resolve(l?.release()).catch(() => {});
+  // The Android app's stand-in (native-feel.js, decision 0033) wins: its WebView grants no navigator.wakeLock.
   const take = async () => {
-    if (!navigator.wakeLock || document.visibilityState !== "visible" || lock || idle || !wants("keepAwake")) return;
+    const api = window.tsNativeWake || navigator.wakeLock;
+    if (!api || document.visibilityState !== "visible" || lock || idle || !wants("keepAwake")) return;
     try {
-      const l = await navigator.wakeLock.request("screen");
+      const l = await api.request("screen");
       if (lock || signal.aborted || !wants("keepAwake")) return release(l); // the answer came too late
       lock = l;
       l.addEventListener("release", () => lock === l && (lock = null));
@@ -103,7 +105,8 @@ export function mount() {
     drop();
     if (running === ctl) running = null;
   });
-  for (const type of ["pointerdown", "pointermove", "keydown"]) on(document, type, touched);
+  // Capture phase on window: the reader stops the keys it handles (arrows, volume turns), which must still count as input.
+  for (const type of ["pointerdown", "pointermove", "keydown"]) window.addEventListener(type, touched, { signal, capture: true });
   on(document, "ts-reader-look", refresh);
   on(document, "visibilitychange", () => (document.visibilityState === "visible" ? take() : null));
   on(document, "htmx:after:swap", () => root.isConnected || ctl.abort());

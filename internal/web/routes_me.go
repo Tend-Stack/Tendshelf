@@ -192,6 +192,7 @@ func (s *server) settingsPage(w http.ResponseWriter, r *http.Request, status int
 		return
 	}
 	v := settingsView(s.csrf.TokenFrom(r.Context()), cur)
+	v.InApp = shellFrom(r) == "android"
 	v.Section, v.Index, v.Error = section, index, refusal
 	title := "Settings"
 	if !index {

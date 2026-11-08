@@ -18,6 +18,7 @@ type Settings struct {
 	SkipForwardS int
 	AutoRewind   bool
 	NextInSeries bool
+	SkipQuiet    bool // Android app only: shorten long pauses (decision 0033)
 	PlayerTint   bool
 	BigButtons   bool
 	TextSize     string // "standard" or "large"
@@ -42,6 +43,7 @@ const (
 	keySkipForward  = "playback.skip_forward_s"
 	keyAutoRewind   = "playback.auto_rewind"
 	keyNextInSeries = "playback.next_in_series"
+	keyQuietSkip    = "playback.skip_quiet"
 	keyPlayerTint   = "ui.player_tint"
 	keyBigButtons   = "ui.big_buttons"
 	keyTextSize     = "ui.text_size"
@@ -118,6 +120,7 @@ func (s Settings) entries() []settingEntry {
 		{keySkipForward, s.SkipForwardS},
 		{keyAutoRewind, s.AutoRewind},
 		{keyNextInSeries, s.NextInSeries},
+		{keyQuietSkip, s.SkipQuiet},
 		{keyPlayerTint, s.PlayerTint},
 		{keyBigButtons, s.BigButtons},
 		{keyTextSize, s.TextSize},
@@ -154,6 +157,8 @@ func (s *Settings) apply(key, raw string) {
 		setBool(&s.AutoRewind, raw)
 	case keyNextInSeries:
 		setBool(&s.NextInSeries, raw)
+	case keyQuietSkip:
+		setBool(&s.SkipQuiet, raw)
 	case keyPlayerTint:
 		setBool(&s.PlayerTint, raw)
 	case keyBigButtons:

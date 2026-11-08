@@ -256,6 +256,7 @@ templ Reader(v ReaderView) {
 			data-keep-awake={ strconv.FormatBool(v.Look.KeepAwake) }
 			data-warm={ v.Look.Warm }
 			data-auto-hide={ strconv.FormatBool(v.Look.AutoHide) }
+			data-volume-keys={ strconv.FormatBool(v.Look.VolumeKeys) }
 			if v.ReaderModule != "" {
 				data-ts-module={ v.ReaderModule }
 			}
