@@ -68,3 +68,35 @@ Measurable, not adjectives. Each is an acceptance target for the phase that deli
 - Selling, DRM removal, or downloading from stores. Tendshelf refuses copy-protected audio and ebooks.
 - A social network. Sharing is private, person to person.
 - A cloud service run by us. Self-hosted only.
+
+## What Tendshelf will not do
+
+These are promises already made in `AGENTS.md`, in this file and in the decisions. They are the reason a
+request is sometimes answered with a kind no.
+
+- **No telemetry.** No analytics, crash reports, update pings or third-party assets (fonts, CDNs, map
+  tiles). The only outbound requests are ones a person starts (a book lookup, a cover download) and the
+  mail server the owner sets up for invitations (`AGENTS.md`, "Security and privacy").
+- **No removing copy protection.** Copy-protected audio and ebooks are refused and never decoded,
+  streamed, remuxed or decrypted (`AGENTS.md`, "Audio files are the user's"; "Not goals" above).
+- **No Node.js or JavaScript build step.** The shipped app, the build, CI and the development scripts need
+  none: templ templates, one vendored HTMX file and a little plain JavaScript (`AGENTS.md`, "Stack
+  constraints").
+- **One binary.** One pure-Go server program with its pages and migrations inside. `ffmpeg` and `ffprobe`
+  are the only outside programs, and a new Go module needs the owner's approval (`AGENTS.md`).
+- **No models or downloaded runtimes.** Tendshelf never asks a person to install a worker, a model or a
+  language runtime ([decision 0018](decisions/0018-book-reader.md)).
+- **No read-along and no voice sync.** The voice and the words do not share a place. The reader can read a
+  book aloud, but only with a voice the device already has, so the book's text never leaves it
+  ([decision 0018](decisions/0018-book-reader.md), [decision 0032](decisions/0032-read-aloud.md)).
+- **No library file changed behind your back.** Library files are read-only to Tendshelf except for the
+  two jobs the owner starts: writing details into a file (with a backup and Undo) and adding a book by
+  upload (`AGENTS.md`).
+
+## A new option has to earn its place
+
+Every option is one more thing to explain, test and keep working on a phone. A feature that costs scan
+time, page weight or binary size has a high bar: say what it costs and what it gives back. Advanced options
+sit behind a disclosure, in plain words (`AGENTS.md`, "Accessibility and layout"). The test is the one in
+"What wow means here": one binary, nothing to keep up to date, and a page that is ready on a mid-range
+phone. Contributors should read [CONTRIBUTING.md](../CONTRIBUTING.md) before proposing a feature.
