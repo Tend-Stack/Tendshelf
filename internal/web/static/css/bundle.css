@@ -449,15 +449,9 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-reader--sans .ts-reader__text { font-family: var(--font-sans); }
 .ts-reader__drop { float: left; font-size: 2.9em; line-height: 0.9; padding: 0.08em 0.1em 0 0; }
 
-/* Sentence and word being spoken. Style is chosen on the reader root: data-hl="wash" (default), "underline" or "brighten". */
+/* The sentence being read aloud (decision 0032): a wash plus an underline, never colour alone. */
 .ts-s { transition: background-color var(--duration-highlight) var(--easing-standard), color var(--duration-highlight) var(--easing-standard); -webkit-box-decoration-break: clone; box-decoration-break: clone; border-radius: 0.1875rem; }
-.ts-reader[data-hl="wash"] .ts-s.is-now { background: var(--read-wash); box-shadow: 0 0 0 0.12em var(--read-wash); }
-.ts-reader[data-hl="underline"] .ts-s.is-now { text-decoration: underline; text-decoration-color: var(--read-word); text-decoration-thickness: 0.09375rem; text-underline-offset: 0.3em; }
-.ts-reader[data-hl="brighten"] .ts-s { color: var(--read-rest); }
-.ts-reader[data-hl="brighten"] .ts-s.is-now { color: var(--read-ink); }
-.ts-w.is-now { text-decoration: underline; text-decoration-color: var(--read-word); text-decoration-thickness: 2px; text-underline-offset: 0.3em; }
-.ts-reader[data-hl="underline"] .ts-w.is-now { text-decoration-thickness: 0.21875rem; }
-.ts-reader[data-word="off"] .ts-w.is-now { text-decoration: none; }
+.ts-s.is-now { background: var(--read-wash); box-shadow: 0 0 0 0.12em var(--read-wash); text-decoration: underline; text-decoration-color: var(--read-word); text-decoration-thickness: 0.09375rem; text-underline-offset: 0.3em; }
 
 /* Your highlights: a gold wash plus a gold underline, so colour is never the only cue */
 .ts-hl { background: var(--mark); box-shadow: inset 0 -2px 0 var(--mark-edge); -webkit-box-decoration-break: clone; box-decoration-break: clone; border-radius: 2px; }

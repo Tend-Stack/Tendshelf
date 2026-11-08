@@ -143,7 +143,19 @@ type ReaderView struct {
 	SearchLabel, SearchHref     string
 	BookmarkLabel, BookmarkURL  string // the bookmark-this-page button and where its form posts
 	Offline                     *ReaderOfflineView // the offline reader (decision 0019); nil leaves it out
+	Aloud                       *ReaderAloudView   // read aloud (decision 0032); nil leaves it out
 }
+
+// ReaderAloudView is the words and address of the read-aloud strip. Src is reader-aloud.js, imported on the first press;
+// Copy is the JSON of the words that script shows by itself.
+type ReaderAloudView struct {
+	Src, Label, Play, Pause, Back, Fwd, Stop, More, Voice, Default, Other, Speed, Follow string
+	Speeds                                                                              []ReaderAloudSpeed
+	Copy                                                                                string
+}
+
+// ReaderAloudSpeed is one option of the speed list.
+type ReaderAloudSpeed struct{ Value, Text string }
 
 // ReaderOfflineView is what reader-offline.js reads from its marker. Module is its address. The rest is set
 // only for a book's stored reader shell, which holds no chapter text: ReaderSrc is reader.js, Placed the
@@ -200,6 +212,11 @@ templ Reader(v ReaderView) {
 			<a class="ts-iconbtn" href={ templ.SafeURL(v.MarksHref) } hx-get={ v.MarksHref } hx-target="#sheet" hx-select="#sheet > *" hx-swap="innerHTML" hx-push-url="false" aria-haspopup="dialog" aria-label={ v.MarksLabel }>
 				@components.Icon("edit", false)
 			</a>
+			}
+			if v.Aloud != nil {
+			<button type="button" class="ts-iconbtn ts-aloud-open ts-aloud-open--bar" data-aloud-src={ v.Aloud.Src } aria-controls="reader-aloud" aria-expanded="false" aria-label={ v.Aloud.Label } hidden>
+				@components.Icon("aloud", false)
+			</button>
 			}
 			if v.SettingsHref != "" {
 			<a
@@ -274,6 +291,38 @@ templ Reader(v ReaderView) {
 			></span>
 		}
 		<footer class="ts-readdock" id="reader-dock">
+			if v.Aloud != nil {
+			<div id="reader-aloud" class="ts-aloud" role="group" aria-label={ v.Aloud.Label } data-copy={ v.Aloud.Copy } hidden>
+				<div class="ts-aloud__row">
+					<button type="button" class="ts-iconbtn" data-aloud="back" aria-label={ v.Aloud.Back }>
+						@components.Icon("skip-back", false)
+					</button>
+					<button type="button" class="ts-iconbtn" data-aloud="play" aria-label={ v.Aloud.Pause }>
+						<span data-state="pause">@components.Icon("pause", false)</span>
+						<span data-state="play" hidden>@components.Icon("play", false)</span>
+					</button>
+					<button type="button" class="ts-iconbtn" data-aloud="fwd" aria-label={ v.Aloud.Fwd }>
+						@components.Icon("skip-forward", false)
+					</button>
+					<button type="button" class="ts-btn ts-btn--quiet" data-aloud="follow" hidden>{ v.Aloud.Follow }</button>
+					<button type="button" class="ts-iconbtn" data-aloud="stop" aria-label={ v.Aloud.Stop }>
+						@components.Icon("close", false)
+					</button>
+				</div>
+				<p class="ts-aloud__status" role="status"></p>
+				<details class="ts-aloud__more">
+					<summary>{ v.Aloud.More }</summary>
+					<label for="aloud-voice">{ v.Aloud.Voice }</label>
+					<select id="aloud-voice" class="ts-select"></select>
+					<label for="aloud-rate">{ v.Aloud.Speed }</label>
+					<select id="aloud-rate" class="ts-select">
+						for _, sp := range v.Aloud.Speeds {
+						<option value={ sp.Value } selected?={ sp.Value == "1" }>{ sp.Text }</option>
+						}
+					</select>
+				</details>
+			</div>
+			}
 			<div class="ts-readdock__ruler">
 				@components.Ruler(v.Footer.Ruler)
 				<input type="range" id="reader-skim" class="ts-skim" min="0" max="10000" step="1" value="0" aria-label={ v.Footer.Ruler.Label } data-src={ v.SkimModule } hidden/>
@@ -282,6 +331,11 @@ templ Reader(v ReaderView) {
 			<div class="ts-readdock__row">
 				<span id="reader-page">{ v.Footer.PageLine }</span>
 				<span id="reader-left"></span>
+				if v.Aloud != nil {
+				<button type="button" class="ts-iconbtn ts-aloud-open ts-aloud-open--dock" data-aloud-src={ v.Aloud.Src } aria-controls="reader-aloud" aria-expanded="false" aria-label={ v.Aloud.Label } hidden>
+					@components.Icon("aloud", false)
+				</button>
+				}
 			</div>
 		</footer>
 		<div id="reader-marks" class="ts-selmenu" role="toolbar" aria-label={ v.Marks.Label } if v.MarksModule != "" { data-ts-module={ v.MarksModule } } hidden>

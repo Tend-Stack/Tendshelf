@@ -185,3 +185,22 @@ body:has(.ts-readerpage) :is(#nav-tabbar, #nav-rail, #nav-side) { visibility: hi
 .ts-lookup__head { font-weight: 600; }
 .ts-lookup__web { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-8); }
 .ts-lookup__web a { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--accent); }
+
+/* Read aloud (decision 0032): the strip in the dock and its two openers, one per width. */
+.ts-aloud { display: flex; flex-direction: column; gap: var(--space-8); padding-bottom: var(--space-8); }
+.ts-aloud[hidden] { display: none; }
+.ts-aloud [hidden] { display: none; }
+.ts-aloud__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-8); }
+.ts-aloud .ts-iconbtn, .ts-aloud-open { flex: none; }
+.ts-aloud__status { margin: 0; font-size: 0.8125rem; line-height: 1.125rem; color: var(--ink-muted); text-align: center; }
+.ts-aloud__status:empty { display: none; }
+.ts-aloud__more summary { display: flex; align-items: center; min-height: 2.75rem; cursor: pointer; }
+.ts-aloud__more label { display: block; margin-block: var(--space-8) var(--space-4); }
+.ts-aloud-open--bar { display: none; }
+@media (min-width: 768px) {
+  .ts-aloud-open--bar { display: inline-flex; }
+  .ts-aloud-open--dock { display: none; }
+}
+.ts-aloud-open[hidden] { display: none; }
+.ts-aloud-open[aria-expanded="true"] { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .ts-s { transition: none; } }
