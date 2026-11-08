@@ -2,7 +2,9 @@
 
 Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-numbers.md)). Dates are UTC.
 
-## Unreleased
+## 2026.5.0
+
+Released 2026-11-08. It brings Contributors, sign-in links for people without a password, and waveforms for very long books.
 
 ### What you can do
 
@@ -16,6 +18,24 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 - **Remove all the books a person added.** On a person's page, "Books they added" shows how many there are, a link to see them in
   the Library and "Remove all their books". Tendshelf asks first, deletes only the files it placed for that person that nobody has
   changed, and tells you which books stayed and why.
+- **Get someone back in with a sign-in link.** On a person's page, an admin can make a sign-in link that works once, for
+  24 hours. It is for someone who never chose a password or forgot it: they open the link, confirm, and pick a new password
+  within the hour. Making a new link ends the old one; the owner's account has no links. The sign-in page now says
+  "No password yet, or forgot it? Ask whoever runs this server for a sign-in link." A person's page shows their username.
+
+### Fixed
+
+- **Books longer than 48 hours get a waveform.** The player bar showed none for them; it now works for books up to 500 hours.
+
+### For people who package Tendshelf
+
+- **The Android app has an F-Droid recipe** (`android/fdroid/app.tendshelf.android.yml`). It builds from the tagged source and
+  checks the result against the signed APK on the release page. How to submit it is in `docs/android.md`.
+
+### Upgrading
+
+This release uses database schema 35 (it was 33 in 2026.4.0). Before Tendshelf upgrades an existing database it writes a
+verified copy to `backups` in the data folder, and an older program refuses a database made by this one.
 
 ## 2026.4.0
 
