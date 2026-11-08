@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"slices"
@@ -236,6 +237,13 @@ func compareHref(bookID, jobID string, c int, hasC bool) string {
 
 func lookupHref(bookID string) string { return "/books/" + bookID + "/details?sheet=lookup" }
 
+// lookupAgainHref is the address of the look-up form carrying the query a job searched, so Try again does not
+// lose what the person typed. All four fields are sent, even an emptied one, so a cleared author stays cleared.
+func lookupAgainHref(bookID string, q online.Query) string {
+	v := url.Values{"sheet": {"lookup"}, "title": {q.Title}, "author": {q.Author}, "asin": {q.ASIN}, "isbn": {q.ISBN}}
+	return "/books/" + bookID + "/details?" + v.Encode()
+}
+
 func detailsTabHref(bookID string) string { return "/books/" + bookID + "/details" }
 
 // logMarks are the signs of a step; the words beside them carry the state too, never colour alone.
@@ -339,7 +347,7 @@ func (s *server) compareSheetView(r *http.Request, cur library.BookDetail, j job
 		CSRF: s.csrf.TokenFrom(r.Context()), Title: detailsSheetTitle, CloseLabel: detailsSheetClose,
 		CloseHref: detailsTabHref(bookID), Styles: s.sheetStyles(pages.DetailsStyles...),
 		Waiting: detailsWaiting, CheckAgain: detailsCheckAgain, TryAgain: detailsTryAgain,
-		SheetHref: compareHref(bookID, j.ID, 0, false), TryAgainHref: lookupHref(bookID),
+		SheetHref: compareHref(bookID, j.ID, 0, false), TryAgainHref: tryAgainHref(bookID, j),
 		PollHref: "/hx/jobs/" + j.ID + "?book=" + bookID, ExactLabel: detailsExact,
 		ColField: detailsColField, ColNow: detailsColNow, ColOnline: detailsColOnline, ColUse: detailsColUse,
 		Caption: detailsCaption, Same: detailsSame, ShowAll: detailsShowAll, NoValue: detailsNoValue,
@@ -425,4 +433,13 @@ func useSet(vals []string) map[string]bool {
 		m[v] = true
 	}
 	return m
+}
+
+// tryAgainHref is lookupHref with the job's own query when its stored payload holds one.
+func tryAgainHref(bookID string, j jobs.Job) string {
+	var p metadata.LookupPayload
+	if json.Unmarshal(j.Payload, &p) != nil || p.Query == (online.Query{}) {
+		return lookupHref(bookID)
+	}
+	return lookupAgainHref(bookID, p.Query)
 }

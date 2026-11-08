@@ -116,6 +116,5 @@ html[data-theme="contrast"] .ts-invite__band.is-tinted { background: none; }
 .ts-invite__phone { display: flex; flex-direction: column; gap: var(--space-8); }
 .ts-invite__phone > summary { cursor: pointer; list-style: none; }
 .ts-invite__phone > summary::-webkit-details-marker { display: none; }
-.ts-me__add { align-self: flex-start; margin-top: var(--space-16); }
 .ts-invite #pair-status { display: flex; flex-direction: column; gap: var(--space-12); }
 .ts-invite #pair-status > h1, .ts-invite #pair-status > p { margin: 0; }

@@ -498,21 +498,24 @@ func tabRank(id string) int {
 }
 
 // ebookChip is the header chip of a book with an ebook: "Ebook · 312 pages", or "Ebook" while the page count is
-// not known.
+// not known. A book with no ready ebook file gets no chip, and so does a book whose files cannot be read: a
+// missing chip is better than a false one.
 func (s *server) ebookChip(ctx context.Context, bookID string) string {
 	files, err := s.ebooks.Store().FilesForBook(ctx, bookID)
 	if err != nil {
-		return ebookChip
+		return ""
 	}
+	chip := ""
 	for _, f := range files {
 		if f.State != "ready" {
 			continue
 		}
+		chip = ebookChip
 		if ed, ok, err := s.ebooks.Store().CurrentEdition(ctx, f.ID); err == nil && ok && ed.PageCount > 0 {
 			return countText(ed.PageCount, ebookChipPage, ebookChipPages)
 		}
 	}
-	return ebookChip
+	return chip
 }
 
 // addedByRow is the "Added by" line of the Details tab (decision 0029): "you" for the person's own book,

@@ -88,7 +88,7 @@ func TestBookFirstOrder(t *testing.T) {
 	done := bookfirstAudio(t, l, "Done Book")
 	bookfirstSave(t, l, l.owner, done.ID, 3_600_000, 1_000, true)
 	body := bookfirstProfile(l, l.owner)
-	marks := []string{hero.Title, `id="pf-also"`, `id="pf-done"`, `id="pf-stats"`, `id="pf-shelves"`, `id="pf-account"`, "Sign out"}
+	marks := []string{`id="pf-menu-account"`, `id="pf-menu-settings"`, hero.Title, `id="pf-also"`, `id="pf-done"`, `id="pf-stats"`, `id="pf-shelves"`}
 	last := -1
 	for _, m := range marks {
 		i := strings.Index(body, m)
@@ -109,8 +109,8 @@ func TestBookFirstNoShell(t *testing.T) {
 		if strings.Contains(body, "ts-prefs__nav") || strings.Contains(body, "ts-prefs__frame") {
 			t.Errorf("%s: Profile sits inside the preferences window", name)
 		}
-		if !strings.Contains(body, `href="/me/settings"`) {
-			t.Errorf("%s: no Settings link", name)
+		if !strings.Contains(body, `href="/me/settings/playback"`) {
+			t.Errorf("%s: no Settings menu link", name)
 		}
 	}
 	settings := l.get(l.owner, "/me/settings", false).Body.String()

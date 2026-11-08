@@ -378,6 +378,18 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-side[data-nav="rail"] .ts-side__item .ts-icon { width: 1.75rem; height: 1.75rem; }
 .ts-side[data-nav="rail"] .ts-side__item[aria-current="page"] { background: var(--accent-soft); }
 .ts-side[data-nav="rail"] .ts-side__foot { justify-content: center; }
+/* Account chip (pinned above the collapse toggle): the person's avatar, name and kind; avatar alone in the rail. It shares the item states above. */
+.ts-side__me { margin-top: auto; min-height: 3.5rem; color: var(--ink); }
+.ts-side__me + .ts-side__foot { margin-top: 0; }
+.ts-side__metext { display: flex; flex-direction: column; min-width: 0; line-height: 1.25rem; }
+.ts-side__mename { font-weight: 600; }
+.ts-side__mekind { color: var(--ink-muted); line-height: 1rem; }
+.ts-side[data-nav="rail"] .ts-side__me .ts-avatar { width: 2.5rem; height: 2.5rem; }
+/* The tablet rail's chip, with the word Profile under the avatar like its sibling items. */
+.ts-rail__me { color: var(--ink); }
+/* The phone's Profile tab shows the avatar in place of the person icon; the current tab rings it in the accent. */
+.ts-tabbar__item .ts-avatar { width: 1.75rem; height: 1.75rem; font-size: 0.8125rem; }
+.ts-tabbar__item[aria-current="page"] .ts-avatar, .ts-rail__item[aria-current="page"] .ts-avatar { box-shadow: 0 0 0 2px var(--accent); }
 
 /* Avatars and role badges */
 .ts-avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-pill); font-weight: 600; color: #f1e8da; flex-shrink: 0; }

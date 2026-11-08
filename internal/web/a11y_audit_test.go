@@ -487,6 +487,9 @@ func TestA11yAudit(t *testing.T) {
 				res.Unmeasured = append(res.Unmeasured, notes...)
 			}
 			if touchOrDesktop {
+				// Where the Tab walk ended is a matter of how many stops the page has; a tip shown for that focus was
+				// placed at the normal text size and would be measured as overflow here. The zoom check is of the page at rest.
+				_ = tab.TryEval(`(document.activeElement && document.activeElement.blur(), true)`, nil)
 				zoom := a11yTextZoom(tab)
 				zoomed, zerr := a11yReflow(tab, w.W, "text-200-scroll-x", "text-200-clip")
 				if zoom != nil || zerr != nil {

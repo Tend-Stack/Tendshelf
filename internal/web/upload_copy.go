@@ -53,6 +53,7 @@ const (
 	bookRemoveLabel   = "Remove this book"
 	bookRemoveConfirm = "Remove this book?"
 	bookRemoveBody    = "This deletes the %d files Tendshelf added for this book. Files changed since then stay."
+	bookRemoveBodyOne = "This deletes the file Tendshelf added for this book. Files changed since then stay."
 	bookRemoveButton  = "Remove this book"
 	bookRemoveCancel  = "Keep it"
 )
@@ -61,6 +62,9 @@ func uploadRowWords() components.UploadRowWords {
 	return components.UploadRowWords{Pause: uploadPause, Resume: uploadResume, ChooseAgain: uploadChooseAgain,
 		Cancel: uploadCancel, TryAgain: uploadTryAgain, OpenBook: uploadOpenBook}
 }
+
+// bookRemoveText is the sentence on the remove confirmation: "the file" for one, "the N files" for more.
+func bookRemoveText(n int) string { return countText(n, bookRemoveBodyOne, bookRemoveBody) }
 
 // uploadFilesText is "1 file" or "14 files".
 func uploadFilesText(n int) string { return countText(n, "1 file", "%d files") }

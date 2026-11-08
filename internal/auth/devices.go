@@ -63,6 +63,8 @@ const (
 	revokedKeep = 30 * 24 * time.Hour
 	// maxDeviceName matches the table's CHECK (runes).
 	maxDeviceName = 64
+	// MaxDeviceNameRunes is the longest device or sign-in name, in characters.
+	MaxDeviceNameRunes = maxDeviceName
 )
 
 // Device is one app signed in with a token. Times are Unix milliseconds UTC.
@@ -89,9 +91,9 @@ func NewDevices(st *db.Store, now func() time.Time) *Devices {
 	return &Devices{st: st, now: now}
 }
 
-// DeviceName cleans a name sent by an app: control characters dropped, runs of white space
-// collapsed, trimmed, cut to 64 runes. An empty result becomes the kind's label.
-func DeviceName(raw string, kind DeviceKind) string {
+// CleanName tidies a name a person or an app typed for a device: control characters dropped, runs of
+// white space collapsed, trimmed. It does not cut: the caller decides what a too-long name means.
+func CleanName(raw string) string {
 	var b strings.Builder
 	for _, r := range raw {
 		switch {
@@ -102,7 +104,13 @@ func DeviceName(raw string, kind DeviceKind) string {
 			b.WriteRune(r)
 		}
 	}
-	name := strings.Join(strings.Fields(b.String()), " ")
+	return strings.Join(strings.Fields(b.String()), " ")
+}
+
+// DeviceName cleans a name sent by an app: control characters dropped, runs of white space
+// collapsed, trimmed, cut to 64 runes. An empty result becomes the kind's label.
+func DeviceName(raw string, kind DeviceKind) string {
+	name := CleanName(raw)
 	if rs := []rune(name); len(rs) > maxDeviceName {
 		name = strings.TrimSpace(string(rs[:maxDeviceName]))
 	}
@@ -246,6 +254,19 @@ func (d *Devices) list(ctx context.Context, where string, args ...any) ([]Device
 		out = append(out, dev)
 	}
 	return out, rows.Err()
+}
+
+// Rename sets the name of one live device of the person and reports whether there was one. An app key
+// (kind opds or koreader), a revoked device and another person's id never match. name is already
+// cleaned and checked by the caller. The name is the only column written: last_seen_at has its own update.
+func (d *Devices) Rename(ctx context.Context, ex db.Execer, userID, id, name string) (bool, error) {
+	res, err := ex.ExecContext(ctx, `UPDATE devices SET name = ?
+		WHERE id = ? AND user_id = ? AND revoked_at IS NULL AND kind NOT IN ('opds', 'koreader')`, name, id, userID)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
 }
 
 // Revoke kills one live device of the person (the row stays, the token is gone) and reports

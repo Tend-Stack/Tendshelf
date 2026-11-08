@@ -19,7 +19,7 @@ func (s *server) prefsNav(r *http.Request, current string, index bool) pages.Pre
 	showUsers, waiting := s.usersLink(r)
 	return pages.PrefsNav{
 		Current: current, Index: index,
-		UserID: u.ID, Name: u.DisplayName, Role: roleLabel(string(u.Role)),
+		UserID: u.ID, Name: u.DisplayName, Role: roleLabel(string(u.Kind())),
 		Users: showUsers, UsersWaiting: waiting,
 		Libraries: s.can.Can(ctx, u, share.ManageLibraries, server),
 		Email:     s.can.Can(ctx, u, share.ManageServer, server),

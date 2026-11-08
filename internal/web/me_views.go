@@ -91,7 +91,7 @@ func deviceRows(now time.Time, sessions []auth.SessionInfo, apps []auth.Device, 
 	var rest []entry
 	for _, si := range sessions {
 		label := deviceLabel(si.UserAgent)
-		d := pages.ProfileDevice{ID: si.PublicID, Icon: deviceIcon(si.UserAgent), Session: true}
+		d := pages.ProfileDevice{ID: si.PublicID, Icon: deviceIcon(si.UserAgent), Session: true, Name: si.Name}
 		if forAdmin {
 			d.Action = base + "/devices/" + si.PublicID + "/signout"
 		} else {
@@ -99,17 +99,24 @@ func deviceRows(now time.Time, sessions []auth.SessionInfo, apps []auth.Device, 
 		}
 		if si.Current {
 			d.Title, d.Meta, d.Current = msgThisBrowser, label, true
+			if si.Name != "" {
+				// A named browser leads with its name and says in the second line that it is this one.
+				d.Title, d.Meta = si.Name, devThisBrowser+" · "+label
+			}
 			cur = &d
 			continue
 		}
 		d.Title, d.Meta = label, agoText(now, time.UnixMilli(si.LastSeenAt))
+		if si.Name != "" {
+			d.Title = si.Name
+		}
 		rest = append(rest, entry{d, si.LastSeenAt})
 	}
 	for _, a := range apps {
 		if currentDevice != "" && a.ID == currentDevice {
 			// The phone whose own window is asking: it leads the list and has no sign-out of its own
 			// here, like "This device" for a browser (decision 0026).
-			d := pages.ProfileDevice{ID: a.ID, Title: msgThisPhone, Meta: auth.KindLabel(a.Kind), Icon: appIcon(a.Kind),
+			d := pages.ProfileDevice{ID: a.ID, Title: a.Name, Name: a.Name, Meta: msgThisPhone + " · " + auth.KindLabel(a.Kind), Icon: appIcon(a.Kind),
 				Action: base + "/devices/" + a.ID + "/signout", Current: true}
 			if a.LastSeenAt > 0 {
 				d.Meta += " · " + agoText(now, time.UnixMilli(a.LastSeenAt))
@@ -124,7 +131,7 @@ func deviceRows(now time.Time, sessions []auth.SessionInfo, apps []auth.Device, 
 		if a.LastSeenAt > 0 {
 			meta = kind + " · " + agoText(now, time.UnixMilli(a.LastSeenAt))
 		}
-		rest = append(rest, entry{pages.ProfileDevice{ID: a.ID, Title: a.Name, Meta: meta, Icon: appIcon(a.Kind),
+		rest = append(rest, entry{pages.ProfileDevice{ID: a.ID, Title: a.Name, Name: a.Name, Meta: meta, Icon: appIcon(a.Kind),
 			Action: base + "/devices/" + a.ID + "/signout"}, max(a.LastSeenAt, a.CreatedAt)})
 	}
 	sort.SliceStable(rest, func(i, j int) bool { return rest[i].last > rest[j].last })
@@ -244,14 +251,14 @@ func timeZoneOnly(f url.Values) (string, bool) {
 // groupDevices folds nearly identical browser sign-ins into one line. rows keeps its order (the
 // current device first, then newest first). A non-current browser session joins the line of the
 // first non-current session with the same Title, so a line sits where its newest session is. The
-// current device and apps never fold. A group of one is a plain line; a group's Meta is "6 sign-ins
+// current device, apps and browsers the person named never fold. A group of one is a plain line; a group's Meta is "6 sign-ins
 // · <newest time>".
 func groupDevices(rows []pages.ProfileDevice) []pages.DeviceLine {
 	var out []pages.DeviceLine
 	at := map[string]int{} // Title -> index in out of the line that can still take a session
 	for _, d := range rows {
 		d.Aria = "Sign out " + d.Title
-		if d.Current || !d.Session {
+		if d.Current || !d.Session || d.Name != "" {
 			out = append(out, pages.DeviceLine{ProfileDevice: d})
 			continue
 		}

@@ -21,6 +21,8 @@ type ProfileDevice struct {
 	Session bool
 	// Aria is the sign-out button's label ("Sign out Chrome on Linux, 2 hours ago").
 	Aria string
+	// Name is what the person called it: a browser's own name ("" when it has none) or an app's name.
+	Name string
 }
 
 // ProfileBook is a book under way in "Also in progress": the card and at most one resume control, the
@@ -83,17 +85,80 @@ templ meChevron() {
 	<span class="ts-me__chev" aria-hidden="true"></span>
 }
 
-// profileRow is one linked row of the Account card.
-templ profileRow(href, title, caption string) {
-	<a class="ts-me__row" href={ templ.SafeURL(href) }>
-		<span class="ts-me__rowtext">
-			<span class="body ts-me__rowtitle">{ title }</span>
+// profileCaption is the line under a menu entry: the devices, people, libraries and backups summaries.
+func profileCaption(v ProfileView, key string) string {
+	switch key {
+	case "devices":
+		return v.DevicesLine
+	case "users":
+		return v.UsersRow
+	case "libraries":
+		return v.Libraries
+	case "backups":
+		return v.Backups
+	}
+	return ""
+}
+
+// profileMenuLink is one entry of a Profile menu.
+templ profileMenuLink(href, label, caption string) {
+	<a class="ts-chipmenu__item ts-profile__mitem" href={ templ.SafeURL(href) }>
+		<span class="ts-profile__mtext">
+			<span>{ label }</span>
 			if caption != "" {
 				<span class="caption ts-me__lead">{ caption }</span>
 			}
 		</span>
-		@meChevron()
 	</a>
+}
+
+// profileMenus are the two buttons in the head: Account and Settings. Each is a <details> menu
+// (shell.js closes it on Escape and on a click elsewhere), so the links work without a script. The
+// links come from the Settings side list (prefsSettingsItems, prefsServerItems), so they cannot drift.
+templ profileMenus(v ProfileView) {
+	<div class="ts-profile__menus">
+		<details class="ts-chipmenu ts-profile__menu" id="pf-menu-account" data-ts-chipmenu>
+			<summary class="ts-btn ts-btn--secondary">
+				Account
+				@chevron()
+			</summary>
+			<div class="ts-chipmenu__body">
+				<div class="ts-chipmenu__group" role="group" aria-label="Account">
+					@profileMenuLink(prefsDevicesItem().Href, prefsDevicesItem().Label, profileCaption(v, "devices"))
+					if v.NoPassword {
+						@profileMenuLink("/welcome", "Keep your place", "Add a password so you can sign in elsewhere")
+					} else {
+						@profileMenuLink("/me/password", "Change password", "")
+					}
+					<form method="post" action="/logout" class="ts-profile__signout" hx-boost="false">
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<button type="submit" class="ts-chipmenu__item ts-profile__mitem ts-profile__mquiet">Sign out</button>
+					</form>
+				</div>
+			</div>
+		</details>
+		<details class="ts-chipmenu ts-chipmenu--end ts-profile__menu" id="pf-menu-settings" data-ts-chipmenu>
+			<summary class="ts-btn ts-btn--secondary">
+				Settings
+				@chevron()
+			</summary>
+			<div class="ts-chipmenu__body">
+				<div class="ts-chipmenu__group" role="group" aria-label="Settings">
+					for _, it := range prefsSettingsItems() {
+						@profileMenuLink(it.Href, it.Label, "")
+					}
+				</div>
+				if items := prefsServerItems(PrefsNav{Users: v.UsersRow != "", Libraries: v.Libraries != "", Email: v.Email, Backups: v.Backups != ""}); len(items) > 0 {
+					<div class="ts-chipmenu__group" role="group" aria-labelledby="pf-menu-server">
+						<p class="ts-chipmenu__head" id="pf-menu-server">Your server</p>
+						for _, it := range items {
+							@profileMenuLink(it.Href, it.Label, profileCaption(v, it.Key))
+						}
+					</div>
+				}
+			</div>
+		</details>
+	</div>
 }
 
 // profileBook is one "Also in progress" entry: the card, then its one round resume control.
@@ -124,7 +189,7 @@ templ Profile(v ProfileView) {
 					}
 				</span>
 			</div>
-			<a class="ts-btn ts-btn--quiet ts-profile__settings" href="/me/settings">Settings</a>
+			@profileMenus(v)
 		</header>
 		if v.Banner != "" {
 			<p class="ts-banner ts-me__banner" role="status">
@@ -191,34 +256,6 @@ templ Profile(v ProfileView) {
 						}
 					</section>
 				}
-				<section class="ts-profile__card ts-profile__account" aria-labelledby="pf-account">
-					<h2 id="pf-account" class="ts-overline ts-profile__group">Account</h2>
-					if v.NoPassword {
-						@profileRow("/welcome", "Keep your place", "Add a password so you can sign in elsewhere")
-					} else {
-						@profileRow("/me/password", "Change password", "")
-					}
-					@profileRow("/me/devices", "Your devices", v.DevicesLine)
-					if v.Libraries != "" || v.UsersRow != "" || v.Email || v.Backups != "" {
-						<h2 class="ts-overline ts-profile__group">Your server</h2>
-						if v.UsersRow != "" {
-							@profileRow("/admin/users", "Users & invites", v.UsersRow)
-						}
-						if v.Libraries != "" {
-							@profileRow("/admin/libraries", "Libraries", v.Libraries)
-						}
-						if v.Email {
-							@profileRow("/admin/email", "Email", "Send invitations from Tendshelf")
-						}
-						if v.Backups != "" {
-							@profileRow("/admin/backups", "Backups", v.Backups)
-						}
-					}
-				</section>
-				<form method="post" action="/logout" class="ts-me__signout" hx-boost="false">
-					<input type="hidden" name="_csrf" value={ v.CSRF }/>
-					<button type="submit" class="ts-btn ts-btn--secondary ts-btn--block">Sign out</button>
-				</form>
 				<p class="caption ts-me__foot">Tendshelf { v.Version } · open source</p>
 			</div>
 		</div>
