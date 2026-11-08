@@ -179,6 +179,19 @@ func newLookupBook(t *testing.T) (*lookupEnv, string) {
 	return e, b.ID
 }
 
+// A book an upload placed under the "Unknown author" folder has no author, so a look-up is not sent one.
+func TestLookupQueryPlaceholderAuthor(t *testing.T) {
+	e := newLookupEnv(t)
+	e.write(metadata.UnknownAuthorFolder+"/Dracula/p.m4b", mediatest.FakeFile{Tags: map[string]string{"album": "Dracula"}})
+	e.scanAndProbe()
+	b := e.book(metadata.UnknownAuthorFolder + "/Dracula")
+	e.local(b.ID)
+	q, err := e.svc.LookupQuery(bg, b.ID)
+	if err != nil || q.Title != "Dracula" || q.Author != "" {
+		t.Fatalf("query: %+v %v", q, err)
+	}
+}
+
 func TestLookupFromOnline(t *testing.T) {
 	d := metadata.FromOnline(online.Book{
 		Title: "The Test Match", Subtitle: "A Synthetic Romance", Publisher: "Example Audio", Language: "english",

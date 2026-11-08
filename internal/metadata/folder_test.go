@@ -101,6 +101,11 @@ func TestFolderNames(t *testing.T) {
 				title: "Bridesmaid for Hire", series: []SeriesRef{{"Bridesmaid for Hire", "1"}}},
 			{name: "by author does not cut a title when the folders name the author", bookRoot: "/lib/Ann Author/Surrounded by Idiots",
 				title: "Surrounded by Idiots", authors: []string{"Ann Author"}},
+			{name: "the upload placeholder folder is no author", bookRoot: "/lib/" + UnknownAuthorFolder + "/Dracula", title: "Dracula"},
+			{name: "the placeholder is no author above a series", bookRoot: "/lib/" + UnknownAuthorFolder + "/Moon Series/Book 3 - The Tide",
+				title: "The Tide", series: []SeriesRef{{"Moon Series", "3"}}},
+			{name: "a real author whose name only starts like the placeholder", bookRoot: "/lib/Unknown Author Jr/Dracula",
+				title: "Dracula", authors: []string{"Unknown Author Jr"}},
 			{name: "book root equals the library folder", bookRoot: "/lib", title: "lib"},
 		}
 		for _, c := range cases {
