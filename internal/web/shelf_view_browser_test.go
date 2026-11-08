@@ -5,8 +5,8 @@ package web
 import (
 	"fmt"
 	"math"
-	"path/filepath"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
