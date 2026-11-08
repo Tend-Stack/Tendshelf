@@ -25,9 +25,12 @@ on:
 permissions:
   contents: read
 
+# Desktop and Android share one queue, so a push runs at most two jobs at once (this and ci.yml) on the two runners.
+# Runs in the group go one at a time and are not cancelled (one workflow must not cancel the other); a newer push's
+# waiting run replaces an older waiting one.
 concurrency:
-  group: tendshelf-desktop-${{ gitea.ref }}
-  cancel-in-progress: true
+  group: tendshelf-side-${{ gitea.ref }}
+  cancel-in-progress: false
 
 jobs:
   desktop:

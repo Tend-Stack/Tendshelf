@@ -6,8 +6,28 @@ name: Tendshelf checks
 on:
   push:
     branches: [main]
+    # A push that changes only these never reaches the server's Go code, so it does not start the 30 minute race suite.
+    # NOTICES.md is not listed: reader_settings_test.go reads it. android/ and desktop/ have their own workflows.
+    paths-ignore:
+      - "docs/**"
+      - "android/**"
+      - "desktop/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
   pull_request:
     branches: [main]
+    # A push that changes only these never reaches the server's Go code, so it does not start the 30 minute race suite.
+    # NOTICES.md is not listed: reader_settings_test.go reads it. android/ and desktop/ have their own workflows.
+    paths-ignore:
+      - "docs/**"
+      - "android/**"
+      - "desktop/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
   workflow_dispatch:
 
 permissions:
