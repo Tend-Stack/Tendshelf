@@ -286,7 +286,7 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := pages.BookRemoveView{
-		Title: bookRemoveConfirm, Body: fmt.Sprintf(bookRemoveBody, len(files)), Button: bookRemoveButton, Cancel: bookRemoveCancel,
+		Title: bookRemoveConfirm, Body: bookRemoveText(len(files)), Button: bookRemoveButton, Cancel: bookRemoveCancel,
 		Action: "/books/" + b.ID + "/remove", CancelHref: "/books/" + b.ID, CSRF: s.csrf.TokenFrom(r.Context()),
 	}
 	for _, f := range files {
