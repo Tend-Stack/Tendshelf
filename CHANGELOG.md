@@ -6,6 +6,8 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### What you can do
 
+- **Find your account and settings at once.** Profile now opens with two buttons, Account and Settings, each with a short menu of
+  everything inside. On a computer your picture and name stay at the bottom of the side menu.
 - **Listen in a podcast app.** A book or a series with audio now has a "Podcast feed" button, for people who may download it. It makes a
   private address you paste into AntennaPod, Pocket Casts, Apple Podcasts or Overcast; the app then plays the original audio, chapters
   included. The address is shown once, with a QR code, and each address is listed on Your devices with the book or series it carries
