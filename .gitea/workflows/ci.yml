@@ -43,7 +43,7 @@ jobs:
     runs-on: [tend-ci, linux-arm64]
     container:
       image: docker.gitea.com/runner-images:ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       CI: "true"
     steps:
