@@ -176,6 +176,7 @@ func TestBoostedRequestFullPage(t *testing.T) {
 	norm := func(s string) string {
 		s = regexp.MustCompile(`data-ts-person="[^"]*"`).ReplaceAllString(s, "") // each call builds its own app and owner
 		s = regexp.MustCompile(`name="_csrf" value="[^"]*"`).ReplaceAllString(s, "")
+		s = regexp.MustCompile(`ts-avatar--c[0-9]`).ReplaceAllString(s, "") // the colour follows the random id
 		return regexp.MustCompile(`X-CSRF-Token&#34;:&#34;[^&]*`).ReplaceAllString(s, "")
 	}
 	if !strings.Contains(boosted, "<!doctype html>") && !strings.Contains(strings.ToLower(boosted), "<!doctype html>") {

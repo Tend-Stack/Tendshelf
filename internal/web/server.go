@@ -406,6 +406,7 @@ func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, 
 		Shelves:      s.sidebarShelves(r),
 		Player:       s.withEyesFree(playerMsgs()),
 		Person:       currentUser(r).ID,
+		Account:      s.navAccount(r),
 		ChunkBytes:   s.chunkBytes,
 		Offline:      offlineMsgs(),
 		Shell:        shell,
@@ -555,3 +556,9 @@ func crumbFor(path string) components.Crumb {
 // noOfflineScript keeps offline.js out of a shell window, except the Android app's: there it carries the reading
 // flush and the bookmark queue (A9, decision 0027) and its worker and download code stay off by data-shell.
 func noOfflineScript(shell string) bool { return shell != "" && shell != "android" }
+
+// navAccount is the person the navigation's account chip shows: avatar, name and kind.
+func (s *server) navAccount(r *http.Request) components.NavAccount {
+	u := currentUser(r)
+	return components.NavAccount{ID: u.ID, Name: u.DisplayName, Kind: roleLabel(string(u.Kind()))}
+}

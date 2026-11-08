@@ -82,7 +82,7 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 	ctx := r.Context()
 	u := currentUser(r)
 	v := pages.ProfileView{
-		CSRF: s.csrf.TokenFrom(ctx), UserID: u.ID, Name: u.DisplayName, Role: roleLabel(string(u.Role)),
+		CSRF: s.csrf.TokenFrom(ctx), UserID: u.ID, Name: u.DisplayName, Role: roleLabel(string(u.Kind())),
 		Version: s.version,
 	}
 	if r.URL.Query().Get("changed") == "password" {

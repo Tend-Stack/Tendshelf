@@ -30,6 +30,8 @@ type Page struct {
 	// a link inside the swapped content is the only way a page keeps its own look after a swap.
 	// Frame pages (no boosting) link theirs in the head.
 	Styles []string
+	// Account is the signed-in person for the account chip and the Profile tab's avatar (Layout only).
+	Account NavAccount
 	// Admin shows the "Your server" group in the desktop sidebar.
 	Admin bool
 	// Users shows "Users & invites" in the sidebar; UsersWaiting is its count text ("" hides it).
@@ -139,9 +141,9 @@ templ Layout(p Page, body templ.Component) {
 			@DesktopBar(p)
 			@OfflineBanner(p)
 			<div class="ts-shell">
-				@TabBar(p.Current, p.Shell)
-				@SideRail(p.Current, p.Shell)
-				@Sidebar(p.Current, p.Admin, UsersLink{Show: p.Users, Waiting: p.UsersWaiting}, p.Shelves, p.NavRail, p.CSRF, true, p.Shell)
+				@TabBar(p.Current, p.Shell, p.Account)
+				@SideRail(p.Current, p.Shell, p.Account)
+				@Sidebar(p.Current, p.Admin, UsersLink{Show: p.Users, Waiting: p.UsersWaiting}, p.Shelves, p.NavRail, p.CSRF, true, p.Shell, p.Account)
 				<main
 					id="main"
 					class="ts-main"
