@@ -2,9 +2,7 @@
 
 Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-numbers.md)). Dates are UTC.
 
-## 2026.5.0
-
-Released 2026-11-08. It brings Contributors, sign-in links for people without a password, and waveforms for very long books.
+## Unreleased
 
 ### What you can do
 
@@ -13,6 +11,22 @@ Released 2026-11-08. It brings Contributors, sign-in links for people without a 
   included. The address is shown once, with a QR code, and each address is listed on Your devices with the book or series it carries
   and when an app last used it, where you can turn it off. Removing someone's right to download, disabling them or a password reset
   stops their feeds too.
+- **Have a book read aloud.** In the reader, "Read aloud" speaks the book with a voice already on your computer or phone,
+  sentence by sentence, and marks the sentence being read. Play, Pause, Back one sentence and Forward one sentence sit in the
+  reader's bottom bar; "Voice and speed" picks the voice and a speed from 0.8× to 2×. If you scroll away, "Back to the voice"
+  takes you back. It keeps going into the next chapter and stops at the end of the book. The text never leaves your device, and
+  only voices that run on the device are offered. In the Android app it uses the phone's own voices.
+
+### Upgrading
+
+This version uses database schema 36 (it was 35 in 2026.5.0).
+
+## 2026.5.0
+
+Released 2026-11-08. It brings Contributors, sign-in links for people without a password, and waveforms for very long books.
+
+### What you can do
+
 - **Invite someone as a Contributor.** Next to Listener, Member and Admin there is now Contributor: a person who listens like a
   member and can also add books. Their books go into a folder of their own inside the upload folder, and they can fix the details,
   look up the book online, change the cover and remove the books they added, never anyone else's. They add books only to a whole
