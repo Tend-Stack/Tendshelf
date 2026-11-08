@@ -223,6 +223,7 @@ templ Head(p Page, extraCSS ...string) {
 		if p.Shell == "android" {
 			<script type="module" src={ p.Assets.URL("js/native-audio.js") }></script>
 			<script type="module" src={ p.Assets.URL("js/native-downloads.js") }></script>
+			<script type="module" src={ p.Assets.URL("js/native-speech.js") }></script>
 		}
 	</head>
 }

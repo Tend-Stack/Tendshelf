@@ -34,6 +34,7 @@ class MainActivity : Activity() {
     private lateinit var chooser: FileChooser
     private lateinit var store: TokenStore
     private lateinit var bridge: Bridge
+    private lateinit var speech: Speech
     private lateinit var pages: StartPages
     private lateinit var signOut: SignOut
     private lateinit var parent: FrameLayout
@@ -59,7 +60,8 @@ class MainActivity : Activity() {
         WebHandle.current = web
         signOut = SignOut(web, store, api, pages, { getString(it) }) { remote?.stopAndClear() }
         flow = ConnectFlow(this, web, store, api, pages, signOut)
-        bridge = Bridge({ flow.state }, { store.origin }, ::applyTheme)
+        speech = Speech(this)
+        bridge = Bridge({ flow.state }, { store.origin }, ::applyTheme, speech)
         Offline.onChange = { id -> main.post { bridge.pushDownload(id) } }
         flow.onState = ::syncBridge
         saver = FileSaver(this) { store.origin }
@@ -228,6 +230,7 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         controller?.let { MediaController.releaseFuture(it) }
         WebHandle.current = null
+        speech.shutdown()
         if (!rendererLost) web.destroy()
         super.onDestroy()
     }

@@ -111,6 +111,24 @@ To submit, from the operator's own GitLab account: fork `https://gitlab.com/fdro
 request builds the tag; read its log for scanner findings or a mismatch with the release APK. Each later release needs
 only its tag, its GitHub APK and a `changelogs/<versionCode>.txt` (`UpdateCheckMode: Tags` finds new versions).
 
+## Read aloud
+
+The reader speaks the book through the phone's own text-to-speech engine (`android.speech.tts.TextToSpeech`, platform API, no new dependency;
+decision [0032](decisions/0032-read-aloud.md)). Android System WebView has no usable `speechSynthesis`, so `native-speech.js` (loaded only when
+`data-shell="android"`) is the engine `reader-aloud.js` expects, and `Speech.kt` is its other half.
+
+- Page to app, three new bridge words (protocol version 1, additive; an older app drops them and the page shows no control):
+  `tts voices`, `tts stop` and `say <n> <rate> <voiceId> <text>`. `n` is 1 to 9 digits without a leading zero, `rate` the `speed` form
+  (`d.dd`, 0.50 to 3.00 in steps of 0.05), `voiceId` the engine's voice name (the usual id charset, with a letter or digit).
+- `say` is the first page message that carries free text, the sentence to speak: 1 to 4,000 UTF-16 units, no control character (below U+0020 or
+  U+007F to U+009F), no unpaired surrogate. It goes only to the speech engine; the log gets its length, and nothing is echoed. Every other message keeps
+  the 128-character ASCII rule.
+- App to page: `{"t":"voices","list":[{"id","lang","def"}]}` (at most 200, empty when the engine failed to start) and
+  `{"t":"tts","n":1,"ev":"start|end|error|stopped"}`. `stopped` is sent when the app stops speech by itself.
+- Only voices that need no network and are installed are listed or used; a `say` that names any other voice is answered with `error`.
+- Speech runs while the app is in front: `onStop`, a new document, sign-out and `onDestroy` stop it; the reader keeps its place.
+- The `<queries>` entry for `android.intent.action.TTS_SERVICE` lets the app bind the engine on targetSdk 36.
+
 ## Checks before a release
 
 - `android/tools/check-android.sh` runs `:shared:test` and `lintRelease`. `.gitea/workflows/android.yml` runs it on every push that touches `android/`, and `make-apk.sh` runs it before the tag build. Both need the two `TS_ANDROID_CMDLINE_TOOLS_*` variables; without them the job says it was skipped, which is not a pass.

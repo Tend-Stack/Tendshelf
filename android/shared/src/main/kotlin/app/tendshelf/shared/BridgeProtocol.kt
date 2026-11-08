@@ -34,12 +34,31 @@ sealed interface BridgeMessage {
 
     /** `dl add <id>`, `dl remove <id>` or `dl ask <id>` (A7): keep a book on the phone, drop it, or ask how it stands. */
     data class Download(val action: String, val bookId: String) : BridgeMessage
+
+    /** `tts voices`: the page asks for the voices on the phone that need no network (decision 0032). */
+    data object TtsVoices : BridgeMessage
+
+    /** `tts stop`: stop speaking now. */
+    data object TtsStop : BridgeMessage
+
+    /**
+     * `say <n> <rate> <voiceId> <text>`: speak one sentence (decision 0032). The first page message that carries free text;
+     * [text] passed [parseSay]'s rules, goes only to the speech engine and is never logged or echoed.
+     */
+    data class Say(val n: Int, val rate: Double, val voiceId: String, val text: String) : BridgeMessage
 }
 
 const val MAX_LENGTH = 128
 
+/** The longest text `say` carries, in UTF-16 units. */
+const val SAY_TEXT_MAX = 4000
+
+/** The longest whole `say` message: "say " + 9 digits + rate + a 64-character id + 3 spaces + the text, rounded up. */
+const val SAY_MAX_LENGTH = 4200
+
 /** The one place a page string becomes a message. Null for anything outside the grammar. */
 fun parseBridge(raw: String?): BridgeMessage? {
+    if (raw != null && raw.startsWith("say ")) return parseSay(raw)
     if (raw == null || raw.isEmpty() || raw.length > MAX_LENGTH) return null
     if (raw.any { it.code < 0x20 || it.code > 0x7e }) return null
     val parts = raw.split(' ')
@@ -61,9 +80,55 @@ fun parseBridge(raw: String?): BridgeMessage? {
         "theme" -> if (parts.size == 2 && validHex(parts[1])) BridgeMessage.Theme(parts[1]) else null
         "answer" -> if (parts.size == 2 && (parts[1] == "here" || parts[1] == "there")) BridgeMessage.Answer(parts[1] == "here") else null
         "sleep" -> if (parts.size == 2) sleepWord(parts[1]) else null
+        "tts" -> when {
+            parts.size == 2 && parts[1] == "voices" -> BridgeMessage.TtsVoices
+            parts.size == 2 && parts[1] == "stop" -> BridgeMessage.TtsStop
+            else -> null
+        }
         "dl" -> if (parts.size == 3 && validId(parts[2]) && parts[1] in DL_WORDS) BridgeMessage.Download(parts[1], parts[2]) else null
         else -> null
     }
+}
+
+/**
+ * `say <n> <rate> <voiceId> <text>`. The head (up to the fourth space) keeps the single-space ASCII grammar; the text is the rest:
+ * 1 to [SAY_TEXT_MAX] UTF-16 units, no code point below 0x20 or from 0x7f to 0x9f, no unpaired surrogate.
+ */
+private fun parseSay(raw: String): BridgeMessage? {
+    if (raw.length > SAY_MAX_LENGTH) return null
+    val a = raw.indexOf(' ')
+    val b = raw.indexOf(' ', a + 1)
+    val c = raw.indexOf(' ', b + 1)
+    val d = raw.indexOf(' ', c + 1)
+    if (b < 0 || c < 0 || d < 0) return null
+    val nText = raw.substring(a + 1, b)
+    val rateText = raw.substring(b + 1, c)
+    val voice = raw.substring(c + 1, d)
+    val text = raw.substring(d + 1)
+    if (nText.length !in 1..9 || nText[0] == '0' || !nText.all { it.isAsciiDigit() }) return null
+    val rate = speed(rateText) ?: return null
+    // validId also allows a bare "-" (the page's "no place" word); a voice id must hold a letter or a digit.
+    if (!validId(voice) || voice.none { it.isLetterOrDigit() }) return null
+    if (!validSayText(text)) return null
+    return BridgeMessage.Say(nText.toInt(), rate, voice, text)
+}
+
+private fun validSayText(t: String): Boolean {
+    if (t.isEmpty() || t.length > SAY_TEXT_MAX) return false
+    var i = 0
+    while (i < t.length) {
+        val ch = t[i]
+        when {
+            ch.code < 0x20 || ch.code in 0x7f..0x9f -> return false
+            Character.isHighSurrogate(ch) -> {
+                if (i + 1 >= t.length || !Character.isLowSurrogate(t[i + 1])) return false
+                i++
+            }
+            Character.isLowSurrogate(ch) -> return false
+        }
+        i++
+    }
+    return true
 }
 
 private val DL_WORDS = setOf("add", "remove", "ask")
@@ -126,6 +191,23 @@ fun encodeDl(bookId: String, state: String, pct: Int, sized: Boolean = true): St
     val known = state in setOf("none", "queued", "downloading", "paused", "ready", "failed", "stale")
     return "{\"t\":\"dl\",\"bookId\":${jsonString(bookId)},\"state\":\"${if (known) state else "none"}\",\"pct\":${pct.coerceIn(0, 100)}${if (sized) "" else ",\"known\":false"}}"
 }
+
+/** A voice the page may use: [id] passed [validId], [lang] is `[A-Za-z0-9-]{2,35}`; a voice that fails either is left out; at most 200. */
+fun encodeVoices(list: List<VoiceInfo>): String {
+    val items = list.filter { validId(it.id) && validLang(it.lang) }.take(MAX_VOICES).joinToString(",") {
+        "{\"id\":${jsonString(it.id)},\"lang\":${jsonString(it.lang)},\"def\":${it.isDefault}}"
+    }
+    return "{\"t\":\"voices\",\"list\":[$items]}"
+}
+
+/** One speech event for utterance [n]; an unknown [ev] is `error`. */
+fun encodeTts(n: Int, ev: String): String {
+    val word = if (ev == "start" || ev == "end" || ev == "error" || ev == "stopped") ev else "error"
+    return "{\"t\":\"tts\",\"n\":${n.coerceIn(0, 999_999_999)},\"ev\":\"$word\"}"
+}
+
+fun validLang(s: String): Boolean =
+    s.length in 2..35 && s.all { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '-' }
 
 fun encodeBack(): String = "{\"t\":\"back\"}"
 

@@ -204,7 +204,7 @@ func TestA1ShellPage(t *testing.T) {
 	plain := a.do(http.MethodGet, "/", nil, nil, ck)
 	app := a.do(http.MethodGet, "/", nil, nil, ck, a1Android)
 	pb, ab := plain.Body.String(), app.Body.String()
-	for _, want := range []string{`data-shell="android"`, "/js/native-audio.", "/js/native-downloads."} {
+	for _, want := range []string{`data-shell="android"`, "/js/native-audio.", "/js/native-downloads.", "/js/native-speech."} {
 		if !strings.Contains(ab, want) || strings.Contains(pb, want) {
 			t.Errorf("%q: android %v, browser %v", want, strings.Contains(ab, want), strings.Contains(pb, want))
 		}
