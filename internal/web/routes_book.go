@@ -480,6 +480,9 @@ func (s *server) getSeries(w http.ResponseWriter, r *http.Request) {
 			v.Rows[i].AriaLabel = joinNonEmpty(" ", bookSeqLabel(seqs[sp.Books[i].ID]), sp.Books[i].Title) + ", " + v.Rows[i].ProgressLabel
 		}
 	}
+	if fb, err := s.lib.SeriesFeedBooks(ctx, s.feedScope(currentUser(r)), sp.ID, 1); err == nil && len(fb) > 0 {
+		v.FeedHref = "/series/" + sp.ID + "/feed"
+	}
 	s.pageStyled(w, r, http.StatusOK, sp.Name, "library", pages.Series(v), nil, pages.BookStyles...)
 }
 

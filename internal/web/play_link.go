@@ -185,6 +185,9 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 		v.ShareHref = "/books/" + book.ID + "/share"
 	}
 	v.Download = s.bookDownloadView(r, book, v.Button != nil || mayRead)
+	if v.Download != nil && v.Button != nil {
+		v.FeedHref = "/books/" + book.ID + "/feed" // a podcast feed needs the download right and audio
+	}
 	return v, nil
 }
 

@@ -334,7 +334,7 @@ func (c *Checker) LibraryFilter(u users.User, alias string) Filter {
 }
 
 // BookFilterFor limits a query on books (aliased alias) to the books u may do a to, agreeing with Can for
-// ViewBook, ReadText and DownloadText. Can takes the maximum of each right across all covering grants, so
+// ViewBook, DownloadBook, ReadText and DownloadText. Can takes the maximum of each right across all covering grants, so
 // the filter needs one EXISTS per right instead of one grant that has them all. Any other action matches nothing.
 func (c *Checker) BookFilterFor(u users.User, alias string, a Action) Filter {
 	checkAlias(alias)
@@ -342,6 +342,8 @@ func (c *Checker) BookFilterFor(u users.User, alias string, a Action) Filter {
 	switch a {
 	case ViewBook:
 		rights = []string{"1=1"}
+	case DownloadBook:
+		rights = []string{"share_g.can_download = 1"}
 	case ReadText:
 		rights = []string{"share_g.can_read = 1"}
 	case DownloadText:

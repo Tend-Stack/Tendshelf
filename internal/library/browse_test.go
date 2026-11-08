@@ -571,3 +571,51 @@ func TestSeriesOrder(t *testing.T) {
 		t.Errorf("unknown = %v", err)
 	}
 }
+
+// TestSeriesFeedBooks: the feed list follows SeriesInfo's order, leaves out books without a present
+// audio file, refused books and books the scope hides, and honours its limit.
+func TestSeriesFeedBooks(t *testing.T) {
+	r, st := newRepo(t)
+	_, f := librarytest.NewLibrary(t, r, "Main", "/audio")
+	var anyBook library.Book
+	for _, s := range []struct{ title, seq string }{{"Two", "2"}, {"One", "1"}, {"Three", "3"}} {
+		anyBook = librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: s.title, Series: "Saga", Sequence: s.seq})
+	}
+	textOnly := librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "Text only", Series: "Saga", Sequence: "0"})
+	if _, err := st.Writer().Exec(`UPDATE audio_files SET missing_since = 1 WHERE book_id = ?`, textOnly.ID); err != nil {
+		t.Fatal(err)
+	}
+	librarytest.AddBook(t, r, f, librarytest.BookSpec{Title: "Hidden", Series: "Saga", Sequence: "0", Refused: library.RefusedDRM})
+	series, err := r.BookSeries(ctx, anyBook.ID)
+	if err != nil || len(series) != 1 {
+		t.Fatal(series, err)
+	}
+	sid := series[0].SeriesID
+	titles := func(ids []string) (out []string) {
+		sp, err := r.CardsByID(ctx, allScope, ids)
+		if err != nil {
+			t.Fatal(err)
+		}
+		byID := map[string]string{}
+		for _, c := range sp {
+			byID[c.ID] = c.Title
+		}
+		for _, id := range ids {
+			out = append(out, byID[id])
+		}
+		return out
+	}
+	ids, err := r.SeriesFeedBooks(ctx, allScope, sid, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := titles(ids), []string{"One", "Two", "Three"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("feed books = %v, want %v", got, want)
+	}
+	if ids, err := r.SeriesFeedBooks(ctx, allScope, sid, 2); err != nil || len(ids) != 2 {
+		t.Errorf("limit 2 = %v, %v", ids, err)
+	}
+	if ids, err := r.SeriesFeedBooks(ctx, noneScope, sid, 100); err != nil || len(ids) != 0 {
+		t.Errorf("hidden scope = %v, %v", ids, err)
+	}
+}

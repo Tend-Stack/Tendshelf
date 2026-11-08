@@ -56,6 +56,8 @@ type BookPlayView struct {
 	// Download is the offline Download control; nil unless the person may download the book and it
 	// has a playable file (M3a). Both of its nodes start hidden: js/downloads.js shows one.
 	Download *BookDownloadView
+	// FeedHref opens the Podcast feed page; empty without the download right or an audio file.
+	FeedHref string
 }
 
 // BookDownloadView is the Download pair on the book page: the button that starts a download and the
@@ -228,6 +230,9 @@ templ BookPlay(v *BookPlayView) {
 					</form>
 				}
 			</div>
+			if v.FeedHref != "" {
+				<a class="ts-btn ts-btn--quiet ts-book__feed" href={ templ.SafeURL(v.FeedHref) }>Podcast feed</a>
+			}
 		</div>
 	}
 }

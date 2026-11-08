@@ -115,7 +115,8 @@ type server struct {
 	grants     *share.Grants
 	invites    *share.Invites
 	links      *share.Links
-	linkKey    []byte // signs the share-link unlock cookie; derived from the CSRF key, never the same bytes
+	feeds      *share.Feeds // podcast feeds (decision 0031), see routes_feeds.go
+	linkKey    []byte       // signs the share-link unlock cookie; derived from the CSRF key, never the same bytes
 	proxies    auth.Proxies
 	lib        *library.Repo
 	dataDir    string
@@ -241,6 +242,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		grants:     grants,
 		invites:    invites,
 		links:      share.NewLinks(opts.Store, checker, opts.Now),
+		feeds:      share.NewFeeds(opts.Store, opts.Now),
 		linkKey:    lk.Sum(nil),
 		proxies:    opts.TrustedProxies,
 		lib:        opts.Library,
@@ -320,6 +322,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerPlayer(mux)
 	s.registerAPI(mux)
 	s.registerAppKeys(mux)
+	s.registerFeedPages(mux)
 	s.registerAppConnect(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
@@ -348,9 +351,10 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		})
 	})
 	s.registerInstall(outer)
-	s.registerOPDS(outer) // app-key surface: outside the cookie chain, see appauth.go
+	s.registerOPDS(outer)  // app-key surface: outside the cookie chain, see appauth.go
+	s.registerFeeds(outer) // feed-token surface: outside the cookie chain, see routes_feeds.go
 	outer.Handle("/", s.shellLink(guarded))
-	return s, SecurityHeaders(s.kosyncFront(outer)), nil
+	return s, SecurityHeaders(feedsFront(s.kosyncFront(outer))), nil
 }
 
 // sessionOrCookieBinding binds a CSRF token to the signed-in session, or to the ts_csrf cookie when

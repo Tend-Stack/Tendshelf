@@ -112,6 +112,9 @@ func a11yPages() []a11yPage {
 		row("author", "/authors/{id}", func(e *a11yEnv) string { return "/authors/" + e.AuthorID }, both, "main", true),
 		row("narrator", "/narrators/{id}", func(e *a11yEnv) string { return "/narrators/" + e.NarratorID }, both, "main", true),
 		row("series", "/series/{id}", func(e *a11yEnv) string { return "/series/" + e.SeriesID }, both, "main", true),
+		row("book-feed", "/books/{id}/feed", book("/feed"), both, "main", true),
+		row("series-feed", "/series/{id}/feed", func(e *a11yEnv) string { return "/series/" + e.SeriesID + "/feed" }, both, "main", true),
+		row("book-feed-made", "/books/{id}/feed", book("/feed"), []string{"feedmade"}, "main", true),
 		row("shelves", "/shelves", a11yStatic("/shelves"), both, "main", true),
 		row("shelf", "/shelves/{id}", func(e *a11yEnv) string { return "/shelves/" + e.ShelfID }, owner, "main", true),
 		row("shelf-empty", "/shelves/{id}", func(e *a11yEnv) string { return "/shelves/" + e.EmptyShelfID }, owner, "main", true),
@@ -262,7 +265,7 @@ func a11yRoutesInSource(t *testing.T) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prefixes := []string{"/hx/", "/api/", "/static/", "/stream/", "/covers/", "/peaks/", "/sw.js", "/healthz", "/probe/", "/opds"} // /opds is Atom XML for reading apps
+	prefixes := []string{"/hx/", "/api/", "/static/", "/stream/", "/covers/", "/peaks/", "/sw.js", "/healthz", "/probe/", "/opds", "/feeds/"} // /opds is Atom XML for reading apps, /feeds/ is RSS, audio and JSON for podcast apps
 	suffixes := []string{"/cover", "/photo", "/export", "/cover/{n}", "manifest", ".png", ".ico"}
 	seen := map[string]bool{}
 	for _, f := range files {

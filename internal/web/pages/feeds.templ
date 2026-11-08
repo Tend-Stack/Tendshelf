@@ -1,0 +1,92 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// FeedMakeView is the page that makes a podcast feed address for one book or series (decision 0031).
+// The handler writes every sentence.
+type FeedMakeView struct {
+	CSRF, Title, Lead, Privacy, NameLabel, NameHint, Make, ListNote, DevicesLabel string
+	BackHref, BackLabel, Action                                                   string
+}
+
+// FeedShownView is the one-time page that shows a new feed address.
+type FeedShownView struct {
+	Title, Lead, Note, AddressLabel, Address string
+	QR                                       *components.QRView
+	QRNote, BackHref, BackLabel              string
+	CopyLabel                                string
+}
+
+// FeedsView is the Podcast feeds section of "Your devices".
+type FeedsView struct {
+	CSRF, Heading, Lead, None, TurnOff string
+	Lines                              []AppKeyLine
+}
+
+// FeedMake is the form: an optional name for the app, and the sentence about who can see the address.
+templ FeedMake(v FeedMakeView) {
+	<div class="ts-me ts-akey">
+		<h1 class="title-2 ts-me__title">{ v.Title }</h1>
+		<p class="body ts-me__lead">{ v.Lead }</p>
+		<p class="body ts-me__lead">{ v.Privacy }</p>
+		<form method="post" action={ templ.URL(v.Action) } class="ts-akey__form">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<div class="ts-field">
+				<label class="ts-field__label" for="feed-name">{ v.NameLabel }</label>
+				<input id="feed-name" name="name" type="text" class="ts-input" maxlength="64" autocomplete="off" aria-describedby="feed-name-hint"/>
+				<span class="ts-field__hint" id="feed-name-hint">{ v.NameHint }</span>
+			</div>
+			<button type="submit" class="ts-btn ts-btn--primary">{ v.Make }</button>
+		</form>
+		<p class="caption ts-me__lead">
+			{ v.ListNote }
+			<a href="/me/devices">{ v.DevicesLabel }</a>
+		</p>
+		<a class="ts-btn ts-btn--secondary" href={ templ.URL(v.BackHref) }>{ v.BackLabel }</a>
+	</div>
+}
+
+// FeedShown shows a new address once, as a read-only field with a Copy button and a QR code when a phone can reach it.
+templ FeedShown(v FeedShownView) {
+	<div class="ts-me ts-akey">
+		<h1 class="title-2 ts-me__title">{ v.Title }</h1>
+		<p class="body ts-me__lead">{ v.Lead }</p>
+		<div class="ts-group ts-group--pad ts-akey__facts" role="status">
+			<label class="caption" for="feed-address">{ v.AddressLabel }</label>
+			<input class="ts-input" id="feed-address" type="text" readonly autofocus value={ v.Address }/>
+			<button type="button" class="ts-btn ts-btn--secondary" data-copy="#feed-address" hidden>{ v.CopyLabel }</button>
+			<p class="ts-sr" aria-live="polite" data-copy-status></p>
+			if v.QR != nil {
+				<div class="ts-pair__qr">
+					@components.QR(*v.QR)
+				</div>
+				<p class="caption">{ v.QRNote }</p>
+			}
+		</div>
+		<p class="body ts-me__lead">{ v.Note }</p>
+		<a class="ts-btn ts-btn--secondary" href={ templ.URL(v.BackHref) }>{ v.BackLabel }</a>
+	</div>
+}
+
+// Feeds is the section: the live feeds with a way to turn each off. Feeds are made on the book or series page.
+templ Feeds(v FeedsView) {
+	<section aria-labelledby="feeds-h" class="ts-me__section ts-group ts-akey ts-akey__section">
+		<h2 id="feeds-h" class="section ts-akey__title">{ v.Heading }</h2>
+		<p class="caption ts-me__lead">{ v.Lead }</p>
+		if len(v.Lines) == 0 {
+			<p class="body ts-akey__none">{ v.None }</p>
+		}
+		for _, k := range v.Lines {
+			<div class="ts-me__row ts-akey__row">
+				<span class="ts-me__rowtext">
+					<span class="body ts-me__rowtitle">{ k.Title }</span>
+					<span class="caption ts-me__lead">{ k.Meta }</span>
+				</span>
+				<form method="post" action={ templ.URL(k.Action) }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ k.Aria }>{ v.TurnOff }</button>
+				</form>
+			</div>
+		}
+	</section>
+}

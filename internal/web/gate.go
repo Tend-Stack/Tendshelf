@@ -192,6 +192,9 @@ func logPath(r *http.Request) string {
 	if isSignInPath(r.URL.Path) {
 		return signInPrefix + "…" // the token is the secret
 	}
+	if strings.HasPrefix(r.URL.Path, feedPrefix) {
+		return feedPrefix + "…" // the token is the secret
+	}
 	rest, ok := strings.CutPrefix(r.URL.Path, invitePrefix)
 	if !ok {
 		return r.URL.Path

@@ -430,6 +430,10 @@ func sweepRows() []sweepRow {
 		sweepGet("GET /authors/{id}", id(func(e *sweepEnv) string { return e.author }, "/authors/", ""), sweepStaff(200, 404)),
 		sweepGet("GET /narrators/{id}", id(func(e *sweepEnv) string { return e.narrator }, "/narrators/", ""), sweepStaff(200, 404)),
 		sweepGet("GET /series/{id}", id(func(e *sweepEnv) string { return e.series }, "/series/", ""), sweepStaff(200, 404)),
+		// Podcast feeds (decision 0031): the pages need the download right, which the member and the guest lack
+		// with or without the library grant.
+		sweepGet("GET /books/{id}/feed", sweepBookPath("/feed"), sweepStaff(200, 404)),
+		sweepGet("GET /series/{id}/feed", id(func(e *sweepEnv) string { return e.series }, "/series/", "/feed"), sweepStaff(200, 404)),
 		sweepGet("GET /covers/{bookID}", id(bookID, "/covers/", "?w=320"), sweepStaff(200, 404)),
 		// Stream (P1c-2)
 		sweepGet("GET /stream/{audioFileID}", sweepAudioPath(0, ""), sweepStaff(200, 404)),
@@ -568,6 +572,9 @@ func sweepRows() []sweepRow {
 		sweepPost("POST /me/words/{id}/delete", sweepStatic("/me/words/wd_none/delete"), nil, sweepSame(404), ""),
 		sweepPost("POST /me/reading/goal", sweepStatic("/me/reading/goal"), sweepFormOf(url.Values{"goal_books": {"12"}}), sweepSame(303), "/me/reading"),
 		sweepPost("POST /hx/me/nav", sweepStatic("/hx/me/nav"), sweepFormOf(url.Values{"nav": {"full"}}), sweepSame(200), ""),
+		sweepPost("POST /books/{id}/feed", sweepBookPath("/feed"), nil, sweepStaff(200, 404), ""),
+		sweepPost("POST /series/{id}/feed", id(func(e *sweepEnv) string { return e.series }, "/series/", "/feed"), nil, sweepStaff(200, 404), ""),
+		sweepPost("POST /me/feeds/{id}/revoke", sweepStatic("/me/feeds/zz-none/revoke"), nil, sweepSame(404), ""),
 		sweepPost("POST /me/app-keys", sweepStatic("/me/app-keys"), sweepFormOf(url.Values{"kind": {"web"}}), sweepSame(400), ""),
 		sweepPost("POST /me/password", sweepStatic("/me/password"), sweepFormOf(url.Values{"current": {"not the password at all"}, "password": {"a brand new passphrase"}}), sweepSame(422), ""),
 		sweepPost("POST /me/sessions/{sid}/signout", func(e *sweepEnv, role int) string { return "/me/sessions/" + e.secondS[role] + "/signout" }, nil, sweepSame(303), "/me/devices"),
@@ -840,6 +847,8 @@ func sweepRegistered(t *testing.T) []string {
 				strings.HasPrefix(path, "/dev/"), strings.HasPrefix(path, "/hx/dev/"),
 				path == "/opds" || strings.HasPrefix(path, "/opds/"): // app-key sign-in, not a cookie: opds_test.go covers it
 				continue
+			case path == "/feeds/" || strings.HasPrefix(path, "/feeds/"):
+				continue // feed token in the path, not a cookie: feeds_test.go covers it
 			}
 			seen[p] = true
 		}
