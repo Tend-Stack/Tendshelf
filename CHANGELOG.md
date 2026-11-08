@@ -6,6 +6,9 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### What you can do
 
+- **Download a whole series or shelf in one tap.** The series page and each shelf now have a "Download all" button, in the browser and in the
+  app. It asks first ("Download 12 books? About 34 GB."), skips books you already have, says if they will not fit, shows "Downloading 3 of 12"
+  with a Stop button, and tells you at the end how many did not download. It saves the audio; a book's text stays with its own Download.
 - **Find your account and settings at once.** Profile now opens with two buttons, Account and Settings, each with a short menu of
   everything inside. On a computer your picture and name stay at the bottom of the side menu.
 - **Listen in a podcast app.** A book or a series with audio now has a "Podcast feed" button, for people who may download it. It makes a

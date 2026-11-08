@@ -77,7 +77,7 @@ func DownloadAll(v DownloadAllView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span data-ts-dlall-label></span></button><p class=\"caption ts-dlall__status\" role=\"status\" data-ts-dlall-status hidden></p><button type=\"button\" class=\"ts-btn ts-btn--quiet ts-dlall__stop\" data-ts-dlall-stop hidden></button> <dialog class=\"ts-dialog ts-dlall__dialog\" aria-labelledby=\"ts-dlall-title\" data-ts-dlall-dialog><h2 class=\"ts-dialog__title\" id=\"ts-dlall-title\" data-ts-dlall-title></h2><p class=\"ts-dialog__body\" data-ts-dlall-body></p><div class=\"ts-dialog__actions\"><button type=\"button\" class=\"ts-btn ts-btn--quiet\" data-ts-dlall-cancel></button> <button type=\"button\" class=\"ts-btn\" data-ts-dlall-go></button></div></dialog></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<span data-ts-dlall-label></span></button><p class=\"caption ts-dlall__status\" role=\"status\" data-ts-dlall-status hidden></p><button type=\"button\" class=\"ts-btn ts-btn--quiet ts-dlall__stop\" data-ts-dlall-stop hidden></button> <dialog class=\"ts-dialog ts-dlall__dialog\" aria-labelledby=\"ts-dlall-title\" data-ts-dlall-dialog><h2 class=\"ts-dialog__title\" id=\"ts-dlall-title\" data-ts-dlall-title></h2><p class=\"ts-dialog__body\" data-ts-dlall-body></p><div class=\"ts-dialog__actions\"><button type=\"button\" class=\"ts-btn ts-btn--quiet\" data-ts-dlall-cancel></button> <button type=\"button\" class=\"ts-btn ts-btn--primary\" data-ts-dlall-go></button></div></dialog></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
