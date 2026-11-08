@@ -8,7 +8,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell (git describe --tags --long --always --dirty 2>/dev/null || echo dev) | sed -E 's/-0-g[0-9a-f]+//')
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: apk apk-debug version desktop desktop-check desktop-purego deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full visual-webkit player perf test-media test-scan-real
+.PHONY: apk apk-debug version desktop desktop-check desktop-purego deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full site-shots visual-webkit player perf test-media test-scan-real
 
 # Prints the version string builds embed.
 version:
@@ -88,6 +88,13 @@ visual-compare:
 	TENDSHELF_VISUAL_OUT=$(CURDIR)/.local/tests/visual-compare/a $(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
 	TENDSHELF_VISUAL_OUT=$(CURDIR)/.local/tests/visual-compare/b $(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
 	$(GO) run ./internal/testutil/capturediff .local/tests/visual-compare/a .local/tests/visual-compare/b
+
+# The screenshots of the public site, from the real pages on a seeded public-domain library (no real books).
+# Needs TENDSHELF_TEST_BROWSER. SITE_SHOTS is the output folder (default .local/site-shots, ignored by version control).
+SITE_SHOTS ?= $(CURDIR)/.local/site-shots
+
+site-shots:
+	TENDSHELF_SITE_SHOTS=$(SITE_SHOTS) $(GO) test -count=1 -tags dev -timeout 10m -run 'TestVisualSiteShots' ./internal/web/
 
 visual-full:
 	TENDSHELF_VISUAL_FULL=1 $(GO) test -count=1 -timeout 75m -tags dev -run '$(VISUAL_RUN)' ./internal/web/

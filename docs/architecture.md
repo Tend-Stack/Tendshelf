@@ -452,7 +452,10 @@ WebKitGTK; its automation window cannot be narrower than 447 CSS px, so WebKit c
 1440 and the 390 px layout is checked in Chromium. `make visual` (Chromium, needs
 `TENDSHELF_TEST_BROWSER`) and `make visual-webkit` (needs `TENDSHELF_TEST_WEBKIT_DRIVER`, best under
 `xvfb-run -a`) write captures to `.local/tests/visual/<run>/`. The `dev` build tag adds `/dev/kitchen-sink`
-and its `/hx/dev/*` fragments; release builds do not register them.
+and its `/hx/dev/*` fragments; release builds do not register them. `make site-shots` (same browser variable;
+`SITE_SHOTS=<folder>`, default `.local/site-shots/`) is `TestVisualSiteShots`: it seeds a small public-domain
+library (generated typographic covers, no real books) and writes the public site's screenshots as PNGs at 2x.
+It skips unless `TENDSHELF_SITE_SHOTS` is set, so `make visual` and CI never run it.
 
 ## Auth and sharing
 
