@@ -12,7 +12,7 @@ const (
 
 	// Board: AddEbookDesktop, AddEbookPhone.
 	ebookAddTitle    = "Add an ebook"
-	ebookAddLead     = "With the text and the narration together, anyone you share this book with can read along, or just read."
+	ebookAddLead     = "Add the text, and anyone you share this book with can read it too." // NEW: read-along was dropped (2026-11-04)
 	ebookFoundLabel  = "Found in your folders"
 	ebookOrAddLabel  = "Or add a file"
 	ebookChooseLabel = "Choose an ebook file" // NEW: the deck says "Choose an EPUB file"

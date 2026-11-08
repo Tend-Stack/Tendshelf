@@ -144,6 +144,10 @@ func parseBookName(name string, haveAuthor bool) BookName {
 	return out
 }
 
+// UnknownAuthorFolder is the folder name an upload with no author is placed under (internal/upload). It is a
+// placeholder, so FromPath reads it as no author. It lives here because upload imports metadata.
+const UnknownAuthorFolder = "Unknown author"
+
 // FromPath reads a book's details from where it lies under its library folder: the directories
 // above it name the author and the series, and its own name carries the rest. For a single-file
 // book (single true) the name is the file name without its extension.
@@ -167,6 +171,10 @@ func FromPath(folderRoot, bookRoot string, single bool) Details {
 		series, author = above[n-1], above[n-2]
 	} else if n == 1 {
 		author = above[0]
+	}
+	if author == UnknownAuthorFolder {
+		// The upload layout's stand-in for "no author" is not a person.
+		author = ""
 	}
 
 	var d Details

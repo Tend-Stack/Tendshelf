@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tend-Stack/tendshelf/internal/media"
+	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 )
 
@@ -158,7 +159,7 @@ func layout(lr *lroot, author, series, seq, title string, roots []string) (paren
 // (decision 0029), instead of the upload folder itself.
 func layoutIn(lr *lroot, base, author, series, seq, title string, roots []string) (parent, name string, ok bool) {
 	root := base
-	a := SafeName(author, "Unknown author")
+	a := SafeName(author, metadata.UnknownAuthorFolder)
 	t := SafeName(title, "Untitled book")
 	type cand struct {
 		dirs []string // directories below root, outermost first

@@ -474,6 +474,30 @@ func TestFormatsDownload(t *testing.T) {
 	}
 }
 
+// A book shows the Ebook chip only when it has a ready ebook file; an audio-only book has none, even for the
+// people who may edit text.
+func TestFormatsEbookChipNeedsFile(t *testing.T) {
+	l := fmt2Seed(t)
+	const chip = `ts-chip--static ts-num">Ebook`
+	path := "/books/" + l.book.ID
+	rec := l.get(l.owner, path, false)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), chip) {
+		t.Fatalf("book with a ready ebook: %d, chip missing", rec.Code)
+	}
+	if _, err := l.a.st.Writer().Exec(`DELETE FROM ebook_files WHERE book_id = ?`, l.book.ID); err != nil {
+		t.Fatal(err)
+	}
+	for name, ck := range map[string]*http.Cookie{"owner": l.owner, "admin": l.admin} {
+		rec := l.get(ck, path, false)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: %d", name, rec.Code)
+		}
+		if strings.Contains(rec.Body.String(), chip) {
+			t.Errorf("%s: audio-only book shows an Ebook chip", name)
+		}
+	}
+}
+
 func TestPlayerReadIcon(t *testing.T) {
 	l := fmt2Seed(t)
 	has := func(ck *http.Cookie, book string) bool {
