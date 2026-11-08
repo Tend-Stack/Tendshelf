@@ -119,6 +119,11 @@ func (s *server) detailsSheet(r *http.Request, d library.BookDetail, look *looku
 			if err != nil {
 				return nil, false, err
 			}
+			if q.Has("title") || q.Has("author") || q.Has("asin") || q.Has("isbn") {
+				// Try again: the query the earlier job searched, not the book's own details.
+				prefill = online.Query{Title: capRunes(q.Get("title")), Author: capRunes(q.Get("author")),
+					ASIN: capRunes(q.Get("asin")), ISBN: capRunes(q.Get("isbn"))}
+			}
 			look = &lookupForm{title: prefill.Title, author: prefill.Author, asin: prefill.ASIN, isbn: prefill.ISBN, places: s.savedPlaces(r)}
 		}
 		return pages.LookupSheet(s.lookupSheetView(r, id, look)), true, nil
