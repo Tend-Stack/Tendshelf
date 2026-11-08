@@ -40,6 +40,8 @@ class Bridge(
     private val currentOrigin: () -> Origin?,
     /** Bar colour (the page's `theme-color`), or null to go back to the app's own. */
     private val onTheme: (String?) -> Unit,
+    /** Read aloud (decision 0032): the phone's own speech engine. */
+    private val speech: Speech,
 ) {
     var remote: PlayerRemote? = null
         set(value) {
@@ -99,6 +101,7 @@ class Bridge(
         attached = null
         proxy = null
         pendingBack = null
+        speech.drop()
         main.removeCallbacksAndMessages(null)
         onTheme(null)
     }
@@ -106,6 +109,7 @@ class Bridge(
     /** A new document is loading: whatever the old one held is stale (B10). It says hello again. */
     fun pageStarted() {
         proxy = null
+        speech.drop()
     }
 
     fun onStart() {
@@ -116,6 +120,7 @@ class Bridge(
 
     fun onStop() {
         started = false
+        speech.stop() // speech runs while the app is in front; the page hears "stopped" and shows Paused (decision 0032)
         lastRewoundSeq = UNSET // a rewind heard with the screen off is not announced later
         main.removeCallbacks(ticker)
     }
@@ -166,6 +171,9 @@ class Bridge(
             is BridgeMessage.Theme -> onTheme(msg.hex)
             is BridgeMessage.Answer -> r?.answer(msg.keepHere)
             is BridgeMessage.Sleep -> r?.sleep(msg.choice, msg.minutes)
+            BridgeMessage.TtsVoices -> speech.voices { sendTo(reply, it) }
+            BridgeMessage.TtsStop -> speech.stop(silent = true)
+            is BridgeMessage.Say -> if (started) speech.say(msg) { sendTo(reply, it) }
             is BridgeMessage.Download -> {
                 // A foreground data-sync start is allowed only while the activity is on the screen (A7, invariant 7).
                 if (msg.action == "add" && started) Offline.io { Offline.add(msg.bookId) }
@@ -239,6 +247,12 @@ class Bridge(
     private fun tick() {
         main.removeCallbacks(ticker)
         if (started && remote?.snapshot()?.playing == true) main.postDelayed(ticker, 1000)
+    }
+
+    /** Speech answers go to the frame that asked, only while the same page and the same connection hold. */
+    private fun sendTo(p: JavaScriptReplyProxy, text: String) {
+        if (p !== proxy || flow() != ConnectFlow.State.Connected) return
+        send(p, text)
     }
 
     private fun send(p: JavaScriptReplyProxy, text: String) {

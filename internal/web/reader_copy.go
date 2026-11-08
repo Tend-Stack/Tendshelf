@@ -93,4 +93,22 @@ const (
 	readerTryAgain     = "Try again"
 	readerBackToBook   = "Back to the book"
 	readerNeedsNet     = "That needs a connection."
+
+	// Read aloud (decision 0032).
+	readerAloud        = "Read aloud"
+	readerAloudPlay    = "Play"
+	readerAloudPause   = "Pause"
+	readerAloudBack    = "Back one sentence"
+	readerAloudFwd     = "Forward one sentence"
+	readerAloudStop    = "Stop reading aloud"
+	readerAloudMore    = "Voice and speed"
+	readerAloudVoice   = "Voice"
+	readerAloudDefault = "Default voice"
+	readerAloudOther   = "Other languages"
+	readerAloudSpeed   = "Speed"
+	readerAloudFollow  = "Back to the voice"
+	readerAloudEnd     = "You have reached the end of the book."
+	readerAloudNoPart  = "Couldn't load the next part, so reading aloud stopped here. Press Play to try again."
+	readerAloudFailed  = "The voice on this device stopped. Press Play to try again."
+	readerAloudBlocked = "Press Play to start reading aloud."
 )

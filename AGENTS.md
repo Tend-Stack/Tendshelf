@@ -35,7 +35,7 @@ was reused, extended or replaced.
 - **HTMX** is vendored as one static file (no CDN). Plain JavaScript is allowed only in
   `internal/web/static/js/` as ES modules loaded directly by the browser: the audio player, the
   service worker, offline storage, the book uploader (`upload.js`, loaded only on the Add books page,
-  decision 0015) and small progressive enhancements. No framework, no transpiling. `native-audio.js` is loaded only in the Android shell
+  decision 0015) and small progressive enhancements. the read-aloud strip (`reader-aloud.js`, loaded on its first use). No framework, no transpiling. `native-audio.js` is loaded only in the Android shell
   (`data-shell="android"`).
 - **CSS** is hand-written in `internal/web/static/css/` with custom properties for design tokens.
 - **SQLite** via the pure-Go driver, WAL mode, one database file in the data directory.
@@ -121,6 +121,7 @@ was reused, extended or replaced.
 
 - The Android app talks only to the server the person typed in, with no other outbound request. Sign-out deletes the
   person's downloads. ("The only package that creates an `http.Client`" stays a server rule.)
+- Read aloud uses only voices on the device (a browser voice with `localService` true, an Android voice that needs no network), so book text never leaves it (decision 0032).
 - **No telemetry**, analytics, crash reporting, update pings or third-party assets (fonts, CDNs, map
   tiles). The only outbound requests are user-initiated metadata lookups and cover downloads, through
   `internal/metadata/online`, the only package in the server that creates an `http.Client`. The one other outbound

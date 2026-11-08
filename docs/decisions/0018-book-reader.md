@@ -15,7 +15,7 @@ reader: their place on every device, comfortable text, marks they own.
 
 1. **Read-along is removed completely.** No sentence timing, no worker, no voice following, no `/admin/runtimes`. Git
    history keeps the R3 work. The only external programs are `ffmpeg` and `ffprobe` again.
-2. **A future voice feature uses the device's own text-to-speech** (`speechSynthesis`). Out of scope now.
+2. **A future voice feature uses the device's own text-to-speech** (`speechSynthesis`). Out of scope now. Taken up by [0032](0032-read-aloud.md).
 3. **An ebook is a book.** A ready ebook file with no audiobook gets its own `books` row (`kind = 'text'`), with a cover,
    shelf place and reading position. `kind` says who owns the row's life: the scanner (`audio`) or the ebook service (`text`).
 4. **One book, two formats, stays the advantage, and it is automatic.** The existing matcher (`Match`, `Decide`) runs by

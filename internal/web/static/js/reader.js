@@ -338,6 +338,26 @@ export function mount(root) {
     for (const type of ["pointerdown", "keydown", "focus"]) skimBar.addEventListener(type, wake, { signal: stop.signal });
   }
 
+  // ---- Read aloud (decision 0032): the controls show only while the device has a voice of its own; the script loads on the first press ----
+
+  const aloud = shell.querySelectorAll("[data-aloud-src]");
+  const voiced = () => {
+    const n = window.tsNativeSpeech ? tsNativeSpeech.voices().length : window.speechSynthesis?.getVoices().filter((v) => v.localService).length;
+    for (const button of aloud) button.hidden = !n;
+  };
+  voiced();
+  window.speechSynthesis?.addEventListener("voiceschanged", voiced, { signal: stop.signal });
+  window.tsNativeSpeech?.ask();
+  on(document, "ts:native:voices", voiced);
+  let loading = null;
+  const kit = { place: () => here, flow: () => flow, turn, follow: (sid) => view.show(sid, Number(sentence(sid)?.dataset.o)) && moved() };
+  for (const button of aloud) {
+    button.addEventListener("click", () => {
+      loading ??= import(button.dataset.aloudSrc).then((module) => module.aloud(root, shell, kit));
+      loading.then((api) => api.toggle(button));
+    });
+  }
+
   // ---- Another device ----
 
   const go = (href) => {

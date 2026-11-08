@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/a-h/templ"
@@ -217,6 +218,19 @@ func readerWords() string {
 	return string(b)
 }
 
+// readerAloud is the read-aloud strip's words and address (decision 0032). The JSON holds the words reader-aloud.js shows by itself.
+func (s *server) readerAloud() *pages.ReaderAloudView {
+	copyJSON, _ := json.Marshal(map[string]string{"end": readerAloudEnd, "noPart": readerAloudNoPart, "failed": readerAloudFailed,
+		"blocked": readerAloudBlocked, "play": readerAloudPlay, "pause": readerAloudPause, "default": readerAloudDefault, "other": readerAloudOther})
+	var speeds []pages.ReaderAloudSpeed
+	for _, v := range []string{"0.8", "1", "1.2", "1.5", "1.75", "2"} {
+		speeds = append(speeds, pages.ReaderAloudSpeed{Value: v, Text: strings.Replace(msgSpeedValue, "{v}", v, 1)})
+	}
+	return &pages.ReaderAloudView{Src: s.assetOr("js/reader-aloud.js"), Label: readerAloud, Play: readerAloudPlay, Pause: readerAloudPause,
+		Back: readerAloudBack, Fwd: readerAloudFwd, Stop: readerAloudStop, More: readerAloudMore, Voice: readerAloudVoice,
+		Default: readerAloudDefault, Other: readerAloudOther, Speed: readerAloudSpeed, Follow: readerAloudFollow, Speeds: speeds, Copy: string(copyJSON)}
+}
+
 // readerView assembles the page around a chapter.
 func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPlace) (pages.ReaderView, error) {
 	ctx, u := r.Context(), currentUser(r)
@@ -226,6 +240,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 		CloseHref: "/books/" + id, CloseLabel: readerClose,
 		Chapter: chap.view, MarksModule: s.assetOr("js/reader-marks.js"), ReaderModule: s.assetOr("js/reader.js"), PagesModule: s.assetOr("js/reader-pages.js"),
 		SkimModule: s.assetOr("js/reader-skim.js"), Offline: &pages.ReaderOfflineView{Module: s.assetOr("js/reader-offline.js")},
+		Aloud: s.readerAloud(),
 	}
 	rs, err := s.users.LoadReader(ctx, u.ID)
 	if err != nil {

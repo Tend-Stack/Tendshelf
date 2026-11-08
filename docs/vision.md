@@ -64,6 +64,7 @@ Measurable, not adjectives. Each is an acceptance target for the phase that deli
 
 - Comics and fixed-layout books, and a store. Ebooks are books here ([decision 0018](decisions/0018-book-reader.md)),
   but only reflowable, DRM-free ones; there is no read-along (the voice and the words do not share a place).
+  The reader can read a book aloud with the device's own voice (decision 0032).
 - Selling, DRM removal, or downloading from stores. Tendshelf refuses copy-protected audio and ebooks.
 - A social network. Sharing is private, person to person.
 - A cloud service run by us. Self-hosted only.

@@ -447,3 +447,65 @@ func TestReaderTextTabLink(t *testing.T) {
 		t.Error("a person who cannot read sees the link")
 	}
 }
+
+// TestReaderAloudMarkup: the read-aloud control and strip are on every reader page and on the offline shell, the same for
+// every person who may read (it adds no right), hidden until the script finds a voice on the device (decision 0032).
+func TestReaderAloudMarkup(t *testing.T) {
+	l := rdrSeed(t)
+	s := rsSeed(t, ofrEPUB(t))
+	pages := []struct {
+		name string
+		get  func(ck *http.Cookie) *httptest.ResponseRecorder
+		ck   map[string]*http.Cookie
+	}{
+		{"reader", func(ck *http.Cookie) *httptest.ResponseRecorder { return l.get(ck, l.readPath(""), false) },
+			map[string]*http.Cookie{"owner": l.owner, "admin": l.admin, "member": l.reader, "guest": l.guest}},
+		{"offline shell", func(ck *http.Cookie) *httptest.ResponseRecorder {
+			return s.get(ck, "/offline/books/"+s.book.ID+"/read", false)
+		}, map[string]*http.Cookie{"owner": s.owner, "admin": s.admin}},
+	}
+	for _, p := range pages {
+		for who, ck := range p.ck {
+			rec := p.get(ck)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("%s %s: %d", p.name, who, rec.Code)
+			}
+			b := rec.Body.String()
+			if n := strings.Count(b, `data-aloud-src="/static/js/reader-aloud.`); n != 2 {
+				t.Errorf("%s %s: %d openers, want 2 (header and dock)", p.name, who, n)
+			}
+			for _, want := range []string{`ts-aloud-open--bar`, `ts-aloud-open--dock`} {
+				i := strings.Index(b, want)
+				if i < 0 {
+					t.Errorf("%s %s: no %s", p.name, who, want)
+					continue
+				}
+				tag := b[strings.LastIndex(b[:i], "<button"):]
+				tag = tag[:strings.Index(tag, ">")]
+				for _, attr := range []string{` hidden`, `aria-controls="reader-aloud"`, `aria-expanded="false"`, `aria-label="Read aloud"`, `type="button"`} {
+					if !strings.Contains(tag, attr) {
+						t.Errorf("%s %s: %s lacks %s: %s", p.name, who, want, attr, tag)
+					}
+				}
+			}
+			strip := b[strings.Index(b, `id="reader-aloud"`):]
+			strip = strip[:strings.Index(strip, "</details>")]
+			for _, want := range []string{`role="group"`, `aria-label="Read aloud"`, ` hidden`, `data-copy=`,
+				`data-aloud="back" aria-label="Back one sentence"`, `data-aloud="play" aria-label="Pause"`, `data-aloud="fwd" aria-label="Forward one sentence"`,
+				`data-aloud="stop" aria-label="Stop reading aloud"`, `data-aloud="follow"`, `>Back to the voice<`, `role="status"`, `<summary>Voice and speed</summary>`,
+				`<label for="aloud-voice">Voice</label>`, `<select id="aloud-voice"`, `<label for="aloud-rate">Speed</label>`, `<select id="aloud-rate"`} {
+				if !strings.Contains(strip, want) {
+					t.Errorf("%s %s: the strip lacks %q", p.name, who, want)
+				}
+			}
+			if n := strings.Count(strip, "<option"); n != 6 {
+				t.Errorf("%s %s: %d speed options, want 6", p.name, who, n)
+			}
+			for _, want := range []string{`<option value="0.8">0.8×</option>`, `<option value="1" selected>1×</option>`, `<option value="1.75">1.75×</option>`, `<option value="2">2×</option>`} {
+				if !strings.Contains(strip, want) {
+					t.Errorf("%s %s: speeds lack %s", p.name, who, want)
+				}
+			}
+		}
+	}
+}
