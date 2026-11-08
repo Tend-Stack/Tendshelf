@@ -101,8 +101,10 @@ func TestInviteAcceptBrowser(t *testing.T) {
 
 			// Sign out, then sign in again with the new name and password.
 			tab.Navigate(srv.URL + "/me")
-			tab.WaitFor(`document.querySelector(".ts-me__signout button") !== null`, 10*time.Second)
-			playerClickSel(t, tab, `.ts-me__signout button`)
+			tab.WaitFor(`document.querySelector("#pf-menu-account summary") !== null`, 10*time.Second)
+			playerClickSel(t, tab, `#pf-menu-account summary`)
+			tab.WaitFor(`document.querySelector("#pf-menu-account").open`, 10*time.Second)
+			playerClickSel(t, tab, `.ts-profile__signout button`)
 			waitPath(tab, "/login")
 			tab.WaitFor(`document.querySelector("#username") !== null`, 10*time.Second)
 			inviteFill(tab, "#username", "rosa-keeps")

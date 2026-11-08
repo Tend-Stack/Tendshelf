@@ -20,7 +20,6 @@
 .ts-me__devfoot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-16); padding: var(--space-12) 0; }
 .ts-me__others { margin: 0; }
 .ts-me__others .ts-btn { padding-inline: 0; }
-.ts-me__signout { max-width: 24rem; margin-top: var(--space-24); }
 .ts-me__foot { max-width: 24rem; margin: var(--space-12) 0 0; text-align: center; }
 .ts-me__line { border-bottom: 1px solid var(--line); }
 .ts-me__linetext { display: flex; flex-direction: column; justify-content: center; flex: 1; min-height: 3.5rem; padding: var(--space-8) 0; box-sizing: border-box; gap: 2px; cursor: pointer; }

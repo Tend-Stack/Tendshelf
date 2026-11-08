@@ -19,7 +19,7 @@ import (
 )
 
 // callTimeout bounds every protocol call.
-const callTimeout = 15 * time.Second
+const callTimeout = 30 * time.Second
 
 // Browser is one running headless Chromium.
 type Browser struct {

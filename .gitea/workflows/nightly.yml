@@ -113,9 +113,13 @@ jobs:
           "$TENDSHELF_TEST_BROWSER" --version
       - name: Browser tests (everything except the three sets below)
         run: make browser
+      # A failure above must not hide what these three would find: the run still fails, with all of it.
       - name: Browser screenshot matrix (all themes and widths)
+        if: ${{ !cancelled() }}
         run: make visual-full
       - name: Accessibility audit (WCAG 2.2 AA, contrast theme 7:1)
+        if: ${{ !cancelled() }}
         run: make a11y
       - name: Page weight at four widths
+        if: ${{ !cancelled() }}
         run: make page-weight
