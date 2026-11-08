@@ -76,3 +76,11 @@ func (s *server) getShelfDownloadList(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, downloadListBody(items))
 }
+
+// downloadAllStyles adds the control's stylesheet to a page's own only when the page carries the control.
+func downloadAllStyles(base []string, v *pages.DownloadAllView) []string {
+	if v == nil {
+		return base
+	}
+	return append(append([]string(nil), base...), "css/pages-downloadall.css")
+}

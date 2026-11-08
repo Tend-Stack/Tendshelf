@@ -486,7 +486,7 @@ func (s *server) getSeries(w http.ResponseWriter, r *http.Request) {
 	if items, err := s.lib.SeriesDownloadItems(ctx, s.feedScope(currentUser(r)), sp.ID); err == nil {
 		v.DownloadAll = downloadAllView("/series/"+sp.ID+"/download-list", len(items))
 	}
-	s.pageStyled(w, r, http.StatusOK, sp.Name, "library", pages.Series(v), nil, append(append([]string(nil), pages.BookStyles...), "css/pages-downloadall.css")...)
+	s.pageStyled(w, r, http.StatusOK, sp.Name, "library", pages.Series(v), nil, downloadAllStyles(pages.BookStyles, v.DownloadAll)...)
 }
 
 // tabRank orders a text book's tabs: About, Text, Details.

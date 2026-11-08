@@ -323,7 +323,7 @@ func (s *server) shelfPage(w http.ResponseWriter, r *http.Request, status int, r
 	if cursor != "" {
 		v.StartHref = path
 	}
-	s.pageStyled(w, r, status, sh.Name, "shelf-"+sh.ID, pages.Shelf(v), nil, append(append([]string(nil), pages.ShelfStyles...), "css/pages-downloadall.css")...)
+	s.pageStyled(w, r, status, sh.Name, "shelf-"+sh.ID, pages.Shelf(v), nil, downloadAllStyles(pages.ShelfStyles, v.DownloadAll)...)
 }
 
 // postShelfShare turns sharing of the person's own shelf on or off. Only staff share; anyone else,
