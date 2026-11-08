@@ -63,18 +63,7 @@ jobs:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           API: ${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}
         run: |
-          test -n "$RELEASE_TOKEN" || { echo "secret RELEASE_TOKEN is not set"; exit 1; }
-          curl -fsS -X POST "$API/releases" \
-            -H "Authorization: token $RELEASE_TOKEN" -H "Content-Type: application/json" \
-            -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"body\":\"See CHANGELOG.md for what is in this release and how to upgrade.\"}" \
-            -o release.json
-          id="$(grep -o '"id":[0-9]*' release.json | head -1 | cut -d: -f2)"
-          test -n "$id" || { echo "no release id in the answer"; head -c 300 release.json; exit 1; }
-          for f in dist/*; do
-            curl -fsS -X POST "$API/releases/$id/assets?name=$(basename "$f")" \
-              -H "Authorization: token $RELEASE_TOKEN" -F "attachment=@$f" -o /dev/null
-            echo "attached $(basename "$f")"
-          done
+          scripts/release-attach.sh "$TAG" --create dist/*
 
   # The Android APK (plan A10). A separate job after `release`, so nothing here can hold back or fail the server release
   # (it is also continue-on-error). Without the signing secrets it builds the UNSIGNED APK, says so, and attaches it under
@@ -155,12 +144,4 @@ jobs:
           API: ${{ gitea.server_url }}/api/v1/repos/${{ gitea.repository }}
         run: |
           [ -z "${SKIP_APK:-}" ] || { echo "Nothing to attach."; exit 0; }
-          test -n "$RELEASE_TOKEN" || { echo "secret RELEASE_TOKEN is not set"; exit 1; }
-          curl -fsS "$API/releases/tags/$TAG" -H "Authorization: token $RELEASE_TOKEN" -o release.json
-          id="$(grep -o '"id":[0-9]*' release.json | head -1 | cut -d: -f2)"
-          test -n "$id" || { echo "no release id in the answer"; exit 1; }
-          for f in android/build/dist/*; do
-            curl -fsS -X POST "$API/releases/$id/assets?name=$(basename "$f")" \
-              -H "Authorization: token $RELEASE_TOKEN" -F "attachment=@$f" -o /dev/null
-            echo "attached $(basename "$f")"
-          done
+          scripts/release-attach.sh "$TAG" android/build/dist/*
