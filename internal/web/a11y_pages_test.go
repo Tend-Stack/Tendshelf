@@ -106,6 +106,7 @@ func a11yPages() []a11yPage {
 		// page of its own address. The sheets, the footnote popup, the selection toolbar and the note dialog are in a11yStates.
 		row("reader-pages", "/books/{id}/read", rd("owner", "ch=2"), owner, "reader", false),
 		row("reader-scroll", "/books/{id}/read", rd("admin", "ch=2"), []string{"admin"}, "reader", false),
+		row("libraries-shelf", "/libraries", a11yStatic("/libraries?view=shelf"), both, "main", true),
 		row("libraries-ebooks", "/libraries", a11yStatic("/libraries?format=text&view=list"), both, "main", true),
 		row("book-remove", "/books/{id}/remove", func(e *a11yEnv) string { return "/books/" + e.UploadBookID + "/remove" }, owner, "upload", true),
 		row("book-share", "/books/{id}/share", book("/share"), owner, "main", true),

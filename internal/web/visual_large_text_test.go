@@ -179,6 +179,7 @@ func TestVisualLargeText(t *testing.T) {
 	pages := []ltPage{
 		{"home", base, "/", home, false},
 		{"library", base, "/libraries", "", false},
+		{"library-shelf", base, "/libraries?view=shelf", "", false},
 		{"book", base, "/books/" + heroID, "", false},
 		{"book-chapters", base, "/books/" + heroID + "/chapters", "", false},
 		{"book-share", base, "/books/" + bookID + "/share", "", false},

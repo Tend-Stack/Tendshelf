@@ -6,6 +6,8 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### What you can do
 
+- **See your library as a shelf.** The Library has a third view, Shelf, where each book stands on a plank as thick as it is long, with your place marked on it. Home shows the same spines. Your choice of Grid, List or Shelf is remembered.
+
 - **Find your account and settings at once.** Profile now opens with two buttons, Account and Settings, each with a short menu of
   everything inside. On a computer your picture and name stay at the bottom of the side menu.
 - **Listen in a podcast app.** A book or a series with audio now has a "Podcast feed" button, for people who may download it. It makes a

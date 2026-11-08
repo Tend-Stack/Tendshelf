@@ -26,17 +26,17 @@
 .ts-shelf__more { flex: 0 0 100%; height: var(--shelf-zone); display: flex; align-items: center; justify-content: center; }
 .ts-shelf .ts-more.htmx-request .ts-more__loading { display: none; }
 .ts-spine { display: block; box-sizing: border-box; height: 100%; padding-inline: 0.1875rem; text-decoration: none; -webkit-user-drag: none; -webkit-tap-highlight-color: transparent; }
-.ts-spine:focus-visible { position: relative; z-index: 1; outline: none; }
+.ts-spine:focus-visible { position: relative; z-index: 1; outline: 2px solid transparent; border-radius: var(--radius-cover); box-shadow: var(--focus-ring); }
 .ts-spine__book { position: relative; box-sizing: border-box; display: flex; align-items: center; justify-content: center; height: 100%; border: 1px solid transparent; border-radius: var(--radius-cover) var(--radius-cover) 1px 1px; box-shadow: 1px 0 3px var(--book-cast); transition: transform var(--duration-fast) var(--easing-standard); }
 .ts-spine__book:not(.is-tinted) { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
 .ts-spine__book::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background-image: linear-gradient(to right, color-mix(in oklab, var(--brand-paper) 16%, transparent), transparent 6%, transparent 88%, color-mix(in oklab, var(--spine-ink) 30%, transparent)); }
-.ts-spine:focus-visible .ts-spine__book { box-shadow: var(--focus-ring); transform: translateY(-0.25rem); }
+.ts-spine:focus-visible .ts-spine__book { transform: translateY(-0.25rem); }
 .ts-spine:active .ts-spine__book { transform: scale(0.98); transition-duration: 0s; }
 @media (hover: hover) { .ts-spine:hover .ts-spine__book { transform: translateY(-0.25rem); } .ts-spine:active:hover .ts-spine__book { transform: scale(0.98); } }
 @media (prefers-reduced-motion: reduce) { .ts-spine__book { transition: none; } .ts-spine .ts-spine__book, .ts-spine:hover .ts-spine__book, .ts-spine:focus-visible .ts-spine__book, .ts-spine:active .ts-spine__book { transform: none; } }
 .ts-spine__text { position: relative; display: flex; flex-direction: column; align-items: center; max-height: calc(100% - var(--space-16)); overflow: hidden; writing-mode: vertical-rl; transform: rotate(180deg); }
 /* An ellipsis would stand on its side here, so a title too long for two lines stops at the end of a word; the link's name has all of it. */
-.ts-spine__title { max-width: 2.3em; overflow: hidden; font: 400 var(--spine-title, 0.8125rem)/1.15 var(--font-serif); text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
+.ts-spine__title { max-width: 2.5em; overflow: hidden; font: 400 var(--spine-title, 0.8125rem)/1.25 var(--font-serif); text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
 .ts-spine__author { font: 400 0.8125rem/1.15 var(--font-sans); white-space: nowrap; }
 .ts-spine__ribbon { position: absolute; top: -0.25rem; left: 0.375rem; width: 0.4375rem; height: 1.625rem; background: var(--accent-fill); box-shadow: 0 0 0 1px var(--ground); }
 .ts-spine__book.is-finished { padding-bottom: var(--space-20); }
