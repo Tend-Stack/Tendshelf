@@ -108,6 +108,8 @@ type SeriesView struct {
 	Total, OrderTitle           string
 	BackHref, BackLabel         string
 	Rows                        []components.CardView
+	// FeedHref opens the Podcast feed page; empty when the person may not download any book of the series.
+	FeedHref string
 }
 
 // Series renders a series page.
@@ -131,6 +133,9 @@ templ Series(v SeriesView) {
 			}
 			if v.Total != "" {
 				<p class="caption ts-num ts-person__count">{ v.Total }</p>
+			}
+			if v.FeedHref != "" {
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.FeedHref) }>Podcast feed</a>
 			}
 			if v.Description != "" {
 				<p class="ts-book__desc ts-person__desc">{ v.Description }</p>

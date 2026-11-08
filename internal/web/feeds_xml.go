@@ -172,10 +172,14 @@ func feedEpisodeTitles(chapters []library.Chapter, files []library.AudioFile) []
 	return out
 }
 
+// feedRoot is a feed's own address up to and including the slash before its files; the feed document, the shown
+// address and every URL inside the document start from it.
+func feedRoot(base, token string) string { return base + feedPrefix + token + "/" }
+
 // buildFeed makes the document for the feed's books. Every URL starts with the feed's own address, token included,
 // because a podcast app needs absolute addresses.
 func (s *server) buildFeed(ctx context.Context, fr feedReq, books []library.Book) (feedRSS, error) {
-	root := fr.base + feedPrefix + fr.token + "/"
+	root := feedRoot(fr.base, fr.token)
 	series := fr.feed.SeriesID != ""
 	ch := feedChannel{Link: fr.base + "/", Block: "yes", Type: "serial"}
 	created := time.UnixMilli(fr.feed.CreatedAt).UTC().Add(-feedLead)

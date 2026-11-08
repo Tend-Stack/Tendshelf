@@ -17,6 +17,8 @@ type DevicesView struct {
 	Others int
 	// AppKeys is the App keys section under the list; the handler fills it.
 	AppKeys AppKeysView
+	// Feeds is the Podcast feeds section under the App keys; the handler fills it.
+	Feeds FeedsView
 }
 
 // deviceSignOut is the per-session sign-out form: it acts on that one session only.
@@ -77,5 +79,6 @@ templ Devices(v DevicesView) {
 		</section>
 		<a class="ts-btn ts-btn--secondary ts-me__add" href="/me/devices/add">Add a phone</a>
 		@AppKeys(v.AppKeys)
+		@Feeds(v.Feeds)
 	</div>
 }

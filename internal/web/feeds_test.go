@@ -47,6 +47,7 @@ type feedLab struct {
 	files                                         map[string][]library.AudioFile // by book id
 	body                                          map[string][]byte              // by file id
 	clock                                         *time.Time
+	cookies                                       map[string]*http.Cookie // by person name, "owner" included
 }
 
 var proxyDefault = func(r *http.Request) {
@@ -67,10 +68,11 @@ func newFeedLab(t *testing.T) *feedLab {
 		o.TrustedProxies = px
 		o.Now = func() time.Time { return clock }
 	})
-	l := &feedLab{a: a, ids: map[string]string{}, files: map[string][]library.AudioFile{}, body: map[string][]byte{}, clock: &clock}
+	l := &feedLab{a: a, ids: map[string]string{}, files: map[string][]library.AudioFile{}, body: map[string][]byte{}, clock: &clock, cookies: map[string]*http.Cookie{}}
 	l.owner = a.owner(t)
 	l.ownerID = sweepUserID(t, a, l.owner)
 	l.ids["owner"] = l.ownerID
+	l.cookies["owner"] = l.owner
 	var f1, f2 library.Folder
 	l.lib1, f1 = librarytest.NewLibrary(t, a.lib, "Feeds one", adminAudioDir(t, true))
 	l.lib2, f2 = librarytest.NewLibrary(t, a.lib, "Feeds two", adminAudioDir(t, true))
@@ -142,6 +144,7 @@ func newFeedLab(t *testing.T) *feedLab {
 		ck := a.as(t, role)
 		id := sweepUserID(t, a, ck)
 		l.ids[name] = id
+		l.cookies[name] = ck
 		for i, lb := range libs {
 			l.exec(t, `INSERT INTO grants(id, user_id, scope, library_id, can_download, can_read, created_at, updated_at)
 				VALUES (?, ?, 'library', ?, ?, 0, 1, 1)`, fmt.Sprintf("gr_%s_%d", id, i), id, lb.ID, dl)
