@@ -166,6 +166,10 @@ func (s *Sessions) EndAllForUser(ctx context.Context, ex db.Execer, userID strin
 	if err != nil {
 		return 0, err
 	}
-	_, err = revokeAllDevices(ctx, ex, userID, nowMs, "")
+	if _, err = revokeAllDevices(ctx, ex, userID, nowMs, ""); err != nil {
+		return n, err
+	}
+	// Podcast feeds are keys like app keys: a reset turns them all off (decision 0031).
+	_, err = ex.ExecContext(ctx, `UPDATE podcast_feeds SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`, nowMs, userID)
 	return n, err
 }

@@ -662,17 +662,33 @@ func (r *Repo) Person(ctx context.Context, sc Scope, id string) (Person, error) 
 	}, "person")
 }
 
-// SeriesInfo returns a series with its visible listable books (at most 500) in reading order, or
-// ErrNotFound when no such book exists.
-func (r *Repo) SeriesInfo(ctx context.Context, sc Scope, id string) (SeriesPage, error) {
+// seriesBookIDs returns the ids of the visible listable books of a series in reading order, at most
+// limit. extra is one more SQL condition on b (empty for none); it carries no arguments.
+func (r *Repo) seriesBookIDs(ctx context.Context, sc Scope, id, extra string, limit int) ([]string, error) {
 	w := visible(sc, true)
 	w.add("bs.series_id = ?", id)
-	ids, err := many(ctx, r.st.Reader(), func(s scanner) (string, error) {
+	if extra != "" {
+		w.add(extra)
+	}
+	return many(ctx, r.st.Reader(), func(s scanner) (string, error) {
 		var v string
 		return v, s.Scan(&v)
 	}, `SELECT b.id`+fromVisible+` JOIN book_series bs ON bs.book_id = b.id WHERE `+w.sql()+`
   ORDER BY CASE WHEN bs.sequence GLOB '[0-9]*' THEN CAST(bs.sequence AS REAL) END ASC NULLS LAST,
-  `+titleKey+` COLLATE NOCASE, b.id LIMIT ?`, append(append([]any(nil), w.args...), maxSeriesList)...)
+  `+titleKey+` COLLATE NOCASE, b.id LIMIT ?`, append(append([]any(nil), w.args...), limit)...)
+}
+
+// SeriesFeedBooks returns the ids of the books of a series that sc allows and that have at least one
+// audio file present, in the series page's order, at most limit (decision 0031). Text-only books are
+// absent. The caller builds sc with the download right, so the filter runs in SQL.
+func (r *Repo) SeriesFeedBooks(ctx context.Context, sc Scope, seriesID string, limit int) ([]string, error) {
+	return r.seriesBookIDs(ctx, sc, seriesID, `EXISTS (SELECT 1 FROM audio_files af WHERE af.book_id = b.id AND af.missing_since IS NULL)`, limit)
+}
+
+// SeriesInfo returns a series with its visible listable books (at most 500) in reading order, or
+// ErrNotFound when no such book exists.
+func (r *Repo) SeriesInfo(ctx context.Context, sc Scope, id string) (SeriesPage, error) {
+	ids, err := r.seriesBookIDs(ctx, sc, id, "", maxSeriesList)
 	if err != nil {
 		return SeriesPage{}, err
 	}

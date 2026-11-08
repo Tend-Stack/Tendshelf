@@ -44,7 +44,7 @@ func TestBookFilterForAgreesWithCan(t *testing.T) {
 	f.exec(t, `INSERT INTO grants(id, user_id, scope, library_id, can_download, can_read, created_at, updated_at) VALUES ('gr_e1', 'u_expsplit', 'library', 'lib_a', 1, 0, 1, 1)`)
 	f.exec(t, `INSERT INTO grants(id, user_id, scope, book_id, can_download, can_read, expires_at, created_at, updated_at) VALUES ('gr_e2', 'u_expsplit', 'book', 'bk_a1', 0, 1, 5, 1, 1)`)
 
-	actions := []Action{ViewBook, ReadText, DownloadText}
+	actions := []Action{ViewBook, DownloadBook, ReadText, DownloadText}
 	for id, u := range f.users {
 		for _, a := range actions {
 			got := f.visibleFor(t, u, a)
@@ -68,7 +68,7 @@ func TestBookFilterForAgreesWithCan(t *testing.T) {
 	if len(f.visibleFor(t, f.users["u_own"], DownloadText)) != len(fixtureBooks) {
 		t.Error("the owner does not see every book")
 	}
-	if len(f.visibleFor(t, f.users["u_own"], DownloadBook)) != 0 {
+	if len(f.visibleFor(t, f.users["u_own"], EditBook)) != 0 {
 		t.Error("an unsupported action matched books")
 	}
 }
