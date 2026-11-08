@@ -197,3 +197,30 @@ func TestReaderFontVendored(t *testing.T) {
 		t.Error("the layout mentions OpenDyslexic")
 	}
 }
+
+func TestFeelReaderVolumeKeys(t *testing.T) {
+	l := rdrSeed(t)
+	sheet := func(extra ...*http.Cookie) string {
+		return l.a.do(http.MethodGet, l.readPath("sheet=reading"), nil, nil, append([]*http.Cookie{l.owner}, extra...)...).Body.String()
+	}
+	if b := sheet(a1Android); !strings.Contains(b, `name="volume_keys"`) || !strings.Contains(b, "Turn pages with the volume buttons") {
+		t.Error("the sheet in the app lacks the switch")
+	}
+	if b := sheet(); strings.Contains(b, `name="volume_keys"`) || strings.Contains(b, "volume buttons") {
+		t.Error("the sheet in a browser shows the switch")
+	}
+	if code, _, _ := rsetPost(t, l, l.owner, true, "volume_keys", "0", "volume_keys", "1"); code != http.StatusNoContent || !l.rsetStored(t, l.owner).VolumeKeys {
+		t.Fatalf("save on = %d", code)
+	}
+	if b := l.get(l.owner, l.readPath(""), false).Body.String(); !strings.Contains(b, `data-volume-keys="true"`) {
+		t.Error("the reader root lacks data-volume-keys=true")
+	}
+	if b := sheet(a1Android); !strings.Contains(b, `<details class="ts-readset__more" open`) {
+		t.Error("More stays closed with the switch on")
+	}
+	// Signed out, nothing is saved.
+	rec := l.a.do(http.MethodPost, readerSettingsRoute, url.Values{"volume_keys": {"0"}}, nil)
+	if rec.Code == http.StatusNoContent || !l.rsetStored(t, l.owner).VolumeKeys {
+		t.Errorf("signed-out post = %d, stored %v", rec.Code, l.rsetStored(t, l.owner).VolumeKeys)
+	}
+}

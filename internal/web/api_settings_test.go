@@ -69,7 +69,7 @@ func TestA1SettingsReadAndPatch(t *testing.T) {
 	// The answer holds the player keys and nothing else.
 	var keys map[string]any
 	apiDecode(t, e.send(e.owner, http.MethodGet, "/api/v1/settings", ""), &keys)
-	if len(keys) != 6 {
+	if len(keys) != 7 {
 		t.Errorf("keys = %v", keys)
 	}
 
@@ -326,5 +326,29 @@ func TestA1QueueNextSeries(t *testing.T) {
 	e.send(e.owner, http.MethodPost, "/api/v1/queue", queueBody(e.extra[1], ""))
 	if code, out := next(e.owner, ``); code != http.StatusOK || out["source"] != "queue" || out["book"] == nil {
 		t.Errorf("plain pop = %d %v", code, out)
+	}
+}
+
+func TestFeelAPISkipQuiet(t *testing.T) {
+	e := syncSeed(t)
+	skip := func() bool {
+		var m struct {
+			SkipQuiet bool `json:"skipQuiet"`
+		}
+		apiDecode(t, e.send(e.owner, http.MethodGet, "/api/v1/settings", ""), &m)
+		return m.SkipQuiet
+	}
+	if skip() {
+		t.Fatal("skipQuiet on by default")
+	}
+	if rec := e.send(e.owner, http.MethodPatch, "/api/v1/settings", `{"skipQuiet":true}`); rec.Code != http.StatusOK || !skip() {
+		t.Fatalf("patch true = %d, now %v", rec.Code, skip())
+	}
+	rec := e.send(e.owner, http.MethodPatch, "/api/v1/settings", `{"skipQuiet":"on"}`)
+	if rec.Code != http.StatusBadRequest || a1Field(t, rec) != "skipQuiet" || !strings.Contains(rec.Body.String(), apiSettingsBadBool) {
+		t.Errorf("patch \"on\" = %d %s", rec.Code, rec.Body)
+	}
+	if rec := e.send("", http.MethodGet, "/api/v1/settings", ""); rec.Code != http.StatusUnauthorized {
+		t.Errorf("no token = %d", rec.Code)
 	}
 }

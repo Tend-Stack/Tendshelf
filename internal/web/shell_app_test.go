@@ -292,3 +292,18 @@ func TestA1HiddenBooksStayHidden(t *testing.T) {
 		t.Errorf("continue = %d %s", code, body)
 	}
 }
+
+func TestFeelScriptOnlyInApp(t *testing.T) {
+	a := newTestApp(t)
+	ck := a.owner(t)
+	desktop := &http.Cookie{Name: shellCookie, Value: "desktop"}
+	app := a.do(http.MethodGet, "/", nil, nil, ck, a1Android).Body.String()
+	if !strings.Contains(app, "js/native-feel.") {
+		t.Error("the app page lacks native-feel.js")
+	}
+	for name, c := range map[string][]*http.Cookie{"browser": {ck}, "desktop": {ck, desktop}} {
+		if strings.Contains(a.do(http.MethodGet, "/", nil, nil, c...).Body.String(), "js/native-feel.") {
+			t.Errorf("%s page loads native-feel.js", name)
+		}
+	}
+}

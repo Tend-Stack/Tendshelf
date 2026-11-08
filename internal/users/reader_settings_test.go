@@ -110,3 +110,26 @@ func TestXReaderSettingsOldJSON(t *testing.T) {
 		t.Fatalf("old JSON = %+v, %v; want %+v", got, err, want)
 	}
 }
+
+func TestFeelVolumeKeys(t *testing.T) {
+	if DefaultReader.VolumeKeys {
+		t.Fatal("volume keys default on")
+	}
+	r := newRepo(t, Options{})
+	ctx := context.Background()
+	u, err := createOwner(t, r, goodUser("ana"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := DefaultReader
+	want.VolumeKeys = true
+	if err := r.SaveReader(ctx, u.ID, want); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := r.LoadReader(ctx, u.ID); err != nil || !got.VolumeKeys {
+		t.Fatalf("round trip = %+v, %v", got, err)
+	}
+	if got := parseReader(`{"volumeKeys":1}`); got.VolumeKeys {
+		t.Errorf("a number parsed as true")
+	}
+}

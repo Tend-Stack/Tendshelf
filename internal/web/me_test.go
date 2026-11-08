@@ -426,3 +426,34 @@ func TestMeNoInlineStyles(t *testing.T) {
 		}
 	}
 }
+
+func TestFeelSettingsSwitch(t *testing.T) {
+	a := newTestApp(t)
+	ck := a.owner(t)
+	page := func(extra ...*http.Cookie) string {
+		return a.do(http.MethodGet, "/me/settings/playback", nil, nil, append([]*http.Cookie{ck}, extra...)...).Body.String()
+	}
+	body := page(a1Android)
+	if !strings.Contains(body, `name="skip_quiet"`) || !strings.Contains(body, "Skip silence") ||
+		!strings.Contains(body, "Shortens long pauses in the reading. Works in this app only.") {
+		t.Error("the app's playback settings lack the Skip silence switch")
+	}
+	for name, extra := range map[string][]*http.Cookie{"browser": nil, "desktop": {{Name: shellCookie, Value: "desktop"}}} {
+		if b := page(extra...); strings.Contains(b, `name="skip_quiet"`) || strings.Contains(b, "Skip silence") {
+			t.Errorf("%s shows the switch", name)
+		}
+	}
+	form := url.Values{"theme": {"system"}, "theme_auto": {"1"}, "speed": {"1"}, "skip_back": {"15"}, "skip_forward": {"30"},
+		"auto_rewind": {"0", "1"}, "next_in_series": {"0", "1"}, "skip_quiet": {"0", "1"}}
+	if rec := settingsPost(t, a, ck, "/me/settings", form, true); rec.Code != http.StatusNoContent || !settingsOf(t, a).SkipQuiet {
+		t.Fatalf("save on = %d, stored %v", rec.Code, settingsOf(t, a).SkipQuiet)
+	}
+	form.Del("skip_quiet")
+	if settingsPost(t, a, ck, "/me/settings", form, true); !settingsOf(t, a).SkipQuiet {
+		t.Error("a post without the key changed it")
+	}
+	form.Set("skip_quiet", "2")
+	if rec := settingsPost(t, a, ck, "/me/settings", form, true); rec.Code < 400 || rec.Code >= 500 {
+		t.Errorf("skip_quiet=2 = %d, want a 4xx", rec.Code)
+	}
+}

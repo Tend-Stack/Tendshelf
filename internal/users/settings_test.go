@@ -163,3 +163,29 @@ func TestSetPassword(t *testing.T) {
 		t.Fatalf("unknown account = %v", err)
 	}
 }
+
+func TestFeelSkipQuiet(t *testing.T) {
+	r := newRepo(t, Options{})
+	ctx := context.Background()
+	u, err := createOwner(t, r, goodUser("ana"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.LoadSettings(ctx, u.ID)
+	if err != nil || got.SkipQuiet {
+		t.Fatalf("default = %+v, %v", got, err)
+	}
+	got.SkipQuiet = true
+	if err := r.SaveSettings(ctx, u.ID, got); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = r.LoadSettings(ctx, u.ID); err != nil || !got.SkipQuiet {
+		t.Fatalf("saved true loads %+v, %v", got, err)
+	}
+	if _, err := r.st.Writer().Exec(`UPDATE user_settings SET value_json = '"yes"' WHERE user_id = ? AND key = ?`, u.ID, keyQuietSkip); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = r.LoadSettings(ctx, u.ID); err != nil || got.SkipQuiet {
+		t.Fatalf("stored \"yes\" loads %+v, %v", got, err)
+	}
+}
