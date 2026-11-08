@@ -23,9 +23,13 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 - **The screen stays on while you read in the Android app**, when the reader's keep-awake setting is on. As in the browser, it lets the screen sleep again after
   10 minutes without a touch, and when you leave the reader.
 
+- **Name your devices.** On Your devices, each browser sign-in and each phone or desktop app has a "Name" button, so you can tell
+  "Kitchen laptop" from "Work PC". An empty name on a browser goes back to the usual label; an app always keeps a name. People who
+  manage accounts see the same names on the Devices tab. "Add a phone" now sits inside the devices card instead of running into it.
+
 ### Upgrading
 
-This version uses database schema 36 (it was 35 in 2026.5.0).
+This version uses database schema 37 (it was 35 in 2026.5.0).
 
 ## 2026.5.0
 

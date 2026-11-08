@@ -66,18 +66,18 @@ func TestBookFirstDevicesFold(t *testing.T) {
 			tab.WaitFor(`document.querySelector(".ts-me__devgroup").open === true`, 5*time.Second)
 
 			var small []string
-			tab.Eval(`[...document.querySelectorAll(".ts-me__devone button")].filter(e => { const r = e.getBoundingClientRect(); return r.height < 44 || r.width < 44; }).map(e => e.getAttribute("aria-label"))`, &small)
+			tab.Eval(`[...document.querySelectorAll(".ts-me__devone form[action$='/signout'] button")].filter(e => { const r = e.getBoundingClientRect(); return r.height < 44 || r.width < 44; }).map(e => e.getAttribute("aria-label"))`, &small)
 			if len(small) > 0 {
 				t.Errorf("sign-out buttons under 44 px: %v", small)
 			}
 			var n int
-			tab.Eval(`document.querySelectorAll(".ts-me__devone button").length`, &n)
+			tab.Eval(`document.querySelectorAll(".ts-me__devone form[action$='/signout'] button").length`, &n)
 			if n != len(ids) {
 				t.Fatalf("%d sign-out buttons in the fold, want %d", n, len(ids))
 			}
 
 			playerClickSel(t, tab, `form[action="/me/sessions/`+ids[0]+`/signout"] button`)
-			tab.WaitFor(`document.querySelectorAll(".ts-me__devone button").length === 2`, 10*time.Second)
+			tab.WaitFor(`document.querySelectorAll(".ts-me__devone form[action$='/signout'] button").length === 2`, 10*time.Second)
 			var path string
 			tab.Eval(`location.pathname`, &path)
 			if !strings.HasPrefix(path, "/me/devices") {

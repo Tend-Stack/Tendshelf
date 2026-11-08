@@ -33,4 +33,12 @@ const (
 	devLineOne  = "This device and 1 other"
 	devLineMany = "This device and %d others"
 	devOneAria  = "Sign out %s, %s"
+
+	devThisBrowser = "This browser"
+	devNameButton  = "Name"
+	devNameLabel   = "Device name"
+	devNameHintWeb = "Leave it empty to go back to the usual name."
+	devNameHintApp = "Up to 64 characters."
+	devNameEmpty   = "Give this phone or app a name. It can't be empty."
+	devNameTooLong = "Use 64 characters or fewer."
 )

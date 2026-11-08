@@ -46,6 +46,21 @@ func devicesSweepRows() []sweepRow {
 	own := sweepPost("POST /me/devices/{did}/signout",
 		func(e *sweepEnv, role int) string { return "/me/devices/" + e.devices[role] + "/signout" }, nil, sweepSame(http.StatusSeeOther), "/me/devices")
 
+	name := func(label string, path func(*sweepEnv, int) string, form url.Values, want [4]int, redirect string) sweepRow {
+		r := sweepPost("POST /me/devices/{did}/name", path, sweepFormOf(form), want, redirect)
+		r.Label = label
+		return r
+	}
+	ownName := func(e *sweepEnv, role int) string { return "/me/devices/" + e.devices[role] + "/name" }
+	nameRows := []sweepRow{
+		name("own", ownName, url.Values{"name": {"Tablet"}}, sweepSame(http.StatusSeeOther), "/me/devices"),
+		name("empty name", ownName, url.Values{"name": {"  "}}, sweepSame(http.StatusUnprocessableEntity), ""),
+		name("someone else's device", func(e *sweepEnv, role int) string { return "/me/devices/" + e.devices[(role+1)%4] + "/name" },
+			url.Values{"name": {"Stolen"}}, sweepSame(http.StatusNotFound), ""),
+		name("unknown device", func(*sweepEnv, int) string { return "/me/devices/dev_nothere/name" },
+			url.Values{"name": {"Stolen"}}, sweepSame(http.StatusNotFound), ""),
+	}
+
 	staffPost := sweepStaff(http.StatusSeeOther, http.StatusNotFound)
 	onlyOwner := [4]int{http.StatusSeeOther, http.StatusNotFound, http.StatusNotFound, http.StatusNotFound}
 	none := sweepSame(http.StatusNotFound)
@@ -62,7 +77,7 @@ func devicesSweepRows() []sweepRow {
 	connectPost := sweepPost("POST /app/connect", sweepStatic("/app/connect"),
 		sweepFormOf(url.Values{"challenge": {a1Challenge}}), sweepSame(http.StatusForbidden), "")
 	connectDone := sweepGet("GET /app/connect/done", sweepStatic("/app/connect/done"), sweepSame(http.StatusForbidden))
-	return []sweepRow{
+	return append(nameRows, []sweepRow{
 		connectGet, connectPost, connectDone,
 		tokenRow, del, me, nope, own,
 		admin("device", func(e *sweepEnv, _ int) string {
@@ -83,7 +98,7 @@ func devicesSweepRows() []sweepRow {
 		admin("another person's device", func(e *sweepEnv, _ int) string {
 			return "/admin/users/" + e.extra + "/devices/" + e.devices[sweepMember] + "/signout"
 		}, none),
-	}
+	}...)
 }
 
 // deviceBearer issues a token for a role through the repository (most test people have no password)

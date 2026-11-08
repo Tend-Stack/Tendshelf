@@ -15,6 +15,10 @@ type DevicesView struct {
 	CSRF   string
 	Lines  []DeviceLine
 	Others int
+	// RenameID, RenameValue and RenameErr re-open the Name form of the row whose save was refused (422).
+	RenameID, RenameValue, RenameErr string
+	// NameButton, NameLabel, HintWeb and HintApp are the handler's words for the Name form.
+	NameButton, NameLabel, HintWeb, HintApp string
 	// AppKeys is the App keys section under the list; the handler fills it.
 	AppKeys AppKeysView
 	// Feeds is the Podcast feeds section under the App keys; the handler fills it.
@@ -27,6 +31,50 @@ templ deviceSignOut(csrf string, d ProfileDevice) {
 		<input type="hidden" name="_csrf" value={ csrf }/>
 		<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ d.Aria }>Sign out</button>
 	</form>
+}
+
+// deviceRenameAction is where a row's Name form posts: a browser sign-in or an app, always the person's own.
+func deviceRenameAction(d ProfileDevice) string {
+	if d.Session {
+		return "/me/sessions/" + d.ID + "/name"
+	}
+	return "/me/devices/" + d.ID + "/name"
+}
+
+// deviceRenameValue is the Name field's value: what the person last typed for a refused save, else the current name.
+func deviceRenameValue(v DevicesView, d ProfileDevice) string {
+	if v.RenameID == d.ID {
+		return v.RenameValue
+	}
+	return d.Name
+}
+
+func deviceRenameErr(v DevicesView, d ProfileDevice) string {
+	if v.RenameID == d.ID {
+		return v.RenameErr
+	}
+	return ""
+}
+
+func deviceRenameHint(v DevicesView, d ProfileDevice) string {
+	if d.Session {
+		return v.HintWeb
+	}
+	return v.HintApp
+}
+
+// deviceRename is the quiet Name control of one row: a disclosure with one field, working without
+// JavaScript. aria says which device it names, for a screen reader.
+templ deviceRename(v DevicesView, d ProfileDevice, aria string) {
+	<details class="ts-me__rename" open?={ v.RenameID == d.ID }>
+		<summary class="ts-btn ts-btn--quiet" aria-label={ aria }>{ v.NameButton }</summary>
+		<form class="ts-me__renameform" method="post" action={ templ.URL(deviceRenameAction(d)) }>
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			@components.TextField(components.Field{ID: "dev-name-" + d.ID, Name: "name", Label: v.NameLabel, Value: deviceRenameValue(v, d),
+				Hint: deviceRenameHint(v, d), Error: deviceRenameErr(v, d), Autocomplete: "off"})
+			<button type="submit" class="ts-btn ts-btn--secondary">Save</button>
+		</form>
+	</details>
 }
 
 // Devices is "Your devices": everywhere the person is signed in, a sign-out for each.
@@ -51,6 +99,7 @@ templ Devices(v DevicesView) {
 						for _, d := range l.Sessions {
 							<div class="ts-me__row ts-me__devone">
 								<span class="body ts-me__rowtext">{ d.Meta }</span>
+								@deviceRename(v, d, "Name "+d.Title+", "+d.Meta)
 								@deviceSignOut(v.CSRF, d)
 							</div>
 						}
@@ -64,20 +113,23 @@ templ Devices(v DevicesView) {
 							<span class="body ts-me__rowtitle">{ l.Title }</span>
 							<span class="caption ts-me__lead">{ l.Meta }</span>
 						</span>
+						@deviceRename(v, l.ProfileDevice, "Name "+l.Title)
 						if !l.Current {
 							@deviceSignOut(v.CSRF, l.ProfileDevice)
 						}
 					</div>
 				}
 			}
-			if v.Others > 0 {
-				<form method="post" action="/me/sessions/signout-others" class="ts-me__others">
-					<input type="hidden" name="_csrf" value={ v.CSRF }/>
-					<button type="submit" class="ts-btn ts-btn--quiet">Sign out everywhere else</button>
-				</form>
-			}
+			<div class="ts-me__devfoot">
+				<a class="ts-btn ts-btn--secondary" href="/me/devices/add">Add a phone</a>
+				if v.Others > 0 {
+					<form method="post" action="/me/sessions/signout-others" class="ts-me__others">
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<button type="submit" class="ts-btn ts-btn--quiet">Sign out everywhere else</button>
+					</form>
+				}
+			</div>
 		</section>
-		<a class="ts-btn ts-btn--secondary ts-me__add" href="/me/devices/add">Add a phone</a>
 		@AppKeys(v.AppKeys)
 		@Feeds(v.Feeds)
 	</div>
