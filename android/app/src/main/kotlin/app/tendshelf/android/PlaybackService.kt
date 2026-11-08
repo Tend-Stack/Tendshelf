@@ -361,6 +361,7 @@ class PlaybackService : MediaLibraryService() {
                     add(ANSWER_COMMAND)
                     add(VISIBLE_COMMAND)
                     add(SLEEP_COMMAND)
+                    add(QUIET_COMMAND)
                 }
                 if (who.speed) add(SPEED_COMMAND)
             }.build()
@@ -472,6 +473,7 @@ class PlaybackService : MediaLibraryService() {
                 ANSWER_ACTION -> askPrompt.answer(args.getBoolean("keepHere"))
                 VISIBLE_ACTION -> askPrompt.setPageVisible(args.getBoolean("visible"))
                 SLEEP_ACTION -> sleep.command(args.getString("choice").orEmpty(), args.getInt("minutes", 0))
+                QUIET_ACTION -> engine.setSkipQuiet(args.getBoolean("on"))
                 else -> return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -509,6 +511,7 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_ASK_POSITION = "ts.ask.positionMs"
         const val EXTRA_ASK_DEVICE = "ts.ask.device"
         const val SLEEP_ACTION = "app.tendshelf.SLEEP"
+        const val QUIET_ACTION = "app.tendshelf.SKIP_QUIET"
         const val EXTRA_SLEEP_MODE = "ts.sleep.mode"
         const val EXTRA_SLEEP_CHOICE = "ts.sleep.choice"
         const val EXTRA_SLEEP_LEFT = "ts.sleep.leftMs"
@@ -517,6 +520,7 @@ class PlaybackService : MediaLibraryService() {
         const val REFUSED_ID = 4244
         val ANSWER_COMMAND = SessionCommand(ANSWER_ACTION, Bundle.EMPTY)
         val SPEED_COMMAND = SessionCommand(SPEED_ACTION, Bundle.EMPTY)
+        val QUIET_COMMAND = SessionCommand(QUIET_ACTION, Bundle.EMPTY)
         val SLEEP_COMMAND = SessionCommand(SLEEP_ACTION, Bundle.EMPTY)
         val VISIBLE_COMMAND = SessionCommand(VISIBLE_ACTION, Bundle.EMPTY)
         val START_COMMAND = SessionCommand(START_ACTION, Bundle.EMPTY)

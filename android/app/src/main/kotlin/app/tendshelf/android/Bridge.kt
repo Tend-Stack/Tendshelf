@@ -13,6 +13,8 @@ import androidx.webkit.WebViewFeature
 import app.tendshelf.shared.Ask
 import app.tendshelf.shared.BridgeMessage
 import app.tendshelf.shared.Origin
+import app.tendshelf.shared.ReaderFeel
+import app.tendshelf.shared.encodePageKey
 import app.tendshelf.shared.PlayerSnapshot
 import app.tendshelf.shared.TokenBucket
 import app.tendshelf.shared.encodeAsk
@@ -40,9 +42,23 @@ class Bridge(
     private val currentOrigin: () -> Origin?,
     /** Bar colour (the page's `theme-color`), or null to go back to the app's own. */
     private val onTheme: (String?) -> Unit,
+    /** Hold or release the screen (`FLAG_KEEP_SCREEN_ON`), decision 0033. */
+    private val onKeepScreenOn: (Boolean) -> Unit,
     /** Read aloud (decision 0032): the phone's own speech engine. */
     private val speech: Speech,
 ) {
+    /** What the reader page asked for (screen, volume keys) and whether the app is in front. */
+    private val feel = ReaderFeel()
+
+    /** True while the reader page wants the volume keys, the app is in front and the bridge is connected. */
+    val pageKeysArmed: Boolean get() = feel.keysArmed && proxy != null && flow() == ConnectFlow.State.Connected
+
+    /** A volume key the activity took: tell the reader to turn a page. */
+    fun pageKey(next: Boolean) {
+        val p = proxy ?: return
+        if (pageKeysArmed) send(p, encodePageKey(next))
+    }
+
     var remote: PlayerRemote? = null
         set(value) {
             field = value
@@ -104,22 +120,26 @@ class Bridge(
         speech.drop()
         main.removeCallbacksAndMessages(null)
         onTheme(null)
+        feel.reset()?.let(onKeepScreenOn)
     }
 
     /** A new document is loading: whatever the old one held is stale (B10). It says hello again. */
     fun pageStarted() {
         proxy = null
         speech.drop()
+        feel.reset()?.let(onKeepScreenOn)
     }
 
     fun onStart() {
         started = true
+        feel.front(true)?.let(onKeepScreenOn)
         pushState()
         tick()
     }
 
     fun onStop() {
         started = false
+        feel.front(false)?.let(onKeepScreenOn)
         speech.stop() // speech runs while the app is in front; the page hears "stopped" and shows Paused (decision 0032)
         lastRewoundSeq = UNSET // a rewind heard with the screen off is not announced later
         main.removeCallbacks(ticker)
@@ -171,6 +191,9 @@ class Bridge(
             is BridgeMessage.Theme -> onTheme(msg.hex)
             is BridgeMessage.Answer -> r?.answer(msg.keepHere)
             is BridgeMessage.Sleep -> r?.sleep(msg.choice, msg.minutes)
+            is BridgeMessage.Wake -> feel.awake(msg.on)?.let(onKeepScreenOn)
+            is BridgeMessage.PageKeys -> feel.keys(msg.on)
+            is BridgeMessage.Quiet -> r?.setSkipQuiet(msg.on)
             BridgeMessage.TtsVoices -> speech.voices { sendTo(reply, it) }
             BridgeMessage.TtsStop -> speech.stop(silent = true)
             is BridgeMessage.Say -> if (started) speech.say(msg) { sendTo(reply, it) }

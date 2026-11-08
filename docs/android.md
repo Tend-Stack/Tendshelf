@@ -129,6 +129,20 @@ decision [0032](decisions/0032-read-aloud.md)). Android System WebView has no us
 - Speech runs while the app is in front: `onStop`, a new document, sign-out and `onDestroy` stop it; the reader keeps its place.
 - The `<queries>` entry for `android.intent.action.TTS_SERVICE` lets the app bind the engine on targetSdk 36.
 
+## Reader feel
+
+Three things a page cannot do alone (decision [0033](decisions/0033-android-feel.md); `Feel.kt` in `:shared`, `Bridge.kt`, `MainActivity.kt`).
+
+- Page to app, three new bridge words (additive; an older app drops them): `wake 0|1`, `pagekeys 0|1` and `quiet 0|1`. The second part is
+  exactly `0` or `1`; nothing else parses. The app answers the page with `{"t":"pagekey","dir":"next"}` or `{"t":"pagekey","dir":"prev"}`.
+- Volume keys: volume down is the next page, volume up the previous one, a held key turns one page. They are taken only while the reader asked
+  (`pagekeys 1`, which needs the reading sheet's setting), the app is in front and the bridge is connected; otherwise they change the volume.
+  Keys the reader does not own, and every key with a sheet or dialog open, behave as before.
+- Screen: `FLAG_KEEP_SCREEN_ON` is set only while the page holds `wake 1` and the activity is started. It is cleared on stop, on a new page
+  and when the bridge detaches (sign-out), and set again on return if the page still holds it.
+- Skip silence: `quiet 1|0` calls `ExoPlayer.setSkipSilenceEnabled` at once (a session custom command, own app only); the setting is also read
+  from `GET /api/v1/settings` (`skipQuiet`) at every book start and cached for offline starts. Book positions are unchanged.
+
 ## Checks before a release
 
 - `android/tools/check-android.sh` runs `:shared:test` and `lintRelease`. `.gitea/workflows/android.yml` runs it on every push that touches `android/`, and `make-apk.sh` runs it before the tag build. Both need the two `TS_ANDROID_CMDLINE_TOOLS_*` variables; without them the job says it was skipped, which is not a pass.

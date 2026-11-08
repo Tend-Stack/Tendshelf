@@ -33,6 +33,7 @@ class Api(origin: String) {
         return PlayerSettings(
             j.getDouble("speed"), j.getInt("skipBackS"), j.getInt("skipForwardS"),
             j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"), ApiJson.rewindSteps(j),
+            skipQuiet = j.optBoolean("skipQuiet", false), // older servers lack it
         )
     }
 

@@ -8,11 +8,15 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.webkit.WebView
 import android.widget.FrameLayout
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
+import app.tendshelf.shared.PageKey
+import app.tendshelf.shared.pageKeyFor
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -61,7 +65,7 @@ class MainActivity : Activity() {
         signOut = SignOut(web, store, api, pages, { getString(it) }) { remote?.stopAndClear() }
         flow = ConnectFlow(this, web, store, api, pages, signOut)
         speech = Speech(this)
-        bridge = Bridge({ flow.state }, { store.origin }, ::applyTheme, speech)
+        bridge = Bridge({ flow.state }, { store.origin }, ::applyTheme, ::keepScreenOn, speech)
         Offline.onChange = { id -> main.post { bridge.pushDownload(id) } }
         flow.onState = ::syncBridge
         saver = FileSaver(this) { store.origin }
@@ -187,6 +191,21 @@ class MainActivity : Activity() {
     }
 
     /** The bridge belongs to the connected state: attached before the first load there, gone at sign-out. */
+    /** The screen stays on only while the reader page holds it and the app is in front (decision 0033). */
+    private fun keepScreenOn(on: Boolean) {
+        if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    /** Volume keys turn pages only while the reader is in front, asked for them and the bridge is connected (decision 0033). */
+    override fun dispatchKeyEvent(e: KeyEvent): Boolean =
+        when (pageKeyFor(bridge.pageKeysArmed, e.keyCode, e.action, e.repeatCount)) {
+            PageKey.Pass -> super.dispatchKeyEvent(e)
+            PageKey.Swallow -> true
+            PageKey.Next -> { bridge.pageKey(true); true }
+            PageKey.Prev -> { bridge.pageKey(false); true }
+        }
+
     private fun syncBridge(state: ConnectFlow.State) {
         when (state) {
             ConnectFlow.State.Connected -> {

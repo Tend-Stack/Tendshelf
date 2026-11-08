@@ -131,6 +131,31 @@ class BridgeProtocolTest {
     }
 }
 
+class FeelBridgeTest {
+    @Test
+    fun goodWords() {
+        assertEquals(BridgeMessage.Wake(false), parseBridge("wake 0"))
+        assertEquals(BridgeMessage.Wake(true), parseBridge("wake 1"))
+        assertEquals(BridgeMessage.PageKeys(false), parseBridge("pagekeys 0"))
+        assertEquals(BridgeMessage.PageKeys(true), parseBridge("pagekeys 1"))
+        assertEquals(BridgeMessage.Quiet(false), parseBridge("quiet 0"))
+        assertEquals(BridgeMessage.Quiet(true), parseBridge("quiet 1"))
+    }
+
+    @Test
+    fun badWords() {
+        for (bad in listOf("wake", "wake 2", "wake 01", "wake  1", "wake 1 ", "Wake 1", "pagekeys on", "quiet -1", "quiet 1 1")) {
+            assertNull(parseBridge(bad), bad)
+        }
+    }
+
+    @Test
+    fun pageKeyJson() {
+        assertEquals("{\"t\":\"pagekey\",\"dir\":\"next\"}", encodePageKey(true))
+        assertEquals("{\"t\":\"pagekey\",\"dir\":\"prev\"}", encodePageKey(false))
+    }
+}
+
 class SleepBridgeTest {
     @Test
     fun sleepWords() {

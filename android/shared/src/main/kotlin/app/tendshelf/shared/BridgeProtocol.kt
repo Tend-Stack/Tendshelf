@@ -46,6 +46,15 @@ sealed interface BridgeMessage {
      * [text] passed [parseSay]'s rules, goes only to the speech engine and is never logged or echoed.
      */
     data class Say(val n: Int, val rate: Double, val voiceId: String, val text: String) : BridgeMessage
+
+    /** `wake 0|1`: the page asks the app to hold (1) or release (0) the screen (decision 0033). */
+    data class Wake(val on: Boolean) : BridgeMessage
+
+    /** `pagekeys 0|1`: the reader asks for the volume keys (1) or gives them back (0) (decision 0033). */
+    data class PageKeys(val on: Boolean) : BridgeMessage
+
+    /** `quiet 0|1`: skip silence (quiet skip) off or on, applied at once (decision 0033). */
+    data class Quiet(val on: Boolean) : BridgeMessage
 }
 
 const val MAX_LENGTH = 128
@@ -85,6 +94,9 @@ fun parseBridge(raw: String?): BridgeMessage? {
             parts.size == 2 && parts[1] == "stop" -> BridgeMessage.TtsStop
             else -> null
         }
+        "wake" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.Wake(parts[1] == "1") else null
+        "pagekeys" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.PageKeys(parts[1] == "1") else null
+        "quiet" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.Quiet(parts[1] == "1") else null
         "dl" -> if (parts.size == 3 && validId(parts[2]) && parts[1] in DL_WORDS) BridgeMessage.Download(parts[1], parts[2]) else null
         else -> null
     }
@@ -208,6 +220,9 @@ fun encodeTts(n: Int, ev: String): String {
 
 fun validLang(s: String): Boolean =
     s.length in 2..35 && s.all { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '-' }
+
+/** The volume key the reader should treat as a page turn; the page ignores any other direction. */
+fun encodePageKey(next: Boolean): String = "{\"t\":\"pagekey\",\"dir\":\"${if (next) "next" else "prev"}\"}"
 
 fun encodeBack(): String = "{\"t\":\"back\"}"
 

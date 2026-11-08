@@ -510,7 +510,7 @@ object Offline {
     fun saveSettings(s: PlayerSettings) {
         if (!::app.isInitialized) return
         val j = org.json.JSONObject().put("speed", s.speed).put("skipBackS", s.skipBackS).put("skipForwardS", s.skipForwardS)
-            .put("autoRewind", s.autoRewind).put("nextInSeries", s.nextInSeries)
+            .put("autoRewind", s.autoRewind).put("nextInSeries", s.nextInSeries).put("skipQuiet", s.skipQuiet)
         prefs.edit().putString("settingsJson", j.toString()).apply()
     }
 
@@ -519,7 +519,9 @@ object Offline {
         val text = prefs.getString("settingsJson", null) ?: return PlayerSettings(1.0, 30, 30, true, false)
         return try {
             val j = org.json.JSONObject(text)
-            PlayerSettings(j.getDouble("speed"), j.getInt("skipBackS"), j.getInt("skipForwardS"), j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"))
+            PlayerSettings(j.getDouble("speed"), j.getInt("skipBackS"), j.getInt("skipForwardS"), j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"),
+                skipQuiet = j.optBoolean("skipQuiet", false),
+            )
         } catch (_: Exception) {
             PlayerSettings(1.0, 30, 30, true, false)
         }

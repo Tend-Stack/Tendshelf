@@ -61,6 +61,16 @@ class BookEngine(
         private set
     val currentBook: String get() = bookId
 
+    /**
+     * Main thread: quiet skip (skip silence) on or off, at once (decision 0033). The cached settings are changed too, so an
+     * offline start keeps it; they are read back first because [settings] holds only the built-in values before any book.
+     */
+    fun setSkipQuiet(on: Boolean) {
+        exo.skipSilenceEnabled = on
+        settings = settings.copy(skipQuiet = on)
+        Offline.saveSettings(Offline.loadSettings().copy(skipQuiet = on))
+    }
+
     /** Main thread, a start or the player failed: the kind word (`signedOut`, `stream`, `book`, `background`). */
     var onFailed: ((String) -> Unit)? = null
 
@@ -86,6 +96,7 @@ class BookEngine(
             override fun onPositionDiscontinuity(
                 oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int,
             ) {
+                // DISCONTINUITY_REASON_SILENCE_SKIP is ignored on purpose: quiet skip (decision 0033) must not trigger the missing-file jump.
                 if (reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION && reason != Player.DISCONTINUITY_REASON_SEEK) return
                 val to = skipSilence(silent, exo.currentPosition) ?: return
                 val end = exo.duration
@@ -175,6 +186,7 @@ class BookEngine(
         exo.setMediaSource(BookMedia.build(manifest, api.paths, ServerGate.gated(http), downloaded), startPlace(manifest.progress, atMs, pending))
         if (BuildConfig.DEBUG) Log.i(TAG, "speed from the manifest: ${manifest.speed}")
         exo.setPlaybackSpeed(manifest.speed.toFloat())
+        exo.skipSilenceEnabled = settings.skipQuiet
         exo.prepare()
         exo.play()
         publishState()

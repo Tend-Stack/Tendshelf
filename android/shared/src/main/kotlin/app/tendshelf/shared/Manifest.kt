@@ -54,4 +54,6 @@ data class PlayerSettings(
     val autoRewind: Boolean,
     val nextInSeries: Boolean,
     val rewindSteps: List<RewindStep> = DEFAULT_REWIND,
+    /** Skip silence ("quiet skip", decision 0033); Android app only. */
+    val skipQuiet: Boolean = false,
 )

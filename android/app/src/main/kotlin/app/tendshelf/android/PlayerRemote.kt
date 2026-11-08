@@ -26,6 +26,9 @@ interface PlayerRemote {
     /** The page's sleep choice: `off`, `plus`, `chapter` or minutes as digits ([minutes] is 0 for the words). */
     fun sleep(choice: String, minutes: Int)
 
+    /** Quiet skip (skip silence) on or off, at once (decision 0033). */
+    fun setSkipQuiet(on: Boolean)
+
     /** Whether the page is on screen (the activity is started), so the service knows where to ask. */
     fun pageVisible(visible: Boolean)
     fun snapshot(): PlayerSnapshot
@@ -75,6 +78,11 @@ class ControllerRemote(private val controller: MediaController) : PlayerRemote {
             putString("choice", choice)
             putInt("minutes", minutes)
         })
+    }
+
+    @androidx.media3.common.util.UnstableApi
+    override fun setSkipQuiet(on: Boolean) {
+        controller.sendCustomCommand(PlaybackService.QUIET_COMMAND, Bundle().apply { putBoolean("on", on) })
     }
 
     override fun pageVisible(visible: Boolean) {
