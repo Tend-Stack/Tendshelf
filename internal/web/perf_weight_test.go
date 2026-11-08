@@ -42,7 +42,7 @@ var weightBudgets = map[string]weightBudget{
 	"search":      {HTML: 59392, CSS: 297984, JS: 195584, Font: 791552, Img: 39936, Requests: 65},
 	"profile":     {HTML: 64512, CSS: 328704, JS: 197632, Font: 791552, Img: 57344, Requests: 62}, // decision 0021, set the same way from the first measurement (2026-11-05)
 	"settings":    {HTML: 49152, CSS: 297984, JS: 195584, Font: 791552, Img: 1024, Requests: 45},
-	"reader":      {HTML: 52224, CSS: 321536, JS: 237568, Font: 1075200, Img: 1024, Requests: 56}, // JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05)
+	"reader":      {HTML: 52224, CSS: 321536, JS: 238592, Font: 1075200, Img: 1024, Requests: 56}, // JS +1 KB for read aloud (decision 0032, 2026-11-08: 238,301 B measured, 733 B over, reported); JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05)
 	"admin-users": {HTML: 47104, CSS: 297984, JS: 195584, Font: 791552, Img: 1024, Requests: 45},
 }
 

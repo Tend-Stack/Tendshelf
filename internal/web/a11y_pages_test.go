@@ -242,6 +242,9 @@ func a11yStates() []a11yState {
 			tab.Eval(`(() => { const bar = document.getElementById("reader-skim"); bar.value = 4500; bar.dispatchEvent(new Event("input", { bubbles: true })); })()`, nil)
 			tab.WaitFor(`!document.getElementById("reader-skim-tip").hidden`, 3*time.Second)
 		}},
+		// Read aloud (decision 0032): the strip open with a marked sentence, and with the voice and speed disclosure open.
+		{Key: "reader-aloud", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: alAudit(false)},
+		{Key: "reader-aloud-more", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: alAudit(true)},
 		{Key: "now-panel", Role: "owner", Path: a11yStatic("/libraries"), Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
 			// As nowPanelOpen does: the bar plays first, then the player opens.
 			tab.WaitFor(`window.tsPlayer && window.tsPlayer.state().bookId !== "" && !document.getElementById("player").hidden`, 10*time.Second)
@@ -347,4 +350,23 @@ func a11yDupMergePath(e *a11yEnv) string {
 		panic("a11y: the Harbour Lights library needs two audiobooks for the merge page")
 	}
 	return "/admin/duplicates/merge?keep=" + ids[0] + "&drop=" + ids[1]
+}
+
+// alAudit installs the fake speech engine, loads the page again, and opens the read-aloud strip (with its disclosure open when more).
+func alAudit(more bool) func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
+	return func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
+		_ = tab.Call("Page.enable", nil, nil)
+		if err := tab.Call("Page.addScriptToEvaluateOnNewDocument", map[string]any{"source": fakeSpeech(alVoices, false)}, nil); err != nil {
+			t.Fatal(err)
+		}
+		var href string
+		tab.Eval(`location.href`, &href)
+		tab.Navigate(href)
+		tab.WaitFor(ofrMounted+` && [...document.querySelectorAll("[data-aloud-src]")].some((b) => !b.hidden)`, 10*time.Second)
+		alPress(tab)
+		tab.WaitFor(`window.__tts.log.length >= 1 && document.querySelector("#reader .ts-s.is-now") !== null`, 5*time.Second)
+		if more {
+			tab.Eval(`document.querySelector(".ts-aloud__more").open = true`, nil)
+		}
+	}
 }

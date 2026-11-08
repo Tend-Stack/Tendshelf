@@ -5,6 +5,8 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -514,5 +516,37 @@ func TestAloudBrowserOffline(t *testing.T) {
 	tab.Eval(`document.querySelectorAll("#reader .ts-s.is-now").length`, &marked)
 	if marked != 1 {
 		t.Errorf("offline: %d sentences marked", marked)
+	}
+}
+
+// TestAloudVisual captures the reader with the read-aloud strip open and a sentence marked, at 390, 768, 1024 and 1440 px,
+// in dark, light and sepia. There is no board for it: compare with BRAND "Reader" and the dock. The voice names are fixed.
+func TestAloudVisual(t *testing.T) {
+	b := chromium(t)
+	out := visualDir(t, "chromium")
+	l := pgSeedEPUB(t, alBook(), nil)
+	base := themedServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.AddCookie(l.owner)
+		l.a.h.ServeHTTP(w, r)
+	}))
+	sizes := []struct{ w, h int }{{390, 844}, {768, 1024}, {1024, 768}, {1440, 900}}
+	for _, sz := range sizes {
+		for _, theme := range []string{"dark", "light", "sepia"} {
+			t.Run(fmt.Sprintf("%d-%s", sz.w, theme), func(t *testing.T) {
+				tab := b.NewTab(sz.w, sz.h, sz.w < 768, true)
+				_ = tab.Call("Page.enable", nil, nil)
+				if err := tab.Call("Page.addScriptToEvaluateOnNewDocument", map[string]any{"source": fakeSpeech(alVoices, false)}, nil); err != nil {
+					t.Fatal(err)
+				}
+				tab.Navigate(base + l.readPath("ch=2&theme="+theme))
+				tab.WaitFor(ofrMounted+` && [...document.querySelectorAll("[data-aloud-src]")].some((b) => !b.hidden)`, 10*time.Second)
+				alPress(tab)
+				alWaitLog(t, tab, 1)
+				tab.Eval(`document.querySelector('[data-aloud="fwd"]').click()`, nil)
+				alWaitLog(t, tab, 2)
+				time.Sleep(300 * time.Millisecond)
+				tab.Screenshot(filepath.Join(out, fmt.Sprintf("aloud-%s-%d.png", theme, sz.w)))
+			})
+		}
 	}
 }

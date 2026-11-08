@@ -173,6 +173,24 @@ leaves; a refusal or a missing API is silent. Auto-hide sets `data-chrome="off"`
 focus is in the bar or dock, a sheet or dialog is open, or text is selected. There is no brightness control: no web API sets
 the screen's brightness, and a dimming overlay would only lower contrast.
 
+## Read aloud (decision [0032](decisions/0032-read-aloud.md))
+
+A "Read aloud" control opens a strip in the dock and speaks the book with the device's own voice, one sentence at a time, from the
+sentence at the top of the view. The control is in the header beside Aa from 768 px and at the end of the dock row below it; the
+offline reader shell has it too. It stays hidden while the device has no voice of its own: only browser voices with `localService`
+true are listed or used, and every utterance names its voice, so book text never leaves the device.
+`reader.js` shows the control (about ten lines) and imports `reader-aloud.js` on the first press. The module marks the spoken
+sentence with `.ts-s.is-now` (a wash and an underline), follows it through `kit.follow` (`reader.js` `show()` then `moved()`, so
+the saved place is the top of the view, counted as reading), turns the page in pages, and goes on into the next part and chapter
+(scroll: the `ts-reader-next` sentinel; pages: `turn`). When the person moves the view away, following stops and "Back to the voice"
+brings it back. Pause cancels and remembers the sentence; Play speaks it again. Starting pauses a playing audiobook and the audiobook
+starting stops the voice; leaving the reader (a boosted link out, `pagehide`) cancels speech.
+Voice and speed are the device's (`localStorage` `ts.aloud.voice`, `ts.aloud.rate`; speeds 0.8 to 2); voices of the book's language
+come first. Keys, only while the strip is open: `j` back one sentence, `k` forward one. The engine is behind a three-method seam
+(`voices`, `speak`, `cancel`; `window.tsNativeSpeech` replaces the browser's in the Android app, R2). Limits: no word marking, no
+starting from a tapped sentence, no reading backwards across parts, no speech with the screen off. Tests: `TestReaderAloudMarkup`,
+`TestAloudBrowser*` (a fake `speechSynthesis` in `aloud_browser_test.go` only), the `reader-aloud` a11y states, `TestAloudVisual`.
+
 ## Series and shelves (G7)
 
 The last part of a book that belongs to a series ends with a quiet link, "Next in {series}: {title}", under the finished

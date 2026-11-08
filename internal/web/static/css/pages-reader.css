@@ -194,10 +194,10 @@ body:has(.ts-readerpage) :is(#nav-tabbar, #nav-rail, #nav-side) { visibility: hi
 .ts-aloud .ts-iconbtn, .ts-aloud-open { flex: none; }
 .ts-aloud__status { margin: 0; font-size: 0.8125rem; line-height: 1.125rem; color: var(--ink-muted); text-align: center; }
 .ts-aloud__status:empty { display: none; }
-.ts-aloud__more summary { display: flex; align-items: center; min-height: 2.75rem; cursor: pointer; }
+.ts-aloud__more summary { box-sizing: border-box; min-height: 2.75rem; padding-block: var(--space-12); list-style-position: inside; cursor: pointer; }
 .ts-aloud__more label { display: block; margin-block: var(--space-8) var(--space-4); }
 .ts-aloud-open--bar { display: none; }
-@media (min-width: 768px) {
+@media (width >= 768px) {
   .ts-aloud-open--bar { display: inline-flex; }
   .ts-aloud-open--dock { display: none; }
 }
