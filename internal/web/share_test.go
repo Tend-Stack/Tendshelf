@@ -275,7 +275,7 @@ func TestSharePageLists(t *testing.T) {
 		t.Error("an admin sees the admin invite")
 	}
 	// a book's page lists the people and invites that open it, and has the book chosen
-	page := e.get(e.owner, "/books/"+e.books[0].ID+"/share").Body.String()
+	page := accountHubMain(e.get(e.owner, "/books/"+e.books[0].ID+"/share").Body.String())
 	for _, id := range []string{a, c} {
 		if !strings.Contains(page, e.sharepageName(id)) {
 			t.Errorf("%s is missing from the book's list", e.sharepageName(id))

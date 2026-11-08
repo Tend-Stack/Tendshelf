@@ -31,6 +31,46 @@ var prefsPersonal = []prefsItem{
 	{"devices", "Your devices", "/me/devices"},
 }
 
+// prefsServerItems is the "Your server" group for what the person may see, in the order the list shows.
+// Profile's Settings menu draws the same group, so the two cannot drift.
+func prefsServerItems(n PrefsNav) []prefsItem {
+	var out []prefsItem
+	if n.Users {
+		out = append(out, prefsItem{"users", "Users & invites", "/admin/users"})
+	}
+	if n.Libraries {
+		out = append(out, prefsItem{"libraries", "Libraries", "/admin/libraries"})
+	}
+	if n.Email {
+		out = append(out, prefsItem{"email", "Email", "/admin/email"})
+	}
+	if n.Backups {
+		out = append(out, prefsItem{"backups", "Backups", "/admin/backups"})
+	}
+	return out
+}
+
+// prefsSettingsItems is the personal list without "Your devices", which Profile's Account menu holds.
+func prefsSettingsItems() []prefsItem {
+	var out []prefsItem
+	for _, it := range prefsPersonal {
+		if it.Key != "devices" {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
+// prefsDevicesItem is the "Your devices" entry of the personal list.
+func prefsDevicesItem() prefsItem {
+	for _, it := range prefsPersonal {
+		if it.Key == "devices" {
+			return it
+		}
+	}
+	return prefsItem{}
+}
+
 // prefsCurrent is the aria-current value of an item: "page" on its own page, "true" for the
 // selected item of the index (the list is the page there), and empty otherwise.
 func prefsCurrent(n PrefsNav, key string) string {
@@ -90,27 +130,12 @@ templ PrefsShell(n PrefsNav, pane templ.Component) {
 						</li>
 					}
 				</ul>
-				if n.Users || n.Libraries || n.Email || n.Backups {
+				if items := prefsServerItems(n); len(items) > 0 {
 					<h2 class="ts-overline ts-prefs__heading">Your server</h2>
 					<ul class="ts-prefs__list">
-						if n.Users {
+						for _, it := range items {
 							<li>
-								@prefsLink(n, "users", "Users & invites", "/admin/users")
-							</li>
-						}
-						if n.Libraries {
-							<li>
-								@prefsLink(n, "libraries", "Libraries", "/admin/libraries")
-							</li>
-						}
-						if n.Email {
-							<li>
-								@prefsLink(n, "email", "Email", "/admin/email")
-							</li>
-						}
-						if n.Backups {
-							<li>
-								@prefsLink(n, "backups", "Backups", "/admin/backups")
+								@prefsLink(n, it.Key, it.Label, it.Href)
 							</li>
 						}
 					</ul>

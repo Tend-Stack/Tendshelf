@@ -16,6 +16,21 @@ var MainNav = []NavItem{
 	{Key: "profile", Label: "Profile", Href: "/me", Icon: "profile"},
 }
 
+// NavAccount is the signed-in person as the navigation shows them: the account chip at the foot of the
+// rail and sidebar, and the avatar on the phone's Profile tab. An empty ID draws the plain Profile item.
+type NavAccount struct{ ID, Name, Kind string }
+
+// profileLabel is the accessible name of the account chip.
+func profileLabel(a NavAccount) string {
+	return "Profile, " + a.Name
+}
+
+// chipItem says whether a main-nav item is drawn in the list: Profile moves to the account chip at
+// the foot when the person is known.
+func chipItem(it NavItem, a NavAccount) bool {
+	return it.Key != "profile" || a.ID == ""
+}
+
 // navFor is MainNav for the window it is drawn in. The phone app keeps the Downloads item (A7) but draws the list itself
 // from what the phone holds, so the link is a plain navigation (NoBoost) that the app's navigation policy catches.
 func navFor(shell string) []NavItem {
@@ -50,7 +65,7 @@ func shelfKey(s ShelfLink) string {
 }
 
 // TabBar is the phone's bottom navigation.
-templ TabBar(current, shell string) {
+templ TabBar(current, shell string, acct NavAccount) {
 	<nav aria-label="Main" id="nav-tabbar" hx-preserve class="ts-tabbar ts-nav-tabbar">
 		for _, it := range navFor(shell) {
 			<a
@@ -64,7 +79,11 @@ templ TabBar(current, shell string) {
 					aria-current="page"
 				}
 			>
-				@Icon(it.Icon, false)
+				if it.Key == "profile" && acct.ID != "" {
+					@Avatar(acct.ID, acct.Name, "sm")
+				} else {
+					@Icon(it.Icon, false)
+				}
 				{ it.Label }
 			</a>
 		}
@@ -72,28 +91,42 @@ templ TabBar(current, shell string) {
 }
 
 // SideRail is the tablet navigation rail (768 to 1279 px).
-templ SideRail(current, shell string) {
+templ SideRail(current, shell string, acct NavAccount) {
 	<nav aria-label="Main" id="nav-rail" hx-preserve class="ts-rail ts-nav-rail">
 		<span class="ts-rail__brand ts-brand">
 			@Mark()
 		</span>
 		for _, it := range navFor(shell) {
-			if it.Key == "profile" {
-				<span class="ts-rail__spacer"></span>
+			if chipItem(it, acct) {
+				<a
+					href={ templ.SafeURL(it.Href) }
+					class="ts-rail__item"
+					data-nav={ it.Href }
+					if it.NoBoost {
+						hx-boost="false"
+					}
+					if it.Key == current {
+						aria-current="page"
+					}
+				>
+					@Icon(it.Icon, false)
+					{ it.Label }
+				</a>
 			}
+		}
+		<span class="ts-rail__spacer"></span>
+		if acct.ID != "" {
 			<a
-				href={ templ.SafeURL(it.Href) }
-				class="ts-rail__item"
-				data-nav={ it.Href }
-				if it.NoBoost {
-					hx-boost="false"
-				}
-				if it.Key == current {
+				href="/me"
+				class="ts-rail__item ts-rail__me"
+				data-nav="/me"
+				aria-label={ profileLabel(acct) }
+				if current == "profile" {
 					aria-current="page"
 				}
 			>
-				@Icon(it.Icon, false)
-				{ it.Label }
+				@Avatar(acct.ID, acct.Name, "md")
+				Profile
 			</a>
 		}
 	</nav>
@@ -126,7 +159,7 @@ func navToggleLabel(rail bool) string {
 // its foot posts the next state. preserve keeps the element across boosted swaps (full page renders);
 // the fragment that answers the toggle leaves it off, because htmx 4 would otherwise put the OLD
 // preserved element back in place of the new one.
-templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, rail bool, csrf string, preserve bool, shell string) {
+templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, rail bool, csrf string, preserve bool, shell string, acct NavAccount) {
 	<nav
 		aria-label="Main"
 		id="nav-side"
@@ -141,23 +174,25 @@ templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, 
 			<span class="ts-side__label">Tendshelf</span>
 		</span>
 		for _, it := range navFor(shell) {
-			<a
-				href={ templ.SafeURL(it.Href) }
-				class="ts-side__item"
-				data-nav={ it.Href }
-				if it.NoBoost {
-					hx-boost="false"
-				}
-				if rail {
-					title={ it.Label }
-				}
-				if it.Key == current {
-					aria-current="page"
-				}
-			>
-				@Icon(it.Icon, false)
-				<span class="ts-side__label">{ it.Label }</span>
-			</a>
+			if chipItem(it, acct) {
+				<a
+					href={ templ.SafeURL(it.Href) }
+					class="ts-side__item"
+					data-nav={ it.Href }
+					if it.NoBoost {
+						hx-boost="false"
+					}
+					if rail {
+						title={ it.Label }
+					}
+					if it.Key == current {
+						aria-current="page"
+					}
+				>
+					@Icon(it.Icon, false)
+					<span class="ts-side__label">{ it.Label }</span>
+				</a>
+			}
 		}
 		if len(shelves) > 0 && !rail {
 			<span class="ts-side__group ts-overline">Your shelves</span>
@@ -212,6 +247,23 @@ templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, 
 			>
 				@Icon("folder", false)
 				<span class="ts-side__label">Libraries</span>
+			</a>
+		}
+		if acct.ID != "" {
+			<a
+				href="/me"
+				class="ts-side__item ts-side__me"
+				data-nav="/me"
+				aria-label={ profileLabel(acct) }
+				if current == "profile" {
+					aria-current="page"
+				}
+			>
+				@Avatar(acct.ID, acct.Name, "md")
+				<span class="ts-side__label ts-side__metext">
+					<span class="ts-truncate ts-side__mename">{ acct.Name }</span>
+					<span class="caption ts-side__mekind">{ acct.Kind }</span>
+				</span>
 			</a>
 		}
 		<form class="ts-side__foot" method="post" action="/me/nav" hx-post="/hx/me/nav" hx-target="#nav-side" hx-swap="outerHTML">

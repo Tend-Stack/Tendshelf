@@ -9,13 +9,26 @@
 .ts-profile__who { display: contents; }
 .ts-profile__name { grid-column: 2; margin: 0; overflow-wrap: anywhere; }
 .ts-profile__head .ts-me__sub { grid-column: 2 / -1; grid-row: 2; }
-.ts-profile__settings { grid-column: 3; grid-row: 1; margin-right: calc(var(--space-12) * -1); text-decoration: none; }
+/* Account and Settings: two real buttons, each opening a menu of links (a <details>, closed by shell.js).
+   Under the name on a phone, at the head's right edge once the page has room. */
+.ts-profile__menus { grid-column: 1 / -1; grid-row: 3; display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-8); }
+.ts-profile__menus .ts-profile__menu[open] { flex: 0 0 auto; }
+.ts-profile__menus .ts-profile__menu[open] > summary { width: auto; justify-content: flex-start; }
+.ts-profile__menu > summary { display: inline-flex; align-items: center; gap: var(--space-8); min-height: var(--size-tap); }
+.ts-profile__menu > summary .ts-icon { width: 1rem; height: 1rem; }
+/* The menus float over the page at every width and never leave the screen (the library's phone layout puts them in the flow). */
+.ts-profile__menus .ts-chipmenu__body { position: absolute; top: 100%; left: 0; right: auto; z-index: 5; box-sizing: border-box; width: 15rem; max-width: calc(100vw - 2 * var(--space-20)); box-shadow: var(--shadow-float); }
+.ts-profile__menus .ts-chipmenu--end .ts-chipmenu__body { left: auto; right: 0; }
+.ts-profile__mitem { width: 100%; box-sizing: border-box; border: 0; background: transparent; font: inherit; font-size: 0.9375rem; text-align: start; cursor: pointer; }
+.ts-profile__mtext { display: flex; flex-direction: column; padding-block: var(--space-8); min-width: 0; }
+.ts-profile__signout { margin: var(--space-4) 0 0; padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.ts-profile__mquiet { color: var(--ink-muted); }
+.ts-profile__mquiet:hover { color: var(--ink); }
 .ts-profile__cols { display: flex; flex-direction: column; gap: var(--space-32); }
 .ts-profile__books, .ts-profile__side { display: flex; flex-direction: column; gap: var(--space-24); min-width: 0; }
 .ts-profile__books .ts-home__hero { margin-block: 0; }
 .ts-profile__empty .ts-empty { margin-inline: 0; padding-inline: 0; align-items: flex-start; text-align: start; }
 .ts-profile .ts-stats { margin: 0; }
-.ts-profile .ts-me__signout { margin-top: var(--space-8); }
 .ts-profile .ts-me__foot { margin-top: var(--space-4); }
 /* A card of the side column. */
 .ts-profile__card { padding: var(--space-4) 1.125rem var(--space-8); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
@@ -42,6 +55,9 @@
 .ts-profile__done > :nth-child(n+4) { display: none; }
 
 @container profile (width >= 36rem) {
+  .ts-profile__menus { grid-column: 3; grid-row: 1 / span 2; margin-top: 0; }
+  .ts-profile__head .ts-me__sub { grid-column: 2; }
+  .ts-profile__menus .ts-chipmenu__body, .ts-profile__menus .ts-chipmenu--end .ts-chipmenu__body { left: auto; right: 0; }
   .ts-profile__name { font-size: 2rem; line-height: 2.375rem; }
   .ts-pbooks { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: var(--space-24) var(--space-16); margin-top: var(--space-8); }
   .ts-pbook { display: block; padding: 0; border-bottom: 0; }
@@ -58,7 +74,7 @@
 /* One column with room to spare (768, 1024, or the player panel open): the side cards pair up. */
 @container profile (36rem <= width < 60rem) {
   .ts-profile__side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-  .ts-profile__account, .ts-profile__side .ts-me__signout, .ts-profile__side .ts-me__foot { grid-column: 1 / -1; }
+  .ts-profile__side .ts-me__foot { grid-column: 1 / -1; }
 }
 /* Two columns only when the page really has the room (61 rem at 1280 px with the sidebar). */
 @container profile (width >= 60rem) {

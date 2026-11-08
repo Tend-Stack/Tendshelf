@@ -110,10 +110,6 @@ func TestStatsProfilePanel(t *testing.T) {
 	if !strings.Contains(page, `data-ts-tz="UTC"`) {
 		t.Error("the body does not carry the stored zone")
 	}
-	// It comes before the account card.
-	if i, j := strings.Index(page, `aria-labelledby="pf-stats"`), strings.Index(page, `aria-labelledby="pf-account"`); i < 0 || j < 0 || i > j {
-		t.Errorf("the panel is not first: %d, %d", i, j)
-	}
 	// The member sees only their own numbers.
 	mp := statsPanel(t, a.do(http.MethodGet, "/me", nil, nil, member).Body.String())
 	if !strings.Contains(mp, "10 h 0 m") || strings.Contains(mp, "3 h 42 m") {

@@ -271,7 +271,7 @@ func TestWordListRevoked(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"/me/words", "/me/words.md", "/me/words.json"} {
-		if body := l.get(l.reader, path, false).Body.String(); strings.Contains(body, "Textword Lantern") || strings.Contains(body, "ember") {
+		if body := accountHubMain(l.get(l.reader, path, false).Body.String()); strings.Contains(body, "Textword Lantern") || strings.Contains(body, "ember") {
 			t.Errorf("%s shows a revoked book: %s", path, body)
 		}
 	}

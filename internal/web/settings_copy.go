@@ -11,13 +11,15 @@ const (
 	msgUnknownDevice      = "A web browser"
 )
 
-// roleLabel is the role as the Profile chip shows it.
+// roleLabel is the kind (users.Kind) as the Profile chip and the account chip show it.
 func roleLabel(role string) string {
 	switch role {
 	case "owner":
 		return "Owner"
 	case "admin":
 		return "Admin"
+	case "contributor":
+		return usersRoleContributor
 	case "guest":
 		return "Listener"
 	}
