@@ -301,8 +301,8 @@ func TestVisualMatrixUsed(t *testing.T) {
 	own := regexp.MustCompile(`(?m)^\s*for\s+_?,?\s*\w*\s*:?=\s*range\s+\[\]\s*(?:string|int)\s*\{`)
 	for _, f := range files {
 		switch f {
-		case "visual_matrix_test.go", "visual_motion_test.go", "visual_webkit_test.go", "visual_large_text_test.go", "visual_large_text_player_test.go", "visual_large_text_people_test.go", "visual_large_text_probe_test.go", "visual_nav_test.go", "visual_max_width_test.go", "visual_prefs_test.go", "visual_prefs_server_test.go", "visual_eyes_free_test.go":
-			continue // the matrix itself; motion tests; WebKit and the sink have their own fixed lists; the large-text tests (ltShots) have theirs; the nav rail test captures both sidebar states in all four themes at 1280 and 1440; the max-width test captures dark and light at 3840 only; the preferences test captures five widths up to 1920 and four themes of one pane; the Eyes-free test captures dark and light at 390, 768, 1024, 1440 and 390 on its side (the plan for M3b)
+		case "visual_matrix_test.go", "visual_motion_test.go", "visual_webkit_test.go", "visual_large_text_test.go", "visual_large_text_player_test.go", "visual_large_text_people_test.go", "visual_large_text_probe_test.go", "visual_nav_test.go", "visual_max_width_test.go", "visual_prefs_test.go", "visual_prefs_server_test.go", "visual_eyes_free_test.go", "visual_site_shots_test.go":
+			continue // the matrix itself; motion tests; WebKit and the sink have their own fixed lists; the large-text tests (ltShots) have theirs; the nav rail test captures both sidebar states in all four themes at 1280 and 1440; the max-width test captures dark and light at 3840 only; the preferences test captures five widths up to 1920 and four themes of one pane; the Eyes-free test captures dark and light at 390, 768, 1024, 1440 and 390 on its side (the plan for M3b); the site-shots test is a fixed set of named screenshots, not a matrix
 		}
 		raw, err := os.ReadFile(f)
 		if err != nil {
