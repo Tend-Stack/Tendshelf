@@ -137,7 +137,10 @@ func TestVisualSignIn(t *testing.T) {
 				// The grant form's two checkboxes (us-dl, us-rd) are older than sign-in links and are 32 px by design.
 				m.Small = slices.DeleteFunc(m.Small, func(s string) bool { return strings.HasPrefix(s, "us-dl:") || strings.HasPrefix(s, "us-rd:") })
 				// The new-password page's username field is a clipped, aria-hidden input only a password manager reads.
-				m.Small = slices.DeleteFunc(m.Small, func(s string) bool { return strings.HasPrefix(s, "ts-sr:") })
+				// The probe names an element by its id when it has one, so the field reports as "username:".
+				m.Small = slices.DeleteFunc(m.Small, func(s string) bool {
+					return pg.name == "new-password" && (strings.HasPrefix(s, "ts-sr:") || strings.HasPrefix(s, "username:"))
+				})
 				m.Unlabelled = slices.DeleteFunc(m.Unlabelled, func(s string) bool { return s == "" && pg.name == "new-password" })
 				if len(m.Small) > 0 {
 					t.Errorf("targets under 44 px: %v", m.Small)
