@@ -8,7 +8,9 @@ import app.tendshelf.shared.Origin
 import app.tendshelf.shared.OfflineRoute
 import app.tendshelf.shared.offlineRoute
 import app.tendshelf.shared.validId
-import org.json.JSONObject
+import app.tendshelf.shared.TextIndex
+import app.tendshelf.shared.TextIndexEntry
+import app.tendshelf.shared.TextManifest
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -19,11 +21,6 @@ import java.security.MessageDigest
 enum class TextResult { READY, NONE, SIGNIN, FAILED }
 
 /** What the server said about a book's text: the addresses to keep and the revision that says whether they are stale. */
-class TextManifest(
-    val bookId: String, val editionId: String, val revision: String, val title: String, val author: String,
-    val bytes: Long, val parts: List<String>, val images: List<String>, val assets: List<String>,
-)
-
 /** A stored answer: the file, and the headers the server sent that matter (invariant 4). */
 class Stored(val file: File, val type: String, val csp: String?)
 
@@ -63,21 +60,21 @@ object TextStore {
 
     private fun find(dir: File, key: String): Stored? {
         if (!::app.isInitialized) return null
-        val entry = synchronized(indexLock) { readIndex(dir).optJSONObject(key) } ?: return null
-        val file = File(dir, entry.optString("file"))
+        val entry = synchronized(indexLock) { readIndex(dir)[key] } ?: return null
+        val file = File(dir, entry.file)
         if (!file.isFile || file.parentFile != dir) return null
-        return Stored(file, entry.optString("type", "application/octet-stream"), entry.optString("csp").ifEmpty { null })
+        return Stored(file, entry.type, entry.csp.ifEmpty { null })
     }
 
-    private fun readIndex(dir: File): JSONObject = try {
-        JSONObject(File(dir, "index.json").readText())
+    private fun readIndex(dir: File): TextIndex = try {
+        TextIndex.parse(File(dir, "index.json").readText())
     } catch (_: Exception) {
-        JSONObject()
+        TextIndex()
     }
 
-    private fun writeIndex(dir: File, index: JSONObject) {
+    private fun writeIndex(dir: File, index: TextIndex) {
         val tmp = File(dir, "index.json.tmp")
-        tmp.writeText(index.toString())
+        tmp.writeText(index.toJson())
         if (!tmp.renameTo(File(dir, "index.json"))) throw IOException("index not written")
     }
 
@@ -96,17 +93,17 @@ object TextStore {
             val books = File(root, "text").listFiles().orEmpty()
             for (dir in books) {
                 val index = readIndex(dir)
-                for (key in index.keys()) {
+                for (key in index.keys) {
                     if (!key.startsWith("/books/")) continue
-                    val f = File(dir, index.getJSONObject(key).optString("file"))
+                    val f = File(dir, index[key]!!.file)
                     if (f.isFile) Regex("/static/[A-Za-z0-9._/-]+").findAll(f.readText()).forEach { used.add(it.value) }
                 }
             }
             val index = readIndex(staticDir)
             var changed = false
-            for (key in index.keys().asSequence().toList()) {
+            for (key in index.keys) {
                 if (key in used) continue
-                File(staticDir, index.getJSONObject(key).optString("file")).delete()
+                File(staticDir, index[key]!!.file).delete()
                 index.remove(key)
                 changed = true
             }
@@ -147,14 +144,7 @@ object TextStore {
         }
     }
 
-    fun parse(text: String): TextManifest {
-        val j = JSONObject(text)
-        fun list(name: String) = j.optJSONArray(name)?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty()
-        return TextManifest(
-            j.getString("bookId"), j.optString("editionId"), j.getString("revision"), j.optString("title"), j.optString("author"),
-            j.optLong("bytes"), list("parts"), list("images"), list("assets"),
-        )
-    }
+    fun parse(text: String): TextManifest = TextManifest.parse(text)
 
     /** The manifest, or the reason there is none. */
     sealed interface Manifest {
@@ -198,7 +188,7 @@ object TextStore {
             val mine = (m.parts + m.images).all { it.contains("/${m.bookId}/") }
             if (!mine || listed.any { !it }) return TextResult.FAILED
             val keep = synchronized(indexLock) { readIndex(dir) }
-            val fresh = JSONObject()
+            val fresh = TextIndex()
             for (key in m.parts + m.images) {
                 val r = get(origin, key, true)
                 if (r.code in 300..399) return TextResult.SIGNIN
@@ -211,7 +201,7 @@ object TextStore {
             }
             val staticIndex = synchronized(indexLock) { readIndex(sdir) }
             for (key in m.assets) {
-                if (staticIndex.has(key) && File(sdir, staticIndex.getJSONObject(key).optString("file")).isFile) continue
+                if (staticIndex[key]?.let { File(sdir, it.file).isFile } == true) continue
                 val r = get(origin, key, false)
                 if (r.code != 200) return TextResult.FAILED
                 synchronized(indexLock) {
@@ -220,7 +210,7 @@ object TextStore {
                 }
             }
             // Parts first into the index, then the two shell pages: a book with no shell cannot be opened.
-            synchronized(indexLock) { writeIndex(dir, merge(keep, fresh)) }
+            synchronized(indexLock) { writeIndex(dir, keep.mergedWith(fresh)) }
             for (path in listOf("/books/${m.bookId}/read?sheet=contents", "/books/${m.bookId}/read")) {
                 val r = get(origin, "/offline/books/${m.bookId}/read" + path.substringAfter("/read"), true)
                 if (r.code in 300..399) return TextResult.SIGNIN
@@ -238,19 +228,11 @@ object TextStore {
         }
     }
 
-    private fun merge(old: JSONObject, fresh: JSONObject): JSONObject {
-        // Old shell entries stay until the new shell replaces them; old parts the new manifest dropped go with the index.
-        val out = JSONObject()
-        for (k in old.keys()) if (k.startsWith("/books/") && !k.contains("/images/")) out.put(k, old.get(k))
-        for (k in fresh.keys()) out.put(k, fresh.get(k))
-        return out
-    }
-
-    private fun put(dir: File, index: JSONObject, key: String, r: Reply) {
+    private fun put(dir: File, index: TextIndex, key: String, r: Reply) {
         val file = name(key)
         val tmp = File(dir, "$file.tmp")
         tmp.writeBytes(r.body)
         if (!tmp.renameTo(File(dir, file))) throw IOException("file not stored")
-        index.put(key, JSONObject().put("file", file).put("type", r.type).put("csp", r.csp ?: ""))
+        index[key] = TextIndexEntry(file, r.type, r.csp ?: "")
     }
 }

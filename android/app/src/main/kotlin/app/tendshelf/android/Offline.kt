@@ -19,11 +19,14 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Requirements
 import app.tendshelf.shared.DownloadPercent
+import app.tendshelf.shared.decodeKeptSettings
+import app.tendshelf.shared.encodeKeptSettings
 import app.tendshelf.shared.FileProgress
 import app.tendshelf.shared.OfflineBook
 import app.tendshelf.shared.OfflineState
 import app.tendshelf.shared.PlayerSettings
 import app.tendshelf.shared.Plan
+import app.tendshelf.shared.TextManifest
 import app.tendshelf.shared.Verdict
 import app.tendshelf.shared.checkVerdict
 import app.tendshelf.shared.downloadPercent
@@ -509,22 +512,12 @@ object Offline {
 
     fun saveSettings(s: PlayerSettings) {
         if (!::app.isInitialized) return
-        val j = org.json.JSONObject().put("speed", s.speed).put("skipBackS", s.skipBackS).put("skipForwardS", s.skipForwardS)
-            .put("autoRewind", s.autoRewind).put("nextInSeries", s.nextInSeries).put("skipQuiet", s.skipQuiet)
-        prefs.edit().putString("settingsJson", j.toString()).apply()
+        prefs.edit().putString("settingsJson", encodeKeptSettings(s)).apply()
     }
 
     /** The last settings the server gave; the built-in ones before any. */
     fun loadSettings(): PlayerSettings {
-        val text = prefs.getString("settingsJson", null) ?: return PlayerSettings(1.0, 30, 30, true, false)
-        return try {
-            val j = org.json.JSONObject(text)
-            PlayerSettings(j.getDouble("speed"), j.getInt("skipBackS"), j.getInt("skipForwardS"), j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"),
-                skipQuiet = j.optBoolean("skipQuiet", false),
-            )
-        } catch (_: Exception) {
-            PlayerSettings(1.0, 30, 30, true, false)
-        }
+        return decodeKeptSettings(prefs.getString("settingsJson", null))
     }
 
     // ---- Wipe ----

@@ -1,6 +1,7 @@
 package app.tendshelf.android
 
 import app.tendshelf.shared.readAtMost
+import app.tendshelf.shared.ApiJson
 import app.tendshelf.shared.ApiPaths
 import app.tendshelf.shared.BatchItemResult
 import app.tendshelf.shared.BookCard
@@ -13,7 +14,6 @@ import app.tendshelf.shared.BookManifest
 import app.tendshelf.shared.Chapter
 import app.tendshelf.shared.PlayerSettings
 import app.tendshelf.shared.RemoteProgress
-import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -28,53 +28,14 @@ class ApiException(val code: Int, val retryAfterS: Int = 0) : IOException("serve
 class Api(origin: String) {
     val paths = ApiPaths(origin)
 
-    fun settings(token: String): PlayerSettings {
-        val j = JSONObject(String(get(paths.settingsUrl, token, 64 * 1024)))
-        return PlayerSettings(
-            j.getDouble("speed"), j.getInt("skipBackS"), j.getInt("skipForwardS"),
-            j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"), ApiJson.rewindSteps(j),
-            skipQuiet = j.optBoolean("skipQuiet", false), // older servers lack it
-        )
-    }
+    fun settings(token: String): PlayerSettings = ApiJson.settings(String(get(paths.settingsUrl, token, 64 * 1024)))
 
     fun manifest(token: String, bookId: String): BookManifest = parseManifest(fetchManifestJson(token, bookId))
 
     /** The server's answer as text, so a download can keep it as it came. */
     fun fetchManifestJson(token: String, bookId: String): String = String(get(paths.bookUrl(bookId), token, 4 * 1024 * 1024))
 
-    fun parseManifest(text: String): BookManifest {
-        val json = JSONObject(text)
-        val book = json.getJSONObject("book")
-        val files = json.getJSONArray("files").let { arr ->
-            (0 until arr.length()).map {
-                val f = arr.getJSONObject(it)
-                AudioFile(
-                    f.getString("id"), f.getInt("idx"), f.getLong("offsetMs"), f.getLong("durationMs"),
-                    f.getString("mime"), f.getBoolean("needsCompat"), f.optBoolean("playable", true), f.optLong("size", 0),
-                )
-            }
-        }
-        val chapters = json.getJSONArray("chapters").let { arr ->
-            (0 until arr.length()).map {
-                val c = arr.getJSONObject(it)
-                Chapter(c.getInt("idx"), c.getLong("startMs"), c.getLong("endMs"), c.getString("title"))
-            }
-        }
-        val authors = book.optJSONArray("authors")?.let { arr ->
-            (0 until arr.length()).joinToString(", ") { arr.getJSONObject(it).getString("name") }
-        }.orEmpty()
-        val progress = json.optJSONObject("progress")?.let(ApiJson::remoteProgress)
-        // The id in the answer is the live one when the asked-for id was merged into another book.
-        val id = book.getString("id")
-        return BookManifest(
-            id, book.getString("title"), book.getLong("durationMs"), files, chapters,
-            speed = json.optDouble("speed", 1.0),
-            coverUrl = if (book.isNull("cover")) "" else paths.coverUrl(id, 512),
-            author = authors,
-            progress = progress,
-            mayDownload = json.optJSONObject("permissions")?.optBoolean("download", false) ?: false,
-        )
-    }
+    fun parseManifest(text: String): BookManifest = ApiJson.manifest(text, paths)
 
     /** Sends unsent saves in order; the answer has one item per save. A failure is an exception, never a retry here. */
     fun batch(token: String, saves: List<Save>): List<BatchItemResult> =
@@ -82,7 +43,7 @@ class Api(origin: String) {
 
     /** The stored place of a book, or null when there is none. */
     fun progress(token: String, bookId: String): RemoteProgress? =
-        JSONObject(String(get(paths.progressUrl(bookId), token, 64 * 1024))).optJSONObject("progress")?.let(ApiJson::remoteProgress)
+        ApiJson.progress(String(get(paths.progressUrl(bookId), token, 64 * 1024)))
 
     /**
      * Takes the next book off the queue (or the series) once [ended] is over: its id, or null for 204. Sent at
@@ -90,7 +51,7 @@ class Api(origin: String) {
      */
     fun queueNext(token: String, ended: String): String? {
         val bytes = post(paths.queueNextUrl, token, queueNextBody(ended), 64 * 1024) ?: return null
-        return JSONObject(String(bytes)).getJSONObject("book").getString("id")
+        return ApiJson.nextBookId(String(bytes))
     }
 
     // ---- The lists the car browses (A8). Each is one small GET; a failure is an exception for the caller to word. ----

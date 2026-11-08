@@ -159,4 +159,8 @@ positions, the sync outbox, origin and link rules, and a pure-Kotlin form-urlenc
 `java.net.URLEncoder` and `URLDecoder` in `jvmTest`). One `expect`/`actual` pair exists, `parseRawUri` (`RawUri.kt`),
 whose JVM `actual` wraps `java.net.URI`; an iOS `actual` must wrap a strict parser of its own, never a hand-written
 one. `Io.kt` stays in `jvmMain` because it uses `java.io`. The iOS targets cannot be linked on Linux, so adding them
-needs macOS with Xcode. Tests run with `:shared:jvmTest`.
+needs macOS with Xcode. JSON is read and written in `commonMain` too: `Jx.kt` wraps kotlinx-serialization-json's tree with
+helpers that keep org.json's rules (coercions, defaults, "null" read as text), `ApiJson.kt` parses every server answer, and
+`StoredJson.kt` holds the kept settings, the text manifest and the stored-text index (`TextIndex`); strings written by
+earlier app versions are fixtures in `StoredJsonTest`. The app no longer uses org.json. Writers stay hand-built strings
+(`jsonString`) so the bytes are unchanged. Tests run with `:shared:jvmTest`.
