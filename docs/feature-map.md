@@ -30,7 +30,7 @@ from general knowledge. Cells marked `?` are unverified guesses; check before qu
 | Search (title, author, narrator, series, description) | Yes | Yes | P1 (FTS5) |
 | **Listening** | | | |
 | Web player with chapters | Yes | Web: yes | P1 |
-| Playback speed with pitch kept | Yes (0.5-10x?) | Yes (0.5-3.5x) | P1 (0.5-3.0x, 0.05 steps) |
+| Playback speed with pitch kept | Yes (0.5-10x?) | Yes (0.5-3.5x) | P1 (0.5-3.5x, 0.05 steps) |
 | Sleep timer: minutes, end of chapter | Yes (mobile) | Yes | P1 (fade-out), P4 (shake to extend) |
 | Skip back/forward, user interval | Yes | Yes | P1 |
 | Automatic short rewind after a pause | No? | Partial? | P1 |

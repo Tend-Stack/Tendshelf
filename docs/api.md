@@ -222,7 +222,7 @@ Takes the book off the queue: 204. 404 when the book is not queued or not visibl
 smart-rewind table the web player uses: `[{"fromMs":10000,"seconds":2},{"fromMs":60000,"seconds":5},...]` (a pause of at least
 `fromMs` steps back `seconds`); a PATCH body's value is ignored. PATCH takes any of the same keys (body at most
 4 KiB), keeps the rest, saves and answers the same shape. Unknown keys are ignored; the theme, text size and account settings are
-not here. A bad value is `400 invalid` with `field` set to the first bad key in the order above (nothing is saved): `speed` 0.5 to 3
+not here. A bad value is `400 invalid` with `field` set to the first bad key in the order above (nothing is saved): `speed` 0.5 to 3.5
 in steps of 0.05, `skipBackS` and `skipForwardS` 10, 15, 30 or 60, the two flags true or false. An empty body object is 200.
 
 ### PUT /api/v1/books/{id}/speed

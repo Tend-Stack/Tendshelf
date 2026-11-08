@@ -104,7 +104,7 @@ func TestA1SettingsReadAndPatch(t *testing.T) {
 func TestA1SettingsBadValues(t *testing.T) {
 	e := syncSeed(t)
 	for _, c := range []struct{ body, field string }{
-		{`{"speed":0.4}`, "speed"}, {`{"speed":3.5}`, "speed"}, {`{"speed":1.01}`, "speed"}, {`{"speed":"fast"}`, "speed"}, {`{"speed":null}`, "speed"},
+		{`{"speed":0.4}`, "speed"}, {`{"speed":3.55}`, "speed"}, {`{"speed":1.01}`, "speed"}, {`{"speed":"fast"}`, "speed"}, {`{"speed":null}`, "speed"},
 		{`{"skipBackS":7}`, "skipBackS"}, {`{"skipBackS":15.5}`, "skipBackS"}, {`{"skipForwardS":"30"}`, "skipForwardS"},
 		{`{"autoRewind":"yes"}`, "autoRewind"}, {`{"nextInSeries":1}`, "nextInSeries"},
 		// The first bad key in the order of the answer is named, and nothing is saved.

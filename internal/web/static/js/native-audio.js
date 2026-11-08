@@ -33,8 +33,8 @@ function build(bridge) {
   const pageBookId = () => (window.tsPlayer ? window.tsPlayer.state().bookId : "");
   const holdsPageBook = () => !!pushed && pushed.bookId !== "" && pushed.bookId === pageBookId();
 
-  // The grammar allows 0.50 to 3.00 in steps of 0.05.
-  const speedWords = (x) => (Math.min(3, Math.max(0.5, Math.round(x * 20) / 20))).toFixed(2);
+  // The grammar allows 0.50 to 3.50 in steps of 0.05.
+  const speedWords = (x) => (Math.min(3.5, Math.max(0.5, Math.round(x * 20) / 20))).toFixed(2);
 
   function bookMs() {
     if (!pushed) return position;

@@ -21,7 +21,7 @@ const (
 	apiSpeedBody        = 1 << 10
 	apiContinueDefault  = 12
 	apiContinueMax      = 24
-	apiSettingsBadSpeed = "Speed must be from 0.5 to 3, in steps of 0.05."
+	apiSettingsBadSpeed = "Speed must be from 0.5 to 3.5, in steps of 0.05."
 	apiSettingsBadSkip  = "Skip must be 10, 15, 30 or 60 seconds."
 	apiSettingsBadBool  = "This must be true or false."
 )

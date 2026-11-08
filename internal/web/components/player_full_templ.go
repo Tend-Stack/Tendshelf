@@ -725,7 +725,7 @@ func PlayerFull(m PlayerMsgs) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</label> <output for=\"ts-speed-fine\" class=\"ts-num\" data-ts-speed-out></output> <input id=\"ts-speed-fine\" type=\"range\" min=\"0.5\" max=\"3\" step=\"0.05\" data-ts-speed-range></div><div class=\"ts-player__forbook\"><p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</label> <output for=\"ts-speed-fine\" class=\"ts-num\" data-ts-speed-out></output> <input id=\"ts-speed-fine\" type=\"range\" min=\"0.5\" max=\"3.5\" step=\"0.05\" data-ts-speed-range></div><div class=\"ts-player__forbook\"><p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

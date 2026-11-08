@@ -85,7 +85,7 @@ func TestBookSpeedForbidden(t *testing.T) {
 	if code := e.speedPost(nil, e.ownerTok, good, true); code == 204 {
 		t.Errorf("signed out: %d", code)
 	}
-	for name, speed := range map[string]string{"low": "0.4", "high": "3.5", "off step": "1.33", "NaN": "NaN", "text": "fast", "empty": ""} {
+	for name, speed := range map[string]string{"low": "0.4", "high": "3.55", "off step": "1.33", "NaN": "NaN", "text": "fast", "empty": ""} {
 		if code := e.speedPost(e.owner, e.ownerTok, url.Values{"speed": {speed}}, true); code != 422 {
 			t.Errorf("%s: %d", name, code)
 		}

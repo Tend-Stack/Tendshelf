@@ -21,6 +21,7 @@ class BridgeProtocolTest {
             "speed 0.50" to BridgeMessage.Speed(0.5),
             "speed 1.05" to BridgeMessage.Speed(1.05),
             "speed 3.00" to BridgeMessage.Speed(3.0),
+            "speed 3.50" to BridgeMessage.Speed(3.5),
             "back 0" to BridgeMessage.Back(false),
             "back 1" to BridgeMessage.Back(true),
             "theme #0a1b2c" to BridgeMessage.Theme("#0a1b2c"),
@@ -36,7 +37,7 @@ class BridgeProtocolTest {
             "start", "start a", "start a b c", "start ../x 0", "start a/b 0", "start a?b 0", "start a%2f 0", "start a#b 0",
             "start ${"a".repeat(65)} 0", "start  0", "start a 0 ", "start a 1000000000000", "start a -1", "start a +1", "start a 1e3",
             "start a 0x10", "start a 1.5", "seek", "seek -1", "seek 1000000000000", "seek 1 2", "seek ٣", "seek ١",
-            "speed 0.45", "speed 3.05", "speed 3.50", "speed 1.07", "speed 1", "speed 1.5", "speed 01.50", "speed -1.00", "speed 1,50",
+            "speed 0.45", "speed 3.55", "speed 3.60", "speed 1.07", "speed 1", "speed 1.5", "speed 01.50", "speed -1.00", "speed 1,50",
             "speed NaN", "speed 1.5e0", "back", "back 2", "back true", "theme", "theme #ABCDEF", "theme #abcde", "theme #abcdeg",
             "theme abcdef", "theme #abcdef0", "theme red", "frobnicate", "start\ta 0", "play\n", "play\u0000", "play\r\nhello 1",
             "héllo 1", "play\u007f", "‮play", "seek 5\u0000", "😀",
@@ -81,7 +82,7 @@ class BridgeProtocolTest {
             encodeState(PlayerSnapshot("", -5, -1, false, false, false, Double.NaN, -1, "")),
         )
         assertTrue(encodeState(PlayerSnapshot("", 0, 0, false, false, false, 1e-9, 0, "")).contains("\"speed\":0.50"))
-        assertTrue(encodeState(PlayerSnapshot("", 0, 0, false, false, false, Double.POSITIVE_INFINITY, 0, "")).contains("\"speed\":3.00"))
+        assertTrue(encodeState(PlayerSnapshot("", 0, 0, false, false, false, Double.POSITIVE_INFINITY, 0, "")).contains("\"speed\":3.50"))
     }
 
     @Test
