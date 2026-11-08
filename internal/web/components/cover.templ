@@ -16,8 +16,12 @@ type CardView struct {
 	Tint, InkClass, WidthClass, HeightClass string
 	// SpineTitle is Title without its trailing bracketed groups; only a spine's visible text uses it.
 	SpineTitle string
-	// AriaLabel is "{title} by {authors}", or the title alone.
-	AriaLabel string
+	// AriaLabel is "{title} by {authors}", or the title alone. SpineLabel is the spine link's name:
+	// that, then the length and, for a book the person has finished, "finished". SpineAuthor is the
+	// surname a spine prints (empty on a thin spine).
+	AriaLabel, SpineLabel, SpineAuthor string
+	// Finished draws the quiet check on a spine.
+	Finished bool
 	// Current marks the card as the page the person is on (a series tile for the open book); the
 	// card gets aria-current="page".
 	Current bool

@@ -3,10 +3,12 @@ package web
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
 
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/share"
@@ -82,6 +84,10 @@ func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
 	v := pages.HomeView{Greeting: browseGreetingFor(currentUser(r).DisplayName), SeeAllURL: "/libraries?sort=added"}
 	for _, b := range page.Books {
 		v.New = append(v.New, cardView(b))
+	}
+	if err := s.withCardProgress(ctx, currentUser(r).ID, page.Books, v.New); err != nil {
+		s.serverError(w, r, "home progress", err)
+		return
 	}
 	_, textSize, _, _ := s.lookFor(r)
 	v.Large = textSize == "large"
@@ -287,12 +293,45 @@ func (s *server) addedFacet(r *http.Request, lq library.ListQuery) ([]library.Na
 	return out, counts, nil
 }
 
+// libraryQuery is parseBrowseQuery for the Library routes: an address with no view opens in the view
+// the person saved (POST /me/library-view), and under large text the Shelf is never drawn (BRAND:
+// large text turns spines into cards), so a saved or asked-for Shelf shows the grid.
+func (s *server) libraryQuery(r *http.Request) browseQuery {
+	q := parseBrowseQuery(r)
+	saved, large := "", false
+	if u, ok := auth.UserFrom(r.Context()); ok {
+		l, err := s.users.Look(r.Context(), u.ID)
+		if err != nil {
+			slog.Error("read library view", "err", err)
+		}
+		saved, large = l.LibraryView, l.TextSize == "large"
+	}
+	if large && saved == "shelf" {
+		saved = "grid"
+	}
+	if saved == "grid" {
+		saved = ""
+	}
+	q.Saved, q.large = saved, large
+	switch r.URL.Query().Get("view") {
+	case "grid", "list", "shelf":
+	default:
+		if saved != "" {
+			q.View = saved
+		}
+	}
+	if large && q.View == "shelf" {
+		q.View = "grid"
+	}
+	return q
+}
+
 func (s *server) getLibraryItems(w http.ResponseWriter, r *http.Request) {
 	_, cur, ok := s.browseTarget(w, r)
 	if !ok {
 		return
 	}
-	q := parseBrowseQuery(r)
+	q := s.libraryQuery(r)
 	q.Added = addedByFilter(currentUser(r), q.Added)
 	page, err := s.lib.ListBooks(r.Context(), s.scope(r), s.listQuery(currentUser(r), q, cur))
 	if errors.Is(err, library.ErrInvalid) {
@@ -317,7 +356,7 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	q := parseBrowseQuery(r)
+	q := s.libraryQuery(r)
 	q.Added = addedByFilter(currentUser(r), q.Added)
 	sc := s.scope(r)
 	page, err := s.lib.ListBooks(ctx, sc, s.listQuery(currentUser(r), q, cur))
@@ -354,6 +393,7 @@ func (s *server) getLibrary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := s.libraryView(q, libs, cur, page)
+	v.CSRF = s.csrf.TokenFrom(ctx)
 	if err := s.withCardProgress(r.Context(), currentUser(r).ID, page.Books, v.Cards); err != nil {
 		s.serverError(w, r, "library progress", err)
 		return
@@ -394,8 +434,9 @@ func (s *server) libraryView(q browseQuery, libs []library.LibrarySummary, cur *
 	}
 	v.FormAction = pagePath
 	reset := func(q *browseQuery) { q.Cursor = "" }
-	v.GridHref = q.href(pagePath, func(q *browseQuery) { reset(q); q.View = "grid" })
-	v.ListHref = q.href(pagePath, func(q *browseQuery) { reset(q); q.View = "list" })
+	// The view choice is a form post that saves the choice and returns to this address without a view.
+	v.ViewNext = q.href(pagePath, func(q *browseQuery) { reset(q); q.View = q.savedView() })
+	v.ShelfOffered = !q.large
 	v.SelectedGenres = q.Genres
 	if q.filtered() {
 		v.ClearHref = q.href(pagePath, func(q *browseQuery) { reset(q); q.clearFilters() })
@@ -660,7 +701,7 @@ func (s *server) getLibraryFacet(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	q := parseBrowseQuery(r)
+	q := s.libraryQuery(r)
 	q.Added = addedByFilter(currentUser(r), q.Added)
 	lq := s.listQuery(currentUser(r), q, cur)
 	ctx, sc := r.Context(), s.scope(r)

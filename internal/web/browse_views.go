@@ -2,6 +2,8 @@ package web
 
 import (
 	"fmt"
+	"hash/fnv"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -64,24 +66,69 @@ func darkenHex(hex string, f float64) (string, bool) {
 	return fmt.Sprintf("#%02x%02x%02x", r, g, b), true
 }
 
-// spineWidth is the spine width class for a length: under 5 hours narrow, under 15 medium, else wide.
-func spineWidth(durationMs int64) string {
-	switch {
-	case durationMs < 5*3_600_000:
-		return "ts-spine--ws"
-	case durationMs < 15*3_600_000:
-		return "ts-spine--wm"
+// spineWordsPerHour turns a text book's words into the hours a narrator would take (155 words a
+// minute, decision 0034).
+const spineWordsPerHour = 9300
+
+// spineLengthMs is the length a spine shows: an audiobook's duration, or a text book's words at a
+// narration pace. A book with neither is 0, which spineStep draws as a middle width.
+func spineLengthMs(c library.BookCard) int64 {
+	if c.Kind == library.BookText {
+		return c.TextWords * hourMs / spineWordsPerHour
 	}
-	return "ts-spine--wl"
+	return c.DurationMs
 }
 
-// spineHeight is one of three height classes, picked from the last character of the id so a book
-// always stands as tall as it did.
-func spineHeight(id string) string {
-	if id == "" {
-		return "ts-spine--h2"
+// spineStep is the spine's thickness step, 1 to 12 (decision 0034): the square root of the hours,
+// clamped to 1..40 h, spread over twelve steps. An unknown length is step 4.
+func spineStep(lengthMs int64) int {
+	if lengthMs <= 0 {
+		return 4
 	}
-	return "ts-spine--h" + strconv.Itoa(int(id[len(id)-1])%3+1)
+	h := math.Min(math.Max(float64(lengthMs)/float64(hourMs), 1), 40)
+	t := (math.Sqrt(h) - 1) / (math.Sqrt(40) - 1)
+	return 1 + int(math.Round(11*t))
+}
+
+// spineWidth is the spine width class for a length: ts-spine--w1 to ts-spine--w12.
+func spineWidth(lengthMs int64) string {
+	return "ts-spine--w" + strconv.Itoa(spineStep(lengthMs))
+}
+
+// spineHeight is one of five height classes from a hash of the seed (a series id, or the book's own
+// id), so a series stands as a matched set and a book is as tall as it always was.
+func spineHeight(seed string) string {
+	if seed == "" {
+		return "ts-spine--h3"
+	}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(seed))
+	return "ts-spine--h" + strconv.Itoa(int(h.Sum32()%5)+1)
+}
+
+// spineAuthor is the surname a spine prints: the first author's part before a comma, else the last
+// word, skipping a trailing generational suffix. The link's name has the full byline.
+func spineAuthor(authors []library.PersonRef) string {
+	if len(authors) == 0 {
+		return ""
+	}
+	name := strings.TrimSpace(authors[0].Name)
+	if i := strings.Index(name, ","); i >= 0 {
+		return strings.TrimSpace(name[:i])
+	}
+	words := strings.Fields(name)
+	for len(words) > 1 {
+		switch words[len(words)-1] {
+		case "Jr", "Jr.", "Sr", "Sr.", "II", "III":
+			words = words[:len(words)-1]
+			continue
+		}
+		break
+	}
+	if len(words) == 0 {
+		return ""
+	}
+	return words[len(words)-1]
 }
 
 // bylineOf writes the authors for a card: the first two, then "and {n} more".
@@ -170,10 +217,22 @@ func cardView(c library.BookCard) components.CardView {
 	v := components.CardView{
 		ID: c.ID, Href: "/books/" + c.ID, Title: c.Title, SpineTitle: spineTitle(c.Title), Byline: bylineOf(c.Authors),
 		Duration: cardLength(c), AriaLabel: c.Title,
-		WidthClass: spineWidth(c.DurationMs), HeightClass: spineHeight(c.ID),
 	}
+	length := spineLengthMs(c)
+	seed := c.ID
+	if c.Series != nil && c.Series.ID != "" {
+		seed = c.Series.ID
+	}
+	v.WidthClass, v.HeightClass = spineWidth(length), spineHeight(seed)
 	if v.Byline != "" {
 		v.AriaLabel = c.Title + " by " + v.Byline
+	}
+	if spineStep(length) >= 4 {
+		v.SpineAuthor = spineAuthor(c.Authors)
+	}
+	v.SpineLabel = v.AriaLabel
+	if v.Duration != "" {
+		v.SpineLabel += ", " + v.Duration
 	}
 	if c.Cover == nil {
 		return v
@@ -200,8 +259,13 @@ const (
 // browseQuery is what a list address says: the order, the view, the genres, the page position and
 // which kind of filter the header opens. Unknown values fall back to the defaults.
 type browseQuery struct {
-	Sort   library.Sort
-	View   string // "grid" or "list"
+	Sort library.Sort
+	View string // "grid", "list" or "shelf"
+	// Saved is the view the person last chose ("" is grid): the one a bare address opens in, so href
+	// leaves view= out only when the link's view is this one.
+	Saved string
+	// large is set under large text, when the Shelf is not offered.
+	large  bool
 	Genres []string
 	// Author, Narrator and Series are ids; Length is "short", "medium" or "long"; Title is the
 	// words a title must contain. All of them narrow the list and none changes the order.
@@ -220,7 +284,7 @@ type browseQuery struct {
 	Add string
 }
 
-// Length buckets: under 5 hours, 5 to 15 hours, over 15 hours (the spine widths use the same edges).
+// Length buckets: under 5 hours, 5 to 15 hours, over 15 hours.
 const (
 	hourMs       = int64(3_600_000)
 	lengthShortH = 5
@@ -240,6 +304,14 @@ func lengthRange(length string) (from, to int64) {
 	return 0, 0
 }
 
+// savedView is Saved, with grid for none.
+func (q browseQuery) savedView() string {
+	if q.Saved == "" {
+		return "grid"
+	}
+	return q.Saved
+}
+
 // filtered reports whether any filter narrows the list.
 func (q browseQuery) filtered() bool {
 	return len(q.Genres) > 0 || q.Author != "" || q.Narrator != "" || q.Series != "" || q.Added != "" || q.Length != "" || q.Title != "" || q.Show != "" || q.Format != ""
@@ -252,8 +324,9 @@ func parseBrowseQuery(r *http.Request) browseQuery {
 	case "author", "narrator", "series", "category", "length", "format":
 		q.Add = a
 	}
-	if v.Get("view") == "list" {
-		q.View = "list"
+	switch v.Get("view") {
+	case "list", "shelf":
+		q.View = v.Get("view")
 	}
 	id := func(k string) string {
 		s := strings.TrimSpace(v.Get(k))
@@ -312,8 +385,8 @@ func (q browseQuery) href(path string, mod func(*browseQuery)) string {
 		mod(&q)
 	}
 	v := url.Values{}
-	if q.View == "list" {
-		v.Set("view", "list")
+	if q.View != "" && q.View != q.savedView() {
+		v.Set("view", q.View)
 	}
 	if q.Sort != library.SortAdded {
 		v.Set("sort", string(q.Sort))

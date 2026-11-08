@@ -1,6 +1,6 @@
-/* Home (P1b-5): the greeting and the shelf of new books, plus the spines and covers every list shares.
-   Tokens only. A spine or blank cover is surface and ink until shell.js adds .is-tinted and sets
-   --cover-tint (a colour from the cover); the contrast theme never uses a tint. */
+/* Home (P1b-5): the greeting and the row of new books, plus the covers every list shares. The spines
+   are in pages-spines.css. Tokens only. A spine or blank cover is surface and ink until shell.js adds
+   .is-tinted and sets --cover-tint (a colour from the cover); the contrast theme never uses a tint. */
 
 .ts-home { display: flex; flex-direction: column; }
 .ts-home__title { margin: 0 0 var(--space-8); }
@@ -31,22 +31,6 @@
 .ts-home__cards { display: flex; gap: var(--space-16); margin-top: var(--space-8); overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: var(--space-8); }
 .ts-home__cards > .ts-card { flex: 0 0 6.625rem; min-width: 0; }
 
-/* The shelf scrolls sideways when there are more spines than the width holds; the plank stays put. */
-.ts-shelf--scroll { margin-top: 0.375rem; height: 11.25rem; overflow-x: auto; overscroll-behavior-x: contain; padding-inline: 1px; }
-
-/* Spines */
-.ts-spine { box-sizing: border-box; flex: none; overflow: hidden; background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); }
-.ts-spine:focus-visible { outline-offset: 2px; }
-/* A long title takes a second line, as on a real spine. An ellipsis would stand on its side here and read as a stray dot,
-   so a title too long for two lines stops at the end of a word; the link's label still has all of it. */
-.ts-spine__title { max-height: calc(100% - var(--space-16)); max-width: 2.3em; overflow: hidden; text-overflow: ellipsis; line-height: 1.15; white-space: normal; text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
-.ts-spine--ws { width: 2.875rem; }
-.ts-spine--wm { width: 3.125rem; }
-.ts-spine--wl { width: 3.5rem; }
-.ts-spine--h1 { height: 9.375rem; }
-.ts-spine--h2 { height: 10.25rem; }
-.ts-spine--h3 { height: 11.125rem; }
-
 /* Covers drawn by components.Cover */
 .ts-cover { display: block; }
 .ts-cover--fill { display: block; }
@@ -71,30 +55,12 @@ html[data-theme="contrast"] .is-tinted.ts-ink-deep { background: var(--surface);
   .ts-hero__actions .ts-btn--primary { flex: none; }
   .ts-hero__chapters { display: inline-flex; }
   .ts-home__cards > .ts-card { flex-basis: 8.75rem; }
-  .ts-shelf--scroll { height: 12.25rem; }
-  .ts-spine--ws { width: 3rem; }
-  .ts-spine--wm { width: 3.375rem; }
-  .ts-spine--wl { width: 3.75rem; }
-  .ts-spine--h1 { height: 10rem; }
-  .ts-spine--h2 { height: 11rem; }
-  .ts-spine--h3 { height: 12rem; }
 }
 @media (width >= 1280px) {
   .ts-hero__top { grid-template-columns: 13.75rem minmax(0, 1fr); }
   .ts-hero__title { font-size: 2rem; line-height: 2.375rem; }
   .ts-home__cards > .ts-card { flex-basis: 10rem; }
-  .ts-shelf--scroll { height: 12.75rem; }
-  .ts-spine--ws { width: 3.125rem; }
-  .ts-spine--wm { width: 3.5rem; }
-  .ts-spine--wl { width: 3.875rem; }
-  .ts-spine--h1 { height: 10.5rem; }
-  .ts-spine--h2 { height: 11.5rem; }
-  .ts-spine--h3 { height: 12.375rem; }
 }
-
-/* The shelf fitter (shell.js) hides the spines that do not fit whole; .ts-spine sets display, which
-   would beat the browser's own [hidden] rule. */
-.ts-spine[hidden] { display: none; }
 
 /* Shared with you (P3-6): "Your series in progress" and "Shared with you" sit side by side from tablet
    up and stack on a phone. The pair takes the series row's own top gap, so a Home with no shares is

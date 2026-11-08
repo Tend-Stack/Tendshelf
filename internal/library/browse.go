@@ -121,6 +121,7 @@ type BookCard struct {
 	PublishedYear                  int
 	Cover                          *CoverRef
 	Kind                           string // BookAudio or BookText
+	TextWords                      int64  // words of a text book's newest edition, or pages * 300; 0 for audio or unknown
 }
 
 // BookPage is one page of a list. Next is "" on the last page; Total counts the whole filtered list.
@@ -497,7 +498,7 @@ func (r *Repo) cards(ctx context.Context, ids []string) ([]BookCard, error) {
 		var sha, mime, tint, accent sql.NullString
 		var cw, ch sql.NullInt64
 		err := s.Scan(&c.ID, &c.LibraryID, &c.Title, &c.Subtitle, &root, &c.DurationMs, &c.AddedAt, &year, &c.Kind,
-			&sha, &mime, &tint, &cw, &ch, &accent)
+			&sha, &mime, &tint, &cw, &ch, &accent, &c.TextWords)
 		if err != nil {
 			return struct{}{}, err
 		}
@@ -518,7 +519,8 @@ func (r *Repo) cards(ctx context.Context, ids []string) ([]BookCard, error) {
 		byID[c.ID] = &c
 		return struct{}{}, nil
 	}, `SELECT b.id, b.library_id, b.title, b.subtitle, b.root_path, b.duration_ms, b.added_at, b.published_year, b.kind,
-  c.sha256, c.mime, c.tint, c.width, c.height, c.accent_json
+  c.sha256, c.mime, c.tint, c.width, c.height, c.accent_json,
+  COALESCE((SELECT CASE WHEN e.word_count > 0 THEN e.word_count ELSE e.page_count * 300 END FROM ebook_files f JOIN editions e ON e.ebook_file_id = f.id WHERE b.kind = 'text' AND f.book_id = b.id AND f.state = 'ready' ORDER BY f.book_default DESC, e.created_at DESC, e.id DESC LIMIT 1), 0)
   FROM books b LEFT JOIN covers c ON c.id = b.cover_id WHERE b.id IN (`+marks+`)`, args...)
 	if err != nil {
 		return nil, err

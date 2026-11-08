@@ -13,6 +13,7 @@ import (
 // answers with the re-rendered sidebar alone so the player keeps playing.
 func (s *server) registerNav(mux *http.ServeMux) {
 	mux.HandleFunc("POST /me/nav", s.postNav)
+	mux.HandleFunc("POST /me/library-view", s.postLibraryView)
 	mux.HandleFunc("POST /hx/me/nav", s.postNavHX)
 }
 

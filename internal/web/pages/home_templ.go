@@ -46,7 +46,7 @@ type HomeView struct {
 
 // BrowseStyles are the stylesheets Home and Library link after the shared ones; the scan banner
 // reuses the status styles of the Libraries page.
-var BrowseStyles = []string{"css/pages-admin.css", "css/pages-home.css", "css/pages-library.css"}
+var BrowseStyles = []string{"css/pages-admin.css", "css/pages-home.css", "css/pages-spines.css", "css/pages-library.css"}
 
 // emptyAction is the one link or button under an empty state's text.
 func emptyAction(e EmptyView) templ.Component {
@@ -241,7 +241,7 @@ func Home(v HomeView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"ts-shelf ts-shelf--scroll\" role=\"list\" data-ts-fit>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<ul class=\"ts-shelf ts-shelf--scroll\" role=\"list\" data-ts-fit>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -251,7 +251,7 @@ func Home(v HomeView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div><div class=\"ts-shelf__plank\"></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</ul>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
