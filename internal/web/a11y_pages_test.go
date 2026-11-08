@@ -262,7 +262,7 @@ func a11yRoutesInSource(t *testing.T) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prefixes := []string{"/hx/", "/api/", "/static/", "/stream/", "/covers/", "/peaks/", "/sw.js", "/healthz", "/probe/", "/opds"} // /opds is Atom XML for reading apps
+	prefixes := []string{"/hx/", "/api/", "/static/", "/stream/", "/covers/", "/peaks/", "/sw.js", "/healthz", "/probe/", "/opds", "/feeds/"} // /opds is Atom XML for reading apps, /feeds/ is RSS, audio and JSON for podcast apps
 	suffixes := []string{"/cover", "/photo", "/export", "/cover/{n}", "manifest", ".png", ".ico"}
 	seen := map[string]bool{}
 	for _, f := range files {
