@@ -26,6 +26,8 @@ func (s *server) registerMe(mux *http.ServeMux) {
 	mux.HandleFunc("POST /me/sessions/{sid}/signout", s.postSessionSignOut)
 	mux.HandleFunc("POST /me/sessions/signout-others", s.postSignOutOthers)
 	mux.HandleFunc("POST /me/devices/{did}/signout", s.postDeviceSignOut)
+	mux.HandleFunc("POST /me/sessions/{sid}/name", s.postSessionName)
+	mux.HandleFunc("POST /me/devices/{did}/name", s.postDeviceName)
 	s.registerNav(mux)
 }
 
@@ -59,10 +61,24 @@ func (s *server) ownDeviceRows(r *http.Request) ([]pages.ProfileDevice, int, err
 
 // getDevices is "Your devices": the person's sign-ins, nearly identical ones folded.
 func (s *server) getDevices(w http.ResponseWriter, r *http.Request) {
+	s.devicesPage(w, r, http.StatusOK, r.URL.Query().Get("name"), "", "")
+}
+
+// devicesPage renders "Your devices". A refused Name save comes back as 422 with renameID's form open,
+// the typed value kept and msg beside the field.
+func (s *server) devicesPage(w http.ResponseWriter, r *http.Request, status int, renameID, renameValue, msg string) {
 	rows, others, err := s.ownDeviceRows(r)
 	if err != nil {
 		s.serverError(w, r, "devices", err)
 		return
+	}
+	if renameID != "" && renameValue == "" && msg == "" {
+		// The Name link opened a form: it starts with the row's current name.
+		for _, d := range rows {
+			if d.ID == renameID {
+				renameValue = d.Name
+			}
+		}
 	}
 	keys, err := s.appKeysView(r)
 	if err != nil {
@@ -74,8 +90,20 @@ func (s *server) getDevices(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "feeds", err)
 		return
 	}
-	v := pages.DevicesView{CSRF: s.csrf.TokenFrom(r.Context()), Lines: groupDevices(rows), Others: others, AppKeys: keys, Feeds: feeds}
-	s.prefsPage(w, r, http.StatusOK, devTitle, "profile", "devices", false, pages.Devices(v), nil, append(pages.MeStyles, pages.AppKeyStyles...)...)
+	v := pages.DevicesView{CSRF: s.csrf.TokenFrom(r.Context()), Lines: groupDevices(rows), Others: others, AppKeys: keys, Feeds: feeds,
+		RenameID: renameID, RenameValue: renameValue, RenameErr: msg,
+		NameButton: devNameButton, NameLabel: devNameLabel, HintWeb: devNameHintWeb, HintApp: devNameHintApp}
+	s.prefsPage(w, r, status, devTitle, "profile", "devices", false, pages.Devices(v), nil, append(pages.MeStyles, pages.AppKeyStyles...)...)
+}
+
+// deviceNameInput cleans a posted device name and checks its length: control characters dropped, white
+// space collapsed, at most 64 characters. msg is the plain-words refusal, "" when the name is fine.
+func deviceNameInput(raw string) (name, msg string) {
+	name = auth.CleanName(raw)
+	if len([]rune(name)) > auth.MaxDeviceNameRunes {
+		return name, devNameTooLong
+	}
+	return name, ""
 }
 
 func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
@@ -338,6 +366,58 @@ func (s *server) postDeviceSignOut(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err != nil:
 		s.serverError(w, r, "sign out app", err)
+	case !ok:
+		s.notFound(w, r)
+	default:
+		http.Redirect(w, r, "/me/devices", http.StatusSeeOther)
+	}
+}
+
+// postSessionName names one of the signed-in person's own browser sign-ins; an empty name clears it and
+// the row goes back to the label worked out from the browser. Someone else's id is a 404 page.
+func (s *server) postSessionName(w http.ResponseWriter, r *http.Request) {
+	if !s.parseForm(w, r) {
+		return
+	}
+	u := currentUser(r)
+	sid := r.PathValue("sid")
+	name, msg := deviceNameInput(r.PostFormValue("name"))
+	if msg != "" {
+		s.devicesPage(w, r, http.StatusUnprocessableEntity, sid, name, msg)
+		return
+	}
+	ok, err := s.sessions.Rename(r.Context(), u.ID, sid, name)
+	switch {
+	case err != nil:
+		s.serverError(w, r, "name device", err)
+	case !ok:
+		s.notFound(w, r)
+	default:
+		http.Redirect(w, r, "/me/devices", http.StatusSeeOther)
+	}
+}
+
+// postDeviceName names one of the signed-in person's own phones or desktop apps. A name is required
+// there (the table keeps it), so an empty one is refused in plain words. An app key, a revoked device
+// and someone else's id are a 404 page.
+func (s *server) postDeviceName(w http.ResponseWriter, r *http.Request) {
+	if !s.parseForm(w, r) {
+		return
+	}
+	u := currentUser(r)
+	did := r.PathValue("did")
+	name, msg := deviceNameInput(r.PostFormValue("name"))
+	if name == "" {
+		msg = devNameEmpty
+	}
+	if msg != "" {
+		s.devicesPage(w, r, http.StatusUnprocessableEntity, did, name, msg)
+		return
+	}
+	ok, err := s.auth.RenameDevice(r.Context(), u.ID, did, name)
+	switch {
+	case err != nil:
+		s.serverError(w, r, "name app", err)
 	case !ok:
 		s.notFound(w, r)
 	default:

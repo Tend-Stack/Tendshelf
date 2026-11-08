@@ -578,6 +578,8 @@ func sweepRows() []sweepRow {
 		sweepPost("POST /me/app-keys", sweepStatic("/me/app-keys"), sweepFormOf(url.Values{"kind": {"web"}}), sweepSame(400), ""),
 		sweepPost("POST /me/password", sweepStatic("/me/password"), sweepFormOf(url.Values{"current": {"not the password at all"}, "password": {"a brand new passphrase"}}), sweepSame(422), ""),
 		sweepPost("POST /me/sessions/{sid}/signout", func(e *sweepEnv, role int) string { return "/me/sessions/" + e.secondS[role] + "/signout" }, nil, sweepSame(303), "/me/devices"),
+		sweepPost("POST /me/sessions/{sid}/name", func(e *sweepEnv, role int) string { return "/me/sessions/" + e.secondS[role] + "/name" },
+			sweepFormOf(url.Values{"name": {"Kitchen laptop"}}), sweepSame(303), "/me/devices"),
 		sweepPost("POST /me/sessions/signout-others", sweepStatic("/me/sessions/signout-others"), nil, sweepSame(303), ""),
 		// Shelves, the person's own
 		sweepPost("POST /shelves", sweepStatic("/shelves"), sweepFormOf(url.Values{"name": {"Sweep new shelf"}}), shelfPostWant, ""),
@@ -628,6 +630,11 @@ func sweepRows() []sweepRow {
 	}, nil, sweepSame(404), "")
 	other.Label = "someone else's session"
 	post = append(post, other)
+	otherName := sweepPost("POST /me/sessions/{sid}/name", func(e *sweepEnv, role int) string {
+		return "/me/sessions/" + e.secondS[(role+1)%4] + "/name"
+	}, sweepFormOf(url.Values{"name": {"Stolen"}}), sweepSame(404), "")
+	otherName.Label = "someone else's session"
+	post = append(post, otherName)
 	for _, p := range []struct {
 		pattern, suffix string
 		form            func(*sweepEnv, int) url.Values

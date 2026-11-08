@@ -25,6 +25,8 @@ type SessionInfo struct {
 	UserID    string
 	PublicID  string
 	UserAgent string
+	// Name is what the person called this browser sign-in; "" means none.
+	Name      string
 	CreatedAt int64 // Unix milliseconds UTC
 	// LastSeenAt is Unix milliseconds UTC.
 	LastSeenAt int64
@@ -44,7 +46,7 @@ func (s *Sessions) ListAll(ctx context.Context, current [32]byte) ([]SessionInfo
 
 func (s *Sessions) list(ctx context.Context, current [32]byte, where string, args ...any) ([]SessionInfo, error) {
 	args = append([]any{s.now().UnixMilli()}, args...)
-	rows, err := s.st.Reader().QueryContext(ctx, `SELECT token_hash, user_id, user_agent, created_at, last_seen_at
+	rows, err := s.st.Reader().QueryContext(ctx, `SELECT token_hash, user_id, user_agent, name, created_at, last_seen_at
 		FROM sessions WHERE expires_at >= ? AND device_id IS NULL`+where+` ORDER BY last_seen_at DESC, created_at DESC`, args...)
 	if err != nil {
 		return nil, err
@@ -54,7 +56,7 @@ func (s *Sessions) list(ctx context.Context, current [32]byte, where string, arg
 	for rows.Next() {
 		var raw []byte
 		var si SessionInfo
-		if err := rows.Scan(&raw, &si.UserID, &si.UserAgent, &si.CreatedAt, &si.LastSeenAt); err != nil {
+		if err := rows.Scan(&raw, &si.UserID, &si.UserAgent, &si.Name, &si.CreatedAt, &si.LastSeenAt); err != nil {
 			return nil, err
 		}
 		if len(raw) != 32 {
@@ -123,6 +125,36 @@ func (s *Sessions) DeleteByPublicID(ctx context.Context, userID, publicID string
 		return [32]byte{}, false, err
 	}
 	return deleted, ok, nil
+}
+
+// Rename names one of the person's own browser sign-ins; an empty name clears it. ok is false when the
+// id is malformed, matches none of that person's sessions (a device-token session is not one), or is
+// ambiguous; another person's id never matches. name is already cleaned and checked by the caller. The
+// audit row names the session, never the name.
+func (s *Sessions) Rename(ctx context.Context, userID, publicID, name string) (ok bool, err error) {
+	if !IsSessionPublicID(publicID) {
+		return false, nil
+	}
+	err = s.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `UPDATE sessions SET name = ?
+			WHERE user_id = ? AND device_id IS NULL AND substr(lower(hex(token_hash)), 1, ?) = ?
+			AND (SELECT count(*) FROM sessions WHERE user_id = ? AND substr(lower(hex(token_hash)), 1, ?) = ?) = 1`,
+			name, userID, PublicIDLen, publicID, userID, PublicIDLen, publicID)
+		if err != nil {
+			return err
+		}
+		n, err := res.RowsAffected()
+		if err != nil || n != 1 {
+			return err
+		}
+		ok = true
+		return db.Audit(ctx, tx, db.AuditEntry{At: s.now().UnixMilli(), UserID: userID, Action: "auth.device_renamed", Target: userID,
+			Detail: map[string]string{"device": publicID, "by": userID}})
+	})
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
 }
 
 // DeleteOthers ends every session of the person except keep, inside the caller's transaction, and

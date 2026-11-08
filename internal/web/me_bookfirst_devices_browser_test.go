@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 )
 
 // TestVisualBookFirstDevices captures "Your devices" with six identical sign-ins, folded and open,
@@ -28,6 +30,24 @@ func TestVisualBookFirstDevices(t *testing.T) {
 		tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("bookfirst-devices-folded-%d.png", w)))
 		tab.Eval(`document.querySelector(".ts-me__devgroup").open = true`, nil)
 		tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("bookfirst-devices-open-%d.png", w)))
+	}
+}
+
+// TestVisualDeviceNameForm captures "Your devices" with one named browser and its Name form open.
+func TestVisualDeviceNameForm(t *testing.T) {
+	b := chromium(t)
+	out := visualDir(t, "chromium")
+	a := newTestApp(t)
+	owner := a.owner(t)
+	other := settingsLogin(t, a, settingsChromeLinux)
+	deviceFor(t, a, sweepUserID(t, a, owner), "Living room speaker", auth.KindMobile)
+	deviceNamePost(t, a, "/me/sessions/"+deviceNameSID(t, other)+"/name", "Kitchen laptop", other)
+	base := devicesAsCookie(t, a, owner)
+	for _, w := range []int{390, 768, 1440} {
+		tab := b.NewTab(w, 900, w == 390, false)
+		tab.Navigate(base + "/me/devices?theme=dark&name=" + deviceNameSID(t, other))
+		tab.WaitFor(`document.querySelector(".ts-me__renameform") !== null`, 10*time.Second)
+		tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("device-name-open-%d.png", w)))
 	}
 }
 
@@ -66,18 +86,18 @@ func TestBookFirstDevicesFold(t *testing.T) {
 			tab.WaitFor(`document.querySelector(".ts-me__devgroup").open === true`, 5*time.Second)
 
 			var small []string
-			tab.Eval(`[...document.querySelectorAll(".ts-me__devone button")].filter(e => { const r = e.getBoundingClientRect(); return r.height < 44 || r.width < 44; }).map(e => e.getAttribute("aria-label"))`, &small)
+			tab.Eval(`[...document.querySelectorAll(".ts-me__devone form[action$='/signout'] button")].filter(e => { const r = e.getBoundingClientRect(); return r.height < 44 || r.width < 44; }).map(e => e.getAttribute("aria-label"))`, &small)
 			if len(small) > 0 {
 				t.Errorf("sign-out buttons under 44 px: %v", small)
 			}
 			var n int
-			tab.Eval(`document.querySelectorAll(".ts-me__devone button").length`, &n)
+			tab.Eval(`document.querySelectorAll(".ts-me__devone form[action$='/signout'] button").length`, &n)
 			if n != len(ids) {
 				t.Fatalf("%d sign-out buttons in the fold, want %d", n, len(ids))
 			}
 
 			playerClickSel(t, tab, `form[action="/me/sessions/`+ids[0]+`/signout"] button`)
-			tab.WaitFor(`document.querySelectorAll(".ts-me__devone button").length === 2`, 10*time.Second)
+			tab.WaitFor(`document.querySelectorAll(".ts-me__devone form[action$='/signout'] button").length === 2`, 10*time.Second)
 			var path string
 			tab.Eval(`location.pathname`, &path)
 			if !strings.HasPrefix(path, "/me/devices") {

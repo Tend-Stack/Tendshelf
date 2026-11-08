@@ -291,6 +291,24 @@ func (a *Service) IssueDevice(ctx context.Context, username, password, name stri
 	return out, nil
 }
 
+// RenameDevice names one of the person's own devices and records it (the audit detail names the device,
+// not the name). It reports whether there was a live device with that id. name is already cleaned and checked.
+func (a *Service) RenameDevice(ctx context.Context, userID, deviceID, name string) (bool, error) {
+	if a.devices == nil {
+		return false, nil
+	}
+	var ok bool
+	err := a.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		if ok, err = a.devices.Rename(ctx, tx, userID, deviceID, name); err != nil || !ok {
+			return err
+		}
+		return db.Audit(ctx, tx, db.AuditEntry{At: a.ms(), UserID: userID, Action: "auth.device_renamed", Target: userID,
+			Detail: map[string]string{"device": deviceID, "by": userID}})
+	})
+	return ok, err
+}
+
 // RevokeDevice kills one of the person's devices and records who did it (by is the actor's id). It
 // reports whether there was a live device with that id.
 func (a *Service) RevokeDevice(ctx context.Context, userID, deviceID, by string) (bool, error) {

@@ -21,6 +21,8 @@ type ProfileDevice struct {
 	Session bool
 	// Aria is the sign-out button's label ("Sign out Chrome on Linux, 2 hours ago").
 	Aria string
+	// Name is what the person called it: a browser's own name ("" when it has none) or an app's name.
+	Name string
 }
 
 // ProfileBook is a book under way in "Also in progress": the card and at most one resume control, the

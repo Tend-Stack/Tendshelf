@@ -17,7 +17,8 @@
 .ts-me__device { min-height: 3.75rem; }
 .ts-me__deviceicon { display: flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--raised); color: var(--ink-muted); }
 .ts-me__back .ts-icon, .ts-me__deviceicon .ts-icon { width: 1.25rem; height: 1.25rem; }
-.ts-me__others { padding-bottom: var(--space-8); }
+.ts-me__devfoot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4) var(--space-16); padding: var(--space-12) 0; }
+.ts-me__others { margin: 0; }
 .ts-me__others .ts-btn { padding-inline: 0; }
 .ts-me__signout { max-width: 24rem; margin-top: var(--space-24); }
 .ts-me__foot { max-width: 24rem; margin: var(--space-12) 0 0; text-align: center; }
@@ -97,3 +98,15 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
 .ts-me__devgroup > summary::-webkit-details-marker { display: none; }
 .ts-me__devgroup[open] > summary .ts-me__chev { transform: rotate(135deg); }
 .ts-me__devone { padding-left: 3.375rem; }
+/* The page lead keeps the usual gap above its first card. */
+.ts-me__lead + .ts-group { margin-top: var(--space-16); }
+/* The Name form sits under its row, level with the row text. */
+.ts-me__device, .ts-me__devone { flex-wrap: wrap; }
+.ts-me__renameform { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); padding: var(--space-8) 0 var(--space-12) 3.375rem; border-bottom: 1px solid var(--line); }
+.ts-me__renameacts { display: flex; gap: var(--space-8); }
+/* On a phone a device row puts its text across the line, and Name and Sign out sit together under it, level with the text. */
+@media (width < 768px) {
+  div.ts-me__device > .ts-me__rowtext { flex-basis: calc(100% - 3.375rem); }
+  div.ts-me__device { padding-top: var(--space-8); }
+  div.ts-me__device > .ts-me__rename { margin-left: calc(3.375rem - var(--space-12)); }
+}

@@ -52,7 +52,7 @@ func TestDevicesBrowser(t *testing.T) {
 			var m struct {
 				Small []string `json:"small"`
 			}
-			tab.Eval(`({small: [...document.querySelectorAll(".ts-me__device button")].filter(e => { const r = e.getBoundingClientRect(); return r.height < 44 || r.width < 44; }).map(e => e.textContent)})`, &m)
+			tab.Eval(`({small: [...document.querySelectorAll(".ts-me__device button, a.ts-me__rename")].filter(e => { const r = e.getBoundingClientRect(); return r.height < 44 || r.width < 44; }).map(e => e.textContent)})`, &m)
 			if len(m.Small) > 0 {
 				t.Errorf("sign-out buttons under 44 px: %v", m.Small)
 			}
@@ -82,12 +82,24 @@ func TestDevicesBrowser(t *testing.T) {
 				t.Errorf("signed-out browser lands on %q, want /login", path)
 			}
 
+			// Naming this browser: the Name control opens a form, the saved name leads the row.
+			tab.WaitFor(`document.querySelector("a.ts-me__rename") !== null`, 10*time.Second)
+			playerClickSel(t, tab, `a.ts-me__rename`)
+			tab.WaitFor(`document.querySelector(".ts-me__renameform") !== null`, 10*time.Second)
+			tab.Eval(`(() => { const f = document.querySelector(".ts-me__renameform"); f.querySelector("input[name=name]").value = "Kitchen laptop"; f.requestSubmit(); })()`, nil)
+			tab.WaitFor(`document.querySelector(".ts-me__rowtitle").textContent === "Kitchen laptop"`, 10*time.Second)
+			var meta string
+			tab.Eval(`document.querySelector(".ts-me__device .caption").textContent`, &meta)
+			if !strings.HasPrefix(meta, "This browser") {
+				t.Errorf("named current row says %q, want it to start with This browser", meta)
+			}
+
 			// The app token goes the same way.
 			if rec := deviceBearerReq(a, http.MethodGet, "/api/v1/me", tok, nil); rec.Code != 200 {
 				t.Fatalf("token before sign-out = %d", rec.Code)
 			}
-			tab.WaitFor(`document.querySelector('form[action^="/me/devices/"] button') !== null`, 10*time.Second)
-			playerClickSel(t, tab, `form[action^="/me/devices/"] button`)
+			tab.WaitFor(`document.querySelector('form[action$="/signout"][action^="/me/devices/"] button') !== null`, 10*time.Second)
+			playerClickSel(t, tab, `form[action$="/signout"][action^="/me/devices/"] button`)
 			usersWaitFor(t, "app signed out", func() bool {
 				return deviceBearerReq(a, http.MethodGet, "/api/v1/me", tok, nil).Code == http.StatusUnauthorized
 			})
