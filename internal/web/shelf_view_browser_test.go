@@ -106,10 +106,19 @@ func shelfviewCheck(t *testing.T, w int, s shelfviewState) {
 	if s.UserSel != "none" {
 		t.Errorf("%d px: user-select %q", w, s.UserSel)
 	}
-	// The list ends in a plank: rows of one zone, a plank and air between, and the last plank in the padding.
-	rows := s.Rows + s.More // the sentinel stands in a row of its own
-	if want := float64(rows)*s.Zone + float64(rows-1)*36 + 8; math.Abs(s.Height-want) > 1.5 {
-		t.Errorf("%d px: the list is %.1f px high, want %.1f for %d rows", w, s.Height, want, rows)
+	// Planks stand only under rows with books: the list is the book rows (a zone, a plank and air between,
+	// the last plank in the padding), then, while more pages wait, the short "Show more" row. The repeating
+	// plank would next paint at rows * tile + zone, so the list must end above that line.
+	rows := float64(s.Rows)
+	want := rows*s.Zone + (rows-1)*36 + 8
+	if s.More == 1 {
+		want += 36 + 56
+		if s.Height >= rows*s.Tile+s.Zone {
+			t.Errorf("%d px: the list is %.1f px high and reaches a plank below the last row of books (%.1f)", w, s.Height, rows*s.Tile+s.Zone)
+		}
+	}
+	if math.Abs(s.Height-want) > 1.5 {
+		t.Errorf("%d px: the list is %.1f px high, want %.1f for %d rows", w, s.Height, want, s.Rows)
 	}
 }
 
@@ -128,6 +137,16 @@ func TestShelfViewBrowser(t *testing.T) {
 		// The next page joins the same list: no nested list, the row rule holds, and the sentinel goes.
 		tab.Eval(`document.querySelector("li.ts-shelf__more").scrollIntoView()`, nil)
 		tab.WaitFor(`document.querySelectorAll("ul#library-grid > li.ts-shelf__slot").length > 48`, 10*time.Second)
+		tab.WaitFor(`document.querySelectorAll("ul#library-grid > li.ts-shelf__slot").length >= 96`, 10*time.Second)
+		// The last page: a partial last row, no sentinel, and still no plank past the books.
+		tab.Eval(`document.querySelector("li.ts-shelf__more").scrollIntoView()`, nil)
+		tab.WaitFor(`document.querySelectorAll("ul#library-grid > li.ts-shelf__slot").length === 130 && !document.querySelector("li.ts-shelf__more")`, 10*time.Second)
+		var last shelfviewState
+		tab.Eval(shelfviewProbe, &last)
+		shelfviewCheck(t, w, last)
+		tab.Navigate(base + "/libraries?view=shelf")
+		tab.WaitFor(`document.querySelectorAll("ul#library-grid > li.ts-shelf__slot").length >= 48`, 10*time.Second)
+		tab.Eval(`document.querySelector("li.ts-shelf__more").scrollIntoView()`, nil)
 		tab.WaitFor(`document.querySelectorAll("ul#library-grid > li.ts-shelf__slot").length >= 96`, 10*time.Second)
 		tab.Eval(shelfviewProbe, &s)
 		if s.Nested != 0 {

@@ -23,7 +23,8 @@
 .ts-shelf--scroll { margin-top: var(--space-8); padding-inline: var(--space-4); overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
 .ts-shelf__slot { --book-h: calc(var(--spine-h-min) + var(--h) * var(--spine-h-inc)); flex: none; width: calc(var(--size-tap) + var(--w) * var(--spine-w-inc)); height: var(--book-h); margin-top: calc(var(--shelf-zone) - var(--book-h)); }
 .ts-shelf__slot[hidden] { display: none; }
-.ts-shelf__more { flex: 0 0 100%; height: var(--shelf-zone); display: flex; align-items: center; justify-content: center; }
+/* The "Show more" row is short, so the repeating plank never reaches it: the list ends before the next plank would start. */
+.ts-shelf__more { --shelf-more: 3.5rem; flex: 0 0 100%; height: var(--shelf-more); display: flex; align-items: center; justify-content: center; }
 .ts-shelf .ts-more.htmx-request .ts-more__loading { display: none; }
 .ts-spine { display: block; box-sizing: border-box; height: 100%; padding-inline: 0.1875rem; text-decoration: none; -webkit-user-drag: none; -webkit-tap-highlight-color: transparent; }
 .ts-spine:focus-visible { position: relative; z-index: 1; outline: 2px solid transparent; border-radius: var(--radius-cover); box-shadow: var(--focus-ring); }
