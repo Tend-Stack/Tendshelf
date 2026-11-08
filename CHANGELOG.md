@@ -6,6 +6,11 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### What you can do
 
+- **Listen in a podcast app.** A book or a series with audio now has a "Podcast feed" button, for people who may download it. It makes a
+  private address you paste into AntennaPod, Pocket Casts, Apple Podcasts or Overcast; the app then plays the original audio, chapters
+  included. The address is shown once, with a QR code, and each address is listed on Your devices with the book or series it carries
+  and when an app last used it, where you can turn it off. Removing someone's right to download, disabling them or a password reset
+  stops their feeds too.
 - **Invite someone as a Contributor.** Next to Listener, Member and Admin there is now Contributor: a person who listens like a
   member and can also add books. Their books go into a folder of their own inside the upload folder, and they can fix the details,
   look up the book online, change the cover and remove the books they added, never anyone else's. They add books only to a whole

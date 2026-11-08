@@ -196,6 +196,7 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	as("main/owner", a, ownerCk)
 	as("main/member", a, memberCk)
 	a11ySignIn(t, e, a, ownerCk, serve, as)
+	a11yFeeds(t, e, a, ownerCk, serve)
 	serve("main/anon", a.h)
 
 	// upload: the Add books page and its queue.
@@ -272,6 +273,35 @@ func a11ySignIn(t *testing.T, e *a11yEnv, a *testApp, ownerCk *http.Cookie, serv
 		if r.Method == http.MethodGet && r.URL.Path == "/admin/users/"+e.SignInPanelID {
 			form := url.Values{"_csrf": {a.tokenFor(t, ownerCk)}}
 			req := httptest.NewRequest(http.MethodPost, r.URL.Path+"/signin-link", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Host = r.Host
+			for _, c := range r.Cookies() {
+				req.AddCookie(c)
+			}
+			r = req
+		}
+		r.AddCookie(&http.Cookie{Name: ownerCk.Name, Value: ownerCk.Value})
+		a.h.ServeHTTP(w, r)
+	}))
+}
+
+// a11yFeeds seeds podcast feeds (decision 0031): one feed of the owner, so "Your devices" lists a feed, and
+// "main/feedmade", a server that turns a visit to the book's feed page into the POST that makes an address, so the
+// page with the one-time address is audited too.
+func a11yFeeds(t *testing.T, e *a11yEnv, a *testApp, ownerCk *http.Cookie, serve func(string, http.Handler)) {
+	t.Helper()
+	ctx := context.Background()
+	err := a.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, _, err := a.srv.feeds.Create(ctx, tx, sweepUserID(t, a, ownerCk), "Pocket Casts", e.BookID, "")
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	serve("main/feedmade", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/books/"+e.BookID+"/feed" {
+			form := url.Values{"_csrf": {a.tokenFor(t, ownerCk)}}
+			req := httptest.NewRequest(http.MethodPost, r.URL.Path, strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			req.Host = r.Host
 			for _, c := range r.Cookies() {

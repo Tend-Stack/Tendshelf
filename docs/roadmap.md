@@ -1018,6 +1018,16 @@ Branch `pkg-fix-library`. Reused `MergeRowsSQL`, `merged_folders`, `Repo.Duplica
 
 **Next.** A scribe package for the translations of the new strings; an emulator pass on the Android app signing in as a contributor.
 
+## Podcast feeds (decision 0031, plan `docs/plans/podcast-feeds.md`; P1 server and feed XML, P2 pages, 2026-11-07)
+
+**Scope.** A private RSS address per person for one book or one series, read by any podcast app. P1: migration `0036_podcast_feeds`, `share.Feeds`, `/feeds/{token}/` (feed.xml, audio with ranges, cover, chapters) outside the cookie chain. P2: the "Podcast feed" action on the book and series pages (only with the download right and audio), `/books/{id}/feed` and `/series/{id}/feed` (make page, then the address shown once with a copy field and QR), the Podcast feeds list with Turn off on Your devices, audit rows `feed.create` and `feed.revoke`.
+
+**Checks.** httptest: make and use round trip (address once, hash only, audit without the address), forbidden per role, contributor on own upload, text-only, protected and refused books, CSRF, the 50-feed cap, revoke own and foreign, the Your devices list, the action on both pages, a disabled person's feeds; route matrix rows for the five new routes; a11y rows for the make page, the shown page and Your devices with a feed; captures of the make page, the shown page and Your devices with two feeds at 390, 768, 1024 and 1440 (fast matrix).
+
+**Limits.** No transcoding, no shelf, author or library feeds, no admin list of other people's feeds, no editing of a feed's name; "Copy address" is a string the plan did not list; no translations yet.
+
+**Next.** A scribe package for the translations; try the address in AntennaPod and Pocket Casts by hand.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID
