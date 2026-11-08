@@ -248,6 +248,7 @@ func siteWorld(t *testing.T) *siteWorldT {
 	}
 	a := newTestApp(t, func(o *Options) {
 		o.TrustedProxies = px
+		o.Version = "2026.5.0" // the footer of Profile shows it
 		o.Now = func() time.Time { return siteNow }
 	})
 	a.owner(t)
