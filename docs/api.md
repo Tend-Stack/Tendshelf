@@ -256,6 +256,22 @@ Reading apps use `/opds` ([decision 0025](decisions/0025-app-keys.md)). It is no
   acquisition link per ready ebook file and an image link.
 - **Files**: `/opds/books/{id}/file/{fileID}` (the ebook as stored), `/opds/covers/{id}?w=`. Anything not allowed is a plain `404`.
 
+## Podcast feeds (not `/api/v1`)
+
+A podcast app plays one book or one series from `/feeds/{token}/` ([decision 0031](decisions/0031-podcast-feeds.md)). It is not part of
+`/api/v1`, is GET and HEAD only, and sits outside the cookie chain. The token is 32 random bytes in the path; it is the only credential and it
+opens nothing else (no page, `/hx/`, `/api/`, `/stream/`, `/me`, `/opds`). Only its SHA-256 is stored.
+
+- `feed.xml`: RSS 2.0 with the iTunes and Podcasting 2.0 namespaces, `Cache-Control: no-store`, `itunes:block` `yes`. One episode per audio
+  file; a series feed lists at most 100 books and 1,000 files in the series page's order, only books the owner may download.
+- `audio/{fileID}.{ext}`: the file as stored, with byte ranges. `cover/{bookID}.{ext}`: the original cover. `chapters/{fileID}.json`:
+  Podcasting 2.0 chapters (`application/json+chapters`) for that file. The part after the last `.` is ignored.
+- Every request re-checks the owner: the feed is live, the account is enabled and holds the download right on each book served. Refused,
+  copy-protected and missing files are never listed or served.
+- Failures: malformed, unknown, revoked, owner disabled, no right, gone: one plain `404 Not found.`. Malformed and unknown tokens cost the
+  address one failure on the app-key limiter (10 in 15 minutes, then `429` with `Retry-After` before the database is read). A feed has its
+  own limit of 600 requests a minute (`429`).
+
 ## KOReader progress sync (not `/api/v1`)
 
 `/kosync` speaks the protocol of KOReader's `kosync` plugin ([decision 0025](decisions/0025-app-keys.md), plan S6). It sits in front of the outer mux so a

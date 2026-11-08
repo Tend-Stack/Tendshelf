@@ -840,6 +840,8 @@ func sweepRegistered(t *testing.T) []string {
 				strings.HasPrefix(path, "/dev/"), strings.HasPrefix(path, "/hx/dev/"),
 				path == "/opds" || strings.HasPrefix(path, "/opds/"): // app-key sign-in, not a cookie: opds_test.go covers it
 				continue
+			case path == "/feeds/" || strings.HasPrefix(path, "/feeds/"):
+				continue // feed token in the path, not a cookie: feeds_test.go covers it
 			}
 			seen[p] = true
 		}
