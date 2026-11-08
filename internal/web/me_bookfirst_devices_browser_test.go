@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 )
 
 // TestVisualBookFirstDevices captures "Your devices" with six identical sign-ins, folded and open,
@@ -28,6 +30,24 @@ func TestVisualBookFirstDevices(t *testing.T) {
 		tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("bookfirst-devices-folded-%d.png", w)))
 		tab.Eval(`document.querySelector(".ts-me__devgroup").open = true`, nil)
 		tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("bookfirst-devices-open-%d.png", w)))
+	}
+}
+
+// TestVisualDeviceNameForm captures "Your devices" with one named browser and its Name form open.
+func TestVisualDeviceNameForm(t *testing.T) {
+	b := chromium(t)
+	out := visualDir(t, "chromium")
+	a := newTestApp(t)
+	owner := a.owner(t)
+	other := settingsLogin(t, a, settingsChromeLinux)
+	deviceFor(t, a, sweepUserID(t, a, owner), "Living room speaker", auth.KindMobile)
+	deviceNamePost(t, a, "/me/sessions/"+deviceNameSID(t, other)+"/name", "Kitchen laptop", other)
+	base := devicesAsCookie(t, a, owner)
+	for _, w := range []int{390, 768, 1440} {
+		tab := b.NewTab(w, 900, w == 390, false)
+		tab.Navigate(base + "/me/devices?theme=dark&name=" + deviceNameSID(t, other))
+		tab.WaitFor(`document.querySelector(".ts-me__renameform") !== null`, 10*time.Second)
+		tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("device-name-open-%d.png", w)))
 	}
 }
 

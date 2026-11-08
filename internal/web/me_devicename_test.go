@@ -38,7 +38,11 @@ func TestDeviceNameSession(t *testing.T) {
 		t.Fatalf("rename = %d", code)
 	}
 	page := a.do(http.MethodGet, "/me/devices", nil, nil, owner).Body.String()
-	for _, frag := range []string{"Kitchen laptop", "This browser · Chrome on Linux", `value="Kitchen laptop"`, `aria-label="Name Kitchen laptop"`} {
+	form := a.do(http.MethodGet, "/me/devices?name="+sid, nil, nil, owner).Body.String()
+	if !strings.Contains(form, `value="Kitchen laptop"`) || !strings.Contains(form, `action="/me/sessions/`+sid+`/name"`) || strings.Contains(page, "ts-me__renameform") {
+		t.Error("the Name link does not open a prefilled form for that row only")
+	}
+	for _, frag := range []string{"Kitchen laptop", "This browser · Chrome on Linux", `aria-label="Name Kitchen laptop"`} {
 		if !strings.Contains(page, frag) {
 			t.Errorf("devices page lacks %q", frag)
 		}

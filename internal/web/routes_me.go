@@ -61,7 +61,7 @@ func (s *server) ownDeviceRows(r *http.Request) ([]pages.ProfileDevice, int, err
 
 // getDevices is "Your devices": the person's sign-ins, nearly identical ones folded.
 func (s *server) getDevices(w http.ResponseWriter, r *http.Request) {
-	s.devicesPage(w, r, http.StatusOK, "", "", "")
+	s.devicesPage(w, r, http.StatusOK, r.URL.Query().Get("name"), "", "")
 }
 
 // devicesPage renders "Your devices". A refused Name save comes back as 422 with renameID's form open,
@@ -71,6 +71,14 @@ func (s *server) devicesPage(w http.ResponseWriter, r *http.Request, status int,
 	if err != nil {
 		s.serverError(w, r, "devices", err)
 		return
+	}
+	if renameID != "" && renameValue == "" && msg == "" {
+		// The Name link opened a form: it starts with the row's current name.
+		for _, d := range rows {
+			if d.ID == renameID {
+				renameValue = d.Name
+			}
+		}
 	}
 	keys, err := s.appKeysView(r)
 	if err != nil {

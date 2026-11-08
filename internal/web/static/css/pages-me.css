@@ -98,11 +98,15 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
 .ts-me__devgroup > summary::-webkit-details-marker { display: none; }
 .ts-me__devgroup[open] > summary .ts-me__chev { transform: rotate(135deg); }
 .ts-me__devone { padding-left: 3.375rem; }
-/* A quiet Name control on each device row; open, its form takes a line of its own under the row. */
+/* The page lead keeps the usual gap above its first card. */
+.ts-me__lead + .ts-group { margin-top: var(--space-16); }
+/* The Name form sits under its row, level with the row text. */
 .ts-me__device, .ts-me__devone { flex-wrap: wrap; }
-.ts-me__device > .ts-me__rowtext { flex-basis: 9rem; }
-.ts-me__rename > summary { cursor: pointer; list-style: none; }
-.ts-me__rename > summary::-webkit-details-marker { display: none; }
-.ts-me__rename[open] { order: 9; flex: 1 1 100%; }
-.ts-me__renameform { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); padding: var(--space-4) 0 var(--space-12); }
-.ts-me__rename > summary:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+.ts-me__renameform { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); padding: var(--space-8) 0 var(--space-12) 3.375rem; border-bottom: 1px solid var(--line); }
+.ts-me__renameacts { display: flex; gap: var(--space-8); }
+/* On a phone a device row puts its text across the line, and Name and Sign out sit together under it, level with the text. */
+@media (width < 768px) {
+  div.ts-me__device > .ts-me__rowtext { flex-basis: calc(100% - 3.375rem); }
+  div.ts-me__device { padding-top: var(--space-8); }
+  div.ts-me__device > .ts-me__rename { margin-left: calc(3.375rem - var(--space-12)); }
+}
