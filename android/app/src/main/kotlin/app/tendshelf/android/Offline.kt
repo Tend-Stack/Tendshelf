@@ -280,6 +280,9 @@ object Offline {
 
     fun coverBytes(book: String): ByteArray? = coverFile(book).takeIf { it.isFile }?.readBytes()
 
+    /** Bytes the phone can still give downloads. */
+    fun freeBytes(): Long = StatFs(app.noBackupFilesDir.apply { mkdirs() }.path).availableBytes
+
     // ---- Actions (call from a worker thread) ----
 
     /** Fetches the manifest, checks the right and the room, keeps the answer and the cover, and queues every file. */

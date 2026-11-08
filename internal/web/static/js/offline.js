@@ -275,7 +275,7 @@ let downloads = null;
 
 function needsDownloads() {
   if (document.documentElement.hasAttribute("data-shell")) return false;
-  if (document.querySelector("[data-ts-downloads], [data-ts-download]")) return true;
+  if (document.querySelector("[data-ts-downloads], [data-ts-download], [data-ts-download-all]")) return true;
   const books = Object.values(readJSON("ts.offline", { books: {} }).books || {});
   return books.some((book) => book.state !== "ready");
 }

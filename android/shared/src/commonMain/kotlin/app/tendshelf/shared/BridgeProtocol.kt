@@ -35,6 +35,9 @@ sealed interface BridgeMessage {
     /** `dl add <id>`, `dl remove <id>` or `dl ask <id>` (A7): keep a book on the phone, drop it, or ask how it stands. */
     data class Download(val action: String, val bookId: String) : BridgeMessage
 
+    /** `dl room` (L10, Download all): the page asks how many bytes the phone can still take for downloads; the answer is [encodeRoom]. */
+    data object DownloadRoom : BridgeMessage
+
     /** `tts voices`: the page asks for the voices on the phone that need no network (decision 0032). */
     data object TtsVoices : BridgeMessage
 
@@ -97,7 +100,7 @@ fun parseBridge(raw: String?): BridgeMessage? {
         "wake" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.Wake(parts[1] == "1") else null
         "pagekeys" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.PageKeys(parts[1] == "1") else null
         "quiet" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.Quiet(parts[1] == "1") else null
-        "dl" -> if (parts.size == 3 && validId(parts[2]) && parts[1] in DL_WORDS) BridgeMessage.Download(parts[1], parts[2]) else null
+        "dl" -> if (parts.size == 2 && parts[1] == "room") BridgeMessage.DownloadRoom else if (parts.size == 3 && validId(parts[2]) && parts[1] in DL_WORDS) BridgeMessage.Download(parts[1], parts[2]) else null
         else -> null
     }
 }
@@ -203,6 +206,9 @@ fun encodeDl(bookId: String, state: String, pct: Int, sized: Boolean = true): St
     val known = state in setOf("none", "queued", "downloading", "paused", "ready", "failed", "stale")
     return "{\"t\":\"dl\",\"bookId\":${jsonString(bookId)},\"state\":\"${if (known) state else "none"}\",\"pct\":${pct.coerceIn(0, 100)}${if (sized) "" else ",\"known\":false"}}"
 }
+
+/** The room left for downloads, after the spare every download keeps free ([SPARE_BYTES]); the page compares a whole batch with it. */
+fun encodeRoom(freeBytes: Long): String = "{\"t\":\"room\",\"bytes\":${roomFor(freeBytes)}}"
 
 /** A voice the page may use: [id] passed [validId], [lang] is `[A-Za-z0-9-]{2,35}`; a voice that fails either is left out; at most 200. */
 fun encodeVoices(list: List<VoiceInfo>): String {

@@ -483,7 +483,10 @@ func (s *server) getSeries(w http.ResponseWriter, r *http.Request) {
 	if fb, err := s.lib.SeriesFeedBooks(ctx, s.feedScope(currentUser(r)), sp.ID, 1); err == nil && len(fb) > 0 {
 		v.FeedHref = "/series/" + sp.ID + "/feed"
 	}
-	s.pageStyled(w, r, http.StatusOK, sp.Name, "library", pages.Series(v), nil, pages.BookStyles...)
+	if items, err := s.lib.SeriesDownloadItems(ctx, s.feedScope(currentUser(r)), sp.ID); err == nil {
+		v.DownloadAll = downloadAllView("/series/"+sp.ID+"/download-list", len(items))
+	}
+	s.pageStyled(w, r, http.StatusOK, sp.Name, "library", pages.Series(v), nil, downloadAllStyles(pages.BookStyles, v.DownloadAll)...)
 }
 
 // tabRank orders a text book's tabs: About, Text, Details.

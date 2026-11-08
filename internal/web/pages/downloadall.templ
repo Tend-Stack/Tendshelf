@@ -1,0 +1,41 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// DownloadAllView is the "Download all" control of a series or shelf page. ListHref is the JSON list of the
+// books; Messages are the sentences js/downloads-all.js (and native-downloads.js in the Android app) composes
+// from, as data-ts-msg-<Key> attributes, so the scripts carry no copy.
+type DownloadAllView struct {
+	ListHref string
+	Messages []DownloadMsg
+}
+
+func (v DownloadAllView) attrs() templ.Attributes {
+	a := templ.Attributes{"data-ts-download-all": v.ListHref}
+	for _, m := range v.Messages {
+		a["data-ts-msg-"+m.Key] = m.Text
+	}
+	return a
+}
+
+// DownloadAll is the Download all button, its progress line with Stop, and the confirm dialog. All of it starts
+// hidden: without JavaScript, outside a secure address and where downloads do not work, nothing shows (like the
+// book page's one-book control).
+templ DownloadAll(v DownloadAllView) {
+	<div class="ts-dlall" hidden { v.attrs()... }>
+		<button type="button" class="ts-btn ts-btn--secondary ts-dlall__start" data-ts-dlall-start>
+			@components.Icon("download", false)
+			<span data-ts-dlall-label></span>
+		</button>
+		<p class="caption ts-dlall__status" role="status" data-ts-dlall-status hidden></p>
+		<button type="button" class="ts-btn ts-btn--quiet ts-dlall__stop" data-ts-dlall-stop hidden></button>
+		<dialog class="ts-dialog ts-dlall__dialog" aria-labelledby="ts-dlall-title" data-ts-dlall-dialog>
+			<h2 class="ts-dialog__title" id="ts-dlall-title" data-ts-dlall-title></h2>
+			<p class="ts-dialog__body" data-ts-dlall-body></p>
+			<div class="ts-dialog__actions">
+				<button type="button" class="ts-btn ts-btn--quiet" data-ts-dlall-cancel></button>
+				<button type="button" class="ts-btn ts-btn--primary" data-ts-dlall-go></button>
+			</div>
+		</dialog>
+	</div>
+}

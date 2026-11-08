@@ -47,6 +47,9 @@ sealed interface Plan {
 /** Room that must stay free after the book (200 MiB). */
 const val SPARE_BYTES = 200L * 1024 * 1024
 
+/** What a download may use of [freeBytes]: all of it but [SPARE_BYTES]. One rule for one book and for a whole batch. */
+fun roomFor(freeBytes: Long): Long = (freeBytes - SPARE_BYTES).coerceAtLeast(0)
+
 /**
  * What a download would fetch. The right comes first (a refusal says why in plain words), then the files the person
  * can play (a missing file is silence and is not fetched), then the room: the whole book plus [SPARE_BYTES].

@@ -49,6 +49,8 @@ type a11yState struct {
 var a11ySkip = map[string]string{
 	"/books/{id}/chapters/reset":        "the reset confirmation exists only for a book whose chapters were edited; captured by TestChapterEditVisual",
 	"/uploads/{id}":                     "JSON (the upload status the uploader polls), not a page",
+	"/series/{id}/download-list":        "JSON (the books a Download all would save), not a page; the control and its dialog are captured by TestDownloadAllBrowserConfirmVisual",
+	"/shelves/{id}/download-list":       "JSON (the books a Download all would save), not a page",
 	"/progress/{bookID}":                "JSON, not a page",
 	"/reading/{bookID}":                 "JSON (the reading place), not a page",
 	"/offline/books/{id}/read":          "the offline reader shell: the markup of /books/{id}/read without chapter text, audited there",
