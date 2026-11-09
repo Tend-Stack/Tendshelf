@@ -31,9 +31,9 @@
             android:layout_height="match_parent"
             android:layout_marginEnd="12dp"
             android:adjustViewBounds="true"
-            android:background="@drawable/widget_cover_placeholder"
             android:contentDescription="@null"
-            android:scaleType="fitCenter" />
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_cover_empty" />
 
         <LinearLayout
             android:id="@+id/widget_text"
@@ -64,15 +64,16 @@
                 android:textColor="@color/widget_muted"
                 android:textSize="13sp" />
 
-            <!-- The rest of the height: three equal cells, so Play is in the middle at any width. -->
+            <!-- The rest of the height: Play in the middle, a cell of equal width on each side. -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:gravity="center_vertical"
+                android:gravity="center"
                 android:orientation="horizontal">
 
                 <FrameLayout
+                    android:id="@+id/widget_back_cell"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1">
@@ -87,22 +88,17 @@
                         android:src="@drawable/ic_widget_back" />
                 </FrameLayout>
 
-                <FrameLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1">
-
-                    <ImageButton
-                        android:id="@+id/widget_play"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:layout_gravity="center"
-                        android:background="@drawable/widget_button_accent"
-                        android:contentDescription="@string/widget_play"
-                        android:src="@drawable/ic_widget_play" />
-                </FrameLayout>
+                <!-- Play is never squeezed: only the two side cells share what is left. -->
+                <ImageButton
+                    android:id="@+id/widget_play"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_button_accent"
+                    android:contentDescription="@string/widget_play"
+                    android:src="@drawable/ic_widget_play" />
 
                 <FrameLayout
+                    android:id="@+id/widget_forward_cell"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1">

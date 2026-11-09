@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The empty cover: a square with the 12 dp control corner. It has a size of its own (72 dp), so a cover with no
+     picture still gets its width from its shape, in the picker preview and on the home screen. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="72"
+    android:viewportHeight="72">
+    <path
+        android:fillColor="@color/widget_cover_empty"
+        android:pathData="M12,0 L60,0 A12,12 0 0 1 72,12 L72,60 A12,12 0 0 1 60,72 L12,72 A12,12 0 0 1 0,60 L0,12 A12,12 0 0 1 12,0 Z" />
+</vector>

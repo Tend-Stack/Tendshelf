@@ -132,12 +132,13 @@ class TendWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_chapter, look.chapter)
             shown(R.id.widget_chapter, look.showChapter)
             shown(R.id.widget_cover, look.showCover)
-            shown(R.id.widget_back, look.showSkip)
-            shown(R.id.widget_forward, look.showSkip)
+            // The cells go with the buttons, so Play is centred in what is left.
+            shown(R.id.widget_back_cell, look.showSkip)
+            shown(R.id.widget_forward_cell, look.showSkip)
             if (look.showCover) {
-                // Without a picture the empty square is still a bitmap: the cover takes its width from its shape.
-                val cover = CoverProvider.cached(context, bookId)?.let { roundedCover(it) } ?: emptyCover(context)
-                views.setImageViewBitmap(R.id.widget_cover, cover)
+                // Without a picture the empty square is a drawable with a size: the cover takes its width from its shape.
+                val cover = CoverProvider.cached(context, bookId)?.let { roundedCover(it) }
+                if (cover != null) views.setImageViewBitmap(R.id.widget_cover, cover) else views.setImageViewResource(R.id.widget_cover, R.drawable.widget_cover_empty)
             }
             // The cover and the words open the book; the buttons act.
             views.setContentDescription(R.id.widget_cover, context.getString(R.string.widget_open_book, look.title))
@@ -169,15 +170,6 @@ class TendWidget : AppWidgetProvider() {
                 Intent(context, WidgetActions::class.java).setAction(action),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
-
-        /** The placeholder colour as a rounded square, for a book with no picture yet. */
-        private fun emptyCover(context: Context): Bitmap {
-            val out = Bitmap.createBitmap(COVER_PX, COVER_PX, Bitmap.Config.ARGB_8888)
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.widget_cover_empty) }
-            val radius = COVER_PX * 12f / 72f
-            Canvas(out).drawRoundRect(RectF(0f, 0f, COVER_PX.toFloat(), COVER_PX.toFloat()), radius, radius, paint)
-            return out
-        }
 
         /** A centred square at [COVER_PX], with the 12 dp control corner; small enough for the launcher's binder limit. */
         private fun roundedCover(bytes: ByteArray): Bitmap? {
