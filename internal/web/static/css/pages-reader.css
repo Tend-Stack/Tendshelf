@@ -132,7 +132,7 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 .ts-reader__mark form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); width: 100%; }
 .ts-reader__mark textarea { width: 100%; box-sizing: border-box; min-height: 4.5rem; }
 /* The sheets are the details sheet of pages-details.css, which this page does not load: its height cap and width come here, or a long marks list hangs off the top of the screen. */
-#sheet .ts-details-sheet { display: flex; flex-direction: column; max-height: 85vh; max-height: 85dvh; overflow: hidden; padding-bottom: 0; max-width: 40rem; margin: 0 auto; }
+#sheet .ts-details-sheet { display: flex; flex-direction: column; max-height: 85vh; max-height: 85dvh; overflow: hidden; overflow: clip; padding-bottom: 0; max-width: 40rem; margin: 0 auto; }
 #sheet .ts-chip-set .ts-chip { min-height: var(--size-tap); text-decoration: none; }
 
 /* Links and pictures in the text. A link is told apart by its underline, not by colour alone. */

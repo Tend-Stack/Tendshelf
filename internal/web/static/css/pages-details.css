@@ -2,7 +2,7 @@
    into the files) and the author's photo. Tokens only; the compare table's own rules are in bundle.css. */
 
 /* Sheet shell: the same centred bottom sheet as the bookmarks, scrolling inside its height. */
-.ts-details-sheet { display: flex; flex-direction: column; max-height: 85vh; max-height: 85dvh; overflow: hidden; padding-bottom: 0; max-width: 40rem; margin: 0 auto; }
+.ts-details-sheet { display: flex; flex-direction: column; max-height: 85vh; max-height: 85dvh; overflow: hidden; overflow: clip; padding-bottom: 0; max-width: 40rem; margin: 0 auto; }
 .ts-lookup, .ts-compare-body, .ts-cover-pick, .ts-write { display: flex; flex-direction: column; gap: var(--space-16); padding: 0 var(--space-4); }
 .ts-lookup > *, .ts-compare-body > *, .ts-cover-pick > *, .ts-write > * { margin: 0; }
 .ts-lookup .ts-field { max-width: none; }
