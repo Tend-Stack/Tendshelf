@@ -101,6 +101,15 @@ func (p Page) withPrefetch() Page {
 const htmxConfig = `{"includeIndicatorCSS":false,"defaultTimeout":25000,"transitions":false}`
 
 // csrfHeaders is the JSON for hx-headers: every htmx request carries the CSRF token.
+// boostAttrs is the navigation of every page. The desktop window goes without View Transitions: WebKitGTK crashes on one at a
+// page change when WEBKIT_DISABLE_DMABUF_RENDERER=1 is set, which many NVIDIA setups need (manual check PG-D6). The page rises in all the same.
+func boostAttrs(shell string) string {
+	if shell == "desktop" {
+		return "target:#main select:#main swap:outerSync"
+	}
+	return "target:#main select:#main swap:outerSync transition:true"
+}
+
 func csrfHeaders(token string) string {
 	b, err := json.Marshal(map[string]string{"X-CSRF-Token": token})
 	if err != nil {
@@ -136,7 +145,7 @@ templ Layout(p Page, body templ.Component) {
 		}
 	>
 		@Head(p.withPrefetch(), layoutStyles()...)
-		<body data-ts-tz={ p.TimeZone } hx-boost:inherited="target:#main select:#main swap:outerSync transition:true" hx-headers:inherited={ csrfHeaders(p.CSRF) }>
+		<body data-ts-tz={ p.TimeZone } hx-boost:inherited={ boostAttrs(p.Shell) } hx-headers:inherited={ csrfHeaders(p.CSRF) }>
 			<a class="ts-sr-focusable" href="#main">Skip to content</a>
 			@DesktopBar(p)
 			@OfflineBanner(p)

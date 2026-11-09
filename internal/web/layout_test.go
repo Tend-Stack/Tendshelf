@@ -304,3 +304,24 @@ func mustAssets(t *testing.T) *static.Set {
 	}
 	return a
 }
+
+// TestBoostAttrsDesktop: the desktop window asks for no View Transition, which crashes WebKitGTK when
+// WEBKIT_DISABLE_DMABUF_RENDERER=1 is set (manual check PG-D6). Every other page keeps it, for the cover's move.
+func TestBoostAttrsDesktop(t *testing.T) {
+	a := newTestApp(t)
+	h := a.signedIn(t)
+	for _, c := range []struct {
+		shell string
+		want  bool
+	}{{"", true}, {"desktop", false}, {"android", true}} {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		if c.shell != "" {
+			r.AddCookie(&http.Cookie{Name: shellCookie, Value: c.shell})
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if got := strings.Contains(attrOf(t, w.Body.String(), `<body`, "hx-boost:inherited"), "transition:true"); got != c.want {
+			t.Errorf("shell %q: transition %v, want %v", c.shell, got, c.want)
+		}
+	}
+}
