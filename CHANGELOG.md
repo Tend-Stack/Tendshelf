@@ -7,6 +7,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 ### Added
 
 - **Run Tendshelf with Docker.** The repository now has a Dockerfile and a compose file, so `docker compose up` builds and starts the server with ffmpeg included, your data in a folder you choose and your books mounted read-only. The deploy guide explains HTTPS, uploads, file ownership and upgrades.
+- Owners and admins get an Activity page under Settings, Your server: what people did on the server in plain words (who signed in, who invited whom, who changed a role), newest first, filtered by person or by kind. It shows no addresses or links that could sign anyone in.
 
 ## 2026.7.0
 

@@ -322,3 +322,22 @@ a.ts-users__item:hover { background: var(--raised); }
 .ts-users__addedactions .ts-btn { white-space: normal; max-width: 100%; height: auto; min-height: 2.75rem; text-align: center; }
 /* "Make a sign-in link" is a long button label: at 200 % text it wraps instead of pushing the page wide. */
 .ts-users__account .ts-btn { max-width: 100%; white-space: normal; text-align: center; }
+
+/* Activity (S9): a filter bar over a plain list of sentences. Long names are cut with an ellipsis, never wrapped
+   onto an orphan row; every link and control is at least 44 px tall. */
+.ts-activity { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-activity__filters { display: flex; flex-direction: column; gap: var(--space-12); align-items: stretch; }
+.ts-activity__field { max-width: none; }
+.ts-activity__clear { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--ink); text-decoration: underline; }
+.ts-activity__list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.ts-activity__row { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-12) 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.ts-activity__what { margin: 0; overflow-wrap: anywhere; }
+.ts-activity__meta { display: flex; align-items: center; gap: var(--space-8); margin: 0; color: var(--ink-muted); min-width: 0; }
+.ts-activity__meta time, .ts-activity__meta > span { flex: none; white-space: nowrap; }
+/* Block, not inline-flex: text-overflow only cuts text that sits directly in the box. The line height keeps the 44 px target. */
+.ts-activity__target { display: block; flex: 0 1 auto; min-width: 0; line-height: var(--size-tap); color: var(--ink); text-decoration: underline; }
+.ts-activity__pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
+@container pane (width >= 36rem) {
+  .ts-activity__filters { flex-direction: row; align-items: flex-end; flex-wrap: wrap; }
+  .ts-activity__field { width: 13rem; }
+}
