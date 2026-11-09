@@ -34,6 +34,9 @@ import app.tendshelf.shared.Verdict
 import app.tendshelf.shared.autoBytes
 import app.tendshelf.shared.autoDownloadPlan
 import app.tendshelf.shared.autoUnfinished
+import app.tendshelf.shared.encodeAutoNext
+import app.tendshelf.shared.offlineNextFor
+import app.tendshelf.shared.queueDeleteDone
 import app.tendshelf.shared.checkVerdict
 import app.tendshelf.shared.downloadPercent
 import app.tendshelf.shared.downloadPlan
@@ -639,18 +642,53 @@ object Offline {
     /** Worker thread. Applies the switch and the network to what is unfinished: off removes it, metered holds it, Wi-Fi releases it. */
     fun autoSync() {
         if (!::app.isInitialized) return
+        tidyQueue()
         val rows = store.all()
         val kept = marks().filter { m -> rows.any { it.bookId == m } }.toSet()
         if (kept != marks()) synchronized(marksLock) { setMarks(kept) }
         if (!loadSettings().autoDownload) {
             autoUnfinished(rows, kept).forEach { remove(it.bookId) }
-            prefs.edit().remove("autoWant").remove("autoNoRoom").apply()
+            prefs.edit().remove("autoWant").remove("autoNoRoom").remove("autoNext").apply()
             return
         }
         if (autoUnfinished(rows, kept).isEmpty()) return
         val ids = autoRequestIds()
         val wifi = unmetered()
         main.post { if (wifi) releaseHeld(ids) else ids.forEach { manager().setStopReason(it, AUTO_HOLD) } }
+    }
+
+    /**
+     * The book to start when the server could not be asked at the end of [ended]: the remembered next book, only when it
+     * is whole on the phone. Cleared when used, so it is never offered twice. Any thread.
+     */
+    fun offlineNext(ended: String): String? {
+        if (!::app.isInitialized) return null
+        val next = offlineNextFor(prefs.getString("autoNext", null), ended) { playable(it) != null }
+        if (next != null) prefs.edit().remove("autoNext").apply()
+        return next
+    }
+
+    /** [book] started without the server's say; the server's queue still holds it until [tidyQueue] succeeds. */
+    fun autoDrop(book: String) { if (::app.isInitialized) prefs.edit().putString("autoDrop", book).apply() }
+
+    /** Worker thread. Takes a book that was started from the phone off the server's queue, once a connection works. */
+    fun tidyQueue() {
+        if (!::app.isInitialized) return
+        val book = prefs.getString("autoDrop", null)?.takeIf { it.isNotEmpty() } ?: return
+        val conn = tokens.current() ?: return
+        try {
+            if (!ServerGate.ok(conn.origin)) return
+            val status = Api(conn.origin).queueRemove(conn.token, book)
+            if (queueDeleteDone(status)) {
+                // Only if it still names this book: a newer one must not be lost.
+                if (prefs.getString("autoDrop", null) == book) prefs.edit().remove("autoDrop").apply()
+                Log.i(TAG, "next book: queue tidied ($status)")
+            } else {
+                Log.i(TAG, "next book: queue tidy answered $status, later")
+            }
+        } catch (e: Exception) {
+            Log.i(TAG, "next book: queue tidy not sent: ${e.javaClass.simpleName}")
+        }
     }
 
     /** Worker thread. Asks the server for the book after [ended] and, if the rules allow, queues it held for Wi-Fi. */
@@ -671,7 +709,8 @@ object Offline {
                 Log.i(TAG, "next book: peek failed ${e.javaClass.simpleName}")
                 return
             }
-            prefs.edit().remove("autoWant").apply()
+            // Remembered before anything else, so a book the person already has counts too (the plane case).
+            prefs.edit().remove("autoWant").also { if (next == null) it.remove("autoNext") else it.putString("autoNext", encodeAutoNext(ended, next)) }.apply()
             if (next == null || store.get(next) != null) return
             val text = api.fetchManifestJson(conn.token, next)
             val manifest = api.parseManifest(text)
@@ -694,7 +733,7 @@ object Offline {
      */
     fun wipe() {
         if (!::app.isInitialized) return
-        prefs.edit().putBoolean("wipePending", true).remove("autoBooks").remove("autoWant").remove("autoNoRoom").commit()
+        prefs.edit().putBoolean("wipePending", true).remove("autoBooks").remove("autoWant").remove("autoNoRoom").remove("autoNext").remove("autoDrop").commit()
         store.clear()
         floors.clear()
         live.clear()
@@ -733,7 +772,7 @@ object Offline {
         File(root, "text").deleteRecursively()
         File(root, "static").deleteRecursively()
         store.clear()
-        prefs.edit().remove("settingsJson").remove("autoBooks").remove("autoWant").remove("autoNoRoom").putBoolean("wipePending", false).commit()
+        prefs.edit().remove("settingsJson").remove("autoBooks").remove("autoWant").remove("autoNoRoom").remove("autoNext").remove("autoDrop").putBoolean("wipePending", false).commit()
         Log.i(TAG, "offline: wiped")
     }
 }

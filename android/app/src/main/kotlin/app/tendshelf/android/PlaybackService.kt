@@ -183,7 +183,7 @@ class PlaybackService : MediaLibraryService() {
         val ask = AskPrompt(this, w, { a -> putExtras { putAsk(a) } }) { ms -> exo.seekTo(ms) }
         askPrompt = ask
         val resume = Resume(exo, { engine.settings }, { engine.currentBook })
-        val next = NextBook(this, w, { connections }, main, io) { id -> engine.start(id, null) }
+        val next = NextBook(this, w, { connections }, main, io, Offline::offlineNext, Offline::autoDrop) { id -> engine.start(id, null) }
         val auto = AutoNext()
         var lastChapter = -2
         engine.pendingFor = { id -> w.pending(id) }

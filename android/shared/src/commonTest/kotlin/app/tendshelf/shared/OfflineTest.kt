@@ -226,4 +226,29 @@ class OfflineTest {
         assertTrue(runCatching { paths.queuePeekUrl("a/b") }.isFailure)
         assertTrue(runCatching { paths.queuePeekUrl("") }.isFailure)
     }
+
+    @Test
+    fun rememberedPairRoundTrips() {
+        assertEquals("a\nb", encodeAutoNext("a", "b"))
+        assertEquals("a" to "b", parseAutoNext(encodeAutoNext("a", "b")))
+        for (bad in listOf(null, "", "a", "a\n", "\nb", "a\nb\nc")) assertNull(parseAutoNext(bad), "bad=$bad")
+    }
+
+    @Test
+    fun offlineNextNeedsTheMatchingEndedBookAndAReadyNext() {
+        val stored = encodeAutoNext("a", "b")
+        assertEquals("b", offlineNextFor(stored, "a") { it == "b" })
+        assertNull(offlineNextFor(stored, "other") { true })
+        assertNull(offlineNextFor(stored, "a") { false })
+        assertNull(offlineNextFor(null, "a") { true })
+        assertNull(offlineNextFor("garbage", "a") { true })
+        assertNull(offlineNextFor(encodeAutoNext("a", "a"), "a") { true })
+    }
+
+    @Test
+    fun queueDeleteStatuses() {
+        for (ok in listOf(200, 204, 299, 404)) assertTrue(queueDeleteDone(ok), "status=$ok")
+        for (again in listOf(0, 301, 400, 401, 403, 429, 500, 503)) assertTrue(!queueDeleteDone(again), "status=$again")
+        assertEquals("http://10.0.2.2:8103/api/v1/queue/b1", paths.queueEntryUrl("b1"))
+    }
 }

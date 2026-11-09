@@ -193,3 +193,25 @@ fun autoDownloadPlan(m: BookManifest, paths: ApiPaths, freeBytes: Long, keptAuto
     }
 
 private fun autoTotalOf(m: BookManifest) = m.files.filter { it.playable }.sumOf { it.size }
+
+/** The remembered pair (decision 0035): the book that was ended and the one the server named after it. */
+fun encodeAutoNext(ended: String, next: String): String = "$ended\n$next"
+
+/** The pair stored by [encodeAutoNext], or null for anything that is not exactly two non-empty ids. */
+fun parseAutoNext(stored: String?): Pair<String, String>? {
+    val parts = stored?.split('\n') ?: return null
+    if (parts.size != 2 || parts.any { it.isEmpty() }) return null
+    return parts[0] to parts[1]
+}
+
+/**
+ * The book to start when the server could not be asked: the remembered next book, only when it was remembered for
+ * [ended] and [isReady] says it is whole on the phone. Anything else is null, never a guess.
+ */
+fun offlineNextFor(stored: String?, ended: String, isReady: (String) -> Boolean): String? {
+    val (was, next) = parseAutoNext(stored) ?: return null
+    return if (was == ended && next != ended && isReady(next)) next else null
+}
+
+/** A queue delete is done on any 2xx and on 404 (already gone, or it came from the series); anything else is tried again. */
+fun queueDeleteDone(status: Int): Boolean = status in 200..299 || status == 404

@@ -64,6 +64,18 @@ class Api(origin: String) {
         return ApiJson.nextBookId(String(bytes))
     }
 
+    /**
+     * Takes [bookId] off the queue (`DELETE`, idempotent). Returns the status for [queueDeleteDone] to judge; a network
+     * failure is an exception. Used to tidy the queue after a book started from the phone without asking (decision 0035).
+     */
+    fun queueRemove(token: String, bookId: String): Int {
+        val conn = open(paths.queueEntryUrl(bookId), token)
+        conn.requestMethod = "DELETE"
+        val code = conn.responseCode
+        conn.disconnect()
+        return code
+    }
+
     // ---- The lists the car browses (A8). Each is one small GET; a failure is an exception for the caller to word. ----
 
     fun continueList(token: String): List<BookCard> = ApiJson.itemBooks(String(get(paths.continueUrl(24), token, 1024 * 1024)))
