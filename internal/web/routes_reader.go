@@ -213,7 +213,7 @@ func rdrSIDExists(d *ebook.Doc, sid string) (int, bool) {
 // readerWords is the copy the client script needs, as JSON on the reader root (reader.js has no words of its own).
 func readerWords() string {
 	b, _ := json.Marshal(map[string]string{"pageOf": readerPageOf, "pgAbout": readerPgAbout, "pgsAbout": readerPgsAbout, "pg": readerPg, "pgs": readerPgs,
-		"footAbout": readerFootAbout, "foot": readerFoot, "pagesLeft": readerPagesLeft, "onePageLeft": readerOnePageLeft, "lastPage": readerLastPage, "ch": readerLeftChapter, "chAbout": readerLeftChapAbt,
+		"footAbout": readerFootAbout, "foot": readerFoot, "pagesLeft": readerPagesLeft, "onePageLeft": readerOnePageLeft, "lastPage": readerLastPage, "bmPage": readerBookmarkPage, "bmRemove": readerRemoveBm, "hint": readerTapHint, "ch": readerLeftChapter, "chAbout": readerLeftChapAbt,
 		"bk": readerLeftBook, "bkAbout": readerLeftBookAbt, "further": readerAnotherDev, "go": readerGoThere, "stay": readerStayHere,
 		"back": readerBack, "failed": readerPartFailed, "retry": readerTryAgain, "prev": readerPrevChapter, "needsNet": readerNeedsNet, "signedOut": msgSignedOut, "signIn": msgSignIn})
 	return string(b)
@@ -249,6 +249,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	}
 	v.SearchLabel, v.SearchHref = readerSearch, rc.href("sheet", "search")
 	v.BookmarkLabel, v.BookmarkURL = readerBookmarkPage, "/books/"+id+"/bookmarks"
+	v.PrevPageLabel, v.NextPageLabel = readerPrevPage, readerNextPage
 	v.Look = readerLook(rs)
 	v.SettingsLabel, v.SettingsHref = readerSettings, rc.href("sheet", "reading")
 	v.SettingsModule = s.assetOr("js/reader-settings.js")
