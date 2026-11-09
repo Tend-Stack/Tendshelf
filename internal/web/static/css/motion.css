@@ -9,7 +9,10 @@
 /* Page swap: View Transitions where supported, a keyframe on #main where not */
 #main { view-transition-name: ts-main; }
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-::view-transition-old(ts-main) { animation: ts-fade-out var(--duration-base) var(--easing-standard) both; }
+/* Pages differ in height, and animating the box between them squeezed the snapshot on screen (operator, Firefox, 2026-11-09).
+   So the box takes its final size at once, the old page leaves at once, and the new page rises in. */
+::view-transition-group(ts-main) { animation: none; }
+::view-transition-old(ts-main) { display: none; }
 ::view-transition-new(ts-main) { animation: ts-rise-in var(--duration-base) var(--easing-standard) both; }
 /* The navigation never changes during a swap: its own still layer, drawn above the page's, so the page
    never shows through the tab bar, rail or sidebar mid-transition. One name each: only one shows. */

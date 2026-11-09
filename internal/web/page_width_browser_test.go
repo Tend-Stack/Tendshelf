@@ -221,3 +221,33 @@ func TestPageWidthPanelOpenBrowser(t *testing.T) {
 		})
 	}
 }
+
+// TestPageSwapNoSqueeze: during a page change the main area already has the new page's size and only the new page shows,
+// so a page of another height is never drawn squeezed (operator, 2026-11-09).
+func TestPageSwapNoSqueeze(t *testing.T) {
+	b := chromium(t)
+	base := appServer(t)
+	tab := b.NewTab(1440, 900, false, false)
+	tab.Navigate(base + "/")
+	tab.WaitFor(`window.htmx !== undefined && typeof document.startViewTransition === "function"`, 10*time.Second)
+	tab.Eval(`(() => {
+	  window.__sizes = null;
+	  const start = document.startViewTransition.bind(document);
+	  document.startViewTransition = (...args) => {
+	    const vt = start(...args);
+	    vt.ready.then(() => {
+	      const read = (name) => getComputedStyle(document.documentElement, name);
+	      const group = read("::view-transition-group(ts-main)");
+	      window.__sizes = { Group: group.height, New: read("::view-transition-new(ts-main)").height, Anim: group.animationName, Old: read("::view-transition-old(ts-main)").display };
+	    });
+	    return vt;
+	  };
+	  document.querySelector('a[href^="/libraries"]').click();
+	})()`, nil)
+	tab.WaitFor(`window.__sizes !== null`, 10*time.Second)
+	var got struct{ Group, New, Anim, Old string }
+	tab.Eval(`window.__sizes`, &got)
+	if got.Group != got.New || got.Anim != "none" || got.Old != "none" {
+		t.Errorf("during the swap: %+v, want the box at the new page's size, not animated, and the old page gone", got)
+	}
+}
