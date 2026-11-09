@@ -4,6 +4,8 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+- Owners and admins get an Activity page under Settings, Your server: what people did on the server in plain words (who signed in, who invited whom, who changed a role), newest first, filtered by person or by kind. It shows no addresses or links that could sign anyone in.
+
 ## 2026.7.0
 
 Released 2026-11-09. Books read in pages by default, with a page turn that flips like a book, a ribbon to mark a page and real page numbers; a More options menu on the book page; and, on Android, the next book downloads on its own and a home-screen widget.

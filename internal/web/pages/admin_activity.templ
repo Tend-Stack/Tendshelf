@@ -1,0 +1,89 @@
+package pages
+
+// ActivityOption is one choice of a filter select.
+type ActivityOption struct{ Value, Label string }
+
+// ActivityRowView is one line of the list. The handler writes every word, so the page holds none of its own.
+// Machine is the RFC 3339 time for the datetime attribute, Ago the relative text and Exact the full time.
+type ActivityRowView struct {
+	Sentence                string
+	Machine, Ago, Exact     string
+	TargetHref, TargetLabel string
+}
+
+// AdminActivityView is /admin/activity.
+type AdminActivityView struct {
+	Title, Lead, ListLabel         string
+	PersonLabel, KindLabel         string
+	AllPeople, AllKinds            string
+	FilterLabel                    string
+	Person, Kind                   string
+	People, Kinds                  []ActivityOption
+	ClearHref, ClearLabel          string
+	Rows                           []ActivityRowView
+	Empty                          string
+	PageText                       string
+	NewerHref, NewerLabel          string
+	OlderHref, OlderLabel          string
+}
+
+// AdminActivity lists what people did, newest first, with a plain GET form to filter by person and kind.
+templ AdminActivity(v AdminActivityView) {
+	<div class="ts-admin ts-admin--list ts-activity">
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		<p class="body-lg ts-admin__lead">{ v.Lead }</p>
+		<form class="ts-activity__filters" method="get" action="/admin/activity">
+			<div class="ts-field ts-activity__field">
+				<label class="ts-field__label" for="activity-user">{ v.PersonLabel }</label>
+				<select id="activity-user" name="user" class="ts-select">
+					<option value="" selected?={ v.Person == "" }>{ v.AllPeople }</option>
+					for _, o := range v.People {
+						<option value={ o.Value } selected?={ v.Person == o.Value }>{ o.Label }</option>
+					}
+				</select>
+			</div>
+			<div class="ts-field ts-activity__field">
+				<label class="ts-field__label" for="activity-kind">{ v.KindLabel }</label>
+				<select id="activity-kind" name="kind" class="ts-select">
+					<option value="" selected?={ v.Kind == "" }>{ v.AllKinds }</option>
+					for _, o := range v.Kinds {
+						<option value={ o.Value } selected?={ v.Kind == o.Value }>{ o.Label }</option>
+					}
+				</select>
+			</div>
+			<button class="ts-btn ts-btn--secondary" type="submit">{ v.FilterLabel }</button>
+			if v.ClearHref != "" {
+				<a class="ts-activity__clear" href={ templ.SafeURL(v.ClearHref) }>{ v.ClearLabel }</a>
+			}
+		</form>
+		if v.Empty != "" {
+			<p class="body ts-activity__empty" role="status">{ v.Empty }</p>
+		} else {
+			<ul class="ts-activity__list" aria-label={ v.ListLabel }>
+				for _, r := range v.Rows {
+					<li class="ts-activity__row">
+						<p class="body ts-activity__what">{ r.Sentence }</p>
+						<p class="caption ts-activity__meta">
+							<time datetime={ r.Machine } title={ r.Exact }>{ r.Ago }</time>
+							if r.TargetHref != "" {
+								<span aria-hidden="true">·</span>
+								<a class="ts-activity__target ts-truncate" href={ templ.SafeURL(r.TargetHref) }>{ r.TargetLabel }</a>
+							}
+						</p>
+					</li>
+				}
+			</ul>
+		}
+		if v.NewerHref != "" || v.OlderHref != "" {
+			<nav class="ts-activity__pager" aria-label={ v.PageText }>
+				if v.NewerHref != "" {
+					<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.NewerHref) }>{ v.NewerLabel }</a>
+				}
+				<span class="caption ts-num">{ v.PageText }</span>
+				if v.OlderHref != "" {
+					<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.OlderHref) }>{ v.OlderLabel }</a>
+				}
+			</nav>
+		}
+	</div>
+}
