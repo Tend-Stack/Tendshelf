@@ -38,7 +38,8 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
    and a "finished in" tail are never cut. The link's title and text keep the whole name. Phone and wide desktop show
    it; the tablet layout shows neither it nor the chips. */
 .ts-book__overline { display: flex; align-items: baseline; gap: 0.35em; max-width: 100%; min-width: 0; white-space: nowrap; }
-.ts-book__ovseries { display: flex; align-items: baseline; gap: 0.35em; flex: 0 1 auto; min-width: 0; color: inherit; text-decoration: none; }
+/* The line stays one small line tall; the link's touch target reaches 44 px into the space around it. */
+.ts-book__ovseries { display: flex; align-items: center; gap: 0.35em; flex: 0 1 auto; min-width: 0; min-height: var(--size-tap); margin-block: calc((var(--size-tap) - 1lh) / -2); color: inherit; text-decoration: none; }
 .ts-book__ovseries:hover .ts-book__ovname { text-decoration: underline; }
 .ts-book__ovname { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-book__ovkeep { flex: none; }

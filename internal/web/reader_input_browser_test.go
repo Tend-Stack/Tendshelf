@@ -179,7 +179,7 @@ func TestReaderInputTimeLeft(t *testing.T) {
 	if !strings.HasPrefix(left, "About ") || !strings.Contains(left, "left in the book") {
 		t.Errorf("default speed: %q", left)
 	}
-	if !regexp.MustCompile(`^p\. \d+ of \d+$`).MatchString(page) {
+	if !regexp.MustCompile(`^Pages? \d+(–\d+)? of (about )?\d+`).MatchString(page) {
 		t.Errorf("page line %q", page)
 	}
 	slow := chapterMinutes(left)

@@ -39,7 +39,7 @@ const bookMoreSeriesJS = `(() => {
   const tops = [...document.querySelectorAll(".ts-book__chips > li")].map((li) => Math.round(li.getBoundingClientRect().top));
   return {shown: true, cut: name.scrollWidth > name.clientWidth, keepWhole: keep.scrollWidth <= keep.clientWidth + 1,
     keepInside: kr.left >= pr.left - 0.5 && kr.right <= pr.right + 0.5, keepText: keep.textContent,
-    oneLine: p.scrollHeight <= p.clientHeight + 1, fits: p.scrollWidth <= p.clientWidth + 1,
+    oneLine: p.getBoundingClientRect().height < 2 * parseFloat(getComputedStyle(p).lineHeight), fits: p.scrollWidth <= p.clientWidth + 1,
     title: p.querySelector("a").title, chipRows: new Set(tops).size, chips: tops.length};
 })()`
 
