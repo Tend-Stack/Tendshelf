@@ -30,7 +30,7 @@ func TestPrintPagesBrowser(t *testing.T) {
 			// The second chapter opens on page xii.
 			tab.Navigate(srv.URL + l.page("ch=2"))
 			tab.WaitFor(`window.htmx !== undefined && document.getElementById("reader") !== null`, 5*time.Second)
-			tab.WaitFor(`document.getElementById("reader-page") && document.getElementById("reader-page").textContent === "p. xii of 13"`, 8*time.Second)
+			tab.WaitFor(`document.getElementById("reader-print") && document.getElementById("reader-print").textContent === "p. xii of 13"`, 8*time.Second)
 			var labels []string
 			tab.Eval(`[...new Set([...document.querySelectorAll("#reader [data-pg]")].map(el => el.dataset.pg))]`, &labels)
 			for _, p := range labels {
