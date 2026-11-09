@@ -131,11 +131,11 @@ html:has(.ts-readerpage) { scrollbar-gutter: auto; }
   .ts-reader--pages .ts-reader__col { position: relative; box-sizing: content-box; padding: var(--space-32) var(--ts-pad) 0; background: var(--ground); box-shadow: 0 0 0 1px var(--line), var(--shadow-cover); }
   [data-theme="contrast"] .ts-reader--pages .ts-reader__col { box-shadow: 0 0 0 1px var(--line-strong); }
   .ts-reader--pages .ts-reader__col::before, .ts-reader--pages .ts-reader__col::after { content: ""; position: absolute; top: var(--space-4); bottom: var(--space-4); pointer-events: none; }
-  .ts-reader--pages .ts-reader__col::before { right: 100%; width: var(--ts-stack-l, 4px); background: repeating-linear-gradient(to left, var(--line) 0 1px, transparent 1px 2px); }
-  .ts-reader--pages .ts-reader__col::after { left: 100%; width: var(--ts-stack-r, 4px); background: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 2px); }
+  .ts-reader--pages .ts-reader__col::before { right: 100%; width: var(--ts-stack-l, 0.25rem); background: repeating-linear-gradient(to left, var(--line) 0 1px, transparent 1px 2px); }
+  .ts-reader--pages .ts-reader__col::after { left: 100%; width: var(--ts-stack-r, 0.25rem); background: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 2px); }
   /* A spread has a gutter where the pages meet: a soft shade, and a plain line in the contrast theme. */
   .ts-reader--spread .ts-reader__col { background-image: linear-gradient(to right, transparent calc(50% - 1.5rem), var(--flip-shade) 50%, transparent calc(50% + 1.5rem)); }
-  [data-theme="contrast"] .ts-reader--spread .ts-reader__col { background-image: linear-gradient(to right, transparent calc(50% - 0.5px), var(--line-strong) calc(50% - 0.5px), var(--line-strong) calc(50% + 0.5px), transparent calc(50% + 0.5px)); }
+  [data-theme="contrast"] .ts-reader--spread .ts-reader__col { background-image: linear-gradient(to right, transparent calc(50% - 1px), var(--line-strong) calc(50% - 1px), var(--line-strong) 50%, transparent 50%); }
 }
 @media (prefers-reduced-motion: no-preference) { .ts-readerpage > .ts-readerbar, .ts-readerpage > .ts-readdock { transition: opacity var(--duration-fast); } }
 

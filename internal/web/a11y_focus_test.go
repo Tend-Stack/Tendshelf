@@ -85,7 +85,13 @@ func a11yFocusWalk(t *testing.T, tab *cdp.Tab, checkThemes []string) (findings, 
 	// Focus starts at the document: click the corner and drop what the click focused.
 	var before string
 	_ = tab.TryEval(`location.href`, &before)
+	// The reader is the exception: its corner is page text, and a click there turns the page (decision 0036).
+	var inReader bool
+	_ = tab.TryEval(`document.getElementById("reader") !== null`, &inReader)
 	for _, typ := range []string{"mousePressed", "mouseReleased"} {
+		if inReader {
+			break
+		}
 		if err = tab.Call("Input.dispatchMouseEvent", map[string]any{"type": typ, "x": 1, "y": 1, "button": "left", "clickCount": 1}, nil); err != nil {
 			return nil, nil, err
 		}

@@ -30,7 +30,7 @@ reader: their place on every device, comfortable text, marks they own.
    secondary button with a plain verb ("Read", "Listen"), never "Continue" or "Resume", and carries no place.
 8. **Publisher HTML, CSS, fonts and scripts never reach the browser.** The reader renders only our markup from the
    canonical document. This is the sanitiser: scripted EPUB content has nothing to run in.
-9. **Pages use CSS columns, one chapter part at a time**, turned through `scrollLeft`; scroll mode shares the same anchors.
+9. **Pages use CSS columns, one chapter part at a time**, turned through `scrollLeft`; scroll mode shares the same anchors. (Amended by [0036](0036-pages-by-default.md): pages are the default at every width, and a page number is shown, for display only.)
 10. **Add books accepts ebooks** into the library's upload folder (amends 0015 points 5 and 8 and its "Ebook uploads: R1
     owns them"). All other 0015 invariants hold. The Text tab's upload to `<data>/ebooks/` stays for adding a file to an
     existing book.

@@ -75,11 +75,25 @@ reading place. Highlights, notes and bookmarks are stored as a sentence id and a
 
 ## The client (`reader.js`, `reader-pages.js`)
 
-`reader.js` mounts from `data-ts-module` on `#reader`. The flow is the person's setting: `auto` shows pages below 1280 px
-and scroll above, `pages` and `scroll` force one. Pages (`reader-pages.js`, loaded only for pages) lay one chapter part out
-in CSS columns from `--ts-cols` (1 below 1024 px, 2 when both fit at 45ch), `--ts-col`, `--ts-gap` and `--ts-page-h`, set
-through the CSSOM; a turn moves the part's `scrollLeft` by one page, and the next or previous part is fetched from
-`data-next-href` and `data-prev-href` and replaces the section. A page number is only an index in the present layout.
+`reader.js` mounts from `data-ts-module` on `#reader`. The flow is the person's setting and **pages are the default at every width**
+([0036](decisions/0036-pages-by-default.md)): a stored or posted `auto` reads as `pages`, only `scroll` gives the scroll, and a
+browser without JavaScript gets the plain scroll page. Pages (`reader-pages.js`, loaded for pages) lay one chapter part out in CSS
+columns from `--ts-cols`, `--ts-col`, `--ts-gap` and `--ts-page-h`, set through the CSSOM. A page is bounded: its text is 30em wide (about 66
+characters; 24em at least), and from 1024 px it is a sheet (the column, `.ts-reader__col`, is the frame) on a tinted desk (`--desk`; plain in the
+contrast theme), at most 1.6 times as tall as wide and a whole number of lines. Two facing pages (a spread, with a gutter shade and page-edge stacks
+that thicken as the book is read) when both fit at 24em, from 1024 px. Below 1024 px the page is full bleed and the bar and dock lie over it, so the
+page takes their height; the reader opens with them hidden and a turn hides them (unless focus is in them), and a thin line along the bottom edge
+shows the book's progress while they are hidden. With the read-aloud strip open the dock goes back into the flow. Hiding or showing the bar never
+lays the pages out again. A turn moves the part's `scrollLeft` by one page; the next or previous part is fetched from `data-next-href` and
+`data-prev-href` (ahead, in both directions) and replaces the section.
+
+Page numbers are for showing only. `reader-pages.js` records `{b, c, n}` (characters before, characters in the part from `data-part-chars`, columns)
+for each part it lays out, in `localStorage["ts.offline.pagecount.<edition>"]` under the current look (column, page height, columns, look classes);
+another look empties it. A page holds the average of the recorded parts of three pages or more, else an estimate from the column and line size. The
+first number on screen is the pages before this part plus its own index, so forward it goes up by exactly one a page (two on a spread) and a part
+boundary adds one. The total is "about" (rounded to ten from 100 up, kept steady within 2 %) until the parts laid out here cover the book. The dock
+reads "Page 12 of about 340" first and the book's own `p. n of N` second; the page foot (aria-hidden) reads `12 of about 340` and the pages left in the
+chapter, or on a spread the two page numbers. None of this is saved or sent: the server only ever gets a sentence and an offset.
 
 The place is the first text on screen: a binary search over the sentences by where they end, then over the characters of
 that sentence (about twenty layout reads). It is saved as the sentence id, the offset in its block, the next 64 characters,
@@ -89,7 +103,7 @@ size, font, margin, setting or window takes the saved place, lays out again and 
 them. When the person comes back to the tab and another device holds a newer place, a toast offers "Go there" or "Stay
 here"; the reader never jumps by itself.
 
-Input: the outer quarters of the page turn it (mirrored by "Swap tap sides"), the middle shows or hides the bar and the
+Input: the outer quarters of the page turn it (mirrored by "Swap tap sides"; measured on the page, so a click on the desk beside a sheet turns it too), the middle shows or hides the bar and the
 dock, and a tap on a link, a highlight, a button or with a selection does nothing else; swipe 48 px with touch or pen; keys
 ArrowRight, PageDown and Space go forward, ArrowLeft, PageUp and Shift+Space back, `[` and `]` change chapter, `t` opens
 the contents, `/` search (RD3). Keys are caught on `window` before `player.js`, and left alone in a field, a dialog or an open
@@ -98,12 +112,12 @@ The bar never hides unasked: a click with a mouse in the text does nothing to it
 finger or pen (`pointerType`). A hidden bar always has a way back: a small handle at the top centre (`[data-show-bar]`,
 44 by 44 px, "Show the bar", a real button) shows while `data-chrome="off"`. In the scroll flow a hidden bar takes no room
 (`display: none`) and `reader.js` moves `scrollTop` by the change in the text's top, so the words stay put and no move is
-recorded; the pages flow keeps the room, since its columns are laid out for it.
+recorded; the dock collapses with it, so no blank band is left under the text. The pages flow keeps the desk's room from 1024 px and lets the bar lie over the page below it.
 
 Marks (`reader-marks.js`, RD3): selecting text shows a toolbar with four colours (yellow, green, blue, pink), Note and Copy.
 A highlight is posted with `data-o` plus the characters before the point inside the sentence, so the server gets offsets
 in the block text. The note dialog (`#reader-note-dialog`) and all labels are rendered by the server. The bookmark button
-in the bar keeps the first sentence on screen (`POST /books/{id}/bookmarks` with `edition_id` and `sid`); text bookmarks
+in the bar keeps the first sentence on screen (`reader.js` holds it as `#reader[data-here-sid]`; `POST /books/{id}/bookmarks` with `edition_id` and `sid`); text bookmarks
 show on the marks sheet, never on the audio Bookmarks tab. A footnote link (`data-note-href`) loads `reader-notes.js` and
 opens `GET /hx/books/{id}/read/note/{blockID}` as a dialog (the target block and the note blocks after it until another
 note's target, at most ten); Escape, the backdrop and Close shut it and focus returns to the link. Any other in-book link

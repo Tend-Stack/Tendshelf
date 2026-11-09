@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/ebook/ebooktest"
 	"github.com/Tend-Stack/tendshelf/internal/testutil/cdp"
+	"github.com/Tend-Stack/tendshelf/internal/testutil/webdriver"
 )
 
 // Pages by default, the bounded page, page numbers and the bar (decision 0036). Needs TENDSHELF_TEST_BROWSER.
@@ -253,6 +255,26 @@ func TestShortPartCentred(t *testing.T) {
 	}
 }
 
+// TestSheetScrimCoversWindow: a sheet's scrim runs to the window's right edge at 1440 and 2000, with no strip of page beside it.
+func TestSheetScrimCoversWindow(t *testing.T) {
+	b := chromium(t)
+	l := rpBook(t, 2, 20)
+	pgFlow(t, l, "pages")
+	srv := pgServe(t, l)
+	for _, w := range []int{1440, 2000} {
+		t.Run(fmt.Sprint(w), func(t *testing.T) {
+			tab := pgOpen(t, b, srv, l, w, 900, false, "ch=3&sheet=contents")
+			tab.WaitFor(`document.querySelector("#sheet .ts-scrim") !== null`, 8*time.Second)
+			time.Sleep(450 * time.Millisecond)
+			var m struct{ Right, Page, Inner float64 }
+			tab.Eval(`({ right: document.querySelector("#sheet .ts-scrim").getBoundingClientRect().right, page: document.querySelector(".ts-readerpage").getBoundingClientRect().right, inner: innerWidth })`, &m)
+			if m.Right < m.Inner-0.5 || m.Page < m.Inner-0.5 {
+				t.Errorf("the scrim ends at %.0f and the reader at %.0f of %.0f px", m.Right, m.Page, m.Inner)
+			}
+		})
+	}
+}
+
 // TestPagesCapture writes the evidence pictures when TENDSHELF_PAGES_OUT names a folder.
 func TestPagesCapture(t *testing.T) {
 	out := os.Getenv("TENDSHELF_PAGES_OUT")
@@ -291,10 +313,63 @@ func TestPagesCapture(t *testing.T) {
 		shot("chapter-1440-"+th, 1440, 900, th, "ch=3", turn(2))
 	}
 	shot("part-opening-2000", 2000, 1100, "dark", "ch=3", nil)
+	shot("contents-1440", 1440, 900, "dark", "ch=3&sheet=contents", nil)
 	shot("short-part-2000", 2000, 1100, "dark", "ch=2", nil)
 	shot("short-part-390", 390, 844, "dark", "ch=2", nil)
 	shot("phone-bar-hidden", 390, 844, "dark", "ch=3", turn(1))
 	shot("phone-bar-shown", 390, 844, "dark", "ch=3", func(tab *cdp.Tab) {
 		tab.Eval(`document.querySelector(".ts-readerpage").dataset.chrome = "on"`, nil)
 	})
+}
+
+// TestPagesFirefox: the page's size and numbers in Firefox. Opt-in: TENDSHELF_TEST_FIREFOX=1 (geckodriver on PATH or at /snap/bin).
+func TestPagesFirefox(t *testing.T) {
+	if os.Getenv("TENDSHELF_TEST_FIREFOX") == "" {
+		t.Skip("set TENDSHELF_TEST_FIREFOX to 1 to run this")
+	}
+	driver, err := exec.LookPath("geckodriver")
+	if err != nil {
+		driver = "/snap/bin/geckodriver"
+	}
+	l := rpBook(t, 2, 40)
+	pgFlow(t, l, "pages")
+	srv := pgServe(t, l)
+	s := webdriver.StartFirefox(t, driver, "", map[string]any{})
+	for _, vp := range []struct{ w, h, cols int }{{2000, 1100, 2}, {500, 800, 1}} { // Firefox will not make a window narrower than 500 px
+		s.SetViewport(vp.w, vp.h)
+		s.Navigate(srv.URL + l.readPath("ch=3"))
+		time.Sleep(1500 * time.Millisecond)
+		var m struct {
+			Cols, Col, Em, Left, Right, PageH, Line float64
+			Words                                   string
+		}
+		s.Eval(`(() => { const root = document.getElementById("reader"), css = getComputedStyle(root), tcss = getComputedStyle(root.querySelector(".ts-reader__text")), f = root.querySelector(".ts-reader__col").getBoundingClientRect(), r = root.getBoundingClientRect();
+			return { cols: parseFloat(css.getPropertyValue("--ts-cols")), col: parseFloat(css.getPropertyValue("--ts-col")), em: parseFloat(tcss.fontSize), left: f.left - r.left, right: r.right - f.right, pageH: parseFloat(css.getPropertyValue("--ts-page-h")), line: parseFloat(tcss.lineHeight), words: document.getElementById("reader-page").textContent }; })()`, &m)
+		t.Logf("%d px: %+v", vp.w, m)
+		if int(m.Cols) != vp.cols {
+			t.Errorf("%d px: %v columns", vp.w, m.Cols)
+		}
+		if vp.w >= 1024 {
+			if d := m.Left - m.Right; d > 1 || d < -1 {
+				t.Errorf("off centre by %.1f px", d)
+			}
+			if m.Col > 34*m.Em {
+				t.Errorf("column %.0f px is %.1f em", m.Col, m.Col/m.Em)
+			}
+		}
+		if !strings.Contains(m.Words, "about") {
+			t.Errorf("page line %q", m.Words)
+		}
+		var after string
+		s.Eval(`(window.dispatchEvent(new KeyboardEvent("keydown", {key: "ArrowRight", bubbles: true})), true)`, nil)
+		time.Sleep(600 * time.Millisecond)
+		s.Eval(`document.getElementById("reader-page").textContent`, &after)
+		if after == m.Words {
+			t.Errorf("%d px: a turn left %q", vp.w, m.Words)
+		}
+		t.Logf("turn: %q -> %q", m.Words, after)
+		if dir := os.Getenv("TENDSHELF_PAGES_OUT"); dir != "" {
+			s.Screenshot(filepath.Join(dir, fmt.Sprintf("firefox-%d.png", vp.w)))
+		}
+	}
 }
