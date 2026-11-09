@@ -2,7 +2,9 @@
 
 Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-numbers.md)). Dates are UTC.
 
-## Unreleased
+## 2026.6.0
+
+Released 2026-11-09. It brings podcast feeds, read aloud, the Shelf view, whole-series downloads and pages that use the whole window.
 
 ### What you can do
 
