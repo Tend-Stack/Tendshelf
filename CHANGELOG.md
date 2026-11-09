@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Added
+
+- **Run Tendshelf with Docker.** The repository now has a Dockerfile and a compose file, so `docker compose up` builds and starts the server with ffmpeg included, your data in a folder you choose and your books mounted read-only. The deploy guide explains HTTPS, uploads, file ownership and upgrades.
+
 ## 2026.7.0
 
 Released 2026-11-09. Books read in pages by default, with a page turn that flips like a book, a ribbon to mark a page and real page numbers; a More options menu on the book page; and, on Android, the next book downloads on its own and a home-screen widget.
