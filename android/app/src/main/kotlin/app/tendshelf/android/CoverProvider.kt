@@ -87,6 +87,24 @@ class CoverProvider : ContentProvider() {
 
         fun uriOf(bookId: String): Uri = Uri.parse("content://$AUTHORITY/$bookId")
 
+        /** The widget (L9) keeps the loaded book's picture in the same cache, so sign-out wipes it with the car's. */
+        fun put(context: android.content.Context, bookId: String, bytes: ByteArray) {
+            if (!validId(bookId)) return
+            val dir = File(context.cacheDir, DIR).apply { mkdirs() }
+            val tmp = File(dir, "$bookId.tmp")
+            tmp.writeBytes(bytes)
+            if (!tmp.renameTo(File(dir, bookId))) tmp.delete()
+        }
+
+        /** A picture already on this phone (the cache, or a download); never the network. */
+        fun cached(context: android.content.Context, bookId: String): ByteArray? {
+            if (!validId(bookId)) return null
+            val file = File(File(context.cacheDir, DIR), bookId)
+            if (file.isFile) return file.readBytes()
+            Offline.init(context)
+            return Offline.coverBytes(bookId)
+        }
+
         /** Sign-out: no picture of this person's library stays behind. */
         fun wipe(context: android.content.Context) {
             File(context.cacheDir, DIR).deleteRecursively()

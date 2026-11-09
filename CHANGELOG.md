@@ -11,6 +11,9 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
   when this one ends. It never uses mobile data, keeps at most 5 GB this way, leaves 2 GB free, and never removes a book you have finished. It starts while a book
   is playing or the app is open, and a started download finishes with the screen off. It is off until you turn it on.
 
+- **A widget for your home screen (Android).** Add the Tendshelf widget to see your book's cover, its title and the chapter, with Play or
+  Pause, Back and Forward. Tap the cover or the words to open the book. With nothing playing it shows the last book and Play carries on from
+  your place. Make it narrower and it drops the chapter and the skip buttons first. Signing out clears it.
 - **Pages use the whole window.** The book page, Search, Downloads, the Libraries page and other lists, your listening pages and Up next no longer sit in a narrow strip with empty space around them. On a wide screen they fill the window and show more columns; reading text stays a comfortable width, and forms stay narrow. Phones look the same.
 - **Download a whole series or shelf in one tap.** The series page and each shelf now have a "Download all" button, in the browser and in the
   app. It asks first ("Download 12 books? About 34 GB."), skips books you already have, says if they will not fit, shows "Downloading 3 of 12"

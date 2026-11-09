@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ground">#14110e</color>
+    <color name="widget_surface">#1e1a15</color>
+    <color name="widget_ink">#f1e8da</color>
+    <color name="widget_muted">#b5a894</color>
+    <color name="widget_accent">#e2703a</color>
+    <color name="widget_on_accent">#14110e</color>
+    <color name="widget_cover_empty">#e2703a29</color>
+    <color name="widget_ripple">#33ffffff</color>
 </resources>

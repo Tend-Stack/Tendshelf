@@ -115,6 +115,7 @@ class PlaybackService : MediaLibraryService() {
         }
         wireProgress()
         wireCar()
+        wireWidget()
         setListener(RefusedListener())
         exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
@@ -267,6 +268,31 @@ class PlaybackService : MediaLibraryService() {
         })
     }
 
+    /**
+     * L9: the home-screen widget follows the player. It is told when the book, the chapter or play and pause change, and at
+     * no other time. A signed-out service, or one with no book, writes nothing.
+     */
+    private fun wireWidget() {
+        var shownBook = ""
+        val update = {
+            val book = engine.currentBook
+            if (book.isNotEmpty() && connections.current() != null) {
+                val chapter = player.mediaMetadata.title?.toString().orEmpty()
+                val settings = engine.settings
+                WidgetState.save(this, book, player.bookTitle, chapter, exo.isPlaying, settings.skipBackS, settings.skipForwardS)
+                if (book != shownBook) {
+                    shownBook = book
+                    player.artBytes?.let { CoverProvider.put(this, book, it) }
+                }
+                TendWidget.refresh(this)
+            }
+        }
+        player.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) = update()
+            override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) = update()
+        })
+    }
+
     /** Plain words to every connected car, not only a dark screen (invariant 4). Our own page already shows its own. */
     private fun tellCar(kind: String) {
         val s = session ?: return
@@ -324,6 +350,8 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onDestroy() {
         clearListener()
+        WidgetState.stopped(this)
+        TendWidget.refresh(this)
         nm().cancel(REFUSED_ID)
         sleep.release()
         writer.saveNow("destroy")
@@ -471,7 +499,7 @@ class PlaybackService : MediaLibraryService() {
                     sleep.off()
                     engine.stopAndClear()
                     getSharedPreferences(CAR_PREFS, MODE_PRIVATE).edit().clear().apply() // the next person must not resume this one's book
-                    CoverProvider.wipe(this@PlaybackService)
+                    TendWidget.signedOut(this@PlaybackService) // also wipes the covers
                     stopSelf()
                 }
                 ANSWER_ACTION -> askPrompt.answer(args.getBoolean("keepHere"))

@@ -109,6 +109,10 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
 
     val chapterList: List<Chapter> get() = chapters
 
+    /** The loaded book's name, and its picture's bytes: what the widget keeps (L9). */
+    val bookTitle: String get() = title
+    val artBytes: ByteArray? get() = art
+
     val chapterIdx: Int get() = Position.chapterAt(chapters, exo.currentPosition)?.idx ?: -1
 
     private fun checkChapter() {

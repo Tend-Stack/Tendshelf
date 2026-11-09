@@ -2,4 +2,12 @@
 <resources>
     <!-- The page's ground colour (tokens.css ground, light and dark) behind the WebView and the bars. -->
     <color name="ground">#f4eee3</color>
+    <!-- The home-screen widget (L9), from tokens.css: surface, ink, ink-muted, accent-fill and the ink that sits on it. -->
+    <color name="widget_surface">#fbf7f0</color>
+    <color name="widget_ink">#1f1a14</color>
+    <color name="widget_muted">#5e5448</color>
+    <color name="widget_accent">#e2703a</color>
+    <color name="widget_on_accent">#14110e</color>
+    <color name="widget_cover_empty">#e2703a24</color>
+    <color name="widget_ripple">#33000000</color>
 </resources>

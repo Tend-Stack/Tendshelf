@@ -95,6 +95,20 @@ class MainActivity : Activity() {
         val server = DebugHooks.serverExtra(intent)
         if (server != null) flow.onAddress(server) else flow.launch()
         handleLink(intent)
+        openWidgetBook(intent)
+    }
+
+    /**
+     * A tap on the home-screen widget's cover or title (L9): the signed-in person's own book page. The extra is only a book
+     * id, checked for shape here; nothing is opened for a signed-out phone, and it is cleared so a rebuilt activity does not repeat it.
+     */
+    private fun openWidgetBook(i: Intent?) {
+        val id = i?.getStringExtra(TendWidget.EXTRA_OPEN_BOOK) ?: return
+        i.removeExtra(TendWidget.EXTRA_OPEN_BOOK)
+        if ((i.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) return
+        val origin = store.origin ?: return
+        if (!app.tendshelf.shared.validId(id) || store.current() == null) return
+        web.loadUrl(origin.bookUrl(id))
     }
 
     /**
@@ -148,6 +162,7 @@ class MainActivity : Activity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleLink(intent)
+        openWidgetBook(intent)
     }
 
     @Deprecated("Deprecated in Java")
