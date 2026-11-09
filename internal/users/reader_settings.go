@@ -20,6 +20,7 @@ type ReaderSettings struct {
 	Hyphens bool   `json:"hyphens"` // on by default
 	Flow    string `json:"flow"`    // "pages" (the default, at every width) or "scroll"; a stored or posted "auto" (older versions) reads as "pages" (decision 0036)
 	TapSwap bool   `json:"tapSwap"` // the left and right tap zones swap, for left-handers
+	Turn    string `json:"turn"`    // how a page turns: "flip" (the default), "slide" or "none"
 	// G5 (comfort): all off by default.
 	KeepAwake  bool   `json:"keepAwake"`  // the screen stays on while the reader is open
 	Warm       string `json:"warm"`       // "off", "evening" (20:00 to 06:00 on the device) or "always"
@@ -30,7 +31,7 @@ type ReaderSettings struct {
 // DefaultReader applies to every field a person has not set.
 var DefaultReader = ReaderSettings{
 	Font: "serif", Size: 20, Leading: "normal",
-	Margin: "normal", Hyphens: true, Flow: "pages", Warm: "off",
+	Margin: "normal", Hyphens: true, Flow: "pages", Turn: "flip", Warm: "off",
 }
 
 const keyReader = "reader.v1"
@@ -53,6 +54,7 @@ func (r ReaderSettings) Validate() error {
 		oneOf(r.Leading, "compact", "normal", "airy") &&
 		oneOf(r.Margin, "narrow", "normal", "wide") &&
 		oneOf(r.Flow, "auto", "pages", "scroll") &&
+		oneOf(r.Turn, "flip", "slide", "none") &&
 		oneOf(r.Warm, "off", "evening", "always")
 	if !ok {
 		return ErrInvalidSetting
@@ -80,6 +82,7 @@ func parseReader(raw string) ReaderSettings {
 	if out.Flow == "auto" {
 		out.Flow = "pages"
 	}
+	str("turn", &out.Turn, "flip", "slide", "none")
 	str("warm", &out.Warm, "off", "evening", "always")
 	for key, dst := range map[string]*bool{"justify": &out.Justify, "hyphens": &out.Hyphens, "tapSwap": &out.TapSwap,
 		"keepAwake": &out.KeepAwake, "autoHide": &out.AutoHide, "volumeKeys": &out.VolumeKeys} {

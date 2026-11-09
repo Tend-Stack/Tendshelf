@@ -33,6 +33,13 @@ export function pages(root, kit) {
   let frame = null; // the page's box, for the tap zones
   let guess = 1; // characters a page holds, from the look alone
   const parts = new Map(); // fetched neighbour parts by address
+  const ready = new Map(); // the neighbour parts that have arrived, by address (a drag over a part edge swaps one in at once)
+  let colW = 0; // the laid-out sizes, for the flip's faces
+  let gapW = 0;
+  let pageHt = 0;
+  let marginW = 0;
+  let layMs = 0; // how long the last lay() took
+  let flip = null; // reader-flip.js, loaded when the turn is Flip
 
   // ---- Page numbers: display only, measured as parts are laid out and kept on this device per look (decision 0036) ----
 
@@ -63,7 +70,7 @@ export function pages(root, kit) {
 
   // What is on show: the page line, the foot, and the pages left in the chapter.
   let shown = 0; // the total on display, kept steady while the estimate settles
-  function pageInfo() {
+  function pageInfo(at = page) {
     const box = section();
     const list = Object.values(store.parts);
     const sum = (rows, key) => rows.reduce((total, row) => total + row[key], 0);
@@ -77,10 +84,10 @@ export function pages(root, kit) {
     const exact = sum(list, "c") >= 0.99 * whole; // every part has been laid out on this device
     let total = exact ? sum(list, "n") : base + phys + Math.round(Math.max(0, whole - before - mine) / perPage);
     if (!exact && total >= 100) total = Math.round(total / 10) * 10;
-    const first = base + page * cols + 1;
+    const first = base + at * cols + 1;
     if (exact || !shown || Math.abs(total - shown) > 0.02 * shown || first > shown) shown = Math.max(total, first);
-    const second = cols === 2 && page * cols + 1 < phys ? first + 1 : 0; // a blank right page has no number
-    const seen = page * cols + (second ? 2 : 1);
+    const second = cols === 2 && at * cols + 1 < phys ? first + 1 : 0; // a blank right page has no number
+    const seen = at * cols + (second ? 2 : 1);
     const afterPart = Number(box.dataset.chars) - (Number(box.querySelector("[data-c]")?.dataset.c) || 0) - mine;
     const left = phys - seen + Math.round(Math.max(0, afterPart) / perPage);
     const words = exact ? [copy.pg, copy.pgs, copy.foot] : [copy.pgAbout, copy.pgsAbout, copy.footAbout];
@@ -104,7 +111,7 @@ export function pages(root, kit) {
   }
 
   // Set the column geometry from the reader's size and read the page count back.
-  function lay() {
+  function layOut() {
     const started = performance.now();
     root.scrollTop = 0; // a #sentence address can scroll even a box that hides its overflow
     const box = section();
@@ -130,6 +137,10 @@ export function pages(root, kit) {
     if (line > 0) pageH = Math.floor(pageH / line) * line; // a whole number of lines
     pageH = Math.floor(pageH * 100) / 100;
     guess = (column / (0.46 * px(probeCss.fontSize))) * (pageH / (line || 1.5 * px(probeCss.fontSize)));
+    colW = column;
+    gapW = gap;
+    pageHt = pageH;
+    marginW = margin;
     root.style.setProperty("--ts-cols", cols);
     root.style.setProperty("--ts-col", column + "px");
     root.style.setProperty("--ts-gap", gap + "px");
@@ -156,11 +167,39 @@ export function pages(root, kit) {
     shell.style.setProperty("--ts-frame-pad", margin + "px"); // the edges reach this far into the page
     shell.style.setProperty("--ts-frame-top", Math.round(frame.top - shell.getBoundingClientRect().top) + "px"); // where the page edges start
     record([column, pageH, cols, [...root.classList].filter((name) => LOOK_CLASS.test(name)).join(" ")].join("|"));
-    performance.measure("ts-reader-lay", { start: started, end: performance.now() });
+    layMs = performance.now() - started;
+    performance.measure("ts-reader-lay", { start: started, end: started + layMs });
+  }
+
+  // A new look or size lays out again, and a flight in the air is over.
+  function lay() {
+    flip?.drop();
+    layOut();
+  }
+
+  // ---- How a page turns: a flip when its module is here, else a slide, else nothing (decision 0036) ----
+
+  const slowFlag = () => {
+    try {
+      return localStorage.getItem("ts.flip.slow") === "1";
+    } catch {
+      return false;
+    }
+  };
+  const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const mover = () => (reduced() || root.dataset.turn === "none" ? "none" : root.dataset.turn === "flip" && flip && !slowFlag() ? "flip" : "slide");
+  let loadingFlip = false;
+  function wantFlip() {
+    if (flip || loadingFlip || root.dataset.turn !== "flip" || slowFlag() || reduced() || !root.dataset.flipSrc) return;
+    loadingFlip = true;
+    import(root.dataset.flipSrc)
+      .then((module) => (flip = module.flipper(root, book)))
+      .catch(() => {}) // the slide stays
+      .finally(() => (loadingFlip = false));
   }
 
   function slide(dir) {
-    if (!dir || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!dir || mover() !== "slide") return;
     col.animate({ transform: [`translateX(${dir * 24}px)`, "none"], opacity: [0.5, 1] }, { duration: SLIDE_MS, easing: "ease-out" });
   }
 
@@ -205,8 +244,10 @@ export function pages(root, kit) {
       const request = attempt(href)
         .then((part) => part || (signedOut ? null : new Promise((resolve) => setTimeout(resolve, RETRY_MS)).then(() => attempt(href))))
         .then((part) => {
-          if (part) clearToast();
-          else parts.delete(href);
+          if (part) {
+            clearToast();
+            ready.set(href, part);
+          } else parts.delete(href);
           return part;
         });
       parts.set(href, request);
@@ -249,11 +290,56 @@ export function pages(root, kit) {
       return false;
     }
     parts.delete(href);
+    ready.delete(href);
+    const flight = mover() === "flip" ? flip.begin(dir) : null; // the old page's face, before the part is replaced
     section().replaceWith(next);
     if (window.htmx) window.htmx.process(next); // the scroll flow's sentinel needs it later
-    lay();
+    layOut();
     go(first ? 0 : count - 1, dir);
+    flight?.land();
     return true;
+  }
+
+  // One page on, in the part or across its edge. The motion never waits: the real page is at its place when this returns.
+  async function turnBy(dir) {
+    flip?.drop();
+    const to = page + dir;
+    if (to < 0 || to >= count) return cross(dir > 0 ? section().dataset.nextHref : section().dataset.prevHref, dir > 0, dir);
+    const flight = mover() === "flip" ? flip.begin(dir) : null;
+    go(to, dir);
+    flight?.land();
+    return true;
+  }
+
+  // The drag of reader-flip.js moves the real page first and can put it back. Over a part edge that is only possible when
+  // the neighbour has arrived and laying it out is quick; else there is nothing to drag and a swipe past 48 px turns.
+  function shift(dir) {
+    const to = page + dir;
+    if (to >= 0 && to < count) {
+      const was = page;
+      go(to, 0);
+      return { undo: () => go(was, 0), commit() {} };
+    }
+    const href = dir > 0 ? section().dataset.nextHref : section().dataset.prevHref;
+    const next = ready.get(href);
+    if (!next || layMs > 50) return null;
+    const old = section();
+    const was = page;
+    old.replaceWith(next);
+    layOut();
+    go(dir > 0 ? 0 : count - 1, 0);
+    return {
+      undo() {
+        next.replaceWith(old);
+        layOut();
+        go(was, 0);
+      },
+      commit() {
+        parts.delete(href);
+        ready.delete(href);
+        if (window.htmx) window.htmx.process(next);
+      },
+    };
   }
 
   // A swipe of touch or pen: 48 px across and mostly sideways turns the page. A mouse drags to select text.
@@ -370,9 +456,35 @@ export function pages(root, kit) {
   document.addEventListener("htmx:after:swap", () => root.isConnected || clearToast(), { signal: done.signal });
   window.addEventListener("pagehide", clearToast, { signal: done.signal });
 
+  // What reader-flip.js needs of the pages: the real section, where its columns sit on the screen, and the page numbers.
+  const book = {
+    section,
+    mover,
+    shift,
+    moved: () => kit.moved?.(),
+    turn: (dir) => kit.turn(dir),
+    atEnd: () => page >= count - 1 && !section().dataset.nextHref,
+    atStart: () => page === 0 && !section().dataset.prevHref,
+    column: () => page * cols, // the first column of the turn on show
+    dest: (dir) => (page + dir >= 0 && page + dir < count ? (page + dir) * cols : -1), // the first column of the turn a step away, in this part
+    claimSwipe: () => (from = null), // a drag has the touch; the plain swipe stands down
+    geometry() {
+      const own = section().getBoundingClientRect();
+      const wide = innerWidth >= WIDE_PX;
+      return { cols, column: colW, gap: gapW, pageH: pageHt, margin: marginW, left: own.left, top: own.top, frame: wide ? col.getBoundingClientRect() : root.getBoundingClientRect() };
+    },
+    // The foot of a column: the number at the left, then the pages left (on a spread the left page has the one, the right page the other).
+    labels(column) {
+      const info = pageInfo(Math.floor(column / cols));
+      return cols === 2 ? (column % cols ? ["", info.b] : [info.a, ""]) : [info.a, info.b];
+    },
+  };
+  document.addEventListener("ts-reader-look", wantFlip, { signal: done.signal });
+
   root.classList.add("ts-reader--pages");
-  lay();
+  layOut();
   showHint();
+  wantFlip();
 
   return {
     lay,
@@ -392,21 +504,20 @@ export function pages(root, kit) {
       go(Math.floor((rect.left - box.getBoundingClientRect().left + box.scrollLeft + 2) / step), 0);
       return true;
     },
-    async next() {
+    next() {
       turned = true;
       unhint();
-      if (page < count - 1) return go(page + 1, 1) || true;
-      return cross(section().dataset.nextHref, true, 1);
+      return turnBy(1);
     },
-    async prev() {
+    prev() {
       turned = true;
       unhint();
-      if (page > 0) return go(page - 1, -1) || true;
-      return cross(section().dataset.prevHref, false, -1);
+      return turnBy(-1);
     },
     atEnd: () => page >= count - 1 && !section().dataset.nextHref,
     atStart: () => page === 0 && !section().dataset.prevHref,
     stop() {
+      flip?.stop();
       done.abort();
       clearToast();
       unhint();

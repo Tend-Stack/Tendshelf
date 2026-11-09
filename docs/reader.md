@@ -87,6 +87,25 @@ shows the book's progress while they are hidden. With the read-aloud strip open 
 lays the pages out again. A turn moves the part's `scrollLeft` by one page; the next or previous part is fetched from `data-next-href` and
 `data-prev-href` (ahead, in both directions) and replaces the section.
 
+**Page turn** (`reader-flip.js`, package B of [the plan](plans/reader-pages-flip.md)). The person's Page turn setting is `flip` (the default), `slide` or `none`
+(`ReaderSettings.Turn`, form field `turn`, `data-turn` on `#reader`, a row in Reading settings; `Validate` and the route answer an unknown value with the setting's
+usual 400). Reduced motion is `none`. `reader-pages.js` keeps `go(n, dir)` as the only mover and picks the motion in `mover()`: `none`, `flip` when the module has
+loaded and `ts.flip.slow` is absent, else `slide`. The module (`data-flip-src`) is imported at mount and on `ts-reader-look` only for Flip, so Slide and None never
+fetch it; until it arrives a turn slides. The real section is at the destination page before the motion starts (`firstShown`, read aloud, search and saving only
+ever look at it), and everything drawn is a copy on a stage outside `#reader`: `.ts-flip` inside a persistent `.ts-flip-host` in `.ts-readerpage`
+(a node added straight to the page makes the browser re-test its `:has()` rules, which cost more than the build), `aria-hidden`, `inert`, `pointer-events: none`,
+no ids, no `hx-*`, gone when the turn ends. A face is a slice of the part, one column: the items that show in that column are cloned (the earlier ones are hidden stand-ins, so
+`p + p` and first-of-type still match), laid out by the same column engine in a one-column section scrolled to that column, so its text lies within 1 px of the real
+page's (tested at 390 and 1440, sizes 18 and 26). A leaf is one page turning about its left edge (`rotateY`, perspective five page widths, origin at the spine); one page forward turns 0 to -90
+degrees over the new page, a spread turns 0 to -180 with the old right page on its front and the new left page on its back. The shading on each side and the shadow cast on the page beneath are
+`--flip-shade` gradients, animated by opacity and `scaleX` sampled along the flight (`element.animate`, CSS variables through `style.setProperty`: the CSP holds). 420 ms a
+spread, 340 ms a page, `cubic-bezier(.4, 0, .2, 1)`. A new turn finishes the old one at once; two turns within 120 ms (a held key) have no motion. On a spread the new face is drawn in the
+frame after the leaf leaves, since its side is not in view before the middle of the flight. A touch or pen drag (10 px, mostly sideways, not on a link, button or highlight, no selection) lifts the leaf under
+the finger (the angle is `acos` of the finger's place along the leaf); let go past the middle, or with a flick above 0.35 px/ms in its direction, to turn, else it falls back and the page is put back with nothing saved. A mouse drags only a `.ts-edge` button, so
+selecting text with a mouse is free. Over a part edge a drag has a leaf only when the neighbour has already arrived and the last lay-out took 50 ms or less; otherwise a swipe past 48 px turns on release.
+The first three flights on a device are judged: a build over 50 ms, or the 90th percentile of animation-frame gaps over 34 ms on two of the three, sets `ts.flip.slow` and the turn is a slide from then on;
+choosing Flip in the sheet clears it. `performance.measure` names `ts-flip-build` (before the leaf moves) and `ts-flip-build-late` (the deferred face).
+
 Page numbers are for showing only. `reader-pages.js` records `{b, c, n}` (characters before, characters in the part from `data-part-chars`, columns)
 for each part it lays out, in `localStorage["ts.offline.pagecount.<edition>"]` under the current look (column, page height, columns, look classes);
 another look empties it. A page holds the average of the recorded parts of three pages or more, else an estimate from the column and line size. The

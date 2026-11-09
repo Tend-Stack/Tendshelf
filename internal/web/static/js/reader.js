@@ -201,7 +201,7 @@ export function mount(root) {
       const keep = here && sentence(here.sid)?.closest("section");
       for (const part of root.querySelectorAll("section[data-part]")) if (keep && part !== keep) part.remove();
       const module = await import(root.dataset.pagesSrc);
-      view = module.pages(root, { locate, turn, firstOn });
+      view = module.pages(root, { locate, turn, firstOn, moved: afterTurn });
     } else {
       view = scrollFlow;
     }
@@ -407,15 +407,18 @@ export function mount(root) {
 
   // ---- Input ----
 
+  // The place moved by a turn (also a dragged leaf that was let go past the middle).
+  function afterTurn() {
+    moved();
+    // On a phone the bar and dock lie over the page, so a turn puts them away (unless the person is using them).
+    if (flow === "pages" && innerWidth < 1024 && !document.activeElement?.closest(".ts-readerbar, .ts-readdock")) shell.dataset.chrome = "off";
+  }
+
   async function turn(direction) {
     if (busy || !view) return;
     busy = true;
     try {
-      if (await (direction > 0 ? view.next() : view.prev())) {
-        moved();
-        // On a phone the bar and dock lie over the page, so a turn puts them away (unless the person is using them).
-        if (flow === "pages" && innerWidth < 1024 && !document.activeElement?.closest(".ts-readerbar, .ts-readdock")) shell.dataset.chrome = "off";
-      }
+      if (await (direction > 0 ? view.next() : view.prev())) afterTurn();
     } finally {
       busy = false;
     }

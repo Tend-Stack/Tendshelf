@@ -224,3 +224,32 @@ func TestFeelReaderVolumeKeys(t *testing.T) {
 		t.Errorf("signed-out post = %d, stored %v", rec.Code, l.rsetStored(t, l.owner).VolumeKeys)
 	}
 }
+
+// TestReaderSettingsTurnInvalid: Page turn takes flip, slide or none; anything else is the setting's usual 400 and changes nothing.
+func TestReaderSettingsTurnInvalid(t *testing.T) {
+	l := rdrSeed(t)
+	if got := l.rsetStored(t, l.owner).Turn; got != "flip" {
+		t.Fatalf("default turn %q, want flip", got)
+	}
+	for _, good := range []string{"slide", "none", "flip"} {
+		if code, _, _ := rsetPost(t, l, l.owner, true, "turn", good); code != http.StatusNoContent {
+			t.Fatalf("turn %s: %d", good, code)
+		}
+		if got := l.rsetStored(t, l.owner).Turn; got != good {
+			t.Errorf("stored turn %q, want %s", got, good)
+		}
+	}
+	before := l.rsetStored(t, l.owner)
+	for _, bad := range []string{"curl", "", "FLIP"} {
+		code, _, body := rsetPost(t, l, l.owner, true, "turn", bad)
+		if code != http.StatusBadRequest || !strings.Contains(body, readerSettingsInvalid) {
+			t.Errorf("turn %q: %d %q", bad, code, body)
+		}
+		if code, _, _ := rsetPost(t, l, l.owner, false, "turn", bad); code != http.StatusBadRequest {
+			t.Errorf("plain turn %q: %d", bad, code)
+		}
+	}
+	if got := l.rsetStored(t, l.owner); got != before {
+		t.Errorf("refused posts changed the row: %+v", got)
+	}
+}

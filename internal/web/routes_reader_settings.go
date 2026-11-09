@@ -77,6 +77,7 @@ func (s *server) postReaderSettings(w http.ResponseWriter, r *http.Request) {
 	rsetText(form, "leading", &next.Leading)
 	rsetText(form, "margin", &next.Margin)
 	rsetText(form, "flow", &next.Flow)
+	rsetText(form, "turn", &next.Turn)
 	rsetBool(form, "justify", &next.Justify)
 	rsetBool(form, "hyphens", &next.Hyphens)
 	rsetBool(form, "tap_swap", &next.TapSwap)
@@ -166,7 +167,7 @@ func (s *server) readingSheet(r *http.Request, rc readerCtx, ch int) (pages.Read
 		Action: readerSettingsRoute, CSRF: s.csrf.TokenFrom(ctx), Next: back, Preview: readerPreviewText,
 		Look: readerLook(rs), Theme: set.Theme, Font: rs.Font, Leading: rs.Leading,
 		Size: rs.Size, Large: set.TextSize == "large",
-		Margin: rs.Margin, Flow: rs.Flow, Justify: rs.Justify, Hyphens: rs.Hyphens, TapSwap: rs.TapSwap,
+		Margin: rs.Margin, Flow: rs.Flow, Turn: rs.Turn, Justify: rs.Justify, Hyphens: rs.Hyphens, TapSwap: rs.TapSwap,
 		KeepAwake: rs.KeepAwake, Warm: rs.Warm, AutoHide: rs.AutoHide,
 		VolumeKeys: rs.VolumeKeys, InApp: shellFrom(r) == "android",
 	}, nil

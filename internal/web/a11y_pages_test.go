@@ -251,6 +251,8 @@ func a11yStates() []a11yState {
 		// Read aloud (decision 0032): the strip open with a marked sentence, and with the voice and speed disclosure open.
 		{Key: "reader-aloud", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: alAudit(false)},
 		{Key: "reader-aloud-more", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: alAudit(true)},
+		// Package B: the page turn in the air. The audit tab asks for reduced motion, so the state asks for motion back and turns a page.
+		{Key: "reader-flip", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: flipAudit},
 		{Key: "now-panel", Role: "owner", Path: a11yStatic("/libraries"), Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
 			// As nowPanelOpen does: the bar plays first, then the player opens.
 			tab.WaitFor(`window.tsPlayer && window.tsPlayer.state().bookId !== "" && !document.getElementById("player").hidden`, 10*time.Second)
