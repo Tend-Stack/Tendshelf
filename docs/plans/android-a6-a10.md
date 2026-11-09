@@ -174,7 +174,7 @@ Timer in Auto. Timer in the notification. Surviving a killed process. Sleep sche
 4. A download needs `permissions.download`; the server's 403 stands.
 5. Listening offline obeys the outbox: places are durable first and sync later.
 6. `http` and `https` behave alike: nothing here needs a secure context or a service worker.
-7. A foreground `dataSync` start happens only from the visible activity, so it is never refused (A5b's class of bug, designed out).
+7. (One exception, decision 0035: the player may start it while it is playing, for the next book; a refusal only leaves that book held.) A foreground `dataSync` start happens only from the visible activity, so it is never refused (A5b's class of bug, designed out).
 8. Hitting the 6-hour limit loses no progress and never crashes.
 
 ### Decisions
@@ -428,7 +428,7 @@ Each is its own package with its own plan, after the first release.
 1. **Skip silence** (S): `ExoPlayer.setSkipSilenceEnabled`, from `L7`. First because it is one call behind a setting; check it against `listenedMs` and the silent-range logic in `BookEngine`.
 2. **Icon quick actions** (S): dynamic shortcuts for Resume and the latest book. Needs A5b's refusal path proved first: a shortcut tap is an allowed start, and shortcuts carry no token.
 3. **Home-screen widget** (M): cover, play, skip, chapter (`L9`). Reads the session and `PlayerRemote`'s snapshot; a tap is an allowed start.
-4. **Auto-download of the next book** (M): the first download the person did not start, so A7's D2 no longer holds. It needs `androidx.work` (approved in 0024), a quota rule and Wi-Fi only. On Android 14 and later a user-initiated job may fit better; decide then.
+4. **Auto-download of the next book** (M): the first download the person did not start, so A7's D2 no longer holds. Built without `androidx.work`, see [0035](../decisions/0035-next-book-download.md), a quota rule and Wi-Fi only. On Android 14 and later a user-initiated job may fit better; decide then.
 5. **Native sound modes and volume boost** (L): Media3 `AudioProcessor`s for the four modes of decision 0022. Last, as a second implementation that must match the web by ear.
 Also approved for later, unordered: Remove finished books, native offline library, read aloud with the device's text-to-speech.
 

@@ -304,3 +304,17 @@ Needs the debug or release APK on a real phone, signed in to a server with a ser
 | QR-5 | Open `tendshelf://open?link=...` from another app or a web page while signed in. | Only the dialog or "already signed in" shows; nothing signs out. | |
 | QR-6 | Scan a dark-themed QR on a screen with the camera. | The code still reads. | |
 
+
+## L8: the next book is ready on the phone (decision 0035)
+
+Use the shared AVD with `-gpu host` under `flock -w 3600 .local/android-emulator.lock`. A real start, never a `DEBUG` op. Book A has under 2 hours left; book B is next in the queue. Server log and `adb logcat -s Tendshelf` open.
+
+| ID | Check | Expect | Result |
+| --- | --- | --- | --- |
+| L8-E1 | Switch off. Play A on Wi-Fi for 2 minutes. | No `GET /api/v1/queue/next` in the server log, no row for B. | |
+| L8-E2 | Switch on. Put the app in the background, screen off (`adb shell input keyevent KEYCODE_SLEEP`), play A on Wi-Fi for over 60 s. `adb shell dumpsys activity services app.tendshelf.android` and `adb logcat -d \| grep -i "Background started FGS"`. | `TsDownloadService` with `isForeground=true`, no `Disallowed`, B reaches ready after A is paused. If refused, report it: the honest result narrows to "app open". | |
+| L8-E3 | During E2's download: `adb shell cmd netpolicy set metered-network "AndroidWifi" true`. | Bytes stop within about 2 s, server log quiet, Downloads row says "Waiting for Wi-Fi". Set it back to `false` with A playing: it goes on by range within about 60 s. | |
+| L8-E4 | Near the end of A on a metered Wi-Fi: no peek. Set it unmetered, open the app. | No peek while metered (`autoWant` set); B starts after the app opens. | |
+| L8-E5 | Press Download on a waiting automatic book on metered Wi-Fi. Then press Download on another book during an automatic download. | The first runs now. The second book finishes first. | |
+| L8-E6 | Switch off during a download; then a server book larger than the room; then a book whose downloads are refused for this person. | Row and partial bytes gone, a finished automatic book stays; Downloads note and no bytes; no row and no toast. | |
+| L8-E7 | Sign out. Then, before it, let `POST /queue/next` run at the end of A with the network off after B was fetched. | Every book, mark and `autoWant` gone. The pop still happens once and B plays from the phone. | |

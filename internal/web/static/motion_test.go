@@ -341,7 +341,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// A7 (the Download button in the app's window, driven by the app): written for reading with its comments, reported.
 	"native-downloads.js": {2*1024 + 768, 8 * 1024}, // L10 Download all: 2,743 B measured, reported, not squeezed
 	// R2 (read aloud in the app, decision 0032): the engine reader-aloud.js expects, over the bridge.
-	"native-feel.js":   {1*1024 + 448, 8 * 1024}, // decision 0033: 1,459 B measured, plan 1,280 B; OVERRUN reported, not squeezed
+	"native-feel.js":   {1*1024 + 488, 8 * 1024}, // decision 0033: 1,459 B measured, plan 1,280 B; decision 0035 adds the autodl line (1,503 B); OVERRUN reported, not squeezed
 	"native-speech.js": {1*1024 + 768, 8 * 1024}, // 1,753 B measured with its comments intact; over the 1,280 B planned, reported, not squeezed
 	// Decision 0023 (X2, operator 2026-11-05): the desktop app's title bar script, loaded only under ts_shell=desktop; 2,816 B approved.
 	// X4 (now playing, the More menu's switch, the theme): 3,578 B measured with its comments intact, 3,584 B set; over the approved 2,816 B, reported for the operator.

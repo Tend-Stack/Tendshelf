@@ -208,6 +208,13 @@ listen to, when their "next in series" setting is on: `{"book":BookCard,"source"
 branch. The last book, a text book, a next book already finished, a hidden next book (it is skipped without a trace), the setting off, or no `series`: 204. Errors: 400 `ended`
 (longer than 64 characters), 415, 413, 400.
 
+### GET /api/v1/queue/next
+The read-only peek behind the app's automatic download (decision 0035): the book `POST /api/v1/queue/next` would give after the
+query `ended` (optional, at most 64 characters), without taking it off the queue or writing anything. Same rules as the pop: a
+book the person may not listen to, a refused, missing or text book is skipped and kept; an empty queue falls to the series
+(when the person's "next in series" setting is on). 200 `{"book":BookCard,"source":"queue"|"series"}`, 204 nothing, 400 `ended`.
+`no-store`.
+
 ### POST /api/v1/queue/{bookID}/move
 Body `{"dir":"up"|"down"}`. Swaps the book with its neighbour that the person can open, so a hidden book is stepped
 over; at either end nothing changes. 200 with the whole queue. 400 `dir`; 404 when the book is not queued or not visible.
@@ -218,7 +225,8 @@ Takes the book off the queue: 204. 404 when the book is not queued or not visibl
 ## App settings, per-book speed and Continue
 
 ### GET /api/v1/settings, PATCH /api/v1/settings
-`{"speed","skipBackS","skipForwardS","autoRewind","nextInSeries","rewindSteps"}`, `no-store`. `rewindSteps` is read-only, the
+`{"speed","skipBackS","skipForwardS","autoRewind","nextInSeries","skipQuiet","autoDownload","rewindSteps"}`, `no-store`.
+`autoDownload` (default false) is the Android app's "Download the next book on its own" switch (decision 0035); the person's phones share it. `rewindSteps` is read-only, the
 smart-rewind table the web player uses: `[{"fromMs":10000,"seconds":2},{"fromMs":60000,"seconds":5},...]` (a pause of at least
 `fromMs` steps back `seconds`); a PATCH body's value is ignored. PATCH takes any of the same keys (body at most
 4 KiB), keeps the rest, saves and answers the same shape. Unknown keys are ignored; the theme, text size and account settings are
