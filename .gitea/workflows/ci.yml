@@ -33,12 +33,9 @@ on:
 permissions:
   contents: read
 
-# The server, Desktop and Android workflows share one queue, so one push runs one job at a time and they never slow
-# each other's timing-sensitive tests. Runs are not cancelled (one workflow must not cancel another); a newer push's
-# waiting run replaces an older waiting one.
 concurrency:
-  group: tendshelf-side-${{ gitea.ref }}
-  cancel-in-progress: false
+  group: tendshelf-ci-${{ gitea.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:

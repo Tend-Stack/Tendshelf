@@ -16,7 +16,7 @@ on:
 permissions:
   contents: read
 
-# The server, Desktop and Android workflows share one queue, so a push runs one job at a time.
+# Desktop and Android share one queue, so a push runs at most two jobs at once (this and ci.yml) on the two runners.
 # Runs in the group go one at a time and are not cancelled (one workflow must not cancel the other); a newer push's
 # waiting run replaces an older waiting one.
 concurrency:
