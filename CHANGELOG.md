@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+## 2026.7.0
+
+Released 2026-11-09. Books read in pages by default, with a page turn that flips like a book, a ribbon to mark a page and real page numbers; a More options menu on the book page; and, on Android, the next book downloads on its own and a home-screen widget.
+
 ### Added
 
 - **A page turn that feels like a book.** Turning a page now lifts the page and turns it over, with the text on both sides, a shadow that falls on the page underneath and light that changes as the page turns. On a wide screen the right page turns over onto the left; on a phone the page folds away to the side. You can also drag the page with a finger or a pen, and let go to finish the turn or put it back. In Reading settings, "Page turn" offers Flip, Slide and None; if the screen is too slow for the flip, the reader quietly slides instead, and choosing Flip again gives it another chance. If your device asks for reduced motion, pages turn without any movement.
@@ -21,6 +25,12 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 - **The big first letter only opens real paragraphs.** It no longer lands on a dedication, an epigraph, opening pages or a list of links, and short lines of verse no longer start with an indent.
 - **"This part did not load" shows once and goes away.** A part that fails to load is tried again quietly first. If it still fails you see one message, not a pile of them, and it is gone when you leave the book or when the part loads. "Try again" now really asks again, and if you were signed out the message says so.
 - **The reader bar no longer vanishes by itself.** Clicking in the text with a mouse leaves it alone; a finger tap in the middle still hides and shows it. A hidden bar leaves a small "Show the bar" button at the top, and with "Hide the bar after a moment" on, moving the mouse to the top or bottom, or pressing a key, brings it back. In the scroll layout a hidden bar gives its room to the text.
+
+- **Pages no longer look squeezed while they load.** Moving between pages, the Library in particular, used to draw the new page narrow for a moment before it settled; now it appears at its real size.
+- **The desktop app no longer closes when you change page** on some Linux graphics setups.
+- **The book page holds together at 200 % text.** Long names are cut with "…" instead of pushing the page sideways, and the buttons stay on screen.
+- **The book tabs stay on one row on a phone,** and slide sideways when there are more than fit.
+- **On Android, another book's button no longer says Pause** after the app moves on to a different book.
 
 ### What you can do
 
