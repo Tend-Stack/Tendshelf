@@ -74,6 +74,9 @@ class ApiJsonTest {
         val s = ApiJson.settings("""{"speed":1.25,"skipBackS":10,"skipForwardS":"45","autoRewind":true,"nextInSeries":false,"junk":{}}""")
         assertEquals(PlayerSettings(1.25, 10, 45, true, false, DEFAULT_REWIND, false), s)
         assertTrue(ApiJson.settings("""{"speed":1,"skipBackS":1,"skipForwardS":1,"autoRewind":true,"nextInSeries":true,"skipQuiet":true}""").skipQuiet)
+        assertTrue(ApiJson.settings("""{"speed":1,"skipBackS":1,"skipForwardS":1,"autoRewind":true,"nextInSeries":true,"autoDownload":true}""").autoDownload)
+        // an older server has no autoDownload: false
+        assertEquals(false, ApiJson.settings("""{"speed":1,"skipBackS":1,"skipForwardS":1,"autoRewind":true,"nextInSeries":true}""").autoDownload)
         assertFailsWith<JsonShapeException> { ApiJson.settings("""{"speed":1,"skipBackS":1,"skipForwardS":1,"autoRewind":true}""") }
         assertFailsWith<JsonShapeException> { ApiJson.settings("""{"speed":"fast","skipBackS":1,"skipForwardS":1,"autoRewind":true,"nextInSeries":true}""") }
         val steps = ApiJson.rewindSteps(parseJsonObject("""{"rewindSteps":[{"fromMs":0,"seconds":2},{"fromMs":-5,"seconds":1},{"fromMs":9,"seconds":-1},7,{"fromMs":60000}]}"""))

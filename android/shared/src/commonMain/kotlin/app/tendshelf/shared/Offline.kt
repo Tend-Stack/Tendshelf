@@ -125,3 +125,71 @@ fun checkVerdict(status: Int, old: BookManifest?, new: BookManifest?): Verdict =
 
 private fun fileKeys(m: BookManifest) =
     m.files.filter { it.playable }.sortedBy { it.idx }.map { Triple(it.id, it.size, it.needsCompat) }
+
+// The next book, downloaded on its own (decision 0035).
+
+/** The last two hours of audio (book time, ignoring speed) start the next book's download. */
+const val AUTO_NEAR_END_MS = 2L * 60 * 60 * 1000
+
+/** Free space that must remain after an automatic book; stricter than [SPARE_BYTES]. */
+const val AUTO_SPARE_BYTES = 2L * 1024 * 1024 * 1024
+
+/** The most that automatic downloads keep at once. */
+const val AUTO_TOTAL_BYTES = 5L * 1024 * 1024 * 1024
+
+/** How often the player looks at the position, at most. */
+const val AUTO_TICK_MS = 60_000L
+
+/** How long to wait before asking the server again about the same book. */
+const val AUTO_ASK_MS = 15 * 60_000L
+
+/** The Media3 stop reason of an automatic download that is not allowed to run (Wi-Fi gone, or not yet checked). */
+const val AUTO_HOLD = 1
+
+sealed interface AutoPlan {
+    data class Go(val plan: Plan.Ok) : AutoPlan
+
+    /** Told on the Downloads page. */
+    data object NoRoom : AutoPlan
+
+    /** Not allowed, nothing to play, or larger than the whole quota: silent. */
+    data object Skip : AutoPlan
+}
+
+enum class AutoStep { NOTHING, WANT, ASK }
+
+/** True in the last [AUTO_NEAR_END_MS] of a book; an unset (negative) duration is never near. */
+fun nearEnd(positionMs: Long, durationMs: Long): Boolean =
+    durationMs > 0 && positionMs >= 0 && durationMs - positionMs <= AUTO_NEAR_END_MS
+
+/** What to do with the next book now: nothing, remember to ask on the next Wi-Fi moment, or ask the server. */
+fun autoStep(enabled: Boolean, near: Boolean, unmetered: Boolean, askedAgoMs: Long?): AutoStep = when {
+    !enabled || !near -> AutoStep.NOTHING
+    !unmetered -> AutoStep.WANT
+    askedAgoMs == null || askedAgoMs >= AUTO_ASK_MS -> AutoStep.ASK
+    else -> AutoStep.NOTHING
+}
+
+/** The bytes of the rows still marked automatic, finished or not. */
+fun autoBytes(rows: List<OfflineBook>, marks: Set<String>): Long =
+    rows.filter { it.bookId in marks }.sumOf { it.sizeBytes }
+
+/** Automatic rows that are not finished: the only thing an automatic path ever removes. */
+fun autoUnfinished(rows: List<OfflineBook>, marks: Set<String>): List<OfflineBook> = rows.filter {
+    it.bookId in marks && (it.state == OfflineState.QUEUED || it.state == OfflineState.DOWNLOADING || it.state == OfflineState.PAUSED)
+}
+
+/** [downloadPlan] first, unchanged, then the quota and the stricter spare room of an automatic book. */
+fun autoDownloadPlan(m: BookManifest, paths: ApiPaths, freeBytes: Long, keptAutoBytes: Long): AutoPlan =
+    when (val p = downloadPlan(m, paths, freeBytes)) {
+        Plan.NotAllowed, Plan.NothingToPlay -> AutoPlan.Skip
+        Plan.NoRoom -> if (autoTotalOf(m) > AUTO_TOTAL_BYTES) AutoPlan.Skip else AutoPlan.NoRoom
+        is Plan.Ok -> when {
+            p.total > AUTO_TOTAL_BYTES -> AutoPlan.Skip
+            keptAutoBytes + p.total > AUTO_TOTAL_BYTES -> AutoPlan.NoRoom
+            freeBytes - p.total < AUTO_SPARE_BYTES -> AutoPlan.NoRoom
+            else -> AutoPlan.Go(p)
+        }
+    }
+
+private fun autoTotalOf(m: BookManifest) = m.files.filter { it.playable }.sumOf { it.size }

@@ -58,6 +58,9 @@ sealed interface BridgeMessage {
 
     /** `quiet 0|1`: skip silence (quiet skip) off or on, applied at once (decision 0033). */
     data class Quiet(val on: Boolean) : BridgeMessage
+
+    /** The Download the next book switch in Settings changed (decision 0035). */
+    data class AutoDownload(val on: Boolean) : BridgeMessage
 }
 
 const val MAX_LENGTH = 128
@@ -99,6 +102,7 @@ fun parseBridge(raw: String?): BridgeMessage? {
         }
         "wake" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.Wake(parts[1] == "1") else null
         "pagekeys" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.PageKeys(parts[1] == "1") else null
+        "autodl" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.AutoDownload(parts[1] == "1") else null
         "quiet" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.Quiet(parts[1] == "1") else null
         "dl" -> if (parts.size == 2 && parts[1] == "room") BridgeMessage.DownloadRoom else if (parts.size == 3 && validId(parts[2]) && parts[1] in DL_WORDS) BridgeMessage.Download(parts[1], parts[2]) else null
         else -> null

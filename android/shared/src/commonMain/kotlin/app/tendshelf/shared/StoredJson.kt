@@ -18,7 +18,7 @@ private fun numberText(d: Double): String =
 /** Settings as kept for an offline start. The rewind table is not kept: the built-in one serves offline. */
 fun encodeKeptSettings(s: PlayerSettings): String =
     "{\"speed\":${numberText(s.speed)},\"skipBackS\":${s.skipBackS},\"skipForwardS\":${s.skipForwardS}," +
-        "\"autoRewind\":${s.autoRewind},\"nextInSeries\":${s.nextInSeries},\"skipQuiet\":${s.skipQuiet}}"
+        "\"autoRewind\":${s.autoRewind},\"nextInSeries\":${s.nextInSeries},\"skipQuiet\":${s.skipQuiet},\"autoDownload\":${s.autoDownload}}"
 
 /** The kept settings; the built-in ones when there are none or they cannot be read. */
 fun decodeKeptSettings(text: String?): PlayerSettings {
@@ -28,6 +28,7 @@ fun decodeKeptSettings(text: String?): PlayerSettings {
         PlayerSettings(
             j.getDouble("speed"), j.getInt("skipBackS"), j.getInt("skipForwardS"), j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"),
             skipQuiet = j.optBoolean("skipQuiet", false),
+            autoDownload = j.optBoolean("autoDownload", false),
         )
     } catch (_: Exception) {
         defaultPlayerSettings()

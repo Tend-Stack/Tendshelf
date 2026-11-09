@@ -73,6 +73,7 @@ object ApiJson {
             j.getDouble("speed"), j.getInt("skipBackS"), j.getInt("skipForwardS"),
             j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"), rewindSteps(j),
             skipQuiet = j.optBoolean("skipQuiet", false), // older servers lack it
+            autoDownload = j.optBoolean("autoDownload", false), // older servers lack it
         )
     }
 

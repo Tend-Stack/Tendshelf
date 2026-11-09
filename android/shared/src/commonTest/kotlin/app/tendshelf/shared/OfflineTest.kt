@@ -159,4 +159,71 @@ class OfflineTest {
         assertEquals("{\"t\":\"dl\",\"bookId\":\"b\",\"state\":\"downloading\",\"pct\":0,\"known\":false}", encodeDl("b", "downloading", 0, false))
         assertEquals("{\"t\":\"dl\",\"bookId\":\"b\",\"state\":\"downloading\",\"pct\":5}", encodeDl("b", "downloading", 5))
     }
+
+    // L8: the next book on its own (decision 0035).
+
+    private val gib = 1024L * 1024 * 1024
+    private fun row(id: String, state: OfflineState, size: Long = 1) =
+        OfflineBook(id, "u", "T", "", 0, size, state, 0, 0)
+
+    @Test
+    fun l8NearEnd() {
+        assertTrue(nearEnd(0, AUTO_NEAR_END_MS))
+        assertEquals(false, nearEnd(0, AUTO_NEAR_END_MS + 1))
+        assertTrue(nearEnd(1, AUTO_NEAR_END_MS + 1))
+        assertEquals(false, nearEnd(0, -9223372036854775807L))
+        assertEquals(false, nearEnd(0, 0))
+        assertEquals(false, nearEnd(-1, 1000))
+        assertTrue(nearEnd(0, 60 * 60 * 1000L))
+    }
+
+    @Test
+    fun l8AutoStep() {
+        assertEquals(AutoStep.NOTHING, autoStep(false, true, true, null))
+        assertEquals(AutoStep.NOTHING, autoStep(true, false, true, null))
+        assertEquals(AutoStep.WANT, autoStep(true, true, false, null))
+        assertEquals(AutoStep.WANT, autoStep(true, true, false, 0L))
+        assertEquals(AutoStep.ASK, autoStep(true, true, true, null))
+        assertEquals(AutoStep.NOTHING, autoStep(true, true, true, AUTO_ASK_MS - 1))
+        assertEquals(AutoStep.ASK, autoStep(true, true, true, AUTO_ASK_MS))
+    }
+
+    @Test
+    fun l8AutoPlan() {
+        val size = 100 * mib
+        val b = book(file("f1", 0, size))
+        val room = size + AUTO_SPARE_BYTES
+        assertEquals(AutoPlan.Skip, autoDownloadPlan(book(file("f1", 0, 1), may = false), paths, Long.MAX_VALUE, 0))
+        assertEquals(AutoPlan.Skip, autoDownloadPlan(book(file("f1", 0, 1, playable = false)), paths, Long.MAX_VALUE, 0))
+        assertIs<AutoPlan.Go>(autoDownloadPlan(b, paths, room, 0))
+        assertEquals(AutoPlan.NoRoom, autoDownloadPlan(b, paths, room - 1, 0))
+        // below the person's own spare: NoRoom, whatever the book
+        assertEquals(AutoPlan.NoRoom, autoDownloadPlan(b, paths, size + SPARE_BYTES - 1, 0))
+        // the quota: kept + book at exactly 5 GiB goes, one byte over does not
+        assertIs<AutoPlan.Go>(autoDownloadPlan(b, paths, 100 * gib, AUTO_TOTAL_BYTES - size))
+        assertEquals(AutoPlan.NoRoom, autoDownloadPlan(b, paths, 100 * gib, AUTO_TOTAL_BYTES - size + 1))
+        // a book over the whole quota is silent, with room and without
+        val huge = book(file("f1", 0, AUTO_TOTAL_BYTES + 1))
+        assertEquals(AutoPlan.Skip, autoDownloadPlan(huge, paths, 100 * gib, 0))
+        assertEquals(AutoPlan.Skip, autoDownloadPlan(huge, paths, 1, 0))
+        val exact = book(file("f1", 0, AUTO_TOTAL_BYTES))
+        assertIs<AutoPlan.Go>(autoDownloadPlan(exact, paths, AUTO_TOTAL_BYTES + AUTO_SPARE_BYTES, 0))
+    }
+
+    @Test
+    fun l8AutoBytesAndUnfinished() {
+        val rows = OfflineState.entries.map { row("s${it.name}", it, 10) } + row("other", OfflineState.DOWNLOADING, 99)
+        val marks = rows.map { it.bookId }.filter { it != "other" }.toSet() + "stale"
+        assertEquals(10L * OfflineState.entries.size, autoBytes(rows, marks))
+        val open = autoUnfinished(rows, marks).map { it.state }.toSet()
+        assertEquals(setOf(OfflineState.QUEUED, OfflineState.DOWNLOADING, OfflineState.PAUSED), open)
+        assertEquals(emptyList(), autoUnfinished(rows, emptySet()))
+    }
+
+    @Test
+    fun l8PeekUrl() {
+        assertEquals("http://10.0.2.2:8103/api/v1/queue/next?ended=bk1", paths.queuePeekUrl("bk1"))
+        assertTrue(runCatching { paths.queuePeekUrl("a/b") }.isFailure)
+        assertTrue(runCatching { paths.queuePeekUrl("") }.isFailure)
+    }
 }

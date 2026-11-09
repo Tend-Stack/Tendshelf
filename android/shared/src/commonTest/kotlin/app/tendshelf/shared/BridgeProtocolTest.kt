@@ -141,6 +141,9 @@ class FeelBridgeTest {
         assertEquals(BridgeMessage.PageKeys(true), parseBridge("pagekeys 1"))
         assertEquals(BridgeMessage.Quiet(false), parseBridge("quiet 0"))
         assertEquals(BridgeMessage.Quiet(true), parseBridge("quiet 1"))
+        assertEquals(BridgeMessage.AutoDownload(false), parseBridge("autodl 0"))
+        assertEquals(BridgeMessage.AutoDownload(true), parseBridge("autodl 1"))
+        for (bad in listOf("autodl", "autodl 2", "autodl  1", "autodl 1 ")) assertNull(parseBridge(bad), bad)
     }
 
     @Test

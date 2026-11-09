@@ -56,4 +56,6 @@ data class PlayerSettings(
     val rewindSteps: List<RewindStep> = DEFAULT_REWIND,
     /** Skip silence ("quiet skip", decision 0033); Android app only. */
     val skipQuiet: Boolean = false,
+    /** Download the next book on Wi-Fi when this one is nearly over (decision 0035); Android app only. */
+    val autoDownload: Boolean = false,
 )

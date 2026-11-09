@@ -9,9 +9,17 @@ import kotlin.test.assertTrue
 /** Strings in these fixtures are what the app wrote with org.json before the move; they must still load. */
 class StoredJsonTest {
     // org.json: whole doubles without ".0", "/" escaped, keys in insertion order.
-    private val oldSettings = """{"speed":1.25,"skipBackS":15,"skipForwardS":30,"autoRewind":true,"nextInSeries":false,"skipQuiet":true}"""
-    private val oldSettingsWhole = """{"speed":1,"skipBackS":30,"skipForwardS":30,"autoRewind":true,"nextInSeries":false,"skipQuiet":false}"""
+    private val oldSettings = """{"speed":1.25,"skipBackS":15,"skipForwardS":30,"autoRewind":true,"nextInSeries":false,"skipQuiet":true,"autoDownload":false}"""
+    private val oldSettingsWhole = """{"speed":1,"skipBackS":30,"skipForwardS":30,"autoRewind":true,"nextInSeries":false,"skipQuiet":false,"autoDownload":false}"""
     private val oldSettingsBeforeSkipQuiet = """{"speed":2,"skipBackS":10,"skipForwardS":20,"autoRewind":false,"nextInSeries":true}"""
+
+    @Test
+    fun autoDownloadIsKeptAndOldKeptSettingsReadFalse() {
+        val before = """{"speed":1.25,"skipBackS":15,"skipForwardS":30,"autoRewind":true,"nextInSeries":false,"skipQuiet":true}"""
+        assertEquals(false, decodeKeptSettings(before).autoDownload)
+        val on = decodeKeptSettings(before).copy(autoDownload = true)
+        assertEquals(true, decodeKeptSettings(encodeKeptSettings(on)).autoDownload)
+    }
 
     @Test
     fun keptSettingsLoadAndKeepTheirWrittenShape() {

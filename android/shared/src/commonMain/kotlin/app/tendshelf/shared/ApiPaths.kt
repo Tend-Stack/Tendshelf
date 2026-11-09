@@ -24,6 +24,9 @@ class ApiPaths(server: String) {
     val batchUrl: String get() = "$base/api/v1/progress/batch"
     val queueNextUrl: String get() = "$base/api/v1/queue/next"
 
+    /** The read-only peek at the next book (decision 0035): nothing is taken off the queue. */
+    fun queuePeekUrl(ended: String): String = "$base/api/v1/queue/next?ended=${segment(ended)}"
+
     /** The lists the car browses (A8). */
     fun continueUrl(limit: Int): String = "$base/api/v1/continue?limit=$limit"
     val queueUrl: String get() = "$base/api/v1/queue"
