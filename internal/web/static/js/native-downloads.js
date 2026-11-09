@@ -26,10 +26,12 @@ function start(bridge) {
     if (!button || !link) return;
     const label = button.querySelector(".ts-book__label");
     if (!firstLabel) firstLabel = label.textContent;
-    const working = state === "queued" || state === "downloading";
     const listed = state === "ready" || state === "stale" || state === "paused";
     button.hidden = listed;
-    button.disabled = working;
+    // A waiting book keeps its button: an automatic download that waits for Wi-Fi turns into the person's own, and
+    // starts at once, when they press Download (decision 0035, invariant 7). For any other waiting book the press
+    // changes nothing. Only a running download is disabled.
+    button.disabled = state === "downloading";
     link.hidden = !listed;
     // The link goes to the app's own Downloads page; htmx must not take the click.
     link.setAttribute("hx-boost", "false");

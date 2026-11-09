@@ -339,7 +339,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// A5b (ask, rewound, answer; operator approved the raise, 2026-11-06): 2,816 B set, measured 2,673 B, reported.
 	"native-audio.js": {2*1024 + 768, 8 * 1024},
 	// A7 (the Download button in the app's window, driven by the app): written for reading with its comments, reported.
-	"native-downloads.js": {2*1024 + 768, 8 * 1024}, // L10 Download all: 2,743 B measured, reported, not squeezed
+	"native-downloads.js": {2*1024 + 896, 8 * 1024}, // L8 test: 2,870 B measured after the waiting-button fix; L10 Download all: 2,743 B measured, reported, not squeezed
 	// R2 (read aloud in the app, decision 0032): the engine reader-aloud.js expects, over the bridge.
 	"native-feel.js":   {1*1024 + 488, 8 * 1024}, // decision 0033: 1,459 B measured, plan 1,280 B; decision 0035 adds the autodl line (1,503 B); OVERRUN reported, not squeezed
 	"native-speech.js": {1*1024 + 768, 8 * 1024}, // 1,753 B measured with its comments intact; over the 1,280 B planned, reported, not squeezed
@@ -404,7 +404,7 @@ var jsAndroidFiles = map[string]bool{"native-audio.js": true, "native-downloads.
 
 // jsAndroidTotalGzip bounds the Android-only scripts together (operator approval for about 2 KB, 2026-11-06).
 // A7 adds native-downloads.js (the plan's budget note allows the raise): 4,096 B set; measured 3,983 B (native-audio.js plus native-downloads.js).
-const jsAndroidTotalGzip = 8*1024 + 640 // L10 Download all in the app: 8,745 B measured, reported, not squeezed // read aloud: 6,345 B measured (plan 6,144), reported, not squeezed // download progress: 4,396 B measured, reported, not squeezed
+const jsAndroidTotalGzip = 8*1024 + 768 // L8 test: a waiting book keeps its Download button, 8,915 B measured, reported, not squeezed // L10 Download all in the app: 8,745 B measured, reported, not squeezed // read aloud: 6,345 B measured (plan 6,144), reported, not squeezed // download progress: 4,396 B measured, reported, not squeezed
 
 func TestJSBudget(t *testing.T) {
 	s, err := Load()
