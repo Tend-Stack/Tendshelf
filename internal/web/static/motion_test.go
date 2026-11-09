@@ -108,7 +108,7 @@ func TestCSSBudget(t *testing.T) {
 		// M3c B3: the phone action bar wraps at large text.
 		"css/pages-desktop.css": {3*1024 + 128, 24 * 1024}, // the root scrollbar below the title bar (decision 0023): 3,134 B measured, reported, not squeezed
 		"css/pages-home.css":    {3*1024 + 128, 24 * 1024}, // the spine title rule: 3,153 B measured, reported, not squeezed (operator pre-approval of reasonable raises)
-		"css/pages-book.css":    {3*1024 + 512, 24 * 1024}, // download progress bar: 3,452 B measured, reported, not squeezed; M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
+		"css/pages-book.css":    {4 * 1024, 24 * 1024},     // full-width page, about 3805 B gzip, reported (operator, 2026-11-08); earlier: download progress bar: 3,452 B measured, reported, not squeezed; M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
 		"css/motion.css":        {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
 		"css/player.css": {4*1024 + 192, 24 * 1024}, // chapter bar (2026-11-06): the ruler's taller target, 4,265 B measured; L1: the speed sheet note, 4,156 B measured (operator pre-approval of raises, 2026-11-05)
@@ -120,7 +120,7 @@ func TestCSSBudget(t *testing.T) {
 		"css/now-panel.css": {3 * 1024, 24 * 1024},
 		// The Users and invite pages share this file (list, person page, pending invites, the Invite someone
 		// header); P3-4b's header rules took it past 3 KB, so it gets 4 KB rather than being squeezed.
-		"css/pages-admin.css":       {4*1024 + 512, 24 * 1024},
+		"css/pages-admin.css":       {5 * 1024, 24 * 1024},     // full-width lists, about 4828 B gzip, reported
 		"css/pages-downloadall.css": {1024, 24 * 1024},         // L10 Download all
 		"css/pages-chapters.css":    {2 * 1024, 24 * 1024},     // L3a: the chapter editor
 		"css/pages-reader.css":      {5*1024 + 128, 32 * 1024}, // read aloud (decision 0032, R1): 4,958 B measured, plan row 5,248 B; the reading settings and the book reader; 4.5 KB approved 2026-11-04, 4.53 KB measured with comfort and look-up together, reported, 4.5 KB with the skim bar (G4)
