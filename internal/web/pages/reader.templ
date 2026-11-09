@@ -13,6 +13,7 @@ var ReaderStyles = []string{"css/pages-reader.css"}
 type ReaderBlockView struct {
 	Kind, ID, HTML string
 	Pg             string // the print page label ("xii", "47"), or "" when none is known
+	Verse          bool // in a run of short lines: no first-line indent
 	C              int // characters (UTF-16 units) before the block in its chapter; the paginator counts with it
 }
 
@@ -472,7 +473,7 @@ templ ReaderBlock(b ReaderBlockView, oob bool) {
 		case "hr":
 			<hr id={ b.ID } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }/>
 		default:
-			<p id={ b.ID } data-pg={ b.Pg } data-c={ strconv.Itoa(b.C) } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
+			<p id={ b.ID } data-pg={ b.Pg } data-c={ strconv.Itoa(b.C) } if b.Verse { class="ts-reader__verse" } if oob { hx-swap-oob="outerHTML" }>@templ.Raw(b.HTML)</p>
 	}
 }
 

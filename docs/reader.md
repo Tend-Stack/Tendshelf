@@ -171,6 +171,11 @@ a part loads, and when the reader is left (an htmx swap of the page, `pagehide`,
 never kept, so Try again asks the server again. A redirect (the session ended) shows "Sign in" instead. The part's address
 (no query) and the status or error go to `console.warn`.
 
+Drop cap and verse (`reader_dropcap.go`): the chapter's first paragraph gets the big first letter only when the chapter is
+not front matter ("Opening pages") and the block is prose: a paragraph of at least 140 characters, less than half of it
+link. If that first paragraph is a dedication, an epigraph or a list of links, the chapter has no drop cap. Three or more
+paragraphs in a row of at most 50 characters are verse: they carry `ts-reader__verse` and take no first-line indent.
+
 ## Comfort (G5)
 
 Three choices under "More" in the Reading settings sheet, all off by default and kept in `reader.v1` (`keepAwake`, `warm`

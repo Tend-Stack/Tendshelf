@@ -454,6 +454,7 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-reader__text { font-family: var(--font-serif); font-size: var(--read-size); line-height: var(--read-leading); font-variant-ligatures: common-ligatures; hyphens: auto; -webkit-hyphens: auto; text-wrap: pretty; }
 .ts-reader__text p { margin: 0; }
 .ts-reader__text p + p { text-indent: 1.4em; }
+.ts-reader__text p.ts-reader__verse { text-indent: 0; }
 .ts-reader__text ::selection { background: var(--selection); }
 .ts-reader--sans .ts-reader__text { font-family: var(--font-sans); }
 .ts-reader__drop { float: left; font-size: 2.9em; line-height: 0.9; padding: 0.08em 0.1em 0 0; }

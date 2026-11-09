@@ -124,12 +124,13 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 	}
 	linkTo := s.rsLinkTo(rc)
 	cum, dropDone := before+sel.Before, false
+	verse := rdrVerseRuns(ch.Blocks)
 	c := sel.Before
 	for bi := sel.From; bi < sel.To; bi++ {
 		b := ch.Blocks[bi]
 		pg := rsPageLabel(rc.doc, idx, bi, cum, total)
 		n := rsUnits(b.Text)
-		bv := pages.ReaderBlockView{Kind: b.Kind, ID: "b-" + b.ID, Pg: pg, C: c}
+		bv := pages.ReaderBlockView{Kind: b.Kind, ID: "b-" + b.ID, Pg: pg, C: c, Verse: verse[bi]}
 		cum += n
 		c += n
 		switch {
@@ -141,7 +142,8 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 		default:
 			opts := rdrBlockOpts{Hls: hls, Bookmarks: bms, LinkTo: linkTo}
 			if b.Kind == ebook.KindP && !dropDone && part <= 1 {
-				opts.DropCap, dropDone = true, true
+				// The first paragraph decides: a dedication, an epigraph or a list of links first means no drop cap here.
+				opts.DropCap, dropDone = rdrDropCapAt(ch, bi), true
 			}
 			bv.HTML = rdrInner(b, opts)
 		}
