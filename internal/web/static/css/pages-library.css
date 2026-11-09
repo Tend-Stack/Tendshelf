@@ -89,7 +89,9 @@
 
 /* The list: a grid of cards, or rows */
 .ts-lib-items.ts-grid { gap: var(--space-20) var(--space-16); }
-.ts-lib-rows { display: flex; flex-direction: column; }
+/* Row lists (Library list view, Search, a series, a person) fill the page in as many columns of at least 26rem as fit;
+   a short list keeps one column's width rather than stretching a title and its length a page apart. */
+.ts-lib-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)); column-gap: var(--space-32); }
 .ts-lib-rows .ts-row { border-bottom: 1px solid var(--line); }
 .ts-lib-rows .ts-row__main { text-decoration: none; }
 .ts-lib-rows .ts-cover { width: 3.5rem; height: 3.5rem; }

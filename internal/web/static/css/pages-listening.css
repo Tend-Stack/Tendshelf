@@ -1,5 +1,5 @@
 /* /me/listening (decision 0014, board ListeningDashboard). Tokens and rem only; the board's container queries are media queries here. */
-.ts-dash { display: flex; flex-direction: column; gap: var(--space-16); max-width: 46rem; padding-bottom: var(--space-32); }
+.ts-dash { display: flex; flex-direction: column; gap: var(--space-16); padding-bottom: var(--space-32); }
 .ts-dash__back { display: inline-flex; align-items: center; gap: var(--space-8); align-self: flex-start; min-height: 2.75rem; color: var(--ink-muted); text-decoration: none; font-size: 0.9375rem; }
 .ts-dash__back .ts-icon { width: 1.25rem; height: 1.25rem; }
 .ts-dash__title, .ts-dash__lead { margin: 0; }
@@ -106,7 +106,6 @@ a.ts-dash__topname::after { content: ""; position: absolute; inset: 0; }
 /* Two columns: only Listening time and Days of the week sit side by side (two bar charts of equal height);
    every other card spans both, so no short card stands beside a tall one. */
 @media (width >= 1024px) {
-  .ts-dash { max-width: var(--size-content-max); }
   .ts-dash__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-24); }
   .ts-dash__card--wide { grid-column: 1 / -1; }
   .ts-dash__lists { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-24); }

@@ -1,9 +1,14 @@
 /* Text tab (M5 R1): the ebooks of a book, their chapters with first lines, the add form and the
    copy-protection card. Tokens only; the card reuses .ts-pair. */
-.ts-ebook { display: flex; flex-direction: column; gap: var(--space-16); max-width: 46rem; }
+.ts-ebook { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-ebook__lead, .ts-ebook__add { max-width: 46rem; } /* running text and the add form keep a readable width */
 .ts-ebook__title, .ts-ebook__lead { margin: 0; }
 .ts-ebook__lead, .ts-ebook__muted { color: var(--ink-muted); }
 .ts-ebook__body, .ts-ebook__files { display: flex; flex-direction: column; gap: var(--space-16); }
+@media (width >= 1280px) {
+  /* Editions and pairing cards sit side by side; a lone one keeps one column's width. */
+  .ts-ebook__files { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr)); gap: var(--space-16); align-items: start; }
+}
 .ts-ebook__file { display: flex; flex-direction: column; gap: var(--space-8); }
 .ts-ebook__edition, .ts-ebook__problem, .ts-ebook__reading { padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
 .ts-ebook__name, .ts-ebook__meta, .ts-ebook__note, .ts-ebook__reading p { margin: 0; overflow-wrap: anywhere; }
