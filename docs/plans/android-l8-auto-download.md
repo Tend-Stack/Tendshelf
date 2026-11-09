@@ -154,7 +154,7 @@ HTTP: `GET /api/v1/queue/next?ended=<id>` gives 200 `{"book":BookCard,"source":"
 - E4 Near the end on metered: no peek; `autoWant` set; unmetered, then open the app: B starts.
 - E5 Press Download on a waiting automatic book on metered: it runs. Press on another book during an automatic download: that book finishes first.
 - E6 Switch off during a download: row and partial bytes gone, a finished automatic book stays. Quota: a server book over the room gives the Downloads note and no bytes. A book with downloads refused for this person: no row, no toast.
-- E7 Sign out: every book, mark and `autoWant` gone. `POST /queue/next` at the end of A still pops once, B plays from the phone with the network off.
+- E7 Sign out: every book, mark and `autoWant` gone. `POST /queue/next` at the end of A still pops once, B plays from the phone with the network off. Later (decision 0035, "Playing the next book with no connection"): with no network at all at the end of A, B still starts from the phone (the remembered `autoNext` pair), and `DELETE /queue/{B}` follows when a connection returns.
 
 ## 6. Out of scope
 - Removing finished books (D5; separately approved package).

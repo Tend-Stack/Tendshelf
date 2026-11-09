@@ -28,6 +28,14 @@ sets. A6-A10 measured `procState=FGS,cap=---NFU-T` while playing and a denial wi
 Android 17 is unread. A refusal throws `IllegalStateException` (`ForegroundServiceStartNotAllowedException`), caught in `Offline.releaseHeld`, which starts
 the service before it clears any hold, so a refusal changes nothing. Emulator check E2 in `docs/manual-checks.md` proves it.
 
+## Playing the next book with no connection (2026-11-08)
+At the end of a book the app asks the server what is next, once. With no network, or a lost answer, nothing used to play. Now:
+- **Remember the pair.** `Offline.autoFetch` stores `autoNext` = `"{ended}\n{next}"` in the `offline` preferences right after a successful peek, before the check for a book the person already has. A peek answering "none" clears it; so do turning the switch off and sign-out's wipe.
+- **Fall back to it.** `NextBook.ended` still writes `finished` first and still never repeats the ask. When the ask could not produce an answer (`finished` not sent, no connection, or no reply) and no sleep timer ended the book, it calls `offlineNext(ended)`: the remembered book, only if it was remembered for this `ended` and is whole on the phone (`Offline.playable`: ready, with its audio). It is used once. A server answer of "none" never uses it (the queue may have changed), and a sleep timer still starts nothing.
+- **Tidy the queue.** The server's queue still holds that book, so it is recorded as `autoDrop` and sent `DELETE /api/v1/queue/{book}` from `Offline.autoSync` (so also `onForeground`) once `ServerGate` passes. 2xx and 404 are done, anything else is tried again; it is idempotent, which is why it is safe where a repeated pop is not.
+- **Starting offline** needs nothing new: `BookEngine.startDownloaded` plays from the stored answer, settings, cover and saved place with no request, and progress goes through `ProgressWriter`'s outbox, which also keeps the unsent `finished` and flushes both when a network returns.
+Pure parts (`encodeAutoNext`, `parseAutoNext`, `offlineNextFor`, `queueDeleteDone`) are in `android/shared` with table tests.
+
 ## Limits
 Nothing starts with the app closed and nothing playing. A failed automatic row is not retried. `sizeBytes` is the manifest size, not a browser-friendly
 rendition's. A phone filled by other apps while a book downloads is caught by the 30 s room check, not reserved.

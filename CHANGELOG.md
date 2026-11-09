@@ -9,7 +9,8 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 - **The next book is ready when you need it (Android app).** Turn on "Download the next book on its own" in Settings, under Playback. When the book you
   are listening to has two hours left or less and you are on Wi-Fi, the next one in Up next (or the next in its series) downloads, so it is on the phone
   when this one ends. It never uses mobile data, keeps at most 5 GB this way, leaves 2 GB free, and never removes a book you have finished. It starts while a book
-  is playing or the app is open, and a started download finishes with the screen off. It is off until you turn it on.
+  is playing or the app is open, and a started download finishes with the screen off. It is off until you turn it on. When a book ends and the phone
+  cannot reach the server, the next book plays from the phone, and it plays even with no connection.
 
 - **A widget for your home screen (Android).** Add the Tendshelf widget to see your book's cover, its title and the chapter, with Play or
   Pause, Back and Forward. Tap the cover or the words to open the book. With nothing playing it shows the last book and Play carries on from
