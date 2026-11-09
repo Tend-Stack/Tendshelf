@@ -126,6 +126,7 @@ type ReaderContentsItem struct {
 type ReaderView struct {
 	Title, BookID, EditionID    string
 	CloseHref, CloseLabel       string
+	ShowBarLabel                string // the small handle that brings a hidden bar back
 	Root                        ReaderRoot
 	Speaker                     *components.PlayButtonView // the audiobook; nil without ListenBook or audio
 	MarksLabel, MarksHref       string                     // the Highlights and notes sheet
@@ -187,6 +188,9 @@ type ReaderMarksBar struct {
 // Reader is the page: the top bar, the text, the footer and the selection toolbar.
 templ Reader(v ReaderView) {
 	<div class="ts-readerpage">
+		<button type="button" class="ts-iconbtn ts-readerpage__showbar" data-show-bar aria-label={ v.ShowBarLabel }>
+			@components.Icon("chevron-down", false)
+		</button>
 		<header class="ts-readerbar">
 			<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } aria-label={ v.CloseLabel }>
 				@components.Icon("close", false)

@@ -402,18 +402,42 @@ export function mount(root) {
 
   // A tap clears a selection before its click, so the selection is noted when the press starts.
   let selected = false;
-  on(root, "pointerdown", () => (selected = !getSelection().isCollapsed));
+  let pointerKind = "touch";
+  on(root, "pointerdown", (event) => {
+    selected = !getSelection().isCollapsed;
+    pointerKind = event.pointerType;
+  });
   function tap(event) {
     if (event.target.closest("a, button, input, textarea, select, .ts-hl") || selected) return;
     const rect = root.getBoundingClientRect();
     const across = (event.clientX - rect.left) / rect.width;
     if (across >= 0.25 && across <= 0.75) {
-      shell.dataset.chrome = shell.dataset.chrome === "off" ? "on" : "off";
+      // A mouse click in the text never hides the bar (the way back is the bar's handle, or the mouse at the top);
+      // a finger or pen in the middle still toggles it.
+      if (pointerKind !== "mouse") shell.dataset.chrome = shell.dataset.chrome === "off" ? "on" : "off";
     } else if (flow === "pages") {
       const swapped = root.classList.contains("ts-reader--tapswap");
       turn(across > 0.5 !== swapped ? 1 : -1);
     }
   }
+
+  // The handle shown while the bar is hidden brings it back.
+  on(shell, "click", (event) => {
+    if (!event.target.closest("[data-show-bar]")) return;
+    shell.dataset.chrome = "on";
+    shell.querySelector(".ts-readerbar a")?.focus({ preventScroll: true });
+  });
+
+  // In the scroll flow a hidden bar takes no room (pages-reader.css), so the text's box moves up or down by the bar's
+  // height. The scroll position follows by the same amount, so the words stay where they are and nothing is recorded
+  // as a move. The pages flow keeps the room, since its columns are laid out for it.
+  let rootTop = root.getBoundingClientRect().top;
+  new MutationObserver(() => {
+    const top = root.getBoundingClientRect().top;
+    if (flow === "scroll" && top !== rootTop) root.scrollTop += top - rootTop;
+    rootTop = top;
+  }).observe(shell, { attributes: true, attributeFilter: ["data-chrome"] });
+  on(window, "resize", () => (rootTop = root.getBoundingClientRect().top));
 
   // A click is a tap or a mouse press; the browser keeps swipes and drags out of it. Swipes are in reader-pages.js.
   on(root, "click", tap);

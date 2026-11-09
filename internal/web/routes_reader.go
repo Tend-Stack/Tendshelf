@@ -237,7 +237,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	id := rc.book.ID
 	v := pages.ReaderView{
 		Title: rc.book.Title, BookID: id, EditionID: rc.ed.ID,
-		CloseHref: "/books/" + id, CloseLabel: readerClose,
+		CloseHref: "/books/" + id, CloseLabel: readerClose, ShowBarLabel: readerShowBar,
 		Chapter: chap.view, MarksModule: s.assetOr("js/reader-marks.js"), ReaderModule: s.assetOr("js/reader.js"), PagesModule: s.assetOr("js/reader-pages.js"),
 		SkimModule: s.assetOr("js/reader-skim.js"), Offline: &pages.ReaderOfflineView{Module: s.assetOr("js/reader-offline.js")},
 		Aloud: s.readerAloud(),

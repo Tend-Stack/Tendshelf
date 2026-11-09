@@ -98,6 +98,13 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 /* Hidden chrome: the page keeps its size, so nothing re-lays. Focus brings the bar and dock back for a keyboard. */
 .ts-readerpage[data-chrome="off"] > :is(.ts-readerbar, .ts-readdock):not(:focus-within) { opacity: 0; pointer-events: none; }
 
+/* In the scroll flow a hidden bar takes no room; reader.js keeps the words where they are. The pages flow keeps its room (its columns are laid out for it). */
+.ts-readerpage[data-chrome="off"]:has(> .ts-reader--scroll) > .ts-readerbar { display: none; }
+/* The way back for a hidden bar: a small handle at the top centre, 44 by 44 px, shown only while the bar is hidden. */
+.ts-readerpage > .ts-readerpage__showbar { display: none; position: absolute; z-index: 2; top: env(safe-area-inset-top); left: 50%; translate: -50% 0; color: var(--ink-muted); opacity: 0.85; background: color-mix(in srgb, var(--ground) 80%, transparent); border-radius: var(--radius-control); }
+.ts-readerpage[data-chrome="off"] > .ts-readerpage__showbar { display: inline-flex; }
+.ts-readerpage > .ts-readerpage__showbar:is(:hover, :focus-visible) { opacity: 1; }
+
 /* The dock keeps to the text column; its ruler fills with the book. */
 .ts-readerpage .ts-readdock { flex: none; padding-bottom: calc(var(--space-16) + env(safe-area-inset-bottom)); }
 .ts-readdock > * { width: 100%; max-width: var(--ts-text-w, 38rem); margin-inline: auto; box-sizing: border-box; }

@@ -137,7 +137,13 @@ func TestComfortBrowserHide(t *testing.T) {
 			tab.Eval(`document.activeElement.blur()`, nil)
 			tab.WaitFor(chrome+` === "off"`, 8*time.Second)
 
-			// Focus brings it back (the rule in pages-reader.css).
+			// Focus brings it back in the pages flow (the rule in pages-reader.css). The scroll flow takes the room back
+			// instead, so there the bar is out of the layout and only a key, the mouse or the handle bring it back.
+			var collapsed bool
+			tab.Eval(`getComputedStyle(document.querySelector(".ts-readerbar")).display === "none"`, &collapsed)
+			if collapsed {
+				return
+			}
 			var opacity string
 			tab.Eval(`getComputedStyle(document.querySelector(".ts-readerbar")).opacity`, &opacity)
 			if opacity != "0" {
