@@ -39,8 +39,9 @@ func TestShareBrowser(t *testing.T) {
 
 			tab := owner.NewTab(w, 900, w < 768, false)
 			tab.Navigate(ownerSrv.URL + "/books/" + book.ID)
-			wait(tab, `document.querySelector("a.ts-book__share") !== null`)
-			playerClickSel(t, tab, `a.ts-book__share`)
+			wait(tab, `document.querySelector('.ts-moremenu a[href$="/share"]') !== null`)
+			playerClickSel(t, tab, `.ts-moremenu > summary`)
+			playerClickSel(t, tab, `.ts-moremenu a[href$="/share"]`)
 			wait(tab, `location.pathname.endsWith("/share") && document.querySelector("#who") !== null`)
 
 			// Every control is a reachable, big-enough, labelled target.

@@ -86,7 +86,7 @@ func keepsPlayingTab(t *testing.T, b *cdp.Browser, a *testApp, bookB string, w, 
 	  a.style.cssText = "position:fixed;left:8px;top:80px;width:120px;height:60px;z-index:50;background:white;color:black";
 	  document.getElementById("main").append(a); htmx.process(a); })()`, nil)
 	playerClickSel(t, tab, "#go-b")
-	tab.WaitFor(`location.pathname.endsWith("/details") && document.querySelector(".ts-book__write, .ts-book__cover-change") !== null`, 8*time.Second)
+	tab.WaitFor(`location.pathname.endsWith("/details") && document.querySelector(".ts-book__write, .ts-dpanel__cover") !== null`, 8*time.Second)
 	check("details tab")
 	return tab, check
 }
@@ -135,7 +135,7 @@ func TestCoverKeepsPlayingBrowser(t *testing.T) {
 			l := newCoverLab(t)
 			l.start(t)
 			tab, check := keepsPlayingTab(t, b, l.a, l.book.ID, vp.w, vp.h)
-			playerClickSel(t, tab, ".ts-book__cover-change")
+			playerClickSel(t, tab, ".ts-dpanel__cover")
 			tab.WaitFor(`document.querySelector("#sheet form.ts-cover-pick__upload") !== null`, 5*time.Second)
 			check("cover sheet open")
 			png := base64.StdEncoding.EncodeToString(coverPNG(t))

@@ -1,0 +1,48 @@
+package components
+
+// MoreMenuItem is one link in the "More options" menu. Sheet marks a link that opens a sheet over the
+// page (the address also works as a page, so it still opens without a script).
+type MoreMenuItem struct {
+	Label, Href string
+	Sheet       bool
+}
+
+// MoreMenuView is the menu behind the three-dot button. Items hold only what the person may use; no
+// items draws no button.
+type MoreMenuView struct {
+	Items []MoreMenuItem
+	// Centered opens the panel under the middle of the button, for a button alone on a centred line.
+	Centered bool
+}
+
+// MoreMenu is the square three-dot button and its panel. It is the library's chip menu (a <details>, so it
+// opens without a script; shell.js closes it on Escape and on a click elsewhere), drawn as an icon button.
+templ MoreMenu(v MoreMenuView) {
+	if len(v.Items) > 0 {
+		<details class={ "ts-chipmenu ts-moremenu", templ.KV("ts-moremenu--center", v.Centered) } data-ts-chipmenu>
+			<summary class="ts-btn ts-btn--secondary ts-btn--lg ts-moremenu__btn" aria-label="More options">
+				@Icon("more", false)
+			</summary>
+			<div class="ts-chipmenu__body ts-moremenu__body">
+				<div class="ts-chipmenu__group" role="group" aria-label="More options">
+					for _, it := range v.Items {
+						if it.Sheet {
+							<a
+								class="ts-chipmenu__item"
+								href={ templ.SafeURL(it.Href) }
+								hx-get={ it.Href }
+								hx-target="#sheet"
+								hx-select="#sheet > *"
+								hx-swap="innerHTML"
+								hx-push-url="false"
+								aria-haspopup="dialog"
+							>{ it.Label }</a>
+						} else {
+							<a class="ts-chipmenu__item" href={ templ.SafeURL(it.Href) }>{ it.Label }</a>
+						}
+					}
+				</div>
+			</div>
+		</details>
+	}
+}

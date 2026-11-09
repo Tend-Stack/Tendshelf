@@ -29,7 +29,7 @@ func TestCoverPickBrowser(t *testing.T) {
 			tab.Navigate(base + "/books/" + l.book.ID + "/details?theme=dark")
 			tab.WaitFor(`window.htmx !== undefined`, 5*time.Second)
 
-			tab.Eval(`document.querySelector(".ts-book__cover-change").click()`, nil)
+			tab.Eval(`document.querySelector(".ts-dpanel__cover").click()`, nil)
 			tab.WaitFor(`document.querySelector("#sheet form.ts-cover-pick__upload") !== null`, 5*time.Second)
 			// Put the synthetic picture in the file input the way a person's choice would.
 			png := base64.StdEncoding.EncodeToString(coverPNG(t))

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
@@ -13,6 +14,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 	"github.com/a-h/templ"
 )
@@ -114,7 +116,7 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 		return
 	}
 	if canPlay {
-		if v.Play, err = s.bookPlayView(r, book, files, prog, d.Chapters); err != nil {
+		if v.Play, err = s.bookPlayView(r, book, files, prog, d.Chapters, v.ChipSeriesHref); err != nil {
 			s.serverError(w, r, "book play", err)
 			return
 		}
@@ -133,12 +135,17 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 	if p, ok := rails.prog[d.Book.ID]; ok {
 		overlineP = &p
 	}
-	v.Overline = bookOverline(d, bookSeriesPlace(bookFirstSequence(d), rails.seqs), overlineP, time.Now())
+	place := bookSeriesPlace(bookFirstSequence(d), rails.seqs)
+	v.Overline = bookOverline(d, place, overlineP, time.Now())
+	if len(d.Series) > 0 {
+		v.OverlineSeries, v.OverlinePlace = d.Series[0].Name, place
+		v.OverlineTail = strings.TrimSpace(strings.TrimPrefix(v.Overline, joinNonEmpty(bookBylineSep, d.Series[0].Name, place)))
+	}
 	shelves := s.canShelve(r)
 	var sheet templ.Component
 	styles := pages.BookStyles
-	if s.canManageServerUsers(r) {
-		v.ShareHref = "/books/" + id + "/share"
+	if v.Play == nil {
+		v.More = s.bookMoreMenu(r, book, v.ChipSeriesHref, false)
 	}
 	if shelves {
 		v.ShelfHref, v.ShelfLabel = shelfSheetHref(id), shelfAddLabel
@@ -481,7 +488,7 @@ func (s *server) getSeries(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if fb, err := s.lib.SeriesFeedBooks(ctx, s.feedScope(currentUser(r)), sp.ID, 1); err == nil && len(fb) > 0 {
-		v.FeedHref = "/series/" + sp.ID + "/feed"
+		v.More = components.MoreMenuView{Centered: true, Items: []components.MoreMenuItem{{Label: moreFeed, Href: "/series/" + sp.ID + "/feed"}}}
 	}
 	if items, err := s.lib.SeriesDownloadItems(ctx, s.feedScope(currentUser(r)), sp.ID); err == nil {
 		v.DownloadAll = downloadAllView("/series/"+sp.ID+"/download-list", len(items))

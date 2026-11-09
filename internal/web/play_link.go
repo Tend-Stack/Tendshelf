@@ -124,7 +124,7 @@ func (s *server) bookPlayData(r *http.Request, book library.Book) (files []libra
 // bookPlayView is the #book-play region for a book: the play button (when a file can play), the
 // progress ruler and where-lines of a book that is under way, the shelf link and the mark control.
 // chs are the book's chapters (for the ruler's ticks and the chapter words).
-func (s *server) bookPlayView(r *http.Request, book library.Book, files []library.AudioFile, p *progress.Progress, chs []library.Chapter) (*pages.BookPlayView, error) {
+func (s *server) bookPlayView(r *http.Request, book library.Book, files []library.AudioFile, p *progress.Progress, chs []library.Chapter, seriesHref string) (*pages.BookPlayView, error) {
 	v := &pages.BookPlayView{
 		Action: "/hx/books/" + book.ID + "/finished", Refresh: "/hx/books/" + book.ID + "/play",
 		Next: "/books/" + book.ID, CSRF: s.csrf.TokenFrom(r.Context()),
@@ -135,7 +135,11 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	}
 	ctx, u := r.Context(), currentUser(r)
 	if book.Kind == library.BookText {
-		return s.textPlayView(r, book, v)
+		v, err := s.textPlayView(r, book, v)
+		if err == nil {
+			v.More = s.bookMoreMenu(r, book, seriesHref, false)
+		}
+		return v, err
 	}
 	rp, err := s.readingOf(ctx, u.ID, book.ID)
 	if err != nil {
@@ -181,13 +185,9 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	if s.canShelve(r) {
 		v.ShelfHref, v.ShelfLabel = shelfSheetHref(book.ID), shelfAddLabel
 	}
-	if s.canManageServerUsers(r) {
-		v.ShareHref = "/books/" + book.ID + "/share"
-	}
 	v.Download = s.bookDownloadView(r, book, v.Button != nil || mayRead)
-	if v.Download != nil && v.Button != nil {
-		v.FeedHref = "/books/" + book.ID + "/feed" // a podcast feed needs the download right and audio
-	}
+	// A podcast feed needs the download right and audio.
+	v.More = s.bookMoreMenu(r, book, seriesHref, v.Download != nil && v.Button != nil)
 	return v, nil
 }
 
@@ -217,9 +217,6 @@ func (s *server) textPlayView(r *http.Request, book library.Book, v *pages.BookP
 	}
 	if s.canShelve(r) {
 		v.ShelfHref, v.ShelfLabel = shelfSheetHref(book.ID), shelfAddLabel
-	}
-	if s.canManageServerUsers(r) {
-		v.ShareHref = "/books/" + book.ID + "/share"
 	}
 	// A text book keeps its text offline: the same Download, with the same right to download.
 	v.Download = s.bookDownloadView(r, book, mayRead)
@@ -252,7 +249,7 @@ func (s *server) getBookPlay(w http.ResponseWriter, r *http.Request) {
 	if can {
 		chs, err := s.lib.Chapters(r.Context(), b.ID)
 		if err == nil {
-			v, err = s.bookPlayView(r, b, files, p, chs)
+			v, err = s.bookPlayView(r, b, files, p, chs, s.bookSeriesHref(r, b.ID))
 		}
 		if err != nil {
 			s.serverError(w, r, "book play", err)
