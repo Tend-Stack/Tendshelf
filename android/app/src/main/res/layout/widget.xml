@@ -24,19 +24,21 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
+        <!-- Square, as tall as the widget: the bitmap is square, so adjustViewBounds gives it the width. -->
         <ImageView
             android:id="@+id/widget_cover"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
             android:layout_marginEnd="12dp"
+            android:adjustViewBounds="true"
             android:background="@drawable/widget_cover_placeholder"
             android:contentDescription="@null"
-            android:scaleType="centerCrop" />
+            android:scaleType="fitCenter" />
 
         <LinearLayout
             android:id="@+id/widget_text"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical">
 
@@ -45,7 +47,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:maxLines="2"
+                android:maxLines="1"
+                android:singleLine="true"
                 android:text="@string/widget_preview_title"
                 android:textColor="@color/widget_ink"
                 android:textSize="15sp"
@@ -61,37 +64,58 @@
                 android:textColor="@color/widget_muted"
                 android:textSize="13sp" />
 
+            <!-- The rest of the height: three equal cells, so Play is in the middle at any width. -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="1"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <ImageButton
-                    android:id="@+id/widget_back"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="@drawable/widget_button_plain"
-                    android:contentDescription="@string/widget_back_preview"
-                    android:src="@drawable/ic_widget_back" />
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1">
 
-                <ImageButton
-                    android:id="@+id/widget_play"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="6dp"
-                    android:layout_marginEnd="6dp"
-                    android:background="@drawable/widget_button_accent"
-                    android:contentDescription="@string/widget_play"
-                    android:src="@drawable/ic_widget_play" />
+                    <ImageButton
+                        android:id="@+id/widget_back"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/widget_button_plain"
+                        android:contentDescription="@string/widget_back_preview"
+                        android:src="@drawable/ic_widget_back" />
+                </FrameLayout>
 
-                <ImageButton
-                    android:id="@+id/widget_forward"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="@drawable/widget_button_plain"
-                    android:contentDescription="@string/widget_forward_preview"
-                    android:src="@drawable/ic_widget_forward" />
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1">
+
+                    <ImageButton
+                        android:id="@+id/widget_play"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/widget_button_accent"
+                        android:contentDescription="@string/widget_play"
+                        android:src="@drawable/ic_widget_play" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1">
+
+                    <ImageButton
+                        android:id="@+id/widget_forward"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/widget_button_plain"
+                        android:contentDescription="@string/widget_forward_preview"
+                        android:src="@drawable/ic_widget_forward" />
+                </FrameLayout>
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
