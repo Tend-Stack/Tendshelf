@@ -206,7 +206,12 @@ document.addEventListener("toggle", (event) => {
   for (const other of openChipMenus()) if (other !== menu) other.open = false;
 }, true);
 document.addEventListener("click", (event) => {
-  for (const menu of openChipMenus()) if (!menu.contains(event.target)) menu.open = false;
+  // A menu item that opens a sheet closes its menu, so the menu is not left open behind the sheet.
+  const opensSheet = event.target instanceof Element && event.target.closest(".ts-chipmenu__item[aria-haspopup]");
+  for (const menu of openChipMenus()) {
+    const outside = !menu.contains(event.target);
+    if (outside || (opensSheet && menu.contains(opensSheet))) menu.open = false;
+  }
 });
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;

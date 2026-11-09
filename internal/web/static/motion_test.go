@@ -108,7 +108,7 @@ func TestCSSBudget(t *testing.T) {
 		// M3c B3: the phone action bar wraps at large text.
 		"css/pages-desktop.css": {3*1024 + 128, 24 * 1024}, // the root scrollbar below the title bar (decision 0023): 3,134 B measured, reported, not squeezed
 		"css/pages-home.css":    {3*1024 + 128, 24 * 1024}, // the spine title rule: 3,153 B measured, reported, not squeezed (operator pre-approval of reasonable raises)
-		"css/pages-book.css":    {4 * 1024, 24 * 1024},     // full-width page, about 3805 B gzip, reported (operator, 2026-11-08); earlier: download progress bar: 3,452 B measured, reported, not squeezed; M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
+		"css/pages-book.css":    {5 * 1024, 24 * 1024},     // More options menu, one-line series line, even action bar: 4,508 B gzip measured, reported (budget was 4 KiB), not squeezed; full-width page, about 3805 B gzip, reported (operator, 2026-11-08); earlier: download progress bar: 3,452 B measured, reported, not squeezed; M3c B1 focus ring on the home tab, B3 wrapping tabs and action bar; operator approved 2026-11-04
 		"css/motion.css":        {2 * 1024, 24 * 1024},
 		// The player's own file, loaded on every page that has the shell; P1c-5 adds the full player.
 		"css/player.css": {4*1024 + 192, 24 * 1024}, // chapter bar (2026-11-06): the ruler's taller target, 4,265 B measured; L1: the speed sheet note, 4,156 B measured (operator pre-approval of raises, 2026-11-05)

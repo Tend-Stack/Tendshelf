@@ -81,8 +81,8 @@ func TestBookRails(t *testing.T) {
 		}
 	}
 	main := bookMain(browseGet(a, "/books/"+one.ID, false, nil).Body.String())
-	if !strings.Contains(main, "The Saga · Book 1") {
-		t.Error(`series chip "The Saga · Book 1" missing`)
+	if !strings.Contains(main, `ts-book__ovname">The Saga</span>`) || !strings.Contains(main, `ts-book__ovkeep">· Book 1`) {
+		t.Error(`series line "The Saga" and "· Book 1" missing`)
 	}
 	// Book 2 is not started and is the book right after this one; Start series would point at this
 	// book itself, so it is left out.
@@ -121,7 +121,7 @@ func TestBookRailStates(t *testing.T) {
 	if !strings.Contains(main, `class="ts-btn ts-btn--quiet ts-book__start" href="/books/`+b[1].ID+`">Start series<`) {
 		t.Error("Start series does not point at the first unfinished book")
 	}
-	if !strings.Contains(main, "The Tales · Book 4 of 5") {
+	if !strings.Contains(main, `<span class="ts-book__ovkeep">· Book 4 of 5</span>`) {
 		t.Error("overline lacks the place in the series")
 	}
 	// Nothing finished: Start series points at Book 1 from any other book.
@@ -141,8 +141,16 @@ func TestBookRailStates(t *testing.T) {
 		t.Fatal(err)
 	}
 	main = bookMain(browseGet(a, "/books/"+b[0].ID, false, nil).Body.String())
-	if !regexp.MustCompile(`ts-book__overline">The Tales · Book 1 of 5 · finished in [A-Z][a-z]+( \d{4})?<`).MatchString(main) {
-		t.Errorf("overline of a finished book: %s", regexp.MustCompile(`ts-book__overline">[^<]*`).FindString(main))
+	ov := regexp.MustCompile(`(?s)ts-book__overline">(.*?)</p>`).FindStringSubmatch(main)
+	text := ""
+	if ov != nil {
+		text = strings.Join(strings.Fields(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(ov[1], " ")), " ")
+	}
+	if !regexp.MustCompile(`^The Tales · Book 1 of 5 · finished in [A-Z][a-z]+( \d{4})?$`).MatchString(text) {
+		t.Errorf("overline of a finished book: %q", text)
+	}
+	if !strings.Contains(main, `class="ts-book__ovseries" href="/series/`) || !strings.Contains(main, `<span class="ts-book__ovkeep">· Book 1 of 5</span>`) {
+		t.Error("the series line is not a link with the place kept whole")
 	}
 }
 

@@ -6,6 +6,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### What you can do
 
+- **A "More options" button on the book page.** The three dots beside Add to shelf and Mark as finished hold the rarer things: Go to series,
+  Share, Podcast feed, Change cover and Edit details, each only if you may use it. The series page keeps its Podcast feed there too. On a phone the
+  series now sits above the title as one line (the name is cut with "…" when long, "Book 5 of 5" always stays), and the length and year share one row.
+
 - **The next book is ready when you need it (Android app).** Turn on "Download the next book on its own" in Settings, under Playback. When the book you
   are listening to has two hours left or less and you are on Wi-Fi, the next one in Up next (or the next in its series) downloads, so it is on the phone
   when this one ends. It never uses mobile data, keeps at most 5 GB this way, leaves 2 GB free, and never removes a book you have finished. It starts while a book

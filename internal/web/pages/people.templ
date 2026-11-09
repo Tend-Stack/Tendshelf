@@ -108,8 +108,8 @@ type SeriesView struct {
 	Total, OrderTitle           string
 	BackHref, BackLabel         string
 	Rows                        []components.CardView
-	// FeedHref opens the Podcast feed page; empty when the person may not download any book of the series.
-	FeedHref string
+	// More is the three-dot menu; its one item is the Podcast feed, drawn only when the person may download a book of the series.
+	More components.MoreMenuView
 	// DownloadAll is the Download all control; nil when the person may download no audio book of the series.
 	DownloadAll *DownloadAllView
 }
@@ -136,9 +136,7 @@ templ Series(v SeriesView) {
 			if v.Total != "" {
 				<p class="caption ts-num ts-person__count">{ v.Total }</p>
 			}
-			if v.FeedHref != "" {
-				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.FeedHref) }>Podcast feed</a>
-			}
+			@components.MoreMenu(v.More)
 			if v.DownloadAll != nil {
 				@DownloadAll(*v.DownloadAll)
 			}

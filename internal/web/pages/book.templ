@@ -51,13 +51,12 @@ type BookPlayView struct {
 	Where, WhereShort string
 	// ShelfHref and ShelfLabel open the "Add to shelf" sheet; empty for people who may not shelve.
 	ShelfHref, ShelfLabel string
-	// ShareHref opens the book's Share & invite page; empty unless the person manages users.
-	ShareHref string
+	// More is the three-dot menu beside the actions (series, Share, Podcast feed, Change cover, Edit details);
+	// it lives here, not on BookView, because this region is re-read on its own.
+	More components.MoreMenuView
 	// Download is the offline Download control; nil unless the person may download the book and it
 	// has a playable file (M3a). Both of its nodes start hidden: js/downloads.js shows one.
 	Download *BookDownloadView
-	// FeedHref opens the Podcast feed page; empty without the download right or an audio file.
-	FeedHref string
 }
 
 // BookDownloadView is the Download pair on the book page: the button that starts a download and the
@@ -84,6 +83,9 @@ type BookView struct {
 	// and the publisher; each is empty when unknown. Caption is "Harrow & Finch · Abridged · 19
 	// chapters" (the tablet's line).
 	Overline                                                     string
+	// OverlineSeries, OverlinePlace ("Book 2 of 3") and OverlineTail ("· finished in March") are the pieces of
+	// Overline when the book has a series: the series name is cut with an ellipsis, the other two never are.
+	OverlineSeries, OverlinePlace, OverlineTail string
 	ChipSeries, ChipSeriesHref                                   string
 	ChipEbook, ChipDuration, ChipChapters, ChipYear, ChipPublisher, Caption string
 	// BandTint is the cover's tint for the band behind the header and BandClass its strength per
@@ -121,8 +123,8 @@ type BookView struct {
 	// ShelfHref opens the "Add to shelf" sheet (the book page with ?sheet=shelves); empty for people
 	// who may not use shelves. It is not a play control: the book's one play button stays alone.
 	ShelfHref, ShelfLabel string
-	// ShareHref opens the book's Share & invite page; empty unless the person manages users.
-	ShareHref string
+	// More is the menu of a page with no play region (see BookPlayView.More).
+	More components.MoreMenuView
 	// CoverHref opens the "Change cover" sheet; empty for people who may not edit the book.
 	CoverHref, CoverLabel string
 	// RemoveHref opens the confirmation of "Remove this book"; empty unless Tendshelf added every
@@ -212,9 +214,6 @@ templ BookPlay(v *BookPlayView) {
 				if v.ShelfHref != "" {
 					@bookShelfLink(v.ShelfHref, v.ShelfLabel)
 				}
-				if v.ShareHref != "" {
-					@bookShareLink(v.ShareHref)
-				}
 				if v.Download != nil {
 					@bookDownload(*v.Download)
 				}
@@ -229,10 +228,8 @@ templ BookPlay(v *BookPlayView) {
 						</button>
 					</form>
 				}
+				@components.MoreMenu(v.More)
 			</div>
-			if v.FeedHref != "" {
-				<a class="ts-btn ts-btn--quiet ts-book__feed" href={ templ.SafeURL(v.FeedHref) }>Podcast feed</a>
-			}
 		</div>
 	}
 }
@@ -272,14 +269,6 @@ templ bookDownload(v BookDownloadView) {
 	</a>
 }
 
-// bookShareLink opens the Share & invite page for this book. A plain link: the page is a full page.
-templ bookShareLink(href string) {
-	<a class="ts-btn ts-btn--secondary ts-btn--lg ts-book__share" href={ templ.SafeURL(href) }>
-		@components.Icon("share", false)
-		<span class="ts-book__label">Share</span>
-	</a>
-}
-
 templ bookShelfLink(href, label string) {
 	<a
 		class="ts-btn ts-btn--secondary ts-btn--lg ts-book__shelf"
@@ -313,22 +302,24 @@ templ Book(v BookView) {
 				<span class="ts-book-block">
 					@components.Cover(v.Cover, "fill")
 				</span>
-				if v.CoverHref != "" {
-					<a
-						class="ts-btn ts-btn--quiet ts-book__cover-change"
-						href={ templ.SafeURL(v.CoverHref) }
-						hx-get={ v.CoverHref }
-						hx-target="#sheet"
-						hx-select="#sheet > *"
-						hx-swap="innerHTML"
-						hx-push-url="false"
-						aria-haspopup="dialog"
-					>{ v.CoverLabel }</a>
-				}
 			</div>
 			<div class="ts-book__info">
 				if v.Overline != "" {
-					<p class="ts-overline ts-book__overline">{ v.Overline }</p>
+					<p class="ts-overline ts-book__overline">
+						if v.ChipSeriesHref != "" {
+							<a class="ts-book__ovseries" href={ templ.SafeURL(v.ChipSeriesHref) } title={ v.OverlineSeries + " " + v.OverlinePlace }>
+								<span class="ts-book__ovname">{ v.OverlineSeries }</span>
+								if v.OverlinePlace != "" {
+									<span class="ts-book__ovkeep">{ "· " + v.OverlinePlace }</span>
+								}
+							</a>
+							if v.OverlineTail != "" {
+								<span class="ts-book__ovkeep">{ v.OverlineTail }</span>
+							}
+						} else {
+							<span class="ts-book__ovname">{ v.Overline }</span>
+						}
+					</p>
 				}
 				<h1 class="title-1 ts-book__title">{ v.Title }</h1>
 				if v.Subtitle != "" {
@@ -344,9 +335,6 @@ templ Book(v BookView) {
 					</span>
 				</p>
 				<ul class="ts-chip-set ts-book__chips">
-					if v.ChipSeries != "" {
-						<li><a class="ts-chip ts-book__chip--series" href={ templ.SafeURL(v.ChipSeriesHref) }>{ v.ChipSeries }</a></li>
-					}
 					if v.ChipDuration != "" {
 						<li><span class="ts-chip ts-chip--static ts-num">{ v.ChipDuration }</span></li>
 					}
@@ -375,15 +363,13 @@ templ Book(v BookView) {
 			</div>
 			if v.Play != nil {
 				@BookPlay(v.Play)
-			} else if v.ShelfHref != "" || v.ShareHref != "" {
+			} else if v.ShelfHref != "" || len(v.More.Items) > 0 {
 				<div class="ts-book__play">
 					<div class="ts-book__acts">
 						if v.ShelfHref != "" {
 							@bookShelfLink(v.ShelfHref, v.ShelfLabel)
 						}
-						if v.ShareHref != "" {
-							@bookShareLink(v.ShareHref)
-						}
+						@components.MoreMenu(v.More)
 					</div>
 				</div>
 			}

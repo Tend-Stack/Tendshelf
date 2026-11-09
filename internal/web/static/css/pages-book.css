@@ -33,7 +33,19 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 .ts-book__info p, .ts-book__title, .ts-person__head > *, .ts-series__by { margin: 0; }
 .ts-book__title, .ts-person__name { overflow-wrap: anywhere; }
 .ts-book__sub, .ts-book__meta, .ts-person__count, .ts-book__narr { color: var(--ink-muted); }
-.ts-book__overline, .ts-book__sep { display: none; }
+.ts-book__sep { display: none; }
+/* The series line above the title: one row. The series name gives way with an ellipsis; the book's place ("Book 5 of 5")
+   and a "finished in" tail are never cut. The link's title and text keep the whole name. Phone and wide desktop show
+   it; the tablet layout shows neither it nor the chips. */
+.ts-book__overline { display: flex; align-items: baseline; gap: 0.35em; max-width: 100%; min-width: 0; white-space: nowrap; }
+.ts-book__ovseries { display: flex; align-items: baseline; gap: 0.35em; flex: 0 1 auto; min-width: 0; color: inherit; text-decoration: none; }
+.ts-book__ovseries:hover .ts-book__ovname { text-decoration: underline; }
+.ts-book__ovname { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-book__ovkeep { flex: none; }
+/* A phone keeps the chips on one line; a long one gives way with an ellipsis rather than leaving one alone on a row. */
+.ts-book__chips { flex-wrap: nowrap; max-width: 100%; }
+.ts-book__chips > li { min-width: 0; }
+.ts-book__chips .ts-chip--static { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-book__narr { display: block; }
 .ts-book__people { display: inline; }
 .ts-book__byline a, .ts-book__people a, .ts-book__detail a { display: inline-flex; align-items: center; justify-content: center;
@@ -55,7 +67,14 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 .ts-book__where, .ts-book__whereshort { text-align: center; margin: 0; }
 .ts-book__whereshort { display: none; color: var(--ink-muted); }
 .ts-book__acts { display: flex; }
-.ts-book__acts > [hidden] { display: none; } /* js/downloads.js shows one of the Download pair */
+.ts-book__acts > [hidden] { display: none; }
+
+/* More options: a square three-dot button (the library's chip menu) whose panel floats over the page. */
+.ts-moremenu { flex: 0 0 auto; }
+.ts-moremenu[open] { flex: 0 0 auto; }
+.ts-moremenu > .ts-moremenu__btn, .ts-moremenu[open] > .ts-moremenu__btn { width: 3.5rem; padding: 0; justify-content: center; }
+.ts-moremenu .ts-moremenu__body { position: absolute; top: 100%; left: 0; right: auto; z-index: 5; box-sizing: border-box; width: 15rem; max-width: calc(100vw - 2 * var(--space-16)); box-shadow: var(--shadow-float); }
+.ts-moremenu--center .ts-moremenu__body { left: 50%; transform: translateX(-50%); } /* js/downloads.js shows one of the Download pair */
 .ts-book__lede { display: none; }
 
 /* Tabs and panel */
@@ -96,14 +115,22 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 
 /* Phone: the actions are one bar, like the player's */
 @media (width < 768px) {
-  .ts-book__acts { border: 1px solid var(--line-strong); border-radius: var(--radius-md); overflow: hidden; }
+  .ts-book__acts { border: 1px solid var(--line-strong); border-radius: var(--radius-md); } /* no overflow: the More panel floats out of it */
+  .ts-book__acts > * { min-width: 0; border-radius: 0; }
+  .ts-book__acts > .ts-moremenu, .ts-book__acts > .ts-moremenu[open] { flex: 1; }
+  .ts-book__acts .ts-moremenu__body { left: auto; right: 0; }
   /* Larger text: the buttons go onto a second row instead of being cut off. */
   .ts-book__acts { flex-wrap: wrap; }
   .ts-book__acts > * { flex: 1; display: flex; }
   .ts-book__acts > * + * { border-left: 1px solid var(--line-strong); }
-  .ts-book__acts .ts-btn { flex: 1; flex-direction: column; gap: var(--space-4); min-height: 3.75rem; padding: 0 var(--space-8); border: 0; border-radius: 0;
+  .ts-book__acts .ts-btn { flex: 1; flex-direction: column; gap: var(--space-4); min-height: 3.75rem; padding: 0; border: 0; border-radius: 0; width: auto;
     background: transparent; color: var(--ink); font-size: 0.8125rem; line-height: 1.125rem; font-weight: 500; }
+  /* The cells share the bar evenly: padding sits on the label, not the cell, so a long label cannot widen its cell. */
+  .ts-book__acts .ts-book__label { padding-inline: var(--space-4); }
   .ts-book__acts .ts-btn:hover { background: var(--raised-hover); }
+  /* The bar's end cells round their outer corners (the bar no longer clips them). */
+  .ts-book__acts > :first-child, .ts-book__acts > :first-child > .ts-btn { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+  .ts-book__acts > :last-child, .ts-book__acts > :last-child > .ts-btn { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
 }
 
 @media (width >= 768px) {
@@ -116,17 +143,23 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   #book-play, .ts-book__play { float: left; clear: left; width: 16.25rem; margin-top: var(--space-16); }
   .ts-book__info, .ts-book__body { margin-left: calc(16.25rem + var(--space-32) + var(--space-8)); }
   .ts-book__info { align-items: flex-start; }
-  .ts-book__chips, .ts-book__caption, .ts-book__progress .ts-ruler, .ts-book__where { display: none; }
+  .ts-book__chips, .ts-book__overline, .ts-book__caption, .ts-book__progress .ts-ruler, .ts-book__where { display: none; }
   .ts-book__whereshort { display: block; }
   .ts-book__byline { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.3em; text-align: left; }
   .ts-book__narr { display: inline; }
   .ts-book__sep { display: inline; color: var(--ink-muted); }
   .ts-book__acts { justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--space-8) var(--space-12); }
   /* Tablet: icon-only secondary buttons, as tall as Read and Listen (the shared .ts-btn--secondary .ts-btn--lg look) */
-  .ts-book__shelf, .ts-book__share, .ts-book__download { width: 3.5rem; padding: 0; }
-  .ts-book__shelf .ts-book__label, .ts-book__share .ts-book__label, .ts-book__download .ts-book__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ts-book__shelf, .ts-book__download { width: 3.5rem; padding: 0; }
+  .ts-book__shelf .ts-book__label, .ts-book__download .ts-book__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .ts-book__tiles { justify-content: start; }
   .ts-book__acts form { display: flex; align-items: center; }
+}
+
+/* Tablet: the icon buttons (shelf, Download, More) share the first line and the wide "Mark as finished" takes the next,
+   instead of More standing alone on a third. */
+@media (width >= 768px) and (width < 1280px) {
+  .ts-book__acts > form { order: 1; }
 }
 
 @media (width >= 1280px) {
@@ -144,15 +177,15 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
     flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
   .ts-book__lede { display: flow-root; max-width: 46rem; margin-top: var(--space-24); font-size: 1.0625rem; line-height: 1.625rem; }
   .ts-book__lede p { margin: 0; }
-  .ts-book__overline { display: block; }
+  .ts-book__overline { display: flex; }
   .ts-book__title { font-size: 2.5rem; line-height: 2.75rem; }
   .ts-book__chip--wide { display: inline-flex; }
-  .ts-book__chip--series, .ts-book__caption, .ts-book__progress, .ts-book__whereshort { display: none; }
+  .ts-book__caption, .ts-book__progress, .ts-book__whereshort { display: none; }
   .ts-book__chips { display: flex; justify-content: flex-start; }
   .ts-book__acts { display: contents; }
   #book-play [data-ts-play], #book-play [data-ts-read] { width: auto; }
-  .ts-book__shelf, .ts-book__share, .ts-book__download { width: auto; padding: 0 var(--space-32); }
-  .ts-book__shelf .ts-book__label, .ts-book__share .ts-book__label, .ts-book__download .ts-book__label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  .ts-book__shelf, .ts-book__download { width: auto; padding: 0 var(--space-32); }
+  .ts-book__shelf .ts-book__label, .ts-book__download .ts-book__label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   #book-tab-about, .ts-book__aboutdesc { display: none; }
   .ts-book__aboutchapters { display: block; }
   .ts-tabs__item.is-home { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
