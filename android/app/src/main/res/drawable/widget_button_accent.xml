@@ -1,0 +1,10 @@
+<!-- The play button: the accent fill with the shared 12 px control corner (decision 0004). -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/widget_ripple">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/widget_accent" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+</ripple>

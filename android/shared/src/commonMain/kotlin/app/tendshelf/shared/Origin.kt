@@ -27,6 +27,9 @@ data class Origin(val scheme: String, val host: String, val port: Int?) {
     fun meUrl(): String = "$text/api/v1/me"
     fun homeUrl(): String = "$text/?shell=android&next=/"
 
+    /** A book's page (the widget's tap). [bookId] must pass [validId]; the caller checks. */
+    fun bookUrl(bookId: String): String = "$text/?shell=android&next=%2Fbooks%2F$bookId"
+
     /** The page that signs in and then asks for a code, as A1's flow says: next is the escaped /app/connect path. */
     fun connectUrl(challenge: String): String = "$text/?shell=android&next=%2Fapp%2Fconnect%3Fchallenge%3D$challenge"
 

@@ -67,6 +67,24 @@
             </intent-filter>
         </receiver>
 
+        <!-- The home-screen widget (L9). Only the system sends APPWIDGET_UPDATE, so nothing here is exported. -->
+        <receiver
+            android:name=".TendWidget"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tend_widget_info" />
+        </receiver>
+
+        <!-- The widget's buttons: reached only by the widget's own PendingIntents. -->
+        <receiver
+            android:name=".WidgetActions"
+            android:exported="false" />
+
         <service
             android:name=".PlaybackService"
             android:exported="true"

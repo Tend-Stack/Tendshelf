@@ -55,6 +55,7 @@ class SignOut(
         stopPlayback()
         if (downloads) Offline.wipe()
         store.clearToken()
+        TendWidget.signedOut(web.context) // the home screen keeps no title or cover of this person
         CookieManager.getInstance().removeAllCookies(null)
         CookieManager.getInstance().flush()
         WebStorage.getInstance().deleteAllData()
@@ -78,6 +79,7 @@ class SignOut(
             if (conn != null) api.revoke(oldOrigin, conn.token)
             web.post {
                 store.clearToken()
+                TendWidget.signedOut(web.context)
                 CookieManager.getInstance().removeAllCookies(null)
                 CookieManager.getInstance().flush()
                 WebStorage.getInstance().deleteAllData()
