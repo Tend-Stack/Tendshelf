@@ -22,10 +22,11 @@
       if (r.right <= farthest || r.width === 0) {
         continue;
       }
+      // Inside a scroller, or in a fixed layer (which never widens the page): not the cause.
       let scrolls = false;
       for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
         const style = getComputedStyle(node);
-        if (style.overflowX !== "visible") {
+        if (style.overflowX !== "visible" || style.position === "fixed") {
           scrolls = true;
           break;
         }

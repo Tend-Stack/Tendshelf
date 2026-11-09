@@ -41,11 +41,13 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 /* The line stays one small line tall; the link's touch target reaches 44 px into the space around it. */
 .ts-book__ovseries { display: flex; align-items: center; gap: 0.35em; flex: 0 1 auto; min-width: 0; min-height: var(--size-tap); margin-block: calc((var(--size-tap) - 1lh) / -2); color: inherit; text-decoration: none; }
 .ts-book__ovseries:hover .ts-book__ovname { text-decoration: underline; }
-.ts-book__ovname { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ts-book__ovkeep { flex: none; }
+.ts-book__ovname { flex: 0 1000 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The book's place gives way only once the name is gone (the name shrinks a thousand times faster), so at 200 % text
+   in a narrow column it is cut rather than pushing the page sideways. */
+.ts-book__ovkeep { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* A phone keeps the chips on one line; a long one gives way with an ellipsis rather than leaving one alone on a row. */
 .ts-book__chips { flex-wrap: nowrap; max-width: 100%; }
-.ts-book__chips > li { min-width: 0; }
+.ts-book__chips > li { display: flex; min-width: 0; }
 .ts-book__chips .ts-chip--static { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-book__narr { display: block; }
 .ts-book__people { display: inline; }
@@ -75,6 +77,11 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 .ts-moremenu[open] { flex: 0 0 auto; }
 .ts-moremenu > .ts-moremenu__btn, .ts-moremenu[open] > .ts-moremenu__btn { width: 3.5rem; padding: 0; justify-content: center; }
 .ts-moremenu .ts-moremenu__body { position: absolute; top: 100%; left: 0; right: auto; z-index: 5; box-sizing: border-box; width: 15rem; max-width: calc(100vw - 2 * var(--space-16)); box-shadow: var(--shadow-float); }
+/* Closed, the panel takes no room at all: some engines lay out a closed <details>' content, and a wide panel (200 % text)
+   then widened the page. */
+.ts-moremenu:not([open]) > .ts-moremenu__body { display: none; }
+/* From 1280 px the button can sit near the window's right edge: the panel opens toward the left there. */
+@media (width >= 1280px) { .ts-moremenu .ts-moremenu__body { left: auto; right: 0; } }
 .ts-moremenu--center .ts-moremenu__body { left: 50%; transform: translateX(-50%); } /* js/downloads.js shows one of the Download pair */
 .ts-book__lede { display: none; }
 
@@ -96,6 +103,10 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 .ts-book__rail { min-width: 0; }
 .ts-book__rail .section { margin: 0; }
 .ts-book__railhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); min-height: var(--size-tap); margin-bottom: var(--space-8); }
+.ts-book__railhead .section { min-width: 0; }
+.ts-book__railhead .section a { max-width: 100%; }
+.ts-book__railhead .section a, .ts-book__start { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-book__start { min-width: 0; }
 .ts-book__railhead .section a { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--ink); text-decoration: none; }
 .ts-book__start { margin-right: -0.75rem; flex-shrink: 0; }
 .ts-book__tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 7rem)); gap: var(--space-16); justify-content: space-between; }
@@ -118,14 +129,15 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 @media (width < 768px) {
   .ts-book__acts { border: 1px solid var(--line-strong); border-radius: var(--radius-md); } /* no overflow: the More panel floats out of it */
   .ts-book__acts > * { min-width: 0; border-radius: 0; }
-  .ts-book__acts > .ts-moremenu, .ts-book__acts > .ts-moremenu[open] { flex: 1; }
+  .ts-book__acts > .ts-moremenu, .ts-book__acts > .ts-moremenu[open] { flex: 1 1 4.5rem; }
   .ts-book__acts .ts-moremenu__body { left: auto; right: 0; }
   /* Larger text: the buttons go onto a second row instead of being cut off. */
   .ts-book__acts { flex-wrap: wrap; }
-  .ts-book__acts > * { flex: 1; display: flex; }
+  /* An equal basis in rem: four cells share one row at the usual size; at 200 % text they make two rows of two. */
+  .ts-book__acts > * { flex: 1 1 4.5rem; display: flex; }
   .ts-book__acts > * + * { border-left: 1px solid var(--line-strong); }
-  .ts-book__acts .ts-btn { flex: 1; flex-direction: column; gap: var(--space-4); min-height: 3.75rem; padding: 0; border: 0; border-radius: 0; width: auto;
-    background: transparent; color: var(--ink); font-size: 0.8125rem; line-height: 1.125rem; font-weight: 500; }
+  .ts-book__acts .ts-btn { flex: 1 1 4.5rem; flex-direction: column; gap: var(--space-4); min-height: 3.75rem; padding: 0; border: 0; border-radius: 0; width: auto;
+    background: transparent; color: var(--ink); font-size: 0.8125rem; line-height: 1.125rem; font-weight: 500; white-space: normal; }
   /* The cells share the bar evenly: padding sits on the label, not the cell, so a long label cannot widen its cell. */
   .ts-book__acts .ts-book__label { padding-inline: var(--space-4); }
   .ts-book__acts .ts-btn:hover { background: var(--raised-hover); }
@@ -182,7 +194,8 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   .ts-book__title { font-size: 2.5rem; line-height: 2.75rem; }
   .ts-book__chip--wide { display: inline-flex; }
   .ts-book__caption, .ts-book__progress, .ts-book__whereshort { display: none; }
-  .ts-book__chips { display: flex; justify-content: flex-start; }
+  /* A wide window has room: the chips wrap rather than be cut, which 200 % text needs (a phone keeps one row and cuts). */
+  .ts-book__chips { display: flex; justify-content: flex-start; flex-wrap: wrap; }
   .ts-book__acts { display: contents; }
   #book-play [data-ts-play], #book-play [data-ts-read] { width: auto; }
   .ts-book__shelf, .ts-book__download { width: auto; padding: 0 var(--space-32); }
