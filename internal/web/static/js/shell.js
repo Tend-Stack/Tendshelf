@@ -73,10 +73,9 @@ document.addEventListener("change", (event) => {
   else delete document.documentElement.dataset.textSize;
 });
 
-// Page enter without View Transitions: outerSync resets the class of #main to the response's, so
-// adding ts-entering after each swap of #main restarts the keyframe every time.
+// Page enter: outerSync resets the class of #main to the response's, so adding ts-entering after
+// each swap of #main restarts the keyframe every time.
 document.addEventListener("htmx:after:swap", (event) => {
-  if (document.startViewTransition) return;
   const target = event.detail && event.detail.ctx && event.detail.ctx.target;
   const main = document.getElementById("main");
   if (main && target === main) main.classList.add("ts-entering");

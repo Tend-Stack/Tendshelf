@@ -51,7 +51,6 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
    from --ts-col, --ts-gap, --ts-cols and --ts-page-h) are the default at every width (decision 0036); scroll is a
    choice, and the plain layout a browser without JavaScript gets. */
 /* .ts-main names its view transition, which makes it a stacking context that would keep the page under the tab bar. */
-.ts-main:has(.ts-readerpage) { view-transition-name: none; }
 /* The reader is a fixed layer: a reserved scrollbar gutter on the page would leave a strip beside it that neither the page nor a sheet's scrim covers. */
 html:has(.ts-readerpage) { scrollbar-gutter: auto; }
 .ts-readerpage { position: fixed; inset: 0; z-index: 12; display: flex; flex-direction: column; background: var(--ground); color: var(--ink); overscroll-behavior: none; }
