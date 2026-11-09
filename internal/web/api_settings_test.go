@@ -69,7 +69,7 @@ func TestA1SettingsReadAndPatch(t *testing.T) {
 	// The answer holds the player keys and nothing else.
 	var keys map[string]any
 	apiDecode(t, e.send(e.owner, http.MethodGet, "/api/v1/settings", ""), &keys)
-	if len(keys) != 7 {
+	if len(keys) != 8 {
 		t.Errorf("keys = %v", keys)
 	}
 

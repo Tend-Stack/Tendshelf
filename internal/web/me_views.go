@@ -149,7 +149,7 @@ func deviceRows(now time.Time, sessions []auth.SessionInfo, apps []auth.Device, 
 func settingsView(csrf string, s users.Settings) pages.SettingsView {
 	return pages.SettingsView{
 		CSRF: csrf, Theme: s.Theme, Speed: s.Speed, SkipBackS: s.SkipBackS, SkipForwardS: s.SkipForwardS,
-		AutoRewind: s.AutoRewind, NextInSeries: s.NextInSeries, SkipQuiet: s.SkipQuiet, PlayerTint: s.PlayerTint, BigButtons: s.BigButtons,
+		AutoRewind: s.AutoRewind, NextInSeries: s.NextInSeries, SkipQuiet: s.SkipQuiet, AutoDownload: s.AutoDownload, PlayerTint: s.PlayerTint, BigButtons: s.BigButtons,
 		TextSize: s.TextSize,
 	}
 }
@@ -182,6 +182,7 @@ func settingsFromForm(f url.Values, cur users.Settings) (next users.Settings, ok
 	flag("auto_rewind", &next.AutoRewind)
 	flag("next_in_series", &next.NextInSeries)
 	flag("skip_quiet", &next.SkipQuiet)
+	flag("auto_download", &next.AutoDownload)
 	flag("player_tint", &next.PlayerTint)
 	flag("big_buttons", &next.BigButtons)
 

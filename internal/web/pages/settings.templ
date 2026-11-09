@@ -29,6 +29,8 @@ type SettingsView struct {
 	NextInSeries bool
 	// SkipQuiet and InApp: the skip-silence switch shows only in the Android app (decision 0033).
 	SkipQuiet, InApp bool
+	// AutoDownload: the next-book download switch, in the Android app only (decision 0035).
+	AutoDownload bool
 	PlayerTint   bool
 	BigButtons   bool
 	// TextSize is standard or large.
@@ -224,6 +226,7 @@ templ SettingsPane(v SettingsView) {
 						@switchRow("st-next", "next_in_series", "Play the next book in a series", "When a book ends.", v.NextInSeries)
 						if v.InApp {
 							@switchRow("st-quiet", "skip_quiet", "Skip silence", "Shortens long pauses in the reading. Works in this app only.", v.SkipQuiet)
+							@switchRow("st-auto", "auto_download", "Download the next book on its own", "When a book is nearly over and you're on Wi-Fi, the next one downloads so it's ready. Uses up to 5 GB. Works in this app only.", v.AutoDownload)
 						}
 					</div>
 				}

@@ -19,6 +19,7 @@ type Settings struct {
 	AutoRewind   bool
 	NextInSeries bool
 	SkipQuiet    bool // Android app only: shorten long pauses (decision 0033)
+	AutoDownload bool // Android app only: download the next book on Wi-Fi (decision 0035)
 	PlayerTint   bool
 	BigButtons   bool
 	TextSize     string // "standard" or "large"
@@ -44,6 +45,7 @@ const (
 	keyAutoRewind   = "playback.auto_rewind"
 	keyNextInSeries = "playback.next_in_series"
 	keyQuietSkip    = "playback.skip_quiet"
+	keyAutoDownload = "playback.auto_download"
 	keyPlayerTint   = "ui.player_tint"
 	keyBigButtons   = "ui.big_buttons"
 	keyTextSize     = "ui.text_size"
@@ -125,6 +127,7 @@ func (s Settings) entries() []settingEntry {
 		{keyAutoRewind, s.AutoRewind},
 		{keyNextInSeries, s.NextInSeries},
 		{keyQuietSkip, s.SkipQuiet},
+		{keyAutoDownload, s.AutoDownload},
 		{keyPlayerTint, s.PlayerTint},
 		{keyBigButtons, s.BigButtons},
 		{keyTextSize, s.TextSize},
@@ -161,6 +164,8 @@ func (s *Settings) apply(key, raw string) {
 		setBool(&s.AutoRewind, raw)
 	case keyNextInSeries:
 		setBool(&s.NextInSeries, raw)
+	case keyAutoDownload:
+		setBool(&s.AutoDownload, raw)
 	case keyQuietSkip:
 		setBool(&s.SkipQuiet, raw)
 	case keyPlayerTint:

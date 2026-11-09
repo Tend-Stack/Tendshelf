@@ -94,6 +94,7 @@ func apiSweepRows() []sweepRow {
 		// the form is sent: a form is 415 for everyone; the book-in-path rows check access first.
 		api(sweepGet("GET /api/v1/queue", sweepStatic("/api/v1/queue"), ok)),
 		api(apiUnsafe("POST /api/v1/queue", http.MethodPost, sweepStatic("/api/v1/queue"), sweepSame(http.StatusUnsupportedMediaType))),
+		api(sweepGet("GET /api/v1/queue/next", sweepStatic("/api/v1/queue/next"), sweepSame(http.StatusNoContent))),
 		api(apiUnsafe("POST /api/v1/queue/next", http.MethodPost, sweepStatic("/api/v1/queue/next"), sweepSame(http.StatusUnsupportedMediaType))),
 		api(apiUnsafe("POST /api/v1/queue/{bookID}/move", http.MethodPost, bookPath("/api/v1/queue/", "/move"), staff415)),
 		// The app's settings, per-book speed and Continue shelf (A1). The unsafe rows send a form: 415 for

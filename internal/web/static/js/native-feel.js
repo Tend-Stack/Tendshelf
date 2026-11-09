@@ -4,6 +4,7 @@
 //   "wake 1" / "wake 0"         the page holds / lets go of the screen (the app sets FLAG_KEEP_SCREEN_ON)
 //   "pagekeys 1" / "pagekeys 0" the reader is in front with "Turn pages with the volume buttons" on / not
 //   "quiet 1" / "quiet 0"       the Skip silence switch in Settings changed
+//   "autodl 1" / "autodl 0"     the Download the next book switch in Settings changed
 // The app answers {"t":"pagekey","dir":"next|prev"} when a volume button is pressed while pagekeys is 1; the page turns
 // through the reader's own PageDown / PageUp key path, so reader.js is untouched.
 // window.tsNativeWake stands in for navigator.wakeLock, which Android System WebView does not grant, so reader-comfort.js
@@ -76,6 +77,8 @@ function start(bridge) {
       syncKeys();
     } else if (box.name === "skip_quiet") {
       bridge.postMessage("quiet " + (box.checked ? "1" : "0"));
+    } else if (box.name === "auto_download") {
+      bridge.postMessage("autodl " + (box.checked ? "1" : "0"));
     }
   });
 

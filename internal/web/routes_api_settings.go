@@ -40,7 +40,8 @@ type apiSettings struct {
 	SkipForwardS int     `json:"skipForwardS"`
 	AutoRewind   bool    `json:"autoRewind"`
 	NextInSeries bool    `json:"nextInSeries"`
-	SkipQuiet    bool    `json:"skipQuiet"` // Android app only (decision 0033)
+	SkipQuiet    bool    `json:"skipQuiet"`    // Android app only (decision 0033)
+	AutoDownload bool    `json:"autoDownload"` // Android app only (decision 0035)
 	// RewindSteps is the smart-rewind table (rewind.go), read-only: a PATCH body's value is ignored.
 	RewindSteps []apiRewindStep `json:"rewindSteps"`
 }
@@ -61,7 +62,7 @@ func apiRewindSteps() []apiRewindStep {
 
 func apiSettingsOf(set users.Settings) apiSettings {
 	return apiSettings{Speed: set.Speed, SkipBackS: set.SkipBackS, SkipForwardS: set.SkipForwardS,
-		AutoRewind: set.AutoRewind, NextInSeries: set.NextInSeries, SkipQuiet: set.SkipQuiet, RewindSteps: apiRewindSteps()}
+		AutoRewind: set.AutoRewind, NextInSeries: set.NextInSeries, SkipQuiet: set.SkipQuiet, AutoDownload: set.AutoDownload, RewindSteps: apiRewindSteps()}
 }
 
 func (s *server) writeAPISettings(w http.ResponseWriter, r *http.Request) {
@@ -147,6 +148,11 @@ func (s *server) patchAPISettings(w http.ResponseWriter, r *http.Request) {
 		try("skipQuiet", apiSettingsBadBool, func(c *users.Settings, raw json.RawMessage) bool {
 			v, ok := flag(raw)
 			c.SkipQuiet = v
+			return ok
+		}) &&
+		try("autoDownload", apiSettingsBadBool, func(c *users.Settings, raw json.RawMessage) bool {
+			v, ok := flag(raw)
+			c.AutoDownload = v
 			return ok
 		})
 	if !ok {

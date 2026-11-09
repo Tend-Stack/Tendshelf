@@ -164,6 +164,32 @@ func TestSetPassword(t *testing.T) {
 	}
 }
 
+func TestL8AutoDownloadSetting(t *testing.T) {
+	r := newRepo(t, Options{})
+	ctx := context.Background()
+	u, err := createOwner(t, r, goodUser("ana"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.LoadSettings(ctx, u.ID)
+	if err != nil || got.AutoDownload {
+		t.Fatalf("default = %+v, %v", got, err)
+	}
+	got.AutoDownload = true
+	if err := r.SaveSettings(ctx, u.ID, got); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = r.LoadSettings(ctx, u.ID); err != nil || !got.AutoDownload {
+		t.Fatalf("saved true loads %+v, %v", got, err)
+	}
+	if _, err := r.st.Writer().Exec(`UPDATE user_settings SET value_json = '"yes"' WHERE user_id = ? AND key = ?`, u.ID, keyAutoDownload); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = r.LoadSettings(ctx, u.ID); err != nil || got.AutoDownload {
+		t.Fatalf("stored \"yes\" loads %+v, %v", got, err)
+	}
+}
+
 func TestFeelSkipQuiet(t *testing.T) {
 	r := newRepo(t, Options{})
 	ctx := context.Background()

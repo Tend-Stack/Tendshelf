@@ -24,6 +24,7 @@ const (
 func (s *server) registerAPIQueue(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/queue", s.getAPIQueue)
 	mux.HandleFunc("POST /api/v1/queue", s.postAPIQueue)
+	mux.HandleFunc("GET /api/v1/queue/next", s.getAPIQueueNext)
 	mux.HandleFunc("POST /api/v1/queue/next", s.postAPIQueueNext)
 	mux.HandleFunc("POST /api/v1/queue/{bookID}/move", s.postAPIQueueMove)
 	mux.HandleFunc("DELETE /api/v1/queue/{bookID}", s.deleteAPIQueue)
@@ -180,6 +181,59 @@ func (s *server) postAPIQueueNext(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// nextPlayable reports whether a book may be the next one for the person: they may listen to it, it is not
+// refused or missing, and it is not a text edition. Autoplay, its series fallback and the peek share it.
+func (s *server) nextPlayable(ctx context.Context, u users.User, b library.Book) bool {
+	return s.can.Can(ctx, u, share.ListenBook, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) &&
+		b.RefusedReason == "" && b.MissingSince == 0 && b.Kind != library.BookText
+}
+
+// getAPIQueueNext is the read-only peek behind the app's automatic download (decision 0035): the book that
+// POST /api/v1/queue/next would give after ended, without taking it off the queue or writing anything. The
+// series fallback is always on here; it still honours the person's own setting.
+func (s *server) getAPIQueueNext(w http.ResponseWriter, r *http.Request) {
+	ended := r.URL.Query().Get("ended")
+	if len(ended) > endedMaxLen {
+		apiBadField(w, "ended", queueErrEnded)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	ctx := r.Context()
+	u := currentUser(r)
+	entries, err := s.lib.Queue(ctx, s.scope(r), u.ID)
+	if err != nil {
+		s.serverError(w, r, "api queue peek", err)
+		return
+	}
+	for _, e := range entries {
+		if ended != "" && e.Book.ID == ended {
+			continue
+		}
+		b, err := s.lib.Book(ctx, e.Book.ID)
+		if errors.Is(err, library.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			s.serverError(w, r, "api queue peek", err)
+			return
+		}
+		if !s.nextPlayable(ctx, u, b) {
+			continue
+		}
+		d, err := s.lib.BookDetail(ctx, s.scope(r), b.ID)
+		if errors.Is(err, library.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			s.serverError(w, r, "api queue peek", err)
+			return
+		}
+		api.Write(w, http.StatusOK, map[string]any{"book": apiCardOf(d.Card), "source": "queue"})
+		return
+	}
+	s.writeSeriesNext(w, r, ended, true)
+}
+
 // seriesNextBook is the one lookup behind "next in series", for the app (POST /api/v1/queue/next) and the
 // web player (POST /hx/player/next): the book after ended in its first series, when the person's setting is
 // on and the book is one they may listen to, Tendshelf can play, and have not finished. ok is false for
@@ -206,8 +260,7 @@ func (s *server) seriesNextBook(r *http.Request, ended string) (b library.Book, 
 	if err != nil {
 		return b, false, err
 	}
-	if !s.can.Can(ctx, u, share.ListenBook, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) ||
-		b.RefusedReason != "" || b.MissingSince != 0 || b.Kind == library.BookText {
+	if !s.nextPlayable(ctx, u, b) {
 		return b, false, nil
 	}
 	p, err := s.progress.Get(ctx, u.ID, b.ID)
@@ -274,8 +327,7 @@ func (s *server) popQueue(ctx context.Context, u users.User, sc library.Scope, e
 		if err != nil {
 			return false, err
 		}
-		if !s.can.Can(ctx, u, share.ListenBook, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) ||
-			b.RefusedReason != "" || b.MissingSince != 0 || b.Kind == library.BookText {
+		if !s.nextPlayable(ctx, u, b) {
 			continue
 		}
 		if ok, err := use(b); err != nil || ok {
