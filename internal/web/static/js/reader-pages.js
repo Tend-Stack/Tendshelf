@@ -13,6 +13,10 @@ const LOOK_CLASS = /^ts-reader--(sans|dyslexic|size-|leading-|margin-|justify|no
 const px = (value) => parseFloat(value) || 0;
 const fill = (text, ...numbers) => numbers.reduce((out, n) => out.replace("%d", n), text);
 
+// A fresh id for the server's duplicate check. crypto.randomUUID exists only in a secure context, and a server on a plain
+// http address (the Android app over a home network, for one) is not one, so fall back to random digits.
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
 export function pages(root, kit) {
   const col = root.querySelector(".ts-reader__col");
   const shell = root.closest(".ts-readerpage");
@@ -407,7 +411,7 @@ export function pages(root, kit) {
       const form = document.getElementById("reader-bm-form");
       if (!sid || !form) return;
       form.elements.sid.value = sid;
-      form.elements.client_id.value = crypto.randomUUID();
+      form.elements.client_id.value = newId();
       form.elements.remove?.remove();
       if (button.dataset.bm) form.append(Object.assign(document.createElement("input"), { type: "hidden", name: "remove", value: "1" }));
       form.requestSubmit();

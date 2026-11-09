@@ -14,6 +14,7 @@
 //	TENDSHELF_PROBE_CODE    connect mode: the test server's setup code
 //	TENDSHELF_PROBE_PLAN    "" (first run), "relaunch" (saved mode: sign-in kept, then the reader)
 //	                        or "switch" (saved mode, then Change mode and a new choice)
+//	                        or "pages" (saved connect mode: the pages reader, flip, edges, ribbon; pages.go)
 //	                        or "window" (the picker with a stand-in title bar, driven by real input; X1)
 //	TENDSHELF_PROBE_STAY    set: the window stays open after "done"; the exit-run driver ends it
 package probe
@@ -101,6 +102,8 @@ func (p *run) scriptFor(stage int) string {
 		return relaunchScript()
 	case "now":
 		return nowScript()
+	case "pages":
+		return pagesScript()
 	case "switch":
 		p.mu.Lock()
 		switched := p.switched

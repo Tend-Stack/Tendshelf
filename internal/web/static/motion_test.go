@@ -369,7 +369,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"reader-pages.js": {8*1024 + 256, 24 * 1024}, // ribbons, edges, page line and hint (Package C): row 7,168 B, measured 6,829 B, raw ceiling 20 KB (19,857 B), OVERRUN reported, comments kept; was: pages by default (decision 0036): measured 5,353 B against the plan's 4.5 KB, OVERRUN reported (the lay-out, page numbers and short part; comments kept); was: part-load failure (2026-11-09): 3,187 B served, row 3,328 B, OVERRUN reported; was 3 KB
 	// M5 RD3 (operator, 2026-11-04): the marks toolbar, note dialog, bookmark, footnote links and search hit (2.75 KB);
 	// the footnote popup, loaded on the first footnote (1 KB).
-	"reader-marks.js": {2*1024 + 896, 16 * 1024}, // 2.875 KB with the Look up branch (G1)
+	"reader-marks.js": {3*1024 + 128, 16 * 1024}, // 2.875 KB with the Look up branch (G1); 3.0 KB with the plain-http id fallback (2026-11-09), measured 3,056 B, row raised, comment kept
 	"reader-notes.js": {1024, 8 * 1024},
 	// M5 G6a (decision 0019, operator 2026-11-04): the offline reader and its place queue, 2.25 KB.
 	// M5 G4 (operator, 2026-11-04): the skim bar, loaded on the first touch of the dock's range input, 1.25 KB.

@@ -3,6 +3,10 @@
 // word on screen is server-rendered (the toolbar, #reader-note-dialog and data-copy), none lives here.
 // Offsets sent to the server are UTF-16 offsets in the block text: the sentence's data-o plus the
 // characters before the point inside the sentence. Mounted by shell.js on #reader-marks.
+// A fresh id for the server's duplicate check. crypto.randomUUID exists only in a secure context, and a server on a plain
+// http address (the Android app over a home network, for one) is not one, so fall back to random digits.
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
 export function mount(menu) {
   const reader = document.getElementById("reader");
   const form = document.getElementById("reader-hl-form");
@@ -73,7 +77,7 @@ export function mount(menu) {
     form.elements.start_off.value = marked.startOff;
     form.elements.end_sid.value = marked.end.dataset.sid;
     form.elements.end_off.value = marked.endOff;
-    form.elements.client_id.value = crypto.randomUUID();
+    form.elements.client_id.value = newId();
     form.elements.colour.value = colour;
     form.elements.note.value = note || "";
     form.requestSubmit();
@@ -127,7 +131,7 @@ export function mount(menu) {
       if (!sentence) return;
       const bm = document.getElementById("reader-bm-form");
       bm.elements.sid.value = sentence.dataset.sid;
-      bm.elements.client_id.value = crypto.randomUUID();
+      bm.elements.client_id.value = newId();
       bm.requestSubmit();
     },
     opts,
