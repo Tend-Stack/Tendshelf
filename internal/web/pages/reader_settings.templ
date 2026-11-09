@@ -25,7 +25,7 @@ type ReadingSheetView struct {
 	Theme                        string // ui.theme: "" or "system" checks no tile
 	Font, Leading                string
 	Size                         int
-	Margin, Flow                 string
+	Margin, Flow, Turn           string
 	Justify, Hyphens, TapSwap    bool
 	Large                        bool // large text mode: 26 joins the sizes
 	KeepAwake, AutoHide          bool   // G5 comfort
@@ -40,6 +40,7 @@ var (
 	readerFontChoices    = []readerChoice{{"serif", "Serif"}, {"sans", "Sans"}, {"dyslexic", "OpenDyslexic"}}
 	readerMarginChoices  = []readerChoice{{"narrow", "Narrow"}, {"normal", "Normal"}, {"wide", "Wide"}}
 	readerFlowChoices    = []readerChoice{{"pages", "Pages"}, {"scroll", "Scroll"}}
+	readerTurnChoices    = []readerChoice{{"flip", "Flip"}, {"slide", "Slide"}, {"none", "None"}}
 	readerWarmChoices    = []readerChoice{{"off", "Off"}, {"evening", "In the evening"}, {"always", "Always"}}
 )
 
@@ -126,6 +127,7 @@ templ ReadingSheet(v ReadingSheetView) {
 				@readerChoices("font", "Font", v.Font, readerFontChoices)
 				@readerChoices("margin", "Margins", v.Margin, readerMarginChoices)
 				@readerChoices("flow", "Page or scroll", v.Flow, readerFlowChoices)
+				@readerChoices("turn", "Page turn", v.Turn, readerTurnChoices)
 				@readerSwitch("justify", "Justify text", v.Justify)
 				@readerSwitch("hyphens", "Hyphens", v.Hyphens)
 				@readerSwitch("tap_swap", "Swap tap sides", v.TapSwap)

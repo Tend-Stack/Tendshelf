@@ -42,7 +42,7 @@ type ReaderEnd struct{ Text, Label, Action, CSRF, NextHref, NextLabel string }
 // ReaderRoot is what the client reads from the reader root: the place to open at, the reading speed,
 // the sizes it needs for page numbers and time left, and where to save.
 type ReaderRoot struct {
-	At, Off, Flow, Save, Lang, Words string // Words is JSON: the sentences the client script shows
+	At, Off, Flow, Turn, Save, Lang, Words string // Words is JSON: the sentences the client script shows
 	Skim                             string // JSON [[chars_before, title], ...] for the skim bar (reader-skim.js)
 	NotesSrc                         string // address of reader-notes.js, loaded on the first footnote
 	LookupSrc                        string // address of reader-lookup.js, loaded on the first Look up (G1)
@@ -134,7 +134,7 @@ type ReaderView struct {
 	MarksLabel, MarksHref       string                     // the Highlights and notes sheet
 	Chapter                     ReaderChapterView
 	MarksModule                 string // address of reader-marks.js
-	ReaderModule, PagesModule   string // addresses of reader.js (flow, anchors, saving, input, progress) and reader-pages.js (the columns)
+	ReaderModule, PagesModule, FlipModule string // addresses of reader.js (flow, anchors, saving, input, progress) and reader-pages.js (the columns)
 	Footer                      ReaderFooter
 	Marks                       ReaderMarksBar
 	Look                        ReaderLook // the person's reading settings (reader.v1)
@@ -252,6 +252,8 @@ templ Reader(v ReaderView) {
 			data-chapter-chars={ strconv.Itoa(v.Root.ChapterChars) }
 			data-save={ v.Root.Save }
 			data-flow={ v.Root.Flow }
+			data-turn={ v.Root.Turn }
+			data-flip-src={ v.FlipModule }
 			data-pages={ strconv.Itoa(v.Root.Pages) }
 			data-chapter-count={ strconv.Itoa(v.Root.Chapters) }
 			data-copy={ v.Root.Words }

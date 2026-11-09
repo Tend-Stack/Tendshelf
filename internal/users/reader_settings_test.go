@@ -156,3 +156,22 @@ func TestParseReaderAutoIsPages(t *testing.T) {
 		t.Errorf("auto no longer validates: %v", err)
 	}
 }
+
+// TestReaderSettingsTurn: a person who never chose a page turn gets the flip; a stored value outside its set is the default;
+// Validate refuses one outside the set.
+func TestReaderSettingsTurn(t *testing.T) {
+	if got := parseReader(`{"size":22}`).Turn; got != "flip" {
+		t.Errorf("no turn stored: %q, want flip", got)
+	}
+	if got := parseReader(`{"turn":"slide"}`).Turn; got != "slide" {
+		t.Errorf("stored slide: %q", got)
+	}
+	if got := parseReader(`{"turn":"curl"}`).Turn; got != "flip" {
+		t.Errorf("stored curl: %q, want the default", got)
+	}
+	r := DefaultReader
+	r.Turn = "curl"
+	if err := r.Validate(); err == nil {
+		t.Error("Validate accepted a turn outside its set")
+	}
+}

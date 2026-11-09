@@ -239,7 +239,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	v := pages.ReaderView{
 		Title: rc.book.Title, BookID: id, EditionID: rc.ed.ID,
 		CloseHref: "/books/" + id, CloseLabel: readerClose, ShowBarLabel: readerShowBar,
-		Chapter: chap.view, MarksModule: s.assetOr("js/reader-marks.js"), ReaderModule: s.assetOr("js/reader.js"), PagesModule: s.assetOr("js/reader-pages.js"),
+		Chapter: chap.view, MarksModule: s.assetOr("js/reader-marks.js"), ReaderModule: s.assetOr("js/reader.js"), PagesModule: s.assetOr("js/reader-pages.js"), FlipModule: s.assetOr("js/reader-flip.js"),
 		SkimModule: s.assetOr("js/reader-skim.js"), Offline: &pages.ReaderOfflineView{Module: s.assetOr("js/reader-offline.js")},
 		Aloud: s.readerAloud(),
 	}
@@ -267,7 +267,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	v.Root = pages.ReaderRoot{
 		At: pl.At, Off: strconv.Itoa(pl.Off), Cpm: cpm, Learned: learned, TotalChars: chap.total,
 		Before: chap.view.Before, ChapterChars: chChars, Save: "/reading/" + id,
-		Flow: rs.Flow, Lang: rc.doc.Meta.Language,
+		Flow: rs.Flow, Turn: rs.Turn, Lang: rc.doc.Meta.Language,
 		Pages: rc.doc.PageCount, Chapters: len(rc.doc.Chapters), Words: readerWords(),
 		Skim: rsSkim(rc.doc), NotesSrc: s.assetOr("js/reader-notes.js"), LookupSrc: s.assetOr("js/reader-lookup.js"),
 	}

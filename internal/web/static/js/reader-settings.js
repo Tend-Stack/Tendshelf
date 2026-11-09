@@ -4,7 +4,7 @@ const LOOK = /^ts-reader--(sans|dyslexic|size-|leading-|margin-|justify|nohyph|t
 
 export function mount(marker) {
   // Every .ts-reader: the page and the sheet's preview.
-  const apply = (form) => {
+  const apply = (form, changed) => {
     const data = new FormData(form);
     const get = (name) => data.getAll(name).pop();
     const add = [`ts-reader--size-${get("size")}`, `ts-reader--leading-${get("leading")}`, `ts-reader--margin-${get("margin")}`];
@@ -21,6 +21,15 @@ export function mount(marker) {
     // The page reader lays itself out again for the new look, and takes the new flow.
     const page = document.getElementById("reader");
     if (page) page.dataset.flow = get("flow");
+    // Page turn: picking Flip again gives the flip another chance after it was judged too slow on this device.
+    if (page) page.dataset.turn = get("turn");
+    if (changed === "turn" && get("turn") === "flip") {
+      try {
+        localStorage.removeItem("ts.flip.slow");
+      } catch {
+        /* no storage: nothing was kept */
+      }
+    }
     // Comfort (G5): the three settings are data attributes; the module is fetched only once one is on.
     if (page) {
       page.dataset.keepAwake = String(get("keep_awake") === "1");
@@ -42,7 +51,7 @@ export function mount(marker) {
         return;
       }
       const form = event.target.closest("form[data-ts-reader-settings]");
-      if (form) apply(form);
+      if (form) apply(form, event.target.name);
     },
     { signal: stop.signal },
   );
