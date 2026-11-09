@@ -214,7 +214,7 @@ func rdrSIDExists(d *ebook.Doc, sid string) (int, bool) {
 func readerWords() string {
 	b, _ := json.Marshal(map[string]string{"pageOf": readerPageOf, "ch": readerLeftChapter, "chAbout": readerLeftChapAbt,
 		"bk": readerLeftBook, "bkAbout": readerLeftBookAbt, "further": readerAnotherDev, "go": readerGoThere, "stay": readerStayHere,
-		"back": readerBack, "failed": readerPartFailed, "retry": readerTryAgain, "prev": readerPrevChapter, "needsNet": readerNeedsNet})
+		"back": readerBack, "failed": readerPartFailed, "retry": readerTryAgain, "prev": readerPrevChapter, "needsNet": readerNeedsNet, "signedOut": msgSignedOut, "signIn": msgSignIn})
 	return string(b)
 }
 
@@ -237,7 +237,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	id := rc.book.ID
 	v := pages.ReaderView{
 		Title: rc.book.Title, BookID: id, EditionID: rc.ed.ID,
-		CloseHref: "/books/" + id, CloseLabel: readerClose,
+		CloseHref: "/books/" + id, CloseLabel: readerClose, ShowBarLabel: readerShowBar,
 		Chapter: chap.view, MarksModule: s.assetOr("js/reader-marks.js"), ReaderModule: s.assetOr("js/reader.js"), PagesModule: s.assetOr("js/reader-pages.js"),
 		SkimModule: s.assetOr("js/reader-skim.js"), Offline: &pages.ReaderOfflineView{Module: s.assetOr("js/reader-offline.js")},
 		Aloud: s.readerAloud(),

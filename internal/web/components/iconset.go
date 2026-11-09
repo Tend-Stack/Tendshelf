@@ -49,6 +49,7 @@ var iconShapes = map[string]string{
 	"window-restore":  `<rect x="5.5" y="8.5" width="10" height="10" rx="2"/><path d="M8.5 5.5h8a2 2 0 0 1 2 2v8"/>`,
 	"drop-in":         `<path d="M12 20V9M7 14l5-5 5 5M5 4h14"/>`,
 	"more":            `<circle cx="12" cy="5.5" r="0.9"/><circle cx="12" cy="12" r="0.9"/><circle cx="12" cy="18.5" r="0.9"/>`,
+	"chevron-down":    `<path d="m6 9.5 6 6 6-6"/>`,
 	"nav-back":        `<path d="m14.5 5.5-6.5 6.5 6.5 6.5"/>`,
 	"nav-forward":     `<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>`,
 	"wave":            `<path d="M3 12c2-6 3.5-6 5.5 0s3.5 6 5.5 0 2.5-3.7 4 0 2 2 3.5 0"/>`,

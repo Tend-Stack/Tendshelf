@@ -6,6 +6,7 @@ package web
 const (
 	// From the deck.
 	readerClose        = "Close reader"
+	readerShowBar      = "Show the bar"
 	readerChapter      = "Chapter %d"
 	readerFrontOnly    = "Opening pages"
 	readerMarksTitle   = "Highlights and notes"

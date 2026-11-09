@@ -93,7 +93,12 @@ Input: the outer quarters of the page turn it (mirrored by "Swap tap sides"), th
 dock, and a tap on a link, a highlight, a button or with a selection does nothing else; swipe 48 px with touch or pen; keys
 ArrowRight, PageDown and Space go forward, ArrowLeft, PageUp and Shift+Space back, `[` and `]` change chapter, `t` opens
 the contents, `/` search (RD3). Keys are caught on `window` before `player.js`, and left alone in a field, a dialog or an open
-sheet. In scroll, taps in the middle toggle the chrome and the keys scroll a screen minus two lines.
+sheet. In scroll, the keys scroll a screen minus two lines.
+The bar never hides unasked: a click with a mouse in the text does nothing to it, and the middle tap toggles it only for a
+finger or pen (`pointerType`). A hidden bar always has a way back: a small handle at the top centre (`[data-show-bar]`,
+44 by 44 px, "Show the bar", a real button) shows while `data-chrome="off"`. In the scroll flow a hidden bar takes no room
+(`display: none`) and `reader.js` moves `scrollTop` by the change in the text's top, so the words stay put and no move is
+recorded; the pages flow keeps the room, since its columns are laid out for it.
 
 Marks (`reader-marks.js`, RD3): selecting text shows a toolbar with four colours (yellow, green, blue, pink), Note and Copy.
 A highlight is posted with `data-o` plus the characters before the point inside the sentence, so the server gets offsets
@@ -160,6 +165,17 @@ On the server `bp` (an integer 0 to 10000, else ignored, and ignored beside `par
 the block at that share of the book's text, at its first sentence (`rsPlaceAtChars`); `at` still wins over `bp`. Offline the shell
 cannot place `bp` and `reader-offline.js` reads only `ch`: the chapter opens at its start, and the chip still leads back.
 
+A part that does not load (pages flow, `fetchPart` in `reader-pages.js`) is tried once more after 1.5 s, quietly. If it
+still fails there is one "This part did not load." toast with Try again, however often the person turns on; it goes when
+a part loads, and when the reader is left (an htmx swap of the page, `pagehide`, or the flow changing). A failed result is
+never kept, so Try again asks the server again. A redirect (the session ended) shows "Sign in" instead. The part's address
+(no query) and the status or error go to `console.warn`.
+
+Drop cap and verse (`reader_dropcap.go`): the chapter's first paragraph gets the big first letter only when the chapter is
+not front matter ("Opening pages") and the block is prose: a paragraph of at least 140 characters, less than half of it
+link. If that first paragraph is a dedication, an epigraph or a list of links, the chapter has no drop cap. Three or more
+paragraphs in a row of at most 50 characters are verse: they carry `ts-reader__verse` and take no first-line indent.
+
 ## Comfort (G5)
 
 Three choices under "More" in the Reading settings sheet, all off by default and kept in `reader.v1` (`keepAwake`, `warm`
@@ -170,7 +186,9 @@ Three choices under "More" in the Reading settings sheet, all off by default and
 multiplied 60 % wash of `--mark` over the page, never in the contrast theme (`TestComfortContrast` holds text at 4.5:1).
 Keep awake takes a screen wake lock while the page is visible, lets go after 10 minutes without input and when the page
 leaves; a refusal or a missing API is silent. Auto-hide sets `data-chrome="off"` 3 s after the last pointer or key unless
-focus is in the bar or dock, a sheet or dialog is open, or text is selected. There is no brightness control: no web API sets
+focus is in the bar or dock, a sheet or dialog is open, or text is selected. A bar it hid comes back when a mouse moves into
+the top or bottom 64 px, or on any key except the ones that turn or scroll (arrows, PageUp and PageDown, Home, End, Space,
+`[` and `]`), and by the handle. There is no brightness control: no web API sets
 the screen's brightness, and a dimming overlay would only lower contrast.
 
 ## Read aloud (decision [0032](decisions/0032-read-aloud.md))

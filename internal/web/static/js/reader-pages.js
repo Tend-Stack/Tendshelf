@@ -5,6 +5,7 @@
 
 const SLIDE_MS = 180;
 const SWIPE_PX = 48;
+const RETRY_MS = 1500; // the quiet second try of a part that did not load
 
 export function pages(root, kit) {
   const col = root.querySelector(".ts-reader__col");
@@ -58,42 +59,79 @@ export function pages(root, kit) {
     if (count - page <= 3) fetchPart(section().dataset.nextHref);
   }
 
+  // A part that failed is never kept in `parts`, so Try again asks the server again. One quiet retry comes first, since a
+  // restart of the server or a brief drop of the network is the likely cause; what went wrong is warned to the console
+  // (the address without its query, never a token) so the next occurrence can be told apart.
+  let signedOut = false; // the last answer was a redirect: the session ended
+  async function attempt(href) {
+    const where = new URL(href, location.href).pathname;
+    try {
+      const res = await fetch(href);
+      if (res.redirected) {
+        signedOut = true;
+        console.warn("reader part did not load", where, "redirected: signed out");
+        return null;
+      }
+      if (!res.ok) throw new Error("status " + res.status);
+      const holder = document.createElement("template");
+      holder.innerHTML = await res.text();
+      const part = holder.content.querySelector("section[data-part]");
+      if (!part) throw new Error("status " + res.status + " but no part in the answer");
+      return part;
+    } catch (error) {
+      console.warn("reader part did not load", where, String(error.message || error));
+      return null;
+    }
+  }
+
   function fetchPart(href) {
     if (!href) return null;
     if (!parts.has(href)) {
-      const request = fetch(href)
-        .then((res) => (res.ok ? res.text() : Promise.reject(new Error(res.status))))
-        .then((html) => {
-          const holder = document.createElement("template");
-          holder.innerHTML = html;
-          return holder.content.querySelector("section[data-part]");
-        })
-        .catch(() => {
-          parts.delete(href);
-          return null;
+      signedOut = false;
+      const request = attempt(href)
+        .then((part) => part || (signedOut ? null : new Promise((resolve) => setTimeout(resolve, RETRY_MS)).then(() => attempt(href))))
+        .then((part) => {
+          if (part) clearToast();
+          else parts.delete(href);
+          return part;
         });
       parts.set(href, request);
     }
     return parts.get(href);
   }
 
+  // The one "did not load" toast: a further failed turn reuses it. It goes when the person leaves the reader and when a
+  // part loads after all.
+  let toast = null;
+  let retry = null;
+  function clearToast() {
+    toast?.remove();
+    toast = null;
+  }
+  function failed(again) {
+    retry = again;
+    if (toast?.isConnected) return;
+    const words = JSON.parse(root.dataset.copy);
+    toast = document.createElement("div");
+    toast.className = "ts-toast";
+    toast.setAttribute("role", "status");
+    toast.append(signedOut ? words.signedOut : words.failed);
+    const button = toast.appendChild(document.createElement("button"));
+    button.className = "ts-btn ts-btn--quiet";
+    button.textContent = signedOut ? words.signIn : words.retry;
+    button.addEventListener("click", () => {
+      clearToast();
+      if (signedOut) location.assign("/login");
+      else retry();
+    });
+    document.getElementById("toasts").append(toast);
+  }
+
   // Replace the part with a neighbour and land on its first or last page.
   async function cross(href, first, dir) {
     const next = await fetchPart(href);
     if (!next) {
-      const words = JSON.parse(root.dataset.copy);
-      const toast = document.createElement("div");
-      toast.className = "ts-toast";
-      toast.setAttribute("role", "status");
-      toast.append(words.failed);
-      const again = toast.appendChild(document.createElement("button"));
-      again.className = "ts-btn ts-btn--quiet";
-      again.textContent = words.retry;
-      again.addEventListener("click", () => {
-        toast.remove();
-        cross(href, first, dir);
-      });
-      document.getElementById("toasts").append(toast);
+      failed(() => cross(href, first, dir));
       return false;
     }
     parts.delete(href);
@@ -119,6 +157,10 @@ export function pages(root, kit) {
     },
     { signal: done.signal },
   );
+
+  // Leaving the reader (a boosted link swaps #main, a plain one unloads) takes its toast along.
+  document.addEventListener("htmx:after:swap", () => root.isConnected || clearToast(), { signal: done.signal });
+  window.addEventListener("pagehide", clearToast, { signal: done.signal });
 
   root.classList.add("ts-reader--pages");
   lay();
@@ -149,6 +191,7 @@ export function pages(root, kit) {
     atStart: () => page === 0 && !section().dataset.prevHref,
     stop() {
       done.abort();
+      clearToast();
       root.classList.remove("ts-reader--pages");
       shell.style.removeProperty("--ts-text-w");
       section().scrollLeft = 0;

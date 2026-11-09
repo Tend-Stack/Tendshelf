@@ -71,6 +71,20 @@ export function mount() {
     if (wants("autoHide")) hideTimer = setTimeout(hide, HIDE_MS);
   };
 
+  // A bar that hid itself comes back for a mouse moved to the top or bottom band, and for a key (a key that only
+  // turns the page or scrolls does not count, or reading by keyboard would keep calling the bar back).
+  const BAND_PX = 64;
+  const READING_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "[", "]"]);
+  const reveal = () => {
+    if (page.dataset.chrome !== "off" || !wants("autoHide")) return;
+    page.dataset.chrome = "on";
+    arm();
+  };
+  on(window, "pointermove", (event) => {
+    if (event.pointerType === "mouse" && (event.clientY < BAND_PX || event.clientY > window.innerHeight - BAND_PX)) reveal();
+  });
+  on(window, "keydown", (event) => READING_KEYS.has(event.key) || event.ctrlKey || event.metaKey || event.altKey || reveal());
+
   // One place for all three: called at mount and whenever a setting changes.
   const refresh = () => {
     warm();

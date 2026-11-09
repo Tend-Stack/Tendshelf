@@ -98,6 +98,13 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 /* Hidden chrome: the page keeps its size, so nothing re-lays. Focus brings the bar and dock back for a keyboard. */
 .ts-readerpage[data-chrome="off"] > :is(.ts-readerbar, .ts-readdock):not(:focus-within) { opacity: 0; pointer-events: none; }
 
+/* In the scroll flow a hidden bar takes no room; reader.js keeps the words where they are. The pages flow keeps its room (its columns are laid out for it). */
+.ts-readerpage[data-chrome="off"]:has(> .ts-reader--scroll) > .ts-readerbar { display: none; }
+/* The way back for a hidden bar: a small handle at the top centre, 44 by 44 px, shown only while the bar is hidden. */
+.ts-readerpage > .ts-readerpage__showbar { display: none; position: absolute; z-index: 2; top: env(safe-area-inset-top); left: 50%; translate: -50% 0; color: var(--ink-muted); opacity: 0.85; background: color-mix(in srgb, var(--ground) 80%, transparent); border-radius: var(--radius-control); }
+.ts-readerpage[data-chrome="off"] > .ts-readerpage__showbar { display: inline-flex; }
+.ts-readerpage > .ts-readerpage__showbar:is(:hover, :focus-visible) { opacity: 1; }
+
 /* The dock keeps to the text column; its ruler fills with the book. */
 .ts-readerpage .ts-readdock { flex: none; padding-bottom: calc(var(--space-16) + env(safe-area-inset-bottom)); }
 .ts-readdock > * { width: 100%; max-width: var(--ts-text-w, 38rem); margin-inline: auto; box-sizing: border-box; }
@@ -115,13 +122,17 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 
 /* Contents and Highlights and notes sheets. */
 .ts-reader__toc, .ts-reader__marks { margin: 0; padding: 0; list-style: none; }
-.ts-reader__toc a { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-12); min-height: var(--size-tap); padding: var(--space-4) var(--space-8); color: inherit; text-decoration: none; }
+.ts-reader__toc a { display: flex; align-items: center; gap: var(--space-12); min-height: var(--size-tap); padding: var(--space-4) var(--space-8); color: inherit; text-decoration: none; }
+/* One row shape for every entry: a number column, a title that gives way with an ellipsis, and the "Opening pages" note; an empty title or number keeps its column so rows stay aligned. */
+.ts-reader__tocnum { flex: none; min-width: 1.75rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ts-reader__toctitle { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-reader__toc a .caption { flex: none; margin-left: auto; color: var(--ink-muted); }
 .ts-reader__toc a[aria-current] { font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .ts-reader__mark { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); padding: var(--space-12) 0; border-bottom: 1px solid var(--line); }
 .ts-reader__mark form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); width: 100%; }
 .ts-reader__mark textarea { width: 100%; box-sizing: border-box; min-height: 4.5rem; }
 /* The sheets are the details sheet of pages-details.css, which this page does not load: its height cap and width come here, or a long marks list hangs off the top of the screen. */
-#sheet .ts-details-sheet { max-height: 85vh; max-height: 85dvh; overflow-y: auto; max-width: 40rem; margin: 0 auto; }
+#sheet .ts-details-sheet { display: flex; flex-direction: column; max-height: 85vh; max-height: 85dvh; overflow: hidden; overflow: clip; padding-bottom: 0; max-width: 40rem; margin: 0 auto; }
 #sheet .ts-chip-set .ts-chip { min-height: var(--size-tap); text-decoration: none; }
 
 /* Links and pictures in the text. A link is told apart by its underline, not by colour alone. */

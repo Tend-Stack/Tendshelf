@@ -121,7 +121,8 @@ document.addEventListener("touchstart", (event) => {
   const target = event.target;
   const sheet = target.closest(".ts-sheet:not(.is-leaving)");
   const list = sheet && !target.closest(".ts-sheet__grab, .ts-sheet__head") && target.closest("ol, ul");
-  const scrolled = sheet && (sheet.scrollTop > 0 || (list && list.scrollTop > 0));
+  const body = sheet && !target.closest(".ts-sheet__grab, .ts-sheet__head") && target.closest(".ts-sheet__body");
+  const scrolled = sheet && (sheet.scrollTop > 0 || (body && body.scrollTop > 0) || (list && list.scrollTop > 0));
   drag = sheet && !scrolled && !target.closest("input") ? { sheet, y0: event.touches[0].clientY } : null;
 });
 document.addEventListener("touchmove", (event) => {
