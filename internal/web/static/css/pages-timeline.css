@@ -10,3 +10,9 @@
 .ts-tl__book { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
 .ts-tl__clock, .ts-tl__span { margin: 0; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 .ts-tl__older { align-self: flex-start; }
+/* Wide pages: a day's listening sessions sit side by side as cards, so a book and its "Go back here" stay
+together instead of a screen apart. */
+@media (width >= 1024px) {
+  .ts-tl__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)); gap: var(--space-12); border: 0; background: none; }
+  .ts-tl__row, .ts-tl__row + .ts-tl__row { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+}

@@ -47,7 +47,10 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
 /* Downloads (M3a, board DownloadsPhone): the lists, the storage card and the settings row. Every
    node js/downloads.js fills starts hidden, and a class display would beat the browser's own
    [hidden] rule, so it is restated here. */
-.ts-downloads { max-width: 40rem; padding-bottom: var(--space-32); }
+.ts-downloads { padding-bottom: var(--space-32); }
+/* The page fills .ts-main and the book lists use the extra room with more columns. The storage card, the one
+   setting and the lead are a single column of their own and keep a readable width. */
+.ts-downloads__storage, .ts-downloads__settings, .ts-downloads__lead, .ts-downloads__note { max-width: 40rem; }
 .ts-downloads [hidden] { display: none; }
 .ts-downloads__title { margin: 0; min-height: var(--size-tap); display: flex; align-items: center; }
 .ts-downloads__lead, .ts-downloads__note, .ts-downloads__legend { margin: 0; color: var(--ink-muted); }
@@ -64,7 +67,10 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
 .ts-downloads__settings { margin-top: var(--space-8); }
 .ts-downloads__section { margin-top: var(--space-16); }
 .ts-downloads__overline { margin: 0 0 var(--space-4); }
-.ts-downloads__list { margin: 0; padding: 0; list-style: none; }
+.ts-downloads__list { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)); column-gap: var(--space-32); }
+@media (width >= 768px) {
+  .ts-downloads__row { border-bottom: 1px solid var(--line); } /* rows sit side by side, so each carries its own rule */
+}
 .ts-downloads__row .ts-cover { flex: none; }
 .ts-downloads__row .ts-iconbtn { flex: none; color: var(--ink); }
 .ts-downloads__text { gap: 0.375rem; }
@@ -108,4 +114,7 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
   div.ts-me__device > .ts-me__rowtext { flex-basis: calc(100% - 3.375rem); }
   div.ts-me__device { padding-top: var(--space-8); }
   div.ts-me__device > .ts-me__rename { margin-left: calc(3.375rem - var(--space-12)); }
+}
+@media (width >= 768px) {
+  .ts-downloads__readyhead { justify-content: flex-start; } /* the size sits beside its heading, not a page away */
 }

@@ -2,7 +2,8 @@
 
 .ts-admin { display: flex; flex-direction: column; gap: var(--space-16); padding-bottom: var(--space-32); }
 .ts-admin--narrow { max-width: 35rem; }
-.ts-admin--list { max-width: 48rem; }
+/* A list page fills the pane beside the settings menu; its folder rows and cards use the room with more columns. */
+.ts-admin--list { max-width: none; }
 .ts-admin__title { margin: var(--space-4) 0 0; }
 .ts-admin__lead { margin: 0; color: var(--ink-muted); }
 .ts-admin__back {
@@ -51,6 +52,11 @@
   .ts-admin__actions .ts-btn { flex: 0 0 auto; }
 }
 @container pane (width >= 56rem) {
+  /* Folders become cards in as many columns as the pane has room for; a lone folder keeps one column's width
+     instead of a wide empty card around it. */
+  .ts-libs .ts-group:has(> .ts-folders) { padding: 0; border: 0; background: none; }
+  .ts-libs .ts-folders { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 28rem), 1fr)); gap: var(--space-12) var(--space-16); }
+  .ts-libs .ts-folder, .ts-libs .ts-folder:last-child { padding: var(--space-12) var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
   .ts-folder { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
   .ts-folder__actions { grid-column: auto; }
 }
@@ -276,6 +282,9 @@ a.ts-users__item:hover { background: var(--raised); }
 .ts-libs__name, .ts-libs__sub, .ts-libs .caption { margin: 0; }
 .ts-libs__sub { margin-top: var(--space-8); }
 .ts-libs__needs, .ts-libs__links { margin: 0; }
+/* The settings under a library (watching, online details, adding books) are single-column forms: they keep a
+   readable width inside the wide page, as does the sentence above them. */
+.ts-libs .ts-group:has(> .ts-libs__form), .ts-libs__sec .caption { max-width: 40rem; }
 .ts-libs__links { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); padding: 0; list-style: none; }
 .ts-libs__form { display: flex; flex-direction: column; }
 .ts-libs__foot { display: flex; align-items: center; justify-content: flex-end; min-height: 1.5rem; gap: var(--space-8); }
