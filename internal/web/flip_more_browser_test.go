@@ -571,3 +571,51 @@ func TestFlipSlowFallback(t *testing.T) {
 		}
 	})
 }
+
+// TestFlipEdgeMouseDrag: with a mouse, the page edge is the handle. Grabbing it and pulling past the middle turns the
+// page with a leaf that follows the pointer; a plain click on the edge turns one page.
+func TestFlipEdgeMouseDrag(t *testing.T) {
+	b := chromium(t)
+	l := flipSeed(t)
+	srv := pgServe(t, l)
+	tab := flipOpen(t, b, srv, l, 1440, 900, false, "ch=2")
+	var edge struct{ X, Y float64 }
+	pgEval(tab, `(() => { const r = document.querySelector(".ts-edge--next").getBoundingClientRect(); return { X: r.right - 8, Y: r.top + r.height / 2 }; })()`, &edge)
+	mouse := func(kind string, x float64, buttons int) {
+		t.Helper()
+		params := map[string]any{"type": kind, "x": x, "y": edge.Y, "button": "left", "buttons": buttons, "clickCount": 1}
+		if kind == "mouseMoved" {
+			params["clickCount"] = 0
+		}
+		if err := tab.Call("Input.dispatchMouseEvent", params, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mouse("mouseMoved", edge.X, 0)
+	mouse("mousePressed", edge.X, 1)
+	for _, x := range []float64{edge.X - 30, edge.X - 200, edge.X - 500, edge.X - 800, edge.X - 1000} {
+		mouse("mouseMoved", x, 1)
+		time.Sleep(30 * time.Millisecond)
+	}
+	flipWaitStage(tab)
+	var leaf string
+	pgEval(tab, `document.querySelector(".ts-flip__leaf").style.transform`, &leaf)
+	if !strings.Contains(leaf, "rotateY") {
+		t.Errorf("no leaf follows the pointer: %q", leaf)
+	}
+	mouse("mouseReleased", edge.X-1000, 0)
+	flipWaitGone(tab)
+	var page int
+	pgEval(tab, `pgPage()`, &page)
+	if page != 1 {
+		t.Errorf("page %d after the drag, want 1", page)
+	}
+	mouse("mouseMoved", edge.X, 0)
+	mouse("mousePressed", edge.X, 1)
+	mouse("mouseReleased", edge.X, 0)
+	flipWaitGone(tab)
+	pgEval(tab, `pgPage()`, &page)
+	if page != 2 {
+		t.Errorf("page %d after a click on the edge, want 2", page)
+	}
+}
