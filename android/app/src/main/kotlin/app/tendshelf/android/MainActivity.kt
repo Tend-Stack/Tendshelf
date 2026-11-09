@@ -66,7 +66,7 @@ class MainActivity : Activity() {
         flow = ConnectFlow(this, web, store, api, pages, signOut)
         speech = Speech(this)
         bridge = Bridge({ flow.state }, { store.origin }, ::applyTheme, ::keepScreenOn, speech)
-        Offline.onChange = { id -> main.post { bridge.pushDownload(id) } }
+        Offline.onChange = { id -> main.post { bridge.pushDownload(id); refreshDownloadsPage() } }
         flow.onState = ::syncBridge
         saver = FileSaver(this) { store.origin }
         chooser = FileChooser(this)
@@ -293,5 +293,20 @@ class MainActivity : Activity() {
             r.observe { pages.playingNow = Pair(it.bookId, it.playing) }
             bridge.remote = r
         }, mainExecutor)
+    }
+
+    /** The rows the bundled Downloads page last saw; the page redraws when a book arrives, leaves or changes state. */
+    private var downloadsSeen = ""
+
+    /**
+     * The Downloads page reloads itself only while a book is queued or downloading, so a book that appears on its own
+     * (an automatic download, 0035) or finishes while the page is open would be missing or stale. Redraw it then.
+     */
+    private fun refreshDownloadsPage() {
+        val shown = web.url == pages.downloadsUrl
+        val now = Offline.store.all().joinToString(",") { it.bookId + ":" + it.state }
+        if (now == downloadsSeen) return
+        downloadsSeen = now
+        if (shown) web.reload()
     }
 }
