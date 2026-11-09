@@ -52,6 +52,7 @@
   --note-dot: var(--accent);
   --pill-voice: var(--raised);
   --shadow-cover: 0 12px 26px #00000073;
+  --flip-shade: #0000005c;
   --shadow-float: 0 10px 30px #00000080, 0 2px 8px #00000059;
   --shadow-sheet: 0 -12px 40px #00000099;
   --focus-ring: 0 0 0 2px #14110e, 0 0 0 4px #f0956a;
@@ -92,6 +93,7 @@
   --note-dot: var(--accent);
   --pill-voice: var(--raised);
   --shadow-cover: 0 8px 20px #1f1a1433;
+  --flip-shade: #1f1a1429;
   --shadow-float: 0 8px 24px #1f1a1426, 0 1px 4px #1f1a141a;
   --shadow-sheet: 0 -8px 32px #1f1a1433;
   --focus-ring: 0 0 0 2px #f4eee3, 0 0 0 4px #a2441a;
@@ -132,6 +134,7 @@
   --note-dot: var(--accent);
   --pill-voice: var(--raised);
   --shadow-cover: 0 8px 20px #33281b33;
+  --flip-shade: #33281b2e;
   --shadow-float: 0 8px 24px #33281b26, 0 1px 4px #33281b1a;
   --shadow-sheet: 0 -8px 32px #33281b33;
   --focus-ring: 0 0 0 2px #e6d7bc, 0 0 0 4px #8e3b15;
@@ -172,6 +175,7 @@
   --note-dot: var(--accent);
   --pill-voice: var(--raised);
   --shadow-cover: none;
+  --flip-shade: transparent;
   --shadow-float: 0 0 0 1px #ffffff;
   --shadow-sheet: 0 0 0 1px #ffffff;
   --focus-ring: 0 0 0 2px #000000, 0 0 0 4px #ffffff;

@@ -65,6 +65,19 @@ const (
 	readerStayHere     = "Stay here"
 )
 
+// Page numbers (decision 0036): they fit this device and look, so the words say "about" until every part is measured.
+const (
+	readerPgAbout     = "Page %d of about %d"
+	readerPgsAbout    = "Pages %d–%d of about %d"
+	readerPg          = "Page %d of %d"
+	readerPgs         = "Pages %d–%d of %d"
+	readerFootAbout   = "%d of about %d"
+	readerFoot        = "%d of %d"
+	readerPagesLeft   = "%d pages left in this chapter"
+	readerOnePageLeft = "One page left in this chapter"
+	readerLastPage    = "Last page of this chapter"
+)
+
 // NEW (RD3): footnotes, back chip, colours, bookmark, search, export and plain errors.
 const (
 	readerGoToNote     = "Go to the note"

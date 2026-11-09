@@ -26,6 +26,7 @@ type ReaderChapterView struct {
 	Overline, Page string
 	Title          string
 	Chars          int        // characters of the whole chapter (the time left in it)
+	PartChars      int        // characters of this part, which the page numbers count by
 	End            *ReaderEnd // the last part of the book carries the end-of-book block
 	Head           bool // the part carries the chapter's heading (the first part only)
 	Blocks         []ReaderBlockView
@@ -273,6 +274,7 @@ templ Reader(v ReaderView) {
 				if v.Offline == nil || !v.Offline.Shell {
 					@ReaderChapter(v.Chapter)
 				}
+				<div id="reader-foot" class="ts-pagefoot" aria-hidden="true"><span id="reader-foot-a"></span><span id="reader-foot-b"></span></div>
 			</div>
 		</article>
 		if v.SettingsModule != "" {
@@ -336,6 +338,7 @@ templ Reader(v ReaderView) {
 			</div>
 			<div class="ts-readdock__row">
 				<span id="reader-page">{ v.Footer.PageLine }</span>
+				<span id="reader-print"></span>
 				<span id="reader-left"></span>
 				if v.Aloud != nil {
 				<button type="button" class="ts-iconbtn ts-aloud-open ts-aloud-open--dock" data-aloud-src={ v.Aloud.Src } aria-controls="reader-aloud" aria-expanded="false" aria-label={ v.Aloud.Label } hidden>
@@ -409,6 +412,7 @@ templ ReaderChapter(c ReaderChapterView) {
 		data-part={ strconv.Itoa(c.Part) }
 		data-before={ strconv.Itoa(c.Before) }
 		data-chars={ strconv.Itoa(c.Chars) }
+		data-part-chars={ strconv.Itoa(c.PartChars) }
 		if c.PrevFrag != "" {
 			data-prev-href={ c.PrevFrag }
 		}

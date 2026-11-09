@@ -17,7 +17,7 @@ import (
 func TestPaginatorSettings(t *testing.T) {
 	l := rdrSeed(t)
 	def := l.rsetStored(t, l.owner)
-	if def.Margin != "normal" || def.Flow != "auto" || def.Justify || !def.Hyphens || def.TapSwap {
+	if def.Margin != "normal" || def.Flow != "pages" || def.Justify || !def.Hyphens || def.TapSwap {
 		t.Fatalf("defaults %+v", def)
 	}
 	if code, _, _ := rsetPost(t, l, l.owner, true, "margin", "wide", "flow", "pages", "justify", "0", "justify", "1",
@@ -65,7 +65,7 @@ func TestPaginatorRoot(t *testing.T) {
 	l := rdrSeed(t)
 	body := l.get(l.owner, l.readPath("ch=2"), false).Body.String()
 	for _, want := range []string{`data-ts-module="/static/js/reader.`, `data-pages-src="/static/js/reader-pages.`, `data-chapter-count="4"`,
-		`data-flow="auto"`, `data-edition="` + l.ed.ID + `"`, `data-chars="`} {
+		`data-flow="pages"`, `data-edition="` + l.ed.ID + `"`, `data-chars="`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page misses %q", want)
 		}
@@ -158,5 +158,22 @@ func TestPaginatorEnd(t *testing.T) {
 	}
 	if res := post(l.owner, url.Values{"finished": {"1"}, "_csrf": {"wrong"}}, true); res.StatusCode != http.StatusForbidden {
 		t.Errorf("a wrong token: %d", res.StatusCode)
+	}
+}
+
+// TestReaderSettingsFlowChoices: the sheet offers Pages and Scroll only, and a default person sees Pages chosen (decision 0036).
+func TestReaderSettingsFlowChoices(t *testing.T) {
+	l := rdrSeed(t)
+	sheet := l.get(l.owner, l.readPath("sheet=reading"), false).Body.String()
+	for _, want := range []string{`id="rs-flow-pages"`, `id="rs-flow-scroll"`} {
+		if !strings.Contains(sheet, want) {
+			t.Errorf("sheet misses %q", want)
+		}
+	}
+	if strings.Contains(sheet, `id="rs-flow-auto"`) || strings.Contains(sheet, "Automatic") {
+		t.Error("the sheet still offers Automatic")
+	}
+	if !regexp.MustCompile(`id="rs-flow-pages"[^>]*checked`).MatchString(sheet) {
+		t.Error("Pages is not the chosen flow by default")
 	}
 }
