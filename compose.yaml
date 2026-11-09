@@ -1,0 +1,37 @@
+# Run Tendshelf with `docker compose up -d`. See docs/deploy.md ("Docker").
+services:
+  tendshelf:
+    build:
+      context: .
+      args:
+        VERSION: "2026.7.0" # shown in the app; any text will do
+        UID: "1000"         # make this the owner of ./data (run `id -u`)
+    image: tendshelf:local
+    restart: unless-stopped
+    ports:
+      # Only this computer can reach it. Put a reverse proxy in front for HTTPS (see below), or
+      # change to "8095:8095" to let your network reach it directly (plain http).
+      - "127.0.0.1:8095:8095"
+    volumes:
+      # The database, covers, ebooks and automatic backups. Create it first: mkdir data
+      - ./data:/data
+      # Your audiobooks and ebooks, read-only. Change the left side to your folder. Then, in
+      # Tendshelf, add /books as the library folder. If you turn on uploads, give the upload
+      # folder its own writable mount (see docs/deploy.md), for example:
+      #   - /srv/audiobooks/uploads:/books/uploads
+      - /srv/audiobooks:/books:ro
+    # Behind a reverse proxy, tell Tendshelf to believe the proxy's forwarding headers. Use the
+    # proxy's address or range; leave this out when nothing sits in front of it.
+    # command: ["-addr", "0.0.0.0:8095", "-data", "/data", "-trusted-proxy", "172.16.0.0/12"]
+
+# HTTPS with Caddy as a second service in this file (Caddy gets the certificate by itself).
+# Remove the "ports" of tendshelf above, turn on the trusted-proxy command, then:
+#
+#   caddy:
+#     image: caddy:2
+#     restart: unless-stopped
+#     ports: ["80:80", "443:443"]
+#     command: caddy reverse-proxy --from books.example.com --to tendshelf:8095
+#     volumes: [caddy-data:/data]
+#
+# and add `volumes: { caddy-data: {} }` at the end of the file.

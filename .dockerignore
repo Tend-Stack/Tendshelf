@@ -1,0 +1,16 @@
+.git
+.claude
+.local
+.cache
+bin
+dist
+data
+desktop
+android
+docs/design
+docs/plans
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+/tendshelf
