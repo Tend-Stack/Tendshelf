@@ -36,7 +36,13 @@ func skOpenURL(t *testing.T, b *cdp.Browser, url string, w, h int, mobile bool) 
 	tab := b.NewTab(w, h, mobile, true)
 	tab.Navigate(url)
 	tab.WaitFor(ofrMounted+` && document.getElementById("reader-skim") && !document.getElementById("reader-skim").hidden`, 10*time.Second)
+	showBar(tab)
 	return tab
+}
+
+// showBar shows the bar and dock: a phone opens with them hidden (decision 0036), and a hidden dock takes no touch.
+func showBar(tab *cdp.Tab) {
+	tab.Eval(`document.querySelector(".ts-readerpage").dataset.chrome = "on"`, nil)
 }
 
 // skDrag presses on the bar at one fraction of its width and lets go at another: a touch at 390 px, the mouse
@@ -120,6 +126,7 @@ func TestSkimBrowserJump(t *testing.T) {
 			tab.WaitFor(`document.querySelector(".ts-reader__back") === null`, 5*time.Second)
 
 			// Skim again, then read on: three forward turns retire the chip, and reading saves the place.
+			showBar(tab) // the page opened again with the bar away, on a phone
 			skDrag(t, tab, vp.mobile, 0.02, 0.6)
 			skJumped(t, tab)
 			for i := 0; i < 3; i++ {
@@ -202,6 +209,7 @@ func TestSkimBrowserOffline(t *testing.T) {
 	ofrOffline(t, e, tab, true)
 	tab.Navigate(e.read("ch=2"))
 	tab.WaitFor(`document.querySelector("[data-offline-shell]") && `+ofrMounted+` && !document.getElementById("reader-skim").hidden`, 15*time.Second)
+	showBar(tab)
 
 	// Offline the shell cannot place bp: the chapter opens at its start, and the chip leads back.
 	skDrag(t, tab, true, 0.02, 0.8)

@@ -108,10 +108,13 @@ async function open(marker, root, copy) {
     text.textContent = copy.failed;
     return;
   }
-  text.innerHTML = await res.text();
+  // The part goes in front of the page foot, which the page already carries.
+  const holder = document.createElement("template");
+  holder.innerHTML = await res.text();
+  const section = holder.content.querySelector("section[data-part]");
+  text.prepend(section);
   window.htmx?.process(text);
   // A fragment has no link back to the part before it; the page has one.
-  const section = text.firstElementChild;
   const before = /chapters\/(\d+)\?(?:.*&)?(?:part=(\d+))?/.exec(section.dataset.prevHref || "");
   if (before) {
     const link = document.createElement("a");

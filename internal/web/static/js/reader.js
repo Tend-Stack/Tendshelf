@@ -130,10 +130,8 @@ export function mount(root) {
     };
   }
 
-  // The first text on screen: a binary search over the sentences by where they end, then over the
-  // characters of that sentence. About twenty layout reads.
-  function firstShown() {
-    const before = view.before();
+  // The first sentence not before the page, by a binary search over where the sentences end. `before` is a test on a rect.
+  function firstOn(before) {
     const list = root.querySelectorAll(".ts-s");
     let low = 0;
     let high = list.length - 1;
@@ -143,10 +141,15 @@ export function mount(root) {
       if (rect && !before(rect)) high = mid;
       else low = mid + 1;
     }
-    const el = list[low];
+    return list[low] || null;
+  }
+
+  // The first text on screen: that sentence, then a binary search over its characters. About twenty layout reads.
+  function firstShown(before = view.before()) {
+    const el = firstOn(before);
     if (!el) return null;
-    low = 0;
-    high = el.textContent.length - 1;
+    let low = 0;
+    let high = el.textContent.length - 1;
     while (low < high) {
       const mid = (low + high) >> 1;
       const rect = charRect(el, mid);
@@ -185,10 +188,8 @@ export function mount(root) {
     stop() {},
   };
 
-  const wanted = () => {
-    const choice = root.dataset.flow;
-    return choice === "pages" || (choice !== "scroll" && innerWidth < 1280) ? "pages" : "scroll";
-  };
+  // Pages at every width; only a person who chose Scroll gets the scroll (decision 0036).
+  const wanted = () => (root.dataset.flow === "scroll" ? "scroll" : "pages");
 
   // Show the flow that is wanted, at the place we are at.
   async function setFlow() {
@@ -242,8 +243,19 @@ export function mount(root) {
     const total = Number(root.dataset.totalChars);
     const pages = Number(root.dataset.pages);
     const about = root.dataset.learned === "true" ? "" : "About";
-    const pageText = here.page && pages ? copy.pageOf.replace("%d", here.page).replace("%d", pages) : "";
-    document.getElementById("reader-page").textContent = pageText;
+    const printed = here.page && pages ? copy.pageOf.replace("%d", here.page).replace("%d", pages) : "";
+    root.dataset.hereSid = here.sid;
+    const info = view.pageInfo?.();
+    if (info) {
+      // Pages: the number that fits this device first, the book's own label second.
+      document.getElementById("reader-page").textContent = info.line;
+      document.getElementById("reader-print").textContent = printed;
+      document.getElementById("reader-foot-a").textContent = info.a;
+      document.getElementById("reader-foot-b").textContent = info.b;
+    } else {
+      document.getElementById("reader-page").textContent = printed;
+      document.getElementById("reader-print").textContent = "";
+    }
     const left = [];
     const chapterTime = span(here.chars - here.inChapter);
     const bookTime = span(total - here.charPos);
@@ -253,6 +265,10 @@ export function mount(root) {
     const ruler = shell.querySelector(".ts-ruler");
     const percent = total ? Math.min(100, (here.charPos * 100) / total) : 0;
     ruler.querySelector(".ts-ruler__fill").style.setProperty("--ts-value", percent);
+    shell.style.setProperty("--ts-value", percent); // the thin line along the bottom edge while the bar is hidden
+    const stack = Math.round((8 * percent) / 100); // the two page-edge stacks, 8 px in all, thicken as the book is read
+    shell.style.setProperty("--ts-stack-l", stack + "px");
+    shell.style.setProperty("--ts-stack-r", 8 - stack + "px");
     ruler.setAttribute("aria-valuenow", Math.round(percent));
     if (skimBar && document.activeElement !== skimBar) skimBar.value = Math.round(percent * 100); // the skim bar follows the place unless it is in use
   }
@@ -350,7 +366,7 @@ export function mount(root) {
   window.tsNativeSpeech?.ask();
   on(document, "ts:native:voices", voiced);
   let loading = null;
-  const kit = { place: () => here, flow: () => flow, turn, follow: (sid) => view.show(sid, Number(sentence(sid)?.dataset.o)) && moved() };
+  const kit = { place: () => here, flow: () => flow, turn, firstOn, follow: (sid) => view.show(sid, Number(sentence(sid)?.dataset.o)) && moved() };
   for (const button of aloud) {
     button.addEventListener("click", () => {
       loading ??= import(button.dataset.aloudSrc).then((module) => module.aloud(root, shell, kit));
@@ -394,7 +410,11 @@ export function mount(root) {
     if (busy || !view) return;
     busy = true;
     try {
-      if (await (direction > 0 ? view.next() : view.prev())) moved();
+      if (await (direction > 0 ? view.next() : view.prev())) {
+        moved();
+        // On a phone the bar and dock lie over the page, so a turn puts them away (unless the person is using them).
+        if (flow === "pages" && innerWidth < 1024 && !document.activeElement?.closest(".ts-readerbar, .ts-readdock")) shell.dataset.chrome = "off";
+      }
     } finally {
       busy = false;
     }
@@ -409,7 +429,8 @@ export function mount(root) {
   });
   function tap(event) {
     if (event.target.closest("a, button, input, textarea, select, .ts-hl") || selected) return;
-    const rect = root.getBoundingClientRect();
+    // The zones are measured on the page itself: a press on the desk beside it is a turn.
+    const rect = view.zone?.() || root.getBoundingClientRect();
     const across = (event.clientX - rect.left) / rect.width;
     if (across >= 0.25 && across <= 0.75) {
       // A mouse click in the text never hides the bar (the way back is the bar's handle, or the mouse at the top);
@@ -525,6 +546,8 @@ export function mount(root) {
   if (document.fonts) on(document.fonts, "loadingdone", () => view && relay());
 
   setFlow().then(() => {
+    // A phone opens on the page alone: the bar would cover text. A tap in the middle brings it back.
+    if (flow === "pages" && innerWidth < 1024) shell.dataset.chrome = "off";
     const el = sentence(root.dataset.at);
     if (el) {
       view.lay();
