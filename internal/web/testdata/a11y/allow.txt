@@ -5,3 +5,5 @@
 # shows. Role, theme and width do not matter. A line that matches nothing in a full run fails the audit.
 text-200-clip * #reader-ch-2 -- A page of the reader is a column box: the rest of the part sits in the columns to its right and is reached by page turns or by switching to scrolling, so nothing is lost.
 contrast-control * #reader-skim -- The skim bar is a transparent range laid over the dock's ruler, which draws the line; its boundary is the thumb (accent fill on the ground) and a visible focus ring, so a border or fill on the 44 px bar itself would only hide the ruler.
+text-200-clip reader-flip div.ts-flip__page>div.ts-flip__face>div.ts-reader.ts-reader--size-20>div.ts-reader__col>section -- The page turn in the air: a face is a slice of one column of the chapter, drawn on a stage that is aria-hidden, inert and gone when the turn ends; the real page is the one that is read.
+text-200-clip reader-flip div.ts-flip__side>div.ts-flip__face>div.ts-reader.ts-reader--size-20>div.ts-reader__col>section -- The same stage: the sides of the turning leaf are slices of the chapter's columns, hidden from assistive technology and not interactive.

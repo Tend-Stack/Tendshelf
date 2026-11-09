@@ -264,3 +264,31 @@ body:has(.ts-readerpage) :is(#nav-tabbar, #nav-rail, #nav-side) { visibility: hi
 .ts-aloud-open[hidden] { display: none; }
 .ts-aloud-open[aria-expanded="true"] { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .ts-s { transition: none; } }
+
+/* The page turn (reader-flip.js, decision 0036). The stage lies over the reader and is drawn only while a leaf is in the air.
+   The real page below is already the destination; the stage holds copies of the pages that fly. It is never touched or read. */
+.ts-flip-host { display: contents; }
+.ts-flip { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; perspective: var(--flip-depth); }
+.ts-flip--wait { visibility: hidden; }
+.ts-flip * { transition: none; }
+.ts-flip__page, .ts-flip__leaf, .ts-flip__cast { position: absolute; }
+.ts-flip__leaf { transform-style: preserve-3d; transform-origin: 0 50%; }
+.ts-flip__side, .ts-flip__face, .ts-flip__shade { position: absolute; inset: 0; }
+.ts-flip__side, .ts-flip__face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.ts-flip__side--back { transform: rotateY(180deg); }
+.ts-flip__face { overflow: hidden; background: var(--ground); }
+.ts-flip__leaf > .ts-flip__side { box-shadow: 0 0 0 1px var(--line); }
+[data-theme="contrast"] .ts-flip__leaf > .ts-flip__side { box-shadow: 0 0 0 1px var(--line-strong); }
+.ts-flip__off { display: none !important; }
+/* Inside a face the page is laid out as the real one is, but with no sheet of its own: the face is the sheet. */
+.ts-flip .ts-reader--pages { position: absolute; inset: 0; display: block; padding: 0; overflow: hidden; background: none; }
+.ts-flip .ts-reader--pages .ts-reader__col { position: absolute; inset: 0 auto 0 0; width: calc(var(--flip-x, 0px) + var(--ts-col)); box-sizing: border-box; margin: 0; padding: var(--flip-y, 0) 0 0 var(--flip-x, 0); background: none; box-shadow: none; }
+.ts-flip .ts-reader--pages .ts-reader__col::before, .ts-flip .ts-reader--pages .ts-reader__col::after { content: none; }
+.ts-flip .ts-reader--pages section[data-part] { margin-inline: 0; }
+/* Shading: a page turning away darkens toward its free edge; the side coming down is darkest at the spine and lightens as it lands. */
+.ts-flip__shade--front { background: linear-gradient(to right, color-mix(in srgb, var(--flip-shade) 30%, transparent), var(--flip-shade)); }
+.ts-flip__shade--back { background: linear-gradient(to left, var(--flip-shade), color-mix(in srgb, var(--flip-shade) 25%, transparent) 55%, transparent); }
+/* The shadow lies on the page beneath: even under the leaf, with a soft edge past the leaf's free edge (two layers, for strength). */
+.ts-flip__cast { transform-origin: 0 50%; background: linear-gradient(to right, var(--flip-shade) 55%, transparent), linear-gradient(to right, var(--flip-shade) 30%, transparent 90%); }
+.ts-flip__cast--left { transform-origin: 100% 50%; background: linear-gradient(to left, var(--flip-shade) 55%, transparent), linear-gradient(to left, var(--flip-shade) 30%, transparent 90%); }
+.ts-flip__shade, .ts-flip__cast { opacity: 0; pointer-events: none; }
