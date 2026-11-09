@@ -9,7 +9,11 @@ on:
     branches: [main]
     paths:
       - "android/**"
-      - "internal/web/static/**"
+      # Only what CopyShellAssets embeds (android/app/build.gradle.kts).
+      - "internal/web/static/css/tokens.css"
+      - "internal/web/static/css/bundle.css"
+      - "internal/web/static/css/fonts.css"
+      - "internal/web/static/fonts/**"
       - ".gitea/workflows/android.yml"
   workflow_dispatch:
 
