@@ -214,7 +214,7 @@ func rdrSIDExists(d *ebook.Doc, sid string) (int, bool) {
 func readerWords() string {
 	b, _ := json.Marshal(map[string]string{"pageOf": readerPageOf, "ch": readerLeftChapter, "chAbout": readerLeftChapAbt,
 		"bk": readerLeftBook, "bkAbout": readerLeftBookAbt, "further": readerAnotherDev, "go": readerGoThere, "stay": readerStayHere,
-		"back": readerBack, "failed": readerPartFailed, "retry": readerTryAgain, "prev": readerPrevChapter, "needsNet": readerNeedsNet})
+		"back": readerBack, "failed": readerPartFailed, "retry": readerTryAgain, "prev": readerPrevChapter, "needsNet": readerNeedsNet, "signedOut": msgSignedOut, "signIn": msgSignIn})
 	return string(b)
 }
 

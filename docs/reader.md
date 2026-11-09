@@ -165,6 +165,12 @@ On the server `bp` (an integer 0 to 10000, else ignored, and ignored beside `par
 the block at that share of the book's text, at its first sentence (`rsPlaceAtChars`); `at` still wins over `bp`. Offline the shell
 cannot place `bp` and `reader-offline.js` reads only `ch`: the chapter opens at its start, and the chip still leads back.
 
+A part that does not load (pages flow, `fetchPart` in `reader-pages.js`) is tried once more after 1.5 s, quietly. If it
+still fails there is one "This part did not load." toast with Try again, however often the person turns on; it goes when
+a part loads, and when the reader is left (an htmx swap of the page, `pagehide`, or the flow changing). A failed result is
+never kept, so Try again asks the server again. A redirect (the session ended) shows "Sign in" instead. The part's address
+(no query) and the status or error go to `console.warn`.
+
 ## Comfort (G5)
 
 Three choices under "More" in the Reading settings sheet, all off by default and kept in `reader.v1` (`keepAwake`, `warm`

@@ -7,6 +7,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 ### Fixes
 
 - **Reader sheets keep their title and close button in view.** Contents, Reading settings and the other sheets scroll only underneath their handle and heading, and the scrollbar stays inside the rounded box. Rows in Contents line up even when a chapter has no title.
+- **"This part did not load" shows once and goes away.** A part that fails to load is tried again quietly first. If it still fails you see one message, not a pile of them, and it is gone when you leave the book or when the part loads. "Try again" now really asks again, and if you were signed out the message says so.
 - **The reader bar no longer vanishes by itself.** Clicking in the text with a mouse leaves it alone; a finger tap in the middle still hides and shows it. A hidden bar leaves a small "Show the bar" button at the top, and with "Hide the bar after a moment" on, moving the mouse to the top or bottom, or pressing a key, brings it back. In the scroll layout a hidden bar gives its room to the text.
 
 ### What you can do
