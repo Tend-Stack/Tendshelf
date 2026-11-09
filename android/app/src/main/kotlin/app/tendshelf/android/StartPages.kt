@@ -124,7 +124,8 @@ class StartPages(private val context: Context) {
         }
         section(list, context.getString(R.string.downloads_active), active, playingId, playing)
         section(list, context.getString(R.string.downloads_ready), ready, playingId, playing)
-        val note = if (!offline) "" else
+        val noRoom = if (Offline.autoNoRoomNoted()) "<p class=\"start__note\" role=\"status\">${esc(context.getString(R.string.downloads_auto_no_room))}</p>" else ""
+        val note = noRoom + if (!offline) "" else
             "<p class=\"start__note\" role=\"status\">${esc(context.getString(R.string.offline_title))}. ${esc(context.getString(R.string.offline_body))}</p>" +
                 "<form method=\"get\" action=\"/connect\"><input type=\"hidden\" name=\"address\" value=\"${esc(offlineAddress)}\">" +
                 "<button type=\"submit\" class=\"ts-btn ts-btn--primary ts-btn--lg ts-btn--block\">${esc(context.getString(R.string.offline_retry))}</button></form>"
@@ -171,6 +172,19 @@ class StartPages(private val context: Context) {
     }
 
     private fun stateWords(b: OfflineBook): String = when (b.state) {
+        // A book downloaded on its own says so, and says when it waits for Wi-Fi (decision 0035).
+        OfflineState.READY, OfflineState.QUEUED, OfflineState.PAUSED ->
+            if (Offline.isAuto(b.bookId)) autoWords(b) else plainWords(b)
+        else -> plainWords(b)
+    }
+
+    private fun autoWords(b: OfflineBook): String = when {
+        b.state == OfflineState.READY -> context.getString(R.string.downloads_auto_row)
+        !Offline.unmetered() -> context.getString(R.string.downloads_auto_waiting)
+        else -> plainWords(b)
+    }
+
+    private fun plainWords(b: OfflineBook): String = when (b.state) {
         OfflineState.QUEUED -> context.getString(R.string.downloads_waiting)
         OfflineState.DOWNLOADING -> Offline.view(b.bookId).let { if (it.known) context.getString(R.string.downloads_percent, it.pct) else context.getString(R.string.downloads_working) }
         OfflineState.PAUSED -> context.getString(R.string.downloads_paused_row)

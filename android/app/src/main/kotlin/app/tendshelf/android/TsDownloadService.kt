@@ -14,7 +14,8 @@ import androidx.media3.exoplayer.scheduler.Scheduler
 /**
  * The foreground service that keeps a download going with the screen off (type `dataSync`). It has no scheduler (D2):
  * a scheduler would start it from the background, which Android refuses for this type; the visible activity resumes
- * downloads instead. On Android 15 and later the system lets a `dataSync` service run 6 hours in 24 (D3); at the limit
+ * downloads instead; the player may also start it while it is playing, for the next book (decision 0035), and a refusal
+ * only leaves that book held. On Android 15 and later the system lets a `dataSync` service run 6 hours in 24 (D3); at the limit
  * the downloads pause, a notification says so, and the next time the app is opened they go on by byte range.
  */
 @UnstableApi

@@ -54,6 +54,16 @@ class Api(origin: String) {
         return ApiJson.nextBookId(String(bytes))
     }
 
+    /**
+     * Looks at the next book after [ended] without taking it (decision 0035): its id, or null for 204. A GET that
+     * writes nothing, so a retry costs nothing. An older server answers 404 or 405, which reaches the caller.
+     */
+    fun queuePeek(token: String, ended: String): String? {
+        val bytes = get(paths.queuePeekUrl(ended), token, 64 * 1024)
+        if (bytes.isEmpty()) return null
+        return ApiJson.nextBookId(String(bytes))
+    }
+
     // ---- The lists the car browses (A8). Each is one small GET; a failure is an exception for the caller to word. ----
 
     fun continueList(token: String): List<BookCard> = ApiJson.itemBooks(String(get(paths.continueUrl(24), token, 1024 * 1024)))

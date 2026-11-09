@@ -183,6 +183,7 @@ class PlaybackService : MediaLibraryService() {
         askPrompt = ask
         val resume = Resume(exo, { engine.settings }, { engine.currentBook })
         val next = NextBook(this, w, { connections }, main, io) { id -> engine.start(id, null) }
+        val auto = AutoNext()
         var lastChapter = -2
         engine.pendingFor = { id -> w.pending(id) }
         engine.onBookChanging = { w.saveNow("book") }
@@ -190,6 +191,7 @@ class PlaybackService : MediaLibraryService() {
             ask.dismissPlain()
             resume.bookLoaded(writtenAt, atGiven)
             next.reset()
+            auto.reset()
             sleep.bookChanged()
             lastChapter = -2
         }
@@ -200,6 +202,8 @@ class PlaybackService : MediaLibraryService() {
                 if (lastChapter != -2 && chapter != lastChapter) w.saveNow("chapter")
                 lastChapter = chapter
                 w.onTick(book)
+                // Near the end: the next book is made ready on Wi-Fi (decision 0035). A book is one window: book time.
+                auto.tick(book, exo.currentPosition, exo.duration, exo.isPlaying)
             }
         }
         engine.onEnded = {

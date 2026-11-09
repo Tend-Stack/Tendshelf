@@ -18,6 +18,8 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Requirements
+import app.tendshelf.shared.AUTO_HOLD
+import app.tendshelf.shared.AutoPlan
 import app.tendshelf.shared.DownloadPercent
 import app.tendshelf.shared.decodeKeptSettings
 import app.tendshelf.shared.encodeKeptSettings
@@ -26,8 +28,12 @@ import app.tendshelf.shared.OfflineBook
 import app.tendshelf.shared.OfflineState
 import app.tendshelf.shared.PlayerSettings
 import app.tendshelf.shared.Plan
+import app.tendshelf.shared.SPARE_BYTES
 import app.tendshelf.shared.TextManifest
 import app.tendshelf.shared.Verdict
+import app.tendshelf.shared.autoBytes
+import app.tendshelf.shared.autoDownloadPlan
+import app.tendshelf.shared.autoUnfinished
 import app.tendshelf.shared.checkVerdict
 import app.tendshelf.shared.downloadPercent
 import app.tendshelf.shared.downloadPlan
@@ -243,8 +249,19 @@ object Offline {
         }
     }
 
+    private var autoTicks = 0
+
     private fun pollTick() {
         val running = manager().currentDownloads.toList()
+        // An automatic download holds the moment the Wi-Fi is gone (D10): up to about a second of data after it drops.
+        val autoRunning = running.filter {
+            isAuto(it.request.id.substringBefore('|')) && it.state != Download.STATE_COMPLETED && it.stopReason == Download.STOP_REASON_NONE
+        }
+        if (autoRunning.isNotEmpty() && !unmetered()) autoRunning.forEach { manager().setStopReason(it.request.id, AUTO_HOLD) }
+        // Every 30 s: an unfinished automatic book gives way when the phone is nearly full (invariant 3).
+        if (++autoTicks % 30 == 0 && marks().isNotEmpty() && freeBytes() < SPARE_BYTES) {
+            safeIo { autoUnfinished(store.all(), marks()).forEach { remove(it.bookId) } }
+        }
         if (running.none { it.state == Download.STATE_DOWNLOADING }) {
             polling = false
             return
@@ -290,6 +307,18 @@ object Offline {
         val conn = tokens.current() ?: return
         val existing = store.get(book)
         if (existing != null && existing.state != OfflineState.FAILED && existing.state != OfflineState.STALE) {
+            // Pressing Download on an automatic book makes it the person's: no hold, and it goes on at once (invariant 7).
+            if (isAuto(book)) {
+                unmark(book)
+                if (existing.state != OfflineState.READY) {
+                    val ids = downloadsOf(manager(), book).map { it.request.id }
+                    main.post {
+                        ids.forEach { manager().setStopReason(it, Download.STOP_REASON_NONE) }
+                        manager().resumeDownloads()
+                        DownloadService.sendResumeDownloads(app, TsDownloadService::class.java, true)
+                    }
+                }
+            }
             io { retryText(book) }
             changed(book)
             return
@@ -306,32 +335,7 @@ object Offline {
                 Plan.NoRoom -> return refuse(R.string.download_no_room)
                 Plan.NothingToPlay -> return addTextOnly(book, conn, api, manifest, text)
             }
-            val cover = api.cover(conn.token, book)
-            if (cover != null) coverFile(book).apply { parentFile?.mkdirs() }.writeBytes(cover)
-            val place = manifest.progress
-            floors.remove(book)
-            live.remove(book)
-            store.put(
-                OfflineBook(
-                    book, tokens.userId.orEmpty(), manifest.title, manifest.author, manifest.durationMs, plan.total,
-                    OfflineState.QUEUED, place?.positionMs ?: 0, place?.clientUpdatedAt ?: 0,
-                ),
-                text,
-            )
-            val requests = plan.files.map {
-                // The request holds an address with no credential, a cache key and the size the manifest listed.
-                DownloadRequest.Builder("$book|${it.fileId}", android.net.Uri.parse(it.url))
-                    .setCustomCacheKey(it.cacheKey)
-                    .setData(it.size.toString().toByteArray())
-                    .build()
-            }
-            main.post {
-                manager().resumeDownloads()
-                for (r in requests) DownloadService.sendAddDownload(app, TsDownloadService::class.java, r, true)
-            }
-            changed(book)
-            // One Download (0019, point 1): the text follows the audio when the person may read and download it.
-            fetchText(book)
+            enqueue(book, conn, api, manifest, text, plan, auto = false)
         } catch (e: ApiException) {
             Log.w(TAG, "download not started: server answered ${e.code}")
             refuse(if (e.code == 403) R.string.download_not_allowed else R.string.download_failed)
@@ -341,6 +345,54 @@ object Offline {
         } catch (e: Exception) {
             Log.w(TAG, "download not started: ${e.javaClass.simpleName}")
         }
+    }
+
+    /** Keeps the cover, the row and the answer, queues every file, and fetches the text. [auto]: held until Wi-Fi (0035). */
+    private fun enqueue(book: String, conn: Connection, api: Api, manifest: app.tendshelf.shared.BookManifest, text: String, plan: Plan.Ok, auto: Boolean) {
+        val cover = api.cover(conn.token, book)
+        if (cover != null) coverFile(book).apply { parentFile?.mkdirs() }.writeBytes(cover)
+        val place = manifest.progress
+        floors.remove(book)
+        live.remove(book)
+        // The mark is written before the row; a stale mark without a row counts as nothing (D11).
+        if (auto) {
+            mark(book)
+            prefs.edit().remove("autoNoRoom").apply()
+        } else {
+            unmark(book)
+        }
+        store.put(
+            OfflineBook(
+                book, tokens.userId.orEmpty(), manifest.title, manifest.author, manifest.durationMs, plan.total,
+                OfflineState.QUEUED, place?.positionMs ?: 0, place?.clientUpdatedAt ?: 0,
+            ),
+            text,
+        )
+        val requests = plan.files.map {
+            // The request holds an address with no credential, a cache key and the size the manifest listed.
+            DownloadRequest.Builder("$book|${it.fileId}", android.net.Uri.parse(it.url))
+                .setCustomCacheKey(it.cacheKey)
+                .setData(it.size.toString().toByteArray())
+                .build()
+        }
+        if (auto) {
+            // Held from the moment it exists; only releaseHeld lets it move a byte (invariant 2).
+            main.post {
+                requests.forEach { manager().addDownload(it, AUTO_HOLD) }
+                releaseHeld(requests.map { it.id })
+            }
+        } else {
+            // A person's own download goes first: the automatic ones wait their turn (invariant 7).
+            val held = autoRequestIds()
+            main.post {
+                held.forEach { manager().setStopReason(it, AUTO_HOLD) }
+                manager().resumeDownloads()
+                for (r in requests) DownloadService.sendAddDownload(app, TsDownloadService::class.java, r, true)
+            }
+        }
+        changed(book)
+        // One Download (0019, point 1): the text follows the audio when the person may read and download it.
+        fetchText(book)
     }
 
     /** A book with text and no audio: one row, ready once its text is whole. */
@@ -401,6 +453,7 @@ object Offline {
 
     /** A book whose text stopped at sign-in or failed is tried again (at the next start, and for sign-in at the next page). */
     private fun retryText(book: String) {
+        if (isAuto(book) && !unmetered()) return
         val now = store.text(book)?.first ?: return
         if (now == "signin" || now == "failed" || now == "fetching") fetchText(book)
     }
@@ -424,6 +477,8 @@ object Offline {
             } catch (e: Exception) {
                 Log.w(TAG, "offline: remove failed: ${e.javaClass.simpleName}")
             }
+            unmark(book)
+            prefs.edit().remove("autoNoRoom").apply()
             store.remove(book)
             coverFile(book).delete()
             TextStore.remove(book)
@@ -436,6 +491,8 @@ object Offline {
         if (!::app.isInitialized) return
         prefs.edit().putBoolean("downloadsLimited", false).apply()
         safeIo {
+            // A hold is applied before a resume, so the order below never lets a metered byte through.
+            autoSync()
             // A row with no download behind it (the process died before the requests were stored) cannot finish: Try again.
             for (r in store.all()) {
                 val active = r.state == OfflineState.QUEUED || r.state == OfflineState.DOWNLOADING || r.state == OfflineState.PAUSED
@@ -448,6 +505,7 @@ object Offline {
                 }
             }
             for (state in listOf("signin", "failed", "fetching")) store.withText(state).forEach { retryText(it) }
+            prefs.getString("autoWant", "")?.takeIf { it.isNotEmpty() }?.let { autoFetch(it) }
             dailyCheck()
         }
     }
@@ -523,6 +581,111 @@ object Offline {
         return decodeKeptSettings(prefs.getString("settingsJson", null))
     }
 
+    /** The Download the next book switch changed in Settings: kept at once; off removes the unfinished automatic ones. */
+    fun setAutoDownload(on: Boolean) {
+        if (!::app.isInitialized) return
+        saveSettings(loadSettings().copy(autoDownload = on))
+        if (!on) safeIo { autoSync() }
+    }
+
+    // ---- The next book, on its own (decision 0035) ----
+
+    private val marksLock = Any()
+
+    private fun marks(): Set<String> = synchronized(marksLock) { HashSet(prefs.getStringSet("autoBooks", emptySet()) ?: emptySet()) }
+
+    // A new set every time: SharedPreferences ignores a set it was given back changed.
+    private fun setMarks(s: Set<String>) { prefs.edit().putStringSet("autoBooks", HashSet(s)).apply() }
+
+    private fun mark(book: String) = synchronized(marksLock) { setMarks(marks() + book) }
+
+    private fun unmark(book: String) = synchronized(marksLock) {
+        val now = marks()
+        if (book in now) setMarks(now - book)
+    }
+
+    /** True for a book that was downloaded on its own and has not been made the person's own. */
+    fun isAuto(book: String): Boolean = ::app.isInitialized && book in marks()
+
+    /** True while the active network is unmetered (Wi-Fi). Everything automatic asks this before it moves a byte. */
+    fun unmetered(): Boolean = Requirements(Requirements.NETWORK_UNMETERED).checkRequirements(app)
+
+    /** True when the last automatic book was not fetched for lack of room; the Downloads page says so. */
+    fun autoNoRoomNoted(): Boolean = ::app.isInitialized && prefs.getBoolean("autoNoRoom", false)
+
+    /** The player is near the end of [book] but the network is metered: ask again at the next allowed moment. */
+    fun autoWant(book: String) { prefs.edit().putString("autoWant", book).apply() }
+
+    fun autoForget() { if (::app.isInitialized) prefs.edit().remove("autoWant").apply() }
+
+    private fun autoRequestIds(): List<String> =
+        autoUnfinished(store.all(), marks()).flatMap { r -> downloadsOf(manager(), r.bookId).map { it.request.id } }
+
+    /**
+     * Lets held automatic downloads go, on the main thread. The foreground start comes first: if the system refuses it
+     * (not an allowed moment), nothing changes and the books stay held until the next one (invariant 6).
+     */
+    private fun releaseHeld(ids: List<String>) {
+        if (ids.isEmpty() || !unmetered()) return
+        try {
+            DownloadService.sendResumeDownloads(app, TsDownloadService::class.java, true)
+        } catch (e: IllegalStateException) {
+            Log.i(TAG, "next book: start refused, held")
+            return
+        }
+        ids.forEach { manager().setStopReason(it, Download.STOP_REASON_NONE) }
+    }
+
+    /** Worker thread. Applies the switch and the network to what is unfinished: off removes it, metered holds it, Wi-Fi releases it. */
+    fun autoSync() {
+        if (!::app.isInitialized) return
+        val rows = store.all()
+        val kept = marks().filter { m -> rows.any { it.bookId == m } }.toSet()
+        if (kept != marks()) synchronized(marksLock) { setMarks(kept) }
+        if (!loadSettings().autoDownload) {
+            autoUnfinished(rows, kept).forEach { remove(it.bookId) }
+            prefs.edit().remove("autoWant").remove("autoNoRoom").apply()
+            return
+        }
+        if (autoUnfinished(rows, kept).isEmpty()) return
+        val ids = autoRequestIds()
+        val wifi = unmetered()
+        main.post { if (wifi) releaseHeld(ids) else ids.forEach { manager().setStopReason(it, AUTO_HOLD) } }
+    }
+
+    /** Worker thread. Asks the server for the book after [ended] and, if the rules allow, queues it held for Wi-Fi. */
+    fun autoFetch(ended: String) {
+        if (!::app.isInitialized) return
+        val conn = tokens.current() ?: return
+        if (!loadSettings().autoDownload || !unmetered()) return
+        if (autoUnfinished(store.all(), marks()).isNotEmpty()) return
+        try {
+            if (!ServerGate.ok(conn.origin)) return
+            val api = Api(conn.origin)
+            val next = try {
+                api.queuePeek(conn.token, ended)
+            } catch (e: ApiException) {
+                Log.i(TAG, "next book: peek answered ${e.code}")
+                return
+            } catch (e: IOException) {
+                Log.i(TAG, "next book: peek failed ${e.javaClass.simpleName}")
+                return
+            }
+            prefs.edit().remove("autoWant").apply()
+            if (next == null || store.get(next) != null) return
+            val text = api.fetchManifestJson(conn.token, next)
+            val manifest = api.parseManifest(text)
+            if (manifest.id != next) return
+            when (val p = autoDownloadPlan(manifest, api.paths, freeBytes(), autoBytes(store.all(), marks()))) {
+                is AutoPlan.Go -> enqueue(next, conn, api, manifest, text, p.plan, auto = true)
+                AutoPlan.NoRoom -> prefs.edit().putBoolean("autoNoRoom", true).apply()
+                AutoPlan.Skip -> Log.i(TAG, "next book: skipped")
+            }
+        } catch (e: Exception) {
+            Log.i(TAG, "next book: not fetched: ${e.javaClass.simpleName}")
+        }
+    }
+
     // ---- Wipe ----
 
     /**
@@ -531,7 +694,7 @@ object Offline {
      */
     fun wipe() {
         if (!::app.isInitialized) return
-        prefs.edit().putBoolean("wipePending", true).commit()
+        prefs.edit().putBoolean("wipePending", true).remove("autoBooks").remove("autoWant").remove("autoNoRoom").commit()
         store.clear()
         floors.clear()
         live.clear()
@@ -570,7 +733,7 @@ object Offline {
         File(root, "text").deleteRecursively()
         File(root, "static").deleteRecursively()
         store.clear()
-        prefs.edit().remove("settingsJson").putBoolean("wipePending", false).commit()
+        prefs.edit().remove("settingsJson").remove("autoBooks").remove("autoWant").remove("autoNoRoom").putBoolean("wipePending", false).commit()
         Log.i(TAG, "offline: wiped")
     }
 }

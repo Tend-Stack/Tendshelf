@@ -77,7 +77,7 @@
             </intent-filter>
         </service>
 
-        <!-- Downloads (A7): a data-sync service the visible activity starts; no scheduler (decision D2). -->
+        <!-- Downloads (A7): a data-sync service the visible activity starts, or the player while it is playing, for the next book (decision 0035); no scheduler (decision D2). -->
         <service
             android:name=".TsDownloadService"
             android:exported="false"
