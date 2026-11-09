@@ -88,6 +88,12 @@ func TestBookMoreMenuBrowser(t *testing.T) {
 			tab.Navigate(base + "/books/" + long.ID + "?theme=dark")
 			tab.WaitFor(`window.htmx !== undefined && document.querySelector(".ts-moremenu") !== null`, 5*time.Second)
 			shot("closed")
+			// The tabs stay on one row: none is left alone on a new line (operator, 2026-11-09).
+			var tabRows int
+			tab.Eval(`new Set([...document.querySelectorAll("#book-tabs .ts-tabs__item")].filter((el) => el.offsetParent !== null).map((el) => Math.round(el.getBoundingClientRect().top))).size`, &tabRows)
+			if tabRows != 1 {
+				t.Errorf("the book's tabs take %d rows", tabRows)
+			}
 			var pr bookMoreProbe
 			tab.Eval(bookMoreProbeJS, &pr)
 			if pr.Btn.H < 43.5 || pr.Btn.W < 43.5 {

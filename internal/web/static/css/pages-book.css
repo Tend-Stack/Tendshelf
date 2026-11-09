@@ -212,3 +212,9 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 @media (prefers-reduced-motion: reduce) {
   .ts-bar--busy .ts-bar__fill { animation: none; inline-size: 50%; }
 }
+
+/* Phone: the book's tabs stay on one line and slide sideways when five do not fit, so none sits alone on a new row. */
+@media (width < 768px) {
+  html:not([data-text-size="large"]) #book-tabs { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  #book-tabs .ts-tabs__item { flex: none; padding-inline: var(--space-8); white-space: nowrap; }
+}
