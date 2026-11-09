@@ -62,14 +62,20 @@ class WidgetActions : BroadcastReceiver() {
         val loaded = snap.bookId.isNotEmpty() && controller.mediaItemCount > 0
         when (action) {
             // seekBack and seekForward are the notification's own buttons: BookPlayer applies the person's skip amounts.
-            TendWidget.ACTION_BACK -> if (loaded) controller.seekBack()
-            TendWidget.ACTION_FORWARD -> if (loaded) controller.seekForward()
+            // With nothing loaded (the app was closed) a skip has no place to move from and the widget cannot tell
+            // that state apart when it draws, so the button starts the last book at its place, as Play does, instead of doing nothing.
+            TendWidget.ACTION_BACK -> if (loaded) controller.seekBack() else resumeLast(app, remote)
+            TendWidget.ACTION_FORWARD -> if (loaded) controller.seekForward() else resumeLast(app, remote)
             else -> when (widgetPlayTap(snap.playing, loaded)) {
                 WidgetTap.PAUSE -> remote.pause()
                 WidgetTap.PLAY -> remote.play()
-                WidgetTap.RESUME_LAST -> WidgetState.bookId(app).takeIf { it.isNotEmpty() }?.let { remote.start(it, null) }
+                WidgetTap.RESUME_LAST -> resumeLast(app, remote)
             }
         }
+    }
+
+    private fun resumeLast(app: Context, remote: ControllerRemote) {
+        WidgetState.bookId(app).takeIf { it.isNotEmpty() }?.let { remote.start(it, null) }
     }
 
     private companion object {

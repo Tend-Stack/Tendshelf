@@ -139,6 +139,7 @@ class TendWidget : AppWidgetProvider() {
                 if (cover != null) views.setImageViewBitmap(R.id.widget_cover, cover) else views.setImageViewResource(R.id.widget_cover, android.R.color.transparent)
             }
             // The cover and the words open the book; the buttons act.
+            views.setContentDescription(R.id.widget_cover, context.getString(R.string.widget_open_book, look.title))
             views.setOnClickPendingIntent(R.id.widget_cover, openApp)
             views.setOnClickPendingIntent(R.id.widget_title, openApp)
             views.setOnClickPendingIntent(R.id.widget_chapter, openApp)
