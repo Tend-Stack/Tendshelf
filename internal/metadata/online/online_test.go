@@ -562,7 +562,7 @@ func TestOnlineAuthor(t *testing.T) {
 }
 
 // TestOnlineNoOtherClient walks the repository: no other package may open network connections, except
-// internal/desktopshell/check.go (decision 0020).
+// internal/desktopshell/check.go (decision 0020) and internal/auth/oidc, the sign-in provider client (decision 0037).
 func TestOnlineNoOtherClient(t *testing.T) {
 	root := filepath.Join("..", "..", "..")
 	banned := []string{"http.Client{", "&http.Client", "http.DefaultClient", "http.Get(", "http.Post(", "net.Dial(", "net.DialTimeout("}
@@ -573,7 +573,7 @@ func TestOnlineNoOtherClient(t *testing.T) {
 		rel, _ := filepath.Rel(root, p)
 		rel = filepath.ToSlash(rel)
 		if info.IsDir() {
-			if strings.HasPrefix(info.Name(), ".") && rel != "." || rel == "internal/metadata/online" || rel == "internal/testutil/webdriver" {
+			if strings.HasPrefix(info.Name(), ".") && rel != "." || rel == "internal/metadata/online" || rel == "internal/auth/oidc" || rel == "internal/testutil/webdriver" {
 				return filepath.SkipDir
 			}
 			return nil
