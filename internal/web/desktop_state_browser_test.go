@@ -114,6 +114,8 @@ func TestDeskStateBrowserSleep(t *testing.T) {
 	}
 
 	bmkeyPlay(t, tab, "[data-ts-toggle]")
+	// The timer only stops a book that is playing, and on a busy runner the sound can take a while to start.
+	tab.WaitFor(`window.tsPlayer.state().playing`, 10*time.Second)
 	tab.Eval(`window.tsPlayerFull.sleep("minutes", 1)`, nil)
 	time.Sleep(300 * time.Millisecond)
 	tab.Eval(`window.tsPlayerFull.debug.advanceSleep(70000)`, nil)
