@@ -126,3 +126,11 @@ const (
 	readerAloudFailed  = "The voice on this device stopped. Press Play to try again."
 	readerAloudBlocked = "Press Play to start reading aloud."
 )
+
+// The page edges, the ribbon and the first-use hint (decision 0036). The hint names the tap zones, so it is one plain sentence.
+const (
+	readerNextPage = "Next page"
+	readerPrevPage = "Previous page"
+	readerRemoveBm = "Remove bookmark"
+	readerTapHint  = "Tap the sides or swipe to turn the page. Tap the middle for the menu."
+)

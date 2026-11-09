@@ -119,6 +119,9 @@ export function mount(menu) {
     "click",
     (event) => {
       const bookmark = event.target.closest('[data-ts-mark="bookmark"]');
+      // In pages the bar's button presses the first page's ribbon, so the two always agree (reader-pages.js does the rest).
+      const ribbon = bookmark && alive() && reader.classList.contains("ts-reader--pages") && document.querySelector(".ts-ribbon:not([hidden])");
+      if (ribbon) return ribbon.click();
       // reader.js keeps the first sentence on the page in hereSid (the bar may lie over the page, so it cannot be measured from the bar).
       const sentence = bookmark && alive() && reader.querySelector(`.ts-s[data-sid="${CSS.escape(reader.dataset.hereSid || "")}"]`);
       if (!sentence) return;

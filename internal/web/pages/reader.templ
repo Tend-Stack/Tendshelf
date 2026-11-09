@@ -145,6 +145,7 @@ type ReaderView struct {
 	SkimModule                  string     // address of reader-skim.js, imported on the first touch of the skim bar
 	SearchLabel, SearchHref     string
 	BookmarkLabel, BookmarkURL  string // the bookmark-this-page button and where its form posts
+	PrevPageLabel, NextPageLabel string // the page edges, which are buttons for a keyboard and a screen reader
 	Offline                     *ReaderOfflineView // the offline reader (decision 0019); nil leaves it out
 	Aloud                       *ReaderAloudView   // read aloud (decision 0032); nil leaves it out
 }
@@ -275,8 +276,15 @@ templ Reader(v ReaderView) {
 					@ReaderChapter(v.Chapter)
 				}
 				<div id="reader-foot" class="ts-pagefoot" aria-hidden="true"><span id="reader-foot-a"></span><span id="reader-foot-b"></span></div>
+				if v.BookmarkURL != "" {
+					<button type="button" class="ts-ribbon" data-page="0" aria-pressed="false" aria-label={ v.BookmarkLabel }></button>
+					<button type="button" class="ts-ribbon" data-page="1" aria-pressed="false" aria-label={ v.BookmarkLabel } hidden></button>
+				}
 			</div>
 		</article>
+		<button type="button" class="ts-edge ts-edge--prev" data-edge="-1" aria-label={ v.PrevPageLabel }></button>
+		<button type="button" class="ts-edge ts-edge--next" data-edge="1" aria-label={ v.NextPageLabel }></button>
+		<p id="reader-page-live" class="ts-sr" role="status"></p>
 		if v.SettingsModule != "" {
 			<span hidden data-ts-module={ v.SettingsModule } data-comfort-src={ v.ComfortSrc }></span>
 		}

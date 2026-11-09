@@ -153,6 +153,8 @@ export function pages(root, kit) {
     count = Math.max(1, Math.ceil(phys / cols));
     page = Math.min(page, count - 1);
     frame = wide ? col.getBoundingClientRect() : root.getBoundingClientRect();
+    shell.style.setProperty("--ts-frame-pad", margin + "px"); // the edges reach this far into the page
+    shell.style.setProperty("--ts-frame-top", Math.round(frame.top - shell.getBoundingClientRect().top) + "px"); // where the page edges start
     record([column, pageH, cols, [...root.classList].filter((name) => LOOK_CLASS.test(name)).join(" ")].join("|"));
     performance.measure("ts-reader-lay", { start: started, end: performance.now() });
   }
@@ -270,18 +272,114 @@ export function pages(root, kit) {
     { signal: done.signal },
   );
 
+  // ---- Marking a page: a ribbon on each page shown, the page line for a screen reader, and the first-use hint ----
+
+  const ribbons = [...shell.querySelectorAll(".ts-ribbon")];
+  const edges = [...shell.querySelectorAll(".ts-edge")];
+  const live = document.getElementById("reader-page-live");
+
+  // Where column k of the page now shown starts, in the same coordinates as a rect: text before it is "before".
+  const columnLeft = (k) => section().getBoundingClientRect().left + k * colStep - 1;
+
+  // Each ribbon belongs to a column of the page shown. It is pressed when a bookmark flag lies in that column; a right
+  // page that does not exist (the end of a part) or a single page has no second ribbon.
+  function decorate() {
+    const flags = [...section().querySelectorAll(".ts-reader__bm")];
+    for (const button of ribbons) {
+      const k = Number(button.dataset.page);
+      button.hidden = k >= cols || page * cols + k >= phys;
+      if (button.hidden) continue;
+      const flag = flags.find((el) => {
+        const left = el.getBoundingClientRect().left;
+        return left >= columnLeft(k) && left < columnLeft(k + 1);
+      });
+      button.dataset.bm = flag?.dataset.bm || "";
+      button.setAttribute("aria-pressed", String(Boolean(flag)));
+      button.setAttribute("aria-label", flag ? copy.bmRemove : copy.bmPage);
+    }
+    // At the very start or end the edge has nowhere to go: it stays in the tree (focus must not be lost) but rests.
+    for (const edge of edges) edge.setAttribute("aria-disabled", String(Number(edge.dataset.edge) > 0 ? pastEnd() : pastStart()));
+    if (turned) {
+      clearTimeout(speak);
+      speak = setTimeout(() => live && (live.textContent = pageInfo().line), 500);
+    }
+  }
+  const pastEnd = () => page >= count - 1 && !section().dataset.nextHref;
+  const pastStart = () => page === 0 && !section().dataset.prevHref;
+  let turned = false; // the page line is spoken after a turn, not on arrival
+  let speak = 0;
+
+  // A press marks the first sentence of that page, or takes away the bookmark that its flag stands for. The server does the
+  // toggle by sentence; the answer redraws the block, and reader.js lays out again and calls decorate().
+  shell.addEventListener(
+    "click",
+    (event) => {
+      const button = event.target.closest(".ts-ribbon");
+      if (!button) return;
+      const k = Number(button.dataset.page);
+      const sid = button.dataset.bm || kit.firstOn((rect) => rect.left < columnLeft(k))?.dataset.sid;
+      const form = document.getElementById("reader-bm-form");
+      if (!sid || !form) return;
+      form.elements.sid.value = sid;
+      form.elements.client_id.value = crypto.randomUUID();
+      form.elements.remove?.remove();
+      if (button.dataset.bm) form.append(Object.assign(document.createElement("input"), { type: "hidden", name: "remove", value: "1" }));
+      form.requestSubmit();
+    },
+    { signal: done.signal },
+  );
+
+  // The hint, once per device: a touch screen is shown the tap zones; a mouse sees the edges pulse once.
+  let hint = null;
+  let hintTimer = 0;
+  function unhint() {
+    clearTimeout(hintTimer);
+    hint?.remove();
+    hint = null;
+  }
+  function hinted() {
+    try {
+      return localStorage.getItem("ts.reader.hinted") === "1";
+    } catch {
+      return true; // no storage, no way to say "once": stay quiet
+    }
+  }
+  function showHint() {
+    if (hinted() || !copy.hint) return;
+    try {
+      localStorage.setItem("ts.reader.hinted", "1");
+    } catch {
+      return;
+    }
+    if (matchMedia("(pointer: coarse)").matches) {
+      const swapped = root.classList.contains("ts-reader--tapswap");
+      hint = shell.appendChild(document.createElement("div"));
+      hint.className = "ts-pagehint";
+      hint.setAttribute("role", "status");
+      // The left zone points left unless the person swapped the sides.
+      for (const side of ["l", "r"]) hint.append(Object.assign(document.createElement("span"), { className: `ts-pagehint__chev ts-pagehint__chev--${side === "l" !== swapped ? "l" : "r"} ts-pagehint__zone--${side}` }));
+      hint.append(Object.assign(document.createElement("p"), { className: "ts-pagehint__text", textContent: copy.hint }));
+      hintTimer = setTimeout(unhint, 5000);
+      document.addEventListener("pointerdown", unhint, { once: true, capture: true, signal: done.signal });
+    } else if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      for (const edge of edges) if (getComputedStyle(edge).pointerEvents !== "none") edge.animate({ opacity: [0.6, 1, 0.6] }, { duration: 1400, easing: "ease-in-out" });
+    }
+  }
+
   // Leaving the reader (a boosted link swaps #main, a plain one unloads) takes its toast along.
   document.addEventListener("htmx:after:swap", () => root.isConnected || clearToast(), { signal: done.signal });
   window.addEventListener("pagehide", clearToast, { signal: done.signal });
 
   root.classList.add("ts-reader--pages");
   lay();
+  showHint();
 
   return {
     lay,
     // The page's box: a tap outside it turns the page.
     zone: () => frame,
     pageInfo,
+    decorate,
     // A rect is before the page when it starts left of the section's left edge.
     before() {
       const left = section().getBoundingClientRect().left;
@@ -295,10 +393,14 @@ export function pages(root, kit) {
       return true;
     },
     async next() {
+      turned = true;
+      unhint();
       if (page < count - 1) return go(page + 1, 1) || true;
       return cross(section().dataset.nextHref, true, 1);
     },
     async prev() {
+      turned = true;
+      unhint();
       if (page > 0) return go(page - 1, -1) || true;
       return cross(section().dataset.prevHref, false, -1);
     },
@@ -307,8 +409,11 @@ export function pages(root, kit) {
     stop() {
       done.abort();
       clearToast();
+      unhint();
+      clearTimeout(speak);
+      for (const button of ribbons) button.hidden = true;
       root.classList.remove("ts-reader--pages", "ts-reader--spread");
-      for (const name of ["--ts-text-w", "--ts-frame-w", "--ts-frame-h"]) shell.style.removeProperty(name);
+      for (const name of ["--ts-text-w", "--ts-frame-w", "--ts-frame-h", "--ts-frame-top", "--ts-frame-pad"]) shell.style.removeProperty(name);
       section().classList.remove("ts-reader__short");
       section().scrollLeft = 0;
       probe.remove();

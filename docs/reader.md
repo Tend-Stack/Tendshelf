@@ -114,6 +114,28 @@ finger or pen (`pointerType`). A hidden bar always has a way back: a small handl
 (`display: none`) and `reader.js` moves `scrollTop` by the change in the text's top, so the words stay put and no move is
 recorded; the dock collapses with it, so no blank band is left under the text. The pages flow keeps the desk's room from 1024 px and lets the bar lie over the page below it.
 
+The page edges say the page turns (decision 0036). Beside the page sit two real buttons, `.ts-edge--prev` ("Previous page") and
+`.ts-edge--next` ("Next page"), flush to the window's sides and as wide as the desk beside the sheet plus the sheet's own margin
+(`reader-pages.js` sets `--ts-frame-top`, `--ts-frame-h`, `--ts-frame-w` and `--ts-frame-pad`). A chevron drawn in CSS sits in the sheet's margin,
+dimmed at rest (`--ink`, opacity 0.6, 3:1 in all four themes) and full on hover or focus; a hover also puts a soft shade on the desk and lifts the
+page's outer lower corner (a gradient fold, flat in the contrast theme). A mouse click turns; a keyboard or screen reader activation follows the
+button's name; a touch click honours "Swap tap sides". Text selection by dragging in the text stays free. On a touch screen (`pointer: coarse`) and
+below 1024 px the edges take no pointer (the tap zones turn) but stay in the tree and show on keyboard focus, which also lets them take the pointer.
+At the start or end of the book the edge rests (`aria-disabled`, focus is never lost). The first time on a touch screen the reader shows two chevrons
+over the tap zones and "Tap the sides or swipe to turn the page. Tap the middle for the menu." (a `role="status"` card that takes no tap, mirrored
+by swapped sides), gone at the first turn, tap or after 5 s; with a mouse the edges pulse once (not under reduced motion). The key
+`localStorage["ts.reader.hinted"]` makes either happen once per device. A turn is spoken as the page line in `#reader-page-live`, 500 ms after the last turn
+(not on arrival).
+
+Marking a page: each page shown has a ribbon, `.ts-ribbon[data-page]`, a 44 by 44 px button at its outer top corner with a bookmark hanging from
+the edge: the left page's at its top left and the right page's (or the only page's) at its top right; on a phone against the window's corner. Unpressed
+it is an outline (shown while the bar is, and on hover or focus; still pressable when unseen); pressed it is the accent and always shown, named
+"Remove bookmark" (else "Bookmark this page"). The ribbon is pressed when a bookmark flag (`.ts-reader__bm[data-bm=<sentence id>]`) lies in its
+column. A press marks the first sentence of that column, or sends `remove=1` with the flag's sentence: `POST /books/{id}/bookmarks` with `remove=1`
+takes away the person's own text bookmarks on that sentence (none left is success) and, for htmx, answers with the toast and the sentence's block out
+of band; the page lays out again and the ribbon follows. Several bookmarks on one page: a press removes one, and the ribbon stays until none is left. In
+pages the bar's bookmark button presses the first ribbon; in scroll it keeps the sentence in `data-here-sid`.
+
 Marks (`reader-marks.js`, RD3): selecting text shows a toolbar with four colours (yellow, green, blue, pink), Note and Copy.
 A highlight is posted with `data-o` plus the characters before the point inside the sentence, so the server gets offsets
 in the block text. The note dialog (`#reader-note-dialog`) and all labels are rendered by the server. The bookmark button

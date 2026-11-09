@@ -201,7 +201,7 @@ export function mount(root) {
       const keep = here && sentence(here.sid)?.closest("section");
       for (const part of root.querySelectorAll("section[data-part]")) if (keep && part !== keep) part.remove();
       const module = await import(root.dataset.pagesSrc);
-      view = module.pages(root, { locate, turn });
+      view = module.pages(root, { locate, turn, firstOn });
     } else {
       view = scrollFlow;
     }
@@ -256,6 +256,7 @@ export function mount(root) {
       document.getElementById("reader-page").textContent = printed;
       document.getElementById("reader-print").textContent = "";
     }
+    view.decorate?.(); // the ribbons and the edges of the page now shown
     const left = [];
     const chapterTime = span(here.chars - here.inChapter);
     const bookTime = span(total - here.charPos);
@@ -449,6 +450,15 @@ export function mount(root) {
     shell.querySelector(".ts-readerbar a")?.focus({ preventScroll: true });
   });
 
+  // The page edges are buttons: a mouse click turns, a keyboard or screen reader activation follows the label, and a finger
+  // on a wide screen honours the swapped sides like a tap in the text.
+  on(shell, "click", (event) => {
+    const edge = event.target.closest(".ts-edge");
+    if (!edge || flow !== "pages") return;
+    const swapped = event.pointerType === "touch" && root.classList.contains("ts-reader--tapswap");
+    turn(Number(edge.dataset.edge) * (swapped ? -1 : 1));
+  });
+
   // In the scroll flow a hidden bar takes no room (pages-reader.css), so the text's box moves up or down by the bar's
   // height. The scroll position follows by the same amount, so the words stay where they are and nothing is recorded
   // as a move. The pages flow keeps the room, since its columns are laid out for it.
@@ -526,7 +536,8 @@ export function mount(root) {
     watch();
   });
   on(document, "htmx:after:swap", (event) => {
-    if (!root.contains(event.target)) return;
+    // A bookmark made or removed redraws its sentence out of band; the flag takes room, so the page is laid out again.
+    if (!root.contains(event.target) && event.target.id !== "reader-bm-form") return;
     watch();
     if (flow === "pages") relay();
   });

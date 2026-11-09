@@ -258,6 +258,13 @@ func a11yStates() []a11yState {
 			fullpOpenPlayer(t, tab)
 			tab.WaitFor(`document.querySelector("#now-panel[data-book-id] .ts-np__h") !== null`, 5*time.Second)
 		}, MinWidth: 1280},
+		// Pages (decision 0036): the first-use hint on a touch screen, with its two chevrons and its sentence. Last in the list: the
+		// tab stays a touch screen afterwards, which only a state at the end can afford.
+		{Key: "reader-hint", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
+			prTouchDevice(t, tab)
+			tab.Eval(`localStorage.removeItem("ts.reader.hinted"); location.reload()`, nil)
+			tab.WaitFor(`document.querySelector(".ts-pagehint") !== null`, 10*time.Second)
+		}},
 	}
 }
 

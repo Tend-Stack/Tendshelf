@@ -20,7 +20,7 @@ import (
 // rdrMark is a note dot or a bookmark flag drawn after a sentence.
 type rdrMark struct {
 	Kind string // "note" or "bm"
-	ID   string // the highlight id for a note
+	ID   string // the highlight id for a note, the sentence id for a bookmark
 }
 
 // rdrPiece is a stretch of a block that has the same sentence, styles and highlights throughout.
@@ -162,7 +162,7 @@ func rdrSegments(b ebook.Block, hls []rdrHl, bookmarkSents map[int]bool) []rdrPi
 	for k := range bookmarkSents {
 		for i := range out {
 			if out[i].Sent == k && out[i].CloseSent {
-				out[i].After = append(out[i].After, rdrMark{Kind: "bm"})
+				out[i].After = append(out[i].After, rdrMark{Kind: "bm", ID: ebook.SentenceID(b.ID, k)})
 			}
 		}
 	}
@@ -236,7 +236,7 @@ func rdrInner(b ebook.Block, o rdrBlockOpts) string {
 				case "note":
 					sb.WriteString(`<button type="button" class="ts-notedot" data-hl-note="` + html.EscapeString(m.ID) + `" aria-label="` + html.EscapeString(readerNoteLabel) + `">` + rdrNoteIcon + `</button>`)
 				case "bm":
-					sb.WriteString(`<span class="ts-reader__bm" role="img" aria-label="` + html.EscapeString(readerBookmarkLbl) + `"></span>`)
+					sb.WriteString(`<span class="ts-reader__bm" role="img" data-bm="` + html.EscapeString(m.ID) + `" aria-label="` + html.EscapeString(readerBookmarkLbl) + `"></span>`)
 				}
 			}
 		}
