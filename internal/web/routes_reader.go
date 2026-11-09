@@ -212,7 +212,8 @@ func rdrSIDExists(d *ebook.Doc, sid string) (int, bool) {
 
 // readerWords is the copy the client script needs, as JSON on the reader root (reader.js has no words of its own).
 func readerWords() string {
-	b, _ := json.Marshal(map[string]string{"pageOf": readerPageOf, "ch": readerLeftChapter, "chAbout": readerLeftChapAbt,
+	b, _ := json.Marshal(map[string]string{"pageOf": readerPageOf, "pgAbout": readerPgAbout, "pgsAbout": readerPgsAbout, "pg": readerPg, "pgs": readerPgs,
+		"footAbout": readerFootAbout, "foot": readerFoot, "pagesLeft": readerPagesLeft, "onePageLeft": readerOnePageLeft, "lastPage": readerLastPage, "ch": readerLeftChapter, "chAbout": readerLeftChapAbt,
 		"bk": readerLeftBook, "bkAbout": readerLeftBookAbt, "further": readerAnotherDev, "go": readerGoThere, "stay": readerStayHere,
 		"back": readerBack, "failed": readerPartFailed, "retry": readerTryAgain, "prev": readerPrevChapter, "needsNet": readerNeedsNet, "signedOut": msgSignedOut, "signIn": msgSignIn})
 	return string(b)

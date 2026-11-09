@@ -48,10 +48,12 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 
 
 /* The page is its own screen over the app shell: bar, text, dock. Pages (CSS columns, laid out by reader-pages.js
-   from --ts-col, --ts-gap, --ts-cols and --ts-page-h) are the default below 1280 px; scroll is the plain layout and
-   what a browser without JavaScript gets. */
+   from --ts-col, --ts-gap, --ts-cols and --ts-page-h) are the default at every width (decision 0036); scroll is a
+   choice, and the plain layout a browser without JavaScript gets. */
 /* .ts-main names its view transition, which makes it a stacking context that would keep the page under the tab bar. */
 .ts-main:has(.ts-readerpage) { view-transition-name: none; }
+/* The reader is a fixed layer: a reserved scrollbar gutter on the page would leave a strip beside it that neither the page nor a sheet's scrim covers. */
+html:has(.ts-readerpage) { scrollbar-gutter: auto; }
 .ts-readerpage { position: fixed; inset: 0; z-index: 12; display: flex; flex-direction: column; background: var(--ground); color: var(--ink); overscroll-behavior: none; }
 .ts-readerbar { flex: none; display: flex; align-items: center; gap: var(--space-4); padding: max(var(--space-8), env(safe-area-inset-top)) max(var(--space-16), env(safe-area-inset-right)) var(--space-8) max(var(--space-16), env(safe-area-inset-left)); border-bottom: 1px solid var(--line); }
 .ts-readerbar__title { margin: 0; font-size: inherit; line-height: inherit; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
@@ -83,34 +85,81 @@ fieldset.ts-readset__row { margin: 0; padding: 0; border: 0; min-width: 0; }
 /* Pages. The part's section is the columns box and the scroller; a turn moves its scrollLeft by one page. The box is
    exactly --ts-cols columns wide, so what lies right of it is the next page. Pictures and tables never outgrow a page.
    column-width repeats the column width beside column-count: WebKit lays out nothing in columns for a bare
-   column-count: 1 (the phone case), so the next page never existed. The two agree, so other engines see no change. */
-.ts-reader--pages { overflow: hidden; padding-block: var(--space-16); touch-action: pan-y; }
-.ts-reader--pages .ts-reader__col { max-width: none; }
+   column-count: 1 (the phone case), so the next page never existed. The two agree, so other engines see no change.
+   .ts-readerpage > .ts-reader--pages is as specific as the base rule above it, and comes later, so its padding wins.
+   Below 1024 px the page is full bleed and the bar and dock lie over it; from 1024 px it is a sheet on a desk. */
+.ts-reader--pages { --ts-foot: 2rem; }
+.ts-readerpage > .ts-reader--pages { display: flex; justify-content: center; align-items: center; overflow: hidden; touch-action: pan-y; padding: max(var(--space-16), env(safe-area-inset-top)) max(var(--ts-pad), env(safe-area-inset-right)) env(safe-area-inset-bottom) max(var(--ts-pad), env(safe-area-inset-left)); }
+.ts-reader--pages .ts-reader__col { flex: none; max-width: none; margin: 0; }
 .ts-reader--pages section[data-part] { box-sizing: content-box; width: calc(var(--ts-cols) * var(--ts-col) + (var(--ts-cols) - 1) * var(--ts-gap)); height: var(--ts-page-h); margin-inline: auto; overflow: hidden; column-count: var(--ts-cols); column-width: var(--ts-col); column-gap: var(--ts-gap); column-fill: auto; }
 .ts-reader--pages .ts-reader__prev, .ts-reader--pages .ts-reader__next { display: none; }
 .ts-reader--pages .ts-reader__image { max-height: var(--ts-page-h); object-fit: contain; break-inside: avoid; }
 .ts-reader--pages .ts-reader__img, .ts-reader--pages .ts-reader__chapter { break-inside: avoid; }
 .ts-reader--pages .ts-reader__chapter { break-after: avoid; }
 .ts-reader--pages .ts-reader__text pre { white-space: pre-wrap; overflow: visible; }
-.ts-reader__probe { position: absolute; visibility: hidden; width: var(--size-read-measure); min-width: var(--size-read-measure-min); pointer-events: none; }
+/* A part of a few lines sits lower on its page: vertical room only, the text keeps its alignment. */
+.ts-reader--pages section.ts-reader__short::before { content: ""; display: block; height: calc(var(--ts-page-h) * 0.22); }
+/* The probe is the text's own font at the widths a page may have: 30 em is about 66 characters a line, 24 em the least. */
+.ts-reader__probe { position: absolute; visibility: hidden; width: 30em; min-width: 24em; pointer-events: none; }
+
+/* The foot of a page: the page number on a spread, else the number and the pages left in the chapter. It is for the eye only. */
+.ts-pagefoot { display: none; }
+.ts-reader--pages .ts-pagefoot { display: flex; justify-content: space-between; align-items: center; gap: var(--space-12); box-sizing: border-box; width: 0; min-width: 100%; height: var(--ts-foot); font-size: 0.8125rem; line-height: 1.125rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; white-space: nowrap; -webkit-user-select: none; user-select: none; }
+.ts-pagefoot > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ts-pagefoot > span:first-child { flex: none; }
+
+/* A thin line along the bottom edge shows how far the book is while the bar is hidden. */
+.ts-readerpage[data-chrome="off"]:has(> .ts-reader--pages)::before { content: ""; position: absolute; z-index: 1; inset: auto auto 0 0; width: calc(var(--ts-value, 0) * 1%); height: 2px; background: var(--accent); pointer-events: none; }
+
+/* Phone and small tablet: the bar and dock lie over the page, which takes their room; a turn puts them away.
+   With the read-aloud strip open the dock goes back into the flow, so the strip never covers text. */
+@media (width < 1024px) {
+  .ts-readerpage:has(> .ts-reader--pages) > :is(.ts-readerbar, .ts-readdock) { position: absolute; inset-inline: 0; z-index: 3; background: var(--ground); }
+  .ts-readerpage:has(> .ts-reader--pages) > .ts-readerbar { top: 0; padding-top: max(var(--space-16), env(safe-area-inset-top)); }
+  .ts-readerpage:has(> .ts-reader--pages) > .ts-readdock { bottom: 0; }
+  .ts-readerpage:has(> .ts-reader--pages):has(.ts-aloud:not([hidden])) > .ts-readdock { position: static; }
+}
+
+/* From 1024 px: a sheet on a desk. The desk is a tint of the ground (the contrast theme keeps it plain); the bar and dock
+   keep their room and sit on it. The column is the sheet: its padding is the page margin, its size is set by reader-pages.js
+   (--ts-frame-w and --ts-frame-h tell the edges and the turn). The two edges beside it are the stack of pages read and unread. */
+.ts-readerpage { --desk: color-mix(in srgb, var(--ground) 94%, var(--ink)); }
+[data-theme="contrast"] .ts-readerpage { --desk: var(--ground); }
+@media (width >= 1024px) {
+  .ts-readerpage:has(> .ts-reader--pages) > :is(.ts-readerbar, .ts-readdock) { background: var(--desk); border-color: transparent; }
+  .ts-readerpage > .ts-reader--pages { background: var(--desk); padding: var(--space-24) var(--space-48); }
+  .ts-reader--pages .ts-reader__col { position: relative; box-sizing: content-box; padding: var(--space-32) var(--ts-pad) 0; background: var(--ground); box-shadow: 0 0 0 1px var(--line), var(--shadow-cover); }
+  [data-theme="contrast"] .ts-reader--pages .ts-reader__col { box-shadow: 0 0 0 1px var(--line-strong); }
+  .ts-reader--pages .ts-reader__col::before, .ts-reader--pages .ts-reader__col::after { content: ""; position: absolute; top: var(--space-4); bottom: var(--space-4); pointer-events: none; }
+  .ts-reader--pages .ts-reader__col::before { right: 100%; width: var(--ts-stack-l, 0.25rem); background: repeating-linear-gradient(to left, var(--line) 0 1px, transparent 1px 2px); }
+  .ts-reader--pages .ts-reader__col::after { left: 100%; width: var(--ts-stack-r, 0.25rem); background: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 2px); }
+  /* A spread has a gutter where the pages meet: a soft shade, and a plain line in the contrast theme. */
+  .ts-reader--spread .ts-reader__col { background-image: linear-gradient(to right, transparent calc(50% - 1.5rem), var(--flip-shade) 50%, transparent calc(50% + 1.5rem)); }
+  [data-theme="contrast"] .ts-reader--spread .ts-reader__col { background-image: linear-gradient(to right, transparent calc(50% - 1px), var(--line-strong) calc(50% - 1px), var(--line-strong) 50%, transparent 50%); }
+}
 @media (prefers-reduced-motion: no-preference) { .ts-readerpage > .ts-readerbar, .ts-readerpage > .ts-readdock { transition: opacity var(--duration-fast); } }
 
 /* Hidden chrome: the page keeps its size, so nothing re-lays. Focus brings the bar and dock back for a keyboard. */
 .ts-readerpage[data-chrome="off"] > :is(.ts-readerbar, .ts-readdock):not(:focus-within) { opacity: 0; pointer-events: none; }
 
-/* In the scroll flow a hidden bar takes no room; reader.js keeps the words where they are. The pages flow keeps its room (its columns are laid out for it). */
-.ts-readerpage[data-chrome="off"]:has(> .ts-reader--scroll) > .ts-readerbar { display: none; }
+/* In the scroll flow a hidden bar and dock take no room; reader.js keeps the words where they are. The pages flow keeps its room (its columns are laid out for it). */
+.ts-readerpage[data-chrome="off"]:has(> .ts-reader--scroll) > .ts-readerbar, .ts-readerpage[data-chrome="off"]:has(> .ts-reader--scroll) > .ts-readdock:not(:focus-within) { display: none; }
 /* The way back for a hidden bar: a small handle at the top centre, 44 by 44 px, shown only while the bar is hidden. */
 .ts-readerpage > .ts-readerpage__showbar { display: none; position: absolute; z-index: 2; top: env(safe-area-inset-top); left: 50%; translate: -50% 0; color: var(--ink-muted); opacity: 0.85; background: color-mix(in srgb, var(--ground) 80%, transparent); border-radius: var(--radius-control); }
 .ts-readerpage[data-chrome="off"] > .ts-readerpage__showbar { display: inline-flex; }
+/* On a phone the handle rides in the top margin, so it never covers the first line. */
+@media (width < 1024px) { .ts-readerpage:has(> .ts-reader--pages) > .ts-readerpage__showbar { top: calc(env(safe-area-inset-top) - 0.75rem); } }
 .ts-readerpage > .ts-readerpage__showbar:is(:hover, :focus-visible) { opacity: 1; }
 
 /* The dock keeps to the text column; its ruler fills with the book. */
 .ts-readerpage .ts-readdock { flex: none; padding-bottom: calc(var(--space-16) + env(safe-area-inset-bottom)); }
 .ts-readdock > * { width: 100%; max-width: var(--ts-text-w, 38rem); margin-inline: auto; box-sizing: border-box; }
 .ts-readdock__row { font-size: 0.8125rem; line-height: 1.125rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
-#reader-page { white-space: nowrap; }
-#reader-left { text-align: end; }
+#reader-page { flex: none; white-space: nowrap; }
+#reader-print, #reader-left { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#reader-print { flex: 1 1 0; color: var(--ink-muted); }
+#reader-print:not(:empty)::before { content: "·"; margin-inline-end: var(--space-8); }
+#reader-left { flex: 0 1 auto; margin-inline-start: auto; text-align: end; }
 
 /* Selection toolbar above the selected words and the note dialog. */
 .ts-selmenu[hidden] { display: none; }

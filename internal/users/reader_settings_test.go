@@ -133,3 +133,26 @@ func TestFeelVolumeKeys(t *testing.T) {
 		t.Errorf("a number parsed as true")
 	}
 }
+
+func TestParseReaderAutoIsPages(t *testing.T) {
+	for raw, want := range map[string]string{
+		`{"flow":"auto"}`:   "pages",
+		`{"flow":"scroll"}`: "scroll",
+		`{"flow":"pages"}`:  "pages",
+		`{}`:                "pages",
+		`{"flow":"zigzag"}`: "pages",
+	} {
+		if got := parseReader(raw).Flow; got != want {
+			t.Errorf("%s: flow = %q, want %q", raw, got, want)
+		}
+	}
+	if DefaultReader.Flow != "pages" {
+		t.Errorf("default flow = %q", DefaultReader.Flow)
+	}
+	// An old sheet can still post "auto".
+	old := DefaultReader
+	old.Flow = "auto"
+	if err := old.Validate(); err != nil {
+		t.Errorf("auto no longer validates: %v", err)
+	}
+}

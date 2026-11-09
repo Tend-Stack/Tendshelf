@@ -109,6 +109,8 @@ func TestComfortBrowserHide(t *testing.T) {
 			cfSet(t, e, "auto_hide", "1")
 			tab := cfOpen(t, b, e, vp.w, vp.h, vp.mobile)
 			chrome := `document.querySelector(".ts-readerpage").dataset.chrome`
+			// A phone opens with the bar hidden (decision 0036); this test is about a bar that is shown.
+			tab.Eval(`document.querySelector(".ts-readerpage").dataset.chrome = "on"`, nil)
 
 			// Focus in the bar keeps it, even after the delay.
 			tab.Eval(`document.querySelector(".ts-readerbar a").focus()`, nil)

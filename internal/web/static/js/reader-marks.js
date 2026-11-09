@@ -93,16 +93,6 @@ export function mount(menu) {
     field.focus();
   }
 
-  // The first sentence on screen: the place a bookmark keeps.
-  function firstShown() {
-    const top = document.querySelector(".ts-readerbar").getBoundingClientRect().bottom;
-    return [...reader.querySelectorAll(".ts-s")].find((sentence) => {
-      const rects = sentence.getClientRects();
-      const last = rects[rects.length - 1];
-      return last && last.bottom > top && last.right > 0 && last.left < innerWidth;
-    });
-  }
-
   // ---- Buttons ----
 
   function act(kind, marked) {
@@ -129,7 +119,8 @@ export function mount(menu) {
     "click",
     (event) => {
       const bookmark = event.target.closest('[data-ts-mark="bookmark"]');
-      const sentence = bookmark && alive() && firstShown();
+      // reader.js keeps the first sentence on the page in hereSid (the bar may lie over the page, so it cannot be measured from the bar).
+      const sentence = bookmark && alive() && reader.querySelector(`.ts-s[data-sid="${CSS.escape(reader.dataset.hereSid || "")}"]`);
       if (!sentence) return;
       const bm = document.getElementById("reader-bm-form");
       bm.elements.sid.value = sentence.dataset.sid;

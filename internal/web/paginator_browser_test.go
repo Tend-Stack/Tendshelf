@@ -501,28 +501,6 @@ func TestPaginatorOtherDevice(t *testing.T) {
 	tab.WaitFor(`document.querySelectorAll("#toasts .ts-toast").length === 0`, 3*time.Second)
 }
 
-// With the flow left on automatic, a phone gets pages and a desktop gets scroll; the same book, the same place.
-func TestPaginatorAutoFlow(t *testing.T) {
-	b := chromium(t)
-	l := pgSeed(t, 2, 40)
-	srv := pgServe(t, l)
-	for _, vp := range pgViewports {
-		t.Run(vp.name, func(t *testing.T) {
-			tab := pgOpen(t, b, srv, l, vp.w, vp.h, vp.mobile, "ch=2")
-			var pages bool
-			tab.Eval(`document.getElementById("reader").classList.contains("ts-reader--pages")`, &pages)
-			if pages != vp.mobile {
-				t.Errorf("pages = %v at %d px", pages, vp.w)
-			}
-			// In scroll, the key moves a screen and the reader still reports a place.
-			if !pages {
-				pgNext(t, tab)
-				tab.WaitFor(`document.getElementById("reader").scrollTop > 300`, 5*time.Second)
-			}
-		})
-	}
-}
-
 // In scroll the end of a part asks for the next one, and the place keeps following.
 func TestPaginatorScrollNext(t *testing.T) {
 	b := chromium(t)

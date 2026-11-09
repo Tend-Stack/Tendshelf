@@ -6,6 +6,11 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Fixes
 
+- **Pages are how you read now, on every screen.** On a wide window the book used to scroll like a web page; now it is a page with a number, and a person who prefers scrolling can still choose Scroll in Reading settings ("Automatic" is gone; it counts as Pages). The page is a comfortable width, so lines no longer run across the whole window. On a large screen it is a sheet of paper on a softly tinted desk, with two facing pages when the window is wide enough.
+- **The page number.** The bar's footer says "Page 12 of about 340" (the number is for this screen and text size; "about" goes away once you have been through the whole book on this device), and the book's own page number comes second when it has one. Under the text, a small line shows the page and how many pages are left in the chapter.
+- **On a phone the bar gets out of the way.** The book opens with the bar and the controls at the bottom hidden, so the text has all the room, and turning a page hides them again. Tap the middle to show them. The scroll layout also gives the bottom controls' room back to the text when they are hidden.
+- **A sheet's dim backdrop covers the whole window** on a wide screen; a pale strip no longer stays beside it.
+
 - **Reader sheets keep their title and close button in view.** Contents, Reading settings and the other sheets scroll only underneath their handle and heading, and the scrollbar stays inside the rounded box. Rows in Contents line up even when a chapter has no title.
 - **The big first letter only opens real paragraphs.** It no longer lands on a dedication, an epigraph, opening pages or a list of links, and short lines of verse no longer start with an indent.
 - **"This part did not load" shows once and goes away.** A part that fails to load is tried again quietly first. If it still fails you see one message, not a pile of them, and it is gone when you leave the book or when the part loads. "Try again" now really asks again, and if you were signed out the message says so.

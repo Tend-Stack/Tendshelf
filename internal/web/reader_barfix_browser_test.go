@@ -50,6 +50,7 @@ func TestReaderBarKeepsAndReturns(t *testing.T) {
 	t.Run("autohide-scroll-1440", func(t *testing.T) {
 		e := ofrApp(t, cfBook(), nil)
 		cfSet(t, e, "auto_hide", "1")
+		cfSet(t, e, "flow", "scroll") // pages are the default now; this is about the scroll flow
 		tab := cfOpen(t, b, e, 1440, 900, false)
 		tab.Eval(`document.getElementById("reader").scrollTop = 120`, nil)
 		time.Sleep(300 * time.Millisecond)
@@ -63,6 +64,12 @@ func TestReaderBarKeepsAndReturns(t *testing.T) {
 		tab.Eval(`document.getElementById("reader").getBoundingClientRect().top`, &rootTop)
 		if rootTop > 1 {
 			t.Errorf("the hidden bar still takes room: the text starts at %.0f px", rootTop)
+		}
+		// The dock goes too, so no blank band is left under the text.
+		var rootBottom float64
+		tab.Eval(`document.getElementById("reader").getBoundingClientRect().bottom`, &rootBottom)
+		if rootBottom < 899 {
+			t.Errorf("the hidden dock still takes room: the text ends at %.0f px of 900", rootBottom)
 		}
 		if d := top1 - top0; d > 1 || d < -1 {
 			t.Errorf("the words moved by %.1f px when the bar hid (bar %.0f px)", d, barH)
@@ -95,6 +102,9 @@ func TestReaderBarKeepsAndReturns(t *testing.T) {
 	t.Run("touch-toggles-390", func(t *testing.T) {
 		e := ofrApp(t, cfBook(), nil)
 		tab := cfOpen(t, b, e, 390, 844, true)
+		// A phone opens with the bar hidden (decision 0036): the first tap in the middle shows it, the second hides it.
+		pgTouch(t, tab, 195, 422, 195, 422)
+		tab.WaitFor(chrome+` === "on"`, 3*time.Second)
 		pgTouch(t, tab, 195, 422, 195, 422)
 		tab.WaitFor(chrome+` === "off"`, 3*time.Second)
 		var h handleInfo

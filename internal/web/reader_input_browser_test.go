@@ -42,9 +42,10 @@ func TestReaderInputTaps(t *testing.T) {
 			pgTouch(t, tab, w*0.08, mid, w*0.08, mid)
 			pgPageIs(tab, 0)
 			pgTouch(t, tab, w*0.5, mid, w*0.5, mid)
-			tab.WaitFor(`document.querySelector(".ts-readerpage").dataset.chrome === "off"`, 3*time.Second)
-			pgTouch(t, tab, w*0.5, mid, w*0.5, mid)
+			// A phone opens with the bar hidden, and a turn puts it away (decision 0036): the first middle tap shows it.
 			tab.WaitFor(`document.querySelector(".ts-readerpage").dataset.chrome === "on"`, 3*time.Second)
+			pgTouch(t, tab, w*0.5, mid, w*0.5, mid)
+			tab.WaitFor(`document.querySelector(".ts-readerpage").dataset.chrome === "off"`, 3*time.Second)
 
 			// A tap on a link follows the link and turns nothing.
 			var rect struct{ X, Y float64 }
