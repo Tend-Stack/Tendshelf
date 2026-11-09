@@ -779,7 +779,8 @@ function setDisplay(el, value) {
 }
 
 function syncPageButtons() {
-  const playing = !!book && !audio.paused;
+  // In the app, the sound may already be another book than the one this page has loaded.
+  const playing = !!book && !audio.paused && (!NATIVE || audio.nativeBookId === book.id);
   for (const el of document.querySelectorAll("[data-ts-play]")) {
     const pauses = playing && el.dataset.tsPlay === book.id;
     if ((el.dataset.tsPausing === "1") === pauses) continue;
@@ -1175,7 +1176,11 @@ if (NATIVE) {
     }
   };
   // The speed the app pushed before the book was loaded is taken once it is.
-  listen(audio, "nativebook", () => loadBook(audio.nativeBookId).then(takeSpeed));
+  // The old book's Pause goes back to Play now: the new book may never load (no connection), and no pause event comes.
+  listen(audio, "nativebook", () => {
+    syncPageButtons();
+    loadBook(audio.nativeBookId).then(takeSpeed);
+  });
   listen(audio, "ratechange", takeSpeed);
   // The app asks the place question; the answer goes back to it, and an empty book id closes the toast.
   listen(audio, "nativeask", () => {

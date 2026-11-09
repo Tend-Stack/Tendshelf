@@ -206,3 +206,23 @@ func TestNativeAudioIgnoredInBrowserAndLink(t *testing.T) {
 		t.Errorf("a share-link page used tsNative (shell %q): built %v, sent %v", shell, built, a4Sent(link))
 	}
 }
+
+// TestNativeAudioOtherBookButton: when the app moves on to a book the page cannot load (no connection), the old
+// book's button stops saying Pause; it does not wait for a load that never comes.
+func TestNativeAudioOtherBookButton(t *testing.T) {
+	b := chromium(t)
+	e := playerApp(t)
+	tab := a4Tab(t, b, 390)
+	tab.Navigate(e.URL + "/?shell=android&next=/books/" + e.book.ID)
+	tab.WaitFor(`window.tsNativeAudio !== undefined`, 10*time.Second)
+	a4WaitSent(t, tab, "hello 1")
+	a4Push(tab, a4State(e.book.ID, 20000, true, "1.00"))
+	const pausing = `document.querySelector("#book-play [data-ts-play]").dataset.tsPausing === "1"`
+	tab.WaitFor(pausing, 8*time.Second)
+	// An id the server does not know answers the same way an unreachable server does: no book.
+	a4Push(tab, a4State("no-such-book", 5000, true, "1.00"))
+	tab.WaitFor(`!(`+pausing+`)`, 5*time.Second)
+	if got := playBtnText(tab, "#book-play [data-ts-play]"); strings.HasPrefix(got, "Pause") {
+		t.Errorf("the other book's button says %q", got)
+	}
+}
