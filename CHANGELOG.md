@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Added
+
+- **A page turn that feels like a book.** Turning a page now lifts the page and turns it over, with the text on both sides, a shadow that falls on the page underneath and light that changes as the page turns. On a wide screen the right page turns over onto the left; on a phone the page folds away to the side. You can also drag the page with a finger or a pen, and let go to finish the turn or put it back. In Reading settings, "Page turn" offers Flip, Slide and None; if the screen is too slow for the flip, the reader quietly slides instead, and choosing Flip again gives it another chance. If your device asks for reduced motion, pages turn without any movement.
+
 ### Fixes
 
 - **Pages are how you read now, on every screen.** On a wide window the book used to scroll like a web page; now it is a page with a number, and a person who prefers scrolling can still choose Scroll in Reading settings ("Automatic" is gone; it counts as Pages). The page is a comfortable width, so lines no longer run across the whole window. On a large screen it is a sheet of paper on a softly tinted desk, with two facing pages when the window is wide enough.
