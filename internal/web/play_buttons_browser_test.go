@@ -24,7 +24,8 @@ func playBtnOpenPage(t *testing.T, b *cdp.Browser, url string, w, h int) *cdp.Ta
 	t.Helper()
 	tab := b.NewTab(w, h, w < 768, false)
 	tab.Navigate(url)
-	tab.WaitFor(`window.tsPlayer !== undefined`, 10*time.Second)
+	// A cold browser on a busy runner: every file comes from the server, nothing from a cache.
+	tab.WaitFor(`window.tsPlayer !== undefined`, 30*time.Second)
 	return tab
 }
 
@@ -42,7 +43,8 @@ func TestPlayButtonBrowserFirstSound(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		b := chromium(t) // a new browser per run: empty storage, empty cache
 		tab := playBtnOpenPage(t, b, e.URL+"/books/"+e.book.ID, 390, 800)
-		if got := playBtnText(tab, "#book-play [data-ts-play]"); got != "Start listening" {
+		// The runs share one server, and an earlier run's browser may already have saved a place.
+		if got := playBtnText(tab, "#book-play [data-ts-play]"); got != "Start listening" && (i == 0 || got != "Resume") {
 			t.Fatalf("run %d: the book page button says %q", i, got)
 		}
 		playerClickSel(t, tab, "#book-play [data-ts-play]")

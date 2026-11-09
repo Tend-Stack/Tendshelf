@@ -116,8 +116,13 @@ func TestDeskStateBrowserSleep(t *testing.T) {
 	bmkeyPlay(t, tab, "[data-ts-toggle]")
 	// The timer only stops a book that is playing, and on a busy runner the sound can take a while to start.
 	tab.WaitFor(`window.tsPlayer.state().playing`, 10*time.Second)
-	tab.Eval(`window.tsPlayerFull.sleep("minutes", 1)`, nil)
-	time.Sleep(300 * time.Millisecond)
+	// The shell must already have said "playing" and seen the timer on: it reads the timer at each tick,
+	// and on a busy runner a fixed wait can end before the next tick.
+	tab.WaitFor(`(window.__posts || []).at(-1).includes('"playing":true')`, 10*time.Second)
+	tab.Eval(`window.tsPlayerFull.sleep("minutes", 1);
+	  window.__ticked = false;
+	  document.addEventListener("ts:player:tick", () => { window.__ticked = true; }, { once: true });`, nil)
+	tab.WaitFor(`window.__ticked`, 10*time.Second)
 	tab.Eval(`window.tsPlayerFull.debug.advanceSleep(70000)`, nil)
 	tab.WaitFor(`(window.__posts || []).some((p) => p.includes('"stop":"sleep"'))`, 5*time.Second)
 }

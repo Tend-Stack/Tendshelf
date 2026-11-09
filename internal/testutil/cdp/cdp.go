@@ -259,11 +259,15 @@ func (t *Tab) WaitFor(cond string, d time.Duration) {
 	deadline := time.Now().Add(d)
 	for {
 		var ok bool
-		if err := t.TryEval(`Boolean(`+cond+`)`, &ok); err == nil && ok {
+		err := t.TryEval(`Boolean(`+cond+`)`, &ok)
+		if err == nil && ok {
 			return
 		}
 		if time.Now().After(deadline) {
-			t.t.Fatalf("timed out after %s waiting for %s", d, cond)
+			// Say what the page was doing: a slow page and one whose script never ran look the same otherwise.
+			var page string
+			pageErr := t.TryEval(`location.pathname + " " + document.readyState`, &page)
+			t.t.Fatalf("timed out after %s waiting for %s (last error: %v; page: %q, %v)", d, cond, err, page, pageErr)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}

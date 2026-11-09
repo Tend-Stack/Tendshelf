@@ -363,13 +363,17 @@ func TestPlayerBarBrowserWaveKeys(t *testing.T) {
 	if text != "5 seconds of 30 seconds, chapter 1" {
 		t.Errorf("aria-valuetext after a key: %q", text)
 	}
+	// Play can rewind after a pause, and the words rightly follow that seek, so the hold starts here.
 	tab.Eval(`window.tsPlayer.play()`, nil)
 	tab.WaitFor(`window.tsPlayer.state().playing`, 3*time.Second)
+	held := time.Now()
+	tab.Eval(`document.querySelector(".ts-wave__input").getAttribute("aria-valuetext")`, &text)
 	time.Sleep(3200 * time.Millisecond)
 	var later string
 	tab.Eval(`document.querySelector(".ts-wave__input").getAttribute("aria-valuetext")`, &later)
 	tab.Eval(`window.tsPlayer.pause()`, nil)
-	if later != text {
+	// A runner slow enough to pass the 10 s proves nothing either way.
+	if later != text && time.Since(held) < 9*time.Second {
 		t.Errorf("aria-valuetext changed within 10 s of a key: %q then %q", text, later)
 	}
 	// The times in words: elapsed, chapter name, time left; the bar's meta line.
