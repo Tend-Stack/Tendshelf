@@ -273,3 +273,11 @@ func ClearConfig(ctx context.Context, tx db.Execer, by users.User, now time.Time
 	}
 	return db.Audit(ctx, tx, db.AuditEntry{At: now.UnixMilli(), UserID: by.ID, Action: "oidc.off", Target: "server"})
 }
+
+// Identity is a provider account linked to a Tendshelf account.
+type Identity struct {
+	Issuer, Subject, Email string
+	LinkedVia              string // account, email or new
+	CreatedAt              int64  // Unix milliseconds UTC
+	LastUsedAt             int64  // 0 when never used
+}

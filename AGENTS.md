@@ -19,7 +19,7 @@ was reused, extended or replaced.
   Approved and in use: `modernc.org/sqlite` v1.61.1 and `github.com/a-h/templ` v0.3.1100 (runtime; the
   CLI runs through the `tool` directive in `go.mod`, one version source), `golang.org/x/net` v0.61.0
   (`html`, `html/charset`), `golang.org/x/text` v0.43.0 (`unicode/norm`, `encoding/...`; ebook reading,
-  `internal/ebook` only) and `github.com/ledongthuc/pdf` (PDF text layer, `internal/ebook/pdf.go` only) and `rsc.io/qr` v0.2.0 (QR codes as SVG, `internal/web/qr.go` only, decision 0028). Approved for later phases
+  `internal/ebook` only) and `github.com/ledongthuc/pdf` (PDF text layer, `internal/ebook/pdf.go` only) and `rsc.io/qr` v0.2.0 (QR codes as SVG, `internal/web/qr.go` only, decision 0028). OpenID Connect: standard library, `internal/auth/oidc` (decision 0037). Approved for later phases
   (operator, 2026-11-03), each added with its `NOTICES.md` row: Wails v3 (desktop
   module only), fsnotify, go-webauthn and an OpenID Connect client; see "Dependencies and approvals" in
   `docs/architecture.md`. Android (decision 0024), under `android/` only: `kotlin-test`, `junit` and `hamcrest` for tests, Kotlin (through AGP), `androidx.media3`
@@ -124,8 +124,8 @@ was reused, extended or replaced.
 - Read aloud uses only voices on the device (a browser voice with `localService` true, an Android voice that needs no network), so book text never leaves it (decision 0032).
 - **No telemetry**, analytics, crash reporting, update pings or third-party assets (fonts, CDNs, map
   tiles). The only outbound requests are user-initiated metadata lookups and cover downloads, through
-  `internal/metadata/online`, the only package in the server that creates an `http.Client`. The one other outbound
-  connection is the admin-configured SMTP server for invitation emails (`internal/share/mail.go`).
+  `internal/metadata/online`, the only package in the server that creates an `http.Client` (the one other is `internal/auth/oidc`, which talks only to the configured sign-in provider, decision 0037; `internal/archtest` enforces the list). The one other outbound
+  connection is the admin-configured SMTP server for invitation emails (`internal/share/mail.go`), and the configured OpenID Connect provider, when someone signs in with it.
   The desktop shell also checks `/healthz` on the server the person typed, at Connect and at launch
   (`internal/desktopshell`, decision 0020). That is its own client, and it sends no credentials.
 - All authorization goes through `share.Can(user, action, target)`. Listing and search queries filter
