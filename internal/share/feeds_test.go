@@ -69,7 +69,12 @@ func TestFeedsCreateLookup(t *testing.T) {
 		t.Errorf("malformed = %q %v", reason, err)
 	}
 	other, _, _ := l.create("u_none", "", "bk_a1", "")
-	if _, reason, err := l.r.Lookup(ctx, other[:len(other)-1]+"A"); !errors.Is(err, ErrFeedUnknown) || (reason != FeedUnknown && other[len(other)-1] != 'A') {
+	// Another valid last character (the last of 43 holds only 4 bits, so one of 16: A, E, I and so on).
+	last := "A"
+	if strings.HasSuffix(other, last) {
+		last = "E"
+	}
+	if _, reason, err := l.r.Lookup(ctx, other[:len(other)-1]+last); !errors.Is(err, ErrFeedUnknown) || reason != FeedUnknown {
 		t.Errorf("unknown = %q %v", reason, err)
 	}
 	for _, c := range [][2]string{{"", ""}, {"bk_a1", "s1"}} {
