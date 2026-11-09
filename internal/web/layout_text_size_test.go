@@ -37,7 +37,7 @@ func TestLayoutTextSize(t *testing.T) {
 			t.Errorf("standard %s has the attribute", path)
 		}
 	}
-	if body := browseGet(a, "/", false, nil).Body.String(); !strings.Contains(body, "data-ts-fit") {
+	if body := browseGet(a, "/", false, nil).Body.String(); !strings.Contains(body, "ts-shelf--scroll") {
 		t.Errorf("standard Home lost its spine shelf")
 	}
 
@@ -49,7 +49,7 @@ func TestLayoutTextSize(t *testing.T) {
 		}
 	}
 	home := browseGet(a, "/", false, nil).Body.String()
-	if strings.Contains(home, "data-ts-fit") || strings.Contains(home, "ts-shelf__plank") {
+	if strings.Contains(home, "ts-shelf--scroll") || strings.Contains(home, "ts-shelf__plank") {
 		t.Errorf("large Home still has the spine shelf")
 	}
 	if n := len(textsizeCardRe.FindAllString(home, -1)); n < 1 || n > 4 {

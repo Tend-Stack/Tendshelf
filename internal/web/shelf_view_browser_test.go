@@ -247,17 +247,17 @@ func TestShelfViewMotionBrowser(t *testing.T) {
 func TestShelfViewHomeBrowser(t *testing.T) {
 	base := shelfviewApp(t)
 	b := chromium(t)
-	const widths = `(() => { const m = {}; for (const li of document.querySelectorAll(".ts-shelf > li.ts-shelf__slot")) { if (li.hidden) continue; m[li.querySelector("a").getAttribute("href")] = li.getBoundingClientRect().width; } return m; })()`
+	const widths = `(() => { const m = {}; for (const li of document.querySelectorAll(".ts-shelf > li.ts-shelf__slot")) { m[li.querySelector("a").getAttribute("href")] = li.getBoundingClientRect().width; } return m; })()`
 	for _, w := range []int{390, 1440} {
 		home := b.NewTab(w, 900, w < 768, false)
 		home.Navigate(base + "/")
-		home.WaitFor(`document.querySelector("#row-recent .ts-shelf > [hidden]") !== null`, 10*time.Second)
+		home.WaitFor(`document.querySelector("#row-recent .ts-shelf > li") !== null`, 10*time.Second)
 		var onHome, onShelf map[string]float64
 		home.Eval(widths, &onHome)
 		var shelfClass bool
-		home.Eval(`document.querySelector("#row-recent ul.ts-shelf.ts-shelf--scroll[data-ts-fit]") !== null && document.querySelector(".ts-shelf__plank") === null`, &shelfClass)
+		home.Eval(`document.querySelector("#row-recent ul.ts-shelf.ts-shelf--scroll") !== null && document.querySelector(".ts-shelf__plank") === null`, &shelfClass)
 		if !shelfClass {
-			t.Errorf("%d px: Home's shelf is not a ul.ts-shelf with data-ts-fit", w)
+			t.Errorf("%d px: Home's shelf is not the scrolling ul.ts-shelf", w)
 		}
 		lib := b.NewTab(w, 900, w < 768, false)
 		lib.Navigate(base + "/libraries?view=shelf&sort=added")

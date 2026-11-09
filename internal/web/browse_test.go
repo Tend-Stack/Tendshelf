@@ -101,9 +101,8 @@ func TestHomeNewOnShelf(t *testing.T) {
 	if got := strings.Count(body, `class="ts-spine"`); got != homeShelfMax {
 		t.Fatalf("%d spines, want %d", got, homeShelfMax)
 	}
-	// The row is marked for shell.js, which hides the spines that do not fit.
-	if !strings.Contains(body, `class="ts-shelf ts-shelf--scroll" role="list" data-ts-fit`) {
-		t.Errorf("the shelf lacks data-ts-fit")
+	if !strings.Contains(body, `class="ts-shelf ts-shelf--scroll" role="list"`) {
+		t.Errorf("the shelf is not the scrolling row")
 	}
 	// Newest first: books 45 down to 6.
 	ids := browseIDs(body)
