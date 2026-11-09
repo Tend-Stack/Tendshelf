@@ -104,6 +104,7 @@ templ LookupSheet(v LookupSheetView) {
 					@components.Icon("close", false)
 				</a>
 			</div>
+			<div class="ts-sheet__body">
 			<form class="ts-lookup" method="post" action={ templ.URL(v.Action) } hx-post={ v.Action } hx-target="#sheet" hx-swap="innerHTML">
 				<input type="hidden" name="_csrf" value={ v.CSRF }/>
 				<p class="caption ts-lookup__intro">{ v.Intro }</p>
@@ -127,6 +128,7 @@ templ LookupSheet(v LookupSheetView) {
 				</details>
 				<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ v.Submit }</button>
 			</form>
+			</div>
 		</div>
 	</div>
 }
@@ -145,7 +147,9 @@ templ CompareSheet(v CompareSheetView) {
 					@components.Icon("close", false)
 				</a>
 			</div>
+			<div class="ts-sheet__body">
 			@CompareBody(v)
+			</div>
 		</div>
 	</div>
 }

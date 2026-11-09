@@ -484,6 +484,7 @@ templ ReaderSheet(v ReaderSheetView) {
 					@components.Icon("close", false)
 				</a>
 			</div>
+			<div class="ts-sheet__body">
 			if v.Search != nil {
 				@ReaderSearchForm(*v.Search)
 			} else if v.Kind == "contents" {
@@ -496,7 +497,8 @@ templ ReaderSheet(v ReaderSheetView) {
 									aria-current="location"
 								}
 							>
-								<span>{ c.Num }</span> { c.Title }
+								<span class="ts-reader__tocnum">{ c.Num }</span>
+								<span class="ts-reader__toctitle">{ c.Title }</span>
 								if c.Note != "" {
 									<span class="caption">{ c.Note }</span>
 								}
@@ -533,6 +535,7 @@ templ ReaderSheet(v ReaderSheetView) {
 					</div>
 				}
 			}
+			</div>
 		</div>
 	</div>
 }

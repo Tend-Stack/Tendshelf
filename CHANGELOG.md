@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Fixes
+
+- **Reader sheets keep their title and close button in view.** Contents, Reading settings and the other sheets scroll only underneath their handle and heading, and the scrollbar stays inside the rounded box. Rows in Contents line up even when a chapter has no title.
+
 ### What you can do
 
 - **The next book is ready when you need it (Android app).** Turn on "Download the next book on its own" in Settings, under Playback. When the book you
