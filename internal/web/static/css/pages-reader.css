@@ -264,3 +264,76 @@ body:has(.ts-readerpage) :is(#nav-tabbar, #nav-rail, #nav-side) { visibility: hi
 .ts-aloud-open[hidden] { display: none; }
 .ts-aloud-open[aria-expanded="true"] { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .ts-s { transition: none; } }
+
+/* Saying the edges turn, and marking a page (decision 0036).
+   The page edges are buttons flush to the window's sides, as wide as the desk beside the sheet plus the sheet's own margin
+   (reader-pages.js sets --ts-frame-top, --ts-frame-h, --ts-frame-w and --ts-frame-pad). A chevron sits at the paper's edge;
+   the whole edge answers a hover with a faint shade on the desk. On a touch screen or below 1024 px the edge is out of the
+   way (the tap zones turn) but stays in the tree for a keyboard and a screen reader. */
+.ts-edge, .ts-ribbon, .ts-pagehint { display: none; }
+.ts-readerpage:has(> .ts-reader--pages) > .ts-edge { display: flex; align-items: center; position: absolute; z-index: 1; top: var(--ts-frame-top, 0); height: var(--ts-frame-h, 0); box-sizing: border-box; width: max(var(--size-tap), calc((100% - var(--ts-frame-w, 0px)) / 2 + var(--ts-frame-pad, 0px))); margin: 0; padding: 0; border: 0; border-radius: 0; background: none; color: var(--ink); opacity: 0.6; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.ts-edge--prev { left: 0; justify-content: flex-end; }
+.ts-edge--next { right: 0; justify-content: flex-start; }
+/* The chevron is drawn in CSS: two strokes of an open square, turned. It sits in the middle of the sheet's own margin. */
+.ts-edge::before { content: ""; flex: none; width: 0.875rem; height: 0.875rem; border: solid currentColor; border-width: 2px 2px 0 0; }
+.ts-edge--prev::before { rotate: -135deg; margin-inline-end: calc(var(--ts-frame-pad, 0px) / 2 - 0.25rem); }
+.ts-edge--next::before { rotate: 45deg; margin-inline-start: calc(var(--ts-frame-pad, 0px) / 2 - 0.25rem); }
+/* The shade on the desk beside the sheet, and the corner that lifts at the sheet's outer lower corner (flat in the contrast theme). */
+.ts-edge { --curl: min(3rem, var(--ts-frame-pad, 3rem)); --reach: 7rem; --wash: color-mix(in srgb, var(--flip-shade) 80%, transparent); }
+.ts-edge::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; background-repeat: no-repeat; }
+.ts-edge--prev::after {
+  background-image: linear-gradient(45deg, transparent 50%, var(--flip-shade) 50%, transparent 90%), linear-gradient(45deg, var(--desk) 50%, var(--raised) 50%), linear-gradient(to left, var(--wash), transparent);
+  background-size: var(--curl) var(--curl), var(--curl) var(--curl), min(var(--reach), calc(100% - var(--ts-frame-pad, 0px))) 100%;
+  background-position: right calc(var(--ts-frame-pad, 0px) - var(--curl)) bottom 0, right calc(var(--ts-frame-pad, 0px) - var(--curl)) bottom 0, right var(--ts-frame-pad, 0px) top;
+}
+.ts-edge--next::after {
+  background-image: linear-gradient(315deg, transparent 50%, var(--flip-shade) 50%, transparent 90%), linear-gradient(315deg, var(--desk) 50%, var(--raised) 50%), linear-gradient(to right, var(--wash), transparent);
+  background-size: var(--curl) var(--curl), var(--curl) var(--curl), min(var(--reach), calc(100% - var(--ts-frame-pad, 0px))) 100%;
+  background-position: left calc(var(--ts-frame-pad, 0px) - var(--curl)) bottom 0, left calc(var(--ts-frame-pad, 0px) - var(--curl)) bottom 0, left var(--ts-frame-pad, 0px) top;
+}
+[data-theme="contrast"] .ts-edge { --curl: 0px; --wash: transparent; }
+.ts-edge:is(:hover, :focus-visible) { opacity: 1; }
+.ts-edge:hover::after { opacity: 1; }
+.ts-edge:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: var(--radius-control); }
+.ts-edge[aria-disabled="true"] { opacity: 0.2; cursor: default; }
+.ts-edge[aria-disabled="true"]::after { display: none; }
+@media (prefers-reduced-motion: no-preference) { .ts-edge, .ts-edge::after { transition: opacity var(--duration-fast); } }
+/* Touch, and anything narrower than a desk: no pointer lands on the edge. Focus still shows it. */
+@media (pointer: coarse), (width < 1024px) {
+  .ts-readerpage:has(> .ts-reader--pages) > .ts-edge { pointer-events: none; opacity: 0; }
+  .ts-readerpage:has(> .ts-reader--pages) > .ts-edge:focus-visible { opacity: 1; pointer-events: auto; }
+}
+
+/* The ribbon: a bookmark hanging from the top edge of each page at its outer corner, in a 44 by 44 px button. Pressed it is
+   the accent colour and always shown; unpressed it is an outline, shown while the bar and dock are (and on hover or focus),
+   still pressable when unseen. A phone's bar lies over it; the bar's own bookmark button presses the same ribbon. */
+/* On a phone the page is the whole window, so the ribbon is placed against the window's corner (the reader root); on a desk, against the sheet. */
+.ts-readerpage > .ts-reader--pages { position: relative; }
+.ts-reader--pages .ts-ribbon { display: block; position: absolute; z-index: 2; top: env(safe-area-inset-top); right: env(safe-area-inset-right); width: var(--size-tap); height: var(--size-tap); margin: 0; padding: 0; border: 0; background: none; color: var(--ink-muted); opacity: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ts-reader--pages .ts-ribbon[hidden] { display: none; }
+.ts-ribbon::before, .ts-ribbon::after { content: ""; position: absolute; top: 0; right: max(var(--space-4), calc(var(--ts-pad) / 2 - 0.4375rem)); width: 0.875rem; height: 1.25rem; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%); }
+.ts-ribbon::before { background: currentColor; }
+/* The inside of the outline: the page's own colour, a little smaller, so only a line of the ribbon's shape is left. */
+.ts-ribbon::after { background: var(--ground); transform: scale(0.64, 0.78); transform-origin: 50% 0; }
+.ts-ribbon[aria-pressed="true"] { color: var(--accent); opacity: 1; }
+.ts-ribbon[aria-pressed="true"]::before { height: 1.75rem; }
+.ts-ribbon[aria-pressed="true"]::after { display: none; }
+.ts-readerpage:not([data-chrome="off"]) .ts-ribbon[aria-pressed="false"] { opacity: 0.7; }
+.ts-ribbon:is(:hover, :focus-visible) { opacity: 1; }
+.ts-ribbon:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: var(--radius-control); }
+@media (width >= 1024px) {
+  .ts-reader--pages .ts-ribbon { top: 0; right: 0; }
+  .ts-reader--spread .ts-ribbon[data-page="0"] { right: auto; left: 0; }
+  .ts-reader--spread .ts-ribbon[data-page="0"]::before, .ts-reader--spread .ts-ribbon[data-page="0"]::after { right: auto; left: max(var(--space-4), calc(var(--ts-pad) / 2 - 0.4375rem)); }
+}
+@media (prefers-reduced-motion: no-preference) { .ts-ribbon, .ts-ribbon::before { transition: opacity var(--duration-fast), height var(--duration-fast); } }
+
+/* The first-use hint: two chevrons over the tap zones and one sentence in the middle. It never takes a tap. */
+.ts-pagehint { display: block; position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.ts-pagehint__text { position: absolute; top: 50%; left: 50%; translate: -50% -50%; width: min(14rem, calc(75% - var(--space-24))); box-sizing: border-box; margin: 0; padding: var(--space-12) var(--space-16); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); background: var(--raised); color: var(--ink); box-shadow: var(--shadow-float); font: 1rem/1.4 var(--font-sans); text-align: center; }
+.ts-pagehint__chev { position: absolute; top: 50%; width: var(--size-tap); height: var(--size-tap); translate: 0 -50%; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--raised); box-shadow: var(--shadow-float); }
+.ts-pagehint__zone--l { left: calc(12.5% - var(--size-tap) / 2); }
+.ts-pagehint__zone--r { right: calc(12.5% - var(--size-tap) / 2); }
+.ts-pagehint__chev::before { content: ""; position: absolute; top: 50%; left: 50%; width: 0.75rem; height: 0.75rem; margin: -0.375rem 0 0 -0.375rem; border: solid var(--ink); border-width: 2px 2px 0 0; }
+.ts-pagehint__chev--l::before { rotate: -135deg; translate: 0.125rem 0; }
+.ts-pagehint__chev--r::before { rotate: 45deg; translate: -0.125rem 0; }
