@@ -10,6 +10,9 @@ type LoginView struct {
 	FormError string
 	// NoPassword is the line under the form about asking for a sign-in link.
 	NoPassword string
+	// SSOLabel ("Sign in with Authelia") and SSOHref (/login/oidc, with next) show the provider button
+	// above the form when sign-in with a provider is on; SSOOr is the caption between it and the form.
+	SSOLabel, SSOHref, SSOOr string
 }
 
 // Login is the sign-in page.
@@ -17,6 +20,12 @@ templ Login(v LoginView) {
 	@components.Brand()
 	<h1 class="title-1 ts-frame__title">Sign in</h1>
 	<p class="body-lg ts-frame__lead">Welcome back.</p>
+	if v.SSOHref != "" {
+		<a class="ts-btn ts-btn--secondary ts-btn--lg ts-btn--block ts-sso__btn" href={ templ.SafeURL(v.SSOHref) } hx-boost="false" title={ v.SSOLabel }>
+			<span class="ts-sso__label">{ v.SSOLabel }</span>
+		</a>
+		<p class="caption ts-login__or">{ v.SSOOr }</p>
+	}
 	<form class="ts-form" method="post" action="/login">
 		<input type="hidden" name="_csrf" value={ v.CSRF }/>
 		if v.Next != "" && v.Next != "/" {

@@ -53,6 +53,8 @@ type ProfileView struct {
 	Name       string
 	Role       string // Owner, Admin, Member or Listener
 	ServerName string
+	// SSOLabel is "Sign in with Authelia" when sign-in with a provider is on, else empty; SSOCaption its caption.
+	SSOLabel, SSOCaption string
 	// Stats is the "Your listening" panel, at the head of the side column.
 	Stats components.ListeningStatsView
 	// Banner is the line after a password change, or empty.
@@ -129,6 +131,9 @@ templ profileMenus(v ProfileView) {
 						@profileMenuLink("/welcome", "Keep your place", "Add a password so you can sign in elsewhere")
 					} else {
 						@profileMenuLink("/me/password", "Change password", "")
+					}
+					if v.SSOLabel != "" {
+						@profileMenuLink("/me/sso", v.SSOLabel, v.SSOCaption)
 					}
 					<form method="post" action="/logout" class="ts-profile__signout" hx-boost="false">
 						<input type="hidden" name="_csrf" value={ v.CSRF }/>

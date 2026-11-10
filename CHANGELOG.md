@@ -6,6 +6,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Added
 
+- **Sign in with Authelia, Authentik or Keycloak.** The owner sets up one OpenID Connect provider under Settings, Your server, Sign-in: its name, address, client ID and secret. People then see a "Sign in with ..." button above the password form, and can link or unlink their account from their Account page. The password form always stays, so a provider that is down never locks anyone out. Owners and admins link from their Account; the owner can also let verified emails link members and guests, or make accounts for new people.
 - **Run Tendshelf with Docker.** The repository now has a Dockerfile and a compose file, so `docker compose up` builds and starts the server with ffmpeg included, your data in a folder you choose and your books mounted read-only. The deploy guide explains HTTPS, uploads, file ownership and upgrades.
 - Owners and admins get an Activity page under Settings, Your server: what people did on the server in plain words (who signed in, who invited whom, who changed a role), newest first, filtered by person or by kind. It shows no addresses or links that could sign anyone in.
 - **Podcasts engine (off until the owner turns it on).** The server can now follow shows by RSS address or OndaCast search, refresh them as background jobs, keep places, stars and history for each person, stream episodes through the server with seeking, and keep a size-limited cache of episodes. The pages come in the next release; the owner switch is on `/admin/podcasts`.

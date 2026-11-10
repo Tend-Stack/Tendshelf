@@ -52,6 +52,8 @@ type AdminUserView struct {
 	// is kept for tests and callers that need to know.
 	Username   string
 	NoPassword bool
+	// SSOLine is "Signs in with Authelia" when this person has a provider account linked, else empty.
+	SSOLine string
 	// SignInOpen is the line "A sign-in link is open until ..." or empty. SignInLink is the panel shown
 	// once after a link was made. SignInLabel and SignInHelp are the button and the sentence under it.
 	SignInOpen, SignInLabel, SignInHelp string
@@ -222,6 +224,9 @@ templ AdminUser(v AdminUserView) {
 			<p class="caption ts-users__sub">{ v.Meta }</p>
 			if v.Username != "" {
 				<p class="caption ts-users__sub">{ v.Username }</p>
+				if v.SSOLine != "" {
+					<p class="caption ts-users__sub">{ v.SSOLine }</p>
+				}
 			}
 		</header>
 		if v.Error != "" {

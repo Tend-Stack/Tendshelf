@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
@@ -126,6 +127,10 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 		return v, err
 	}
 	v.NoPassword = !has
+
+	if cfg, on := s.auth.OIDCEnabled(ctx); on {
+		v.SSOLabel, v.SSOCaption = fmt.Sprintf(ssoMenu, cfg.Name), ssoMenuCaption
+	}
 
 	set, err := s.users.LoadSettings(ctx, u.ID)
 	if err != nil {

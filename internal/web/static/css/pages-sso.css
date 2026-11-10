@@ -1,0 +1,17 @@
+/* Sign in with a provider (decision 0037): the owner's settings page and the Account page. Tokens
+   only; every rule works in all four themes. */
+
+.ts-sso .body, .ts-sso__status { max-width: 40rem; margin: 0; }
+.ts-sso__status { color: var(--ink-muted); }
+.ts-sso__form, .ts-sso__card, .ts-sso__confirm { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-sso .ts-select, .ts-sso .ts-input { max-width: none; }
+.ts-sso__form .ts-btn { align-self: flex-start; }
+.ts-sso__confirm h2, .ts-sso__confirm p, .ts-sso__line, .ts-sso__note { margin: 0; }
+.ts-sso__note { color: var(--ink-muted); }
+.ts-sso__actions { display: flex; flex-wrap: wrap; gap: var(--space-12); align-items: center; }
+/* A long provider name is cut with an ellipsis inside the button, never wrapped to a new row. */
+.ts-sso__link { align-self: flex-start; max-width: 100%; min-width: 0; }
+.ts-sso__off { padding: var(--space-8) 0; }
+.ts-sso__off .ts-btn { min-height: 2.75rem; }
+.ts-sso .ts-me__title { margin: 0 0 var(--space-16); overflow-wrap: anywhere; }
+.ts-sso .ts-banner, .ts-sso .ts-form__error { margin: 0 0 var(--space-16); }

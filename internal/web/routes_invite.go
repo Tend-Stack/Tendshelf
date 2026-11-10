@@ -345,7 +345,11 @@ func welcomeNext(book string) string {
 
 func (s *server) welcomeView(r *http.Request, book, keep, username string, errs map[string]string) pages.WelcomeView {
 	u := currentUser(r)
-	return pages.WelcomeView{CSRF: s.csrf.TokenFrom(r.Context()), Name: personName(u), Book: book, Username: username, Keep: keep, Errors: errs}
+	v := pages.WelcomeView{CSRF: s.csrf.TokenFrom(r.Context()), Name: personName(u), Book: book, Username: username, Keep: keep, Errors: errs}
+	if cfg, on := s.auth.OIDCEnabled(r.Context()); on {
+		v.SSOLabel = fmt.Sprintf(ssoWelcome, cfg.Name)
+	}
+	return v
 }
 
 func (s *server) getWelcome(w http.ResponseWriter, r *http.Request) {

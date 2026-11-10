@@ -1,0 +1,72 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// MeSSOConfirm is the card that asks before a provider account is linked.
+type MeSSOConfirm struct {
+	ID, Title, Body, Button, Cancel string
+}
+
+// MeSSOView is the Account page for signing in with the provider: who is linked, the Link and
+// Unlink buttons, and the confirm card the callback lands on.
+type MeSSOView struct {
+	CSRF, Title string
+	// Linked is true when the person has a provider account; Line says to which and since when.
+	Linked  bool
+	Line    string
+	Lead    string
+	Banner  string
+	Error   string
+	// LinkLabel is "Link Authelia"; LinkHref starts the link step.
+	LinkLabel, LinkHref string
+	UnlinkLabel         string
+	// NoPassword is true when Unlink would leave no way in; NoPasswordNote then replaces the button.
+	NoPassword                  bool
+	NoPasswordNote, SignOutNote string
+	Confirm                     *MeSSOConfirm
+}
+
+// MeSSO is /me/sso.
+templ MeSSO(v MeSSOView) {
+	<div class="ts-me ts-me--narrow ts-sso">
+		<h1 class="title-1 ts-me__title">{ v.Title }</h1>
+		if v.Banner != "" {
+			<p class="ts-banner ts-me__banner" role="status">
+				@components.Icon("check", false)
+				{ v.Banner }
+			</p>
+		}
+		@formError(v.Error)
+		if v.Confirm != nil {
+			<section class="ts-group ts-group--pad ts-sso__confirm" aria-labelledby="sso-confirm-h">
+				<h2 id="sso-confirm-h" class="section">{ v.Confirm.Title }</h2>
+				<p class="body">{ v.Confirm.Body }</p>
+				<form class="ts-sso__actions" method="post" action="/me/sso/confirm" hx-boost="false">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<input type="hidden" name="id" value={ v.Confirm.ID }/>
+					<button type="submit" class="ts-btn ts-btn--primary">{ v.Confirm.Button }</button>
+					<a class="ts-btn ts-btn--quiet" href="/me/sso">{ v.Confirm.Cancel }</a>
+				</form>
+			</section>
+		} else {
+			<section class="ts-group ts-group--pad ts-sso__card" aria-label={ v.Title }>
+				<p class="body ts-sso__line">{ v.Line }</p>
+				if v.Linked {
+					if v.NoPassword {
+						<p class="caption ts-sso__note">{ v.NoPasswordNote }</p>
+					} else {
+						<form method="post" action="/me/sso/unlink" hx-boost="false">
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<button type="submit" class="ts-btn ts-btn--secondary">{ v.UnlinkLabel }</button>
+						</form>
+					}
+				} else {
+					<a class="ts-btn ts-btn--primary ts-sso__link" href={ templ.SafeURL(v.LinkHref) } hx-boost="false" title={ v.LinkLabel }>
+						<span class="ts-sso__label">{ v.LinkLabel }</span>
+					</a>
+				}
+				<p class="caption ts-sso__note">{ v.SignOutNote }</p>
+			</section>
+		}
+	</div>
+}

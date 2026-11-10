@@ -341,3 +341,15 @@ Run by script, not by hand. Desktop: `make build desktop-probe`, then `TS_MONITO
 | PG-A7 | Android: numbers read "n of about m"; service worker. | Pass: "n of about 33"; `navigator.serviceWorker` is absent in the app, so none is used. |
 | PG-A8 | Android: read aloud follows the pages. | NOT VERIFIED: the strip started (pause icon) but this emulator has no voice that speaks, so no sentence advanced in 25 s. |
 | PG-X | Desktop and Android in sepia and contrast; Firefox at 2000 px; Wails on Wayland with a real GPU; a physical phone. | Not run. |
+
+## S7 sign-in with a provider (decision 0037)
+
+Needs a real provider reachable over https from the browser (Authelia 4.39, Authentik, Keycloak). Settings: Settings, Your server, Sign-in. Not run yet.
+
+| ID | Check | Result |
+| --- | --- | --- |
+| S7-1 | Authelia 4.39 (claims in userinfo): set up the provider, sign in with a linked account, link from Account (confirm card), unlink. | Not run. |
+| S7-2 | Authentik with a signing key: sign in. Then with no signing key (HS256): saving with the switch on is refused in words. | Not run. |
+| S7-3 | Keycloak realm, confidential client: sign in; a wrong secret shows the failed message; with the provider stopped, `/login` still takes a password and the button says the provider is not answering. | Not run. |
+| S7-4 | Android app through each provider to `/app/connect` and back (P3 of the plan; needs the app change). | Not run. |
+| S7-5 | Desktop window: the provider's pages stay in the window and the bridge answers nothing on them. | Not run. |

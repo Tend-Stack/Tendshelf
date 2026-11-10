@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
+	"github.com/Tend-Stack/tendshelf/internal/auth/oidc"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
@@ -269,6 +270,16 @@ func a11ySignIn(t *testing.T, e *a11yEnv, a *testApp, ownerCk *http.Cookie, serv
 	}
 	as("main/linked", a, &http.Cookie{Name: auth.CookieName, Value: l.Token})
 	e.SignInPanelID = e.MemberID
+	// Sign-in with a provider (decision 0037) is on, so /login shows the button and /admin/sso, /me/sso have
+	// something to audit. Pages never call the provider; the address only has to parse.
+	err = a.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := oidc.SaveConfig(ctx, tx, tx, users.User{ID: owner}, oidc.ConfigInput{Enabled: true, Name: "Authelia",
+			Issuer: "https://auth.example.org", ClientID: "tendshelf", ServerAddress: "http://127.0.0.1:8095"}, "", time.Now())
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	serve("main/panel", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet && r.URL.Path == "/admin/users/"+e.SignInPanelID {
 			form := url.Values{"_csrf": {a.tokenFor(t, ownerCk)}}
