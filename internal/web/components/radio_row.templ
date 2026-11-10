@@ -5,6 +5,8 @@ type StationRowView struct {
 	ID, Name, Meta string
 	// PlayHref is where the play button goes without JavaScript (the relay); PlayLabel names it.
 	PlayHref, PlayLabel string
+	// PlayWord is the visible word on a card's Play control.
+	PlayWord string
 	// RemoveAction is the remove form's address; empty draws no remove control (a recent station that is not kept).
 	RemoveAction, RemoveLabel string
 	// SaveAction is the save form's address, drawn on a recent station that is not kept; SaveWord and SaveLabel name it.
@@ -49,5 +51,44 @@ templ StationRow(v StationRowView) {
 				</button>
 			</form>
 		}
+	</li>
+}
+
+// StationCard is one station as a card on the Radio page: the logo (a plain tile with the name when there is none),
+// the name, one line of genre and place, one Play control and the keep toggle. The player's script turns Play into
+// Pause while the station is on air (word and icon change, so it is never colour alone). Both controls are real
+// forms or links, so the card works without JavaScript.
+templ StationCard(v StationRowView) {
+	<li class="ts-stncard">
+		<span class="ts-stncard__art">
+			@Cover(v.Art, "fill")
+		</span>
+		<span class="ts-stncard__name ts-clamp-2">{ v.Name }</span>
+		<span class="ts-stncard__meta ts-truncate">{ v.Meta }</span>
+		<span class="ts-stncard__actions">
+			<a class="ts-btn ts-btn--secondary ts-stncard__play" href={ templ.SafeURL(v.PlayHref) } hx-boost="false" data-ts-play={ v.ID } aria-label={ v.PlayLabel }>
+				@Icon("play", true)
+				<span hidden data-ts-pause-icon>
+					@Icon("pause", true)
+				</span>
+				<span data-ts-play-label>{ v.PlayWord }</span>
+			</a>
+			if v.SaveAction != "" {
+				<form class="ts-stncard__keep" method="post" action={ templ.SafeURL(v.SaveAction) }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-iconbtn" aria-label={ v.SaveLabel } aria-pressed="false">
+						@Icon("star", false)
+					</button>
+				</form>
+			}
+			if v.RemoveAction != "" {
+				<form class="ts-stncard__keep" method="post" action={ templ.SafeURL(v.RemoveAction) }>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-iconbtn is-on" aria-label={ v.RemoveLabel } aria-pressed="true">
+						@Icon("star", true)
+					</button>
+				</form>
+			}
+		</span>
 	</li>
 }

@@ -30,11 +30,10 @@ func (s *server) podNav(r *http.Request) components.PodNav {
 	if u.ID == "" {
 		return components.PodNav{}
 	}
-	// With podcasts off but radio on, the one item is Radio and leads to /radio (plan R2). With both on, Radio gets
-	// its own item after Podcasts (desktop and tablet; the phone's tab bar reaches it from the Podcasts tabs).
-	radio := s.radioNavOn(r)
+	// With podcasts off but radio on, the one item is Radio and leads to /radio (plan R2). With both on there is still
+	// one item, Podcasts: every /podcasts and /radio page marks it, and Radio is a tab of the Podcasts strip.
 	if !s.podcastsOn(r) || !s.can.Can(r.Context(), u, share.UsePodcasts, podServer) {
-		if radio {
+		if s.radioNavOn(r) {
 			return components.PodNav{Show: true, RadioOnly: true}
 		}
 		return components.PodNav{}
@@ -43,7 +42,7 @@ func (s *server) podNav(r *http.Request) components.PodNav {
 	if err != nil {
 		n = 0
 	}
-	return components.PodNav{Show: true, New: n, Radio: radio}
+	return components.PodNav{Show: true, New: n}
 }
 
 // podArt is the show's picture as a cover: the local art route at three sizes, or none (the cover then

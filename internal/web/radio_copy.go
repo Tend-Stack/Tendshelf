@@ -15,14 +15,15 @@ const (
 // The Radio pages and the player's live mode (plan R2).
 const (
 	radioTitle         = "Radio"
+	radioIntro         = "Live stations from around the world. Search for one and keep it here."
 	radioFind          = "Find a station"
 	radioSearchLabel   = "Search stations"
 	radioSearchWord    = "Search"
 	radioTabsLabel     = "Podcasts and radio"
 	radioSavedTitle    = "Your stations"
 	radioRecentTitle   = "Recently played"
-	radioNoStationsHd  = "No stations yet."
-	radioNoStations    = "Search for a station, or paste its stream address."
+	radioNoStationsHd  = "No stations yet"
+	radioNoStations    = "Search above for a station and press the star to keep it, or paste its stream address."
 	radioNoResults     = "No stations found. You can paste a stream address instead."
 	radioResultsLabel  = "Station results"
 	radioAdd           = "Add"

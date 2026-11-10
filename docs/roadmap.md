@@ -1028,6 +1028,11 @@ Branch `pkg-fix-library`. Reused `MergeRowsSQL`, `merged_folders`, `Repo.Duplica
 
 **Next.** A scribe package for the translations; try the address in AntennaPod and Pocket Casts by hand.
 
+## Podcast and radio first-use fixes (2026-11-10)
+Scope: live show page (poll `/hx/podcasts/shows/{id}/status`, 204 until the first fetch ends, 3 minute grace), search artwork through a keyed same-origin route (decision 0038 addendum), Radio as a tab of the one Podcasts nav item and a card page, show header (meta line, host name, clamped description, Play latest), page-width containers, episode Now playing panel (`/hx/player/episode-panel/{id}`).
+Checks: `go test -race` on web, podcast, radio, metadata; `TestPodPages2*`; route matrix rows; visual captures in `.local/tests/podpages2/`.
+Limits: the episode panel is online only (the service worker does not cache it); search results have Save but no Play; the live player bar button state and station logo in the bar are still to do; Radio page captures at 390 and 1440 still to take.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID

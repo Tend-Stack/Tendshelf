@@ -19,29 +19,14 @@ type PodNav struct {
 	New  int
 	// RadioOnly draws the item as Radio, leading to /radio: podcasts are off for this person but radio is on.
 	RadioOnly bool
-	// Radio draws a Radio item of its own after Podcasts: podcasts and radio are both on. The phone's tab bar has no
-	// room for it (six tabs already), so it leaves it out and the Podcasts tabs lead to Radio there.
-	Radio bool
-}
-
-// radioItem is the Radio destination.
-func radioItem() NavItem {
-	return NavItem{Key: "radio", Label: "Radio", Href: "/radio", Icon: "radio"}
-}
-
-// tabBarItem says whether the phone's tab bar draws the item: never the separate Radio item.
-func tabBarItem(it NavItem, p PodNav) bool { return it.Key != "radio" || p.RadioOnly }
-
-// tabBarCurrent marks the Podcasts tab on a Radio page when Radio has no tab of its own.
-func tabBarCurrent(it NavItem, current string, p PodNav) bool {
-	return it.Key == current || (it.Key == "podcasts" && current == "radio" && p.Radio && !p.RadioOnly)
 }
 
 // podcastsItem is the Podcasts destination, drawn after Library only when podcasts are on for the person.
 func podcastsItem(p PodNav) NavItem {
 	it := NavItem{Key: "podcasts", Label: "Podcasts", Href: "/podcasts", Icon: "podcast"}
 	if p.RadioOnly {
-		return radioItem()
+		it.Label, it.Href = "Radio", "/radio"
+		return it
 	}
 	switch {
 	case p.New > 99:
@@ -92,9 +77,6 @@ func navFor(shell string, pod PodNav) []NavItem {
 		out = append(out, it)
 		if it.Key == "library" && pod.Show {
 			out = append(out, podcastsItem(pod))
-			if pod.Radio && !pod.RadioOnly {
-				out = append(out, radioItem())
-			}
 		}
 	}
 	return out
@@ -129,7 +111,6 @@ func shelfKey(s ShelfLink) string {
 templ TabBar(current, shell string, acct NavAccount, pod PodNav) {
 	<nav aria-label="Main" id="nav-tabbar" hx-preserve class={ "ts-tabbar ts-nav-tabbar", templ.KV("ts-tabbar--six", pod.Show) }>
 		for _, it := range navFor(shell, pod) {
-			if tabBarItem(it, pod) {
 				<a
 					href={ templ.SafeURL(it.Href) }
 					class="ts-tabbar__item"
@@ -137,7 +118,7 @@ templ TabBar(current, shell string, acct NavAccount, pod PodNav) {
 					if it.NoBoost {
 						hx-boost="false"
 					}
-					if tabBarCurrent(it, current, pod) {
+					if it.Key == current {
 						aria-current="page"
 					}
 				>
@@ -149,7 +130,6 @@ templ TabBar(current, shell string, acct NavAccount, pod PodNav) {
 					{ it.Label }
 					@navBadge(it)
 				</a>
-			}
 		}
 	</nav>
 }

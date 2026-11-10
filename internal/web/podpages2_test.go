@@ -141,12 +141,13 @@ func TestPodPages2Nav(t *testing.T) {
 	for _, c := range []struct {
 		pod, radio       bool
 		hasPod, hasRadio bool
-	}{{false, false, false, false}, {true, false, true, false}, {false, true, false, true}, {true, true, true, true}} {
+	}{{false, false, false, false}, {true, false, true, false}, {false, true, false, true}, {true, true, true, false}} {
 		set(c.pod, c.radio)
 		body := w.get("/", w.ben).Body.String()
 		if got := strings.Contains(body, `data-nav="/podcasts"`); got != c.hasPod {
 			t.Errorf("podcasts=%v radio=%v: Podcasts item %v, want %v", c.pod, c.radio, got, c.hasPod)
 		}
+		// one item for both: with podcasts on there is never a separate Radio item; radio alone gets Radio
 		if got := strings.Contains(body, `data-nav="/radio"`); got != c.hasRadio {
 			t.Errorf("podcasts=%v radio=%v: Radio item %v, want %v", c.pod, c.radio, got, c.hasRadio)
 		}
@@ -155,10 +156,13 @@ func TestPodPages2Nav(t *testing.T) {
 	if body := w.get("/", w.guest).Body.String(); strings.Contains(body, `data-nav="/podcasts"`) || strings.Contains(body, `data-nav="/radio"`) {
 		t.Error("a guest sees a Podcasts or Radio item")
 	}
-	// On a Radio page the Radio item is current and Podcasts is not (the phone bar, with no Radio tab, marks Podcasts).
+	// On a Radio page the one nav item (Podcasts) is current, in the rail and the phone bar alike.
 	body := w.get("/radio", w.ben).Body.String()
-	if !regexp.MustCompile(`(?s)<a[^>]*data-nav="/radio"[^>]*aria-current="page"`).MatchString(body) {
-		t.Error("the rail's Radio item is not current on /radio")
+	if n := strings.Count(body, `data-nav="/podcasts"`); n < 2 || !regexp.MustCompile(`(?s)<a[^>]*data-nav="/podcasts"[^>]*aria-current="page"`).MatchString(body) {
+		t.Error("the Podcasts item is not current on /radio")
+	}
+	if strings.Contains(body, "ts-stncard") == false && strings.Contains(body, "ts-radio__grid") {
+		t.Error("stations are not cards")
 	}
 }
 

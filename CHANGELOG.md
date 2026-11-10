@@ -4,6 +4,13 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Podcast and radio pages: first-use fixes (2026-11-10)
+- After you follow a show, its page fills in by itself when the episodes arrive. It no longer shows the feed address as a title.
+- Podcast and station search results show their pictures. The server fetches them, so your browser never talks to the publishers.
+- The show page follows the app's width and gutters, with a header that counts the episodes, shows the site name, clamps a long description under "More", and has one Play latest or Resume button.
+- Radio is its own designed page: heading, a short intro, a search field, and stations as cards with a logo, Play and a star to keep.
+- The Now playing panel on a wide screen now fills out for podcast episodes: details, chapters, show notes and the usual actions.
+
 ### Fixed
 
 - **Pages no longer blink and jump a moment after they appear.** Moving to another page drew it once, then about a quarter of a second later made it vanish and rise in again from a few pixels lower; now the rise-in starts with the first frame of the new page.

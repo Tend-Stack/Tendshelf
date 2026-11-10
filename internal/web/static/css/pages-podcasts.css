@@ -152,5 +152,18 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-podshow__about > .ts-podnotes { margin-top: var(--space-4); }
 .ts-podshow__aboutsummary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
-/* The Radio tab is for the phone only; from 768 px the rail has its own Radio item. */
-@media (width >= 48rem) { .ts-podcasts__tabs .ts-tabs__item--phone { display: none; } }
+
+/* Radio: a heading, one plain line, the search field, then stations as cards (logo, name, one line, Play and the star). */
+.ts-radio__intro { margin: 0; color: var(--ink-muted); max-width: var(--size-read-measure); }
+.ts-radio__grid { list-style: none; margin: var(--space-8) 0 0; padding: 0; display: grid; gap: var(--space-20) var(--space-16); grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+.ts-stncard { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; padding: var(--space-8); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-stncard:has([data-ts-pausing="1"]) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.ts-stncard__art { display: block; }
+.ts-stncard__art .ts-cover--blank { min-height: 0; contain: size; }
+.ts-stncard__name { font-weight: 600; overflow-wrap: anywhere; }
+.ts-stncard__meta { min-height: 1.25rem; font-size: 0.8125rem; line-height: 1.25rem; color: var(--ink-muted); }
+.ts-stncard__actions { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-4); }
+.ts-stncard__play { flex: 1 1 auto; min-width: 0; justify-content: center; }
+.ts-stncard__keep { margin: 0; flex: none; }
+.ts-stncard .ts-iconbtn { width: var(--size-tap); height: var(--size-tap); }
+.ts-stncard .ts-iconbtn.is-on { color: var(--accent); }

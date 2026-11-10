@@ -18,7 +18,7 @@ func TestRadioPages(t *testing.T) {
 	id := w.add(w.ben, w.fx.liveURL())
 
 	empty := w.get("/radio", w.cy)
-	if empty.Code != http.StatusOK || !strings.Contains(empty.Body.String(), "No stations yet.") || !strings.Contains(empty.Body.String(), `href="/radio/search"`) {
+	if empty.Code != http.StatusOK || !strings.Contains(empty.Body.String(), "No stations yet") || !strings.Contains(empty.Body.String(), `action="/radio/search"`) {
 		t.Errorf("empty Radio: %d", empty.Code)
 	}
 	rec := w.get("/radio", w.ben)
@@ -131,21 +131,21 @@ func TestRadioNavAndTabs(t *testing.T) {
 	}
 	for _, p := range []string{"/radio", "/podcasts"} {
 		body := w.get(p, w.ben).Body.String()
-		if !strings.Contains(body, `data-nav="/radio"`) || !strings.Contains(body, `data-nav="/podcasts"`) {
-			t.Errorf("%s: the rail lacks its own Radio item beside Podcasts", p)
+		if strings.Contains(body, `data-nav="/radio"`) || !strings.Contains(body, `data-nav="/podcasts"`) {
+			t.Errorf("%s: the navigation should have the one Podcasts item and no Radio item", p)
 		}
-		if p == "/radio" && strings.Contains(body, `aria-label="Podcasts and radio"`) {
-			t.Error("the Radio page draws the Podcasts tab strip")
+		if !strings.Contains(body, `class="ts-tabs__item" href="/radio"`) {
+			t.Errorf("%s: no Radio tab in the strip", p)
 		}
-		if p == "/podcasts" && !strings.Contains(body, `ts-tabs__item--phone" href="/radio"`) {
-			t.Error("the Podcasts tabs lack the phone-only Radio tab")
+		if p == "/radio" && !strings.Contains(body, `href="/radio" aria-current="page"`) {
+			t.Error("the Radio tab is not current on /radio")
 		}
 	}
 	s.RadioEnabled = false
 	if err := podcast.SaveSettings(context.Background(), w.a.st, "", s, time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	if body := w.get("/podcasts", w.ben).Body.String(); strings.Contains(body, `ts-tabs__item--phone" href="/radio"`) {
+	if body := w.get("/podcasts", w.ben).Body.String(); strings.Contains(body, `class="ts-tabs__item" href="/radio"`) {
 		t.Error("a Radio tab is drawn with radio off")
 	}
 }
