@@ -241,6 +241,21 @@ the book's own is dropped. 400 `speed`; 404 for a book the person cannot listen 
 `limit` 1 to 24 (default 12), otherwise `400 invalid` field `limit`. `{"items":[{"book":BookCard,"positionMs","durationMs","updatedAt"}]}`,
 `no-store`: audiobooks the person started and did not finish, most recent first. Books they may not listen to never appear.
 
+## Podcasts (decision [0038](decisions/0038-podcasts.md))
+
+Off until the owner turns podcasts on; while off, every route here answers the usual 404. A guest gets 404 too. Follow and search stay
+web pages (`/podcasts/search`, `POST /podcasts/follow`); the app shows them in its WebView. Episodes are the person's own: a show they follow,
+or an episode they already have a place or star for; any other id is 404. No publisher address appears in any answer.
+
+- `GET /api/v1/podcasts`: the shows the person follows: `id, title, author, artUrl, newCount, followedAt, refreshedAt, problem` (plain words when the last refresh failed) and `settings{speed, skipIntroS, skipOutroS, serverAuto, keepLatest}`.
+- `GET /api/v1/podcasts/shows/{showID}/episodes?since=<ms>&after=&limit=`: a change feed of that show's episodes (`id, showId, title, show, artUrl, publishedAt, durationMs, kind, season, number, gone, state{positionMs, played, favourite, updatedAt}`); `since` returns only what changed after that time.
+- `GET /api/v1/podcasts/new?since=<ms>`: unplayed episodes of followed shows published since the person last looked and first stored after `since`.
+- `GET /api/v1/podcasts/episodes/{id}`: the playback document: the episode fields plus `audioUrl` (`/api/v1/podcasts/audio/{id}`), `mime`, `bytes`, `chaptersUrl`, `settings`.
+- `GET /api/v1/podcasts/audio/{id}`: the audio, streamed through the server with one `Range` passed on (`bytes=N-` or `bytes=N-M`); 503 with `Retry-After: 5` when 16 streams are open on the server or 3 for the person; 502 when the publisher answers a web page or cannot be reached.
+- `GET /api/v1/podcasts/art/{showID}?w=`, `GET /api/v1/podcasts/chapters/{id}` (Podcasting 2.0 JSON).
+- `POST /api/v1/podcasts/progress/batch`: like `/api/v1/progress/batch` with `episodeId`, `positionMs`, `clientUpdatedAt`, `deviceId`, `finished`; newer `clientUpdatedAt` wins.
+- `POST /api/v1/podcasts/episodes/{id}/played` (`{"played": true}`) and `/favourite` (`{"on": true}`): answer `{"state": {...}}`.
+
 ## The Connect page (not `/api/v1`)
 Adding a phone by QR (decision 0028) adds pages only, no JSON route: `/me/devices/add...` for the signed-in person and the public `/pair/{token}`, `/pair/wait`, `/pair/finish` for the phone's window. A QR holds only `https://host/pair/{token}`; the token alone claims and gives no session, code or name. The last leg is the unchanged `303 /app/connect/done?code=` and `POST /api/v1/auth/token`. No token route changed.
 

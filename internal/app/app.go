@@ -104,9 +104,13 @@ func Run(ctx context.Context, cfg Config) error {
 	if err := uploads.Register(runner); err != nil {
 		return err
 	}
+	podcasts, err := registerPodcasts(d)
+	if err != nil {
+		return err
+	}
 	setupCode := auth.NewSetupCode()
 	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: cfg.TrustedProxies,
-		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Ebooks: ebooks, Backups: bk, Watcher: watcher, MailOptions: share.MailOptions{Logger: logger}})
+		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Ebooks: ebooks, Podcasts: podcasts, Backups: bk, Watcher: watcher, MailOptions: share.MailOptions{Logger: logger}})
 	if err != nil {
 		return err
 	}
@@ -135,6 +139,8 @@ func Run(ctx context.Context, cfg Config) error {
 	go watcher.Run(ctx)
 	// Expire stale uploads and clear their staging: the first sweep a minute after start, then hourly.
 	go uploads.Run(ctx)
+	// Scheduled podcast refresh and the daily prune: asleep unless the owner turned podcasts on; the first look a minute after start.
+	go podcasts.Run(ctx)
 	// Sweep finished job rows, old audit entries and the online cover cache: first pass five minutes after start.
 	go runRetention(ctx, st, onlineClient, logger)
 	// Files scanned before waveforms existed (or while they were off) get their peaks in the

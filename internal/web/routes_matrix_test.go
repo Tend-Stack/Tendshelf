@@ -88,6 +88,8 @@ type sweepEnv struct {
 	// coverID is the book's cover row, coverJob a waiting cover adoption of the book and authorJob a
 	// waiting author lookup (M4-8).
 	coverID, coverJob, authorJob string
+	// pod names the shows and episodes of the podcast rows (plan P2).
+	pod podSweep
 	// writeJob is a waiting write-details job of the book (M4-9).
 	writeJob string
 	// ebookJob is a waiting ebook read of the book; ebookRefused a refused upload each for the owner and
@@ -154,7 +156,8 @@ func sweepSeed(t *testing.T) *sweepEnv {
 	t.Helper()
 	ctx := context.Background()
 	cn := &compareNet{}
-	a := newTestApp(t, compareMod(t, cn))
+	fx := newPodFix(t)
+	a := newTestApp(t, compareMod(t, cn), fx.mod(t))
 	e := &sweepEnv{t: t, a: a, cn: cn}
 	for i, r := range sweepRoles {
 		e.ck[i] = a.as(t, r)
@@ -280,6 +283,7 @@ func sweepSeed(t *testing.T) *sweepEnv {
 		}
 		e.bookmark[i] = b.ID
 	}
+	e.seedPodcasts(t, fx)
 	return e
 }
 
@@ -731,6 +735,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, healthSweepRows()...)
 	rows = append(rows, activitySweepRows()...)
 	rows = append(rows, apiSweepRows()...)
+	rows = append(rows, podcastsSweepRows()...)
 	return append(rows, linksSweepRows()...)
 }
 
