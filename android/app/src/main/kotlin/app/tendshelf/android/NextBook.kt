@@ -29,17 +29,16 @@ class NextBook(
     private val start: (String) -> Unit,
 ) {
     private val power = context.getSystemService(PowerManager::class.java)
-    private var handled = ""
+    private val once = app.tendshelf.shared.EndOnce()
 
     /** A new book began; its end is again a hand-off. */
     fun reset() {
-        handled = ""
+        once.reset()
     }
 
     /** Main thread, on the player's end. [stillEnded] is checked again before the next book starts. */
     fun ended(bookId: String, positionMs: Long, speed: Double, askQueue: Boolean = true, stillEnded: () -> Boolean) {
-        if (bookId.isEmpty() || handled == bookId) return
-        handled = bookId
+        if (!once.claim(bookId)) return
         val lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "tendshelf:nextbook").apply {
             setReferenceCounted(false)
             acquire(30_000)

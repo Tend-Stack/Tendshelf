@@ -59,7 +59,7 @@
     <string name="downloads_title">Downloads</string>
     <string name="downloads_auto_row">Downloaded on its own</string>
     <string name="downloads_auto_waiting">Waiting for Wi-Fi</string>
-    <string name="downloads_auto_no_room">Your next book wasn\'t downloaded because there isn\'t enough room. Remove a book to make room.</string>
+    <string name="downloads_auto_no_room">An automatic download was skipped because there isn\'t enough room. Remove a download to make room.</string>
     <string name="downloads_lead">Books and episodes saved here play without a connection.</string>
     <string name="downloads_empty">No downloads yet</string>
     <string name="downloads_empty_how">Download a book or an episode to listen without a connection.</string>

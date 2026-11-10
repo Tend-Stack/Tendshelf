@@ -147,7 +147,7 @@ class StartPages(private val context: Context) {
         if (known.isEmpty()) return
         val on = EpisodeAuto.enabled()
         out.append("<h2>${esc(context.getString(R.string.downloads_podcasts))}</h2>")
-        out.append("<p class=\"start__note\">${esc(context.getString(R.string.downloads_podcasts_lead))}</p><ul class=\"dl__list\">")
+        out.append("<p>${esc(context.getString(R.string.downloads_podcasts_lead))}</p><ul class=\"dl__list\">")
         for (s in known) {
             if (!validId(s.id)) continue
             val enabled = s.id in on

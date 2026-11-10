@@ -842,7 +842,7 @@ object Offline {
                 when (val p = autoEpisodePlan(doc, api.paths, free, autoBytes(store.all(), allMarks()))) {
                     is AutoPlan.Go -> p.plan
                     AutoPlan.NoRoom -> {
-                        if (nextItem) prefs.edit().putBoolean("autoNoRoom", true).apply()
+                        prefs.edit().putBoolean("autoNoRoom", true).apply()
                         return false
                     }
                     AutoPlan.Skip -> return false

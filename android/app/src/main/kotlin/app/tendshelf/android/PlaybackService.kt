@@ -222,6 +222,12 @@ class PlaybackService : MediaLibraryService() {
             if (isEpisodeId(engine.currentBook)) Offline.markPlayed(engine.currentBook)
             next.ended(engine.currentBook, exo.currentPosition, exo.playbackParameters.speed.toDouble(), askQueue) { exo.playbackState == Player.STATE_ENDED }
         }
+        // A replay of the same item (no new start) leaves the ended state: its next end is a hand-off again (PA1-7).
+        exo.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state != Player.STATE_ENDED) next.reset()
+            }
+        })
         w.onSignedOut = { engine.signedOut() }
         w.onLost = { lost, conn ->
             val book = engine.currentBook
