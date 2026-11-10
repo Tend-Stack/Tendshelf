@@ -29,6 +29,7 @@ func (s *server) registerRadio(mux *http.ServeMux) {
 	mux.HandleFunc("POST /radio/stations/{stationID}/remove", s.postRadioRemove)
 	mux.HandleFunc("GET /radio/live/{stationID}", s.getRadioLive)
 	mux.HandleFunc("GET /hx/radio/now/{stationID}", s.getRadioNow)
+	s.registerRadioPages(mux) // the R2 pages: /radio, /radio/search and the player fragment
 	// Without this the catch-all answers every other method with 404.
 	mux.HandleFunc("/radio/live/{stationID}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, HEAD")

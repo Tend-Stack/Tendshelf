@@ -185,8 +185,12 @@ function hint(text) {
 // ---- Data: the book description the server renders ----
 
 const EPISODE = "episode"; // data-kind of a podcast episode
+const RADIO = "radio"; // data-kind of a live radio station (decision 0038): no end, no place, no skipping
 const UNKNOWN_END = 1e12; // the end of a file whose length is not known yet
 const isEpisodeId = (id) => id.startsWith("pe_");
+const isStationId = (id) => id.startsWith("rs_");
+const NOW_EVERY_MS = 15000; // how often the now-playing title is asked for while a station plays
+const LIVE_RETRIES = 2; // a live stream that fails to connect is tried again this many times
 
 function parseBook(el) {
   const d = el.dataset;
@@ -234,7 +238,7 @@ function parseBook(el) {
   if (!parsed.chapters.length) {
     parsed.chapters.push({ start: 0, end: parsed.durationMs, title: "" }); // no chapters: the book is one
   }
-  if (parsed.kind === EPISODE) {
+  if (parsed.kind === EPISODE || parsed.kind === RADIO) {
     // An episode's length may be unknown until its sound loads (learnDuration); until then its one file has no end.
     for (const file of parsed.files) if (!file.dur) file.dur = UNKNOWN_END;
   }
@@ -246,7 +250,7 @@ function parseBook(el) {
 async function fetchBook(id, init) {
   if (LINK) return linkBook(id);
   try {
-    const res = await fetch(id ? (isEpisodeId(id) ? "/hx/player/episode/" : "/hx/player/") + encode(id) : "/hx/player", init);
+    const res = await fetch(id ? (isEpisodeId(id) ? "/hx/player/episode/" : isStationId(id) ? "/hx/player/radio/" : "/hx/player/") + encode(id) : "/hx/player", init);
     if (res.status !== 200 || res.redirected) return null;
     const html = await res.text();
     const el = new DOMParser().parseFromString(html, "text/html").getElementById("player-data");
@@ -368,7 +372,8 @@ function loadSource(url, offsetMs, shouldPlay) {
   current.loaded = true;
   current.startMs = offsetMs;
   audio.defaultPlaybackRate = book.speed;
-  audio.src = url + "#t=" + (offsetMs / 1000).toFixed(3);
+  // a live stream has no place to start from, so no #t= fragment
+  audio.src = book.kind === RADIO ? url : url + "#t=" + (offsetMs / 1000).toFixed(3);
   if (shouldPlay) audio.play().catch(() => {});
 }
 
@@ -421,6 +426,7 @@ async function useCompatCopy(idx, offsetMs, shouldPlay) {
 
 // Moves to a book position. shouldPlay says whether a file change keeps playing (default: as now).
 function seek(ms, shouldPlay) {
+  if (book && book.kind === RADIO) return; // a live stream has no position
   if (!book) return;
   const lastMs = book.durationMs ? book.durationMs - 1 : Infinity;
   const target = locate(clamp(ms, 0, lastMs));
@@ -452,7 +458,7 @@ function seek(ms, shouldPlay) {
 
 // Previous chapter (delta < 0) or next. Previous restarts this chapter when more than 3 s in.
 function jumpChapter(delta) {
-  if (!book) return;
+  if (!book || book.kind === RADIO) return;
   const position = bookPosition();
   const idx = chapterIndexAt(position);
   const chapters = book.chapters;
@@ -492,7 +498,7 @@ function play() {
     outroEnded = false;
     seek(0, false);
   }
-  afterBreak();
+  if (book.kind !== RADIO) afterBreak(); // a live station has no place to rewind or look up elsewhere
   if (!current.loaded) {
     setSource(current.fileIdx, current.startMs, true);
   } else {
@@ -503,6 +509,46 @@ function play() {
 function pause() {
   compatSeq++; // also cancels a wait for a converted copy
   audio.pause();
+  if (book && book.kind === RADIO) dropLive();
+}
+
+// ---- Live radio: pause stops the stream, play joins it again at the live edge ----
+
+let nowTimer = 0;
+let liveRetries = 0;
+
+// Lets go of the stream so no audio is buffered behind the live edge and the relay frees its place.
+function dropLive() {
+  clearTimeout(nowTimer);
+  nowTimer = 0;
+  current.loaded = false;
+  audio.removeAttribute("src");
+  audio.load();
+}
+
+// Asks for the station's now-playing line shortly after the sound starts, then every 15 seconds while it plays.
+function scheduleNow(delayMs) {
+  clearTimeout(nowTimer);
+  nowTimer = setTimeout(pollNow, delayMs);
+}
+
+async function pollNow() {
+  const station = book;
+  if (!station || station.kind !== RADIO || audio.paused) return;
+  try {
+    const res = await fetch("/hx/radio/now/" + encode(station.id), { headers: { "HX-Request": "true" } });
+    if (res.ok) {
+      const line = new DOMParser().parseFromString(await res.text(), "text/html").getElementById("radio-now");
+      const title = line ? line.textContent.trim() : "";
+      if (book === station && title !== station.author) {
+        station.author = title;
+        emit("nowplaying");
+      }
+    }
+  } catch {
+    // the next poll will do
+  }
+  if (book === station && !audio.paused) scheduleNow(NOW_EVERY_MS);
 }
 
 function toggle() {
@@ -511,7 +557,7 @@ function toggle() {
 }
 
 function skip(direction) {
-  if (!book) return;
+  if (!book || book.kind === RADIO) return;
   const seconds = direction < 0 ? book.skipBack : book.skipForward;
   seek(bookPosition() + direction * seconds * 1000);
 }
@@ -559,7 +605,7 @@ function probeVolume() {
 }
 
 function setSpeed(value) {
-  if (!book) return;
+  if (!book || book.kind === RADIO) return;
   book.speed = clamp(Math.round(value * 20) / 20, 0.5, 3.5); // steps of 0.05
   audio.defaultPlaybackRate = book.speed;
   audio.playbackRate = book.speed;
@@ -634,7 +680,7 @@ function nearLastSave() {
 // (keep this place after the question), beacon (the page is being hidden).
 async function save(kind) {
   if (NATIVE) return;
-  if (!book || stopped || current.fileIdx < 0) return;
+  if (!book || stopped || current.fileIdx < 0 || book.kind === RADIO) return; // a live station keeps no place
   if ((audio.ended || outroEnded) && kind !== "end") return; // a book that ended keeps its finished mark
   if (kind === "tick" && (prompting || nearLastSave())) return;
   if (kind === "beacon" && (!current.loaded || (audio.paused && nearLastSave()))) return;
@@ -691,7 +737,7 @@ function signedOut() {
 
 async function checkRemote() {
   if (NATIVE) return;
-  if (!book || stopped || LINK || book.kind === EPISODE) return; // an episode has no place to read back
+  if (!book || stopped || LINK || book.kind === EPISODE || book.kind === RADIO) return; // an episode or a station has no place to read back
   try {
     const res = await api(progressUrl(book.id));
     if (res) maybeAskContinue((await res.json()).progress);
@@ -738,7 +784,12 @@ function render(force) {
 
   controls.title.textContent = book.title;
   controls.open.dataset.letter = book.title.charAt(0).toUpperCase();
-  if (book.kind === EPISODE) {
+  if (book.kind === RADIO) {
+    // a live station: its name, then the title playing now (kept in book.author), and the Live badge
+    controls.meta.textContent = book.author;
+    controls.open.href = "/radio";
+    setLabel("open", fill(msg("openStation"), { title: book.title }));
+  } else if (book.kind === EPISODE) {
     // an episode: the show, then what is left of the whole episode (nothing while its length is unknown)
     const left = book.durationMs ? Math.max(1, Math.ceil((book.durationMs - position) / 60000)) : 0;
     controls.meta.textContent = left ? fill(msg("episodeLeft"), { show: book.author, m: left }) : book.author;
@@ -757,6 +808,8 @@ function render(force) {
   setLabel("forward", fill(msg("forwardSeconds"), { n: book.skipForward }));
   setLabel("toggle", (audio.paused ? msg("playPrefix") : msg("pausePrefix")) + " " + book.title);
   slot.classList.toggle("is-playing", !audio.paused);
+  slot.classList.toggle("is-live", book.kind === RADIO);
+  for (const badge of slot.querySelectorAll("[data-ts-live]")) badge.hidden = book.kind !== RADIO;
   const fraction = book.durationMs ? clamp(position / book.durationMs, 0, 1).toFixed(4) : "0";
   controls["mini-progress"].style.setProperty("--ts-progress", fraction);
   if (force) updateMediaSession();
@@ -774,7 +827,7 @@ function state() {
     volume: userVolume,
     fileIdx: NATIVE ? book.files.findLastIndex((f) => f.offset <= bookPosition()) : current.fileIdx,
     chapterIdx: chapterIndexAt(bookPosition()),
-    itemKind: book.kind, // "episode" or "" (not `kind`: emit() puts the event's kind beside this state)
+    itemKind: book.kind, // "episode", "radio" or "" (not `kind`: emit() puts the event's kind beside this state)
   };
 }
 
@@ -882,8 +935,38 @@ function revealPlayAtButtons() {
 const hasMediaSession = !NATIVE && "mediaSession" in navigator;
 const mediaSessionActions = []; // the actions the browser accepted; read by tests
 
+let mediaHandlers = {};
+let mediaLive = false;
+
+// A live station offers no seeking or track buttons on the lock screen.
+function setLiveMediaActions(live) {
+  if (live === mediaLive) return;
+  mediaLive = live;
+  for (const action of ["seekbackward", "seekforward", "seekto", "previoustrack", "nexttrack"]) {
+    try {
+      navigator.mediaSession.setActionHandler(action, live ? null : mediaHandlers[action]);
+    } catch {
+      // not supported in this browser
+    }
+  }
+}
+
 function updateMediaSession() {
   if (!hasMediaSession || !book) return;
+  setLiveMediaActions(book.kind === RADIO);
+  if (book.kind === RADIO) {
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: book.author || book.title, // the title playing now, else the station
+        artist: book.title,
+        album: msg("live"),
+        artwork: [],
+      });
+    } catch {
+      // an unsupported field is skipped
+    }
+    return;
+  }
   const chapter = book.chapters[chapterIndexAt(bookPosition())];
   const durationSeconds = book.durationMs / 1000;
   try {
@@ -916,6 +999,7 @@ if (hasMediaSession) {
     previoustrack: () => jumpChapter(-1),
     nexttrack: () => jumpChapter(1),
   };
+  mediaHandlers = handlers;
   for (const action in handlers) {
     try {
       navigator.mediaSession.setActionHandler(action, handlers[action]);
@@ -933,6 +1017,7 @@ if (hasMediaSession) {
 function adopt(newBook, posMs) {
   if (book && book.id !== newBook.id) {
     save("pause");
+    clearTimeout(nowTimer);
     heardSince = 0;
     current.loaded = false;
     audio.removeAttribute("src");
@@ -1099,6 +1184,10 @@ listen(audio, "playing", () => {
   nativeToast = null;
   heardSince = perfNow();
   idleAt = 0;
+  if (book && book.kind === RADIO) {
+    liveRetries = 0;
+    scheduleNow(3000);
+  }
   render(true);
 });
 
@@ -1169,6 +1258,12 @@ listen(audio, "ended", () => {
   }
   if (!book) return;
   accrueHeard(true);
+  if (book.kind === RADIO) {
+    // the station closed the stream (or the session limit came): stopped, and Play joins it again
+    dropLive();
+    emit("pause");
+    return;
+  }
   const next = nextPlayableIndex(current.fileIdx);
   if (next >= 0) {
     setSource(next, 0, true);
@@ -1209,6 +1304,21 @@ listen(audio, "error", () => {
     return;
   }
   if (!book || !current.loaded) return;
+  if (book.kind === RADIO) {
+    // a busy place frees itself within a moment, so connecting is tried again before the person is told
+    if (liveRetries < LIVE_RETRIES) {
+      liveRetries++;
+      const station = book;
+      dropLive();
+      setTimeout(() => book === station && audio.paused && play(), 1500);
+      return;
+    }
+    liveRetries = 0;
+    dropLive();
+    toast("err", msg("liveFailed"));
+    emit("pause");
+    return;
+  }
   const file = book.files[current.fileIdx];
   const unsupported = audio.error && audio.error.code === 4; // MEDIA_ERR_SRC_NOT_SUPPORTED
   if (unsupported && file && file.mayCompat && !current.compat) {

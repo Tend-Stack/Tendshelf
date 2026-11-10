@@ -18,6 +18,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/podcast/rss"
+	"github.com/Tend-Stack/tendshelf/internal/radio"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
@@ -104,7 +105,7 @@ func a11ySeed(t *testing.T) *a11yEnv {
 		cmod(o)
 		podFx.mod(t)(o)
 	})
-	podFx.enable(t, a, nil)
+	podFx.enable(t, a, func(s *podcast.Settings) { s.RadioEnabled = true })
 	e.Main = a
 	ownerCk := a.owner(t)
 	var full, empty string
@@ -128,6 +129,9 @@ func a11ySeed(t *testing.T) *a11yEnv {
 		}
 	}
 	e.PodShowID, e.PodEpisodeID = a11yPodcasts(t, a, podFx, owner)
+	if _, _, err := radio.NewStore(a.st, nil).Save(ctx, owner, radio.Input{StreamURL: "https://radio.test/live.mp3", Name: "Harbour FM", Genre: "Talk", Country: "NL"}); err != nil {
+		t.Fatal(err)
+	}
 	before := a11yIDSet(t, a, `SELECT id FROM libraries`)
 	adminSeed(t, a)
 	for id := range a11yIDSet(t, a, `SELECT id FROM libraries`) {

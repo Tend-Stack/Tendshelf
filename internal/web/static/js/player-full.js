@@ -135,6 +135,12 @@ function drawTimes(ms, speed) {
   const chapter = book.chapters[idx];
   const leftMs = Math.max(0, book.durationMs - ms) / speed;
   const minutes = Math.ceil(leftMs / 60000);
+  if (book.kind === "radio") {
+    // a live station has no clock: the Live badge stands where the chapter number is
+    setText("full-chapter", msg("live"));
+    for (const name of ["full-clock", "full-left", "full-elapsed", "full-book-left", "full-chapter-title", "full-sep"]) setText(name, "");
+    return;
+  }
   const episode = book.kind === "episode";
   const whole = episode && book.chapters.length <= 1; // an episode of one piece: its own words, one "left" line
   setText("full-chapter", whole ? msg("episodeWord") : fill(msg("chapterOf"), { n: idx + 1, total: book.chapters.length }));
@@ -217,7 +223,8 @@ function syncExpand() {
   const at = player.state().positionMs;
   const idx = chapterAt(at);
   const left = Math.max(1, Math.ceil((book.chapters[idx].end - at) / 60000));
-  bar.expand.setAttribute("aria-label", dialog.open ? msg("closePlayer") : fill(msg("openPlayer"), { title: book.title, n: idx + 1, m: left }));
+  const open = book.kind === "radio" ? fill(msg("openStation"), { title: book.title }) : fill(msg("openPlayer"), { title: book.title, n: idx + 1, m: left });
+  bar.expand.setAttribute("aria-label", dialog.open ? msg("closePlayer") : open);
 }
 
 // What differs between a book and a podcast episode: the page it opens, the finished mark, the end-of-timer
@@ -230,6 +237,8 @@ function wordsFor(el, episode, episodeWords) {
 
 function drawKind() {
   const episode = book.kind === "episode";
+  const live = book.kind === "radio";
+  dialog.classList.toggle("is-live", live); // the stylesheet hides what a live stream cannot do
   const id = encodeURIComponent(book.id);
   ui["full-book"].href = episode ? "/podcasts/episodes/" + id : "/books/" + id;
   wordsFor(ui["full-book"], episode, msg("goToEpisode"));
@@ -240,12 +249,13 @@ function drawKind() {
   choice.dataset.tsSleepChoice = episode ? "episode" : "chapter";
   wordsFor(choice.querySelector("span"), episode, msg("sleepEndOfEpisode"));
   // an episode without chapters of its own has nothing to list
-  const noChapters = episode && book.chapters.length <= 1;
+  const noChapters = (episode || live) && book.chapters.length <= 1;
   ui["open-chapters"].hidden = noChapters;
   bar.chapters.hidden = noChapters;
   for (const mark of [...slot.querySelectorAll("[data-ts-bookmark], [data-ts-bar-bookmark]"), ...dialog.querySelectorAll("[data-ts-bookmark]")]) {
-    mark.hidden = episode || !!LINK;
+    mark.hidden = episode || live || !!LINK;
   }
+  choice.closest("li").hidden = live; // no end of a chapter on the radio
 }
 
 // What changes only when another book loads.
@@ -643,7 +653,7 @@ function saveSpeed(leaving, makeUsual) {
   if ((!speedUnsaved && !makeUsual) || LINK) return;
   speedUnsaved = false;
   const state = player.state();
-  if (state.itemKind === "episode") return; // an episode's speed follows its show's settings
+  if (state.itemKind === "episode" || state.itemKind === "radio") return; // an episode's speed follows its show's settings
   fetch("/hx/books/" + encodeURIComponent(state.bookId) + "/speed", {
     method: "POST",
     keepalive: leaving === true,
@@ -927,7 +937,7 @@ let bookmarking = false; // one request at a time
 
 // Always the live position at the moment of the press, never the position saved earlier.
 async function addBookmark(options) {
-  if (!book || bookmarking || LINK) return;
+  if (!book || bookmarking || LINK || book.kind === "radio") return;
   bookmarking = true;
   const positionMs = player.state().positionMs;
   try {
@@ -1178,7 +1188,7 @@ function start() {
   });
   document.addEventListener("ts:player:state", (event) => {
     trackJump(event.detail.kind, event.detail.positionMs, event.detail.bookId);
-    const refresh = ["load", "chapters", "duration"].includes(event.detail.kind); // an episode's chapters or length arrived
+    const refresh = ["load", "chapters", "duration", "nowplaying"].includes(event.detail.kind); // an episode's chapters or length arrived
     if (refresh || !book || event.detail.bookId !== book.id) {
       if (book && event.detail.bookId !== book.id && !nativeSleep()) setSleep("off"); // another book: the timer was for this one
       book = player.info();

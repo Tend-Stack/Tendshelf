@@ -31,6 +31,10 @@ type radioFix struct {
 	pod  *podcast.Service
 	svc  *radio.Service
 	hits atomic.Int64 // requests that reached a station path
+	// searches counts station searches OndaCast answered.
+	searches atomic.Int64
+	// conns counts connections to /stream.mp3 and active the ones still open.
+	conns, active atomic.Int64
 
 	ondaDown atomic.Bool
 	hold     chan struct{} // when set, /live.mp3 stays open until it is closed
@@ -90,6 +94,11 @@ func (f *radioFix) serve(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "down", http.StatusServiceUnavailable)
 			return
 		}
+		if r.URL.Path == "/api/v2/search" && r.URL.Query().Get("type") == "stations" {
+			f.searches.Add(1)
+			fmt.Fprint(w, `{"success":true,"data":[{"title":"Cool FM","subtitle":"Pop, NL","slug":"cool-fm","image_url":"https://logo.test/x.png"}]}`)
+			return
+		}
 		if r.URL.Path == "/api/v2/embed/stations/cool-fm" {
 			fmt.Fprintf(w, `{"success":true,"data":{"name":"Cool FM","streamUrl":%q,"logo":"https://logo.test/x.png","genre":"Pop","country":"NL"}}`, f.liveURL())
 			return
@@ -128,6 +137,8 @@ func (f *radioFix) serve(w http.ResponseWriter, r *http.Request) {
 			}
 			w.(http.Flusher).Flush()
 		}
+	case "/stream.mp3":
+		f.serveSilence(w, r)
 	case "/plain.mp3":
 		w.Header().Set("Content-Type", "audio/mpeg")
 		io.WriteString(w, "no titles here")
@@ -233,7 +244,7 @@ func TestRadioOffIsOff(t *testing.T) {
 				fx.enable(t, a, false)
 			}
 			owner := a.as(t, users.RoleOwner)
-			for _, p := range []string{"/radio/live/rs_x", "/hx/radio/now/rs_x", "/api/v1/radio/stations", "/api/v1/radio/recent",
+			for _, p := range []string{"/radio", "/radio/search?q=x", "/hx/player/radio/rs_x", "/radio/live/rs_x", "/hx/radio/now/rs_x", "/api/v1/radio/stations", "/api/v1/radio/recent",
 				"/api/v1/radio/live/rs_x", "/api/v1/radio/now/rs_x"} {
 				if rec := a.do(http.MethodGet, p, nil, nil, owner); rec.Code != http.StatusNotFound {
 					t.Errorf("GET %s: %d, want 404", p, rec.Code)
@@ -669,4 +680,50 @@ func (w *radioWorld) bearer(uid string) string {
 		w.t.Fatal(err)
 	}
 	return tok
+}
+
+// silentMP3Frame is one MPEG-1 Layer III frame (128 kbps, 44.1 kHz) of silence: 26 ms every browser decodes.
+func silentMP3Frame() []byte {
+	f := make([]byte, 417)
+	copy(f, []byte{0xFF, 0xFB, 0x90, 0x64})
+	return f
+}
+
+// serveSilence is an endless live station for the browser: silent MP3 frames with a title block between every four,
+// slightly faster than real time. The title carries the connection's number, so a reconnect shows. Connections are counted
+// (conns) and the open ones too (active), so a test can see a pause let go of the stream.
+func (f *radioFix) serveSilence(w http.ResponseWriter, r *http.Request) {
+	n := f.conns.Add(1)
+	f.active.Add(1)
+	defer f.active.Add(-1)
+	const frames = 4
+	w.Header().Set("Content-Type", "audio/mpeg")
+	w.Header().Set("Icy-Metaint", fmt.Sprint(frames*417))
+	w.WriteHeader(http.StatusOK)
+	meta := []byte(fmt.Sprintf("StreamTitle='Ann - Song %d';", n))
+	block := make([]byte, 1+((len(meta)+15)/16)*16)
+	block[0] = byte(len(block) / 16)
+	copy(block[1:], meta)
+	frame := silentMP3Frame()
+	for i := 0; ; i++ {
+		for k := 0; k < frames; k++ {
+			if _, err := w.Write(frame); err != nil {
+				return
+			}
+		}
+		// the title once, then empty blocks (a zero byte)
+		blk := []byte{0}
+		if i == 0 {
+			blk = block
+		}
+		if _, err := w.Write(blk); err != nil {
+			return
+		}
+		w.(http.Flusher).Flush()
+		select {
+		case <-r.Context().Done():
+			return
+		case <-time.After(80 * time.Millisecond):
+		}
+	}
 }

@@ -17,11 +17,17 @@ type NavItem struct {
 type PodNav struct {
 	Show bool
 	New  int
+	// RadioOnly draws the item as Radio, leading to /radio: podcasts are off for this person but radio is on.
+	RadioOnly bool
 }
 
 // podcastsItem is the Podcasts destination, drawn after Library only when podcasts are on for the person.
 func podcastsItem(p PodNav) NavItem {
 	it := NavItem{Key: "podcasts", Label: "Podcasts", Href: "/podcasts", Icon: "podcast"}
+	if p.RadioOnly {
+		it.Label, it.Href = "Radio", "/radio"
+		return it
+	}
 	switch {
 	case p.New > 99:
 		it.Badge, it.BadgeLabel = "99+", "more than 99 new episodes"

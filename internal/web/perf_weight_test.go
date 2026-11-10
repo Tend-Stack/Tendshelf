@@ -35,20 +35,22 @@ type weightBudget struct {
 // one without the operator.
 // 2026-11-10, podcast episodes in the player (decision 0038, P4): player.js, player-full.js and waveform.js grow, so JS rises
 // 6 KiB (201,565 B measured; reader 267,082 B, +2 KiB). OVERRUN reported, nothing squeezed.
+// 2026-11-10, live radio in the player (decision 0038, R2): player.js, player-full.js, waveform.js and now-panel.js grow, so JS rises
+// 5 KiB (206,870 B measured; profile +1 KiB as before; reader 272,387 B, +5 KiB; reader HTML 52,364 B, +1 KiB for the Live badge in the bar). OVERRUN reported, nothing squeezed.
 var weightBudgets = map[string]weightBudget{
 	// Chapter bar (2026-11-06): chapter-bar.js is loaded on every page; JS raised 1 KiB (reader 2 KiB) from 194,649 B and 236,355 B measured, comments intact, reported.
 	// 2026-11-09, pages by default, the page turn, edges and ribbons (decision 0036) and the book page's More menu: every page's
 	// CSS 310,512 B measured (admin 315,895 B), raised to 309 KB (admin 314 KB) from 291 KB; the reader's JS 259,811 B,
 	// raised to 260 KB from 233 KB (reader-flip.js loads only for the Flip turn). OVERRUN reported, nothing squeezed.
-	"home":        {HTML: 71680, CSS: 316416, JS: 202752, Font: 1075200, Img: 38912, Requests: 63}, // Shelf spines (decision 0034): HTML raised to 71,680 B from 70,120 B measured (li, link and spans per spine), requests +2 for pages-spines.css. Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
-	"library":     {HTML: 87040, CSS: 316416, JS: 202752, Font: 791552, Img: 95232, Requests: 93},
-	"book":        {HTML: 55296, CSS: 316416, JS: 202752, Font: 791552, Img: 29696, Requests: 55},
-	"listening":   {HTML: 164864, CSS: 316416, JS: 202752, Font: 791552, Img: 34816, Requests: 62},
-	"search":      {HTML: 59392, CSS: 316416, JS: 202752, Font: 791552, Img: 39936, Requests: 65},
-	"profile":     {HTML: 64512, CSS: 328704, JS: 203776, Font: 791552, Img: 57344, Requests: 62}, // decision 0021, set the same way from the first measurement (2026-11-05)
-	"settings":    {HTML: 49152, CSS: 316416, JS: 202752, Font: 791552, Img: 1024, Requests: 45},
-	"reader":      {HTML: 52224, CSS: 321536, JS: 268288, Font: 1075200, Img: 1024, Requests: 56}, // JS +1 KB for read aloud (decision 0032, 2026-11-08: 238,301 B measured, 733 B over, reported); JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05)
-	"admin-users": {HTML: 47104, CSS: 321536, JS: 202752, Font: 791552, Img: 1024, Requests: 45},
+	"home":        {HTML: 71680, CSS: 316416, JS: 207872, Font: 1075200, Img: 38912, Requests: 63}, // Shelf spines (decision 0034): HTML raised to 71,680 B from 70,120 B measured (li, link and spans per spine), requests +2 for pages-spines.css. Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
+	"library":     {HTML: 87040, CSS: 316416, JS: 207872, Font: 791552, Img: 95232, Requests: 93},
+	"book":        {HTML: 55296, CSS: 316416, JS: 207872, Font: 791552, Img: 29696, Requests: 55},
+	"listening":   {HTML: 164864, CSS: 316416, JS: 207872, Font: 791552, Img: 34816, Requests: 62},
+	"search":      {HTML: 59392, CSS: 316416, JS: 207872, Font: 791552, Img: 39936, Requests: 65},
+	"profile":     {HTML: 64512, CSS: 328704, JS: 208896, Font: 791552, Img: 57344, Requests: 62}, // decision 0021, set the same way from the first measurement (2026-11-05)
+	"settings":    {HTML: 49152, CSS: 316416, JS: 207872, Font: 791552, Img: 1024, Requests: 45},
+	"reader":      {HTML: 53248, CSS: 321536, JS: 273408, Font: 1075200, Img: 1024, Requests: 56}, // JS +1 KB for read aloud (decision 0032, 2026-11-08: 238,301 B measured, 733 B over, reported); JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05)
+	"admin-users": {HTML: 47104, CSS: 321536, JS: 207872, Font: 791552, Img: 1024, Requests: 45},
 }
 
 // weightProbeJS waits until ts-ready exists and no new resource entry has appeared for 500 ms (10 s at

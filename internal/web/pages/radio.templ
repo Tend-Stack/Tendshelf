@@ -1,0 +1,132 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// RadioView is the Radio page of the Podcasts area: the tabs (when podcasts are on too), the saved stations,
+// then the recently played ones. The handler writes every word (internal/web/radio_copy.go).
+type RadioView struct {
+	Title, FindLabel, FindHref, TabsLabel string
+	Tabs                                  []PodTab
+	SavedTitle, RecentTitle               string
+	Saved, Recent                         []components.StationRowView
+	EmptyTitle, EmptyBody                 string
+}
+
+// Radio lists a person's stations.
+templ Radio(v RadioView) {
+	<div class="ts-podcasts ts-radio">
+		<header class="ts-podcasts__head">
+			<h1 class="title-1 ts-podcasts__title">{ v.Title }</h1>
+			@podFindLink(v.FindHref, v.FindLabel)
+		</header>
+		if len(v.Tabs) > 0 {
+			<nav class="ts-tabs ts-podcasts__tabs" aria-label={ v.TabsLabel }>
+				for _, t := range v.Tabs {
+					<a class="ts-tabs__item" href={ templ.SafeURL(t.Href) } if t.On {
+	aria-current="page"
+}>{ t.Label }</a>
+				}
+			</nav>
+		}
+		if len(v.Saved) == 0 && len(v.Recent) == 0 {
+			@components.EmptyState(v.EmptyTitle, v.EmptyBody, podFindLink(v.FindHref, v.FindLabel))
+		}
+		if len(v.Saved) > 0 {
+			<section aria-labelledby="radio-saved">
+				<h2 id="radio-saved" class="section">{ v.SavedTitle }</h2>
+				<ul class="ts-radio__rows">
+					for _, st := range v.Saved {
+						@components.StationRow(st)
+					}
+				</ul>
+			</section>
+		}
+		if len(v.Recent) > 0 {
+			<section aria-labelledby="radio-recent">
+				<h2 id="radio-recent" class="section">{ v.RecentTitle }</h2>
+				<ul class="ts-radio__rows">
+					for _, st := range v.Recent {
+						@components.StationRow(st)
+					}
+				</ul>
+			</section>
+		}
+	</div>
+}
+
+// RadioHit is one OndaCast station result.
+type RadioHit struct {
+	Title, Subtitle, Slug string
+	Card                  components.CardView
+}
+
+// RadioSearchView is the station search page: the search form, the results, and the "Add by stream address" form.
+type RadioSearchView struct {
+	CSRF, Title, Q, SearchLabel, SearchButton, BackHref, BackLabel string
+	Hits                                                           []RadioHit
+	Searched                                                       bool
+	Failure, NoResults, ResultsLabel                               string
+	AddLabel, AddAria                                              string
+	AddTitle, AddHint, AddFieldLabel, AddButton                    string
+	AddOpen                                                        bool
+}
+
+// RadioSearch is the OndaCast station search and the stream address form.
+templ RadioSearch(v RadioSearchView) {
+	<div class="ts-podcasts ts-podsearch ts-radio">
+		<a class="ts-btn ts-btn--quiet ts-book__back" href={ templ.SafeURL(v.BackHref) }>
+			@backIcon()
+			{ v.BackLabel }
+		</a>
+		<h1 class="title-1 ts-podcasts__title">{ v.Title }</h1>
+		<form class="ts-podsearch__form" method="get" action="/radio/search" role="search">
+			<input class="ts-input" type="search" name="q" value={ v.Q } maxlength="100" aria-label={ v.SearchLabel } placeholder={ v.SearchLabel } autocomplete="off"/>
+			<button type="submit" class="ts-btn ts-btn--primary">{ v.SearchButton }</button>
+		</form>
+		if v.Failure != "" {
+			<p class="ts-banner ts-podcasts__banner" role="alert">
+				@components.Icon("alert", false)
+				{ v.Failure }
+			</p>
+		}
+		if v.Searched && v.Failure == "" {
+			if len(v.Hits) == 0 {
+				<p class="body ts-podsearch__none" role="status">{ v.NoResults }</p>
+			} else {
+				<ul class="ts-podsearch__hits" aria-label={ v.ResultsLabel }>
+					for _, h := range v.Hits {
+						<li class="ts-row ts-podhit">
+							@components.Cover(h.Card, "56")
+							<span class="ts-row__text">
+								<span class="ts-row__title ts-truncate">{ h.Title }</span>
+								if h.Subtitle != "" {
+									<span class="ts-row__meta ts-truncate">{ h.Subtitle }</span>
+								}
+							</span>
+							<form method="post" action="/radio/stations" class="ts-podhit__follow">
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<input type="hidden" name="slug" value={ h.Slug }/>
+								<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.AddAria + " " + h.Title }>{ v.AddLabel }</button>
+							</form>
+						</li>
+					}
+				</ul>
+			}
+		}
+		<details class="ts-group ts-group--pad ts-podsearch__add" open?={ v.AddOpen }>
+			<summary class="ts-podsearch__summary">
+				<span>{ v.AddTitle }</span>
+				@components.Icon("chevron-down", false)
+			</summary>
+			<form class="ts-podsearch__addform" method="post" action="/radio/stations">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<div class="ts-field">
+					<label class="ts-field__label" for="radio-stream">{ v.AddFieldLabel }</label>
+					<input id="radio-stream" class="ts-input" type="url" name="stream_url" maxlength="2048" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="radio-stream-hint" required/>
+					<span class="ts-field__hint" id="radio-stream-hint">{ v.AddHint }</span>
+				</div>
+				<button type="submit" class="ts-btn ts-btn--primary">{ v.AddButton }</button>
+			</form>
+		</details>
+	</div>
+}

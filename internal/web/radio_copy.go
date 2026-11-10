@@ -11,3 +11,29 @@ const (
 	radioLivePersonBusy  = "You are already listening to a station. Stop it first."
 	radioLiveUnavailable = "This station can't be played right now."
 )
+
+// The Radio pages and the player's live mode (plan R2).
+const (
+	radioTitle         = "Radio"
+	radioFind          = "Find a station"
+	radioSearchLabel   = "Search stations"
+	radioSearchWord    = "Search"
+	radioTabsLabel     = "Podcasts and radio"
+	radioSavedTitle    = "Your stations"
+	radioRecentTitle   = "Recently played"
+	radioNoStationsHd  = "No stations yet."
+	radioNoStations    = "Search for a station, or paste its stream address."
+	radioNoResults     = "No stations found. You can paste a stream address instead."
+	radioResultsLabel  = "Station results"
+	radioAdd           = "Add"
+	radioAddByAddress  = "Add by stream address"
+	radioAddHint       = "Paste the station's stream address."
+	radioAddFieldLabel = "Stream address"
+	radioAddButton     = "Add station"
+	radioBack          = "Back to radio"
+	radioPlay          = "Play"
+	radioRemove        = "Remove"
+	radioLive          = "Live"
+	radioOpenStation   = "{title}, live. Show radio"
+	radioLiveFailed    = "This station can't be played right now."
+)
