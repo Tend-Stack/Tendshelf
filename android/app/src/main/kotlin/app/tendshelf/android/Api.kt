@@ -17,6 +17,8 @@ import app.tendshelf.shared.EpisodeAction
 import app.tendshelf.shared.EpisodeCard
 import app.tendshelf.shared.PodcastJson
 import app.tendshelf.shared.ShowCard
+import app.tendshelf.shared.RadioJson
+import app.tendshelf.shared.StationCard
 import app.tendshelf.shared.episodeActionBody
 import app.tendshelf.shared.episodeCards
 import app.tendshelf.shared.showCards
@@ -130,6 +132,38 @@ class Api(origin: String) {
         get(paths.showArtUrl(showId, 512), token, 2 * 1024 * 1024)
     } catch (e: IOException) {
         null
+    }
+
+    // ---- Radio (R3). A 404 on the lists means radio is off on this server (ApiException). ----
+
+    /** The person's saved stations, in their order. */
+    fun radioStations(token: String): List<StationCard> = RadioJson.stations(String(get(paths.radioStationsUrl, token, 1024 * 1024)))
+
+    /** The last 20 stations played, newest first; a station played from history is here even when it is not saved. */
+    fun radioRecent(token: String): List<StationCard> = RadioJson.stations(String(get(paths.radioRecentUrl, token, 1024 * 1024)))
+
+    /** One station by id from the saved list, then from history; null when the server knows neither. */
+    fun radioStation(token: String, id: String): StationCard? =
+        radioStations(token).firstOrNull { it.id == id } ?: radioRecent(token).firstOrNull { it.id == id }
+
+    /** What is on air now (empty when the station sends no title); null when the server cannot say. */
+    fun radioNow(token: String, id: String): String? = try {
+        RadioJson.now(String(get(paths.radioNowUrl(id), token, 16 * 1024)))
+    } catch (e: IOException) {
+        null
+    }
+
+    /**
+     * The station's picture (at most 2 MiB): from the path the list named, else the server's art route by id. Null when the
+     * server has none (an older server lacks the route) or it cannot be read; the caller then shows the app icon.
+     */
+    fun radioArt(token: String, id: String, artPath: String = ""): ByteArray? {
+        val url = (if (artPath.isNotEmpty()) paths.radioUrl(artPath) else null) ?: paths.radioArtUrl(id)
+        return try {
+            get(url, token, 2 * 1024 * 1024)
+        } catch (e: IOException) {
+            null
+        }
     }
 
     /** Mark played or unplayed, star or unstar. Idempotent on the server, so a retry costs nothing. */

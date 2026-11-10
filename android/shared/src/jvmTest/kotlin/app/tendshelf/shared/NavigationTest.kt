@@ -45,6 +45,7 @@ class NavigationTest {
         assertEquals("http://10.0.2.2:8097/healthz", o.healthUrl())
         assertEquals("http://10.0.2.2:8097/api/v1/me", o.meUrl())
         assertEquals("http://10.0.2.2:8097/?shell=android&next=/", o.homeUrl())
+        assertEquals("http://10.0.2.2:8097/?shell=android&next=%2Fradio", o.radioUrl())
         assertEquals("http://10.0.2.2:8097/?shell=android&next=%2Fapp%2Fconnect%3Fchallenge%3Dabc", o.connectUrl("abc"))
     }
 

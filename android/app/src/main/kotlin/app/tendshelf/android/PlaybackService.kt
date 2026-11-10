@@ -34,6 +34,7 @@ import app.tendshelf.shared.Allowed
 import app.tendshelf.shared.EpisodeAction
 import app.tendshelf.shared.Node
 import app.tendshelf.shared.isEpisodeId
+import app.tendshelf.shared.isStationId
 import app.tendshelf.shared.mayRate
 import app.tendshelf.shared.speedCycle
 import app.tendshelf.shared.speedLabel
@@ -111,6 +112,9 @@ class PlaybackService : MediaLibraryService() {
             .setCommandButtonsForMediaItems(LibraryTree.rowButtons()) // A3: an episode row's Mark as played and Star
             .build()
         engine = BookEngine(exo, player, http, main, io, { connections }) { extras -> putExtras { putAll(extras) } }
+        engine.liveWord = getString(R.string.radio_live)
+        engine.fallbackArt = { AppIcon.png(this) }
+        player.onLiveToggle = { play -> engine.liveToggle(play) } // R3: pause lets go of a station's stream, play joins it live
         sleep = SleepTimer(exo, player, getSystemService(android.hardware.SensorManager::class.java), main) { info ->
             putExtras {
                 putString(EXTRA_SLEEP_MODE, info.mode.name.lowercase())
@@ -194,9 +198,10 @@ class PlaybackService : MediaLibraryService() {
         var lastChapter = -2
         engine.pendingFor = { id -> w.pending(id) }
         engine.onBookChanging = { w.saveNow("book") }
-        engine.onBookStarted = { _, writtenAt, atGiven ->
+        engine.onBookStarted = { id, writtenAt, atGiven ->
             ask.dismissPlain()
-            resume.bookLoaded(writtenAt, atGiven)
+            // A station (R3) has no place to rewind to or ask about: only the timers are told.
+            if (!isStationId(id)) resume.bookLoaded(writtenAt, atGiven)
             next.reset()
             auto.reset()
             sleep.bookChanged()
@@ -204,7 +209,7 @@ class PlaybackService : MediaLibraryService() {
         }
         engine.onPositionTick = {
             val book = engine.currentBook
-            if (book.isNotEmpty()) {
+            if (book.isNotEmpty() && !isStationId(book)) {
                 val chapter = player.chapterIdx
                 if (lastChapter != -2 && chapter != lastChapter) w.saveNow("chapter")
                 lastChapter = chapter
@@ -270,7 +275,11 @@ class PlaybackService : MediaLibraryService() {
             prefs.edit().putString(LAST_BOOK, id).apply() // D8: what a "resume" from a media button plays; the tree knows episodes (A3)
             before?.invoke(id, writtenAt, atGiven)
         }
-        engine.onFailed = { kind -> tellCar(kind) }
+        engine.onFailed = { kind ->
+            tellCar(kind)
+            // The one-live-per-person 503 (R3): the page shows only a general error, so the phone says why in plain words.
+            if (kind == "busy") android.widget.Toast.makeText(this, R.string.radio_busy, android.widget.Toast.LENGTH_LONG).show()
+        }
         exo.addListener(object : Player.Listener {
             override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
                 if (BuildConfig.DEBUG) Log.i(TAG, "speed is now ${playbackParameters.speed}")
@@ -296,11 +305,14 @@ class PlaybackService : MediaLibraryService() {
             if (book.isNotEmpty() && connections.current() != null) {
                 // An episode (A3): the widget's title is the episode and its second line is the show, where a book has its chapter.
                 val episode = player.episodeName
-                val chapter = if (episode != null) "" else player.mediaMetadata.title?.toString().orEmpty()
+                val live = player.isLive
+                val chapter = if (episode != null || live) "" else player.mediaMetadata.title?.toString().orEmpty()
                 val settings = engine.settings
                 WidgetState.save(
                     this, book, episode ?: player.bookTitle, chapter, exo.isPlaying, settings.skipBackS, settings.skipForwardS,
-                    show = if (episode != null) player.bookTitle else "",
+                    // A station (R3): its name, and the word "Live" beneath it, with no skip buttons.
+                    show = if (live) getString(R.string.radio_live) else if (episode != null) player.bookTitle else "",
+                    live = live,
                 )
                 if (book != shownBook) {
                     shownBook = book
@@ -322,6 +334,7 @@ class PlaybackService : MediaLibraryService() {
             "signedOut" -> SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED to R.string.car_sign_in
             "background" -> SessionError.ERROR_SESSION_SETUP_REQUIRED to R.string.car_keep_listening
             "stream" -> SessionError.ERROR_IO to R.string.car_no_connection
+            "busy" -> SessionError.ERROR_SESSION_CONCURRENT_STREAM_LIMIT to R.string.radio_busy
             else -> SessionError.ERROR_UNKNOWN to R.string.car_cant_play
         }
         for (c in s.connectedControllers) {
@@ -556,7 +569,7 @@ class PlaybackService : MediaLibraryService() {
         player.setPlaybackSpeed(next.toFloat())
         val book = engine.currentBook
         val conn = connections.current()
-        if (book.isEmpty() || conn == null || isEpisodeId(book)) return // a show's speed is set on its page; no route takes it from here
+        if (book.isEmpty() || conn == null || isEpisodeId(book) || isStationId(book)) return // a station has one speed; a show's speed is set on its page; no route takes it from here
         io.execute {
             try {
                 Api(conn.origin).putSpeed(conn.token, book, next)

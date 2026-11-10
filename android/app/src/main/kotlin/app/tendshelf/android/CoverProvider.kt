@@ -8,6 +8,7 @@ import android.os.Binder
 import android.os.ParcelFileDescriptor
 import android.os.Process
 import androidx.media3.common.util.UnstableApi
+import app.tendshelf.shared.isStationId
 import app.tendshelf.shared.validId
 import java.io.File
 import java.io.FileNotFoundException
@@ -56,11 +57,12 @@ class CoverProvider : ContentProvider() {
         val dir = File(context.cacheDir, DIR).apply { mkdirs() }
         val file = File(dir, id)
         if (file.isFile) return file
-        val downloaded = if (isShowId(id)) null else Offline.coverBytes(id)
+        val downloaded = if (isShowId(id) || isStationId(id)) null else Offline.coverBytes(id)
         val bytes = downloaded ?: run {
             val conn = TokenStore(context).current() ?: return null
             // A show's picture (A3) is fetched by the show's id; episodes in the tree borrow it, so one file serves them all.
-            if (isShowId(id)) Api(conn.origin).showArt(conn.token, id) else Api(conn.origin).cover(conn.token, id)
+            if (isStationId(id)) Api(conn.origin).radioArt(conn.token, id) // R3: a station's picture, by its id
+            else if (isShowId(id)) Api(conn.origin).showArt(conn.token, id) else Api(conn.origin).cover(conn.token, id)
         } ?: return null
         trim(dir)
         val tmp = File(dir, "$id.tmp")
@@ -105,7 +107,7 @@ class CoverProvider : ContentProvider() {
             if (!validId(bookId)) return null
             val file = File(File(context.cacheDir, DIR), bookId)
             if (file.isFile) return file.readBytes()
-            if (isShowId(bookId)) return null
+            if (isShowId(bookId) || isStationId(bookId)) return null
             Offline.init(context)
             return Offline.coverBytes(bookId)
         }

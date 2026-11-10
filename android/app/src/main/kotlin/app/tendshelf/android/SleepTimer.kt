@@ -22,6 +22,7 @@ import app.tendshelf.shared.chapterEndFor
  * alive while sound plays, and when nothing plays the clock does not count anyway. The accelerometer is listened to
  * only during the fade, and a shake is "+10 min".
  */
+@androidx.media3.common.util.UnstableApi
 class SleepTimer(
     private val exo: ExoPlayer,
     private val player: BookPlayer,
@@ -105,6 +106,11 @@ class SleepTimer(
     fun bookChanged() {
         wholeEpisode = false // the end of one episode is not the end of the next
         if (!clock.isOn) return
+        // A station has no end of a chapter: a timer set for one ends with the book it was set for (R3). Minutes go on.
+        if (player.isLive && info.mode == SleepMode.CHAPTER) {
+            off()
+            return
+        }
         chapterEnd()?.let { clock.followChapter(it) }
     }
 
@@ -130,9 +136,9 @@ class SleepTimer(
             }
             is SleepStep.Finish -> {
                 Log.i(TAG, "sleep: finished")
-                exo.pause()
+                player.pause() // a live station lets go of its stream here (R3)
                 val duration = exo.duration
-                s.restAtMs?.let { rest ->
+                s.restAtMs?.takeIf { !player.isLive }?.let { rest ->
                     // The last chapter ends at the end of the book; resting 1 s short keeps the queue from popping (D6).
                     exo.seekTo(if (duration > 0) minOf(rest, duration - 1000).coerceAtLeast(0) else rest)
                 }
@@ -150,6 +156,7 @@ class SleepTimer(
 
     /** A book with no chapters is one chapter (as the page treats it), so its end is the end of the book. */
     private fun chapterEnd(): Long? {
+        if (player.isLive) return null // a station has no end of a chapter or an episode (R3)
         if (wholeEpisode) {
             val duration = exo.duration
             return if (duration > 1000) duration - 1000 else null

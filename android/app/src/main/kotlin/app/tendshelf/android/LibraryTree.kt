@@ -23,7 +23,11 @@ import app.tendshelf.shared.completionPercent
 import app.tendshelf.shared.episodeActions
 import app.tendshelf.shared.episodeRowTitle
 import app.tendshelf.shared.episodeSubline
+import app.tendshelf.shared.StationCard
+import app.tendshelf.shared.stationRowTitle
+import app.tendshelf.shared.stationSubline
 import app.tendshelf.shared.isEpisodeId
+import app.tendshelf.shared.isStationId
 import app.tendshelf.shared.showRowTitle
 import app.tendshelf.shared.Node
 import app.tendshelf.shared.OfflineState
@@ -56,6 +60,7 @@ class LibraryTree(
     private val books = lru<String, BookCard>(300)
     private val searches = lru<String, List<BookCard>>(8)
     private val episodes = lru<String, EpisodeCard>(300)
+    private val stations = lru<String, StationCard>(100)
 
     private fun <K, V> lru(max: Int): MutableMap<K, V> = java.util.Collections.synchronizedMap(
         object : LinkedHashMap<K, V>(16, 0.75f, true) {
@@ -104,6 +109,16 @@ class LibraryTree(
         if (c.durationMs > 0) md.setDurationMs(c.durationMs)
         if (c.showId.isNotEmpty()) md.setArtworkUri(CoverProvider.uriOf(c.showId))
         return MediaItem.Builder().setMediaId(nodeId(Node.Episode(c.id))).setMediaMetadata(md.build()).build()
+    }
+
+    /** A radio station leaf (R3): its name, the genre and country beneath, and its picture when the server has one. */
+    fun stationItem(c: StationCard): MediaItem {
+        stations[c.id] = c
+        val md = MediaMetadata.Builder().setTitle(stationRowTitle(c)).setIsBrowsable(false).setIsPlayable(true)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+        stationSubline(c).takeIf { it.isNotEmpty() }?.let { md.setSubtitle(it) }
+        if (c.artUrl.isNotEmpty()) md.setArtworkUri(CoverProvider.uriOf(c.id))
+        return MediaItem.Builder().setMediaId(nodeId(Node.Station(c.id))).setMediaMetadata(md.build()).build()
     }
 
     /** A followed show: a folder with the show's picture; the number of new episodes is its second line. */
@@ -192,7 +207,7 @@ class LibraryTree(
     fun item(id: String, onDone: (MediaItem?) -> Unit) {
         io.execute {
             val item = try {
-                itemOf(if (isEpisodeId(id)) Node.Episode(id) else Node.Book(id))
+                itemOf(if (isStationId(id)) Node.Station(id) else if (isEpisodeId(id)) Node.Episode(id) else Node.Book(id))
             } catch (e: Exception) {
                 null
             }
@@ -248,7 +263,7 @@ class LibraryTree(
             Node.Root -> tabs()
             Node.Continue -> online({ downloadedBooks().filter { placeOf(it.id) > 0 }.sortedByDescending { placeAt(it.id) } }) { api, t -> api.continueList(t) }.map(::bookItem)
             Node.UpNext -> online(null) { api, t -> api.queue(t) }.map(::bookItem)
-            Node.Shelves -> podcastsRow() + online(null) { api, t -> api.shelves(t) }.map { s ->
+            Node.Shelves -> podcastsRow() + radioRow() + online(null) { api, t -> api.shelves(t) }.map { s ->
                 shelfNames[s.id] = s.name
                 folder(Node.Shelf(s.id), s.name, playableStyle = LIST)
             }
@@ -258,6 +273,10 @@ class LibraryTree(
             Node.PodcastShows -> online(null) { api, t -> api.podcastShows(t) }.map(::showFolder)
             is Node.Show -> online(null) { api, t -> api.showEpisodes(t, node.id) }.map(::episodeItem)
             is Node.Episode -> emptyList()
+            Node.Radio -> radioFolders()
+            Node.RadioStations -> online(null) { api, t -> api.radioStations(t) }.map(::stationItem)
+            Node.RadioRecent -> online(null) { api, t -> api.radioRecent(t) }.map(::stationItem)
+            is Node.Station -> emptyList()
             is Node.Shelf -> online(null) { api, t -> api.shelf(t, node.id) }.map(::bookItem)
             // The tab also lists downloaded episodes: it is the one place that works with no connection.
             Node.Downloaded -> downloadedBooks().map(::bookItem) + downloadedEpisodes().map(::episodeItem)
@@ -283,6 +302,13 @@ class LibraryTree(
             episodes[node.id] ?: online(null) { api, t -> api.episode(t, node.id) }.let {
                 EpisodeCard(it.id, it.showId, it.title, it.show, it.durationMs, 0, it.progress?.positionMs ?: 0, it.progress?.finished ?: false, false)
             },
+        )
+        Node.Radio -> radioFolder()
+        Node.RadioStations -> radioFolders()[0]
+        Node.RadioRecent -> radioFolders()[1]
+        is Node.Station -> stationItem(
+            stations[node.id] ?: online(null) { api, t -> api.radioStation(t, node.id) }
+                ?: throw CarError(SessionError.ERROR_BAD_VALUE, R.string.car_not_found),
         )
         is Node.Shelf -> {
             var name = shelfNames[node.id]
@@ -315,6 +341,24 @@ class LibraryTree(
     private fun podcastsRow(): List<MediaItem> = try {
         online(null) { api, t -> api.podcastShows(t) }
         listOf(podcastsFolder())
+    } catch (e: CarError) {
+        if (e.code == SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED) throw e
+        emptyList()
+    }
+
+    // ---- Radio (R3) ----
+
+    private fun radioFolder(): MediaItem = folder(Node.Radio, words(R.string.car_radio), browsableStyle = LIST)
+
+    private fun radioFolders(): List<MediaItem> = listOf(
+        folder(Node.RadioStations, words(R.string.car_radio_stations), playableStyle = LIST),
+        folder(Node.RadioRecent, words(R.string.car_radio_recent), playableStyle = LIST),
+    )
+
+    /** Radio is a row in the Shelves tab like Podcasts, there only when the server has radio on for this person (the list answers). */
+    private fun radioRow(): List<MediaItem> = try {
+        online(null) { api, t -> api.radioStations(t) }
+        listOf(radioFolder())
     } catch (e: CarError) {
         if (e.code == SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED) throw e
         emptyList()

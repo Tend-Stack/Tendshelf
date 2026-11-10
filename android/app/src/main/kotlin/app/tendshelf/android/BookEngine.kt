@@ -3,6 +3,8 @@ package app.tendshelf.android
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -14,7 +16,13 @@ import app.tendshelf.shared.EpisodeDoc
 import app.tendshelf.shared.PodcastJson
 import app.tendshelf.shared.ShowSettings
 import app.tendshelf.shared.SkipRules
+import app.tendshelf.shared.RADIO_NOW_FIRST_MS
+import app.tendshelf.shared.RADIO_NOW_POLL_MS
+import app.tendshelf.shared.StationCard
 import app.tendshelf.shared.episodeSpeed
+import app.tendshelf.shared.isStationId
+import app.tendshelf.shared.liveFailureKind
+import app.tendshelf.shared.liveRetryDelayMs
 import app.tendshelf.shared.isEpisodeId
 import app.tendshelf.shared.skipRules
 import app.tendshelf.shared.PlayerSettings
@@ -55,6 +63,16 @@ class BookEngine(
     private var ruleDurationMs = 0L
     private var outroDone = false
 
+    // The loaded station (R3); null for a book or an episode. A live item has no place, so nothing below saves one.
+    private var station: StationCard? = null
+    private var liveAttempt = 0
+    private val liveRetry = Runnable { connectLive() }
+    private val liveNowPoll = Runnable { askNow() }
+
+    /** The word for "live" on the lock screen and in the widget, and the picture when a station has none: the service sets both. */
+    var liveWord = "Live"
+    var fallbackArt: () -> ByteArray? = { null }
+
     /** A5 hooks: called on the main thread. */
     var onPositionTick: (() -> Unit)?
         get() = player.onTick
@@ -94,16 +112,24 @@ class BookEngine(
         exo.addListener(object : Player.Listener {
             override fun onPlayerError(e: PlaybackException) {
                 Log.w(TAG, "player error ${e.errorCodeName}")
+                if (station != null) {
+                    liveBroke(httpCodeOf(e), retryAfterOf(e))
+                    return
+                }
                 fail(errorOf(e))
                 exo.playWhenReady = false
             }
 
             override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY && station != null) liveAttempt = 0 // sound is there: the next break counts afresh
                 if (state == Player.STATE_READY && error.isNotEmpty()) {
                     error = ""
                     publishState()
                 }
-                if (state == Player.STATE_ENDED) onEnded?.invoke()
+                if (state == Player.STATE_ENDED) {
+                    // A station never ends by itself: the relay closed it (12 hours, silence, a restart). Join again at the live edge.
+                    if (station != null) liveBroke(0, 0) else onEnded?.invoke()
+                }
             }
 
             override fun onPositionDiscontinuity(
@@ -127,6 +153,10 @@ class BookEngine(
         val conn = connections().current()
         if (conn == null) {
             main.post { if (sequence.get() == mine) fail("signedOut") }
+            return
+        }
+        if (isStationId(book)) {
+            startStation(book, conn, mine)
             return
         }
         if (isEpisodeId(book)) {
@@ -257,6 +287,7 @@ class BookEngine(
             return
         }
         onBookChanging?.invoke()
+        leaveLive()
         http.setDefaultRequestProperties(mapOf("Authorization" to "Bearer ${conn.token}"))
         bookId = doc.id
         error = ""
@@ -310,6 +341,7 @@ class BookEngine(
             return
         }
         onBookChanging?.invoke()
+        leaveLive()
         http.setDefaultRequestProperties(mapOf("Authorization" to "Bearer ${conn.token}"))
         bookId = manifest.id
         Offline.playingNow = ""
@@ -330,10 +362,159 @@ class BookEngine(
         Log.i(TAG, "started book: ${manifest.files.size} files, ${manifest.chapters.size} chapters")
     }
 
+    // ---- Radio (R3, decision 0038) ----
+
+    /**
+     * A live station: its name and picture are read on the [io] executor (the saved list, then history), then the main thread
+     * opens the server's relay. There is no place to read and none to save, and the queue is not touched.
+     */
+    private fun startStation(id: String, conn: Connection, mine: Int) {
+        io.execute {
+            try {
+                val api = Api(conn.origin)
+                val card = api.radioStation(conn.token, id) ?: throw ApiException(404)
+                if (sequence.get() != mine) return@execute
+                val art = api.radioArt(conn.token, id, card.artUrl)
+                main.post { if (sequence.get() == mine) beginStation(card, art) }
+            } catch (e: ApiException) {
+                Log.w(TAG, "could not start the station: server answered ${e.code}")
+                main.post { if (sequence.get() == mine) fail(if (e.code == 401) "signedOut" else if (e.code == 404) "book" else "stream") }
+            } catch (e: Exception) {
+                Log.w(TAG, "could not start the station: ${e.javaClass.simpleName}")
+                main.post { if (sequence.get() == mine) fail("stream") }
+            }
+        }
+    }
+
+    private fun beginStation(card: StationCard, art: ByteArray?) {
+        onBookChanging?.invoke()
+        leaveLive()
+        bookId = card.id
+        Offline.playingNow = ""
+        error = ""
+        silent = emptyList()
+        showSettings = null
+        rules = null
+        station = card
+        liveAttempt = 0
+        player.loadStation(card.name.trim().ifEmpty { "Radio station" }, liveWord, art ?: fallbackArt())
+        onBookStarted?.invoke(card.id, null, true)
+        exo.setAudioAttributes(MUSIC, true)
+        exo.setPlaybackSpeed(1f)
+        exo.skipSilenceEnabled = false
+        connectLive()
+        publishState()
+        Log.i(TAG, "started station")
+    }
+
+    /** Opens the relay at the live edge, with the credential of whoever is signed in now. */
+    private fun connectLive() {
+        val s = station ?: return
+        main.removeCallbacks(liveRetry)
+        val conn = connections().current()
+        if (conn == null) {
+            fail("signedOut")
+            return
+        }
+        http.setDefaultRequestProperties(mapOf("Authorization" to "Bearer ${conn.token}"))
+        exo.setMediaSource(BookMedia.station(s.id, Api(conn.origin).paths.liveUrl(s.id), s.name, ServerGate.gated(http)))
+        exo.prepare()
+        exo.playWhenReady = true
+        scheduleNow(RADIO_NOW_FIRST_MS)
+    }
+
+    /** Main thread: a client asked the station to play (true) or pause (false). Pause lets go of the stream; play joins it again live. */
+    fun liveToggle(play: Boolean) {
+        if (station == null) return
+        main.removeCallbacks(liveRetry)
+        main.removeCallbacks(liveNowPoll)
+        if (play) {
+            liveAttempt = 0
+            error = ""
+            connectLive()
+            publishState()
+        } else {
+            // The relay is let go (nothing buffers behind the live edge, the server's slot is free); a silent stand-in keeps the
+            // player ready, so the notification and the car keep their Play button.
+            exo.setMediaSource(BookMedia.pausedLive())
+            exo.prepare()
+            exo.playWhenReady = false
+        }
+    }
+
+    /** The stream failed or the relay closed it: try again by the rules, then tell the person once (a busy relay in plain words). */
+    private fun liveBroke(code: Int, retryAfterS: Int) {
+        val wait = liveRetryDelayMs(code, liveAttempt, retryAfterS)
+        if (wait == null) {
+            Log.w(TAG, "station: giving up (code $code)")
+            fail(liveFailureKind(code))
+            return
+        }
+        liveAttempt++
+        Log.i(TAG, "station: trying again in ${wait / 1000} s (code $code)")
+        main.removeCallbacks(liveRetry)
+        main.postDelayed(liveRetry, wait)
+    }
+
+    private fun scheduleNow(delayMs: Long) {
+        main.removeCallbacks(liveNowPoll)
+        main.postDelayed(liveNowPoll, delayMs)
+    }
+
+    /** Asks the server what is on air (the relay strips in-stream titles, so the server is the source), then again in 15 s while it plays. */
+    private fun askNow() {
+        val s = station ?: return
+        if (!exo.playWhenReady) return
+        val conn = connections().current() ?: return
+        io.execute {
+            val text = try {
+                Api(conn.origin).radioNow(conn.token, s.id)
+            } catch (e: Exception) {
+                null
+            }
+            main.post {
+                if (station?.id != s.id) return@post
+                if (text != null) player.setLiveNow(text)
+                if (exo.playWhenReady) scheduleNow(RADIO_NOW_POLL_MS)
+            }
+        }
+    }
+
+    /** A book or episode takes over from a station (or the player is cleared): the timers go and the music focus gives way to speech. */
+    private fun leaveLive() {
+        main.removeCallbacks(liveRetry)
+        main.removeCallbacks(liveNowPoll)
+        if (station != null) exo.setAudioAttributes(SPEECH, true)
+        station = null
+        liveAttempt = 0
+    }
+
+    private fun httpCodeOf(e: PlaybackException): Int {
+        var c: Throwable? = e
+        while (c != null) {
+            if (c is HttpDataSource.InvalidResponseCodeException) return c.responseCode
+            c = c.cause
+        }
+        return 0
+    }
+
+    private fun retryAfterOf(e: PlaybackException): Int {
+        var c: Throwable? = e
+        while (c != null) {
+            if (c is HttpDataSource.InvalidResponseCodeException) {
+                val header = c.headerFields.entries.firstOrNull { it.key.equals("Retry-After", ignoreCase = true) }
+                return header?.value?.firstOrNull()?.trim()?.toIntOrNull() ?: 0
+            }
+            c = c.cause
+        }
+        return 0
+    }
+
     /** Stop, forget the book and the credential (sign-out, switching server). */
     fun stopAndClear() {
         sequence.incrementAndGet()
         onBookChanging?.invoke()
+        leaveLive()
         exo.stop()
         exo.clearMediaItems()
         http.setDefaultRequestProperties(emptyMap())
@@ -388,6 +569,8 @@ class BookEngine(
 
     companion object {
         private const val TAG = "Tendshelf"
+        private val SPEECH = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_SPEECH).build()
+        private val MUSIC = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build()
         const val EXTRA_BOOK = "ts.bookId"
         const val EXTRA_CHAPTER = "ts.chapterIdx"
         const val EXTRA_ERROR = "ts.error"

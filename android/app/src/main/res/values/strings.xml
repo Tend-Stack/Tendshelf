@@ -84,6 +84,11 @@
     <string name="car_podcasts">Podcasts</string>
     <string name="car_podcasts_new">New</string>
     <string name="car_podcasts_shows">Shows</string>
+    <string name="car_radio">Radio</string>
+    <string name="car_radio_stations">Your stations</string>
+    <string name="car_radio_recent">Recently played</string>
+    <string name="radio_live">Live</string>
+    <string name="radio_busy">You already have a station playing, or the server is busy. Try again in a moment.</string>
     <string name="car_sign_in">Open Tendshelf on your phone to sign in.</string>
     <string name="car_no_connection">Can\'t reach your library. Downloaded books still play.</string>
     <string name="car_not_found">I couldn\'t find that book.</string>

@@ -58,4 +58,28 @@ object BookMedia {
         if (doc.mime.startsWith("audio/")) item.setMimeType(doc.mime)
         return ProgressiveMediaSource.Factory(factory, extractors).setLoadErrorHandlingPolicy(RetryPolicy()).createMediaSource(item.build())
     }
+
+    /**
+     * A live station (R3): the server's relay as an endless one-file item. A failure is fatal at once (no load retry), because
+     * the engine owns the retry rules (`liveRetryDelayMs`): a busy relay is tried again a few times, then the person is told.
+     * Nothing seeks or caches: the item has no length, so the player treats it as live.
+     */
+    fun station(id: String, url: String, name: String, network: DataSource.Factory): MediaSource {
+        val item = MediaItem.Builder().setMediaId(id).setUri(url)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(name).setIsPlayable(true).build()).build()
+        return ProgressiveMediaSource.Factory(network, DefaultExtractorsFactory()).setLoadErrorHandlingPolicy(LivePolicy).createMediaSource(item)
+    }
+
+    /**
+     * What stands in the player while a station is paused (R3): the relay is let go so nothing buffers behind the live edge and
+     * the server's slot is free, yet the player stays ready, so the notification and the car keep their Play button.
+     */
+    fun pausedLive(): MediaSource = SilenceMediaSource.Factory().setDurationUs(PAUSED_LIVE_US).createMediaSource()
+
+    private const val PAUSED_LIVE_US = 3_600_000_000L
+
+    private object LivePolicy : androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy() {
+        override fun getMinimumLoadableRetryCount(dataType: Int): Int = 0
+        override fun getRetryDelayMsFor(loadErrorInfo: androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy.LoadErrorInfo): Long = androidx.media3.common.C.TIME_UNSET
+    }
 }

@@ -13,6 +13,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import app.tendshelf.shared.Chapter
 import app.tendshelf.shared.PlayerSettings
 import app.tendshelf.shared.Position
+import app.tendshelf.shared.liveSubtitle
 import app.tendshelf.shared.nextChapterStart
 import app.tendshelf.shared.parseNode
 import app.tendshelf.shared.playableId
@@ -36,6 +37,18 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
 
     /** The episode's own title while an episode is loaded; null for a book. Its chapter shows beside it, never in its place. */
     private var episodeTitle: String? = null
+
+    /**
+     * A live station is loaded (R3): the title is its name, [liveNow] the song on air, and there is nothing to seek, skip or
+     * save. Pause lets go of the stream and play joins it again at the live edge, so both go to [onLiveToggle] (the engine).
+     */
+    private var live = false
+    private var liveNow = ""
+    private var liveWord = ""
+    val isLive: Boolean get() = live
+
+    /** Main thread: a client asked a live station to play (true) or pause (false). */
+    var onLiveToggle: ((Boolean) -> Unit)? = null
 
     /** Set when the wrapped player failed; the next play prepares again from the same place. */
     var failed = false
@@ -83,6 +96,7 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     }
 
     override fun setPlaybackSpeed(speed: Float) {
+        if (live) return // a station plays at its own speed
         traceSpeed("setPlaybackSpeed", speed)
         super.setPlaybackSpeed(speed)
     }
@@ -100,6 +114,22 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
         load(show, "", chapters, settings, art, episode)
     }
 
+    /** A station was loaded (R3). [liveWord] is the word for "live", shown where no song title is known yet. */
+    fun loadStation(name: String, liveWord: String, art: ByteArray?) {
+        load(name, "", emptyList(), settings, art)
+        live = true
+        liveNow = ""
+        this.liveWord = liveWord
+        notifyMetadata()
+    }
+
+    /** The song or show on air, as the server last said; empty when it names none. */
+    fun setLiveNow(text: String) {
+        if (!live || text == liveNow) return
+        liveNow = text
+        notifyMetadata()
+    }
+
     /** Chapters that arrived after the sound started (the server fetches them from the publisher on first use). */
     fun setChapters(list: List<Chapter>) {
         chapters = list
@@ -108,6 +138,7 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
 
     fun load(title: String, author: String, chapters: List<Chapter>, settings: PlayerSettings, art: ByteArray?, episode: String? = null) {
         this.episodeTitle = episode
+        live = false
         this.title = title
         this.author = author
         this.chapters = chapters
@@ -118,6 +149,8 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     }
 
     fun clear() {
+        live = false
+        liveNow = ""
         episodeTitle = null
         chapters = emptyList()
         title = ""
@@ -158,6 +191,14 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     }
 
     override fun getMediaMetadata(): MediaMetadata {
+        if (live) {
+            // A radio station (R3): its name is the title and the song on air the line beneath, as a radio app shows it.
+            val line = liveSubtitle(liveNow, liveWord)
+            val b = MediaMetadata.Builder().setTitle(title).setSubtitle(line).setArtist(line).setAlbumTitle(title)
+                .setIsPlayable(true).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+            art?.let { b.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
+            return b.build()
+        }
         val chapter = Position.chapterAt(chapters, exo.currentPosition)
         val episode = episodeTitle
         val b = MediaMetadata.Builder()
@@ -176,14 +217,32 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
         Player.COMMAND_SEEK_BACK, Player.COMMAND_SEEK_FORWARD, Player.COMMAND_GET_METADATA,
     )
 
-    /** A one-window timeline drops next and previous; a book with chapters has both. */
+    /** What a live item cannot do: no seek bar, no skip, no chapters, no speed (R3). */
+    private val liveBlocked = intArrayOf(
+        Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_PREVIOUS,
+        Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+        Player.COMMAND_SEEK_BACK, Player.COMMAND_SEEK_FORWARD, Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
+        Player.COMMAND_SEEK_TO_MEDIA_ITEM, Player.COMMAND_SEEK_TO_DEFAULT_POSITION, Player.COMMAND_SET_SPEED_AND_PITCH,
+    )
+
+    /** A one-window timeline drops next and previous; a book with chapters has both. A live station has neither, nor a seek. */
     override fun getAvailableCommands(): Player.Commands {
         val base = super.getAvailableCommands()
+        if (live) return base.buildUpon().removeAll(*liveBlocked).build()
         if (exo.mediaItemCount == 0) return base
         return base.buildUpon().addAll(*chapterCommands).build()
     }
 
     override fun isCommandAvailable(command: Int): Boolean = availableCommands.contains(command)
+
+    // A live item has no length and no place (R3).
+    override fun getDuration(): Long = if (live) C.TIME_UNSET else super.getDuration()
+    override fun getCurrentPosition(): Long = if (live) 0 else super.getCurrentPosition()
+    override fun isCurrentMediaItemLive(): Boolean = live || super.isCurrentMediaItemLive()
+    override fun isCurrentMediaItemSeekable(): Boolean = !live && super.isCurrentMediaItemSeekable()
+    override fun seekTo(positionMs: Long) { if (!live) super.seekTo(positionMs) }
+    override fun seekTo(mediaItemIndex: Int, positionMs: Long) { if (!live) super.seekTo(mediaItemIndex, positionMs) }
+    override fun seekToDefaultPosition() { if (!live) super.seekToDefaultPosition() }
 
     override fun seekToNext() = nextChapter()
     override fun seekToNextMediaItem() = nextChapter()
@@ -191,12 +250,14 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     override fun seekToPreviousMediaItem() = previousChapter()
 
     private fun nextChapter() {
+        if (live) return
         val to = nextChapterStart(chapters, exo.currentPosition) ?: return // the last chapter: nothing
         exo.seekTo(to)
         checkChapter()
     }
 
     private fun previousChapter() {
+        if (live) return
         exo.seekTo(previousChapterStart(chapters, exo.currentPosition))
         checkChapter()
     }
@@ -205,11 +266,13 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     override fun getSeekForwardIncrement(): Long = settings.skipForwardS * 1000L
 
     override fun seekBack() {
+        if (live) return
         exo.seekTo((exo.currentPosition - seekBackIncrement).coerceAtLeast(0))
         checkChapter()
     }
 
     override fun seekForward() {
+        if (live) return
         val end = exo.duration
         val to = exo.currentPosition + seekForwardIncrement
         exo.seekTo(if (end != C.TIME_UNSET) to.coerceAtMost(end) else to)
@@ -231,11 +294,27 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     }
 
     override fun play() {
+        if (live) {
+            onLiveToggle?.invoke(true)
+            return
+        }
         resumeIfFailed()
         super.play()
     }
 
+    override fun pause() {
+        if (live) {
+            onLiveToggle?.invoke(false)
+            return
+        }
+        super.pause()
+    }
+
     override fun setPlayWhenReady(playWhenReady: Boolean) {
+        if (live) {
+            onLiveToggle?.invoke(playWhenReady)
+            return
+        }
         if (playWhenReady) resumeIfFailed()
         super.setPlayWhenReady(playWhenReady)
     }

@@ -33,6 +33,9 @@ data class Origin(val scheme: String, val host: String, val port: Int?) {
     /** An episode's page (the widget's tap when an episode plays). [episodeId] must pass [validId]; the caller checks. */
     fun episodeUrl(episodeId: String): String = "$text/?shell=android&next=%2Fpodcasts%2Fepisodes%2F$episodeId"
 
+    /** The radio page (the widget's tap when a station plays): a station has no page of its own, the list is where it is. */
+    fun radioUrl(): String = "$text/?shell=android&next=%2Fradio"
+
     /** The page that signs in and then asks for a code, as A1's flow says: next is the escaped /app/connect path. */
     fun connectUrl(challenge: String): String = "$text/?shell=android&next=%2Fapp%2Fconnect%3Fchallenge%3D$challenge"
 

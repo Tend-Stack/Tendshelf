@@ -109,7 +109,10 @@ class MainActivity : Activity() {
         if ((i.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) return
         val origin = store.origin ?: return
         if (!app.tendshelf.shared.validId(id) || store.current() == null) return
-        web.loadUrl(if (app.tendshelf.shared.isEpisodeId(id)) origin.episodeUrl(id) else origin.bookUrl(id))
+        web.loadUrl(
+            if (app.tendshelf.shared.isStationId(id)) origin.radioUrl()
+            else if (app.tendshelf.shared.isEpisodeId(id)) origin.episodeUrl(id) else origin.bookUrl(id),
+        )
     }
 
     /**
