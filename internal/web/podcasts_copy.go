@@ -104,7 +104,7 @@ const (
 	podNewBadgeOne     = "1 new episode"
 	podNewBadgeMany    = "%d new episodes"
 	podNewBadgeCap     = "99+"
-	podAdminIntro      = "Choose whether people on this server can follow podcasts, and how Tendshelf keeps them. Tendshelf only contacts a show's own website, and OndaCast when someone searches."
+	podAdminIntro      = "Choose whether people on this server can follow podcasts, and how Tendshelf keeps them. Tendshelf only contacts a show's own website, and OndaCast when someone searches. Search results show each show's picture, fetched from its website."
 	podAdminEnabled    = "Let people follow podcasts"
 	podAdminEnabledHnt = "Off hides podcasts from everyone. Nothing is fetched while it is off."
 	podAdminRefresh    = "Check for new episodes"

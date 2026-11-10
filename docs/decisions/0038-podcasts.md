@@ -96,3 +96,16 @@ of point 9 to the service-worker answer list and `/podcasts/...` (other) and `/r
 Fetching feeds through OndaCast (a runtime dependency and a profile of the household on another server); letting the browser or the app
 load enclosures directly (CSP, mixed content, the phone talking to other hosts); a second queue for episodes; reusing `book_settings`
 with fake book ids; storing OndaCast ids as the key.
+
+## Addendum 2026-11-10: pictures of search results
+The operator decided that search results show artwork. A result's picture lives on its publisher's site, which the page's CSP
+(`img-src 'self' data:`) never loads, so the server fetches it and serves it from its own address.
+- When a podcast or radio search answers, each hit's picture address is stored in memory under a random 128-bit key that belongs to the
+  signed-in person and expires after 20 minutes (at most 400 keys). `GET /podcasts/search/art/{key}` and `GET /radio/search/art/{key}`
+  take only that key; an unknown, expired, foreign or wrong-kind key is a 404. The route is not a proxy: no address is ever in a request.
+- The fetch is `podnet.Client.Picture`, the same guarded path the show-art and station-logo jobs use: address checked after DNS, no
+  cookies, fixed User-Agent, 5 MiB cap, JPEG, PNG or WebP decided by the bytes. At most four pictures load at once; a small in-memory cache
+  (40 pictures, 32 MiB, same 20 minutes) means paging back fetches nothing. Nothing is written to disk.
+- Answers carry `Cache-Control: private`, `X-Content-Type-Options: nosniff` and the sniffed image type. The service worker never
+  answers these addresses (they are "other `/podcasts/...`" and `/radio/...` addresses). Following a show still queues its own art job.
+- A failed picture is a 404 and the page keeps its plain tile. Only the owner turning podcasts or radio on makes the routes exist for people.
