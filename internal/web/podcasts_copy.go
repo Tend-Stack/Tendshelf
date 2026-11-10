@@ -136,6 +136,7 @@ const (
 // New in P5.
 const (
 	podMenuFmt         = "More for %s"
+	podMenuNoTitle     = "More options"
 	podQueueUnplayable = "This episode can't be played here."
 	podDownload        = "Download"
 	podAutoSave        = "Save new episodes on the server"

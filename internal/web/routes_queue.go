@@ -416,8 +416,12 @@ func (s *server) postQueueEpisode(w http.ResponseWriter, r *http.Request, id str
 // episodeMenuView is the row menu of an episode (closed): Play next and Add to queue. next is where a plain
 // form returns to.
 func (s *server) episodeMenuView(r *http.Request, id, title, next string) components.EpisodeMenuView {
+	toggle := podMenuNoTitle
+	if title != "" {
+		toggle = fmt.Sprintf(podMenuFmt, title)
+	}
 	return components.EpisodeMenuView{
 		ID: id, CSRF: s.csrf.TokenFrom(r.Context()), Next: next,
-		Toggle: fmt.Sprintf(podMenuFmt, title), PlayNext: queuePlayNext, AddEnd: queueAddEnd,
+		Toggle: toggle, PlayNext: queuePlayNext, AddEnd: queueAddEnd,
 	}
 }

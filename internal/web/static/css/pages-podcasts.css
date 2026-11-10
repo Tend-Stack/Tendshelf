@@ -17,7 +17,8 @@
 /* An episode row: play, the text, then the two small forms. The title takes what is left and clamps at two lines. */
 .ts-eprow { gap: var(--space-8); }
 .ts-eprow__play { flex: none; }
-.ts-eprow .ts-row__main { min-width: 0; }
+.ts-eprow .ts-row__main { min-width: 0; flex: 1 1 6rem; }
+.ts-eprow { flex-wrap: wrap; } /* only at 200% text does the row run out of room: the buttons then take a second line */
 .ts-eprow__title { white-space: normal; overflow-wrap: anywhere; }
 .ts-eprow__new { display: inline-block; margin-right: var(--space-8); padding: 0 var(--space-8); border-radius: var(--radius-control); background: var(--accent-soft); color: var(--ink); font-size: 0.8125rem; line-height: 1.25rem; font-weight: 600; vertical-align: 1px; }
 .ts-eprow__flag { margin: 0; flex: none; }
@@ -122,3 +123,6 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-podimport__status { display: flex; flex-direction: column; gap: var(--space-4); }
 .ts-podimport__status .body { margin: 0; }
 .ts-podimport__failed { color: var(--danger); }
+/* The download pair is drawn by js/downloads.js: the attribute hides what is not the current state. */
+.ts-podep__actions [hidden] { display: none; }
+.ts-eprow__menu { flex: none; }
