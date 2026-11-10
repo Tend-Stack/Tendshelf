@@ -121,16 +121,18 @@ templ RadioSearch(v RadioSearchView) {
 									<span class="ts-row__meta ts-truncate">{ h.Subtitle }</span>
 								}
 							</span>
-							<form method="post" action="/radio/play" class="ts-podhit__follow" hx-boost="false" data-ts-play-slug>
-								<input type="hidden" name="_csrf" value={ v.CSRF }/>
-								<input type="hidden" name="slug" value={ h.Slug }/>
-								<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ h.PlayLabel }>{ v.PlayWord }</button>
-							</form>
-							<form method="post" action="/radio/stations" class="ts-podhit__follow">
-								<input type="hidden" name="_csrf" value={ v.CSRF }/>
-								<input type="hidden" name="slug" value={ h.Slug }/>
-								<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.AddAria + " " + h.Title }>{ v.AddLabel }</button>
-							</form>
+							<span class="ts-podhit__actions">
+								<form method="post" action="/radio/play" class="ts-podhit__follow" hx-boost="false" data-ts-play-slug>
+									<input type="hidden" name="_csrf" value={ v.CSRF }/>
+									<input type="hidden" name="slug" value={ h.Slug }/>
+									<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ h.PlayLabel }>{ v.PlayWord }</button>
+								</form>
+								<form method="post" action="/radio/stations" class="ts-podhit__follow">
+									<input type="hidden" name="_csrf" value={ v.CSRF }/>
+									<input type="hidden" name="slug" value={ h.Slug }/>
+									<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.AddAria + " " + h.Title }>{ v.AddLabel }</button>
+								</form>
+							</span>
 						</li>
 					}
 				</ul>

@@ -46,6 +46,9 @@
 .ts-podhit { border-bottom: 1px solid var(--line); gap: var(--space-12); }
 .ts-podhit .ts-cover { width: 3.5rem; height: 3.5rem; }
 .ts-podhit__follow { margin: 0; flex: none; }
+/* Play and Save stack, so a result row keeps one line of controls even at 200 % text on a phone. */
+.ts-podhit__actions { display: flex; flex-direction: column; gap: var(--space-8); flex: none; }
+.ts-podhit__actions .ts-btn { width: 100%; justify-content: center; }
 .ts-podsearch__none { margin: 0; color: var(--ink-muted); }
 .ts-podsearch__summary { min-height: var(--size-tap); display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); cursor: pointer; font-weight: 600; list-style: none; }
 .ts-podsearch__summary::-webkit-details-marker { display: none; }
