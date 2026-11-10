@@ -30,6 +30,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 ### Fixed
 
 - **Chapters, the bookmark and the chapter ticks come back after a podcast episode.** After you had played an episode, the full player kept the episode's layout for the next book until a reload, so Chapters and the bookmark were missing.
+- On a wide screen the bar's Chapters, Speed and Sleep buttons close their list when pressed again, besides the X on the list.
 - **The rail and sidebar stay still on short pages.** Opening Search, Downloads or Shelves made the navigation move a few pixels up and back when the page had little on it.
 - A popular show you already follow by its feed address is no longer suggested again (matched by its title).
 - **Pages no longer blink and jump a moment after they appear.** Moving to another page drew it once, then about a quarter of a second later made it vanish and rise in again from a few pixels lower; now the rise-in starts with the first frame of the new page.

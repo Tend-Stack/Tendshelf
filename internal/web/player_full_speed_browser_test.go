@@ -302,3 +302,33 @@ func sleepOpenSel(tab *cdp.Tab) string {
 	}
 	return "[data-ts-open-sleep]"
 }
+
+// TestBarToolClosesItsSheet: on a wide screen the bar's Chapters button opens the list, and pressed again
+// closes it (operator, 2026-11-10); another bar tool switches to its own sheet.
+func TestBarToolClosesItsSheet(t *testing.T) {
+	e := nowPanelEnv(t)
+	wide := fullpOpen(t, e, 1440, 900, false)
+	const chaptersShown = `!document.querySelector("#player-full [data-ts-chapters-sheet]").hidden`
+	playerClickSel(t, wide, "[data-ts-bar-chapters]")
+	wide.WaitFor(chaptersShown, 3*time.Second)
+	playerClickSel(t, wide, "[data-ts-bar-chapters]")
+	var state struct {
+		Shown, Focused bool
+	}
+	wide.Eval(`({Shown: `+chaptersShown+`, Focused: document.activeElement === document.querySelector("[data-ts-bar-chapters]")})`, &state)
+	if state.Shown {
+		t.Fatal("the second press on the bar's Chapters button left the list open")
+	}
+	if !state.Focused {
+		t.Error("focus did not return to the bar's Chapters button")
+	}
+	playerClickSel(t, wide, "[data-ts-bar-chapters]")
+	wide.WaitFor(chaptersShown, 3*time.Second)
+	playerClickSel(t, wide, "[data-ts-bar-speed]")
+	speedWaitSheet(wide, speedSheetSel)
+	var both bool
+	wide.Eval(chaptersShown, &both)
+	if both {
+		t.Error("Chapters stayed open under the Speed sheet")
+	}
+}

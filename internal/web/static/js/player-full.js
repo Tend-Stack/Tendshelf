@@ -628,6 +628,14 @@ function closeSheet(restoreFocus) {
   sheetOpener = null;
 }
 
+// A bar tool opens its sheet, and pressed again closes it (the sheet's own X still does too). With another
+// sheet open it switches to its own.
+function toggleSheet(name, from) {
+  const wasOpen = openName;
+  if (wasOpen) closeSheet(wasOpen === name);
+  if (wasOpen !== name) openSheet(name, from);
+}
+
 // Up and Down move between the choices of a sheet; Enter and Space choose (they are buttons).
 for (const group of dialog.querySelectorAll(".ts-options")) {
   group.addEventListener("keydown", (event) => {
@@ -1096,9 +1104,9 @@ const actions = {
 // chapters), add a bookmark, toggle the panel and open the volume slider.
 slot.addEventListener("click", (event) => {
   const hit = (name) => event.target.closest("[data-ts-bar-" + name + "]");
-  if (hit("speed")) openSheet("speed", bar.speed);
-  else if (hit("sleep")) openSheet("sleep", bar.sleep);
-  else if (hit("chapters")) openSheet("chapters", bar.chapters);
+  if (hit("speed")) toggleSheet("speed", bar.speed);
+  else if (hit("sleep")) toggleSheet("sleep", bar.sleep);
+  else if (hit("chapters")) toggleSheet("chapters", bar.chapters);
   else if (hit("bookmark")) addBookmark();
   else if (hit("expand")) (dialog.open ? closePlayer : openPlayer)();
 });
