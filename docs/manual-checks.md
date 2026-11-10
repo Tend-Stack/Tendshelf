@@ -4,6 +4,26 @@ Checks that need a real device. Automated tests cover the rest; this file is for
 browser cannot say (touch feel, one-handed reach, the lock screen, shake, the phone's own audio rules).
 Run a check, write what you saw in the Result column, and date it under the table.
 
+## Still open before 2026.8.2 (index, 2026-11-10)
+
+Each line names the section below that holds the rows. Nothing here blocks the server release; these are
+the checks only a person with the device can make.
+
+- **iPhone Safari**: "M3a offline pocket" (the iOS Safari rows) and "M5 book reader: WebKit and phone (RD4)".
+- **Screen readers** (Orca, TalkBack, VoiceOver): "M3c keyboard and screen reader".
+- **Desktop app on your own computer**: "Desktop app on your own computer (X4 to X6)" and "Desktop media
+  keys and tray (M6 D5)".
+- **Android phone**: "Android Auto (A8)", "Android app" (the widget, automatic downloads, PA2-5 and RA-1
+  again), "L8: the next book is ready on the phone".
+- **Sign-in with a real provider**: "S7 sign-in with a provider".
+- **Radio**: "Radio on the web": RW-1 to RW-3, and RH-1 and RH-2 for an HLS station (so far proven only
+  against a simulated station).
+- **Chapters in MP3 episodes** (ID3 chapter frames): play an MP3 episode whose publisher puts chapters in
+  the file and has no chapters address; the chapter list should appear. Proven so far on generated files.
+- **First use of Podcasts and Radio**: on a server where neither is on, open Podcasts, press Turn on, and
+  see the Podcasts page with Popular shows without reloading. Tried 2026-11-10 on a throwaway server in an
+  embedded browser pane, which does not finish page transitions, so the last step was seen only after a reload.
+
 ## P1c player: one-handed phone check
 
 **Setup.** Start the server so the phone can reach it: `tendshelf -addr 0.0.0.0:8095` on the same Wi-Fi
