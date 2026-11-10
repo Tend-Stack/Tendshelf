@@ -17,6 +17,12 @@ sealed interface Node {
     object PodcastShows : Node
     data class Show(val id: String) : Node
     data class Episode(val id: String) : Node
+
+    /** Radio (R3): a folder of two, Your stations and Recently played, and the stations as leaves. */
+    object Radio : Node
+    object RadioStations : Node
+    object RadioRecent : Node
+    data class Station(val id: String) : Node
 }
 
 /** The node a media id names, or null for anything else (a bad id is an error, never a guess). */
@@ -30,11 +36,15 @@ fun parseNode(id: String): Node? = when (id) {
     "podcasts-new" -> Node.PodcastNew
     "podcasts-downloaded" -> Node.PodcastDownloaded
     "podcasts-shows" -> Node.PodcastShows
+    "radio" -> Node.Radio
+    "radio-stations" -> Node.RadioStations
+    "radio-recent" -> Node.RadioRecent
     else -> when {
         id.startsWith("shelf:") -> id.removePrefix("shelf:").takeIf(::validId)?.let { Node.Shelf(it) }
         id.startsWith("book:") -> id.removePrefix("book:").takeIf(::validId)?.let { Node.Book(it) }
         id.startsWith("show:") -> id.removePrefix("show:").takeIf(::validId)?.let { Node.Show(it) }
         id.startsWith("episode:") -> id.removePrefix("episode:").takeIf { validId(it) && isEpisodeId(it) }?.let { Node.Episode(it) }
+        id.startsWith("station:") -> id.removePrefix("station:").takeIf { validId(it) && isStationId(it) }?.let { Node.Station(it) }
         else -> null
     }
 }
@@ -53,12 +63,17 @@ fun nodeId(n: Node): String = when (n) {
     Node.PodcastShows -> "podcasts-shows"
     is Node.Show -> "show:${n.id}"
     is Node.Episode -> "episode:${n.id}"
+    Node.Radio -> "radio"
+    Node.RadioStations -> "radio-stations"
+    Node.RadioRecent -> "radio-recent"
+    is Node.Station -> "station:${n.id}"
 }
 
 /** The id the engine starts for a node that plays (a book, or an episode), or null for a folder. */
 fun playableId(n: Node?): String? = when (n) {
     is Node.Book -> n.id
     is Node.Episode -> n.id
+    is Node.Station -> n.id
     else -> null
 }
 

@@ -65,6 +65,21 @@ class ApiPaths(server: String) {
         return base + path + if (width > 0) "?w=$width" else ""
     }
 
+    // ---- Radio (R3). The live address is the server's own relay; the app never contacts a station. ----
+
+    fun liveUrl(stationId: String): String = "$base/api/v1/radio/live/${segment(stationId)}"
+    val radioStationsUrl: String get() = "$base/api/v1/radio/stations"
+    val radioRecentUrl: String get() = "$base/api/v1/radio/recent"
+    fun radioNowUrl(stationId: String): String = "$base/api/v1/radio/now/${segment(stationId)}"
+    fun radioArtUrl(stationId: String): String = "$base/api/v1/radio/art/${segment(stationId)}"
+
+    /** A station picture the server names in a list: only a path under its own radio routes, never another host or a query. */
+    fun radioUrl(path: String): String? {
+        if (!path.startsWith("/api/v1/radio/") || path.contains("..")) return null
+        if (path.any { it == '#' || it == '?' || it == '\\' || it.isWhitespace() }) return null
+        return base + path
+    }
+
     /** The page the WebView opens: the shell mark makes the server treat the visitor as the Android app. */
     val shellUrl: String get() = "$base/?shell=android&next=/"
 

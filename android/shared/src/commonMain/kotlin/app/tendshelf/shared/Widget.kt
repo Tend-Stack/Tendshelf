@@ -17,6 +17,8 @@ data class WidgetInput(
     val skipForwardS: Int,
     /** The show's name while an episode plays (the title is then the episode's); empty for a book. */
     val show: String = "",
+    /** A live station plays (R3): the title is its name, [show] the word "Live", and there is nothing to skip. */
+    val live: Boolean = false,
 )
 
 /** What to draw. [skipBackS] and [skipForwardS] are always positive, for the buttons' spoken labels. */
@@ -64,7 +66,7 @@ fun widgetLook(input: WidgetInput, widthDp: Int, heightDp: Int): WidgetLook {
         chapter = chapter,
         showCover = widthDp >= WIDGET_COVER_MIN_WIDTH_DP,
         showChapter = hasChapter && widthDp >= WIDGET_CHAPTER_MIN_WIDTH_DP && heightDp >= WIDGET_CHAPTER_MIN_HEIGHT_DP,
-        showSkip = widthDp >= WIDGET_SKIP_MIN_WIDTH_DP,
+        showSkip = !input.live && widthDp >= WIDGET_SKIP_MIN_WIDTH_DP,
         playing = input.playing,
         skipBackS = back,
         skipForwardS = forward,
