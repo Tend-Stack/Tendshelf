@@ -32,7 +32,6 @@ func radioBrowserWorld(t *testing.T, name string) (w *radioWorld, id, base strin
 	return w, id, srv.URL
 }
 
-
 // TestRadioLivePlayer: a station plays in the real player. The Live badge shows, there is no scrubber, skip or speed, the
 // title playing now comes from the stream, the Media Session names the station and the title, a pause lets go of the stream
 // and Play joins a new one at the live edge, and the sleep timer still stops it.
