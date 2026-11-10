@@ -109,3 +109,9 @@ The operator decided that search results show artwork. A result's picture lives 
 - Answers carry `Cache-Control: private`, `X-Content-Type-Options: nosniff` and the sniffed image type. The service worker never
   answers these addresses (they are "other `/podcasts/...`" and `/radio/...` addresses). Following a show still queues its own art job.
 - A failed picture is a 404 and the page keeps its plain tile. Only the owner turning podcasts or radio on makes the routes exist for people.
+
+## Addendum 2026-11-10: first use and starter lists
+
+- While the owner has turned neither podcasts nor radio on, the Podcasts item is drawn for every signed-in member and every podcasts or radio page address shows an onboarding page. It says what the features give and what turning them on does on the network. The owner gets two ticked checkboxes and a Turn on button (`POST /podcasts/start`, owner only, it only switches things on); everyone else is told the owner can turn it on in Settings. No outbound request happens before Turn on.
+- Starter lists are suggestions only: nothing is followed, saved or fetched from a publisher until the person taps. The show list (`internal/metadata/online/podnet/starter_shows.json`, 25 entries, true crime first) is curated by the project, not a chart. Following one resolves its feed through `PodcastFeedURL` at that moment.
+- Opening Radio (with no saved station) or the station search before a search asks ondacast.com for its popular stations (`GET /api/v2/stations?sort=popular`, no account, no identifiers; kept an hour, a failure remembered for five minutes). Stations with a non-https stream or an HLS playlist are left out until HLS lands (decision 0039). Suggested artwork goes through the guarded search-art route.

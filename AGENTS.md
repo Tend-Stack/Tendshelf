@@ -131,7 +131,7 @@ was reused, extended or replaced.
   scheduled refresh only when the owner picks an interval fetch the publishers' feeds; playing, downloading or auto-downloading an
   episode fetches its audio, artwork and chapters; playing a station fetches its stream; showing search results fetches each result's
   picture from its publisher through the guarded client, only when podcasts or radio is on, and the server serves it from its own
-  address under a key that belongs to the person who searched (decision 0038, addendum 2026-11-10). Every podcast and radio connection is checked
+  address under a key that belongs to the person who searched (decision 0038, addendum 2026-11-10); opening Radio asks ondacast.com for its popular stations (no account, no identifiers), and the pictures of the suggested shows and stations are fetched like search artwork, only when podcasts or radio is on (the suggested show list is curated by the project and embedded in the binary, not a chart). Every podcast and radio connection is checked
   after DNS and refused for private, loopback, link-local and CGNAT addresses, sends no cookies, and carries a fixed User-Agent. These
   two are the only server packages that create an `http.Client`, besides `internal/auth/oidc`, which talks only to the configured
   sign-in provider when someone signs in with it (decision 0037). The one other outbound connection is the admin-configured SMTP
