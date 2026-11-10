@@ -123,7 +123,7 @@ func (s *server) getEpisodeAudio(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodHead {
 		return
 	}
-	_, _ = io.Copy(w, up.Body)
+	_ = relayCopy(w, up.Body, false)
 }
 
 // audioMime is the type to answer when the publisher gave none: the feed's, else a generic audio type.

@@ -218,12 +218,12 @@ func (s *server) getPodcastSearch(w http.ResponseWriter, r *http.Request) {
 		AddTitle: podAddByRSS, AddHint: podPasteRSS, AddLabel: podRSSLabel, ResultsLabel: podResultsLabel,
 	}
 	if q != "" {
-		if ok, wait := s.podLim.search.Allow(u.ID); !ok {
+		if !s.podLim.search.Take(u.ID) { // each search counts once
+			_, wait := s.podLim.search.Allow(u.ID)
 			w.Header().Set("Retry-After", strconv.Itoa(int(wait/time.Second)+1))
 			s.refuseSetting(w, r, http.StatusTooManyRequests, podErrBusy)
 			return
 		}
-		s.podLim.search.Fail(u.ID) // each search counts once
 		v.Searched = true
 		hits, err := s.podcasts.Net.Search(r.Context(), q, "podcasts", 20)
 		if err != nil {

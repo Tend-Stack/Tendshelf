@@ -161,9 +161,16 @@ func (c *Client) OpenLive(ctx context.Context, rawURL string) (*Upstream, int, e
 	if err != nil {
 		return nil, 0, err
 	}
-	metaint, _ := strconv.Atoi(resp.Header.Get("Icy-Metaint"))
-	if metaint < 0 || metaint > 1<<20 {
-		metaint = 0
+	metaint := 0
+	if v := resp.Header.Get("Icy-Metaint"); v != "" {
+		// A station that names a block size outside the bound is not speaking the protocol; passing its
+		// bytes through would put title blocks into the audio.
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 || n > 1<<20 {
+			up.Body.Close()
+			return nil, 0, &Error{Code: "bad_answer"}
+		}
+		metaint = n
 	}
 	return up, metaint, nil
 }
