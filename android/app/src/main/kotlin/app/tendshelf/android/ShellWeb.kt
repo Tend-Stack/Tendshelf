@@ -69,7 +69,7 @@ object ShellWeb {
                     is Nav.Connect -> f.onAddress(nav.address)
                     is Nav.Link -> f.onLink(nav.text)
                     // The bundled Downloads page and its rows (A7): the activity acts, the WebView stays where it is.
-                    Nav.Downloads, is Nav.PlayBook, is Nav.RemoveBook, Nav.TogglePlay -> onApp(nav)
+                    Nav.Downloads, is Nav.PlayBook, is Nav.RemoveBook, is Nav.AutoShow, Nav.TogglePlay -> onApp(nav)
                 }
                 return true
             }

@@ -99,12 +99,22 @@ class NavigationTest {
     @Test
     fun bundledCommandsAreObeyedOnlyFromABundledMainFrame() {
         val b = "https://appassets.androidplatform.net"
-        for (path in listOf("/connect?address=evil.example", "/remove?id=x", "/play?id=x", "/toggle", "/start", "/link?link=https%3A%2F%2Fevil.example%2Finvite%2Fx")) {
+        for (path in listOf("/connect?address=evil.example", "/remove?id=x", "/play?id=x", "/autoshow?id=ps_1&on=1", "/toggle", "/start", "/link?link=https%3A%2F%2Fevil.example%2Finvite%2Fx")) {
             assertEquals(Nav.Block, decide(b + path, true, good, false, false), "from a book page: $path")
             assertEquals(Nav.Block, decide(b + path, false, good, false, true), "subframe: $path")
         }
         assertEquals(Nav.RemoveBook("x"), decide("$b/remove?id=x", true, good, false, true))
         assertEquals(Nav.External, decide("https://example.org/", true, good, false, false), "an outside link opens the browser")
+    }
+
+    @Test
+    fun theDownloadsPageSwitchesAShowOnAndOff() {
+        val b = "https://appassets.androidplatform.net"
+        assertEquals(Nav.AutoShow("ps_1", true), decide("$b/autoshow?id=ps_1&on=1", true, good, false, true))
+        assertEquals(Nav.AutoShow("ps_1", false), decide("$b/autoshow?id=ps_1&on=0", true, good, false, true))
+        assertEquals(Nav.Block, decide("$b/autoshow?id=ps_1&on=2", true, good, false, true))
+        assertEquals(Nav.Block, decide("$b/autoshow?id=a%2Fb&on=1", true, good, false, true))
+        assertEquals(Nav.PlayBook("pe_abc"), decide("$b/play?id=pe_abc", true, good, false, true), "an episode plays like a book")
     }
 
     @Test

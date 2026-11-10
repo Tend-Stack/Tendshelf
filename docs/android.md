@@ -137,9 +137,8 @@ chapters, skip rules, batch body) is `android/shared/.../Podcast.kt`.
 Places use the same outbox as books (rows keyed by the `pe_` id, same merging and `finished` rows). `Api.batch` sends book rows to
 `/api/v1/progress/batch` and episode rows to `/api/v1/podcasts/progress/batch` (with the device id, no speed or listening time) and
 puts the answers back in order; a group that fails settles only the rows before it; a 404 (podcasts off) drops the episode rows. The
-sleep word `episode` ends the timer at the end of the item. Left for later: the mixed queue after an episode (P5; the hook is the
-`TODO(P5)` in `PlaybackService`), the "continue on another device?" question for episodes (the episode state names no device),
-downloads and auto-download (A2).
+sleep word `episode` ends the timer at the end of the item. Left for later: the "continue on another device?" question for episodes
+(the episode state names no device). The mixed queue and downloads came with A2 (below).
 
 ## Podcasts in the car, the widget and the media button (A3, decision 0038)
 
@@ -148,15 +147,15 @@ downloads and auto-download (A2).
 `EpisodeCard`, read from `GET /api/v1/podcasts`, `/podcasts/new` and `/podcasts/shows/{id}/episodes?limit=50`; withdrawn `gone` episodes
 are left out), the row text and Auto's completion status, and the row actions. `LibraryTree` (app) puts **Podcasts** as the first row
 of the Shelves tab, only when the server answers the shows list (podcasts on): Android Auto shows four tabs, so a fifth would be dropped.
-Podcasts holds New, Downloaded (empty until A2) and Shows; a show opens its newest 50 episodes. Artwork goes through the server:
+Podcasts holds New, Downloaded (A2: the downloaded episodes, newest first; the top-level Downloaded tab lists them too, because it works with no connection) and Shows; a show opens its newest 50 episodes. Artwork goes through the server:
 `content://app.tendshelf.android.covers/<showId>` (`CoverProvider` fetches `/api/v1/podcasts/art/{id}?w=512` for an id starting `ps_`
 and caches it once per show). Episode ids are saved as `LAST_BOOK`, so a media button with nothing loaded resumes the episode.
 
 Row actions: the session lists four command buttons (`setCommandButtonsForMediaItems`); each episode item names those it supports
 (played or unplayed, star or unstar, by its state). A browsing controller's custom command carries the item's media id
 (`MediaConstants.EXTRA_KEY_MEDIA_ID`), which must parse as an episode; `LibraryTree.act` posts `{"played":bool}` to
-`/podcasts/episodes/{id}/played` or `{"on":bool}` to `/favourite`. Not offered: Download (A2) and Play next (the queue API takes
-books only; it comes with the mixed queue). Row actions inside the WebView pages need web markup (the WebView has no native long-press
+`/podcasts/episodes/{id}/played` or `{"on":bool}` to `/favourite`. A2 adds **Play next** (`POST /api/v1/queue` with
+`{"episodeId","where":"next"}`). Download is not offered in the car. Row actions inside the WebView pages need web markup (the WebView has no native long-press
 menu for a page's rows); the web rows already carry played and star buttons.
 
 The widget (`WidgetState.show`, `WidgetInput.show`) shows the episode's title, the show beneath it and the show's picture; Play,
@@ -216,3 +215,37 @@ helpers that keep org.json's rules (coercions, defaults, "null" read as text), `
 `StoredJson.kt` holds the kept settings, the text manifest and the stored-text index (`TextIndex`); strings written by
 earlier app versions are fixtures in `StoredJsonTest`. The app no longer uses org.json. Writers stay hand-built strings
 (`jsonString`) so the bytes are unchanged. Tests run with `:shared:jvmTest`.
+
+## Podcast downloads, auto-download and the mixed queue (A2, decision 0038)
+
+**Rows.** `offline_books` (outbox.db version 4) gains `kind` (`book` default, `episode`), `show_id`, `published_at` and `played`; an episode row is keyed
+by its `pe_` id, `author` holds the show's name, and the `manifest` column holds the playback document, so an episode starts with no network. The
+show's picture is kept as the row's cover and the chapters file under `offline/chapters/<id>`. `OfflineBook` in `android/shared` has the same fields
+with defaults, so book code did not change.
+
+**Download.** The episode page's button is the book page's (`data-ts-download`), so `native-downloads.js` and the `dl add|remove|ask` bridge words
+work unchanged (`validId` accepts `pe_`). `Offline.add` hands an episode to `Offline.addEpisode`: it fetches the playback document, applies
+`episodePlan` (room only; the feed's `bytes` is often wrong), keeps the picture and chapters, and queues one Media3 download of
+`GET /api/v1/podcasts/audio/{id}?download=1` with cache key = the episode id and no planned size. Resuming after a drop is Media3's: the cache holds
+the bytes and the next request carries a `Range`; a publisher with no length is judged by `episodeFileComplete` (the length is then written into the
+cache so offline play never asks for the end of it). When the file is whole the row's size becomes the real size. One request id per episode, so a
+second press or a second sync never makes a second file. `BookEngine.startDownloadedEpisode` plays it from the cache (`BookMedia.episode(...,
+downloaded = true)`), with the stored document, settings, picture, chapters and the newest offline place. Saves go through the outbox as before.
+
+**Download new episodes on this phone.** Per show, kept on the phone (`EpisodeAuto`, prefs `episodeauto`), switched on the Downloads page
+(`/autoshow?id=&on=` is a bundled-page command, `Nav.AutoShow`; no web page changed). A check (`EpisodeAuto.sync`) asks only this server: the shows
+(`GET /api/v1/podcasts`, with each `settings.keepLatest`) and each chosen show's newest 50 episodes. `autoEpisodeWanted` picks the newest N unplayed
+ones the phone does not have and the person did not remove; they are queued held (`AUTO_HOLD`) and released only on an unmetered network, under the
+quota shared with the next-book download (`AUTO_TOTAL_BYTES` over both mark sets; `AUTO_SPARE_BYTES` left free). `autoEpisodeEvictions` removes
+played ones, those beyond the latest N and the oldest over the quota; it only ever names ids in the episode marks, so a person's own download and every
+book are untouched. Removing an automatic episode by hand records it in a declined list, so it is not fetched again. Turning a show off drops what is
+unfinished and keeps what is whole (it becomes the person's own). The check runs when the app comes to the front, at most hourly while something plays, and in
+`EpisodeWorker`: a `androidx.work` periodic job (6 hours, unmetered, battery not low) scheduled only while some show has the choice on and cancelled when none
+has or at sign-out. The job runs the check and then `Offline.runHeadless`, which resumes the held downloads in the manager itself (the system refuses to start
+a data-sync service from the background) for up to 8 minutes, re-checking the Wi-Fi rule every second; what is left continues by range at the next run.
+A new unplayed episode that an earlier check had not seen raises one notification (channel "New episodes"; the first look at a show only learns what is there).
+
+**Queue.** `GET|POST /api/v1/queue/next` are asked with `kinds=book,episode`; `ApiJson.nextItemId` reads either answer, and `NextBook` starts whatever
+comes (`engine.start` knows both). The remembered next item (`autoNext`) may be an episode; `AutoNext` makes it ready on Wi-Fi like a book. Limits: the
+car's rows for downloaded episodes take their picture from the server, so they have none offline; the periodic job's real behaviour under Doze and a
+data-saver was not measured on a device.

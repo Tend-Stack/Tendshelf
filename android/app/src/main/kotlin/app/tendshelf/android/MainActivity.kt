@@ -156,6 +156,7 @@ class MainActivity : Activity() {
         visible = false
         remote?.pageVisible(false)
         bridge.onStop()
+        Offline.onBackground()
         super.onStop()
     }
 
@@ -192,7 +193,8 @@ class MainActivity : Activity() {
     private fun onApp(nav: app.tendshelf.shared.Nav) {
         val r = remote
         when (nav) {
-            app.tendshelf.shared.Nav.Downloads -> {}
+            app.tendshelf.shared.Nav.Downloads -> Offline.io { if (EpisodeAuto.refreshShows()) runOnUiThread { web.loadUrl(pages.downloadsUrl) } }
+            is app.tendshelf.shared.Nav.AutoShow -> EpisodeAuto.setShow(nav.showId, nav.on)
             is app.tendshelf.shared.Nav.PlayBook -> r?.start(nav.bookId, null)
             app.tendshelf.shared.Nav.TogglePlay -> if (r?.snapshot()?.playing == true) r.pause() else r?.play()
             is app.tendshelf.shared.Nav.RemoveBook -> {

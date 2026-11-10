@@ -33,6 +33,7 @@ class AutoNext {
         lastTick = now
         // Holds and releases follow the network and the switch even when this book is not near its end.
         Offline.io { Offline.autoSync() }
+        EpisodeAuto.syncSoon() // at most once an hour; only while some show asks for downloads
         when (autoStep(Offline.loadSettings().autoDownload, nearEnd(positionMs, durationMs), Offline.unmetered(), if (asked == book) now - askedAt else null)) {
             AutoStep.WANT -> Offline.autoWant(book)
             AutoStep.ASK -> {

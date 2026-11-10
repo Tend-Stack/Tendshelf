@@ -124,6 +124,7 @@ class StartPages(private val context: Context) {
         }
         section(list, context.getString(R.string.downloads_active), active, playingId, playing)
         section(list, context.getString(R.string.downloads_ready), ready, playingId, playing)
+        shows(list)
         val noRoom = if (Offline.autoNoRoomNoted()) "<p class=\"start__note\" role=\"status\">${esc(context.getString(R.string.downloads_auto_no_room))}</p>" else ""
         val note = noRoom + if (!offline) "" else
             "<p class=\"start__note\" role=\"status\">${esc(context.getString(R.string.offline_title))}. ${esc(context.getString(R.string.offline_body))}</p>" +
@@ -138,6 +139,24 @@ class StartPages(private val context: Context) {
             "HOMEURL" to esc(homeUrl.ifEmpty { startUrl }),
             "REFRESH" to if (active.any { it.state == OfflineState.DOWNLOADING || it.state == OfflineState.QUEUED }) "<meta http-equiv=\"refresh\" content=\"2\">" else "",
         )
+    }
+
+    /** "Podcasts on this phone" (A2): one row per followed show with its on/off link; the choice is kept on the phone only. */
+    private fun shows(out: StringBuilder) {
+        val known = EpisodeAuto.knownShows()
+        if (known.isEmpty()) return
+        val on = EpisodeAuto.enabled()
+        out.append("<h2>${esc(context.getString(R.string.downloads_podcasts))}</h2>")
+        out.append("<p class=\"start__note\">${esc(context.getString(R.string.downloads_podcasts_lead))}</p><ul class=\"dl__list\">")
+        for (s in known) {
+            if (!validId(s.id)) continue
+            val enabled = s.id in on
+            val meta = if (enabled) context.getString(R.string.downloads_podcast_on_row, s.keepLatest) else context.getString(R.string.downloads_podcast_off_row)
+            val label = context.getString(if (enabled) R.string.downloads_podcast_turn_off else R.string.downloads_podcast_turn_on)
+            out.append("<li class=\"ts-row dl__row\"><span class=\"ts-row__text\"><span class=\"ts-row__title\">${esc(s.title)}</span><span class=\"ts-row__meta\">${esc(meta)}</span></span>")
+            out.append("<span class=\"dl__actions\"><a class=\"ts-btn ts-btn--${if (enabled) "quiet" else "secondary"}\" href=\"/autoshow?id=${esc(s.id)}&amp;on=${if (enabled) 0 else 1}\">${esc(label)}</a></span></li>")
+        }
+        out.append("</ul>")
     }
 
     private fun section(out: StringBuilder, heading: String, books: List<OfflineBook>, playingId: String, playing: Boolean) {

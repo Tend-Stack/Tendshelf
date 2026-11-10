@@ -222,7 +222,7 @@ class OfflineTest {
 
     @Test
     fun l8PeekUrl() {
-        assertEquals("http://10.0.2.2:8103/api/v1/queue/next?ended=bk1", paths.queuePeekUrl("bk1"))
+        assertEquals("http://10.0.2.2:8103/api/v1/queue/next?ended=bk1&kinds=book,episode", paths.queuePeekUrl("bk1"))
         assertTrue(runCatching { paths.queuePeekUrl("a/b") }.isFailure)
         assertTrue(runCatching { paths.queuePeekUrl("") }.isFailure)
     }

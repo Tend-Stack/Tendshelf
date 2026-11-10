@@ -3,7 +3,15 @@ package app.tendshelf.shared
 /** Where a downloaded book stands. The lowercase name is what the page is told. */
 enum class OfflineState { QUEUED, DOWNLOADING, PAUSED, READY, FAILED, STALE }
 
-/** One downloaded book as the list shows it. Times are Unix milliseconds. */
+/** What an [OfflineBook] row holds: an audiobook or ebook (the default), or a podcast episode (A2, decision 0038). */
+const val KIND_BOOK = "book"
+const val KIND_EPISODE = "episode"
+
+/**
+ * One downloaded book (or episode) as the list shows it. Times are Unix milliseconds. For an episode [bookId] is the
+ * `pe_` id, [author] the show's name, [showId] the show and [publishedAt] the feed's date; [played] is set once the
+ * episode was played to the end (here or on the server), which is what "remove after played" waits for.
+ */
 data class OfflineBook(
     val bookId: String,
     val userId: String,
@@ -14,6 +22,10 @@ data class OfflineBook(
     val state: OfflineState,
     val placeMs: Long,
     val placeAt: Long,
+    val kind: String = KIND_BOOK,
+    val showId: String = "",
+    val publishedAt: Long = 0,
+    val played: Boolean = false,
 )
 
 /** Where the downloaded books live (Android: `outbox.db`, table `offline_books`). Covers are files, never rows. */
@@ -28,6 +40,12 @@ interface OfflineStore {
 
     /** The place a listener reached offline; the outbox deletes its rows once sent, this stays. */
     fun notePlace(id: String, ms: Long, at: Long)
+
+    /** An episode was played to the end (or the server says so): the row stays until the auto rules remove it. */
+    fun setPlayed(id: String, played: Boolean)
+
+    /** The honest size of a finished download, learned from the bytes that arrived (a feed's announced size is often wrong). */
+    fun setSize(id: String, bytes: Long)
     fun remove(id: String)
     fun clear()
 }

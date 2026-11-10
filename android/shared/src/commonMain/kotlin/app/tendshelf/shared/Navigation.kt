@@ -29,6 +29,9 @@ sealed interface Nav {
     /** The bundled Downloads page: remove this book from the phone. */
     data class RemoveBook(val bookId: String) : Nav
 
+    /** The bundled Downloads page (A2): "Download new episodes on this phone" for one show, on or off. */
+    data class AutoShow(val showId: String, val on: Boolean) : Nav
+
     /** The bundled Downloads page: pause or resume the playing book. */
     object TogglePlay : Nav
 }
@@ -51,6 +54,11 @@ fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolea
         if (u.path == "/connect") return Nav.Connect(queryParam(u.query, "address") ?: "")
         if (u.path == "/link") return Nav.Link(queryParam(u.query, "link") ?: "")
         if (u.path == "/toggle") return Nav.TogglePlay
+        if (u.path == "/autoshow") {
+            val id = queryParam(u.query, "id")?.takeIf { validId(it) } ?: return Nav.Block
+            val on = queryParam(u.query, "on")
+            return if (on == "1" || on == "0") Nav.AutoShow(id, on == "1") else Nav.Block
+        }
         if (u.path == "/play" || u.path == "/remove") {
             // An id outside the bridge's charset is refused, never loaded (A7).
             val id = queryParam(u.query, "id")?.takeIf { validId(it) } ?: return Nav.Block

@@ -69,13 +69,14 @@ class PodcastTreeTest {
     @Test
     fun actionsFollowTheRowsState() {
         val rows = PodcastJson.episodeCards(feed)
-        assertEquals(listOf(EpisodeAction.PLAYED, EpisodeAction.UNSTAR), episodeActions(rows[0]))
-        assertEquals(listOf(EpisodeAction.UNPLAYED, EpisodeAction.STAR), episodeActions(rows[1]))
+        assertEquals(listOf(EpisodeAction.PLAYED, EpisodeAction.UNSTAR, EpisodeAction.PLAY_NEXT), episodeActions(rows[0]))
+        assertEquals(listOf(EpisodeAction.UNPLAYED, EpisodeAction.STAR, EpisodeAction.PLAY_NEXT), episodeActions(rows[1]))
         assertEquals("{\"played\":false}", episodeActionBody(EpisodeAction.UNPLAYED))
         assertEquals("{\"on\":true}", episodeActionBody(EpisodeAction.STAR))
         assertEquals(EpisodeAction.UNSTAR, episodeActionOf("unstar"))
-        assertNull(episodeActionOf("download")) // not offered until A2
-        assertNull(episodeActionOf("next")) // nor Play next until the queue knows episodes
+        assertNull(episodeActionOf("download")) // a car is not where a download starts
+        assertEquals(EpisodeAction.PLAY_NEXT, episodeActionOf("next"))
+        assertEquals("{\"episodeId\":\"pe_1\",\"where\":\"next\"}", episodeActionBody(EpisodeAction.PLAY_NEXT, "pe_1"))
     }
 
     @Test
