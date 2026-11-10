@@ -47,12 +47,15 @@ object BookMedia {
      * A podcast episode as a one-file item (A1): the media id is the episode's `pe_` id, the address is the server's own
      * audio route. The server passes one `Range` on to the publisher, so a seek or a resume does not download what comes before.
      */
-    fun episode(doc: EpisodeDoc, url: String, network: DataSource.Factory): MediaSource {
+    fun episode(doc: EpisodeDoc, url: String, network: DataSource.Factory, downloaded: Boolean = false): MediaSource {
         // Podcast files are often VBR MP3 without a Xing header; constant-bitrate seeking lands close enough and never fails.
         val extractors = DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true)
-        val item = MediaItem.Builder().setMediaId(doc.id).setUri(url)
+        // A downloaded episode is read from the phone first, under the key it was stored with (its id); only such an episode
+        // touches the cache, so a streamed one is never answered from bytes that person did not ask the server for.
+        val factory = if (downloaded) Offline.readFactory(network) else network
+        val item = MediaItem.Builder().setMediaId(doc.id).setUri(url).setCustomCacheKey(if (downloaded) doc.id else null)
             .setMediaMetadata(MediaMetadata.Builder().setTitle(doc.title).setAlbumTitle(doc.show).setArtist(doc.show).setIsPlayable(true).build())
         if (doc.mime.startsWith("audio/")) item.setMimeType(doc.mime)
-        return ProgressiveMediaSource.Factory(network, extractors).setLoadErrorHandlingPolicy(RetryPolicy()).createMediaSource(item.build())
+        return ProgressiveMediaSource.Factory(factory, extractors).setLoadErrorHandlingPolicy(RetryPolicy()).createMediaSource(item.build())
     }
 }

@@ -15,6 +15,8 @@ import androidx.media3.session.SessionError
 import app.tendshelf.shared.BookCard
 import app.tendshelf.shared.EpisodeAction
 import app.tendshelf.shared.EpisodeCard
+import app.tendshelf.shared.asEpisodeCard
+import app.tendshelf.shared.readyEpisodes
 import app.tendshelf.shared.ShowCard
 import app.tendshelf.shared.completionOf
 import app.tendshelf.shared.completionPercent
@@ -120,6 +122,8 @@ class LibraryTree(
         val conn = connections().current() ?: return false
         return try {
             Api(conn.origin).episodeAction(conn.token, episodeId, action)
+            // A downloaded episode marked played is ready for "remove after played".
+            if (action == EpisodeAction.PLAYED) Offline.markPlayed(episodeId)
             episodes.remove(episodeId)
             true
         } catch (e: Exception) {
@@ -250,12 +254,13 @@ class LibraryTree(
             }
             Node.Podcasts -> podcastFolders()
             Node.PodcastNew -> online(null) { api, t -> api.podcastNew(t) }.map(::episodeItem)
-            Node.PodcastDownloaded -> emptyList() // A2 (episode downloads) fills this; the node is here so the car's tree does not change then
+            Node.PodcastDownloaded -> downloadedEpisodes().map(::episodeItem)
             Node.PodcastShows -> online(null) { api, t -> api.podcastShows(t) }.map(::showFolder)
             is Node.Show -> online(null) { api, t -> api.showEpisodes(t, node.id) }.map(::episodeItem)
             is Node.Episode -> emptyList()
             is Node.Shelf -> online(null) { api, t -> api.shelf(t, node.id) }.map(::bookItem)
-            Node.Downloaded -> downloadedBooks().map(::bookItem)
+            // The tab also lists downloaded episodes: it is the one place that works with no connection.
+            Node.Downloaded -> downloadedBooks().map(::bookItem) + downloadedEpisodes().map(::episodeItem)
             is Node.Book -> emptyList()
         }
     }
@@ -335,6 +340,12 @@ class LibraryTree(
         return mine().sortedBy { it.title.lowercase() }.map { BookCard(it.bookId, it.title, it.author, it.durationMs, Offline.coverBytes(it.bookId) != null) }
     }
 
+    /** Downloaded episodes of the signed-in person, newest first: no network. */
+    private fun downloadedEpisodes(): List<EpisodeCard> {
+        Offline.init(context)
+        return readyEpisodes(mine()).map { it.asEpisodeCard() }
+    }
+
     private fun placeOf(id: String): Long = Offline.store.get(id)?.placeMs ?: 0
     private fun placeAt(id: String): Long = Offline.store.get(id)?.placeAt ?: 0
 
@@ -349,6 +360,7 @@ class LibraryTree(
             EpisodeAction.UNPLAYED -> "Mark as unplayed"
             EpisodeAction.STAR -> "Star"
             EpisodeAction.UNSTAR -> "Unstar"
+            EpisodeAction.PLAY_NEXT -> "Play next"
         }
 
         /** The buttons a row can carry: the session lists them once, each episode names the ones it supports. */
@@ -359,6 +371,7 @@ class LibraryTree(
                     EpisodeAction.UNPLAYED -> CommandButton.ICON_CHECK_CIRCLE_UNFILLED
                     EpisodeAction.STAR -> CommandButton.ICON_STAR_UNFILLED
                     EpisodeAction.UNSTAR -> CommandButton.ICON_STAR_FILLED
+                    EpisodeAction.PLAY_NEXT -> CommandButton.ICON_PLAYLIST_ADD
                 },
             ).setSessionCommand(SessionCommand(actionName(it), Bundle.EMPTY)).setDisplayName(actionLabel(it)).build()
         }

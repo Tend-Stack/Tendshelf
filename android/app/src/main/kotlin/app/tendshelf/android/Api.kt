@@ -81,7 +81,20 @@ class Api(origin: String) {
     }
 
     /** The playback document of an episode. */
-    fun episode(token: String, episodeId: String): EpisodeDoc = PodcastJson.episode(String(get(paths.episodeUrl(episodeId), token, 256 * 1024)))
+    fun episode(token: String, episodeId: String): EpisodeDoc = PodcastJson.episode(fetchEpisodeJson(token, episodeId))
+
+    /** The document as the server sent it: a downloaded episode keeps it, so it starts with no network. */
+    fun fetchEpisodeJson(token: String, episodeId: String): String = String(get(paths.episodeUrl(episodeId), token, 256 * 1024))
+
+    /** The chapters file as the server sent it (kept with a download), or null when there is none or it cannot be read. */
+    fun chaptersJson(token: String, path: String): String? {
+        val url = paths.podcastUrl(path) ?: return null
+        return try {
+            String(get(url, token, 512 * 1024))
+        } catch (e: IOException) {
+            null
+        }
+    }
 
     /** The show's picture (at most 2 MiB) from the path the document named, or null when there is none or it cannot be read. */
     fun podcastArt(token: String, artPath: String): ByteArray? {
@@ -121,9 +134,15 @@ class Api(origin: String) {
 
     /** Mark played or unplayed, star or unstar. Idempotent on the server, so a retry costs nothing. */
     fun episodeAction(token: String, episodeId: String, action: EpisodeAction) {
+        if (action == EpisodeAction.PLAY_NEXT) {
+            // The one queue holds books and episodes (P5); a book already queued stays, so a retry costs nothing.
+            post(paths.queueAddUrl, token, episodeActionBody(action, episodeId), 1024 * 1024)
+            return
+        }
         val url = when (action) {
             EpisodeAction.PLAYED, EpisodeAction.UNPLAYED -> paths.episodePlayedUrl(episodeId)
             EpisodeAction.STAR, EpisodeAction.UNSTAR -> paths.episodeFavouriteUrl(episodeId)
+            EpisodeAction.PLAY_NEXT -> return
         }
         post(url, token, episodeActionBody(action), 64 * 1024)
     }
@@ -138,7 +157,7 @@ class Api(origin: String) {
      */
     fun queueNext(token: String, ended: String): String? {
         val bytes = post(paths.queueNextUrl, token, queueNextBody(ended), 64 * 1024) ?: return null
-        return ApiJson.nextBookId(String(bytes))
+        return ApiJson.nextItemId(String(bytes))
     }
 
     /**
@@ -148,7 +167,7 @@ class Api(origin: String) {
     fun queuePeek(token: String, ended: String): String? {
         val bytes = get(paths.queuePeekUrl(ended), token, 64 * 1024)
         if (bytes.isEmpty()) return null
-        return ApiJson.nextBookId(String(bytes))
+        return ApiJson.nextItemId(String(bytes))
     }
 
     /**

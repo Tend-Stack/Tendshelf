@@ -20,6 +20,16 @@ import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Requirements
 import app.tendshelf.shared.AUTO_HOLD
 import app.tendshelf.shared.AutoPlan
+import app.tendshelf.shared.KIND_EPISODE
+import app.tendshelf.shared.PodcastJson
+import app.tendshelf.shared.autoEpisodeEvictions
+import app.tendshelf.shared.autoEpisodePlan
+import app.tendshelf.shared.episodeFileComplete
+import app.tendshelf.shared.episodePlan
+import app.tendshelf.shared.episodeSize
+import app.tendshelf.shared.isEpisodeId
+import androidx.media3.datasource.cache.ContentMetadata
+import androidx.media3.datasource.cache.ContentMetadataMutations
 import app.tendshelf.shared.DownloadPercent
 import app.tendshelf.shared.decodeKeptSettings
 import app.tendshelf.shared.encodeKeptSettings
@@ -95,6 +105,15 @@ object Offline {
     private val prefs get() = app.getSharedPreferences("offline", Context.MODE_PRIVATE)
     private val root get() = File(app.noBackupFilesDir, "offline")
     private fun coverFile(id: String) = File(File(root, "covers"), id)
+    private fun chaptersFile(id: String) = File(File(root, "chapters"), id)
+
+    /** The episode that is playing now; the automatic rules never remove it. */
+    @Volatile
+    var playingNow: String = ""
+
+    /** True while the activity is on the screen; the headless job leaves the manager as it found it. */
+    @Volatile
+    private var inFront = false
 
     fun init(context: Context) {
         ServerGate.init(context)
@@ -105,6 +124,7 @@ object Offline {
             store = SqliteOfflineStore(app)
             TextStore.init(app)
             OfflineNet.init(app)
+            EpisodeAuto.init(app)
         }
         // A wipe the last process did not finish is completed before anything else can use the cache.
         if (prefs.getBoolean("wipePending", false)) safeIo { finishWipe() }
@@ -170,7 +190,7 @@ object Offline {
     }
 
     private fun expectedFiles(book: String): Int =
-        store.manifest(book)?.let { runCatching { Api(tokens.origin?.text ?: "http://x").parseManifest(it).files.count { f -> f.playable } }.getOrNull() } ?: 0
+        if (isEpisodeId(book)) 1 else store.manifest(book)?.let { runCatching { Api(tokens.origin?.text ?: "http://x").parseManifest(it).files.count { f -> f.playable } }.getOrNull() } ?: 0
 
     /** Folds the files' Media3 states into the book's one state. `READY` only when every file is whole (invariant 1). */
     private fun recompute(book: String) {
@@ -188,14 +208,36 @@ object Offline {
             else -> OfflineState.QUEUED
         }
         if (next != row.state) store.setState(book, next)
+        // The feed's announced size is often wrong: a finished episode shows (and counts against the quota) what arrived.
+        if (next == OfflineState.READY && row.kind == KIND_EPISODE) cache().getCachedBytes(book, 0, Long.MAX_VALUE).let { if (it > 0) store.setSize(book, it) }
         Log.i(TAG, "offline: ${next.name.lowercase()}")
     }
 
     private fun whole(d: Download): Boolean {
         val key = d.request.customCacheKey ?: return false
+        if (isEpisodeId(key)) return wholeEpisode(d, key)
         val planned = d.request.data.let { if (it.isEmpty()) 0L else String(it).toLongOrNull() ?: 0L }
         val len = d.contentLength
         return fileComplete(planned, key.endsWith(":c"), len, if (len > 0) cache().getCachedBytes(key, 0, len) else 0)
+    }
+
+    /**
+     * An episode's file. The publisher may send no length, so the length is also read from what the cache learned; a file
+     * that is whole with no known length gets its length written down, so a later offline play never asks the network for
+     * the end of it.
+     */
+    private fun wholeEpisode(d: Download, key: String): Boolean {
+        val len = if (d.contentLength > 0) d.contentLength else ContentMetadata.getContentLength(cache().getContentMetadata(key))
+        val cached = cache().getCachedBytes(key, 0, if (len > 0) len else Long.MAX_VALUE)
+        val ok = episodeFileComplete(len, cached, d.bytesDownloaded)
+        if (ok && len <= 0) {
+            try {
+                cache().applyContentMetadataMutations(key, ContentMetadataMutations().apply { ContentMetadataMutations.setContentLength(this, episodeSize(len, cached)) })
+            } catch (e: Exception) {
+                Log.w(TAG, "offline: length not kept: ${e.javaClass.simpleName}")
+            }
+        }
+        return ok
     }
 
     /** How a book stands for the page, the list and the notification: [state] word, [pct], and whether [pct] is known. */
@@ -262,8 +304,8 @@ object Offline {
         }
         if (autoRunning.isNotEmpty() && !unmetered()) autoRunning.forEach { manager().setStopReason(it.request.id, AUTO_HOLD) }
         // Every 30 s: an unfinished automatic book gives way when the phone is nearly full (invariant 3).
-        if (++autoTicks % 30 == 0 && marks().isNotEmpty() && freeBytes() < SPARE_BYTES) {
-            safeIo { autoUnfinished(store.all(), marks()).forEach { remove(it.bookId) } }
+        if (++autoTicks % 30 == 0 && allMarks().isNotEmpty() && freeBytes() < SPARE_BYTES) {
+            safeIo { autoUnfinished(store.all(), allMarks()).forEach { remove(it.bookId, byPerson = false) } }
         }
         if (running.none { it.state == Download.STATE_DOWNLOADING }) {
             polling = false
@@ -308,6 +350,10 @@ object Offline {
     /** Fetches the manifest, checks the right and the room, keeps the answer and the cover, and queues every file. */
     fun add(book: String) {
         val conn = tokens.current() ?: return
+        if (isEpisodeId(book)) {
+            addEpisode(book, conn, auto = false)
+            return
+        }
         val existing = store.get(book)
         if (existing != null && existing.state != OfflineState.FAILED && existing.state != OfflineState.STALE) {
             // Pressing Download on an automatic book makes it the person's: no hold, and it goes on at once (invariant 7).
@@ -371,11 +417,23 @@ object Offline {
             ),
             text,
         )
+        startFiles(book, plan, auto)
+        changed(book)
+        // One Download (0019, point 1): the text follows the audio when the person may read and download it.
+        fetchText(book)
+    }
+
+    /**
+     * Queues the files of [plan]. An automatic download is held from the moment it exists (invariant 2); a person's own goes
+     * first and puts the automatic ones on hold (invariant 7). An episode's request carries no planned size: the feed's
+     * is often wrong, so the file is judged by its real length.
+     */
+    private fun startFiles(book: String, plan: Plan.Ok, auto: Boolean) {
         val requests = plan.files.map {
             // The request holds an address with no credential, a cache key and the size the manifest listed.
             DownloadRequest.Builder("$book|${it.fileId}", android.net.Uri.parse(it.url))
                 .setCustomCacheKey(it.cacheKey)
-                .setData(it.size.toString().toByteArray())
+                .setData((if (isEpisodeId(book)) 0L else it.size).toString().toByteArray())
                 .build()
         }
         if (auto) {
@@ -393,9 +451,6 @@ object Offline {
                 for (r in requests) DownloadService.sendAddDownload(app, TsDownloadService::class.java, r, true)
             }
         }
-        changed(book)
-        // One Download (0019, point 1): the text follows the audio when the person may read and download it.
-        fetchText(book)
     }
 
     /** A book with text and no audio: one row, ready once its text is whole. */
@@ -471,8 +526,12 @@ object Offline {
         main.post { Toast.makeText(app, words, Toast.LENGTH_LONG).show() }
     }
 
-    /** Drops the book's bytes, row and cover. */
-    fun remove(book: String) {
+    /**
+     * Drops the book's bytes, row and cover. A person's removal of an episode is remembered, so the automatic download does
+     * not fetch it again; an automatic removal ([byPerson] false) is not.
+     */
+    fun remove(book: String, byPerson: Boolean = true) {
+        if (byPerson && isEpisodeId(book)) EpisodeAuto.decline(book)
         safeIo {
             try {
                 val ids = downloadsOf(manager(), book).map { it.request.id }
@@ -481,10 +540,14 @@ object Offline {
                 Log.w(TAG, "offline: remove failed: ${e.javaClass.simpleName}")
             }
             unmark(book)
+            EpisodeAuto.unmark(book)
             prefs.edit().remove("autoNoRoom").apply()
             store.remove(book)
             coverFile(book).delete()
-            TextStore.remove(book)
+            chaptersFile(book).delete()
+            if (!isEpisodeId(book)) TextStore.remove(book)
+            floors.remove(book)
+            live.remove(book)
             onChange?.invoke(book)
         }
     }
@@ -492,6 +555,7 @@ object Offline {
     /** Called when the app comes to the front: the 6-hour timer starts again, and unfinished downloads go on (D2, D3). */
     fun onForeground() {
         if (!::app.isInitialized) return
+        inFront = true
         prefs.edit().putBoolean("downloadsLimited", false).apply()
         safeIo {
             // A hold is applied before a resume, so the order below never lets a metered byte through.
@@ -510,6 +574,7 @@ object Offline {
             for (state in listOf("signin", "failed", "fetching")) store.withText(state).forEach { retryText(it) }
             prefs.getString("autoWant", "")?.takeIf { it.isNotEmpty() }?.let { autoFetch(it) }
             dailyCheck()
+            EpisodeAuto.syncSoon()
         }
     }
 
@@ -530,6 +595,7 @@ object Offline {
         val now = System.currentTimeMillis()
         for (row in store.all()) {
             if (row.state != OfflineState.READY && row.state != OfflineState.STALE) continue
+            if (row.kind == KIND_EPISODE) continue // an episode has no book answer to compare; the show sync looks after it
             if (now - store.checkedAt(row.bookId) < DAY_MS) continue
             try {
                 val text = api.fetchManifestJson(conn.token, row.bookId)
@@ -607,8 +673,11 @@ object Offline {
         if (book in now) setMarks(now - book)
     }
 
-    /** True for a book that was downloaded on its own and has not been made the person's own. */
-    fun isAuto(book: String): Boolean = ::app.isInitialized && book in marks()
+    /** The marks of both automatic paths: the next book or episode (decision 0035) and the shows' "Download new episodes". */
+    fun allMarks(): Set<String> = marks() + EpisodeAuto.marks()
+
+    /** True for a book or episode that was downloaded on its own and has not been made the person's own. */
+    fun isAuto(book: String): Boolean = ::app.isInitialized && (book in marks() || book in EpisodeAuto.marks())
 
     /** True while the active network is unmetered (Wi-Fi). Everything automatic asks this before it moves a byte. */
     fun unmetered(): Boolean = Requirements(Requirements.NETWORK_UNMETERED).checkRequirements(app)
@@ -622,7 +691,7 @@ object Offline {
     fun autoForget() { if (::app.isInitialized) prefs.edit().remove("autoWant").apply() }
 
     private fun autoRequestIds(): List<String> =
-        autoUnfinished(store.all(), marks()).flatMap { r -> downloadsOf(manager(), r.bookId).map { it.request.id } }
+        autoUnfinished(store.all(), allMarks()).flatMap { r -> downloadsOf(manager(), r.bookId).map { it.request.id } }
 
     /**
      * Lets held automatic downloads go, on the main thread. The foreground start comes first: if the system refuses it
@@ -647,12 +716,13 @@ object Offline {
         val kept = marks().filter { m -> rows.any { it.bookId == m } }.toSet()
         if (kept != marks()) synchronized(marksLock) { setMarks(kept) }
         if (!loadSettings().autoDownload) {
-            autoUnfinished(rows, kept).forEach { remove(it.bookId) }
+            autoUnfinished(rows, kept).forEach { remove(it.bookId, byPerson = false) }
             prefs.edit().remove("autoWant").remove("autoNoRoom").remove("autoNext").apply()
-            return
         }
-        if (autoUnfinished(rows, kept).isEmpty()) return
+        EpisodeAuto.pruneMarks(rows)
+        // The shows' episodes follow the same network rule as the next book: held on a metered network, released on Wi-Fi.
         val ids = autoRequestIds()
+        if (ids.isEmpty()) return
         val wifi = unmetered()
         main.post { if (wifi) releaseHeld(ids) else ids.forEach { manager().setStopReason(it, AUTO_HOLD) } }
     }
@@ -712,6 +782,10 @@ object Offline {
             // Remembered before anything else, so a book the person already has counts too (the plane case).
             prefs.edit().remove("autoWant").also { if (next == null) it.remove("autoNext") else it.putString("autoNext", encodeAutoNext(ended, next)) }.apply()
             if (next == null || store.get(next) != null) return
+            if (isEpisodeId(next)) {
+                addEpisode(next, conn, auto = true, nextItem = true)
+                return
+            }
             val text = api.fetchManifestJson(conn.token, next)
             val manifest = api.parseManifest(text)
             if (manifest.id != next) return
@@ -725,6 +799,148 @@ object Offline {
         }
     }
 
+    // ---- Podcast episodes (A2, decision 0038) ----
+
+    /** The chapters file kept with a downloaded episode, or null. */
+    fun chaptersText(id: String): String? = chaptersFile(id).takeIf { it.isFile }?.readText()
+
+    /** The activity left the screen. */
+    fun onBackground() { inFront = false }
+
+    /**
+     * Keeps one episode on the phone: the playback document (so it starts with no network), the show's picture, the
+     * chapters, and the file through the same download manager as a book. [auto]: it came from a show's "Download new
+     * episodes" (or [nextItem], from the next-book switch) and is held for Wi-Fi; the person's own is never removed by a rule.
+     * Returns false when nothing was queued.
+     */
+    fun addEpisode(id: String, conn: Connection, auto: Boolean, nextItem: Boolean = false): Boolean {
+        val existing = store.get(id)
+        if (existing != null && existing.state != OfflineState.FAILED && existing.state != OfflineState.STALE) {
+            // Pressing Download on an automatic episode makes it the person's: no hold, and it goes on at once.
+            if (!auto && isAuto(id)) {
+                unmark(id)
+                EpisodeAuto.unmark(id)
+                if (existing.state != OfflineState.READY) {
+                    val ids = downloadsOf(manager(), id).map { it.request.id }
+                    main.post {
+                        ids.forEach { manager().setStopReason(it, Download.STOP_REASON_NONE) }
+                        manager().resumeDownloads()
+                        DownloadService.sendResumeDownloads(app, TsDownloadService::class.java, true)
+                    }
+                }
+            }
+            changed(id)
+            return false
+        }
+        try {
+            val api = Api(conn.origin)
+            val json = api.fetchEpisodeJson(conn.token, id)
+            val doc = PodcastJson.episode(json)
+            if (doc.id != id) return false
+            val free = freeBytes()
+            val plan = if (auto) {
+                when (val p = autoEpisodePlan(doc, api.paths, free, autoBytes(store.all(), allMarks()))) {
+                    is AutoPlan.Go -> p.plan
+                    AutoPlan.NoRoom -> {
+                        if (nextItem) prefs.edit().putBoolean("autoNoRoom", true).apply()
+                        return false
+                    }
+                    AutoPlan.Skip -> return false
+                }
+            } else {
+                when (val p = episodePlan(doc, api.paths, free)) {
+                    is Plan.Ok -> p
+                    Plan.NoRoom -> return false.also { refuse(R.string.download_no_room) }
+                    Plan.NotAllowed, Plan.NothingToPlay -> return false.also { refuse(R.string.download_nothing) }
+                }
+            }
+            api.podcastArt(conn.token, doc.artUrl)?.let { coverFile(id).apply { parentFile?.mkdirs() }.writeBytes(it) }
+            if (doc.chaptersUrl.isNotEmpty()) api.chaptersJson(conn.token, doc.chaptersUrl)?.let { chaptersFile(id).apply { parentFile?.mkdirs() }.writeText(it) }
+            floors.remove(id)
+            live.remove(id)
+            // The mark is written before the row; a stale mark without a row counts as nothing (D11).
+            when {
+                !auto -> { unmark(id); EpisodeAuto.unmark(id); EpisodeAuto.undecline(id) }
+                nextItem -> { mark(id); prefs.edit().remove("autoNoRoom").apply() }
+                else -> EpisodeAuto.mark(id)
+            }
+            store.put(
+                OfflineBook(
+                    id, tokens.userId.orEmpty(), doc.title, doc.show, doc.durationMs, plan.total, OfflineState.QUEUED,
+                    doc.progress?.positionMs ?: 0, doc.progress?.clientUpdatedAt ?: 0,
+                    KIND_EPISODE, doc.showId, doc.publishedAt, doc.progress?.finished == true,
+                ),
+                json,
+            )
+            startFiles(id, plan, auto)
+            changed(id)
+            return true
+        } catch (e: ApiException) {
+            Log.w(TAG, "episode not started: server answered ${e.code}")
+            if (!auto) refuse(if (e.code == 404 || e.code == 403) R.string.download_not_allowed else R.string.download_failed)
+        } catch (e: IOException) {
+            Log.w(TAG, "episode not started: ${e.javaClass.simpleName}")
+            if (!auto) refuse(R.string.download_failed)
+        } catch (e: Exception) {
+            Log.w(TAG, "episode not started: ${e.javaClass.simpleName}")
+        }
+        return false
+    }
+
+    /** An episode was played to the end (here, or the server says so): "remove after played" may now take it. */
+    fun markPlayed(id: String) {
+        if (!::app.isInitialized) return
+        val row = store.get(id) ?: return
+        if (row.kind == KIND_EPISODE && !row.played) store.setPlayed(id, true)
+    }
+
+    /** Worker thread. Removes the automatic episodes the rules name (played, beyond the latest N, over the quota); never the playing one. */
+    fun tidyEpisodes(keep: Map<String, Int>) {
+        if (!::app.isInitialized) return
+        val gone = autoEpisodeEvictions(store.all(), EpisodeAuto.marks(), marks(), keep).filter { it != playingNow }
+        gone.forEach { remove(it, byPerson = false) }
+    }
+
+    /** A show's automatic downloads were switched off: what is not finished is dropped; what is whole stays, and becomes the person's own. */
+    fun releaseShow(showId: String) {
+        for (r in store.all()) {
+            if (r.kind != KIND_EPISODE || r.showId != showId || r.bookId !in EpisodeAuto.marks()) continue
+            if (r.state == OfflineState.READY || r.state == OfflineState.STALE) EpisodeAuto.unmark(r.bookId) else remove(r.bookId, byPerson = false)
+        }
+    }
+
+    /**
+     * Worker thread of the periodic job: lets the held automatic episodes go and waits for them (up to [maxMs]), with no
+     * service, because the system refuses to start a data-sync service from the background. The Wi-Fi rule is checked every
+     * second; on a metered network they are held again at once. What is left goes on by byte range at the next run.
+     */
+    fun runHeadless(maxMs: Long) {
+        if (!::app.isInitialized) return
+        val ids = autoRequestIds()
+        if (ids.isEmpty() || !unmetered()) return
+        main.post {
+            ids.forEach { manager().setStopReason(it, Download.STOP_REASON_NONE) }
+            manager().resumeDownloads()
+        }
+        val until = System.currentTimeMillis() + maxMs
+        try {
+            while (System.currentTimeMillis() < until && autoUnfinished(store.all(), allMarks()).isNotEmpty()) {
+                Thread.sleep(1000)
+                if (!unmetered()) {
+                    val now = autoRequestIds()
+                    main.post { now.forEach { manager().setStopReason(it, AUTO_HOLD) } }
+                    break
+                }
+            }
+        } finally {
+            val left = autoRequestIds()
+            main.post {
+                left.forEach { manager().setStopReason(it, AUTO_HOLD) }
+                if (!inFront) manager().pauseDownloads()
+            }
+        }
+    }
+
     // ---- Wipe ----
 
     /**
@@ -733,6 +949,7 @@ object Offline {
      */
     fun wipe() {
         if (!::app.isInitialized) return
+        EpisodeAuto.wipe()
         prefs.edit().putBoolean("wipePending", true).remove("autoBooks").remove("autoWant").remove("autoNoRoom").remove("autoNext").remove("autoDrop").commit()
         store.clear()
         floors.clear()
@@ -769,6 +986,7 @@ object Offline {
             }
         }
         File(root, "covers").deleteRecursively()
+        File(root, "chapters").deleteRecursively()
         File(root, "text").deleteRecursively()
         File(root, "static").deleteRecursively()
         store.clear()

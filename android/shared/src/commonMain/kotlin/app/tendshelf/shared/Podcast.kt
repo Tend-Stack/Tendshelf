@@ -24,6 +24,8 @@ data class EpisodeDoc(
     val bytes: Long,
     val chaptersUrl: String,
     val settings: ShowSettings,
+    /** The feed's date (Unix ms), 0 when the document names none; "keep the latest" orders by it. */
+    val publishedAt: Long = 0,
     /** The stored place, or null when the person never played it (`updatedAt` 0). */
     val progress: RemoteProgress?,
 )
@@ -52,6 +54,7 @@ object PodcastJson {
                 (set?.optInt("skipIntroS", 0) ?: 0).coerceIn(0, 600),
                 (set?.optInt("skipOutroS", 0) ?: 0).coerceIn(0, 600),
             ),
+            publishedAt = j.optLong("publishedAt", 0),
             progress = if (updated > 0 && state != null) {
                 // The episode state names no device, so nothing can be said about who wrote it.
                 RemoteProgress(state.optLong("positionMs", 0), state.optBoolean("played"), updated, "", "")
@@ -149,7 +152,10 @@ fun episodeSpeed(settings: ShowSettings, personal: Double): Double = settings.sp
 // ---- What the car browses (A3) ----
 
 /** A followed show as the car lists it. [hasArt] is true when the server has a picture for it. */
-data class ShowCard(val id: String, val title: String, val author: String, val hasArt: Boolean, val newCount: Int)
+data class ShowCard(val id: String, val title: String, val author: String, val hasArt: Boolean, val newCount: Int, val keepLatest: Int = DEFAULT_KEEP_LATEST)
+
+/** The server's own default for "keep the latest N" when a show's settings do not say. */
+const val DEFAULT_KEEP_LATEST = 3
 
 /** An episode as a list row: the change feed's fields without the playback address. */
 data class EpisodeCard(
@@ -164,20 +170,25 @@ data class EpisodeCard(
     val favourite: Boolean,
 )
 
-/** What a row's action buttons can do (decision 0038). Download and Play next are not here: see [episodeActions]. */
-enum class EpisodeAction(val word: String) { PLAYED("played"), UNPLAYED("unplayed"), STAR("star"), UNSTAR("unstar") }
+/** What a row's action buttons can do (decision 0038). Download is not here: a car is not where a download is started. */
+enum class EpisodeAction(val word: String) { PLAYED("played"), UNPLAYED("unplayed"), STAR("star"), UNSTAR("unstar"), PLAY_NEXT("next") }
 
 /**
- * The actions an episode row offers: Mark as played or unplayed, Star or Unstar, by its state. Download waits for A2
- * and Play next for the mixed queue (the queue API knows books alone), so neither is offered until it works.
+ * The actions an episode row offers: Mark as played or unplayed, Star or Unstar, by its state, and Play next (the queue
+ * takes episodes since P5).
  */
 fun episodeActions(e: EpisodeCard): List<EpisodeAction> =
-    listOf(if (e.played) EpisodeAction.UNPLAYED else EpisodeAction.PLAYED, if (e.favourite) EpisodeAction.UNSTAR else EpisodeAction.STAR)
+    listOf(
+        if (e.played) EpisodeAction.UNPLAYED else EpisodeAction.PLAYED,
+        if (e.favourite) EpisodeAction.UNSTAR else EpisodeAction.STAR,
+        EpisodeAction.PLAY_NEXT,
+    )
 
 fun episodeActionOf(word: String): EpisodeAction? = EpisodeAction.entries.firstOrNull { it.word == word }
 
-/** The request body of an action: `{"played":true}` or `{"on":true}`. */
-fun episodeActionBody(a: EpisodeAction): String = when (a) {
+/** The request body of an action: `{"played":true}`, `{"on":true}`, or for Play next the queue's `{"episodeId":..,"where":"next"}`. */
+fun episodeActionBody(a: EpisodeAction, episodeId: String = ""): String = when (a) {
+    EpisodeAction.PLAY_NEXT -> "{\"episodeId\":${jsonString(episodeId)},\"where\":\"next\"}"
     EpisodeAction.PLAYED -> "{\"played\":true}"
     EpisodeAction.UNPLAYED -> "{\"played\":false}"
     EpisodeAction.STAR -> "{\"on\":true}"
@@ -237,6 +248,9 @@ fun PodcastJson.showCards(body: String): List<ShowCard> {
     return (0 until arr.size).mapNotNull { arr.optObject(it) }.mapNotNull { o ->
         val id = o.optString("id")
         if (!validId(id)) return@mapNotNull null
-        ShowCard(id, o.optString("title"), o.optString("author"), o.optString("artUrl").isNotEmpty(), o.optInt("newCount", 0).coerceAtLeast(0))
+        ShowCard(
+            id, o.optString("title"), o.optString("author"), o.optString("artUrl").isNotEmpty(), o.optInt("newCount", 0).coerceAtLeast(0),
+            (o.optObject("settings")?.optInt("keepLatest", DEFAULT_KEEP_LATEST) ?: DEFAULT_KEEP_LATEST).coerceIn(1, 50),
+        )
     }
 }

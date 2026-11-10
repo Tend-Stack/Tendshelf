@@ -209,16 +209,17 @@ class PlaybackService : MediaLibraryService() {
                 if (lastChapter != -2 && chapter != lastChapter) w.saveNow("chapter")
                 lastChapter = chapter
                 w.onTick(book)
-                // Near the end: the next book is made ready on Wi-Fi (decision 0035). A book is one window: book time.
-                // TODO(A2/P5): an episode will be made ready the same way once downloads and the mixed queue exist.
-                if (isEpisodeId(book)) engine.checkOutro() else auto.tick(book, exo.currentPosition, exo.duration, exo.isPlaying)
+                // Near the end: the next item (a book or an episode) is made ready on Wi-Fi (decision 0035). One window: item time.
+                if (isEpisodeId(book)) engine.checkOutro()
+                auto.tick(book, exo.currentPosition, exo.duration, exo.isPlaying)
             }
         }
         engine.onEnded = {
-            // A running sleep timer wins over the queue (D5): the book is finished, nothing new starts.
-            // TODO(P5): after an episode the mixed queue (books and episodes) is asked here. Until it exists the episode only
-            // writes `finished`: the queue's next-book route knows books alone and must not be asked about an episode id.
-            val askQueue = !sleep.endedBook() && !isEpisodeId(engine.currentBook)
+            // A running sleep timer wins over the queue (D5): the item is finished, nothing new starts. After a book or an
+            // episode the one queue (books and episodes, P5) is asked; an episode that was downloaded is marked played so
+            // "remove after played" can take it.
+            val askQueue = !sleep.endedBook()
+            if (isEpisodeId(engine.currentBook)) Offline.markPlayed(engine.currentBook)
             next.ended(engine.currentBook, exo.currentPosition, exo.playbackParameters.speed.toDouble(), askQueue) { exo.playbackState == Player.STATE_ENDED }
         }
         w.onSignedOut = { engine.signedOut() }

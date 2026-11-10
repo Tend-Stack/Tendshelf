@@ -115,6 +115,15 @@ object ApiJson {
     /** `{"progress":{...}|null}` from GET /api/v1/progress/{id}: the stored place, or null when there is none. */
     fun progress(body: String): RemoteProgress? = parseJsonObject(body).optObject("progress")?.let(::remoteProgress)
 
+    /**
+     * The id of the item a queue-next answer names, of either kind (`?kinds=book,episode`, P5): an episode answer is
+     * `{"kind":"episode","episode":{"id"}}`, a book answer `{"book":{"id"}}` (with `"kind":"book"` from a new server).
+     */
+    fun nextItemId(body: String): String {
+        val j = parseJsonObject(body)
+        return if (j.optString("kind") == "episode") j.getObject("episode").getString("id") else j.getObject("book").getString("id")
+    }
+
     /** `{"book":{"id"}}` from the queue-next answer. */
     fun nextBookId(body: String): String = parseJsonObject(body).getObject("book").getString("id")
 

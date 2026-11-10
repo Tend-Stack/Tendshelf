@@ -22,10 +22,10 @@ class ApiPaths(server: String) {
     val settingsUrl: String get() = "$base/api/v1/settings"
 
     val batchUrl: String get() = "$base/api/v1/progress/batch"
-    val queueNextUrl: String get() = "$base/api/v1/queue/next"
+    val queueNextUrl: String get() = "$base/api/v1/queue/next?kinds=book,episode"
 
     /** The read-only peek at the next book (decision 0035): nothing is taken off the queue. */
-    fun queuePeekUrl(ended: String): String = "$base/api/v1/queue/next?ended=${segment(ended)}"
+    fun queuePeekUrl(ended: String): String = "$base/api/v1/queue/next?ended=${segment(ended)}&kinds=book,episode"
 
     /** One book in the person's queue: `DELETE` takes it out and is safe to repeat. */
     fun queueEntryUrl(bookId: String): String = "$base/api/v1/queue/${segment(bookId)}"
@@ -47,9 +47,12 @@ class ApiPaths(server: String) {
     val showsUrl: String get() = "$base/api/v1/podcasts"
     val newEpisodesUrl: String get() = "$base/api/v1/podcasts/new"
     fun showEpisodesUrl(showId: String, limit: Int): String = "$base/api/v1/podcasts/shows/${segment(showId)}/episodes?limit=$limit"
+    val queueAddUrl: String get() = "$base/api/v1/queue"
     fun episodePlayedUrl(episodeId: String): String = "$base/api/v1/podcasts/episodes/${segment(episodeId)}/played"
     fun episodeFavouriteUrl(episodeId: String): String = "$base/api/v1/podcasts/episodes/${segment(episodeId)}/favourite"
     fun showArtUrl(showId: String, width: Int): String = "$base/api/v1/podcasts/art/${segment(showId)}?w=$width"
+    /** The file of an episode to keep (`download=1` marks it for the server). The first request has no Range; a resume sends one. */
+    fun episodeDownloadUrl(episodeId: String): String = "$base/api/v1/podcasts/audio/${segment(episodeId)}?download=1"
     val podcastBatchUrl: String get() = "$base/api/v1/podcasts/progress/batch"
 
     /**

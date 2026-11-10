@@ -17,7 +17,7 @@ import app.tendshelf.shared.Save
  * only the current device's rows are ever returned, so one person's rows never go out under another's token.
  */
 class SqliteOutbox(context: Context, private val deviceId: () -> String) :
-    SQLiteOpenHelper(context.applicationContext, "outbox.db", null, 3), OutboxStore {
+    SQLiteOpenHelper(context.applicationContext, "outbox.db", null, 4), OutboxStore {
 
     // Several helpers open outbox.db in one process (the writer, the launch flush, sign-out, the offline store). Their first
     // opens would migrate at the same moment and one would fail on a lock, so opening goes through one process-wide lock.
@@ -35,6 +35,7 @@ class SqliteOutbox(context: Context, private val deviceId: () -> String) :
         db.execSQL("CREATE INDEX saves_book ON saves(book_id, seq)")
         createOffline(db)
         addTextColumns(db)
+        addEpisodeColumns(db)
     }
 
     private companion object {
@@ -45,6 +46,15 @@ class SqliteOutbox(context: Context, private val deviceId: () -> String) :
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) createOffline(db)
         if (oldVersion < 3) addTextColumns(db)
+        if (oldVersion < 4) addEpisodeColumns(db)
+    }
+
+    /** Version 4 (A2): a row is a book or a podcast episode; an episode names its show, its feed date and whether it was played. */
+    private fun addEpisodeColumns(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE offline_books ADD COLUMN kind TEXT NOT NULL DEFAULT 'book'")
+        db.execSQL("ALTER TABLE offline_books ADD COLUMN show_id TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE offline_books ADD COLUMN published_at INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE offline_books ADD COLUMN played INTEGER NOT NULL DEFAULT 0")
     }
 
     /** Where a book's stored text stands: none|fetching|ready|signin|failed, the revision stored and the edition it was made from. */
@@ -149,9 +159,10 @@ class SqliteOfflineStore(context: Context) : OfflineStore {
     private fun read(c: Cursor) = OfflineBook(
         c.getString(0), c.getString(1), c.getString(2), c.getString(3), c.getLong(4), c.getLong(5),
         runCatching { OfflineState.valueOf(c.getString(6)) }.getOrDefault(OfflineState.FAILED), c.getLong(7), c.getLong(8),
+        c.getString(9), c.getString(10), c.getLong(11), c.getInt(12) != 0,
     )
 
-    private val columns = "book_id, user_id, title, author, duration_ms, size_bytes, state, place_ms, place_at"
+    private val columns = "book_id, user_id, title, author, duration_ms, size_bytes, state, place_ms, place_at, kind, show_id, published_at, played"
 
     @Synchronized
     override fun all(): List<OfflineBook> =
@@ -177,6 +188,10 @@ class SqliteOfflineStore(context: Context) : OfflineStore {
             put("added_at", System.currentTimeMillis())
             put("place_ms", b.placeMs)
             put("place_at", b.placeAt)
+            put("kind", b.kind)
+            put("show_id", b.showId)
+            put("published_at", b.publishedAt)
+            put("played", if (b.played) 1 else 0)
         }
         helper.writableDatabase.insertWithOnConflict("offline_books", null, v, SQLiteDatabase.CONFLICT_REPLACE)
     }
@@ -214,6 +229,16 @@ class SqliteOfflineStore(context: Context) : OfflineStore {
         helper.writableDatabase.update(
             "offline_books", ContentValues().apply { put("place_ms", ms); put("place_at", at) }, "book_id = ?", arrayOf(id),
         )
+    }
+
+    @Synchronized
+    override fun setPlayed(id: String, played: Boolean) {
+        helper.writableDatabase.update("offline_books", ContentValues().apply { put("played", if (played) 1 else 0) }, "book_id = ?", arrayOf(id))
+    }
+
+    @Synchronized
+    override fun setSize(id: String, bytes: Long) {
+        helper.writableDatabase.update("offline_books", ContentValues().apply { put("size_bytes", bytes) }, "book_id = ?", arrayOf(id))
     }
 
     @Synchronized

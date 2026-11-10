@@ -11,6 +11,7 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import app.tendshelf.shared.BookManifest
 import app.tendshelf.shared.EpisodeDoc
+import app.tendshelf.shared.PodcastJson
 import app.tendshelf.shared.ShowSettings
 import app.tendshelf.shared.SkipRules
 import app.tendshelf.shared.episodeSpeed
@@ -186,9 +187,13 @@ class BookEngine(
     /**
      * A podcast episode (A1, decision 0038): the playback document, the show's picture and the person's settings are read
      * on the [io] executor, then the main thread starts the one file. Chapters are fetched after the sound has started,
-     * because the server may have to ask the publisher for them. Streamed only: downloads of episodes are A2.
+     * because the server may have to ask the publisher for them. A downloaded episode takes [startDownloadedEpisode] instead.
      */
     private fun startEpisode(id: String, atMs: Long?, conn: Connection, mine: Int) {
+        if (Offline.playable(id) != null) {
+            startDownloadedEpisode(id, atMs, conn, mine)
+            return
+        }
         io.execute {
             try {
                 val api = Api(conn.origin)
@@ -216,8 +221,35 @@ class BookEngine(
         }
     }
 
+    /**
+     * A downloaded episode starts from what the phone holds, with no network (A2): the stored playback document, the last
+     * settings, the stored picture and chapters, and the newest place written offline. The file is read from the cache.
+     */
+    private fun startDownloadedEpisode(id: String, atMs: Long?, conn: Connection, mine: Int) {
+        io.execute {
+            try {
+                val row = Offline.store.get(id)
+                val api = Api(conn.origin)
+                var doc = PodcastJson.episode(Offline.store.manifest(id) ?: throw IOException("no stored answer"))
+                if (row != null && row.placeAt > (doc.progress?.clientUpdatedAt ?: 0)) {
+                    doc = doc.copy(progress = RemoteProgress(row.placeMs, false, row.placeAt, conn.deviceId, ""))
+                }
+                val settings = Offline.loadSettings()
+                val art = Offline.coverBytes(id)
+                val pending = pendingFor(doc.id)
+                main.post { if (sequence.get() == mine) beginEpisode(api, conn, doc, settings, art, atMs, pending, true) }
+                val chapters = Offline.chaptersText(id)?.let { PodcastJson.chapters(it, doc.durationMs) }.orEmpty()
+                if (chapters.isNotEmpty()) main.post { if (sequence.get() == mine) player.setChapters(chapters) }
+            } catch (e: Exception) {
+                Log.w(TAG, "could not read the downloaded episode: ${e.javaClass.simpleName}")
+                main.post { if (sequence.get() == mine) fail("book") }
+            }
+        }
+    }
+
     private fun beginEpisode(
         api: Api, conn: Connection, doc: EpisodeDoc, settings: PlayerSettings, art: ByteArray?, atMs: Long?, pending: Save?,
+        downloaded: Boolean = false,
     ) {
         val url = api.paths.podcastUrl(doc.audioUrl)
         if (url == null) {
@@ -240,7 +272,8 @@ class BookEngine(
         val from = if (given) place else rules!!.startAt(place)
         player.loadEpisode(doc.title, doc.show, emptyList(), settings, art)
         onBookStarted?.invoke(doc.id, placeWrittenAt(doc.progress, pending), given)
-        exo.setMediaSource(BookMedia.episode(doc, url, ServerGate.gated(http)), from)
+        Offline.playingNow = doc.id
+        exo.setMediaSource(BookMedia.episode(doc, url, ServerGate.gated(http), downloaded), from)
         // The show's own speed, else the person's: set before prepare, so the first sample is already at that speed.
         exo.setPlaybackSpeed(episodeSpeed(doc.settings, settings.speed).toFloat())
         exo.skipSilenceEnabled = settings.skipQuiet
@@ -279,6 +312,7 @@ class BookEngine(
         onBookChanging?.invoke()
         http.setDefaultRequestProperties(mapOf("Authorization" to "Bearer ${conn.token}"))
         bookId = manifest.id
+        Offline.playingNow = ""
         error = ""
         silent = silentRanges(manifest.files)
         showSettings = null
@@ -305,6 +339,7 @@ class BookEngine(
         http.setDefaultRequestProperties(emptyMap())
         player.clear()
         bookId = ""
+        Offline.playingNow = ""
         error = ""
         silent = emptyList()
         showSettings = null

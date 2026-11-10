@@ -60,9 +60,9 @@
     <string name="downloads_auto_row">Downloaded on its own</string>
     <string name="downloads_auto_waiting">Waiting for Wi-Fi</string>
     <string name="downloads_auto_no_room">Your next book wasn\'t downloaded because there isn\'t enough room. Remove a book to make room.</string>
-    <string name="downloads_lead">Books saved here play without a connection.</string>
+    <string name="downloads_lead">Books and episodes saved here play without a connection.</string>
     <string name="downloads_empty">No downloads yet</string>
-    <string name="downloads_empty_how">Download a book to listen without a connection.</string>
+    <string name="downloads_empty_how">Download a book or an episode to listen without a connection.</string>
     <string name="downloads_active">Downloading</string>
     <string name="downloads_ready">Ready offline</string>
     <string name="downloads_percent">Downloading · %1$d%%</string>
@@ -109,4 +109,16 @@
     <string name="widget_open_book">Open %1$s</string>
     <string name="widget_signed_out">Sign in to listen. Tap to open Tendshelf.</string>
     <string name="widget_no_book">Pick a book to listen. Tap to open Tendshelf.</string>
+    <string name="downloads_podcasts">Podcasts on this phone</string>
+    <string name="downloads_podcasts_lead">Turn a show on and its newest episodes download on their own, on Wi-Fi only. They are removed after you\'ve played them. Episodes you download yourself are never removed.</string>
+    <string name="downloads_podcast_on_row">Downloading new episodes on Wi-Fi \u00b7 keeps the latest %1$d</string>
+    <string name="downloads_podcast_off_row">Off</string>
+    <string name="downloads_podcast_turn_on">Turn on</string>
+    <string name="downloads_podcast_turn_off">Turn off</string>
+    <string name="episodes_channel">New episodes</string>
+    <string name="episodes_new_one">New episode</string>
+    <plurals name="episodes_new_count">
+        <item quantity="one">%d new episode</item>
+        <item quantity="other">%d new episodes</item>
+    </plurals>
 </resources>
