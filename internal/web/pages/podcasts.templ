@@ -22,7 +22,7 @@ type PodTab struct {
 // PodcastsView is the Podcasts home: the tabs, then the shows as a grid or the episodes as rows. The
 // handler writes every word (internal/web/podcasts_copy.go).
 type PodcastsView struct {
-	Title, FindLabel, FindHref string
+	Title, FindHref, SearchLabel, SearchButton string
 	TabsLabel                  string
 	Tabs                       []PodTab
 	Shows                      []components.ShowCardView
@@ -31,18 +31,18 @@ type PodcastsView struct {
 	Import *PodImportView
 	// Failure is a line shown above the list (for example a show that could not be fetched); empty draws nothing.
 	Failure string
-	// EmptyTitle and EmptyBody are drawn when the tab has nothing; EmptyAction is the one link under them.
+	// EmptyTitle and EmptyBody are drawn when the tab has nothing.
 	EmptyTitle, EmptyBody string
-	EmptyAction           bool
 	// Starters is the "Popular shows" suggestion list, drawn under the empty state when nothing is followed.
 	Starters *PodStarterView
 }
 
-templ podFindLink(href, label string) {
-	<a class="ts-btn ts-btn--primary" href={ templ.SafeURL(href) }>
-		@components.Icon("search", false)
-		{ label }
-	</a>
+// podSearchForm is the in-page search field of the Podcasts tabs; it looks like the Radio page's and submits to the results page.
+templ podSearchForm(v PodcastsView) {
+	<form class="ts-podsearch__form" method="get" action={ templ.SafeURL(v.FindHref) } role="search">
+		<input class="ts-input" type="search" name="q" maxlength="200" aria-label={ v.SearchLabel } placeholder={ v.SearchLabel } autocomplete="off"/>
+		<button type="submit" class="ts-btn ts-btn--primary">{ v.SearchButton }</button>
+	</form>
 }
 
 // Podcasts is the home of the podcasts a person follows.
@@ -50,7 +50,6 @@ templ Podcasts(v PodcastsView) {
 	<div class="ts-podcasts">
 		<header class="ts-podcasts__head">
 			<h1 class="title-1 ts-podcasts__title">{ v.Title }</h1>
-			@podFindLink(v.FindHref, v.FindLabel)
 		</header>
 		<nav class="ts-tabs ts-podcasts__tabs" aria-label={ v.TabsLabel }>
 			for _, t := range v.Tabs {
@@ -59,6 +58,7 @@ templ Podcasts(v PodcastsView) {
 }>{ t.Label }</a>
 			}
 		</nav>
+		@podSearchForm(v)
 		if v.Failure != "" {
 			<p class="ts-banner ts-podcasts__banner" role="status">
 				@components.Icon("alert", false)
@@ -66,11 +66,7 @@ templ Podcasts(v PodcastsView) {
 			</p>
 		}
 		if len(v.Shows) == 0 && len(v.Episodes) == 0 {
-			if v.EmptyAction {
-				@components.EmptyState(v.EmptyTitle, v.EmptyBody, podFindLink(v.FindHref, v.FindLabel))
-			} else {
-				@components.EmptyState(v.EmptyTitle, v.EmptyBody, nil)
-			}
+			@components.EmptyState(v.EmptyTitle, v.EmptyBody, nil)
 		} else if len(v.Shows) > 0 {
 			<div class="ts-grid ts-grid--covers ts-podcasts__grid">
 				for _, c := range v.Shows {

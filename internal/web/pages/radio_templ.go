@@ -229,7 +229,7 @@ func Radio(v RadioView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		if len(v.Saved) == 0 && len(v.Popular) > 0 {
+		if len(v.Popular) > 0 {
 			templ_7745c5c3_Err = RadioPopular(v.PopularTitle, v.PopularHint, v.Popular).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

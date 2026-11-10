@@ -135,8 +135,9 @@ func (s *server) getRadio(w http.ResponseWriter, r *http.Request) {
 			v.Recent = append(v.Recent, s.stationRow(r, st, false))
 		}
 	}
-	if len(saved) == 0 {
-		v.PopularTitle, v.PopularHint, v.Popular = radioPopularTitle, radioPopularHint, s.radioPopular(r)
+	// Suggestions always show, minus what the person already saved. OndaCast's answer is cached for an hour.
+	if v.Popular = s.radioPopular(r, saved); len(v.Popular) > 0 {
+		v.PopularTitle, v.PopularHint = radioPopularTitle, radioPopularHint
 	}
 	s.pageStyled(w, r, http.StatusOK, radioTitle, "podcasts", pages.Radio(v), nil, pages.PodcastStyles...)
 }
@@ -156,7 +157,7 @@ func (s *server) getRadioSearch(w http.ResponseWriter, r *http.Request) {
 		AddLabel: radioAdd, AddAria: radioAdd, AddTitle: radioAddByAddress, AddHint: radioAddHint, AddFieldLabel: radioAddFieldLabel, AddButton: radioAddButton,
 	}
 	if q == "" {
-		v.PopularTitle, v.PopularHint, v.Popular = radioPopularTitle, radioPopularHint, s.radioPopular(r)
+		v.PopularTitle, v.PopularHint, v.Popular = radioPopularTitle, radioPopularHint, s.radioPopular(r, nil)
 	}
 	if q != "" {
 		if ok, wait := s.podLim.search.Allow(u.ID); !ok {

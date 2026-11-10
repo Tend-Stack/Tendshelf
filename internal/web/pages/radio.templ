@@ -49,7 +49,7 @@ templ Radio(v RadioView) {
 				</ul>
 			</section>
 		}
-		if len(v.Saved) == 0 && len(v.Popular) > 0 {
+		if len(v.Popular) > 0 {
 			@RadioPopular(v.PopularTitle, v.PopularHint, v.Popular)
 		}
 		if len(v.Recent) > 0 {

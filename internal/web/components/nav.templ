@@ -7,6 +7,8 @@ type NavItem struct {
 	Key, Label, Href, Icon string
 	// NoBoost keeps the link a plain navigation: the Android app catches it before the page loads (A7).
 	NoBoost bool
+	// Also is a second address that keeps this item current (Radio sits under Podcasts); the shell script reads it.
+	Also string
 	// Badge is the short count drawn beside the label ("3", "99+"), BadgeLabel its words for a screen reader
 	// ("3 new episodes"). Both are empty when there is nothing to count.
 	Badge, BadgeLabel string
@@ -23,9 +25,9 @@ type PodNav struct {
 
 // podcastsItem is the Podcasts destination, drawn after Library only when podcasts are on for the person.
 func podcastsItem(p PodNav) NavItem {
-	it := NavItem{Key: "podcasts", Label: "Podcasts", Href: "/podcasts", Icon: "podcast"}
+	it := NavItem{Key: "podcasts", Label: "Podcasts", Href: "/podcasts", Icon: "podcast", Also: "/radio"}
 	if p.RadioOnly {
-		it.Label, it.Href = "Radio", "/radio"
+		it.Label, it.Href, it.Also = "Radio", "/radio", ""
 		return it
 	}
 	switch {
@@ -115,6 +117,9 @@ templ TabBar(current, shell string, acct NavAccount, pod PodNav) {
 					href={ templ.SafeURL(it.Href) }
 					class="ts-tabbar__item"
 					data-nav={ it.Href }
+					if it.Also != "" {
+						data-nav-also={ it.Also }
+					}
 					if it.NoBoost {
 						hx-boost="false"
 					}
@@ -146,6 +151,9 @@ templ SideRail(current, shell string, acct NavAccount, pod PodNav) {
 					href={ templ.SafeURL(it.Href) }
 					class="ts-rail__item"
 					data-nav={ it.Href }
+					if it.Also != "" {
+						data-nav-also={ it.Also }
+					}
 					if it.NoBoost {
 						hx-boost="false"
 					}
@@ -224,6 +232,9 @@ templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, 
 					href={ templ.SafeURL(it.Href) }
 					class="ts-side__item"
 					data-nav={ it.Href }
+					if it.Also != "" {
+						data-nav-also={ it.Also }
+					}
 					if it.NoBoost {
 						hx-boost="false"
 					}
