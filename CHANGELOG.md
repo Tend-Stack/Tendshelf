@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+## 2026.8.0
+
+Released 2026-11-10. Podcasts and radio, on the web and in the Android app: follow shows, download episodes or let new ones arrive on their own, one Up next for books and episodes, and live stations with the song on air. Also sign-in with Authelia, Authentik or Keycloak, a Docker setup and an Activity page for owners.
+
 ### Added
 
 - **Podcasts.** Follow a show by searching OndaCast or pasting its RSS address, or bring your shows from another app with an OPML file (and take them with you the same way). Shows, episodes, places, stars and history live in Tendshelf's own database, so an OndaCast outage only pauses search. Each show has its own speed and intro and outro skips, episodes have chapters and show notes, filters (All, New, Unplayed, In progress, Played) and a row menu, and Home gets a New episodes shelf. Podcasts are off until the owner turns them on under Settings, Podcasts and radio; guests never see them.
