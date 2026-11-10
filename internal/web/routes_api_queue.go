@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
@@ -30,22 +32,84 @@ func (s *server) registerAPIQueue(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/queue/{bookID}", s.deleteAPIQueue)
 }
 
+// apiQueueItem is one queued item. Kind is "book" or "episode"; exactly one of Book and Episode is set. The
+// book fields are what they were before episodes; kind is additive.
 type apiQueueItem struct {
-	Book    apiBookCard `json:"book"`
-	AddedAt int64       `json:"addedAt"`
+	Kind    string         `json:"kind"`
+	Book    *apiBookCard   `json:"book,omitempty"`
+	Episode *apiPodEpisode `json:"episode,omitempty"`
+	AddedAt int64          `json:"addedAt"`
+}
+
+// apiQueueKinds reads ?kinds=book,episode. Without it only books are listed, popped and counted, as before
+// episodes existed (an older app cannot read an item with no book); episode needs podcasts on and the right to use
+// them, else it is quietly left out. A list naming no known kind is a 400 (ok false).
+func (s *server) apiQueueKinds(w http.ResponseWriter, r *http.Request) (library.QueueKinds, bool) {
+	raw, asked := r.URL.Query()["kinds"]
+	if !asked {
+		return library.QueueBooks, true
+	}
+	var k library.QueueKinds
+	known := false
+	for _, v := range raw {
+		for _, tok := range strings.Split(v, ",") {
+			switch strings.TrimSpace(tok) {
+			case library.QueueKindBook:
+				k.Books, known = true, true
+			case library.QueueKindEpisode:
+				k.Episodes, known = true, true
+			}
+		}
+	}
+	if !known {
+		apiBadField(w, "kinds", queueErrKinds)
+		return k, false
+	}
+	if k.Episodes && !(s.podcastsOn(r) && s.can.Can(r.Context(), currentUser(r), share.UsePodcasts, podServer)) {
+		k.Episodes = false
+	}
+	return k, true
+}
+
+// apiEpisodeItem checks that the person may queue or touch an episode, answering 404 like any unknown id.
+func (s *server) apiEpisodeItem(w http.ResponseWriter, r *http.Request, id string) (podcast.Episode, bool) {
+	if !s.podcastsOn(r) || !s.can.Can(r.Context(), currentUser(r), share.ListenEpisode, share.Target{Kind: share.TargetEpisode, ID: id}) {
+		s.notFound(w, r)
+		return podcast.Episode{}, false
+	}
+	ep, err := s.podcasts.Episode(r.Context(), currentUser(r).ID, id)
+	switch {
+	case errors.Is(err, podcast.ErrNotFound):
+		s.notFound(w, r)
+		return ep, false
+	case err != nil:
+		s.serverError(w, r, "api queue episode", err)
+		return ep, false
+	}
+	return ep, true
 }
 
 // writeAPIQueue answers 200 with the person's visible queue. next is always null: the list is
 // short and whole, so there is nothing to page.
 func (s *server) writeAPIQueue(w http.ResponseWriter, r *http.Request) {
-	list, err := s.lib.Queue(r.Context(), s.scope(r), currentUser(r).ID)
+	kinds, ok := s.apiQueueKinds(w, r)
+	if !ok {
+		return
+	}
+	list, err := s.lib.QueueIn(r.Context(), s.scope(r), currentUser(r).ID, kinds)
 	if err != nil {
 		s.serverError(w, r, "api queue", err)
 		return
 	}
 	items := make([]apiQueueItem, 0, len(list))
 	for _, e := range list {
-		items = append(items, apiQueueItem{Book: apiCardOf(e.Book), AddedAt: e.AddedAt})
+		if e.Kind == library.QueueKindEpisode {
+			items = append(items, apiQueueItem{Kind: e.Kind, Episode: &apiPodEpisode{ID: e.ID, ShowID: e.Episode.ShowID, Title: e.Episode.Title,
+				Show: e.Episode.ShowTitle, ArtURL: apiPodArt(e.Episode.ShowID), PublishedAt: e.Episode.PublishedAt, DurationMs: e.Episode.DurationMs}, AddedAt: e.AddedAt})
+			continue
+		}
+		card := apiCardOf(e.Book)
+		items = append(items, apiQueueItem{Kind: e.Kind, Book: &card, AddedAt: e.AddedAt})
 	}
 	api.Write(w, http.StatusOK, map[string]any{"items": items, "next": nil, "total": len(items)})
 }
@@ -56,15 +120,16 @@ func (s *server) getAPIQueue(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) postAPIQueue(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		BookID string `json:"bookId"`
-		Where  string `json:"where"`
+		BookID    string `json:"bookId"`
+		EpisodeID string `json:"episodeId"`
+		Where     string `json:"where"`
 	}
 	// The book id lives in the body, so the body is read first, then access to the book is checked
 	// before anything about the book is said.
 	if !apiJSONBody(w, r, apiQueueBody, &body) {
 		return
 	}
-	if body.BookID == "" {
+	if (body.BookID == "") == (body.EpisodeID == "") {
 		apiBadField(w, "bookId", queueErrBookID)
 		return
 	}
@@ -77,15 +142,28 @@ func (s *server) postAPIQueue(w http.ResponseWriter, r *http.Request) {
 		apiBadField(w, "where", queueErrWhere)
 		return
 	}
-	b, ok := s.loadBook(w, r, body.BookID, share.ListenBook)
-	if !ok {
-		return
+	var err error
+	if body.EpisodeID != "" {
+		ep, ok := s.apiEpisodeItem(w, r, body.EpisodeID)
+		if !ok {
+			return
+		}
+		if podIsVideo(ep) {
+			api.ErrorField(w, http.StatusConflict, api.CodeConflict, "episodeId", podQueueUnplayable)
+			return
+		}
+		_, err = s.lib.QueueAddEpisode(r.Context(), currentUser(r).ID, ep.ID, front)
+	} else {
+		b, ok := s.loadBook(w, r, body.BookID, share.ListenBook)
+		if !ok {
+			return
+		}
+		if !s.queueable(r.Context(), b) {
+			api.ErrorField(w, http.StatusConflict, api.CodeConflict, "bookId", queueErrUnplayable)
+			return
+		}
+		_, err = s.lib.QueueAdd(r.Context(), currentUser(r).ID, b.ID, front)
 	}
-	if !s.queueable(r.Context(), b) {
-		api.ErrorField(w, http.StatusConflict, api.CodeConflict, "bookId", queueErrUnplayable)
-		return
-	}
-	_, err := s.lib.QueueAdd(r.Context(), currentUser(r).ID, b.ID, front)
 	switch {
 	case errors.Is(err, library.ErrQueueFull):
 		api.ErrorField(w, http.StatusConflict, api.CodeConflict, "bookId", queueErrFull)
@@ -98,8 +176,23 @@ func (s *server) postAPIQueue(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// apiQueueTouch checks the item a move or a remove names: a book the person may view, or (an id starting pe_) an
+// episode they may listen to.
+func (s *server) apiQueueTouch(w http.ResponseWriter, r *http.Request, id string) bool {
+	if strings.HasPrefix(id, "pe_") {
+		_, ok := s.apiEpisodeItem(w, r, id)
+		return ok
+	}
+	_, ok := s.loadBook(w, r, id, share.ViewBook)
+	return ok
+}
+
 func (s *server) postAPIQueueMove(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.loadBook(w, r, r.PathValue("bookID"), share.ViewBook); !ok {
+	if !s.apiQueueTouch(w, r, r.PathValue("bookID")) {
+		return
+	}
+	kinds, ok := s.apiQueueKinds(w, r)
+	if !ok {
 		return
 	}
 	var body struct {
@@ -118,7 +211,7 @@ func (s *server) postAPIQueueMove(w http.ResponseWriter, r *http.Request) {
 		apiBadField(w, "dir", queueErrDir)
 		return
 	}
-	err := s.lib.QueueMove(r.Context(), s.scope(r), currentUser(r).ID, r.PathValue("bookID"), delta)
+	err := s.lib.QueueMoveIn(r.Context(), s.scope(r), currentUser(r).ID, r.PathValue("bookID"), delta, kinds)
 	switch {
 	case errors.Is(err, library.ErrNotFound):
 		s.notFound(w, r)
@@ -131,7 +224,7 @@ func (s *server) postAPIQueueMove(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) deleteAPIQueue(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("bookID")
-	if _, ok := s.loadBook(w, r, id, share.ViewBook); !ok {
+	if !s.apiQueueTouch(w, r, id) {
 		return
 	}
 	err := s.lib.QueueRemove(r.Context(), currentUser(r).ID, id)
@@ -162,20 +255,31 @@ func (s *server) postAPIQueueNext(w http.ResponseWriter, r *http.Request) {
 		apiBadField(w, "ended", queueErrEnded)
 		return
 	}
+	kinds, ok := s.apiQueueKinds(w, r)
+	if !ok {
+		return
+	}
 	var card apiBookCard
-	found, err := s.popQueue(r.Context(), currentUser(r), s.scope(r), body.Ended, func(b library.Book) (bool, error) {
+	var episode *apiPodPlayback
+	found, err := s.popQueue(r.Context(), currentUser(r), s.scope(r), kinds, body.Ended, func(b library.Book) (bool, error) {
 		d, err := s.lib.BookDetail(r.Context(), s.scope(r), b.ID)
 		if errors.Is(err, library.ErrNotFound) {
 			return false, nil
 		}
 		card = apiCardOf(d.Card)
 		return err == nil, err
+	}, func(ep podcast.Episode) (bool, error) {
+		doc := s.apiPodPlaybackOf(r, ep)
+		episode = &doc
+		return true, nil
 	})
 	switch {
 	case err != nil:
 		s.serverError(w, r, "api queue next", err)
+	case found && episode != nil:
+		api.Write(w, http.StatusOK, map[string]any{"kind": library.QueueKindEpisode, "episode": episode, "source": "queue"})
 	case found:
-		api.Write(w, http.StatusOK, map[string]any{"book": card, "source": "queue"})
+		api.Write(w, http.StatusOK, map[string]any{"kind": library.QueueKindBook, "book": card, "source": "queue"})
 	default:
 		s.writeSeriesNext(w, r, body.Ended, body.Series)
 	}
@@ -200,14 +304,26 @@ func (s *server) getAPIQueueNext(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	ctx := r.Context()
 	u := currentUser(r)
-	entries, err := s.lib.Queue(ctx, s.scope(r), u.ID)
+	kinds, ok := s.apiQueueKinds(w, r)
+	if !ok {
+		return
+	}
+	entries, err := s.lib.QueueIn(ctx, s.scope(r), u.ID, kinds)
 	if err != nil {
 		s.serverError(w, r, "api queue peek", err)
 		return
 	}
 	for _, e := range entries {
-		if ended != "" && e.Book.ID == ended {
+		if ended != "" && e.ID == ended {
 			continue
+		}
+		if e.Kind == library.QueueKindEpisode {
+			ep, ok := s.episodeFor(ctx, u, e.ID)
+			if !ok {
+				continue
+			}
+			api.Write(w, http.StatusOK, map[string]any{"kind": library.QueueKindEpisode, "episode": s.apiPodPlaybackOf(r, ep), "source": "queue"})
+			return
 		}
 		b, err := s.lib.Book(ctx, e.Book.ID)
 		if errors.Is(err, library.ErrNotFound) {
@@ -228,7 +344,7 @@ func (s *server) getAPIQueueNext(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, "api queue peek", err)
 			return
 		}
-		api.Write(w, http.StatusOK, map[string]any{"book": apiCardOf(d.Card), "source": "queue"})
+		api.Write(w, http.StatusOK, map[string]any{"kind": library.QueueKindBook, "book": apiCardOf(d.Card), "source": "queue"})
 		return
 	}
 	s.writeSeriesNext(w, r, ended, true)
@@ -307,12 +423,14 @@ func (s *server) queueable(ctx context.Context, b library.Book) bool {
 	return err == nil && len(files) > 0
 }
 
-// popQueue takes the person's first playable queued book (dropping ended first, on the first pop
-// only) and hands it to use. use reports false when it could not build the book, and the loop pops
-// the next one. At most QueueMax books are tried; nothing left reports found false.
-func (s *server) popQueue(ctx context.Context, u users.User, sc library.Scope, ended string, use func(library.Book) (bool, error)) (bool, error) {
+// popQueue takes the person's first playable queued item of the asked kinds (dropping ended first, on the first
+// pop only) and hands it to useBook or useEpisode. use reports false when it could not build the item, and the loop
+// pops the next one. At most QueueMax items are tried; nothing left reports found false. useEpisode may be nil
+// when kinds has no episodes.
+func (s *server) popQueue(ctx context.Context, u users.User, sc library.Scope, kinds library.QueueKinds, ended string,
+	useBook func(library.Book) (bool, error), useEpisode func(podcast.Episode) (bool, error)) (bool, error) {
 	for range library.QueueMax {
-		id, err := s.lib.QueuePop(ctx, sc, u.ID, ended)
+		it, err := s.lib.QueuePopIn(ctx, sc, u.ID, ended, kinds)
 		ended = ""
 		if errors.Is(err, library.ErrNotFound) {
 			return false, nil
@@ -320,7 +438,20 @@ func (s *server) popQueue(ctx context.Context, u users.User, sc library.Scope, e
 		if err != nil {
 			return false, err
 		}
-		b, err := s.lib.Book(ctx, id)
+		if it.Kind == library.QueueKindEpisode {
+			if useEpisode == nil {
+				continue
+			}
+			ep, ok := s.episodeFor(ctx, u, it.ID)
+			if !ok {
+				continue
+			}
+			if ok, err := useEpisode(ep); err != nil || ok {
+				return ok, err
+			}
+			continue
+		}
+		b, err := s.lib.Book(ctx, it.ID)
 		if errors.Is(err, library.ErrNotFound) {
 			continue
 		}
@@ -330,9 +461,21 @@ func (s *server) popQueue(ctx context.Context, u users.User, sc library.Scope, e
 		if !s.nextPlayable(ctx, u, b) {
 			continue
 		}
-		if ok, err := use(b); err != nil || ok {
+		if ok, err := useBook(b); err != nil || ok {
 			return ok, err
 		}
 	}
 	return false, nil
+}
+
+// episodeFor loads an episode the person may play, or reports false (unknown, refused, video, podcasts off).
+func (s *server) episodeFor(ctx context.Context, u users.User, id string) (podcast.Episode, bool) {
+	if s.podcasts == nil || !s.podcasts.Enabled(ctx) || !s.can.Can(ctx, u, share.ListenEpisode, share.Target{Kind: share.TargetEpisode, ID: id}) {
+		return podcast.Episode{}, false
+	}
+	ep, err := s.podcasts.Episode(ctx, u.ID, id)
+	if err != nil || podIsVideo(ep) {
+		return podcast.Episode{}, false
+	}
+	return ep, true
 }

@@ -1178,18 +1178,18 @@ listen(audio, "ended", () => {
   finishBook();
 });
 
-// The last file ended: the book (or the episode, which the save marks played) is finished, then Up next plays its first book.
+// The last file ended: the book (or the episode, which the save marks played) is finished, then Up next plays its first item.
 function finishBook() {
   save("end").then(playNext);
   idleAt = Date.now();
   emit("pause");
 }
 
-// The server pops the first book of Up next and drops the ended one from it (204 when empty).
+// The server pops the first item of Up next (a book or an episode) and drops the ended one from it (204 when empty).
 // Nothing happens in link mode, or when the person already started something else while the
 // place was being saved (then the audio is no longer ended).
 function playNext() {
-  if (LINK || !(audio.ended || outroEnded) || !book || book.kind === EPISODE) return; // Up next follows books only
+  if (LINK || !(audio.ended || outroEnded) || !book) return;
   loadBook("next", {
     play: true,
     init: {

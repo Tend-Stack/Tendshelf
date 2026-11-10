@@ -132,3 +132,13 @@ const (
 	podImportStopped   = "Stopped early: you have followed a lot of shows in a short time. %s not added yet. Import the file again in an hour to add the rest."
 	podImportLabel     = "Import result"
 )
+
+// New in P5.
+const (
+	podMenuFmt         = "More for %s"
+	podQueueUnplayable = "This episode can't be played here."
+	podDownload        = "Download"
+	podAutoSave        = "Save new episodes on the server"
+	podAutoSaveHint    = "Tendshelf keeps the newest episodes you have not played, so they start at once."
+	podKeepLatest      = "How many to keep"
+)

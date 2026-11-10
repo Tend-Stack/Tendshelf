@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
@@ -222,7 +223,15 @@ func (s *server) getOffline(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusBadRequest)
 		return
 	}
+	epIDs, ok := offlineIDs(r.URL.Query().Get("episodes"))
+	if !ok {
+		s.errorPage(w, r, http.StatusBadRequest)
+		return
+	}
 	v, err := s.offlineView(r, ids, textIDs)
+	if err == nil {
+		err = s.offlineEpisodes(r, &v, epIDs)
+	}
 	if err != nil {
 		s.serverError(w, r, "offline shell", err)
 		return
@@ -346,4 +355,38 @@ func (s *server) offlineMeta(r *http.Request, book library.Book, p *progress.Pro
 	}
 	pct := int(math.Round(float64(min(p.PositionMs, dur)) * 100 / float64(dur)))
 	return fmt.Sprintf(offlineReadyPct, pct), nil
+}
+
+// offlineEpisodes adds the downloaded podcast episodes the phone holds to the shell, after the books it holds. Each is
+// checked again here: an id the person may not play, a video, an unknown id or podcasts turned off is left out.
+func (s *server) offlineEpisodes(r *http.Request, v *pages.OfflineView, ids []string) error {
+	var rows []pages.OfflineRow
+	for _, id := range ids {
+		if !strings.HasPrefix(id, "pe_") {
+			continue
+		}
+		ep, ok := s.episodeFor(r.Context(), currentUser(r), id)
+		if !ok {
+			continue
+		}
+		card := podArt(ep.ShowID, ep.ShowTitle, "")
+		card.ID, card.Title, card.Byline = ep.ID, ep.Title, ep.ShowTitle
+		if sh, err := s.podcasts.ShowByID(r.Context(), ep.ShowID); err == nil {
+			card = podArt(ep.ShowID, ep.ShowTitle, sh.ArtSHA)
+			card.ID, card.Title, card.Byline = ep.ID, ep.Title, ep.ShowTitle
+		}
+		card.Href = "/podcasts/episodes/" + url.PathEscape(ep.ID)
+		rows = append(rows, pages.OfflineRow{Card: card, Meta: offlineReady, Ready: true,
+			Episode: &pages.OfflineEpisodePlay{ID: ep.ID, Href: "/podcasts/audio/" + url.PathEscape(ep.ID), Label: fmt.Sprintf(offlinePlayAria, ep.Title)}})
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	// They sit with the ready books: before the "needs a connection" rows.
+	at := 0
+	for at < len(v.Rows) && v.Rows[at].Ready {
+		at++
+	}
+	v.Rows = slices.Concat(v.Rows[:at], rows, v.Rows[at:])
+	return nil
 }

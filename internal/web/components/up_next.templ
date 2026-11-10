@@ -1,8 +1,9 @@
 package components
 
-// UpNextRow is one queued book: its row, the words of its three buttons and which button keeps the
+// UpNextRow is one queued book or episode: its row, the words of its three buttons and which button keeps the
 // keyboard focus after an answer (Focus is "up", "down", "remove" or empty).
 type UpNextRow struct {
+	ID                              string // the book or episode id
 	Card                            CardView
 	UpLabel, DownLabel, RemoveLabel string
 	First, Last                     bool
@@ -28,7 +29,7 @@ templ UpNext(v UpNextView) {
 		} else {
 			<ol class="ts-upnext__list">
 				for _, r := range v.Rows {
-					<li id={ "item-" + r.Card.ID } class="ts-upnext__item">
+					<li id={ "item-" + r.ID } class="ts-upnext__item">
 						@BookRow(r.Card)
 						<div class="ts-upnext__tools">
 							if r.First {
@@ -55,7 +56,7 @@ templ UpNext(v UpNextView) {
 
 // upNextButton is one icon button as a form. act is "move" (dir "up" or "down") or "delete".
 templ upNextButton(v UpNextView, r UpNextRow, act, dir, label string) {
-	<form method="post" action={ templ.URL("/queue/" + r.Card.ID + "/" + act) } hx-post={ "/queue/" + r.Card.ID + "/" + act } hx-target={ "#" + v.ID } hx-swap="outerHTML">
+	<form method="post" action={ templ.URL("/queue/" + r.ID + "/" + act) } hx-post={ "/queue/" + r.ID + "/" + act } hx-target={ "#" + v.ID } hx-swap="outerHTML">
 		<input type="hidden" name="_csrf" value={ v.CSRF }/>
 		if dir != "" {
 			<input type="hidden" name="dir" value={ dir }/>

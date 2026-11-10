@@ -47,7 +47,10 @@ func (s *Service) Tick(ctx context.Context, lastPrune time.Time) time.Time {
 			}
 		}
 	}
-	// Server auto-download of new episodes (podcasts.server_auto) arrives with P5.
+	// Server auto-download (podcasts.server_auto, plus a follower's per-show switch): keep the newest unplayed, drop the played.
+	if _, _, err := s.AutoDownload(ctx); err != nil {
+		s.Log.Warn("podcasts: auto-download", "err", err)
+	}
 	if s.now().Sub(lastPrune) >= pruneEvery {
 		if _, err := s.enqueueOnce(ctx, KindPrune, "kind", "prune", map[string]string{"kind": "prune"}, ""); err != nil {
 			s.Log.Warn("podcasts: could not queue a prune", "err", err)

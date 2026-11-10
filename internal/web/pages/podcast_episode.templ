@@ -34,6 +34,9 @@ type PodcastEpisodeView struct {
 	Progress string
 	// Number is "Season 2 · Episode 5" when the feed gives it.
 	Number string
+	// Menu is the Play next and Add to queue menu; Download is the offline control (js/downloads.js fills it in).
+	Menu     components.EpisodeMenuView
+	Download *BookDownloadView
 }
 
 // PodcastEpisode is the page of one episode.
@@ -84,6 +87,12 @@ templ PodcastEpisode(v PodcastEpisodeView) {
 					{ v.StarLabel }
 				</button>
 			</form>
+			if !v.Video {
+				@components.EpisodeMenu(v.Menu)
+			}
+			if v.Download != nil {
+				@bookDownload(*v.Download)
+			}
 			if v.SaveHref != "" {
 				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SaveHref) } hx-boost="false">
 					@components.Icon("download", false)

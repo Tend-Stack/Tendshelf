@@ -181,6 +181,11 @@ func (s *server) getAPIPodcastEpisode(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	api.Write(w, http.StatusOK, s.apiPodPlaybackOf(r, ep))
+}
+
+// apiPodPlaybackOf is the playback document of an episode the person may listen to.
+func (s *server) apiPodPlaybackOf(r *http.Request, ep podcast.Episode) apiPodPlayback {
 	var set podcast.ShowSettings
 	if sh, err := s.podcasts.Show(r.Context(), currentUser(r).ID, ep.ShowID); err == nil {
 		set = sh.Settings
@@ -190,7 +195,7 @@ func (s *server) getAPIPodcastEpisode(w http.ResponseWriter, r *http.Request) {
 	if ep.ChaptersURL != "" || ep.ChaptersJSON != "" {
 		doc.ChaptersURL = "/api/v1/podcasts/chapters/" + url.PathEscape(ep.ID)
 	}
-	api.Write(w, http.StatusOK, doc)
+	return doc
 }
 
 // apiPodProgressIn is one place as the app sends it; the pointers tell "missing" from zero.

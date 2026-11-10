@@ -9,9 +9,10 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-// UpNextRow is one queued book: its row, the words of its three buttons and which button keeps the
+// UpNextRow is one queued book or episode: its row, the words of its three buttons and which button keeps the
 // keyboard focus after an answer (Focus is "up", "down", "remove" or empty).
 type UpNextRow struct {
+	ID                              string // the book or episode id
 	Card                            CardView
 	UpLabel, DownLabel, RemoveLabel string
 	First, Last                     bool
@@ -54,7 +55,7 @@ func UpNext(v UpNextView) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.ID).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 25, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 26, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -82,7 +83,7 @@ func UpNext(v UpNextView) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(v.EmptyText)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 27, Col: 90}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 28, Col: 90}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -103,9 +104,9 @@ func UpNext(v UpNextView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression("item-" + r.Card.ID).Resolve(ctx)
+				templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression("item-" + r.ID).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 31, Col: 33}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 32, Col: 28}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 				if templ_7745c5c3_Err != nil {
@@ -171,7 +172,7 @@ func UpNext(v UpNextView) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(v.Count)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 52, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 53, Col: 68}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -209,9 +210,9 @@ func upNextButton(v UpNextView, r UpNextRow, act, dir, label string) templ.Compo
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.URL("/queue/" + r.Card.ID + "/" + act)).ResolveURL(ctx)
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.URL("/queue/" + r.ID + "/" + act)).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 58, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 59, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -222,9 +223,9 @@ func upNextButton(v UpNextView, r UpNextRow, act, dir, label string) templ.Compo
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
-		templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression("/queue/" + r.Card.ID + "/" + act).Resolve(ctx)
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression("/queue/" + r.ID + "/" + act).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 58, Col: 120}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 59, Col: 110}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -237,7 +238,7 @@ func upNextButton(v UpNextView, r UpNextRow, act, dir, label string) templ.Compo
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templruntime.NewAttributeExpression("#" + v.ID).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 58, Col: 145}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 59, Col: 135}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -250,7 +251,7 @@ func upNextButton(v UpNextView, r UpNextRow, act, dir, label string) templ.Compo
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.CSRF).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 59, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 60, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
@@ -268,7 +269,7 @@ func upNextButton(v UpNextView, r UpNextRow, act, dir, label string) templ.Compo
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templruntime.NewAttributeExpression(dir).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 61, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 62, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 			if templ_7745c5c3_Err != nil {
@@ -286,7 +287,7 @@ func upNextButton(v UpNextView, r UpNextRow, act, dir, label string) templ.Compo
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.In).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 63, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 64, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -299,7 +300,7 @@ func upNextButton(v UpNextView, r UpNextRow, act, dir, label string) templ.Compo
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templruntime.NewAttributeExpression(v.Next).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 64, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 65, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
@@ -312,7 +313,7 @@ func upNextButton(v UpNextView, r UpNextRow, act, dir, label string) templ.Compo
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templruntime.NewAttributeExpression(label).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 65, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/up_next.templ`, Line: 66, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
