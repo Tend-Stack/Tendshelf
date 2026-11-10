@@ -80,3 +80,52 @@ func TestNavMarksMostSpecificBrowser(t *testing.T) {
 		}
 	}
 }
+
+// TestRailStaysPutBetweenPages: a page that rises in sits a few px below its place for a moment. On a page
+// shorter than the window that once made the document scrollable, and the sticky rail and sidebar moved up
+// and back (Search, Downloads, Shelves). The navigation must not move on any frame of a page change.
+func TestRailStaysPutBetweenPages(t *testing.T) {
+	e := nowPanelEnv(t)
+	for _, width := range []int{1024, 1440} {
+		tab := fullpOpen(t, e, width, 900, false)
+		for _, path := range []string{"/", "/search", "/me/downloads", "/shelves", "/libraries"} {
+			var clicked bool
+			tab.Eval(`(() => {
+			  const visibleNav = () => [...document.querySelectorAll("#nav-rail, #nav-side")].find((nav) => nav.offsetWidth > 0);
+			  const link = visibleNav().querySelector("a[href='`+path+`']");
+			  if (!link) return false;
+			  window.tsNavTops = [];
+			  window.tsNavWatch = true;
+			  const frame = () => {
+			    window.tsNavTops.push(Math.round(visibleNav().getBoundingClientRect().top * 10) / 10);
+			    if (window.tsNavWatch) requestAnimationFrame(frame);
+			  };
+			  frame();
+			  link.click();
+			  return true;
+			})()`, &clicked)
+			if !clicked {
+				continue // the rail has fewer destinations than the sidebar
+			}
+			time.Sleep(900 * time.Millisecond)
+			var got struct {
+				Path   string
+				Tops   []float64
+				Frames int
+			}
+			tab.Eval(`(() => {
+			  window.tsNavWatch = false;
+			  return {Path: location.pathname, Tops: [...new Set(window.tsNavTops)], Frames: window.tsNavTops.length};
+			})()`, &got)
+			if got.Path != path {
+				t.Fatalf("%d px: clicked %s, the address is %s", width, path, got.Path)
+			}
+			if got.Frames < 5 {
+				t.Fatalf("%d px %s: only %d frames were watched", width, path, got.Frames)
+			}
+			if len(got.Tops) != 1 || got.Tops[0] != 0 {
+				t.Errorf("%d px %s: the navigation moved, its top went through %v", width, path, got.Tops)
+			}
+		}
+	}
+}
