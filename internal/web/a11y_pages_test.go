@@ -76,6 +76,7 @@ var a11ySkip = map[string]string{
 	"/welcome":                          "redirects (303) to Home",
 	"/books/{id}/text/{fileID}/file":    "the original ebook file as a download, not a page",
 	"/s/{token}/stream/{audioFileID}":   "audio stream, not a page",
+	"/radio/live/{stationID}":           "live audio stream, not a page",
 	"/s/{token}/peaks/{audioFileID}":    "JSON waveform, not a page",
 }
 
