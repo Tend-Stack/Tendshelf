@@ -238,3 +238,36 @@ func TestPageSwapNoSqueeze(t *testing.T) {
 		t.Errorf("#main has its own layer %q", name)
 	}
 }
+
+// TestPageSwapEntersBeforeFirstPaint: the new page carries ts-entering from the frame it is swapped in, so it never
+// shows once in place and then restarts from opacity 0 and 4 px low (operator, Firefox and the Android app, 2026-11-10:
+// "the whole page blinks and jumps after it loads"). htmx:after:swap comes only when the page-change transition ends,
+// so the class used to arrive about 270 ms after the first frame of the new page.
+func TestPageSwapEntersBeforeFirstPaint(t *testing.T) {
+	b := chromium(t)
+	base := appServer(t)
+	tab := b.NewTab(390, 800, true, false)
+	tab.Navigate(base + "/")
+	tab.WaitFor(`window.htmx !== undefined`, 10*time.Second)
+	// Every frame records whether #main still holds the old page and whether it is entering.
+	tab.Eval(`(() => {
+		window.__frames = [];
+		const oldMain = document.getElementById("main").innerHTML;
+		const tick = () => {
+			const main = document.getElementById("main");
+			window.__frames.push([main.innerHTML !== oldMain, main.classList.contains("ts-entering")]);
+			if (window.__frames.length < 120) requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+		document.querySelector('a[href^="/libraries"]').click();
+	})()`, nil)
+	tab.WaitFor(`window.__frames.length >= 120`, 15*time.Second)
+	var first []bool
+	tab.Eval(`window.__frames.find((f) => f[0]) || []`, &first)
+	if len(first) != 2 {
+		t.Fatal("the page never changed")
+	}
+	if !first[1] {
+		t.Error("the first frame of the new page is not entering: it is drawn in place, then restarted by ts-entering")
+	}
+}

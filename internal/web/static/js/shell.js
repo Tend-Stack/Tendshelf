@@ -74,11 +74,14 @@ document.addEventListener("change", (event) => {
 });
 
 // Page enter: outerSync resets the class of #main to the response's, so adding ts-entering after
-// each swap of #main restarts the keyframe every time.
-document.addEventListener("htmx:after:swap", (event) => {
-  const target = event.detail && event.detail.ctx && event.detail.ctx.target;
+// each swap of #main restarts the keyframe every time. It is added on htmx:before:settle, which
+// htmx fires in the same task as the swap, so the new page is never painted before the animation
+// starts. htmx:after:swap waits for the whole swap to finish (about 270 ms later in Firefox,
+// measured): by then the page had been drawn in place once, then dropped to opacity 0 and 4 px low
+// and rose again, which looked like the whole page blinking and jumping after it had loaded.
+document.addEventListener("htmx:before:settle", (event) => {
   const main = document.getElementById("main");
-  if (main && target === main) main.classList.add("ts-entering");
+  if (main && event.target === main) main.classList.add("ts-entering");
 });
 
 // Sheets live in #sheet, outside #main. Opening one (a swap into #sheet, or a full page load with
