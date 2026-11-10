@@ -541,7 +541,7 @@ object Offline {
             }
             unmark(book)
             EpisodeAuto.unmark(book)
-            prefs.edit().remove("autoNoRoom").apply()
+            prefs.edit().remove("autoNoRoom").remove("autoNoRoomShow").apply()
             store.remove(book)
             coverFile(book).delete()
             chaptersFile(book).delete()
@@ -683,7 +683,7 @@ object Offline {
     fun unmetered(): Boolean = Requirements(Requirements.NETWORK_UNMETERED).checkRequirements(app)
 
     /** True when the last automatic book was not fetched for lack of room; the Downloads page says so. */
-    fun autoNoRoomNoted(): Boolean = ::app.isInitialized && prefs.getBoolean("autoNoRoom", false)
+    fun autoNoRoomNoted(): Boolean = ::app.isInitialized && (prefs.getBoolean("autoNoRoom", false) || prefs.getBoolean("autoNoRoomShow", false))
 
     /** The player is near the end of [book] but the network is metered: ask again at the next allowed moment. */
     fun autoWant(book: String) { prefs.edit().putString("autoWant", book).apply() }
@@ -842,7 +842,7 @@ object Offline {
                 when (val p = autoEpisodePlan(doc, api.paths, free, autoBytes(store.all(), allMarks()))) {
                     is AutoPlan.Go -> p.plan
                     AutoPlan.NoRoom -> {
-                        prefs.edit().putBoolean("autoNoRoom", true).apply()
+                        prefs.edit().putBoolean(if (nextItem) "autoNoRoom" else "autoNoRoomShow", true).apply()
                         return false
                     }
                     AutoPlan.Skip -> return false
@@ -862,7 +862,7 @@ object Offline {
             when {
                 !auto -> { unmark(id); EpisodeAuto.unmark(id); EpisodeAuto.undecline(id) }
                 nextItem -> { mark(id); prefs.edit().remove("autoNoRoom").apply() }
-                else -> EpisodeAuto.mark(id)
+                else -> { EpisodeAuto.mark(id); prefs.edit().remove("autoNoRoomShow").apply() }
             }
             store.put(
                 OfflineBook(
@@ -950,7 +950,7 @@ object Offline {
     fun wipe() {
         if (!::app.isInitialized) return
         EpisodeAuto.wipe()
-        prefs.edit().putBoolean("wipePending", true).remove("autoBooks").remove("autoWant").remove("autoNoRoom").remove("autoNext").remove("autoDrop").commit()
+        prefs.edit().putBoolean("wipePending", true).remove("autoBooks").remove("autoWant").remove("autoNoRoom").remove("autoNoRoomShow").remove("autoNext").remove("autoDrop").commit()
         store.clear()
         floors.clear()
         live.clear()
@@ -990,7 +990,7 @@ object Offline {
         File(root, "text").deleteRecursively()
         File(root, "static").deleteRecursively()
         store.clear()
-        prefs.edit().remove("settingsJson").remove("autoBooks").remove("autoWant").remove("autoNoRoom").remove("autoNext").remove("autoDrop").putBoolean("wipePending", false).commit()
+        prefs.edit().remove("settingsJson").remove("autoBooks").remove("autoWant").remove("autoNoRoom").remove("autoNoRoomShow").remove("autoNext").remove("autoDrop").putBoolean("wipePending", false).commit()
         Log.i(TAG, "offline: wiped")
     }
 }

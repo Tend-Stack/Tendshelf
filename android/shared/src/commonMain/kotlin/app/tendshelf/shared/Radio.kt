@@ -88,3 +88,16 @@ fun liveFailureKind(code: Int): String = when (code) {
     503 -> "busy"
     else -> "stream"
 }
+
+/** The extra buttons the media card, lock screen and car can show beside play and pause. */
+enum class MediaButton { Back, Forward, Speed }
+
+/**
+ * Which extra buttons go with the item now loaded (RA-1). A live station has nothing to seek and no speed, so it publishes
+ * none: only play and pause remain. A book or episode gets Back and Forward, plus Speed for a controller that shows it.
+ */
+fun mediaButtonsFor(live: Boolean, showSpeed: Boolean): List<MediaButton> = when {
+    live -> emptyList()
+    showSpeed -> listOf(MediaButton.Back, MediaButton.Forward, MediaButton.Speed)
+    else -> listOf(MediaButton.Back, MediaButton.Forward)
+}

@@ -37,6 +37,8 @@ import app.tendshelf.shared.isEpisodeId
 import app.tendshelf.shared.isStationId
 import app.tendshelf.shared.mayRate
 import app.tendshelf.shared.speedCycle
+import app.tendshelf.shared.MediaButton
+import app.tendshelf.shared.mediaButtonsFor
 import app.tendshelf.shared.speedLabel
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.SettableFuture
@@ -114,6 +116,7 @@ class PlaybackService : MediaLibraryService() {
         engine = BookEngine(exo, player, http, main, io, { connections }) { extras -> putExtras { putAll(extras) } }
         engine.liveWord = getString(R.string.radio_live)
         engine.fallbackArt = { AppIcon.png(this) }
+        player.onLiveKindChanged = { refreshButtons() } // RA-1: a station shows no Back or Forward
         player.onLiveToggle = { play -> engine.liveToggle(play) } // R3: pause lets go of a station's stream, play joins it live
         sleep = SleepTimer(exo, player, getSystemService(android.hardware.SensorManager::class.java), main) { info ->
             putExtras {
@@ -343,25 +346,37 @@ class PlaybackService : MediaLibraryService() {
     }
 
     /** Back and Forward beside the chapter buttons (D4), and the car's speed button (A8, D7). */
-    private fun skipButtons(speed: Double?): ImmutableList<CommandButton> = ImmutableList.copyOf(listOfNotNull(
-        CommandButton.Builder(CommandButton.ICON_SKIP_BACK)
-            .setPlayerCommand(Player.COMMAND_SEEK_BACK)
-            .setDisplayName("Back")
-            .setSlots(CommandButton.SLOT_OVERFLOW)
-            .build(),
-        CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD)
-            .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
-            .setDisplayName("Forward")
-            .setSlots(CommandButton.SLOT_OVERFLOW)
-            .build(),
-        speed?.let {
-            CommandButton.Builder(CommandButton.ICON_PLAYBACK_SPEED)
-                .setSessionCommand(SPEED_COMMAND)
-                .setDisplayName(speedLabel(it))
-                .setSlots(CommandButton.SLOT_OVERFLOW)
-                .build()
+    private fun skipButtons(speed: Double?): ImmutableList<CommandButton> = ImmutableList.copyOf(
+        mediaButtonsFor(player.isLive, speed != null).map { kind ->
+            when (kind) {
+                MediaButton.Back -> CommandButton.Builder(CommandButton.ICON_SKIP_BACK)
+                    .setPlayerCommand(Player.COMMAND_SEEK_BACK)
+                    .setDisplayName("Back")
+                    .setSlots(CommandButton.SLOT_OVERFLOW)
+                    .build()
+                MediaButton.Forward -> CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD)
+                    .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
+                    .setDisplayName("Forward")
+                    .setSlots(CommandButton.SLOT_OVERFLOW)
+                    .build()
+                MediaButton.Speed -> CommandButton.Builder(CommandButton.ICON_PLAYBACK_SPEED)
+                    .setSessionCommand(SPEED_COMMAND)
+                    .setDisplayName(speedLabel(speed ?: 1.0))
+                    .setSlots(CommandButton.SLOT_OVERFLOW)
+                    .build()
+            }
         },
-    ))
+    )
+
+    /** A station was loaded or a book or episode replaced it (RA-1): the buttons follow the item kind, for every controller. */
+    private fun refreshButtons() {
+        val s = session ?: return
+        s.setMediaButtonPreferences(skipButtons(null))
+        val speed = exo.playbackParameters.speed.toDouble()
+        for (c in s.connectedControllers) {
+            if (s.isAutoCompanionController(c) || s.isAutomotiveController(c)) s.setMediaButtonPreferences(c, skipButtons(speed))
+        }
+    }
 
     /** For the debug start path only: nobody has connected, so nobody added the session. */
     internal fun registerSession() {

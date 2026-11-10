@@ -48,6 +48,9 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     val isLive: Boolean get() = live
 
     /** Main thread: a client asked a live station to play (true) or pause (false). */
+    /** Main thread: a station replaced a book or episode, or the other way round. */
+    var onLiveKindChanged: (() -> Unit)? = null
+
     var onLiveToggle: ((Boolean) -> Unit)? = null
 
     /** Set when the wrapped player failed; the next play prepares again from the same place. */
@@ -121,6 +124,7 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
         liveNow = ""
         this.liveWord = liveWord
         notifyMetadata()
+        onLiveKindChanged?.invoke()
     }
 
     /** The song or show on air, as the server last said; empty when it names none. */
@@ -138,6 +142,7 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
 
     fun load(title: String, author: String, chapters: List<Chapter>, settings: PlayerSettings, art: ByteArray?, episode: String? = null) {
         this.episodeTitle = episode
+        val wasLive = live
         live = false
         this.title = title
         this.author = author
@@ -146,6 +151,7 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
         this.art = art
         shownChapter = -1
         notifyMetadata()
+        if (wasLive) onLiveKindChanged?.invoke()
     }
 
     fun clear() {
