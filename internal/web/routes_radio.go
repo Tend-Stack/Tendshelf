@@ -27,14 +27,18 @@ type radioLimits struct{ add *auth.Limiter }
 func (s *server) registerRadio(mux *http.ServeMux) {
 	mux.HandleFunc("POST /radio/stations", s.postRadioStation)
 	mux.HandleFunc("POST /radio/stations/{stationID}/remove", s.postRadioRemove)
+	mux.HandleFunc("POST /radio/stations/{stationID}/save", s.postRadioSave)
 	mux.HandleFunc("GET /radio/live/{stationID}", s.getRadioLive)
+	mux.HandleFunc("GET /radio/art/{stationID}", s.getRadioArt)
 	mux.HandleFunc("GET /hx/radio/now/{stationID}", s.getRadioNow)
 	s.registerRadioPages(mux) // the R2 pages: /radio, /radio/search and the player fragment
 	// Without this the catch-all answers every other method with 404.
-	mux.HandleFunc("/radio/live/{stationID}", func(w http.ResponseWriter, r *http.Request) {
+	getOnly := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, HEAD")
 		s.plainError(w, r, http.StatusMethodNotAllowed, "Method not allowed.")
-	})
+	}
+	mux.HandleFunc("/radio/live/{stationID}", getOnly)
+	mux.HandleFunc("/radio/art/{stationID}", getOnly)
 }
 
 // radioOn is true when a service is configured and the owner turned radio on.
@@ -74,6 +78,7 @@ func (s *server) addStation(ctx context.Context, userID, slug, streamURL string)
 	// A station already on the list answers at once; a full list is refused before anything is dialled, so it
 	// cannot be used to make probes.
 	if kept, ok := s.radio.Kept(ctx, userID, slug, streamURL); ok {
+		s.radio.QueueArt(ctx, kept)
 		return kept, false, 0, ""
 	}
 	if n, err := s.radio.FavouriteCount(ctx, userID); err == nil && n >= radio.MaxFavourites {
@@ -122,6 +127,7 @@ func (s *server) addStation(ctx context.Context, userID, slug, streamURL string)
 		s.radio.Log.Warn("radio: could not save a station", "err", err)
 		return st, false, http.StatusInternalServerError, radioLiveUnavailable
 	}
+	s.radio.QueueArt(ctx, st) // best effort: the logo comes later and never fails the add
 	return st, created, 0, ""
 }
 
@@ -169,8 +175,8 @@ func relayCopy(w http.ResponseWriter, src io.Reader, flush bool) error {
 }
 
 // stopWhenRadioOff cancels a running relay within radioEnabledEvery of the owner turning radio off.
-func (s *server) stopWhenRadioOff(ctx context.Context, cancel context.CancelFunc) {
-	t := time.NewTicker(radioEnabledEvery)
+func (s *server) stopWhenRadioOff(ctx context.Context, cancel context.CancelFunc, every time.Duration) {
+	t := time.NewTicker(every)
 	defer t.Stop()
 	for {
 		select {
@@ -241,7 +247,7 @@ func (s *server) getRadioLive(w http.ResponseWriter, r *http.Request) {
 	defer release()
 	ctx, cancel := context.WithTimeout(r.Context(), s.radio.MaxSession)
 	defer cancel()
-	go s.stopWhenRadioOff(ctx, cancel)
+	go s.stopWhenRadioOff(ctx, cancel, radioEnabledEvery) // the interval is read here, in the handler, not in the goroutine
 	up, metaint, err := s.radio.Net.OpenLive(ctx, st.StreamURL)
 	if err != nil {
 		var pe *podnet.Error
@@ -290,4 +296,55 @@ func (s *server) getRadioNow(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	s.fragment(w, r, http.StatusOK, components.RadioNow(st.ID, s.radio.NowPlaying(st.ID)))
+}
+
+// postRadioSave puts a station the person has played (a Recent row) back among their saved ones by its id. The
+// station row exists already, so nothing is dialled; the 100 limit and the 30 an hour apply as for any addition.
+func (s *server) postRadioSave(w http.ResponseWriter, r *http.Request) {
+	if !s.radioGate(w, r) || !s.parseForm(w, r) {
+		return
+	}
+	u, id := currentUser(r), r.PathValue("stationID")
+	// An unknown or foreign id is the plain 404 before an attempt is spent.
+	if _, err := s.radio.Get(r.Context(), u.ID, id); errors.Is(err, radio.ErrNotFound) {
+		s.notFound(w, r)
+		return
+	} else if err != nil {
+		s.serverError(w, r, "save station", err)
+		return
+	}
+	if !s.radioAddAllowed(w, u.ID) {
+		s.refuseSetting(w, r, http.StatusTooManyRequests, radioErrBusy)
+		return
+	}
+	switch _, _, err := s.radio.Resave(r.Context(), u.ID, id); {
+	case errors.Is(err, radio.ErrTooMany):
+		s.refuseSetting(w, r, http.StatusUnprocessableEntity, radioErrTooMany)
+	case errors.Is(err, radio.ErrNotFound):
+		s.notFound(w, r)
+	case err != nil:
+		s.serverError(w, r, "save station", err)
+	default:
+		s.answerPage(w, r, "/radio")
+	}
+}
+
+// getRadioArt serves a station's logo from the shared art cache, to a person who saved or played the station.
+// The picture was fetched through the guarded client (JPEG, PNG or WebP by its bytes, 5 MiB) and is kept under
+// a hash name; a station without one yet queues the fetch and answers 404 (the page shows the plain tile).
+func (s *server) getRadioArt(w http.ResponseWriter, r *http.Request) {
+	st, ok := s.loadStation(w, r)
+	if !ok {
+		return
+	}
+	width, ok := s.artWidth(w, r)
+	if !ok {
+		return
+	}
+	if st.ArtSHA() == "" {
+		s.radio.QueueArt(r.Context(), st)
+		s.plainError(w, r, http.StatusNotFound, "Not found.")
+		return
+	}
+	s.serveArt(w, r, width, st.ArtSHA(), st.ArtPath)
 }

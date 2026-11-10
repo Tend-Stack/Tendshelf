@@ -408,3 +408,39 @@ func TestTitleCap(t *testing.T) {
 	}
 	_ = time.Second
 }
+
+func TestResaveAndArtSHA(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t, audioHandler("audio/mpeg"))
+	st, _, err := f.svc.Save(ctx, "us_a", Input{StreamURL: "http://r.example/live"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := f.svc.Resave(ctx, "us_b", st.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("a stranger resaved: %v", err)
+	}
+	if err := f.svc.Remove(ctx, "us_a", st.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := f.svc.Resave(ctx, "us_a", st.ID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("never played, yet resaved: %v", err)
+	}
+	if err := f.svc.NotePlay(ctx, "us_a", st.ID); err != nil {
+		t.Fatal(err)
+	}
+	got, created, err := f.svc.Resave(ctx, "us_a", st.ID)
+	if err != nil || !created || !got.Favourite {
+		t.Fatalf("resave: %+v %v %v", got, created, err)
+	}
+	if _, created, err := f.svc.Resave(ctx, "us_a", st.ID); err != nil || created {
+		t.Errorf("second resave: %v %v", created, err)
+	}
+	sha := strings.Repeat("ab", 32)
+	for _, c := range []struct{ path, want string }{
+		{"cache/podcast-art/" + sha + ".png", sha}, {"", ""}, {"cache/podcast-art/short.png", ""},
+	} {
+		if got := (Station{ArtPath: c.path}).ArtSHA(); got != c.want {
+			t.Errorf("ArtSHA(%q) = %q", c.path, got)
+		}
+	}
+}

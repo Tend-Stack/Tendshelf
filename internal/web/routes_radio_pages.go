@@ -52,6 +52,26 @@ func (s *server) podcastsAreaTabs(r *http.Request, active string) []pages.PodTab
 	return tabs
 }
 
+// radioArt is the station's logo as a cover: the local art route at three sizes, or none until the file is kept
+// (the cover then shows the name on a plain tile). The logo's own address never leaves this server.
+func radioArt(st radio.Station) components.CardView {
+	c := components.CardView{ID: st.ID, Title: st.Name}
+	if sha := st.ArtSHA(); sha != "" {
+		base := "/radio/art/" + url.PathEscape(st.ID) + "?v=" + sha[:8] + "&w="
+		c.CoverSrc = base + "320"
+		c.CoverSrcset = base + "160 160w, " + base + "320 320w, " + base + "640 640w"
+	}
+	return c
+}
+
+// radioArtURL is the logo for the player bar and lock screen, or "".
+func radioArtURL(st radio.Station) string {
+	if sha := st.ArtSHA(); sha != "" {
+		return "/radio/art/" + url.PathEscape(st.ID) + "?v=" + sha[:8] + "&w=512"
+	}
+	return ""
+}
+
 func (s *server) stationRow(r *http.Request, st radio.Station, removable bool) components.StationRowView {
 	id := url.PathEscape(st.ID)
 	meta := st.Genre
@@ -62,10 +82,12 @@ func (s *server) stationRow(r *http.Request, st radio.Station, removable bool) c
 		meta += st.Country
 	}
 	v := components.StationRowView{
-		ID: st.ID, Name: st.Name, Meta: meta, PlayHref: "/radio/live/" + id, PlayLabel: radioPlay + " " + st.Name, CSRF: s.csrf.TokenFrom(r.Context()),
+		ID: st.ID, Name: st.Name, Meta: meta, PlayHref: "/radio/live/" + id, PlayLabel: radioPlay + " " + st.Name, CSRF: s.csrf.TokenFrom(r.Context()), Art: radioArt(st),
 	}
 	if removable {
 		v.RemoveAction, v.RemoveLabel = "/radio/stations/"+id+"/remove", radioRemove+" "+st.Name
+	} else if !st.Favourite {
+		v.SaveAction, v.SaveWord, v.SaveLabel = "/radio/stations/"+id+"/save", radioSave, radioSave+" "+st.Name
 	}
 	return v
 }
@@ -90,9 +112,11 @@ func (s *server) getRadio(w http.ResponseWriter, r *http.Request) {
 		SavedTitle: radioSavedTitle, RecentTitle: radioRecentTitle, EmptyTitle: radioNoStationsHd, EmptyBody: radioNoStations,
 	}
 	for _, st := range saved {
+		s.radio.QueueArt(ctx, st) // a logo not fetched yet is fetched now, for the next view
 		v.Saved = append(v.Saved, s.stationRow(r, st, true))
 	}
 	for _, st := range recent {
+		s.radio.QueueArt(ctx, st)
 		if !st.Favourite { // a saved station is already above
 			v.Recent = append(v.Recent, s.stationRow(r, st, false))
 		}
@@ -153,11 +177,12 @@ func (s *server) getPlayerRadio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := components.PlayerDataView{
-		BookID: st.ID, Title: st.Name, Author: s.radio.NowPlaying(st.ID), ServerNow: s.now().UnixMilli(),
+		BookID: st.ID, Title: st.Name, CoverURL: radioArtURL(st), Author: s.radio.NowPlaying(st.ID), ServerNow: s.now().UnixMilli(),
 		Speed: "1.00", SkipBackS: set.SkipBackS, SkipForwardS: set.SkipForwardS, Rewind: rewindAttr(),
 		Kind: radioKind, ShowHref: "/radio",
 		Files: []components.PlayerFileView{{ID: st.ID, Mime: "audio/mpeg", Playable: true, Href: "/radio/live/" + url.PathEscape(st.ID)}},
 	}
+	s.radio.QueueArt(r.Context(), st)
 	w.Header().Set("Cache-Control", "private, no-store")
 	s.fragment(w, r, http.StatusOK, components.PlayerData(v))
 }

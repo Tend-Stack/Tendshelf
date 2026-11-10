@@ -7,7 +7,11 @@ type StationRowView struct {
 	PlayHref, PlayLabel string
 	// RemoveAction is the remove form's address; empty draws no remove control (a recent station that is not kept).
 	RemoveAction, RemoveLabel string
-	CSRF                      string
+	// SaveAction is the save form's address, drawn on a recent station that is not kept; SaveWord and SaveLabel name it.
+	SaveAction, SaveWord, SaveLabel string
+	CSRF                            string
+	// Art is the station's logo from this server's own art route; empty draws no picture, like an episode row without art.
+	Art CardView
 }
 
 // StationRow is one station: play, the name and its facts, remove. The name and the facts are cut with an
@@ -21,6 +25,9 @@ templ StationRow(v StationRowView) {
 			</span>
 		</a>
 		<span class="ts-stnrow__main">
+			if v.Art.CoverSrc != "" {
+				@Cover(v.Art, "36")
+			}
 			<span class="ts-row__text">
 				<span class="ts-row__title ts-truncate">{ v.Name }</span>
 				if v.Meta != "" {
@@ -28,6 +35,12 @@ templ StationRow(v StationRowView) {
 				}
 			</span>
 		</span>
+		if v.SaveAction != "" {
+			<form class="ts-stnrow__remove" method="post" action={ templ.SafeURL(v.SaveAction) }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<button type="submit" class="ts-btn ts-btn--quiet ts-stnrow__save" aria-label={ v.SaveLabel }>{ v.SaveWord }</button>
+			</form>
+		}
 		if v.RemoveAction != "" {
 			<form class="ts-stnrow__remove" method="post" action={ templ.SafeURL(v.RemoveAction) }>
 				<input type="hidden" name="_csrf" value={ v.CSRF }/>

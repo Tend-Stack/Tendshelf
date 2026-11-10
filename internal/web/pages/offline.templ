@@ -78,5 +78,8 @@ func offlineActions(row OfflineRow) templ.Component {
 templ offlineEpisodePlay(v OfflineEpisodePlay) {
 	<a class="ts-iconbtn ts-iconbtn--tonal" href={ templ.SafeURL(v.Href) } hx-boost="false" data-ts-play={ v.ID } aria-label={ v.Label }>
 		@components.Icon("play", true)
+		<span hidden data-ts-pause-icon>
+			@components.Icon("pause", true)
+		</span>
 	</a>
 }

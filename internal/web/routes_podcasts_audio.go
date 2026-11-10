@@ -165,14 +165,9 @@ func (s *server) getPodcastArt(w http.ResponseWriter, r *http.Request) {
 	if !s.podcastsGate(w, r) {
 		return
 	}
-	width := 0
-	if v := r.URL.Query().Get("w"); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil || n < 1 || n > maxCoverWidth {
-			s.plainError(w, r, http.StatusBadRequest, "Bad width.")
-			return
-		}
-		width = n
+	width, ok := s.artWidth(w, r)
+	if !ok {
+		return
 	}
 	id := r.PathValue("showID")
 	if !s.podcasts.Knows(r.Context(), currentUser(r).ID, id) {
@@ -180,7 +175,32 @@ func (s *server) getPodcastArt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sh, err := s.podcasts.ShowByID(r.Context(), id)
-	if err != nil || !sha256Hex.MatchString(sh.ArtSHA) {
+	if err != nil {
+		s.plainError(w, r, http.StatusNotFound, "Not found.")
+		return
+	}
+	s.serveArt(w, r, width, sh.ArtSHA, sh.ArtPath)
+}
+
+// artWidth reads the optional ?w= of an art request; a bad one is answered 400 here.
+func (s *server) artWidth(w http.ResponseWriter, r *http.Request) (int, bool) {
+	v := r.URL.Query().Get("w")
+	if v == "" {
+		return 0, true
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 || n > maxCoverWidth {
+		s.plainError(w, r, http.StatusBadRequest, "Bad width.")
+		return 0, false
+	}
+	return n, true
+}
+
+// serveArt answers a stored show or station picture from the shared art cache: a thumbnail at least width
+// wide when there is one, else the original, always a type from its extension with nosniff. A hash that is not
+// 64 hex characters, or a path outside the art folder, is a plain 404.
+func (s *server) serveArt(w http.ResponseWriter, r *http.Request, width int, artSHA, artPath string) {
+	if !sha256Hex.MatchString(artSHA) {
 		s.plainError(w, r, http.StatusNotFound, "Not found.")
 		return
 	}
@@ -188,12 +208,12 @@ func (s *server) getPodcastArt(w http.ResponseWriter, r *http.Request) {
 	if width > 0 {
 		thumbs := mediajobs.ThumbsDir(s.dataDir)
 		for _, box := range mediajobs.ThumbSizes {
-			if p := mediajobs.ThumbPath(s.dataDir, sh.ArtSHA, box); box >= width && within(thumbs, p) {
+			if p := mediajobs.ThumbPath(s.dataDir, artSHA, box); box >= width && within(thumbs, p) {
 				cands = append(cands, coverCandidate{p, "image/jpeg", strconv.Itoa(box)})
 			}
 		}
 	}
-	orig := filepath.Join(s.dataDir, filepath.FromSlash(sh.ArtPath))
+	orig := filepath.Join(s.dataDir, filepath.FromSlash(artPath))
 	if within(s.podcasts.ArtDir(), orig) {
 		ct := map[string]string{".png": "image/png", ".webp": "image/webp"}[strings.ToLower(filepath.Ext(orig))]
 		if ct == "" {
@@ -212,9 +232,9 @@ func (s *server) getPodcastArt(w http.ResponseWriter, r *http.Request) {
 		}
 		h := w.Header()
 		h.Set("Content-Type", c.mime)
-		h.Set("ETag", `"`+sh.ArtSHA+"-"+c.tag+`"`)
+		h.Set("ETag", `"`+artSHA+"-"+c.tag+`"`)
 		h.Set("X-Content-Type-Options", "nosniff")
-		if r.URL.Query().Get("v") == sh.ArtSHA[:8] {
+		if r.URL.Query().Get("v") == artSHA[:8] {
 			h.Set("Cache-Control", "private, max-age=31536000, immutable")
 		} else {
 			h.Set("Cache-Control", "private, no-cache")

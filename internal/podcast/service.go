@@ -167,6 +167,12 @@ func (s *Service) QueueRefresh(ctx context.Context, showID, by string) (string, 
 	return s.enqueueOnce(ctx, KindRefresh, "show_id", showID, showPayload{showID}, by)
 }
 
+// QueueStationArt queues fetching a radio station's logo (once at a time per station). The same job and
+// the same guarded Picture path as show art; the station row keeps the file name.
+func (s *Service) QueueStationArt(ctx context.Context, stationID string) (string, error) {
+	return s.enqueueOnce(ctx, KindArt, "station_id", stationID, artPayload{StationID: stationID}, "")
+}
+
 // QueueCache queues keeping one episode on the server.
 func (s *Service) QueueCache(ctx context.Context, episodeID string) (string, error) {
 	return s.enqueueOnce(ctx, KindCache, "episode_id", episodeID, map[string]string{"episode_id": episodeID}, "")

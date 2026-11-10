@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"log/slog"
 	"net/http"
@@ -100,7 +102,7 @@ func (f *radioFix) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if r.URL.Path == "/api/v2/embed/stations/cool-fm" {
-			fmt.Fprintf(w, `{"success":true,"data":{"name":"Cool FM","streamUrl":%q,"logo":"https://logo.test/x.png","genre":"Pop","country":"NL"}}`, f.liveURL())
+			fmt.Fprintf(w, `{"success":true,"data":{"name":"Cool FM","streamUrl":%q,"logo":%q,"genre":"Pop","country":"NL"}}`, f.liveURL(), f.pub.URL("logo.test", "/x.png"))
 			return
 		}
 		http.NotFound(w, r)
@@ -137,6 +139,11 @@ func (f *radioFix) serve(w http.ResponseWriter, r *http.Request) {
 			}
 			w.(http.Flusher).Flush()
 		}
+	case "/x.png": // the logo OndaCast names for Cool FM
+		var b bytes.Buffer
+		png.Encode(&b, image.NewRGBA(image.Rect(0, 0, 8, 8)))
+		w.Header().Set("Content-Type", "image/png")
+		w.Write(b.Bytes())
 	case "/stream.mp3":
 		f.serveSilence(w, r)
 	case "/plain.mp3":

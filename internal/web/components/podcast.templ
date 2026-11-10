@@ -74,6 +74,9 @@ templ EpisodeRow(v EpisodeRowView) {
 				aria-label={ v.PlayLabel }
 			>
 				@Icon("play", true)
+				<span hidden data-ts-pause-icon>
+					@Icon("pause", true)
+				</span>
 			</a>
 		}
 		<a class="ts-row__main" href={ templ.SafeURL(v.Href) }>

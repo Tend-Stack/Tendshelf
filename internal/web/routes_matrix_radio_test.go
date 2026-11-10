@@ -55,6 +55,15 @@ func radioSweepRows() []sweepRow {
 		sweepGet("GET /radio/live/{stationID}", station("/radio/live/", ""), notGuest),
 		labelled(sweepGet("GET /radio/live/{stationID}", otherStation("/radio/live/", ""), ownerOnly), "someone else's station"),
 		labelled(sweepPost("/radio/live/{stationID}", station("/radio/live/", ""), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, ""), "POST"),
+		// No logo is kept for the sweep's stations, so the art route answers 404 to everyone; the owner, stranger and
+		// guest cases with a kept logo are in TestRadioLogo.
+		sweepGet("GET /radio/art/{stationID}", station("/radio/art/", ""), [4]int{nf, nf, nf, nf}),
+		labelled(sweepGet("GET /radio/art/{stationID}", otherStation("/radio/art/", ""), [4]int{nf, nf, nf, nf}), "someone else's station"),
+		labelled(sweepPost("/radio/art/{stationID}", station("/radio/art/", ""), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, ""), "POST"),
+		api(sweepGet("GET /api/v1/radio/art/{stationID}", station("/api/v1/radio/art/", ""), [4]int{nf, nf, nf, nf})),
+		api(labelled(sweepGet("GET /api/v1/radio/art/{stationID}", otherStation("/api/v1/radio/art/", ""), [4]int{nf, nf, nf, nf}), "someone else's station")),
+		sweepPost("POST /radio/stations/{stationID}/save", station("/radio/stations/", "/save"), nil, sweepNotGuest(see, nf), "/radio"),
+		labelled(sweepPost("POST /radio/stations/{stationID}/save", otherStation("/radio/stations/", "/save"), nil, [4]int{see, nf, nf, nf}, "/radio"), "someone else's station"),
 		sweepGet("GET /hx/radio/now/{stationID}", station("/hx/radio/now/", ""), notGuest),
 		sweepGet("GET /radio", sweepStatic("/radio"), notGuest),
 		sweepGet("GET /radio/search", sweepStatic("/radio/search"), notGuest),

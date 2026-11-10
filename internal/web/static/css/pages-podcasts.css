@@ -132,6 +132,7 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-stnrow { gap: var(--space-8); border-bottom: 1px solid var(--line); }
 .ts-stnrow__play { flex: none; }
 .ts-stnrow__main { display: flex; align-items: center; gap: var(--space-12); flex: 1 1 0; min-width: 0; }
+.ts-stnrow__main .ts-cover { flex: none; }
 .ts-stnrow__remove { margin: 0; flex: none; }
 .ts-stnrow .ts-iconbtn { width: var(--size-tap); height: var(--size-tap); }
 .ts-radio section + section { margin-top: var(--space-8); }
