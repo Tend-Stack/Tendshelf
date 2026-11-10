@@ -1,0 +1,75 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// AdminPodcastsView is the owner's page for podcasts and radio. The handler writes every word.
+type AdminPodcastsView struct {
+	CSRF, Title, Intro                  string
+	Enabled, ServerAuto, Radio          bool
+	EnabledLabel, EnabledHint           string
+	RefreshLabel, Refresh               string
+	Refreshes                           []Option
+	CacheLabel, CacheValue, CacheUnit   string
+	CacheHint                           string
+	ServerAutoLabel, ServerAutoHint     string
+	RadioLabel, RadioHint               string
+	Save, UsedLine, ClearLabel, Heading string
+	Saved, Cleared                      bool
+	SavedNotice, ClearedNotice          string
+	CacheHeading                        string
+}
+
+// AdminPodcasts is the one place the owner turns podcasts on and sets how they are kept.
+templ AdminPodcasts(v AdminPodcastsView) {
+	<div class="ts-admin ts-email ts-podadmin">
+		<span class="ts-overline">Your server</span>
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		<p class="body">{ v.Intro }</p>
+		if v.Saved {
+			<p class="ts-banner ts-admin__banner" role="status">
+				@components.Icon("check", false)
+				{ v.SavedNotice }
+			</p>
+		}
+		if v.Cleared {
+			<p class="ts-banner ts-admin__banner" role="status">
+				@components.Icon("check", false)
+				{ v.ClearedNotice }
+			</p>
+		}
+		<div class="ts-groups ts-email__groups">
+			<form class="ts-group ts-group--pad ts-email__form" method="post" action="/admin/podcasts" aria-label={ v.Heading } hx-boost="false">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				@ssoSwitch("pod-enabled", "enabled", v.EnabledLabel, v.EnabledHint, v.Enabled)
+				<div class="ts-field">
+					<label class="ts-field__label" for="pod-refresh">{ v.RefreshLabel }</label>
+					<select id="pod-refresh" class="ts-select" name="refresh">
+						for _, o := range v.Refreshes {
+							<option value={ o.Value } selected?={ o.Value == v.Refresh }>{ o.Label }</option>
+						}
+					</select>
+				</div>
+				<div class="ts-field">
+					<label class="ts-field__label" for="pod-cache">{ v.CacheLabel }</label>
+					<span class="ts-podadmin__unit">
+						<input id="pod-cache" class="ts-input" type="text" inputmode="decimal" name="cache_gib" value={ v.CacheValue } maxlength="8" autocomplete="off" aria-describedby="pod-cache-hint"/>
+						<span aria-hidden="true">{ v.CacheUnit }</span>
+					</span>
+					<span class="ts-field__hint" id="pod-cache-hint">{ v.CacheHint }</span>
+				</div>
+				@ssoSwitch("pod-auto", "server_auto", v.ServerAutoLabel, v.ServerAutoHint, v.ServerAuto)
+				@ssoSwitch("pod-radio", "radio", v.RadioLabel, v.RadioHint, v.Radio)
+				<button type="submit" class="ts-btn ts-btn--primary">{ v.Save }</button>
+			</form>
+			<section class="ts-group ts-group--pad ts-email__testbox" aria-labelledby="pod-used-h">
+				<h2 id="pod-used-h" class="section">{ v.CacheHeading }</h2>
+				<p class="body">{ v.UsedLine }</p>
+				<form method="post" action="/admin/podcasts" hx-boost="false">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<input type="hidden" name="clear" value="1"/>
+					<button type="submit" class="ts-btn ts-btn--secondary">{ v.ClearLabel }</button>
+				</form>
+			</section>
+		</div>
+	</div>
+}

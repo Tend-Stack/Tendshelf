@@ -2,14 +2,13 @@ package web
 
 import (
 	"fmt"
-	"html"
-	"io"
 	"math"
 	"net/http"
 	"strconv"
 
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
 
 // The owner's podcast and radio settings (decision 0038): on or off, the scheduled-refresh interval, the
@@ -20,42 +19,6 @@ const gib = 1 << 30
 
 func (s *server) adminPodcastsGate(w http.ResponseWriter, r *http.Request) bool {
 	return s.allow(w, r, share.ManageServer, podServer)
-}
-
-func (s *server) getAdminPodcasts(w http.ResponseWriter, r *http.Request) {
-	if !s.adminPodcastsGate(w, r) {
-		return
-	}
-	set := podcast.LoadSettings(r.Context(), s.lib.Store())
-	var used int64
-	if s.podcasts != nil {
-		used = s.podcasts.CacheUsage(r.Context())
-	}
-	checked := func(b bool) string {
-		if b {
-			return " checked"
-		}
-		return ""
-	}
-	sel := func(v string) string {
-		if set.Refresh == v {
-			return " selected"
-		}
-		return ""
-	}
-	s.stubPage(w, r, podAdminTitle, func(w io.Writer) {
-		io.WriteString(w, `<form method="post" action="/admin/podcasts">`+s.csrfField(r)+
-			`<input type="hidden" name="enabled" value="0"/><label><input type="checkbox" name="enabled" value="1"`+checked(set.Enabled)+`/> Let people follow podcasts</label>`+
-			`<label>Check for new episodes <select name="refresh"><option value="off"`+sel(podcast.RefreshOff)+`>Only when someone looks</option>`+
-			`<option value="1h"`+sel(podcast.Refresh1h)+`>Every hour</option><option value="6h"`+sel(podcast.Refresh6h)+`>Every 6 hours</option>`+
-			`<option value="24h"`+sel(podcast.Refresh24h)+`>Once a day</option></select></label>`+
-			`<label>Room for saved episodes on this server (GB) <input type="text" name="cache_gib" value="`+html.EscapeString(strconv.FormatFloat(float64(set.CacheBytes)/gib, 'f', -1, 64))+`"/></label>`+
-			`<input type="hidden" name="server_auto" value="0"/><label><input type="checkbox" name="server_auto" value="1"`+checked(set.ServerAuto)+`/> Allow saving new episodes on the server</label>`+
-			`<input type="hidden" name="radio" value="0"/><label><input type="checkbox" name="radio" value="1"`+checked(set.RadioEnabled)+`/> Let people listen to radio</label>`+
-			`<button type="submit">Save</button></form>`)
-		io.WriteString(w, `<p>`+html.EscapeString(fmt.Sprintf("Saved episodes use %s of %s", sizeText(used), sizeText(set.CacheBytes)))+`</p>`)
-		io.WriteString(w, `<form method="post" action="/admin/podcasts">`+s.csrfField(r)+`<input type="hidden" name="clear" value="1"/><button type="submit">Remove saved episodes</button></form>`)
-	})
 }
 
 func (s *server) postAdminPodcasts(w http.ResponseWriter, r *http.Request) {
@@ -106,4 +69,34 @@ func (s *server) postAdminPodcasts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.answerPage(w, r, "/admin/podcasts?saved=1")
+}
+
+// adminPodcastsView builds the settings page from the saved settings.
+func (s *server) adminPodcastsView(r *http.Request) pages.AdminPodcastsView {
+	set := podcast.LoadSettings(r.Context(), s.lib.Store())
+	var used int64
+	if s.podcasts != nil {
+		used = s.podcasts.CacheUsage(r.Context())
+	}
+	saved := r.URL.Query().Get("saved")
+	return pages.AdminPodcastsView{
+		CSRF: s.csrf.TokenFrom(r.Context()), Title: podAdminTitle, Intro: podAdminIntro, Heading: podAdminTitle,
+		Enabled: set.Enabled, EnabledLabel: podAdminEnabled, EnabledHint: podAdminEnabledHnt,
+		RefreshLabel: podAdminRefresh, Refresh: set.Refresh,
+		Refreshes: []pages.Option{{Value: podcast.RefreshOff, Label: podAdminOnLook}, {Value: podcast.Refresh1h, Label: podAdminHourly},
+			{Value: podcast.Refresh6h, Label: podAdminSixHours}, {Value: podcast.Refresh24h, Label: podAdminDaily}},
+		CacheLabel: podAdminCacheLabel, CacheValue: strconv.FormatFloat(float64(set.CacheBytes)/gib, 'f', -1, 64), CacheUnit: podAdminCacheUnit, CacheHint: podAdminCacheHint,
+		ServerAuto: set.ServerAuto, ServerAutoLabel: podAdminAuto, ServerAutoHint: podAdminAutoHint,
+		Radio: set.RadioEnabled, RadioLabel: podAdminRadio, RadioHint: podAdminRadioHint,
+		Save: podAdminSave, CacheHeading: podAdminCacheHead, ClearLabel: podAdminClear,
+		UsedLine: fmt.Sprintf(podAdminUsed, sizeText(used), sizeText(set.CacheBytes)),
+		Saved:    saved == "1", SavedNotice: podAdminSaved, Cleared: saved == "cleared", ClearedNotice: podAdminCleared,
+	}
+}
+
+func (s *server) getAdminPodcasts(w http.ResponseWriter, r *http.Request) {
+	if !s.adminPodcastsGate(w, r) {
+		return
+	}
+	s.prefsPage(w, r, http.StatusOK, podAdminTitle, "admin-podcasts", "podcasts", false, pages.AdminPodcasts(s.adminPodcastsView(r)), nil, pages.PodcastAdminStyles...)
 }

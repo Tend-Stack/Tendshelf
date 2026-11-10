@@ -27,6 +27,7 @@ type podFix struct {
 	audio []byte
 
 	ignoreRange atomic.Bool // the publisher answers 200 with the whole file to a Range request
+	ondaDown    atomic.Bool // OndaCast answers 503
 	htmlAudio   atomic.Bool // the publisher answers a web page instead of audio
 	audioHits   atomic.Int64
 	ondaHits    atomic.Int64
@@ -69,6 +70,10 @@ func (f *podFix) rss(title string) string {
 func (f *podFix) serve(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.Host, "ondacast.test") {
 		f.ondaHits.Add(1)
+		if f.ondaDown.Load() {
+			http.Error(w, "down", http.StatusServiceUnavailable)
+			return
+		}
 		switch {
 		case r.URL.Path == "/api/v2/search":
 			fmt.Fprint(w, `{"success":true,"data":[{"id":1,"type":"podcast","title":"Found Show","subtitle":"Sub","slug":"found-show","image_url":"","rank":1}]}`)

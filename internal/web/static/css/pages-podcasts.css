@@ -1,0 +1,81 @@
+/* Podcasts (decision 0038, plan P3): the home, search, a show, an episode and the owner's settings page.
+   Only page rules; buttons, chips, tabs, rows and covers come from bundle.css and pages-library.css. Tokens only,
+   so every rule works in all four themes. A long title is cut with an ellipsis or clamped, never pushed to a new row. */
+
+.ts-podcasts { display: flex; flex-direction: column; gap: var(--space-16); min-width: 0; }
+.ts-podcasts__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-16); }
+.ts-podcasts__title { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.ts-podcasts__tabs { overflow-x: auto; scrollbar-width: none; }
+.ts-podcasts__tabs .ts-tabs__item { flex: none; }
+.ts-podcasts__banner { margin: 0; }
+.ts-podcasts__grid { gap: var(--space-20) var(--space-16); }
+
+/* A show card: the count of new episodes sits on the corner of the picture. */
+.ts-showcard__new { position: absolute; top: var(--space-4); right: var(--space-4); min-width: 1.5rem; box-sizing: border-box; padding: 0 var(--space-8);
+  border-radius: var(--radius-control); background: var(--accent-fill); color: var(--on-accent); font: 600 0.8125rem/1.5rem var(--font-sans); text-align: center; font-variant-numeric: tabular-nums; }
+
+/* An episode row: play, the text, then the two small forms. The title takes what is left and clamps at two lines. */
+.ts-eprow { gap: var(--space-8); }
+.ts-eprow__play { flex: none; }
+.ts-eprow .ts-row__main { min-width: 0; }
+.ts-eprow__title { white-space: normal; overflow-wrap: anywhere; }
+.ts-eprow__new { display: inline-block; margin-right: var(--space-8); padding: 0 var(--space-8); border-radius: var(--radius-control); background: var(--accent-soft); color: var(--ink); font-size: 0.8125rem; line-height: 1.25rem; font-weight: 600; vertical-align: 1px; }
+.ts-eprow__flag { margin: 0; flex: none; }
+.ts-eprow .ts-iconbtn { width: var(--size-tap); height: var(--size-tap); }
+.ts-eprow .ts-iconbtn.is-on, .ts-eprow .ts-iconbtn[aria-pressed="true"] { color: var(--accent); }
+.ts-eprow.is-played .ts-row__title { color: var(--ink-muted); font-weight: 400; }
+.ts-podcasts__rows { margin-top: var(--space-4); }
+
+/* Filters above a show's episodes: chips, the order, the search field. They wrap, never overflow. */
+.ts-epfilters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); }
+.ts-epfilters .ts-chip, .ts-epfilters .ts-seg__item { text-decoration: none; min-height: var(--size-tap); }
+.ts-epfilters__sort { max-width: 100%; }
+.ts-epfilters__sort .ts-seg__item { padding-inline: var(--space-12); white-space: nowrap; }
+.ts-epfilters__search { display: flex; flex: 1 1 100%; gap: var(--space-8); min-width: 0; }
+.ts-epfilters__search .ts-input { flex: 1 1 auto; min-width: 0; }
+.ts-podcasts .ts-chip[aria-current="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+
+/* Search. */
+.ts-podsearch__form { display: flex; gap: var(--space-8); min-width: 0; }
+.ts-podsearch__form .ts-input { flex: 1 1 auto; min-width: 0; }
+.ts-podsearch__hits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ts-podhit { border-bottom: 1px solid var(--line); gap: var(--space-12); }
+.ts-podhit .ts-cover { width: 3.5rem; height: 3.5rem; }
+.ts-podhit__follow { margin: 0; flex: none; }
+.ts-podsearch__none { margin: 0; color: var(--ink-muted); }
+.ts-podsearch__summary { min-height: var(--size-tap); display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+.ts-podsearch__addform, .ts-podshow__settingsform { display: flex; flex-direction: column; gap: var(--space-12); align-items: flex-start; padding-top: var(--space-8); }
+.ts-podsearch__addform .ts-field, .ts-podshow__settingsform .ts-field { max-width: 36rem; }
+
+/* A show and an episode: the picture beside the facts on a phone too. */
+.ts-podshow__head { display: flex; align-items: flex-start; gap: var(--space-16); min-width: 0; }
+.ts-podshow__head .ts-cover--152 { max-inline-size: 38vw; }
+.ts-podshow__info { display: flex; flex-direction: column; gap: var(--space-8); min-width: 0; flex: 1; }
+.ts-podshow__info > * { margin: 0; }
+.ts-podshow__title, .ts-podep__title { overflow-wrap: anywhere; }
+.ts-podshow__author { color: var(--ink-muted); }
+.ts-podshow__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.ts-podshow__actions form { margin: 0; }
+.ts-podshow__site { max-width: 100%; display: flex; }
+.ts-podshow__site a { color: var(--ink-muted); max-width: 100%; }
+.ts-podshow__skip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.ts-podshow__skip .ts-input { width: 5.5rem; }
+.ts-podshow__none { margin: 0; color: var(--ink-muted); }
+.ts-podshow__more { margin: var(--space-16) 0 0; }
+.ts-podnotes { max-width: 44rem; font-size: 1.0625rem; line-height: 1.625rem; overflow-wrap: anywhere; }
+.ts-podnotes > :first-child { margin-top: 0; }
+.ts-podnotes p, .ts-podnotes ul, .ts-podnotes ol, .ts-podnotes blockquote { margin: 0 0 var(--space-12); }
+.ts-podnotes ul, .ts-podnotes ol { padding-left: var(--space-24); }
+.ts-podnotes blockquote { padding-left: var(--space-12); border-left: 2px solid var(--line-strong); color: var(--ink-muted); }
+.ts-podnotes a { color: var(--accent); text-decoration: underline; }
+.ts-podep__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); }
+.ts-podep__actions form { margin: 0; }
+.ts-podep__actions .ts-btn { max-width: 100%; }
+@media (width < 30rem) {
+  .ts-podshow__head .ts-cover--152 { inline-size: 7rem; block-size: 7rem; }
+  .ts-podshow__head .ts-cover--112 { inline-size: 5rem; block-size: 5rem; }
+}
+
+/* The owner's page. */
+.ts-podadmin__unit { display: flex; align-items: center; gap: var(--space-8); }
+.ts-podadmin__unit .ts-input { max-width: 8rem; }
