@@ -25,9 +25,11 @@
 .ts-eprow .ts-iconbtn.is-on, .ts-eprow .ts-iconbtn[aria-pressed="true"] { color: var(--accent); }
 .ts-eprow.is-played .ts-row__title { color: var(--ink-muted); font-weight: 400; }
 .ts-podcasts__rows { margin-top: var(--space-4); }
+/* Episodes read in date order, so they stay in one column (the library's two-column rows would read across), at a width a row can be scanned. */
+.ts-podcasts__rows.ts-lib-rows { grid-template-columns: minmax(0, 1fr); max-width: 56rem; }
 
 /* Filters above a show's episodes: chips, the order, the search field. They wrap, never overflow. */
-.ts-epfilters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); }
+.ts-epfilters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); max-width: 56rem; }
 .ts-epfilters .ts-chip, .ts-epfilters .ts-seg__item { text-decoration: none; min-height: var(--size-tap); }
 .ts-epfilters__sort { max-width: 100%; }
 .ts-epfilters__sort .ts-seg__item { padding-inline: var(--space-12); }
@@ -96,3 +98,16 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-podep__actions form { min-width: 0; max-width: 100%; }
 .ts-podep__actions .ts-btn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-podadmin .ts-groups { display: flex; flex-direction: column; gap: var(--space-16); max-width: 40rem; }
+
+/* On a phone the filter chips stay on one row and slide sideways, so no chip is left alone on a second line. */
+@media (width < 48rem) {
+  .ts-epfilters .ts-chip-set { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; max-width: 100%; }
+  .ts-epfilters .ts-chip-set::-webkit-scrollbar { display: none; }
+  .ts-epfilters .ts-chip { flex: none; }
+}
+/* Beside a phone-sized picture the header's buttons share one row: "Stop following" already says you follow the show,
+   so the quiet Following mark steps aside and a long label is cut rather than wrapping. */
+@media (width < 30rem) {
+  .ts-podshow__actions { flex-wrap: nowrap; }
+  .ts-podshow__actions > .ts-chip--static { display: none; }
+}
