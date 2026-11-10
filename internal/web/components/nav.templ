@@ -111,25 +111,25 @@ func shelfKey(s ShelfLink) string {
 templ TabBar(current, shell string, acct NavAccount, pod PodNav) {
 	<nav aria-label="Main" id="nav-tabbar" hx-preserve class={ "ts-tabbar ts-nav-tabbar", templ.KV("ts-tabbar--six", pod.Show) }>
 		for _, it := range navFor(shell, pod) {
-			<a
-				href={ templ.SafeURL(it.Href) }
-				class="ts-tabbar__item"
-				data-nav={ it.Href }
-				if it.NoBoost {
-					hx-boost="false"
-				}
-				if it.Key == current {
-					aria-current="page"
-				}
-			>
-				if it.Key == "profile" && acct.ID != "" {
-					@Avatar(acct.ID, acct.Name, "sm")
-				} else {
-					@Icon(it.Icon, false)
-				}
-				{ it.Label }
-				@navBadge(it)
-			</a>
+				<a
+					href={ templ.SafeURL(it.Href) }
+					class="ts-tabbar__item"
+					data-nav={ it.Href }
+					if it.NoBoost {
+						hx-boost="false"
+					}
+					if it.Key == current {
+						aria-current="page"
+					}
+				>
+					if it.Key == "profile" && acct.ID != "" {
+						@Avatar(acct.ID, acct.Name, "sm")
+					} else {
+						@Icon(it.Icon, false)
+					}
+					{ it.Label }
+					@navBadge(it)
+				</a>
 		}
 	</nav>
 }

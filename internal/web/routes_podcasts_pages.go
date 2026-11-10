@@ -30,7 +30,8 @@ func (s *server) podNav(r *http.Request) components.PodNav {
 	if u.ID == "" {
 		return components.PodNav{}
 	}
-	// With podcasts off but radio on, the same item is drawn as Radio and leads to /radio (plan R2).
+	// With podcasts off but radio on, the one item is Radio and leads to /radio (plan R2). With both on there is still
+	// one item, Podcasts: every /podcasts and /radio page marks it, and Radio is a tab of the Podcasts strip.
 	if !s.podcastsOn(r) || !s.can.Can(r.Context(), u, share.UsePodcasts, podServer) {
 		if s.radioNavOn(r) {
 			return components.PodNav{Show: true, RadioOnly: true}
@@ -229,16 +230,25 @@ func (s *server) getPodcastSearch(w http.ResponseWriter, r *http.Request) {
 			v.AddOpen = true
 		}
 		for _, h := range hits {
-			v.Hits = append(v.Hits, podHit(h))
+			v.Hits = append(v.Hits, s.podHit(r, h))
 		}
 	}
 	s.pageStyled(w, r, http.StatusOK, podcastsSearchTitle, "podcasts", pages.PodcastSearch(v), nil, pages.PodcastStyles...)
 }
 
-// podHit is one OndaCast result. Its picture lives on another site, which this server never loads, so the cover is
-// the plain tile with the title.
-func podHit(h podnet.Hit) pages.PodHit {
-	return pages.PodHit{Title: h.Title, Subtitle: h.Subtitle, Slug: h.Slug, Card: components.CardView{Title: h.Title}}
+// podHit is one OndaCast result. Its picture lives on another site, so the page names the server's own picture
+// route for it (search_art.go); a hit with no picture keeps the plain tile with the title.
+func (s *server) podHit(r *http.Request, h podnet.Hit) pages.PodHit {
+	return pages.PodHit{Title: h.Title, Subtitle: h.Subtitle, Slug: h.Slug, Card: s.hitCard(r, searchArtPodcasts, h)}
+}
+
+// hitCard is the cover of a search result: lazy and with a fixed size, so nothing shifts when it arrives.
+func (s *server) hitCard(r *http.Request, kind string, h podnet.Hit) components.CardView {
+	c := components.CardView{Title: h.Title}
+	if src := s.artKeyFor(r, kind, h.ImageURL); src != "" {
+		c.CoverSrc, c.CoverW, c.CoverH = src, 56, 56
+	}
+	return c
 }
 
 var podSpeeds = []float64{0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5}
@@ -268,6 +278,55 @@ func (s *server) getPodcastShow(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	v, ok := s.showView(w, r, sh)
+	if !ok {
+		return
+	}
+	s.pageStyled(w, r, http.StatusOK, v.Title, "podcasts", pages.PodcastShow(v), nil, pages.PodcastStyles...)
+}
+
+// getPodcastShowStatus answers GET /hx/podcasts/shows/{showID}/status, the poll a show page makes while its first
+// fetch runs. It answers 204 (htmx swaps nothing, the poll goes on) until the fetch has ended, then the whole show
+// block without the poll, so the page fills in without a reload. Same gate as the page.
+func (s *server) getPodcastShowStatus(w http.ResponseWriter, r *http.Request) {
+	if !s.podcastsGate(w, r) {
+		return
+	}
+	sh, ok := s.loadShow(w, r)
+	if !ok {
+		return
+	}
+	if podShowFetching(sh) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	v, ok := s.showView(w, r, sh)
+	if !ok {
+		return
+	}
+	s.fragment(w, r, http.StatusOK, pages.PodcastShow(v))
+}
+
+// podFetchGrace is how long a never-fetched show may stay "getting episodes" before the page gives up waiting
+// and says so (the job was lost, for example at a restart); Refresh then tries again.
+const podFetchGrace = 3 * time.Minute
+
+// podShowFetching is true while the first fetch of a followed show is still expected to finish.
+func podShowFetching(sh podcast.ShowRow) bool {
+	return sh.FetchedAt == 0 && sh.FailCode == "" && time.Since(time.UnixMilli(sh.CreatedAt)) < podFetchGrace
+}
+
+// podHostName is the neutral heading of a show whose title is not known yet: the publisher's host name.
+func podHostName(feed string) string {
+	if u, err := url.Parse(feed); err == nil && u.Hostname() != "" {
+		return strings.TrimPrefix(u.Hostname(), "www.")
+	}
+	return podNewShow
+}
+
+// showView builds the show page for the person: the same view for the page and for the fragment the poll swaps in.
+func (s *server) showView(w http.ResponseWriter, r *http.Request, sh podcast.ShowRow) (pages.PodcastShowView, bool) {
 	ctx, u := r.Context(), currentUser(r)
 	q := r.URL.Query()
 	eq := podcast.EpisodeQuery{Sort: q.Get("sort"), Filter: q.Get("filter"), Text: strings.TrimSpace(q.Get("q")), After: q.Get("after")}
@@ -277,11 +336,11 @@ func (s *server) getPodcastShow(w http.ResponseWriter, r *http.Request) {
 	}
 	if errors.Is(err, podcast.ErrInvalid) {
 		s.errorPage(w, r, http.StatusBadRequest)
-		return
+		return pages.PodcastShowView{}, false
 	}
 	if err != nil {
 		s.serverError(w, r, "show episodes", err)
-		return
+		return pages.PodcastShowView{}, false
 	}
 	sort, filter := eq.Sort, eq.Filter
 	if sort == "" {
@@ -319,16 +378,46 @@ func (s *server) getPodcastShow(w http.ResponseWriter, r *http.Request) {
 		CSRF: s.csrf.TokenFrom(ctx), ID: sh.ID, Title: sh.Title, Author: sh.Author, BackHref: "/podcasts", BackLabel: podBackToPodcasts,
 		Art: podArt(sh.ID, sh.Title, sh.ArtSHA), Following: podFollowing, UnfollowLabel: podUnfollow, RefreshLabel: podRefresh,
 		UnfollowAction: base + "/unfollow", RefreshAction: base + "/refresh",
-		NotesTitle: podAboutShow, Failure: podcast.FailText(sh.FailCode), Fetching: sh.FetchedAt == 0 && sh.FailCode == "", FetchingLine: podFetching,
+		NotesTitle: podAboutShow, Failure: podcast.FailText(sh.FailCode), Fetching: podShowFetching(sh), FetchingLine: podFetching,
 		Episodes: rows, Empty: podNoEpisodes, ListLabel: podEpisodesLabel, MoreText: podLoadMore,
 		Notes: rss.CleanHTML(sh.NotesHTML, rss.NotesMax),
 	}
 	if sh.Title == "" {
-		v.Title = sh.FeedURL
+		v.Title = podHostName(sh.FeedURL) // never the feed address as a headline
+	}
+	if v.Fetching {
+		v.StatusHref = "/hx/podcasts/shows/" + url.PathEscape(sh.ID) + "/status"
+	} else if sh.FetchedAt == 0 && sh.FailCode == "" {
+		v.Failure = podErrFetchSlow
+	}
+	if n, newest, err := s.podcasts.EpisodeStats(ctx, u.ID, sh.ID); err == nil && n > 0 {
+		v.Meta = fmt.Sprintf("%d %s", n, podEpisodesWord)
+		if n == 1 {
+			v.Meta = "1 " + podEpisodeWord1
+		}
+		if d := podDate(newest); d != "" {
+			v.Meta += " · " + podNewestWord + " " + d
+		}
 	}
 	if sh.SiteURL != "" && (strings.HasPrefix(sh.SiteURL, "https://") || strings.HasPrefix(sh.SiteURL, "http://")) {
 		v.SiteHref = sh.SiteURL
 		v.SiteLabel = sh.SiteURL
+		if pu, err := url.Parse(sh.SiteURL); err == nil && pu.Hostname() != "" {
+			v.SiteLabel = strings.TrimPrefix(pu.Hostname(), "www.")
+		}
+	}
+	v.MoreLabel, v.LessLabel = podMore, podLess
+	if plain := rss.PlainText(v.Notes, 400); len([]rune(plain)) > 200 {
+		v.Preview = plain // long notes sit under a clamped preview with a More disclosure
+	}
+	// One play button, only when the newest episode is the first row and its row play control can be reused as is.
+	if eq.After == "" && eq.Text == "" && filter == "all" && sort == "newest" && len(eps) > 0 {
+		if ep := eps[0]; !podIsVideo(ep) && !ep.State.Played {
+			v.LatestHref, v.LatestID, v.LatestLabel = "/podcasts/audio/"+url.PathEscape(ep.ID), ep.ID, podPlayLatest
+			if ep.State.PositionMs > 0 {
+				v.LatestLabel = podResume
+			}
+		}
 	}
 	if eq.Text != "" || filter != "all" {
 		v.Empty = podNoMatch
@@ -362,8 +451,7 @@ func (s *server) getPodcastShow(w http.ResponseWriter, r *http.Request) {
 			s.podcasts.Log.Warn("podcasts: could not mark a show seen", "err", err)
 		}
 	}
-	title := v.Title
-	s.pageStyled(w, r, http.StatusOK, title, "podcasts", pages.PodcastShow(v), nil, pages.PodcastStyles...)
+	return v, true
 }
 
 func (s *server) getPodcastEpisode(w http.ResponseWriter, r *http.Request) {
@@ -371,6 +459,12 @@ func (s *server) getPodcastEpisode(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	v := s.episodeView(r, ep)
+	s.pageStyled(w, r, http.StatusOK, ep.Title, "podcasts", pages.PodcastEpisode(v), nil, pages.PodcastStyles...)
+}
+
+// episodeView builds the episode's facts and action forms: the episode page and the Now playing panel draw the same view.
+func (s *server) episodeView(r *http.Request, ep podcast.Episode) pages.PodcastEpisodeView {
 	ctx, u := r.Context(), currentUser(r)
 	id := url.PathEscape(ep.ID)
 	here := "/podcasts/episodes/" + id
@@ -412,5 +506,5 @@ func (s *server) getPodcastEpisode(w http.ResponseWriter, r *http.Request) {
 	if !ep.State.Played && ep.State.PositionMs > 0 && ep.DurationMs > ep.State.PositionMs {
 		v.Progress = durationText(ep.DurationMs-ep.State.PositionMs) + " " + podLeftWord
 	}
-	s.pageStyled(w, r, http.StatusOK, ep.Title, "podcasts", pages.PodcastEpisode(v), nil, pages.PodcastStyles...)
+	return v
 }

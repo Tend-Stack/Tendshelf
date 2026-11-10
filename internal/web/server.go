@@ -140,6 +140,7 @@ type server struct {
 	ebooks     *ebook.Service
 	podcasts   *podcast.Service
 	podLim     podcastLimits
+	searchArt  *searchArtStore
 	radio      *radio.Service
 	radioLim   radioLimits
 	backups    *backups.Service
@@ -273,6 +274,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		podcasts:   opts.Podcasts,
 		radio:      opts.Radio,
 		radioLim:   radioLimits{add: auth.NewLimiter(30, time.Hour, 1024, opts.Now)},
+		searchArt:  newSearchArtStore(opts.Now),
 		podLim:     podcastLimits{search: auth.NewLimiter(20, time.Minute, 1024, opts.Now), follow: auth.NewLimiter(30, time.Hour, 1024, opts.Now)},
 		backups:    bk,
 		progress:   progress.New(opts.Store, opts.Now),

@@ -84,3 +84,9 @@
 .ts-upnext-page > h1 { margin: 0; }
 /* The queue page fills .ts-main; its rows sit in as many columns as fit, in order from left to right. */
 .ts-upnext-page .ts-upnext__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)); column-gap: var(--space-32); }
+
+/* An episode's panel: a meta line, the chapters, the show notes and the action forms, in the panel's one scroll. The
+   chapter and notes classes come from the book page; only the spacing is set here. */
+.ts-np--episode .ts-np__meta { color: var(--ink-muted); font-size: 0.8125rem; }
+.ts-np--episode .ts-chapters, .ts-np--episode .ts-podnotes { margin: 0; }
+.ts-np--episode .ts-podep__actions { gap: var(--space-8); }

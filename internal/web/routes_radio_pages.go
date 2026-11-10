@@ -34,7 +34,8 @@ func (s *server) radioNavOn(r *http.Request) bool {
 }
 
 // podcastsAreaTabs are the tabs shared by the Podcasts home and the Radio page: the four podcast tabs when
-// podcasts are on, then Radio when radio is on. active is the key of the one marked current.
+// podcasts are on, then Radio when radio is on, at every width (the strip scrolls sideways, it never wraps).
+// active is the key of the one marked current.
 func (s *server) podcastsAreaTabs(r *http.Request, active string) []pages.PodTab {
 	var tabs []pages.PodTab
 	if s.podcastsOn(r) {
@@ -82,7 +83,7 @@ func (s *server) stationRow(r *http.Request, st radio.Station, removable bool) c
 		meta += st.Country
 	}
 	v := components.StationRowView{
-		ID: st.ID, Name: st.Name, Meta: meta, PlayHref: "/radio/live/" + id, PlayLabel: radioPlay + " " + st.Name, CSRF: s.csrf.TokenFrom(r.Context()), Art: radioArt(st),
+		ID: st.ID, Name: st.Name, Meta: meta, PlayHref: "/radio/live/" + id, PlayLabel: radioPlay + " " + st.Name, PlayWord: radioPlay, CSRF: s.csrf.TokenFrom(r.Context()), Art: radioArt(st),
 	}
 	if removable {
 		v.RemoveAction, v.RemoveLabel = "/radio/stations/"+id+"/remove", radioRemove+" "+st.Name
@@ -108,7 +109,8 @@ func (s *server) getRadio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := pages.RadioView{
-		Title: radioTitle, FindLabel: radioFind, FindHref: "/radio/search", TabsLabel: radioTabsLabel, Tabs: s.podcastsAreaTabs(r, "radio"),
+		Title: radioTitle, Intro: radioIntro, FindLabel: radioFind, FindHref: "/radio/search", SearchLabel: radioSearchLabel, SearchButton: radioSearchWord,
+		TabsLabel: radioTabsLabel, Tabs: s.podcastsAreaTabs(r, "radio"),
 		SavedTitle: radioSavedTitle, RecentTitle: radioRecentTitle, EmptyTitle: radioNoStationsHd, EmptyBody: radioNoStations,
 	}
 	for _, st := range saved {
@@ -152,16 +154,16 @@ func (s *server) getRadioSearch(w http.ResponseWriter, r *http.Request) {
 			v.AddOpen = true
 		}
 		for _, h := range hits {
-			v.Hits = append(v.Hits, radioHit(h))
+			v.Hits = append(v.Hits, s.radioHit(r, h))
 		}
 	}
 	s.pageStyled(w, r, http.StatusOK, radioFind, "podcasts", pages.RadioSearch(v), nil, pages.PodcastStyles...)
 }
 
-// radioHit is one OndaCast result. Its logo lives on another site, which this server never loads, so the cover is the
-// plain tile with the name.
-func radioHit(h podnet.Hit) pages.RadioHit {
-	return pages.RadioHit{Title: h.Title, Subtitle: h.Subtitle, Slug: h.Slug, Card: components.CardView{Title: h.Title}}
+// radioHit is one OndaCast result. Its logo lives on another site, so the page names the server's own picture route
+// for it (search_art.go); a hit with no logo keeps the plain tile with the name.
+func (s *server) radioHit(r *http.Request, h podnet.Hit) pages.RadioHit {
+	return pages.RadioHit{Title: h.Title, Subtitle: h.Subtitle, Slug: h.Slug, Card: s.hitCard(r, searchArtRadio, h)}
 }
 
 // getPlayerRadio answers GET /hx/player/radio/{stationID}: the player fragment of a station the person keeps or has

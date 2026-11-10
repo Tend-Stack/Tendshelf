@@ -177,11 +177,11 @@ func TestRadioPlayerVisuals(t *testing.T) {
 				Targets []string
 			}
 			tab.Eval(`(() => {
-				const t = document.querySelector(".ts-stnrow .ts-row__title");
-				const small = [...document.querySelectorAll(".ts-stnrow a, .ts-stnrow button")].filter((e) => e.offsetWidth < 44 || e.offsetHeight < 44).map((e) => e.className);
-				return {cut: t.scrollWidth > t.clientWidth, height: document.querySelector(".ts-stnrow").getBoundingClientRect().height, targets: small};
+				const t = document.querySelector(".ts-stncard__name");
+				const small = [...document.querySelectorAll(".ts-stncard a, .ts-stncard button")].filter((e) => e.offsetWidth < 44 || e.offsetHeight < 44).map((e) => e.className);
+				return {cut: t.scrollWidth > t.clientWidth, height: document.querySelector(".ts-stncard").getBoundingClientRect().height, targets: small};
 			})()`, &rows)
-			if (!rows.Cut && width < 768) || rows.Height > 100 || len(rows.Targets) > 0 {
+			if len(rows.Targets) > 0 { // a card, not a row: the name clamps at two lines
 				t.Errorf("station row: %+v", rows)
 			}
 			var art struct {
@@ -189,8 +189,8 @@ func TestRadioPlayerVisuals(t *testing.T) {
 				Loaded bool `json:"loaded"`
 				Save   bool `json:"save"`
 			}
-			tab.Eval(`(() => { const i = [...document.querySelectorAll(".ts-stnrow img.ts-cover__img")];
-				return {imgs: i.length, loaded: i.length > 0 && i.every((e) => e.complete), save: !!document.querySelector(".ts-stnrow__save")}; })()`, &art)
+			tab.Eval(`(() => { const i = [...document.querySelectorAll(".ts-stncard img.ts-cover__img")];
+				return {imgs: i.length, loaded: i.length > 0 && i.every((e) => e.complete), save: !!document.querySelector(".ts-stncard__save")}; })()`, &art)
 			if art.Imgs != 1 || !art.Save {
 				t.Errorf("station row art/save: %+v", art)
 			}
@@ -208,7 +208,7 @@ func TestRadioPlayerVisuals(t *testing.T) {
 			tab.WaitFor(`window.tsPlayer.state().playing`, 15*time.Second)
 			tab.WaitFor(`document.querySelector("#player [data-ts-meta]").textContent.includes("Ann - Song")`, 20*time.Second)
 			var pause bool
-			tab.Eval(`(() => { const b = document.querySelector('.ts-stnrow [data-ts-play="`+id+`"]'); const p = b.querySelector("[data-ts-pause-icon]");
+			tab.Eval(`(() => { const b = document.querySelector('.ts-stncard [data-ts-play="`+id+`"]'); const p = b.querySelector("[data-ts-pause-icon]");
 				return p.offsetWidth > 0 && b.querySelector("svg").offsetWidth === 0 || getComputedStyle(b.querySelector("svg")).display === "none"; })()`, &pause)
 			if !pause {
 				t.Error("playing station row shows no pause icon")

@@ -26,11 +26,11 @@
 .ts-eprow .ts-iconbtn.is-on, .ts-eprow .ts-iconbtn[aria-pressed="true"] { color: var(--accent); }
 .ts-eprow.is-played .ts-row__title { color: var(--ink-muted); font-weight: 400; }
 .ts-podcasts__rows { margin-top: var(--space-4); }
-/* Episodes read in date order, so they stay in one column (the library's two-column rows would read across), at a width a row can be scanned. */
-.ts-podcasts__rows.ts-lib-rows { grid-template-columns: minmax(0, 1fr); max-width: 56rem; }
+/* Episodes read in date order, so they stay in one column (the library's two-column rows would read across). The column fills .ts-main like every other list (page-width rule), so the header, filters and rows share one width. */
+.ts-podcasts__rows.ts-lib-rows { grid-template-columns: minmax(0, 1fr); }
 
 /* Filters above a show's episodes: chips, the order, the search field. They wrap, never overflow. */
-.ts-epfilters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); max-width: 56rem; }
+.ts-epfilters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); }
 .ts-epfilters .ts-chip, .ts-epfilters .ts-seg__item { text-decoration: none; min-height: var(--size-tap); }
 .ts-epfilters__sort { max-width: 100%; }
 .ts-epfilters__sort .ts-seg__item { padding-inline: var(--space-12); }
@@ -68,7 +68,7 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-podshow__skip .ts-input { width: 5.5rem; }
 .ts-podshow__none { margin: 0; color: var(--ink-muted); }
 .ts-podshow__more { margin: var(--space-16) 0 0; }
-.ts-podnotes { max-width: 44rem; font-size: 1.0625rem; line-height: 1.625rem; overflow-wrap: anywhere; }
+.ts-podnotes { max-width: var(--size-read-measure); font-size: 1.0625rem; line-height: 1.625rem; overflow-wrap: anywhere; }
 .ts-podnotes > :first-child { margin-top: 0; }
 .ts-podnotes p, .ts-podnotes ul, .ts-podnotes ol, .ts-podnotes blockquote { margin: 0 0 var(--space-12); }
 .ts-podnotes ul, .ts-podnotes ol { padding-left: var(--space-24); }
@@ -109,8 +109,11 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 /* Beside a phone-sized picture the header's buttons share one row: "Stop following" already says you follow the show,
    so the quiet Following mark steps aside and a long label is cut rather than wrapping. */
 @media (width < 30rem) {
-  .ts-podshow__actions { flex-wrap: nowrap; }
   .ts-podshow__actions > .ts-chip--static { display: none; }
+  /* The one primary button takes its own line; Refresh and Stop following share the next, each cut with an ellipsis. */
+  .ts-podshow__actions > .ts-btn--primary { flex: 1 1 100%; justify-content: center; }
+  .ts-podshow__actions > form { flex: 1 1 0; }
+  .ts-podshow__actions > form .ts-btn { width: 100%; }
 }
 
 /* Bring your podcasts (P4): the OPML file form under the shows, and the result of the latest import. */
@@ -128,7 +131,7 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-eprow__menu { flex: none; }
 
 /* Radio (decision 0038, R2). A station row: play, the name and facts, remove. The text is cut with an ellipsis; the row never wraps. */
-.ts-radio__rows { list-style: none; margin: var(--space-4) 0 0; padding: 0; max-width: 56rem; }
+.ts-radio__rows { list-style: none; margin: var(--space-4) 0 0; padding: 0; }
 .ts-stnrow { gap: var(--space-8); border-bottom: 1px solid var(--line); }
 .ts-stnrow__play { flex: none; }
 .ts-stnrow__main { display: flex; align-items: center; gap: var(--space-12); flex: 1 1 0; min-width: 0; }
@@ -136,3 +139,31 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-stnrow__remove { margin: 0; flex: none; }
 .ts-stnrow .ts-iconbtn { width: var(--size-tap); height: var(--size-tap); }
 .ts-radio section + section { margin-top: var(--space-8); }
+
+/* The show header: a meta line, the host name of the site, and the description clamped to four lines with a More disclosure (no script). */
+.ts-podshow__meta { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ts-podshow__about { max-width: var(--size-read-measure); }
+.ts-podshow__aboutsummary { list-style: none; cursor: pointer; display: block; }
+.ts-podshow__aboutsummary::-webkit-details-marker { display: none; }
+.ts-podshow__clip { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; font-size: 1.0625rem; line-height: 1.625rem; overflow-wrap: anywhere; }
+.ts-podshow__morelabel, .ts-podshow__lesslabel { display: inline-flex; align-items: center; min-height: var(--size-tap); color: var(--accent); font-weight: 600; }
+.ts-podshow__lesslabel, .ts-podshow__about[open] .ts-podshow__morelabel, .ts-podshow__about[open] .ts-podshow__clip { display: none; }
+.ts-podshow__about[open] .ts-podshow__lesslabel { display: inline-flex; }
+.ts-podshow__about > .ts-podnotes { margin-top: var(--space-4); }
+.ts-podshow__aboutsummary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+
+/* Radio: a heading, one plain line, the search field, then stations as cards (logo, name, one line, Play and the star). */
+.ts-radio__intro { margin: 0; color: var(--ink-muted); max-width: var(--size-read-measure); }
+.ts-radio__grid { list-style: none; margin: var(--space-8) 0 0; padding: 0; display: grid; gap: var(--space-20) var(--space-16); grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+.ts-stncard { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; padding: var(--space-8); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.ts-stncard:has([data-ts-pausing="1"]) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.ts-stncard__art { display: block; }
+.ts-stncard__art .ts-cover--blank { min-height: 0; contain: size; }
+.ts-stncard__name { font-weight: 600; overflow-wrap: anywhere; }
+.ts-stncard__meta { min-height: 1.25rem; font-size: 0.8125rem; line-height: 1.25rem; color: var(--ink-muted); }
+.ts-stncard__actions { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-4); }
+.ts-stncard__play { flex: 1 1 auto; min-width: 0; justify-content: center; }
+.ts-stncard__keep { margin: 0; flex: none; }
+.ts-stncard .ts-iconbtn { width: var(--size-tap); height: var(--size-tap); }
+.ts-stncard .ts-iconbtn.is-on { color: var(--accent); }

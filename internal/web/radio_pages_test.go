@@ -18,7 +18,7 @@ func TestRadioPages(t *testing.T) {
 	id := w.add(w.ben, w.fx.liveURL())
 
 	empty := w.get("/radio", w.cy)
-	if empty.Code != http.StatusOK || !strings.Contains(empty.Body.String(), "No stations yet.") || !strings.Contains(empty.Body.String(), `href="/radio/search"`) {
+	if empty.Code != http.StatusOK || !strings.Contains(empty.Body.String(), "No stations yet") || !strings.Contains(empty.Body.String(), `action="/radio/search"`) {
 		t.Errorf("empty Radio: %d", empty.Code)
 	}
 	rec := w.get("/radio", w.ben)
@@ -131,11 +131,14 @@ func TestRadioNavAndTabs(t *testing.T) {
 	}
 	for _, p := range []string{"/radio", "/podcasts"} {
 		body := w.get(p, w.ben).Body.String()
-		if !strings.Contains(body, `aria-label="Podcasts and radio"`) && !strings.Contains(body, `class="ts-tabs__item" href="/radio"`) {
-			t.Errorf("%s: no Radio tab", p)
+		if strings.Contains(body, `data-nav="/radio"`) || !strings.Contains(body, `data-nav="/podcasts"`) {
+			t.Errorf("%s: the navigation should have the one Podcasts item and no Radio item", p)
 		}
-		if !strings.Contains(body, `href="/podcasts"`) {
-			t.Errorf("%s: the Podcasts item is gone", p)
+		if !strings.Contains(body, `class="ts-tabs__item" href="/radio"`) {
+			t.Errorf("%s: no Radio tab in the strip", p)
+		}
+		if p == "/radio" && !strings.Contains(body, `href="/radio" aria-current="page"`) {
+			t.Error("the Radio tab is not current on /radio")
 		}
 	}
 	s.RadioEnabled = false

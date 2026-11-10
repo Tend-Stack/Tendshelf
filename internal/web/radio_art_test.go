@@ -123,7 +123,7 @@ func TestRadioRecentSave(t *testing.T) {
 		t.Fatalf("remove: %d", rec.Code)
 	}
 	page := w.get("/radio", w.ben).Body.String()
-	if !strings.Contains(page, `action="/radio/stations/`+id+`/save"`) || !strings.Contains(page, ">Save</button>") {
+	if !strings.Contains(page, `action="/radio/stations/`+id+`/save"`) || !strings.Contains(page, `aria-label="Save `) {
 		t.Fatalf("Recent row lacks Save: %q", page)
 	}
 	if rec := w.post("/radio/stations/"+id+"/save", w.cy, nil); rec.Code != http.StatusNotFound {

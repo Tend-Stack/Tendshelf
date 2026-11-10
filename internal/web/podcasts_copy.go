@@ -24,6 +24,25 @@ const (
 	podAdminBad          = "One of those values is not valid."
 	podAdminCleared      = "Saved episodes removed."
 	podcastsOPMLFileName = "tendshelf-podcasts.opml"
+	podErrFetchSlow      = "This show's episodes haven't arrived yet. Press Refresh to try again."
+)
+
+// Show page header (package 2026-11-10).
+const (
+	podNewShow      = "New show"
+	podEpisodesWord = "episodes"
+	podEpisodeWord1 = "episode"
+	podNewestWord   = "newest"
+	podMore         = "More"
+	podLess         = "Less"
+	podPlayLatest   = "Play latest"
+	podResume       = "Resume"
+	// The Now playing panel of an episode.
+	podPanelLabel    = "Now playing: about this episode"
+	podPanelChapters = "Chapters"
+	podPanelActions  = "Episode actions"
+	podGoToShow      = "Go to show"
+	podOpenEpisode   = "Open episode page"
 )
 
 // The page words. The first group is the deck of docs/plans/podcasts.md (P3); the second is new in P3.
@@ -91,7 +110,7 @@ const (
 	podNewBadgeOne     = "1 new episode"
 	podNewBadgeMany    = "%d new episodes"
 	podNewBadgeCap     = "99+"
-	podAdminIntro      = "Choose whether people on this server can follow podcasts, and how Tendshelf keeps them. Tendshelf only contacts a show's own website, and OndaCast when someone searches."
+	podAdminIntro      = "Choose whether people on this server can follow podcasts, and how Tendshelf keeps them. Tendshelf only contacts a show's own website, and OndaCast when someone searches. Search results show each show's picture, fetched from its website."
 	podAdminEnabled    = "Let people follow podcasts"
 	podAdminEnabledHnt = "Off hides podcasts from everyone. Nothing is fetched while it is off."
 	podAdminRefresh    = "Check for new episodes"

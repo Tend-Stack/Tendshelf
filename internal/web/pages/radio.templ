@@ -2,22 +2,22 @@ package pages
 
 import "github.com/Tend-Stack/tendshelf/internal/web/components"
 
-// RadioView is the Radio page of the Podcasts area: the tabs (when podcasts are on too), the saved stations,
-// then the recently played ones. The handler writes every word (internal/web/radio_copy.go).
+// RadioView is the Radio page: its heading and one-line intro, the search field, the tabs (when podcasts are on too),
+// then the saved stations and the recently played ones as cards. The handler writes every word (internal/web/radio_copy.go).
 type RadioView struct {
-	Title, FindLabel, FindHref, TabsLabel string
-	Tabs                                  []PodTab
-	SavedTitle, RecentTitle               string
-	Saved, Recent                         []components.StationRowView
-	EmptyTitle, EmptyBody                 string
+	Title, Intro, FindLabel, FindHref, TabsLabel string
+	SearchLabel, SearchButton                    string
+	Tabs                                         []PodTab
+	SavedTitle, RecentTitle                      string
+	Saved, Recent                                []components.StationRowView
+	EmptyTitle, EmptyBody                        string
 }
 
-// Radio lists a person's stations.
+// Radio is the Radio page: the same width and rhythm as the Podcasts pages.
 templ Radio(v RadioView) {
 	<div class="ts-podcasts ts-radio">
 		<header class="ts-podcasts__head">
 			<h1 class="title-1 ts-podcasts__title">{ v.Title }</h1>
-			@podFindLink(v.FindHref, v.FindLabel)
 		</header>
 		if len(v.Tabs) > 0 {
 			<nav class="ts-tabs ts-podcasts__tabs" aria-label={ v.TabsLabel }>
@@ -28,15 +28,20 @@ templ Radio(v RadioView) {
 				}
 			</nav>
 		}
+		<p class="body ts-radio__intro">{ v.Intro }</p>
+		<form class="ts-podsearch__form" method="get" action={ templ.SafeURL(v.FindHref) } role="search">
+			<input class="ts-input" type="search" name="q" maxlength="100" aria-label={ v.SearchLabel } placeholder={ v.SearchLabel } autocomplete="off"/>
+			<button type="submit" class="ts-btn ts-btn--primary">{ v.SearchButton }</button>
+		</form>
 		if len(v.Saved) == 0 && len(v.Recent) == 0 {
-			@components.EmptyState(v.EmptyTitle, v.EmptyBody, podFindLink(v.FindHref, v.FindLabel))
+			@components.EmptyState(v.EmptyTitle, v.EmptyBody, nil)
 		}
 		if len(v.Saved) > 0 {
 			<section aria-labelledby="radio-saved">
 				<h2 id="radio-saved" class="section">{ v.SavedTitle }</h2>
-				<ul class="ts-radio__rows">
+				<ul class="ts-radio__grid">
 					for _, st := range v.Saved {
-						@components.StationRow(st)
+						@components.StationCard(st)
 					}
 				</ul>
 			</section>
@@ -44,9 +49,9 @@ templ Radio(v RadioView) {
 		if len(v.Recent) > 0 {
 			<section aria-labelledby="radio-recent">
 				<h2 id="radio-recent" class="section">{ v.RecentTitle }</h2>
-				<ul class="ts-radio__rows">
+				<ul class="ts-radio__grid">
 					for _, st := range v.Recent {
-						@components.StationRow(st)
+						@components.StationCard(st)
 					}
 				</ul>
 			</section>

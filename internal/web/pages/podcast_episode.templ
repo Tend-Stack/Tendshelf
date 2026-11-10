@@ -20,6 +20,8 @@ type PodcastEpisodeView struct {
 	PlayHref, PlayLabel string
 	Video               bool
 	VideoLine           string
+	// NoPlay leaves the Play button out: in the Now playing panel the player bar is the only place that plays.
+	NoPlay bool
 	// Played and Starred drive the two forms; Back returns to this page.
 	Played                                 bool
 	PlayedAction, PlayedValue, PlayedLabel string
@@ -60,49 +62,7 @@ templ PodcastEpisode(v PodcastEpisodeView) {
 				}
 			</div>
 		</header>
-		<div class="ts-podep__actions">
-			if v.Video {
-				<p class="ts-banner" role="status">{ v.VideoLine }</p>
-			} else {
-				<a class="ts-btn ts-btn--primary ts-btn--lg" href={ templ.SafeURL(v.PlayHref) } hx-boost="false" data-ts-play={ v.ID }>
-					@components.Icon("play", true)
-					<span hidden data-ts-pause-icon>
-						@components.Icon("pause", true)
-					</span>
-					<span data-ts-play-label>{ v.PlayLabel }</span>
-				</a>
-			}
-			<form method="post" action={ templ.SafeURL(v.PlayedAction) }>
-				<input type="hidden" name="_csrf" value={ v.CSRF }/>
-				<input type="hidden" name="played" value={ v.PlayedValue }/>
-				<button type="submit" class="ts-btn ts-btn--secondary">
-					if !v.Played {
-						@components.Icon("check", false)
-					}
-					{ v.PlayedLabel }
-				</button>
-			</form>
-			<form method="post" action={ templ.SafeURL(v.StarAction) }>
-				<input type="hidden" name="_csrf" value={ v.CSRF }/>
-				<input type="hidden" name="on" value={ v.StarValue }/>
-				<button type="submit" class="ts-btn ts-btn--secondary" aria-pressed={ boolWordPage(v.Starred) }>
-					@components.Icon("star", v.Starred)
-					{ v.StarLabel }
-				</button>
-			</form>
-			if !v.Video {
-				@components.EpisodeMenu(v.Menu)
-			}
-			if v.Download != nil {
-				@bookDownload(*v.Download)
-			}
-			if v.SaveHref != "" {
-				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SaveHref) } hx-boost="false">
-					@components.Icon("download", false)
-					{ v.SaveLabel }
-				</a>
-			}
-		</div>
+		@podEpisodeActions(v)
 		if v.Notes != "" {
 			<section aria-labelledby="pod-ep-notes-h">
 				<h2 id="pod-ep-notes-h" class="section">{ v.NotesTitle }</h2>
@@ -117,4 +77,52 @@ func boolWordPage(b bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+// podEpisodeActions is the row of episode actions: play, mark played, star, the more menu, download and save. The
+// episode page and the Now playing panel draw the same forms.
+templ podEpisodeActions(v PodcastEpisodeView) {
+	<div class="ts-podep__actions">
+		if v.Video {
+			<p class="ts-banner" role="status">{ v.VideoLine }</p>
+		} else if !v.NoPlay {
+			<a class="ts-btn ts-btn--primary ts-btn--lg" href={ templ.SafeURL(v.PlayHref) } hx-boost="false" data-ts-play={ v.ID }>
+				@components.Icon("play", true)
+				<span hidden data-ts-pause-icon>
+					@components.Icon("pause", true)
+				</span>
+				<span data-ts-play-label>{ v.PlayLabel }</span>
+			</a>
+		}
+		<form method="post" action={ templ.SafeURL(v.PlayedAction) }>
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<input type="hidden" name="played" value={ v.PlayedValue }/>
+			<button type="submit" class="ts-btn ts-btn--secondary">
+				if !v.Played {
+					@components.Icon("check", false)
+				}
+				{ v.PlayedLabel }
+			</button>
+		</form>
+		<form method="post" action={ templ.SafeURL(v.StarAction) }>
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			<input type="hidden" name="on" value={ v.StarValue }/>
+			<button type="submit" class="ts-btn ts-btn--secondary" aria-pressed={ boolWordPage(v.Starred) }>
+				@components.Icon("star", v.Starred)
+				{ v.StarLabel }
+			</button>
+		</form>
+		if !v.Video {
+			@components.EpisodeMenu(v.Menu)
+		}
+		if v.Download != nil {
+			@bookDownload(*v.Download)
+		}
+		if v.SaveHref != "" {
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SaveHref) } hx-boost="false">
+				@components.Icon("download", false)
+				{ v.SaveLabel }
+			</a>
+		}
+	</div>
 }

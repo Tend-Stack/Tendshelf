@@ -3,18 +3,20 @@ const WIDE = matchMedia("(width >= 1280px)");
 const $ = (selector) => document.querySelector(selector);
 const dialog = $("#player-full");
 
-// Loads the loaded book's panel when the player opens wide.
+// Loads the loaded book's or episode's panel when the player opens wide.
 function load() {
-  const id = ["episode", "radio"].includes(tsPlayer?.state().itemKind) ? "" : tsPlayer?.state().bookId; // an episode or a station has no panel
+  const kind = tsPlayer?.state().itemKind;
+  const id = kind === "radio" ? "" : tsPlayer?.state().bookId; // a station has no panel
   if (!WIDE.matches || document.documentElement.dataset.textSize === "large" || !dialog.open || !id || $("#now-panel").dataset.bookId === id) return;
-  htmx.ajax("GET", "/hx/player/panel/" + id, { target: "#now-panel", swap: "outerHTML" });
+  const path = kind === "episode" ? "/hx/player/episode-panel/" : "/hx/player/panel/";
+  htmx.ajax("GET", path + id, { target: "#now-panel", swap: "outerHTML" });
 }
 new MutationObserver(load).observe(dialog, { attributes: true, attributeFilter: ["open"] });
 document.addEventListener("ts:player:state", load);
 
 // The narrator joins the subtitle, the extra links join the ⋯ menu.
 document.addEventListener("htmx:after:swap", () => {
-  if (!$("#now-panel[data-book-id]")) return;
+  if (!$("#now-panel[data-book-id]:not(.ts-np--episode)")) return; // an episode has no narrator or extra links
   const by = $("[data-ts-now-by]");
   $("[data-ts-full-by]").textContent = by ? " · " + by.textContent : "";
   $("[data-ts-full-extra]").replaceChildren(...($("[data-ts-now-menu]")?.children ?? []));
