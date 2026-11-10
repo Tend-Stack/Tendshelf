@@ -112,7 +112,7 @@ func (f *podFix) serve(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(status)
 		case f.audioCT.Load() != nil:
 			w.Header().Set("Content-Type", *f.audioCT.Load())
-			w.Write(f.audio)
+			http.ServeContent(w, r, "ep.mp3", time.Time{}, bytes.NewReader(f.audio))
 		case f.htmlAudio.Load():
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprint(w, "<html>please sign in</html>")

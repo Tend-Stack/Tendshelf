@@ -135,11 +135,13 @@ function drawTimes(ms, speed) {
   const chapter = book.chapters[idx];
   const leftMs = Math.max(0, book.durationMs - ms) / speed;
   const minutes = Math.ceil(leftMs / 60000);
-  setText("full-chapter", fill(msg("chapterOf"), { n: idx + 1, total: book.chapters.length }));
+  const episode = book.kind === "episode";
+  const whole = episode && book.chapters.length <= 1; // an episode of one piece: its own words, one "left" line
+  setText("full-chapter", whole ? msg("episodeWord") : fill(msg("chapterOf"), { n: idx + 1, total: book.chapters.length }));
   setText("full-clock", clock(ms - chapter.start));
-  setText("full-left", fill(msg("leftInChapter"), { t: clock(chapter.end - ms) }));
+  setText("full-left", whole ? fill(msg("leftInEpisode"), { t: clock(Math.max(0, book.durationMs - ms)) }) : fill(msg("leftInChapter"), { t: clock(chapter.end - ms) }));
   setText("full-elapsed", clock(ms - chapter.start));
-  setText("full-book-left", leftInBookText(minutes));
+  setText("full-book-left", whole ? "" : episode ? fill(msg("leftInEpisode"), { t: clock(Math.max(0, book.durationMs - ms)) }) : leftInBookText(minutes));
   // The board: the chapter's name in serif italic, then the author. A chapter without a title, or a
   // book of one chapter, shows the author alone.
   const named = book.chapters.length > 1 && chapter.title;
@@ -218,6 +220,34 @@ function syncExpand() {
   bar.expand.setAttribute("aria-label", dialog.open ? msg("closePlayer") : fill(msg("openPlayer"), { title: book.title, n: idx + 1, m: left }));
 }
 
+// What differs between a book and a podcast episode: the page it opens, the finished mark, the end-of-timer
+// choice and the controls that only a book has (bookmarks and the book's reader).
+// Sets an element's words for an episode or back to the book's (kept the first time).
+function wordsFor(el, episode, episodeWords) {
+  if (!el.dataset.tsBookWords) el.dataset.tsBookWords = el.textContent;
+  el.textContent = episode ? episodeWords : el.dataset.tsBookWords;
+}
+
+function drawKind() {
+  const episode = book.kind === "episode";
+  const id = encodeURIComponent(book.id);
+  ui["full-book"].href = episode ? "/podcasts/episodes/" + id : "/books/" + id;
+  wordsFor(ui["full-book"], episode, msg("goToEpisode"));
+  ui["full-finish"].action = episode ? "/podcasts/episodes/" + id + "/played" : "/hx/books/" + id + "/finished";
+  wordsFor(ui["full-finish"].querySelector("button"), episode, msg("markPlayed"));
+  ui["full-finish"].elements.finished.name = episode ? "played" : "finished";
+  const choice = ui["sleep-sheet"].querySelector('[data-ts-sleep-choice="chapter"], [data-ts-sleep-choice="episode"]');
+  choice.dataset.tsSleepChoice = episode ? "episode" : "chapter";
+  wordsFor(choice.querySelector("span"), episode, msg("sleepEndOfEpisode"));
+  // an episode without chapters of its own has nothing to list
+  const noChapters = episode && book.chapters.length <= 1;
+  ui["open-chapters"].hidden = noChapters;
+  bar.chapters.hidden = noChapters;
+  for (const mark of [...slot.querySelectorAll("[data-ts-bookmark], [data-ts-bar-bookmark]"), ...dialog.querySelectorAll("[data-ts-bookmark]")]) {
+    mark.hidden = episode || !!LINK;
+  }
+}
+
 // What changes only when another book loads.
 function drawBook() {
   // The book icon opens the reader; it shows only for a book that has an ebook the person may read.
@@ -234,8 +264,7 @@ function drawBook() {
     setText("full-" + direction + "-num", String(seconds));
     ui["full-" + direction].setAttribute("aria-label", fill(msg(direction + "Seconds"), { n: seconds }));
   }
-  ui["full-book"].href = "/books/" + encodeURIComponent(book.id);
-  ui["full-finish"].action = "/hx/books/" + encodeURIComponent(book.id) + "/finished";
+  drawKind();
   scrub.input.removeAttribute("aria-valuetext");
   // a ruler tick at every chapter start but the first
   ruler.ticks.replaceChildren(...book.chapters.filter((c) => c.start > 0).map((c) => {
@@ -614,6 +643,7 @@ function saveSpeed(leaving, makeUsual) {
   if ((!speedUnsaved && !makeUsual) || LINK) return;
   speedUnsaved = false;
   const state = player.state();
+  if (state.kind === "episode") return; // an episode's speed follows its show's settings
   fetch("/hx/books/" + encodeURIComponent(state.bookId) + "/speed", {
     method: "POST",
     keepalive: leaving === true,
@@ -666,6 +696,7 @@ const nativeSleep = () => window.tsNativeAudio;
 
 // Where the end-of-chapter choice ends: this chapter's end, or the next one's when almost there.
 function chapterEndNow() {
+  if (book.kind === "episode") return book.durationMs; // "End of episode"
   const state = player.state();
   let idx = state.chapterIdx;
   if (book.chapters[idx].end - state.positionMs < CHAPTER_MIN_LEFT_MS && book.chapters[idx + 1]) idx++;
@@ -712,9 +743,9 @@ function onNativeSleep() {
 
 function setSleep(choice, minutes) {
   if (nativeSleep()) {
-    nativeSleep().sleep(choice === "off" || choice === "chapter" ? choice : String(Math.min(999, Math.max(1, Math.round(minutes)))));
+    nativeSleep().sleep(choice === "off" || choice === "chapter" || choice === "episode" ? choice : String(Math.min(999, Math.max(1, Math.round(minutes)))));
     // Shown at once; the app's answer, a moment later, replaces it (Eyes-free reads this right after the tap).
-    sleepState.mode = choice === "off" ? "off" : choice === "chapter" ? "chapter" : "minutes";
+    sleepState.mode = choice === "off" ? "off" : choice === "chapter" || choice === "episode" ? "chapter" : "minutes";
     sleepState.choice = choice;
     return;
   }
@@ -724,8 +755,9 @@ function setSleep(choice, minutes) {
   if (choice === "off") {
     sleepState.mode = "off";
   } else {
-    sleepState.mode = choice === "chapter" ? "chapter" : "minutes";
-    sleepState.endMs = choice === "chapter" ? chapterEndNow() : 0;
+    const toEnd = choice === "chapter" || choice === "episode"; // the end of the chapter, or of the episode
+    sleepState.mode = toEnd ? "chapter" : "minutes";
+    sleepState.endMs = toEnd ? chapterEndNow() : 0;
     sleepState.leftMs = minutes * 60000;
     sleepState.lastAt = performance.now();
     askMotion();
@@ -1146,7 +1178,8 @@ function start() {
   });
   document.addEventListener("ts:player:state", (event) => {
     trackJump(event.detail.kind, event.detail.positionMs, event.detail.bookId);
-    if (event.detail.kind === "load" || !book || event.detail.bookId !== book.id) {
+    const refresh = ["load", "chapters", "duration"].includes(event.detail.kind); // an episode's chapters or length arrived
+    if (refresh || !book || event.detail.bookId !== book.id) {
       if (book && event.detail.bookId !== book.id && !nativeSleep()) setSleep("off"); // another book: the timer was for this one
       book = player.info();
       if (book) drawBook();

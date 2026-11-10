@@ -42,6 +42,7 @@ type PlayerMsgs struct {
 	// Speed, sleep timer, volume and the bookmark key (P1c-5b).
 	SpeedForBook, SpeedMakeUsual, JumpedFar, JumpedBack, SpeedUsualSet string
 	SpeedValue, SpeedLabel, SpeedFine, SleepTitle, SleepEndOfChapter, SleepMinutes string
+	SleepEndOfEpisode, EpisodeWord, LeftInEpisode, EpisodeLeft, OpenEpisode, GoToEpisode, MarkPlayed string
 	SleepIn, SleepCustom, SleepCustomLabel, SleepStart, SleepTurnOff, SleepOffLabel string
 	SleepOnLabel, Sleeping, SleepFading, SleepFadingShake, PlusTen, Volume         string
 	BookmarkMoment, BookmarkFailed, KeysBookmark, Bookmarked, BookmarkMomentAt, BookmarkQueued string
@@ -131,6 +132,13 @@ func (m PlayerMsgs) attrs() templ.Attributes {
 		"data-ts-msg-speed-usual-set":     m.SpeedUsualSet,
 		"data-ts-msg-jumped-back":         m.JumpedBack,
 		"data-ts-msg-sleep-in":            m.SleepIn,
+		"data-ts-msg-sleep-end-of-episode": m.SleepEndOfEpisode,
+		"data-ts-msg-episode-left":         m.EpisodeLeft,
+		"data-ts-msg-episode-word":         m.EpisodeWord,
+		"data-ts-msg-left-in-episode":      m.LeftInEpisode,
+		"data-ts-msg-open-episode":         m.OpenEpisode,
+		"data-ts-msg-go-to-episode":        m.GoToEpisode,
+		"data-ts-msg-mark-played":          m.MarkPlayed,
 		"data-ts-msg-sleep-off-label":     m.SleepOffLabel,
 		"data-ts-msg-sleep-on-label":      m.SleepOnLabel,
 		"data-ts-msg-sleeping":            m.Sleeping,

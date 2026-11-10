@@ -46,13 +46,23 @@ func (s *server) renderPlayer(w http.ResponseWriter, r *http.Request, b library.
 	s.fragment(w, r, http.StatusOK, components.PlayerData(v))
 }
 
-// getCurrentPlayer answers GET /hx/player: the person's newest unfinished visible book, or 204 when
+// getCurrentPlayer answers GET /hx/player: the person's newest unfinished visible book or episode, or 204 when
 // there is none (htmx and fetch both leave the page alone).
 func (s *server) getCurrentPlayer(w http.ResponseWriter, r *http.Request) {
 	u := currentUser(r)
 	ls, err := s.lib.ContinueListening(r.Context(), s.scope(r), u.ID, 1)
 	if err != nil {
 		s.serverError(w, r, "continue listening", err)
+		return
+	}
+	// The newest place wins: the last book or the last episode, whichever the person listened to later.
+	ep, haveEp, err := s.lastEpisode(r)
+	if err != nil {
+		s.serverError(w, r, "last episode", err)
+		return
+	}
+	if haveEp && (len(ls) == 0 || ep.State.ClientUpdated > ls[0].UpdatedAt) {
+		s.renderEpisodePlayer(w, r, ep)
 		return
 	}
 	if len(ls) == 0 {

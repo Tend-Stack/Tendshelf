@@ -27,6 +27,11 @@ type HomeView struct {
 	// Large is set for a person who chose Larger text: "New on the shelf" is then a grid of covers
 	// (at most four) instead of the spine shelf, whose spines are too small to read at that size.
 	Large bool
+	// Episodes is the "New episodes" shelf: up to ten new episodes of followed podcasts, newest first (empty when
+	// podcasts are off or nothing is new). EpisodesTitle and EpisodesHref are its heading and "See all" address.
+	Episodes                       []components.EpisodeRowView
+	EpisodesTitle, EpisodesSeeAll  string
+	EpisodesHref                   string
 	// SeeAllURL opens the library sorted by recently added.
 	SeeAllURL string
 	// Empty is set when the person has no book to show.
@@ -95,6 +100,19 @@ templ Home(v HomeView) {
 						}
 					</ul>
 				}
+			</section>
+		}
+		if len(v.Episodes) > 0 {
+			<section id="row-episodes" class="ts-home__row" aria-labelledby="row-episodes-title">
+				<div class="ts-home__rowhead">
+					<h2 id="row-episodes-title" class="section">{ v.EpisodesTitle }</h2>
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.EpisodesHref) }>{ v.EpisodesSeeAll }</a>
+				</div>
+				<div class="ts-lib-rows ts-podcasts__rows">
+					for _, e := range v.Episodes {
+						@components.EpisodeRow(e)
+					}
+				</div>
 			</section>
 		}
 		@HomeAlso(v.Hero)

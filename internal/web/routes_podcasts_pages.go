@@ -126,9 +126,12 @@ func (s *server) podRow(r *http.Request, ep podcast.Episode, back string, seenAt
 }
 
 // backTarget is where a mark or star returns to: the page the form came from when it is a podcast page of
-// this server, else def. It never leaves the site.
+// this server (or Home), else def. It never leaves the site.
 func backTarget(r *http.Request, def string) string {
 	b := r.PostForm.Get("back")
+	if b == "/" { // Home's "New episodes" shelf
+		return b
+	}
 	if len(b) > 1500 || !strings.HasPrefix(b, "/podcasts") || strings.HasPrefix(b, "//") || strings.ContainsAny(b, "\\\r\n") {
 		return def
 	}
@@ -177,6 +180,7 @@ func (s *server) getPodcasts(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		v.EmptyTitle, v.EmptyBody, v.EmptyAction = podNoShowsTitle, podNoShows, true
+		v.Import = s.podImportView(r)
 	case "new":
 		eps, err = s.podcasts.NewEpisodes(ctx, u.ID, podListLimit, 0)
 		v.EmptyTitle, v.EmptyBody = podNoNewTitle, podNoNewBody

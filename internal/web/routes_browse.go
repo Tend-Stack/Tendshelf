@@ -124,7 +124,16 @@ func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
 	if v.Shared != nil && sharedTotal >= page.Total {
 		v.New = nil
 	}
-	s.pageStyled(w, r, http.StatusOK, "Home", "home", pages.Home(v), nil, pages.BrowseStyles...)
+	styles := pages.BrowseStyles
+	if v.Episodes, err = s.homeNewEpisodes(r); err != nil {
+		s.serverError(w, r, "home new episodes", err)
+		return
+	}
+	if len(v.Episodes) > 0 {
+		v.EpisodesTitle, v.EpisodesSeeAll, v.EpisodesHref = podNewEpisodes, podSeeAll, "/podcasts?tab=new"
+		styles = append(slices.Clone(styles), "css/pages-podcasts.css")
+	}
+	s.pageStyled(w, r, http.StatusOK, "Home", "home", pages.Home(v), nil, styles...)
 }
 
 // emptyKind says which empty state a person with no books gets.

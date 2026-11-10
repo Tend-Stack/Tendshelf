@@ -234,6 +234,9 @@ func (s *server) getPodcastChapters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := []byte(ep.ChaptersJSON)
+	if len(body) > 0 {
+		body = podcast.ChaptersJSON(podcast.ParseChapters(body)) // an older stored copy is cut down the same way
+	}
 	if len(body) == 0 {
 		if ep.ChaptersURL == "" {
 			s.plainError(w, r, http.StatusNotFound, "Not found.")
@@ -256,8 +259,9 @@ func (s *server) getPodcastChapters(w http.ResponseWriter, r *http.Request) {
 			s.plainError(w, r, http.StatusBadGateway, podAudioUnavailable)
 			return
 		}
-		body = b
-		if err := s.podcasts.SetChapters(r.Context(), ep.ID, b); err != nil {
+		// Only start and title are kept; the rest of the publisher's file goes no further.
+		body = podcast.ChaptersJSON(podcast.ParseChapters(b))
+		if err := s.podcasts.SetChapters(r.Context(), ep.ID, body); err != nil {
 			s.podcasts.Log.Warn("podcasts: could not keep chapters", "err", err)
 		}
 	}
@@ -266,4 +270,12 @@ func (s *server) getPodcastChapters(w http.ResponseWriter, r *http.Request) {
 	h.Set("Cache-Control", "private, no-store")
 	h.Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(body)
+}
+
+// episodeChapters is an episode's stored chapters, when the first ask has already fetched them.
+func episodeChapters(ep podcast.Episode) []podcast.Chapter {
+	if ep.ChaptersJSON == "" {
+		return nil
+	}
+	return podcast.ParseChapters([]byte(ep.ChaptersJSON))
 }
