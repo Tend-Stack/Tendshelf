@@ -346,7 +346,7 @@ func (s *server) postMeSSOConfirm(w http.ResponseWriter, r *http.Request) {
 	err := s.auth.OIDCConfirmLink(r.Context(), r.PostFormValue("id"), sess)
 	switch {
 	case err == nil:
-		s.redirect(w, r, "/me/sso?done=linked")
+		s.answerPage(w, r, "/me/sso?done=linked")
 	case errors.Is(err, auth.ErrOIDCLinkGone):
 		s.meSSOPage(w, r, http.StatusConflict, pages.MeSSOView{Error: ssoLinkGone})
 	case errors.Is(err, auth.ErrOIDCTaken):
@@ -365,9 +365,9 @@ func (s *server) postMeSSOUnlink(w http.ResponseWriter, r *http.Request) {
 	err := s.auth.OIDCUnlink(r.Context(), currentUser(r).ID)
 	switch {
 	case err == nil:
-		s.redirect(w, r, "/me/sso?done=unlinked")
+		s.answerPage(w, r, "/me/sso?done=unlinked")
 	case errors.Is(err, auth.ErrOIDCNotLinked):
-		s.redirect(w, r, "/me/sso")
+		s.answerPage(w, r, "/me/sso")
 	case errors.Is(err, auth.ErrOIDCLastWayIn):
 		s.meSSOPage(w, r, http.StatusConflict, pages.MeSSOView{Error: ssoUnlinkNoPassword})
 	default:
