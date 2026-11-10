@@ -65,6 +65,7 @@ the queue is rebuilt to hold either a book or an episode (one queue, not two).
 10. **Radio** (after podcasts): stations found by OndaCast or added by stream address, favourites and history stored locally, live audio
     through the server with ICY titles read out of the stream, no seeking, a Live badge. Radio Browser is not a fallback: it would be a
     second outside directory and host, OndaCast already draws on it, and saved stations play without any directory.
+    The now-playing title of a station is shared by everyone who saved it, so it shows whenever anyone is listening (accepted).
 11. **Limits.** 200 followed shows per person; 3,000 newest episodes kept per show (older ones without a person's history or favourite
     are removed); 100 stations per person; search 20 a minute per person; follow and add 30 an hour per person; Refresh once per show
     per 5 minutes; OPML import 1 MiB and 200 shows.

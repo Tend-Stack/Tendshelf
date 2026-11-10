@@ -134,6 +134,12 @@ func (s *Service) Acquire(userID, stationID string) (release func(), err error) 
 			if s.count[stationID]--; s.count[stationID] <= 0 {
 				delete(s.count, stationID)
 				delete(s.titles, stationID) // nobody is listening: the old title would be stale
+				for i, id := range s.order {
+					if id == stationID { // an entry with no title left must not evict a live one later
+						s.order = append(s.order[:i], s.order[i+1:]...)
+						break
+					}
+				}
 			}
 		})
 	}, nil

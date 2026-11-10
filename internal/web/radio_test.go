@@ -118,6 +118,16 @@ func (f *radioFix) serve(w http.ResponseWriter, r *http.Request) {
 			case <-r.Context().Done():
 			}
 		}
+	case "/endless.mp3": // audio without end, for clients that stop reading
+		f.hits.Add(1)
+		w.Header().Set("Content-Type", "audio/mpeg")
+		chunk := make([]byte, 16<<10)
+		for r.Context().Err() == nil {
+			if _, err := w.Write(chunk); err != nil {
+				return
+			}
+			w.(http.Flusher).Flush()
+		}
 	case "/plain.mp3":
 		w.Header().Set("Content-Type", "audio/mpeg")
 		io.WriteString(w, "no titles here")

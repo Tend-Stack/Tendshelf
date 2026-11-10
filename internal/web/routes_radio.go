@@ -70,6 +70,10 @@ func (s *server) loadStation(w http.ResponseWriter, r *http.Request) (radio.Stat
 // addStation turns a picked OndaCast slug or a typed stream address into a saved station. It returns the
 // HTTP status and plain words when it refuses; nothing the station or OndaCast said is repeated.
 func (s *server) addStation(ctx context.Context, userID, slug, streamURL string) (st radio.Station, created bool, status int, text string) {
+	// A full list is refused before anything is dialled, so it cannot be used to make probes.
+	if n, err := s.radio.FavouriteCount(ctx, userID); err == nil && n >= radio.MaxFavourites {
+		return st, false, http.StatusUnprocessableEntity, radioErrTooMany
+	}
 	in := radio.Input{}
 	switch {
 	case streamURL != "" && slug == "":
@@ -118,12 +122,62 @@ func (s *server) addStation(ctx context.Context, userID, slug, streamURL string)
 
 // radioAddAllowed spends one of the person's 30 additions an hour.
 func (s *server) radioAddAllowed(w http.ResponseWriter, userID string) bool {
-	if ok, wait := s.radioLim.add.Allow(userID); !ok {
+	// Take checks and counts under one lock, so parallel additions cannot all pass before one is counted.
+	if !s.radioLim.add.Take(userID) {
+		_, wait := s.radioLim.add.Allow(userID)
 		w.Header().Set("Retry-After", strconv.Itoa(int(wait/time.Second)+1))
 		return false
 	}
-	s.radioLim.add.Fail(userID)
 	return true
+}
+
+// relayWriteDeadline is how long one write to the listener may take. The server has no WriteTimeout (long
+// streams), so a client that stops reading would otherwise hold its stream slot and live place forever.
+// radioEnabledEvery is how often a running relay looks at the owner's radio switch. Tests shorten both.
+var (
+	relayWriteDeadline = 30 * time.Second
+	radioEnabledEvery  = 3 * time.Second
+)
+
+// relayCopy copies src to the client, giving each write its own deadline, flushing when asked, and stops at the
+// first error from either side. A recorder without deadline support is written to as before.
+func relayCopy(w http.ResponseWriter, src io.Reader, flush bool) error {
+	rc := http.NewResponseController(w)
+	buf := make([]byte, 16<<10)
+	for {
+		n, rerr := src.Read(buf)
+		if n > 0 {
+			if err := rc.SetWriteDeadline(time.Now().Add(relayWriteDeadline)); err != nil && !errors.Is(err, http.ErrNotSupported) {
+				return err
+			}
+			if _, err := w.Write(buf[:n]); err != nil {
+				return err
+			}
+			if flush {
+				_ = rc.Flush()
+			}
+		}
+		if rerr != nil {
+			return rerr
+		}
+	}
+}
+
+// stopWhenRadioOff cancels a running relay within radioEnabledEvery of the owner turning radio off.
+func (s *server) stopWhenRadioOff(ctx context.Context, cancel context.CancelFunc) {
+	t := time.NewTicker(radioEnabledEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if !s.radio.Enabled(ctx) {
+				cancel()
+				return
+			}
+		}
+	}
 }
 
 func (s *server) postRadioStation(w http.ResponseWriter, r *http.Request) {
@@ -182,6 +236,7 @@ func (s *server) getRadioLive(w http.ResponseWriter, r *http.Request) {
 	defer release()
 	ctx, cancel := context.WithTimeout(r.Context(), s.radio.MaxSession)
 	defer cancel()
+	go s.stopWhenRadioOff(ctx, cancel)
 	up, metaint, err := s.radio.Net.OpenLive(ctx, st.StreamURL)
 	if err != nil {
 		var pe *podnet.Error
@@ -201,8 +256,10 @@ func (s *server) getRadioLive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = s.radio.SetChecked(r.Context(), st.ID, codec, "")
-	if err := s.radio.NotePlay(r.Context(), u.ID, st.ID); err != nil {
-		s.radio.Log.Warn("radio: could not record a play", "err", err)
+	if r.Method != http.MethodHead { // a HEAD asks about the stream; it is not listening
+		if err := s.radio.NotePlay(r.Context(), u.ID, st.ID); err != nil {
+			s.radio.Log.Warn("radio: could not record a play", "err", err)
+		}
 	}
 	h.Set("Content-Type", mt)
 	h.Set("X-Content-Type-Options", "nosniff")
@@ -217,20 +274,7 @@ func (s *server) getRadioLive(w http.ResponseWriter, r *http.Request) {
 	if metaint > 0 {
 		body = &radio.Splitter{R: up.Body, Metaint: metaint, OnTitle: func(t string) { s.radio.SetTitle(st.ID, t) }}
 	}
-	rc := http.NewResponseController(w)
-	buf := make([]byte, 16<<10)
-	for {
-		n, rerr := body.Read(buf)
-		if n > 0 {
-			if _, werr := w.Write(buf[:n]); werr != nil {
-				return
-			}
-			_ = rc.Flush()
-		}
-		if rerr != nil {
-			return
-		}
-	}
+	_ = relayCopy(w, body, true)
 }
 
 // getRadioNow answers the now-playing line, polled every 15 seconds while a station plays.

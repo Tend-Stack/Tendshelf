@@ -115,12 +115,12 @@ func (s *server) postPodcastFollow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, u := r.Context(), currentUser(r)
-	if ok, wait := s.podLim.follow.Allow(u.ID); !ok {
+	if !s.podLim.follow.Take(u.ID) {
+		_, wait := s.podLim.follow.Allow(u.ID)
 		w.Header().Set("Retry-After", strconv.Itoa(int(wait/time.Second)+1))
 		s.refuseSetting(w, r, http.StatusTooManyRequests, podErrBusy)
 		return
 	}
-	s.podLim.follow.Fail(u.ID)
 	feed, slug := strings.TrimSpace(r.PostForm.Get("feed_url")), strings.TrimSpace(r.PostForm.Get("slug"))
 	switch {
 	case feed != "" && slug == "":

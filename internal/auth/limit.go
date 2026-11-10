@@ -61,6 +61,28 @@ func (l *Limiter) Fail(key string) {
 	l.m[key] = &window{start: l.now(), n: 1}
 }
 
+// Take checks and counts in one step under one lock, so parallel requests cannot all pass a check
+// before any of them is counted. It reports whether key may go ahead; a refused call is not counted.
+func (l *Limiter) Take(key string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if w := l.live(key); w != nil {
+		if w.n >= l.max {
+			return false
+		}
+		w.n++
+		return true
+	}
+	if l.max < 1 {
+		return false
+	}
+	if len(l.m) >= l.capacity {
+		l.evict()
+	}
+	l.m[key] = &window{start: l.now(), n: 1}
+	return true
+}
+
 // Reset forgets key, after a successful sign-in.
 func (l *Limiter) Reset(key string) {
 	l.mu.Lock()

@@ -149,6 +149,13 @@ func (s *Store) Save(ctx context.Context, userID string, in Input) (Station, boo
 	return st, created, err
 }
 
+// FavouriteCount is how many stations the person keeps.
+func (s *Store) FavouriteCount(ctx context.Context, userID string) (int, error) {
+	var n int
+	err := s.st.Reader().QueryRowContext(ctx, `SELECT count(*) FROM radio_favourites WHERE user_id = ?`, userID).Scan(&n)
+	return n, err
+}
+
 // Get returns a station the person keeps (a favourite) or has played. Anyone else gets ErrNotFound, the
 // same answer as an unknown id.
 func (s *Store) Get(ctx context.Context, userID, id string) (Station, error) {
