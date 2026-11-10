@@ -43,3 +43,33 @@ type RateLimitedError struct{ RetryAfter time.Duration }
 func (e *RateLimitedError) Error() string {
 	return fmt.Sprintf("auth: too many attempts, retry in %s", e.RetryAfter.Round(time.Second))
 }
+
+// Errors of sign-in with an OpenID Connect provider (decision 0037). The web layer maps each to
+// words and a status; none carries provider text.
+var (
+	// ErrOIDCOff means sign-in with a provider is not switched on (or not complete), or a link was
+	// started without a session.
+	ErrOIDCOff = errors.New("auth: sign-in with a provider is off")
+	// ErrOIDCBusy means too many sign-ins are under way.
+	ErrOIDCBusy = errors.New("auth: too many provider sign-ins are under way")
+	// ErrOIDCFailed is the one answer to every callback that cannot sign anyone in: wrong or missing
+	// state, a replay, a refused ID token, a disabled account. The reason goes to the audit log.
+	ErrOIDCFailed = errors.New("auth: the provider sign-in failed")
+	// ErrOIDCCancelled means the person cancelled at the provider.
+	ErrOIDCCancelled = errors.New("auth: the provider sign-in was cancelled")
+	// ErrOIDCNoAccount means no account is linked to this provider account and none may be made.
+	ErrOIDCNoAccount = errors.New("auth: no account uses this provider account")
+	// ErrOIDCEmailTaken means a verified email belongs to an account that may not be linked or
+	// duplicated by email; the person links from that account.
+	ErrOIDCEmailTaken = errors.New("auth: an account already uses this email")
+	// ErrOIDCLinkGone means the link step is unknown, used, expired or belongs to another session.
+	ErrOIDCLinkGone = errors.New("auth: the link step ran out")
+	// ErrOIDCTaken means the provider account is already linked to someone else.
+	ErrOIDCTaken = errors.New("auth: that provider account is linked to someone else")
+	// ErrOIDCAlready means the person already has a provider account linked for this provider.
+	ErrOIDCAlready = errors.New("auth: a provider account is already linked")
+	// ErrOIDCLastWayIn means unlinking would leave the account without a way in.
+	ErrOIDCLastWayIn = errors.New("auth: add a password before unlinking")
+	// ErrOIDCNotLinked means there is no provider account to unlink.
+	ErrOIDCNotLinked = errors.New("auth: no provider account is linked")
+)

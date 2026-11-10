@@ -27,6 +27,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/api"
 	"github.com/Tend-Stack/tendshelf/internal/auth"
+	"github.com/Tend-Stack/tendshelf/internal/auth/oidc"
 	"github.com/Tend-Stack/tendshelf/internal/backups"
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/dict"
@@ -232,7 +233,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	lk.Write([]byte("tendshelf share-link unlock v1"))
 	s := &server{
 		assets:     assets,
-		auth:       auth.NewService(opts.Store, ur, ss, auth.ServiceOptions{SetupCode: opts.SetupCode, Now: opts.Now, Invites: invites, Devices: dv}),
+		auth:       auth.NewService(opts.Store, ur, ss, auth.ServiceOptions{SetupCode: opts.SetupCode, Now: opts.Now, Invites: invites, Devices: dv, OIDC: oidc.NewClient(oidc.ClientOptions{Now: opts.Now})}),
 		sessions:   ss,
 		devices:    dv,
 		apiLimiter: auth.NewLimiter(apiRateMax, apiRateWindow, apiRateKeys, opts.Now),

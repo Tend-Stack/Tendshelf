@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/auth/oidc"
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
@@ -20,6 +21,7 @@ type ServiceOptions struct {
 	Now       func() time.Time // nil: time.Now
 	Invites   *share.Invites   // nil: invite links never work
 	Devices   *Devices         // nil: device tokens cannot be issued
+	OIDC      *oidc.Client     // nil: sign-in with a provider is off (decision 0037)
 }
 
 // Limits on failed attempts: per client address (shared by sign-in and setup)
@@ -44,6 +46,8 @@ type Service struct {
 	userLim   *Limiter
 	invites   *share.Invites
 	devices   *Devices
+	oidc      *oidc.Client
+	oidcStart *Limiter
 	ownerSeen atomic.Bool
 }
 
@@ -53,9 +57,10 @@ func NewService(st *db.Store, u *users.Repo, s *Sessions, o ServiceOptions) *Ser
 		o.Now = time.Now
 	}
 	return &Service{
-		st: st, users: u, sessions: s, now: o.Now, setupCode: o.SetupCode, invites: o.Invites, devices: o.Devices,
-		ipLim:   NewLimiter(ipMaxFails, limitWindow, limiterKeys, o.Now),
-		userLim: NewLimiter(userMaxFails, limitWindow, limiterKeys, o.Now),
+		st: st, users: u, sessions: s, now: o.Now, setupCode: o.SetupCode, invites: o.Invites, devices: o.Devices, oidc: o.OIDC,
+		ipLim:     NewLimiter(ipMaxFails, limitWindow, limiterKeys, o.Now),
+		userLim:   NewLimiter(userMaxFails, limitWindow, limiterKeys, o.Now),
+		oidcStart: NewLimiter(oidcStartMax, limitWindow, limiterKeys, o.Now),
 	}
 }
 
