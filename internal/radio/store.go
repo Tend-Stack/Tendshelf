@@ -149,6 +149,29 @@ func (s *Store) Save(ctx context.Context, userID string, in Input) (Station, boo
 	return st, created, err
 }
 
+// Kept finds a station the person already keeps, by its OndaCast slug or its stream address, so adding it
+// again answers with it at once: no probe, and a full list does not refuse a station already on it.
+func (s *Store) Kept(ctx context.Context, userID, slug, streamURL string) (Station, bool) {
+	var id string
+	switch {
+	case slug != "":
+		_ = s.st.Reader().QueryRowContext(ctx, `SELECT s.id FROM radio_stations s JOIN radio_favourites f ON f.station_id = s.id
+			WHERE f.user_id = ? AND s.ondacast_slug = ?`, userID, slug).Scan(&id)
+	case streamURL != "":
+		norm, err := podcast.NormalizeFeedURL(streamURL)
+		if err != nil {
+			return Station{}, false
+		}
+		_ = s.st.Reader().QueryRowContext(ctx, `SELECT s.id FROM radio_stations s JOIN radio_favourites f ON f.station_id = s.id
+			WHERE f.user_id = ? AND s.stream_url = ?`, userID, norm).Scan(&id)
+	}
+	if id == "" {
+		return Station{}, false
+	}
+	st, err := s.Get(ctx, userID, id)
+	return st, err == nil
+}
+
 // FavouriteCount is how many stations the person keeps.
 func (s *Store) FavouriteCount(ctx context.Context, userID string) (int, error) {
 	var n int

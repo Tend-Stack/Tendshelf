@@ -182,3 +182,21 @@ func TestRadioAddFullListDoesNotProbe(t *testing.T) {
 		t.Error("a full list still probed the station")
 	}
 }
+
+// TestRadioAddKeptStationOnFullList: adding a station already on a full list answers with it, with no probe.
+func TestRadioAddKeptStationOnFullList(t *testing.T) {
+	w := newRadioWorld(t)
+	for i := 0; i < radio.MaxFavourites; i++ {
+		if _, _, err := w.fx.svc.Save(t.Context(), w.benID, radio.Input{StreamURL: fmt.Sprintf("http://full.test/s%d", i)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	base := w.fx.hits.Load()
+	rec := w.post("/radio/stations", w.ben, url.Values{"stream_url": {"http://full.test/s7"}})
+	if rec.Code >= 400 {
+		t.Errorf("a kept station on a full list: %d %q", rec.Code, rec.Body)
+	}
+	if w.fx.hits.Load() != base {
+		t.Error("adding a kept station probed it again")
+	}
+}

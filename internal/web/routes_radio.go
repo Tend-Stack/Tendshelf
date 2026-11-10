@@ -70,7 +70,11 @@ func (s *server) loadStation(w http.ResponseWriter, r *http.Request) (radio.Stat
 // addStation turns a picked OndaCast slug or a typed stream address into a saved station. It returns the
 // HTTP status and plain words when it refuses; nothing the station or OndaCast said is repeated.
 func (s *server) addStation(ctx context.Context, userID, slug, streamURL string) (st radio.Station, created bool, status int, text string) {
-	// A full list is refused before anything is dialled, so it cannot be used to make probes.
+	// A station already on the list answers at once; a full list is refused before anything is dialled, so it
+	// cannot be used to make probes.
+	if kept, ok := s.radio.Kept(ctx, userID, slug, streamURL); ok {
+		return kept, false, 0, ""
+	}
 	if n, err := s.radio.FavouriteCount(ctx, userID); err == nil && n >= radio.MaxFavourites {
 		return st, false, http.StatusUnprocessableEntity, radioErrTooMany
 	}
