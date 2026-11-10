@@ -723,6 +723,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, devicesSweepRows()...)
 	rows = append(rows, pairSweepRows()...)
 	rows = append(rows, emailSweepRows()...)
+	rows = append(rows, oidcSweepRows()...)
 	rows = append(rows, readerSweepRows()...)
 	rows = append(rows, backupsSweepRows()...)
 	rows = append(rows, watchSweepRows()...)
