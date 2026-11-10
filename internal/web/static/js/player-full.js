@@ -244,7 +244,9 @@ function drawKind() {
   wordsFor(ui["full-book"], episode, msg("goToEpisode"));
   ui["full-finish"].action = episode ? "/podcasts/episodes/" + id + "/played" : "/hx/books/" + id + "/finished";
   wordsFor(ui["full-finish"].querySelector("button"), episode, msg("markPlayed"));
-  ui["full-finish"].elements.finished.name = episode ? "played" : "finished";
+  // found by either name: after an episode the field is called "played", and a lookup by "finished" alone would throw
+  const finishField = ui["full-finish"].querySelector('[name="finished"], [name="played"]');
+  finishField.name = episode ? "played" : "finished";
   const choice = ui["sleep-sheet"].querySelector('[data-ts-sleep-choice="chapter"], [data-ts-sleep-choice="episode"]');
   choice.dataset.tsSleepChoice = episode ? "episode" : "chapter";
   wordsFor(choice.querySelector("span"), episode, msg("sleepEndOfEpisode"));

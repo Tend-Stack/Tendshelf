@@ -269,3 +269,28 @@ func TestEpisodePlayerBarVisuals(t *testing.T) {
 		})
 	}
 }
+
+// TestSecondEpisodeRedrawsThePlayer: the full player redraws for every item that loads. Its "mark as played" field is renamed
+// for an episode, and looking it up by its book name alone threw on the next load, which left the Chapters button, the
+// bookmark and the chapter ticks of the item before (operator, 2026-11-10).
+func TestSecondEpisodeRedrawsThePlayer(t *testing.T) {
+	b := chromium(t)
+	w := podWavWorld(t)
+	base, _ := podPlayServer(t, w)
+	tab := b.NewTab(390, 844, false, false)
+	tab.Navigate(base + "/podcasts/shows/" + w.show)
+	tab.WaitFor(`window.tsPlayer !== undefined`, 10*time.Second)
+	tab.Eval(`(() => { window.tsTestErrors = []; window.addEventListener("error", (e) => window.tsTestErrors.push(e.message)); })()`, nil)
+	for _, ep := range w.eps[:2] {
+		playerClickSel(t, tab, `[data-ts-play="`+ep+`"]`)
+		tab.WaitFor(`window.tsPlayer.state().bookId === `+fmt.Sprintf("%q", ep)+` && window.tsPlayer.state().playing`, 15*time.Second)
+	}
+	var errs []string
+	var field string
+	tab.Eval(`window.tsTestErrors`, &errs)
+	tab.Eval(`document.querySelector("#player-full [data-ts-full-finish] input[name=played]") ? "played" : "missing"`, &field)
+	if len(errs) > 0 || field != "played" {
+		t.Errorf("after the second episode: script errors %v, finish field %q", errs, field)
+	}
+	tab.Eval(`window.tsPlayer.pause()`, nil)
+}
