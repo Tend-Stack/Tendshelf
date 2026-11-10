@@ -185,6 +185,7 @@ func (s *server) getPodcasts(w http.ResponseWriter, r *http.Request) {
 			followed := map[string]bool{}
 			for _, sh := range shows {
 				followed[sh.OndaCastSlug] = true
+				followed[podStarterTitleKey(sh.Title)] = true
 			}
 			v.Starters = s.podStarters(r, followed)
 		}

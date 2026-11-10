@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/metadata/online/podnet"
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
@@ -87,7 +88,7 @@ func (s *server) podStarters(r *http.Request, followed map[string]bool) *pages.P
 	for _, g := range []struct{ key, title string }{{podnet.StarterTrueCrime, podStarterCrime}, {podnet.StarterMore, podStarterMore}} {
 		grp := pages.PodStarterGroup{Title: g.title}
 		for _, sh := range shows {
-			if sh.Group == g.key && !followed[sh.Slug] {
+			if sh.Group == g.key && !followed[sh.Slug] && !followed[podStarterTitleKey(sh.Title)] {
 				grp.Hits = append(grp.Hits, s.podHit(r, podnet.Hit{Slug: sh.Slug, Title: sh.Title, Subtitle: sh.Author, ImageURL: sh.ImageURL}))
 			}
 		}
@@ -99,6 +100,13 @@ func (s *server) podStarters(r *http.Request, followed map[string]bool) *pages.P
 		return nil
 	}
 	return v
+}
+
+// podStarterTitleKey is how a followed show is matched to a suggestion by its title: a show followed by its feed
+// address has no OndaCast slug, and the suggestion list has no feed address, so the title is what both have. The
+// "title:" prefix keeps it apart from a slug in the same set.
+func podStarterTitleKey(title string) string {
+	return "title:" + strings.ToLower(strings.Join(strings.Fields(title), " "))
 }
 
 // radioPopular is OndaCast's popular stations as cards with a Save control. If OndaCast cannot be reached the list

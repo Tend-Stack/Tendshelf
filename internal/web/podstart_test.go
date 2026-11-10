@@ -218,3 +218,23 @@ func TestPodStartPopularDownIsAbsentAndNotRetried(t *testing.T) {
 		t.Errorf("%d requests to a down OndaCast over three views, want 1", n)
 	}
 }
+
+// A show followed by its feed address has no OndaCast slug; it is matched to a suggestion by title, whatever the
+// case and spacing, and never to a slug that happens to read the same.
+func TestPodStarterTitleKey(t *testing.T) {
+	for _, c := range []struct {
+		a, b string
+		same bool
+	}{
+		{"Crime Junkie", "crime  junkie ", true},
+		{"Dateline NBC", "Dateline NBC", true},
+		{"Morbid", "Morbid: A True Crime Podcast", false},
+	} {
+		if got := podStarterTitleKey(c.a) == podStarterTitleKey(c.b); got != c.same {
+			t.Errorf("%q and %q: same = %v, want %v", c.a, c.b, got, c.same)
+		}
+	}
+	if podStarterTitleKey("morbid") == "morbid" {
+		t.Error("a title key reads like a slug")
+	}
+}
