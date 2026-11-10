@@ -40,6 +40,7 @@ type podFix struct {
 	mu          sync.Mutex
 	audioReqs   []http.Header // headers of the requests that reached the audio handler
 	audioStatus int           // when non-zero, the audio handler answers this status
+	searchImage string        // the picture address the fake OndaCast gives its podcast hit; "" means the default art
 }
 
 const podFixEpisodes = 3
@@ -80,7 +81,13 @@ func (f *podFix) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		switch {
 		case r.URL.Path == "/api/v2/search":
-			fmt.Fprint(w, `{"success":true,"data":[{"id":1,"type":"podcast","title":"Found Show","subtitle":"Sub","slug":"found-show","image_url":"","rank":1}]}`)
+			f.mu.Lock()
+			img := f.searchImage
+			f.mu.Unlock()
+			if img == "" {
+				img = f.pub.URL("pics.test", "/art.png")
+			}
+			fmt.Fprintf(w, `{"success":true,"data":[{"id":1,"type":"podcast","title":"Found Show","subtitle":"Sub","slug":"found-show","image_url":%q,"rank":1}]}`, img)
 		case r.URL.Path == "/api/v2/podcasts/found-show":
 			fmt.Fprintf(w, `{"success":true,"data":{"feed_url":%q}}`, f.feedURL())
 		default:
@@ -133,6 +140,11 @@ func (f *podFix) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"version":"1.2.0","chapters":[{"startTime":0,"title":"Intro"}]}`)
+	case r.URL.Path == "/big.png": // over the 5 MiB picture cap
+		var b bytes.Buffer
+		png.Encode(&b, image.NewRGBA(image.Rect(0, 0, 8, 8)))
+		w.Write(b.Bytes())
+		w.Write(make([]byte, 6<<20))
 	case r.URL.Path == "/art.png":
 		var b bytes.Buffer
 		png.Encode(&b, image.NewRGBA(image.Rect(0, 0, 8, 8)))
