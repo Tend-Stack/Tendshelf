@@ -508,7 +508,7 @@ class PlaybackService : MediaLibraryService() {
             val rowAction = EpisodeAction.entries.firstOrNull { LibraryTree.actionName(it) == customCommand.customAction }
             if (rowAction != null) return episodeRowAction(who, args, rowAction)
             if (!who.ownCommands) {
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
+                return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
             }
             when (customCommand.customAction) {
                 START_ACTION -> engine.start(args.getString("book").orEmpty(), args.getLong("atMs", -1L).takeIf { it >= 0 })
@@ -532,13 +532,13 @@ class PlaybackService : MediaLibraryService() {
 
     /** A row action from a browsing controller (A3): the episode is named by the media id the car sends, and must be an episode. */
     private fun episodeRowAction(who: Allowed, args: Bundle, action: EpisodeAction): ListenableFuture<SessionResult> {
-        if (!who.browse) return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
+        if (!who.browse) return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
         val id = (parseNode(args.getString(MediaConstants.EXTRA_KEY_MEDIA_ID).orEmpty()) as? Node.Episode)?.id
-            ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+            ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_BAD_VALUE))
         val future = SettableFuture.create<SessionResult>()
         io.execute {
             val ok = tree.act(id, action)
-            future.set(SessionResult(if (ok) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_IO))
+            future.set(SessionResult(if (ok) SessionResult.RESULT_SUCCESS else SessionError.ERROR_IO))
         }
         return future
     }
