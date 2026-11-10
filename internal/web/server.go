@@ -279,6 +279,16 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 			test:    auth.NewLimiter(5, 10*time.Minute, 64, opts.Now),
 		},
 	}
+	if s.podcasts != nil {
+		// An OPML import spends the same follow budget as following by hand (decision 0038).
+		s.podcasts.FollowAllow = func(userID string) bool {
+			if ok, _ := s.podLim.follow.Allow(userID); !ok {
+				return false
+			}
+			s.podLim.follow.Fail(userID)
+			return true
+		}
+	}
 	s.csrf = NewCSRF(key, sessionOrCookieBinding)
 	s.csrf.Deny = http.HandlerFunc(s.forbidden)
 	s.csrf.Secure = s.proxies.Secure

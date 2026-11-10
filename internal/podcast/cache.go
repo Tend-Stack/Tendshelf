@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -63,8 +64,9 @@ func (s *Service) CacheFile(rel string) string {
 // rename, records it, then trims the cache to limit bytes. An episode already kept is left alone.
 func (s *Service) PutCache(ctx context.Context, episodeID string, limit int64) error {
 	var showID, audioURL, audioType, cached string
-	err := s.dbs.Reader().QueryRowContext(ctx, `SELECT show_id, audio_url, audio_type, COALESCE(cache_path,'') FROM podcast_episodes WHERE id = ?`, episodeID).
-		Scan(&showID, &audioURL, &audioType, &cached)
+	var audioBytes int64
+	err := s.dbs.Reader().QueryRowContext(ctx, `SELECT show_id, audio_url, audio_type, COALESCE(cache_path,''), COALESCE(audio_bytes,0) FROM podcast_episodes WHERE id = ?`, episodeID).
+		Scan(&showID, &audioURL, &audioType, &cached, &audioBytes)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}
@@ -82,13 +84,22 @@ func (s *Service) PutCache(ctx context.Context, episodeID string, limit int64) e
 	if strings.HasPrefix(strings.ToLower(audioType), "video/") {
 		return errVideo
 	}
+	// The copy never goes past the owner's limit (or the per-episode ceiling); the sizes the feed and the
+	// publisher announce are checked before a byte is stored.
+	max := min(int64(maxEpisodeBytes), limit)
+	if audioBytes > max {
+		return &netErr{"too_large"}
+	}
 	up, err := s.Net.OpenAudio(ctx, audioURL, "")
 	if err != nil {
 		return err
 	}
 	defer up.Body.Close()
-	if up.Status != 200 || badAudioType(up.Header.Get("Content-Type")) {
+	if up.Status != 200 || !AllowedAudioType(up.Header.Get("Content-Type")) {
 		return &netErr{"bad_answer"}
+	}
+	if cl, err := strconv.ParseInt(up.Header.Get("Content-Length"), 10, 64); err == nil && cl > max {
+		return &netErr{"too_large"}
 	}
 	dir := filepath.Join(s.CacheDir(), showID)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -99,11 +110,11 @@ func (s *Service) PutCache(ctx context.Context, episodeID string, limit int64) e
 	if err != nil {
 		return err
 	}
-	n, err := io.Copy(f, io.LimitReader(up.Body, maxEpisodeBytes+1))
+	n, err := io.Copy(f, io.LimitReader(up.Body, max+1))
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
-	if err == nil && n > maxEpisodeBytes {
+	if err == nil && n > max {
 		err = &netErr{"too_large"}
 	}
 	if err == nil && n == 0 {
@@ -129,10 +140,19 @@ func (s *Service) PutCache(ctx context.Context, episodeID string, limit int64) e
 	return err
 }
 
-// badAudioType refuses a page where audio was promised.
-func badAudioType(ct string) bool {
-	ct = strings.ToLower(ct)
-	return strings.HasPrefix(ct, "text/html") || strings.HasPrefix(ct, "application/xhtml")
+// AllowedAudioType reports whether a publisher's Content-Type may be passed on or kept: audio/*,
+// application/octet-stream, or none at all (the caller then uses the feed's type). Anything else (a page,
+// an SVG, a script, XML, video) is never served from this origin.
+func AllowedAudioType(ct string) bool {
+	if strings.TrimSpace(ct) == "" {
+		return true
+	}
+	mt, _, err := mime.ParseMediaType(ct)
+	if err != nil {
+		return false
+	}
+	mt = strings.ToLower(mt)
+	return strings.HasPrefix(mt, "audio/") || mt == "application/octet-stream"
 }
 
 // netErr is a plain-words failure with a podnet-style code, for failures the cache itself finds.

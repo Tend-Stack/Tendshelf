@@ -26,8 +26,11 @@ type podFix struct {
 	svc   *podcast.Service
 	audio []byte
 
-	ignoreRange atomic.Bool // the publisher answers 200 with the whole file to a Range request
-	htmlAudio   atomic.Bool // the publisher answers a web page instead of audio
+	ignoreRange atomic.Bool            // the publisher answers 200 with the whole file to a Range request
+	htmlAudio   atomic.Bool            // the publisher answers a web page instead of audio
+	audioCT     atomic.Pointer[string] // when set, audio answers with this Content-Type
+	chapterFail atomic.Bool            // the chapters file answers 500
+	chapterHits atomic.Int64
 	audioHits   atomic.Int64
 	ondaHits    atomic.Int64
 	hold        chan struct{} // when set, audio answers wait here until closed
@@ -102,6 +105,9 @@ func (f *podFix) serve(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case status != 0:
 			w.WriteHeader(status)
+		case f.audioCT.Load() != nil:
+			w.Header().Set("Content-Type", *f.audioCT.Load())
+			w.Write(f.audio)
 		case f.htmlAudio.Load():
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprint(w, "<html>please sign in</html>")
@@ -114,6 +120,11 @@ func (f *podFix) serve(w http.ResponseWriter, r *http.Request) {
 			http.ServeContent(w, r, "ep.mp3", time.Time{}, bytes.NewReader(f.audio))
 		}
 	case r.URL.Path == "/chapters.json":
+		f.chapterHits.Add(1)
+		if f.chapterFail.Load() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"version":"1.2.0","chapters":[{"startTime":0,"title":"Intro"}]}`)
 	case r.URL.Path == "/art.png":

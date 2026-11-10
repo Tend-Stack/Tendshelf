@@ -44,11 +44,42 @@ type Service struct {
 	// Thumb makes a thumbnail of a stored picture (media.Tools.Thumbnail); nil serves the original.
 	Thumb func(ctx context.Context, src, dst string, box int) error
 
+	// FollowAllow, when set, is asked before each follow an import makes; false stops the import (the
+	// web server wires the follow rate limit here).
+	FollowAllow func(userID string) bool
+
 	dbs *db.Store
 
 	mu      sync.Mutex
 	streams int
 	perUser map[string]int
+	// chapterFails remembers, for a few minutes, the episodes whose chapters file could not be fetched.
+	chapterFails map[string]time.Time
+}
+
+// chapterRetryAfter is how long a failed chapters fetch is not tried again.
+const chapterRetryAfter = 5 * time.Minute
+
+// ChapterFetchBlocked reports whether the chapters of an episode failed to load a moment ago.
+func (s *Service) ChapterFetchBlocked(episodeID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	at, ok := s.chapterFails[episodeID]
+	if ok && s.now().Sub(at) >= chapterRetryAfter {
+		delete(s.chapterFails, episodeID)
+		return false
+	}
+	return ok
+}
+
+// NoteChapterFailure remembers a failed chapters fetch.
+func (s *Service) NoteChapterFailure(episodeID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.chapterFails) >= 1024 {
+		s.chapterFails = map[string]time.Time{}
+	}
+	s.chapterFails[episodeID] = s.now()
 }
 
 // New returns a Service. Register adds its job kinds to the runner.
@@ -56,7 +87,7 @@ func New(st *db.Store, net *podnet.Client, runner *jobs.Runner, dataDir string, 
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Service{Store: NewStore(st, now), Net: net, Runner: runner, DataDir: dataDir, Log: log, dbs: st, perUser: map[string]int{}}
+	return &Service{Store: NewStore(st, now), Net: net, Runner: runner, DataDir: dataDir, Log: log, dbs: st, perUser: map[string]int{}, chapterFails: map[string]time.Time{}}
 }
 
 // Settings reads the owner's settings.
@@ -127,7 +158,7 @@ func (s *Service) RefreshNow(ctx context.Context, userID, showID string) (string
 	if err != nil {
 		return "", err
 	}
-	if sh.FetchedAt > 0 && s.nowMs()-sh.FetchedAt < refreshEvery.Milliseconds() && sh.FailCode == "" {
+	if sh.FetchedAt > 0 && s.nowMs()-sh.FetchedAt < refreshEvery.Milliseconds() {
 		return "", ErrTooSoon
 	}
 	return s.QueueRefresh(ctx, showID, userID)
@@ -136,6 +167,10 @@ func (s *Service) RefreshNow(ctx context.Context, userID, showID string) (string
 // QueueImport queues the import of a list of feed addresses (an OPML file) for one person and
 // records it in the audit log. The job follows each address and queues a refresh for new shows.
 func (s *Service) QueueImport(ctx context.Context, userID string, urls []string) (string, error) {
+	// One import at a time per person: a second upload while one runs joins it.
+	if j, ok, err := s.Runner.ActiveFor(ctx, KindImport, "user_id", userID); err == nil && ok {
+		return j.ID, nil
+	}
 	id, err := s.Runner.Enqueue(ctx, KindImport, importPayload{UserID: userID, URLs: urls}, jobs.EnqueueOptions{CreatedBy: userID})
 	if err != nil {
 		return "", err

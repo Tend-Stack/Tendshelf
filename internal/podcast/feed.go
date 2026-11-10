@@ -194,10 +194,18 @@ func (s *Store) Orphans(ctx context.Context) ([]string, error) {
 		AND NOT EXISTS (SELECT 1 FROM podcast_episode_state t JOIN podcast_episodes e ON e.id = t.episode_id WHERE e.show_id = s.id) LIMIT 500`)
 }
 
-// DeleteShow removes a show and, by cascade, its episodes.
-func (s *Store) DeleteShow(ctx context.Context, showID string) error {
-	_, err := s.st.Writer().ExecContext(ctx, `DELETE FROM podcast_shows WHERE id = ?`, showID)
-	return err
+// DeleteShow removes a show and, by cascade, its episodes, only if nobody follows it or keeps a place
+// in it at that moment (a follow that arrived after Orphans looked keeps the show). It reports whether
+// a row was deleted.
+func (s *Store) DeleteShow(ctx context.Context, showID string) (bool, error) {
+	res, err := s.st.Writer().ExecContext(ctx, `DELETE FROM podcast_shows WHERE id = ?1
+		AND NOT EXISTS (SELECT 1 FROM podcast_subscriptions b WHERE b.show_id = ?1)
+		AND NOT EXISTS (SELECT 1 FROM podcast_episode_state t JOIN podcast_episodes e ON e.id = t.episode_id WHERE e.show_id = ?1)`, showID)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
 }
 
 func (s *Store) ids(ctx context.Context, q string, args ...any) ([]string, error) {

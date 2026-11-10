@@ -240,9 +240,14 @@ func (s *Service) handleImport(ctx context.Context, t *jobs.Task) (any, error) {
 		return nil, errOff()
 	}
 	var followed, skipped, tooMany int
+	stopped := false
 	for _, raw := range p.URLs {
 		if ctx.Err() != nil {
 			return nil, context.Cause(ctx)
+		}
+		if s.FollowAllow != nil && !s.FollowAllow(p.UserID) {
+			stopped = true // out of follow budget: keep what was followed
+			break
 		}
 		id, created, err := s.Follow(ctx, p.UserID, raw, "")
 		switch {
@@ -261,7 +266,12 @@ func (s *Service) handleImport(ctx context.Context, t *jobs.Task) (any, error) {
 		}
 		t.Progress(map[string]int{"done": followed + skipped + tooMany, "of": len(p.URLs)})
 	}
-	return map[string]int{"followed": followed, "skipped": skipped, "too_many": tooMany}, nil
+	res := map[string]int{"followed": followed, "skipped": skipped, "too_many": tooMany}
+	if stopped {
+		res["stopped"] = 1
+		res["not_done"] = len(p.URLs) - followed - skipped - tooMany
+	}
+	return res, nil
 }
 
 // handlePrune removes shows nobody keeps, their files, leftover half-written files, and trims the cache
@@ -276,11 +286,12 @@ func (s *Service) handlePrune(ctx context.Context, t *jobs.Task) (any, error) {
 		return nil, err
 	}
 	for _, id := range orphans {
-		if safeName(id) {
-			_ = os.RemoveAll(filepath.Join(s.CacheDir(), id))
-		}
-		if err := s.DeleteShow(ctx, id); err != nil {
+		deleted, err := s.DeleteShow(ctx, id)
+		if err != nil {
 			return nil, err
+		}
+		if deleted && safeName(id) {
+			_ = os.RemoveAll(filepath.Join(s.CacheDir(), id))
 		}
 	}
 	s.sweepArt(ctx)

@@ -858,3 +858,73 @@ func TestPodcastAdminSettings(t *testing.T) {
 		t.Errorf("clear: %d", rec.Code)
 	}
 }
+
+// TestEpisodeAudioNeverServesActiveContent: a publisher's non-audio Content-Type is never passed on; the
+// answer carries the audio type, nosniff and a sandboxing CSP.
+func TestEpisodeAudioNeverServesActiveContent(t *testing.T) {
+	w := newPodWorld(t)
+	path := "/podcasts/audio/" + w.eps[1]
+	for _, ct := range []string{"image/svg+xml", "text/javascript", "text/xml", "application/javascript", "video/mp4"} {
+		ct := ct
+		w.fx.audioCT.Store(&ct)
+		rec := w.get(path, w.ben)
+		if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "audio/mpeg" {
+			t.Errorf("upstream %s: %d type %q", ct, rec.Code, rec.Header().Get("Content-Type"))
+		}
+		if rec.Header().Get("Content-Security-Policy") != "default-src 'none'; sandbox" || rec.Header().Get("X-Content-Type-Options") != "nosniff" {
+			t.Errorf("upstream %s: headers %v", ct, rec.Header())
+		}
+	}
+	ct := "audio/ogg; codecs=opus"
+	w.fx.audioCT.Store(&ct)
+	if rec := w.get(path, w.ben); rec.Header().Get("Content-Type") != ct {
+		t.Errorf("audio type changed: %q", rec.Header().Get("Content-Type"))
+	}
+}
+
+// TestEpisodeAudioSkipsOversizedCache: an episode bigger than the owner's limit queues no cache job.
+func TestEpisodeAudioSkipsOversizedCache(t *testing.T) {
+	w := newPodWorld(t)
+	w.fx.ignoreRange.Store(true)
+	w.a.st.Writer().Exec(`UPDATE podcast_episodes SET audio_bytes = ? WHERE id = ?`, int64(1)<<40, w.eps[1])
+	w.get("/podcasts/audio/"+w.eps[1], w.ben, func(r *http.Request) { r.Header.Set("Range", "bytes=1000-") })
+	if _, ok, _ := w.fx.svc.Runner.ActiveFor(context.Background(), podcast.KindCache, "episode_id", w.eps[1]); ok {
+		t.Error("a cache job was queued for an episode over the limit")
+	}
+}
+
+// TestPodcastChaptersFailureIsRemembered: a failing chapters file is fetched once, then refused for a while.
+func TestPodcastChaptersFailureIsRemembered(t *testing.T) {
+	w := newPodWorld(t)
+	w.fx.chapterFail.Store(true)
+	path := "/podcasts/chapters/" + w.eps[0]
+	for i := 0; i < 3; i++ {
+		if rec := w.get(path, w.ben); rec.Code != http.StatusBadGateway {
+			t.Errorf("failing chapters %d: %d", i, rec.Code)
+		}
+	}
+	if n := w.fx.chapterHits.Load(); n != 1 {
+		t.Errorf("publisher asked %d times", n)
+	}
+}
+
+// TestPodcastChaptersUseStreamSlots: with every slot taken the chapters fetch answers busy and does not go out.
+func TestPodcastChaptersUseStreamSlots(t *testing.T) {
+	w := newPodWorld(t)
+	var rel []func()
+	for {
+		r, ok := w.fx.svc.AcquireStream(w.benID)
+		if !ok {
+			break
+		}
+		rel = append(rel, r)
+	}
+	defer func() {
+		for _, r := range rel {
+			r()
+		}
+	}()
+	if rec := w.get("/podcasts/chapters/"+w.eps[0], w.ben); rec.Code != http.StatusServiceUnavailable || w.fx.chapterHits.Load() != 0 {
+		t.Errorf("busy chapters: %d, hits %d", rec.Code, w.fx.chapterHits.Load())
+	}
+}

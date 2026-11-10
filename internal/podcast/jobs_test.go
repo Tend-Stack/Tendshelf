@@ -541,3 +541,118 @@ func TestSettingsRoundTrip(t *testing.T) {
 		t.Errorf("audit rows = %d", n)
 	}
 }
+
+// cacheRig makes a rig with one episode whose audio the publisher answers with the given type and size.
+func cacheRig(t *testing.T, ctype string, size int, chunked bool) (*rig, string) {
+	t.Helper()
+	r := newRig(t, func(w http.ResponseWriter, q *http.Request) {
+		w.Header().Set("Content-Type", ctype)
+		w.Write(bytes.Repeat([]byte("a"), size/2))
+		if chunked {
+			w.(http.Flusher).Flush() // no Content-Length
+		}
+		w.Write(bytes.Repeat([]byte("a"), size-size/2))
+	})
+	r.enable(t, nil)
+	ctx := context.Background()
+	show := r.follow(t, "us_a", "https://a.example/f.xml")
+	f := feedOf(1, 0)
+	f.Episodes[0].AudioURL = r.pub.URL("aud.test", "/0.mp3")
+	r.s.ApplyFeed(ctx, show, f, FetchMeta{})
+	var id string
+	r.st.Reader().QueryRow(`SELECT id FROM podcast_episodes`).Scan(&id)
+	return r, id
+}
+
+func TestCacheRefusesBeforeDownloadingTooMuch(t *testing.T) {
+	ctx := context.Background()
+	// Announced by the feed: nothing is requested.
+	r, id := cacheRig(t, "audio/mpeg", 1000, false)
+	r.exec(t, `UPDATE podcast_episodes SET audio_bytes = 5000 WHERE id = ?`, id)
+	if err := r.svc.PutCache(ctx, id, 2000); err == nil || !strings.Contains(err.Error(), "too_large") {
+		t.Errorf("feed length over the limit: %v", err)
+	}
+	if r.pub.Hits.Load() != 0 {
+		t.Errorf("publisher asked %d times", r.pub.Hits.Load())
+	}
+	// Announced by the publisher (Content-Length).
+	r.exec(t, `UPDATE podcast_episodes SET audio_bytes = NULL WHERE id = ?`, id)
+	if err := r.svc.PutCache(ctx, id, 500); err == nil || !strings.Contains(err.Error(), "too_large") {
+		t.Errorf("content-length over the limit: %v", err)
+	}
+	// Not announced: the copy stops at the limit and leaves nothing.
+	r2, id2 := cacheRig(t, "audio/mpeg", 1000, true)
+	if err := r2.svc.PutCache(ctx, id2, 500); err == nil || !strings.Contains(err.Error(), "too_large") {
+		t.Errorf("unannounced size over the limit: %v", err)
+	}
+	if files, _ := filepath.Glob(filepath.Join(r2.svc.CacheDir(), "*", "*")); len(files) != 0 {
+		t.Errorf("files left: %v", files)
+	}
+}
+
+func TestCacheRefusesActiveContentTypes(t *testing.T) {
+	for _, ct := range []string{"image/svg+xml", "text/javascript", "text/xml", "video/mp4"} {
+		r, id := cacheRig(t, ct, 100, false)
+		if err := r.svc.PutCache(context.Background(), id, 1<<20); err == nil || !strings.Contains(err.Error(), "bad_answer") {
+			t.Errorf("%s: %v", ct, err)
+		}
+	}
+	if !AllowedAudioType("audio/mpeg; x=1") || !AllowedAudioType("application/octet-stream") || !AllowedAudioType("") || AllowedAudioType("text/html") {
+		t.Error("AllowedAudioType")
+	}
+}
+
+func TestImportSpendsFollowBudgetAndRunsOnce(t *testing.T) {
+	r := newRig(t, func(w http.ResponseWriter, q *http.Request) {})
+	r.enable(t, nil)
+	ctx := context.Background()
+	budget := 2
+	r.svc.FollowAllow = func(string) bool { budget--; return budget >= 0 }
+	res, err := r.run(r.svc.handleImport, importPayload{UserID: "us_a", URLs: []string{
+		"https://a.example/1.xml", "https://a.example/2.xml", "https://a.example/3.xml", "https://a.example/4.xml"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := res.(map[string]int)
+	if m["followed"] != 2 || m["stopped"] != 1 || m["not_done"] != 2 {
+		t.Errorf("import result %v", m)
+	}
+	if shows, _ := r.s.Shows(ctx, "us_a"); len(shows) != 2 {
+		t.Errorf("kept %d shows", len(shows))
+	}
+	a, err := r.svc.QueueImport(ctx, "us_a", []string{"https://a.example/5.xml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, err := r.svc.QueueImport(ctx, "us_a", []string{"https://a.example/6.xml"}); err != nil || b != a {
+		t.Errorf("second import while one is queued: %q %v", b, err)
+	}
+	if c, _ := r.svc.QueueImport(ctx, "us_b", []string{"https://a.example/7.xml"}); c == a {
+		t.Error("another person's import was merged")
+	}
+}
+
+func TestPruneKeepsAShowFollowedMeanwhile(t *testing.T) {
+	r := newRig(t, func(w http.ResponseWriter, q *http.Request) {})
+	ctx := context.Background()
+	show := r.follow(t, "us_a", "https://a.example/f.xml")
+	// The show is followed at the moment of the delete: nothing goes.
+	if deleted, err := r.svc.DeleteShow(ctx, show); err != nil || deleted {
+		t.Fatalf("delete of a followed show: %v %v", deleted, err)
+	}
+	r.s.Unfollow(ctx, "us_a", show)
+	if deleted, err := r.svc.DeleteShow(ctx, show); err != nil || !deleted {
+		t.Fatalf("delete of an orphan: %v %v", deleted, err)
+	}
+}
+
+func TestRefreshNowWaitsAfterFailuresToo(t *testing.T) {
+	r := newRig(t, func(w http.ResponseWriter, q *http.Request) {})
+	ctx := context.Background()
+	r.enable(t, nil)
+	show := r.follow(t, "us_a", "https://a.example/f.xml")
+	r.exec(t, `UPDATE podcast_shows SET fetched_at = ?, fail_code = 'bad_answer', fail_count = 3`, r.clk.UnixMilli()-60_000)
+	if _, err := r.svc.RefreshNow(ctx, "us_a", show); !errors.Is(err, ErrTooSoon) {
+		t.Errorf("refresh of a failing feed within five minutes: %v", err)
+	}
+}

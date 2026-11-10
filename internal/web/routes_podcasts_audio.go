@@ -57,6 +57,7 @@ func (s *server) getEpisodeAudio(w http.ResponseWriter, r *http.Request) {
 	}
 	h := w.Header()
 	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	h.Set("Cache-Control", "private, no-store")
 	if download {
 		h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": episodeFileName(ep)}))
@@ -97,18 +98,22 @@ func (s *server) getEpisodeAudio(w http.ResponseWriter, r *http.Request) {
 		s.plainError(w, r, http.StatusBadGateway, podAudioUnavailable)
 		return
 	}
-	for _, k := range []string{"Content-Type", "Content-Length", "Content-Range", "Accept-Ranges"} {
+	// The publisher's type is passed on only when it is audio; anything else (an SVG, a script, XML) is
+	// answered as the feed's audio type, so the publisher cannot serve active content from this origin.
+	for _, k := range []string{"Content-Length", "Content-Range", "Accept-Ranges"} {
 		if v := up.Header.Get(k); v != "" {
 			h.Set(k, v)
 		}
 	}
-	if h.Get("Content-Type") == "" {
+	if ct := up.Header.Get("Content-Type"); ct != "" && podcast.AllowedAudioType(ct) {
+		h.Set("Content-Type", ct)
+	} else {
 		h.Set("Content-Type", audioMime(ep))
 	}
 	// A publisher that ignores Range sends the whole file. Seeking will not work until the server keeps its own
 	// copy, so queue that once (never twice: the job is deduplicated by episode).
 	if rng != "" && first > 0 && up.Status == http.StatusOK {
-		if set := s.podcasts.Settings(r.Context()); set.CacheBytes > 0 {
+		if set := s.podcasts.Settings(r.Context()); set.CacheBytes > 0 && ep.AudioBytes <= set.CacheBytes {
 			if _, err := s.podcasts.QueueCache(r.Context(), ep.ID); err != nil {
 				s.podcasts.Log.Warn("podcasts: could not queue a cache job", "err", err)
 			}
@@ -234,8 +239,20 @@ func (s *server) getPodcastChapters(w http.ResponseWriter, r *http.Request) {
 			s.plainError(w, r, http.StatusNotFound, "Not found.")
 			return
 		}
+		if s.podcasts.ChapterFetchBlocked(ep.ID) {
+			s.plainError(w, r, http.StatusBadGateway, podAudioUnavailable)
+			return
+		}
+		release, ok := s.podcasts.AcquireStream(currentUser(r).ID)
+		if !ok {
+			w.Header().Set("Retry-After", "5")
+			s.plainError(w, r, http.StatusServiceUnavailable, podAudioBusy)
+			return
+		}
 		b, err := s.podcasts.Net.Chapters(r.Context(), ep.ChaptersURL)
+		release()
 		if err != nil {
+			s.podcasts.NoteChapterFailure(ep.ID)
 			s.plainError(w, r, http.StatusBadGateway, podAudioUnavailable)
 			return
 		}
