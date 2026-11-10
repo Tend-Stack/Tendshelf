@@ -109,8 +109,11 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 /* Beside a phone-sized picture the header's buttons share one row: "Stop following" already says you follow the show,
    so the quiet Following mark steps aside and a long label is cut rather than wrapping. */
 @media (width < 30rem) {
-  .ts-podshow__actions { flex-wrap: nowrap; }
   .ts-podshow__actions > .ts-chip--static { display: none; }
+  /* The one primary button takes its own line; Refresh and Stop following share the next, each cut with an ellipsis. */
+  .ts-podshow__actions > .ts-btn--primary { flex: 1 1 100%; justify-content: center; }
+  .ts-podshow__actions > form { flex: 1 1 0; }
+  .ts-podshow__actions > form .ts-btn { width: 100%; }
 }
 
 /* Bring your podcasts (P4): the OPML file form under the shows, and the result of the latest import. */
