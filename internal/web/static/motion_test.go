@@ -102,6 +102,7 @@ func TestCSSBudget(t *testing.T) {
 	}
 	core := map[string]bool{"css/tokens.css": true, "css/fonts.css": true, "css/bundle.css": true, "css/utilities.css": true, "css/motion.css": true}
 	single := map[string]cssBudget{
+		"css/pages-podcasts.css": {4 * 1024, 24 * 1024}, // Radio card grid, show header and episode panel (podcast and radio page fixes, 2026-11-10): 3,550 B measured, raised from 3 KiB by orchestrator decision, comments intact
 		// Native feel (decision 0011): 2.5 KB, approved by the operator on 2026-11-03.
 		// M3c B3 adds the hit-area rule and the 200 % text wrapping rules: 3.25 KB (overrun 572 bytes, operator approved 2026-11-04).
 		"css/utilities.css": {3*1024 + 384, 24 * 1024}, // +128 B: no scrollbars on touch screens, iOS WebKit rule (operator, 2026-11-04)
@@ -308,8 +309,8 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// L2 (smart rewind curve from the server table) and the toast actions the undo needs: 13.125 KB, measured 13,361 B; operator pre-approval of raises, 2026-11-05.
 	// A4 (Android bridge, 12 lines of NATIVE branches; operator approved about +300 B, 2026-11-06): 13.5 KB, measured 13,755 B by gzip -9, reported.
 	// A5b (the place question from the app, a shared askContinue; operator approved the raise, 2026-11-06): 13.75 KB, measured 13,970 B by the test's gzip, reported.
-	"player.js":      {16*1024 + 512, 64 * 1024}, // live radio (decision 0038, R2): kind radio, drop and rejoin the stream, the now-playing poll, Media Session: 16,776 B measured, comments intact, OVERRUN reported; podcast episodes (decision 0038, P4): kind, addresses, skip intro and outro, length and chapters learnt late: 15,655 B measured, comments intact, OVERRUN reported; was 14 KB; chapter bar (2026-11-06): peek() for the chapters of a book that is not loaded, and the bar keeps the arrows: 14,161 B measured, comments intact,
-	"chapter-bar.js": {4*1024 + 512, 24 * 1024},  // chapter bar (2026-11-06): hover, focus and press tip, click, tap and keys on every chapter ruler: 4,505 B measured, comments intact
+	"player.js":      {17 * 1024, 64 * 1024},    // station logo retry, Media Session playbackState and the Stop redraw (podcast and radio page fixes, 2026-11-10): 17,184 B measured, OVERRUN reported, comments intact; live radio (decision 0038, R2): kind radio, drop and rejoin the stream, the now-playing poll, Media Session: 16,776 B measured, comments intact, OVERRUN reported; podcast episodes (decision 0038, P4): kind, addresses, skip intro and outro, length and chapters learnt late: 15,655 B measured, comments intact, OVERRUN reported; was 14 KB; chapter bar (2026-11-06): peek() for the chapters of a book that is not loaded, and the bar keeps the arrows: 14,161 B measured, comments intact,
+	"chapter-bar.js": {4*1024 + 512, 24 * 1024}, // chapter bar (2026-11-06): hover, focus and press tip, click, tap and keys on every chapter ruler: 4,505 B measured, comments intact
 	// PB2 moved the desktop bar's wave seek and the volume pop into waveform.js: back to 12 KB (12.2 KB measured by gzip -c).
 	// P3-11a: sidePanel() (larger text never uses the side panel) is 12.03 KB, so 12.5 KB; to be approved by the operator.
 	// M3a (decision 0012): the offline bookmark queue; 12.75 KB, approved by the operator on 2026-11-03.
@@ -322,7 +323,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	"waveform.js": {7*1024 + 256, 24 * 1024}, // podcast episodes (P4): the bar says "Episode" and the time left of the episode: 7,199 B measured, OVERRUN reported; was 7 KB
 	// NP2: the desktop Now playing panel's loading, tabs and slots; 1 KB, approved by the operator on 2026-11-02.
 	// Q3: the three-tab arrow keys, 1.125 KB, approved by the operator on 2026-11-03.
-	"now-panel.js": {1*1024 + 128, 16 * 1024},
+	"now-panel.js": {1*1024 + 512, 16 * 1024}, // episode panel (podcast and radio page fixes, 2026-11-10): 1,193 B measured, raised to 1.5 KiB, reported
 	// P3-12: the Copy buttons and the "Open in my email app" hand-off of invitations; 1 KB, inside the 38 KB total.
 	"copy.js": {1 * 1024, 16 * 1024},
 	// L5: stops a clip at its end; loaded only by the Bookmarks tab when it shows a clip. The plan's 0.5 KB target
