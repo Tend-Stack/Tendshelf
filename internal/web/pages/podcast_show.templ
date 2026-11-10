@@ -36,6 +36,14 @@ type PodcastShowView struct {
 	MoreHref string
 	MoreText string
 	ListLabel string
+	// StatusHref is the poll address while the first fetch runs; empty once it has ended.
+	StatusHref string
+	// Meta is "880 episodes · newest 10 Nov 2026".
+	Meta string
+	// Preview is the notes as plain words for the clamped header; empty when the notes are short enough to show whole.
+	Preview, MoreLabel, LessLabel string
+	// LatestHref, LatestID and LatestLabel draw the one play button of the header ("Play latest" or "Resume").
+	LatestHref, LatestID, LatestLabel string
 }
 
 // notesBlock draws cleaned show notes. The text was cleaned to a few tags (paragraphs, lists, bold,
@@ -46,9 +54,18 @@ templ notesBlock(html string) {
 	</div>
 }
 
-// PodcastShow is the page of a show the person follows.
+// PodcastShow is the page of a show the person follows. While the first fetch runs it asks for itself every 2
+// seconds and is swapped for the full page when the fetch has ended (a 204 answer swaps nothing).
 templ PodcastShow(v PodcastShowView) {
-	<article class="ts-podcasts ts-podshow">
+	<article
+		id="pod-show"
+		class="ts-podcasts ts-podshow"
+		if v.StatusHref != "" {
+			hx-get={ v.StatusHref }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
 		<a class="ts-btn ts-btn--quiet ts-book__back" href={ templ.SafeURL(v.BackHref) }>
 			@backIcon()
 			{ v.BackLabel }
@@ -60,7 +77,29 @@ templ PodcastShow(v PodcastShowView) {
 				if v.Author != "" {
 					<p class="body ts-podshow__author">{ v.Author }</p>
 				}
+				if v.Meta != "" {
+					<p class="caption ts-podshow__meta">{ v.Meta }</p>
+				}
+				if v.SiteHref != "" {
+					<p class="caption ts-podshow__site"><a href={ templ.SafeURL(v.SiteHref) } rel="nofollow noopener noreferrer" class="ts-truncate">{ v.SiteLabel }</a></p>
+				}
+				if v.Preview != "" {
+					<details class="ts-podshow__about">
+						<summary class="ts-podshow__aboutsummary">
+							<span class="ts-podshow__clip">{ v.Preview }</span>
+							<span class="ts-podshow__morelabel">{ v.MoreLabel }</span>
+							<span class="ts-podshow__lesslabel">{ v.LessLabel }</span>
+						</summary>
+						@notesBlock(v.Notes)
+					</details>
+				}
 				<div class="ts-podshow__actions">
+					if v.LatestHref != "" {
+						<a class="ts-btn ts-btn--primary" href={ templ.SafeURL(v.LatestHref) } hx-boost="false" data-ts-play={ v.LatestID }>
+							@components.Icon("play", true)
+							<span data-ts-play-label>{ v.LatestLabel }</span>
+						</a>
+					}
 					<span class="ts-chip ts-chip--static">
 						@components.Icon("check", false)
 						{ v.Following }
@@ -74,26 +113,29 @@ templ PodcastShow(v PodcastShowView) {
 						<button type="submit" class="ts-btn ts-btn--quiet">{ v.UnfollowLabel }</button>
 					</form>
 				</div>
-				if v.SiteHref != "" {
-					<p class="caption ts-podshow__site"><a href={ templ.SafeURL(v.SiteHref) } rel="nofollow noopener noreferrer" class="ts-truncate">{ v.SiteLabel }</a></p>
-				}
 			</div>
 		</header>
 		if v.Fetching {
 			<p class="ts-banner ts-podcasts__banner" role="status">{ v.FetchingLine }</p>
+		} else {
+			if v.Failure != "" {
+				<p class="ts-banner ts-podcasts__banner" role="alert">
+					@components.Icon("alert", false)
+					{ v.Failure }
+				</p>
+			}
+			if v.Notes != "" && v.Preview == "" {
+				<section aria-labelledby="pod-notes-h">
+					<h2 id="pod-notes-h" class="section">{ v.NotesTitle }</h2>
+					@notesBlock(v.Notes)
+				</section>
+			}
+			@podShowBody(v)
 		}
-		if v.Failure != "" {
-			<p class="ts-banner ts-podcasts__banner" role="alert">
-				@components.Icon("alert", false)
-				{ v.Failure }
-			</p>
-		}
-		if v.Notes != "" {
-			<section aria-labelledby="pod-notes-h">
-				<h2 id="pod-notes-h" class="section">{ v.NotesTitle }</h2>
-				@notesBlock(v.Notes)
-			</section>
-		}
+	</article>
+}
+
+templ podShowBody(v PodcastShowView) {
 		<details class="ts-group ts-group--pad ts-podshow__settings">
 			<summary class="ts-podsearch__summary">
 				<span>{ v.Settings.Title }</span>
@@ -138,5 +180,4 @@ templ PodcastShow(v PodcastShowView) {
 				<p class="ts-podshow__more"><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.MoreHref) }>{ v.MoreText }</a></p>
 			}
 		</section>
-	</article>
 }

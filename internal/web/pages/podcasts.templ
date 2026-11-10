@@ -16,6 +16,8 @@ var PodcastAdminStyles = []string{"css/pages-onboard.css", "css/pages-admin.css"
 type PodTab struct {
 	Label, Href string
 	On          bool
+	// PhoneOnly hides the tab from 768 px up, where the rail has the item (Radio).
+	PhoneOnly bool
 }
 
 // PodcastsView is the Podcasts home: the tabs, then the shows as a grid or the episodes as rows. The
@@ -51,7 +53,7 @@ templ Podcasts(v PodcastsView) {
 		</header>
 		<nav class="ts-tabs ts-podcasts__tabs" aria-label={ v.TabsLabel }>
 			for _, t := range v.Tabs {
-				<a class="ts-tabs__item" href={ templ.SafeURL(t.Href) } if t.On {
+				<a class={ "ts-tabs__item", templ.KV("ts-tabs__item--phone", t.PhoneOnly) } href={ templ.SafeURL(t.Href) } if t.On {
 	aria-current="page"
 }>{ t.Label }</a>
 			}

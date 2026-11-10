@@ -37,6 +37,9 @@ func (s *server) registerPodcasts(mux *http.ServeMux) {
 	mux.HandleFunc("GET /podcasts/search", s.getPodcastSearch)
 	mux.HandleFunc("POST /podcasts/follow", s.postPodcastFollow)
 	mux.HandleFunc("GET /podcasts/shows/{showID}", s.getPodcastShow)
+	mux.HandleFunc("GET /podcasts/search/art/{key}", s.getPodcastSearchArt)
+	mux.HandleFunc("GET /radio/search/art/{key}", s.getRadioSearchArt)
+	mux.HandleFunc("GET /hx/podcasts/shows/{showID}/status", s.getPodcastShowStatus)
 	mux.HandleFunc("POST /podcasts/shows/{showID}/unfollow", s.postPodcastUnfollow)
 	mux.HandleFunc("POST /podcasts/shows/{showID}/refresh", s.postPodcastRefresh)
 	mux.HandleFunc("POST /podcasts/shows/{showID}/seen", s.postPodcastSeen)
@@ -56,6 +59,8 @@ func (s *server) registerPodcasts(mux *http.ServeMux) {
 	// Without these the catch-all answers every other method with 404.
 	mux.HandleFunc("/podcasts/audio/{episodeID}", notAllowed("GET, HEAD"))
 	mux.HandleFunc("/podcasts/art/{showID}", notAllowed("GET, HEAD"))
+	mux.HandleFunc("/podcasts/search/art/{key}", notAllowed("GET, HEAD"))
+	mux.HandleFunc("/radio/search/art/{key}", notAllowed("GET, HEAD"))
 	mux.HandleFunc("/podcasts/chapters/{episodeID}", notAllowed("GET, HEAD"))
 }
 

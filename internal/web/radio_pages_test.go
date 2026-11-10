@@ -131,18 +131,21 @@ func TestRadioNavAndTabs(t *testing.T) {
 	}
 	for _, p := range []string{"/radio", "/podcasts"} {
 		body := w.get(p, w.ben).Body.String()
-		if !strings.Contains(body, `aria-label="Podcasts and radio"`) && !strings.Contains(body, `class="ts-tabs__item" href="/radio"`) {
-			t.Errorf("%s: no Radio tab", p)
+		if !strings.Contains(body, `data-nav="/radio"`) || !strings.Contains(body, `data-nav="/podcasts"`) {
+			t.Errorf("%s: the rail lacks its own Radio item beside Podcasts", p)
 		}
-		if !strings.Contains(body, `href="/podcasts"`) {
-			t.Errorf("%s: the Podcasts item is gone", p)
+		if p == "/radio" && strings.Contains(body, `aria-label="Podcasts and radio"`) {
+			t.Error("the Radio page draws the Podcasts tab strip")
+		}
+		if p == "/podcasts" && !strings.Contains(body, `ts-tabs__item--phone" href="/radio"`) {
+			t.Error("the Podcasts tabs lack the phone-only Radio tab")
 		}
 	}
 	s.RadioEnabled = false
 	if err := podcast.SaveSettings(context.Background(), w.a.st, "", s, time.Now()); err != nil {
 		t.Fatal(err)
 	}
-	if body := w.get("/podcasts", w.ben).Body.String(); strings.Contains(body, `class="ts-tabs__item" href="/radio"`) {
+	if body := w.get("/podcasts", w.ben).Body.String(); strings.Contains(body, `ts-tabs__item--phone" href="/radio"`) {
 		t.Error("a Radio tab is drawn with radio off")
 	}
 }

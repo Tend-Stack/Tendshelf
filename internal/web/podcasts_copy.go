@@ -24,6 +24,19 @@ const (
 	podAdminBad          = "One of those values is not valid."
 	podAdminCleared      = "Saved episodes removed."
 	podcastsOPMLFileName = "tendshelf-podcasts.opml"
+	podErrFetchSlow      = "This show's episodes haven't arrived yet. Press Refresh to try again."
+)
+
+// Show page header (package 2026-11-10).
+const (
+	podNewShow      = "New show"
+	podEpisodesWord = "episodes"
+	podEpisodeWord1 = "episode"
+	podNewestWord   = "newest"
+	podMore         = "More"
+	podLess         = "Less"
+	podPlayLatest   = "Play latest"
+	podResume       = "Resume"
 )
 
 // The page words. The first group is the deck of docs/plans/podcasts.md (P3); the second is new in P3.

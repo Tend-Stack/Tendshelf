@@ -60,6 +60,8 @@ func radioSweepRows() []sweepRow {
 		sweepGet("GET /radio/art/{stationID}", station("/radio/art/", ""), [4]int{nf, nf, nf, nf}),
 		labelled(sweepGet("GET /radio/art/{stationID}", otherStation("/radio/art/", ""), [4]int{nf, nf, nf, nf}), "someone else's station"),
 		labelled(sweepPost("/radio/art/{stationID}", station("/radio/art/", ""), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, ""), "POST"),
+		sweepGet("GET /radio/search/art/{key}", sweepStatic("/radio/search/art/0123456789abcdef0123456789abcdef"), [4]int{nf, nf, nf, nf}),
+		labelled(sweepPost("/radio/search/art/{key}", sweepStatic("/radio/search/art/0123456789abcdef0123456789abcdef"), nil, [4]int{http.StatusMethodNotAllowed, 0, 0, 0}, ""), "POST"),
 		api(sweepGet("GET /api/v1/radio/art/{stationID}", station("/api/v1/radio/art/", ""), [4]int{nf, nf, nf, nf})),
 		api(labelled(sweepGet("GET /api/v1/radio/art/{stationID}", otherStation("/api/v1/radio/art/", ""), [4]int{nf, nf, nf, nf}), "someone else's station")),
 		sweepPost("POST /radio/stations/{stationID}/save", station("/radio/stations/", "/save"), nil, sweepNotGuest(see, nf), "/radio"),

@@ -125,6 +125,11 @@ func podcastsSweepRows() []sweepRow {
 		sweepGet("GET /podcasts/search", sweepStatic("/podcasts/search"), notGuest),
 		sweepGet("GET /podcasts/shows/{showID}", show("/podcasts/shows/", ""), notGuest),
 		labelled(sweepGet("GET /podcasts/shows/{showID}", otherShow("/podcasts/shows/", ""), ownerOnly), "someone else's show"),
+		sweepGet("GET /hx/podcasts/shows/{showID}/status", show("/hx/podcasts/shows/", "/status"), notGuest),
+		labelled(sweepGet("GET /hx/podcasts/shows/{showID}/status", otherShow("/hx/podcasts/shows/", "/status"), ownerOnly), "someone else's show"),
+		// A search picture's key is made when a search answers and belongs to one person: any other key is unknown.
+		sweepGet("GET /podcasts/search/art/{key}", sweepStatic("/podcasts/search/art/0123456789abcdef0123456789abcdef"), [4]int{nf, nf, nf, nf}),
+		labelled(sweepPost("/podcasts/search/art/{key}", sweepStatic("/podcasts/search/art/0123456789abcdef0123456789abcdef"), nil, notAllowed, ""), "POST"),
 		sweepGet("GET /podcasts/episodes/{episodeID}", ep("/podcasts/episodes/", ""), notGuest),
 		labelled(sweepGet("GET /podcasts/episodes/{episodeID}", otherEp("/podcasts/episodes/", ""), ownerOnly), "someone else's episode"),
 		sweepGet("GET /podcasts/audio/{episodeID}", ep("/podcasts/audio/", ""), notGuest),

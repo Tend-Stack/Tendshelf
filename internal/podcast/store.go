@@ -662,3 +662,12 @@ func (s *Store) LastUnfinished(ctx context.Context, userID string) (Episode, err
 	}
 	return eps[0], nil
 }
+
+// EpisodeStats is how many episodes the person's list of a show holds and the date of the newest (Unix ms, 0 when
+// there are none): one aggregate query with the same rows as Episodes with no filter, never a fetch-all.
+func (s *Store) EpisodeStats(ctx context.Context, userID, showID string) (count int, newest int64, err error) {
+	err = s.st.Reader().QueryRowContext(ctx, `SELECT COUNT(*), COALESCE(MAX(e.published_at),0) FROM podcast_episodes e
+		LEFT JOIN podcast_episode_state t ON t.episode_id = e.id AND t.user_id = ?
+		WHERE e.show_id = ? AND (e.gone_at IS NULL OR t.episode_id IS NOT NULL)`, userID, showID).Scan(&count, &newest)
+	return count, newest, err
+}
