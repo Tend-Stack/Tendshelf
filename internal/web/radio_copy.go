@@ -33,6 +33,7 @@ const (
 	radioBack          = "Back to radio"
 	radioPlay          = "Play"
 	radioRemove        = "Remove"
+	radioSave          = "Save"
 	radioLive          = "Live"
 	radioOpenStation   = "{title}, live. Show radio"
 	radioLiveFailed    = "This station can't be played right now."

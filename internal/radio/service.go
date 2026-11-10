@@ -71,10 +71,11 @@ type Service struct {
 	dbs *db.Store
 
 	mu     sync.Mutex
-	live   map[string]string // person -> station they are listening to
-	count  map[string]int    // station -> listeners
-	titles map[string]string // station -> latest cleaned title
-	order  []string          // titles in insertion order, for the cap
+	live   map[string]string    // person -> station they are listening to
+	count  map[string]int       // station -> listeners
+	titles map[string]string    // station -> latest cleaned title
+	order  []string             // titles in insertion order, for the cap
+	artTry map[string]time.Time // station -> last logo fetch queued, so a dead logo is not retried on every view
 }
 
 // New returns a Service. pod provides the server-wide stream slots shared with podcast audio and the settings.
@@ -83,12 +84,37 @@ func New(st *db.Store, net *podnet.Client, pod *podcast.Service, now func() time
 		log = slog.Default()
 	}
 	return &Service{Store: NewStore(st, now), Net: net, Log: log, MaxSession: MaxSession, pod: pod, dbs: st,
-		live: map[string]string{}, count: map[string]int{}, titles: map[string]string{}}
+		live: map[string]string{}, count: map[string]int{}, titles: map[string]string{}, artTry: map[string]time.Time{}}
 }
 
 // Enabled reports whether the owner turned radio on. Everything that could fetch checks it first.
 func (s *Service) Enabled(ctx context.Context) bool {
 	return podcast.LoadSettings(ctx, s.dbs).RadioEnabled
+}
+
+// artRetry is how long a station's logo is left alone after a fetch was queued for it.
+const artRetry = time.Hour
+
+// QueueArt asks for the station's logo, best effort: nothing happens when it has none to fetch, already has
+// the file, or a fetch was queued within the last hour (a dead logo is not retried on every view). The
+// fetch is the podcast art job, so it goes through the guarded Picture path and stores nothing unchecked.
+func (s *Service) QueueArt(ctx context.Context, st Station) {
+	if s.pod == nil || st.ArtURL == "" || st.ArtPath != "" {
+		return
+	}
+	s.mu.Lock()
+	if t, ok := s.artTry[st.ID]; ok && s.Store.now().Sub(t) < artRetry {
+		s.mu.Unlock()
+		return
+	}
+	if len(s.artTry) >= maxTitles {
+		s.artTry = map[string]time.Time{}
+	}
+	s.artTry[st.ID] = s.Store.now()
+	s.mu.Unlock()
+	if _, err := s.pod.QueueStationArt(ctx, st.ID); err != nil {
+		s.Log.Warn("radio: could not queue a station logo", "err", err)
+	}
 }
 
 // Busy reasons for Acquire.

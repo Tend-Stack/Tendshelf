@@ -66,7 +66,10 @@ templ PodcastEpisode(v PodcastEpisodeView) {
 			} else {
 				<a class="ts-btn ts-btn--primary ts-btn--lg" href={ templ.SafeURL(v.PlayHref) } hx-boost="false" data-ts-play={ v.ID }>
 					@components.Icon("play", true)
-					{ v.PlayLabel }
+					<span hidden data-ts-pause-icon>
+						@components.Icon("pause", true)
+					</span>
+					<span data-ts-play-label>{ v.PlayLabel }</span>
 				</a>
 			}
 			<form method="post" action={ templ.SafeURL(v.PlayedAction) }>

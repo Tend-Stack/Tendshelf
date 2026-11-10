@@ -9,6 +9,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
@@ -37,6 +39,7 @@ type Station struct {
 	Name       string
 	SiteURL    string
 	ArtURL     string
+	ArtPath    string // the kept picture, relative to the data folder; empty until it is fetched
 	Codec      string
 	Bitrate    int
 	Country    string
@@ -47,6 +50,16 @@ type Station struct {
 	Favourite  bool  // set by the person's lists
 	AddedAt    int64 // favourite since
 	LastPlayed int64 // set by Recent
+}
+
+// ArtSHA is the hash in the kept picture's file name (<sha>.jpg, .png or .webp), or "" when there is none.
+func (x Station) ArtSHA() string {
+	base := path.Base(x.ArtPath)
+	sha := strings.TrimSuffix(base, path.Ext(base))
+	if x.ArtPath == "" || len(sha) != 64 {
+		return ""
+	}
+	return sha
 }
 
 // Input is what Save stores for a station.
@@ -77,12 +90,12 @@ func NewStore(st *db.Store, now func() time.Time) *Store {
 
 func (s *Store) nowMs() int64 { return s.now().UnixMilli() }
 
-const stationCols = `s.id, s.stream_url, s.name, s.site_url, s.art_url, s.codec, coalesce(s.bitrate_kbps,0), s.country, s.genre,
+const stationCols = `s.id, s.stream_url, s.name, s.site_url, s.art_url, s.art_path, s.codec, coalesce(s.bitrate_kbps,0), s.country, s.genre,
 	coalesce(s.ondacast_slug,''), coalesce(s.checked_at,0), s.fail_code`
 
 func scanStation(sc interface{ Scan(...any) error }, extra ...any) (Station, error) {
 	var x Station
-	dst := append([]any{&x.ID, &x.StreamURL, &x.Name, &x.SiteURL, &x.ArtURL, &x.Codec, &x.Bitrate, &x.Country, &x.Genre, &x.Slug, &x.CheckedAt, &x.FailCode}, extra...)
+	dst := append([]any{&x.ID, &x.StreamURL, &x.Name, &x.SiteURL, &x.ArtURL, &x.ArtPath, &x.Codec, &x.Bitrate, &x.Country, &x.Genre, &x.Slug, &x.CheckedAt, &x.FailCode}, extra...)
 	err := sc.Scan(dst...)
 	return x, err
 }
@@ -119,29 +132,55 @@ func (s *Store) Save(ctx context.Context, userID string, in Input) (Station, boo
 		if err != nil {
 			return err
 		}
-		var one int
-		switch err := tx.QueryRowContext(ctx, `SELECT 1 FROM radio_favourites WHERE user_id = ? AND station_id = ?`, userID, id).Scan(&one); {
-		case err == nil:
-			return nil
-		case !errors.Is(err, sql.ErrNoRows):
-			return err
-		}
-		var n, pos int
-		if err := tx.QueryRowContext(ctx, `SELECT count(*), coalesce(max(position),0) FROM radio_favourites WHERE user_id = ?`, userID).Scan(&n, &pos); err != nil {
-			return err
-		}
-		if n >= MaxFavourites {
-			return ErrTooMany
-		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO radio_favourites(user_id, station_id, position, added_at) VALUES (?,?,?,?)`, userID, id, pos+1, now); err != nil {
-			return err
-		}
-		created = true
-		return db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: userID, Action: "radio.add", Target: "station:" + id})
+		var err2 error
+		created, err2 = addFavourite(ctx, tx, userID, id, now)
+		return err2
 	})
 	if db.IsForeignKeyViolation(err) {
 		return Station{}, false, ErrNotFound
 	}
+	if err != nil {
+		return Station{}, false, err
+	}
+	st, err := s.Get(ctx, userID, id)
+	return st, created, err
+}
+
+// addFavourite puts a station among the person's favourites at the end (nothing changes when it is already
+// there) and audits it. It refuses the 101st with ErrTooMany.
+func addFavourite(ctx context.Context, tx *sql.Tx, userID, id string, now int64) (bool, error) {
+	var one int
+	switch err := tx.QueryRowContext(ctx, `SELECT 1 FROM radio_favourites WHERE user_id = ? AND station_id = ?`, userID, id).Scan(&one); {
+	case err == nil:
+		return false, nil
+	case !errors.Is(err, sql.ErrNoRows):
+		return false, err
+	}
+	var n, pos int
+	if err := tx.QueryRowContext(ctx, `SELECT count(*), coalesce(max(position),0) FROM radio_favourites WHERE user_id = ?`, userID).Scan(&n, &pos); err != nil {
+		return false, err
+	}
+	if n >= MaxFavourites {
+		return false, ErrTooMany
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO radio_favourites(user_id, station_id, position, added_at) VALUES (?,?,?,?)`, userID, id, pos+1, now); err != nil {
+		return false, err
+	}
+	return true, db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: userID, Action: "radio.add", Target: "station:" + id})
+}
+
+// Resave puts a station the person has played back among their favourites by its id, with no new look at the
+// stream. An id the person never played or saved is ErrNotFound; a full list is ErrTooMany.
+func (s *Store) Resave(ctx context.Context, userID, id string) (Station, bool, error) {
+	if _, err := s.Get(ctx, userID, id); err != nil {
+		return Station{}, false, err
+	}
+	created := false
+	err := s.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		created, err = addFavourite(ctx, tx, userID, id, s.nowMs())
+		return err
+	})
 	if err != nil {
 		return Station{}, false, err
 	}

@@ -3,9 +3,16 @@
 package web
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -138,7 +145,19 @@ func TestRadioPlayerVisuals(t *testing.T) {
 	out := visualDir(t, "chromium")
 	long := "Radio Harbour Lighthouse and Fog Signals, the Whole Night Through"
 	w, id, base := radioBrowserWorld(t, long)
-	_ = w
+	// The first station has its logo kept; a second was played and is no longer saved, so Recent shows Save.
+	keepTestLogo(t, w, id)
+	rec, _, err := radio.NewStore(w.a.st, nil).Save(t.Context(), w.benID, radio.Input{StreamURL: w.fx.pub.URL("radio.test", "/plain.mp3"), Name: "Recent Only FM", Genre: "Pop", Country: "NL"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := radio.NewStore(w.a.st, nil)
+	if err := st.NotePlay(t.Context(), w.benID, rec.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Remove(t.Context(), w.benID, rec.ID); err != nil {
+		t.Fatal(err)
+	}
 	for _, size := range [][2]int{{390, 844}, {768, 1024}, {1024, 768}, {1440, 900}} {
 		width, height := size[0], size[1]
 		t.Run(fmt.Sprint(width), func(t *testing.T) {
@@ -165,6 +184,16 @@ func TestRadioPlayerVisuals(t *testing.T) {
 			if (!rows.Cut && width < 768) || rows.Height > 100 || len(rows.Targets) > 0 {
 				t.Errorf("station row: %+v", rows)
 			}
+			var art struct {
+				Imgs   int  `json:"imgs"`
+				Loaded bool `json:"loaded"`
+				Save   bool `json:"save"`
+			}
+			tab.Eval(`(() => { const i = [...document.querySelectorAll(".ts-stnrow img.ts-cover__img")];
+				return {imgs: i.length, loaded: i.length > 0 && i.every((e) => e.complete), save: !!document.querySelector(".ts-stnrow__save")}; })()`, &art)
+			if art.Imgs != 1 || !art.Save {
+				t.Errorf("station row art/save: %+v", art)
+			}
 			overflow("radio page")
 			tab.Screenshot(filepath.Join(out, fmt.Sprintf("radio-page-%d.png", width)))
 
@@ -178,6 +207,12 @@ func TestRadioPlayerVisuals(t *testing.T) {
 			playerClickSel(t, tab, `[data-ts-play="`+id+`"]`)
 			tab.WaitFor(`window.tsPlayer.state().playing`, 15*time.Second)
 			tab.WaitFor(`document.querySelector("#player [data-ts-meta]").textContent.includes("Ann - Song")`, 20*time.Second)
+			var pause bool
+			tab.Eval(`(() => { const b = document.querySelector('.ts-stnrow [data-ts-play="`+id+`"]'); const p = b.querySelector("[data-ts-pause-icon]");
+				return p.offsetWidth > 0 && b.querySelector("svg").offsetWidth === 0 || getComputedStyle(b.querySelector("svg")).display === "none"; })()`, &pause)
+			if !pause {
+				t.Error("playing station row shows no pause icon")
+			}
 			time.Sleep(500 * time.Millisecond)
 			var bar struct {
 				TitleRows float64 `json:"titleRows"`
@@ -207,5 +242,32 @@ func TestRadioPlayerVisuals(t *testing.T) {
 			tab.Screenshot(filepath.Join(out, fmt.Sprintf("radio-full-%d.png", width)))
 			tab.Eval(`window.tsPlayer.pause()`, nil)
 		})
+	}
+}
+
+// keepTestLogo stores a small PNG as the station's kept logo, as the logo job would.
+func keepTestLogo(t *testing.T, w *radioWorld, id string) {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 96, 96))
+	for y := 0; y < 96; y++ {
+		for x := 0; x < 96; x++ {
+			img.Set(x, y, color.RGBA{uint8(40 + x), uint8(90 + y), 160, 255})
+		}
+	}
+	var b bytes.Buffer
+	if err := png.Encode(&b, img); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(b.Bytes())
+	name := hex.EncodeToString(sum[:]) + ".png"
+	dir := filepath.Join(w.a.dir, "cache", "podcast-art")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), b.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.a.st.Writer().Exec(`UPDATE radio_stations SET art_path = ? WHERE id = ?`, "cache/podcast-art/"+name, id); err != nil {
+		t.Fatal(err)
 	}
 }

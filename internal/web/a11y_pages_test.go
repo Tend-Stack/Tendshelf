@@ -59,6 +59,7 @@ var a11ySkip = map[string]string{
 	"/progress/{bookID}":                "JSON, not a page",
 	"/podcasts/audio/{episodeID}":       "an episode's audio, streamed, not a page",
 	"/radio/live/{stationID}":           "a live station's audio, relayed, not a page",
+	"/radio/art/{stationID}":            "a station logo image, not a page",
 	"/podcasts/art/{showID}":            "a show's picture, not a page",
 	"/podcasts/chapters/{episodeID}":    "Podcasting 2.0 chapters JSON, not a page",
 	"/podcasts/opml":                    "a download of the person's follows (OPML), not a page",

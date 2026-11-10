@@ -95,6 +95,13 @@ func TestPodcastPagesContent(t *testing.T) {
 			t.Errorf("episode page lacks %q", want)
 		}
 	}
+	// The play button of an episode carries the pause icon the player script swaps in while it plays.
+	if !strings.Contains(ep, "data-ts-pause-icon") {
+		t.Error("episode page play button has no pause icon")
+	}
+	if !strings.Contains(body("/podcasts/shows/"+w.show, w.ben), "data-ts-pause-icon") {
+		t.Error("episode rows have no pause icon")
+	}
 
 	search := body("/podcasts/search", w.ben)
 	for _, want := range []string{"Find a podcast", "Search podcasts", "Add by RSS address", "Paste the show&#39;s RSS address.", `name="feed_url"`} {

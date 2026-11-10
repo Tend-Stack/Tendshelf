@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/api"
@@ -19,6 +20,7 @@ func (s *server) registerAPIRadio(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/radio/stations", s.postAPIRadioStation)
 	mux.HandleFunc("DELETE /api/v1/radio/stations/{stationID}", s.deleteAPIRadioStation)
 	mux.HandleFunc("GET /api/v1/radio/live/{stationID}", s.getRadioLive)
+	mux.HandleFunc("GET /api/v1/radio/art/{stationID}", s.getRadioArt)
 	mux.HandleFunc("GET /api/v1/radio/now/{stationID}", s.getAPIRadioNow)
 }
 
@@ -32,12 +34,20 @@ type apiRadioStation struct {
 	AddedAt      int64  `json:"addedAt,omitempty"`
 	LastPlayedAt int64  `json:"lastPlayedAt,omitempty"`
 	LiveURL      string `json:"liveUrl"`
+	ArtURL       string `json:"artUrl,omitempty"`
 	Problem      string `json:"problem,omitempty"`
 }
 
 func apiRadioOf(st radio.Station) apiRadioStation {
 	v := apiRadioStation{ID: st.ID, Name: st.Name, Codec: st.Codec, Genre: st.Genre, Country: st.Country,
 		Favourite: st.Favourite, AddedAt: st.AddedAt, LastPlayedAt: st.LastPlayed, LiveURL: "/api/v1/radio/live/" + st.ID}
+	// Present when the logo is kept or can be fetched (the station has a logo address). The first request for a
+	// logo not kept yet answers 404 and queues the fetch; the logo's own address is never in an answer.
+	if sha := st.ArtSHA(); sha != "" {
+		v.ArtURL = "/api/v1/radio/art/" + url.PathEscape(st.ID) + "?v=" + sha[:8]
+	} else if st.ArtURL != "" {
+		v.ArtURL = "/api/v1/radio/art/" + url.PathEscape(st.ID)
+	}
 	if st.FailCode != "" {
 		v.Problem = radioLiveUnavailable
 	}
