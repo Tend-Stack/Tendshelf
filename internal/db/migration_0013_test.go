@@ -28,14 +28,14 @@ func TestMigration0013Queue(t *testing.T) {
 		t.Errorf("queue_items has %d rows", n)
 	}
 	w := st.Writer()
-	if _, err := w.Exec(`INSERT INTO queue_items VALUES ('us_1', 'bk_1', -1, 1)`); err != nil {
+	if _, err := w.Exec(`INSERT INTO queue_items(user_id, item_id, book_id, position, added_at) VALUES ('us_1', 'bk_1', 'bk_1', -1, 1)`); err != nil {
 		t.Fatalf("negative position: %v", err)
 	}
 	for name, q := range map[string]string{
-		"duplicate (user, book)": `INSERT INTO queue_items VALUES ('us_1', 'bk_1', 2, 1)`,
-		"unknown book":           `INSERT INTO queue_items VALUES ('us_1', 'bk_nope', 2, 1)`,
-		"unknown user":           `INSERT INTO queue_items VALUES ('us_nope', 'bk_1', 2, 1)`,
-		"added_at = 0":           `INSERT INTO queue_items VALUES ('us_1', 'bk_1', 2, 0)`,
+		"duplicate (user, book)": `INSERT INTO queue_items(user_id, item_id, book_id, position, added_at) VALUES ('us_1', 'bk_1', 'bk_1', 2, 1)`,
+		"unknown book":           `INSERT INTO queue_items(user_id, item_id, book_id, position, added_at) VALUES ('us_1', 'bk_nope', 'bk_nope', 2, 1)`,
+		"unknown user":           `INSERT INTO queue_items(user_id, item_id, book_id, position, added_at) VALUES ('us_nope', 'bk_1', 'bk_1', 2, 1)`,
+		"added_at = 0":           `INSERT INTO queue_items(user_id, item_id, book_id, position, added_at) VALUES ('us_1', 'bk_1', 'bk_1', 2, 0)`,
 	} {
 		if _, err := w.Exec(q); err == nil {
 			t.Errorf("%s was accepted", name)
@@ -55,7 +55,7 @@ func TestMigration0013UserCascade(t *testing.T) {
 	defer st.Close()
 	seed7(t, st)
 	w := st.Writer()
-	if _, err := w.Exec(`INSERT INTO queue_items VALUES ('us_1', 'bk_1', 0, 1)`); err != nil {
+	if _, err := w.Exec(`INSERT INTO queue_items(user_id, item_id, book_id, position, added_at) VALUES ('us_1', 'bk_1', 'bk_1', 0, 1)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := w.Exec(`DELETE FROM users WHERE id = 'us_1'`); err != nil {

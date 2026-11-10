@@ -84,7 +84,7 @@ func TestQueueAutoplayBrowser(t *testing.T) {
 
 	// Starting another book after one ended must not clear the ended book's mark (the fix in save()).
 	// C and D wait in Up next, so B's end hands over to them.
-	streamExec(t, e.a, `INSERT INTO queue_items(user_id, book_id, position, added_at) VALUES (?, ?, 1, 1), (?, ?, 2, 2)`, e.ownerID, c.ID, e.ownerID, d.ID)
+	streamExec(t, e.a, `INSERT INTO queue_items(user_id, item_id, book_id, position, added_at) VALUES (?1, ?2, ?2, 1, 1), (?1, ?3, ?3, 2, 2)`, e.ownerID, c.ID, d.ID)
 	playerDropLink(t, tab)
 	eb := *e
 	eb.files = []library.AudioFile{bf}
