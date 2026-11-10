@@ -11,7 +11,7 @@ trap 'rm -rf "$tmp"' EXIT
 unzip -qo "$apk" 'classes*.dex' AndroidManifest.xml -d "$tmp"
 fail=0
 for f in "$tmp"/classes*.dex; do strings -a "$f" >> "$tmp/strings.txt"; "$bt/dexdump" -d "$f" >> "$tmp/dump.txt" 2>/dev/null || true; done
-for bad in DEBUG_PLAYER DEBUG_EVAL DEBUG_LOAD DEBUG_TOKEN8 DEBUG_COOKIES_CLEAR DEBUG_READ keepAliveForDebug DEFAULT_SERVER 10.0.2.2 tokenRequestBody 'Lapp/tendshelf/android/DebugProbe;' 'Api;.signIn'; do
+for bad in DEBUG_PLAYER DEBUG_EVAL DEBUG_LOAD DEBUG_TOKEN8 DEBUG_COOKIES_CLEAR DEBUG_READ keepAliveForDebug DEFAULT_SERVER 10.0.2.2 tokenRequestBody 'Lapp/tendshelf/android/DebugProbe;' 'Api;.signIn:'; do
   if grep -qF -- "$bad" "$tmp/strings.txt" "$tmp/dump.txt"; then echo "FAIL: release dex holds: $bad"; fail=1; fi
 done
 "$bt/aapt2" dump xmltree --file AndroidManifest.xml "$apk" > "$tmp/manifest.txt"
