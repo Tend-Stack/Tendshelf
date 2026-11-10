@@ -5,6 +5,8 @@ package components
 var iconShapes = map[string]string{
 	"panel-left":   `<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/>`,
 	"home":         `<path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/>`,
+	"podcast":      `<circle cx="12" cy="10" r="2"/><path d="M8.6 6.6a4.8 4.8 0 0 0 0 6.8M15.4 6.6a4.8 4.8 0 0 1 0 6.8M5.7 3.8a8.8 8.8 0 0 0 0 12.4M18.3 3.8a8.8 8.8 0 0 1 0 12.4M12 12.5V21"/>`,
+	"star":         `<path d="m12 3.8 2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.8 6.9 19.5l1-5.7-4.1-4 5.7-.8z"/>`,
 	"library":      `<path d="M4 4h4v16H4zM10 4h4v16h-4zM15.8 5.2l3.4-.9 3.4 14.6-3.4.9z"/>`,
 	"search":       `<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>`,
 	"download":     `<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>`,

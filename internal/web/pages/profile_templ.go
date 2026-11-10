@@ -295,7 +295,7 @@ func profileMenus(v ProfileView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if items := prefsServerItems(PrefsNav{Users: v.UsersRow != "", Libraries: v.Libraries != "", Email: v.Email, Backups: v.Backups != ""}); len(items) > 0 {
+		if items := prefsServerItems(PrefsNav{Users: v.UsersRow != "", Libraries: v.Libraries != "", Email: v.Email, Podcasts: v.Email, Backups: v.Backups != ""}); len(items) > 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div class=\"ts-chipmenu__group\" role=\"group\" aria-labelledby=\"pf-menu-server\"><p class=\"ts-chipmenu__head\" id=\"pf-menu-server\">Your server</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

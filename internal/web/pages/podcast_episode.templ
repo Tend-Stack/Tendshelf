@@ -1,0 +1,108 @@
+package pages
+
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
+// PodcastEpisodeView is one episode: the show it belongs to, its facts, the controls and the show notes.
+type PodcastEpisodeView struct {
+	CSRF, ID, Title, Show, ShowHref string
+	BackHref, BackLabel             string
+	Art                             components.CardView
+	// Meta is the line under the title: "2 Jan 2024 · 48 m".
+	Meta string
+	// PlayHref and PlayLabel are the Play button (the audio itself without JavaScript); Video replaces it
+	// with VideoLine, because Tendshelf does not play video.
+	PlayHref, PlayLabel string
+	Video               bool
+	VideoLine           string
+	// Played and Starred drive the two forms; Back returns to this page.
+	Played                                 bool
+	PlayedAction, PlayedValue, PlayedLabel string
+	Starred                                bool
+	StarAction, StarValue, StarLabel       string
+	Back                                   string
+	// SaveHref and SaveLabel are the "Save the file" link (the audio as a download); empty for a video.
+	SaveHref, SaveLabel string
+	// Notes is cleaned to a few tags; NotesTitle heads it.
+	Notes, NotesTitle string
+	// Progress is a line such as "12 m left" for a started episode; empty draws nothing.
+	Progress string
+	// Number is "Season 2 · Episode 5" when the feed gives it.
+	Number string
+}
+
+// PodcastEpisode is the page of one episode.
+templ PodcastEpisode(v PodcastEpisodeView) {
+	<article class="ts-podcasts ts-podep">
+		<a class="ts-btn ts-btn--quiet ts-book__back" href={ templ.SafeURL(v.BackHref) }>
+			@backIcon()
+			{ v.BackLabel }
+		</a>
+		<header class="ts-podshow__head">
+			@components.Cover(v.Art, "112")
+			<div class="ts-podshow__info">
+				<p class="ts-overline"><a href={ templ.SafeURL(v.ShowHref) } class="ts-truncate">{ v.Show }</a></p>
+				<h1 class="title-1 ts-podep__title">{ v.Title }</h1>
+				<p class="caption ts-num">{ v.Meta }</p>
+				if v.Number != "" {
+					<p class="caption">{ v.Number }</p>
+				}
+				if v.Progress != "" {
+					<p class="caption ts-num">{ v.Progress }</p>
+				}
+			</div>
+		</header>
+		<div class="ts-podep__actions">
+			if v.Video {
+				<p class="ts-banner" role="status">{ v.VideoLine }</p>
+			} else {
+				<a class="ts-btn ts-btn--primary ts-btn--lg" href={ templ.SafeURL(v.PlayHref) } hx-boost="false" data-ts-play={ v.ID }>
+					@components.Icon("play", true)
+					{ v.PlayLabel }
+				</a>
+			}
+			<form method="post" action={ templ.SafeURL(v.PlayedAction) }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<input type="hidden" name="played" value={ v.PlayedValue }/>
+				<button type="submit" class="ts-btn ts-btn--secondary">
+					if !v.Played {
+						@components.Icon("check", false)
+					}
+					{ v.PlayedLabel }
+				</button>
+			</form>
+			<form method="post" action={ templ.SafeURL(v.StarAction) }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<input type="hidden" name="on" value={ v.StarValue }/>
+				<button type="submit" class="ts-btn ts-btn--secondary" aria-pressed={ boolWordPage(v.Starred) }>
+					@components.Icon("star", v.Starred)
+					{ v.StarLabel }
+				</button>
+			</form>
+			if v.SaveHref != "" {
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SaveHref) } hx-boost="false">
+					@components.Icon("download", false)
+					{ v.SaveLabel }
+				</a>
+			}
+		</div>
+		if v.Notes != "" {
+			<section aria-labelledby="pod-ep-notes-h">
+				<h2 id="pod-ep-notes-h" class="section">{ v.NotesTitle }</h2>
+				@notesBlock(v.Notes)
+			</section>
+		}
+	</article>
+}
+
+func boolWordPage(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}

@@ -1,17 +1,12 @@
 package web
 
 import (
-	"context"
 	"errors"
-	"html"
-	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/a-h/templ"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/metadata/online/podnet"
@@ -115,76 +110,6 @@ func (s *server) loadShow(w http.ResponseWriter, r *http.Request) (podcast.ShowR
 	return sh, true
 }
 
-// stubPage renders a plain page inside the layout: P3 replaces these with real markup.
-func (s *server) stubPage(w http.ResponseWriter, r *http.Request, title string, body func(w io.Writer)) {
-	c := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
-		io.WriteString(w, `<div class="ts-admin"><h1 class="title-1 ts-admin__title">`+html.EscapeString(title)+`</h1>`)
-		body(w)
-		_, err := io.WriteString(w, `</div>`)
-		return err
-	})
-	s.pageStyled(w, r, http.StatusOK, title, "podcasts", c, nil)
-}
-
-func (s *server) csrfField(r *http.Request) string {
-	return `<input type="hidden" name="_csrf" value="` + html.EscapeString(s.csrf.TokenFrom(r.Context())) + `"/>`
-}
-
-func (s *server) getPodcasts(w http.ResponseWriter, r *http.Request) {
-	if !s.podcastsGate(w, r) {
-		return
-	}
-	ctx, u := r.Context(), currentUser(r)
-	s.podcasts.RefreshStale(ctx, u.ID)
-	shows, err := s.podcasts.Shows(ctx, u.ID)
-	if err != nil {
-		s.serverError(w, r, "podcasts", err)
-		return
-	}
-	s.stubPage(w, r, podcastsTitle, func(w io.Writer) {
-		io.WriteString(w, `<p><a href="/podcasts/search">`+html.EscapeString(podcastsSearchTitle)+`</a></p><ul>`)
-		for _, sh := range shows {
-			io.WriteString(w, `<li><a href="/podcasts/shows/`+url.PathEscape(sh.ID)+`">`+html.EscapeString(sh.Title)+`</a> `+strconv.Itoa(sh.NewCount)+`</li>`)
-		}
-		io.WriteString(w, `</ul>`)
-	})
-}
-
-func (s *server) getPodcastSearch(w http.ResponseWriter, r *http.Request) {
-	if !s.podcastsGate(w, r) {
-		return
-	}
-	u := currentUser(r)
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	var hits []podnet.Hit
-	var failure string
-	if q != "" {
-		if ok, wait := s.podLim.search.Allow(u.ID); !ok {
-			w.Header().Set("Retry-After", strconv.Itoa(int(wait/time.Second)+1))
-			s.refuseSetting(w, r, http.StatusTooManyRequests, podErrBusy)
-			return
-		}
-		s.podLim.search.Fail(u.ID) // each search counts once
-		var err error
-		if hits, err = s.podcasts.Net.Search(r.Context(), q, "podcasts", 20); err != nil {
-			failure = podErrSearchDown
-		}
-	}
-	s.stubPage(w, r, podcastsSearchTitle, func(w io.Writer) {
-		io.WriteString(w, `<form method="get" action="/podcasts/search"><input type="search" name="q" value="`+html.EscapeString(q)+`" aria-label="Search podcasts"/><button type="submit">Search podcasts</button></form>`)
-		io.WriteString(w, `<form method="post" action="/podcasts/follow">`+s.csrfField(r)+`<input type="text" name="feed_url" aria-label="RSS address"/><button type="submit">Follow</button></form>`)
-		if failure != "" {
-			io.WriteString(w, `<p role="alert">`+html.EscapeString(failure)+`</p>`)
-		}
-		io.WriteString(w, `<ul>`)
-		for _, h := range hits {
-			io.WriteString(w, `<li>`+html.EscapeString(h.Title)+` <form method="post" action="/podcasts/follow">`+s.csrfField(r)+
-				`<input type="hidden" name="slug" value="`+html.EscapeString(h.Slug)+`"/><button type="submit">Follow</button></form></li>`)
-		}
-		io.WriteString(w, `</ul>`)
-	})
-}
-
 func (s *server) postPodcastFollow(w http.ResponseWriter, r *http.Request) {
 	if !s.podcastsGate(w, r) || !s.parseForm(w, r) {
 		return
@@ -232,41 +157,6 @@ func (s *server) postPodcastFollow(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.answerPage(w, r, "/podcasts/shows/"+url.PathEscape(id))
-}
-
-func (s *server) getPodcastShow(w http.ResponseWriter, r *http.Request) {
-	if !s.podcastsGate(w, r) {
-		return
-	}
-	sh, ok := s.loadShow(w, r)
-	if !ok {
-		return
-	}
-	q := r.URL.Query()
-	eps, next, err := s.podcasts.Episodes(r.Context(), currentUser(r).ID, sh.ID, podcast.EpisodeQuery{
-		Sort: q.Get("sort"), Filter: q.Get("filter"), Text: q.Get("q"), After: q.Get("after")})
-	if errors.Is(err, podcast.ErrInvalid) {
-		s.errorPage(w, r, http.StatusBadRequest)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "show episodes", err)
-		return
-	}
-	s.stubPage(w, r, sh.Title, func(w io.Writer) {
-		io.WriteString(w, `<p>`+html.EscapeString(sh.Author)+`</p>`)
-		if t := podcast.FailText(sh.FailCode); t != "" {
-			io.WriteString(w, `<p role="alert">`+html.EscapeString(t)+`</p>`)
-		}
-		io.WriteString(w, `<ul>`)
-		for _, ep := range eps {
-			io.WriteString(w, `<li><a href="/podcasts/episodes/`+url.PathEscape(ep.ID)+`">`+html.EscapeString(ep.Title)+`</a></li>`)
-		}
-		io.WriteString(w, `</ul>`)
-		if next != "" {
-			io.WriteString(w, `<a href="?after=`+url.QueryEscape(next)+`">Load more</a>`)
-		}
-	})
 }
 
 func (s *server) postPodcastUnfollow(w http.ResponseWriter, r *http.Request) {
@@ -370,21 +260,6 @@ func (s *server) postPodcastShowSettings(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (s *server) getPodcastEpisode(w http.ResponseWriter, r *http.Request) {
-	ep, ok := s.loadEpisode(w, r)
-	if !ok {
-		return
-	}
-	s.stubPage(w, r, ep.Title, func(w io.Writer) {
-		io.WriteString(w, `<p><a href="/podcasts/shows/`+url.PathEscape(ep.ShowID)+`">`+html.EscapeString(ep.ShowTitle)+`</a></p>`)
-		if strings.HasPrefix(strings.ToLower(ep.AudioType), "video/") {
-			io.WriteString(w, `<p>`+html.EscapeString(podErrVideo)+`</p>`)
-		} else {
-			io.WriteString(w, `<p><a href="/podcasts/audio/`+url.PathEscape(ep.ID)+`?download=1">Save the file</a></p>`)
-		}
-	})
-}
-
 // podFlagForm reads one 0/1 field of a small form; a missing or odd value is a 400.
 func (s *server) podFlagForm(w http.ResponseWriter, r *http.Request, key string) (bool, bool) {
 	if !s.parseForm(w, r) {
@@ -411,7 +286,7 @@ func (s *server) postPodcastPlayed(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "mark played", err)
 		return
 	}
-	s.answerPage(w, r, "/podcasts/episodes/"+url.PathEscape(ep.ID))
+	s.answerPage(w, r, backTarget(r, "/podcasts/episodes/"+url.PathEscape(ep.ID)))
 }
 
 func (s *server) postPodcastFavourite(w http.ResponseWriter, r *http.Request) {
@@ -427,7 +302,7 @@ func (s *server) postPodcastFavourite(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "star episode", err)
 		return
 	}
-	s.answerPage(w, r, "/podcasts/episodes/"+url.PathEscape(ep.ID))
+	s.answerPage(w, r, backTarget(r, "/podcasts/episodes/"+url.PathEscape(ep.ID)))
 }
 
 // podProgressBody bounds a progress save: a few short fields.

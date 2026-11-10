@@ -19,6 +19,7 @@ type PrefsNav struct {
 	UsersWaiting       string
 	Libraries, Email   bool
 	Backups            bool
+	Podcasts           bool
 }
 
 type prefsItem struct{ Key, Label, Href string }
@@ -50,6 +51,9 @@ func prefsServerItems(n PrefsNav) []prefsItem {
 	}
 	if n.Backups {
 		out = append(out, prefsItem{"backups", "Backups", "/admin/backups"})
+	}
+	if n.Podcasts {
+		out = append(out, prefsItem{"podcasts", "Podcasts and radio", "/admin/podcasts"})
 	}
 	return out
 }

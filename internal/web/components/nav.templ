@@ -1,10 +1,36 @@
 package components
 
+import "strconv"
+
 // NavItem is one main destination.
 type NavItem struct {
 	Key, Label, Href, Icon string
 	// NoBoost keeps the link a plain navigation: the Android app catches it before the page loads (A7).
 	NoBoost bool
+	// Badge is the short count drawn beside the label ("3", "99+"), BadgeLabel its words for a screen reader
+	// ("3 new episodes"). Both are empty when there is nothing to count.
+	Badge, BadgeLabel string
+}
+
+// PodNav says whether the Podcasts item is drawn (the owner turned podcasts on and this person may use them)
+// and how many new episodes its badge counts.
+type PodNav struct {
+	Show bool
+	New  int
+}
+
+// podcastsItem is the Podcasts destination, drawn after Library only when podcasts are on for the person.
+func podcastsItem(p PodNav) NavItem {
+	it := NavItem{Key: "podcasts", Label: "Podcasts", Href: "/podcasts", Icon: "podcast"}
+	switch {
+	case p.New > 99:
+		it.Badge, it.BadgeLabel = "99+", "more than 99 new episodes"
+	case p.New == 1:
+		it.Badge, it.BadgeLabel = "1", "1 new episode"
+	case p.New > 1:
+		it.Badge, it.BadgeLabel = strconv.Itoa(p.New), strconv.Itoa(p.New)+" new episodes"
+	}
+	return it
 }
 
 // MainNav is the one list all three navigations render from, in order.
@@ -33,18 +59,29 @@ func chipItem(it NavItem, a NavAccount) bool {
 
 // navFor is MainNav for the window it is drawn in. The phone app keeps the Downloads item (A7) but draws the list itself
 // from what the phone holds, so the link is a plain navigation (NoBoost) that the app's navigation policy catches.
-func navFor(shell string) []NavItem {
-	if shell != "android" {
+func navFor(shell string, pod PodNav) []NavItem {
+	if shell != "android" && !pod.Show {
 		return MainNav
 	}
-	out := make([]NavItem, len(MainNav))
-	copy(out, MainNav)
-	for i := range out {
-		if out[i].Key == "downloads" {
-			out[i].NoBoost = true
+	out := make([]NavItem, 0, len(MainNav)+1)
+	for _, it := range MainNav {
+		if it.Key == "downloads" && shell == "android" {
+			it.NoBoost = true
+		}
+		out = append(out, it)
+		if it.Key == "library" && pod.Show {
+			out = append(out, podcastsItem(pod))
 		}
 	}
 	return out
+}
+
+// navBadge is the count beside a label: drawn for the eye, the words follow for a screen reader.
+templ navBadge(it NavItem) {
+	if it.Badge != "" {
+		<span class="ts-navbadge" aria-hidden="true">{ it.Badge }</span>
+		<span class="ts-sr">, { it.BadgeLabel }</span>
+	}
 }
 
 // shelfHref is where a sidebar shelf link goes: the shelf, or the list of shelves for the entries
@@ -65,9 +102,9 @@ func shelfKey(s ShelfLink) string {
 }
 
 // TabBar is the phone's bottom navigation.
-templ TabBar(current, shell string, acct NavAccount) {
-	<nav aria-label="Main" id="nav-tabbar" hx-preserve class="ts-tabbar ts-nav-tabbar">
-		for _, it := range navFor(shell) {
+templ TabBar(current, shell string, acct NavAccount, pod PodNav) {
+	<nav aria-label="Main" id="nav-tabbar" hx-preserve class={ "ts-tabbar ts-nav-tabbar", templ.KV("ts-tabbar--six", pod.Show) }>
+		for _, it := range navFor(shell, pod) {
 			<a
 				href={ templ.SafeURL(it.Href) }
 				class="ts-tabbar__item"
@@ -85,18 +122,19 @@ templ TabBar(current, shell string, acct NavAccount) {
 					@Icon(it.Icon, false)
 				}
 				{ it.Label }
+				@navBadge(it)
 			</a>
 		}
 	</nav>
 }
 
 // SideRail is the tablet navigation rail (768 to 1279 px).
-templ SideRail(current, shell string, acct NavAccount) {
+templ SideRail(current, shell string, acct NavAccount, pod PodNav) {
 	<nav aria-label="Main" id="nav-rail" hx-preserve class="ts-rail ts-nav-rail">
 		<span class="ts-rail__brand ts-brand">
 			@Mark()
 		</span>
-		for _, it := range navFor(shell) {
+		for _, it := range navFor(shell, pod) {
 			if chipItem(it, acct) {
 				<a
 					href={ templ.SafeURL(it.Href) }
@@ -111,6 +149,7 @@ templ SideRail(current, shell string, acct NavAccount) {
 				>
 					@Icon(it.Icon, false)
 					{ it.Label }
+					@navBadge(it)
 				</a>
 			}
 		}
@@ -159,7 +198,7 @@ func navToggleLabel(rail bool) string {
 // its foot posts the next state. preserve keeps the element across boosted swaps (full page renders);
 // the fragment that answers the toggle leaves it off, because htmx 4 would otherwise put the OLD
 // preserved element back in place of the new one.
-templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, rail bool, csrf string, preserve bool, shell string, acct NavAccount) {
+templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, rail bool, csrf string, preserve bool, shell string, acct NavAccount, pod PodNav) {
 	<nav
 		aria-label="Main"
 		id="nav-side"
@@ -173,7 +212,7 @@ templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, 
 			@Mark()
 			<span class="ts-side__label">Tendshelf</span>
 		</span>
-		for _, it := range navFor(shell) {
+		for _, it := range navFor(shell, pod) {
 			if chipItem(it, acct) {
 				<a
 					href={ templ.SafeURL(it.Href) }
@@ -191,6 +230,7 @@ templ Sidebar(current string, admin bool, users UsersLink, shelves []ShelfLink, 
 				>
 					@Icon(it.Icon, false)
 					<span class="ts-side__label">{ it.Label }</span>
+					@navBadge(it)
 				</a>
 			}
 		}

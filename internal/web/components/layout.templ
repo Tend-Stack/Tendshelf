@@ -32,6 +32,8 @@ type Page struct {
 	Styles []string
 	// Account is the signed-in person for the account chip and the Profile tab's avatar (Layout only).
 	Account NavAccount
+	// Podcasts draws the Podcasts item and its new-episode badge in the navigation.
+	Podcasts PodNav
 	// Admin shows the "Your server" group in the desktop sidebar.
 	Admin bool
 	// Users shows "Users & invites" in the sidebar; UsersWaiting is its count text ("" hides it).
@@ -80,8 +82,10 @@ const pagePrefix = "css/pages-"
 // pages-email.css joins them (decision 0021): Profile adds its own stylesheet, and no page may gain a request for it.
 // pages-invite, pages-folders and pages-upload join them for Home's row of three covers (three covers, three requests).
 // pages-onboard joins them for the same row: it dresses sign-in, setup and password pages, which a signed-in page never leads to.
+// pages-sso joins them (it dresses the sign-in provider settings and the Account sign-in page, so no other page may gain a request for it).
+// pages-podcasts joins them too: podcasts are off until the owner turns them on, and the navigation count lives in bundle.css.
 // pages-chapters, pages-appkeys, pages-timeline and pages-highlights join them: each belongs to one rarely opened page, and no page may gain a request for it.
-var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css", "css/pages-email.css", "css/pages-invite.css", "css/pages-folders.css", "css/pages-upload.css", "css/pages-onboard.css", "css/pages-chapters.css", "css/pages-appkeys.css", "css/pages-timeline.css", "css/pages-highlights.css"}
+var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css", "css/pages-email.css", "css/pages-invite.css", "css/pages-folders.css", "css/pages-upload.css", "css/pages-onboard.css", "css/pages-chapters.css", "css/pages-appkeys.css", "css/pages-timeline.css", "css/pages-highlights.css", "css/pages-podcasts.css", "css/pages-sso.css"}
 
 // withPrefetch returns p with the page stylesheets it does not link itself, so the head can ask the
 // browser to fetch them early: the first boosted visit to another page then finds them cached.
@@ -150,9 +154,9 @@ templ Layout(p Page, body templ.Component) {
 			@DesktopBar(p)
 			@OfflineBanner(p)
 			<div class="ts-shell">
-				@TabBar(p.Current, p.Shell, p.Account)
-				@SideRail(p.Current, p.Shell, p.Account)
-				@Sidebar(p.Current, p.Admin, UsersLink{Show: p.Users, Waiting: p.UsersWaiting}, p.Shelves, p.NavRail, p.CSRF, true, p.Shell, p.Account)
+				@TabBar(p.Current, p.Shell, p.Account, p.Podcasts)
+				@SideRail(p.Current, p.Shell, p.Account, p.Podcasts)
+				@Sidebar(p.Current, p.Admin, UsersLink{Show: p.Users, Waiting: p.UsersWaiting}, p.Shelves, p.NavRail, p.CSRF, true, p.Shell, p.Account, p.Podcasts)
 				<main
 					id="main"
 					class="ts-main"

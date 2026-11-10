@@ -1,0 +1,163 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// PodcastStyles are the sheets of the podcast pages.
+var PodcastStyles = []string{"css/pages-home.css", "css/pages-library.css", "css/pages-book.css", "css/pages-podcasts.css"}
+
+// PodcastAdminStyles are the sheets of the owner's podcast settings page.
+var PodcastAdminStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-email.css", "css/pages-me.css", "css/pages-podcasts.css"}
+
+// PodTab is one tab of the Podcasts home.
+type PodTab struct {
+	Label, Href string
+	On          bool
+}
+
+// PodcastsView is the Podcasts home: the tabs, then the shows as a grid or the episodes as rows. The
+// handler writes every word (internal/web/podcasts_copy.go).
+type PodcastsView struct {
+	Title, FindLabel, FindHref string
+	TabsLabel                  string
+	Tabs                       []PodTab
+	Shows                      []components.ShowCardView
+	Episodes                   []components.EpisodeRowView
+	// Failure is a line shown above the list (for example a show that could not be fetched); empty draws nothing.
+	Failure string
+	// EmptyTitle and EmptyBody are drawn when the tab has nothing; EmptyAction is the one link under them.
+	EmptyTitle, EmptyBody string
+	EmptyAction           bool
+}
+
+templ podFindLink(href, label string) {
+	<a class="ts-btn ts-btn--primary" href={ templ.SafeURL(href) }>
+		@components.Icon("search", false)
+		{ label }
+	</a>
+}
+
+// Podcasts is the home of the podcasts a person follows.
+templ Podcasts(v PodcastsView) {
+	<div class="ts-podcasts">
+		<header class="ts-podcasts__head">
+			<h1 class="title-1 ts-podcasts__title">{ v.Title }</h1>
+			@podFindLink(v.FindHref, v.FindLabel)
+		</header>
+		<nav class="ts-tabs ts-podcasts__tabs" aria-label={ v.TabsLabel }>
+			for _, t := range v.Tabs {
+				<a class="ts-tabs__item" href={ templ.SafeURL(t.Href) } if t.On {
+	aria-current="page"
+}>{ t.Label }</a>
+			}
+		</nav>
+		if v.Failure != "" {
+			<p class="ts-banner ts-podcasts__banner" role="status">
+				@components.Icon("alert", false)
+				{ v.Failure }
+			</p>
+		}
+		if len(v.Shows) == 0 && len(v.Episodes) == 0 {
+			if v.EmptyAction {
+				@components.EmptyState(v.EmptyTitle, v.EmptyBody, podFindLink(v.FindHref, v.FindLabel))
+			} else {
+				@components.EmptyState(v.EmptyTitle, v.EmptyBody, nil)
+			}
+		} else if len(v.Shows) > 0 {
+			<div class="ts-grid ts-grid--covers ts-podcasts__grid">
+				for _, c := range v.Shows {
+					@components.ShowCard(c)
+				}
+			</div>
+		} else {
+			<div class="ts-lib-rows ts-podcasts__rows">
+				for _, e := range v.Episodes {
+					@components.EpisodeRow(e)
+				}
+			</div>
+		}
+	</div>
+}
+
+// PodHit is one OndaCast result.
+type PodHit struct {
+	Title, Subtitle, Slug string
+	Card                  components.CardView
+}
+
+// PodcastSearchView is the search page: the search form, the results, and the "Add by RSS address" form.
+type PodcastSearchView struct {
+	CSRF, Title, Q, SearchLabel, SearchButton, BackHref, BackLabel string
+	Hits                                                           []PodHit
+	Searched                                                       bool
+	// Failure is the search problem in plain words (OndaCast unreachable); the RSS address form still works.
+	Failure string
+	// NoResults is the line shown when a search found nothing.
+	NoResults       string
+	FollowLabel     string
+	AddTitle        string
+	AddHint         string
+	AddLabel        string
+	AddOpen         bool
+	ResultsLabel    string
+	FollowAriaLabel string
+}
+
+// PodcastSearch is the OndaCast search and the RSS address form.
+templ PodcastSearch(v PodcastSearchView) {
+	<div class="ts-podcasts ts-podsearch">
+		<a class="ts-btn ts-btn--quiet ts-book__back" href={ templ.SafeURL(v.BackHref) }>
+			@backIcon()
+			{ v.BackLabel }
+		</a>
+		<h1 class="title-1 ts-podcasts__title">{ v.Title }</h1>
+		<form class="ts-podsearch__form" method="get" action="/podcasts/search" role="search">
+			<input class="ts-input" type="search" name="q" value={ v.Q } maxlength="200" aria-label={ v.SearchLabel } placeholder={ v.SearchLabel } autocomplete="off"/>
+			<button type="submit" class="ts-btn ts-btn--primary">{ v.SearchButton }</button>
+		</form>
+		if v.Failure != "" {
+			<p class="ts-banner ts-podcasts__banner" role="alert">
+				@components.Icon("alert", false)
+				{ v.Failure }
+			</p>
+		}
+		if v.Searched && v.Failure == "" {
+			if len(v.Hits) == 0 {
+				<p class="body ts-podsearch__none" role="status">{ v.NoResults }</p>
+			} else {
+				<ul class="ts-podsearch__hits" aria-label={ v.ResultsLabel }>
+					for _, h := range v.Hits {
+						<li class="ts-row ts-podhit">
+							@components.Cover(h.Card, "56")
+							<span class="ts-row__text">
+								<span class="ts-row__title ts-clamp-2">{ h.Title }</span>
+								if h.Subtitle != "" {
+									<span class="ts-row__meta ts-truncate">{ h.Subtitle }</span>
+								}
+							</span>
+							<form method="post" action="/podcasts/follow" class="ts-podhit__follow">
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<input type="hidden" name="slug" value={ h.Slug }/>
+								<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.FollowAriaLabel + " " + h.Title }>{ v.FollowLabel }</button>
+							</form>
+						</li>
+					}
+				</ul>
+			}
+		}
+		<details class="ts-group ts-group--pad ts-podsearch__add" open?={ v.AddOpen }>
+			<summary class="ts-podsearch__summary">
+				<span>{ v.AddTitle }</span>
+				@components.Icon("chevron-down", false)
+			</summary>
+			<form class="ts-podsearch__addform" method="post" action="/podcasts/follow">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<div class="ts-field">
+					<label class="ts-field__label" for="pod-feed">{ v.AddLabel }</label>
+					<input id="pod-feed" class="ts-input" type="url" name="feed_url" maxlength="2048" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="pod-feed-hint" required/>
+					<span class="ts-field__hint" id="pod-feed-hint">{ v.AddHint }</span>
+				</div>
+				<button type="submit" class="ts-btn ts-btn--primary">{ v.FollowLabel }</button>
+			</form>
+		</details>
+	</div>
+}

@@ -57,7 +57,7 @@ func (s *server) postNavHX(w http.ResponseWriter, r *http.Request) {
 	current := navKeyFor(pathOf(r.Header.Get("HX-Current-URL")))
 	admin := s.can.Can(r.Context(), currentUser(r), share.ManageLibraries, share.Target{Kind: share.TargetServer})
 	s.fragment(w, r, http.StatusOK, components.Sidebar(current, admin,
-		components.UsersLink{Show: showUsers, Waiting: waiting}, s.sidebarShelves(r), rail, s.csrf.TokenFrom(r.Context()), false, shellFrom(r), s.navAccount(r)))
+		components.UsersLink{Show: showUsers, Waiting: waiting}, s.sidebarShelves(r), rail, s.csrf.TokenFrom(r.Context()), false, shellFrom(r), s.navAccount(r), s.podNav(r)))
 }
 
 // sameOriginPath is where the no-JavaScript toggle returns: the path and query of the referrer when
@@ -101,6 +101,8 @@ func navKeyFor(path string) string {
 		}
 	}
 	switch {
+	case path == "/podcasts" || strings.HasPrefix(path, "/podcasts/"):
+		return "podcasts"
 	case path == "/shelves":
 		return "shelves"
 	case strings.HasPrefix(path, "/shelves/"):

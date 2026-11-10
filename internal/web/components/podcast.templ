@@ -1,0 +1,172 @@
+package components
+
+// ShowCardView is a followed show in the grid: the picture (the show's own art through the local art
+// route, or a blank cover with the title), the title, the author, and the count of new episodes.
+type ShowCardView struct {
+	// Card carries the picture, the title and the link; it reuses the book cover so a show without
+	// art gets the same blank cover with its title in it.
+	Card CardView
+	// Author is the line under the title.
+	Author string
+	// New is the count of new episodes ("3", "99+"), empty when there are none; NewLabel is its words
+	// for a screen reader ("3 new episodes").
+	New, NewLabel string
+}
+
+// ShowCard is one show in the grid. One link, to the show page.
+templ ShowCard(v ShowCardView) {
+	<a class="ts-card ts-showcard" href={ templ.SafeURL(v.Card.Href) }>
+		<span class="ts-card__cover">
+			@Cover(v.Card, "fill")
+			if v.New != "" {
+				<span class="ts-showcard__new" aria-hidden="true">{ v.New }</span>
+			}
+		</span>
+		<span class="ts-card__title ts-clamp-2">{ v.Card.Title }</span>
+		if v.Author != "" {
+			<span class="ts-card__author ts-truncate">{ v.Author }</span>
+		}
+		if v.NewLabel != "" {
+			<span class="ts-sr">{ v.NewLabel }</span>
+		}
+	</a>
+}
+
+// EpisodeRowView is one episode in a list. Every word is already plain text; the handler writes them.
+type EpisodeRowView struct {
+	ID, Title, Href string
+	// Show is the show's name, drawn in lists that mix shows (New, Favourites, History); empty on a show page.
+	Show string
+	// Meta is the second line: "2 Jan 2024 · 48 m · 12 m left".
+	Meta string
+	// Art is the show's picture, drawn small before the title in mixed lists.
+	Art CardView
+	// IsNew marks an episode that came after the person last looked; NewWord is the visible word.
+	IsNew   bool
+	NewWord string
+	// PlayHref is where the play button goes without JavaScript (the audio itself); PlayLabel names it.
+	PlayHref, PlayLabel string
+	// Video draws no play button: Tendshelf does not play video.
+	Video bool
+	// Played is true for a finished episode. PlayedAction is the form's address, PlayedValue the value the
+	// next press sends ("1" or "0"), PlayedLabel the words for the press.
+	Played                                 bool
+	PlayedAction, PlayedValue, PlayedLabel string
+	// Starred is true for a favourite; StarAction, StarValue and StarLabel work like the played ones.
+	Starred                          bool
+	StarAction, StarValue, StarLabel string
+	// Back is the page the forms return to (a /podcasts/ address), CSRF the form token.
+	Back, CSRF string
+}
+
+// EpisodeRow is one episode: play, the title and its facts, mark as played, star. The title is a link to the
+// episode page; the three controls are real forms, so the row works without JavaScript.
+templ EpisodeRow(v EpisodeRowView) {
+	<div class={ "ts-row ts-eprow", templ.KV("is-played", v.Played) }>
+		if !v.Video {
+			<a
+				class="ts-iconbtn ts-iconbtn--tonal ts-eprow__play"
+				href={ templ.SafeURL(v.PlayHref) }
+				hx-boost="false"
+				data-ts-play={ v.ID }
+				aria-label={ v.PlayLabel }
+			>
+				@Icon("play", true)
+			</a>
+		}
+		<a class="ts-row__main" href={ templ.SafeURL(v.Href) }>
+			if v.Art.CoverSrc != "" {
+				@Cover(v.Art, "36")
+			}
+			<span class="ts-row__text">
+				if v.Show != "" {
+					<span class="ts-row__meta ts-truncate">{ v.Show }</span>
+				}
+				<span class="ts-row__title ts-eprow__title ts-clamp-2">
+					if v.IsNew {
+						<span class="ts-eprow__new">{ v.NewWord }</span>
+					}
+					{ v.Title }
+				</span>
+				<span class="ts-row__meta ts-truncate">{ v.Meta }</span>
+			</span>
+		</a>
+		@episodeFlag(v.PlayedAction, "played", v.PlayedValue, v.PlayedLabel, "check", v.Played, false, v.Back, v.CSRF)
+		@episodeFlag(v.StarAction, "on", v.StarValue, v.StarLabel, "star", v.Starred, true, v.Back, v.CSRF)
+	</div>
+}
+
+// episodeFlag is a one-button form that sets a 0/1 field: the played mark and the star. A star is a toggle
+// with a fixed name, so it says its state with aria-pressed; the played mark names what pressing it does.
+templ episodeFlag(action, field, value, label, icon string, on, toggle bool, back, csrf string) {
+	<form class="ts-eprow__flag" method="post" action={ templ.SafeURL(action) }>
+		<input type="hidden" name="_csrf" value={ csrf }/>
+		<input type="hidden" name={ field } value={ value }/>
+		if back != "" {
+			<input type="hidden" name="back" value={ back }/>
+		}
+		if toggle {
+			<button type="submit" class="ts-iconbtn" aria-label={ label } aria-pressed={ boolWord(on) }>
+				@Icon(icon, on)
+			</button>
+		} else {
+			<button type="submit" class={ "ts-iconbtn", templ.KV("is-on", on) } aria-label={ label }>
+				@Icon(icon, false)
+			</button>
+		}
+	</form>
+}
+
+func boolWord(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
+// LinkChoice is one link of a choice strip: a filter chip or a sort option.
+type LinkChoice struct {
+	Label, Href string
+	On          bool
+}
+
+// EpisodeFiltersView is the strip above a show's episodes: the filter chips, the sort control and the
+// search field. Everything is a plain link or a GET form, so it works without JavaScript.
+type EpisodeFiltersView struct {
+	Filters, Sorts []LinkChoice
+	// FilterLabel and SortLabel name the two groups for a screen reader.
+	FilterLabel, SortLabel string
+	// Action is the show page; Q the current search text; Sort and Filter ride along as hidden fields.
+	Action, Q, Sort, Filter   string
+	SearchLabel, SearchButton string
+}
+
+// EpisodeFilters is the filter chips, the sort control and the search field of a show page.
+templ EpisodeFilters(v EpisodeFiltersView) {
+	<div class="ts-epfilters">
+		<nav class="ts-chip-set" aria-label={ v.FilterLabel }>
+			for _, c := range v.Filters {
+				<a class="ts-chip" href={ templ.SafeURL(c.Href) } if c.On {
+	aria-current="true"
+}>{ c.Label }</a>
+			}
+		</nav>
+		<nav class="ts-seg ts-epfilters__sort" aria-label={ v.SortLabel }>
+			for _, c := range v.Sorts {
+				<a class="ts-seg__item" href={ templ.SafeURL(c.Href) } if c.On {
+	aria-current="true"
+}>{ c.Label }</a>
+			}
+		</nav>
+		<form class="ts-epfilters__search" method="get" action={ templ.SafeURL(v.Action) } role="search">
+			if v.Sort != "" {
+				<input type="hidden" name="sort" value={ v.Sort }/>
+			}
+			if v.Filter != "" {
+				<input type="hidden" name="filter" value={ v.Filter }/>
+			}
+			<input class="ts-input" type="search" name="q" value={ v.Q } maxlength="200" aria-label={ v.SearchLabel } placeholder={ v.SearchLabel }/>
+			<button type="submit" class="ts-btn ts-btn--secondary">{ v.SearchButton }</button>
+		</form>
+	</div>
+}

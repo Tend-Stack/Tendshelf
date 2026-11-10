@@ -1,0 +1,142 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// PodSettingsView is the "Settings for this show" form.
+type PodSettingsView struct {
+	Action, CSRF, Title, SpeedLabel, SpeedDefault string
+	Speeds                                        []Option
+	Speed                                         string
+	SkipIntroBefore, SkipIntroAfter               string
+	SkipOutroBefore, SkipOutroAfter               string
+	SkipIntro, SkipOutro                          int
+	Save                                          string
+}
+
+// PodcastShowView is a show: its art and facts, then its episodes.
+type PodcastShowView struct {
+	CSRF, ID, Title, Author, BackHref, BackLabel string
+	Art                                          components.CardView
+	// Following is the quiet mark beside the title; Unfollow and Refresh are the two forms.
+	Following, UnfollowLabel, RefreshLabel string
+	UnfollowAction, RefreshAction          string
+	SiteHref, SiteLabel                    string
+	// Notes is the show's description, already cleaned to the few tags the server allows.
+	Notes, NotesTitle string
+	// Fetching is true while the show has never been fetched; FetchingLine is its words.
+	Fetching     bool
+	FetchingLine string
+	// Failure is why the last fetch failed, in plain words; empty when it did not.
+	Failure  string
+	Settings PodSettingsView
+	Filters  components.EpisodeFiltersView
+	Episodes []components.EpisodeRowView
+	// Empty is the line shown when there is nothing to list.
+	Empty    string
+	MoreHref string
+	MoreText string
+	ListLabel string
+}
+
+// notesBlock draws cleaned show notes. The text was cleaned to a few tags (paragraphs, lists, bold,
+// italic, quotes and http/https/mailto links) when the feed was read, and again before this page is drawn.
+templ notesBlock(html string) {
+	<div class="ts-podnotes ts-book__desc">
+		@templ.Raw(html)
+	</div>
+}
+
+// PodcastShow is the page of a show the person follows.
+templ PodcastShow(v PodcastShowView) {
+	<article class="ts-podcasts ts-podshow">
+		<a class="ts-btn ts-btn--quiet ts-book__back" href={ templ.SafeURL(v.BackHref) }>
+			@backIcon()
+			{ v.BackLabel }
+		</a>
+		<header class="ts-podshow__head">
+			@components.Cover(v.Art, "152")
+			<div class="ts-podshow__info">
+				<h1 class="title-1 ts-podshow__title">{ v.Title }</h1>
+				if v.Author != "" {
+					<p class="body ts-podshow__author">{ v.Author }</p>
+				}
+				<div class="ts-podshow__actions">
+					<span class="ts-chip ts-chip--static">
+						@components.Icon("check", false)
+						{ v.Following }
+					</span>
+					<form method="post" action={ templ.SafeURL(v.RefreshAction) }>
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<button type="submit" class="ts-btn ts-btn--secondary">{ v.RefreshLabel }</button>
+					</form>
+					<form method="post" action={ templ.SafeURL(v.UnfollowAction) }>
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<button type="submit" class="ts-btn ts-btn--quiet">{ v.UnfollowLabel }</button>
+					</form>
+				</div>
+				if v.SiteHref != "" {
+					<p class="caption ts-podshow__site"><a href={ templ.SafeURL(v.SiteHref) } rel="nofollow noopener noreferrer" class="ts-truncate">{ v.SiteLabel }</a></p>
+				}
+			</div>
+		</header>
+		if v.Fetching {
+			<p class="ts-banner ts-podcasts__banner" role="status">{ v.FetchingLine }</p>
+		}
+		if v.Failure != "" {
+			<p class="ts-banner ts-podcasts__banner" role="alert">
+				@components.Icon("alert", false)
+				{ v.Failure }
+			</p>
+		}
+		if v.Notes != "" {
+			<section aria-labelledby="pod-notes-h">
+				<h2 id="pod-notes-h" class="section">{ v.NotesTitle }</h2>
+				@notesBlock(v.Notes)
+			</section>
+		}
+		<details class="ts-group ts-group--pad ts-podshow__settings">
+			<summary class="ts-podsearch__summary">
+				<span>{ v.Settings.Title }</span>
+				@components.Icon("chevron-down", false)
+			</summary>
+			<form class="ts-podshow__settingsform" method="post" action={ templ.SafeURL(v.Settings.Action) }>
+				<input type="hidden" name="_csrf" value={ v.Settings.CSRF }/>
+				<div class="ts-field">
+					<label class="ts-field__label" for="pod-speed">{ v.Settings.SpeedLabel }</label>
+					<select id="pod-speed" class="ts-select" name="speed">
+						<option value="" selected?={ v.Settings.Speed == "" }>{ v.Settings.SpeedDefault }</option>
+						for _, o := range v.Settings.Speeds {
+							<option value={ o.Value } selected?={ o.Value == v.Settings.Speed }>{ o.Label }</option>
+						}
+					</select>
+				</div>
+				<div class="ts-podshow__skip">
+					<label for="pod-intro">{ v.Settings.SkipIntroBefore }</label>
+					<input id="pod-intro" class="ts-input" type="number" name="skip_intro_s" min="0" max="600" step="1" inputmode="numeric" value={ itoa(v.Settings.SkipIntro) } aria-label={ v.Settings.SkipIntroBefore + " " + v.Settings.SkipIntroAfter }/>
+					<span aria-hidden="true">{ v.Settings.SkipIntroAfter }</span>
+				</div>
+				<div class="ts-podshow__skip">
+					<label for="pod-outro">{ v.Settings.SkipOutroBefore }</label>
+					<input id="pod-outro" class="ts-input" type="number" name="skip_outro_s" min="0" max="600" step="1" inputmode="numeric" value={ itoa(v.Settings.SkipOutro) } aria-label={ v.Settings.SkipOutroBefore + " " + v.Settings.SkipOutroAfter }/>
+					<span aria-hidden="true">{ v.Settings.SkipOutroAfter }</span>
+				</div>
+				<button type="submit" class="ts-btn ts-btn--primary">{ v.Settings.Save }</button>
+			</form>
+		</details>
+		<section aria-label={ v.ListLabel }>
+			@components.EpisodeFilters(v.Filters)
+			if len(v.Episodes) == 0 {
+				<p class="body ts-podshow__none" role="status">{ v.Empty }</p>
+			} else {
+				<div class="ts-lib-rows ts-podcasts__rows">
+					for _, e := range v.Episodes {
+						@components.EpisodeRow(e)
+					}
+				</div>
+			}
+			if v.MoreHref != "" {
+				<p class="ts-podshow__more"><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.MoreHref) }>{ v.MoreText }</a></p>
+			}
+		</section>
+	</article>
+}

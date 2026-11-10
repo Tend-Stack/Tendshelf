@@ -153,7 +153,7 @@ templ profileMenus(v ProfileView) {
 						@profileMenuLink(it.Href, it.Label, "")
 					}
 				</div>
-				if items := prefsServerItems(PrefsNav{Users: v.UsersRow != "", Libraries: v.Libraries != "", Email: v.Email, Backups: v.Backups != ""}); len(items) > 0 {
+				if items := prefsServerItems(PrefsNav{Users: v.UsersRow != "", Libraries: v.Libraries != "", Email: v.Email, Podcasts: v.Email, Backups: v.Backups != ""}); len(items) > 0 {
 					<div class="ts-chipmenu__group" role="group" aria-labelledby="pf-menu-server">
 						<p class="ts-chipmenu__head" id="pf-menu-server">Your server</p>
 						for _, it := range items {
