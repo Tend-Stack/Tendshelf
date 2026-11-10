@@ -298,6 +298,15 @@ func (s *Store) Follows(ctx context.Context, userID, showID string) bool {
 	return s.st.Reader().QueryRowContext(ctx, `SELECT 1 FROM podcast_subscriptions WHERE user_id = ? AND show_id = ?`, userID, showID).Scan(&one) == nil
 }
 
+// Knows reports whether the person follows the show or keeps a place, star or history for one of its
+// episodes. It decides who may see a show's picture.
+func (s *Store) Knows(ctx context.Context, userID, showID string) bool {
+	var one int
+	return s.st.Reader().QueryRowContext(ctx, `SELECT 1 WHERE EXISTS (SELECT 1 FROM podcast_subscriptions WHERE user_id = ?1 AND show_id = ?2)
+		OR EXISTS (SELECT 1 FROM podcast_episode_state t JOIN podcast_episodes e ON e.id = t.episode_id WHERE t.user_id = ?1 AND e.show_id = ?2)`,
+		userID, showID).Scan(&one) == nil
+}
+
 // MarkSeen clears the person's new-episode badge for a show.
 func (s *Store) MarkSeen(ctx context.Context, userID, showID string) error {
 	r, err := s.st.Writer().ExecContext(ctx, `UPDATE podcast_subscriptions SET seen_at = ? WHERE user_id = ? AND show_id = ?`, s.nowMs(), userID, showID)

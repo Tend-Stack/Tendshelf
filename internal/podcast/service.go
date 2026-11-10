@@ -133,6 +133,18 @@ func (s *Service) RefreshNow(ctx context.Context, userID, showID string) (string
 	return s.QueueRefresh(ctx, showID, userID)
 }
 
+// QueueImport queues the import of a list of feed addresses (an OPML file) for one person and
+// records it in the audit log. The job follows each address and queues a refresh for new shows.
+func (s *Service) QueueImport(ctx context.Context, userID string, urls []string) (string, error) {
+	id, err := s.Runner.Enqueue(ctx, KindImport, importPayload{UserID: userID, URLs: urls}, jobs.EnqueueOptions{CreatedBy: userID})
+	if err != nil {
+		return "", err
+	}
+	_ = db.Audit(ctx, s.dbs.Writer(), db.AuditEntry{At: s.nowMs(), UserID: userID, Action: "podcast.import", Target: "job:" + id,
+		Detail: map[string]any{"shows": len(urls)}})
+	return id, nil
+}
+
 // RefreshStale queues a refresh for each of the person's shows last fetched over an hour ago (opening
 // Podcasts). It does nothing while podcasts are off.
 func (s *Service) RefreshStale(ctx context.Context, userID string) int {

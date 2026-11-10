@@ -36,6 +36,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
 	"github.com/Tend-Stack/tendshelf/internal/metadata"
+	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/upload"
@@ -100,6 +101,8 @@ type Options struct {
 	// Ebooks holds the ebook files, editions and uploads of the Text tab (M5 R1); nil means the Text
 	// tab and its routes answer 404.
 	Ebooks *ebook.Service
+	// Podcasts follows shows and plays episodes (decision 0038); nil means every podcast route answers 404.
+	Podcasts *podcast.Service
 }
 
 type server struct {
@@ -132,6 +135,8 @@ type server struct {
 	uploads    *upload.Service
 	watcher    *watch.Service
 	ebooks     *ebook.Service
+	podcasts   *podcast.Service
+	podLim     podcastLimits
 	backups    *backups.Service
 	progress   *progress.Service
 	dicts      *dict.Set // dictionaries the owner added under <data>/dictionaries (G1)
@@ -260,6 +265,8 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		uploads:    opts.Uploads,
 		watcher:    opts.Watcher,
 		ebooks:     opts.Ebooks,
+		podcasts:   opts.Podcasts,
+		podLim:     podcastLimits{search: auth.NewLimiter(20, time.Minute, 1024, opts.Now), follow: auth.NewLimiter(30, time.Hour, 1024, opts.Now)},
 		backups:    bk,
 		progress:   progress.New(opts.Store, opts.Now),
 		mail:       mailer,
@@ -326,6 +333,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerAppKeys(mux)
 	s.registerFeedPages(mux)
 	s.registerAppConnect(mux)
+	s.registerPodcasts(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})
