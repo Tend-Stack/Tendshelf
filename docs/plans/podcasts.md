@@ -305,6 +305,14 @@ The app never calls OndaCast or a feed host: it reaches only `/api/v1/podcasts/*
   the existing bridge where the WebView allows. Manual checks: DHU browsing, widget after reboot.
 - **R3 radio on Android** after R2: live item (no seek bar, Live badge, ICY title in the notification).
 
+**R3 Android radio (built 2026-11-10).** Reused: the A1 pattern (id prefix rule in `android/shared`, `BookEngine` start by id, `BookMedia`,
+`BookPlayer` metadata, `LibraryTree` row, `WidgetState`), the bridge's `start <id> -` (the `rs_` id already passes `validId`, so
+`native-audio.js` needed no change) and the existing sleep timer. Added: `Radio.kt` (id rule, station document, live retry rules),
+`Api` radio calls, a live mode in `BookPlayer`/`BookEngine` (relay as an endless item, pause drops the stream, play rejoins live, now
+playing polled from `/api/v1/radio/now/{id}` every 15 s because the relay strips ICY), car nodes, widget `live`, `AppIcon`. No
+progress, no queue, no resume question for a station. Details in `docs/android.md` (Radio); checks RA-1 to RA-9 in
+`docs/manual-checks.md` (not run). Art uses the list's `artUrl` or `/api/v1/radio/art/{id}` when the server has it.
+
 ## Radio (after P5)
 - **R1 (Go)**: `internal/radio` store over the 0040 tables; `POST /radio/stations` (`slug` via `podnet.Station`, or `stream_url`
   checked by one 10 s `OpenLive` probe reading the content type: `audio/mpeg|aac|aacp|ogg|opus|flac`, HLS `.m3u8` refused "Tendshelf

@@ -162,6 +162,40 @@ The widget (`WidgetState.show`, `WidgetInput.show`) shows the episode's title, t
 back and forward and the resume after a restart use the same path as a book (`WidgetActions.resumeLast`), and a tap opens the
 episode's page (`Origin.episodeUrl`).
 
+## Radio (R3, decision 0038)
+
+A station id (`rs_...`, `isStationId` in `android/shared/.../Radio.kt`) starts like a book or an episode: the web page's play button
+sends `start rs_... -` through the bridge (`validId` takes the prefix; `native-audio.js` passes ids through unchanged) and
+`BookEngine.startStation` reads the station from `GET /api/v1/radio/stations` (then `/recent`, so a station played from history
+works), its picture, and opens the server's relay `GET /api/v1/radio/live/{id}` (`ApiPaths.liveUrl`, with the device token, through
+`ServerGate`). The app never contacts a station or OndaCast.
+
+- **Live item.** `BookMedia.station` is an endless one-file item with no load retry; `BookPlayer` (loaded with `loadStation`) hides
+  seek, skip, chapters and speed (`getAvailableCommands`), reports no duration or position, and shows the station name as the title
+  with the song on air as the subtitle and artist (the word "Live" until one is known), media type radio station. The audio
+  attributes switch to music for a station and back to speech for a book.
+- **Now playing.** The relay strips in-stream titles, so `GET /api/v1/radio/now/{id}` is the source: first about 2 s after the sound
+  starts, then every 15 s while it plays (`BookEngine.askNow`). ICY is not read.
+- **Picture.** The list's `artUrl` (a path under `/api/v1/radio/`, `ApiPaths.radioUrl`), else `/api/v1/radio/art/{id}`; with neither,
+  the app icon drawn once (`AppIcon`). Car rows use `content://.../<stationId>` (`CoverProvider`) only when the list names a picture.
+- **Pause and play.** Pause (notification, car, widget, page, sleep timer) lets go of the relay: `BookEngine.liveToggle(false)`
+  puts a silent stand-in in the player (`BookMedia.pausedLive`), which keeps the notification and its Play button. Play opens the
+  relay again at the live edge.
+- **Retry and the busy 503.** `liveRetryDelayMs`: a 503 is tried three times (the relay's `Retry-After`, 2 to 15 s, default 5), a
+  broken or closed stream twice (3 s), a refusal (401, 403, 404, 410) never. The relay ending a connection (12 hours, silence) is
+  such a break. After the last try the failure word is `busy` (503), `signedOut`, `book` or `stream`; `busy` shows a toast, "You
+  already have a station playing, or the server is busy. Try again in a moment.", and tells a car with
+  `SessionError.ERROR_SESSION_CONCURRENT_STREAM_LIMIT`.
+- **No place, no queue.** `ProgressWriter.record` returns for a station id; the position tick, the place question, rewind on
+  resume, the outro check and the queue hand-off skip it, and a station ending is a reconnect, never "ask the queue". The book or
+  episode that was playing is saved under its own id when a station replaces it. `SleepTimer`: minutes work and pause the stream;
+  "End of chapter/episode" does nothing for a station (the page hides it) and a running chapter timer ends when a station starts.
+- **Android Auto and the media button.** The Shelves tab gets a **Radio** row after Podcasts, only when `GET /api/v1/radio/stations`
+  answers (radio on); it holds Your stations and Recently played (`Node.Radio`, `radio-stations`, `radio-recent`, `station:<id>`).
+  Stations are saved as `LAST_BOOK`, so a media button with nothing loaded resumes the last station.
+- **Widget.** `WidgetInput.live`: the station name with "Live" beneath it, no skip buttons; a tap opens `/radio`
+  (`Origin.radioUrl`).
+
 ## Read aloud
 
 The reader speaks the book through the phone's own text-to-speech engine (`android.speech.tts.TextToSpeech`, platform API, no new dependency;
