@@ -373,3 +373,11 @@ Needs a real provider reachable over https from the browser (Authelia 4.39, Auth
 | PA2-6 | A new episode arrives with the app closed (publish one, `adb shell cmd jobscheduler run -f app.tendshelf.android <id>` for the job `tendshelf-episodes`, unmetered network): it downloads and a notification names it; turning every show off cancels the job (`adb shell dumpsys jobscheduler` lists none). | Not run. |
 | PA2-7 | Remove an automatic episode by hand: the next check does not fetch it again. Sign out: downloads, choices and the job are gone. | Not run. |
 | PA2-8 | Play next on an episode row in the car (long-press): Up next on the web lists it first; finishing the playing item starts it. | Not run. |
+
+## Radio on the web (decision 0038, R2)
+
+| ID | Check | Expected | Result |
+| --- | --- | --- | --- |
+| RW-1 | With a real station (search "jazz" under Radio > Find a station, Add, then play): the bar shows Live and the title now playing, which changes with the songs within about 15 seconds. | Live badge, no scrubber, skip, speed or chapters; the lock screen or media key panel shows the title and the station. | Not run. |
+| RW-2 | Pause for a minute, then Play. | The sound is the station's live edge, not where it stopped. | Not run. |
+| RW-3 | Paste a stream address of a station that is down, and an address of a normal web page. | Plain words, nothing added. | Not run. |
