@@ -147,7 +147,7 @@ func (f *podFix) serve(w http.ResponseWriter, r *http.Request) {
 		w.Write(make([]byte, 6<<20))
 	case r.URL.Path == "/art.png":
 		var b bytes.Buffer
-		png.Encode(&b, image.NewRGBA(image.Rect(0, 0, 8, 8)))
+		png.Encode(&b, solidImage(96))
 		w.Write(b.Bytes())
 	default:
 		http.NotFound(w, r)

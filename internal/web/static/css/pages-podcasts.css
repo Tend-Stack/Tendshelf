@@ -5,8 +5,9 @@
 .ts-podcasts { display: flex; flex-direction: column; gap: var(--space-16); min-width: 0; }
 .ts-podcasts__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-16); }
 .ts-podcasts__title { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.ts-podcasts__tabs { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
-.ts-podcasts__tabs .ts-tabs__item { flex: none; }
+/* One row of tabs: utilities.css lets .ts-tabs wrap, which dropped Radio onto a second row at 390 px; the row scrolls instead and the tabs are a little tighter. */
+.ts-podcasts .ts-podcasts__tabs { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+.ts-podcasts__tabs .ts-tabs__item { flex: none; padding-inline: var(--space-8); }
 .ts-podcasts__banner { margin: 0; }
 .ts-podcasts__grid { gap: var(--space-20) var(--space-16); }
 
@@ -108,8 +109,11 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 }
 /* Beside a phone-sized picture the header's buttons share one row: "Stop following" already says you follow the show,
    so the quiet Following mark steps aside and a long label is cut rather than wrapping. */
-@media (width < 30rem) {
+/* At tablet width the header's text column holds three actions, not four: Stop following fell onto a row of its own at 768 px. */
+@media (width < 60rem) {
   .ts-podshow__actions > .ts-chip--static { display: none; }
+}
+@media (width < 30rem) {
   /* The one primary button takes its own line; Refresh and Stop following share the next, each cut with an ellipsis. */
   .ts-podshow__actions > .ts-btn--primary { flex: 1 1 100%; justify-content: center; }
   .ts-podshow__actions > form { flex: 1 1 0; }

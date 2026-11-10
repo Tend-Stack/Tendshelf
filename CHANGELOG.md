@@ -14,6 +14,8 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 - Podcast and station search results show their pictures. The server fetches them, so your browser never talks to the publishers.
 - The show page follows the app's width and gutters, with a header that counts the episodes, shows the site name, clamps a long description under "More", and has one Play latest or Resume button.
 - Radio is its own designed page: heading, a short intro, a search field, and stations as cards with a logo, Play and a star to keep.
+- On a live station the bar's round button now changes to Play when you stop the stream and back to Stop when you play it again; the lock screen follows too, and a station's logo shows in the bar even if it was still being fetched when you pressed Play.
+- The Radio tab no longer drops onto a second row on a phone, and the show header keeps its buttons on one row on a tablet.
 - The Now playing panel on a wide screen now fills out for podcast episodes: details, chapters, show notes and the usual actions.
 
 ### Fixed

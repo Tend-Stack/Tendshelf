@@ -1,6 +1,8 @@
 package web
 
 import (
+	"image"
+	"image/color"
 	"strings"
 	"testing"
 )
@@ -22,4 +24,15 @@ func TestPodPages2LiveBarLogoBeforeFetch(t *testing.T) {
 	if frag := w.get("/hx/player/radio/"+plain, w.ben).Body.String(); !strings.Contains(frag, `data-cover-url=""`) {
 		t.Errorf("station without a logo: %q", frag)
 	}
+}
+
+// solidImage is a picture with visible colour (a gradient), so a capture shows where a tile is filled.
+func solidImage(size int) *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, size, size))
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			img.Set(x, y, color.RGBA{uint8(40 + x), uint8(90 + y), 160, 255})
+		}
+	}
+	return img
 }
