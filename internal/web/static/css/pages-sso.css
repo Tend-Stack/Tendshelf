@@ -13,3 +13,5 @@
 .ts-sso__link { align-self: flex-start; max-width: 100%; min-width: 0; }
 .ts-sso__off { padding: var(--space-8) 0; }
 .ts-sso__off .ts-btn { min-height: 2.75rem; }
+.ts-sso .ts-me__title { margin: 0 0 var(--space-16); overflow-wrap: anywhere; }
+.ts-sso .ts-banner, .ts-sso .ts-form__error { margin: 0 0 var(--space-16); }

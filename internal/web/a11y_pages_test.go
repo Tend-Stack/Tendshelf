@@ -47,6 +47,11 @@ type a11yState struct {
 
 // a11ySkip lists the registered GETs that are not full pages: a redirect, a file or JSON.
 var a11ySkip = map[string]string{
+	"/login/oidc":                       "a redirect to the sign-in provider",
+	"/login/oidc/callback":              "a redirect after the provider; its failures render /login, audited as login",
+	"/login/oidc/origins":               "JSON (the origins a sign-in visits), not a page",
+	"/me/sso/link":                      "a redirect to the sign-in provider",
+	"/me/sso/confirm":                   "the Account page (me-sso) with the confirm card; captured by TestVisualOIDC",
 	"/books/{id}/chapters/reset":        "the reset confirmation exists only for a book whose chapters were edited; captured by TestChapterEditVisual",
 	"/uploads/{id}":                     "JSON (the upload status the uploader polls), not a page",
 	"/series/{id}/download-list":        "JSON (the books a Download all would save), not a page; the control and its dialog are captured by TestDownloadAllBrowserConfirmVisual",
@@ -162,6 +167,8 @@ func a11yPages() []a11yPage {
 		row("admin-user-disable", "/admin/users/{id}/disable", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID + "/disable" }, owner, "main", true),
 		row("admin-user-stop", "/admin/users/{id}/stop", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID + "/stop" }, owner, "main", true),
 		row("admin-email", "/admin/email", a11yStatic("/admin/email"), owner, "main", true),
+		row("admin-sso", "/admin/sso", a11yStatic("/admin/sso"), owner, "main", true),
+		row("me-sso", "/me/sso", a11yStatic("/me/sso"), both, "main", true),
 		row("admin-backups", "/admin/backups", a11yStatic("/admin/backups"), owner, "main", true),
 		row("admin-duplicates", "/admin/duplicates", a11yStatic("/admin/duplicates"), owner, "main", true),
 		row("admin-health", "/admin/health", a11yStatic("/admin/health"), owner, "main", true),

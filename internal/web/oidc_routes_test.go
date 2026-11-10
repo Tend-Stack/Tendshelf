@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -441,6 +443,24 @@ func TestOIDCPublicPathsExact(t *testing.T) {
 		if got := isOIDCPublicPath(p); got != want {
 			t.Errorf("isOIDCPublicPath(%q) = %v", p, got)
 		}
+	}
+}
+
+func TestServiceWorkerPassesOIDCCallback(t *testing.T) {
+	b, err := os.ReadFile("static/js/sw.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// "/login" is a prefix in PASS, so /login/oidc/callback goes to the network and is never cached.
+	if !regexp.MustCompile(`const PASS = \[[^\]]*"/login"`).Match(b) {
+		t.Error(`sw.js PASS does not list "/login"`)
+	}
+}
+
+func TestOIDCCallbackLogLineHasNoQuery(t *testing.T) {
+	r := httptest.NewRequest(http.MethodGet, "/login/oidc/callback?code=SECRETCODE&state=SECRETSTATE", nil)
+	if got := logPath(r); strings.Contains(got, "SECRET") || strings.Contains(got, "?") {
+		t.Errorf("logPath = %q", got)
 	}
 }
 
