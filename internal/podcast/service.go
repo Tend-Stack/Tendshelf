@@ -43,6 +43,9 @@ type Service struct {
 	Log     *slog.Logger
 	// Thumb makes a thumbnail of a stored picture (media.Tools.Thumbnail); nil serves the original.
 	Thumb func(ctx context.Context, src, dst string, box int) error
+	// ProbeChapters reads the chapters inside a kept episode file (ffprobe, through media.Tools); nil
+	// turns reading chapters from files off.
+	ProbeChapters func(ctx context.Context, absPath string) ([]Chapter, error)
 
 	// FollowAllow, when set, is asked before each follow an import makes; false stops the import (the
 	// web server wires the follow rate limit here).

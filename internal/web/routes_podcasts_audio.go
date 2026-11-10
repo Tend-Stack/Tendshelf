@@ -259,7 +259,12 @@ func (s *server) getPodcastChapters(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(body) == 0 {
 		if ep.ChaptersURL == "" {
-			s.plainError(w, r, http.StatusNotFound, "Not found.")
+			// No publisher file: look once inside the kept audio (ID3 or MP4 chapters), else nothing.
+			if body = s.podcasts.ReadFileChapters(r.Context(), ep); len(body) == 0 {
+				s.plainError(w, r, http.StatusNotFound, "Not found.")
+				return
+			}
+			s.writeChapters(w, body)
 			return
 		}
 		if s.podcasts.ChapterFetchBlocked(ep.ID) {
@@ -285,6 +290,10 @@ func (s *server) getPodcastChapters(w http.ResponseWriter, r *http.Request) {
 			s.podcasts.Log.Warn("podcasts: could not keep chapters", "err", err)
 		}
 	}
+	s.writeChapters(w, body)
+}
+
+func (s *server) writeChapters(w http.ResponseWriter, body []byte) {
 	h := w.Header()
 	h.Set("Content-Type", "application/json; charset=utf-8")
 	h.Set("Cache-Control", "private, no-store")

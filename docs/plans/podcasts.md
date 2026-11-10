@@ -31,7 +31,7 @@ Nothing replaced. No new Go module. Each package below is one builder dispatch (
 | Per-show speed, skip intro/outro seconds | yes | P2 (data), P4 (web), A1 |
 | Skip -15/+30, speed 0.5-3.5, sleep timer incl. end of episode | existing player | P4, A1 |
 | Smart resume after a long pause | existing L2 rule | P4, A1 |
-| Chapters (Podcasting 2.0 JSON) | yes | P2, P4, A1; ID3 `CHAP` later (P6) |
+| Chapters (Podcasting 2.0 JSON) | yes | P2, P4, A1; ID3 `CHAP` from cached files (P6) |
 | Up next / queue, continue to next | yes, one queue with books | P5, A1 |
 | New-episode badges | yes | P3 (web), A2 (notification) |
 | Download for offline | yes | P5 (web), A2 |
@@ -280,7 +280,8 @@ Gates as P3 plus the JS budget test.
    newest `keep_latest` unplayed episodes; eviction by `podcasts.cache_bytes`; the admin page shows the use and "Remove saved episodes".
 Gates: migration test, queue tests, sw tests, browser offline test (existing pocket spec extended).
 
-## P6 (later): ID3 chapters from cached files; episode transcripts stay out.
+## P6 (built): ID3 chapters from cached files; episode transcripts stay out.
+When an episode has no `chapters_url` and no stored chapters, the chapters inside its kept file (ID3 `CHAP`, MP4) are read once with the existing ffprobe wrapper, right after the cache download and lazily on the first chapters ask, and stored in `chapters_json` like the JSON ones (two or more, start and title only). A failed or empty look is remembered five minutes.
 
 ---
 ## Android (first-class; `docs/plans/podcasts.md` is the contract, a scout maps each package)

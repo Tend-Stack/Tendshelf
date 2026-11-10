@@ -136,6 +136,15 @@ func (s *Service) PutCache(ctx context.Context, episodeID string, limit int64) e
 		os.Remove(final)
 		return err
 	}
+	// Chapters inside the file, best effort: a failure here never fails the download.
+	if s.ProbeChapters != nil {
+		var ep Episode
+		ep.ID, ep.CachePath = episodeID, filepath.ToSlash(rel)
+		if err := s.dbs.Reader().QueryRowContext(ctx, `SELECT chapters_url, COALESCE(chapters_json,'') FROM podcast_episodes WHERE id = ?`, episodeID).
+			Scan(&ep.ChaptersURL, &ep.ChaptersJSON); err == nil {
+			s.ReadFileChapters(ctx, ep)
+		}
+	}
 	_, err = s.Evict(ctx, limit)
 	return err
 }
