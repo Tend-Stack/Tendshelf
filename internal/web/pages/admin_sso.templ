@@ -1,0 +1,115 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// SSOStyles are the sheets of the sign-in settings page and the Account sign-in page.
+var SSOStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-me.css", "css/pages-sso.css"}
+
+// AdminSSOView is the owner's sign-in settings page. Errors maps a field name to its message. The
+// client secret is never part of the view, only whether one is saved.
+type AdminSSOView struct {
+	CSRF                                  string
+	Name, Issuer, ClientID, ServerAddress string
+	SecretSaved                           bool
+	Enabled, MatchEmail, CreateAccounts   bool
+	NewRole                               string
+	Roles                                 []Option
+	Errors                                map[string]string
+	FormError, Intro, StatusLine          string
+	RedirectHint                          string
+	Saved, TurnedOff                      bool
+	SavedNotice, OffNotice                string
+}
+
+templ ssoFieldError(msg string, id string) {
+	if msg != "" {
+		<span class="ts-field__hint ts-field__error" id={ id } role="alert">{ msg }</span>
+	}
+}
+
+// ssoSwitch is one labelled switch row with its hint.
+templ ssoSwitch(id, name, label, hint string, on bool) {
+	<div class="ts-switch-row ts-me__line">
+		<label class="ts-me__linetext" for={ id }>
+			<span class="ts-switch-row__label">{ label }</span>
+			<span class="ts-switch-row__hint" id={ id + "-hint" }>{ hint }</span>
+		</label>
+		<input type="hidden" name={ name } value="0"/>
+		<input type="checkbox" role="switch" class="ts-switch" id={ id } name={ name } value="1" aria-describedby={ id + "-hint" } checked?={ on }/>
+	</div>
+}
+
+// AdminSSO is the one place the owner sets up sign-in with a provider.
+templ AdminSSO(v AdminSSOView) {
+	<div class="ts-admin ts-sso">
+		<span class="ts-overline">Your server</span>
+		<h1 class="title-1 ts-admin__title">Sign-in</h1>
+		<p class="body">{ v.Intro }</p>
+		if v.Saved {
+			<p class="ts-banner ts-admin__banner" role="status">
+				@components.Icon("check", false)
+				{ v.SavedNotice }
+			</p>
+		}
+		if v.TurnedOff {
+			<p class="ts-banner ts-admin__banner" role="status">{ v.OffNotice }</p>
+		}
+		<p class="caption ts-sso__status" role="status">{ v.StatusLine }</p>
+		<form class="ts-group ts-group--pad ts-sso__form" method="post" action="/admin/sso" aria-label="Sign-in settings" hx-boost="false">
+			<input type="hidden" name="_csrf" value={ v.CSRF }/>
+			@formError(v.FormError)
+			<div class="ts-field">
+				<label class="ts-field__label" for="sso-name">Provider name</label>
+				<input id="sso-name" class="ts-input" type="text" name="name" value={ v.Name } maxlength="80" autocomplete="off" required/>
+				@ssoFieldError(v.Errors["name"], "sso-name-err")
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="sso-issuer">Issuer address</label>
+				<input id="sso-issuer" class="ts-input" type="url" name="issuer" value={ v.Issuer } maxlength="512" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="sso-issuer-hint" required/>
+				<span class="ts-field__hint" id="sso-issuer-hint">The issuer your provider shows, like https://auth.example.com.</span>
+				@ssoFieldError(v.Errors["issuer"], "sso-issuer-err")
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="sso-client">Client ID</label>
+				<input id="sso-client" class="ts-input" type="text" name="client_id" value={ v.ClientID } maxlength="255" autocomplete="off" autocapitalize="none" spellcheck="false" required/>
+				@ssoFieldError(v.Errors["client_id"], "sso-client-err")
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="sso-secret">Client secret</label>
+				<input id="sso-secret" class="ts-input" type="password" name="client_secret" value="" maxlength="512" autocomplete="new-password" aria-describedby="sso-secret-hint"/>
+				<span class="ts-field__hint" id="sso-secret-hint">
+					if v.SecretSaved {
+						{ "A secret is saved. " }
+					}
+					{ "Leave empty to keep the saved secret, or for a public client." }
+				</span>
+				@ssoFieldError(v.Errors["client_secret"], "sso-secret-err")
+			</div>
+			<div class="ts-field">
+				<label class="ts-field__label" for="sso-server">This server's address</label>
+				<input id="sso-server" class="ts-input" type="url" name="server_address" value={ v.ServerAddress } maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="sso-server-hint" required/>
+				<span class="ts-field__hint" id="sso-server-hint">{ v.RedirectHint }</span>
+				@ssoFieldError(v.Errors["server_address"], "sso-server-err")
+			</div>
+			@ssoSwitch("sso-match", "match_email", "Link accounts by email address", "Only when the provider says the email is verified, and only for members and guests. Owners and admins link from their Account.", v.MatchEmail)
+			@ssoSwitch("sso-create", "create_accounts", "Make an account for new people", "Anyone your provider lets in gets an account. They see nothing until you share a library with them.", v.CreateAccounts)
+			<div class="ts-field">
+				<label class="ts-field__label" for="sso-role">New people start as</label>
+				<select id="sso-role" class="ts-select" name="new_role">
+					for _, o := range v.Roles {
+						<option value={ o.Value } selected?={ o.Value == v.NewRole }>{ o.Label }</option>
+					}
+				</select>
+				@ssoFieldError(v.Errors["new_role"], "sso-role-err")
+			</div>
+			@ssoSwitch("sso-on", "enabled", "Turn on sign-in with this provider", "Turning someone off at the provider stops new sign-ins, not the ones already open. Turn them off here too.", v.Enabled)
+			<button type="submit" class="ts-btn ts-btn--primary">Save</button>
+		</form>
+		if v.Enabled {
+			<form class="ts-sso__off" method="post" action="/admin/sso/off" hx-boost="false">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<button type="submit" class="ts-btn ts-btn--quiet">Turn off</button>
+			</form>
+		}
+	</div>
+}

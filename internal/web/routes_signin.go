@@ -208,6 +208,13 @@ func (s *server) signInPersonView(r *http.Request, t users.User, v *pages.AdminU
 	if !has {
 		v.Username = fmt.Sprintf(personUsernameNoPassword, t.Username)
 	}
+	if cfg, on := s.auth.OIDCEnabled(ctx); on {
+		if _, linked, err := s.auth.OIDCIdentity(ctx, t.ID); err != nil {
+			return err
+		} else if linked {
+			v.SSOLine = fmt.Sprintf(ssoPersonLinked, cfg.Name)
+		}
+	}
 	name := personName(t)
 	v.SignInLabel, v.SignInHelp = signInMake, fmt.Sprintf(signInMakeHelp, name)
 	exp, ok, err := s.auth.PendingSignInLink(ctx, t.ID)

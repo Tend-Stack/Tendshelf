@@ -19,7 +19,8 @@ import (
 // sign-in ends in the same sessions row as a password. No code, token, state, nonce or verifier is
 // ever logged or audited.
 const (
-	oidcStartMax    = 30 // starts per address in limitWindow
+	oidcStartMax    = 30  // starts per address in limitWindow
+	oidcOriginsMax  = 120 // origins lookups per address in limitWindow
 	oidcOpenMax     = 500
 	oidcOpenPerAddr = 20 // open sign-in rows one address key may hold
 	oidcRowTTL      = 10 * time.Minute
@@ -572,4 +573,36 @@ func (a *Service) OIDCIdentity(ctx context.Context, userID string) (oidc.Identit
 	}
 	id.Email, id.LastUsedAt = email.String, used.Int64
 	return id, err == nil, err
+}
+
+// OIDCDiscover reads the provider's discovery document for issuer, for the settings page (before it
+// turns sign-in on) and for the origins list. It is cached like every other discovery.
+func (a *Service) OIDCDiscover(ctx context.Context, issuer string) (oidc.Provider, error) {
+	if a.oidc == nil {
+		return oidc.Provider{}, ErrOIDCOff
+	}
+	dctx, cancel := context.WithTimeout(ctx, oidcBudget)
+	defer cancel()
+	return a.oidc.Discover(dctx, issuer)
+}
+
+// OIDCOrigins lists the origins a browser visits while signing in with the provider (the issuer's and
+// the authorization endpoint's), for the Android window. It is empty when sign-in is off or the
+// provider does not answer. Each call costs the address one of its 120 in 15 minutes; past that it
+// is *RateLimitedError.
+func (a *Service) OIDCOrigins(ctx context.Context, ip netip.Addr) ([]string, error) {
+	key := IPKey(ip)
+	if err := limited(a.oidcOrig.Allow(key)); err != nil {
+		return nil, err
+	}
+	a.oidcOrig.Fail(key)
+	cfg, err := a.oidcConfig(ctx)
+	if err != nil {
+		return []string{}, nil
+	}
+	p, err := a.OIDCDiscover(ctx, cfg.Issuer)
+	if err != nil {
+		return []string{}, nil
+	}
+	return oidc.Origins(p), nil
 }

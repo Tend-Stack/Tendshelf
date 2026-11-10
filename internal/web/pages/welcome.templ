@@ -13,6 +13,8 @@ type WelcomeView struct {
 	Username, Keep string
 	// Errors are field messages by field name (username, password) and "form" for the whole form.
 	Errors map[string]string
+	// SSOLabel ("Use Authelia instead of a password") links to /me/sso/link when sign-in with a provider is on.
+	SSOLabel string
 }
 
 // Welcome asks whether to add a name and password, or just carry on on this phone. The two options
@@ -57,6 +59,11 @@ templ Welcome(v WelcomeView) {
 			</div>
 			<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg ts-btn--block">Continue</button>
 		</form>
+		if v.SSOLabel != "" {
+			<a class="ts-btn ts-btn--secondary ts-btn--block ts-sso__btn" href="/me/sso/link" hx-boost="false" title={ v.SSOLabel }>
+				<span class="ts-sso__label">{ v.SSOLabel }</span>
+			</a>
+		}
 		<p class="caption ts-invite__fine">Listening keeps going while you choose.</p>
 	</div>
 }

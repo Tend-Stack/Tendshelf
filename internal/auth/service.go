@@ -48,6 +48,7 @@ type Service struct {
 	devices   *Devices
 	oidc      *oidc.Client
 	oidcStart *Limiter
+	oidcOrig  *Limiter // /login/oidc/origins, which can cost a discovery request
 	ownerSeen atomic.Bool
 }
 
@@ -61,6 +62,7 @@ func NewService(st *db.Store, u *users.Repo, s *Sessions, o ServiceOptions) *Ser
 		ipLim:     NewLimiter(ipMaxFails, limitWindow, limiterKeys, o.Now),
 		userLim:   NewLimiter(userMaxFails, limitWindow, limiterKeys, o.Now),
 		oidcStart: NewLimiter(oidcStartMax, limitWindow, limiterKeys, o.Now),
+		oidcOrig:  NewLimiter(oidcOriginsMax, limitWindow, limiterKeys, o.Now),
 	}
 }
 

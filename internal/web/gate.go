@@ -16,7 +16,7 @@ import (
 // everyone is sent to /setup; otherwise anonymous visitors go to /login with a way back.
 func (s *server) gate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/setup" || r.URL.Path == "/login" || isInvitePath(r.URL.Path) || isPairPath(r.URL.Path) || isSignInPath(r.URL.Path) || isLinkPath(r.URL.Path) {
+		if r.URL.Path == "/setup" || r.URL.Path == "/login" || isOIDCPublicPath(r.URL.Path) || isInvitePath(r.URL.Path) || isPairPath(r.URL.Path) || isSignInPath(r.URL.Path) || isLinkPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}

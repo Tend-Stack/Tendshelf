@@ -45,6 +45,9 @@ func prefsServerItems(n PrefsNav) []prefsItem {
 	if n.Email {
 		out = append(out, prefsItem{"email", "Email", "/admin/email"})
 	}
+	if n.Email {
+		out = append(out, prefsItem{"sso", "Sign-in", "/admin/sso"})
+	}
 	if n.Backups {
 		out = append(out, prefsItem{"backups", "Backups", "/admin/backups"})
 	}

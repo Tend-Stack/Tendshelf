@@ -91,3 +91,10 @@ div.ts-brand { display: flex; align-items: center; gap: var(--space-12); min-hei
 .ts-wall__tile--5 { opacity: 0.7; transform: translateY(1.625rem); }
 .ts-wall .ts-cover { display: block; box-shadow: var(--shadow-cover); }
 .ts-wall + .ts-done__mark { margin-top: 0; }
+
+/* Sign in with a provider (decision 0037): a button above the password form. A long provider name is
+   cut with an ellipsis, never wrapped to a second line. */
+.ts-sso__btn { max-width: 100%; min-width: 0; margin-top: var(--space-24); }
+.ts-sso__label { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-login__or { margin: var(--space-16) 0 0; text-align: center; color: var(--ink-muted); }
+.ts-sso__btn + .ts-login__or + .ts-form { margin-top: var(--space-16); }
