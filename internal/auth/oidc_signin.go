@@ -19,10 +19,11 @@ import (
 // sign-in ends in the same sessions row as a password. No code, token, state, nonce or verifier is
 // ever logged or audited.
 const (
-	oidcStartMax = 30 // starts per address in limitWindow
-	oidcOpenMax  = 500
-	oidcRowTTL   = 10 * time.Minute
-	oidcBudget   = 15 * time.Second // the whole callback, including every call to the provider
+	oidcStartMax    = 30 // starts per address in limitWindow
+	oidcOpenMax     = 500
+	oidcOpenPerAddr = 20 // open sign-in rows one address key may hold
+	oidcRowTTL      = 10 * time.Minute
+	oidcBudget      = 15 * time.Second // the whole callback, including every call to the provider
 )
 
 // OIDCCallback is what the callback request carries. State is the query value, Cookie the ts_oidc
@@ -81,16 +82,19 @@ func (a *Service) OIDCStart(ctx context.Context, purpose, next string, ip netip.
 	if err != nil {
 		return "", "", err
 	}
-	var open int
+	var open, mine int
 	if err := a.st.WriteTx(ctx, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM oidc_logins WHERE expires_at < ?`, a.ms()); err != nil {
+			return err
+		}
+		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM oidc_logins WHERE addr_key = ?`, key).Scan(&mine); err != nil {
 			return err
 		}
 		return tx.QueryRowContext(ctx, `SELECT count(*) FROM oidc_logins`).Scan(&open)
 	}); err != nil {
 		return "", "", err
 	}
-	if open >= oidcOpenMax {
+	if open >= oidcOpenMax || mine >= oidcOpenPerAddr {
 		return "", "", ErrOIDCBusy
 	}
 	dctx, cancel := context.WithTimeout(ctx, oidcBudget)
@@ -107,9 +111,9 @@ func (a *Service) OIDCStart(ctx context.Context, purpose, next string, ip netip.
 		userID, sessionHash = sess.UserID, sess.Hash[:]
 	}
 	err = a.st.WriteTx(ctx, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO oidc_logins (id, state_hash, purpose, issuer, nonce, verifier, next, user_id, session_hash, created_at, expires_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, db.NewID("oil"), hash[:], purpose, cfg.Issuer, nonce, verifier, SafeNext(next),
-			userID, sessionHash, now, now+oidcRowTTL.Milliseconds())
+		_, err := tx.ExecContext(ctx, `INSERT INTO oidc_logins (id, state_hash, purpose, issuer, nonce, verifier, next, user_id, session_hash, created_at, expires_at, addr_key)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, db.NewID("oil"), hash[:], purpose, cfg.Issuer, nonce, verifier, SafeNext(next),
+			userID, sessionHash, now, now+oidcRowTTL.Milliseconds(), key)
 		return err
 	})
 	if err != nil {
@@ -203,12 +207,15 @@ func (a *Service) OIDCFinish(ctx context.Context, q OIDCCallback, ip netip.Addr,
 	hash, hashOK := token.Hash(q.State)
 	var row oidcRow
 	found := false
-	if hashOK {
+	// The cookie must match the state before the row is touched, so a request without the browser's
+	// cookie cannot burn a sign-in that is still under way.
+	cookieOK := q.Cookie != "" && subtle.ConstantTimeCompare([]byte(q.State), []byte(q.Cookie)) == 1
+	if hashOK && cookieOK {
 		if row, found, err = a.consumeLogin(ctx, hash); err != nil {
 			return OIDCResult{}, err
 		}
 	}
-	if !hashOK || !found || q.Cookie == "" || subtle.ConstantTimeCompare([]byte(q.State), []byte(q.Cookie)) != 1 {
+	if !hashOK || !found || !cookieOK {
 		a.oidcFailed(ctx, ip, "state", row.id)
 		return OIDCResult{}, ErrOIDCFailed
 	}
@@ -336,7 +343,7 @@ func (a *Service) oidcResolve(ctx context.Context, tx *sql.Tx, cfg oidc.Config, 
 	case !errors.Is(err, sql.ErrNoRows):
 		return "", "", err
 	}
-	email := strings.ToLower(strings.TrimSpace(c.Email))
+	email := asciiLower(strings.TrimSpace(c.Email))
 	verified := c.EmailVerified && email != ""
 	type holder struct {
 		id, role string
@@ -385,7 +392,9 @@ func (a *Service) oidcResolve(ctx context.Context, tx *sql.Tx, cfg oidc.Config, 
 		name = "Reader"
 	}
 	nu := users.NewUser{DisplayName: name, Role: cfg.NewRole}
-	if verified {
+	// A non-ASCII address is never stored: SQLite folds ASCII only, so a later match could not
+	// tell it from a stored address that differs in the case of a non-ASCII letter.
+	if verified && isASCII(email) {
 		nu.Email = email
 	}
 	u, err := a.users.CreateInvited(ctx, tx, nu, "")
@@ -393,6 +402,27 @@ func (a *Service) oidcResolve(ctx context.Context, tx *sql.Tx, cfg oidc.Config, 
 		return "", "", err
 	}
 	return u.ID, "new", a.oidcLink(ctx, tx, cfg.Issuer, c, u.ID, "new", now)
+}
+
+// asciiLower folds A-Z only, exactly what SQLite's lower() does, so Go and SQL compare the same
+// way (Unicode folding would turn the Kelvin sign into "k" on one side only).
+func asciiLower(s string) string {
+	b := []byte(s)
+	for i, c := range b {
+		if c >= 'A' && c <= 'Z' {
+			b[i] = c + 32
+		}
+	}
+	return string(b)
+}
+
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
 }
 
 // oidcLink writes the identity row.

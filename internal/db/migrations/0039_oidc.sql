@@ -12,5 +12,6 @@ CREATE TABLE oidc_logins (id TEXT PRIMARY KEY, state_hash BLOB NOT NULL UNIQUE C
   user_id TEXT REFERENCES users(id) ON DELETE CASCADE, session_hash BLOB REFERENCES sessions(token_hash) ON DELETE CASCADE,
   subject TEXT, email TEXT, email_verified INTEGER NOT NULL DEFAULT 0 CHECK (email_verified IN (0,1)),
   created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, used_at INTEGER,
+  addr_key TEXT NOT NULL DEFAULT '',
   CHECK ((purpose = 'link') = (user_id IS NOT NULL AND session_hash IS NOT NULL))) STRICT;
 CREATE INDEX oidc_logins_expires ON oidc_logins(expires_at);

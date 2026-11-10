@@ -21,6 +21,7 @@ import (
 const (
 	maxJWTBytes = 16 << 10
 	minRSABits  = 2048
+	maxRSABits  = 8192
 )
 
 // jwk is one usable public key from the provider's key set.
@@ -80,7 +81,7 @@ func parseJWKS(raw []byte) ([]jwk, error) {
 			}
 			ev := new(big.Int).SetBytes(e)
 			nv := new(big.Int).SetBytes(n)
-			if nv.BitLen() < minRSABits || !ev.IsInt64() || ev.Int64() < 3 || ev.Int64()%2 == 0 {
+			if nv.BitLen() < minRSABits || nv.BitLen() > maxRSABits || !ev.IsInt64() || ev.Int64() < 3 || ev.Int64()%2 == 0 {
 				continue
 			}
 			key = &rsa.PublicKey{N: nv, E: int(ev.Int64())}

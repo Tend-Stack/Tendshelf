@@ -150,6 +150,11 @@ func TestIDTokenRefusals(t *testing.T) {
 		{"nbf in the future", func(p *oidctest.Provider) { p.Nbf = 5 * min }, "not_yet"},
 		{"iat 11 min old", func(p *oidctest.Provider) { p.IatAgo = 11 * min }, "issued_at"},
 		{"iat in the future", func(p *oidctest.Provider) { p.IatAgo = -5 * min }, "issued_at"},
+		{"ES256 signature in DER", func(p *oidctest.Provider) { p.Alg = "ES256"; p.Quirk = "der-sig" }, "signature"},
+		{"ES256 signature one byte short", func(p *oidctest.Provider) { p.Alg = "ES256"; p.Quirk = "short-sig" }, "signature"},
+		{"exp missing", func(p *oidctest.Provider) { p.Quirk = "no-exp" }, "expired"},
+		{"iat missing", func(p *oidctest.Provider) { p.Quirk = "no-iat" }, "issued_at"},
+		{"rsa over 8192 bits", func(p *oidctest.Provider) { p.Quirk = "huge-rsa" }, "kid"},
 		{"nonce wrong", func(p *oidctest.Provider) { p.NonceOverride = "another-nonce" }, "nonce"},
 		{"userinfo sub differs", func(p *oidctest.Provider) { p.UserinfoSub = "someone-else" }, "userinfo_sub"},
 	} {

@@ -188,7 +188,7 @@ func TestOIDCStateAndReplay(t *testing.T) {
 		if _, err := o.svc.OIDCFinish(ctx, cb, ip1, "ua", nil); !errors.Is(err, ErrOIDCFailed) {
 			t.Fatalf("err = %v", err)
 		}
-		if o.lastReason(t) != "state" || o.openRows(t) != 0 {
+		if o.lastReason(t) != "state" || o.openRows(t) != 1 {
 			t.Errorf("reason %q, open rows %d", o.lastReason(t), o.openRows(t))
 		}
 	})
@@ -199,8 +199,8 @@ func TestOIDCStateAndReplay(t *testing.T) {
 		if _, err := o.svc.OIDCFinish(ctx, cb, ip1, "ua", nil); !errors.Is(err, ErrOIDCFailed) || o.lastReason(t) != "state" {
 			t.Fatalf("err = %v, reason %q", err, o.lastReason(t))
 		}
-		if o.openRows(t) != 0 {
-			t.Error("the row survived a callback without the cookie")
+		if o.openRows(t) != 1 {
+			t.Error("a callback without the cookie consumed the row")
 		}
 	})
 	t.Run("unknown and malformed state", func(t *testing.T) {
@@ -555,6 +555,7 @@ func TestOIDCLimits(t *testing.T) {
 			if _, _, err := o.svc.OIDCStart(ctx, "signin", "/", ip1, nil); err != nil {
 				t.Fatalf("start %d: %v", i, err)
 			}
+			o.sql(t, `DELETE FROM oidc_logins`) // the per-address cap on open rows is tested apart
 		}
 		var rl *RateLimitedError
 		if _, _, err := o.svc.OIDCStart(ctx, "signin", "/", ip1, nil); !errors.As(err, &rl) {

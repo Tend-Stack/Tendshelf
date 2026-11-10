@@ -86,6 +86,10 @@ type Provider struct {
 	Crit          bool          // add a crit header
 	JWKAlg        string        // alg written on the default key in the key set
 	UserinfoSub   string
+	// Quirk is one deliberate defect: "der-sig" (ES256 signature in ASN.1 DER), "short-sig" (ES256
+	// signature one byte short), "no-exp", "no-iat", "verified-string" (email_verified is the string
+	// "true"), "huge-rsa" (kid "huge": an 8200-bit modulus in the key set, no matching private key).
+	Quirk string
 
 	// How the provider misbehaves.
 	Down              bool          // every endpoint answers 503
@@ -155,7 +159,7 @@ func (p *Provider) snapshot() *Provider {
 	return &Provider{ClientID: p.ClientID, ClientSecret: p.ClientSecret, Sub: p.Sub, Email: p.Email, EmailVerified: p.EmailVerified,
 		Name: p.Name, PreferredName: p.PreferredName, EmailInUserinfo: p.EmailInUserinfo, NoUserinfo: p.NoUserinfo, Alg: p.Alg,
 		Kid: p.Kid, IssClaim: p.IssClaim, Aud: p.Aud, Azp: p.Azp, NonceOverride: p.NonceOverride, ExpIn: p.ExpIn, IatAgo: p.IatAgo,
-		Nbf: p.Nbf, WrongKey: p.WrongKey, WeakKey: p.WeakKey, Crit: p.Crit, JWKAlg: p.JWKAlg, UserinfoSub: p.UserinfoSub,
+		Nbf: p.Nbf, WrongKey: p.WrongKey, WeakKey: p.WeakKey, Crit: p.Crit, JWKAlg: p.JWKAlg, UserinfoSub: p.UserinfoSub, Quirk: p.Quirk,
 		Down: p.Down, Slow: p.Slow, HugeBody: p.HugeBody, RedirectDiscovery: p.RedirectDiscovery, DiscoveryIssuer: p.DiscoveryIssuer,
 		TokenURL: p.TokenURL, JWKSURL: p.JWKSURL, SigningAlgs: p.SigningAlgs, AuthMethods: p.AuthMethods, TokenStatus: p.TokenStatus, Now: p.Now}
 }
@@ -255,6 +259,11 @@ func (p *Provider) jwks(w http.ResponseWriter, _ *http.Request, k *Provider) {
 	}
 	if k.WeakKey {
 		set = append(set, rsaJWK("weak", &keys.weakRSA.PublicKey, ""))
+	}
+	if k.Quirk == "huge-rsa" {
+		n := new(big.Int).Lsh(big.NewInt(1), 8199)
+		n.Add(n, big.NewInt(1))
+		set = append(set, map[string]any{"kty": "RSA", "use": "sig", "kid": "huge", "n": b64(n.Bytes()), "e": "AQAB"})
 	}
 	writeJSON(w, map[string]any{"keys": set})
 }
@@ -417,6 +426,15 @@ func (p *Provider) IDToken(k *Provider, nonce string) string {
 	}
 	if !k.EmailInUserinfo {
 		claims["email"], claims["email_verified"], claims["name"], claims["preferred_username"] = k.Email, k.EmailVerified, k.Name, k.PreferredName
+		if k.Quirk == "verified-string" {
+			claims["email_verified"] = "true"
+		}
+	}
+	switch k.Quirk {
+	case "no-exp":
+		delete(claims, "exp")
+	case "no-iat":
+		delete(claims, "iat")
 	}
 	return sign(k, claims)
 }
@@ -431,6 +449,8 @@ func sign(k *Provider, claims map[string]any) string {
 		switch {
 		case k.WeakKey:
 			kid = "weak"
+		case k.Quirk == "huge-rsa":
+			kid = "huge"
 		case strings.HasPrefix(alg, "ES"):
 			kid = "ec1"
 		case alg == "EdDSA":
@@ -500,6 +520,12 @@ func sign(k *Provider, claims map[string]any) string {
 			panic(err)
 		}
 		sig = append(padded(rs.R, 32), padded(rs.S, 32)...)
+		switch k.Quirk {
+		case "der-sig":
+			sig = der
+		case "short-sig":
+			sig = sig[:63]
+		}
 	case "EdDSA":
 		priv := keys.edKey
 		if k.WrongKey {
