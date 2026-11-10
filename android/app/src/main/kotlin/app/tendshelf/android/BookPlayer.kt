@@ -34,6 +34,9 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     private var art: ByteArray? = null
     private var shownChapter = -1
 
+    /** The episode's own title while an episode is loaded; null for a book. Its chapter shows beside it, never in its place. */
+    private var episodeTitle: String? = null
+
     /** Set when the wrapped player failed; the next play prepares again from the same place. */
     var failed = false
 
@@ -89,7 +92,22 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
         super.setPlaybackParameters(playbackParameters)
     }
 
-    fun load(title: String, author: String, chapters: List<Chapter>, settings: PlayerSettings, art: ByteArray?) {
+    /**
+     * An episode was loaded (A1): the show is the album and the artist, the episode the title, so the lock screen never shows
+     * a chapter name as the title or an old item's picture. [chapters] may be empty now and arrive later through [setChapters].
+     */
+    fun loadEpisode(episode: String, show: String, chapters: List<Chapter>, settings: PlayerSettings, art: ByteArray?) {
+        load(show, "", chapters, settings, art, episode)
+    }
+
+    /** Chapters that arrived after the sound started (the server fetches them from the publisher on first use). */
+    fun setChapters(list: List<Chapter>) {
+        chapters = list
+        notifyMetadata()
+    }
+
+    fun load(title: String, author: String, chapters: List<Chapter>, settings: PlayerSettings, art: ByteArray?, episode: String? = null) {
+        this.episodeTitle = episode
         this.title = title
         this.author = author
         this.chapters = chapters
@@ -100,6 +118,7 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     }
 
     fun clear() {
+        episodeTitle = null
         chapters = emptyList()
         title = ""
         author = ""
@@ -137,11 +156,13 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
 
     override fun getMediaMetadata(): MediaMetadata {
         val chapter = Position.chapterAt(chapters, exo.currentPosition)
+        val episode = episodeTitle
         val b = MediaMetadata.Builder()
-            .setTitle(chapter?.title ?: title)
+            .setTitle(episode ?: chapter?.title ?: title)
             .setAlbumTitle(title)
-            .setArtist(author)
+            .setArtist(if (episode != null) title else author)
             .setIsPlayable(true)
+        if (episode != null && chapter != null) b.setSubtitle(chapter.title)
         art?.let { b.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
         return b.build()
     }

@@ -10,6 +10,12 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import app.tendshelf.shared.BookManifest
+import app.tendshelf.shared.EpisodeDoc
+import app.tendshelf.shared.ShowSettings
+import app.tendshelf.shared.SkipRules
+import app.tendshelf.shared.episodeSpeed
+import app.tendshelf.shared.isEpisodeId
+import app.tendshelf.shared.skipRules
 import app.tendshelf.shared.PlayerSettings
 import app.tendshelf.shared.RemoteProgress
 import app.tendshelf.shared.Save
@@ -41,6 +47,12 @@ class BookEngine(
     private var bookId = ""
     private var error = ""
     private var silent: List<LongRange> = emptyList()
+
+    // The loaded episode's skip rules (A1); null for a book.
+    private var showSettings: ShowSettings? = null
+    private var rules: SkipRules? = null
+    private var ruleDurationMs = 0L
+    private var outroDone = false
 
     /** A5 hooks: called on the main thread. */
     var onPositionTick: (() -> Unit)?
@@ -116,6 +128,10 @@ class BookEngine(
             main.post { if (sequence.get() == mine) fail("signedOut") }
             return
         }
+        if (isEpisodeId(book)) {
+            startEpisode(book, atMs, conn, mine)
+            return
+        }
         if (Offline.playable(book) != null) {
             startDownloaded(book, atMs, conn, mine)
             return
@@ -167,6 +183,91 @@ class BookEngine(
         }
     }
 
+    /**
+     * A podcast episode (A1, decision 0038): the playback document, the show's picture and the person's settings are read
+     * on the [io] executor, then the main thread starts the one file. Chapters are fetched after the sound has started,
+     * because the server may have to ask the publisher for them. Streamed only: downloads of episodes are A2.
+     */
+    private fun startEpisode(id: String, atMs: Long?, conn: Connection, mine: Int) {
+        io.execute {
+            try {
+                val api = Api(conn.origin)
+                val settings = api.settings(conn.token).also { Offline.saveSettings(it) }
+                if (sequence.get() != mine) return@execute
+                val doc = api.episode(conn.token, id)
+                if (sequence.get() != mine) return@execute
+                val art = doc.artUrl.takeIf { it.isNotEmpty() }?.let { api.podcastArt(conn.token, it) }
+                val pending = pendingFor(doc.id)
+                main.post { if (sequence.get() == mine) beginEpisode(api, conn, doc, settings, art, atMs, pending) }
+                if (doc.chaptersUrl.isNotEmpty()) {
+                    val list = api.chapters(conn.token, doc.chaptersUrl, doc.durationMs)
+                    if (list.isNotEmpty()) main.post { if (sequence.get() == mine) player.setChapters(list) }
+                }
+            } catch (e: ApiException) {
+                Log.w(TAG, "could not start the episode: server answered ${e.code}")
+                main.post { if (sequence.get() == mine) fail(if (e.code == 401) "signedOut" else "book") }
+            } catch (e: IOException) {
+                Log.w(TAG, "could not start the episode: ${e.javaClass.simpleName}")
+                main.post { if (sequence.get() == mine) fail("stream") }
+            } catch (e: Exception) {
+                Log.w(TAG, "could not read the episode: ${e.javaClass.simpleName}")
+                main.post { if (sequence.get() == mine) fail("book") }
+            }
+        }
+    }
+
+    private fun beginEpisode(
+        api: Api, conn: Connection, doc: EpisodeDoc, settings: PlayerSettings, art: ByteArray?, atMs: Long?, pending: Save?,
+    ) {
+        val url = api.paths.podcastUrl(doc.audioUrl)
+        if (url == null) {
+            fail("book")
+            return
+        }
+        onBookChanging?.invoke()
+        http.setDefaultRequestProperties(mapOf("Authorization" to "Bearer ${conn.token}"))
+        bookId = doc.id
+        error = ""
+        silent = emptyList()
+        this.settings = settings
+        showSettings = doc.settings
+        ruleDurationMs = doc.durationMs
+        rules = skipRules(doc.settings, doc.durationMs)
+        outroDone = false
+        val given = atMs != null && atMs >= 0
+        val place = startPlace(doc.progress, atMs, pending)
+        // The intro is skipped by starting after it, so it is never heard; a place the person asked for is kept as asked.
+        val from = if (given) place else rules!!.startAt(place)
+        player.loadEpisode(doc.title, doc.show, emptyList(), settings, art)
+        onBookStarted?.invoke(doc.id, placeWrittenAt(doc.progress, pending), given)
+        exo.setMediaSource(BookMedia.episode(doc, url, ServerGate.gated(http)), from)
+        // The show's own speed, else the person's: set before prepare, so the first sample is already at that speed.
+        exo.setPlaybackSpeed(episodeSpeed(doc.settings, settings.speed).toFloat())
+        exo.skipSilenceEnabled = settings.skipQuiet
+        exo.prepare()
+        exo.play()
+        publishState()
+        Log.i(TAG, "started episode")
+    }
+
+    /**
+     * Main thread, about twice a second: once the playing episode reaches the show's outro, it is over (the end is
+     * reached the usual way, so `finished` is written and the sleep timer is honoured). The real length wins over the feed's.
+     */
+    fun checkOutro() {
+        val shown = showSettings ?: return
+        if (outroDone || !exo.isPlaying) return
+        val real = exo.duration
+        if (real > 0 && real != ruleDurationMs) {
+            ruleDurationMs = real
+            rules = skipRules(shown, real)
+        }
+        if (real > 0 && rules?.inOutro(exo.currentPosition) == true) {
+            outroDone = true
+            exo.seekTo(real)
+        }
+    }
+
     private fun begin(
         api: Api, conn: Connection, manifest: BookManifest, settings: app.tendshelf.shared.PlayerSettings,
         art: ByteArray?, atMs: Long?, pending: Save?, downloaded: Boolean = false,
@@ -180,6 +281,8 @@ class BookEngine(
         bookId = manifest.id
         error = ""
         silent = silentRanges(manifest.files)
+        showSettings = null
+        rules = null
         this.settings = settings
         player.load(manifest.title, manifest.author, manifest.chapters, settings, art)
         onBookStarted?.invoke(manifest.id, placeWrittenAt(manifest.progress, pending), atMs != null && atMs >= 0)
@@ -204,6 +307,8 @@ class BookEngine(
         bookId = ""
         error = ""
         silent = emptyList()
+        showSettings = null
+        rules = null
         publishState()
     }
 

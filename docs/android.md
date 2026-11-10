@@ -122,6 +122,25 @@ only a main-frame navigation stays, sub-frames of a provider are blocked, and ev
 browser. The bridge is attached to the server's origin only, so it answers nothing on a provider page. The app makes no request to
 the provider itself.
 
+## Podcast episodes (A1, decision 0038)
+
+An episode (`pe_...`) plays through the same Media3 service as a book, as a one-file item. `BookEngine.start` sees the id, reads
+`GET /api/v1/podcasts/episodes/{id}` (the playback document, `Api.episode`) and the person's settings, fetches the show's picture
+from the document's `artUrl`, and starts `BookMedia.episode` (media id `pe_...`, audio at the server's `/api/v1/podcasts/audio/{id}`,
+which passes one `Range` on). Only paths under `/api/v1/podcasts/` are followed (`ApiPaths.podcastUrl`); the app talks to no other host.
+The show's speed (else the person's) is set, and the intro is skipped by starting after it, before `prepare()`, so the first sample is
+already right. The outro is applied by `BookEngine.checkOutro` on the 500 ms tick: it seeks to the end, so `finished` is written and the
+sleep timer is honoured. Chapters come from `chaptersUrl` after the sound has started (the server may have to fetch them) and show
+under the title; `BookPlayer` keeps the episode title as the title and the show as artist and album. The shared logic (document,
+chapters, skip rules, batch body) is `android/shared/.../Podcast.kt`.
+
+Places use the same outbox as books (rows keyed by the `pe_` id, same merging and `finished` rows). `Api.batch` sends book rows to
+`/api/v1/progress/batch` and episode rows to `/api/v1/podcasts/progress/batch` (with the device id, no speed or listening time) and
+puts the answers back in order; a group that fails settles only the rows before it; a 404 (podcasts off) drops the episode rows. The
+sleep word `episode` ends the timer at the end of the item. Left for later: the mixed queue after an episode (P5; the hook is the
+`TODO(P5)` in `PlaybackService`), the "continue on another device?" question for episodes (the episode state names no device),
+downloads and auto-download (A2), the car tree, widget and media-button resume of episodes (A3).
+
 ## Read aloud
 
 The reader speaks the book through the phone's own text-to-speech engine (`android.speech.tts.TextToSpeech`, platform API, no new dependency;

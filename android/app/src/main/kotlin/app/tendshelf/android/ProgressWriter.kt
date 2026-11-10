@@ -256,7 +256,7 @@ class ProgressWriter(
                 return true
             }
             val results = try {
-                Api(conn.origin).batch(conn.token, batch)
+                Api(conn.origin).batch(conn.token, batch, conn.deviceId)
             } catch (e: ApiException) {
                 outbox.failed()
                 // Api only sends to the connected server (ServerGate), so this 401 is that server's. The rows stay.
@@ -344,7 +344,7 @@ class ProgressWriter(
                         val batch = outbox.nextBatch()
                         if (batch.isEmpty()) break
                         val applied = try {
-                            outbox.settled(batch, Api(conn.origin).batch(conn.token, batch))
+                            outbox.settled(batch, Api(conn.origin).batch(conn.token, batch, conn.deviceId))
                         } catch (e: Exception) {
                             outbox.failed()
                             Log.w(TAG, "launch flush failed: ${e.javaClass.simpleName}")
@@ -385,7 +385,7 @@ class ProgressWriter(
                 while (true) {
                     val batch = outbox.nextBatch()
                     if (batch.isEmpty()) break
-                    val applied = outbox.settled(batch, Api(conn.origin).batch(conn.token, batch))
+                    val applied = outbox.settled(batch, Api(conn.origin).batch(conn.token, batch, conn.deviceId))
                     if (applied.deleteSeqs.size < batch.size) break
                 }
             } catch (e: Exception) {
@@ -407,7 +407,7 @@ class ProgressWriter(
                     val batch = outbox.nextBatch()
                     if (batch.isNotEmpty()) {
                         try {
-                            outbox.settled(batch, Api(conn.origin).batch(conn.token, batch))
+                            outbox.settled(batch, Api(conn.origin).batch(conn.token, batch, conn.deviceId))
                         } catch (e: Exception) {
                             Log.w(TAG, "sign-out flush failed: ${e.javaClass.simpleName}")
                         }

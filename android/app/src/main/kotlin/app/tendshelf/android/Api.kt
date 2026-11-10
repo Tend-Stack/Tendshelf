@@ -12,6 +12,11 @@ import app.tendshelf.shared.queueNextBody
 import app.tendshelf.shared.AudioFile
 import app.tendshelf.shared.BookManifest
 import app.tendshelf.shared.Chapter
+import app.tendshelf.shared.EpisodeDoc
+import app.tendshelf.shared.PodcastJson
+import app.tendshelf.shared.assembleResults
+import app.tendshelf.shared.podcastBatchBody
+import app.tendshelf.shared.splitSaves
 import app.tendshelf.shared.PlayerSettings
 import app.tendshelf.shared.RemoteProgress
 import java.io.IOException
@@ -38,8 +43,59 @@ class Api(origin: String) {
     fun parseManifest(text: String): BookManifest = ApiJson.manifest(text, paths)
 
     /** Sends unsent saves in order; the answer has one item per save. A failure is an exception, never a retry here. */
-    fun batch(token: String, saves: List<Save>): List<BatchItemResult> =
-        ApiJson.batchResults(String(post(paths.batchUrl, token, batchBody(saves), 1024 * 1024)!!))
+    fun batch(token: String, saves: List<Save>, deviceId: String = ""): List<BatchItemResult> {
+        val (books, episodes) = splitSaves(saves)
+        if (episodes.isEmpty()) return ApiJson.batchResults(String(post(paths.batchUrl, token, batchBody(saves), 1024 * 1024)!!))
+        // Books and episodes go to their own routes; the answers are put back in the batch's order. A group that fails
+        // ends the list at its first row (the rest is sent again), unless nothing at all was settled: then it throws.
+        var failure: Exception? = null
+        val bookResults = if (books.isEmpty()) emptyList() else try {
+            ApiJson.batchResults(String(post(paths.batchUrl, token, batchBody(books), 1024 * 1024)!!))
+        } catch (e: Exception) {
+            failure = e
+            null
+        }
+        val episodeResults = try {
+            podcastBatch(token, episodes, deviceId)
+        } catch (e: Exception) {
+            failure = failure ?: e
+            null
+        }
+        val out = assembleResults(saves, bookResults, episodeResults)
+        if (out.isEmpty()) throw failure ?: IOException("no answer")
+        return out
+    }
+
+    /** `POST /api/v1/podcasts/progress/batch`. A 404 means podcasts are off on this server: the rows are answered `not_found` and dropped. */
+    private fun podcastBatch(token: String, episodes: List<Save>, deviceId: String): List<BatchItemResult> = try {
+        PodcastJson.batchResults(String(post(paths.podcastBatchUrl, token, podcastBatchBody(episodes, deviceId), 1024 * 1024)!!))
+    } catch (e: ApiException) {
+        if (e.code != 404) throw e
+        episodes.map { BatchItemResult(it.bookId, false, "not_found", null) }
+    }
+
+    /** The playback document of an episode. */
+    fun episode(token: String, episodeId: String): EpisodeDoc = PodcastJson.episode(String(get(paths.episodeUrl(episodeId), token, 256 * 1024)))
+
+    /** The show's picture (at most 2 MiB) from the path the document named, or null when there is none or it cannot be read. */
+    fun podcastArt(token: String, artPath: String): ByteArray? {
+        val url = paths.podcastUrl(artPath, 512) ?: return null
+        return try {
+            get(url, token, 2 * 1024 * 1024)
+        } catch (e: IOException) {
+            null
+        }
+    }
+
+    /** The episode's chapters from the path the document named; empty when it has none or the publisher cannot be reached. */
+    fun chapters(token: String, path: String, durationMs: Long): List<Chapter> {
+        val url = paths.podcastUrl(path) ?: return emptyList()
+        return try {
+            PodcastJson.chapters(String(get(url, token, 512 * 1024)), durationMs)
+        } catch (e: IOException) {
+            emptyList()
+        }
+    }
 
     /** The stored place of a book, or null when there is none. */
     fun progress(token: String, bookId: String): RemoteProgress? =

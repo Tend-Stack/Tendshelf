@@ -41,6 +41,21 @@ class ApiPaths(server: String) {
 
     fun progressUrl(bookId: String): String = "$base/api/v1/progress/${segment(bookId)}"
 
+    // ---- Podcasts (A1). Addresses the server names in a playback document are paths; only its own podcast routes are followed. ----
+
+    fun episodeUrl(episodeId: String): String = "$base/api/v1/podcasts/episodes/${segment(episodeId)}"
+    val podcastBatchUrl: String get() = "$base/api/v1/podcasts/progress/batch"
+
+    /**
+     * A path from a playback document made into an address, or null when it is anything but one of this server's
+     * podcast routes (another host, a query, a path outside `/api/v1/podcasts/`). [width] is added to art.
+     */
+    fun podcastUrl(path: String, width: Int = 0): String? {
+        if (!path.startsWith("/api/v1/podcasts/") || path.contains("..")) return null
+        if (path.any { it == '#' || it == '?' || it == '\\' || it.isWhitespace() }) return null
+        return base + path + if (width > 0) "?w=$width" else ""
+    }
+
     /** The page the WebView opens: the shell mark makes the server treat the visitor as the Android app. */
     val shellUrl: String get() = "$base/?shell=android&next=/"
 

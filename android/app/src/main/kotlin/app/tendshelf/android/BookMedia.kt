@@ -1,6 +1,7 @@
 package app.tendshelf.android
 
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.source.ConcatenatingMediaSource2
@@ -10,6 +11,7 @@ import androidx.media3.exoplayer.source.SilenceMediaSource
 import androidx.media3.extractor.DefaultExtractorsFactory
 import app.tendshelf.shared.ApiPaths
 import app.tendshelf.shared.BookManifest
+import app.tendshelf.shared.EpisodeDoc
 import app.tendshelf.shared.cacheKey
 
 /**
@@ -39,5 +41,18 @@ object BookMedia {
             }
         }
         return whole.build()
+    }
+
+    /**
+     * A podcast episode as a one-file item (A1): the media id is the episode's `pe_` id, the address is the server's own
+     * audio route. The server passes one `Range` on to the publisher, so a seek or a resume does not download what comes before.
+     */
+    fun episode(doc: EpisodeDoc, url: String, network: DataSource.Factory): MediaSource {
+        // Podcast files are often VBR MP3 without a Xing header; constant-bitrate seeking lands close enough and never fails.
+        val extractors = DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true)
+        val item = MediaItem.Builder().setMediaId(doc.id).setUri(url)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(doc.title).setAlbumTitle(doc.show).setArtist(doc.show).setIsPlayable(true).build())
+        if (doc.mime.startsWith("audio/")) item.setMimeType(doc.mime)
+        return ProgressiveMediaSource.Factory(network, extractors).setLoadErrorHandlingPolicy(RetryPolicy()).createMediaSource(item.build())
     }
 }

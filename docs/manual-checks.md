@@ -353,3 +353,10 @@ Needs a real provider reachable over https from the browser (Authelia 4.39, Auth
 | S7-3 | Keycloak realm, confidential client: sign in; a wrong secret shows the failed message; with the provider stopped, `/login` still takes a password and the button says the provider is not answering. | Not run. |
 | S7-4 | Android app through each provider to `/app/connect` and back (P3 built: unit-tested in `android/shared`, `make apk-debug` builds; needs a real provider and the emulator). | Not run. |
 | S7-5 | Desktop window: the provider's pages stay in the window and the bridge answers nothing on them. | Not run. |
+| PA1-1 | Podcasts A1: with podcasts on, play an episode from its page in the app. Lock screen and notification show the episode title, the show as artist and the show's picture (not a book's, not a chapter name as the title). | Not run (dev server has podcasts off). |
+| PA1-2 | A show with speed 1.4, intro 30 s and outro 45 s: the first audible sample is at 1.4x and after the intro; near the end the episode finishes by itself 45 s early and is marked played. A show with none of these plays from 0 at the personal speed. | Not run. |
+| PA1-3 | Resume: pause, wait 30 s, press play: smart rewind steps back; kill the app, reopen the episode: it starts where it stopped; the place appears on the web (and the other way round). | Not run. |
+| PA1-4 | Airplane mode while playing buffered audio, move on, come back online: the saved place reaches the server (one batch to `/api/v1/podcasts/progress/batch`), no duplicate. | Not run. |
+| PA1-5 | Chapters: an episode with Podcasting 2.0 chapters shows the chapter under the title; Next/Previous move between them; with none, Next does nothing. | Not run. |
+| PA1-6 | Sleep timer "end of episode": playback stops 1 s before the end and no queue is asked; screen off for an hour, Bluetooth play/pause and lock-screen seek work. | Not run. |
+| PA1-7 | Finish an episode with a book queued: the episode is marked played and nothing else starts (the mixed queue is P5). | Not run. |

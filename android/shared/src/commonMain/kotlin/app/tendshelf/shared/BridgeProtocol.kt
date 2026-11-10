@@ -154,7 +154,7 @@ private val DL_WORDS = setOf("add", "remove", "ask")
 
 /** 1 to 999 with no leading zero, or one of three words. */
 private fun sleepWord(w: String): BridgeMessage? = when {
-    w == "off" || w == "plus" || w == "chapter" -> BridgeMessage.Sleep(w, 0)
+    w == "off" || w == "plus" || w == "chapter" || w == "episode" -> BridgeMessage.Sleep(w, 0)
     w.length in 1..3 && w.all { it.isAsciiDigit() } && w[0] != '0' -> BridgeMessage.Sleep(w, w.toInt())
     else -> null
 }

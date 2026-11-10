@@ -56,10 +56,16 @@ class SleepTimer(
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     }
 
+    /** Set by the "end of episode" choice: the timer ends at the end of the whole item, not of a chapter. */
+    private var wholeEpisode = false
+
     val info: SleepInfo get() = clock.info(exo.currentPosition, speed())
 
     /** The page's choice: `off`, `plus`, `chapter` or minutes as digits. */
-    fun command(choice: String, minutes: Int) {
+    fun command(asked: String, minutes: Int) {
+        // "End of episode": a chapter timer whose end is the end of the episode, whatever chapters it has.
+        wholeEpisode = asked == "episode"
+        val choice = if (wholeEpisode) "chapter" else asked
         when (choice) {
             "off" -> off()
             "plus" -> plus()
@@ -82,6 +88,7 @@ class SleepTimer(
     }
 
     fun off() {
+        wholeEpisode = false
         clock.off()
         settle()
     }
@@ -96,6 +103,7 @@ class SleepTimer(
 
     /** A new book: minutes go on; a chapter timer follows the new book's chapters. */
     fun bookChanged() {
+        wholeEpisode = false // the end of one episode is not the end of the next
         if (!clock.isOn) return
         chapterEnd()?.let { clock.followChapter(it) }
     }
@@ -142,6 +150,10 @@ class SleepTimer(
 
     /** A book with no chapters is one chapter (as the page treats it), so its end is the end of the book. */
     private fun chapterEnd(): Long? {
+        if (wholeEpisode) {
+            val duration = exo.duration
+            return if (duration > 1000) duration - 1000 else null
+        }
         val list = player.chapterList.ifEmpty {
             val duration = exo.duration
             if (duration > 0) listOf(Chapter(0, 0, duration, "")) else emptyList()

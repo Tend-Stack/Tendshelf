@@ -29,6 +29,7 @@ import androidx.media3.session.SessionResult
 import app.tendshelf.shared.Node
 import app.tendshelf.shared.allowedCommands
 import app.tendshelf.shared.parseNode
+import app.tendshelf.shared.isEpisodeId
 import app.tendshelf.shared.mayRate
 import app.tendshelf.shared.speedCycle
 import app.tendshelf.shared.speedLabel
@@ -204,12 +205,15 @@ class PlaybackService : MediaLibraryService() {
                 lastChapter = chapter
                 w.onTick(book)
                 // Near the end: the next book is made ready on Wi-Fi (decision 0035). A book is one window: book time.
-                auto.tick(book, exo.currentPosition, exo.duration, exo.isPlaying)
+                // TODO(A2/P5): an episode will be made ready the same way once downloads and the mixed queue exist.
+                if (isEpisodeId(book)) engine.checkOutro() else auto.tick(book, exo.currentPosition, exo.duration, exo.isPlaying)
             }
         }
         engine.onEnded = {
             // A running sleep timer wins over the queue (D5): the book is finished, nothing new starts.
-            val askQueue = !sleep.endedBook()
+            // TODO(P5): after an episode the mixed queue (books and episodes) is asked here. Until it exists the episode only
+            // writes `finished`: the queue's next-book route knows books alone and must not be asked about an episode id.
+            val askQueue = !sleep.endedBook() && !isEpisodeId(engine.currentBook)
             next.ended(engine.currentBook, exo.currentPosition, exo.playbackParameters.speed.toDouble(), askQueue) { exo.playbackState == Player.STATE_ENDED }
         }
         w.onSignedOut = { engine.signedOut() }
@@ -221,7 +225,8 @@ class PlaybackService : MediaLibraryService() {
             }
         }
         resume.checkRemote = { book ->
-            io.execute {
+            // The episode state names no device, so a place elsewhere cannot be told from this phone's own save: no question for episodes.
+            if (!isEpisodeId(book)) io.execute {
                 val conn = connections.current() ?: return@execute
                 try {
                     val remote = Api(conn.origin).progress(conn.token, book)
@@ -250,7 +255,7 @@ class PlaybackService : MediaLibraryService() {
         val prefs = getSharedPreferences(CAR_PREFS, MODE_PRIVATE)
         val before = engine.onBookStarted
         engine.onBookStarted = { id, writtenAt, atGiven ->
-            prefs.edit().putString(LAST_BOOK, id).apply() // D8: what a "resume" from a media button plays
+            if (!isEpisodeId(id)) prefs.edit().putString(LAST_BOOK, id).apply() // D8 (TODO(A3): the tree learns episodes): what a "resume" from a media button plays
             before?.invoke(id, writtenAt, atGiven)
         }
         engine.onFailed = { kind -> tellCar(kind) }
@@ -518,7 +523,7 @@ class PlaybackService : MediaLibraryService() {
         player.setPlaybackSpeed(next.toFloat())
         val book = engine.currentBook
         val conn = connections.current()
-        if (book.isEmpty() || conn == null) return
+        if (book.isEmpty() || conn == null || isEpisodeId(book)) return // a show's speed is set on its page; no route takes it from here
         io.execute {
             try {
                 Api(conn.origin).putSpeed(conn.token, book, next)
