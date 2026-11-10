@@ -30,10 +30,11 @@ func TestPodStartVisual(t *testing.T) {
 		return srv
 	}
 	shoot := func(t *testing.T, srv *httptest.Server, name, path, ready string) {
-		for _, w := range []int{390, 1440} {
-			t.Run(fmt.Sprintf("%s-%d", name, w), func(t *testing.T) {
+		for _, sh := range visualMatrix(false) {
+			theme, w := sh.Theme, sh.Width
+			t.Run(fmt.Sprintf("%s-%s-%d", name, theme, w), func(t *testing.T) {
 				tab := b.NewTab(w, 900, w < 700, false)
-				tab.Navigate(srv.URL + path + "?theme=dark")
+				tab.Navigate(srv.URL + path + "?theme=" + theme)
 				tab.WaitFor(`document.querySelector("`+ready+`") !== null`, 10*time.Second)
 				var m struct {
 					Over       bool     `json:"over"`
@@ -50,7 +51,7 @@ func TestPodStartVisual(t *testing.T) {
 				if len(m.Unlabelled) > 0 {
 					t.Errorf("inputs without a label: %v", m.Unlabelled)
 				}
-				tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("podstart-%s-%d.png", name, w)))
+				tab.ScreenshotFull(filepath.Join(out, fmt.Sprintf("podstart-%s-%s-%d.png", name, theme, w)))
 			})
 		}
 	}
