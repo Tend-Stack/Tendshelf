@@ -15,6 +15,8 @@ data class WidgetInput(
     val playing: Boolean,
     val skipBackS: Int,
     val skipForwardS: Int,
+    /** The show's name while an episode plays (the title is then the episode's); empty for a book. */
+    val show: String = "",
 )
 
 /** What to draw. [skipBackS] and [skipForwardS] are always positive, for the buttons' spoken labels. */
@@ -51,9 +53,11 @@ fun widgetLook(input: WidgetInput, widthDp: Int, heightDp: Int): WidgetLook {
     if (kind != WidgetKind.BOOK) {
         return WidgetLook(kind, "", "", false, false, false, false, back, forward)
     }
-    val chapter = input.chapter.trim()
+    // An episode: its title, and the show beneath it where a book has its chapter.
+    val show = input.show.trim()
+    val chapter = if (show.isNotEmpty()) show else input.chapter.trim()
     // A book without chapters titles its one stretch with its own name: that line would only repeat.
-    val hasChapter = chapter.isNotEmpty() && !chapter.equals(input.title.trim(), ignoreCase = true)
+    val hasChapter = chapter.isNotEmpty() && (show.isNotEmpty() || !chapter.equals(input.title.trim(), ignoreCase = true))
     return WidgetLook(
         kind = kind,
         title = input.title,

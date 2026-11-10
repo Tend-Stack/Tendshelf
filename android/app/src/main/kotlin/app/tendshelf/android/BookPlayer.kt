@@ -11,11 +11,11 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import app.tendshelf.shared.Chapter
-import app.tendshelf.shared.Node
 import app.tendshelf.shared.PlayerSettings
 import app.tendshelf.shared.Position
 import app.tendshelf.shared.nextChapterStart
 import app.tendshelf.shared.parseNode
+import app.tendshelf.shared.playableId
 import app.tendshelf.shared.previousChapterStart
 
 /**
@@ -130,6 +130,9 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
 
     /** The loaded book's name, and its picture's bytes: what the widget keeps (L9). */
     val bookTitle: String get() = title
+
+    /** The loaded episode's title (then [bookTitle] is the show), or null for a book. */
+    val episodeName: String? get() = episodeTitle
     val artBytes: ByteArray? get() = art
 
     val chapterIdx: Int get() = Position.chapterAt(chapters, exo.currentPosition)?.idx ?: -1
@@ -223,7 +226,7 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     override fun setMediaItems(mediaItems: MutableList<MediaItem>, startIndex: Int, startPositionMs: Long) = choose(mediaItems)
 
     private fun choose(items: List<MediaItem>) {
-        val book = (items.firstOrNull()?.mediaId?.let(::parseNode) as? Node.Book)?.id ?: return
+        val book = playableId(items.firstOrNull()?.mediaId?.let(::parseNode)) ?: return
         onBookChosen?.invoke(book)
     }
 

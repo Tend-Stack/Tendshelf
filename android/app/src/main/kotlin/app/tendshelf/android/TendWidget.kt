@@ -31,11 +31,12 @@ object WidgetState {
 
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun save(context: Context, bookId: String, title: String, chapter: String, playing: Boolean, skipBackS: Int, skipForwardS: Int) {
+    fun save(context: Context, bookId: String, title: String, chapter: String, playing: Boolean, skipBackS: Int, skipForwardS: Int, show: String = "") {
         prefs(context).edit()
             .putString("bookId", bookId)
             .putString("title", title)
             .putString("chapter", chapter)
+            .putString("show", show)
             .putBoolean("playing", playing)
             .putInt("back", skipBackS)
             .putInt("forward", skipForwardS)
@@ -60,6 +61,7 @@ object WidgetState {
             bookId = p.getString("bookId", "").orEmpty(),
             title = p.getString("title", "").orEmpty(),
             chapter = p.getString("chapter", "").orEmpty(),
+            show = p.getString("show", "").orEmpty(),
             playing = p.getBoolean("playing", false),
             skipBackS = p.getInt("back", 0),
             skipForwardS = p.getInt("forward", 0),

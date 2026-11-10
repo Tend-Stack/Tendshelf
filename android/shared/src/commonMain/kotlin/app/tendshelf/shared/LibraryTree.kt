@@ -9,6 +9,14 @@ sealed interface Node {
     object Downloaded : Node
     data class Shelf(val id: String) : Node
     data class Book(val id: String) : Node
+
+    /** Podcasts (A3): a folder of three, the person's shows, and their episodes as leaves. */
+    object Podcasts : Node
+    object PodcastNew : Node
+    object PodcastDownloaded : Node
+    object PodcastShows : Node
+    data class Show(val id: String) : Node
+    data class Episode(val id: String) : Node
 }
 
 /** The node a media id names, or null for anything else (a bad id is an error, never a guess). */
@@ -18,9 +26,15 @@ fun parseNode(id: String): Node? = when (id) {
     "queue" -> Node.UpNext
     "shelves" -> Node.Shelves
     "downloaded" -> Node.Downloaded
+    "podcasts" -> Node.Podcasts
+    "podcasts-new" -> Node.PodcastNew
+    "podcasts-downloaded" -> Node.PodcastDownloaded
+    "podcasts-shows" -> Node.PodcastShows
     else -> when {
         id.startsWith("shelf:") -> id.removePrefix("shelf:").takeIf(::validId)?.let { Node.Shelf(it) }
         id.startsWith("book:") -> id.removePrefix("book:").takeIf(::validId)?.let { Node.Book(it) }
+        id.startsWith("show:") -> id.removePrefix("show:").takeIf(::validId)?.let { Node.Show(it) }
+        id.startsWith("episode:") -> id.removePrefix("episode:").takeIf { validId(it) && isEpisodeId(it) }?.let { Node.Episode(it) }
         else -> null
     }
 }
@@ -33,6 +47,19 @@ fun nodeId(n: Node): String = when (n) {
     Node.Downloaded -> "downloaded"
     is Node.Shelf -> "shelf:${n.id}"
     is Node.Book -> "book:${n.id}"
+    Node.Podcasts -> "podcasts"
+    Node.PodcastNew -> "podcasts-new"
+    Node.PodcastDownloaded -> "podcasts-downloaded"
+    Node.PodcastShows -> "podcasts-shows"
+    is Node.Show -> "show:${n.id}"
+    is Node.Episode -> "episode:${n.id}"
+}
+
+/** The id the engine starts for a node that plays (a book, or an episode), or null for a folder. */
+fun playableId(n: Node?): String? = when (n) {
+    is Node.Book -> n.id
+    is Node.Episode -> n.id
+    else -> null
 }
 
 /** Media3 asks for children in pages: page number from 0 and a size. */

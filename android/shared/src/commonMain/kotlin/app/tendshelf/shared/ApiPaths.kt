@@ -44,6 +44,12 @@ class ApiPaths(server: String) {
     // ---- Podcasts (A1). Addresses the server names in a playback document are paths; only its own podcast routes are followed. ----
 
     fun episodeUrl(episodeId: String): String = "$base/api/v1/podcasts/episodes/${segment(episodeId)}"
+    val showsUrl: String get() = "$base/api/v1/podcasts"
+    val newEpisodesUrl: String get() = "$base/api/v1/podcasts/new"
+    fun showEpisodesUrl(showId: String, limit: Int): String = "$base/api/v1/podcasts/shows/${segment(showId)}/episodes?limit=$limit"
+    fun episodePlayedUrl(episodeId: String): String = "$base/api/v1/podcasts/episodes/${segment(episodeId)}/played"
+    fun episodeFavouriteUrl(episodeId: String): String = "$base/api/v1/podcasts/episodes/${segment(episodeId)}/favourite"
+    fun showArtUrl(showId: String, width: Int): String = "$base/api/v1/podcasts/art/${segment(showId)}?w=$width"
     val podcastBatchUrl: String get() = "$base/api/v1/podcasts/progress/batch"
 
     /**

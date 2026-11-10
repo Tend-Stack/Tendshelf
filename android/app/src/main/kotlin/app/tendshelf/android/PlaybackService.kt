@@ -19,6 +19,7 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaConstants
 import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -26,9 +27,12 @@ import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
-import app.tendshelf.shared.Node
 import app.tendshelf.shared.allowedCommands
 import app.tendshelf.shared.parseNode
+import app.tendshelf.shared.playableId
+import app.tendshelf.shared.Allowed
+import app.tendshelf.shared.EpisodeAction
+import app.tendshelf.shared.Node
 import app.tendshelf.shared.isEpisodeId
 import app.tendshelf.shared.mayRate
 import app.tendshelf.shared.speedCycle
@@ -104,6 +108,7 @@ class PlaybackService : MediaLibraryService() {
         session = MediaLibrarySession.Builder(this, player, SessionCallback())
             .setSessionActivity(open) // the notification tap opens the page again
             .setMediaButtonPreferences(skipButtons(null)) // the phone gets Back and Forward; the speed button is the car's, per controller
+            .setCommandButtonsForMediaItems(LibraryTree.rowButtons()) // A3: an episode row's Mark as played and Star
             .build()
         engine = BookEngine(exo, player, http, main, io, { connections }) { extras -> putExtras { putAll(extras) } }
         sleep = SleepTimer(exo, player, getSystemService(android.hardware.SensorManager::class.java), main) { info ->
@@ -255,7 +260,7 @@ class PlaybackService : MediaLibraryService() {
         val prefs = getSharedPreferences(CAR_PREFS, MODE_PRIVATE)
         val before = engine.onBookStarted
         engine.onBookStarted = { id, writtenAt, atGiven ->
-            if (!isEpisodeId(id)) prefs.edit().putString(LAST_BOOK, id).apply() // D8 (TODO(A3): the tree learns episodes): what a "resume" from a media button plays
+            prefs.edit().putString(LAST_BOOK, id).apply() // D8: what a "resume" from a media button plays; the tree knows episodes (A3)
             before?.invoke(id, writtenAt, atGiven)
         }
         engine.onFailed = { kind -> tellCar(kind) }
@@ -282,9 +287,14 @@ class PlaybackService : MediaLibraryService() {
         val update = {
             val book = engine.currentBook
             if (book.isNotEmpty() && connections.current() != null) {
-                val chapter = player.mediaMetadata.title?.toString().orEmpty()
+                // An episode (A3): the widget's title is the episode and its second line is the show, where a book has its chapter.
+                val episode = player.episodeName
+                val chapter = if (episode != null) "" else player.mediaMetadata.title?.toString().orEmpty()
                 val settings = engine.settings
-                WidgetState.save(this, book, player.bookTitle, chapter, exo.isPlaying, settings.skipBackS, settings.skipForwardS)
+                WidgetState.save(
+                    this, book, episode ?: player.bookTitle, chapter, exo.isPlaying, settings.skipBackS, settings.skipForwardS,
+                    show = if (episode != null) player.bookTitle else "",
+                )
                 if (book != shownBook) {
                     shownBook = book
                     player.artBytes?.let { CoverProvider.put(this, book, it) }
@@ -401,6 +411,7 @@ class PlaybackService : MediaLibraryService() {
                     add(QUIET_COMMAND)
                 }
                 if (who.speed) add(SPEED_COMMAND)
+                if (who.browse) ROW_COMMANDS.forEach { add(it) } // the row actions of an episode, for whoever may browse
             }.build()
             if (who.browse) CarAccess.add(controller.uid)
             Log.i(TAG, "controller ${controller.packageName} trusted=${controller.isTrusted} browse=${who.browse}")
@@ -457,7 +468,7 @@ class PlaybackService : MediaLibraryService() {
             val first = mediaItems.firstOrNull() ?: return Futures.immediateFuture(none)
             val query = first.requestMetadata.searchQuery
             if (query.isNullOrBlank()) {
-                val books = mediaItems.filter { parseNode(it.mediaId) is Node.Book }
+                val books = mediaItems.filter { playableId(parseNode(it.mediaId)) != null }
                 return Futures.immediateFuture(MediaSession.MediaItemsWithStartPosition(books, 0, C.TIME_UNSET))
             }
             val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
@@ -494,6 +505,8 @@ class PlaybackService : MediaLibraryService() {
                 cycleSpeed()
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }
+            val rowAction = EpisodeAction.entries.firstOrNull { LibraryTree.actionName(it) == customCommand.customAction }
+            if (rowAction != null) return episodeRowAction(who, args, rowAction)
             if (!who.ownCommands) {
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
             }
@@ -515,6 +528,19 @@ class PlaybackService : MediaLibraryService() {
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
+    }
+
+    /** A row action from a browsing controller (A3): the episode is named by the media id the car sends, and must be an episode. */
+    private fun episodeRowAction(who: Allowed, args: Bundle, action: EpisodeAction): ListenableFuture<SessionResult> {
+        if (!who.browse) return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
+        val id = (parseNode(args.getString(MediaConstants.EXTRA_KEY_MEDIA_ID).orEmpty()) as? Node.Episode)?.id
+            ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+        val future = SettableFuture.create<SessionResult>()
+        io.execute {
+            val ok = tree.act(id, action)
+            future.set(SessionResult(if (ok) SessionResult.RESULT_SUCCESS else SessionResult.RESULT_ERROR_IO))
+        }
+        return future
     }
 
     /** The car's speed button (D7): next step, and the server remembers it for this book, best effort. */
@@ -556,6 +582,7 @@ class PlaybackService : MediaLibraryService() {
         const val PLAYBACK_CHANNEL = "playback"
         const val REFUSED_ID = 4244
         val ANSWER_COMMAND = SessionCommand(ANSWER_ACTION, Bundle.EMPTY)
+        val ROW_COMMANDS = EpisodeAction.entries.map { SessionCommand(LibraryTree.actionName(it), Bundle.EMPTY) }
         val SPEED_COMMAND = SessionCommand(SPEED_ACTION, Bundle.EMPTY)
         val QUIET_COMMAND = SessionCommand(QUIET_ACTION, Bundle.EMPTY)
         val SLEEP_COMMAND = SessionCommand(SLEEP_ACTION, Bundle.EMPTY)

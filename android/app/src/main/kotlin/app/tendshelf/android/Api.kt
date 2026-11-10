@@ -13,7 +13,13 @@ import app.tendshelf.shared.AudioFile
 import app.tendshelf.shared.BookManifest
 import app.tendshelf.shared.Chapter
 import app.tendshelf.shared.EpisodeDoc
+import app.tendshelf.shared.EpisodeAction
+import app.tendshelf.shared.EpisodeCard
 import app.tendshelf.shared.PodcastJson
+import app.tendshelf.shared.ShowCard
+import app.tendshelf.shared.episodeActionBody
+import app.tendshelf.shared.episodeCards
+import app.tendshelf.shared.showCards
 import app.tendshelf.shared.assembleResults
 import app.tendshelf.shared.podcastBatchBody
 import app.tendshelf.shared.splitSaves
@@ -95,6 +101,31 @@ class Api(origin: String) {
         } catch (e: IOException) {
             emptyList()
         }
+    }
+
+    // ---- The podcast lists the car browses (A3). A 404 means podcasts are off on this server (ApiException). ----
+
+    fun podcastShows(token: String): List<ShowCard> = PodcastJson.showCards(String(get(paths.showsUrl, token, 1024 * 1024)))
+    fun podcastNew(token: String): List<EpisodeCard> = PodcastJson.episodeCards(String(get(paths.newEpisodesUrl, token, 2 * 1024 * 1024)))
+
+    /** The newest 50 episodes of a followed show; older ones are on the show's page. */
+    fun showEpisodes(token: String, showId: String): List<EpisodeCard> =
+        PodcastJson.episodeCards(String(get(paths.showEpisodesUrl(showId, 50), token, 2 * 1024 * 1024)))
+
+    /** A show's picture (at most 2 MiB) by the show's id, or null when there is none or it cannot be read. */
+    fun showArt(token: String, showId: String): ByteArray? = try {
+        get(paths.showArtUrl(showId, 512), token, 2 * 1024 * 1024)
+    } catch (e: IOException) {
+        null
+    }
+
+    /** Mark played or unplayed, star or unstar. Idempotent on the server, so a retry costs nothing. */
+    fun episodeAction(token: String, episodeId: String, action: EpisodeAction) {
+        val url = when (action) {
+            EpisodeAction.PLAYED, EpisodeAction.UNPLAYED -> paths.episodePlayedUrl(episodeId)
+            EpisodeAction.STAR, EpisodeAction.UNSTAR -> paths.episodeFavouriteUrl(episodeId)
+        }
+        post(url, token, episodeActionBody(action), 64 * 1024)
     }
 
     /** The stored place of a book, or null when there is none. */

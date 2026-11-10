@@ -56,10 +56,11 @@ class CoverProvider : ContentProvider() {
         val dir = File(context.cacheDir, DIR).apply { mkdirs() }
         val file = File(dir, id)
         if (file.isFile) return file
-        val downloaded = Offline.coverBytes(id)
+        val downloaded = if (isShowId(id)) null else Offline.coverBytes(id)
         val bytes = downloaded ?: run {
             val conn = TokenStore(context).current() ?: return null
-            Api(conn.origin).cover(conn.token, id)
+            // A show's picture (A3) is fetched by the show's id; episodes in the tree borrow it, so one file serves them all.
+            if (isShowId(id)) Api(conn.origin).showArt(conn.token, id) else Api(conn.origin).cover(conn.token, id)
         } ?: return null
         trim(dir)
         val tmp = File(dir, "$id.tmp")
@@ -85,6 +86,9 @@ class CoverProvider : ContentProvider() {
         private const val DIR = "car-covers"
         private const val KEEP = 60
 
+        /** Show ids start `ps_` (the server's ULID prefix); no book id does. */
+        fun isShowId(id: String): Boolean = id.startsWith("ps_")
+
         fun uriOf(bookId: String): Uri = Uri.parse("content://$AUTHORITY/$bookId")
 
         /** The widget (L9) keeps the loaded book's picture in the same cache, so sign-out wipes it with the car's. */
@@ -101,6 +105,7 @@ class CoverProvider : ContentProvider() {
             if (!validId(bookId)) return null
             val file = File(File(context.cacheDir, DIR), bookId)
             if (file.isFile) return file.readBytes()
+            if (isShowId(bookId)) return null
             Offline.init(context)
             return Offline.coverBytes(bookId)
         }

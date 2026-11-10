@@ -145,3 +145,98 @@ fun skipRules(settings: ShowSettings, durationMs: Long): SkipRules {
 
 /** The speed an episode plays at: the show's own when it has one, else the person's default. */
 fun episodeSpeed(settings: ShowSettings, personal: Double): Double = settings.speed ?: personal
+
+// ---- What the car browses (A3) ----
+
+/** A followed show as the car lists it. [hasArt] is true when the server has a picture for it. */
+data class ShowCard(val id: String, val title: String, val author: String, val hasArt: Boolean, val newCount: Int)
+
+/** An episode as a list row: the change feed's fields without the playback address. */
+data class EpisodeCard(
+    val id: String,
+    val showId: String,
+    val title: String,
+    val show: String,
+    val durationMs: Long,
+    val publishedAt: Long,
+    val positionMs: Long,
+    val played: Boolean,
+    val favourite: Boolean,
+)
+
+/** What a row's action buttons can do (decision 0038). Download and Play next are not here: see [episodeActions]. */
+enum class EpisodeAction(val word: String) { PLAYED("played"), UNPLAYED("unplayed"), STAR("star"), UNSTAR("unstar") }
+
+/**
+ * The actions an episode row offers: Mark as played or unplayed, Star or Unstar, by its state. Download waits for A2
+ * and Play next for the mixed queue (the queue API knows books alone), so neither is offered until it works.
+ */
+fun episodeActions(e: EpisodeCard): List<EpisodeAction> =
+    listOf(if (e.played) EpisodeAction.UNPLAYED else EpisodeAction.PLAYED, if (e.favourite) EpisodeAction.UNSTAR else EpisodeAction.STAR)
+
+fun episodeActionOf(word: String): EpisodeAction? = EpisodeAction.entries.firstOrNull { it.word == word }
+
+/** The request body of an action: `{"played":true}` or `{"on":true}`. */
+fun episodeActionBody(a: EpisodeAction): String = when (a) {
+    EpisodeAction.PLAYED -> "{\"played\":true}"
+    EpisodeAction.UNPLAYED -> "{\"played\":false}"
+    EpisodeAction.STAR -> "{\"on\":true}"
+    EpisodeAction.UNSTAR -> "{\"on\":false}"
+}
+
+/** 0 not played, 1 partly, 2 fully: Android Auto's completion status for a row. */
+fun completionOf(e: EpisodeCard): Int = when {
+    e.played -> 2
+    e.positionMs > 0 -> 1
+    else -> 0
+}
+
+/** Percent listened (0 to 100) for a partly played row; 0 when the length is unknown. */
+fun completionPercent(e: EpisodeCard): Int =
+    if (e.played) 100 else if (e.durationMs <= 0 || e.positionMs <= 0) 0 else (e.positionMs * 100 / e.durationMs).toInt().coerceIn(0, 99)
+
+/** The row's second line: the show, then the length ("Hard Fork, 45 min"). The show alone when the length is unknown. */
+fun episodeSubline(e: EpisodeCard): String {
+    val minutes = (e.durationMs + 59_999) / 60_000
+    val length = when {
+        e.durationMs <= 0 -> ""
+        minutes < 60 -> "$minutes min"
+        else -> "${minutes / 60} h ${minutes % 60} min"
+    }
+    return listOf(e.show, length).filter { it.isNotEmpty() }.joinToString(", ")
+}
+
+/** The row's title; a nameless episode is never a blank row. */
+fun episodeRowTitle(e: EpisodeCard): String = e.title.trim().ifEmpty { "Episode" }
+
+fun showRowTitle(s: ShowCard): String = s.title.trim().ifEmpty { "Podcast" }
+
+/** Episodes the car lists: the ones the publisher withdrew (`gone`) are left out. Order is the server's. */
+fun PodcastJson.episodeCards(body: String): List<EpisodeCard> {
+    val arr = parseJsonObject(body).getArray("items")
+    return (0 until arr.size).mapNotNull { arr.optObject(it) }.mapNotNull { o ->
+        val id = o.optString("id")
+        if (!isEpisodeId(id) || !validId(id) || o.optBoolean("gone")) return@mapNotNull null
+        val st = o.optObject("state")
+        EpisodeCard(
+            id = id,
+            showId = o.optString("showId"),
+            title = o.optString("title"),
+            show = o.optString("show"),
+            durationMs = o.optLong("durationMs", 0).coerceAtLeast(0),
+            publishedAt = o.optLong("publishedAt", 0),
+            positionMs = st?.optLong("positionMs", 0) ?: 0,
+            played = st?.optBoolean("played") ?: false,
+            favourite = st?.optBoolean("favourite") ?: false,
+        )
+    }
+}
+
+fun PodcastJson.showCards(body: String): List<ShowCard> {
+    val arr = parseJsonObject(body).getArray("items")
+    return (0 until arr.size).mapNotNull { arr.optObject(it) }.mapNotNull { o ->
+        val id = o.optString("id")
+        if (!validId(id)) return@mapNotNull null
+        ShowCard(id, o.optString("title"), o.optString("author"), o.optString("artUrl").isNotEmpty(), o.optInt("newCount", 0).coerceAtLeast(0))
+    }
+}

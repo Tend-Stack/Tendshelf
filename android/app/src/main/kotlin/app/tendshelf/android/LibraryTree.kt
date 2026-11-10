@@ -9,8 +9,20 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaConstants
+import androidx.media3.session.CommandButton
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import app.tendshelf.shared.BookCard
+import app.tendshelf.shared.EpisodeAction
+import app.tendshelf.shared.EpisodeCard
+import app.tendshelf.shared.ShowCard
+import app.tendshelf.shared.completionOf
+import app.tendshelf.shared.completionPercent
+import app.tendshelf.shared.episodeActions
+import app.tendshelf.shared.episodeRowTitle
+import app.tendshelf.shared.episodeSubline
+import app.tendshelf.shared.isEpisodeId
+import app.tendshelf.shared.showRowTitle
 import app.tendshelf.shared.Node
 import app.tendshelf.shared.OfflineState
 import app.tendshelf.shared.Page
@@ -41,6 +53,7 @@ class LibraryTree(
     private val shelfNames = lru<String, String>(100)
     private val books = lru<String, BookCard>(300)
     private val searches = lru<String, List<BookCard>>(8)
+    private val episodes = lru<String, EpisodeCard>(300)
 
     private fun <K, V> lru(max: Int): MutableMap<K, V> = java.util.Collections.synchronizedMap(
         object : LinkedHashMap<K, V>(16, 0.75f, true) {
@@ -74,6 +87,45 @@ class LibraryTree(
         if (c.durationMs > 0) md.setDurationMs(c.durationMs)
         if (c.hasCover) md.setArtworkUri(CoverProvider.uriOf(c.id))
         return MediaItem.Builder().setMediaId(nodeId(Node.Book(c.id))).setMediaMetadata(md.build()).build()
+    }
+
+    /** An episode leaf (A3): its title, the show and length beneath, the show's picture, and the row's actions. */
+    fun episodeItem(c: EpisodeCard): MediaItem {
+        episodes[c.id] = c
+        val extras = Bundle().apply {
+            putInt(MediaConstants.EXTRAS_KEY_COMPLETION_STATUS, completionOf(c))
+            if (completionOf(c) == 1) putDouble(MediaConstants.EXTRAS_KEY_COMPLETION_PERCENTAGE, completionPercent(c) / 100.0)
+        }
+        val md = MediaMetadata.Builder().setTitle(episodeRowTitle(c)).setArtist(c.show).setSubtitle(episodeSubline(c))
+            .setIsBrowsable(false).setIsPlayable(true).setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE).setExtras(extras)
+            .setSupportedCommands(episodeActions(c).map(::actionName))
+        if (c.durationMs > 0) md.setDurationMs(c.durationMs)
+        if (c.showId.isNotEmpty()) md.setArtworkUri(CoverProvider.uriOf(c.showId))
+        return MediaItem.Builder().setMediaId(nodeId(Node.Episode(c.id))).setMediaMetadata(md.build()).build()
+    }
+
+    /** A followed show: a folder with the show's picture; the number of new episodes is its second line. */
+    private fun showFolder(c: ShowCard): MediaItem {
+        val md = MediaMetadata.Builder().setTitle(showRowTitle(c)).setIsBrowsable(true).setIsPlayable(false)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST)
+            .setExtras(Bundle().apply { putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE, LIST) })
+        val line = if (c.newCount > 0) "${c.newCount} new" else c.author
+        if (line.isNotEmpty()) md.setSubtitle(line)
+        if (c.hasArt) md.setArtworkUri(CoverProvider.uriOf(c.id))
+        return MediaItem.Builder().setMediaId(nodeId(Node.Show(c.id))).setMediaMetadata(md.build()).build()
+    }
+
+    /** Runs a row action for the car. Returns true when the server took it; the cached row is dropped so the next list is fresh. */
+    fun act(episodeId: String, action: EpisodeAction): Boolean {
+        val conn = connections().current() ?: return false
+        return try {
+            Api(conn.origin).episodeAction(conn.token, episodeId, action)
+            episodes.remove(episodeId)
+            true
+        } catch (e: Exception) {
+            android.util.Log.w(PlaybackService.TAG, "episode action failed: ${e.javaClass.simpleName}")
+            false
+        }
     }
 
     private fun tabs(): List<MediaItem> = listOf(
@@ -136,7 +188,7 @@ class LibraryTree(
     fun item(id: String, onDone: (MediaItem?) -> Unit) {
         io.execute {
             val item = try {
-                itemOf(Node.Book(id))
+                itemOf(if (isEpisodeId(id)) Node.Episode(id) else Node.Book(id))
             } catch (e: Exception) {
                 null
             }
@@ -192,10 +244,16 @@ class LibraryTree(
             Node.Root -> tabs()
             Node.Continue -> online({ downloadedBooks().filter { placeOf(it.id) > 0 }.sortedByDescending { placeAt(it.id) } }) { api, t -> api.continueList(t) }.map(::bookItem)
             Node.UpNext -> online(null) { api, t -> api.queue(t) }.map(::bookItem)
-            Node.Shelves -> online(null) { api, t -> api.shelves(t) }.map { s ->
+            Node.Shelves -> podcastsRow() + online(null) { api, t -> api.shelves(t) }.map { s ->
                 shelfNames[s.id] = s.name
                 folder(Node.Shelf(s.id), s.name, playableStyle = LIST)
             }
+            Node.Podcasts -> podcastFolders()
+            Node.PodcastNew -> online(null) { api, t -> api.podcastNew(t) }.map(::episodeItem)
+            Node.PodcastDownloaded -> emptyList() // A2 (episode downloads) fills this; the node is here so the car's tree does not change then
+            Node.PodcastShows -> online(null) { api, t -> api.podcastShows(t) }.map(::showFolder)
+            is Node.Show -> online(null) { api, t -> api.showEpisodes(t, node.id) }.map(::episodeItem)
+            is Node.Episode -> emptyList()
             is Node.Shelf -> online(null) { api, t -> api.shelf(t, node.id) }.map(::bookItem)
             Node.Downloaded -> downloadedBooks().map(::bookItem)
             is Node.Book -> emptyList()
@@ -208,6 +266,19 @@ class LibraryTree(
         Node.UpNext -> tabs()[1]
         Node.Shelves -> tabs()[2]
         Node.Downloaded -> tabs()[3]
+        Node.Podcasts -> podcastsFolder()
+        Node.PodcastNew -> podcastFolders()[0]
+        Node.PodcastDownloaded -> podcastFolders()[1]
+        Node.PodcastShows -> podcastFolders()[2]
+        is Node.Show -> showFolder(
+            online(null) { api, t -> api.podcastShows(t) }.firstOrNull { it.id == node.id }
+                ?: throw CarError(SessionError.ERROR_BAD_VALUE, R.string.car_not_found),
+        )
+        is Node.Episode -> episodeItem(
+            episodes[node.id] ?: online(null) { api, t -> api.episode(t, node.id) }.let {
+                EpisodeCard(it.id, it.showId, it.title, it.show, it.durationMs, 0, it.progress?.positionMs ?: 0, it.progress?.finished ?: false, false)
+            },
+        )
         is Node.Shelf -> {
             var name = shelfNames[node.id]
             if (name == null) {
@@ -220,6 +291,28 @@ class LibraryTree(
             books[node.id] ?: downloadedBooks().firstOrNull { it.id == node.id }
                 ?: online(null) { api, t -> api.manifest(t, node.id) }.let { BookCard(it.id, it.title, it.author, it.durationMs, it.coverUrl.isNotEmpty()) },
         )
+    }
+
+    // ---- Podcasts (A3) ----
+
+    private fun podcastsFolder(): MediaItem = folder(Node.Podcasts, words(R.string.car_podcasts), browsableStyle = LIST)
+
+    private fun podcastFolders(): List<MediaItem> = listOf(
+        folder(Node.PodcastNew, words(R.string.car_podcasts_new), playableStyle = LIST),
+        folder(Node.PodcastDownloaded, words(R.string.car_downloaded), playableStyle = LIST),
+        folder(Node.PodcastShows, words(R.string.car_podcasts_shows), browsableStyle = GRID, playableStyle = LIST),
+    )
+
+    /**
+     * Podcasts is a row in the Shelves tab, not a fifth tab: Android Auto shows four. The row is there only when the
+     * server has podcasts on for this person (the list answers); any failure leaves it out rather than hiding the shelves.
+     */
+    private fun podcastsRow(): List<MediaItem> = try {
+        online(null) { api, t -> api.podcastShows(t) }
+        listOf(podcastsFolder())
+    } catch (e: CarError) {
+        if (e.code == SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED) throw e
+        emptyList()
     }
 
     private fun found(query: String, limit: Int = 20): List<BookCard> {
@@ -247,6 +340,28 @@ class LibraryTree(
 
     companion object {
         const val BUDGET_MS = 5_000L
+
+        /** The session command an episode row action runs under. */
+        fun actionName(a: EpisodeAction) = "app.tendshelf.EPISODE_${a.word.uppercase()}"
+
+        private fun actionLabel(a: EpisodeAction) = when (a) {
+            EpisodeAction.PLAYED -> "Mark as played"
+            EpisodeAction.UNPLAYED -> "Mark as unplayed"
+            EpisodeAction.STAR -> "Star"
+            EpisodeAction.UNSTAR -> "Unstar"
+        }
+
+        /** The buttons a row can carry: the session lists them once, each episode names the ones it supports. */
+        fun rowButtons(): List<CommandButton> = EpisodeAction.entries.map {
+            CommandButton.Builder(
+                when (it) {
+                    EpisodeAction.PLAYED -> CommandButton.ICON_CHECK_CIRCLE_FILLED
+                    EpisodeAction.UNPLAYED -> CommandButton.ICON_CHECK_CIRCLE_UNFILLED
+                    EpisodeAction.STAR -> CommandButton.ICON_STAR_UNFILLED
+                    EpisodeAction.UNSTAR -> CommandButton.ICON_STAR_FILLED
+                },
+            ).setSessionCommand(SessionCommand(actionName(it), Bundle.EMPTY)).setDisplayName(actionLabel(it)).build()
+        }
         private const val LIST = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
         private const val GRID = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
     }

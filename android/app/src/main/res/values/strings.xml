@@ -81,6 +81,9 @@
     <string name="car_up_next">Up next</string>
     <string name="car_shelves">Shelves</string>
     <string name="car_downloaded">Downloaded</string>
+    <string name="car_podcasts">Podcasts</string>
+    <string name="car_podcasts_new">New</string>
+    <string name="car_podcasts_shows">Shows</string>
     <string name="car_sign_in">Open Tendshelf on your phone to sign in.</string>
     <string name="car_no_connection">Can\'t reach your library. Downloaded books still play.</string>
     <string name="car_not_found">I couldn\'t find that book.</string>
