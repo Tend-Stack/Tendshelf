@@ -330,8 +330,8 @@ offline Download then airplane mode, sign-out clears. Android emulator (`-gpu ho
 Radio: a plain-http station plays on an https server; title updates.
 
 ## Out of scope (with reason)
-Transcripts and clips to notes (later plan); near-me and genre browsing (OndaCast surface, not needed for a player); HLS radio (needs a
-segment proxy); video playback; private/authenticated feeds and home-network feeds (SSRF, stored credentials); Radio Browser fallback
+Transcripts and clips to notes (later plan); near-me and genre browsing (OndaCast surface, not needed for a player); HLS radio (built later,
+[decision 0039](../decisions/0039-hls-radio.md)); video playback; private/authenticated feeds and home-network feeds (SSRF, stored credentials); Radio Browser fallback
 (0038 point 10); uploading podcasts into a library (cache is not library); bandwidth throttling (concurrency caps suffice); comments,
 ratings, social; push notifications (no Firebase by rule).
 

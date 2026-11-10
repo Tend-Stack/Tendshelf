@@ -390,3 +390,5 @@ Needs a real provider reachable over https from the browser (Authelia 4.39, Auth
 | RW-1 | With a real station (search "jazz" under Radio > Find a station, Add, then play): the bar shows Live and the title now playing, which changes with the songs within about 15 seconds. | Live badge, no scrubber, skip, speed or chapters; the lock screen or media key panel shows the title and the station. | Not run. |
 | RW-2 | Pause for a minute, then Play. | The sound is the station's live edge, not where it stopped. | Not run. |
 | RW-3 | Paste a stream address of a station that is down, and an address of a normal web page. | Plain words, nothing added. | Not run. |
+| RH-1 | On the web at 390 px, add a public HLS broadcaster by its `.m3u8` address, then press Play. A second time, press Play on a search result you have not saved. | It plays, the title updates within about 15 seconds, and the unsaved station appears under Recent with Save. | Not run. |
+| RH-2 | In the Android app, play the same HLS station from Radio. | It plays, the notification shows the station and the song title. | Not run. |

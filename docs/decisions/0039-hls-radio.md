@@ -1,5 +1,5 @@
 # 0039 HLS radio: the server turns an HLS station into one continuous stream
-Status: proposed (2026-11-10). Plan: `docs/plans/hls-radio.md`. Parents: [0038](0038-podcasts.md) points 4, 5 and 10 (guarded
+Status: accepted and built (2026-11-10; parsers H1, fetch and session H2, wiring H3). Plan: `docs/plans/hls-radio.md`. Parents: [0038](0038-podcasts.md) points 4, 5 and 10 (guarded
 client, playback through this server, radio), AGENTS.md "Stack constraints", "Audio files are the user's" (never work around DRM) and
 "Security and privacy". **Amends** the "Out of scope" line of `docs/plans/podcasts.md` that left HLS radio out ("needs a segment
 proxy"). Changes no AGENTS.md rule.
