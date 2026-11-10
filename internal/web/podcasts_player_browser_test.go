@@ -170,10 +170,13 @@ func TestEpisodePlaysThroughTheProxy(t *testing.T) {
 	tab.Navigate(base + "/podcasts")
 	tab.WaitFor(`window.tsPlayer && window.tsPlayer.state().bookId !== ""`, 10*time.Second)
 	var kind string
-	tab.Eval(`window.tsPlayer.state().kind`, &kind)
+	tab.Eval(`window.tsPlayer.state().itemKind`, &kind)
 	st = playerStateOf(tab)
 	if st.BookID != ep || kind != "episode" || st.PositionMs < saved.State.PositionMs-1500 || st.PositionMs > saved.State.PositionMs+1500 || st.Playing {
-		t.Errorf("after reload: %+v kind %q, stored %d", st, kind, saved.State.PositionMs)
+		time.Sleep(time.Second)
+		later := playerStateOf(tab)
+		now, _ := w.fx.svc.Episode(ctx, w.benID, ep)
+		t.Errorf("after reload: %+v kind %q, stored %d; a second later %+v, stored now %d at %d (saved at %d); requests %+v", st, kind, saved.State.PositionMs, later, now.State.PositionMs, now.State.ClientUpdated, saved.State.ClientUpdated, seen())
 	}
 
 	// Episode 2 reaches the outro (3 s before the end): it counts as ended and is saved as played.

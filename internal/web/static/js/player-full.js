@@ -643,7 +643,7 @@ function saveSpeed(leaving, makeUsual) {
   if ((!speedUnsaved && !makeUsual) || LINK) return;
   speedUnsaved = false;
   const state = player.state();
-  if (state.kind === "episode") return; // an episode's speed follows its show's settings
+  if (state.itemKind === "episode") return; // an episode's speed follows its show's settings
   fetch("/hx/books/" + encodeURIComponent(state.bookId) + "/speed", {
     method: "POST",
     keepalive: leaving === true,
@@ -696,7 +696,7 @@ const nativeSleep = () => window.tsNativeAudio;
 
 // Where the end-of-chapter choice ends: this chapter's end, or the next one's when almost there.
 function chapterEndNow() {
-  if (book.kind === "episode") return book.durationMs; // "End of episode"
+  if (book.kind === "episode") return book.durationMs; // the end of the episode is where the sleep timer rests
   const state = player.state();
   let idx = state.chapterIdx;
   if (book.chapters[idx].end - state.positionMs < CHAPTER_MIN_LEFT_MS && book.chapters[idx + 1]) idx++;

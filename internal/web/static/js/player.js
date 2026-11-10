@@ -774,7 +774,7 @@ function state() {
     volume: userVolume,
     fileIdx: NATIVE ? book.files.findLastIndex((f) => f.offset <= bookPosition()) : current.fileIdx,
     chapterIdx: chapterIndexAt(bookPosition()),
-    kind: book.kind,
+    itemKind: book.kind, // "episode" or "" (not `kind`: emit() puts the event's kind beside this state)
   };
 }
 
