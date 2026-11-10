@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Fixed
+
+- **Pages no longer blink and jump a moment after they appear.** Moving to another page drew it once, then about a quarter of a second later made it vanish and rise in again from a few pixels lower; now the rise-in starts with the first frame of the new page.
+
 ## 2026.8.1
 
 Released 2026-11-10. The same app as 2026.8.0, now with the Android APK attached: the 2026.8.0 release build stopped before attaching it, because a release check mistook the new provider sign-in for the removed password sign-in.
