@@ -48,7 +48,7 @@ let openName = ""; // "chapters", "speed" or "sleep" while a sheet is open
 
 const $ = (name, scope = dialog) => scope.querySelector("[data-ts-" + name + "]");
 const ui = {};
-for (const name of ["close-player", "full-chapter", "full-cover", "full-title", "full-chapter-title", "full-sep", "full-author", "full-clock", "full-left",
+for (const name of ["close-player", "full-chapter", "full-cover", "full-cover-tile", "full-title", "full-chapter-title", "full-sep", "full-author", "full-clock", "full-left",
   "full-back", "full-forward", "full-back-num", "full-forward-num", "full-toggle", "full-elapsed", "full-fine",
   "full-book-left", "full-speed", "full-book", "full-finish", "full-menu", "full-body", "chapters-sheet", "chapter-list",
   "chapter-row", "open-chapters", "speed-sheet", "sleep-sheet", "speed-range", "speed-out", "sleep-meta", "sleep-custom",
@@ -269,6 +269,13 @@ function drawBook() {
   setText("full-author", book.author);
   if (book.cover && ui["full-cover"].getAttribute("src") !== book.cover) ui["full-cover"].src = book.cover;
   ui["full-cover"].hidden = !book.cover;
+  // A station with no picture shows its initials tile (the same one the bar draws).
+  const tile = ui["full-cover-tile"];
+  tile.hidden = book.cover || book.kind !== "radio" || !book.logoInitials;
+  if (!tile.hidden) {
+    tile.querySelector(".ts-stnlogo__text").textContent = book.logoInitials;
+    tile.className = "ts-avatar ts-stnlogo ts-stnlogo--fill ts-avatar--c" + book.logoColour;
+  }
   for (const direction of ["back", "forward"]) {
     const seconds = direction === "back" ? book.skipBack : book.skipForward;
     setText("full-" + direction + "-num", String(seconds));

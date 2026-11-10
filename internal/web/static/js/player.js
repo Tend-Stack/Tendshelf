@@ -16,7 +16,7 @@ const COMPAT_DEADLINE_MS = 600000; // how long to wait for a converted copy
 const SAVE_EVERY_MS = 10000;
 const FORM_TYPE = "application/x-www-form-urlencoded";
 
-const CONTROL_NAMES = ["title", "meta", "open", "cover", "back", "forward", "toggle", "back-num", "forward-num", "mini-progress"];
+const CONTROL_NAMES = ["title", "meta", "open", "cover", "cover-tile", "back", "forward", "toggle", "back-num", "forward-num", "mini-progress"];
 const controls = {};
 for (const name of CONTROL_NAMES) {
   controls[name] = slot.querySelector("[data-ts-" + name + "]");
@@ -204,6 +204,8 @@ function parseBook(el) {
     title: d.title,
     author: d.author,
     cover: d.coverUrl,
+    logoInitials: d.logoInitials || "", // a station without a picture draws these on a coloured tile
+    logoColour: d.logoColour || "",
     durationMs: num(d.durationMs),
     autoRewind: d.autoRewind === "1",
     rewind: (d.rewind || "").split(",").map((step) => step.split(":").map(Number)), // [pause ms, seconds], longest last
@@ -789,12 +791,14 @@ const COVER_RETRIES = 4;
 listen(controls.cover, "load", () => {
   coverFailed = false;
   controls.cover.hidden = !book || !book.cover;
+  if (book) showLogoTile(controls["cover-tile"], controls.cover.hidden);
 });
 
 listen(controls.cover, "error", () => {
   if (!book || !book.cover) return;
   coverFailed = true;
   controls.cover.hidden = true;
+  showLogoTile(controls["cover-tile"], true);
   if (book.kind !== RADIO || coverTries >= COVER_RETRIES) return;
   coverTries++;
   const wanted = book.cover;
@@ -802,6 +806,16 @@ listen(controls.cover, "error", () => {
     if (book && book.cover === wanted) controls.cover.src = wanted + "&r=" + coverTries;
   }, COVER_RETRY_MS);
 });
+
+// The generated initials tile of a station stands in while its picture is missing, pending or too small.
+function showLogoTile(tile, wanted) {
+  if (!tile) return;
+  const show = wanted && book.kind === RADIO && book.logoInitials !== "";
+  tile.hidden = !show;
+  if (!show) return;
+  tile.querySelector(".ts-stnlogo__text").textContent = book.logoInitials;
+  tile.className = "ts-avatar ts-stnlogo ts-stnlogo--fill ts-avatar--c" + book.logoColour;
+}
 
 // Writes name, chapter, labels and progress into the bar. force also updates the Media Session.
 function render(force) {
@@ -838,6 +852,7 @@ function render(force) {
     controls.cover.src = book.cover;
   }
   controls.cover.hidden = !book.cover || coverFailed;
+  showLogoTile(controls["cover-tile"], controls.cover.hidden);
   controls["back-num"].textContent = book.skipBack;
   controls["forward-num"].textContent = book.skipForward;
   setLabel("back", fill(msg("backSeconds"), { n: book.skipBack }));

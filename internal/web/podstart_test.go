@@ -156,9 +156,9 @@ func TestPodStartStartersOnShows(t *testing.T) {
 	if w.fx.ondaHits.Load() != 0 || w.fx.audioHits.Load() != 0 {
 		t.Errorf("suggestions reached OndaCast (%d) or a publisher (%d)", w.fx.ondaHits.Load(), w.fx.audioHits.Load())
 	}
-	// Someone who follows a show sees no suggestions on Shows, but the search page offers them before a search.
-	if body := w.get("/podcasts", w.ben).Body.String(); strings.Contains(body, "Popular shows") {
-		t.Error("starters shown to someone who follows a show")
+	// Someone who follows a show still sees the suggestions under it (item 5, 2026-11-10), and the search page too.
+	if body := w.get("/podcasts", w.ben).Body.String(); !strings.Contains(body, "Popular shows") {
+		t.Error("starters missing for someone who follows a show")
 	}
 	if body := w.get("/podcasts/search", w.ben).Body.String(); !strings.Contains(body, "Popular shows") || !strings.Contains(body, `value="crime-junkie"`) {
 		t.Error("search page without a query lacks the starters")
@@ -198,10 +198,10 @@ func TestPodStartPopularStations(t *testing.T) {
 	if b := w.get("/radio/search?q=cool", w.cy).Body.String(); strings.Contains(b, "Popular stations") {
 		t.Error("popular list shown beside search results")
 	}
-	// A person with a saved station sees no suggestions on Radio.
+	// A person with a saved station still sees the suggestions (item 5, 2026-11-10).
 	w.add(w.ben, w.fx.liveURL())
-	if b := w.get("/radio", w.ben).Body.String(); strings.Contains(b, "Popular stations") {
-		t.Error("popular list shown to someone with saved stations")
+	if b := w.get("/radio", w.ben).Body.String(); !strings.Contains(b, "Popular stations") {
+		t.Error("popular list missing for someone with saved stations")
 	}
 }
 

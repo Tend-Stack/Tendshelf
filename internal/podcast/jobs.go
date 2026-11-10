@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
+	"github.com/Tend-Stack/tendshelf/internal/metadata/online/podnet"
 	"github.com/Tend-Stack/tendshelf/internal/podcast/rss"
 )
 
@@ -132,7 +133,7 @@ func (s *Service) handleArt(ctx context.Context, t *jobs.Task) (any, error) {
 	if artURL == "" {
 		return nil, nil
 	}
-	body, mime, err := s.Net.Picture(ctx, artURL)
+	body, mime, err := s.Net.Picture(ctx, podnet.AbsoluteOndaCast(artURL)) // a station saved before 2026-11-10 may hold OndaCast's relative /api/logos path
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, context.Cause(ctx)

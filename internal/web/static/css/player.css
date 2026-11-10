@@ -225,3 +225,14 @@ html[data-text-size="large"] .ts-player-slot.is-covered { visibility: hidden; }
 .ts-player.is-live .ts-player__times, .ts-player.is-live .ts-player__tools { display: none; }
 .ts-player.is-live .ts-player__transport { justify-content: center; }
 .ts-player.is-live .ts-player__chapter { color: var(--accent); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* A station without a picture (or with one too small to draw sharp): its initials, large and centred in the serif face, on
+   one of the six avatar colours picked from the station id (components/station_logo.templ; player.js draws the same tile).
+   The size units follow the tile, so one rule fits the 36 px row, the card, the bar and the full player. */
+.ts-stnlogo { container-type: size; border-radius: var(--radius-control); font-family: var(--font-serif); font-weight: 500; flex: none; overflow: hidden; }
+.ts-stnlogo[hidden] { display: none; }
+.ts-stnlogo__text { font-size: 38cqmin; line-height: 1; letter-spacing: 0.02em; }
+.ts-stnlogo--fill { width: 100%; aspect-ratio: 1; }
+.ts-stnlogo--36 { width: 2.25rem; height: 2.25rem; }
+.ts-stnlogo--56 { width: 3.5rem; height: 3.5rem; }
+.ts-mini__cover .ts-stnlogo, .ts-player__cover .ts-stnlogo { height: 100%; border-radius: inherit; }

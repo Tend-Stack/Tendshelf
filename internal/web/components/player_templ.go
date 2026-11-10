@@ -234,7 +234,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 			}
 			templ.ReleaseBuffer(templ_7745c5c3_Buffer)
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><div class=\"ts-mini ts-pbar\" id=\"mini-player\"><div class=\"ts-pbar__book\" data-ts-bar-book><span class=\"ts-pbar__booktip\" data-ts-bar-booktip aria-hidden=\"true\"></span></div><div class=\"ts-mini__progress\" data-ts-mini-progress></div><a class=\"ts-mini__open\" href=\"/\" hx-boost=\"false\" data-ts-open><span class=\"ts-cover ts-mini__cover\"><img data-ts-cover alt=\"\" width=\"48\" height=\"48\"></span> <span class=\"ts-mini__text\"><span class=\"ts-mini__title\" data-ts-title></span> <span class=\"ts-mini__sub\"><span class=\"ts-live\" data-ts-live hidden>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><div class=\"ts-mini ts-pbar\" id=\"mini-player\"><div class=\"ts-pbar__book\" data-ts-bar-book><span class=\"ts-pbar__booktip\" data-ts-bar-booktip aria-hidden=\"true\"></span></div><div class=\"ts-mini__progress\" data-ts-mini-progress></div><a class=\"ts-mini__open\" href=\"/\" hx-boost=\"false\" data-ts-open><span class=\"ts-cover ts-mini__cover\"><img data-ts-cover alt=\"\" width=\"48\" height=\"48\"><span class=\"ts-avatar ts-stnlogo ts-stnlogo--fill\" data-ts-cover-tile hidden aria-hidden=\"true\"><span class=\"ts-stnlogo__text\"></span></span></span> <span class=\"ts-mini__text\"><span class=\"ts-mini__title\" data-ts-title></span> <span class=\"ts-mini__sub\"><span class=\"ts-live\" data-ts-live hidden>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
