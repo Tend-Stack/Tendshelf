@@ -161,3 +161,50 @@ func TestPodPages2Nav(t *testing.T) {
 		t.Error("the rail's Radio item is not current on /radio")
 	}
 }
+
+// TestPodPages2EpisodePanel: the desktop panel of a playing episode holds the meta line, the sanitised show notes, the
+// stored chapters (only when there are some) and the episode's action forms, and is 404 for a stranger and a guest.
+func TestPodPages2EpisodePanel(t *testing.T) {
+	w := newPodWorld(t)
+	ctx := context.Background()
+	ep := w.eps[0]
+	path := "/hx/player/episode-panel/" + ep
+	if _, err := w.a.st.Writer().Exec(`UPDATE podcast_episodes SET notes_html = ?, chapters_json = '' WHERE id = ?`,
+		`<p>Hello <b>there</b></p><script>alert(1)</script><a href="javascript:alert(2)">bad</a>`, ep); err != nil {
+		t.Fatal(err)
+	}
+	rec := w.get(path, w.ben)
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `id="now-panel"`) || !strings.Contains(body, `data-book-id="`+ep+`"`) {
+		t.Fatalf("panel: %d %.200s", rec.Code, body)
+	}
+	for _, want := range []string{"Hello <b>there</b>", "Mark as played", "Star", "Go to show", "Open episode page", "/podcasts/episodes/" + ep} {
+		if !strings.Contains(body, want) {
+			t.Errorf("panel lacks %q", want)
+		}
+	}
+	if strings.Contains(body, "<script") || strings.Contains(body, "javascript:") {
+		t.Error("the panel carries unsanitised notes")
+	}
+	if strings.Contains(body, "Chapters") || strings.Contains(body, "data-ts-play-at") {
+		t.Error("a chapters section is drawn with no stored chapters")
+	}
+	if strings.Contains(body, "data-ts-play=") {
+		t.Error("the panel has its own Play button; the bar plays")
+	}
+	if _, err := w.a.st.Writer().Exec(`UPDATE podcast_episodes SET chapters_json = ? WHERE id = ?`,
+		`{"version":"1.2.0","chapters":[{"startTime":0,"title":"Intro"},{"startTime":60,"title":"Second part"}]}`, ep); err != nil {
+		t.Fatal(err)
+	}
+	_ = ctx
+	body = w.get(path, w.ben).Body.String()
+	if !strings.Contains(body, "Second part") || !strings.Contains(body, `data-ts-play-at="60000"`) || !strings.Contains(body, `data-ts-book="`+ep+`"`) {
+		t.Errorf("stored chapters are not in the panel: %.400s", body)
+	}
+	if rec := w.get(path, w.cy); rec.Code != http.StatusNotFound {
+		t.Errorf("stranger: %d, want 404", rec.Code)
+	}
+	if rec := w.get(path, w.gus); rec.Code != http.StatusNotFound {
+		t.Errorf("guest: %d, want 404", rec.Code)
+	}
+}

@@ -109,7 +109,7 @@ func (s *server) getRadio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := pages.RadioView{
-		Title: radioTitle, FindLabel: radioFind, FindHref: "/radio/search", 
+		Title: radioTitle, FindLabel: radioFind, FindHref: "/radio/search",
 		SavedTitle: radioSavedTitle, RecentTitle: radioRecentTitle, EmptyTitle: radioNoStationsHd, EmptyBody: radioNoStations,
 	}
 	for _, st := range saved {

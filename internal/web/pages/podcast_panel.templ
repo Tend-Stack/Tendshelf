@@ -1,0 +1,54 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// PodEpisodePanelView is the desktop Now playing panel of a podcast episode. It reuses the panel's frame and section
+// classes (components/now_panel.templ, now-panel.css), the book page's chapter list and the episode page's action
+// forms. A part with nothing to say is left out.
+type PodEpisodePanelView struct {
+	EpisodeID, AriaLabel string
+	// Meta is "2 Jan 2024 · 48 m · 12 m left".
+	Meta string
+	// Chapters is the stored chapter list; ChaptersTitle heads it. Empty rows draw no section.
+	Chapters      components.ChapterListView
+	ChaptersTitle string
+	// Notes is the cleaned show notes of the episode; NotesTitle heads it.
+	Notes, NotesTitle string
+	// Episode carries the action forms; ActionsLabel names the row, the two links lead to the show and the episode page.
+	Episode                   PodcastEpisodeView
+	ActionsLabel              string
+	ShowLinkLabel, EpLinkLabel string
+	EpisodeHref               string
+}
+
+// PodEpisodePanel is the aside the player loads beside the page for an episode that plays.
+templ PodEpisodePanel(v PodEpisodePanelView) {
+	<aside id="now-panel" class="ts-np ts-np--episode" aria-label={ v.AriaLabel } data-book-id={ v.EpisodeID }>
+		<div id="now-panel-tab" class="ts-np__tab">
+			if v.Meta != "" {
+				<p class="ts-np__desc ts-num ts-np__meta">{ v.Meta }</p>
+			}
+			if len(v.Chapters.Rows) > 0 {
+				<section class="ts-np__section" aria-labelledby="now-ep-chapters">
+					<h2 class="ts-np__h" id="now-ep-chapters">{ v.ChaptersTitle }</h2>
+					@components.ChapterList(v.Chapters)
+				</section>
+			}
+			if v.Notes != "" {
+				<section class="ts-np__section" aria-labelledby="now-ep-notes">
+					<h2 class="ts-np__h" id="now-ep-notes">{ v.NotesTitle }</h2>
+					@notesBlock(v.Notes)
+				</section>
+			}
+			<section class="ts-np__section" aria-label={ v.ActionsLabel }>
+				@podEpisodeActions(v.Episode)
+				<div class="ts-podep__actions">
+					if v.Episode.ShowHref != "" {
+						<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.Episode.ShowHref) }>{ v.ShowLinkLabel }</a>
+					}
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.EpisodeHref) }>{ v.EpLinkLabel }</a>
+				</div>
+			</section>
+		</div>
+	</aside>
+}

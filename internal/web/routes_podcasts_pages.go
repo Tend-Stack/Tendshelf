@@ -460,6 +460,12 @@ func (s *server) getPodcastEpisode(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	v := s.episodeView(r, ep)
+	s.pageStyled(w, r, http.StatusOK, ep.Title, "podcasts", pages.PodcastEpisode(v), nil, pages.PodcastStyles...)
+}
+
+// episodeView builds the episode's facts and action forms: the episode page and the Now playing panel draw the same view.
+func (s *server) episodeView(r *http.Request, ep podcast.Episode) pages.PodcastEpisodeView {
 	ctx, u := r.Context(), currentUser(r)
 	id := url.PathEscape(ep.ID)
 	here := "/podcasts/episodes/" + id
@@ -501,5 +507,5 @@ func (s *server) getPodcastEpisode(w http.ResponseWriter, r *http.Request) {
 	if !ep.State.Played && ep.State.PositionMs > 0 && ep.DurationMs > ep.State.PositionMs {
 		v.Progress = durationText(ep.DurationMs-ep.State.PositionMs) + " " + podLeftWord
 	}
-	s.pageStyled(w, r, http.StatusOK, ep.Title, "podcasts", pages.PodcastEpisode(v), nil, pages.PodcastStyles...)
+	return v
 }

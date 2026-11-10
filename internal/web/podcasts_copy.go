@@ -37,6 +37,12 @@ const (
 	podLess         = "Less"
 	podPlayLatest   = "Play latest"
 	podResume       = "Resume"
+	// The Now playing panel of an episode.
+	podPanelLabel    = "Now playing: about this episode"
+	podPanelChapters = "Chapters"
+	podPanelActions  = "Episode actions"
+	podGoToShow      = "Go to show"
+	podOpenEpisode   = "Open episode page"
 )
 
 // The page words. The first group is the deck of docs/plans/podcasts.md (P3); the second is new in P3.

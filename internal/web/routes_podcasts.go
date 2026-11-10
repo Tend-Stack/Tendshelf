@@ -52,6 +52,7 @@ func (s *server) registerPodcasts(mux *http.ServeMux) {
 	mux.HandleFunc("GET /podcasts/art/{showID}", s.getPodcastArt)
 	mux.HandleFunc("GET /podcasts/chapters/{episodeID}", s.getPodcastChapters)
 	mux.HandleFunc("GET /hx/player/episode/{episodeID}", s.getPlayerEpisode)
+	mux.HandleFunc("GET /hx/player/episode-panel/{episodeID}", s.getPodcastPanel)
 	mux.HandleFunc("GET /podcasts/opml", s.getPodcastOPML)
 	mux.HandleFunc("POST /podcasts/opml", s.postPodcastOPML)
 	mux.HandleFunc("GET /admin/podcasts", s.getAdminPodcasts)
