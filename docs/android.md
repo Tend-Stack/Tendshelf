@@ -139,7 +139,29 @@ Places use the same outbox as books (rows keyed by the `pe_` id, same merging an
 puts the answers back in order; a group that fails settles only the rows before it; a 404 (podcasts off) drops the episode rows. The
 sleep word `episode` ends the timer at the end of the item. Left for later: the mixed queue after an episode (P5; the hook is the
 `TODO(P5)` in `PlaybackService`), the "continue on another device?" question for episodes (the episode state names no device),
-downloads and auto-download (A2), the car tree, widget and media-button resume of episodes (A3).
+downloads and auto-download (A2).
+
+## Podcasts in the car, the widget and the media button (A3, decision 0038)
+
+`android/shared` `LibraryTree.kt` has the nodes `podcasts`, `podcasts-new`, `podcasts-downloaded`, `podcasts-shows`, `show:<id>` and
+`episode:<id>` (`playableId` is the id the engine starts for a book or an episode); `Podcast.kt` has the rows (`ShowCard`,
+`EpisodeCard`, read from `GET /api/v1/podcasts`, `/podcasts/new` and `/podcasts/shows/{id}/episodes?limit=50`; withdrawn `gone` episodes
+are left out), the row text and Auto's completion status, and the row actions. `LibraryTree` (app) puts **Podcasts** as the first row
+of the Shelves tab, only when the server answers the shows list (podcasts on): Android Auto shows four tabs, so a fifth would be dropped.
+Podcasts holds New, Downloaded (empty until A2) and Shows; a show opens its newest 50 episodes. Artwork goes through the server:
+`content://app.tendshelf.android.covers/<showId>` (`CoverProvider` fetches `/api/v1/podcasts/art/{id}?w=512` for an id starting `ps_`
+and caches it once per show). Episode ids are saved as `LAST_BOOK`, so a media button with nothing loaded resumes the episode.
+
+Row actions: the session lists four command buttons (`setCommandButtonsForMediaItems`); each episode item names those it supports
+(played or unplayed, star or unstar, by its state). A browsing controller's custom command carries the item's media id
+(`MediaConstants.EXTRA_KEY_MEDIA_ID`), which must parse as an episode; `LibraryTree.act` posts `{"played":bool}` to
+`/podcasts/episodes/{id}/played` or `{"on":bool}` to `/favourite`. Not offered: Download (A2) and Play next (the queue API takes
+books only; it comes with the mixed queue). Row actions inside the WebView pages need web markup (the WebView has no native long-press
+menu for a page's rows); the web rows already carry played and star buttons.
+
+The widget (`WidgetState.show`, `WidgetInput.show`) shows the episode's title, the show beneath it and the show's picture; Play,
+back and forward and the resume after a restart use the same path as a book (`WidgetActions.resumeLast`), and a tap opens the
+episode's page (`Origin.episodeUrl`).
 
 ## Read aloud
 
