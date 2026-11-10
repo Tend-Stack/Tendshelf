@@ -10,6 +10,8 @@ type PlayerFileView struct {
 	Mime                 string
 	MayNeedCompat        bool
 	Playable             bool
+	// Href is where the player asks for the sound when it is not /stream/{ID} (an episode: the proxy).
+	Href string
 }
 
 // PlayerChapterView is one chapter on the book's timeline.
@@ -38,6 +40,11 @@ type PlayerDataView struct {
 	Chapters                        []PlayerChapterView
 	// ReadHref opens the reader on this book's ebook; empty unless the person may read it (the player shows a book icon then).
 	ReadHref string
+	// Episode fields (decision 0038): Kind is "episode" for a podcast episode, empty for a book. ProgressHref is
+	// where the place is saved, ShowHref the episode's show page, ChaptersHref the address that fetches chapters
+	// on the first ask (empty when the feed names none or they are in the fragment already). Skips are in ms.
+	Kind, ProgressHref, ShowHref, ChaptersHref string
+	SkipIntroMs, SkipOutroMs                                 int64
 }
 
 func flagStr(b bool) string {
@@ -73,6 +80,16 @@ templ PlayerData(v PlayerDataView) {
 		if v.ReadHref != "" {
 			data-read-href={ v.ReadHref }
 		}
+		if v.Kind != "" {
+			data-kind={ v.Kind }
+			data-progress-href={ v.ProgressHref }
+			data-show-href={ v.ShowHref }
+			data-skip-intro-ms={ strconv.FormatInt(v.SkipIntroMs, 10) }
+			data-skip-outro-ms={ strconv.FormatInt(v.SkipOutroMs, 10) }
+		}
+		if v.ChaptersHref != "" {
+			data-chapters-href={ v.ChaptersHref }
+		}
 		if v.AccentDark != "" {
 			data-accent-dark={ v.AccentDark }
 		}
@@ -95,6 +112,9 @@ templ PlayerData(v PlayerDataView) {
 					data-mime={ f.Mime }
 					data-may-need-compat={ flagStr(f.MayNeedCompat) }
 					data-playable={ flagStr(f.Playable) }
+					if f.Href != "" {
+						data-href={ f.Href }
+					}
 				></li>
 			}
 		</ol>

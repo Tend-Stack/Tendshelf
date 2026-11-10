@@ -317,6 +317,13 @@ const (
 	msgSleepTitle        = "Sleep timer"
 	msgSleepEndOfChapter = "End of chapter"
 	msgSleepMinutes      = "{n} min"
+	msgSleepEndOfEpisode = podSleepEndEpisode
+	msgEpisodeLeft       = "{show} · {m} min left"
+	msgOpenEpisode       = "Open player: {title}, {m} min left"
+	msgGoToEpisode       = "Go to episode"
+	msgEpisodeWord       = "Episode"
+	msgLeftInEpisode     = "{t} left"
+	msgMarkPlayed        = "Mark as played"
 	msgSleepIn           = "in {m} min"
 	msgSleepCustom       = "Custom"
 	msgSleepCustomLabel  = "Minutes"
@@ -353,7 +360,7 @@ func playerMsgs() components.PlayerMsgs {
 		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
 		OpenPlayer: msgOpenPlayer, Resume: playResume, ScrubBubble: msgScrubBubble, ChBarLabel: msgChBarLabel, ChBarTip: msgChBarTip, ChBarValue: msgChBarValue, ChBarUntitled: msgChBarUntitled,
 		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SpeedForBook: msgSpeedForBook, SpeedMakeUsual: msgSpeedMakeUsual, JumpedFar: msgJumpedFar, JumpedBack: msgJumpedBack, SpeedUsualSet: msgSpeedUsualSet, SleepTitle: msgSleepTitle,
-		SleepEndOfChapter: msgSleepEndOfChapter, SleepMinutes: msgSleepMinutes, SleepIn: msgSleepIn,
+		SleepEndOfChapter: msgSleepEndOfChapter, SleepEndOfEpisode: msgSleepEndOfEpisode, EpisodeLeft: msgEpisodeLeft, EpisodeWord: msgEpisodeWord, LeftInEpisode: msgLeftInEpisode, OpenEpisode: msgOpenEpisode, GoToEpisode: msgGoToEpisode, MarkPlayed: msgMarkPlayed, SleepMinutes: msgSleepMinutes, SleepIn: msgSleepIn,
 		SleepCustom: msgSleepCustom, SleepCustomLabel: msgSleepCustomLabel, SleepStart: msgSleepStart,
 		SleepTurnOff: msgSleepTurnOff, SleepOffLabel: msgSleepOffLabel, SleepOnLabel: msgSleepOnLabel,
 		Sleeping: msgSleeping, SleepFading: msgSleepFading, SleepFadingShake: msgSleepFadingShake,

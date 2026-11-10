@@ -5,7 +5,7 @@ const dialog = $("#player-full");
 
 // Loads the loaded book's panel when the player opens wide.
 function load() {
-  const id = tsPlayer?.state().bookId;
+  const id = tsPlayer?.state().itemKind === "episode" ? "" : tsPlayer?.state().bookId; // an episode has no panel
   if (!WIDE.matches || document.documentElement.dataset.textSize === "large" || !dialog.open || !id || $("#now-panel").dataset.bookId === id) return;
   htmx.ajax("GET", "/hx/player/panel/" + id, { target: "#now-panel", swap: "outerHTML" });
 }

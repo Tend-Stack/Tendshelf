@@ -133,8 +133,8 @@ func podcastsSweepRows() []sweepRow {
 		sweepGet("GET /podcasts/chapters/{episodeID}", ep("/podcasts/chapters/", ""), notGuest),
 		labelled(sweepGet("GET /podcasts/chapters/{episodeID}", otherEp("/podcasts/chapters/", ""), ownerOnly), "someone else's episode"),
 		labelled(sweepPost("/podcasts/chapters/{episodeID}", ep("/podcasts/chapters/", ""), nil, notAllowed, ""), "POST"),
-		sweepGet("GET /hx/player/episode/{episodeID}", ep("/hx/player/episode/", ""), sweepNotGuest(http.StatusNoContent, nf)),
-		labelled(sweepGet("GET /hx/player/episode/{episodeID}", otherEp("/hx/player/episode/", ""), [4]int{http.StatusNoContent, nf, nf, nf}), "someone else's episode"),
+		sweepGet("GET /hx/player/episode/{episodeID}", ep("/hx/player/episode/", ""), sweepNotGuest(http.StatusOK, nf)),
+		labelled(sweepGet("GET /hx/player/episode/{episodeID}", otherEp("/hx/player/episode/", ""), [4]int{http.StatusOK, nf, nf, nf}), "someone else's episode"),
 		sweepGet("GET /podcasts/opml", sweepStatic("/podcasts/opml"), notGuest),
 		sweepGet("GET /admin/podcasts", sweepStatic("/admin/podcasts"), sweepOwnerOnly(ok, nf)),
 

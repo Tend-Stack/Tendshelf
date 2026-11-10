@@ -111,3 +111,24 @@ const (
 	podAdminCacheHead  = "Saved episodes"
 	podAdminSave       = "Save"
 )
+
+// New in P4.
+const (
+	podNewEpisodes     = "New episodes"
+	podSeeAll          = "See all"
+	podSleepEndEpisode = "End of episode"
+	podImportTitle     = "Bring your podcasts"
+	podImportHint      = "Choose an OPML file from another podcast app. Tendshelf follows each show in it."
+	podImportFile      = "OPML file"
+	podImportButton    = "Import"
+	podExportButton    = "Save your list"
+	podImportRunning   = "Following your shows…"
+	podImportRunningN  = "Following your shows… %d of %d done."
+	podImportFailed    = "The import didn't finish. Try the file again."
+	podImportDone      = "Done. Now following %s."
+	podImportNothing   = "Done. You already follow every show in that file."
+	podImportSkipped   = "%s couldn't be followed."
+	podImportTooMany   = "%s not added: you follow the most shows Tendshelf keeps."
+	podImportStopped   = "Stopped early: you have followed a lot of shows in a short time. %s not added yet. Import the file again in an hour to add the rest."
+	podImportLabel     = "Import result"
+)

@@ -292,11 +292,14 @@ function drawBar(state, info, chapter, force) {
   // Many books name their chapters only "Chapter 12": that would read "Chapter 12 · Chapter 12".
   const plainTitle = /^(chapter|ch\.?|part)?\s*0*\d+\s*$/i.test(chapter.title || "");
   const title = plainTitle ? "" : chapter.title || "";
-  const name = fill(msg("waveChapter"), { n, title }).replace(/ · $/, "");
+  const episode = info.kind === "episode";
+  // an episode of one piece has no chapter number to show
+  const name = episode && info.chapters.length <= 1 ? msg("episodeWord") : fill(msg("waveChapter"), { n, title }).replace(/ · $/, "");
   setText(bar.title, loadingNow ? fill(msg("waveDrawing"), { n }) : name);
   bar.input.setAttribute("aria-label", fill(msg("waveLabel"), { n }));
   setText(bar.label, fill(msg("waveLabel"), { n }));
-  const left = leftInBook(Math.ceil(Math.max(0, state.durationMs - state.positionMs) / state.speed / 60000));
+  const remaining = Math.max(0, state.durationMs - state.positionMs);
+  const left = episode ? fill(msg("leftInEpisode"), { t: clock(remaining) }) : leftInBook(Math.ceil(remaining / state.speed / 60000));
   // "{author} · {left}" is two spans: the author may be cut short, the time left never is.
   setText(bar.author, info.author ? fill(msg("barMeta").split("{left}")[0], { author: info.author }) : "");
   setText(bar.metaLeft, left);

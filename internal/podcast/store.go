@@ -649,3 +649,16 @@ func (s *Store) NewTotal(ctx context.Context, userID string) (int, error) {
 		WHERE b.user_id = ? AND COALESCE(t.played,0) = 0`, userID).Scan(&n)
 	return n, err
 }
+
+// LastUnfinished is the episode the person listened to most recently and has not finished (a place
+// saved, not marked played, still listed by its show). ErrNotFound when there is none.
+func (s *Store) LastUnfinished(ctx context.Context, userID string) (Episode, error) {
+	eps, err := s.list(ctx, userID, `t.user_id = ? AND t.played = 0 AND t.position_ms > 0 AND e.gone_at IS NULL`, `t.client_updated_at DESC, e.id`, 1)
+	if err != nil {
+		return Episode{}, err
+	}
+	if len(eps) == 0 {
+		return Episode{}, ErrNotFound
+	}
+	return eps[0], nil
+}

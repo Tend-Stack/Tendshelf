@@ -44,6 +44,7 @@ let stopped = false; // signed out: stop saving
 const LINK = document.body.dataset.tsLink || "";
 let prompting = false; // the Continue there? question is on screen
 let beaconSent = false;
+let outroEnded = false; // an episode stopped at its outro counts as ended
 let compatSeq = 0; // bumped to cancel a wait for a converted copy
 let seekSaveTimer = 0;
 let userVolume = storedVolume(); // 0 to 1, per device
@@ -183,6 +184,10 @@ function hint(text) {
 
 // ---- Data: the book description the server renders ----
 
+const EPISODE = "episode"; // data-kind of a podcast episode
+const UNKNOWN_END = 1e12; // the end of a file whose length is not known yet
+const isEpisodeId = (id) => id.startsWith("pe_");
+
 function parseBook(el) {
   const d = el.dataset;
   const num = (value) => Number(value) || 0;
@@ -204,6 +209,13 @@ function parseBook(el) {
     accents: { dark: d.accentDark, light: d.accentLight, sepia: d.accentSepia }, // cover colours for the full player
     tint: d.tint || "",
     readHref: d.readHref || "", // the book's reader, empty without an ebook the person may read
+    // A podcast episode (decision 0038): the same description with its own addresses. kind is "" for a book.
+    kind: d.kind || "",
+    progressHref: d.progressHref || "", // where the place is saved; empty means /progress/{id}
+    showHref: d.showHref || "", // the episode's show page
+    skipIntro: num(d.skipIntroMs), // ms skipped when an episode starts at its beginning
+    skipOutro: num(d.skipOutroMs), // ms before the end at which an episode counts as ended
+    chaptersHref: d.chaptersHref || "", // chapters not in the fragment yet; fetched on the first ask
     // null when this book was never started
     stored: updatedAt > 0
       ? { positionMs: num(d.positionMs), updatedAt, deviceId: d.deviceId, deviceLabel: d.deviceLabel, finished: d.finished === "1" }
@@ -215,11 +227,16 @@ function parseBook(el) {
       mime: x.mime,
       mayCompat: x.mayNeedCompat === "1", // a converted copy can stand in
       playable: x.playable === "1",
+      href: x.href || "", // where the sound comes from when it is not /stream/{id} (an episode)
     })),
     chapters: rows("[data-ts-chapters]", (x, li) => ({ start: num(x.startMs), end: num(x.endMs), title: li.textContent })),
   };
   if (!parsed.chapters.length) {
     parsed.chapters.push({ start: 0, end: parsed.durationMs, title: "" }); // no chapters: the book is one
+  }
+  if (parsed.kind === EPISODE) {
+    // An episode's length may be unknown until its sound loads (learnDuration); until then its one file has no end.
+    for (const file of parsed.files) if (!file.dur) file.dur = UNKNOWN_END;
   }
   return parsed;
 }
@@ -229,7 +246,7 @@ function parseBook(el) {
 async function fetchBook(id, init) {
   if (LINK) return linkBook(id);
   try {
-    const res = await fetch(id ? "/hx/player/" + encode(id) : "/hx/player", init);
+    const res = await fetch(id ? (isEpisodeId(id) ? "/hx/player/episode/" : "/hx/player/") + encode(id) : "/hx/player", init);
     if (res.status !== 200 || res.redirected) return null;
     const html = await res.text();
     const el = new DOMParser().parseFromString(html, "text/html").getElementById("player-data");
@@ -305,6 +322,7 @@ function showLinkResume(bookId) {
 // ---- Timeline: one position across all the files of a book ----
 
 function streamUrl(file) {
+  if (file.href) return file.href;
   return LINK + "/stream/" + encode(file.id);
 }
 
@@ -469,6 +487,11 @@ function play() {
     return;
   }
   if (!book || current.fileIdx < 0) return;
+  if (outroEnded) {
+    // pressing Play on an episode that stopped at its outro starts it again
+    outroEnded = false;
+    seek(0, false);
+  }
   afterBreak();
   if (!current.loaded) {
     setSource(current.fileIdx, current.startMs, true);
@@ -573,7 +596,8 @@ function accrueHeard(stopping) {
 }
 
 function progressUrl(bookId) {
-  return "/progress/" + encode(bookId);
+  if (book && book.id === bookId && book.progressHref) return book.progressHref;
+  return (isEpisodeId(bookId) ? "/podcasts/progress/" : "/progress/") + encode(bookId);
 }
 
 function savePayload(extra) {
@@ -611,16 +635,17 @@ function nearLastSave() {
 async function save(kind) {
   if (NATIVE) return;
   if (!book || stopped || current.fileIdx < 0) return;
-  if (audio.ended && kind !== "end") return; // a book that ended keeps its finished mark
+  if ((audio.ended || outroEnded) && kind !== "end") return; // a book that ended keeps its finished mark
   if (kind === "tick" && (prompting || nearLastSave())) return;
   if (kind === "beacon" && (!current.loaded || (audio.paused && nearLastSave()))) return;
 
   const id = book.id;
+  const episode = book.kind === EPISODE;
   const position = Math.round(bookPosition());
   if (LINK) return saveLinkPlace(id, position, kind === "end");
   const extra = kind === "end" ? { finished: 1 } : kind === "force" ? { force: 1 } : {};
   const body = savePayload(extra);
-  setPendingSave(id, body.toString());
+  if (!episode) setPendingSave(id, body.toString()); // the offline batch knows books only
 
   accrueHeard();
   const reportedMs = Math.round(heardMs);
@@ -648,7 +673,7 @@ async function save(kind) {
     heardMs += reportedMs;
     return;
   }
-  setPendingSave(id, null);
+  if (!episode) setPendingSave(id, null);
   const answer = await res.json();
   fire(document.body, "progress-saved", { bookId: id, positionMs: position, applied: answer.applied });
   // the server kept a newer place from another device
@@ -666,7 +691,7 @@ function signedOut() {
 
 async function checkRemote() {
   if (NATIVE) return;
-  if (!book || stopped || LINK) return;
+  if (!book || stopped || LINK || book.kind === EPISODE) return; // an episode has no place to read back
   try {
     const res = await api(progressUrl(book.id));
     if (res) maybeAskContinue((await res.json()).progress);
@@ -713,9 +738,17 @@ function render(force) {
 
   controls.title.textContent = book.title;
   controls.open.dataset.letter = book.title.charAt(0).toUpperCase();
-  controls.meta.textContent = fill(msg("chapterLeft"), { n: chapterIdx + 1, m: minutesLeft });
-  controls.open.href = LINK || "/books/" + encode(book.id);
-  setLabel("open", fill(msg("openPlayer") || msg("open"), { title: book.title, n: chapterIdx + 1, m: minutesLeft }));
+  if (book.kind === EPISODE) {
+    // an episode: the show, then what is left of the whole episode (nothing while its length is unknown)
+    const left = book.durationMs ? Math.max(1, Math.ceil((book.durationMs - position) / 60000)) : 0;
+    controls.meta.textContent = left ? fill(msg("episodeLeft"), { show: book.author, m: left }) : book.author;
+    controls.open.href = "/podcasts/episodes/" + encode(book.id);
+    setLabel("open", fill(msg("openEpisode"), { title: book.title, m: left }));
+  } else {
+    controls.meta.textContent = fill(msg("chapterLeft"), { n: chapterIdx + 1, m: minutesLeft });
+    controls.open.href = LINK || "/books/" + encode(book.id);
+    setLabel("open", fill(msg("openPlayer") || msg("open"), { title: book.title, n: chapterIdx + 1, m: minutesLeft }));
+  }
   if (book.cover && controls.cover.getAttribute("src") !== book.cover) controls.cover.src = book.cover;
   controls.cover.hidden = !book.cover;
   controls["back-num"].textContent = book.skipBack;
@@ -741,6 +774,7 @@ function state() {
     volume: userVolume,
     fileIdx: NATIVE ? book.files.findLastIndex((f) => f.offset <= bookPosition()) : current.fileIdx,
     chapterIdx: chapterIndexAt(bookPosition()),
+    itemKind: book.kind, // "episode" or "" (not `kind`: emit() puts the event's kind beside this state)
   };
 }
 
@@ -906,6 +940,9 @@ function adopt(newBook, posMs) {
   }
   book = newBook;
   prompting = false;
+  outroEnded = false;
+  // An episode that starts at its beginning skips the show's intro.
+  if (newBook.kind === EPISODE && posMs <= 0 && newBook.skipIntro > 0) posMs = newBook.skipIntro;
 
   if (current.fileId) {
     // sound already started from a link, which knew only the file's id
@@ -919,11 +956,33 @@ function adopt(newBook, posMs) {
   }
 
   lastSavedMs = -1;
+  if (newBook.chaptersHref) fetchChapters(newBook);
   slot.hidden = false;
   document.body.classList.add("has-player");
   emit("load");
   watchPageResumeButtons();
   return true;
+}
+
+// An episode's chapters are fetched the first time anyone asks (the server keeps them after that). They are
+// drawn when they arrive, if the episode is still the loaded one.
+async function fetchChapters(episode) {
+  const href = episode.chaptersHref;
+  episode.chaptersHref = "";
+  try {
+    const res = await fetch(href);
+    if (!res.ok) return;
+    const list = ((await res.json()).chapters || [])
+      .map((c) => ({ start: Math.round(Number(c.startTime) * 1000), title: String(c.title || "") }))
+      .filter((c) => c.start >= 0);
+    if (!list.length) return;
+    list.sort((a, b) => a.start - b.start);
+    if (list[0].start > 0) list.unshift({ start: 0, title: "" });
+    episode.chapters = list.map((c, i) => ({ start: c.start, end: i + 1 < list.length ? list[i + 1].start : Math.max(episode.durationMs, c.start), title: c.title }));
+    if (book === episode) emit("chapters");
+  } catch {
+    // the episode plays without chapters
+  }
 }
 
 // Fetches and adopts a book. options.positionMs overrides the saved place; options.play plays.
@@ -1046,7 +1105,7 @@ listen(audio, "playing", () => {
 listen(audio, "waiting", () => accrueHeard(true)); // buffering is not listening
 
 listen(audio, "pause", () => {
-  if (audio.ended || !book) return; // the end has its own handler
+  if (audio.ended || outroEnded || !book) return; // the end has its own handler
   accrueHeard(true);
   idleAt = Date.now();
   save("pause");
@@ -1065,7 +1124,31 @@ listen(audio, "timeupdate", () => {
     if (!audio.paused) fire(document, "ts:player:tick", state());
   }
   warmNextFile();
+  checkOutro();
 });
+
+// An episode stops at the show's outro: it behaves as if the sound had ended.
+function checkOutro() {
+  if (!book || book.kind !== EPISODE || !book.skipOutro || !book.durationMs || outroEnded || audio.paused) return;
+  if (bookPosition() < book.durationMs - book.skipOutro) return;
+  outroEnded = true;
+  audio.pause();
+  finishBook();
+}
+
+// The sound's length is known now: an episode whose feed gave none takes it from the file.
+listen(audio, "loadedmetadata", learnDuration);
+listen(audio, "durationchange", learnDuration);
+function learnDuration() {
+  if (!book || book.kind !== EPISODE || !isFinite(audio.duration) || audio.duration <= 0) return;
+  const ms = Math.round(audio.duration * 1000);
+  if (Math.abs(ms - book.durationMs) < 1000 && book.files[0].dur !== UNKNOWN_END) return;
+  book.durationMs = ms;
+  book.files[0].dur = ms;
+  if (book.chapters.length) book.chapters[book.chapters.length - 1].end = Math.max(ms, book.chapters[book.chapters.length - 1].start);
+  render(true);
+  emit("duration");
+}
 
 // Near the end of a file, fetch the next one's first bytes so the switch has no gap.
 function warmNextFile() {
@@ -1092,17 +1175,21 @@ listen(audio, "ended", () => {
     emit("chapter");
     return;
   }
-  // the last file ended: the book is finished, then Up next plays its first book
+  finishBook();
+});
+
+// The last file ended: the book (or the episode, which the save marks played) is finished, then Up next plays its first book.
+function finishBook() {
   save("end").then(playNext);
   idleAt = Date.now();
   emit("pause");
-});
+}
 
 // The server pops the first book of Up next and drops the ended one from it (204 when empty).
 // Nothing happens in link mode, or when the person already started something else while the
 // place was being saved (then the audio is no longer ended).
 function playNext() {
-  if (LINK || !audio.ended || !book) return;
+  if (LINK || !(audio.ended || outroEnded) || !book || book.kind === EPISODE) return; // Up next follows books only
   loadBook("next", {
     play: true,
     init: {
@@ -1197,8 +1284,8 @@ applyVolume();
 // The loaded book as player-full.js needs it (copies), or null.
 function info() {
   if (!book) return null;
-  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref } = book;
-  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
+  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, kind, showHref } = book;
+  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, kind, showHref, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
     files: book.files.map(({ id, offset, dur, playable }) => ({ id, offset, dur, playable })), // for the waveform
   };
 }

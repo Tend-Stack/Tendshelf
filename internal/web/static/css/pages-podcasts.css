@@ -111,3 +111,14 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
   .ts-podshow__actions { flex-wrap: nowrap; }
   .ts-podshow__actions > .ts-chip--static { display: none; }
 }
+
+/* Bring your podcasts (P4): the OPML file form under the shows, and the result of the latest import. */
+.ts-podimport { display: flex; flex-direction: column; gap: var(--space-8); max-width: 40rem; margin-top: var(--space-16); padding-top: var(--space-16); border-top: 1px solid var(--line); }
+.ts-podimport .section, .ts-podimport .caption { margin: 0; }
+.ts-podimport__form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.ts-podimport__file { flex: 1 1 100%; min-width: 0; box-sizing: border-box; height: auto; min-height: var(--size-tap); padding: var(--space-8) var(--space-12); font: inherit; color: var(--ink-muted); }
+.ts-podimport__file::file-selector-button { margin-right: var(--space-12); min-height: 2rem; padding: 0 var(--space-12); border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); color: var(--ink); font: 600 0.9375rem var(--font-sans); cursor: pointer; }
+.ts-podimport__buttons { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.ts-podimport__status { display: flex; flex-direction: column; gap: var(--space-4); }
+.ts-podimport__status .body { margin: 0; }
+.ts-podimport__failed { color: var(--danger); }

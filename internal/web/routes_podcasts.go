@@ -359,14 +359,6 @@ func podcastStateJSON(st podcast.EpisodeState) map[string]any {
 	return map[string]any{"positionMs": st.PositionMs, "played": st.Played, "favourite": st.Favourite, "updatedAt": st.UpdatedAt}
 }
 
-// getPlayerEpisode is the player fragment of an episode. P4 fills it; until then an allowed person gets 204.
-func (s *server) getPlayerEpisode(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.loadEpisode(w, r); !ok {
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
 func (s *server) getPodcastOPML(w http.ResponseWriter, r *http.Request) {
 	if !s.podcastsGate(w, r) {
 		return

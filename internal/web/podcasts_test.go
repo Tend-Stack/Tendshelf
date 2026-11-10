@@ -176,7 +176,7 @@ func TestPodcastsRolesAndStrangers(t *testing.T) {
 		{"stranger chapters", "/podcasts/chapters/" + ep, w.cy, 404},
 		{"stranger art", "/podcasts/art/" + w.show, w.cy, 404},
 		{"stranger player", "/hx/player/episode/" + ep, w.cy, 404},
-		{"follower player", "/hx/player/episode/" + ep, w.ben, 204},
+		{"follower player", "/hx/player/episode/" + ep, w.ben, 200},
 		{"stranger api episode", "/api/v1/podcasts/episodes/" + ep, w.cy, 404},
 		{"guest api list", "/api/v1/podcasts", w.gus, 404},
 		{"member opml", "/podcasts/opml", w.ben, 200},

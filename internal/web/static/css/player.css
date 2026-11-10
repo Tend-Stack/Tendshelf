@@ -94,6 +94,8 @@
 .ts-player__transport [data-ts-full-next] { order: 5; }
 .ts-player__bar { order: 2; margin-top: auto; flex: none; }
 .ts-player__barmark { display: none; }
+/* An episode has no bookmarks: the hidden mark stays hidden at every width. */
+.ts-player__barmark[hidden], .ts-player__mark[hidden], [data-ts-bar-bookmark][hidden] { display: none !important; }
 .ts-player-bar__item:focus-visible, .ts-player__menuitem:focus-visible, .ts-player__chrow:focus-visible, .ts-player__menu > summary:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 
 /* Scrubber: drawn from custom properties set by player-full.js */
