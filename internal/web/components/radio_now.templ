@@ -1,0 +1,7 @@
+package components
+
+// RadioNow is the now-playing line of a live station. It polls itself every 15 seconds and swaps itself,
+// so the title follows the stream. Title is already cleaned by the radio package; templ escapes it.
+templ RadioNow(stationID, title string) {
+	<p id="radio-now" class="ts-radio-now" hx-get={ "/hx/radio/now/" + stationID } hx-trigger="every 15s" hx-swap="outerHTML">{ title }</p>
+}

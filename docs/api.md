@@ -285,6 +285,17 @@ or an episode they already have a place or star for; any other id is 404. No pub
 - `POST /api/v1/podcasts/progress/batch`: like `/api/v1/progress/batch` with `episodeId`, `positionMs`, `clientUpdatedAt`, `deviceId`, `finished`; newer `clientUpdatedAt` wins.
 - `POST /api/v1/podcasts/episodes/{id}/played` (`{"played": true}`) and `/favourite` (`{"on": true}`): answer `{"state": {...}}`.
 
+## Radio (decision [0038](decisions/0038-podcasts.md), plan R1)
+Off until the owner turns radio on (then every route below answers the API's 404); a guest is refused (404). A station is the person's own:
+one they saved or played. No stream address, site address or upstream header is ever in an answer. Searching stations stays a web page.
+
+- `GET /api/v1/radio/stations`: the saved stations in the person's order (a change feed shape: `items`, `serverNow`): `id, name, codec, genre, country, favourite, addedAt, lastPlayedAt, liveUrl` (`/api/v1/radio/live/{id}`) and `problem` (plain words when the last play failed).
+- `GET /api/v1/radio/recent`: the last 20 stations played, newest first, same fields.
+- `POST /api/v1/radio/stations` (`{"slug": "..."}` for an OndaCast station, or `{"streamUrl": "..."}`; not both): saves a station and answers `{"station": {...}}`, 201 when new and 200 when already saved. 422 with plain words when the address is not a public web address, is an HLS (`.m3u8`) stream ("Tendshelf can't play this kind of stream yet."), or does not answer `audio/mpeg|aac|aacp|ogg|opus|flac` (a `.pls` or `.m3u` playlist is read for its first `http(s)` entry); 422 at 100 stations; 429 after 30 additions an hour; 502 when OndaCast is needed and unreachable.
+- `DELETE /api/v1/radio/stations/{id}`: takes it out of the saved list (204). It stays playable from history.
+- `GET /api/v1/radio/live/{id}`: the live audio, relayed with no `Range` (always 200, `Accept-Ranges: none`, no `Content-Length`), `Content-Type` one of the six types above, in-stream titles removed. 503 with `Retry-After: 5` when the person already has a live station open or all 16 server stream slots (shared with podcast audio) are in use; 502 when the station cannot be reached or answers another type. A connection ends after 12 hours or when the station is silent for 60 seconds; reconnect.
+- `GET /api/v1/radio/now/{id}`: `{"title": "..."}`, the latest title the station sent (at most 200 characters, control characters removed), empty when nobody is listening or it sends none. The web fragment `GET /hx/radio/now/{id}` is polled every 15 seconds.
+
 ## The Connect page (not `/api/v1`)
 Adding a phone by QR (decision 0028) adds pages only, no JSON route: `/me/devices/add...` for the signed-in person and the public `/pair/{token}`, `/pair/wait`, `/pair/finish` for the phone's window. A QR holds only `https://host/pair/{token}`; the token alone claims and gives no session, code or name. The last leg is the unchanged `303 /app/connect/done?code=` and `POST /api/v1/auth/token`. No token route changed.
 

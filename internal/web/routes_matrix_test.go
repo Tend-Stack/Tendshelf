@@ -736,6 +736,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, activitySweepRows()...)
 	rows = append(rows, apiSweepRows()...)
 	rows = append(rows, podcastsSweepRows()...)
+	rows = append(rows, radioSweepRows()...)
 	return append(rows, linksSweepRows()...)
 }
 

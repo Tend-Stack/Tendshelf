@@ -24,14 +24,17 @@ type podSweep struct {
 	fx            *podFix
 	show, ep      string // Main and its first episode
 	other, otherE string // Other and its first episode
+	station       string // a station the owner, the admin and the member keep (radio, plan R1)
+	otherStation  string // a station only the owner keeps
 }
 
 // seedPodcasts turns podcasts on and gives the rows their shows, episodes and a stored picture.
 func (e *sweepEnv) seedPodcasts(t *testing.T, fx *podFix) {
 	t.Helper()
 	ctx := context.Background()
-	fx.enable(t, e.a, nil)
+	fx.enable(t, e.a, func(s *podcast.Settings) { s.RadioEnabled = true })
 	e.pod = podSweep{fx: fx}
+	e.seedRadio(t, fx)
 	seed := func(feedURL, title string, people ...int) (string, string) {
 		var show string
 		for _, i := range people {

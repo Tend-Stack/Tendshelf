@@ -19,6 +19,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/jobs"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
+	"github.com/Tend-Stack/tendshelf/internal/radio"
 	"github.com/Tend-Stack/tendshelf/internal/scan"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/upload"
@@ -110,7 +111,7 @@ func Run(ctx context.Context, cfg Config) error {
 	}
 	setupCode := auth.NewSetupCode()
 	handler, err := web.NewHandler(ctx, web.Options{Version: version, Store: st, SetupCode: setupCode, TrustedProxies: cfg.TrustedProxies,
-		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Ebooks: ebooks, Podcasts: podcasts, Backups: bk, Watcher: watcher, MailOptions: share.MailOptions{Logger: logger}})
+		Library: lib, DataDir: dataDir, Jobs: runner, Compat: compat, Peaks: peaks, Details: details, Covers: covers, Writes: writes, Uploads: uploads, Ebooks: ebooks, Podcasts: podcasts, Radio: radio.New(st, podcasts.Net, podcasts, nil, logger), Backups: bk, Watcher: watcher, MailOptions: share.MailOptions{Logger: logger}})
 	if err != nil {
 		return err
 	}

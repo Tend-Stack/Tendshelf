@@ -127,6 +127,25 @@ func (s *Service) AcquireStream(userID string) (release func(), ok bool) {
 	}, true
 }
 
+// AcquireGlobalStream takes one of the server-wide upstream-stream slots without counting against a
+// person's three podcast streams. Live radio uses it, so radio and podcasts share the same 16 slots.
+func (s *Service) AcquireGlobalStream() (release func(), ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.streams >= MaxStreams {
+		return nil, false
+	}
+	s.streams++
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.streams--
+		})
+	}, true
+}
+
 // enqueueOnce queues a job unless one for the same payload field is already queued or running; it
 // returns the id of whichever it is.
 func (s *Service) enqueueOnce(ctx context.Context, kind, field, value string, payload any, by string) (string, error) {

@@ -38,6 +38,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
+	"github.com/Tend-Stack/tendshelf/internal/radio"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/upload"
 	"github.com/Tend-Stack/tendshelf/internal/users"
@@ -103,6 +104,8 @@ type Options struct {
 	Ebooks *ebook.Service
 	// Podcasts follows shows and plays episodes (decision 0038); nil means every podcast route answers 404.
 	Podcasts *podcast.Service
+	// Radio plays live stations (decision 0038); nil means every radio route answers 404.
+	Radio *radio.Service
 }
 
 type server struct {
@@ -137,6 +140,8 @@ type server struct {
 	ebooks     *ebook.Service
 	podcasts   *podcast.Service
 	podLim     podcastLimits
+	radio      *radio.Service
+	radioLim   radioLimits
 	backups    *backups.Service
 	progress   *progress.Service
 	dicts      *dict.Set // dictionaries the owner added under <data>/dictionaries (G1)
@@ -266,6 +271,8 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		watcher:    opts.Watcher,
 		ebooks:     opts.Ebooks,
 		podcasts:   opts.Podcasts,
+		radio:      opts.Radio,
+		radioLim:   radioLimits{add: auth.NewLimiter(30, time.Hour, 1024, opts.Now)},
 		podLim:     podcastLimits{search: auth.NewLimiter(20, time.Minute, 1024, opts.Now), follow: auth.NewLimiter(30, time.Hour, 1024, opts.Now)},
 		backups:    bk,
 		progress:   progress.New(opts.Store, opts.Now),
@@ -345,6 +352,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerFeedPages(mux)
 	s.registerAppConnect(mux)
 	s.registerPodcasts(mux)
+	s.registerRadio(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})

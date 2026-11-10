@@ -29,6 +29,7 @@ func (s *server) registerAPI(mux *http.ServeMux) {
 	s.registerAPIQueue(mux)
 	s.registerAPISettings(mux)
 	s.registerAPIPodcasts(mux)
+	s.registerAPIRadio(mux)
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		api.Error(w, http.StatusNotFound, api.CodeNotFound, "There is nothing at this address.")
 	})

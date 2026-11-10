@@ -17,6 +17,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/podcast/podtest"
+	"github.com/Tend-Stack/tendshelf/internal/radio"
 )
 
 // podFix is a fake publisher and a fake OndaCast on one httptest server, reached through the real guarded
@@ -149,6 +150,7 @@ func (f *podFix) mod(t *testing.T) func(*Options) {
 			t.Fatal(err)
 		}
 		o.Podcasts = f.svc
+		o.Radio = radio.New(o.Store, f.pub.Client, f.svc, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	}
 }
 
