@@ -191,7 +191,7 @@ func TestRadioPlayerVisuals(t *testing.T) {
 			}
 			tab.Eval(`(() => { const i = [...document.querySelectorAll(".ts-stncard img.ts-cover__img")];
 				return {imgs: i.length, loaded: i.length > 0 && i.every((e) => e.complete), save: !!document.querySelector(".ts-stncard__save")}; })()`, &art)
-			if art.Imgs != 1 || !art.Save {
+			if art.Imgs < 1 || !art.Save { // the saved station's logo, plus the suggestions' pictures that now always show
 				t.Errorf("station row art/save: %+v", art)
 			}
 			overflow("radio page")

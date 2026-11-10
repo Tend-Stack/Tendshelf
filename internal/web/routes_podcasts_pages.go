@@ -168,7 +168,7 @@ func (s *server) getPodcasts(w http.ResponseWriter, r *http.Request) {
 	default:
 		tab = "shows"
 	}
-	v := pages.PodcastsView{Title: podcastsTitle, FindLabel: podcastsSearchTitle, FindHref: "/podcasts/search", TabsLabel: podTabsLabel}
+	v := pages.PodcastsView{Title: podcastsTitle, FindHref: "/podcasts/search", SearchLabel: podSearchPodcasts, SearchButton: podSearchWord, TabsLabel: podTabsLabel}
 	v.Tabs = s.podcastsAreaTabs(r, tab)
 	var eps []podcast.Episode
 	var err error
@@ -180,9 +180,13 @@ func (s *server) getPodcasts(w http.ResponseWriter, r *http.Request) {
 				v.Shows = append(v.Shows, podShowCard(sh))
 			}
 		}
-		v.EmptyTitle, v.EmptyBody, v.EmptyAction = podNoShowsTitle, podNoShows, true
-		if len(v.Shows) == 0 && err == nil {
-			v.Starters = s.podStarters(r)
+		v.EmptyTitle, v.EmptyBody = podNoShowsTitle, podNoShows
+		if err == nil {
+			followed := map[string]bool{}
+			for _, sh := range shows {
+				followed[sh.OndaCastSlug] = true
+			}
+			v.Starters = s.podStarters(r, followed)
 		}
 		v.Import = s.podImportView(r)
 	case "new":
@@ -221,7 +225,7 @@ func (s *server) getPodcastSearch(w http.ResponseWriter, r *http.Request) {
 		AddTitle: podAddByRSS, AddHint: podPasteRSS, AddLabel: podRSSLabel, ResultsLabel: podResultsLabel,
 	}
 	if q == "" {
-		v.Starters = s.podStarters(r)
+		v.Starters = s.podStarters(r, nil)
 	}
 	if q != "" {
 		if !s.podLim.search.Take(u.ID) { // each search counts once

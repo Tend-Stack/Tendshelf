@@ -25,6 +25,8 @@ type PlayerChapterView struct {
 // the person turned the tint off or the cover has none for that theme.
 type PlayerDataView struct {
 	BookID, Title, Author, CoverURL string
+	// LogoInitials and LogoColour (0 to 5) draw a station's generated tile when CoverURL is empty or fails.
+	LogoInitials, LogoColour string
 	DurationMs, PositionMs          int64
 	Finished                        bool
 	UpdatedAt                       int64 // the stored progress's client time; 0 = none
@@ -65,6 +67,8 @@ templ PlayerData(v PlayerDataView) {
 		data-title={ v.Title }
 		data-author={ v.Author }
 		data-cover-url={ v.CoverURL }
+		data-logo-initials={ v.LogoInitials }
+		data-logo-colour={ v.LogoColour }
 		data-duration-ms={ strconv.FormatInt(v.DurationMs, 10) }
 		data-position-ms={ strconv.FormatInt(v.PositionMs, 10) }
 		data-finished={ flagStr(v.Finished) }

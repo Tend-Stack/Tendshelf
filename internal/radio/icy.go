@@ -104,6 +104,11 @@ func CleanTitle(s string) string {
 		}
 		s = string(r)
 	}
+	return squeezeTitle(unwrapPairs(s))
+}
+
+// squeezeTitle drops control characters, collapses white space and cuts to MaxTitleRunes.
+func squeezeTitle(s string) string {
 	var b strings.Builder
 	space := false
 	n := 0
@@ -130,4 +135,59 @@ func CleanTitle(s string) string {
 		n++
 	}
 	return strings.TrimSpace(b.String())
+}
+
+// unwrapPairs reads the shape iHeart streams send: "Artist - text="Song" song_spot="M" MediaBaseId="1" ...". When
+// the text after the first " - " (or the whole text) starts with key="value" pairs, the title becomes
+// "Artist - <text>", and a title with no text, an advert (song_spot "T" or "A") or nothing but pairs becomes "".
+// A bare trailing " - " is dropped. Anything else is returned as it came. It runs before the length cut, because
+// the pairs are long.
+func unwrapPairs(s string) string {
+	s = strings.TrimSpace(s)
+	artist, rest := "", s
+	if i := strings.Index(s, " - "); i >= 0 {
+		artist, rest = strings.TrimSpace(s[:i]), strings.TrimSpace(s[i+3:])
+	}
+	if pairs, ok := readPairs(rest); ok {
+		text := strings.TrimSpace(pairs["text"])
+		if sp := pairs["song_spot"]; text == "" || sp == "T" || sp == "A" {
+			return ""
+		}
+		if artist == "" {
+			return text
+		}
+		return artist + " - " + text
+	}
+	return strings.TrimSpace(strings.TrimSuffix(s, " -"))
+}
+
+// readPairs parses key="value" pairs from the start of s. ok is false unless s starts with one. A value cut off
+// by the end of the text (an unterminated quote) keeps what there is.
+func readPairs(s string) (map[string]string, bool) {
+	out := map[string]string{}
+	for {
+		s = strings.TrimLeft(s, " ")
+		if s == "" {
+			return out, len(out) > 0
+		}
+		eq := strings.Index(s, `="`)
+		if eq <= 0 || !isKey(s[:eq]) {
+			return out, len(out) > 0
+		}
+		key, val := s[:eq], s[eq+2:]
+		if end := strings.IndexByte(val, '"'); end >= 0 {
+			out[key], s = val[:end], val[end+1:]
+		} else {
+			out[key], s = val, ""
+		}
+	}
+}
+
+func isKey(k string) bool {
+	for i, r := range k {
+		if !(r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || i > 0 && r >= '0' && r <= '9') {
+			return false
+		}
+	}
+	return k != ""
 }

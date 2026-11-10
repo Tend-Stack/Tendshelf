@@ -1,12 +1,17 @@
 package web
 
 import (
+	"image"
+	_ "image/jpeg" // the thumbnails are JPEG; DecodeConfig reads their size
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
 	"github.com/Tend-Stack/tendshelf/internal/metadata/online/podnet"
 	"github.com/Tend-Stack/tendshelf/internal/radio"
 	"github.com/Tend-Stack/tendshelf/internal/share"
@@ -55,14 +60,57 @@ func (s *server) podcastsAreaTabs(r *http.Request, active string) []pages.PodTab
 
 // radioArt is the station's logo as a cover: the local art route at three sizes, or none until the file is kept
 // (the cover then shows the name on a plain tile). The logo's own address never leaves this server.
-func radioArt(st radio.Station) components.CardView {
+// A logo whose shorter side is under radioLogoMin is not drawn (it would only be stretched into a blur): the
+// generated initials tile takes its place. One under radioLogoSmall is drawn at its own size on a plain tile.
+func (s *server) radioArt(st radio.Station) (components.CardView, bool) {
 	c := components.CardView{ID: st.ID, Title: st.Name}
+	w, h := s.radioLogoSize(st)
+	if min(w, h) > 0 && min(w, h) < radioLogoMin {
+		return c, false
+	}
+	small := w > 0 && max(w, h) < radioLogoSmall
 	if sha := st.ArtSHA(); sha != "" {
 		base := "/radio/art/" + url.PathEscape(st.ID) + "?v=" + sha[:8] + "&w="
 		c.CoverSrc = base + "320"
-		c.CoverSrcset = base + "160 160w, " + base + "320 320w, " + base + "640 640w"
+		if small { // one address, so the picture keeps its own size
+			c.CoverW, c.CoverH = w, h
+		} else {
+			c.CoverSrcset = base + "160 160w, " + base + "320 320w, " + base + "640 640w"
+		}
 	}
-	return c
+	return c, small
+}
+
+const (
+	radioLogoMin   = 96  // px: a shorter logo falls back to the generated tile
+	radioLogoSmall = 200 // px: a logo no bigger than this is shown at its own size
+)
+
+// radioLogoSizes remembers the pixel size of each kept logo by its hash (a file under a hash name never changes).
+var radioLogoSizes sync.Map
+
+// radioLogoSize is the pixel size of the station's kept logo, read from the header of its largest thumbnail (a
+// thumbnail is never enlarged, so it is as big as the original up to 640 px). 0, 0 when it is not known yet.
+func (s *server) radioLogoSize(st radio.Station) (int, int) {
+	sha := st.ArtSHA()
+	if sha == "" {
+		return 0, 0
+	}
+	if v, ok := radioLogoSizes.Load(sha); ok {
+		d := v.([2]int)
+		return d[0], d[1]
+	}
+	f, err := os.Open(mediajobs.ThumbPath(s.dataDir, sha, mediajobs.ThumbSizes[len(mediajobs.ThumbSizes)-1]))
+	if err != nil {
+		return 0, 0
+	}
+	defer f.Close()
+	cfg, _, err := image.DecodeConfig(f)
+	if err != nil {
+		return 0, 0
+	}
+	radioLogoSizes.Store(sha, [2]int{cfg.Width, cfg.Height})
+	return cfg.Width, cfg.Height
 }
 
 // radioArtURL is the logo for the player bar and lock screen, or "".
@@ -75,7 +123,10 @@ func radioArtURL(st radio.Station) string {
 
 // playerArtURL is the logo address for the player bar. A logo still being fetched has no checksum yet; the bar
 // gets the address without one (it answers 404 until the file is kept) and asks again a few times (player.js).
-func playerArtURL(st radio.Station) string {
+func (s *server) playerArtURL(st radio.Station) string {
+	if w, h := s.radioLogoSize(st); min(w, h) > 0 && min(w, h) < radioLogoMin {
+		return "" // too small to draw sharp: the player shows the generated tile
+	}
 	if u := radioArtURL(st); u != "" {
 		return u
 	}
@@ -95,8 +146,9 @@ func (s *server) stationRow(r *http.Request, st radio.Station, removable bool) c
 		meta += st.Country
 	}
 	v := components.StationRowView{
-		ID: st.ID, Name: st.Name, Meta: meta, PlayHref: "/radio/live/" + id, PlayLabel: radioPlay + " " + st.Name, PlayWord: radioPlay, CSRF: s.csrf.TokenFrom(r.Context()), Art: radioArt(st),
+		ID: st.ID, Name: st.Name, Meta: meta, PlayHref: "/radio/live/" + id, PlayLabel: radioPlay + " " + st.Name, PlayWord: radioPlay, CSRF: s.csrf.TokenFrom(r.Context()),
 	}
+	v.Art, v.SmallArt = s.radioArt(st)
 	if removable {
 		v.RemoveAction, v.RemoveLabel = "/radio/stations/"+id+"/remove", radioRemove+" "+st.Name
 	} else if !st.Favourite {
@@ -135,8 +187,9 @@ func (s *server) getRadio(w http.ResponseWriter, r *http.Request) {
 			v.Recent = append(v.Recent, s.stationRow(r, st, false))
 		}
 	}
-	if len(saved) == 0 {
-		v.PopularTitle, v.PopularHint, v.Popular = radioPopularTitle, radioPopularHint, s.radioPopular(r)
+	// Suggestions always show, minus what the person already saved. OndaCast's answer is cached for an hour.
+	if v.Popular = s.radioPopular(r, saved); len(v.Popular) > 0 {
+		v.PopularTitle, v.PopularHint = radioPopularTitle, radioPopularHint
 	}
 	s.pageStyled(w, r, http.StatusOK, radioTitle, "podcasts", pages.Radio(v), nil, pages.PodcastStyles...)
 }
@@ -156,7 +209,7 @@ func (s *server) getRadioSearch(w http.ResponseWriter, r *http.Request) {
 		AddLabel: radioAdd, AddAria: radioAdd, PlayWord: radioPlay, AddTitle: radioAddByAddress, AddHint: radioAddHint, AddFieldLabel: radioAddFieldLabel, AddButton: radioAddButton,
 	}
 	if q == "" {
-		v.PopularTitle, v.PopularHint, v.Popular = radioPopularTitle, radioPopularHint, s.radioPopular(r)
+		v.PopularTitle, v.PopularHint, v.Popular = radioPopularTitle, radioPopularHint, s.radioPopular(r, nil)
 	}
 	if q != "" {
 		if ok, wait := s.podLim.search.Allow(u.ID); !ok {
@@ -197,7 +250,7 @@ func (s *server) getPlayerRadio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := components.PlayerDataView{
-		BookID: st.ID, Title: st.Name, CoverURL: playerArtURL(st), Author: s.radio.NowPlaying(st.ID), ServerNow: s.now().UnixMilli(),
+		BookID: st.ID, Title: st.Name, CoverURL: s.playerArtURL(st), LogoInitials: components.StationInitials(st.Name), LogoColour: strconv.Itoa(components.StationColour(st.ID)), Author: s.radio.NowPlaying(st.ID), ServerNow: s.now().UnixMilli(),
 		Speed: "1.00", SkipBackS: set.SkipBackS, SkipForwardS: set.SkipForwardS, Rewind: rewindAttr(),
 		Kind: radioKind, ShowHref: "/radio",
 		Files: []components.PlayerFileView{{ID: st.ID, Mime: "audio/mpeg", Playable: true, Href: "/radio/live/" + url.PathEscape(st.ID)}},

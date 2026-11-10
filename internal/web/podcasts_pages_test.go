@@ -26,7 +26,7 @@ func TestPodcastPagesContent(t *testing.T) {
 	}
 
 	home := body("/podcasts", w.ben)
-	for _, want := range []string{"<h1", "Podcasts", "Find a podcast", `href="/podcasts/shows/` + w.show + `"`, `aria-label="Podcasts sections"`, `aria-current="page"`} {
+	for _, want := range []string{"<h1", "Podcasts", `role="search"`, `placeholder="Search podcasts"`, `href="/podcasts/shows/` + w.show + `"`, `aria-label="Podcasts sections"`, `aria-current="page"`} {
 		if !strings.Contains(home, want) {
 			t.Errorf("home lacks %q", want)
 		}
@@ -40,7 +40,7 @@ func TestPodcastPagesContent(t *testing.T) {
 	// A person who follows nothing sees the empty state with the plan's sentence and a link to search.
 	empty := body("/podcasts", w.cy)
 	if !strings.Contains(empty, "You&#39;re not following any podcasts yet. Search for one, or paste its RSS address.") ||
-		!strings.Contains(empty, `href="/podcasts/search"`) {
+		!strings.Contains(empty, `action="/podcasts/search"`) || strings.Contains(empty, "Find a podcast") {
 		t.Errorf("empty home: %s", empty)
 	}
 

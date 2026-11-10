@@ -12,6 +12,12 @@ function markCurrent(path) {
   for (const link of links) {
     if (isCurrent(link.dataset.nav, path) && link.dataset.nav.length > best.length) best = link.dataset.nav;
   }
+  // An item can name a second address it covers (data-nav-also: Radio sits under Podcasts).
+  if (!best) {
+    for (const link of links) {
+      if (link.dataset.navAlso && isCurrent(link.dataset.navAlso, path)) best = link.dataset.nav;
+    }
+  }
   for (const link of links) {
     if (link.dataset.nav === best) {
       link.setAttribute("aria-current", "page");

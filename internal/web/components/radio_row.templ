@@ -21,6 +21,8 @@ type StationRowView struct {
 	CSRF              string
 	// Art is the station's logo from this server's own art route; empty draws no picture, like an episode row without art.
 	Art CardView
+	// SmallArt marks a kept logo that is small (under 200 px): it is drawn at its own size, centred on a plain tile.
+	SmallArt bool
 }
 
 // StationRow is one station: play, the name and its facts, remove. The name and the facts are cut with an
@@ -36,6 +38,8 @@ templ StationRow(v StationRowView) {
 		<span class="ts-stnrow__main">
 			if v.Art.CoverSrc != "" {
 				@Cover(v.Art, "36")
+			} else {
+				@StationLogo(stationKey(v), v.Name, "36")
 			}
 			<span class="ts-row__text">
 				<span class="ts-row__title ts-truncate">{ v.Name }</span>
@@ -67,8 +71,12 @@ templ StationRow(v StationRowView) {
 // forms or links, so the card works without JavaScript.
 templ StationCard(v StationRowView) {
 	<li class="ts-stncard">
-		<span class="ts-stncard__art">
-			@Cover(v.Art, "fill")
+		<span class={ "ts-stncard__art", templ.KV("ts-stncard__art--small", v.SmallArt) }>
+			if v.Art.CoverSrc != "" {
+				@Cover(v.Art, "fill")
+			} else {
+				@StationLogo(stationKey(v), v.Name, "fill")
+			}
 		</span>
 		<span class="ts-stncard__name ts-clamp-2">{ v.Name }</span>
 		<span class="ts-stncard__meta ts-truncate">{ v.Meta }</span>

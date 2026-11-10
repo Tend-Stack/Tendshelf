@@ -180,5 +180,5 @@ func (c *Client) Station(ctx context.Context, slug string) (StationHit, error) {
 	if !ans.Success || strings.TrimSpace(d.StreamURL) == "" {
 		return StationHit{}, &Error{Code: "not_found"}
 	}
-	return StationHit{Name: d.Name, StreamURL: strings.TrimSpace(d.StreamURL), Logo: d.Logo, Genre: d.Genre, Country: d.Country}, nil
+	return StationHit{Name: d.Name, StreamURL: strings.TrimSpace(d.StreamURL), Logo: AbsoluteOndaCast(strings.TrimSpace(d.Logo)), Genre: d.Genre, Country: d.Country}, nil
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/metadata/online/podnet"
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
+	"github.com/Tend-Stack/tendshelf/internal/radio"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
@@ -77,7 +78,7 @@ func (s *server) postPodStart(w http.ResponseWriter, r *http.Request) {
 
 // podStarters is the "Popular shows" list, or nil when the embedded list is empty. Pictures go through the guarded
 // same-origin art route, like search results.
-func (s *server) podStarters(r *http.Request) *pages.PodStarterView {
+func (s *server) podStarters(r *http.Request, followed map[string]bool) *pages.PodStarterView {
 	shows := podnet.StarterShows()
 	if len(shows) == 0 {
 		return nil
@@ -86,7 +87,7 @@ func (s *server) podStarters(r *http.Request) *pages.PodStarterView {
 	for _, g := range []struct{ key, title string }{{podnet.StarterTrueCrime, podStarterCrime}, {podnet.StarterMore, podStarterMore}} {
 		grp := pages.PodStarterGroup{Title: g.title}
 		for _, sh := range shows {
-			if sh.Group == g.key {
+			if sh.Group == g.key && !followed[sh.Slug] {
 				grp.Hits = append(grp.Hits, s.podHit(r, podnet.Hit{Slug: sh.Slug, Title: sh.Title, Subtitle: sh.Author, ImageURL: sh.ImageURL}))
 			}
 		}
@@ -94,19 +95,29 @@ func (s *server) podStarters(r *http.Request) *pages.PodStarterView {
 			v.Groups = append(v.Groups, grp)
 		}
 	}
+	if len(v.Groups) == 0 {
+		return nil
+	}
 	return v
 }
 
 // radioPopular is OndaCast's popular stations as cards with a Save control. If OndaCast cannot be reached the list
 // is simply absent: a suggestion never shows an error.
-func (s *server) radioPopular(r *http.Request) []components.StationRowView {
+func (s *server) radioPopular(r *http.Request, saved []radio.Station) []components.StationRowView {
 	list, err := s.radio.Net.PopularStations(r.Context(), 24)
 	if err != nil {
 		return nil
 	}
 	csrf := s.csrf.TokenFrom(r.Context())
+	have := map[string]bool{}
+	for _, st := range saved {
+		have[st.Slug], have[st.StreamURL] = true, true
+	}
 	var out []components.StationRowView
 	for _, p := range list {
+		if have[p.Slug] || have[p.StreamURL] {
+			continue // already saved
+		}
 		meta := p.Genre
 		if p.Country != "" {
 			if meta != "" {

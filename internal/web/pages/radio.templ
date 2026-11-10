@@ -49,7 +49,7 @@ templ Radio(v RadioView) {
 				</ul>
 			</section>
 		}
-		if len(v.Saved) == 0 && len(v.Popular) > 0 {
+		if len(v.Popular) > 0 {
 			@RadioPopular(v.PopularTitle, v.PopularHint, v.Popular)
 		}
 		if len(v.Recent) > 0 {
@@ -114,7 +114,11 @@ templ RadioSearch(v RadioSearchView) {
 				<ul class="ts-podsearch__hits" aria-label={ v.ResultsLabel }>
 					for _, h := range v.Hits {
 						<li class="ts-row ts-podhit">
-							@components.Cover(h.Card, "56")
+							if h.Card.CoverSrc != "" {
+								@components.Cover(h.Card, "56")
+							} else {
+								@components.StationLogo(h.Slug, h.Title, "56")
+							}
 							<span class="ts-row__text">
 								<span class="ts-row__title ts-truncate">{ h.Title }</span>
 								if h.Subtitle != "" {

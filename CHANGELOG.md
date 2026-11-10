@@ -14,6 +14,11 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Podcast and radio pages: first-use fixes (2026-11-10)
 
+- The Podcasts tabs have a search field at the top, like Radio, in place of the Find a podcast button.
+- Popular stations and Popular shows (true crime first) always show under what you saved or follow, minus what you already have.
+- A station without a logo, or with one too small to draw sharp, shows its initials on a colour in the card, search rows, player bar and full player. Logos OndaCast gives as a relative address are now fetched.
+- Song titles from iHeart streams read "Artist - Song" instead of a row of codes; adverts show nothing.
+- Radio keeps Podcasts marked in the navigation after you open it from the tabs.
 - After you follow a show, its page fills in by itself when the episodes arrive. It no longer shows the feed address as a title.
 - Podcast and station search results show their pictures. The server fetches them, so your browser never talks to the publishers.
 - The show page follows the app's width and gutters, with a header that counts the episodes, shows the site name, clamps a long description under "More", and has one Play latest or Resume button.
