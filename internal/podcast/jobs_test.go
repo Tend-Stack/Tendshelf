@@ -273,7 +273,7 @@ func TestRefreshNowAndStale(t *testing.T) {
 		t.Errorf("stranger refreshing: %v", err)
 	}
 	r.st.Writer().Exec(`UPDATE podcast_shows SET fetched_at = ?`, r.clk.UnixMilli()-60_000)
-	r.st.Writer().Exec(`UPDATE jobs SET state = 'succeeded'`)
+	r.st.Writer().Exec(`UPDATE jobs SET state = 'done'`)
 	if _, err := r.svc.RefreshNow(ctx, "us_a", show); !errors.Is(err, ErrTooSoon) {
 		t.Errorf("refresh within five minutes: %v", err)
 	}
