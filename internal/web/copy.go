@@ -375,5 +375,6 @@ func playerMsgs() components.PlayerMsgs {
 		WaveAhead: msgWaveAhead, WaveBack: msgWaveBack, WaveDragChapter: msgWaveDragChapter, DeltaMin: msgDeltaMin,
 		DeltaSec: msgDeltaSec, BookTip: msgBookTip, BarMeta: msgBarMeta,
 		ShowPlayer: msgShowPlayer, NowPlaying: nowPanelTitle, UpNext: queueTitle,
+		Live: radioLive, OpenStation: radioOpenStation, LiveFailed: radioLiveFailed,
 	}
 }

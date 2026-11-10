@@ -26,11 +26,15 @@ const podListLimit = 50
 // podNav is the navigation's view of podcasts: whether the item is drawn and the badge count. It is drawn only
 // when the owner turned podcasts on and this person may use them.
 func (s *server) podNav(r *http.Request) components.PodNav {
-	if !s.podcastsOn(r) {
+	u := currentUser(r)
+	if u.ID == "" {
 		return components.PodNav{}
 	}
-	u := currentUser(r)
-	if u.ID == "" || !s.can.Can(r.Context(), u, share.UsePodcasts, podServer) {
+	// With podcasts off but radio on, the same item is drawn as Radio and leads to /radio (plan R2).
+	if !s.podcastsOn(r) || !s.can.Can(r.Context(), u, share.UsePodcasts, podServer) {
+		if s.radioNavOn(r) {
+			return components.PodNav{Show: true, RadioOnly: true}
+		}
 		return components.PodNav{}
 	}
 	n, err := s.podcasts.NewTotal(r.Context(), u.ID)
@@ -163,13 +167,7 @@ func (s *server) getPodcasts(w http.ResponseWriter, r *http.Request) {
 		tab = "shows"
 	}
 	v := pages.PodcastsView{Title: podcastsTitle, FindLabel: podcastsSearchTitle, FindHref: "/podcasts/search", TabsLabel: podTabsLabel}
-	for _, t := range []struct{ key, label string }{{"shows", podShows}, {"new", podNew}, {"favourites", podFavourites}, {"history", podHistory}} {
-		href := "/podcasts"
-		if t.key != "shows" {
-			href += "?tab=" + t.key
-		}
-		v.Tabs = append(v.Tabs, pages.PodTab{Label: t.label, Href: href, On: t.key == tab})
-	}
+	v.Tabs = s.podcastsAreaTabs(r, tab)
 	var eps []podcast.Episode
 	var err error
 	switch tab {

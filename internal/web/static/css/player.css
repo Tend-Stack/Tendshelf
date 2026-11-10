@@ -211,3 +211,17 @@ html[data-text-size="large"] .ts-player-slot.is-covered { visibility: hidden; }
 /* L1: the speed sheet says the speed is for this book, with one way to make it the usual speed. */
 .ts-player__forbook { display: grid; justify-items: start; gap: var(--space-4); padding: 0 var(--space-16) var(--space-16); }
 .ts-player__forbook p { margin: 0; font-size: 0.875rem; color: var(--ink-muted); }
+
+/* Live radio (decision 0038, R2). The badge sits before the line under the title; both are cut with an ellipsis, never wrapped. */
+.ts-mini__sub { display: flex; align-items: center; gap: var(--space-8); min-width: 0; }
+.ts-mini__sub .ts-mini__meta { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ts-live { flex: none; padding: 0 var(--space-8); border-radius: var(--radius-control); background: var(--accent-soft); color: var(--ink); font: 600 0.8125rem/1.125rem var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+/* A live stream has no length, place, speed, chapters or marks: the controls that need one are not drawn. */
+.ts-player-slot.is-live [data-ts-back], .ts-player-slot.is-live [data-ts-forward], .ts-player-slot.is-live [data-ts-bar-speed], .ts-player-slot.is-live [data-ts-bar-chapters],
+.ts-player-slot.is-live [data-ts-bar-bookmark], .ts-player-slot.is-live [data-ts-bar-read], .ts-player-slot.is-live .ts-mini__progress, .ts-player-slot.is-live .ts-pbar__seek > *,
+.ts-player-slot.is-live .ts-pbar__book { display: none; }
+.ts-player.is-live [data-ts-full-back], .ts-player.is-live [data-ts-full-forward], .ts-player.is-live [data-ts-full-prev], .ts-player.is-live [data-ts-full-next],
+.ts-player.is-live [data-ts-open-speed], .ts-player.is-live [data-ts-open-chapters], .ts-player.is-live [data-ts-full-read], .ts-player.is-live .ts-player__scrub,
+.ts-player.is-live .ts-player__times, .ts-player.is-live .ts-player__tools { display: none; }
+.ts-player.is-live .ts-player__transport { justify-content: center; }
+.ts-player.is-live .ts-player__chapter { color: var(--accent); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }

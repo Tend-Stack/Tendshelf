@@ -189,6 +189,14 @@ function render(force) {
   const state = window.tsPlayer.state();
   if (!state.bookId) return;
   const info = getInfo(state.bookId);
+  if (info && info.kind === "radio") {
+    // a live stream has no waveform and no time left: the bar's extra lines are cleared and nothing is fetched
+    if (barWave) {
+      setText(bar.author, "");
+      setText(bar.metaLeft, "");
+    }
+    return;
+  }
   const chapter = info && info.chapters[state.chapterIdx];
   if (!chapter) return;
   const overlapping = info.files.filter((f) => f.playable && f.offset < chapter.end && f.offset + f.dur > chapter.start);

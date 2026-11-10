@@ -1,0 +1,40 @@
+package components
+
+// StationRowView is one station in a list. The handler writes every word; no stream address is carried.
+type StationRowView struct {
+	ID, Name, Meta string
+	// PlayHref is where the play button goes without JavaScript (the relay); PlayLabel names it.
+	PlayHref, PlayLabel string
+	// RemoveAction is the remove form's address; empty draws no remove control (a recent station that is not kept).
+	RemoveAction, RemoveLabel string
+	CSRF                      string
+}
+
+// StationRow is one station: play, the name and its facts, remove. The name and the facts are cut with an
+// ellipsis, never pushed to a second row. Remove is a real form, so the row works without JavaScript.
+templ StationRow(v StationRowView) {
+	<li class="ts-row ts-stnrow">
+		<a class="ts-iconbtn ts-iconbtn--tonal ts-stnrow__play" href={ templ.SafeURL(v.PlayHref) } hx-boost="false" data-ts-play={ v.ID } aria-label={ v.PlayLabel }>
+			@Icon("play", true)
+			<span hidden data-ts-pause-icon>
+				@Icon("pause", true)
+			</span>
+		</a>
+		<span class="ts-stnrow__main">
+			<span class="ts-row__text">
+				<span class="ts-row__title ts-truncate">{ v.Name }</span>
+				if v.Meta != "" {
+					<span class="ts-row__meta ts-truncate">{ v.Meta }</span>
+				}
+			</span>
+		</span>
+		if v.RemoveAction != "" {
+			<form class="ts-stnrow__remove" method="post" action={ templ.SafeURL(v.RemoveAction) }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<button type="submit" class="ts-iconbtn" aria-label={ v.RemoveLabel }>
+					@Icon("close", false)
+				</button>
+			</form>
+		}
+	</li>
+}

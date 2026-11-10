@@ -54,6 +54,9 @@ type PlayerMsgs struct {
 
 	// The Now playing panel and the Home hero while its book plays (NP1).
 	ShowPlayer, NowPlaying string
+
+	// Live radio (decision 0038, R2): the badge, the open link's name and the words when a stream cannot connect.
+	Live, OpenStation, LiveFailed string
 }
 
 // inShell returns the words for the shell the page is in: the desktop app's sheet has window rows.
@@ -169,6 +172,9 @@ func (m PlayerMsgs) attrs() templ.Attributes {
 		"data-ts-msg-bar-meta":          m.BarMeta,
 		"data-ts-msg-show-player":       m.ShowPlayer,
 		"data-ts-msg-now-playing":       m.NowPlaying,
+		"data-ts-msg-live":              m.Live,
+		"data-ts-msg-open-station":      m.OpenStation,
+		"data-ts-msg-live-failed":       m.LiveFailed,
 	}
 }
 
@@ -191,7 +197,10 @@ templ PlayerSlot(m PlayerMsgs) {
 				<span class="ts-cover ts-mini__cover"><img data-ts-cover alt="" width="48" height="48"/></span>
 				<span class="ts-mini__text">
 					<span class="ts-mini__title" data-ts-title></span>
-					<span class="ts-mini__meta" data-ts-meta></span>
+					<span class="ts-mini__sub">
+						<span class="ts-live" data-ts-live hidden>{ m.Live }</span>
+						<span class="ts-mini__meta" data-ts-meta></span>
+					</span>
 					<span class="ts-mini__meta ts-pbar__meta" data-ts-bar-meta>
 						<span class="ts-pbar__author" data-ts-bar-author></span>
 						<span class="ts-pbar__metaleft" data-ts-bar-left></span>
