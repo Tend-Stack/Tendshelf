@@ -38,10 +38,10 @@ func TestPodStartPopularStations(t *testing.T) {
 	r.c.now = func() time.Time { return now }
 	ctx := context.Background()
 	got, err := r.c.PopularStations(ctx, 100)
-	if err != nil || len(got) != 2 || got[0].Slug != "good-fm" || got[1].Slug != "far-logo" {
+	if err != nil || len(got) != 3 || got[0].Slug != "good-fm" || got[1].Slug != "hls" || got[2].Slug != "far-logo" {
 		t.Fatalf("parse: %v %+v", err, got)
 	}
-	if got[0].Logo != "https://ondacast.com/api/logos/good.png" || got[0].City != "Austin" || got[1].Logo != "https://l.example/l.png" {
+	if got[0].Logo != "https://ondacast.com/api/logos/good.png" || got[0].City != "Austin" || got[2].Logo != "https://l.example/l.png" {
 		t.Errorf("logos: %+v", got)
 	}
 	if !strings.Contains(gotQuery, "limit=24") || !strings.Contains(gotQuery, "sort=popular") {
@@ -63,7 +63,7 @@ func TestPodStartPopularStations(t *testing.T) {
 	}
 	now = now.Add(4 * time.Minute)
 	fail = false
-	if got, err = r.c.PopularStations(ctx, 24); err != nil || len(got) != 2 || asks != 3 {
+	if got, err = r.c.PopularStations(ctx, 24); err != nil || len(got) != 3 || asks != 3 {
 		t.Errorf("retry: %v %d asks=%d", err, len(got), asks)
 	}
 }

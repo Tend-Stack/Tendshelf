@@ -16,6 +16,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/metadata/online/podnet"
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
+	"github.com/Tend-Stack/tendshelf/internal/radio/hls"
 )
 
 // Limits and timeouts (plan R1).
@@ -33,8 +34,13 @@ type Refusal struct{ Text string }
 func (r *Refusal) Error() string { return r.Text }
 
 var (
-	// ErrHLS is an HLS (.m3u8) stream. It needs a segment proxy, which Tendshelf does not have yet.
+	// ErrHLS is an HLS form Tendshelf still does not handle (byte ranges, a playlist that is too large).
 	ErrHLS = &Refusal{"Tendshelf can't play this kind of stream yet."}
+	// The HLS refusals of decision 0039, in plain words.
+	ErrHLSLocked    = &Refusal{"This station's stream is locked, so Tendshelf will not play it."}
+	ErrHLSVideo     = &Refusal{"That stream sends video, and Tendshelf plays radio as sound only."}
+	ErrHLSCodec     = &Refusal{"That station uses a sound format Tendshelf can't play."}
+	ErrHLSRecording = &Refusal{"That address is a recording, not a live station."}
 	// ErrNotAudio is an address that answers something other than a stream Tendshelf plays.
 	ErrNotAudio = &Refusal{"That address is not a radio stream Tendshelf can play."}
 	// ErrNoEntry is a playlist file with no web address in it.
@@ -196,11 +202,13 @@ func (s *Service) NowPlaying(stationID string) string {
 type Probed struct {
 	StreamURL string // the stream itself (a playlist's first entry, not the playlist)
 	Codec     string
+	Format    string // "icy" for a continuous stream, "hls" for an HLS playlist
 }
 
 // Probe checks a stream address with one OpenLive request (10 s): it must answer an allowed audio
 // Content-Type. A .pls or .m3u playlist is read for its first http(s) entry, which is probed the same way,
-// so every address goes through the guarded client. HLS is refused.
+// so every address goes through the guarded client. An HLS playlist is opened and one segment demuxed
+// (probeHLS); encrypted, video-only, unsupported-codec and finished-recording streams are refused.
 func (s *Service) Probe(ctx context.Context, raw string) (Probed, error) {
 	ctx, cancel := context.WithTimeout(ctx, ProbeTimeout)
 	defer cancel()
@@ -210,7 +218,7 @@ func (s *Service) Probe(ctx context.Context, raw string) (Probed, error) {
 			return Probed{}, ErrBadURL
 		}
 		if isHLSPath(norm) {
-			return Probed{}, ErrHLS
+			return s.probeHLS(ctx, norm)
 		}
 		up, _, err := s.Net.OpenLive(ctx, norm)
 		if err != nil {
@@ -220,11 +228,11 @@ func (s *Service) Probe(ctx context.Context, raw string) (Probed, error) {
 		mt = strings.ToLower(mt)
 		if _, codec, ok := StreamType(mt); ok {
 			up.Body.Close()
-			return Probed{StreamURL: norm, Codec: codec}, nil
+			return Probed{StreamURL: norm, Codec: codec, Format: "icy"}, nil
 		}
 		if hlsType(mt) {
 			up.Body.Close()
-			return Probed{}, ErrHLS
+			return s.probeHLS(ctx, norm)
 		}
 		if !playlistLike(mt, norm) {
 			up.Body.Close()
@@ -235,10 +243,10 @@ func (s *Service) Probe(ctx context.Context, raw string) (Probed, error) {
 		if err != nil {
 			return Probed{}, &podnet.Error{Code: "offline"}
 		}
-		next, hls := FirstEntry(string(body))
+		next, isHLS := FirstEntry(string(body))
 		switch {
-		case hls:
-			return Probed{}, ErrHLS
+		case isHLS:
+			return s.probeHLS(ctx, norm)
 		case next == "":
 			return Probed{}, ErrNoEntry
 		case hop+1 > maxPlaylistHop:
@@ -246,6 +254,40 @@ func (s *Service) Probe(ctx context.Context, raw string) (Probed, error) {
 		}
 		raw = next
 	}
+}
+
+// probeHLS opens the station as a listener would: variant, media playlist and the first segment, demuxed. It
+// shares the probe's 10 s context. The stored address stays the one given (a master keeps working when
+// variant tokens rotate).
+func (s *Service) probeHLS(ctx context.Context, norm string) (Probed, error) {
+	sess, err := hls.Open(ctx, s.Net, norm, hls.Options{})
+	if err != nil {
+		return Probed{}, hlsRefusal(err)
+	}
+	defer sess.Close()
+	if sess.Recording() {
+		return Probed{}, ErrHLSRecording
+	}
+	return Probed{StreamURL: norm, Codec: sess.Format().Codec, Format: "hls"}, nil
+}
+
+// hlsRefusal maps an hls error to plain words. Network errors (*podnet.Error) and timeouts pass through
+// unchanged so the caller words them as for any other station.
+func hlsRefusal(err error) error {
+	var pe *podnet.Error
+	switch {
+	case errors.As(err, &pe):
+		return err
+	case errors.Is(err, hls.ErrLocked):
+		return ErrHLSLocked
+	case errors.Is(err, hls.ErrVideo):
+		return ErrHLSVideo
+	case errors.Is(err, hls.ErrCodec):
+		return ErrHLSCodec
+	case errors.Is(err, hls.ErrNotPlaylist), errors.Is(err, hls.ErrUnsupported), errors.Is(err, hls.ErrTooLarge), errors.Is(err, hls.ErrChanged):
+		return ErrHLS
+	}
+	return err
 }
 
 func isHLSPath(raw string) bool {

@@ -184,7 +184,7 @@ func TestPodStartPopularStations(t *testing.T) {
 			t.Errorf("Radio lacks %q", want)
 		}
 	}
-	for _, not := range []string{"Plain Http", "Hls Only", "ondacast.com/api/logos"} {
+	for _, not := range []string{"Plain Http", "ondacast.com/api/logos"} {
 		if strings.Contains(body, not) {
 			t.Errorf("Radio shows %q", not)
 		}

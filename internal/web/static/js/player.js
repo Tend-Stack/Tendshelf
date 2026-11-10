@@ -1191,6 +1191,32 @@ listen(document, "click", (event) => {
   else loadBook(data.tsPlay, { play: true });
 });
 
+// Play on a station that is not saved yet (a search result or a suggestion): the form posts the slug to
+// /radio/play, which keeps the station as played and answers with its id; the player then plays it like
+// any saved card. If anything goes wrong the form is submitted as it is, which redirects to the live stream
+// (what the page does without JavaScript) or shows the server's own words.
+listen(document, "submit", async (event) => {
+  const form = event.target.closest("form[data-ts-play-slug]");
+  if (!form) return;
+  event.preventDefault();
+  wantsFirstSound = true;
+  try {
+    const res = await fetch(form.action, {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken(), "Content-Type": FORM_TYPE, Accept: "application/json" },
+      body: new URLSearchParams(new FormData(form)).toString(),
+    });
+    const answer = res.ok ? await res.json() : null;
+    if (answer && answer.id) {
+      loadBook(answer.id, { play: true });
+      return;
+    }
+  } catch {
+    // fall through to the plain form
+  }
+  form.submit();
+});
+
 listen(slot, "click", (event) => {
   const button = event.target.closest("button");
   if (button === controls.toggle) toggle();

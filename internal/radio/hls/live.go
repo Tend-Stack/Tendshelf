@@ -130,6 +130,10 @@ func (s *Session) restart() {
 // Format is the audio format of the stream. It is fixed for the life of the session.
 func (s *Session) Format() Format { return s.format }
 
+// Recording reports whether the playlist carried EXT-X-ENDLIST when it was last loaded, so it is a finished
+// recording and not a live station.
+func (s *Session) Recording() bool { return s.media != nil && s.media.EndList }
+
 // Close stops the session and any request in flight.
 func (s *Session) Close() error {
 	s.cancel()

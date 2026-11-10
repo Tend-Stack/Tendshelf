@@ -41,6 +41,7 @@ type Station struct {
 	ArtURL     string
 	ArtPath    string // the kept picture, relative to the data folder; empty until it is fetched
 	Codec      string
+	Format     string // "icy" (a continuous stream) or "hls" (an HLS playlist the server turns into one stream)
 	Bitrate    int
 	Country    string
 	Genre      string
@@ -69,6 +70,7 @@ type Input struct {
 	SiteURL   string
 	ArtURL    string
 	Codec     string
+	Format    string // empty means "icy"
 	Country   string
 	Genre     string
 	Slug      string
@@ -90,12 +92,12 @@ func NewStore(st *db.Store, now func() time.Time) *Store {
 
 func (s *Store) nowMs() int64 { return s.now().UnixMilli() }
 
-const stationCols = `s.id, s.stream_url, s.name, s.site_url, s.art_url, s.art_path, s.codec, coalesce(s.bitrate_kbps,0), s.country, s.genre,
+const stationCols = `s.id, s.stream_url, s.name, s.site_url, s.art_url, s.art_path, s.codec, s.format, coalesce(s.bitrate_kbps,0), s.country, s.genre,
 	coalesce(s.ondacast_slug,''), coalesce(s.checked_at,0), s.fail_code`
 
 func scanStation(sc interface{ Scan(...any) error }, extra ...any) (Station, error) {
 	var x Station
-	dst := append([]any{&x.ID, &x.StreamURL, &x.Name, &x.SiteURL, &x.ArtURL, &x.ArtPath, &x.Codec, &x.Bitrate, &x.Country, &x.Genre, &x.Slug, &x.CheckedAt, &x.FailCode}, extra...)
+	dst := append([]any{&x.ID, &x.StreamURL, &x.Name, &x.SiteURL, &x.ArtURL, &x.ArtPath, &x.Codec, &x.Format, &x.Bitrate, &x.Country, &x.Genre, &x.Slug, &x.CheckedAt, &x.FailCode}, extra...)
 	err := sc.Scan(dst...)
 	return x, err
 }
@@ -104,6 +106,18 @@ func scanStation(sc interface{ Scan(...any) error }, extra ...any) (Station, err
 // station the person already has changes nothing but fills a missing name or hint. It writes an audit entry
 // naming the station id, never its address.
 func (s *Store) Save(ctx context.Context, userID string, in Input) (Station, bool, error) {
+	return s.put(ctx, userID, in, true)
+}
+
+// Remember stores the station like Save but leaves it out of the favourites: the row exists and the person has
+// a play record for it (zero plays until the relay notes one), so Get, the player and Recent reach it and
+// Save on the Recent row can keep it later. It is how Play works on a search result that was never saved.
+func (s *Store) Remember(ctx context.Context, userID string, in Input) (Station, error) {
+	st, _, err := s.put(ctx, userID, in, false)
+	return st, err
+}
+
+func (s *Store) put(ctx context.Context, userID string, in Input, favourite bool) (Station, bool, error) {
 	norm, err := podcast.NormalizeFeedURL(in.StreamURL)
 	if err != nil {
 		return Station{}, false, ErrBadURL
@@ -115,6 +129,10 @@ func (s *Store) Save(ctx context.Context, userID string, in Input) (Station, boo
 	if len(in.Slug) > 200 {
 		in.Slug = ""
 	}
+	format := "icy"
+	if in.Format == "hls" {
+		format = "hls"
+	}
 	now := s.nowMs()
 	var id string
 	created := false
@@ -123,13 +141,18 @@ func (s *Store) Save(ctx context.Context, userID string, in Input) (Station, boo
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
 			id = db.NewID("rs")
-			_, err = tx.ExecContext(ctx, `INSERT INTO radio_stations(id, stream_url, name, site_url, art_url, codec, country, genre, ondacast_slug, checked_at, created_at, updated_at)
-				VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`, id, norm, name, clip(in.SiteURL, 2048), clip(in.ArtURL, 2048), clip(in.Codec, 32),
+			_, err = tx.ExecContext(ctx, `INSERT INTO radio_stations(id, stream_url, name, site_url, art_url, codec, format, country, genre, ondacast_slug, checked_at, created_at, updated_at)
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, id, norm, name, clip(in.SiteURL, 2048), clip(in.ArtURL, 2048), clip(in.Codec, 32), format,
 				clip(CleanTitle(in.Country), 64), clip(CleanTitle(in.Genre), 64), nullIf(in.Slug), now, now, now)
 		case err == nil && in.Slug != "":
 			_, err = tx.ExecContext(ctx, `UPDATE radio_stations SET ondacast_slug = ? WHERE id = ? AND ondacast_slug IS NULL`, in.Slug, id)
 		}
 		if err != nil {
+			return err
+		}
+		if !favourite {
+			_, err = tx.ExecContext(ctx, `INSERT INTO radio_plays(user_id, station_id, last_played_at, plays) VALUES (?,?,?,0)
+				ON CONFLICT(user_id, station_id) DO NOTHING`, userID, id, now)
 			return err
 		}
 		var err2 error
@@ -204,6 +227,23 @@ func (s *Store) Kept(ctx context.Context, userID, slug, streamURL string) (Stati
 		_ = s.st.Reader().QueryRowContext(ctx, `SELECT s.id FROM radio_stations s JOIN radio_favourites f ON f.station_id = s.id
 			WHERE f.user_id = ? AND s.stream_url = ?`, userID, norm).Scan(&id)
 	}
+	if id == "" {
+		return Station{}, false
+	}
+	st, err := s.Get(ctx, userID, id)
+	return st, err == nil
+}
+
+// Known finds a station the person can already reach (a favourite or one they played) by its OndaCast slug,
+// so Play on a search result needs no new look at OndaCast or the stream.
+func (s *Store) Known(ctx context.Context, userID, slug string) (Station, bool) {
+	if slug == "" {
+		return Station{}, false
+	}
+	var id string
+	_ = s.st.Reader().QueryRowContext(ctx, `SELECT s.id FROM radio_stations s
+		WHERE s.ondacast_slug = ?1 AND (EXISTS (SELECT 1 FROM radio_favourites f WHERE f.station_id = s.id AND f.user_id = ?2)
+			OR EXISTS (SELECT 1 FROM radio_plays p WHERE p.station_id = s.id AND p.user_id = ?2)) LIMIT 1`, slug, userID).Scan(&id)
 	if id == "" {
 		return Station{}, false
 	}

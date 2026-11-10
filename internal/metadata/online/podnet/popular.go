@@ -26,8 +26,8 @@ const (
 )
 
 // PopularStations asks OndaCast for its most popular stations (no account, no identifiers). The answer is kept for
-// an hour and a failure is remembered for five minutes. Stations whose stream is not https, or is an HLS playlist,
-// are left out: HLS stations are not playable yet (decision 0039; H3 lifts the second rule).
+// an hour and a failure is remembered for five minutes. Stations whose stream is not https are left out; an HLS
+// playlist stays in, since the relay plays HLS stations (decision 0039).
 func (c *Client) PopularStations(ctx context.Context, limit int) ([]PopularStation, error) {
 	if limit < 1 {
 		limit = 1
@@ -93,11 +93,8 @@ func capStations(l []PopularStation, n int) []PopularStation {
 	return l
 }
 
-// playableStream is true for an https address that is not an HLS playlist.
+// playableStream is true for an https address.
 func playableStream(s string) bool {
 	u, err := url.Parse(s)
-	if err != nil || u.Scheme != "https" || u.Host == "" {
-		return false
-	}
-	return !strings.HasSuffix(strings.ToLower(u.Path), ".m3u8")
+	return err == nil && u.Scheme == "https" && u.Host != ""
 }

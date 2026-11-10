@@ -153,7 +153,7 @@ func (s *server) getRadioSearch(w http.ResponseWriter, r *http.Request) {
 	v := pages.RadioSearchView{
 		CSRF: s.csrf.TokenFrom(r.Context()), Title: radioFind, Q: q, SearchLabel: radioSearchLabel, SearchButton: radioSearchWord,
 		BackHref: "/radio", BackLabel: radioBack, NoResults: radioNoResults, ResultsLabel: radioResultsLabel,
-		AddLabel: radioAdd, AddAria: radioAdd, AddTitle: radioAddByAddress, AddHint: radioAddHint, AddFieldLabel: radioAddFieldLabel, AddButton: radioAddButton,
+		AddLabel: radioAdd, AddAria: radioAdd, PlayWord: radioPlay, AddTitle: radioAddByAddress, AddHint: radioAddHint, AddFieldLabel: radioAddFieldLabel, AddButton: radioAddButton,
 	}
 	if q == "" {
 		v.PopularTitle, v.PopularHint, v.Popular = radioPopularTitle, radioPopularHint, s.radioPopular(r)
@@ -181,7 +181,7 @@ func (s *server) getRadioSearch(w http.ResponseWriter, r *http.Request) {
 // radioHit is one OndaCast result. Its logo lives on another site, so the page names the server's own picture route
 // for it (search_art.go); a hit with no logo keeps the plain tile with the name.
 func (s *server) radioHit(r *http.Request, h podnet.Hit) pages.RadioHit {
-	return pages.RadioHit{Title: h.Title, Subtitle: h.Subtitle, Slug: h.Slug, Card: s.hitCard(r, searchArtRadio, h)}
+	return pages.RadioHit{Title: h.Title, Subtitle: h.Subtitle, Slug: h.Slug, PlayLabel: radioPlay + " " + h.Title, Card: s.hitCard(r, searchArtRadio, h)}
 }
 
 // getPlayerRadio answers GET /hx/player/radio/{stationID}: the player fragment of a station the person keeps or has

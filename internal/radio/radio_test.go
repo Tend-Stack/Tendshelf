@@ -221,9 +221,8 @@ func TestProbe(t *testing.T) {
 		{"pls entry rechecked", f.pub.URL("s.test", "/radio.pls"), nil, "", f.pub.URL("s.test", "/live.mp3"), "mp3"},
 		{"html refused", f.pub.URL("s.test", "/html"), ErrNotAudio, "", "", ""},
 		{"svg refused", f.pub.URL("s.test", "/svg"), ErrNotAudio, "", "", ""},
-		{"m3u8 path refused before any fetch", f.pub.URL("s.test", "/a.m3u8"), ErrHLS, "", "", ""},
-		{"hls content type refused", f.pub.URL("s.test", "/hls"), ErrHLS, "", "", ""},
-		{"hls inside a plain m3u", f.pub.URL("s.test", "/hlsplain.m3u"), ErrHLS, "", "", ""},
+		{"m3u8 path is probed as HLS", f.pub.URL("s.test", "/a.m3u8"), nil, "not_found", "", ""},
+		{"hls content type without a target duration", f.pub.URL("s.test", "/hls"), ErrHLS, "", "", ""},
 		{"playlist without entry", f.pub.URL("s.test", "/empty.m3u"), ErrNoEntry, "", "", ""},
 		{"playlist loop stops", f.pub.URL("s.test", "/loop.m3u"), ErrNoEntry, "", "", ""},
 		{"private dns refused", f.pub.URL("private.test", "/live.mp3"), nil, "refused", "", ""},
@@ -256,9 +255,6 @@ func TestProbe(t *testing.T) {
 				}
 			}
 		})
-	}
-	if _, err := f.svc.Probe(ctx, f.pub.URL("s.test", "/a.m3u8")); err != ErrHLS {
-		t.Fatal(err)
 	}
 }
 

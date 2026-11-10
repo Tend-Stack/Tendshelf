@@ -118,7 +118,8 @@ func (s *server) radioPopular(r *http.Request) []components.StationRowView {
 		if src := s.artKeyFor(r, searchArtRadio, p.Logo); src != "" {
 			art.CoverSrc = src
 		}
-		out = append(out, components.StationRowView{Name: p.Name, Meta: meta, Art: art, AddSlug: p.Slug, AddLabel: radioSave + " " + p.Name, SaveWord: radioSave, CSRF: csrf})
+		out = append(out, components.StationRowView{Name: p.Name, Meta: meta, Art: art, AddSlug: p.Slug, AddLabel: radioSave + " " + p.Name, SaveWord: radioSave,
+			PlaySlug: p.Slug, PlayLabel: radioPlay + " " + p.Name, PlayWord: radioPlay, CSRF: csrf})
 	}
 	return out
 }

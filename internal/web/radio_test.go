@@ -22,6 +22,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/podcast/podtest"
 	"github.com/Tend-Stack/tendshelf/internal/radio"
+	"github.com/Tend-Stack/tendshelf/internal/radio/hls/hlstest"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
@@ -38,12 +39,16 @@ type radioFix struct {
 	ondaAll, popular atomic.Int64
 	// conns counts connections to /stream.mp3 and active the ones still open.
 	conns, active atomic.Int64
+	// hlsHits counts requests that reached a fake HLS station.
+	hlsHits atomic.Int64
 
 	ondaDown atomic.Bool
 	hold     chan struct{} // when set, /live.mp3 stays open until it is closed
 	mu       sync.Mutex
 	reqs     []http.Header
 	liveCT   string // Content-Type of /live.mp3, default audio/mpeg
+	// hls are the fake HLS stations, by path prefix (decision 0039).
+	hls map[string]*hlstest.Station
 }
 
 const radioMetaint = 32
@@ -72,7 +77,14 @@ func radioAudio() (wire, audio []byte) {
 
 func newRadioFix(t *testing.T) *radioFix {
 	t.Helper()
-	f := &radioFix{liveCT: "audio/mpeg"}
+	f := &radioFix{liveCT: "audio/mpeg", hls: map[string]*hlstest.Station{
+		"/hls-ok/":    {Prefix: "/hls-ok/", Title: "Ann - Live Song"},
+		"/hls-mp3/":   {Prefix: "/hls-mp3/", MP3: true},
+		"/hls-enc/":   {Prefix: "/hls-enc/", Key: "AES-128"},
+		"/hls-video/": {Prefix: "/hls-video/", Video: true},
+		"/hls-ac3/":   {Prefix: "/hls-ac3/", Codecs: "ac-3"},
+		"/hls-rec/":   {Prefix: "/hls-rec/", EndList: true},
+	}}
 	f.pub = podtest.New(t, f.serve)
 	return f
 }
@@ -119,7 +131,23 @@ func (f *radioFix) serve(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, `{"success":true,"data":{"name":"Cool FM","streamUrl":%q,"logo":%q,"genre":"Pop","country":"NL"}}`, f.liveURL(), f.pub.URL("logo.test", "/x.png"))
 			return
 		}
+		if r.URL.Path == "/api/v2/embed/stations/hls-fm" {
+			fmt.Fprintf(w, `{"success":true,"data":{"name":"Hls FM","streamUrl":%q,"genre":"News","country":"GB"}}`, f.pub.URL("radio.test", "/hls-ok/master.m3u8"))
+			return
+		}
 		http.NotFound(w, r)
+		return
+	}
+	for prefix, st := range f.hls {
+		if strings.HasPrefix(r.URL.Path, prefix) {
+			f.hlsHits.Add(1)
+			st.Handler()(w, r)
+			return
+		}
+	}
+	if r.URL.Path == "/hls-priv/live.m3u8" { // a public playlist naming a segment on a private host
+		w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+		fmt.Fprintf(w, "#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXT-X-MEDIA-SEQUENCE:1\n#EXTINF:1.0,\n%s\n", f.pub.URL("private.test", "/1.seg"))
 		return
 	}
 	f.mu.Lock()
@@ -367,7 +395,7 @@ func TestRadioAddRefusals(t *testing.T) {
 	}{
 		{"private dns", w.fx.pub.URL("private.test", "/live.mp3"), 422, "public web address"},
 		{"literal loopback", "http://127.0.0.1:8095/live.mp3", 422, "public web address"},
-		{"hls by extension", w.fx.pub.URL("radio.test", "/a.m3u8"), 422, "Tendshelf can't play this kind of stream yet."},
+		{"hls without a target duration", w.fx.pub.URL("radio.test", "/hls"), 422, "Tendshelf can't play this kind of stream yet."},
 		{"hls by type", w.fx.pub.URL("radio.test", "/hls"), 422, "Tendshelf can't play this kind of stream yet."},
 		{"web page", w.fx.pub.URL("radio.test", "/page"), 422, "not a radio stream"},
 		{"not a url", "hello", 422, "web address"},

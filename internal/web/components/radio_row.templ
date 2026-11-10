@@ -14,6 +14,10 @@ type StationRowView struct {
 	// AddSlug marks a suggested station that is not saved yet: the card draws a Save word button that posts the
 	// OndaCast slug to /radio/stations, and no Play control. AddLabel names it.
 	AddSlug, AddLabel string
+	// PlaySlug draws a Play button on that unsaved card: a form that posts the slug to /radio/play, which keeps the
+	// station as played (not saved) and answers with the live stream, or with its id for the player script.
+	// PlayLabel names it.
+	PlaySlug string
 	CSRF              string
 	// Art is the station's logo from this server's own art route; empty draws no picture, like an episode row without art.
 	Art CardView
@@ -77,6 +81,16 @@ templ StationCard(v StationRowView) {
 				</span>
 				<span data-ts-play-label>{ v.PlayWord }</span>
 			</a>
+			}
+			if v.PlaySlug != "" {
+				<form class="ts-stncard__add" method="post" action="/radio/play" hx-boost="false" data-ts-play-slug>
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<input type="hidden" name="slug" value={ v.PlaySlug }/>
+					<button type="submit" class="ts-btn ts-btn--secondary ts-stncard__play" aria-label={ v.PlayLabel }>
+						@Icon("play", true)
+						<span>{ v.PlayWord }</span>
+					</button>
+				</form>
 			}
 			if v.AddSlug != "" {
 				<form class="ts-stncard__add" method="post" action="/radio/stations">

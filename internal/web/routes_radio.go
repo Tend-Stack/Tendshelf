@@ -2,9 +2,11 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/metadata/online/podnet"
 	"github.com/Tend-Stack/tendshelf/internal/radio"
+	"github.com/Tend-Stack/tendshelf/internal/radio/hls"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
@@ -28,6 +31,7 @@ func (s *server) registerRadio(mux *http.ServeMux) {
 	mux.HandleFunc("POST /radio/stations", s.postRadioStation)
 	mux.HandleFunc("POST /radio/stations/{stationID}/remove", s.postRadioRemove)
 	mux.HandleFunc("POST /radio/stations/{stationID}/save", s.postRadioSave)
+	mux.HandleFunc("POST /radio/play", s.postRadioPlay)
 	mux.HandleFunc("GET /radio/live/{stationID}", s.getRadioLive)
 	mux.HandleFunc("GET /radio/art/{stationID}", s.getRadioArt)
 	mux.HandleFunc("GET /hx/radio/now/{stationID}", s.getRadioNow)
@@ -75,14 +79,25 @@ func (s *server) loadStation(w http.ResponseWriter, r *http.Request) (radio.Stat
 // addStation turns a picked OndaCast slug or a typed stream address into a saved station. It returns the
 // HTTP status and plain words when it refuses; nothing the station or OndaCast said is repeated.
 func (s *server) addStation(ctx context.Context, userID, slug, streamURL string) (st radio.Station, created bool, status int, text string) {
+	return s.resolveStation(ctx, userID, slug, streamURL, true)
+}
+
+// resolveStation is addStation with a choice: favourite false stores the station as played, not saved (Play on a
+// search result, POST /radio/play), so it skips the favourites limit and answers at once for a station the
+// person already reaches.
+func (s *server) resolveStation(ctx context.Context, userID, slug, streamURL string, favourite bool) (st radio.Station, created bool, status int, text string) {
 	// A station already on the list answers at once; a full list is refused before anything is dialled, so it
 	// cannot be used to make probes.
-	if kept, ok := s.radio.Kept(ctx, userID, slug, streamURL); ok {
-		s.radio.QueueArt(ctx, kept)
-		return kept, false, 0, ""
-	}
-	if n, err := s.radio.FavouriteCount(ctx, userID); err == nil && n >= radio.MaxFavourites {
-		return st, false, http.StatusUnprocessableEntity, radioErrTooMany
+	if favourite {
+		if kept, ok := s.radio.Kept(ctx, userID, slug, streamURL); ok {
+			s.radio.QueueArt(ctx, kept)
+			return kept, false, 0, ""
+		}
+		if n, err := s.radio.FavouriteCount(ctx, userID); err == nil && n >= radio.MaxFavourites {
+			return st, false, http.StatusUnprocessableEntity, radioErrTooMany
+		}
+	} else if known, ok := s.radio.Known(ctx, userID, slug); ok {
+		return known, false, 0, ""
 	}
 	in := radio.Input{}
 	switch {
@@ -116,8 +131,12 @@ func (s *server) addStation(ctx context.Context, userID, slug, streamURL string)
 		return st, false, http.StatusBadGateway, radioLiveUnavailable
 	}
 	// A playlist address is stored as the stream it names, so playing never needs the playlist again.
-	in.StreamURL, in.Codec = probed.StreamURL, probed.Codec
-	st, created, err = s.radio.Save(ctx, userID, in)
+	in.StreamURL, in.Codec, in.Format = probed.StreamURL, probed.Codec, probed.Format
+	if favourite {
+		st, created, err = s.radio.Save(ctx, userID, in)
+	} else {
+		st, err = s.radio.Remember(ctx, userID, in)
+	}
 	switch {
 	case errors.Is(err, radio.ErrTooMany):
 		return st, false, http.StatusUnprocessableEntity, radioErrTooMany
@@ -208,6 +227,45 @@ func (s *server) postRadioStation(w http.ResponseWriter, r *http.Request) {
 	s.answerPage(w, r, "/radio")
 }
 
+// postRadioPlay is Play on a station that is not saved yet (a search result or a suggestion), POST /radio/play with
+// an OndaCast slug. The station is resolved through the same OndaCast call and stream check as Save, kept as
+// played and not as a favourite, and the answer is what the Play link of a saved card is: a redirect to the live
+// stream (the card works without JavaScript). The player script asks for JSON and gets the station id, which
+// it hands to the player like any saved card. Only a slug is taken, never an address.
+func (s *server) postRadioPlay(w http.ResponseWriter, r *http.Request) {
+	if !s.radioGate(w, r) || !s.parseForm(w, r) {
+		return
+	}
+	u := currentUser(r)
+	slug := strings.TrimSpace(r.PostForm.Get("slug"))
+	if slug == "" || len(slug) > 200 {
+		s.refuseSetting(w, r, http.StatusUnprocessableEntity, radioErrBadAddress)
+		return
+	}
+	st, ok := s.radio.Known(r.Context(), u.ID, slug)
+	if !ok {
+		// Only a station not reached before costs OndaCast a call and the station a probe, so only it spends an addition.
+		if !s.radioAddAllowed(w, u.ID) {
+			s.refuseSetting(w, r, http.StatusTooManyRequests, radioErrBusy)
+			return
+		}
+		var status int
+		var text string
+		if st, _, status, text = s.resolveStation(r.Context(), u.ID, slug, "", false); status != 0 {
+			s.refuseSetting(w, r, status, text)
+			return
+		}
+	}
+	s.radio.QueueArt(r.Context(), st)
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "private, no-store")
+		_ = json.NewEncoder(w).Encode(map[string]string{"id": st.ID})
+		return
+	}
+	http.Redirect(w, r, "/radio/live/"+url.PathEscape(st.ID), http.StatusSeeOther)
+}
+
 func (s *server) postRadioRemove(w http.ResponseWriter, r *http.Request) {
 	if !s.radioGate(w, r) || !s.parseForm(w, r) {
 		return
@@ -248,14 +306,13 @@ func (s *server) getRadioLive(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), s.radio.MaxSession)
 	defer cancel()
 	go s.stopWhenRadioOff(ctx, cancel, radioEnabledEvery) // the interval is read here, in the handler, not in the goroutine
+	if st.Format == "hls" {
+		s.relayHLS(ctx, w, r, st)
+		return
+	}
 	up, metaint, err := s.radio.Net.OpenLive(ctx, st.StreamURL)
 	if err != nil {
-		var pe *podnet.Error
-		code := "offline"
-		if errors.As(err, &pe) {
-			code = pe.Code
-		}
-		_ = s.radio.SetChecked(r.Context(), st.ID, "", code)
+		s.radioCheckFailed(r.Context(), st.ID, err)
 		s.plainError(w, r, http.StatusBadGateway, radioLiveUnavailable)
 		return
 	}
@@ -272,11 +329,7 @@ func (s *server) getRadioLive(w http.ResponseWriter, r *http.Request) {
 			s.radio.Log.Warn("radio: could not record a play", "err", err)
 		}
 	}
-	h.Set("Content-Type", mt)
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
-	h.Set("Cache-Control", "private, no-store")
-	h.Set("Accept-Ranges", "none")
+	setLiveHeaders(h, mt)
 	w.WriteHeader(http.StatusOK)
 	if r.Method == http.MethodHead {
 		return
@@ -286,6 +339,57 @@ func (s *server) getRadioLive(w http.ResponseWriter, r *http.Request) {
 		body = &radio.Splitter{R: up.Body, Metaint: metaint, OnTitle: func(t string) { s.radio.SetTitle(st.ID, t) }}
 	}
 	_ = relayCopy(w, body, true)
+}
+
+// setLiveHeaders sets the headers every relayed live answer carries: an allowlisted audio type, no sniffing,
+// a sandbox CSP so nothing from the station can run on this origin, and no caching or ranges.
+func setLiveHeaders(h http.Header, mt string) {
+	h.Set("Content-Type", mt)
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
+	h.Set("Cache-Control", "private, no-store")
+	h.Set("Accept-Ranges", "none")
+}
+
+// radioCheckFailed stores why the last look at a station's stream failed: the guarded client's code, else "offline".
+func (s *server) radioCheckFailed(ctx context.Context, id string, err error) {
+	var pe *podnet.Error
+	code := "offline"
+	switch {
+	case errors.As(err, &pe):
+		code = pe.Code
+	case errors.Is(err, hls.ErrLocked), errors.Is(err, hls.ErrVideo), errors.Is(err, hls.ErrCodec), errors.Is(err, hls.ErrNotPlaylist),
+		errors.Is(err, hls.ErrUnsupported), errors.Is(err, hls.ErrTooLarge), errors.Is(err, hls.ErrChanged):
+		code = "bad_answer" // the station answered, but not with a stream Tendshelf plays
+	}
+	_ = s.radio.SetChecked(ctx, id, "", code)
+}
+
+// relayHLS serves an HLS station as one continuous ADTS or MPEG audio stream (decision 0039). ctx already
+// carries the 12 hour session limit and the radio-off stop, so cancelling it ends the session and every
+// request it has in flight. The caller holds the live place and the stream slot.
+func (s *server) relayHLS(ctx context.Context, w http.ResponseWriter, r *http.Request, st radio.Station) {
+	u := currentUser(r)
+	sess, err := hls.Open(ctx, s.radio.Net, st.StreamURL, hls.Options{OnTitle: func(t string) { s.radio.SetTitle(st.ID, t) }})
+	if err != nil {
+		s.radioCheckFailed(r.Context(), st.ID, err)
+		s.plainError(w, r, http.StatusBadGateway, radioLiveUnavailable)
+		return
+	}
+	defer sess.Close()
+	f := sess.Format()
+	_ = s.radio.SetChecked(r.Context(), st.ID, f.Codec, "")
+	if r.Method != http.MethodHead {
+		if err := s.radio.NotePlay(r.Context(), u.ID, st.ID); err != nil {
+			s.radio.Log.Warn("radio: could not record a play", "err", err)
+		}
+	}
+	setLiveHeaders(w.Header(), f.ContentType())
+	w.WriteHeader(http.StatusOK)
+	if r.Method == http.MethodHead {
+		return
+	}
+	_ = relayCopy(w, sess, true)
 }
 
 // getRadioNow answers the now-playing line, polled every 15 seconds while a station plays.

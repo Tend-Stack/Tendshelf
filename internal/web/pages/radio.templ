@@ -68,6 +68,7 @@ templ Radio(v RadioView) {
 // RadioHit is one OndaCast station result.
 type RadioHit struct {
 	Title, Subtitle, Slug string
+	PlayLabel             string // aria-label of the Play button, the station's name included
 	Card                  components.CardView
 }
 
@@ -77,7 +78,7 @@ type RadioSearchView struct {
 	Hits                                                           []RadioHit
 	Searched                                                       bool
 	Failure, NoResults, ResultsLabel                               string
-	AddLabel, AddAria                                              string
+	AddLabel, AddAria, PlayWord                                    string
 	AddTitle, AddHint, AddFieldLabel, AddButton                    string
 	AddOpen                                                        bool
 	// Popular is OndaCast's popular stations, drawn before anything is searched.
@@ -120,6 +121,11 @@ templ RadioSearch(v RadioSearchView) {
 									<span class="ts-row__meta ts-truncate">{ h.Subtitle }</span>
 								}
 							</span>
+							<form method="post" action="/radio/play" class="ts-podhit__follow" hx-boost="false" data-ts-play-slug>
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<input type="hidden" name="slug" value={ h.Slug }/>
+								<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ h.PlayLabel }>{ v.PlayWord }</button>
+							</form>
 							<form method="post" action="/radio/stations" class="ts-podhit__follow">
 								<input type="hidden" name="_csrf" value={ v.CSRF }/>
 								<input type="hidden" name="slug" value={ h.Slug }/>
