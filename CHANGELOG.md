@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Added
+
+- **Chapters inside an episode's file now show in the player.** Many podcasts put their chapters in the MP3 or M4A itself instead of a separate chapters file. When Tendshelf keeps an episode on the server, it now reads those chapters and shows them in the web player, in the offline copy and in the Android app, as long as the publisher did not already provide a chapters file.
+
 ### Fixed
 
 - **Pages no longer blink and jump a moment after they appear.** Moving to another page drew it once, then about a quarter of a second later made it vanish and rise in again from a few pixels lower; now the rise-in starts with the first frame of the new page.

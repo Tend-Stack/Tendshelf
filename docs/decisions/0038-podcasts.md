@@ -55,8 +55,8 @@ the queue is rebuilt to hold either a book or an episode (one queue, not two).
    refresh is a job; failures are stored as a code and shown in plain words. Conditional GET (ETag, Last-Modified) always.
 8. **Feeds parsed.** RSS 2.0 with iTunes and Podcasting 2.0 tags, and Atom. Show notes are cleaned to a short list of tags (`p br a ul
    ol li strong b em i blockquote`); links keep only `http`, `https` and `mailto` and get `rel="nofollow noopener noreferrer ugc"`;
-   pictures and everything else are dropped. Chapters: Podcasting 2.0 JSON now; chapters inside the MP3 (ID3 `CHAP`) later, from the
-   server cache only.
+   pictures and everything else are dropped. Chapters: Podcasting 2.0 JSON, and chapters inside the MP3 or M4A (ID3 `CHAP`, built in P6) read
+   from the server cache only with the existing ffprobe wrapper, only when the publisher names no chapters file.
 9. **Offline.** Nothing is kept on a device unless the person presses Download (web: the person's own cache in the service worker,
    like a book; Android: the existing downloads system), or turns on auto-download for a show on the phone (Wi-Fi only, quota, keep the
    latest N, remove after played). The service worker answers `/podcasts/audio/{id}`, `/podcasts/art/{showID}`,

@@ -76,7 +76,7 @@ func (s *server) episodePlayerView(ctx context.Context, u users.User, ep podcast
 		}
 		v.Chapters = append(v.Chapters, components.PlayerChapterView{Idx: i, StartMs: c.StartMs, EndMs: max(end, c.StartMs), Title: c.Title})
 	}
-	if len(chapters) == 0 && ep.ChaptersURL != "" {
+	if len(chapters) == 0 && (ep.ChaptersURL != "" || s.podcasts.FileChaptersPossible(ep)) {
 		v.ChaptersHref = "/podcasts/chapters/" + id
 	}
 	return v, nil

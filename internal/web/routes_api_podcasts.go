@@ -192,7 +192,7 @@ func (s *server) apiPodPlaybackOf(r *http.Request, ep podcast.Episode) apiPodPla
 	}
 	doc := apiPodPlayback{apiPodEpisode: apiPodEpisodeOf(ep), AudioURL: "/api/v1/podcasts/audio/" + url.PathEscape(ep.ID),
 		Mime: audioMime(ep), Bytes: ep.AudioBytes, Settings: apiPodSettingsOf(set)}
-	if ep.ChaptersURL != "" || ep.ChaptersJSON != "" {
+	if ep.ChaptersURL != "" || ep.ChaptersJSON != "" || s.podcasts.FileChaptersPossible(ep) {
 		doc.ChaptersURL = "/api/v1/podcasts/chapters/" + url.PathEscape(ep.ID)
 	}
 	return doc
