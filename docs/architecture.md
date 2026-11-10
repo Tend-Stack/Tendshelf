@@ -38,6 +38,8 @@ is not an audio file or a cached image. ffmpeg/ffprobe are the only child proces
 | `internal/metadata` | Local sources (names, tags, sidecars), the field-provenance merge, abridged/dramatized detection. Ports `extractor_details.py`. |
 | `internal/metadata/online` | Provider clients (Audnexus, Audible catalogue, Open Library, iTunes; Audible by default, the others when the person chooses them; Google Books was removed 2026-11-06 because it answers anonymous calls with 429), scoring, per-site spacing, 10 s timeouts, 7-day cache, safe cover fetch (5 MB, magic-byte check). The only `http.Client` in the program. Ports `extractor_online.py`. |
 | `internal/upload` | Adding books by upload (decision 0015): upload sessions and the chunk store under `<data>/uploads/incoming/`, limits and free-space checks, the `upload.place` job (DRM probe, names, safe layout, hidden-folder build, publish rename, scoped `scan.library`), the `upload_paths` ledger, restart recovery, the hourly expiry sweep and "Remove this book". The only package besides `mediajobs` write-details that writes into a library folder. Imports `library`, `media`, `metadata`, `jobs`, `scan` (payload and kind only), `db`. |
+| `internal/metadata/online/podnet` | Decision 0038. The guarded client for podcasts and radio, a sub-package of `online`: every connection is checked after DNS (`checkAddr`), no cookies or proxies, at most 5 redirects, fixed User-Agent, size and time caps. Feeds, pictures, chapters, enclosure audio, live streams, and the OndaCast search (https to `ondacast.com` only). Off until the owner turns podcasts or radio on. |
+| `internal/podcast/rss`, `internal/podcast/opml` | Decision 0038. RSS 2.0 (iTunes and Podcasting 2.0 tags) and Atom feed parser with a show-notes cleaner (`golang.org/x/net/html`, `html/charset`), and OPML import and export. No network. |
 | `internal/users` | Accounts, roles, argon2id password hashing (at most 4 at once, never inside a write transaction), account validation, owner creation. Devices and per-user settings later. |
 | `internal/auth` | Sessions (cookie, hashed tokens), sign-in/sign-out/setup service, failed-attempt limits, trusted-proxy client address, setup code, safe `next` redirects, middleware that puts the user in the request context. Device tokens (bearer) and passkeys later. CSRF lives in `internal/web`. |
 | `internal/auth/oidc` | Sign-in with one OpenID Connect provider (Authelia, Authentik, Keycloak), standard library only ([decision 0037](decisions/0037-openid-connect.md)): settings (`oidc.*` keys, the client secret handled like the SMTP password), discovery, code flow with state, nonce and PKCE S256, JWKS and a compact-JWS check over an allowlist of asymmetric algorithms (HS256 and none refused), userinfo. Its one `http.Client` reaches only the configured issuer's origin (origin checked before each request, no redirects, 5 s timeouts, response caps). `oidctest` is the fake provider the tests use. The `auth.Service` methods (`OIDCStart`, `OIDCFinish`, `OIDCConfirmLink`, `OIDCUnlink`) live in `internal/auth/oidc_signin.go`. |
@@ -182,6 +184,9 @@ Unix ms UTC. Positions INTEGER ms. Booleans INTEGER 0/1. Foreign keys on.
 - **Detail data folders (M4)**: `<data>/covers/incoming/` holds staged cover uploads until a job adopts them (swept after 24 h);
   `<data>/people/` holds author photos `<sha>.<ext>` and their 320 px thumbnails `<sha>-320.jpg`; `<data>/cache/online-covers/`
   holds covers fetched by lookups.
+- **Podcast cache (decision 0038)**: `<data>/cache/podcasts/<showID>/<episodeID>.<ext>` holds episodes the server keeps and
+  `<data>/cache/podcast-art/` holds show artwork. Both are Tendshelf's own copies of public downloads, never library files, never
+  scanned, and left out of backups.
 - **Upload staging (decision 0015)**: `<data>/uploads/incoming/<uploadID>/<fileID>.part` (mode 0600) holds the bytes of an
   upload until `upload.place` moves or copies them into the library folder; removed when the upload ends, and swept
   hourly for uploads with no chunk for 24 h and for folders with no `uploads` row.
@@ -248,6 +253,12 @@ probe queue, about 2.2 ms per file at two at a time, so it grows with the file c
 the storage answers. Peak heap is the server process only, not the ffprobe processes.
 
 ## HTTP routes
+
+Podcast routes (decision 0038; every one answers the plain 404 while `podcasts.enabled` is off; they arrive with P2 and P3): `GET /podcasts`,
+`GET /podcasts/search?q=`, `POST /podcasts/follow`, `GET /podcasts/shows/{showID}`, `POST /podcasts/shows/{showID}/unfollow|refresh|seen|settings`,
+`GET /podcasts/episodes/{episodeID}`, `POST /podcasts/episodes/{episodeID}/played|favourite`, `POST /podcasts/progress/{episodeID}`,
+`GET /podcasts/audio/{episodeID}`, `GET /podcasts/art/{showID}`, `GET /podcasts/chapters/{episodeID}`, `GET /hx/player/episode/{episodeID}`,
+`GET|POST /podcasts/opml`, `GET|POST /admin/podcasts`, and `/api/v1/podcasts/...` for the app. Radio follows under `/radio/...` with `radio.enabled`.
 
 Pages (GET; full page; navigation via `hx-boost` selecting `#main`):
 
@@ -678,7 +689,7 @@ Approved 2026-11-01 for P0 ([decision 0002](decisions/0002-design-handoff.md)); 
 | `modernc.org/sqlite` v1.61.1 (**approved and added in P0a**) | SQLite driver | Chosen over `mattn/go-sqlite3`: pure Go, so `CGO_ENABLED=0` cross-compiles to ARM NAS boxes, Windows, macOS and scratch containers; FTS5 is compiled in (checked in `lib/sqlite_linux_amd64.go`). Cost: slower than the C driver on heavy writes (guess 1.5-2x); fine for this workload. BSD-3 |
 | `htmx.min.js` 4.0.0 (**vendored in P0b**) as `internal/web/static/vendor/htmx-4.0.0.min.js` | Interactivity | Official release file, version and SHA-256 in `NOTICES.md`; licence 0BSD, text beside it. htmx 4 inheritance is explicit (`:inherited`) and 4xx/5xx responses swap |
 | `golang.org/x/crypto` v0.58.0 (argon2) (**added in P1b-1**) | Password hashing, `internal/users` only | BSD-3 |
-| OpenID Connect: standard library, `internal/auth/oidc` ([decision 0037](decisions/0037-openid-connect.md)) | Sign in with Authelia, Authentik or Keycloak | No new module: `crypto/rsa`, `crypto/ecdsa`, `crypto/ed25519`, `net/http`. The approval for a client module (2026-11-03) stays open for a later need. The package makes the second narrow `http.Client` besides `internal/metadata/online` (and the desktop shell's health check); `internal/archtest` fails on any other. |
+| OpenID Connect: standard library, `internal/auth/oidc` ([decision 0037](decisions/0037-openid-connect.md)) | Sign in with Authelia, Authentik or Keycloak | No new module: `crypto/rsa`, `crypto/ecdsa`, `crypto/ed25519`, `net/http`. The approval for a client module (2026-11-03) stays open for a later need. The package makes the second narrow `http.Client` besides `internal/metadata/online` (and the desktop shell's health check); `TestOnlineNoOtherClient` (`internal/metadata/online`) fails on any other. |
 | Fonts **vendored in P0b** to `internal/web/static/fonts/` (woff2): Fraunces (variable roman and italic), Fira Sans (400, 400 italic, 500, 600), Fira Mono (400, 500); 1.23 MB in total, 361 KB preloaded | The design's type; Fira Mono for mono text only (the Research lab is dropped, decision 0007) | SIL OFL 1.1, texts beside the files; upstream commits and SHA-256 in `NOTICES.md`; self-hosted, never Google Fonts |
 
 Ebook reading (phase R), **approved by the operator on 2026-11-03**; each

@@ -17,8 +17,8 @@ was reused, extended or replaced.
 - **Go standard library first.** `net/http` with Go 1.22+ method/path patterns for routing; no web
   framework. Every new Go module needs operator approval and a row in `NOTICES.md` in the same commit.
   Approved and in use: `modernc.org/sqlite` v1.61.1 and `github.com/a-h/templ` v0.3.1100 (runtime; the
-  CLI runs through the `tool` directive in `go.mod`, one version source), `golang.org/x/net` v0.61.0
-  (`html`, `html/charset`), `golang.org/x/text` v0.43.0 (`unicode/norm`, `encoding/...`; ebook reading,
+  CLI runs through the `tool` directive in `go.mod`, one version source), `golang.org/x/net` v0.62.0
+  (`html`, `html/charset`; also in `internal/podcast/rss` for feed character sets and show notes, decision 0038), `golang.org/x/text` v0.43.0 (`unicode/norm`, `encoding/...`; ebook reading,
   `internal/ebook` only) and `github.com/ledongthuc/pdf` (PDF text layer, `internal/ebook/pdf.go` only) and `rsc.io/qr` v0.2.0 (QR codes as SVG, `internal/web/qr.go` only, decision 0028). OpenID Connect: standard library, `internal/auth/oidc` (decision 0037). Approved for later phases
   (operator, 2026-11-03), each added with its `NOTICES.md` row: Wails v3 (desktop
   module only), fsnotify, go-webauthn and an OpenID Connect client; see "Dependencies and approvals" in
@@ -102,6 +102,8 @@ was reused, extended or replaced.
   never overwrites, renames or deletes anything it did not create. "Remove this book" deletes only
   `upload_paths` files still unchanged since they were placed (size, mtime and quick hash), then only the
   empty folders it created. No other code path may write, rename or delete a library file.
+- Podcast episodes Tendshelf downloads into `<data>/cache/podcasts/` are its own cache, not library files; they are never
+  scanned or listed in a library, and backups leave them out (decision 0038).
 - Copy-protected files (`.aax`, `.aaxc`, `.aa`, `.m4p`, or streams ffprobe reports as encrypted) are
   listed as refused and never decoded, streamed or remuxed. Tendshelf never removes or works around DRM.
   An upload with a copy-protected file is refused before its bytes are sent (by extension) or after
@@ -123,9 +125,15 @@ was reused, extended or replaced.
   person's downloads. ("The only package that creates an `http.Client`" stays a server rule.)
 - Read aloud uses only voices on the device (a browser voice with `localService` true, an Android voice that needs no network), so book text never leaves it (decision 0032).
 - **No telemetry**, analytics, crash reporting, update pings or third-party assets (fonts, CDNs, map
-  tiles). The only outbound requests are user-initiated metadata lookups and cover downloads, through
-  `internal/metadata/online`, the only package in the server that creates an `http.Client` (the one other is `internal/auth/oidc`, which talks only to the configured sign-in provider, decision 0037; `internal/archtest` enforces the list). The one other outbound
-  connection is the admin-configured SMTP server for invitation emails (`internal/share/mail.go`), and the configured OpenID Connect provider, when someone signs in with it.
+  tiles). The only outbound requests are user-initiated metadata lookups and cover downloads through `internal/metadata/online`, and podcasts
+  and radio through its sub-package `internal/metadata/online/podnet`, both off until the owner turns podcasts or radio on: a search
+  sends only the typed words to `ondacast.com` (no account, no identifiers); following a show, Refresh, opening Podcasts, and a
+  scheduled refresh only when the owner picks an interval fetch the publishers' feeds; playing, downloading or auto-downloading an
+  episode fetches its audio, artwork and chapters; playing a station fetches its stream. Every podcast and radio connection is checked
+  after DNS and refused for private, loopback, link-local and CGNAT addresses, sends no cookies, and carries a fixed User-Agent. These
+  two are the only server packages that create an `http.Client`, besides `internal/auth/oidc`, which talks only to the configured
+  sign-in provider when someone signs in with it (decision 0037). The one other outbound connection is the admin-configured SMTP
+  server for invitation emails (`internal/share/mail.go`).
   The desktop shell also checks `/healthz` on the server the person typed, at Connect and at launch
   (`internal/desktopshell`, decision 0020). That is its own client, and it sends no credentials.
 - All authorization goes through `share.Can(user, action, target)`. Listing and search queries filter
@@ -143,10 +151,10 @@ was reused, extended or replaced.
 - The server binds `127.0.0.1:8095` by default; exposing it is an explicit setting.
 - The service worker (`/sw.js`, source `internal/web/static/js/sw.js`) answers only hashed `/static/` files and,
   from the signed-in person's own cache, `/stream/{id}` (with or without `?compat=1`), `/covers/{bookID}`,
-  `/peaks/{id}`, `/hx/player/{bookID}`, `/hx/books/{id}/read/chapters/{idx}`, `/books/{id}/read/images/{blockID}`,
+  `/peaks/{id}`, `/hx/player/{bookID}`, `/podcasts/audio/{id}`, `/podcasts/art/{showID}`, `/podcasts/chapters/{id}`, `/hx/player/episode/{id}`, `/hx/books/{id}/read/chapters/{idx}`, `/books/{id}/read/images/{blockID}`,
   the `/offline` shell for a navigation that cannot reach the server, and the book's reader shell for a
   navigation to `/books/{id}/read` (or `?sheet=contents`) that cannot reach it. It never caches or answers
-  `/s/...`, `/invite/...`, `/pair/...`, `/signin/...`, `/feeds/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any request with
+  `/s/...`, `/invite/...`, `/pair/...`, `/signin/...`, `/feeds/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any other `/podcasts/...` address, `/radio/...`, any request with
   `download=1`, any non-GET request, or any other page. It is never registered inside a Wails window, inside the Android
   app's window (`/sw.js` answers 404 there), on share-link pages or outside a secure context. Sign-out and a change of person delete that person's caches
   and offline records (decisions [0012](docs/decisions/0012-offline-pocket.md),

@@ -563,6 +563,8 @@ func TestOnlineAuthor(t *testing.T) {
 
 // TestOnlineNoOtherClient walks the repository: no other package may open network connections, except
 // internal/desktopshell/check.go (decision 0020) and internal/auth/oidc, the sign-in provider client (decision 0037).
+// Skipping internal/metadata/online skips its whole subtree, so the sub-package podnet (podcasts and radio, decision 0038)
+// is covered and no other package is loosened.
 func TestOnlineNoOtherClient(t *testing.T) {
 	root := filepath.Join("..", "..", "..")
 	banned := []string{"http.Client{", "&http.Client", "http.DefaultClient", "http.Get(", "http.Post(", "net.Dial(", "net.DialTimeout("}
