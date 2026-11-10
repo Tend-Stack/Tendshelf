@@ -7,7 +7,9 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 ### Added
 
 - **Chapters inside an episode's file now show in the player.** Many podcasts put their chapters in the MP3 or M4A itself instead of a separate chapters file. When Tendshelf keeps an episode on the server, it now reads those chapters and shows them in the web player, in the offline copy and in the Android app, as long as the publisher did not already provide a chapters file.
+
 ### Podcast and radio pages: first-use fixes (2026-11-10)
+
 - After you follow a show, its page fills in by itself when the episodes arrive. It no longer shows the feed address as a title.
 - Podcast and station search results show their pictures. The server fetches them, so your browser never talks to the publishers.
 - The show page follows the app's width and gutters, with a header that counts the episodes, shows the site name, clamps a long description under "More", and has one Play latest or Resume button.

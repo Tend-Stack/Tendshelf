@@ -509,7 +509,13 @@ function play() {
 function pause() {
   compatSeq++; // also cancels a wait for a converted copy
   audio.pause();
-  if (book && book.kind === RADIO) dropLive();
+  if (book && book.kind === RADIO) {
+    dropLive();
+    // dropLive's load() discards the "pause" event the browser had queued, so nothing else would redraw the
+    // bar, the station card, the side panel or the Media Session: say it here
+    idleAt = Date.now();
+    emit("pause");
+  }
 }
 
 // ---- Live radio: pause stops the stream, play joins it again at the live edge ----
@@ -772,6 +778,31 @@ function askContinue(remote, onThere, onHere) {
 
 // ---- Screen: the bar and its state event ----
 
+// A station's logo is fetched by a background job, so on the first play its picture may not be kept yet
+// (the address answers 404). The tile stays empty meanwhile and asks again a few times.
+let shownCover = "";
+let coverTries = 0;
+let coverFailed = false;
+const COVER_RETRY_MS = 4000;
+const COVER_RETRIES = 4;
+
+listen(controls.cover, "load", () => {
+  coverFailed = false;
+  controls.cover.hidden = !book || !book.cover;
+});
+
+listen(controls.cover, "error", () => {
+  if (!book || !book.cover) return;
+  coverFailed = true;
+  controls.cover.hidden = true;
+  if (book.kind !== RADIO || coverTries >= COVER_RETRIES) return;
+  coverTries++;
+  const wanted = book.cover;
+  setTimeout(() => {
+    if (book && book.cover === wanted) controls.cover.src = wanted + "&r=" + coverTries;
+  }, COVER_RETRY_MS);
+});
+
 // Writes name, chapter, labels and progress into the bar. force also updates the Media Session.
 function render(force) {
   if (!book) return;
@@ -800,8 +831,13 @@ function render(force) {
     controls.open.href = LINK || "/books/" + encode(book.id);
     setLabel("open", fill(msg("openPlayer") || msg("open"), { title: book.title, n: chapterIdx + 1, m: minutesLeft }));
   }
-  if (book.cover && controls.cover.getAttribute("src") !== book.cover) controls.cover.src = book.cover;
-  controls.cover.hidden = !book.cover;
+  if (book.cover && shownCover !== book.cover) {
+    shownCover = book.cover;
+    coverTries = 0;
+    coverFailed = false;
+    controls.cover.src = book.cover;
+  }
+  controls.cover.hidden = !book.cover || coverFailed;
   controls["back-num"].textContent = book.skipBack;
   controls["forward-num"].textContent = book.skipForward;
   setLabel("back", fill(msg("backSeconds"), { n: book.skipBack }));
@@ -954,13 +990,14 @@ function setLiveMediaActions(live) {
 function updateMediaSession() {
   if (!hasMediaSession || !book) return;
   setLiveMediaActions(book.kind === RADIO);
+  navigator.mediaSession.playbackState = audio.paused ? "paused" : "playing"; // the lock screen and the side panel follow the audio
   if (book.kind === RADIO) {
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: book.author || book.title, // the title playing now, else the station
         artist: book.title,
         album: msg("live"),
-        artwork: [],
+        artwork: book.cover ? [{ src: book.cover, sizes: "512x512" }] : [],
       });
     } catch {
       // an unsupported field is skipped

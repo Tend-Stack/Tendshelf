@@ -73,6 +73,18 @@ func radioArtURL(st radio.Station) string {
 	return ""
 }
 
+// playerArtURL is the logo address for the player bar. A logo still being fetched has no checksum yet; the bar
+// gets the address without one (it answers 404 until the file is kept) and asks again a few times (player.js).
+func playerArtURL(st radio.Station) string {
+	if u := radioArtURL(st); u != "" {
+		return u
+	}
+	if st.ArtURL != "" {
+		return "/radio/art/" + url.PathEscape(st.ID) + "?w=512"
+	}
+	return ""
+}
+
 func (s *server) stationRow(r *http.Request, st radio.Station, removable bool) components.StationRowView {
 	id := url.PathEscape(st.ID)
 	meta := st.Genre
@@ -179,7 +191,7 @@ func (s *server) getPlayerRadio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := components.PlayerDataView{
-		BookID: st.ID, Title: st.Name, CoverURL: radioArtURL(st), Author: s.radio.NowPlaying(st.ID), ServerNow: s.now().UnixMilli(),
+		BookID: st.ID, Title: st.Name, CoverURL: playerArtURL(st), Author: s.radio.NowPlaying(st.ID), ServerNow: s.now().UnixMilli(),
 		Speed: "1.00", SkipBackS: set.SkipBackS, SkipForwardS: set.SkipForwardS, Rewind: rewindAttr(),
 		Kind: radioKind, ShowHref: "/radio",
 		Files: []components.PlayerFileView{{ID: st.ID, Mime: "audio/mpeg", Playable: true, Href: "/radio/live/" + url.PathEscape(st.ID)}},
