@@ -34,13 +34,17 @@ const (
 	RemoveBook      Action = "book.remove"      // "Remove this book": owner and admin, and a contributor for their own books (decision 0029)
 	WriteFiles      Action = "book.write_files" // "Write details into the file": owner and admin only (decision 0029)
 	UseShelves      Action = "shelves.use"
-	ViewShelf       Action = "shelf.view" // reading a shelf that is not one's own
+	ViewShelf       Action = "shelf.view"     // reading a shelf that is not one's own
+	UsePodcasts     Action = "podcasts.use"   // follow shows and use the Podcasts pages: owner, admin and member, never a guest (decision 0038)
+	ListenEpisode   Action = "episode.listen" // play, download or save progress on an episode: the person follows its show or already has state for it
+	UseRadio        Action = "radio.use"      // stations: owner, admin and member (decision 0038)
 )
 
 var knownActions = map[Action]bool{
 	ViewLibrary: true, ViewBook: true, ListenBook: true, DownloadBook: true, EditBook: true,
 	ReadText: true, DownloadText: true, ManageLibraries: true, ManageJobs: true,
 	ManageUsers: true, ManageServer: true, UseShelves: true, ViewShelf: true, AddBooks: true, RemoveBook: true, WriteFiles: true,
+	UsePodcasts: true, ListenEpisode: true, UseRadio: true,
 }
 
 // TargetKind is what an action is aimed at.
@@ -53,6 +57,7 @@ const (
 	TargetBook    TargetKind = "book"
 	TargetShelf   TargetKind = "shelf"
 	TargetUser    TargetKind = "user"
+	TargetEpisode TargetKind = "episode"
 )
 
 // Target says what an action is aimed at. LibraryID is the library a book
@@ -161,6 +166,9 @@ func (c *Checker) Can(ctx context.Context, u users.User, a Action, t Target) boo
 	case TargetShelf:
 		return canShelf(u, a, t)
 	}
+	if a == UsePodcasts || a == UseRadio || a == ListenEpisode {
+		return c.canPodcast(ctx, u, a, t)
+	}
 	switch u.Role {
 	case users.RoleOwner:
 		return true
@@ -217,6 +225,32 @@ func (c *Checker) canContributor(ctx context.Context, u users.User, a Action, t 
 	}
 	// ViewLibrary on a library holding an own book is answered by LibraryFilter, which canByGrant uses.
 	return false, false
+}
+
+// canPodcast decides the podcast and radio actions (decision 0038). Owner, admin and member may; a guest never.
+// Playing an episode also needs a relation read here from the database, never from the request: the person follows
+// the episode's show, or has a state row (history, favourite, progress) of their own for it. A contributor is a
+// member and gains nothing.
+func (c *Checker) canPodcast(ctx context.Context, u users.User, a Action, t Target) bool {
+	switch u.Role {
+	case users.RoleOwner, users.RoleAdmin, users.RoleMember:
+	default:
+		return false
+	}
+	if a == UsePodcasts || a == UseRadio {
+		return t.Kind == TargetServer
+	}
+	if t.Kind != TargetEpisode || t.ID == "" || c.st == nil {
+		return false
+	}
+	var one int
+	err := c.st.Reader().QueryRowContext(ctx, `SELECT 1 FROM podcast_episodes pe WHERE pe.id = ?1 AND (
+		EXISTS (SELECT 1 FROM podcast_subscriptions ps WHERE ps.user_id = ?2 AND ps.show_id = pe.show_id)
+		OR EXISTS (SELECT 1 FROM podcast_episode_state st WHERE st.user_id = ?2 AND st.episode_id = pe.id))`, t.ID, u.ID).Scan(&one)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		slog.Error("share: episode lookup failed", "action", a, "err", err)
+	}
+	return err == nil
 }
 
 // canShelf decides actions on a shelf: it is its owner's; others may only look
