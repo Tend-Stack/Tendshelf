@@ -89,7 +89,7 @@ func (s *server) adminPodcastsView(r *http.Request) pages.AdminPodcastsView {
 		ServerAuto: set.ServerAuto, ServerAutoLabel: podAdminAuto, ServerAutoHint: podAdminAutoHint,
 		Radio: set.RadioEnabled, RadioLabel: podAdminRadio, RadioHint: podAdminRadioHint,
 		Save: podAdminSave, CacheHeading: podAdminCacheHead, ClearLabel: podAdminClear,
-		UsedLine: fmt.Sprintf(podAdminUsed, sizeText(used), sizeText(set.CacheBytes)),
+		UsedLine: fmt.Sprintf(podAdminUsed, sizeText(used), strconv.FormatFloat(float64(set.CacheBytes)/gib, 'f', -1, 64)+" GB"),
 		Saved:    saved == "1", SavedNotice: podAdminSaved, Cleared: saved == "cleared", ClearedNotice: podAdminCleared,
 	}
 }

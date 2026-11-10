@@ -5,7 +5,7 @@
 .ts-podcasts { display: flex; flex-direction: column; gap: var(--space-16); min-width: 0; }
 .ts-podcasts__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-16); }
 .ts-podcasts__title { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.ts-podcasts__tabs { overflow-x: auto; scrollbar-width: none; }
+.ts-podcasts__tabs { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
 .ts-podcasts__tabs .ts-tabs__item { flex: none; }
 .ts-podcasts__banner { margin: 0; }
 .ts-podcasts__grid { gap: var(--space-20) var(--space-16); }
@@ -30,7 +30,7 @@
 .ts-epfilters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); }
 .ts-epfilters .ts-chip, .ts-epfilters .ts-seg__item { text-decoration: none; min-height: var(--size-tap); }
 .ts-epfilters__sort { max-width: 100%; }
-.ts-epfilters__sort .ts-seg__item { padding-inline: var(--space-12); white-space: nowrap; }
+.ts-epfilters__sort .ts-seg__item { padding-inline: var(--space-12); }
 .ts-epfilters__search { display: flex; flex: 1 1 100%; gap: var(--space-8); min-width: 0; }
 .ts-epfilters__search .ts-input { flex: 1 1 auto; min-width: 0; }
 .ts-podcasts .ts-chip[aria-current="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
@@ -43,14 +43,17 @@
 .ts-podhit .ts-cover { width: 3.5rem; height: 3.5rem; }
 .ts-podhit__follow { margin: 0; flex: none; }
 .ts-podsearch__none { margin: 0; color: var(--ink-muted); }
-.ts-podsearch__summary { min-height: var(--size-tap); display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+.ts-podsearch__summary { min-height: var(--size-tap); display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); cursor: pointer; font-weight: 600; list-style: none; }
+.ts-podsearch__summary::-webkit-details-marker { display: none; }
+details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-podsearch__addform, .ts-podshow__settingsform { display: flex; flex-direction: column; gap: var(--space-12); align-items: flex-start; padding-top: var(--space-8); }
 .ts-podsearch__addform .ts-field, .ts-podshow__settingsform .ts-field { max-width: 36rem; }
 
 /* A show and an episode: the picture beside the facts on a phone too. */
-.ts-podshow__head { display: flex; align-items: flex-start; gap: var(--space-16); min-width: 0; }
+/* The facts wrap under the picture when there is no room beside it (large text). */
+.ts-podshow__head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-16); min-width: 0; }
 .ts-podshow__head .ts-cover--152 { max-inline-size: 38vw; }
-.ts-podshow__info { display: flex; flex-direction: column; gap: var(--space-8); min-width: 0; flex: 1; }
+.ts-podshow__info { display: flex; flex-direction: column; gap: var(--space-8); min-width: 0; flex: 1 1 12rem; }
 .ts-podshow__info > * { margin: 0; }
 .ts-podshow__title, .ts-podep__title { overflow-wrap: anywhere; }
 .ts-podshow__author { color: var(--ink-muted); }
@@ -72,10 +75,24 @@
 .ts-podep__actions form { margin: 0; }
 .ts-podep__actions .ts-btn { max-width: 100%; }
 @media (width < 30rem) {
-  .ts-podshow__head .ts-cover--152 { inline-size: 7rem; block-size: 7rem; }
-  .ts-podshow__head .ts-cover--112 { inline-size: 5rem; block-size: 5rem; }
+  .ts-podshow__head .ts-cover--152 { inline-size: min(7rem, 30vw); block-size: auto; aspect-ratio: 1; }
+  .ts-podshow__head .ts-cover--112 { inline-size: min(5rem, 30vw); block-size: auto; aspect-ratio: 1; }
 }
 
 /* The owner's page. */
 .ts-podadmin__unit { display: flex; align-items: center; gap: var(--space-8); }
 .ts-podadmin__unit .ts-input { max-width: 8rem; }
+
+/* A show without a picture gets the plain tile; pages-home.css clamps its title, and contain keeps a long name from stretching the tile. */
+.ts-showcard .ts-cover--blank { min-height: 0; contain: size; }
+/* A very long show name is cut at four lines beside the picture (the whole name stays in the page for a screen reader). */
+.ts-podshow__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+/* Links in the header are real targets (44 px) and cut with an ellipsis at any text size. */
+.ts-podshow__site a, .ts-podshow__info .ts-overline a { display: inline-flex; align-items: center; min-height: var(--size-tap); max-width: 100%; }
+.ts-podshow__actions form, .ts-podshow__actions .ts-chip { min-width: 0; max-width: 100%; }
+.ts-podshow__actions .ts-btn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* At twice the text size the order control and the action buttons give way instead of widening the page. */
+.ts-epfilters__sort { flex-wrap: wrap; }
+.ts-podep__actions form { min-width: 0; max-width: 100%; }
+.ts-podep__actions .ts-btn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-podadmin .ts-groups { display: flex; flex-direction: column; gap: var(--space-16); max-width: 40rem; }

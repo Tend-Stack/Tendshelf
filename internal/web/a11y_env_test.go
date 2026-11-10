@@ -16,6 +16,8 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/auth/oidc"
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/podcast"
+	"github.com/Tend-Stack/tendshelf/internal/podcast/rss"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
@@ -39,6 +41,7 @@ type a11yEnv struct {
 	PairToken, PairID                      string // a waiting pairing of the owner's session (decision 0028)
 	SignInToken, SignInPanelID             string // an unspent sign-in link; the person whose page "main/panel" shows a new one (decision 0030)
 	UploadLibID, UploadBookID              string
+	PodShowID, PodEpisodeID                string // a followed show of the owner and one of its episodes (decision 0038)
 
 	Main, Upload, Fresh, Setup *testApp
 	Player                     *playerEnv
@@ -95,7 +98,13 @@ func a11ySeed(t *testing.T) *a11yEnv {
 
 	// main: the Harbour Lights library with its shelves, a queue, a member, an invite and a link.
 	// The lookup service sits on a fake network, as in the route sweep, so the lookup pages exist.
-	a := newTestApp(t, compareMod(t, &compareNet{}))
+	podFx := newPodFix(t)
+	cmod := compareMod(t, &compareNet{})
+	a := newTestApp(t, func(o *Options) {
+		cmod(o)
+		podFx.mod(t)(o)
+	})
+	podFx.enable(t, a, nil)
 	e.Main = a
 	ownerCk := a.owner(t)
 	var full, empty string
@@ -118,6 +127,7 @@ func a11ySeed(t *testing.T) *a11yEnv {
 			t.Fatal(err)
 		}
 	}
+	e.PodShowID, e.PodEpisodeID = a11yPodcasts(t, a, podFx, owner)
 	before := a11yIDSet(t, a, `SELECT id FROM libraries`)
 	adminSeed(t, a)
 	for id := range a11yIDSet(t, a, `SELECT id FROM libraries`) {
@@ -323,4 +333,45 @@ func a11yFeeds(t *testing.T, e *a11yEnv, a *testApp, ownerCk *http.Cookie, serve
 		r.AddCookie(&http.Cookie{Name: ownerCk.Name, Value: ownerCk.Value})
 		a.h.ServeHTTP(w, r)
 	}))
+}
+
+// a11yPodcasts makes the owner follow one show with a few episodes (some new, one played, one starred), so the
+// podcast pages are audited with data. The feed is built in memory; nothing is fetched.
+func a11yPodcasts(t *testing.T, a *testApp, fx *podFix, owner string) (showID, episodeID string) {
+	t.Helper()
+	ctx := context.Background()
+	id, _, err := fx.svc.Follow(ctx, owner, "https://pub.test/audit.xml", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := rss.Feed{Title: "The Harbour Hour", Author: "Ann Author", Description: "<p>A weekly walk along the quay, with a <a href=\"https://example.com/q\">link</a>.</p>", Link: "https://example.com/"}
+	for k := 1; k <= 4; k++ {
+		f.Episodes = append(f.Episodes, rss.Item{GUID: fmt.Sprint("a", k), GUIDKey: fmt.Sprint("a", k), Title: fmt.Sprint("Episode ", k, ": The tide tables"),
+			AudioURL: fmt.Sprint("https://pub.test/a", k, ".mp3"), AudioType: "audio/mpeg", DurationMs: int64(20+k) * 60000,
+			PublishedAt: time.Date(2026, 10, k, 6, 0, 0, 0, time.UTC).UnixMilli(), NotesHTML: "<p>Notes for episode.</p>"})
+	}
+	if _, err := fx.svc.ApplyFeed(ctx, id, f, podcast.FetchMeta{}); err != nil {
+		t.Fatal(err)
+	}
+	var eps []string
+	rows, err := a.st.Reader().Query(`SELECT id FROM podcast_episodes WHERE show_id = ? ORDER BY published_at DESC`, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var e string
+		rows.Scan(&e)
+		eps = append(eps, e)
+	}
+	rows.Close()
+	if err := fx.svc.SetPlayed(ctx, owner, eps[3], true); err != nil {
+		t.Fatal(err)
+	}
+	if err := fx.svc.SetFavourite(ctx, owner, eps[1], true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.st.Writer().Exec(`UPDATE podcast_subscriptions SET seen_at = 1`); err != nil {
+		t.Fatal(err)
+	}
+	return id, eps[0]
 }

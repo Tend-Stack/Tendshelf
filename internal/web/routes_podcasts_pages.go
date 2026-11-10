@@ -83,7 +83,7 @@ func podMeta(ep podcast.Episode) string {
 	if d := podDate(ep.PublishedAt); d != "" {
 		parts = append(parts, d)
 	}
-	if t := durationText(ep.DurationMs); t != "" {
+	if t := durationText(ep.DurationMs); t != "" && !ep.State.Played {
 		parts = append(parts, t)
 	}
 	switch {

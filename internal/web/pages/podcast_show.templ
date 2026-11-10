@@ -60,7 +60,7 @@ templ PodcastShow(v PodcastShowView) {
 				if v.Author != "" {
 					<p class="body ts-podshow__author">{ v.Author }</p>
 				}
-				<p class="ts-podshow__actions">
+				<div class="ts-podshow__actions">
 					<span class="ts-chip ts-chip--static">
 						@components.Icon("check", false)
 						{ v.Following }
@@ -73,7 +73,7 @@ templ PodcastShow(v PodcastShowView) {
 						<input type="hidden" name="_csrf" value={ v.CSRF }/>
 						<button type="submit" class="ts-btn ts-btn--quiet">{ v.UnfollowLabel }</button>
 					</form>
-				</p>
+				</div>
 				if v.SiteHref != "" {
 					<p class="caption ts-podshow__site"><a href={ templ.SafeURL(v.SiteHref) } rel="nofollow noopener noreferrer" class="ts-truncate">{ v.SiteLabel }</a></p>
 				}
@@ -95,7 +95,10 @@ templ PodcastShow(v PodcastShowView) {
 			</section>
 		}
 		<details class="ts-group ts-group--pad ts-podshow__settings">
-			<summary class="ts-podsearch__summary">{ v.Settings.Title }</summary>
+			<summary class="ts-podsearch__summary">
+				<span>{ v.Settings.Title }</span>
+				@components.Icon("chevron-down", false)
+			</summary>
 			<form class="ts-podshow__settingsform" method="post" action={ templ.SafeURL(v.Settings.Action) }>
 				<input type="hidden" name="_csrf" value={ v.Settings.CSRF }/>
 				<div class="ts-field">
