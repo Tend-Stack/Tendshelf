@@ -76,7 +76,7 @@ templ StationCard(v StationRowView) {
 			if v.SaveAction != "" {
 				<form class="ts-stncard__keep" method="post" action={ templ.SafeURL(v.SaveAction) }>
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
-					<button type="submit" class="ts-iconbtn" aria-label={ v.SaveLabel } aria-pressed="false">
+					<button type="submit" class="ts-iconbtn ts-stncard__save" aria-label={ v.SaveLabel } aria-pressed="false">
 						@Icon("star", false)
 					</button>
 				</form>
