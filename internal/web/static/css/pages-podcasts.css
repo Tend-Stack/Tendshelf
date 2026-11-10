@@ -172,7 +172,9 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-stncard__art--small .ts-cover img { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
 .ts-stncard__name { font-weight: 600; overflow-wrap: anywhere; }
 .ts-stncard__meta { min-height: 1.25rem; font-size: 0.8125rem; line-height: 1.25rem; color: var(--ink-muted); }
-.ts-stncard__actions { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-4); }
+/* Play and Save share a narrow card: tighter side padding fits both, and they stack when the text is enlarged. */
+.ts-stncard__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-top: var(--space-4); }
+.ts-stncard__actions .ts-btn { padding-inline: var(--space-12); }
 .ts-stncard__play { flex: 1 1 auto; min-width: 0; justify-content: center; }
 .ts-stncard__keep { margin: 0; flex: none; }
 .ts-stncard .ts-iconbtn { width: var(--size-tap); height: var(--size-tap); }

@@ -23,7 +23,7 @@ const (
 	radioSavedTitle    = "Your stations"
 	radioRecentTitle   = "Recently played"
 	radioNoStationsHd  = "No stations yet"
-	radioNoStations    = "Search above for a station and press the star to keep it, or paste its stream address."
+	radioNoStations    = "Search above for a station and press Save to keep it, or paste its stream address."
 	radioNoResults     = "No stations found. You can paste a stream address instead."
 	radioResultsLabel  = "Station results"
 	radioAdd           = "Add"
