@@ -38,7 +38,7 @@ var mergeBookRows = []string{
     device_id = excluded.device_id, device_label = excluded.device_label
   WHERE excluded.client_updated_at > progress.client_updated_at`,
 	`UPDATE listening_sessions SET book_id = :to WHERE book_id = :from`,
-	`UPDATE OR IGNORE queue_items SET book_id = :to WHERE book_id = :from`,
+	`UPDATE OR IGNORE queue_items SET book_id = :to, item_id = :to WHERE book_id = :from`,
 	`UPDATE OR IGNORE book_settings SET book_id = :to WHERE book_id = :from`,
 	`UPDATE OR IGNORE grants SET book_id = :to WHERE book_id = :from`,
 	`UPDATE share_links SET book_id = :to WHERE book_id = :from`,

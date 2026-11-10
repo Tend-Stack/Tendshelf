@@ -69,7 +69,7 @@ func TestPlayerNext(t *testing.T) {
 
 	// The member holds a row for a book they cannot open; it is skipped and kept, and the next
 	// playable book plays.
-	if _, err := e.a.st.Writer().Exec(`INSERT INTO queue_items(user_id, book_id, position, added_at) VALUES (?, ?, -9, 1)`,
+	if _, err := e.a.st.Writer().Exec(`INSERT INTO queue_items(user_id, item_id, book_id, position, added_at) VALUES (?1, ?2, ?2, -9, 1)`,
 		e.uid[sweepMember], e.hidden.ID); err != nil {
 		t.Fatal(err)
 	}

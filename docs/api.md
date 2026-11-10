@@ -222,6 +222,35 @@ over; at either end nothing changes. 200 with the whole queue. 400 `dir`; 404 wh
 ### DELETE /api/v1/queue/{bookID}
 Takes the book off the queue: 204. 404 when the book is not queued or not visible.
 
+### Episodes in Up next (decision 0038, P5)
+One queue holds books and podcast episodes (up to 100 items together, one position order). The book contract above is
+unchanged; episodes are added next to it, and **an app that does not send `kinds` never sees one**:
+- `?kinds=book,episode` (query, on `GET /api/v1/queue`, `GET|POST /api/v1/queue/next` and the move route) lists, peeks, pops
+  and steps over the named kinds. Without it, only books (an older app cannot read an item with no `book`). `kinds=episode`
+  alone is allowed; a list naming no known kind is 400 `kinds`. `episode` is quietly dropped while podcasts are off or the
+  person may not use them.
+- Every item gains `"kind":"book"|"episode"`. A book item is as before; an episode item is
+  `{"kind":"episode","episode":{id,showId,title,show,artUrl,publishedAt,durationMs},"addedAt":ms}` (no `book`).
+- `POST /api/v1/queue` takes `{"episodeId"*,"where"}` instead of `bookId` (exactly one of the two, else 400 `bookId`). 404 when the
+  person may not listen to the episode (or podcasts are off); 409 for a video episode or a full queue.
+- `POST /api/v1/queue/{id}/move` and `DELETE /api/v1/queue/{id}` accept an episode id (`pe_...`) in the path.
+- `POST /api/v1/queue/next?kinds=book,episode` and the peek answer an episode item as
+  `{"kind":"episode","episode":<playback document of GET /api/v1/podcasts/episodes/{id}>,"source":"queue"}`; a book answer also carries
+  `"kind":"book"`. `ended` may be an episode id. An episode the person lost access to is skipped and kept.
+
+### What the phone needs for episode downloads and auto-download (Android A2)
+All of it exists; no new route. The phone's own auto-download is Wi-Fi only on the phone's side (the server cannot tell).
+- Follows and their per-show settings: `GET /api/v1/podcasts` (`settings.serverAuto`, `settings.keepLatest`, `newCount`).
+- What is new: `GET /api/v1/podcasts/shows/{showID}/episodes?since=<ms>` and `GET /api/v1/podcasts/new?since=<ms>`.
+- One episode to download: `GET /api/v1/podcasts/episodes/{id}` gives `audioUrl`, `mime`, `bytes` (the feed's announced size: often
+  wrong, so learn the size from the first answer's `Content-Range`), `chaptersUrl`, `state{played,...}` (delete after played).
+- The file: `GET /api/v1/podcasts/audio/{id}` with `Range` (206 with `Content-Range`; a publisher that ignores Range answers 200
+  with the whole file for `bytes=0-`). Pass `download=1` for a copy to keep. Art: `/api/v1/podcasts/art/{showID}`; chapters:
+  `/api/v1/podcasts/chapters/{id}`.
+- What to fetch next after an episode ends: `GET /api/v1/queue/next?kinds=book,episode&ended=<id>` (peek, writes nothing).
+- Server-side auto-download is separate: when the owner allows it and a person turns it on for a show, the server keeps the
+  newest `keepLatest` unplayed episodes in its own cache and removes them once played; it only makes `/audio` answer faster.
+
 ## App settings, per-book speed and Continue
 
 ### GET /api/v1/settings, PATCH /api/v1/settings

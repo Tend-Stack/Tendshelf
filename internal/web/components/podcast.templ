@@ -57,6 +57,8 @@ type EpisodeRowView struct {
 	StarAction, StarValue, StarLabel string
 	// Back is the page the forms return to (a /podcasts/ address), CSRF the form token.
 	Back, CSRF string
+	// Menu is the row's "more" menu: Play next and Add to queue.
+	Menu EpisodeMenuView
 }
 
 // EpisodeRow is one episode: play, the title and its facts, mark as played, star. The title is a link to the
@@ -93,7 +95,44 @@ templ EpisodeRow(v EpisodeRowView) {
 		</a>
 		@episodeFlag(v.PlayedAction, "played", v.PlayedValue, v.PlayedLabel, "check", v.Played, false, v.Back, v.CSRF)
 		@episodeFlag(v.StarAction, "on", v.StarValue, v.StarLabel, "star", v.Starred, true, v.Back, v.CSRF)
+		if !v.Video {
+			@EpisodeMenu(v.Menu)
+		}
 	</div>
+}
+
+// EpisodeMenuView is the "more" menu of an episode row: Play next and Add to queue. Every word comes from the
+// handler. Next is where a plain form returns to.
+type EpisodeMenuView struct {
+	ID, CSRF, Next, Toggle, PlayNext, AddEnd string
+}
+
+// EpisodeMenuID is the menu's id; htmx replaces the menu by it after a choice.
+func EpisodeMenuID(id string) string { return "ep-menu-" + id }
+
+// EpisodeMenu is a <details> that shell.js's chip menu handling opens and closes (outside click, Escape, one at
+// a time). Each choice is a form: htmx answers in place with the closed menu and a toast, a plain post is
+// redirected back.
+templ EpisodeMenu(v EpisodeMenuView) {
+	<details id={ EpisodeMenuID(v.ID) } class="ts-player__menu ts-eprow__menu" data-ts-chipmenu>
+		<summary class="ts-iconbtn" aria-label={ v.Toggle }>
+			@Icon("more", false)
+		</summary>
+		<div class="ts-player__menubody" role="group" aria-label={ v.Toggle }>
+			@episodeMenuForm(v, "next", v.PlayNext)
+			@episodeMenuForm(v, "end", v.AddEnd)
+		</div>
+	</details>
+}
+
+templ episodeMenuForm(v EpisodeMenuView, where, label string) {
+	<form method="post" action="/queue" hx-post="/queue" hx-target={ "#" + EpisodeMenuID(v.ID) } hx-swap="outerHTML">
+		<input type="hidden" name="_csrf" value={ v.CSRF }/>
+		<input type="hidden" name="episode_id" value={ v.ID }/>
+		<input type="hidden" name="where" value={ where }/>
+		<input type="hidden" name="next" value={ v.Next }/>
+		<button type="submit" class="ts-player__menuitem">{ label }</button>
+	</form>
 }
 
 // episodeFlag is a one-button form that sets a 0/1 field: the played mark and the star. A star is a toggle

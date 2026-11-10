@@ -179,6 +179,15 @@ function tellWorker() {
 // Everything a book keeps in the cache: files, the player fragment, the cover and the peaks.
 async function purge(record) {
   const cache = await openCache();
+  if (record.kind === EPISODE) {
+    // An episode keeps its file, the player fragment, the show's picture and its chapters, and no peaks.
+    for (const file of record.files) await dropFile(cache, file);
+    await cache.delete("/hx/player/episode/" + record.id);
+    await cache.delete("/podcasts/chapters/" + record.id);
+    if (record.cover) await cache.delete(record.cover);
+    tellWorker();
+    return;
+  }
   for (const file of record.files) {
     await dropFile(cache, file);
     await cache.delete("/peaks/" + file.id);
@@ -211,7 +220,46 @@ class Halt extends Error {
 // What the text module may use of this file: the queue's own helpers, so there is one put and one index.
 const kit = { openCache, put, patch, Halt, sleep, done: doneOf };
 
+// A podcast episode is a record of its own kind in the same index: one file under /podcasts/audio/, whose size is
+// learned from the first answer because a feed's announced length is often wrong.
+const EPISODE = "episode";
+
+async function startEpisode(id) {
+  if (!supported) return;
+  const known = readIndex().books[id];
+  if (known && known.state !== "failed") return;
+  if (known) await remove(id);
+  let doc = null;
+  try {
+    const res = await fetch("/api/v1/podcasts/episodes/" + encodeURIComponent(id), { headers: { Accept: "application/json" } });
+    if (res.ok) doc = await res.json();
+  } catch {
+    // nothing to download without the episode's details
+  }
+  if (!doc) return;
+  const index = readIndex();
+  index.books[id] = {
+    kind: EPISODE,
+    title: doc.title,
+    author: doc.show,
+    cover: "",
+    bytes: doc.bytes || 0,
+    done: 0,
+    state: "waiting",
+    error: "",
+    addedAt: Date.now(),
+    readyAt: 0,
+    finishedAt: 0,
+    files: [{ id, key: "/podcasts/audio/" + encodeURIComponent(id), mime: doc.mime, size: 0, chunks: 1, have: 0, etag: "", open: true }],
+  };
+  writeJSON(INDEX_KEY, index);
+  emit(id);
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  pump();
+}
+
 async function start(bookId) {
+  if (bookId.startsWith("pe_")) return startEpisode(bookId);
   if (!supported) return;
   const known = readIndex().books[bookId];
   if (known && known.state !== "failed") return;
@@ -381,7 +429,8 @@ async function runBook(id) {
     record.id = id;
     const room = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
     if (room && room.quota - room.usage < record.bytes - record.done + 16 * MiB) throw new Halt("failed", "space");
-    if (record.files.length) await keepPage(record);
+    if (record.kind === EPISODE) await keepEpisodePage(record);
+    else if (record.files.length) await keepPage(record);
     tellWorker();
     for (let i = 0; i < record.files.length; i++) await runFile(id, i, controller.signal);
     if (record.text) await (await textModule()).run(id, record, controller.signal, kit);
@@ -467,6 +516,37 @@ async function keepPage(record) {
   }
 }
 
+// The episode's player fragment, the show's picture and the chapters file when the fragment names one. The
+// picture and the chapters are best effort.
+async function keepEpisodePage(record) {
+  const cache = await openCache();
+  const page = "/hx/player/episode/" + encodeURIComponent(record.id);
+  const res = await fetch(page, { cache: "no-store" });
+  if (!res.ok || res.redirected) throw new Halt("failed", "gone");
+  const html = await res.text();
+  await put(cache, page, new Response(html, { headers: { "Content-Type": "text/html" } }));
+  const data = new DOMParser().parseFromString(html, "text/html").getElementById("player-data").dataset;
+  if (data.coverUrl) {
+    try {
+      const image = await fetch(data.coverUrl);
+      if (image.ok) await put(cache, data.coverUrl, image);
+      patch(record.id, (r) => {
+        r.cover = data.coverUrl;
+      });
+    } catch {
+      // the picture is optional
+    }
+  }
+  if (data.chaptersHref) {
+    try {
+      const chapters = await fetch(data.chaptersHref);
+      if (chapters.ok) await put(cache, data.chaptersHref, chapters);
+    } catch {
+      // the chapters are optional
+    }
+  }
+}
+
 // One file, one chunk request at a time. The completion entry is written last: only then does the
 // worker serve the file.
 async function runFile(id, i, signal) {
@@ -492,6 +572,11 @@ async function runFile(id, i, signal) {
     type = res.headers.get("Content-Type") || type;
     file.etag = file.etag || res.headers.get("ETag") || "";
     const body = await res.arrayBuffer();
+    if (file.open && res.status === 200) {
+      // The publisher ignored Range: this is the whole file, kept as one chunk.
+      file.size = body.byteLength;
+      file.chunks = 1;
+    }
     await put(cache, chunkKey(file, file.have), new Response(body, { headers: { "Content-Type": type } }));
     file.have++;
     file.mime = type;
@@ -540,6 +625,12 @@ async function fetchChunk(id, file, from, to, signal) {
     const res = await fetch(file.key + (file.key.includes("?") ? "&" : "?") + "download=1", { headers, cache: "no-store", signal });
     if (res.status === 206) {
       const total = Number((res.headers.get("Content-Range") || "").split("/")[1]);
+      if (file.open && from === 0 && total > 0) {
+        // An episode's size is known only from its first answer.
+        file.size = total;
+        file.chunks = Math.max(1, Math.ceil(total / CHUNK));
+        return res;
+      }
       if (file.key.includes("compat") && from === 0) {
         // A compatible copy has its own size, known only from its first answer.
         file.size = total;
@@ -548,7 +639,7 @@ async function fetchChunk(id, file, from, to, signal) {
       }
       return total === file.size ? res : null;
     }
-    if (res.status === 200) return from === 0 && file.size <= CHUNK ? res : null;
+    if (res.status === 200) return from === 0 && (file.open || file.size <= CHUNK) ? res : null;
     if (res.status === 416) return null;
     if (res.status === 403 || res.status === 404) throw new Halt("failed", "gone");
     if (res.status === 503) {
@@ -574,9 +665,11 @@ async function fetchChunk(id, file, from, to, signal) {
 async function reseed() {
   if (!supported || !navigator.onLine) return;
   try {
-    const ready = list().filter((r) => r.state === "ready").slice(0, 200);
+    const all = list().filter((r) => r.state === "ready");
+    const ready = all.filter((r) => r.kind !== EPISODE).slice(0, 200);
+    const episodes = all.filter((r) => r.kind === EPISODE).slice(0, 200);
     const ids = (records) => records.map((r) => encodeURIComponent(r.id)).join(",");
-    const res = await fetch("/offline?books=" + ids(ready) + "&text=" + ids(ready.filter((r) => r.text)));
+    const res = await fetch("/offline?books=" + ids(ready) + "&text=" + ids(ready.filter((r) => r.text)) + "&episodes=" + ids(episodes));
     if (res.ok && !res.redirected) await (await openCache()).put("/offline", res);
   } catch {
     // the shell is optional
@@ -595,6 +688,17 @@ async function checkFinished(force) {
   localStorage.setItem(CHECKED_KEY, String(Date.now()));
   for (const record of list().filter((r) => r.state === "ready")) {
     try {
+      if (record.kind === EPISODE) {
+        const res = await fetch("/api/v1/podcasts/episodes/" + encodeURIComponent(record.id), { headers: { Accept: "application/json" } });
+        if (!res.ok) continue;
+        const state = (await res.json()).state;
+        const playedAt = state && state.played ? state.updatedAt : 0;
+        patch(record.id, (r) => {
+          r.finishedAt = playedAt;
+        });
+        if (prefs().removeFinished && playedAt && playedAt < Date.now() - 7 * DAY) await remove(record.id);
+        continue;
+      }
       let finishedAt = -1;
       const text = await textModule()
         .then((m) => m.refresh(record.id, record, kit))
@@ -702,7 +806,12 @@ function renderRow(record, template, listEl) {
     }
     row.querySelector("[data-ts-title]").textContent = record.title;
     const link = row.querySelector("[data-ts-link]");
-    if (link) link.href = "/books/" + encodeURIComponent(record.id) + (record.files.length ? "" : "/read");
+    if (link) {
+      link.href =
+        record.kind === EPISODE
+          ? "/podcasts/episodes/" + encodeURIComponent(record.id)
+          : "/books/" + encodeURIComponent(record.id) + (record.files.length ? "" : "/read");
+    }
   }
   row.querySelector("[data-ts-meta]").textContent = metaFor(record);
   const bar = row.querySelector("[data-ts-row-bar]");

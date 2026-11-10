@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/a-h/templ"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
@@ -44,7 +46,7 @@ func queueIn(v string) string {
 
 // queueFocus says which button the keyboard lands on after a change.
 type queueFocus struct {
-	bookID, key string // a moved row: "up" or "down"
+	bookID, key string // a moved row (book or episode id): "up" or "down"
 	removeAt    int    // after a remove: the index the removed row had, or -1
 }
 
@@ -53,7 +55,7 @@ var queueNoFocus = queueFocus{removeAt: -1}
 // queueList builds the Up next list. in is "panel" or "page"; focus says where the keyboard goes.
 func (s *server) queueList(r *http.Request, in string, focus queueFocus) (components.UpNextView, error) {
 	u := currentUser(r)
-	list, err := s.lib.Queue(r.Context(), s.scope(r), u.ID)
+	list, err := s.lib.QueueIn(r.Context(), s.scope(r), u.ID, s.queueKinds(r))
 	if err != nil {
 		return components.UpNextView{}, err
 	}
@@ -65,14 +67,19 @@ func (s *server) queueList(r *http.Request, in string, focus queueFocus) (compon
 		v.ID = "now-up-next"
 	}
 	for i, e := range list {
+		card, title := cardView(e.Book), e.Book.Title
+		if e.Kind == library.QueueKindEpisode {
+			card, title = queueEpisodeCard(e.Episode), e.Episode.Title
+		}
 		row := components.UpNextRow{
-			Card:        cardView(e.Book),
-			UpLabel:     fmt.Sprintf(queueMoveUpFmt, e.Book.Title),
-			DownLabel:   fmt.Sprintf(queueMoveDownFmt, e.Book.Title),
-			RemoveLabel: fmt.Sprintf(queueRemoveFmt, e.Book.Title),
+			ID:          e.ID,
+			Card:        card,
+			UpLabel:     fmt.Sprintf(queueMoveUpFmt, title),
+			DownLabel:   fmt.Sprintf(queueMoveDownFmt, title),
+			RemoveLabel: fmt.Sprintf(queueRemoveFmt, title),
 			First:       i == 0, Last: i == len(list)-1,
 		}
-		if e.Book.ID == focus.bookID && focus.key != "" {
+		if e.ID == focus.bookID && focus.key != "" {
 			row.Focus = focus.key
 			// A row that reached an end has no arrow that way: the other arrow keeps the focus.
 			if row.First && row.Focus == "up" {
@@ -129,6 +136,48 @@ func (s *server) queueBook(w http.ResponseWriter, r *http.Request, id string, a 
 	return b, true
 }
 
+// queueKinds says which kinds of item this person's Up next shows: books always, episodes while podcasts are on
+// and the person may use them.
+func (s *server) queueKinds(r *http.Request) library.QueueKinds {
+	if s.podcastsOn(r) && s.can.Can(r.Context(), currentUser(r), share.UsePodcasts, podServer) {
+		return library.QueueAll
+	}
+	return library.QueueBooks
+}
+
+// queueEpisodeCard is the row of a queued episode: the show's picture, the title, and "{show} · {length}".
+func queueEpisodeCard(e library.QueueEpisode) components.CardView {
+	c := podArt(e.ShowID, e.ShowTitle, e.ArtSHA)
+	c.ID, c.Title, c.Href = e.ID, e.Title, "/podcasts/episodes/"+url.PathEscape(e.ID)
+	c.Byline, c.Duration = e.ShowTitle, durationText(e.DurationMs)
+	return c
+}
+
+// queueEpisode loads an episode the person may open for a queue change (podcasts on, ListenEpisode), the way
+// queueBook loads a book: the same answers, so an unknown, hidden or off episode looks like any other miss.
+func (s *server) queueEpisode(w http.ResponseWriter, r *http.Request, id string, answer func(status int, msg string)) (podcast.Episode, bool) {
+	miss := func() (podcast.Episode, bool) {
+		if isHTMX(r) {
+			answer(http.StatusNotFound, queueErrGone)
+		} else {
+			s.notFound(w, r)
+		}
+		return podcast.Episode{}, false
+	}
+	if !s.podcastsOn(r) || !s.can.Can(r.Context(), currentUser(r), share.ListenEpisode, share.Target{Kind: share.TargetEpisode, ID: id}) {
+		return miss()
+	}
+	ep, err := s.podcasts.Episode(r.Context(), currentUser(r).ID, id)
+	if errors.Is(err, podcast.ErrNotFound) {
+		return miss()
+	}
+	if err != nil {
+		s.serverError(w, r, "queue episode", err)
+		return podcast.Episode{}, false
+	}
+	return ep, true
+}
+
 func isHTMX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
 
 // queueMenuView is the dropdown's view for a book (closed; focus on the toggle after an answer).
@@ -171,6 +220,10 @@ func (s *server) postQueue(w http.ResponseWriter, r *http.Request) {
 	case "end":
 	default:
 		fail(http.StatusBadRequest, queueErrWhere)
+		return
+	}
+	if eid := r.PostFormValue("episode_id"); eid != "" {
+		s.postQueueEpisode(w, r, eid, front)
 		return
 	}
 	b, ok := s.queueBook(w, r, id, share.ListenBook, fail)
@@ -227,12 +280,17 @@ func (s *server) queueChange(w http.ResponseWriter, r *http.Request, do func(boo
 		}
 		s.fragment(w, r, status, body)
 	}
-	if _, ok := s.queueBook(w, r, id, share.ViewBook, func(status int, msg string) { answer(status, msg, queueNoFocus) }); !ok {
+	miss := func(status int, msg string) { answer(status, msg, queueNoFocus) }
+	if strings.HasPrefix(id, "pe_") {
+		if _, ok := s.queueEpisode(w, r, id, miss); !ok {
+			return
+		}
+	} else if _, ok := s.queueBook(w, r, id, share.ViewBook, miss); !ok {
 		return
 	}
 	focus := queueNoFocus
 	if isHTMX(r) {
-		before, err := s.lib.Queue(r.Context(), s.scope(r), currentUser(r).ID)
+		before, err := s.lib.QueueIn(r.Context(), s.scope(r), currentUser(r).ID, s.queueKinds(r))
 		if err != nil {
 			s.serverError(w, r, "queue list", err)
 			return
@@ -280,7 +338,7 @@ func (s *server) postQueueMove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.queueChange(w, r, func(id string) error {
-		return s.lib.QueueMove(r.Context(), s.scope(r), currentUser(r).ID, id, delta)
+		return s.lib.QueueMoveIn(r.Context(), s.scope(r), currentUser(r).ID, id, delta, s.queueKinds(r))
 	}, func(_ []library.QueueEntry, id string) queueFocus {
 		return queueFocus{bookID: id, key: dir, removeAt: -1}
 	})
@@ -294,10 +352,76 @@ func (s *server) postQueueDelete(w http.ResponseWriter, r *http.Request) {
 		return s.lib.QueueRemove(r.Context(), currentUser(r).ID, id)
 	}, func(before []library.QueueEntry, id string) queueFocus {
 		for i, e := range before {
-			if e.Book.ID == id {
+			if e.ID == id {
 				return queueFocus{removeAt: i}
 			}
 		}
 		return queueNoFocus
 	})
+}
+
+// postQueueEpisode is POST /queue for an episode (form field episode_id): Play next or Add to queue from an
+// episode row. The person must be able to listen to it; htmx answers with the closed row menu and a toast.
+func (s *server) postQueueEpisode(w http.ResponseWriter, r *http.Request, id string, front bool) {
+	next := "/podcasts/episodes/" + url.PathEscape(id)
+	if raw := r.PostFormValue("next"); raw != "" {
+		next = auth.SafeNext(raw)
+	}
+	var ep podcast.Episode
+	answer := func(status int, kind, msg string) {
+		if isHTMX(r) {
+			toast := templ.Component(components.ToastOOB(kind, msg))
+			if kind == "err" {
+				toast = components.ErrorToast(msg)
+			}
+			s.fragment(w, r, status, templ.Join(components.EpisodeMenu(s.episodeMenuView(r, id, ep.Title, next)), toast))
+			return
+		}
+		s.errorPage(w, r, status)
+	}
+	ep, ok := s.queueEpisode(w, r, id, func(status int, msg string) { answer(status, "err", msg) })
+	if !ok {
+		return
+	}
+	if podIsVideo(ep) {
+		answer(http.StatusConflict, "err", podQueueUnplayable)
+		return
+	}
+	added, err := s.lib.QueueAddEpisode(r.Context(), currentUser(r).ID, ep.ID, front)
+	switch {
+	case errors.Is(err, library.ErrQueueFull):
+		answer(http.StatusConflict, "err", queueErrFull)
+		return
+	case errors.Is(err, library.ErrNotFound):
+		answer(http.StatusNotFound, "err", queueErrGone)
+		return
+	case err != nil:
+		s.serverError(w, r, "queue add episode", err)
+		return
+	}
+	msg := queueAddedEnd
+	switch {
+	case front:
+		msg = queueAddedFront
+	case !added:
+		msg = queueAlready
+	}
+	if isHTMX(r) {
+		answer(http.StatusOK, "ok", msg)
+		return
+	}
+	s.redirect(w, r, next)
+}
+
+// episodeMenuView is the row menu of an episode (closed): Play next and Add to queue. next is where a plain
+// form returns to.
+func (s *server) episodeMenuView(r *http.Request, id, title, next string) components.EpisodeMenuView {
+	toggle := podMenuNoTitle
+	if title != "" {
+		toggle = fmt.Sprintf(podMenuFmt, title)
+	}
+	return components.EpisodeMenuView{
+		ID: id, CSRF: s.csrf.TokenFrom(r.Context()), Next: next,
+		Toggle: toggle, PlayNext: queuePlayNext, AddEnd: queueAddEnd,
+	}
 }

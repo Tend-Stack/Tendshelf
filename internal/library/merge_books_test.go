@@ -125,7 +125,7 @@ func TestDupMergeMovesEverything(t *testing.T) {
 		`INSERT INTO listening_sessions(id, user_id, book_id, device_id, started_at, ended_at, start_ms, end_ms, listened_ms, speed_pct) VALUES ('ls_1', 'us_a', '` + drop.ID + `', 'd', 1, 2, 0, 1, 1, 100)`,
 		`INSERT INTO shelves(id, owner_id, name, created_at, updated_at) VALUES ('sh_1', 'us_a', 'Mine', 1, 1)`,
 		`INSERT INTO shelf_items(shelf_id, book_id, idx, added_at) VALUES ('sh_1', '` + drop.ID + `', 0, 1)`,
-		`INSERT INTO queue_items(user_id, book_id, position, added_at) VALUES ('us_a', '` + drop.ID + `', 1, 1)`,
+		`INSERT INTO queue_items(user_id, item_id, book_id, position, added_at) VALUES ('us_a', '` + drop.ID + `', '` + drop.ID + `', 1, 1)`,
 		`INSERT INTO book_settings(user_id, book_id, speed, updated_at) VALUES ('us_a', '` + drop.ID + `', 1.5, 1)`,
 		`INSERT INTO grants(id, user_id, scope, book_id, created_at, updated_at) VALUES ('gr_1', 'us_b', 'book', '` + drop.ID + `', 1, 1)`,
 		`INSERT INTO share_links(id, token_hash, book_id, created_by, expires_at, created_at) VALUES ('sl_1', randomblob(32), '` + drop.ID + `', 'us_a', 1000, 1)`,

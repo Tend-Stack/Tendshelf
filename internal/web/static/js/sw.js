@@ -62,7 +62,15 @@ self.addEventListener("fetch", (event) => {
     // The same for what is on screen while a book plays: only a stored copy is the worker's to answer.
     if (streamsKnown && !held.has(url.pathname + url.search)) return;
     event.respondWith(cachedOrNetwork(request, url));
-  } else if (/^\/hx\/player\/[^/]+$/.test(url.pathname)) {
+  } else if (url.pathname.startsWith("/podcasts/audio/")) {
+    // A downloaded episode (decision 0038, point 9): the same chunks as a book file, under its own address. Nothing
+    // else under /podcasts/ or /radio/ is the worker's to answer or keep: those fall through to the network.
+    if (streamsKnown && !held.has(url.pathname)) return;
+    event.respondWith(fromChunks(request, url));
+  } else if (url.pathname.startsWith("/podcasts/art/") || url.pathname.startsWith("/podcasts/chapters/")) {
+    if (streamsKnown && !held.has(url.pathname + url.search)) return;
+    event.respondWith(cachedOrNetwork(request, url));
+  } else if (/^\/hx\/player\/(episode\/)?[^/]+$/.test(url.pathname)) {
     if (streamsKnown && !held.has(url.pathname)) return;
     event.respondWith(freshOrCached(request, url));
   } else if (/^\/hx\/books\/[^/]+\/read\/chapters\/\d+$/.test(url.pathname)) {

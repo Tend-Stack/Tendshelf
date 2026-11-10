@@ -15,7 +15,13 @@ type OfflineRow struct {
 	Play  *components.PlayButtonView
 	// Read opens the reader, for a book whose text is on this phone. In a row it is always the plain button.
 	Read *components.ReadButtonView
+	// Episode is the play link of a downloaded podcast episode (it plays through the player's episode path).
+	Episode *OfflineEpisodePlay
 }
+
+// OfflineEpisodePlay is an episode's play link in the shell: the audio address without JavaScript, the
+// episode id for the player, and its spoken name.
+type OfflineEpisodePlay struct{ ID, Href, Label string }
 
 // OfflineView is the page the service worker shows when the server cannot be reached
 // (screens/states/StateOffline): the books saved on this phone first, then the recent ones that need
@@ -50,7 +56,7 @@ templ Offline(v OfflineView) {
 
 // offlineActions is the row's slot: the Read button, then the round play control, or nothing.
 func offlineActions(row OfflineRow) templ.Component {
-	if row.Play == nil && row.Read == nil {
+	if row.Play == nil && row.Read == nil && row.Episode == nil {
 		return nil
 	}
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
@@ -59,9 +65,18 @@ func offlineActions(row OfflineRow) templ.Component {
 				return err
 			}
 		}
+		if row.Episode != nil {
+			return offlineEpisodePlay(*row.Episode).Render(ctx, w)
+		}
 		if row.Play != nil {
 			return components.PlayButton(*row.Play).Render(ctx, w)
 		}
 		return nil
 	})
+}
+
+templ offlineEpisodePlay(v OfflineEpisodePlay) {
+	<a class="ts-iconbtn ts-iconbtn--tonal" href={ templ.SafeURL(v.Href) } hx-boost="false" data-ts-play={ v.ID } aria-label={ v.Label }>
+		@components.Icon("play", true)
+	</a>
 }

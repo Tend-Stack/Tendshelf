@@ -114,6 +114,7 @@ func (s *server) podRow(r *http.Request, ep podcast.Episode, back string, seenAt
 	if mixed {
 		v.Show = ep.ShowTitle
 	}
+	v.Menu = s.episodeMenuView(r, ep.ID, ep.Title, back)
 	v.PlayedValue, v.PlayedLabel = "1", podMarkPlayed
 	if ep.State.Played {
 		v.PlayedValue, v.PlayedLabel = "0", podMarkNotPlayed
@@ -383,8 +384,14 @@ func (s *server) getPodcastEpisode(w http.ResponseWriter, r *http.Request) {
 		Starred: ep.State.Favourite, StarAction: here + "/favourite", StarLabel: podStar, Back: here,
 		NotesTitle: podAboutEpisode, Notes: rss.CleanHTML(ep.NotesHTML, rss.NotesMax),
 	}
+	v.Menu = s.episodeMenuView(r, ep.ID, ep.Title, here)
 	if !v.Video {
 		v.SaveHref, v.SaveLabel = "/podcasts/audio/"+id+"?download=1", podSaveFile
+		v.Download = &pages.BookDownloadView{
+			ID: ep.ID, Label: podDownload, Href: "/me/downloads",
+			Downloading: "Downloading · {pct}%", Working: "Downloading…", Waiting: "Waiting",
+			Ready: "Ready offline", Paused: "Paused", Failed: "Try again",
+		}
 	}
 	v.PlayedValue, v.PlayedLabel = "1", podMarkPlayed
 	if ep.State.Played {

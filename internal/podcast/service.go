@@ -55,6 +55,8 @@ type Service struct {
 	perUser map[string]int
 	// chapterFails remembers, for a few minutes, the episodes whose chapters file could not be fetched.
 	chapterFails map[string]time.Time
+	// autoTried remembers when auto-download last queued an episode, so a failing one is not retried every tick.
+	autoTried map[string]time.Time
 }
 
 // chapterRetryAfter is how long a failed chapters fetch is not tried again.

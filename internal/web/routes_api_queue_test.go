@@ -227,7 +227,7 @@ func TestAPIQueueNext(t *testing.T) {
 		e.send(e.owner, http.MethodPost, "/api/v1/queue", queueBody(id, ""))
 	}
 	// The member holds a row for a book they cannot open (access lost later): it is skipped, kept.
-	if _, err := e.a.st.Writer().Exec(`INSERT INTO queue_items(user_id, book_id, position, added_at) VALUES (?, ?, -5, 1)`,
+	if _, err := e.a.st.Writer().Exec(`INSERT INTO queue_items(user_id, item_id, book_id, position, added_at) VALUES (?1, ?2, ?2, -5, 1)`,
 		e.uid[sweepMember], e.hidden.ID); err != nil {
 		t.Fatal(err)
 	}

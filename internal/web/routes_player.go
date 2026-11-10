@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
@@ -103,12 +104,16 @@ func (s *server) postPlayerNext(w http.ResponseWriter, r *http.Request) {
 	}
 	u, sc := currentUser(r), s.scope(r)
 	var v components.PlayerDataView
-	found, err := s.popQueue(r.Context(), u, sc, ended, func(b library.Book) (bool, error) {
+	found, err := s.popQueue(r.Context(), u, sc, s.queueKinds(r), ended, func(b library.Book) (bool, error) {
 		var err error
 		v, err = s.playerView(r.Context(), u, sc, b)
 		if errors.Is(err, library.ErrNotFound) {
 			return false, nil
 		}
+		return err == nil, err
+	}, func(ep podcast.Episode) (bool, error) {
+		var err error
+		v, err = s.episodePlayerView(r.Context(), u, ep)
 		return err == nil, err
 	})
 	switch {
