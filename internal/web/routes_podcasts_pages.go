@@ -36,7 +36,8 @@ func (s *server) podNav(r *http.Request) components.PodNav {
 		if s.radioNavOn(r) {
 			return components.PodNav{Show: true, RadioOnly: true}
 		}
-		return components.PodNav{}
+		// Both off: the item is still drawn, and leads to the first-use page (routes_podstart.go).
+		return components.PodNav{Show: s.podStartActive(r)}
 	}
 	n, err := s.podcasts.NewTotal(r.Context(), u.ID)
 	if err != nil {
@@ -156,7 +157,7 @@ func backPath(r *http.Request) string {
 }
 
 func (s *server) getPodcasts(w http.ResponseWriter, r *http.Request) {
-	if !s.podcastsGate(w, r) {
+	if s.podStartPage(w, r) || !s.podcastsGate(w, r) {
 		return
 	}
 	ctx, u := r.Context(), currentUser(r)
@@ -180,6 +181,9 @@ func (s *server) getPodcasts(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		v.EmptyTitle, v.EmptyBody, v.EmptyAction = podNoShowsTitle, podNoShows, true
+		if len(v.Shows) == 0 && err == nil {
+			v.Starters = s.podStarters(r)
+		}
 		v.Import = s.podImportView(r)
 	case "new":
 		eps, err = s.podcasts.NewEpisodes(ctx, u.ID, podListLimit, 0)
@@ -203,7 +207,7 @@ func (s *server) getPodcasts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) getPodcastSearch(w http.ResponseWriter, r *http.Request) {
-	if !s.podcastsGate(w, r) {
+	if s.podStartPage(w, r) || !s.podcastsGate(w, r) {
 		return
 	}
 	u := currentUser(r)
@@ -215,6 +219,9 @@ func (s *server) getPodcastSearch(w http.ResponseWriter, r *http.Request) {
 		CSRF: s.csrf.TokenFrom(r.Context()), Title: podcastsSearchTitle, Q: q, SearchLabel: podSearchPodcasts, SearchButton: podSearchWord,
 		BackHref: "/podcasts", BackLabel: podBackToPodcasts, FollowLabel: podFollow, FollowAriaLabel: podFollow, NoResults: podNoResults,
 		AddTitle: podAddByRSS, AddHint: podPasteRSS, AddLabel: podRSSLabel, ResultsLabel: podResultsLabel,
+	}
+	if q == "" {
+		v.Starters = s.podStarters(r)
 	}
 	if q != "" {
 		if !s.podLim.search.Take(u.ID) { // each search counts once
@@ -271,7 +278,7 @@ func podSpeedOptions(cur *float64) []pages.Option {
 }
 
 func (s *server) getPodcastShow(w http.ResponseWriter, r *http.Request) {
-	if !s.podcastsGate(w, r) {
+	if s.podStartPage(w, r) || !s.podcastsGate(w, r) {
 		return
 	}
 	sh, ok := s.loadShow(w, r)
@@ -455,6 +462,9 @@ func (s *server) showView(w http.ResponseWriter, r *http.Request, sh podcast.Sho
 }
 
 func (s *server) getPodcastEpisode(w http.ResponseWriter, r *http.Request) {
+	if s.podStartPage(w, r) {
+		return
+	}
 	ep, ok := s.loadEpisode(w, r)
 	if !ok {
 		return

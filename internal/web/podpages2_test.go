@@ -141,7 +141,7 @@ func TestPodPages2Nav(t *testing.T) {
 	for _, c := range []struct {
 		pod, radio       bool
 		hasPod, hasRadio bool
-	}{{false, false, false, false}, {true, false, true, false}, {false, true, false, true}, {true, true, true, false}} {
+	}{{false, false, true, false}, {true, false, true, false}, {false, true, false, true}, {true, true, true, false}} {
 		set(c.pod, c.radio)
 		body := w.get("/", w.ben).Body.String()
 		if got := strings.Contains(body, `data-nav="/podcasts"`); got != c.hasPod {

@@ -1,0 +1,177 @@
+[
+ {
+  "group": "true-crime",
+  "slug": "crime-junkie",
+  "title": "Crime Junkie",
+  "author": "Audiochuck",
+  "image_url": "https://image.simplecastcdn.com/images/a1a87b67-2865-4234-a087-b342aa30c358/ae42d51b-df99-4b19-bb3f-09f25598bcdd/3000x3000/crimejunkie-logo-registered.jpg?aid=rss_feed"
+ },
+ {
+  "group": "true-crime",
+  "slug": "dateline-nbc",
+  "title": "Dateline NBC",
+  "author": "NBC News",
+  "image_url": "/api/images/podcasts/1464919521.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "my-favorite-murder-with-karen-kilgariff-and-georgia-hardstar",
+  "title": "My Favorite Murder with Karen Kilgariff and Georgia Hardstark",
+  "author": "Exactly Right and iHeartPodcasts",
+  "image_url": "/api/images/podcasts/1074507850.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "morbid",
+  "title": "Morbid",
+  "author": "Ash Kelley & Alaina Urquhart",
+  "image_url": "/api/images/podcasts/1379959217.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "48-hours",
+  "title": "48 Hours",
+  "author": "48 Hours",
+  "image_url": "/api/images/podcasts/965818306.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "20-20",
+  "title": "20/20",
+  "author": "ABC News",
+  "image_url": "/api/images/podcasts/987967575.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "casefile-true-crime",
+  "title": "Casefile True Crime",
+  "author": "Casefile Presents",
+  "image_url": "/api/images/podcasts/998568017.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "sword-and-scale",
+  "title": "Sword and Scale",
+  "author": "Sword and Scale",
+  "image_url": "/api/images/podcasts/790487079.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "small-town-murder",
+  "title": "Small Town Murder",
+  "author": "James Pietragallo, Jimmie Whisman",
+  "image_url": "/api/images/podcasts/1194755213.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "rotten-mango",
+  "title": "Rotten Mango",
+  "author": "Stephanie Soo",
+  "image_url": "/api/images/podcasts/1517954480.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "mrballen-podcast-strange-dark-mysterious-stories",
+  "title": "MrBallen Podcast: Strange, Dark & Mysterious Stories",
+  "author": "MrBallen",
+  "image_url": "/api/images/podcasts/1608813794.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "snapped-women-who-murder",
+  "title": "Snapped: Women Who Murder",
+  "author": "Oxygen",
+  "image_url": "/api/images/podcasts/1145089790.webp"
+ },
+ {
+  "group": "true-crime",
+  "slug": "anatomy-of-murder",
+  "title": "Anatomy of Murder",
+  "author": "Audiochuck",
+  "image_url": "https://image.simplecastcdn.com/images/5b7d8c77-15ba-4eff-a999-2e725db21db5/4af9eca5-26d5-4841-8326-668b6663f2ca/3000x3000/anatomy-of-murder-cover.jpg?aid=rss_feed"
+ },
+ {
+  "group": "more",
+  "slug": "the-daily",
+  "title": "The Daily",
+  "author": "The New York Times",
+  "image_url": "https://image.simplecastcdn.com/images/7f2f4c05-9c2f-4deb-82b7-b538062bc22d/73549bf1-94b3-40ff-8aeb-b4054848ec1b/3000x3000/the-daily-album-art-original.jpg?aid=rss_feed"
+ },
+ {
+  "group": "more",
+  "slug": "up-first-from-npr",
+  "title": "Up First from NPR",
+  "author": "NPR",
+  "image_url": "https://npr.brightspotcdn.com/dims3/default/strip/false/crop/3000x1688+0+663/resize/3000/quality/66/format/jpg/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2Fe0%2F7a%2Ffe9d16a44fbf9dd2d9932ffe799b%2F510318.png"
+ },
+ {
+  "group": "more",
+  "slug": "radiolab",
+  "title": "Radiolab",
+  "author": "WNYC Studios",
+  "image_url": "/api/images/podcasts/152249110.webp"
+ },
+ {
+  "group": "more",
+  "slug": "stuff-you-should-know",
+  "title": "Stuff You Should Know",
+  "author": "iHeartPodcasts",
+  "image_url": "/api/images/podcasts/278981407.webp"
+ },
+ {
+  "group": "more",
+  "slug": "hidden-brain",
+  "title": "Hidden Brain",
+  "author": "Hidden Brain, Shankar Vedantam",
+  "image_url": "/api/images/podcasts/1028908750.webp"
+ },
+ {
+  "group": "more",
+  "slug": "freakonomics-radio",
+  "title": "Freakonomics Radio",
+  "author": "Freakonomics Radio + Stitcher",
+  "image_url": "/api/images/podcasts/354668519.webp"
+ },
+ {
+  "group": "more",
+  "slug": "planet-money",
+  "title": "Planet Money",
+  "author": "NPR",
+  "image_url": "/api/images/podcasts/290783428.webp"
+ },
+ {
+  "group": "more",
+  "slug": "99-invisible",
+  "title": "99% Invisible",
+  "author": "Roman Mars",
+  "image_url": "https://image.simplecastcdn.com/images/8436e3c1-2479-4466-ac48-fa58259960bb/a6d5b177-ab5d-430d-b3f2-b393a09d8101/3000x3000/sxm-cover-99percentinvisible-r2025-3000x3000-final.jpg?aid=rss_feed"
+ },
+ {
+  "group": "more",
+  "slug": "ted-radio-hour-803570",
+  "title": "TED Radio Hour",
+  "author": "NPR",
+  "image_url": "https://media.npr.org/assets/img/2022/09/23/ted-radio-hour_tile_npr-network-01_sq-3ca507bd2dfa5c26d7db5b41c2b981b24a8789fa.jpg?s=1400&c=66&f=jpg"
+ },
+ {
+  "group": "more",
+  "slug": "fresh-air",
+  "title": "Fresh Air",
+  "author": "Fresh Air",
+  "image_url": "/api/images/podcasts/214089682.webp"
+ },
+ {
+  "group": "more",
+  "slug": "the-moth-533288",
+  "title": "The Moth",
+  "author": "The Moth",
+  "image_url": "https://images.castfire.com/image/661/0/0/0/0-8486082.jpg"
+ },
+ {
+  "group": "more",
+  "slug": "conan-o-brien-needs-a-friend",
+  "title": "Conan O’Brien Needs A Friend",
+  "author": "Team Coco & Earwolf",
+  "image_url": "https://image.simplecastcdn.com/images/8436e3c1-2479-4466-ac48-fa58259960bb/371e5714-91ee-4e31-9ef3-cdd31ebfb9f5/3000x3000/conanobrienneedsafriend-keyart-sxm-3000x3000.jpg?aid=rss_feed"
+ }
+]

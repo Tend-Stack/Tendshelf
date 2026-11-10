@@ -33,6 +33,7 @@ func (s *server) registerPodcasts(mux *http.ServeMux) {
 			s.plainError(w, r, http.StatusMethodNotAllowed, "Method not allowed.")
 		}
 	}
+	s.registerPodStart(mux)
 	mux.HandleFunc("GET /podcasts", s.getPodcasts)
 	mux.HandleFunc("GET /podcasts/search", s.getPodcastSearch)
 	mux.HandleFunc("POST /podcasts/follow", s.postPodcastFollow)

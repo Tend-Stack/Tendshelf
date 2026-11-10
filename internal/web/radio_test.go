@@ -34,6 +34,8 @@ type radioFix struct {
 	hits atomic.Int64 // requests that reached a station path
 	// searches counts station searches OndaCast answered.
 	searches atomic.Int64
+	// ondaAll counts every request that reached the fake OndaCast; popular the popular-stations ones.
+	ondaAll, popular atomic.Int64
 	// conns counts connections to /stream.mp3 and active the ones still open.
 	conns, active atomic.Int64
 
@@ -87,10 +89,23 @@ func (f *radioFix) holdCh() chan struct{} {
 	return f.hold
 }
 
+// podStartPaths are the page addresses that answer the first-use page while podcasts and radio are both off.
+var podStartPaths = map[string]bool{"/podcasts": true, "/podcasts/search?q=x": true, "/podcasts/shows/ps_x": true, "/podcasts/episodes/pe_x": true,
+	"/radio": true, "/radio/search?q=x": true}
+
 func (f *radioFix) liveURL() string { return f.pub.URL("radio.test", "/live.mp3") }
 
 func (f *radioFix) serve(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.Host, "ondacast.test") {
+		f.ondaAll.Add(1)
+		if r.URL.Path == "/api/v2/stations" && !f.ondaDown.Load() {
+			f.popular.Add(1)
+			fmt.Fprint(w, `{"success":true,"data":[
+ {"name":"Pop Central","slug":"pop-central","stream_url":"https://s.example/pop","logo":"/api/logos/pop.png","genre":"Pop","country":"US"},
+ {"name":"Plain Http","slug":"plain-http","stream_url":"http://s.example/plain"},
+ {"name":"Hls Only","slug":"hls-only","stream_url":"https://s.example/live.m3u8"}]}`)
+			return
+		}
 		if f.ondaDown.Load() {
 			http.Error(w, "down", http.StatusServiceUnavailable)
 			return
@@ -252,8 +267,12 @@ func TestRadioOffIsOff(t *testing.T) {
 			owner := a.as(t, users.RoleOwner)
 			for _, p := range []string{"/radio", "/radio/search?q=x", "/hx/player/radio/rs_x", "/radio/live/rs_x", "/hx/radio/now/rs_x", "/api/v1/radio/stations", "/api/v1/radio/recent",
 				"/api/v1/radio/live/rs_x", "/api/v1/radio/now/rs_x"} {
-				if rec := a.do(http.MethodGet, p, nil, nil, owner); rec.Code != http.StatusNotFound {
-					t.Errorf("GET %s: %d, want 404", p, rec.Code)
+				want := http.StatusNotFound
+				if name == "switch off" && podStartPaths[p] {
+					want = http.StatusOK // the first-use page (routes_podstart.go), never the content
+				}
+				if rec := a.do(http.MethodGet, p, nil, nil, owner); rec.Code != want {
+					t.Errorf("GET %s: %d, want %d", p, rec.Code, want)
 				}
 			}
 			tok := a.tokenFor(t, owner)

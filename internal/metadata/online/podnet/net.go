@@ -63,6 +63,13 @@ type Client struct {
 	mu         sync.Mutex
 	cache      map[string]cacheEntry
 	cacheOrder []string
+
+	// The popular-stations list (popular.go): kept an hour; a failure is held a few minutes.
+	popList   []PopularStation
+	popAt     time.Time
+	popLimit  int
+	popFail   error
+	popFailAt time.Time
 }
 
 // New builds a client.

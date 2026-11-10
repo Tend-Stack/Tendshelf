@@ -106,7 +106,7 @@ func (s *server) stationRow(r *http.Request, st radio.Station, removable bool) c
 }
 
 func (s *server) getRadio(w http.ResponseWriter, r *http.Request) {
-	if !s.radioGate(w, r) {
+	if s.podStartPage(w, r) || !s.radioGate(w, r) {
 		return
 	}
 	ctx, u := r.Context(), currentUser(r)
@@ -135,11 +135,14 @@ func (s *server) getRadio(w http.ResponseWriter, r *http.Request) {
 			v.Recent = append(v.Recent, s.stationRow(r, st, false))
 		}
 	}
+	if len(saved) == 0 {
+		v.PopularTitle, v.PopularHint, v.Popular = radioPopularTitle, radioPopularHint, s.radioPopular(r)
+	}
 	s.pageStyled(w, r, http.StatusOK, radioTitle, "podcasts", pages.Radio(v), nil, pages.PodcastStyles...)
 }
 
 func (s *server) getRadioSearch(w http.ResponseWriter, r *http.Request) {
-	if !s.radioGate(w, r) {
+	if s.podStartPage(w, r) || !s.radioGate(w, r) {
 		return
 	}
 	u := currentUser(r)
@@ -151,6 +154,9 @@ func (s *server) getRadioSearch(w http.ResponseWriter, r *http.Request) {
 		CSRF: s.csrf.TokenFrom(r.Context()), Title: radioFind, Q: q, SearchLabel: radioSearchLabel, SearchButton: radioSearchWord,
 		BackHref: "/radio", BackLabel: radioBack, NoResults: radioNoResults, ResultsLabel: radioResultsLabel,
 		AddLabel: radioAdd, AddAria: radioAdd, AddTitle: radioAddByAddress, AddHint: radioAddHint, AddFieldLabel: radioAddFieldLabel, AddButton: radioAddButton,
+	}
+	if q == "" {
+		v.PopularTitle, v.PopularHint, v.Popular = radioPopularTitle, radioPopularHint, s.radioPopular(r)
 	}
 	if q != "" {
 		if ok, wait := s.podLim.search.Allow(u.ID); !ok {

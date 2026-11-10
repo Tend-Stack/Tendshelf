@@ -203,10 +203,11 @@ func TestPodcastNewBadge(t *testing.T) {
 		t.Error("a guest sees the Podcasts item")
 	}
 	w.fx.enable(t, w.a, func(s *podcast.Settings) { s.Enabled = false })
-	if b := w.get("/", w.ben).Body.String(); strings.Contains(b, `href="/podcasts"`) {
-		t.Error("nav item stays after podcasts were turned off")
+	// With nothing on, the item stays (first use) and leads to the onboarding page, not a 404.
+	if b := w.get("/", w.ben).Body.String(); !strings.Contains(b, `href="/podcasts"`) {
+		t.Error("nav item gone after podcasts were turned off")
 	}
-	if rec := w.get("/podcasts", w.ben); rec.Code != http.StatusNotFound {
+	if rec := w.get("/podcasts", w.ben); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "What turning it on does") {
 		t.Errorf("home while off: %d", rec.Code)
 	}
 }

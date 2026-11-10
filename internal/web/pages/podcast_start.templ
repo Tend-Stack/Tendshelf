@@ -1,0 +1,61 @@
+package pages
+
+// PodStartView is the first-use page of Podcasts and Radio, shown while the owner has neither turned on. The handler
+// writes every word (internal/web/podstart_copy.go). CanTurnOn is true for the person who may change the settings:
+// only then is the form drawn; everyone else reads the NotOwner line.
+type PodStartView struct {
+	Title                    string
+	Lead                     []string
+	NetworkTitle             string
+	Network                  []string
+	CanTurnOn                bool
+	CSRF                     string
+	FormLabel                string
+	PodcastsLabel, RadioLabel string
+	Button                   string
+	NotOwner                 string
+	Failure                  string
+}
+
+// PodcastStart is the onboarding page: what Podcasts and Radio give, what turning them on does on the network, and
+// for the owner the one form that turns them on. A plain POST form: it works without JavaScript.
+templ PodcastStart(v PodStartView) {
+	<div class="ts-podcasts ts-podstartpage">
+		<header class="ts-podcasts__head">
+			<h1 class="title-1 ts-podcasts__title">{ v.Title }</h1>
+		</header>
+		if v.Failure != "" {
+			<p class="ts-banner ts-podcasts__banner" role="alert">{ v.Failure }</p>
+		}
+		<ul class="ts-podstartpage__list">
+			for _, l := range v.Lead {
+				<li class="body">{ l }</li>
+			}
+		</ul>
+		<section aria-labelledby="pod-start-net">
+			<h2 id="pod-start-net" class="section">{ v.NetworkTitle }</h2>
+			for _, l := range v.Network {
+				<p class="body ts-podstartpage__net">{ l }</p>
+			}
+		</section>
+		if v.CanTurnOn {
+			<form class="ts-podstartpage__form" method="post" action="/podcasts/start">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<fieldset class="ts-podstartpage__fields">
+					<legend class="section">{ v.FormLabel }</legend>
+					<label class="ts-podstartpage__choice" for="pod-start-podcasts">
+						<input type="checkbox" class="ts-check" id="pod-start-podcasts" name="podcasts" value="1" checked/>
+						<span>{ v.PodcastsLabel }</span>
+					</label>
+					<label class="ts-podstartpage__choice" for="pod-start-radio">
+						<input type="checkbox" class="ts-check" id="pod-start-radio" name="radio" value="1" checked/>
+						<span>{ v.RadioLabel }</span>
+					</label>
+				</fieldset>
+				<button type="submit" class="ts-btn ts-btn--primary">{ v.Button }</button>
+			</form>
+		} else {
+			<p class="body ts-podstartpage__owner" role="note">{ v.NotOwner }</p>
+		}
+	</div>
+}

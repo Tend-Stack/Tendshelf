@@ -163,6 +163,7 @@ func podcastsSweepRows() []sweepRow {
 		labelled(sweepPost("POST /podcasts/progress/{episodeID}", otherEp("/podcasts/progress/", ""), progressForm, ownerOnly, ""), "someone else's episode"),
 		sweepPost("POST /podcasts/opml", sweepStatic("/podcasts/opml"), nil, sweepNotGuest(http.StatusUnprocessableEntity, nf), ""),
 		sweepPost("POST /admin/podcasts", sweepStatic("/admin/podcasts"), form("refresh", "6h"), sweepOwnerOnly(see, nf), "/admin/podcasts?saved=1"),
+		sweepPost("POST /podcasts/start", sweepStatic("/podcasts/start"), form("podcasts", "1"), sweepOwnerOnly(see, nf), "/podcasts"),
 	}
 	// The follow row names the fake publisher's address, which the seeded app knows.
 	for i := range rows {

@@ -11,6 +11,9 @@ type RadioView struct {
 	SavedTitle, RecentTitle                      string
 	Saved, Recent                                []components.StationRowView
 	EmptyTitle, EmptyBody                        string
+	// Popular is OndaCast's popular stations, drawn when the person has saved none; absent when OndaCast cannot be reached.
+	PopularTitle, PopularHint string
+	Popular                   []components.StationRowView
 }
 
 // Radio is the Radio page: the same width and rhythm as the Podcasts pages.
@@ -46,6 +49,9 @@ templ Radio(v RadioView) {
 				</ul>
 			</section>
 		}
+		if len(v.Saved) == 0 && len(v.Popular) > 0 {
+			@RadioPopular(v.PopularTitle, v.PopularHint, v.Popular)
+		}
 		if len(v.Recent) > 0 {
 			<section aria-labelledby="radio-recent">
 				<h2 id="radio-recent" class="section">{ v.RecentTitle }</h2>
@@ -74,6 +80,9 @@ type RadioSearchView struct {
 	AddLabel, AddAria                                              string
 	AddTitle, AddHint, AddFieldLabel, AddButton                    string
 	AddOpen                                                        bool
+	// Popular is OndaCast's popular stations, drawn before anything is searched.
+	PopularTitle, PopularHint string
+	Popular                   []components.StationRowView
 }
 
 // RadioSearch is the OndaCast station search and the stream address form.
@@ -93,6 +102,9 @@ templ RadioSearch(v RadioSearchView) {
 				@components.Icon("alert", false)
 				{ v.Failure }
 			</p>
+		}
+		if !v.Searched && len(v.Popular) > 0 {
+			@RadioPopular(v.PopularTitle, v.PopularHint, v.Popular)
 		}
 		if v.Searched && v.Failure == "" {
 			if len(v.Hits) == 0 {
@@ -134,4 +146,17 @@ templ RadioSearch(v RadioSearchView) {
 			</form>
 		</details>
 	</div>
+}
+
+// RadioPopular is the "Popular stations" suggestion list: cards with a Save control and no Play until saved.
+templ RadioPopular(title, hint string, stations []components.StationRowView) {
+	<section class="ts-podstart" aria-labelledby="radio-popular">
+		<h2 id="radio-popular" class="section">{ title }</h2>
+		<p class="caption">{ hint }</p>
+		<ul class="ts-radio__grid">
+			for _, st := range stations {
+				@components.StationCard(st)
+			}
+		</ul>
+	</section>
 }

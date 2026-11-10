@@ -132,8 +132,12 @@ func TestPodcastsOffIsOff(t *testing.T) {
 			for _, p := range []string{"/podcasts", "/podcasts/search?q=x", "/podcasts/shows/ps_x", "/podcasts/episodes/pe_x", "/podcasts/audio/pe_x",
 				"/podcasts/art/ps_x", "/podcasts/chapters/pe_x", "/hx/player/episode/pe_x", "/podcasts/opml", "/api/v1/podcasts", "/api/v1/podcasts/new",
 				"/api/v1/podcasts/episodes/pe_x", "/api/v1/podcasts/audio/pe_x"} {
-				if rec := a.do(http.MethodGet, p, nil, nil, owner); rec.Code != http.StatusNotFound {
-					t.Errorf("GET %s: %d, want 404", p, rec.Code)
+				want := http.StatusNotFound
+				if name == "switch off" && podStartPaths[p] {
+					want = http.StatusOK // the first-use page (routes_podstart.go), never the content
+				}
+				if rec := a.do(http.MethodGet, p, nil, nil, owner); rec.Code != want {
+					t.Errorf("GET %s: %d, want %d", p, rec.Code, want)
 				}
 			}
 			tok := a.tokenFor(t, owner)

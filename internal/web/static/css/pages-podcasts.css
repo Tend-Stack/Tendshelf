@@ -171,3 +171,15 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-stncard__keep { margin: 0; flex: none; }
 .ts-stncard .ts-iconbtn { width: var(--size-tap); height: var(--size-tap); }
 .ts-stncard .ts-iconbtn.is-on { color: var(--accent); }
+.ts-podstart { display: flex; flex-direction: column; gap: var(--space-8); max-width: 40rem; margin-top: var(--space-16); }
+.ts-podstart .section, .ts-podstart .caption { margin: 0; }
+.ts-podstart__group { margin: var(--space-8) 0 0; font-size: 1rem; font-weight: 600; }
+.ts-radio .ts-podstart { max-width: none; }
+.ts-stncard__add { margin: 0; flex: 1 1 auto; display: flex; }
+.ts-stncard__add .ts-btn { flex: 1 1 auto; justify-content: center; }
+.ts-podstartpage { max-width: 40rem; }
+.ts-podstartpage__list { margin: 0 0 var(--space-16); padding-left: 1.25rem; }
+.ts-podstartpage__net { margin: var(--space-4) 0 0; }
+.ts-podstartpage__form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); margin-top: var(--space-16); }
+.ts-podstartpage__fields { display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; }
+.ts-podstartpage__choice { display: flex; align-items: center; gap: var(--space-4); min-height: var(--size-tap); }
