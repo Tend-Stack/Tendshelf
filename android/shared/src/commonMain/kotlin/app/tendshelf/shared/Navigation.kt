@@ -41,7 +41,7 @@ const val BUNDLED_HOST = "appassets.androidplatform.net"
  * addresses (`/connect`, `/play`, `/remove`, `/toggle`) are commands, so a link in a book or any server page
  * (page text is untrusted) must never reach them: they are obeyed only from the main frame of a bundled page.
  */
-fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolean, fromBundled: Boolean): Nav {
+fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolean, fromBundled: Boolean, signInOrigins: Set<Origin> = emptySet()): Nav {
     val scheme = url.substringBefore(':', "").lowercase()
     if (scheme == "mailto") return Nav.External
     if (scheme != "http" && scheme != "https") return Nav.Block
@@ -66,6 +66,9 @@ fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolea
         if (mainFrame && u.path == "/me/downloads") return Nav.Downloads
         return Nav.Stay
     }
+    // The configured sign-in provider's pages (decision 0037, SignInOrigins.kt): the main frame stays in the window, a
+    // sub-frame never loads. Checked after the bundled host and the server origin, so the set cannot widen either rule.
+    if (mainFrame && signInOrigins.any { it.scheme == u.scheme && it.host == u.host && it.port == u.port }) return Nav.Stay
     return if (mainFrame) Nav.External else Nav.Block
 }
 

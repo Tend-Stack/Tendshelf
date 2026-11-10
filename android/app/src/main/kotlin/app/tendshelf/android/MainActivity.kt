@@ -64,8 +64,9 @@ class MainActivity : Activity() {
         WebHandle.current = web
         signOut = SignOut(web, store, api, pages, { getString(it) }) { remote?.stopAndClear() }
         flow = ConnectFlow(this, web, store, api, pages, signOut)
+        store.origin?.let { SignInWindow.refreshInBackground(it) } // the provider pages the sign-in window may keep (P3)
         speech = Speech(this)
-        bridge = Bridge({ flow.state }, { store.origin }, ::applyTheme, ::keepScreenOn, speech)
+        bridge =Bridge({ flow.state }, { store.origin }, ::applyTheme, ::keepScreenOn, speech)
         Offline.onChange = { id -> main.post { bridge.pushDownload(id); refreshDownloadsPage() } }
         flow.onState = ::syncBridge
         saver = FileSaver(this) { store.origin }

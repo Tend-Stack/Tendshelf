@@ -351,5 +351,5 @@ Needs a real provider reachable over https from the browser (Authelia 4.39, Auth
 | S7-1 | Authelia 4.39 (claims in userinfo): set up the provider, sign in with a linked account, link from Account (confirm card), unlink. | Not run. |
 | S7-2 | Authentik with a signing key: sign in. Then with no signing key (HS256): saving with the switch on is refused in words. | Not run. |
 | S7-3 | Keycloak realm, confidential client: sign in; a wrong secret shows the failed message; with the provider stopped, `/login` still takes a password and the button says the provider is not answering. | Not run. |
-| S7-4 | Android app through each provider to `/app/connect` and back (P3 of the plan; needs the app change). | Not run. |
+| S7-4 | Android app through each provider to `/app/connect` and back (P3 built: unit-tested in `android/shared`, `make apk-debug` builds; needs a real provider and the emulator). | Not run. |
 | S7-5 | Desktop window: the provider's pages stay in the window and the bridge answers nothing on them. | Not run. |

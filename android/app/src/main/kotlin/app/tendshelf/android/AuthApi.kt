@@ -45,6 +45,12 @@ class AuthApi {
         return ApiJson.identity(r.body)
     }
 
+    /** The body of `GET /login/oidc/origins` (public, no credential), or null when nothing answered 200. */
+    fun signInOriginsBody(origin: Origin): String? {
+        val r = call("${origin.text}/login/oidc/origins", "GET", null, null, 5_000) ?: return null
+        return if (r.status == 200 && !r.certificate) r.body else null
+    }
+
     /** Exchange a code for a device. [bearer] is the token already held, when the phone is reconnecting. */
     fun swap(origin: Origin, code: String, verifier: String, name: String, bearer: String?): Swap {
         val r = call("${origin.text}/api/v1/auth/token", "POST", ApiJson.swapRequest(code, verifier, name), bearer, 15_000)

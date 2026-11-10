@@ -124,4 +124,35 @@ class NavigationTest {
         assertEquals("https://a.example:8443/?shell=android&next=%2Finvite%2FTOK", o.inviteUrl("TOK"))
         assertEquals("https://a.example:8443/?shell=android&next=%2Fpair%2FTOK%3Fchallenge%3DCH-_%26name%3DPixel%2B7", o.pairUrl("TOK", "CH-_", "Pixel 7"))
     }
+
+    @Test
+    fun signInProviderOrigins() {
+        val idp = setOf(Origin.parse("https://auth.example.com")!!)
+        fun d(url: String, main: Boolean = true) = decide(url, main, good, false, false, idp)
+        assertEquals(Nav.Stay, d("https://auth.example.com/authorize?x=1"), "provider origin stays")
+        assertEquals(Nav.Stay, d("https://AUTH.example.com:443/x"), "case and default port")
+        assertEquals(Nav.Block, d("https://auth.example.com/frame", false), "provider sub-frame")
+        assertEquals(Nav.External, d("https://other.example.com/"), "unknown origin")
+        assertEquals(Nav.External, d("https://auth.example.com:8443/"), "other port")
+        assertEquals(Nav.Block, d("https://auth.example.com@evil.example/"), "userinfo trick")
+        assertEquals(Nav.Block, d("https://evil.example@auth.example.com/"), "userinfo on provider host")
+        assertEquals(Nav.External, d("http://auth.example.com/"), "other scheme")
+        assertEquals(Nav.Block, decide("https://$BUNDLED_HOST/connect", true, good, false, false, idp), "bundled rules first")
+        assertEquals(Nav.External, decide("https://auth.example.com/", true, good, false, false), "empty set by default")
+    }
+
+    @Test
+    fun signInOriginsParse() {
+        val https = Origin.parse("https://tend.example")!!
+        val http = Origin.parse("http://10.0.0.5:8095")!!
+        fun p(body: String, s: Origin = https) = parseSignInOrigins(body, s).map { it.text }
+        assertEquals(listOf("https://auth.example.com"), p("""{"origins":["https://auth.example.com"]}"""))
+        assertEquals(emptyList(), p("""{"origins":[]}"""))
+        assertEquals(emptyList(), p("not json"))
+        assertEquals(emptyList(), p("""{"origins":"https://a.example"}"""))
+        assertEquals(emptyList(), p("""{"origins":["http://auth.example.com","https://u@a.example","https://a.example/path",5,null]}"""))
+        assertEquals(listOf("http://10.0.0.5:9091"), p("""{"origins":["http://10.0.0.5:9091","http://other.example"]}""", http))
+        assertEquals(4, p("""{"origins":["https://a.example","https://b.example","https://c.example","https://d.example","https://e.example"]}""").size)
+        assertEquals(listOf("https://a.example"), p("""{"origins":["https://a.example","https://A.example/"]}"""))
+    }
 }

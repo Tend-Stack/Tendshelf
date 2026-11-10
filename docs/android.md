@@ -111,6 +111,17 @@ To submit, from the operator's own GitLab account: fork `https://gitlab.com/fdro
 request builds the tag; read its log for scanner findings or a mismatch with the release APK. Each later release needs
 only its tag, its GitHub APK and a `changelogs/<versionCode>.txt` (`UpdateCheckMode: Tags` finds new versions).
 
+## Sign in with a provider
+
+When the owner turns on sign-in with a provider (decision [0037](decisions/0037-openid-connect.md)), the provider's own pages open
+inside the app's sign-in window, then the callback returns to the server's page and the usual one-time code and PKCE hand-off
+completes. The app learns which origins to keep from the server it connected to: `GET /login/oidc/origins`, fetched at launch and
+whenever the `/login` page finishes (so also at Connect). The rules are in `android/shared` (`SignInOrigins.kt`, `decide` in
+`Navigation.kt`): at most four origins, each `https` (or `http` only when the server is `http` and the host is the server's);
+only a main-frame navigation stays, sub-frames of a provider are blocked, and every other address still opens in the phone's
+browser. The bridge is attached to the server's origin only, so it answers nothing on a provider page. The app makes no request to
+the provider itself.
+
 ## Read aloud
 
 The reader speaks the book through the phone's own text-to-speech engine (`android.speech.tts.TextToSpeech`, platform API, no new dependency;

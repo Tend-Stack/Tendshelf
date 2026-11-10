@@ -61,7 +61,7 @@ object ShellWeb {
         web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val f = flow()
-                when (val nav = decide(request.url.toString(), request.isForMainFrame, store.origin, f.codePending, onBundledPage(view))) {
+                when (val nav = decide(request.url.toString(), request.isForMainFrame, store.origin, f.codePending, onBundledPage(view), SignInWindow.origins)) {
                     Nav.Stay -> return false
                     Nav.Block -> {}
                     Nav.External -> openOutside(activity, request.url)
@@ -124,7 +124,13 @@ object ShellWeb {
                 retried = ""
                 if (Uri.parse(url).host != BUNDLED_HOST) {
                     flow().onPageFinished(url)
-                    Offline.onPageLoaded()
+                    // A provider's page is not the server's: only the server's own pages count as "the server answered".
+                    val server = store.origin
+                    if (server != null && server.matches(url)) {
+                        Offline.onPageLoaded()
+                        // The sign-in page is where the provider origins are (re)learned, so an owner's change shows up.
+                        if (Uri.parse(url).path == "/login") SignInWindow.refreshInBackground(server)
+                    }
                 }
             }
 
