@@ -3,8 +3,10 @@
 package web
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -43,6 +45,7 @@ func silentWAV() []byte {
 type seenReq struct {
 	Method, Path, Range string
 	Status              int
+	Body                string // a progress save's form, so a failure shows what was sent
 }
 
 type statusWriter struct {
@@ -77,11 +80,17 @@ func podPlayServer(t *testing.T, w *podWorld) (url string, seen func() []seenReq
 	var reqs []seenReq
 	srv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		r.AddCookie(w.ben)
+		var body string
+		if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/podcasts/progress/") {
+			b, _ := io.ReadAll(r.Body)
+			body = string(b)
+			r.Body = io.NopCloser(bytes.NewReader(b))
+		}
 		sw := &statusWriter{ResponseWriter: rw}
 		w.a.h.ServeHTTP(sw, r)
 		if strings.HasPrefix(r.URL.Path, "/podcasts/audio/") || strings.HasPrefix(r.URL.Path, "/podcasts/progress/") {
 			mu.Lock()
-			reqs = append(reqs, seenReq{r.Method, r.URL.Path, r.Header.Get("Range"), sw.status})
+			reqs = append(reqs, seenReq{r.Method, r.URL.Path, r.Header.Get("Range"), sw.status, body})
 			mu.Unlock()
 		}
 	}))
@@ -152,18 +161,28 @@ func TestEpisodePlaysThroughTheProxy(t *testing.T) {
 	if !got206 {
 		t.Errorf("no 206 recorded: %+v", seen())
 	}
-	// The pause saved the place to the episode route (and not to /progress).
-	waitFor(t, "the saved place", func() bool {
-		for _, r := range seen() {
-			if r.Method == http.MethodPost && r.Path == "/podcasts/progress/"+ep && r.Status == http.StatusOK {
-				return true
+	// The pause saved the place to the episode route (and not to /progress). An earlier save (from the first
+	// seconds of play) can answer first, so wait for the stored place itself to reach the paused position.
+	var saved podcast.Episode
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(25 * time.Millisecond) {
+		got, err := w.fx.svc.Episode(ctx, w.benID, ep)
+		if err == nil {
+			saved = got
+			if got.State.PositionMs >= 3500 && got.State.PositionMs <= 6500 {
+				break
 			}
 		}
-		return false
-	})
-	saved, err := w.fx.svc.Episode(ctx, w.benID, ep)
-	if err != nil || saved.State.PositionMs < 3500 || saved.State.PositionMs > 6500 {
-		t.Fatalf("stored place = %d, %v", saved.State.PositionMs, err)
+		if time.Now().After(deadline) {
+			var now playerState
+			now = playerStateOf(tab)
+			t.Fatalf("the paused place was never stored: stored %d (client %d); player %+v; requests %+v",
+				saved.State.PositionMs, saved.State.ClientUpdated, now, seen())
+		}
+	}
+	for _, r := range seen() {
+		if r.Method == http.MethodPost && r.Path == "/progress/"+ep {
+			t.Errorf("an episode save went to the book route: %+v", r)
+		}
 	}
 
 	// A reload: the bar returns with this episode, paused at the saved place.
