@@ -750,6 +750,7 @@ function renderBookControls() {
     button.dataset.tsLabel = button.dataset.tsLabel || label.textContent;
     const busy = record && (record.state === "waiting" || record.state === "downloading");
     const settled = record && !busy;
+    button.removeAttribute("data-ts-pending");
     button.hidden = !supported || !!settled;
     button.disabled = !!busy;
     label.textContent = busy

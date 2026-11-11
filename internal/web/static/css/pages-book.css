@@ -216,6 +216,8 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 /* The Download button's own progress bar (native-downloads.js): along the button's bottom edge. With no known total
    (.ts-bar--busy) a short piece slides across; with reduced motion it stands still at half instead. */
 .ts-book__download { position: relative; }
+/* js/downloads.js decides after the page is painted; until then the start button holds its place so the action row does not change. */
+.ts-book__download[data-ts-pending] { visibility: hidden; }
 .ts-book__dlbar { position: absolute; inset: auto 0 0 0; height: 0.25rem; border-radius: 0; }
 .ts-book__dlbar[hidden] { display: none; }
 /* The percent covers the button rather than joining the tight row of actions: its width never moves a neighbour. */

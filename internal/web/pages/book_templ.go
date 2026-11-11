@@ -64,7 +64,7 @@ type BookPlayView struct {
 	// it lives here, not on BookView, because this region is re-read on its own.
 	More components.MoreMenuView
 	// Download is the offline Download control; nil unless the person may download the book and it
-	// has a playable file (M3a). Both of its nodes start hidden: js/downloads.js shows one.
+	// has a playable file (M3a). The link starts hidden and the button starts laid out but not drawn: js/downloads.js shows one.
 	Download *BookDownloadView
 }
 
@@ -525,7 +525,7 @@ func BookPlay(v *BookPlayView) templ.Component {
 
 // bookShelfLink opens the "Add to shelf" sheet. It is not a play control: the book's one play button
 // stays alone.
-// bookDownload is the Download pair (hidden until js/downloads.js knows the download state): a
+// bookDownload is the Download pair (the start button is laid out but not drawn, data-ts-pending, until js/downloads.js knows the download state): a
 // button to start, and a link to the Downloads page showing the state once one exists.
 func bookDownload(v BookDownloadView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -596,7 +596,7 @@ func bookDownload(v BookDownloadView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" hidden>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" data-ts-pending>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
