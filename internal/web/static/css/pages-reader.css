@@ -156,7 +156,9 @@ html:has(.ts-readerpage) { scrollbar-gutter: auto; }
 /* The dock keeps to the width of the text, which reader-pages.js measures once the book is laid out (a spread is wider
    than 38rem, a phone page narrower than the dock). Until a flow has mounted the dock holds its place but shows nothing,
    so its page line and ruler do not jump sideways when the width arrives. */
-.ts-readerpage:not(:has(> .ts-reader--pages, > .ts-reader--scroll)) > .ts-readdock > * { visibility: hidden; }
+/* A sibling selector, not :has(): the flip builds pages under .ts-readerpage, and :has() there is re-checked on every
+   one of those changes (it cost the flip about 10 ms a build at 4x CPU). */
+.ts-readerpage > .ts-reader:not(.ts-reader--pages, .ts-reader--scroll) ~ .ts-readdock > * { visibility: hidden; }
 .ts-readdock__row { font-size: 0.8125rem; line-height: 1.125rem; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 #reader-page { flex: none; white-space: nowrap; }
 #reader-print, #reader-left { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
