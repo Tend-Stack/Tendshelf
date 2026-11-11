@@ -126,6 +126,25 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 @media (width < 60rem) {
   .ts-podshow__actions > .ts-chip--static { display: none; }
 }
+/* On a phone the picture sits beside the name, the author and the counts only; the description and the buttons run the
+   full width below it, so nothing is left empty under the picture. */
+@media (width < 48rem) {
+  .ts-podshow__head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    /* The last row beside the picture takes up whatever height the picture has left over. */
+    grid-template-rows: auto auto auto 1fr;
+    gap: var(--space-8) var(--space-16);
+  }
+  .ts-podshow__head > .ts-cover { grid-column: 1; grid-row: 1 / span 4; align-self: start; }
+  /* The text column's children become rows of the header's own grid. */
+  .ts-podshow__info { display: contents; }
+  .ts-podshow__info > * { grid-column: 2; align-self: start; }
+  .ts-podshow__info > .ts-podshow__about,
+  .ts-podshow__info > .ts-podshow__actions,
+  .ts-podshow__info > .ts-podshow__hint { grid-column: 1 / -1; }
+  .ts-podshow__info > .ts-podshow__about { margin-top: var(--space-8); }
+}
 @media (width < 30rem) {
   /* The one primary button takes its own line; Refresh and Stop following share the next, each cut with an ellipsis. */
   .ts-podshow__actions > .ts-btn--primary { flex: 1 1 100%; justify-content: center; }

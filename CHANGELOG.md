@@ -14,6 +14,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 - **The Chapters, Speed and Sleep sheets in the full player slide down when you close them** instead of vanishing.
 - **Up next rows glide to their new places** when you move one up or down or remove one, instead of jumping.
 - **Shelf view: every row is filled to the edge.** Scroll a little sideways to see the last book of a row whole.
+- **A podcast's page on a phone no longer leaves an empty space under the picture.** The description and the buttons now run the full width below it.
 
 ## 2026.9.0
 
