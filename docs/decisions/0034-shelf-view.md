@@ -39,3 +39,6 @@ repeating background on the list. The last row's plank runs the full width, howe
 ## Not chosen
 Covers facing out (they hide the thickness this view exists to show, and add images to a view that has none); books that lean; grouping by series (there is no series sort).
 Amended by the lead (2026-11-08): the view is kept per person as `library.view` in `user_settings`, set by `POST /me/library-view` (the control is a form of three buttons, so it works without JavaScript); a bare Library address opens in it, an explicit `view=` wins, and large text shows the grid whatever is saved.
+
+## Addendum (2026-11-11): rows fill to the edge
+The Library's wrapped shelf sits in a sideways scroller (`.ts-shelf-run`) and the list is one widest book wider than it, so a row that wraps is always filled past the visible right edge and its gap is off screen; a small scroll shows the last book whole. Pure CSS, the page never scrolls sideways, and "Show more" stays centred in the visible width. Home's single row is unchanged. A shelf with a single short row still scrolls sideways by up to one widest book. CSS budgets rose 1 KiB.
