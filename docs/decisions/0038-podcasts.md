@@ -115,3 +115,7 @@ The operator decided that search results show artwork. A result's picture lives 
 - While the owner has turned neither podcasts nor radio on, the Podcasts item is drawn for every signed-in member and every podcasts or radio page address shows an onboarding page. It says what the features give and what turning them on does on the network. The owner gets two ticked checkboxes and a Turn on button (`POST /podcasts/start`, owner only, it only switches things on); everyone else is told the owner can turn it on in Settings. No outbound request happens before Turn on.
 - Starter lists are suggestions only: nothing is followed, saved or fetched from a publisher until the person taps. The show list (`internal/metadata/online/podnet/starter_shows.json`, 25 entries, true crime first) is curated by the project, not a chart. Following one resolves its feed through `PodcastFeedURL` at that moment.
 - Opening Radio (with no saved station) or the station search before a search asks ondacast.com for its popular stations (`GET /api/v2/stations?sort=popular`, no account, no identifiers; kept an hour, a failure remembered for five minutes). Stations with a non-https stream or an HLS playlist are left out until HLS lands (decision 0039). Suggested artwork goes through the guarded search-art route.
+
+## Addendum 2026-11-11: open before following
+
+Point 3, point 11 and the first-use addendum above are amended by [decision 0040](0040-open-podcast-before-following.md): a person may open, browse and play a show from search or the suggestions without following it.

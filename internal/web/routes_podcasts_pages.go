@@ -286,7 +286,7 @@ func (s *server) getPodcastShow(w http.ResponseWriter, r *http.Request) {
 	if s.podStartPage(w, r) || !s.podcastsGate(w, r) {
 		return
 	}
-	sh, ok := s.loadShow(w, r)
+	sh, ok := s.loadShowKnown(w, r)
 	if !ok {
 		return
 	}
@@ -304,7 +304,7 @@ func (s *server) getPodcastShowStatus(w http.ResponseWriter, r *http.Request) {
 	if !s.podcastsGate(w, r) {
 		return
 	}
-	sh, ok := s.loadShow(w, r)
+	sh, ok := s.loadShowKnown(w, r)
 	if !ok {
 		return
 	}
@@ -386,8 +386,10 @@ func (s *server) showView(w http.ResponseWriter, r *http.Request, sh podcast.Sho
 	for _, ep := range eps {
 		rows = append(rows, s.podRow(r, ep, back, sh.SeenAt, false))
 	}
+	following := sh.FollowedAt > 0
 	v := pages.PodcastShowView{
-		CSRF: s.csrf.TokenFrom(ctx), ID: sh.ID, Title: sh.Title, Author: sh.Author, BackHref: "/podcasts", BackLabel: podBackToPodcasts,
+		Followed: following,
+		CSRF:     s.csrf.TokenFrom(ctx), ID: sh.ID, Title: sh.Title, Author: sh.Author, BackHref: "/podcasts", BackLabel: podBackToPodcasts,
 		Art: podArt(sh.ID, sh.Title, sh.ArtSHA), Following: podFollowing, UnfollowLabel: podUnfollow, RefreshLabel: podRefresh,
 		UnfollowAction: base + "/unfollow", RefreshAction: base + "/refresh",
 		NotesTitle: podAboutShow, Failure: podcast.FailText(sh.FailCode), Fetching: podShowFetching(sh), FetchingLine: podFetching,
@@ -438,13 +440,17 @@ func (s *server) showView(w http.ResponseWriter, r *http.Request, sh podcast.Sho
 		v.MoreHref = link(sort, filter, url.Values{"after": {next}})
 	}
 	set := sh.Settings
-	v.Settings = pages.PodSettingsView{
-		Action: base + "/settings", CSRF: v.CSRF, Title: podSettingsTitle, SpeedLabel: podSpeedForShow, SpeedDefault: podSpeedDefault,
-		Speeds: podSpeedOptions(set.Speed), SkipIntroBefore: podSkipFirst, SkipIntroAfter: podSecondsWord,
-		SkipOutroBefore: podSkipLast, SkipOutroAfter: podSecondsWord, SkipIntro: set.SkipIntroS, SkipOutro: set.SkipOutroS, Save: podSettingsSave,
-	}
-	if set.Speed != nil {
-		v.Settings.Speed = podSpeedText(*set.Speed)
+	if following {
+		v.Settings = pages.PodSettingsView{
+			Action: base + "/settings", CSRF: v.CSRF, Title: podSettingsTitle, SpeedLabel: podSpeedForShow, SpeedDefault: podSpeedDefault,
+			Speeds: podSpeedOptions(set.Speed), SkipIntroBefore: podSkipFirst, SkipIntroAfter: podSecondsWord,
+			SkipOutroBefore: podSkipLast, SkipOutroAfter: podSecondsWord, SkipIntro: set.SkipIntroS, SkipOutro: set.SkipOutroS, Save: podSettingsSave,
+		}
+		if set.Speed != nil {
+			v.Settings.Speed = podSpeedText(*set.Speed)
+		}
+	} else {
+		v.FollowAction, v.FollowShowID, v.FollowLabel, v.FollowAria, v.NotFollowingHint = "/podcasts/follow", sh.ID, podFollow, podFollow, podNotFollowingHint
 	}
 	f := components.EpisodeFiltersView{
 		FilterLabel: podFilterLabel, SortLabel: podSortLabel, Action: base, Q: eq.Text, SearchLabel: podSearchShow, SearchButton: podSearchWord,
@@ -459,7 +465,13 @@ func (s *server) showView(w http.ResponseWriter, r *http.Request, sh podcast.Sho
 	v.Filters = f
 	// Looking at the show clears its "new" count; the rows above were marked before this.
 	if eq.After == "" {
-		if err := s.podcasts.MarkSeen(ctx, u.ID, sh.ID); err != nil {
+		var err error
+		if following {
+			err = s.podcasts.MarkSeen(ctx, u.ID, sh.ID)
+		} else {
+			err = s.podcasts.TouchOpen(ctx, u.ID, sh.ID) // keeps a used open alive; never creates one
+		}
+		if err != nil {
 			s.podcasts.Log.Warn("podcasts: could not mark a show seen", "err", err)
 		}
 	}
@@ -508,7 +520,7 @@ func (s *server) episodeView(r *http.Request, ep podcast.Episode) pages.PodcastE
 	if ep.State.Favourite {
 		v.StarValue = "0"
 	}
-	if s.podcasts.Follows(ctx, u.ID, ep.ShowID) {
+	if s.podcasts.Knows(ctx, u.ID, ep.ShowID) {
 		v.ShowHref = "/podcasts/shows/" + url.PathEscape(ep.ShowID)
 		v.BackHref, v.BackLabel = v.ShowHref, ep.ShowTitle
 	}

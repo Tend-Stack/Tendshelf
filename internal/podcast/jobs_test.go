@@ -656,3 +656,31 @@ func TestRefreshNowWaitsAfterFailuresToo(t *testing.T) {
 		t.Errorf("refresh of a failing feed within five minutes: %v", err)
 	}
 }
+
+func TestPruneExpiresOpens(t *testing.T) {
+	r := newRig(t, func(w http.ResponseWriter, q *http.Request) {})
+	r.enable(t, nil)
+	ctx := context.Background()
+	id := r.open(t, "us_a", "https://a.example/f.xml")
+	folder := filepath.Join(r.svc.CacheDir(), id)
+	os.MkdirAll(folder, 0o700)
+	os.WriteFile(filepath.Join(folder, "x.mp3"), []byte("x"), 0o600)
+	res, err := r.run(r.svc.handlePrune, nil)
+	if err != nil || res.(map[string]int)["opens_expired"] != 0 {
+		t.Fatalf("prune of a fresh open: %v %v", res, err)
+	}
+	if _, err := r.s.ShowByID(ctx, id); err != nil {
+		t.Fatalf("opened show removed: %v", err)
+	}
+	r.advance(31 * 24 * time.Hour)
+	res, err = r.run(r.svc.handlePrune, nil)
+	if err != nil || res.(map[string]int)["opens_expired"] != 1 {
+		t.Fatalf("prune after 31 days: %v %v", res, err)
+	}
+	if _, err := r.s.ShowByID(ctx, id); !errors.Is(err, ErrNotFound) {
+		t.Errorf("show kept: %v", err)
+	}
+	if _, err := os.Stat(folder); err == nil {
+		t.Error("cache folder kept")
+	}
+}

@@ -90,6 +90,8 @@ func (f *podFix) serve(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, `{"success":true,"data":[{"id":1,"type":"podcast","title":"Found Show","subtitle":"Sub","slug":"found-show","image_url":%q,"rank":1}]}`, img)
 		case r.URL.Path == "/api/v2/podcasts/found-show":
 			fmt.Fprintf(w, `{"success":true,"data":{"feed_url":%q}}`, f.feedURL())
+		case r.URL.Path == "/api/v2/podcasts/other-show":
+			fmt.Fprintf(w, `{"success":true,"data":{"feed_url":%q}}`, f.otherFeedURL())
 		default:
 			http.NotFound(w, r)
 		}

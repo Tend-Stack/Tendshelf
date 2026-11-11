@@ -22,6 +22,8 @@ import (
 // Limits from decision 0038, point 11.
 const (
 	MaxFollows         = 200
+	MaxOpens           = 50                  // opened, not followed, shows kept per person (decision 0040)
+	OpenTTL            = 30 * 24 * time.Hour // an open lasts this long after its last visit
 	MaxEpisodesPerShow = 3000
 	defaultPage        = 50
 	maxPage            = 200
@@ -186,20 +188,10 @@ func (s *Store) Follow(ctx context.Context, userID, feedURL, slug string) (showI
 	if err != nil {
 		return "", false, err
 	}
-	if len(slug) > 200 {
-		slug = ""
-	}
 	now := s.nowMs()
 	err = s.st.WriteTx(ctx, func(tx *sql.Tx) error {
-		err := tx.QueryRowContext(ctx, `SELECT id FROM podcast_shows WHERE feed_url = ?`, norm).Scan(&showID)
-		if errors.Is(err, sql.ErrNoRows) {
-			showID = db.NewID("ps")
-			_, err = tx.ExecContext(ctx, `INSERT INTO podcast_shows(id, feed_url, ondacast_slug, created_at, updated_at) VALUES (?,?,?,?,?)`,
-				showID, norm, nullIf(slug), now, now)
-		} else if err == nil && slug != "" {
-			_, err = tx.ExecContext(ctx, `UPDATE podcast_shows SET ondacast_slug = ? WHERE id = ? AND ondacast_slug IS NULL`, slug, showID)
-		}
-		if err != nil {
+		var err error
+		if showID, err = upsertShowTx(ctx, tx, norm, slug, now); err != nil {
 			return err
 		}
 		var one int
@@ -221,6 +213,10 @@ func (s *Store) Follow(ctx context.Context, userID, feedURL, slug string) (showI
 			return err
 		}
 		created = true
+		// Following replaces an earlier open of the same show (decision 0040).
+		if _, err := tx.ExecContext(ctx, `DELETE FROM podcast_opens WHERE user_id = ? AND show_id = ?`, userID, showID); err != nil {
+			return err
+		}
 		return db.Audit(ctx, tx, db.AuditEntry{At: now, UserID: userID, Action: "podcast.follow", Target: "show:" + showID})
 	})
 	if db.IsForeignKeyViolation(err) {
@@ -230,6 +226,24 @@ func (s *Store) Follow(ctx context.Context, userID, feedURL, slug string) (showI
 		return "", false, err
 	}
 	return showID, created, nil
+}
+
+// upsertShowTx finds the show row for a normalized feed address or creates it, and records the OndaCast
+// slug when the row has none. Follow and Open share it.
+func upsertShowTx(ctx context.Context, tx *sql.Tx, norm, slug string, now int64) (string, error) {
+	if len(slug) > 200 {
+		slug = ""
+	}
+	var showID string
+	err := tx.QueryRowContext(ctx, `SELECT id FROM podcast_shows WHERE feed_url = ?`, norm).Scan(&showID)
+	if errors.Is(err, sql.ErrNoRows) {
+		showID = db.NewID("ps")
+		_, err = tx.ExecContext(ctx, `INSERT INTO podcast_shows(id, feed_url, ondacast_slug, created_at, updated_at) VALUES (?,?,?,?,?)`,
+			showID, norm, nullIf(slug), now, now)
+	} else if err == nil && slug != "" {
+		_, err = tx.ExecContext(ctx, `UPDATE podcast_shows SET ondacast_slug = ? WHERE id = ? AND ondacast_slug IS NULL`, slug, showID)
+	}
+	return showID, err
 }
 
 func nullIf(s string) any {
@@ -298,13 +312,130 @@ func (s *Store) Follows(ctx context.Context, userID, showID string) bool {
 	return s.st.Reader().QueryRowContext(ctx, `SELECT 1 FROM podcast_subscriptions WHERE user_id = ? AND show_id = ?`, userID, showID).Scan(&one) == nil
 }
 
-// Knows reports whether the person follows the show or keeps a place, star or history for one of its
+// Knows reports whether the person follows or opened the show, or keeps a place, star or history for one of its
 // episodes. It decides who may see a show's picture.
 func (s *Store) Knows(ctx context.Context, userID, showID string) bool {
 	var one int
 	return s.st.Reader().QueryRowContext(ctx, `SELECT 1 WHERE EXISTS (SELECT 1 FROM podcast_subscriptions WHERE user_id = ?1 AND show_id = ?2)
+		OR EXISTS (SELECT 1 FROM podcast_opens WHERE user_id = ?1 AND show_id = ?2)
 		OR EXISTS (SELECT 1 FROM podcast_episode_state t JOIN podcast_episodes e ON e.id = t.episode_id WHERE t.user_id = ?1 AND e.show_id = ?2)`,
 		userID, showID).Scan(&one) == nil
+}
+
+// subColsLeft is subCols for a show LEFT JOINed to the person's subscription (alias b): a person who
+// only opened the show reads zeros (FollowedAt 0 means "not following") and no new-episode count.
+const subColsLeft = `, COALESCE(b.followed_at,0), COALESCE(b.seen_at,0), b.speed, COALESCE(b.skip_intro_s,0), COALESCE(b.skip_outro_s,0),
+	COALESCE(b.server_auto,0), COALESCE(b.keep_latest,3),
+	CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT count(*) FROM podcast_episodes e LEFT JOIN podcast_episode_state t ON t.episode_id = e.id AND t.user_id = b.user_id
+		WHERE e.show_id = s.id AND e.gone_at IS NULL AND e.published_at > b.seen_at AND COALESCE(t.played,0) = 0) END`
+
+// queuedOpenSQL is true for an open row (alias po) whose person has an episode of that show in Up next:
+// such an open is never expired or dropped by the cap, so the queued episode stays playable.
+const queuedOpenSQL = `EXISTS (SELECT 1 FROM queue_items q JOIN podcast_episodes e ON e.id = q.episode_id WHERE q.user_id = po.user_id AND e.show_id = po.show_id)`
+
+// Open records that userID opened the show at feedURL without following it (decision 0040), creating
+// the show row if the server has not seen it. A person who already follows it gets following=true and
+// nothing is written. The oldest opens beyond MaxOpens go, except ones with an episode in Up next and the
+// one just written. The caller queues a refresh when the show has never been fetched.
+func (s *Store) Open(ctx context.Context, userID, feedURL, slug string) (showID string, following bool, err error) {
+	norm, err := NormalizeFeedURL(feedURL)
+	if err != nil {
+		return "", false, err
+	}
+	now := s.nowMs()
+	err = s.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		if showID, err = upsertShowTx(ctx, tx, norm, slug, now); err != nil {
+			return err
+		}
+		following, err = openTx(ctx, tx, userID, showID, now)
+		return err
+	})
+	if db.IsForeignKeyViolation(err) {
+		return "", false, ErrNotFound
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return showID, following, nil
+}
+
+// Reopen is Open for a show row that already exists (a known show chosen by id). An unknown show is ErrNotFound.
+func (s *Store) Reopen(ctx context.Context, userID, showID string) (following bool, err error) {
+	now := s.nowMs()
+	err = s.st.WriteTx(ctx, func(tx *sql.Tx) error {
+		var one int
+		if err := tx.QueryRowContext(ctx, `SELECT 1 FROM podcast_shows WHERE id = ?`, showID).Scan(&one); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		var err error
+		following, err = openTx(ctx, tx, userID, showID, now)
+		return err
+	})
+	if db.IsForeignKeyViolation(err) {
+		return false, ErrNotFound
+	}
+	return following, err
+}
+
+func openTx(ctx context.Context, tx *sql.Tx, userID, showID string, now int64) (bool, error) {
+	var one int
+	switch err := tx.QueryRowContext(ctx, `SELECT 1 FROM podcast_subscriptions WHERE user_id = ? AND show_id = ?`, userID, showID).Scan(&one); {
+	case err == nil:
+		return true, nil
+	case !errors.Is(err, sql.ErrNoRows):
+		return false, err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO podcast_opens(user_id, show_id, opened_at) VALUES (?,?,?)
+		ON CONFLICT(user_id, show_id) DO UPDATE SET opened_at = excluded.opened_at`, userID, showID, now); err != nil {
+		return false, err
+	}
+	_, err := tx.ExecContext(ctx, `DELETE FROM podcast_opens WHERE user_id = ?1 AND show_id IN (
+		SELECT po.show_id FROM podcast_opens po WHERE po.user_id = ?1 AND po.show_id <> ?2 AND NOT `+queuedOpenSQL+`
+		ORDER BY po.opened_at DESC, po.show_id DESC LIMIT -1 OFFSET ?3)`, userID, showID, MaxOpens-1)
+	return false, err
+}
+
+// ShowForSlug finds a show with this OndaCast slug that the person follows or opened.
+func (s *Store) ShowForSlug(ctx context.Context, userID, slug string) (showID string, ok bool) {
+	err := s.st.Reader().QueryRowContext(ctx, `SELECT s.id FROM podcast_shows s WHERE s.ondacast_slug = ?2 AND (
+		EXISTS (SELECT 1 FROM podcast_subscriptions b WHERE b.user_id = ?1 AND b.show_id = s.id)
+		OR EXISTS (SELECT 1 FROM podcast_opens o WHERE o.user_id = ?1 AND o.show_id = s.id)) ORDER BY s.id LIMIT 1`, userID, slug).Scan(&showID)
+	return showID, err == nil
+}
+
+// ShowKnown returns a show the person follows, opened, or keeps a place, star or history for, or
+// ErrNotFound. The person follows it when FollowedAt > 0; otherwise Settings are defaults and NewCount is 0.
+func (s *Store) ShowKnown(ctx context.Context, userID, showID string) (ShowRow, error) {
+	v, err := scanShow(s.st.Reader().QueryRowContext(ctx, `SELECT `+showCols+subColsLeft+` FROM podcast_shows s
+		LEFT JOIN podcast_subscriptions b ON b.show_id = s.id AND b.user_id = ?1 WHERE s.id = ?2 AND (b.user_id IS NOT NULL
+		OR EXISTS (SELECT 1 FROM podcast_opens o WHERE o.user_id = ?1 AND o.show_id = s.id)
+		OR EXISTS (SELECT 1 FROM podcast_episode_state t JOIN podcast_episodes e ON e.id = t.episode_id WHERE t.user_id = ?1 AND e.show_id = s.id))`,
+		userID, showID), true)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ShowRow{}, ErrNotFound
+	}
+	return v, err
+}
+
+// TouchOpen keeps a used open alive: it moves opened_at to now and never creates a row.
+func (s *Store) TouchOpen(ctx context.Context, userID, showID string) error {
+	_, err := s.st.Writer().ExecContext(ctx, `UPDATE podcast_opens SET opened_at = ? WHERE user_id = ? AND show_id = ?`, s.nowMs(), userID, showID)
+	return err
+}
+
+// ExpireOpens deletes opens last visited before the given time (Unix ms), except those with an episode in
+// the person's Up next. It reports how many went.
+func (s *Store) ExpireOpens(ctx context.Context, before int64) (int, error) {
+	r, err := s.st.Writer().ExecContext(ctx, `DELETE FROM podcast_opens AS po WHERE po.opened_at < ? AND NOT `+queuedOpenSQL, before)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := r.RowsAffected()
+	return int(n), nil
 }
 
 // MarkSeen clears the person's new-episode badge for a show.

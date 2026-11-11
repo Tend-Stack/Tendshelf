@@ -149,6 +149,7 @@ func podcastsSweepRows() []sweepRow {
 		sweepGet("GET /admin/podcasts", sweepStatic("/admin/podcasts"), sweepOwnerOnly(ok, nf)),
 
 		withLoc(sweepPost("POST /podcasts/follow", sweepStatic("/podcasts/follow"), nil, sweepNotGuest(see, nf), ""), showLoc),
+		withLoc(sweepPost("POST /podcasts/open", sweepStatic("/podcasts/open"), form("slug", "found-show"), sweepNotGuest(see, nf), ""), showLoc),
 		sweepPost("POST /podcasts/shows/{showID}/unfollow", show("/podcasts/shows/", "/unfollow"), nil, sweepNotGuest(see, nf), "/podcasts"),
 		withLoc(sweepPost("POST /podcasts/shows/{showID}/refresh", show("/podcasts/shows/", "/refresh"), nil, sweepNotGuest(see, nf), ""), showLoc),
 		labelled(sweepPost("POST /podcasts/shows/{showID}/refresh", otherShow("/podcasts/shows/", "/refresh"), nil, [4]int{see, nf, nf, nf}, ""), "someone else's show"),

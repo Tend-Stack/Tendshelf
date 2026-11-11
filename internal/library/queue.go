@@ -80,6 +80,7 @@ func queueVisible(sc Scope, k QueueKinds) (string, []any) {
 	if k.Episodes {
 		parts = append(parts, `(q.episode_id IS NOT NULL AND EXISTS (SELECT 1 FROM podcast_episodes e WHERE e.id = q.episode_id AND
   (EXISTS (SELECT 1 FROM podcast_subscriptions s WHERE s.user_id = q.user_id AND s.show_id = e.show_id)
+   OR EXISTS (SELECT 1 FROM podcast_opens po WHERE po.user_id = q.user_id AND po.show_id = e.show_id)
    OR EXISTS (SELECT 1 FROM podcast_episode_state t WHERE t.user_id = q.user_id AND t.episode_id = e.id))))`)
 	}
 	if len(parts) == 0 {

@@ -129,3 +129,25 @@ func TestQueueMixedOrder(t *testing.T) {
 		t.Errorf("remove episode = %v", err)
 	}
 }
+
+// An opened show's queued episode lists for the opener only; another person's identical row stays hidden.
+func TestQueueEpisodeOfOpenedShow(t *testing.T) {
+	r, st, _, _ := shelfSeed(t, 1)
+	seedEpisodes(t, st.Writer(), 1)
+	w := st.Writer()
+	for _, q := range []string{
+		`DELETE FROM podcast_subscriptions`,
+		`INSERT INTO podcast_opens(user_id, show_id, opened_at) VALUES ('us_a', 'ps_1', 1)`,
+		`INSERT INTO queue_items(user_id, item_id, episode_id, position, added_at) VALUES ('us_a', 'pe_0', 'pe_0', 1, 1), ('us_b', 'pe_0', 'pe_0', 1, 1)`,
+	} {
+		if _, err := w.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := queueMixed(t, r, allScope, "us_a", library.QueueAll); got != "E0" {
+		t.Errorf("opener queue = %q", got)
+	}
+	if got := queueMixed(t, r, allScope, "us_b", library.QueueAll); got != "" {
+		t.Errorf("other person's queue = %q", got)
+	}
+}

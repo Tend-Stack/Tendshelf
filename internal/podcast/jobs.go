@@ -282,6 +282,10 @@ func (s *Service) handlePrune(ctx context.Context, t *jobs.Task) (any, error) {
 	if !set.Enabled {
 		return nil, errOff()
 	}
+	expired, err := s.ExpireOpens(ctx, s.now().Add(-OpenTTL).UnixMilli())
+	if err != nil {
+		return nil, err
+	}
 	orphans, err := s.Orphans(ctx)
 	if err != nil {
 		return nil, err
@@ -301,7 +305,7 @@ func (s *Service) handlePrune(ctx context.Context, t *jobs.Task) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]int{"shows_removed": len(orphans), "episodes_evicted": evicted}, nil
+	return map[string]int{"shows_removed": len(orphans), "episodes_evicted": evicted, "opens_expired": expired}, nil
 }
 
 // sweepArt removes stored pictures no show or station points at.

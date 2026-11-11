@@ -222,13 +222,19 @@ templ PodcastSearch(v PodcastSearchView) {
 // PodHitRow is one show with its Follow control: a search result or a suggested show.
 templ PodHitRow(h PodHit, csrf, followLabel, followAria string) {
 	<li class="ts-row ts-podhit">
-		@components.Cover(h.Card, "56")
-		<span class="ts-row__text">
-			<span class="ts-row__title ts-clamp-2">{ h.Title }</span>
-			if h.Subtitle != "" {
-				<span class="ts-row__meta ts-truncate">{ h.Subtitle }</span>
-			}
-		</span>
+		<form method="post" action="/podcasts/open" class="ts-podhit__open">
+			<input type="hidden" name="_csrf" value={ csrf }/>
+			<input type="hidden" name="slug" value={ h.Slug }/>
+			<button type="submit" class="ts-podhit__link">
+				@components.Cover(h.Card, "56")
+				<span class="ts-row__text">
+					<span class="ts-row__title ts-clamp-2">{ h.Title }</span>
+					if h.Subtitle != "" {
+						<span class="ts-row__meta ts-truncate">{ h.Subtitle }</span>
+					}
+				</span>
+			</button>
+		</form>
 		<form method="post" action="/podcasts/follow" class="ts-podhit__follow">
 			<input type="hidden" name="_csrf" value={ csrf }/>
 			<input type="hidden" name="slug" value={ h.Slug }/>

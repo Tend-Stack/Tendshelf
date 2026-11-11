@@ -102,7 +102,7 @@ func TestCSSBudget(t *testing.T) {
 	}
 	core := map[string]bool{"css/tokens.css": true, "css/fonts.css": true, "css/bundle.css": true, "css/utilities.css": true, "css/motion.css": true}
 	single := map[string]cssBudget{
-		"css/pages-podcasts.css": {4 * 1024, 24 * 1024}, // Radio card grid, show header and episode panel (podcast and radio page fixes, 2026-11-10): 3,550 B measured, raised from 3 KiB by orchestrator decision, comments intact
+		"css/pages-podcasts.css": {4*1024 + 512, 24 * 1024}, // Open-before-follow hit button (decision 0040, 2026-11-11): 4,199 B measured, raised from 4 KiB by 512 B, comments intact. Radio card grid, show header and episode panel (podcast and radio page fixes, 2026-11-10): 3,550 B measured, raised from 3 KiB by orchestrator decision, comments intact
 		// Native feel (decision 0011): 2.5 KB, approved by the operator on 2026-11-03.
 		// M3c B3 adds the hit-area rule and the 200 % text wrapping rules: 3.25 KB (overrun 572 bytes, operator approved 2026-11-04).
 		"css/utilities.css": {3*1024 + 384, 24 * 1024}, // +128 B: no scrollbars on touch screens, iOS WebKit rule (operator, 2026-11-04)

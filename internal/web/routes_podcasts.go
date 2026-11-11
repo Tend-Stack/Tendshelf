@@ -24,7 +24,7 @@ import (
 var podServer = share.Target{Kind: share.TargetServer}
 
 // podcastLimits are the per-person rate limits: search 20 a minute, follow and add 30 an hour.
-type podcastLimits struct{ search, follow *auth.Limiter }
+type podcastLimits struct{ search, follow, open *auth.Limiter }
 
 func (s *server) registerPodcasts(mux *http.ServeMux) {
 	notAllowed := func(allow string) http.HandlerFunc {
@@ -37,6 +37,7 @@ func (s *server) registerPodcasts(mux *http.ServeMux) {
 	mux.HandleFunc("GET /podcasts", s.getPodcasts)
 	mux.HandleFunc("GET /podcasts/search", s.getPodcastSearch)
 	mux.HandleFunc("POST /podcasts/follow", s.postPodcastFollow)
+	mux.HandleFunc("POST /podcasts/open", s.postPodcastOpen)
 	mux.HandleFunc("GET /podcasts/shows/{showID}", s.getPodcastShow)
 	mux.HandleFunc("GET /podcasts/search/art/{key}", s.getPodcastSearchArt)
 	mux.HandleFunc("GET /radio/search/art/{key}", s.getRadioSearchArt)
@@ -117,6 +118,70 @@ func (s *server) loadShow(w http.ResponseWriter, r *http.Request) (podcast.ShowR
 	return sh, true
 }
 
+// loadShowKnown loads a show the person follows or opened, or has an episode of in their history.
+// Anyone else gets the same 404 as for an unknown id.
+func (s *server) loadShowKnown(w http.ResponseWriter, r *http.Request) (podcast.ShowRow, bool) {
+	sh, err := s.podcasts.ShowKnown(r.Context(), currentUser(r).ID, r.PathValue("showID"))
+	if errors.Is(err, podcast.ErrNotFound) {
+		s.notFound(w, r)
+		return podcast.ShowRow{}, false
+	}
+	if err != nil {
+		s.serverError(w, r, "load show", err)
+		return podcast.ShowRow{}, false
+	}
+	return sh, true
+}
+
+// postPodcastOpen opens a show from a search or suggestion hit without following it (decision 0040).
+// It takes a slug only, never an address, and a GET can never open anything.
+func (s *server) postPodcastOpen(w http.ResponseWriter, r *http.Request) {
+	if !s.podcastsGate(w, r) || !s.parseForm(w, r) {
+		return
+	}
+	ctx, u := r.Context(), currentUser(r)
+	slug := strings.TrimSpace(r.PostForm.Get("slug"))
+	if slug == "" || len(slug) > 200 {
+		s.refuseSetting(w, r, http.StatusUnprocessableEntity, podErrBadAddress)
+		return
+	}
+	// A show the person already follows or opened needs no OndaCast lookup and spends no budget.
+	if id, ok := s.podcasts.ShowForSlug(ctx, u.ID, slug); ok {
+		if err := s.podcasts.OpenKnown(ctx, u.ID, id); err != nil {
+			s.serverError(w, r, "open known show", err)
+			return
+		}
+		s.answerPage(w, r, "/podcasts/shows/"+url.PathEscape(id))
+		return
+	}
+	if !s.podLim.open.Take(u.ID) {
+		_, wait := s.podLim.open.Allow(u.ID)
+		w.Header().Set("Retry-After", strconv.Itoa(int(wait/time.Second)+1))
+		s.refuseSetting(w, r, http.StatusTooManyRequests, podErrBusy)
+		return
+	}
+	feed, err := s.podcasts.Net.PodcastFeedURL(ctx, slug)
+	if err != nil {
+		var pe *podnet.Error
+		if errors.As(err, &pe) && pe.Code == "not_found" {
+			s.refuseSetting(w, r, http.StatusUnprocessableEntity, podErrNoFeed)
+			return
+		}
+		s.refuseSetting(w, r, http.StatusBadGateway, podErrSearchDown)
+		return
+	}
+	id, err := s.podcasts.Open(ctx, u.ID, feed, slug)
+	switch {
+	case errors.Is(err, podcast.ErrBadURL):
+		s.refuseSetting(w, r, http.StatusUnprocessableEntity, podErrBadAddress)
+		return
+	case err != nil:
+		s.serverError(w, r, "open show", err)
+		return
+	}
+	s.answerPage(w, r, "/podcasts/shows/"+url.PathEscape(id))
+}
+
 func (s *server) postPodcastFollow(w http.ResponseWriter, r *http.Request) {
 	if !s.podcastsGate(w, r) || !s.parseForm(w, r) {
 		return
@@ -129,9 +194,38 @@ func (s *server) postPodcastFollow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	feed, slug := strings.TrimSpace(r.PostForm.Get("feed_url")), strings.TrimSpace(r.PostForm.Get("slug"))
+	showID := strings.TrimSpace(r.PostForm.Get("show_id"))
+	inputs := 0
+	for _, v := range []string{feed, slug, showID} {
+		if v != "" {
+			inputs++
+		}
+	}
 	switch {
-	case feed != "" && slug == "":
-	case feed == "" && slug != "" && len(slug) <= 200:
+	case inputs != 1:
+		s.refuseSetting(w, r, http.StatusUnprocessableEntity, podErrBadAddress)
+		return
+	case showID != "":
+		// Follow from a show page the person opened: they must already know the show.
+		if len(showID) > 64 || !s.podcasts.Knows(ctx, u.ID, showID) {
+			s.notFound(w, r)
+			return
+		}
+		sh, err := s.podcasts.ShowByID(ctx, showID)
+		if errors.Is(err, podcast.ErrNotFound) {
+			s.notFound(w, r)
+			return
+		}
+		if err != nil {
+			s.serverError(w, r, "follow show", err)
+			return
+		}
+		feed, slug = sh.FeedURL, ""
+	case slug != "":
+		if len(slug) > 200 {
+			s.refuseSetting(w, r, http.StatusUnprocessableEntity, podErrBadAddress)
+			return
+		}
 		var err error
 		if feed, err = s.podcasts.Net.PodcastFeedURL(ctx, slug); err != nil {
 			var pe *podnet.Error
@@ -142,9 +236,6 @@ func (s *server) postPodcastFollow(w http.ResponseWriter, r *http.Request) {
 			s.refuseSetting(w, r, http.StatusBadGateway, podErrSearchDown)
 			return
 		}
-	default:
-		s.refuseSetting(w, r, http.StatusUnprocessableEntity, podErrBadAddress)
-		return
 	}
 	id, _, err := s.podcasts.Follow(ctx, u.ID, feed, slug)
 	switch {
