@@ -152,3 +152,46 @@ func TestTallPageStartsAtTop(t *testing.T) {
 		}
 	}
 }
+
+// TestSidebarFootEasesWithPlayerBar: the player bar slides away on a page that carries its own resume button
+// (Home, Profile) and back on the others (one resume per screen). The sidebar stops above the bar, so its
+// foot used to jump 88 px in one frame. It must ease, in step with the bar.
+func TestSidebarFootEasesWithPlayerBar(t *testing.T) {
+	e := nowPanelEnv(t)
+	tab := fullpOpen(t, e, 1440, 900, false)
+	for _, path := range []string{"/libraries", "/me", "/", "/libraries"} {
+		var ok bool
+		tab.Eval(`(() => {
+		  window.tsFoot = {run: true, tops: []};
+		  const frame = () => {
+		    const foot = document.querySelector("#nav-side .ts-side__foot");
+		    window.tsFoot.tops.push(foot ? foot.getBoundingClientRect().top : -1);
+		    if (window.tsFoot.run) requestAnimationFrame(frame);
+		  };
+		  frame();
+		  const link = document.querySelector("#nav-side a[href='`+path+`']");
+		  if (!link) return false;
+		  link.click();
+		  return true;
+		})()`, &ok)
+		if !ok {
+			t.Fatalf("no sidebar link to %s", path)
+		}
+		time.Sleep(1200 * time.Millisecond)
+		var tops []float64
+		tab.Eval(`(() => { window.tsFoot.run = false; return window.tsFoot.tops; })()`, &tops)
+		if len(tops) < 10 {
+			t.Fatalf("%s: only %d frames watched", path, len(tops))
+		}
+		moving := 0
+		for i := 1; i < len(tops); i++ {
+			if d := tops[i] - tops[i-1]; d > 0.5 || d < -0.5 {
+				moving++
+			}
+		}
+		// A swap frame can be slow, so the count is a floor: one frame is the old instant jump.
+		if moving == 1 {
+			t.Errorf("%s: the sidebar foot jumped in a single frame", path)
+		}
+	}
+}
