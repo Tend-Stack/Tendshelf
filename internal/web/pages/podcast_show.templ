@@ -44,6 +44,10 @@ type PodcastShowView struct {
 	Preview, MoreLabel, LessLabel string
 	// LatestHref, LatestID and LatestLabel draw the one play button of the header ("Play latest" or "Resume").
 	LatestHref, LatestID, LatestLabel string
+	// Followed is false for a show the person only opened: the header then offers Follow, with
+	// a line that says so, and Refresh, Stop following and Settings are not drawn (decision 0040).
+	Followed                                                bool
+	FollowAction, FollowShowID, FollowLabel, FollowAria, NotFollowingHint string
 }
 
 // notesBlock draws cleaned show notes. The text was cleaned to a few tags (paragraphs, lists, bold,
@@ -100,19 +104,34 @@ templ PodcastShow(v PodcastShowView) {
 							<span data-ts-play-label>{ v.LatestLabel }</span>
 						</a>
 					}
-					<span class="ts-chip ts-chip--static">
-						@components.Icon("check", false)
-						{ v.Following }
-					</span>
-					<form method="post" action={ templ.SafeURL(v.RefreshAction) }>
-						<input type="hidden" name="_csrf" value={ v.CSRF }/>
-						<button type="submit" class="ts-btn ts-btn--secondary">{ v.RefreshLabel }</button>
-					</form>
-					<form method="post" action={ templ.SafeURL(v.UnfollowAction) }>
-						<input type="hidden" name="_csrf" value={ v.CSRF }/>
-						<button type="submit" class="ts-btn ts-btn--quiet">{ v.UnfollowLabel }</button>
-					</form>
+					if v.Followed {
+						<span class="ts-chip ts-chip--static">
+							@components.Icon("check", false)
+							{ v.Following }
+						</span>
+						<form method="post" action={ templ.SafeURL(v.RefreshAction) }>
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<button type="submit" class="ts-btn ts-btn--secondary">{ v.RefreshLabel }</button>
+						</form>
+						<form method="post" action={ templ.SafeURL(v.UnfollowAction) }>
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<button type="submit" class="ts-btn ts-btn--quiet">{ v.UnfollowLabel }</button>
+						</form>
+					} else {
+						<form method="post" action={ templ.SafeURL(v.FollowAction) }>
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<input type="hidden" name="show_id" value={ v.FollowShowID }/>
+							if v.LatestHref != "" {
+								<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.FollowAria + " " + v.Title }>{ v.FollowLabel }</button>
+							} else {
+								<button type="submit" class="ts-btn ts-btn--primary" aria-label={ v.FollowAria + " " + v.Title }>{ v.FollowLabel }</button>
+							}
+						</form>
+					}
 				</div>
+				if !v.Followed {
+					<p class="caption ts-podshow__hint">{ v.NotFollowingHint }</p>
+				}
 			</div>
 		</header>
 		if v.Fetching {
@@ -136,6 +155,7 @@ templ PodcastShow(v PodcastShowView) {
 }
 
 templ podShowBody(v PodcastShowView) {
+		if v.Followed {
 		<details class="ts-group ts-group--pad ts-podshow__settings">
 			<summary class="ts-podsearch__summary">
 				<span>{ v.Settings.Title }</span>
@@ -165,6 +185,7 @@ templ podShowBody(v PodcastShowView) {
 				<button type="submit" class="ts-btn ts-btn--primary">{ v.Settings.Save }</button>
 			</form>
 		</details>
+		}
 		<section aria-label={ v.ListLabel }>
 			@components.EpisodeFilters(v.Filters)
 			if len(v.Episodes) == 0 {

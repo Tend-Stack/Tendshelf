@@ -1040,6 +1040,12 @@ Checks: `go test -race` on db, radio, metadata, web and app; `TestRadioHLS*`, `T
 Limits: the fake station uses packed AAC and MP3 segments (TS and fMP4 are covered by the `internal/radio/hls` tests); no real public station is run in CI; Android and web manual checks RH-1 and RH-2 not done.
 Next: manual checks against a public HLS broadcaster, then the next feature.
 
+## Open a podcast before following it (decision 0040, 2026-11-11)
+Scope: migration 0043 (`podcast_opens`), per-person open relation in `share.Can`, queue SQL, orphan and prune checks; `POST /podcasts/open`, Follow by show id, the unfollowed show page (Follow and a plain line, no Refresh, Stop following or Settings), search and starter hits open the show with Follow as a separate button.
+Checks: `go test -race` on db, podcast, share, library and web (`TestPodcastOpen*`, `TestPodcastFollowByShowID`, search row); CSS budget for `pages-podcasts.css` raised from 4 KiB to 4.5 KiB (4,199 B measured); browser captures of search hits and the unfollowed show at 390 and 1440.
+Limits: the cap of 50 opens does not count opens with an episode in Up next, so a person can hold a few more than 50 rows; Android lists stay followed-only; no manual check on a real publisher.
+Next: the next feature.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID

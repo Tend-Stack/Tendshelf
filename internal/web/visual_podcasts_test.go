@@ -81,6 +81,23 @@ func newPodVisual(t *testing.T) *podVisual {
 			v.art(t, folder, id, i)
 		}
 	}
+	// One show the owner only opened (decision 0040): not followed, so it is in no list.
+	openID, err := fx.svc.Open(ctx, uid, "https://pub.test/open.xml", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	of := rss.Feed{Title: "Open Only Radio Hour", Author: "Cleo Open", Description: "<p>A show opened from search, not followed.</p>", Link: "https://example.com/open"}
+	for k := 1; k <= 5; k++ {
+		of.Episodes = append(of.Episodes, rss.Item{
+			GUID: fmt.Sprintf("o-%d", k), GUIDKey: fmt.Sprintf("o-%d", k), Title: fmt.Sprintf("Opened episode %d", k),
+			AudioURL: fmt.Sprintf("https://pub.test/o%d.mp3", k), AudioType: "audio/mpeg", DurationMs: int64(25+k) * 60 * 1000,
+			PublishedAt: time.Date(2026, 10, 1+k, 6, 0, 0, 0, time.UTC).UnixMilli(),
+		})
+	}
+	if _, err := fx.svc.ApplyFeed(ctx, openID, of, podcast.FetchMeta{}); err != nil {
+		t.Fatal(err)
+	}
+	v.shows["Open Only Radio Hour"] = openID
 	main := v.shows[defs[0].title]
 	rows, err := a.st.Reader().Query(`SELECT id FROM podcast_episodes WHERE show_id = ? ORDER BY published_at DESC, id`, main)
 	if err != nil {
@@ -164,11 +181,15 @@ func TestPodcastsVisual(t *testing.T) {
 		{"show", "/podcasts/shows/" + main, ".ts-podshow"},
 		{"show-oldest-unplayed", "/podcasts/shows/" + main + "?sort=oldest&filter=unplayed", ".ts-podshow"},
 		{"show-long", "/podcasts/shows/" + v.shows["A Very Long Podcast Title About Lighthouses, Fog Signals and the People Who Kept Them Burning Through Every Winter"], ".ts-podshow"},
+		{"show-unfollowed", "/podcasts/shows/" + v.shows["Open Only Radio Hour"], ".ts-podshow"},
 		{"episode", "/podcasts/episodes/" + v.eps[3], ".ts-podep"},
 		{"admin", "/admin/podcasts", ".ts-podadmin"},
 	}
 	for _, p := range pagesToShoot {
 		shots := visualMatrix(p.name == "home" || p.name == "show")
+		if p.name == "search" || p.name == "show-unfollowed" {
+			shots = visualMatrix(true)
+		}
 		if p.name == "show" || p.name == "show-long" {
 			shots = append(shots, visualShot{"dark", 360})
 		}

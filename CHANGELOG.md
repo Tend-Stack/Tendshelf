@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Added
+
+- **Open, browse and play a podcast before following it.** Tap a search result or a suggested show to look at its episodes and play one; Follow is a separate button and only then does the show join your list.
+
 ### Changed
 
 - **The Now playing side panel slides in and out on wide screens** instead of appearing at once.

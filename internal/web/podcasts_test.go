@@ -344,6 +344,10 @@ func TestPodcastSearch(t *testing.T) {
 	if w.fx.ondaHits.Load() != 1 {
 		t.Errorf("OndaCast hits = %d", w.fx.ondaHits.Load())
 	}
+	// A hit opens the show without following it; Follow is a separate form.
+	if b := rec.Body.String(); !strings.Contains(b, `action="/podcasts/open"`) || !strings.Contains(b, `action="/podcasts/follow"`) || strings.Count(b, `value="found-show"`) != 2 {
+		t.Error("hit row lacks the open and follow forms")
+	}
 	// The page without a query makes no outside request at all.
 	if rec = w.get("/podcasts/search", w.ben); rec.Code != http.StatusOK || w.fx.ondaHits.Load() != 1 {
 		t.Errorf("empty search: %d hits %d", rec.Code, w.fx.ondaHits.Load())

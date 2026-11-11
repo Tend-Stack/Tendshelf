@@ -127,7 +127,7 @@ was reused, extended or replaced.
 - **No telemetry**, analytics, crash reporting, update pings or third-party assets (fonts, CDNs, map
   tiles). The only outbound requests are user-initiated metadata lookups and cover downloads through `internal/metadata/online`, and podcasts
   and radio through its sub-package `internal/metadata/online/podnet`, both off until the owner turns podcasts or radio on: a search
-  sends only the typed words to `ondacast.com` (no account, no identifiers); following a show, Refresh, opening Podcasts, and a
+  sends only the typed words to `ondacast.com` (no account, no identifiers); opening a show from search or the suggestions, following a show, Refresh, opening Podcasts, and a
   scheduled refresh only when the owner picks an interval fetch the publishers' feeds; playing, downloading or auto-downloading an
   episode fetches its audio, artwork and chapters; playing a station fetches its stream (an HLS station: its playlists and audio segments, which the server turns into one stream, decision 0039); showing search results fetches each result's
   picture from its publisher through the guarded client, only when podcasts or radio is on, and the server serves it from its own
