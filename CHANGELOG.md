@@ -9,6 +9,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 - **The Now playing side panel slides in and out on wide screens** instead of appearing at once.
 - **The Chapters, Speed and Sleep sheets in the full player slide down when you close them** instead of vanishing.
 - **Up next rows glide to their new places** when you move one up or down or remove one, instead of jumping.
+- **Shelf view: every row is filled to the edge.** Scroll a little sideways to see the last book of a row whole.
 
 ## 2026.9.0
 

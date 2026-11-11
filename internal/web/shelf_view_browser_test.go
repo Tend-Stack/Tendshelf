@@ -279,3 +279,82 @@ func TestShelfViewHomeBrowser(t *testing.T) {
 		lib.Close()
 	}
 }
+
+// shelfviewFillProbe measures the filled rows of the wrapped shelf inside its scroller (.ts-shelf-run).
+const shelfviewFillProbe = `(() => {
+  const run = document.querySelector(".ts-shelf-run");
+  const ul = run.querySelector("ul#library-grid");
+  const edge = run.getBoundingClientRect().right;
+  const rows = new Map();
+  for (const li of ul.querySelectorAll(":scope > li.ts-shelf__slot")) {
+    const r = li.getBoundingClientRect();
+    const key = Math.round(r.bottom);
+    rows.set(key, Math.max(rows.get(key) || 0, r.right));
+  }
+  const keys = Array.from(rows.keys()).sort((a, b) => a - b);
+  const more = ul.querySelector(".ts-shelf__more > a");
+  let moreOff = null;
+  if (more) {
+    const m = more.getBoundingClientRect();
+    moreOff = (m.left + m.right) / 2 - (run.getBoundingClientRect().left + run.clientWidth / 2);
+  }
+  return { edge, rights: keys.map((k) => rows.get(k)), extra: run.scrollWidth - run.clientWidth,
+    page: document.documentElement.scrollWidth - document.documentElement.clientWidth, moreOff, run: run.clientWidth };
+})()`
+
+// TestShelfViewFillBrowser: every row but the last is filled to the scroller's right edge, the sideways
+// scroll is at most one widest book, the page never scrolls sideways, and "Show more" stays centred.
+func TestShelfViewFillBrowser(t *testing.T) {
+	base := shelfviewApp(t)
+	b := chromium(t)
+	for _, w := range []int{390, 768, 1024, 1440} {
+		tab := b.NewTab(w, 900, w < 768, false)
+		tab.Navigate(base + "/libraries?view=shelf")
+		tab.WaitFor(`document.querySelectorAll("ul#library-grid > li.ts-shelf__slot").length >= 48`, 10*time.Second)
+		var s struct {
+			Edge    float64   `json:"edge"`
+			Rights  []float64 `json:"rights"`
+			Extra   float64   `json:"extra"`
+			Page    float64   `json:"page"`
+			MoreOff *float64  `json:"moreOff"`
+		}
+		tab.Eval(shelfviewFillProbe, &s)
+		inc := 4.8
+		if w >= 1280 {
+			inc = 6.4
+		} else if w >= 768 {
+			inc = 5.6
+		}
+		widest := 44 + 11*inc
+		if len(s.Rights) < 3 {
+			t.Errorf("%d px: only %d rows", w, len(s.Rights))
+		}
+		for i := 0; i < len(s.Rights)-1; i++ {
+			if s.Rights[i] < s.Edge-0.5 {
+				t.Errorf("%d px: row %d ends at %.1f, short of the scroller edge %.1f", w, i, s.Rights[i], s.Edge)
+			}
+		}
+		if s.Extra > widest+1 {
+			t.Errorf("%d px: the scroller runs %.1f px sideways, more than one widest book (%.1f)", w, s.Extra, widest)
+		}
+		if s.Page > 0 {
+			t.Errorf("%d px: the page scrolls sideways by %.0f px", w, s.Page)
+		}
+		if s.MoreOff == nil {
+			t.Errorf("%d px: no Show more link", w)
+		} else if math.Abs(*s.MoreOff) > 1 {
+			t.Errorf("%d px: Show more is %.1f px off the visible centre", w, *s.MoreOff)
+		}
+		// Scrolled all the way right, the page still does not move and the link stays centred.
+		tab.Eval(`document.querySelector(".ts-shelf-run").scrollLeft = 9999`, nil)
+		tab.Eval(shelfviewFillProbe, &s)
+		if s.MoreOff != nil && math.Abs(*s.MoreOff) > 1 {
+			t.Errorf("%d px: scrolled right, Show more is %.1f px off centre", w, *s.MoreOff)
+		}
+		if s.Page > 0 {
+			t.Errorf("%d px: scrolled right, the page scrolls sideways by %.0f px", w, s.Page)
+		}
+		tab.ScreenshotFull(filepath.Join(visualDir(t, "chromium"), fmt.Sprintf("shelf-fill-%d.png", w)))
+		tab.Close()
+	}
+}
