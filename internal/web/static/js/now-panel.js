@@ -54,3 +54,32 @@ const marked = new MutationObserver(() => {
   else htmx.ajax("GET", "/hx/player/panel/" + id + "/count", { target: "#now-panel-count", swap: "outerHTML" });
 });
 for (const box of document.querySelectorAll("#toasts, [data-ts-full-toasts]")) marked.observe(box, { childList: true });
+
+// Up next: when a row moves or one is removed, the rows glide to their new places instead of jumping (FLIP).
+// Before the swap each row's place is noted by its id; after it, a row that sits elsewhere starts at its old
+// place and animates to its new one with the Web Animations API (no inline style). Reduced motion: no movement.
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)");
+const rowPlaces = new Map(); // the page lists rows in a grid on wide screens, so a row can move sideways too
+const rows = () => document.querySelectorAll(".ts-upnext__item[id]");
+document.addEventListener("htmx:before:swap", (event) => {
+  rowPlaces.clear();
+  if (!event.detail.ctx?.target?.classList.contains("ts-upnext") || REDUCED.matches) return;
+  for (const row of rows()) {
+    const box = row.getBoundingClientRect();
+    rowPlaces.set(row.id, [box.left, box.top]);
+  }
+});
+document.addEventListener("htmx:after:swap", () => {
+  if (rowPlaces.size === 0) return;
+  const style = getComputedStyle(document.documentElement);
+  for (const row of rows()) {
+    const was = rowPlaces.get(row.id);
+    if (!was) continue;
+    const box = row.getBoundingClientRect();
+    const dx = was[0] - box.left;
+    const dy = was[1] - box.top;
+    if (!dx && !dy) continue;
+    row.animate({ translate: [dx + "px " + dy + "px", "0 0"] }, { duration: 200, easing: style.getPropertyValue("--easing-standard") || "ease" });
+  }
+  rowPlaces.clear();
+});

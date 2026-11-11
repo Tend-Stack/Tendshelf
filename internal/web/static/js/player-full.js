@@ -42,6 +42,7 @@ let player = null; // window.tsPlayer
 let book = null; // player.info() of the loaded book
 let opener = null; // what had focus when the player opened
 let sheetOpener = null; // what had focus when a sheet opened
+const SHEET_LEAVE_MS = 400; // fallback for the sheet's 200 ms leave
 let openName = ""; // "chapters", "speed" or "sleep" while a sheet is open
 
 // ---- Elements and words ----
@@ -440,7 +441,8 @@ function openPlayer(after) {
 }
 
 function closeNow() {
-  closeSheet(false);
+  closeSheet(false, true);
+  for (const wrap of Object.values(sheetWraps)) hideSheetNow(wrap);
   slot.classList.remove("is-covered");
   dialog.close();
   leaving = false;
@@ -610,6 +612,7 @@ function openSheet(name, from = document.activeElement) {
   openName = name;
   sheetOpener = from;
   const wrap = sheetWraps[name];
+  hideSheetNow(wrap); // cancels a leave still running, so the sheet is never hidden while open
   wrap.hidden = false;
   ui["full-body"].inert = true;
   // Focus the current choice, else the first. preventScroll: a focus that scrolls would also scroll
@@ -619,9 +622,37 @@ function openSheet(name, from = document.activeElement) {
   if (name === "chapters") centreCurrentChapter(choice);
 }
 
-function closeSheet(restoreFocus) {
+// Ends a sheet's leave (or hides it at once): back to its resting state, hidden, nothing left over.
+const sheetLeaveTimers = new WeakMap();
+function hideSheetNow(wrap) {
+  clearTimeout(sheetLeaveTimers.get(wrap));
+  for (const el of wrap.querySelectorAll(".is-leaving")) el.classList.remove("is-leaving");
+  wrap.inert = false;
+  wrap.hidden = true;
+}
+
+// The sheet sinks (the same is-leaving rules as the #sheet sheets, motion.css) and is hidden when the
+// animation ends; the timeout is the fallback when no animation runs. Focus and the player body do not wait.
+function leaveSheet(wrap) {
+  const sheet = wrap.querySelector(".ts-sheet");
+  wrap.inert = true;
+  for (const el of wrap.querySelectorAll(".ts-sheet, .ts-scrim")) el.classList.add("is-leaving");
+  const done = () => {
+    sheet.removeEventListener("animationend", onEnd);
+    hideSheetNow(wrap);
+  };
+  const onEnd = (event) => {
+    if (event.target === sheet) done();
+  };
+  sheet.addEventListener("animationend", onEnd);
+  sheetLeaveTimers.set(wrap, setTimeout(done, SHEET_LEAVE_MS));
+}
+
+function closeSheet(restoreFocus, instant = false) {
   if (!openName) return;
-  sheetWraps[openName].hidden = true;
+  const wrap = sheetWraps[openName];
+  if (instant) hideSheetNow(wrap);
+  else leaveSheet(wrap);
   ui["full-body"].inert = false;
   if (restoreFocus && sheetOpener && sheetOpener.isConnected) sheetOpener.focus({ preventScroll: true });
   openName = "";
