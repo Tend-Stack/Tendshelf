@@ -52,6 +52,9 @@ input.ts-switch:checked::after { transform: translateX(1.25rem); background: var
    setting and the lead are a single column of their own and keep a readable width. */
 .ts-downloads__storage, .ts-downloads__settings, .ts-downloads__lead, .ts-downloads__note { max-width: 40rem; }
 .ts-downloads [hidden] { display: none; }
+/* Storage and settings are filled in by js/downloads.js after the page is painted. Until then they keep their place
+   (laid out, not drawn, not read out) so the empty state and the lists below do not drop when they appear. */
+.ts-downloads [data-ts-pending] { visibility: hidden; }
 .ts-downloads__title { margin: 0; min-height: var(--size-tap); display: flex; align-items: center; }
 .ts-downloads__lead, .ts-downloads__note, .ts-downloads__legend { margin: 0; color: var(--ink-muted); }
 .ts-downloads__note { margin-top: var(--space-8); }

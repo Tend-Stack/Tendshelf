@@ -841,7 +841,8 @@ function renderPage() {
   loadMessages();
   const books = list();
   show("[data-ts-insecure]", !supported);
-  show("[data-ts-settings]", supported);
+  const settings = show("[data-ts-settings]", supported);
+  if (settings) settings.removeAttribute("data-ts-pending");
   show("[data-ts-empty]", !books.length);
   show("[data-ts-install]", !!installPrompt);
   const active = books.filter((r) => r.state !== "ready");
@@ -865,7 +866,12 @@ function renderPage() {
 async function renderStorage() {
   const page = document.querySelector("[data-ts-downloads]");
   const section = page && page.querySelector("[data-ts-storage]");
-  if (!section || !supported || !navigator.storage || !navigator.storage.estimate) return;
+  if (!section) return;
+  section.removeAttribute("data-ts-pending");
+  if (!supported || !navigator.storage || !navigator.storage.estimate) {
+    section.hidden = true;
+    return;
+  }
   const { usage = 0, quota = 0 } = await navigator.storage.estimate();
   const vars = { used: size(usage), free: size(Math.max(0, quota - usage)) };
   section.hidden = false;

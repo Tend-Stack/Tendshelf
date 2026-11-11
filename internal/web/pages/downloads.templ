@@ -30,30 +30,33 @@ func (v DownloadsView) attrs() templ.Attributes {
 // downloadsFull is /me/downloads (docs/plans/m3-offline.md, board DownloadsPhone). The server renders
 // the heading, the lead and the empty state, which is the whole page without JavaScript. Everything
 // else starts hidden: js/downloads.js shows it and fills the two list templates from the person's
-// download index (the DOM contract in the plan).
+// download index (the DOM contract in the plan). The storage and settings blocks sit above the empty state, so
+// they are laid out from the first paint but not shown (data-ts-pending, visibility in pages-me.css): when
+// js/downloads.js reveals them nothing below moves. The persist note is laid out too (most browsers have not
+// granted persistence yet); the script hides it for a browser that has.
 templ downloadsFull(v DownloadsView) {
 	<div class="ts-downloads" { v.attrs()... }>
 		<h1 class="title-1 ts-downloads__title">{ v.Title }</h1>
 		<p class="caption ts-downloads__lead">{ v.Lead }</p>
 		<p class="caption ts-downloads__note" data-ts-insecure hidden>{ v.Insecure }</p>
-		<section class="ts-downloads__storage" data-ts-storage aria-labelledby="dl-storage" hidden>
+		<section class="ts-downloads__storage" data-ts-storage aria-labelledby="dl-storage" data-ts-pending>
 			<div class="ts-downloads__storagehead">
 				<h2 id="dl-storage" class="label ts-downloads__storagetitle">{ v.Storage }</h2>
-				<span class="caption ts-num" data-ts-storage-free></span>
+				<span class="caption ts-num" data-ts-storage-free>&nbsp;</span>
 			</div>
 			<div class="ts-bar ts-downloads__storagebar" role="img" data-ts-storage-bar>
 				<div class="ts-bar__fill ts-value"></div>
 			</div>
 			<p class="caption ts-num ts-downloads__legend">
 				<span class="ts-downloads__dot" aria-hidden="true"></span>
-				<span data-ts-storage-used></span>
+				<span data-ts-storage-used>&nbsp;</span>
 			</p>
-			<p class="caption ts-downloads__note" data-ts-persist-note hidden>{ v.Persist }</p>
+			<p class="caption ts-downloads__note" data-ts-persist-note>{ v.Persist }</p>
 			<p class="caption ts-downloads__note" data-ts-safari-note hidden>{ v.Safari }</p>
 		</section>
 		<p class="caption ts-downloads__note" data-ts-keep-open hidden>{ v.KeepOpen }</p>
 		<button type="button" class="ts-btn ts-btn--secondary ts-downloads__install" data-ts-install hidden>{ v.Install }</button>
-		<section class="ts-downloads__settings" aria-label={ v.Settings } hidden data-ts-settings>
+		<section class="ts-downloads__settings" aria-label={ v.Settings } data-ts-pending data-ts-settings>
 			<div class="ts-switch-row">
 				<span class="ts-switch-row__text">
 					<span class="ts-switch-row__label" id="dl-remove">{ v.RemoveTitle }</span>
