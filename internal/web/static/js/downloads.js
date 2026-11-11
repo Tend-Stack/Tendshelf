@@ -11,6 +11,7 @@ const INDEX_KEY = "ts.offline";
 const PREFS_KEY = "ts.offline.prefs";
 const CHECKED_KEY = "ts.offline.checkedAt";
 const MSGS_KEY = "ts.offline.msgs";
+const KEPT_KEY = "ts.offline.kept"; // whether the browser last said it keeps this site's storage (the persist note)
 const MiB = 1 << 20;
 const DAY = 86400000;
 const supported = !!person && isSecureContext && "caches" in window;
@@ -831,6 +832,14 @@ function renderRow(record, template, listEl) {
   if (row.parentElement !== listEl) listEl.append(row);
 }
 
+// The persist note is part of the storage block above the empty state, and the browser answers late (renderStorage).
+// The last answer decides at once, so the block is already its final height when the page is first painted. A swap
+// is painted before htmx:after:swap runs render(), so the swap's own settle step calls this too.
+function holdPersistNote() {
+  const note = document.querySelector("[data-ts-downloads] [data-ts-persist-note]");
+  if (note) note.hidden = !!readJSON(KEPT_KEY, false);
+}
+
 function renderPage() {
   const page = document.querySelector("[data-ts-downloads]");
   if (!page) return;
@@ -844,6 +853,7 @@ function renderPage() {
   show("[data-ts-insecure]", !supported);
   const settings = show("[data-ts-settings]", supported);
   if (settings) settings.removeAttribute("data-ts-pending");
+  holdPersistNote();
   show("[data-ts-empty]", !books.length);
   show("[data-ts-install]", !!installPrompt);
   const active = books.filter((r) => r.state !== "ready");
@@ -882,6 +892,7 @@ async function renderStorage() {
   bar.setAttribute("aria-label", words("bar", vars));
   setBar(bar, quota ? (usage / quota) * 100 : 0);
   const kept = navigator.storage.persisted ? await navigator.storage.persisted() : true;
+  writeJSON(KEPT_KEY, kept);
   section.querySelector("[data-ts-persist-note]").hidden = kept;
   const ios = /iP(hone|ad|od)/.test(navigator.userAgent) && !navigator.standalone && !matchMedia("(display-mode: standalone)").matches;
   section.querySelector("[data-ts-safari-note]").hidden = !ios;
@@ -960,6 +971,7 @@ window.addEventListener("storage", (event) => {
   if (event.key === INDEX_KEY) render();
 });
 document.addEventListener("ts:downloads:change", render);
+document.addEventListener("htmx:before:settle", holdPersistNote);
 document.addEventListener("htmx:after:swap", render);
 if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("controllerchange", reseed);
 

@@ -37,6 +37,8 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 - **The book page no longer shifts when it opens.** The Download button used to appear late, sliding the other buttons sideways or pushing the tabs and text down; it now keeps its place.
 - **Pages reached from the menu start exactly at the top.** A long page opened a few pixels scrolled, so its heading sat slightly too high.
 - **The sidebar footer glides when the player bar slides away or back,** instead of jumping.
+- **The Downloads page keeps still when your browser protects your storage.** The note about storage being cleared used to vanish a moment after the page appeared, pulling everything below it up by about 30 pixels; the page now remembers the browser's last answer and starts at its final height (the very first visit still has to ask).
+- **The reader's footer no longer slides sideways when a book opens.** The page line and the progress ruler first drew at one width and then widened to the text's width (by 640 pixels on a wide screen); they now appear once the text is laid out.
 - **Pages no longer blink and jump a moment after they appear.** Moving to another page drew it once, then about a quarter of a second later made it vanish and rise in again from a few pixels lower; now the rise-in starts with the first frame of the new page.
 
 ## 2026.8.1

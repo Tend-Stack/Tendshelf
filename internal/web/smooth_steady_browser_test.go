@@ -195,3 +195,60 @@ func TestSidebarFootEasesWithPlayerBar(t *testing.T) {
 		}
 	}
 }
+
+// TestDownloadsPersistNoteDoesNotJump: a browser that keeps this site's storage hides the persist note, but it answers
+// after the page is painted, so the note's 30 px left the storage block late and the empty state below jumped up. The
+// last answer is remembered, so from the second visit the block starts at its final height. The first visit is the one
+// the browser has to be asked on.
+func TestDownloadsPersistNoteDoesNotJump(t *testing.T) {
+	e := nowPanelEnv(t)
+	for _, width := range []int{390, 1440} {
+		tab := fullpOpen(t, e, width, 900, false)
+		tab.Eval(`navigator.storage.persisted = async () => true`, nil)
+		gap := `(() => {
+		  const heading = document.querySelector("#main h1");
+		  const empty = document.querySelector("#main [data-ts-empty]");
+		  if (!heading || !empty || location.pathname !== "/me/downloads") return {};
+		  return {gap: Math.round((empty.getBoundingClientRect().top - heading.getBoundingClientRect().top) * 10) / 10};
+		})()`
+		steadyDistinct(t, tab, "/me/downloads", gap) // the first visit learns the answer
+		steadyDistinct(t, tab, "/libraries", `({})`)
+		got := steadyDistinct(t, tab, "/me/downloads", gap)
+		if len(got["gap"]) < 1 {
+			t.Fatalf("%d px: the Downloads page was never watched", width)
+		}
+		if len(got["gap"]) != 1 {
+			t.Errorf("%d px: the empty state moved below the heading, its distance went through %v", width, got["gap"])
+		}
+	}
+}
+
+// TestReaderDockDoesNotJump: opening the reader from the book page showed the dock (page line, ruler) at the width of the
+// fallback text column, then widened it when the paginator measured the real page (+640 px at 1440, -16 px each side at
+// 390). Whatever the dock shows must keep its place on every frame it is visible.
+func TestReaderDockDoesNotJump(t *testing.T) {
+	e := ofrApp(t, cfBook(), nil)
+	b := chromium(t)
+	for _, size := range [][2]int{{390, 844}, {1440, 900}} {
+		width, height := size[0], size[1]
+		tab := b.NewTab(width, height, width < 768, false)
+		tab.Navigate(e.URL + "/books/" + e.l.book.ID)
+		tab.WaitFor(`!!document.querySelector("#main a[href$='/read']")`, 10*time.Second)
+		time.Sleep(500 * time.Millisecond)
+		got := steadyClick(t, tab, `[...document.querySelectorAll("#main a[href$='/read']")].find((x) => x.offsetWidth > 0)`, `(() => {
+		  const row = document.querySelector(".ts-readdock__row");
+		  const ruler = document.querySelector(".ts-readdock__ruler");
+		  if (!row || !location.pathname.endsWith("/read") || getComputedStyle(row).visibility !== "visible") return {};
+		  return {rowLeft: Math.round(row.getBoundingClientRect().left * 10) / 10, rowWidth: Math.round(row.getBoundingClientRect().width * 10) / 10,
+		    rulerLeft: Math.round(ruler.getBoundingClientRect().left * 10) / 10};
+		})()`)
+		if len(got["rowLeft"]) == 0 {
+			t.Fatalf("%d px: the reader dock was never seen", width)
+		}
+		for key, values := range got {
+			if len(values) != 1 {
+				t.Errorf("%d px: %s moved while the reader dock was shown, it went through %v", width, key, values)
+			}
+		}
+	}
+}
