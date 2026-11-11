@@ -49,11 +49,11 @@
 /* The cover and the words are one button that opens the show without following it (decision 0040). */
 .ts-podhit__open { flex: 1; min-width: 0; margin: 0; }
 .ts-podhit__link {
-  display: flex; align-items: center; gap: var(--space-12); width: 100%; min-width: 0; min-height: 44px;
+  display: flex; align-items: center; gap: var(--space-12); width: 100%; min-width: 0; min-height: var(--size-tap);
   padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer;
   border-radius: var(--radius-control);
 }
-.ts-podhit__link:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ts-podhit__link:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 .ts-podhit__link .ts-row__text { min-width: 0; flex: 1; }
 .ts-podshow__hint { margin: var(--space-8) 0 0; }
 /* Play and Save stack, so a result row keeps one line of controls even at 200 % text on a phone. */
