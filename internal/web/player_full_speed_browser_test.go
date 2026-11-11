@@ -305,6 +305,9 @@ func sleepOpenSel(tab *cdp.Tab) string {
 
 // TestBarToolClosesItsSheet: on a wide screen the bar's Chapters button opens the list, and pressed again
 // closes it (operator, 2026-11-10); another bar tool switches to its own sheet.
+// sheetLeaveWait is longer than player-full.js's SHEET_LEAVE_MS (400), after which a closed sheet is hidden.
+const sheetLeaveWait = 600 * time.Millisecond
+
 func TestBarToolClosesItsSheet(t *testing.T) {
 	e := nowPanelEnv(t)
 	wide := fullpOpen(t, e, 1440, 900, false)
@@ -312,6 +315,8 @@ func TestBarToolClosesItsSheet(t *testing.T) {
 	playerClickSel(t, wide, "[data-ts-bar-chapters]")
 	wide.WaitFor(chaptersShown, 3*time.Second)
 	playerClickSel(t, wide, "[data-ts-bar-chapters]")
+	// The sheet slides down before it is hidden, so wait out the leave.
+	time.Sleep(sheetLeaveWait)
 	var state struct {
 		Shown, Focused bool
 	}
@@ -326,6 +331,7 @@ func TestBarToolClosesItsSheet(t *testing.T) {
 	wide.WaitFor(chaptersShown, 3*time.Second)
 	playerClickSel(t, wide, "[data-ts-bar-speed]")
 	speedWaitSheet(wide, speedSheetSel)
+	time.Sleep(sheetLeaveWait)
 	var both bool
 	wide.Eval(chaptersShown, &both)
 	if both {

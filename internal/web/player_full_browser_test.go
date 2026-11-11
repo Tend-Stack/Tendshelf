@@ -333,6 +333,7 @@ func TestFullPlayerBrowserTimesAndChapters(t *testing.T) {
 	}
 	playerClickSel(t, tab, `#player-full [data-ts-chapter-list] li:nth-child(4) button`)
 	tab.WaitFor(`window.tsPlayer.state().positionMs >= 89500 && window.tsPlayer.state().positionMs < 95000`, 3*time.Second)
+	time.Sleep(sheetLeaveWait)
 	var after struct {
 		Hidden, Playing bool
 	}
