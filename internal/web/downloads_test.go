@@ -54,7 +54,7 @@ func TestDownloadsPage(t *testing.T) {
 			t.Errorf("page contains %q", not)
 		}
 	}
-	// Everything JS fills starts hidden, and nothing is a visible button before JS runs.
+	// Everything JS fills starts hidden (the storage and settings blocks keep their place but are not drawn: data-ts-pending), and nothing is a visible button before JS runs.
 	for _, hidden := range []string{"data-ts-storage ", "data-ts-settings", "data-ts-active ", "data-ts-ready ", "data-ts-install", "data-ts-keep-open"} {
 		i := strings.Index(body, hidden)
 		if i < 0 {
@@ -62,7 +62,7 @@ func TestDownloadsPage(t *testing.T) {
 			continue
 		}
 		start := strings.LastIndex(body[:i], "<")
-		if tag := body[start : i+strings.Index(body[i:], ">")]; !strings.Contains(tag, "hidden") {
+		if tag := body[start : i+strings.Index(body[i:], ">")]; !strings.Contains(tag, "hidden") && !strings.Contains(tag, "data-ts-pending") {
 			t.Errorf("%q starts visible: %s", hidden, tag)
 		}
 	}
