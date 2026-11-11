@@ -16,6 +16,9 @@ func TestPodcastActions(t *testing.T) {
 	f.exec(t, `INSERT INTO podcast_subscriptions(user_id, show_id, followed_at, seen_at) VALUES ('u_lib', 'ps_1', 1, 1), ('u_own', 'ps_1', 1, 1), ('u_g', 'ps_1', 1, 1), ('u_dis', 'ps_1', 1, 1)`)
 	f.exec(t, `INSERT INTO podcast_episode_state(user_id, episode_id, updated_at) VALUES ('u_all', 'pe_2', 1)`)
 
+	// Opens (decision 0040): u_shelf opened show 2; u_con2 opened show 1; u_g (guest) and u_dis (disabled) have stray rows.
+	f.exec(t, `INSERT INTO podcast_opens(user_id, show_id, opened_at) VALUES ('u_shelf', 'ps_2', 1), ('u_con2', 'ps_1', 1), ('u_g', 'ps_2', 1), ('u_dis', 'ps_2', 1)`)
+
 	server := Target{Kind: TargetServer}
 	ep := func(id string) Target { return Target{Kind: TargetEpisode, ID: id} }
 	cases := []struct {
@@ -49,11 +52,23 @@ func TestPodcastActions(t *testing.T) {
 		{"unknown episode refused", "u_lib", ListenEpisode, ep("pe_x"), false},
 		{"empty episode id refused", "u_lib", ListenEpisode, ep(""), false},
 		{"wrong target kind refused", "u_lib", ListenEpisode, Target{Kind: TargetBook, ID: "pe_1"}, false},
+		{"opener listens", "u_shelf", ListenEpisode, ep("pe_2"), true},
+		{"contributor opener listens", "u_con2", ListenEpisode, ep("pe_1"), true},
+		{"another member refused an opened show", "u_none", ListenEpisode, ep("pe_2"), false},
+		{"admin who did not open refused", "u_adm", ListenEpisode, ep("pe_2"), false},
+		{"owner who did not open refused", "u_own", ListenEpisode, ep("pe_2"), false},
+		{"guest with an open row refused", "u_g", ListenEpisode, ep("pe_2"), false},
+		{"disabled opener refused", "u_dis", ListenEpisode, ep("pe_2"), false},
 		{"library grant gives no episode", "u_all", ListenEpisode, ep("pe_1"), false},
 	}
 	for _, c := range cases {
 		if got := f.c.Can(ctx, f.user(c.user), c.action, c.target); got != c.want {
 			t.Errorf("%s: Can = %v, want %v", c.name, got, c.want)
 		}
+	}
+	// The relation is read at the moment of the check: once the open is gone, so is the access.
+	f.exec(t, `DELETE FROM podcast_opens WHERE user_id = 'u_shelf'`)
+	if f.c.Can(ctx, f.user("u_shelf"), ListenEpisode, ep("pe_2")) {
+		t.Error("opener after the open row is deleted still listens")
 	}
 }

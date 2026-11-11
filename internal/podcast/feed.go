@@ -188,9 +188,9 @@ func (s *Store) StaleShows(ctx context.Context, userID string, staleAfter time.D
 		userID, now-staleAfter.Milliseconds(), now)
 }
 
-// Orphans lists shows nobody follows and nobody has a place, star or history for.
+// Orphans lists shows nobody follows or has open and nobody has a place, star or history for.
 func (s *Store) Orphans(ctx context.Context) ([]string, error) {
-	return s.ids(ctx, `SELECT s.id FROM podcast_shows s WHERE NOT EXISTS (SELECT 1 FROM podcast_subscriptions b WHERE b.show_id = s.id)
+	return s.ids(ctx, `SELECT s.id FROM podcast_shows s WHERE NOT EXISTS (SELECT 1 FROM podcast_subscriptions b WHERE b.show_id = s.id) AND NOT EXISTS (SELECT 1 FROM podcast_opens o WHERE o.show_id = s.id)
 		AND NOT EXISTS (SELECT 1 FROM podcast_episode_state t JOIN podcast_episodes e ON e.id = t.episode_id WHERE e.show_id = s.id) LIMIT 500`)
 }
 
@@ -200,6 +200,7 @@ func (s *Store) Orphans(ctx context.Context) ([]string, error) {
 func (s *Store) DeleteShow(ctx context.Context, showID string) (bool, error) {
 	res, err := s.st.Writer().ExecContext(ctx, `DELETE FROM podcast_shows WHERE id = ?1
 		AND NOT EXISTS (SELECT 1 FROM podcast_subscriptions b WHERE b.show_id = ?1)
+		AND NOT EXISTS (SELECT 1 FROM podcast_opens o WHERE o.show_id = ?1)
 		AND NOT EXISTS (SELECT 1 FROM podcast_episode_state t JOIN podcast_episodes e ON e.id = t.episode_id WHERE e.show_id = ?1)`, showID)
 	if err != nil {
 		return false, err

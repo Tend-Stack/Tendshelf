@@ -527,3 +527,25 @@ func TestOrphans(t *testing.T) {
 		t.Errorf("orphans = %v, want only the show without state", got)
 	}
 }
+
+func TestOrphansSkipOpenedShows(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	id := e.open(t, "us_a", "https://a.example/f.xml")
+	if got, _ := e.s.Orphans(ctx); len(got) != 0 {
+		t.Errorf("an opened show is an orphan: %v", got)
+	}
+	if deleted, err := e.s.DeleteShow(ctx, id); err != nil || deleted {
+		t.Errorf("delete of an opened show: %v %v", deleted, err)
+	}
+	e.advance(31 * 24 * time.Hour)
+	if _, err := e.s.ExpireOpens(ctx, e.clk.Add(-OpenTTL).UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := e.s.Orphans(ctx); len(got) != 1 || got[0] != id {
+		t.Errorf("after the open expired: %v", got)
+	}
+	if deleted, err := e.s.DeleteShow(ctx, id); err != nil || !deleted {
+		t.Errorf("delete after expiry: %v %v", deleted, err)
+	}
+}

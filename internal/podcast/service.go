@@ -194,6 +194,44 @@ func (s *Service) RefreshNow(ctx context.Context, userID, showID string) (string
 	return s.QueueRefresh(ctx, showID, userID)
 }
 
+// Open records that the person opened a show without following it and queues a refresh when it has
+// never been fetched or is stale (decision 0040). A queue error is logged, not returned.
+func (s *Service) Open(ctx context.Context, userID, feedURL, slug string) (showID string, err error) {
+	showID, _, err = s.Store.Open(ctx, userID, feedURL, slug)
+	if err != nil {
+		return "", err
+	}
+	s.refreshIfStale(ctx, showID, userID)
+	return showID, nil
+}
+
+// OpenKnown is Open for a show row the server already has (a slug the person knows, or a show id).
+func (s *Service) OpenKnown(ctx context.Context, userID, showID string) error {
+	if _, err := s.Reopen(ctx, userID, showID); err != nil {
+		return err
+	}
+	s.refreshIfStale(ctx, showID, userID)
+	return nil
+}
+
+// refreshIfStale queues one refresh of a show never fetched, or fetched over an hour ago whose back-off has passed.
+func (s *Service) refreshIfStale(ctx context.Context, showID, by string) {
+	if !s.Enabled(ctx) {
+		return
+	}
+	sh, err := s.ShowByID(ctx, showID)
+	if err != nil {
+		return
+	}
+	now := s.nowMs()
+	if sh.FetchedAt != 0 && !(sh.FetchedAt < now-staleAfter.Milliseconds() && (sh.FailCount == 0 || sh.NextRefreshAt <= now)) {
+		return
+	}
+	if _, err := s.QueueRefresh(ctx, showID, by); err != nil {
+		s.Log.Warn("podcasts: refresh on open", "err", err)
+	}
+}
+
 // QueueImport queues the import of a list of feed addresses (an OPML file) for one person and
 // records it in the audit log. The job follows each address and queues a refresh for new shows.
 func (s *Service) QueueImport(ctx context.Context, userID string, urls []string) (string, error) {
