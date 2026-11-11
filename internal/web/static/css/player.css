@@ -154,6 +154,18 @@ html[data-text-size="large"] .ts-player-slot.is-covered { visibility: hidden; }
     /* The side panel shows the book's chapter ruler only; the bar below it carries the chapter slider
        (operator, 2026-11-02: the two players stay distinct). */
     .ts-player [data-ts-scrub="full"] { display: none; }
+    /* The panel slides in from the right edge and fades; on close it slides and fades out, then leaves (display and
+       overlay switch at the end, so it stays painted while it goes). The page behind it takes one step, not a ramp
+       (now-panel.css), so the library grid never re-wraps per frame. Browsers without @starting-style or allow-discrete
+       (older WebKitGTK in the desktop shell) keep the instant open and close. translate does not meet the
+       transform the dialog uses for its drag below 1280 px. */
+    @media (prefers-reduced-motion: no-preference) {
+      .ts-player { transition: translate var(--duration-base) var(--easing-exit), opacity var(--duration-base) var(--easing-exit),
+        display var(--duration-base) allow-discrete, overlay var(--duration-base) allow-discrete; }
+      .ts-player[open] { transition-duration: var(--duration-slow); transition-timing-function: var(--easing-enter); }
+      .ts-player:not([open]) { translate: 1.5rem 0; opacity: 0; }
+      @starting-style { .ts-player[open] { translate: 1.5rem 0; opacity: 0; } }
+    }
   }
 }
 @media (prefers-reduced-motion: reduce) {

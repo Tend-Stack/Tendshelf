@@ -33,6 +33,7 @@ Released 2026-11-11. Radio plays HLS stations and stations you have not saved, P
 
 ### Fixed
 
+- **The Now playing side panel slides in and out on wide screens** instead of appearing at once.
 - **Chapters, the bookmark and the chapter ticks come back after a podcast episode.** After you had played an episode, the full player kept the episode's layout for the next book until a reload, so Chapters and the bookmark were missing.
 - On a wide screen the bar's Chapters, Speed and Sleep buttons close their list when pressed again, besides the X on the list.
 - **The rail and sidebar stay still on short pages.** Opening Search, Downloads or Shelves made the navigation move a few pixels up and back when the page had little on it.
