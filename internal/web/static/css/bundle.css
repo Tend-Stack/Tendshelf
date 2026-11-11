@@ -597,7 +597,7 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 .ts-offline__text { flex: 1; min-width: 0; margin: 0; font-size: 0.9375rem; line-height: 1.375rem; }
 .ts-offline__retry { flex: none; }
 /* Moving focus to #main after a swap scrolls it into view; the sticky banner must not end up covering its first line. */
-.ts-offline:not([hidden]) ~ .ts-shell .ts-main { scroll-margin-top: 5rem; }
+.ts-offline:not([hidden]) ~ .ts-shell .ts-main { --main-scroll-margin: 5rem; scroll-margin-top: var(--main-scroll-margin); }
 @media (width >= 768px) {
   :where(html:not([data-text-size="large"])) {
     .ts-shell { grid-template-columns: var(--size-rail) minmax(0, 1fr); }

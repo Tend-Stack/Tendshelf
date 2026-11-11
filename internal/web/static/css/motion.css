@@ -19,8 +19,8 @@
 ::view-transition-old(ts-tabbar), ::view-transition-new(ts-tabbar), ::view-transition-old(ts-rail), ::view-transition-new(ts-rail), ::view-transition-old(ts-side), ::view-transition-new(ts-side) { animation: none; }
 .ts-main.ts-entering { animation: ts-rise-in var(--duration-base) var(--easing-standard) both; }
 /* htmx scrolls the new page to the top while it still sits 0.25rem low (the first frame of ts-rise-in); the margin
-   makes that scroll end at 0 instead of 4 px down (shell.js). */
-.ts-main.ts-entering { scroll-margin-top: 0.25rem; }
+   makes that scroll end at 0 instead of 4 px down (shell.js). It adds to the room the offline banner asks for (bundle.css). */
+.ts-main.ts-entering { scroll-margin-top: calc(var(--main-scroll-margin, 0rem) + 0.25rem); }
 
 /* Shared cover: exactly one element per page carries .ts-vt-cover */
 .ts-vt-cover { view-transition-name: ts-cover; }
@@ -82,7 +82,7 @@
   ::view-transition-group(*) { animation: none; }
   ::view-transition-old(*), ::view-transition-new(*) { animation-duration: var(--duration-fast); }
   .ts-main.ts-entering { animation-name: ts-fade-in; animation-duration: var(--duration-fast); }
-  .ts-main.ts-entering { scroll-margin-top: 0; }
+  .ts-main.ts-entering { scroll-margin-top: var(--main-scroll-margin, 0rem); }
   ::view-transition-group(ts-cover) { animation: none; }
   @starting-style { .ts-sheet, .ts-toast { translate: none; opacity: 0; } }
   .ts-sheet, .ts-toast { transition: opacity var(--duration-fast) linear; }
