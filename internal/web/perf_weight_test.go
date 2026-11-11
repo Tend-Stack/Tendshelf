@@ -47,15 +47,17 @@ var weightBudgets = map[string]weightBudget{
 	// (317,739 measured, 1,323 B over) and admin-users CSS to 324,608 B (323,640 measured). Nothing was squeezed; reported.
 	// Same day, the page-jump fixes (offline scroll margin, reader dock, their comments): CSS 318,635 B measured, 171 B over;
 	// raised 1 KiB to 319,488 B (admin-users 325,632 B, 324,536 measured). Nothing was squeezed; reported.
-	"home":        {HTML: 71680, CSS: 319488, JS: 212992, Font: 1075200, Img: 38912, Requests: 63}, // Shelf spines (decision 0034): HTML raised to 71,680 B from 70,120 B measured (li, link and spans per spine), requests +2 for pages-spines.css. Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
-	"library":     {HTML: 87040, CSS: 319488, JS: 212992, Font: 791552, Img: 95232, Requests: 93},
-	"book":        {HTML: 55296, CSS: 319488, JS: 212992, Font: 791552, Img: 29696, Requests: 55},
-	"listening":   {HTML: 164864, CSS: 319488, JS: 212992, Font: 791552, Img: 34816, Requests: 62},
-	"search":      {HTML: 59392, CSS: 319488, JS: 212992, Font: 791552, Img: 39936, Requests: 65},
+	// 2026-11-11, the Now playing panel slides in and out (player.css): CSS 319,914 B measured, 426 B over; raised 1 KiB to
+	// 320,512 B (admin-users 326,656 B, 325,815 measured). Nothing was squeezed; reported.
+	"home":        {HTML: 71680, CSS: 320512, JS: 212992, Font: 1075200, Img: 38912, Requests: 63}, // Shelf spines (decision 0034): HTML raised to 71,680 B from 70,120 B measured (li, link and spans per spine), requests +2 for pages-spines.css. Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
+	"library":     {HTML: 87040, CSS: 320512, JS: 212992, Font: 791552, Img: 95232, Requests: 93},
+	"book":        {HTML: 55296, CSS: 320512, JS: 212992, Font: 791552, Img: 29696, Requests: 55},
+	"listening":   {HTML: 164864, CSS: 320512, JS: 212992, Font: 791552, Img: 34816, Requests: 62},
+	"search":      {HTML: 59392, CSS: 320512, JS: 212992, Font: 791552, Img: 39936, Requests: 65},
 	"profile":     {HTML: 64512, CSS: 328704, JS: 212992, Font: 791552, Img: 57344, Requests: 62}, // decision 0021, set the same way from the first measurement (2026-11-05)
-	"settings":    {HTML: 49152, CSS: 319488, JS: 212992, Font: 791552, Img: 1024, Requests: 45},
+	"settings":    {HTML: 49152, CSS: 320512, JS: 212992, Font: 791552, Img: 1024, Requests: 45},
 	"reader":      {HTML: 53248, CSS: 321536, JS: 278528, Font: 1075200, Img: 1024, Requests: 56}, // JS +1 KB for read aloud (decision 0032, 2026-11-08: 238,301 B measured, 733 B over, reported); JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05)
-	"admin-users": {HTML: 47104, CSS: 325632, JS: 212992, Font: 791552, Img: 1024, Requests: 45},
+	"admin-users": {HTML: 47104, CSS: 326656, JS: 212992, Font: 791552, Img: 1024, Requests: 45},
 }
 
 // weightProbeJS waits until ts-ready exists and no new resource entry has appeared for 500 ms (10 s at
