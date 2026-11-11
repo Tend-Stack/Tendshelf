@@ -249,8 +249,9 @@ func TestSharePageLists(t *testing.T) {
 	e.sharepageGrant(a, "book", "book_id", e.books[0].ID)
 	e.sharepageGrant(b, "book", "book_id", e.books[1].ID)
 	e.sharepageGrant(c, "library", "library_id", e.lib.ID)
-	e.create(e.ownerID, share.InviteSpec{Name: "Ana", Role: users.RoleAdmin})
-	e.create(e.ownerID, share.InviteSpec{Name: "Ines", Role: users.RoleGuest, Grants: []share.InviteGrant{{Scope: share.GrantBook, Target: e.books[1].ID}}})
+	// Two-word names: the negative checks below search the whole page, and a random token can spell a short name.
+	e.create(e.ownerID, share.InviteSpec{Name: "Ana Paz", Role: users.RoleAdmin})
+	e.create(e.ownerID, share.InviteSpec{Name: "Ines Sol", Role: users.RoleGuest, Grants: []share.InviteGrant{{Scope: share.GrantBook, Target: e.books[1].ID}}})
 	e.create(e.ownerID, share.InviteSpec{Name: "Lib", Role: users.RoleGuest, Grants: []share.InviteGrant{{Scope: share.GrantLibrary, Target: e.lib.ID}}})
 
 	owner := e.get(e.owner, "/share").Body.String()
@@ -264,14 +265,14 @@ func TestSharePageLists(t *testing.T) {
 			t.Errorf("%s is listed", e.sharepageName(id))
 		}
 	}
-	if !strings.Contains(owner, "3 people · 3 invites waiting") || !strings.Contains(owner, "Ana") || !strings.Contains(owner, "Admin link") {
+	if !strings.Contains(owner, "3 people · 3 invites waiting") || !strings.Contains(owner, "Ana Paz") || !strings.Contains(owner, "Admin link") {
 		t.Errorf("owner subtitle or admin invite missing")
 	}
-	if !strings.Contains(owner, "Ines · hasn&#39;t opened it yet") || !strings.Contains(owner, `Link to &#34;`+e.books[1].Title+`&#34; · works until you stop it`) {
+	if !strings.Contains(owner, "Ines Sol · hasn&#39;t opened it yet") || !strings.Contains(owner, `Link to &#34;`+e.books[1].Title+`&#34; · works until you stop it`) {
 		t.Error("pending lines")
 	}
 	adm := e.get(e.admin, "/share").Body.String()
-	if strings.Contains(adm, "Ana") || !strings.Contains(adm, "2 invites waiting") {
+	if strings.Contains(adm, "Ana Paz") || !strings.Contains(adm, "2 invites waiting") {
 		t.Error("an admin sees the admin invite")
 	}
 	// a book's page lists the people and invites that open it, and has the book chosen
@@ -281,7 +282,7 @@ func TestSharePageLists(t *testing.T) {
 			t.Errorf("%s is missing from the book's list", e.sharepageName(id))
 		}
 	}
-	if strings.Contains(page, `aria-label="Stop sharing with `+e.sharepageName(b)+`"`) || strings.Contains(page, "Ines") || strings.Contains(page, "Ana") || !strings.Contains(page, "Lib · hasn") {
+	if strings.Contains(page, `aria-label="Stop sharing with `+e.sharepageName(b)+`"`) || strings.Contains(page, "Ines Sol") || strings.Contains(page, "Ana Paz") || !strings.Contains(page, "Lib · hasn") {
 		t.Error("the book's list is not narrowed to the book")
 	}
 	if !strings.Contains(page, `value="book" checked`) || !strings.Contains(page, `name="book" value="`+e.books[0].ID+`"`) || !strings.Contains(page, e.books[0].Title) {
