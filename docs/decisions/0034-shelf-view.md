@@ -42,3 +42,7 @@ Amended by the lead (2026-11-08): the view is kept per person as `library.view` 
 
 ## Addendum (2026-11-11): rows fill to the edge
 The Library's wrapped shelf sits in a sideways scroller (`.ts-shelf-run`) and the list is one widest book wider than it, so a row that wraps is always filled past the visible right edge and its gap is off screen; a small scroll shows the last book whole. Pure CSS, the page never scrolls sideways, and "Show more" stays centred in the visible width. Home's single row is unchanged. A shelf with a single short row still scrolls sideways by up to one widest book. CSS budgets rose 1 KiB.
+
+## Addendum (2026-11-11, later the same day): no sideways scroll, rows stretch instead
+The operator tried the scroller on a phone: all the rows moved together and it felt unnatural. It is replaced. A row still holds as many books as fit, and the books of a full row now share the room left over (`flex: 1 0 auto`), each at most 2.25rem thicker (`--spine-grow`), so every full row ends exactly at the edge and nothing scrolls sideways. The last row is not stretched at all (operator, same day: a stretched last book looks distorted and a gap after the last book is natural): an empty `::after` item with a very large grow factor takes that row's spare room, and "Show more" is ordered after it. The CSS budgets rise by 512 B for it. `.ts-shelf-run` and its wrapper are gone; Home's single row is unchanged. Cost: a book's thickness is no longer exactly its length within a row, only close to it.
+

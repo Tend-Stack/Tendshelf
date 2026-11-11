@@ -52,7 +52,9 @@ const shelfviewProbe = `(() => {
   for (const li of slots) {
     const r = li.getBoundingClientRect();
     const step = Number((li.className.match(/ts-spine--w(\d+)/) || [])[1]);
-    if (Math.abs(r.width - (44 + (step - 1) * inc)) > 0.5) out.badWidth.push([li.textContent.trim().slice(0, 20), step, r.width]);
+    // A Library row is filled to its edge, so a spine may be up to 36 px thicker than its step.
+    const own = 44 + (step - 1) * inc;
+    if (r.width < own - 0.5 || r.width > own + 36.5) out.badWidth.push([li.textContent.trim().slice(0, 20), step, r.width]);
     const a = li.querySelector("a.ts-spine").getBoundingClientRect();
     if (a.width < 43.99 || a.height < 43.99) out.small.push([a.width, a.height]);
     const rel = r.bottom - box.top - zone;
@@ -267,7 +269,8 @@ func TestShelfViewHomeBrowser(t *testing.T) {
 		for href, hw := range onHome {
 			if lw, ok := onShelf[href]; ok {
 				same++
-				if math.Abs(lw-hw) > 0.5 {
+				// The Library fills its rows, so a spine there may be up to 36 px thicker than on Home, never thinner.
+				if lw < hw-0.5 || lw > hw+36.5 {
 					t.Errorf("%d px: %s is %.1f px on Home and %.1f px on the Library", w, href, hw, lw)
 				}
 			}
@@ -280,30 +283,31 @@ func TestShelfViewHomeBrowser(t *testing.T) {
 	}
 }
 
-// shelfviewFillProbe measures the filled rows of the wrapped shelf inside its scroller (.ts-shelf-run).
+// shelfviewFillProbe measures the rows of the Library's wrapped shelf: where each row ends, how far each book
+// grew past its own thickness, and whether anything scrolls sideways.
 const shelfviewFillProbe = `(() => {
-  const run = document.querySelector(".ts-shelf-run");
-  const ul = run.querySelector("ul#library-grid");
-  const edge = run.getBoundingClientRect().right;
+  const ul = document.querySelector("ul#library-grid");
+  const box = ul.getBoundingClientRect();
   const rows = new Map();
+  const lastGrown = new Map();
+  let grown = 0;
   for (const li of ul.querySelectorAll(":scope > li.ts-shelf__slot")) {
     const r = li.getBoundingClientRect();
     const key = Math.round(r.bottom);
     rows.set(key, Math.max(rows.get(key) || 0, r.right));
+    const cs = getComputedStyle(li);
+    const grew = r.width - (parseFloat(cs.maxWidth) - 36);
+    grown = Math.max(grown, grew);
+    lastGrown.set(key, Math.max(lastGrown.get(key) || 0, grew));
   }
   const keys = Array.from(rows.keys()).sort((a, b) => a - b);
-  const more = ul.querySelector(".ts-shelf__more > a");
-  let moreOff = null;
-  if (more) {
-    const m = more.getBoundingClientRect();
-    moreOff = (m.left + m.right) / 2 - (run.getBoundingClientRect().left + run.clientWidth / 2);
-  }
-  return { edge, rights: keys.map((k) => rows.get(k)), extra: run.scrollWidth - run.clientWidth,
-    page: document.documentElement.scrollWidth - document.documentElement.clientWidth, moreOff, run: run.clientWidth };
+  return { last: lastGrown.get(keys[keys.length - 1]), edge: box.right, rights: keys.map((k) => rows.get(k)), grown, list: ul.scrollWidth - ul.clientWidth,
+    page: document.documentElement.scrollWidth - document.documentElement.clientWidth };
 })()`
 
-// TestShelfViewFillBrowser: every row but the last is filled to the scroller's right edge, the sideways
-// scroll is at most one widest book, the page never scrolls sideways, and "Show more" stays centred.
+// TestShelfViewFillBrowser: every row but the last ends exactly at the shelf's right edge, no book grows by more
+// than --spine-grow (2.25rem), the books of the last row are not stretched at all, and neither the shelf nor the
+// page scrolls sideways.
 func TestShelfViewFillBrowser(t *testing.T) {
 	base := shelfviewApp(t)
 	b := chromium(t)
@@ -312,47 +316,30 @@ func TestShelfViewFillBrowser(t *testing.T) {
 		tab.Navigate(base + "/libraries?view=shelf")
 		tab.WaitFor(`document.querySelectorAll("ul#library-grid > li.ts-shelf__slot").length >= 48`, 10*time.Second)
 		var s struct {
-			Edge    float64   `json:"edge"`
-			Rights  []float64 `json:"rights"`
-			Extra   float64   `json:"extra"`
-			Page    float64   `json:"page"`
-			MoreOff *float64  `json:"moreOff"`
+			Edge   float64   `json:"edge"`
+			Rights []float64 `json:"rights"`
+			Grown  float64   `json:"grown"`
+			Last   float64   `json:"last"`
+			List   float64   `json:"list"`
+			Page   float64   `json:"page"`
 		}
 		tab.Eval(shelfviewFillProbe, &s)
-		inc := 4.8
-		if w >= 1280 {
-			inc = 6.4
-		} else if w >= 768 {
-			inc = 5.6
-		}
-		widest := 44 + 11*inc
 		if len(s.Rights) < 3 {
 			t.Errorf("%d px: only %d rows", w, len(s.Rights))
 		}
 		for i := 0; i < len(s.Rights)-1; i++ {
-			if s.Rights[i] < s.Edge-0.5 {
-				t.Errorf("%d px: row %d ends at %.1f, short of the scroller edge %.1f", w, i, s.Rights[i], s.Edge)
+			if math.Abs(s.Rights[i]-s.Edge) > 0.5 {
+				t.Errorf("%d px: row %d ends at %.1f, not at the shelf edge %.1f", w, i, s.Rights[i], s.Edge)
 			}
 		}
-		if s.Extra > widest+1 {
-			t.Errorf("%d px: the scroller runs %.1f px sideways, more than one widest book (%.1f)", w, s.Extra, widest)
+		if s.Grown > 36.5 {
+			t.Errorf("%d px: a book grew by %.1f px, more than 36", w, s.Grown)
 		}
-		if s.Page > 0 {
-			t.Errorf("%d px: the page scrolls sideways by %.0f px", w, s.Page)
+		if s.Last > 0.5 {
+			t.Errorf("%d px: a book of the last row is stretched by %.1f px", w, s.Last)
 		}
-		if s.MoreOff == nil {
-			t.Errorf("%d px: no Show more link", w)
-		} else if math.Abs(*s.MoreOff) > 1 {
-			t.Errorf("%d px: Show more is %.1f px off the visible centre", w, *s.MoreOff)
-		}
-		// Scrolled all the way right, the page still does not move and the link stays centred.
-		tab.Eval(`document.querySelector(".ts-shelf-run").scrollLeft = 9999`, nil)
-		tab.Eval(shelfviewFillProbe, &s)
-		if s.MoreOff != nil && math.Abs(*s.MoreOff) > 1 {
-			t.Errorf("%d px: scrolled right, Show more is %.1f px off centre", w, *s.MoreOff)
-		}
-		if s.Page > 0 {
-			t.Errorf("%d px: scrolled right, the page scrolls sideways by %.0f px", w, s.Page)
+		if s.List > 0 || s.Page > 0 {
+			t.Errorf("%d px: sideways scroll, shelf %.0f px, page %.0f px", w, s.List, s.Page)
 		}
 		tab.ScreenshotFull(filepath.Join(visualDir(t, "chromium"), fmt.Sprintf("shelf-fill-%d.png", w)))
 		tab.Close()

@@ -20,16 +20,15 @@
   background-size: 100% calc(var(--shelf-zone) + var(--shelf-plank) + var(--shelf-air)); background-repeat: repeat-y;
 }
 .ts-shelf--wrap { flex-wrap: wrap; row-gap: calc(var(--shelf-plank) + var(--shelf-air)); }
-/* The Library's shelf runs one widest book past the right edge of its scroller (.ts-shelf-run). A row wraps only when the next book
-   does not fit, so every wrapped row is filled to at least the visible edge: the empty gap lies off screen and the last book of a row
-   is at most partly cut. A small sideways scroll shows it whole; all rows scroll together and the page itself never does.
-   The start padding keeps the first book's focus ring from being clipped; the negative margin gives it back. */
-.ts-shelf-run { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; container-type: inline-size; padding-inline-start: var(--space-4); margin-inline-start: calc(-1 * var(--space-4)); }
-.ts-shelf-run > .ts-shelf--wrap { width: calc(100% + var(--size-tap) + 11 * var(--spine-w-inc)); }
-/* "Show more" fills the wider list, so its link stays put at the middle of what is visible while the shelf scrolls. Sticky offsets count the
-   scroller's padding, hence the negative left. */
-.ts-shelf-run .ts-shelf__more { justify-content: flex-start; }
-.ts-shelf-run .ts-shelf__more > .ts-more { position: sticky; left: calc(-1 * var(--space-4)); box-sizing: border-box; width: calc(100cqi + var(--space-4)); margin-inline-start: calc(-1 * var(--space-4)); }
+/* In the Library every full row is filled edge to edge: a row holds as many books as fit, and they share the room left over, each a
+   little thicker (by at most --spine-grow), so there is no gap at the end and nothing scrolls sideways. */
+.ts-shelf--wrap { --spine-grow: 2.25rem; }
+.ts-shelf--wrap > .ts-shelf__slot { flex: 1 0 auto; max-width: calc(var(--size-tap) + var(--w) * var(--spine-w-inc) + var(--spine-grow)); }
+/* The last row is not stretched: its books keep their own thickness and stand at the start of the shelf, and the gap after the last
+   book is natural. This empty item sits after the last book and takes all the room that row has left, so the books get none. It has
+   no width of its own, so it always fits on the last row and never starts a row itself. "Show more" comes after it. */
+.ts-shelf--wrap::after { content: ""; flex: 100000 0 0; height: 0; }
+.ts-shelf--wrap > .ts-shelf__more { order: 1; }
 /* Home's row runs to the edge and scrolls, so a book cut off at the end says there are more. The thin bar is for a mouse with no sideways wheel. */
 .ts-shelf--scroll { margin-top: var(--space-8); padding-inline: var(--space-4); overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .ts-shelf__slot { --book-h: calc(var(--spine-h-min) + var(--h) * var(--spine-h-inc)); flex: none; width: calc(var(--size-tap) + var(--w) * var(--spine-w-inc)); height: var(--book-h); margin-top: calc(var(--shelf-zone) - var(--book-h)); }

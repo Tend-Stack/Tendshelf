@@ -440,11 +440,9 @@ templ Library(v LibraryView) {
 				@Empty(*v.Empty)
 			} else {
 				if v.View == "shelf" {
-					<div class="ts-shelf-run">
-						<ul id="library-grid" class="ts-lib-items ts-shelf ts-shelf--wrap" role="list">
-							@libraryItems(v)
-						</ul>
-					</div>
+					<ul id="library-grid" class="ts-lib-items ts-shelf ts-shelf--wrap" role="list">
+						@libraryItems(v)
+					</ul>
 				} else {
 					<div
 						id="library-grid"
