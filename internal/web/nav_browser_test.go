@@ -55,6 +55,8 @@ func TestNavRailBrowser(t *testing.T) {
 	}
 
 	// The toggle stays fully visible above the player bar while a book plays.
+	// The sidebar's foot eases up as the bar slides in, so wait for it to settle first.
+	tab.WaitFor(`document.getElementById("nav-toggle").getBoundingClientRect().bottom < document.getElementById("player").getBoundingClientRect().top`, 3*time.Second)
 	var toggleBottom, barTop float64
 	tab.Eval(`document.getElementById("nav-toggle").getBoundingClientRect().bottom`, &toggleBottom)
 	tab.Eval(`document.getElementById("player").getBoundingClientRect().top`, &barTop)

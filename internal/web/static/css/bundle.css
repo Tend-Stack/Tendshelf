@@ -568,9 +568,12 @@ html[data-text-size="large"] .ts-player-bar__item:nth-child(3) { grid-column: 1 
 
 
 /* Tendshelf additions (P0b): app shell. Tokens only. */
-/* overflow-y: clip: a page that rises in (ts-rise-in) sits a few px below its place for a moment; on a page shorter than the
-   window that made the document scrollable and the sticky rail and sidebar moved with it. clip makes no scroll container. */
-.ts-shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; min-height: 100svh; max-width: var(--size-app-max); margin-inline: 0 auto; overflow-y: clip; }
+/* A page that rises in (ts-rise-in) sits a few px below its place for a moment; on a page shorter than the window that
+   made the document scrollable and the sticky rail and sidebar moved with it. So the shell clips its vertical overflow,
+   but only while the page is rising: at 200 % text the sidebar and reader are taller than the shell and must stay
+   reachable by scrolling (the accessibility audit's text-200-clip). clip makes no scroll container. */
+.ts-shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; min-height: 100svh; max-width: var(--size-app-max); margin-inline: 0 auto; }
+.ts-shell:has(#main.ts-entering) { overflow-y: clip; }
 .ts-main { box-sizing: border-box; min-width: 0; padding-inline: var(--space-20); padding-top: var(--space-24);
   padding-bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--space-16)); outline: none; }
 .ts-nav-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; will-change: transform; height: calc(var(--size-tab-bar) + env(safe-area-inset-bottom)); padding-bottom: calc(0.625rem + env(safe-area-inset-bottom)); }

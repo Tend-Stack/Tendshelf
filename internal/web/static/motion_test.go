@@ -156,7 +156,7 @@ func TestCSSBudget(t *testing.T) {
 	// 18.5 KB: the operator approved the raise on 2026-11-03 for the 2560 px app cap and the range-syntax
 	// breakpoints (18,563 bytes at the time).
 	// 19.5 KB: native feel (decision 0011), approved by the operator on 2026-11-03.
-	const coreBudget = 22*1024 + 64 // navigation count beside Podcasts and six phone tabs (podcasts P3, 2026-11-09): 22,323 B measured, row raised 320 B, reported, not squeezed; account chip and avatar tab (2026-11-08): 22,027 B measured, row raised 256 B, reported, not squeezed; chapter bar, logo sizes and the Add books row (2026-11-06): 21,873 B measured, reported, not squeezed; offline banner (operator, 2026-11-03: 19.75 KB); M3c B1 focus rings and B3 hit areas and large-text wrapping: 20.875 KB, operator approved 2026-11-04; +128 B for no scrollbars on touch screens (operator, 2026-11-04)
+	const coreBudget = 22*1024 + 320 // page-jump fixes (sidebar foot ease, scoped shell clip, scroll margin, 2026-11-11): 22,768 B measured, row raised 256 B, reported, not squeezed; navigation count beside Podcasts and six phone tabs (podcasts P3, 2026-11-09): 22,323 B measured, row raised 320 B, reported, not squeezed; account chip and avatar tab (2026-11-08): 22,027 B measured, row raised 256 B, reported, not squeezed; chapter bar, logo sizes and the Add books row (2026-11-06): 21,873 B measured, reported, not squeezed; offline banner (operator, 2026-11-03: 19.75 KB); M3c B1 focus rings and B3 hit areas and large-text wrapping: 20.875 KB, operator approved 2026-11-04; +128 B for no scrollbars on touch screens (operator, 2026-11-04)
 	if coreGzip > coreBudget {
 		t.Errorf("core CSS %d gzip bytes, budget %d (raw %d)", coreGzip, coreBudget, coreRaw)
 	}
