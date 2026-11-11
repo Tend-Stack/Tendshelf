@@ -55,6 +55,13 @@
 }
 .ts-podhit__link:focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
 .ts-podhit__link .ts-row__text { min-width: 0; flex: 1; }
+/* Opening a show waits for its feed, which can take a few seconds. While the request runs the line under the title says so and the
+   picture dims, so the tap is seen to have worked. The words carry it; the dimming alone would not. */
+.ts-podhit__busy { display: none; }
+.ts-podhit__open.htmx-request .ts-podhit__busy { display: block; }
+.ts-podhit__open.htmx-request .ts-podhit__sub { display: none; }
+.ts-podhit__open.htmx-request .ts-podhit__link { cursor: progress; }
+.ts-podhit__open.htmx-request .ts-cover { opacity: 0.6; }
 .ts-podshow__hint { margin: var(--space-8) 0 0; }
 /* Play and Save stack, so a result row keeps one line of controls even at 200 % text on a phone. */
 .ts-podhit__actions { display: flex; flex-direction: column; gap: var(--space-8); flex: none; }

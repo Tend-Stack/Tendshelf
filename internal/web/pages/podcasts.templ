@@ -230,8 +230,9 @@ templ PodHitRow(h PodHit, csrf, followLabel, followAria string) {
 				<span class="ts-row__text">
 					<span class="ts-row__title ts-clamp-2">{ h.Title }</span>
 					if h.Subtitle != "" {
-						<span class="ts-row__meta ts-truncate">{ h.Subtitle }</span>
+						<span class="ts-row__meta ts-truncate ts-podhit__sub">{ h.Subtitle }</span>
 					}
+					<span class="ts-row__meta ts-podhit__busy" role="status">Opening…</span>
 				</span>
 			</button>
 		</form>
