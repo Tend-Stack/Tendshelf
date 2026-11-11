@@ -85,9 +85,15 @@ document.addEventListener("change", (event) => {
 // starts. htmx:after:swap waits for the whole swap to finish (about 270 ms later in Firefox,
 // measured): by then the page had been drawn in place once, then dropped to opacity 0 and 4 px low
 // and rose again, which looked like the whole page blinking and jumping after it had loaded.
+//
+// The class goes on in the next animation frame, not at once: right after settling, htmx scrolls a boosted
+// swap's target to the top of the window (scrollIntoView, its default "show:top"), and it measures the
+// target where the animation's first frame puts it, 4 px low. That left every tall page scrolled by 4 px,
+// its heading 4 px too high. A frame callback still runs before the first paint of the new page.
 document.addEventListener("htmx:before:settle", (event) => {
   const main = document.getElementById("main");
-  if (main && event.target === main) main.classList.add("ts-entering");
+  if (!main || event.target !== main) return;
+  requestAnimationFrame(() => main.classList.add("ts-entering"));
 });
 
 // Sheets live in #sheet, outside #main. Opening one (a swap into #sheet, or a full page load with

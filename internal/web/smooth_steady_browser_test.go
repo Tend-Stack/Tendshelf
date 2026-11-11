@@ -3,9 +3,11 @@
 package web
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
 	"github.com/Tend-Stack/tendshelf/internal/testutil/cdp"
 )
 
@@ -107,6 +109,46 @@ func TestBookPageDoesNotJump(t *testing.T) {
 			if len(values) != 1 {
 				t.Errorf("%d px: %s moved after the page was painted, it went through %v", width, key, values)
 			}
+		}
+	}
+}
+
+// TestTallPageStartsAtTop: moving to a page taller than the window by a navigation click leaves the window at
+// its top. The page-enter animation starts 4 px low, and htmx scrolls a boosted swap's target into view just
+// after settling, so every tall page once ended at scrollY 4 with the heading 4 px too high. Going back must
+// still return to the earlier scroll position.
+func TestTallPageStartsAtTop(t *testing.T) {
+	e := nowPanelEnv(t)
+	for i := 0; i < 30; i++ {
+		librarytest.AddBook(t, e.a.lib, e.folder, librarytest.BookSpec{Title: fmt.Sprintf("Tall Book %02d", i), Authors: []string{"Imogen Hale"},
+			DurationMs: 3_600_000, AddedAt: 1_700_000_000_000 + int64(i)})
+	}
+	for _, width := range []int{390, 1440} {
+		tab := fullpOpen(t, e, width, 900, false)
+		for _, path := range []string{"/libraries", "/me"} {
+			got := steadyDistinct(t, tab, path, `(() => {
+			  if (location.pathname !== "`+path+`") return {};
+			  const heading = document.querySelector("#main h1");
+			  return {scroll: Math.round(scrollY), height: document.documentElement.scrollHeight, heading: heading ? Math.round(heading.getBoundingClientRect().top) : null};
+			})()`)
+			if len(got["scroll"]) != 1 || got["scroll"][0] != 0 {
+				t.Errorf("%d px %s: scrollY went through %v, want 0 throughout", width, path, got["scroll"])
+			}
+			if len(got["height"]) > 0 && path == "/libraries" && got["height"][len(got["height"])-1] < 1100 {
+				t.Errorf("%d px %s: the page is only %v px tall, not a tall page", width, path, got["height"])
+			}
+		}
+		// Back restores the scroll position of the page left: scroll Libraries, leave, come back.
+		var y float64
+		steadyDistinct(t, tab, "/libraries", `({})`)
+		tab.Eval(`window.scrollTo(0, 300)`, nil)
+		time.Sleep(300 * time.Millisecond)
+		steadyDistinct(t, tab, "/me", `({})`)
+		tab.Eval(`history.back()`, nil)
+		time.Sleep(1200 * time.Millisecond)
+		tab.Eval(`scrollY`, &y)
+		if y != 300 {
+			t.Errorf("%d px: back to Libraries restored scrollY %v, want 300", width, y)
 		}
 	}
 }
