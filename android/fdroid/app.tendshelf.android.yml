@@ -73,11 +73,20 @@ Builds:
     gradleprops:
       - tsVersion=2026.8.1
 
+  - versionName: 2026.9.0
+    versionCode: 202609000
+    commit: v2026.9.0
+    subdir: android/app
+    gradle:
+      - yes
+    gradleprops:
+      - tsVersion=2026.9.0
+
 # The SHA-256 of the operator's release certificate (docs/android.md). F-Droid accepts only APKs signed by it, which is
 # what lets a reproducible build be published with the developer's own signature.
 AllowedAPKSigningKeys: 221e61dc9644e5feb1a17b42e31d86c508a47c986aa0df6451cae203c6e0b6f2
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 2026.8.1
-CurrentVersionCode: 202608001
+CurrentVersion: 2026.9.0
+CurrentVersionCode: 202609000

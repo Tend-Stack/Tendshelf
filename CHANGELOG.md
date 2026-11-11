@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+## 2026.9.0
+
+Released 2026-11-11. Radio plays HLS stations and stations you have not saved, Podcasts and Radio get a first-use page and starter lists, chapters inside an episode's file show in the player, and pages stop shifting as they open. The Android app is the same as in 2026.8.1 apart from its version.
+
 ### Added
 
 - **Radio plays HLS stations.** Many public broadcasters publish only HLS. Add one by its address or pick it in search: the server reads the stream and plays it as ordinary audio, so the web player and the Android app need nothing new. Locked streams, video-only streams, recordings and sound formats Tendshelf can't play are refused with a plain reason when you add them.
