@@ -785,13 +785,22 @@ function askContinue(remote, onThere, onHere) {
 let shownCover = "";
 let coverTries = 0;
 let coverFailed = false;
+// The retry address that brought a station's picture after the first one failed; "" until that happens.
+let lateCover = "";
 const COVER_RETRY_MS = 4000;
 const COVER_RETRIES = 4;
 
 listen(controls.cover, "load", () => {
+  const late = coverFailed;
   coverFailed = false;
   controls.cover.hidden = !book || !book.cover;
   if (book) showLogoTile(controls["cover-tile"], controls.cover.hidden);
+  // The lock screen asked for the picture when it was not kept yet and got nothing. Now that a retry
+  // has it, the same details are given again with the address that answered, so it asks once more.
+  if (late && book && book.cover) {
+    lateCover = controls.cover.src;
+    updateMediaSession();
+  }
 });
 
 listen(controls.cover, "error", () => {
@@ -849,6 +858,7 @@ function render(force) {
     shownCover = book.cover;
     coverTries = 0;
     coverFailed = false;
+    lateCover = "";
     controls.cover.src = book.cover;
   }
   controls.cover.hidden = !book.cover || coverFailed;
@@ -1012,7 +1022,7 @@ function updateMediaSession() {
         title: book.author || book.title, // the title playing now, else the station
         artist: book.title,
         album: msg("live"),
-        artwork: book.cover ? [{ src: book.cover, sizes: "512x512" }] : [],
+        artwork: book.cover ? [{ src: lateCover || book.cover, sizes: "512x512" }] : [],
       });
     } catch {
       // an unsupported field is skipped

@@ -271,3 +271,42 @@ func keepTestLogo(t *testing.T, w *radioWorld, id string) {
 		t.Fatal(err)
 	}
 }
+
+// TestRadioLateLogoBrowser: a station whose logo is not kept yet plays with the generated tile, and when the
+// picture arrives on a later try the bar draws it and the Media Session (the lock screen) is given it too.
+func TestRadioLateLogoBrowser(t *testing.T) {
+	b := chromium(t)
+	w, id, base := radioBrowserWorld(t, "Harbour FM")
+	if _, err := w.a.st.Writer().Exec(`UPDATE radio_stations SET art_url = ? WHERE id = ?`, w.fx.pub.URL("logo.test", "/x.png"), id); err != nil {
+		t.Fatal(err)
+	}
+	tab := b.NewTab(1440, 900, false, false)
+	tab.Navigate(base + "/radio")
+	tab.WaitFor(`window.tsPlayer !== undefined`, 10*time.Second)
+	playerClickSel(t, tab, `[data-ts-play="`+id+`"]`)
+	tab.WaitFor(`window.tsPlayer.state().playing && window.tsPlayer.state().itemKind === "radio"`, 15*time.Second)
+
+	// The first try answers 404: the tile stands in, and the Media Session names the address that failed.
+	tab.WaitFor(`document.querySelector("#player [data-ts-cover]").hidden && !document.querySelector("#player [data-ts-cover-tile]").hidden`, 10*time.Second)
+	var first string
+	tab.Eval(`(navigator.mediaSession.metadata.artwork[0] || {src: ""}).src`, &first)
+	if !strings.HasSuffix(first, "/radio/art/"+id+"?w=512") {
+		t.Fatalf("first artwork = %q", first)
+	}
+
+	keepTestLogo(t, w, id)
+	tab.WaitFor(`!document.querySelector("#player [data-ts-cover]").hidden && document.querySelector("#player [data-ts-cover]").naturalWidth > 0`, 12*time.Second)
+	var late struct {
+		Src      string `json:"src"`
+		Shown    string `json:"shown"`
+		TileGone bool   `json:"tileGone"`
+	}
+	tab.Eval(`({src: navigator.mediaSession.metadata.artwork[0].src, shown: document.querySelector("#player [data-ts-cover]").src,
+		tileGone: document.querySelector("#player [data-ts-cover-tile]").hidden})`, &late)
+	if late.Src != late.Shown || !strings.Contains(late.Src, "&r=") {
+		t.Errorf("the Media Session was not given the picture that arrived: artwork %q, shown %q", late.Src, late.Shown)
+	}
+	if !late.TileGone {
+		t.Error("the generated tile still shows over the picture")
+	}
+}
