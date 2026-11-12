@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -58,8 +59,14 @@ func tbBooks(e *ienv) int { return e.count(`SELECT count(*) FROM books`) }
 
 func TestTextBookCreated(t *testing.T) {
 	e := newIEnv(t, true)
-	var made []string
-	e.svc.OnBookCreated(func(_ context.Context, ids []string) { made = append(made, ids...) })
+	// The followers are told on the job's goroutine, so what they heard is read under a lock.
+	var madeMu sync.Mutex
+	var heard []string
+	e.svc.OnBookCreated(func(_ context.Context, ids []string) {
+		madeMu.Lock()
+		defer madeMu.Unlock()
+		heard = append(heard, ids...)
+	})
 	p := e.write("Solo/solo.epub", sampleEPUB(t, "A Solo Voyage"))
 	e.scan()
 	f := e.waitState(e.fileAt(p).ID)
@@ -77,6 +84,16 @@ func TestTextBookCreated(t *testing.T) {
 	b, err := e.repo.Book(bg, f.BookID)
 	if err != nil || b.Kind != library.BookText || b.Title != "A Solo Voyage" || b.RootPath != p || b.MissingSince != 0 {
 		t.Fatalf("book = %+v, %v", b, err)
+	}
+	// They are told after the book's row is written, so give that call a moment.
+	var made []string
+	for told := time.Now().Add(5 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		madeMu.Lock()
+		made = append([]string(nil), heard...)
+		madeMu.Unlock()
+		if len(made) > 0 || time.Now().After(told) {
+			break
+		}
 	}
 	if len(made) != 1 || made[0] != b.ID {
 		t.Errorf("followers heard %v, want [%s]", made, b.ID)
