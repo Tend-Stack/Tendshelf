@@ -112,20 +112,23 @@ func TestPlayerSwipeFollowsAndFades(t *testing.T) {
 func TestPlayerSwipeFlickCloses(t *testing.T) {
 	tab := swipeOpenPlaying(t, false)
 	x, y := swipeCentre(tab, "#player-full .ts-player__title")
-	// 100 px in about 40 ms is a flick although it is far short of a quarter of the screen.
-	send := func(typ string, y float64) {
+	// 100 px in 40 ms is a flick although it is far short of a quarter of the screen. Each event carries its own time, so the
+	// speed the page works out does not depend on how fast this machine delivers them (a loaded nightly runner on 2026-11-12
+	// took long enough between them to turn the flick into a slow drag).
+	began := float64(time.Now().UnixMilli()) / 1000
+	send := func(typ string, y float64, afterMs int) {
 		pts := []map[string]any{{"x": x, "y": y}}
 		if typ == "touchEnd" {
 			pts = []map[string]any{}
 		}
-		tab.Call("Input.dispatchTouchEvent", map[string]any{"type": typ, "touchPoints": pts}, nil)
+		tab.Call("Input.dispatchTouchEvent", map[string]any{"type": typ, "touchPoints": pts, "timestamp": began + float64(afterMs)/1000}, nil)
 	}
-	send("touchStart", y)
+	send("touchStart", y, 0)
 	for i := 1; i <= 4; i++ {
 		time.Sleep(8 * time.Millisecond)
-		send("touchMove", y+float64(i)*25)
+		send("touchMove", y+float64(i)*25, i*10)
 	}
-	send("touchEnd", y+100)
+	send("touchEnd", y+100, 40)
 	tab.WaitFor(`!`+fullpDialog+`.open`, 3*time.Second)
 }
 
