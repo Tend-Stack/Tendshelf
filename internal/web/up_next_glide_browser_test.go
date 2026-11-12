@@ -94,3 +94,44 @@ func TestUpNextRowsReducedMotionStepOnce(t *testing.T) {
 		t.Errorf("reduced motion: the moved row took %d positions (from %v), want 2 (before, after)", len(seen), first)
 	}
 }
+
+// TestUpNextRowsGlideInPanel: the same glide inside the Now playing panel's Up next tab on a wide screen, where
+// the list is swapped inside the open player and not on a page of its own.
+func TestUpNextRowsGlideInPanel(t *testing.T) {
+	for _, w := range []int{1280, 1920} {
+		e := nowPanelEnv(t)
+		for _, title := range []string{"Salt Road", "Harbour Dawn", "Harbour Night"} {
+			page, err := e.a.lib.ListBooks(t.Context(), bookAllScope, library.ListQuery{Title: title, Limit: 5})
+			if err != nil || len(page.Books) == 0 {
+				t.Fatalf("book %q: %v", title, err)
+			}
+			if _, err := e.a.lib.QueueAdd(t.Context(), e.ownerID, page.Books[0].ID, false); err != nil {
+				t.Fatal(err)
+			}
+		}
+		tab := fullpOpen(t, e, w, 900, false)
+		bmkeyPlay(t, tab, "[data-ts-toggle]")
+		fullpOpenPlayer(t, tab)
+		tab.WaitFor(`document.querySelector("#now-panel[data-book-id] .ts-np__desc") !== null`, 5*time.Second)
+		playerClickSel(t, tab, "#now-tab-queue")
+		tab.WaitFor(`document.querySelectorAll("#now-up-next .ts-upnext__item").length === 3`, 5*time.Second)
+		var ids []string
+		tab.Eval(`[...document.querySelectorAll("#now-up-next .ts-upnext__item")].map((li) => li.id)`, &ids)
+		frames := uqmMoveFirstDown(t, tab, ids)
+		first := frames[0][ids[0]]
+		last := frames[len(frames)-1][ids[0]]
+		if last <= first+1 {
+			t.Fatalf("%d px: the moved row ended at %v from %v, want lower", w, last, first)
+		}
+		mid := map[int]bool{}
+		for _, f := range frames {
+			if v, ok := f[ids[0]]; ok && v > first+1 && v < last-1 {
+				mid[int(v)] = true
+			}
+		}
+		if len(mid) < 3 {
+			t.Errorf("%d px: the moved row passed through %d intermediate positions, want a glide of at least 3", w, len(mid))
+		}
+		tab.Eval(`window.tsPlayer.pause()`, nil)
+	}
+}

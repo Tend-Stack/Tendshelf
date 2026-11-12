@@ -47,6 +47,64 @@ func npSlideTab(t *testing.T, reduced bool) *cdp.Tab {
 	return fullpOpen(t, playerApp(t), 1440, 900, reduced)
 }
 
+// TestNowPanelSlidesAtEdges: the slide also holds at the narrowest width that has the side panel (1280 px) and
+// on a full HD screen (1920 px): the panel fades and moves in, never past its place, with no sideways scrollbar,
+// and is gone after it slid out.
+func TestNowPanelSlidesAtEdges(t *testing.T) {
+	for _, w := range []int{1280, 1920} {
+		tab := fullpOpen(t, playerApp(t), w, 900, false)
+		tab.Eval(npSlideRecord, nil)
+		playerClickSel(t, tab, "[data-ts-open]")
+		var left, op []float64
+		for _, f := range npSlideFrames(tab) {
+			if f.Wide {
+				t.Fatalf("%d px: a horizontal scrollbar appeared while the panel slid in", w)
+			}
+			if f.Open {
+				left, op = append(left, f.Left), append(op, f.Opacity)
+			}
+		}
+		if len(left) < 3 {
+			t.Fatalf("%d px: only %d frames with the panel open", w, len(left))
+		}
+		if npSlideDistinct(left) < 3 || npSlideDistinct(op) < 3 {
+			t.Errorf("%d px: the panel took %d places and %d opacities, want a slide and a fade of at least 3", w, npSlideDistinct(left), npSlideDistinct(op))
+		}
+		end := left[len(left)-1]
+		for _, l := range left {
+			if l < end-0.01 {
+				t.Errorf("%d px: the panel went past its place: left %v, ends at %v", w, l, end)
+			}
+		}
+		if op[len(op)-1] != 1 {
+			t.Errorf("%d px: ends at opacity %v, want 1", w, op[len(op)-1])
+		}
+		if right := end + 400; right > float64(w)+0.5 {
+			t.Errorf("%d px: the panel ends at left %v, so its 25rem reaches past the window", w, end)
+		}
+
+		tab.Eval(npSlideRecord, nil)
+		playerClickSel(t, tab, "#player-full [data-ts-close-player]")
+		var mid int
+		var last npSlideSample
+		for _, f := range npSlideFrames(tab) {
+			if f.Wide {
+				t.Fatalf("%d px: a horizontal scrollbar appeared while the panel slid out", w)
+			}
+			if !f.Open && f.Shown && f.Opacity > 0 && f.Opacity < 1 {
+				mid++
+			}
+			last = f
+		}
+		if mid < 3 {
+			t.Errorf("%d px: only %d frames of the panel on its way out, want at least 3", w, mid)
+		}
+		if last.Shown {
+			t.Errorf("%d px: the panel is still displayed after it slid out", w)
+		}
+	}
+}
+
 func npSlideDistinct(vals []float64) int {
 	seen := map[int]bool{}
 	for _, v := range vals {
