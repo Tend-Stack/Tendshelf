@@ -215,6 +215,16 @@ func (s *server) signInPersonView(r *http.Request, t users.User, v *pages.AdminU
 			v.SSOLine = fmt.Sprintf(ssoPersonLinked, cfg.Name)
 		}
 	}
+	keys, err := s.auth.Passkeys(ctx, t.ID)
+	if err != nil {
+		return err
+	}
+	if v.Passkeys = len(keys); v.Passkeys > 0 {
+		v.PasskeysLine, v.PasskeysRemove = countText(v.Passkeys, passkeyAdminOne, passkeyAdminCount), passkeyAdminRemove
+	}
+	if r.URL.Query().Get("passkeys") == "removed" {
+		v.PasskeysBanner = passkeyAdminDone
+	}
 	name := personName(t)
 	v.SignInLabel, v.SignInHelp = signInMake, fmt.Sprintf(signInMakeHelp, name)
 	exp, ok, err := s.auth.PendingSignInLink(ctx, t.ID)

@@ -132,6 +132,14 @@ func (s *server) profileView(r *http.Request) (pages.ProfileView, error) {
 		v.SSOLabel, v.SSOCaption = fmt.Sprintf(ssoMenu, cfg.Name), ssoMenuCaption
 	}
 
+	if shellFrom(r) == "" {
+		keys, err := s.auth.Passkeys(ctx, u.ID)
+		if err != nil {
+			return v, err
+		}
+		v.PasskeysCaption = passkeyCaption(len(keys))
+	}
+
 	set, err := s.users.LoadSettings(ctx, u.ID)
 	if err != nil {
 		return v, err
@@ -307,6 +315,9 @@ func (s *server) getPassword(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) passwordPage(w http.ResponseWriter, r *http.Request, status int, v pages.PasswordView) {
 	v.CSRF = s.csrf.TokenFrom(r.Context())
+	if shellFrom(r) == "" {
+		v.PasskeyNote = passkeyPasswordNote
+	}
 	s.prefsPage(w, r, status, "Change password", "profile", "account", false, pages.Password(v), nil, pages.PasswordStyles...)
 }
 

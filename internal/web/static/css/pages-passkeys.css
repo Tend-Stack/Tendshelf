@@ -1,0 +1,21 @@
+/* The Passkeys page under Account (decision 0041). Tokens only; every rule works in all four themes. */
+
+.ts-passkeys__lead, .ts-passkeys__note { max-width: 40rem; margin: 0 0 var(--space-16); }
+.ts-passkeys__list { list-style: none; margin: 0 0 var(--space-24); padding: 0; }
+.ts-passkeys__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-16); }
+.ts-passkeys__row + .ts-passkeys__row { border-top: 1px solid var(--line); }
+.ts-passkeys__text { flex: 1 1 14rem; min-width: 0; }
+.ts-passkeys__name { margin: 0; overflow-wrap: anywhere; }
+.ts-passkeys__meta, .ts-passkeys__warn { margin: var(--space-4) 0 0; color: var(--ink-muted); }
+/* The copied warning is plain words in the strong ink, so it never relies on colour. */
+.ts-passkeys__warn { color: var(--ink); font-weight: 600; }
+.ts-passkeys__add { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-passkeys__add h2 { margin: 0; }
+.ts-passkeys__form { display: flex; flex-direction: column; gap: var(--space-16); }
+.ts-passkeys__form[hidden], .ts-passkeys__form [hidden], .ts-passkeys__note[hidden] { display: none; }
+.ts-passkeys__form .ts-btn { align-self: flex-start; min-height: 2.75rem; }
+.ts-passkeys__row .ts-btn { min-height: 2.75rem; }
+.ts-passkeys__status { margin: 0; color: var(--ink-muted); }
+.ts-passkeys__status:empty { display: none; }
+.ts-passkeys .ts-me__title { margin: 0 0 var(--space-16); }
+.ts-passkeys .ts-banner, .ts-passkeys .ts-form__error { margin: 0 0 var(--space-16); }

@@ -83,9 +83,10 @@ const pagePrefix = "css/pages-"
 // pages-invite, pages-folders and pages-upload join them for Home's row of three covers (three covers, three requests).
 // pages-onboard joins them for the same row: it dresses sign-in, setup and password pages, which a signed-in page never leads to.
 // pages-sso joins them (it dresses the sign-in provider settings and the Account sign-in page, so no other page may gain a request for it).
+// pages-passkeys joins them (decision 0041): it dresses the Passkeys page only.
 // pages-podcasts joins them too: podcasts are off until the owner turns them on, and the navigation count lives in bundle.css.
 // pages-chapters, pages-appkeys, pages-timeline and pages-highlights join them: each belongs to one rarely opened page, and no page may gain a request for it.
-var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css", "css/pages-email.css", "css/pages-invite.css", "css/pages-folders.css", "css/pages-upload.css", "css/pages-onboard.css", "css/pages-chapters.css", "css/pages-appkeys.css", "css/pages-timeline.css", "css/pages-highlights.css", "css/pages-podcasts.css", "css/pages-sso.css"}
+var noPrefetch = []string{"css/pages-words.css", "css/pages-desktop.css", "css/pages-email.css", "css/pages-invite.css", "css/pages-folders.css", "css/pages-upload.css", "css/pages-onboard.css", "css/pages-chapters.css", "css/pages-appkeys.css", "css/pages-timeline.css", "css/pages-highlights.css", "css/pages-podcasts.css", "css/pages-sso.css", "css/pages-passkeys.css"}
 
 // withPrefetch returns p with the page stylesheets it does not link itself, so the head can ask the
 // browser to fetch them early: the first boosted visit to another page then finds them cached.

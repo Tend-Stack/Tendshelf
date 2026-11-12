@@ -13,6 +13,20 @@ type LoginView struct {
 	// SSOLabel ("Sign in with Authelia") and SSOHref (/login/oidc, with next) show the provider button
 	// above the form when sign-in with a provider is on; SSOOr is the caption between it and the form.
 	SSOLabel, SSOHref, SSOOr string
+	// PasskeyModule is the hashed address of js/passkey.js. It is set only where passkeys are offered
+	// (a secure address, a name host, not a shell window); the button then sits hidden until the
+	// script has checked the browser can use passkeys. PasskeyLabel is its text, PasskeyMessages the
+	// words the script shows.
+	PasskeyModule, PasskeyLabel string
+	PasskeyMessages             []UploadMsg
+}
+
+func (v LoginView) passkeyAttrs() templ.Attributes {
+	a := templ.Attributes{"data-ts-module": v.PasskeyModule, "data-ts-passkey": "signin", "data-ts-csrf": v.CSRF, "data-ts-next": v.Next}
+	for _, m := range v.PasskeyMessages {
+		a["data-ts-msg-"+m.Key] = m.Text
+	}
+	return a
 }
 
 // Login is the sign-in page.
@@ -20,6 +34,12 @@ templ Login(v LoginView) {
 	@components.Brand()
 	<h1 class="title-1 ts-frame__title">Sign in</h1>
 	<p class="body-lg ts-frame__lead">Welcome back.</p>
+	if v.PasskeyModule != "" {
+		<div class="ts-passkey-login" hidden { v.passkeyAttrs()... }>
+			<button type="button" class="ts-btn ts-btn--secondary ts-btn--lg ts-btn--block" data-ts-passkey-button>{ v.PasskeyLabel }</button>
+			<p class="caption ts-passkey-login__status" role="status" aria-live="polite" data-ts-passkey-status></p>
+		</div>
+	}
 	if v.SSOHref != "" {
 		<a class="ts-btn ts-btn--secondary ts-btn--lg ts-btn--block ts-sso__btn" href={ templ.SafeURL(v.SSOHref) } hx-boost="false" title={ v.SSOLabel }>
 			<span class="ts-sso__label">{ v.SSOLabel }</span>

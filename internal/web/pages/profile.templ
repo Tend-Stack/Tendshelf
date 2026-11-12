@@ -55,6 +55,8 @@ type ProfileView struct {
 	ServerName string
 	// SSOLabel is "Sign in with Authelia" when sign-in with a provider is on, else empty; SSOCaption its caption.
 	SSOLabel, SSOCaption string
+	// PasskeysCaption is the caption of the "Passkeys" row ("None yet", "2 passkeys"); empty hides the row (a shell window).
+	PasskeysCaption string
 	// Stats is the "Your listening" panel, at the head of the side column.
 	Stats components.ListeningStatsView
 	// Banner is the line after a password change, or empty.
@@ -131,6 +133,9 @@ templ profileMenus(v ProfileView) {
 						@profileMenuLink("/welcome", "Keep your place", "Add a password so you can sign in elsewhere")
 					} else {
 						@profileMenuLink("/me/password", "Change password", "")
+					}
+					if v.PasskeysCaption != "" {
+						@profileMenuLink("/me/passkeys", "Passkeys", v.PasskeysCaption)
 					}
 					if v.SSOLabel != "" {
 						@profileMenuLink("/me/sso", v.SSOLabel, v.SSOCaption)

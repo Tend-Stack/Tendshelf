@@ -69,6 +69,13 @@ func (s *server) oidcCookieFor(r *http.Request, value string, maxAge int) *http.
 // ssoLoginView is the sign-in page with the provider button when it is on.
 func (s *server) ssoLoginView(r *http.Request, next string) pages.LoginView {
 	v := pages.LoginView{CSRF: s.csrf.TokenFrom(r.Context()), Next: next, NoPassword: loginNoPassword}
+	if _, _, reason := s.passkeyHere(r); reason == passkeyOK {
+		v.PasskeyModule, v.PasskeyLabel = s.assets.URL("js/passkey.js"), passkeyLoginButton
+		v.PasskeyMessages = []pages.UploadMsg{
+			{Key: "waiting", Text: passkeyWaiting}, {Key: "cancelled", Text: passkeyLoginCancelled},
+			{Key: "failed", Text: passkeyLoginFailed}, {Key: "unsupported", Text: passkeyNoSupport},
+		}
+	}
 	if cfg, on := s.auth.OIDCEnabled(r.Context()); on {
 		href := oidcStartPath
 		if next != "" && next != "/" {

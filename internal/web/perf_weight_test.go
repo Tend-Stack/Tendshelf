@@ -51,6 +51,8 @@ var weightBudgets = map[string]weightBudget{
 	// 320,512 B (admin-users 326,656 B, 325,815 measured). Nothing was squeezed; reported.
 	// 2026-11-11, phone motion 1 (player sheet leave, Up next glide): JS 214,808 B measured, 1,816 B over; raised 2 KiB to
 	// 215,040 B on the pages that were 212,992 B (reader 280,325 B measured, raised 2 KiB to 280,576 B). Nothing was squeezed; reported.
+	// 2026-11-12, passkeys (decision 0041): the sign-in button rules join pages-onboard.css; admin-users CSS 327,359 B measured,
+	// 191 B over; raised 1 KiB to 328,192 B. Nothing was squeezed; reported.
 	// 2026-11-11, a station's late logo reaches the lock screen (player.js): JS 215,298 B measured, 258 B over; raised 512 B to
 	// 215,552 B (reader 280,815 B measured, raised 512 B to 281,088 B), comments intact, reported.
 	"home":        {HTML: 71680, CSS: 321024, JS: 215552, Font: 1075200, Img: 38912, Requests: 63}, // Shelf spines (decision 0034): HTML raised to 71,680 B from 70,120 B measured (li, link and spans per spine), requests +2 for pages-spines.css. Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
@@ -61,7 +63,8 @@ var weightBudgets = map[string]weightBudget{
 	"profile":     {HTML: 64512, CSS: 328704, JS: 215552, Font: 791552, Img: 57344, Requests: 62}, // decision 0021, set the same way from the first measurement (2026-11-05)
 	"settings":    {HTML: 49152, CSS: 321024, JS: 215552, Font: 791552, Img: 1024, Requests: 45},
 	"reader":      {HTML: 53248, CSS: 321536, JS: 281088, Font: 1075200, Img: 1024, Requests: 56}, // JS +1 KB for read aloud (decision 0032, 2026-11-08: 238,301 B measured, 733 B over, reported); JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05)
-	"admin-users": {HTML: 47104, CSS: 327168, JS: 215552, Font: 791552, Img: 1024, Requests: 45},
+	"passkeys":    {HTML: 41984, CSS: 329728, JS: 215552, Font: 791552, Img: 1024, Requests: 48}, // decision 0041, set from the first measurement (2026-11-12): html 40,525 B, css 328,932 B, js 215,298 B, 46 requests; measured on 127.0.0.1, where the passkey script is not loaded (an IP is no RP id)
+	"admin-users": {HTML: 47104, CSS: 328192, JS: 215552, Font: 791552, Img: 1024, Requests: 45},
 }
 
 // weightProbeJS waits until ts-ready exists and no new resource entry has appeared for 500 ms (10 s at
@@ -117,7 +120,7 @@ func TestPageWeight(t *testing.T) {
 		rl.a.h.ServeHTTP(w, r)
 	}))
 	t.Cleanup(rsrv.Close)
-	pages := append(sweepPerfPages(bookID), sweepPerfPage{"settings", "/me/settings"}, sweepPerfPage{"profile", "/me"}, sweepPerfPage{"admin-users", "/admin/users"}, sweepPerfPage{"reader", rl.readPath("")})
+	pages := append(sweepPerfPages(bookID), sweepPerfPage{"settings", "/me/settings"}, sweepPerfPage{"profile", "/me"}, sweepPerfPage{"admin-users", "/admin/users"}, sweepPerfPage{"passkeys", "/me/passkeys"}, sweepPerfPage{"reader", rl.readPath("")})
 	report := map[string]any{}
 	for _, pg := range pages {
 		max := weightSample{}

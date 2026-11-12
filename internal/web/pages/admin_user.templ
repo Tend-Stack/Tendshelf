@@ -54,6 +54,11 @@ type AdminUserView struct {
 	NoPassword bool
 	// SSOLine is "Signs in with Authelia" when this person has a provider account linked, else empty.
 	SSOLine string
+	// Passkeys is how many passkeys the person has; PasskeysLine says so ("2 passkeys"), PasskeysBanner
+	// is the line after "Remove their passkeys".
+	Passkeys                        int
+	PasskeysLine, PasskeysBanner    string
+	PasskeysRemove                  string
 	// SignInOpen is the line "A sign-in link is open until ..." or empty. SignInLink is the panel shown
 	// once after a link was made. SignInLabel and SignInHelp are the button and the sentence under it.
 	SignInOpen, SignInLabel, SignInHelp string
@@ -229,6 +234,12 @@ templ AdminUser(v AdminUserView) {
 				}
 			}
 		</header>
+		if v.PasskeysBanner != "" {
+			<p class="ts-banner" role="status">
+				@components.Icon("check", false)
+				{ v.PasskeysBanner }
+			</p>
+		}
 		if v.Error != "" {
 			<p class="ts-users__error" role="alert">{ v.Error }</p>
 		}
@@ -289,6 +300,13 @@ templ AdminUser(v AdminUserView) {
 					<button type="submit" class="ts-btn ts-btn--secondary">{ v.SignInLabel }</button>
 					<p class="caption ts-users__meta">{ v.SignInHelp }</p>
 				</form>
+				if v.Passkeys > 0 {
+					<form method="post" action={ templ.URL("/admin/users/" + v.ID + "/passkeys/remove") }>
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<button type="submit" class="ts-btn ts-btn--secondary">{ v.PasskeysRemove }</button>
+						<p class="caption ts-users__meta">{ v.PasskeysLine }</p>
+					</form>
+				}
 				<a class="ts-btn ts-btn--danger" href={ templ.SafeURL("/admin/users/" + v.ID + "/disable") }>Turn off account</a>
 			}
 		</section>

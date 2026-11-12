@@ -1,0 +1,102 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// PasskeyStyles are the sheets of the Passkeys page (decision 0041): the same first three as the
+// Account sign-in page, plus its own.
+var PasskeyStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-me.css", "css/pages-passkeys.css"}
+
+// PasskeyRowView is one passkey in the list. All words are already copy.
+type PasskeyRowView struct {
+	ID, Name string
+	// Caption is "Added 2 Jan 2026 · Last used yesterday"; Kind is "Synced across your devices" or
+	// "On one device"; Warning is the line about a passkey that may have been copied, or empty.
+	Caption, Kind, Warning string
+	// Remove is the button text; RemoveAria names the passkey for a screen reader.
+	Remove, RemoveAria string
+}
+
+// MePasskeysView is the Passkeys page under Account.
+type MePasskeysView struct {
+	CSRF, Title, Lead string
+	Banner, Error     string
+	Rows              []PasskeyRowView
+	// HasPassword asks for the current password before a passkey is added.
+	HasPassword bool
+	// Unavailable is the reason passkeys cannot be added at this address or in this window; when
+	// empty, Module is the hashed address of js/passkey.js and Messages are the words it shows.
+	Unavailable string
+	Module      string
+	Messages    []UploadMsg
+}
+
+func (v MePasskeysView) attrs() templ.Attributes {
+	a := templ.Attributes{"data-ts-module": v.Module, "data-ts-passkey": "add", "data-ts-csrf": v.CSRF}
+	for _, m := range v.Messages {
+		a["data-ts-msg-"+m.Key] = m.Text
+	}
+	return a
+}
+
+// MePasskeys is /me/passkeys.
+templ MePasskeys(v MePasskeysView) {
+	<div class="ts-me ts-me--narrow ts-passkeys">
+		<h1 class="title-1 ts-me__title">{ v.Title }</h1>
+		<p class="body ts-passkeys__lead">{ v.Lead }</p>
+		if v.Banner != "" {
+			<p class="ts-banner ts-me__banner" role="status">
+				@components.Icon("check", false)
+				{ v.Banner }
+			</p>
+		}
+		@formError(v.Error)
+		if len(v.Rows) > 0 {
+			<ul class="ts-group ts-passkeys__list">
+				for _, r := range v.Rows {
+					<li class="ts-passkeys__row">
+						<div class="ts-passkeys__text">
+							<h2 class="section ts-passkeys__name">{ r.Name }</h2>
+							<p class="caption ts-passkeys__meta">{ r.Caption }</p>
+							<p class="caption ts-passkeys__meta">{ r.Kind }</p>
+							if r.Warning != "" {
+								<p class="caption ts-passkeys__warn">{ r.Warning }</p>
+							}
+						</div>
+						<form method="post" action={ templ.URL("/me/passkeys/" + r.ID + "/remove") } hx-boost="false">
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ r.RemoveAria }>{ r.Remove }</button>
+						</form>
+					</li>
+				}
+			</ul>
+		}
+		<section class="ts-group ts-group--pad ts-passkeys__add" aria-labelledby="pk-add-h">
+			<h2 id="pk-add-h" class="section">Add a passkey</h2>
+			if v.Unavailable != "" {
+				<p class="body ts-passkeys__note">{ v.Unavailable }</p>
+			} else {
+				<div class="ts-passkeys__root" { v.attrs()... }>
+					<form class="ts-form ts-passkeys__form" method="post" action="/me/passkeys" hx-boost="false" data-ts-passkey-form hidden>
+						@components.TextField(components.Field{
+							ID: "pk-name", Name: "name", Label: "Name", Hint: "So you can tell them apart, like Phone or Work laptop.",
+							Autocomplete: "off",
+						})
+						if v.HasPassword {
+							@components.TextField(components.Field{
+								ID: "pk-password", Name: "password", Label: "Your password", Type: "password", Required: true,
+								Autocomplete: "current-password", Hint: "To make sure it is you.",
+							})
+						}
+						<p class="ts-form__error" role="alert" data-ts-passkey-error hidden></p>
+						<button type="submit" class="ts-btn ts-btn--primary ts-btn--lg" data-ts-passkey-button>Add a passkey</button>
+						<p class="caption ts-passkeys__status" role="status" aria-live="polite" data-ts-passkey-status></p>
+					</form>
+					<noscript>
+						<p class="body ts-passkeys__note">Passkeys need JavaScript in this browser.</p>
+					</noscript>
+					<p class="body ts-passkeys__note" data-ts-passkey-unsupported hidden></p>
+				</div>
+			}
+		</section>
+	</div>
+}
