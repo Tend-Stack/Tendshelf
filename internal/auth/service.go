@@ -49,6 +49,7 @@ type Service struct {
 	oidc      *oidc.Client
 	oidcStart *Limiter
 	oidcOrig  *Limiter // /login/oidc/origins, which can cost a discovery request
+	pkStart   *Limiter // passkey sign-in starts per address (decision 0041)
 	ownerSeen atomic.Bool
 }
 
@@ -63,6 +64,7 @@ func NewService(st *db.Store, u *users.Repo, s *Sessions, o ServiceOptions) *Ser
 		userLim:   NewLimiter(userMaxFails, limitWindow, limiterKeys, o.Now),
 		oidcStart: NewLimiter(oidcStartMax, limitWindow, limiterKeys, o.Now),
 		oidcOrig:  NewLimiter(oidcOriginsMax, limitWindow, limiterKeys, o.Now),
+		pkStart:   NewLimiter(passkeyStartMax, limitWindow, limiterKeys, o.Now),
 	}
 }
 

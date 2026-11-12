@@ -213,7 +213,7 @@ func TestOpenFresh(t *testing.T) {
 		}
 	}
 	var n int
-	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+39 { // +15: book_sidecars, online_cache (0010), file_writes (0011), book_lookups, online_usage (0012), queue_items (0013), uploads, upload_files, upload_paths (0014), ebook_files, editions, edition_chapters (0016), ebook_not_same, text_choices (0017), highlights (0019), merged_books, reading_positions, reading_sessions (0021), word_list (0022), book_settings (0024), merged_folders, book_not_duplicates (0026); 0018's runtime_components, alignments and alignment_chapters are dropped again by 0020; kosync_progress; device_codes (0031); device_pairings (0033); contributor_folders, upload_books (0034); sign_in_links (0035); podcast_feeds (0036); oidc_identities, oidc_logins (0039); podcast_opens (0043)
+	if err := st.Reader().QueryRow(`SELECT count(*) FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Scan(&n); err != nil || n != len(allTables)+len(libraryTables)+len(searchTables)+len(shelfTables)+len(progressTables)+len(familyTables)+41 { // +15: book_sidecars, online_cache (0010), file_writes (0011), book_lookups, online_usage (0012), queue_items (0013), uploads, upload_files, upload_paths (0014), ebook_files, editions, edition_chapters (0016), ebook_not_same, text_choices (0017), highlights (0019), merged_books, reading_positions, reading_sessions (0021), word_list (0022), book_settings (0024), merged_folders, book_not_duplicates (0026); 0018's runtime_components, alignments and alignment_chapters are dropped again by 0020; kosync_progress; device_codes (0031); device_pairings (0033); contributor_folders, upload_books (0034); sign_in_links (0035); podcast_feeds (0036); oidc_identities, oidc_logins (0039); podcast_opens (0043); passkeys, passkey_ceremonies (0044)
 		t.Fatalf("tables = %d, %v", n, err)
 	}
 	if runtime.GOOS != "windows" {
@@ -624,6 +624,7 @@ var pinnedMigrations = map[int]string{
 	41: "0424817aabef7d199ecffb3b19b384bcd8ed79a925ae638b1d861ba2a67c9e08",
 	42: "429eeb47c3ebc407286781e2d567e7c00972ee8ecb0bc5450e4a143f40a23df6",
 	43: "6d2ebd99cdcd30e2aa17a67957bd1f835f1988a7b80880d6aff184cf740823f8",
+	44: "864ca94dafffd903d2e5a57bf8bd0b96ddd54293481f7febff9f399d6a782e00",
 }
 
 func TestMigrationsImmutable(t *testing.T) {
