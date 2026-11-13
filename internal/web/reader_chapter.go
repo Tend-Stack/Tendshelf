@@ -126,6 +126,7 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 	cum, dropDone := before+sel.Before, false
 	verse := rdrVerseRuns(ch.Blocks)
 	c := sel.Before
+	repeated := rdrRepeatedHeading(ch)
 	for bi := sel.From; bi < sel.To; bi++ {
 		b := ch.Blocks[bi]
 		pg := rsPageLabel(rc.doc, idx, bi, cum, total)
@@ -151,20 +152,13 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 		if v.Pg == "" {
 			v.Pg = pg
 		}
-		v.Blocks = append(v.Blocks, bv)
+		// The page shows the chapter's title above the text, so a heading that only repeats it is not shown twice.
+		if bi != repeated {
+			v.Blocks = append(v.Blocks, bv)
+		}
 		out.blocks[b.ID] = bv
 	}
-	if ch.Front {
-		v.Overline = readerFrontOnly
-	} else {
-		n := 0
-		for _, c := range rc.doc.Chapters[:idx] {
-			if !c.Front {
-				n++
-			}
-		}
-		v.Overline = fmt.Sprintf(readerChapter, n)
-	}
+	v.Overline = rdrOverline(rc.doc.Chapters, idx)
 	if rc.doc.PageCount > 0 && v.Pg != "" {
 		v.Page = fmt.Sprintf(readerPageLabel, v.Pg, rc.doc.PageCount)
 	}
