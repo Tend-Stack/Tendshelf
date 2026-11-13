@@ -63,7 +63,7 @@ var weightBudgets = map[string]weightBudget{
 	"profile":     {HTML: 64512, CSS: 328704, JS: 215552, Font: 791552, Img: 57344, Requests: 62}, // decision 0021, set the same way from the first measurement (2026-11-05)
 	"settings":    {HTML: 49152, CSS: 321024, JS: 215552, Font: 791552, Img: 1024, Requests: 45},
 	"reader":      {HTML: 53248, CSS: 321536, JS: 281088, Font: 1075200, Img: 1024, Requests: 56}, // JS +1 KB for read aloud (decision 0032, 2026-11-08: 238,301 B measured, 733 B over, reported); JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05)
-	"passkeys":    {HTML: 41984, CSS: 329728, JS: 215552, Font: 791552, Img: 1024, Requests: 48}, // decision 0041, set from the first measurement (2026-11-12): html 40,525 B, css 328,932 B, js 215,298 B, 46 requests; measured on 127.0.0.1, where the passkey script is not loaded (an IP is no RP id)
+	"passkeys":    {HTML: 41984, CSS: 329728, JS: 215552, Font: 791552, Img: 1024, Requests: 48},  // decision 0041, set from the first measurement (2026-11-12): html 40,525 B, css 328,932 B, js 215,298 B, 46 requests; measured on 127.0.0.1, where the passkey script is not loaded (an IP is no RP id)
 	"admin-users": {HTML: 47104, CSS: 328192, JS: 215552, Font: 791552, Img: 1024, Requests: 45},
 }
 

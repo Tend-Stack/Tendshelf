@@ -35,8 +35,8 @@ const (
 )
 
 func (s *server) registerPasskeys(mux *http.ServeMux) {
-	mux.HandleFunc("POST "+passkeyLoginOptionsPath, s.postPasskeyLoginOptions)
-	mux.HandleFunc("POST "+passkeyLoginPath, s.postPasskeyLogin)
+	mux.HandleFunc("POST /login/passkey/options", s.postPasskeyLoginOptions)
+	mux.HandleFunc("POST /login/passkey", s.postPasskeyLogin)
 	mux.HandleFunc("GET /me/passkeys", s.getMePasskeys)
 	mux.HandleFunc("POST /me/passkeys/options", s.postMePasskeyOptions)
 	mux.HandleFunc("POST /me/passkeys", s.postMePasskeyAdd)

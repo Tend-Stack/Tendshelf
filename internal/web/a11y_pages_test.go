@@ -177,6 +177,7 @@ func a11yPages() []a11yPage {
 		row("admin-email", "/admin/email", a11yStatic("/admin/email"), owner, "main", true),
 		row("admin-sso", "/admin/sso", a11yStatic("/admin/sso"), owner, "main", true),
 		row("me-sso", "/me/sso", a11yStatic("/me/sso"), both, "main", true),
+		row("me-passkeys", "/me/passkeys", a11yStatic("/me/passkeys"), both, "main", true),
 		row("podcasts", "/podcasts", a11yStatic("/podcasts"), both, "main", true),
 		row("podcasts-new", "/podcasts", a11yStatic("/podcasts?tab=new"), owner, "main", true),
 		row("podcasts-search", "/podcasts/search", a11yStatic("/podcasts/search?q=found"), both, "main", true),
