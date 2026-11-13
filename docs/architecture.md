@@ -712,7 +712,7 @@ Considered and not chosen: `github.com/clipperhouse/uax29` (sentence segmentatio
 abbreviations better and stay versioned), `github.com/yuin/goldmark` (Markdown; only structure is
 needed), a speech-recognition runtime (decision 0018).
 
-Later, **approved by the operator on 2026-11-03** (each with its `NOTICES.md` row in the commit that adds it): go-webauthn approved, not used (decision 0041), `github.com/fsnotify/fsnotify`
+Later, **approved by the operator on 2026-11-03** (each with its `NOTICES.md` row in the commit that adds it): `github.com/go-webauthn/webauthn` (approved, not used: passkeys are built on the standard library, decision 0041), `github.com/fsnotify/fsnotify`
 (folder watcher), `github.com/wailsapp/wails/v3` (desktop module only), an OpenID Connect client.
 
 Android, **approved by the operator on 2026-11-05** ([decision 0024](decisions/0024-android-app.md)), `android/` only, each with its `NOTICES.md` row and pinned by Gradle dependency verification: Kotlin (through AGP), `androidx.media3` (exoplayer, session, datasource), `androidx.webkit`, `androidx.core`, and `androidx.work` if downloads need it. Every other module needs approval. Gradle fetches at build time only.
