@@ -1,5 +1,5 @@
 # 0041 Passkeys (WebAuthn) beside passwords
-Date: 2026-11-12. Status: proposed (S10 of `docs/plans/next-stage.md`). Plan: `docs/plans/passkeys.md`. Parents: OpenID Connect
+Date: 2026-11-12. Status: accepted and built, 2026-11-13 (S10 of `docs/plans/next-stage.md`). Plan: `docs/plans/passkeys.md`. Parents: OpenID Connect
 [0037](0037-openid-connect.md), app sign-in [0026](0026-app-sign-in.md), sign-in links [0030](0030-sign-in-links.md), and "Security and
 privacy" in AGENTS.md. The operator approved `go-webauthn` on 2026-11-03 (architecture.md, "Dependencies and approvals").
 

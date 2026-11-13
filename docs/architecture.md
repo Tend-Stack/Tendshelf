@@ -564,7 +564,7 @@ It skips unless `TENDSHELF_SITE_SHOTS` is set, so `make visual` and CI never run
   listen-only by default, own progress and bookmarks, no shelves shared, no downloads unless granted).
 - Invites: link `/invite/{token}`, default expiry 7 days, default one use, optional email via SMTP.
   Share links `/s/{token}`: one book, expiry required (max 90 days), optional password, no account.
-- Passkeys (WebAuthn) later, added beside passwords.
+- Passkeys (WebAuthn) beside passwords: a person adds a passkey under Profile, Passkeys, and signs in with it on `/login`. Built with the standard library only in `internal/auth/passkey`; a passkey is bound to the host name it was made for and works only over HTTPS or on `localhost`. See decision [0041](decisions/0041-passkeys.md).
 - Reader actions: `read_text` (reader page, chapter text, images) needs `can_read` on the
   grant or share link (default off: sharing a book shares listening only); `download_text` (original
   ebook) needs `can_read` and `can_download`; upload and pairing are owner/admin.
@@ -712,7 +712,7 @@ Considered and not chosen: `github.com/clipperhouse/uax29` (sentence segmentatio
 abbreviations better and stay versioned), `github.com/yuin/goldmark` (Markdown; only structure is
 needed), a speech-recognition runtime (decision 0018).
 
-Later, **approved by the operator on 2026-11-03** (each with its `NOTICES.md` row in the commit that adds it): `github.com/go-webauthn/webauthn` (passkeys), `github.com/fsnotify/fsnotify`
+Later, **approved by the operator on 2026-11-03** (each with its `NOTICES.md` row in the commit that adds it): go-webauthn approved, not used (decision 0041), `github.com/fsnotify/fsnotify`
 (folder watcher), `github.com/wailsapp/wails/v3` (desktop module only), an OpenID Connect client.
 
 Android, **approved by the operator on 2026-11-05** ([decision 0024](decisions/0024-android-app.md)), `android/` only, each with its `NOTICES.md` row and pinned by Gradle dependency verification: Kotlin (through AGP), `androidx.media3` (exoplayer, session, datasource), `androidx.webkit`, `androidx.core`, and `androidx.work` if downloads need it. Every other module needs approval. Gradle fetches at build time only.

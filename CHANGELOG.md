@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Added
+
+- **Sign in with a passkey.** Add a passkey under Profile, Passkeys, and sign in with your fingerprint, face or screen lock instead of typing a password. Passkeys work when you reach Tendshelf by name over HTTPS; an admin can remove a person's passkeys from their page.
+
 ### Fixed
 
 - **A book's action bar on a phone always shows three actions.** When there is nothing to download (a book the server only streams, or a browser that cannot keep books), a Details button takes the empty place, so the bar no longer shows two wide buttons.

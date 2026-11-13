@@ -1046,9 +1046,14 @@ Checks: `go test -race` on db, podcast, share, library and web (`TestPodcastOpen
 Limits: the cap of 50 opens does not count opens with an episode in Up next, so a person can hold a few more than 50 rows; Android lists stay followed-only; no manual check on a real publisher.
 Next: the next feature.
 
+**P3 passkeys status (decision [0041](decisions/0041-passkeys.md), plan [docs/plans/passkeys.md](plans/passkeys.md), S10)**: built 2026-11-13. Scope: migration 0044; `internal/auth/passkey` (WebAuthn verification, standard library, no new module); sign-in and registration service in `internal/auth`; routes `POST /login/passkey/options`, `POST /login/passkey`, `GET /me/passkeys`, `POST /me/passkeys/options`, `POST /me/passkeys`, `POST /me/passkeys/{pid}/remove`, `POST /admin/users/{id}/passkeys/remove`; the Passkeys page under Profile; "Sign in with a passkey" on the login page; `passkey.js` (2,104 B gzip, budget row 2,304 B; total JS budget 128,512 → 130,304 B; admin-users CSS budget +1 KiB).
+Checks: handler tests with forbidden cases, route matrix rows, a browser test with a virtual authenticator (add a passkey and sign in), a11y coverage and visual captures; `make check` and `make build`.
+Limits: passkeys are offered only on a named host over HTTPS (or localhost), not on an IP address and not inside the Android or desktop app windows; not checked with a real hardware key or a real phone.
+Next: a check with a real authenticator by the operator.
+
 ## Later
 
-TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, passkeys, OpenID
+TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, OpenID
 Connect, merge MP3 folder to M4B, custom metadata providers, Chromecast.
 
 - **L5 Clips** (2026-11-06, done; plan `docs/plans/next-server.md` section 8). Scope: migration `0029_clips` (`end_ms`,

@@ -64,7 +64,7 @@ from general knowledge. Cells marked `?` are unverified guesses; check before qu
 | Public share link for one item | Yes (media item share) | No | P3 (always expiring, optional password) |
 | Listen-only guests (no download) | Partial (download permission) | n/a | P3 |
 | API keys / device tokens | Yes | n/a | P3 (device tokens) |
-| Passkeys | No? | n/a (Amazon) | Later |
+| Passkeys | No? | n/a (Amazon) | Built (P3, decision 0041) |
 | SSO / OpenID Connect | Yes | n/a | Later |
 | **Offline and apps** | | | |
 | Installable PWA | Partial? | n/a | P4 |
