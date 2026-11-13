@@ -129,6 +129,7 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 		Action: "/hx/books/" + book.ID + "/finished", Refresh: "/hx/books/" + book.ID + "/play",
 		Next: "/books/" + book.ID, CSRF: s.csrf.TokenFrom(r.Context()),
 		MarkLabel: playMarkFinished, MarkValue: "1",
+		DetailsHref: detailsTabHref(book.ID), DetailsLabel: bookTabDetails,
 	}
 	if p != nil && p.Finished() {
 		v.MarkLabel, v.MarkValue = playMarkNot, "0"

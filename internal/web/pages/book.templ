@@ -51,6 +51,9 @@ type BookPlayView struct {
 	Where, WhereShort string
 	// ShelfHref and ShelfLabel open the "Add to shelf" sheet; empty for people who may not shelve.
 	ShelfHref, ShelfLabel string
+	// DetailsHref and DetailsLabel are the phone bar's stand-in cell: it shows only while the Download control
+	// does not (no right, or a browser that cannot keep books), so the bar always has three actions.
+	DetailsHref, DetailsLabel string
 	// More is the three-dot menu beside the actions (series, Share, Podcast feed, Change cover, Edit details);
 	// it lives here, not on BookView, because this region is re-read on its own.
 	More components.MoreMenuView
@@ -216,6 +219,12 @@ templ BookPlay(v *BookPlayView) {
 				}
 				if v.Download != nil {
 					@bookDownload(*v.Download)
+				}
+				if v.DetailsHref != "" {
+					<a class="ts-btn ts-btn--secondary ts-btn--lg ts-book__alt" href={ templ.SafeURL(v.DetailsHref) }>
+						@components.Icon("info", false)
+						<span class="ts-book__label">{ v.DetailsLabel }</span>
+					</a>
 				}
 				if v.MarkLabel != "" {
 					<form method="post" action={ templ.SafeURL(v.Action) } hx-post={ v.Action } hx-swap="none">

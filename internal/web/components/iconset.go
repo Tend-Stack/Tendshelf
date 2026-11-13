@@ -34,6 +34,7 @@ var iconShapes = map[string]string{
 	"aloud":        `<path d="M4 5.5h10a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5H9l-3.5 3v-3H4A1.5 1.5 0 0 1 2.5 13V7A1.5 1.5 0 0 1 4 5.5z"/><path d="M18.5 8.5a4 4 0 0 1 0 5M21 6a7.5 7.5 0 0 1 0 10"/>`,
 	"close":        `<path d="M6 6l12 12M18 6 6 18"/>`,
 	"alert":        `<path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/>`,
+	"info":         `<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>`,
 	"folder":       `<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>`,
 	"expand":       `<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>`,
 	"link":         `<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>`,
