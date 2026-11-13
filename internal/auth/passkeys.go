@@ -417,11 +417,9 @@ func (a *Service) PasskeyRegister(ctx context.Context, sess Session, u users.Use
 			Detail: map[string]string{"alg": strconv.Itoa(cred.Alg), "synced": strconv.Itoa(boolInt(cred.BackupEligible))}})
 	})
 	if err != nil {
-		// A refused finish still burned its challenge, which is wanted; the transaction rolled
-		// back the delete, so burn it again outside.
-		if errors.Is(err, ErrPasskeyFailed) {
-			_, _ = a.st.Writer().ExecContext(ctx, `DELETE FROM passkey_ceremonies WHERE challenge_hash = ?`, challengeHash(challenge))
-		}
+		// Any failed finish spends its challenge (a refused answer, the limit, a key already in use);
+		// the transaction rolled back the delete, so burn it again outside.
+		_, _ = a.st.Writer().ExecContext(ctx, `DELETE FROM passkey_ceremonies WHERE challenge_hash = ?`, challengeHash(challenge))
 		return PasskeyRow{}, err
 	}
 	return row, nil
