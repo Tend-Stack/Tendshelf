@@ -127,7 +127,18 @@ func FromTags(tags map[string]string, single bool) Details {
 	d.Language = first("language", "lang")
 	d.ASIN = cleanASIN(first("asin", "audible_asin", "cdek"))
 	d.ISBN = cleanISBN(first("isbn"))
-	d.Description = cleanText(first("description", "synopsis", "comment", "desc", "ldes"), descriptionLimit)
+	// An MP4 file often carries a short description (255 bytes, cut mid-word) beside the full
+	// synopsis, so the longer of the two is the book's description.
+	desc := first("description")
+	for _, k := range []string{"synopsis", "ldes"} {
+		if v := first(k); len(v) > len(desc) {
+			desc = v
+		}
+	}
+	if desc == "" {
+		desc = first("comment", "desc")
+	}
+	d.Description = cleanText(desc, descriptionLimit)
 	switch strings.TrimSpace(tags["itunesadvisory"]) {
 	case "1":
 		d.Explicit = boolp(true)
