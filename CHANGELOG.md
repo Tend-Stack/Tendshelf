@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+## 2026.10.0
+
+Released 2026-11-13. You can open, browse and play a podcast before following it, Shelf view fills every row edge to edge, and panels, sheets and the Up next list move smoothly instead of jumping. The Android app is the same as in 2026.9.0 apart from its version.
+
 ### Added
 
 - **Open, browse and play a podcast before following it.** Tap a search result or a suggested show to look at its episodes and play one; Follow is a separate button and only then does the show join your list.
