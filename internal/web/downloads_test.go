@@ -104,6 +104,12 @@ func TestBookDownloadButton(t *testing.T) {
 			t.Errorf("Download pair lacks %q", want)
 		}
 	}
+	// The phone bar's stand-in cell comes with every play region, so the bar keeps three actions without Download.
+	for _, path := range []string{"/books/" + e.book.ID, "/hx/books/" + e.book.ID + "/play"} {
+		if _, body := fetchAs(e, sweepOwner, path); !strings.Contains(body, `ts-book__alt" href="/books/`+e.book.ID+`/details"`) {
+			t.Errorf("no Details stand-in on %s", path)
+		}
+	}
 	if has("/books/"+drm.ID, sweepOwner) {
 		t.Error("a refused book has a Download control")
 	}

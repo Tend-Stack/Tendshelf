@@ -29,6 +29,17 @@ const bookMoreProbeJS = `(() => {
     overflow: document.documentElement.scrollWidth > innerWidth};
 })()`
 
+// bookAltProbeJS hides the Download pair (remembering what was hidden) and says whether the Details stand-in shows
+// before and after, with the widths of the bar's cells afterwards.
+const bookAltProbeJS = `(() => {
+  const shown = (el) => !!el && el.offsetParent !== null;
+  const alt = document.querySelector(".ts-book__alt");
+  const before = shown(alt);
+  document.querySelectorAll(".ts-book__download").forEach((el) => { el.dataset.wasHidden = el.hidden ? "1" : "0"; el.hidden = true; });
+  const cells = [...document.querySelectorAll(".ts-book__acts > *")].filter(shown).map((c) => c.getBoundingClientRect().width);
+  return {before, after: shown(alt), cells};
+})()`
+
 // bookMoreSeriesJS measures the series line above the title and the chip row.
 const bookMoreSeriesJS = `(() => {
   const p = document.querySelector(".ts-book__overline");
@@ -106,6 +117,30 @@ func TestBookMoreMenuBrowser(t *testing.T) {
 				for _, c := range pr.Cells {
 					if d := c - pr.Cells[0]; d > 1.5 || d < -1.5 {
 						t.Errorf("phone action cells are uneven: %v", pr.Cells)
+						break
+					}
+				}
+			}
+			// Without Download (a browser that cannot keep books, or no right to download) Details stands in on a phone,
+			// so the bar keeps three actions and More; wider windows never draw the stand-in.
+			var alt struct {
+				Before, After bool
+				Cells         []float64
+			}
+			tab.Eval(bookAltProbeJS, &alt)
+			shot("nodownload")
+			tab.Eval(`document.querySelectorAll(".ts-book__download").forEach((el) => { el.hidden = el.dataset.wasHidden === "1"; })`, nil)
+			// (This test's browser may or may not be able to keep books, so only the state without Download is fixed.)
+			if alt.After != (vp.w < 768) || (alt.Before && vp.w >= 768) {
+				t.Errorf("Details stand-in: shown %v before, %v without Download", alt.Before, alt.After)
+			}
+			if vp.w < 768 {
+				if len(alt.Cells) != 4 {
+					t.Errorf("phone bar without Download has %d cells, want 4: %v", len(alt.Cells), alt.Cells)
+				}
+				for _, c := range alt.Cells {
+					if d := c - alt.Cells[0]; d > 1.5 || d < -1.5 {
+						t.Errorf("phone action cells without Download are uneven: %v", alt.Cells)
 						break
 					}
 				}

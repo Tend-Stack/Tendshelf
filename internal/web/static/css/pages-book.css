@@ -71,6 +71,9 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 .ts-book__whereshort { display: none; color: var(--ink-muted); }
 .ts-book__acts { display: flex; }
 .ts-book__acts > [hidden] { display: none; }
+/* The stand-in "Details" cell belongs to the phone's bar only, and only while Download is not there: a book the
+   person may not download, or a browser that cannot keep books, would leave the bar with two actions. */
+.ts-book__alt { display: none; }
 
 /* More options: a square three-dot button (the library's chip menu) whose panel floats over the page. */
 .ts-moremenu { flex: 0 0 auto; }
@@ -141,6 +144,10 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   /* The cells share the bar evenly: padding sits on the label, not the cell, so a long label cannot widen its cell. */
   .ts-book__acts .ts-book__label { padding-inline: var(--space-4); }
   .ts-book__acts .ts-btn:hover { background: var(--raised-hover); }
+  /* A cell that is itself a button (Download, Details) lost its dividing line to the rule above; this gives it back. */
+  .ts-book__acts > * + .ts-btn { border-left: 1px solid var(--line-strong); }
+  .ts-book__acts > .ts-book__alt { display: flex; }
+  .ts-book__acts:has(> .ts-book__download:not([hidden])) > .ts-book__alt { display: none; }
   /* The bar's end cells round their outer corners (the bar no longer clips them). */
   .ts-book__acts > :first-child, .ts-book__acts > :first-child > .ts-btn { border-radius: var(--radius-md) 0 0 var(--radius-md); }
   .ts-book__acts > :last-child, .ts-book__acts > :last-child > .ts-btn { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
