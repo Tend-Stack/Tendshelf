@@ -224,7 +224,7 @@ func TestFormatsTextBookPage(t *testing.T) {
 	}
 	// The Text tab comes right after About.
 	body := l.get(l.owner, path, false).Body.String()
-	about, text, details := strings.Index(body, `href="`+path+`"`), strings.Index(body, `href="`+path+`/text"`), strings.Index(body, `href="`+path+`/details"`)
+	about, text, details := strings.Index(body, `href="`+path+`"`), strings.Index(body, `href="`+path+`/text"`), strings.LastIndex(body, `href="`+path+`/details"`) // the last one: the phone bar's Details cell comes before the tabs
 	if !(about >= 0 && about < text && text < details) {
 		t.Errorf("tab order: about %d, text %d, details %d", about, text, details)
 	}
