@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tend-Stack/tendshelf/internal/media"
 	"github.com/Tend-Stack/tendshelf/internal/web"
 )
 
@@ -26,7 +27,7 @@ import (
 var assets embed.FS
 
 // maxLogBody caps one beacon; a real line is a few hundred bytes.
-const maxLogBody = 8 << 10
+const maxLogBody = 64 << 10
 
 func main() {
 	file := flag.String("file", "", "the one audio file to serve (never committed)")
@@ -36,8 +37,8 @@ func main() {
 	if *file == "" {
 		log.Fatal("soundspike: -file <audio> is required")
 	}
-	if st, err := os.Stat(*file); err != nil || !st.Mode().IsRegular() {
-		log.Fatalf("soundspike: %s is not a readable file", *file)
+	if err := checkFile(*file); err != nil {
+		log.Fatalf("soundspike: %v", err)
 	}
 	run := time.Now().UTC().Format("20060102-150405")
 	dir := filepath.Join(*out, run)
@@ -48,6 +49,18 @@ func main() {
 	fmt.Printf("soundspike: serving %s on http://%s\nsoundspike: log %s\n", filepath.Base(*file), *addr, logPath)
 	srv := &http.Server{Addr: *addr, Handler: newHandler(*file, logPath), ReadHeaderTimeout: 10 * time.Second}
 	log.Fatal(srv.ListenAndServe())
+}
+
+// checkFile refuses a file the spike must not serve: copy-protected, missing, or not a regular file.
+// Tendshelf never serves copy-protected files (AGENTS.md).
+func checkFile(file string) error {
+	if media.Classify(file) == media.KindProtected {
+		return fmt.Errorf("%s is copy-protected and is never served", filepath.Base(file))
+	}
+	if st, err := os.Stat(file); err != nil || !st.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a readable file", file)
+	}
+	return nil
 }
 
 // newHandler is the whole site: four asset routes, two audio routes (the same file, so Range works),
