@@ -49,15 +49,18 @@ func TestRealPeaks(t *testing.T) {
 		}
 	}
 
-	// An encrypted file is never decoded: ffmpeg refuses it or the caller checked first. Either way
-	// there are no peaks.
+	// An encrypted file never reaches the decoder: the probe names it protected, and the peaks job refuses a
+	// protected file before it calls Peaks (mediajobs.Refusal). That check is the rule this test holds.
 	enc2 := filepath.Join(dir, "enc.m4a")
 	mediatest.GenEncryptedM4A(t, tools, enc2)
+	if _, err := tools.Probe(ctx, enc2); !errors.Is(err, media.ErrProtected) {
+		t.Errorf("the probe of an encrypted file answered %v, want ErrProtected", err)
+	}
+	// Called anyway, ffmpeg has no key. It nearly always fails, but now and then the AAC decoder accepts a
+	// frame of noise and exits 0 with a bin or two (nightly 436, 2026-11-14), so that outcome is only logged.
 	if pk, err := tools.Peaks(ctx, enc2, 2000); err == nil {
-		t.Errorf("an encrypted file gave %d bins", len(pk.Values))
-	} else if errors.Is(err, media.ErrProtected) {
-		t.Logf("encrypted file refused as protected")
+		t.Logf("encrypted file: ffmpeg decoded %d bins of noise without the key", len(pk.Values))
 	} else {
-		t.Log("encrypted file: ffmpeg could not decode it")
+		t.Logf("encrypted file: ffmpeg could not decode it: %v", err)
 	}
 }
