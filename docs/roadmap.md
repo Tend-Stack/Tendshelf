@@ -1057,6 +1057,18 @@ Checks: `go test -race` on `internal/upload`, `internal/metadata`, `internal/ebo
 Limits: a text-only book with a library file Tendshelf did not place has no remove action; removing a stored upload leaves the derived text documents (`<data>/text/`) on disk; clearing a field of the edit form returns the derived value (the file, sidecar or lookup), not an empty one.
 Next: the lead's full gate on the merged tree, then the parity and visual checks of the remove pages.
 
+## Choose where to start in the other format (plan `docs/plans/format-switch-start.md`, 2026-11-13/14)
+
+Built. Reused: the reader's contents sheet, `closeSheet` in `shell.js`, the player's `data-ts-play-at` rows, the
+chapter list of both formats. Added: `internal/web/format_switch.go` (chapter matching by number and title, option
+order: the newest place first, "from the beginning" last), the `FormatChoice` sheet, `?sheet=listen` on the reader and
+`GET /hx/books/{id}/read-from` for the player. Fixed with it: a chapter picked in the contents list stays (the sheet
+closes in place, and the pick is saved at once). Checks: `TestReaderSheet*`, `TestReaderListenSheet`,
+`TestReaderContentsPickSaves`, `TestReaderSpeakerChoiceBrowser`, `TestVisualFormatChoice`, the a11y rows
+`reader-listen` and `player-read`, the full browser suite, `make a11y`, `make page-weight`. Limits: without JavaScript
+the reader still saves no place; a book whose chapters do not match offers only "from the start"; saving a pick needs
+`sessionStorage` (a private window saves at the first turn). Not verified: the Android and desktop windows by hand.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, OpenID
