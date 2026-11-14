@@ -11,7 +11,7 @@ import (
 // semantics. which is "full" or "bar".
 templ Scrubber(m PlayerMsgs, class, which string) {
 	<div class={ "ts-scrub", class } data-ts-scrub={ which }>
-		<div class="ts-wave" aria-hidden="true" data-ts-wave></div>
+		<div class="ts-wave" aria-hidden="true" data-ts-wave={ which }></div>
 		<div class="ts-scrub__line"></div>
 		<div class="ts-scrub__fill"></div>
 		<div class="ts-scrub__needle"></div>
@@ -60,7 +60,7 @@ templ PlayerFull(m PlayerMsgs) {
 				</div>
 			</header>
 			<span class="ts-book-block ts-player__block">
-				<span class="ts-cover ts-player__cover"><img data-ts-full-cover alt="" width="256" height="256"/><span class="ts-avatar ts-stnlogo ts-stnlogo--fill" data-ts-full-cover-tile hidden aria-hidden="true"><span class="ts-stnlogo__text"></span></span></span>
+				<span class="ts-cover ts-player__cover"><img data-ts-full-cover alt="" width="256" height="256"/><span class="ts-avatar ts-stnlogo ts-stnlogo--fill" data-ts-full-cover-tile hidden aria-hidden="true"><span class="ts-stnlogo__text"></span></span><span class="ts-player__jump" aria-hidden="true" data-ts-full-jump><span class="ts-overline">{ m.JumpTo }</span><span class="ts-num ts-player__jumptime" data-ts-full-jump-time></span><span class="time ts-player__jumpleft" data-ts-full-jump-left></span></span></span>
 			</span>
 			<h2 id="player-full-title" class="title-2 ts-player__title" data-ts-full-title></h2>
 			<p class="body ts-player__author">
@@ -95,6 +95,7 @@ templ PlayerFull(m PlayerMsgs) {
 				<div class="ts-ruler ts-player__ruler" aria-hidden="true" data-ts-ruler data-ts-chbar data-ts-label={ m.ChBarLabel }>
 					<div class="ts-ruler__line"></div>
 					<span class="ts-player__ruler-ticks" data-ts-ruler-ticks></span>
+					<span class="ts-player__segs" data-ts-ruler-segs><span class="ts-player__segmark"></span></span>
 					<div class="ts-ruler__fill"></div>
 				</div>
 				@Scrubber(m, "", "full")
@@ -102,7 +103,9 @@ templ PlayerFull(m PlayerMsgs) {
 					<span data-ts-full-elapsed></span>
 					<span aria-hidden="true" data-ts-full-fine></span>
 					<span data-ts-full-book-left></span>
+					<span class="ts-player__chleft" data-ts-full-chapter-left></span>
 				</div>
+				<span class="meta ts-player__booklabel" data-ts-full-bookbar-left></span>
 			</div>
 			<div class="ts-player-bar ts-player__bar">
 				<button type="button" class="ts-player-bar__item" data-ts-open-speed aria-haspopup="dialog" aria-label={ m.Speed }>

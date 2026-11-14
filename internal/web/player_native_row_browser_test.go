@@ -30,7 +30,8 @@ const pnrProbe = `(() => {
       Cut: l.scrollWidth > l.clientWidth, Bl: getComputedStyle(el).borderLeftWidth, Bt: getComputedStyle(el).borderTopWidth, Right: r.right};
   });
   const cs = getComputedStyle(bar);
-  return {Items: items, Border: [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth],
+  const probe = document.createElement("i"); probe.style.color = "var(--raised)"; d.appendChild(probe); const raised = getComputedStyle(probe).color; probe.remove();
+  return {Raised: raised, Items: items, Border: [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth],
     Bg: cs.backgroundColor, Overflow: document.documentElement.scrollWidth > window.innerWidth,
     MaxRight: Math.max(...items.map((i) => i.Right)), Vw: window.innerWidth};
 })()`
@@ -46,16 +47,20 @@ type pnrResult struct {
 	Items    []pnrItem
 	Border   []string
 	Bg       string
+	Raised   string
 	Overflow bool
 	MaxRight float64
 	Vw       float64
 }
 
+// pnrCheck checks the row. On a phone (under 768 px, phone handoff 2026-11-14) the row is one raised block with a 12 px
+// transparent top border that holds its spacing; elsewhere it is borderless and unfilled as decision 0042 says.
 func pnrCheck(t *testing.T, tab *cdp.Tab, what string) {
 	t.Helper()
 	var r pnrResult
 	tab.Eval(pnrProbe, &r)
-	want := []string{"Speed", "Sleep", "Chapters", "Read"}
+	phone := r.Vw < 768
+	want := []string{"Speed", "Sleep", "Chapters", "Read along"} // one label at every width (phone handoff 2026-11-14)
 	if len(r.Items) != 4 {
 		t.Fatalf("%s: %d buttons, want 4", what, len(r.Items))
 	}
@@ -76,13 +81,20 @@ func pnrCheck(t *testing.T, tab *cdp.Tab, what string) {
 	if r.Items[3].Name != "Read this book" {
 		t.Errorf("%s: Read button name = %q", what, r.Items[3].Name)
 	}
-	for _, b := range r.Border {
+	edges := r.Border
+	if phone {
+		edges = r.Border[1:] // the top border is the transparent spacing above the block
+	}
+	for _, b := range edges {
 		if b != "0px" {
 			t.Errorf("%s: the row has a border: %v", what, r.Border)
 			break
 		}
 	}
-	if r.Bg != "rgba(0, 0, 0, 0)" {
+	if phone && r.Bg != r.Raised {
+		t.Errorf("%s: the row's background is %s, want --raised %s", what, r.Bg, r.Raised)
+	}
+	if !phone && r.Bg != "rgba(0, 0, 0, 0)" {
 		t.Errorf("%s: the row has a background %s", what, r.Bg)
 	}
 	if r.Overflow || r.MaxRight > r.Vw+0.5 {
@@ -124,6 +136,33 @@ func TestPlayerRulerColour(t *testing.T) {
 	e := playerApp(t)
 	pbwWithPeaks(t, e)
 	tab := fullpOpen(t, e, 390, 900, true)
+	fullpOpenPlayer(t, tab)
+	for _, theme := range []string{"dark", "light"} {
+		tab.Eval(`document.documentElement.setAttribute("data-theme", `+cdp.Quote(theme)+`)`, nil)
+		time.Sleep(100 * time.Millisecond)
+		var r struct{ Done, Now, Rest, Ink, Mark, RestToken, Wave string }
+		tab.Eval(`(() => {
+		  const d = document.getElementById("player-full");
+		  const probe = (host, value) => { const p = document.createElement("i"); p.style.color = value; host.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
+		  const segs = [...d.querySelectorAll(".ts-player__seg")], bg = (s) => getComputedStyle(s).backgroundColor;
+		  return {Done: bg(segs[0]), Now: bg(segs.find((s) => s.classList.contains("is-now"))), Rest: bg(segs[segs.length - 1]),
+		    Ink: probe(d, "var(--ink)"), Mark: probe(d, "var(--ts-mark)"), RestToken: probe(d, "var(--ts-rest)"), Wave: probe(d.querySelector(".ts-scrub"), "var(--scrub-fill)")};
+		})()`, &r)
+		// Phone: the book bar is segments: played in --ts-mark, the current one --ink, the rest --ts-rest.
+		if r.Done != r.Mark || r.Now != r.Ink || r.Rest != r.RestToken {
+			t.Errorf("%s: segments done %s now %s rest %s, want mark %s ink %s rest %s", theme, r.Done, r.Now, r.Rest, r.Mark, r.Ink, r.RestToken)
+		}
+		if r.Now == r.Wave || r.Rest == r.Wave {
+			t.Errorf("%s: the current or unplayed segment shares the waveform's colour %s", theme, r.Wave)
+		}
+	}
+}
+
+// At 768 px the ruler keeps decision 0042's ink fill; the segments are for phones.
+func TestPlayerRulerColourTablet(t *testing.T) {
+	e := playerApp(t)
+	pbwWithPeaks(t, e)
+	tab := fullpOpen(t, e, 768, 900, true)
 	fullpOpenPlayer(t, tab)
 	for _, theme := range []string{"dark", "light"} {
 		tab.Eval(`document.documentElement.setAttribute("data-theme", `+cdp.Quote(theme)+`)`, nil)
@@ -179,12 +218,13 @@ func TestPlayerRowContrast(t *testing.T) {
 		tab.Eval(`document.documentElement.setAttribute("data-theme", `+cdp.Quote(theme)+`)`, nil)
 		time.Sleep(100 * time.Millisecond)
 		var r struct{ Ground, Label, Played, Unplayed, Value string }
+		// At 390 px the ruler is segments: the done and the upcoming ones stand for the played and unplayed parts.
 		tab.Eval(`(() => {
 		  const d = document.getElementById("player-full");
 		  const c = (host, v) => { const p = document.createElement("i"); p.style.color = v; host.appendChild(p); const x = getComputedStyle(p).color; p.remove(); return x; };
 		  return {Ground: getComputedStyle(d).backgroundColor, Label: getComputedStyle(d.querySelector(".ts-player-bar__label")).color,
-		    Played: getComputedStyle(d.querySelector(".ts-player__ruler .ts-ruler__fill")).backgroundColor,
-		    Unplayed: getComputedStyle(d.querySelector(".ts-player__ruler .ts-ruler__line")).backgroundColor, Value: c(d, "var(--accent)")};
+		    Played: getComputedStyle(d.querySelector(".ts-player__seg.is-done")).backgroundColor,
+		    Unplayed: getComputedStyle([...d.querySelectorAll(".ts-player__seg")].pop()).backgroundColor, Value: c(d, "var(--accent)")};
 		})()`, &r)
 		t.Logf("%s: label %.2f, played %.2f, unplayed %.2f, accent value %.2f (ground %s)", theme,
 			pnrRatio(r.Label, r.Ground), pnrRatio(r.Played, r.Ground), pnrRatio(r.Unplayed, r.Ground), pnrRatio(r.Value, r.Ground), r.Ground)

@@ -42,7 +42,8 @@ func TestFullPlayerMarkup(t *testing.T) {
 		`data-ts-full-cover`, `id="player-full-title"`, `data-ts-full-title`, `data-ts-full-author`, `data-ts-full-clock`, `data-ts-full-left`,
 		`data-ts-full-prev`, `aria-label="Previous chapter"`, `data-ts-full-back`, `data-ts-full-back-num`, `data-ts-full-toggle`,
 		`ts-iconbtn ts-iconbtn--cover ts-iconbtn--xl`, `data-ts-full-forward`, `data-ts-full-forward-num`, `data-ts-full-next`, `aria-label="Next chapter"`,
-		`data-ts-scrub="full"`, `data-ts-ruler`, `data-ts-ruler-ticks`, `ts-scrub__fill`, `ts-scrub__needle`, `ts-scrub__bubble`,
+		`data-ts-scrub="full"`, `data-ts-wave="full"`, `data-ts-ruler`, `data-ts-ruler-ticks`, `data-ts-ruler-segs`, `ts-player__segmark`,
+		`data-ts-full-jump`, `data-ts-full-jump-time`, `data-ts-full-jump-left`, `Jump to`, `data-ts-full-chapter-left`, `data-ts-full-bookbar-left`, `Read along`, `ts-scrub__fill`, `ts-scrub__needle`, `ts-scrub__bubble`,
 		`type="range"`, `<label class="ts-sr" for="ts-scrub-full">Position in chapter</label>`, `data-ts-full-elapsed`, `data-ts-full-fine`, `data-ts-full-book-left`,
 		`class="ts-player-bar ts-player__bar"`, `data-ts-open-speed`, `data-ts-open-sleep`, `data-ts-open-chapters`,
 		`data-ts-full-sheet`, `data-ts-chapters-sheet`, `data-ts-chapter-list`, `data-ts-chapter-row`,
@@ -115,7 +116,7 @@ func TestFullPlayerMarkup(t *testing.T) {
 		}
 	}
 	// Words come from the one copy deck, set once on #player.
-	for _, attr := range []string{"data-ts-msg-chapter-of", "data-ts-msg-left-in-chapter", "data-ts-msg-left-in-book-minutes", "data-ts-msg-left-in-book-hours", "data-ts-msg-left-in-book-both", "data-ts-msg-subtitle-sep", "data-ts-msg-scrub-value",
+	for _, attr := range []string{"data-ts-msg-chapter-of", "data-ts-msg-left-in-chapter", "data-ts-msg-left-in-book-minutes", "data-ts-msg-left-in-book-hours", "data-ts-msg-left-in-book-both", "data-ts-msg-subtitle-sep", "data-ts-msg-scrub-value", "data-ts-msg-scrub-was",
 		"data-ts-msg-scrub-bubble", "data-ts-msg-fine-scrub", "data-ts-msg-chapter-played", "data-ts-msg-open-player"} {
 		if !strings.Contains(body, attr+`="`) {
 			t.Errorf("#player lacks %s", attr)

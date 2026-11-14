@@ -1,0 +1,120 @@
+/* The full-screen player on a phone (handoff 2026-11-14; decision 0042). Everything that changes the phone layout lives here,
+   inside PHONE: a portrait width under 768 px (landscape phones, 30rem tall or less, keep player-fit.css's grid). The header and the
+   cover are left alone. Below the cover: the chapter wave, a time row, the book bar of chapter segments, the transport and a raised
+   settings bar. Tablets and desktop render as before; the phone-only pieces of markup are hidden for them first. */
+
+/* Phone-only markup stays out of the way at 768 px and up and on landscape phones. PHONE below switches it on. */
+.ts-player__chleft, .ts-player__booklabel, .ts-player__segs, .ts-player__jump { display: none; }
+
+/* Marks (played, unplayed) reach 3:1 against the player ground in every theme. --ts-mark is set by player-full.js from the cover's
+   accent when the book has one, else this default; the unplayed grey is the strong line, because --wave-rest is under 3:1 in
+   dark, light and sepia. The contrast theme keeps its wave token (4.89:1). */
+.ts-player { --ts-mark: var(--wave-played); --ts-rest: var(--line-strong); }
+[data-theme="contrast"] .ts-player { --ts-rest: var(--wave-rest); }
+
+@media (width < 768px) and (height > 30rem) {
+  /* The foot: the settings bar sits 12 px above the screen edge (and the safe area); the top padding and the header stay as they are. */
+  .ts-player .ts-player__body { padding-bottom: calc(var(--space-12) + env(safe-area-inset-bottom)); }
+
+  /* What the phone does not show: the big clock and the left line (the scrubbing card shows the target time instead), the book's
+     time left beside the elapsed time (it sits over the book bar), the fine-scrub hint, the old bubble, and the ruler's ticks, line and fill. */
+  .ts-player__times, [data-ts-full-book-left], [data-ts-full-fine], .ts-player [data-ts-scrub="full"].is-dragging .ts-scrub__bubble, .ts-player [data-ts-scrub="full"] .ts-scrub__bubble,
+  .ts-player__ruler-ticks, .ts-player__ruler .ts-ruler__line, .ts-player__ruler .ts-ruler__fill { display: none; }
+
+  /* The scrub group dissolves into the body, so wave, times, label and bar are flex items of one column and the free height can be
+     shared between them. A live station keeps player.css's display: none for the whole group. */
+  .ts-player:not(.is-live) .ts-player__scrub { display: contents; }
+
+  /* None of them shrinks: the cover is the one that gives way when the screen is short. */
+  .ts-player [data-ts-scrub="full"], .ts-player .ts-scrub__times, .ts-player .ts-player__booklabel, .ts-player .ts-player__ruler, .ts-player .ts-player__transport, .ts-player .ts-player__bar { flex: none; }
+
+  /* Order down the column: header, cover, title and author (all 0), then these. */
+  .ts-player [data-ts-scrub="full"] { order: 1; }
+  .ts-player .ts-scrub__times { order: 2; }
+  .ts-player .ts-player__booklabel { order: 3; }
+  .ts-player .ts-player__ruler { order: 4; }
+  .ts-player .ts-player__transport { order: 5; }
+  .ts-player .ts-player__bar { order: 6; }
+
+  /* Spacing: the free height is shared equally by the auto margins above the wave, the book label, the transport and the settings bar.
+     Each also keeps a fixed minimum, drawn as a transparent top border (an auto margin has no minimum), so nothing touches at 640 px.
+     The cover (player-fit.css) shrinks first, so there is no empty band at any height. */
+  .ts-player [data-ts-scrub="full"], .ts-player .ts-player__booklabel, .ts-player .ts-player__transport, .ts-player .ts-player__bar {
+    margin-top: auto; border-top: var(--space-8) solid transparent; background-clip: padding-box; }
+  .ts-player .ts-player__transport { border-top-width: calc(var(--space-8) - 5px); margin-bottom: 0; } /* the ruler's 5 px of air above its bars is part of the 8 px */
+  .ts-player .ts-player__bar { border-top-width: var(--space-12); }
+
+  /* The chapter wave: a taller area than before. The wave keeps today's drawing; its line and fill give way to the wave itself
+     (under forced colours the wave is hidden, so they stay). */
+  .ts-player [data-ts-scrub="full"] { height: 3.5rem; }
+  .ts-player [data-ts-scrub="full"] .ts-wave { top: 0.25rem; height: 3rem; }
+  .ts-player [data-ts-scrub="full"] .ts-scrub__needle { top: 0.5rem; height: 2.5rem; }
+  .ts-player [data-ts-scrub="full"] .ts-scrub__input { inset: -0.25rem 0; }
+  @media not (forced-colors: active) {
+    .ts-player [data-ts-scrub="full"] :is(.ts-scrub__line, .ts-scrub__fill) { display: none; }
+  }
+
+  /* The time row: elapsed in the chapter on the left, the chapter's time left on the right in the accent. */
+  .ts-player .ts-scrub__times { align-items: center; min-height: 1.25rem; margin-top: var(--space-4); color: var(--ink); font: 500 0.9375rem/1.25rem var(--font-sans); font-variant-numeric: tabular-nums; }
+  .ts-player__chleft { display: block; margin-inline-start: auto; text-align: end; color: var(--accent); }
+  .ts-player__chleft.is-was { color: var(--ink-muted); }
+
+  /* The book label over the segments: only the time left in the book, at the right. */
+  .ts-player__booklabel { display: block; text-align: end; color: var(--ink-muted); min-height: 1.125rem; }
+
+  /* The book bar. The ruler keeps chapter-bar.js's picker (tip, keys, tap, drag) and its 44 px touch border; only the drawing changes.
+     Its 14 px box holds 4 px segments (the current one is 8 px), so there is 5 px of air above them; 3 px more makes the 8 px gap. */
+  .ts-player .ts-player__ruler { margin-top: 3px; }
+  .ts-player .ts-player__ruler[role="slider"] { margin-top: calc(var(--chbar-extra) * -1 + 3px); }
+  .ts-player__segs { display: block; position: absolute; inset: 0; pointer-events: none; }
+  .ts-player__seg { position: absolute; top: 0.3125rem; height: 0.25rem; left: var(--from); width: calc(var(--to) - var(--from) - 2px); border-radius: 2px; background: var(--ts-rest); }
+  .ts-player__seg.is-done { background: var(--ts-mark); }
+  .ts-player__seg.is-now { top: 0.1875rem; height: 0.5rem; background: var(--ink); }
+  /* A segment under 4 px loses its gap and corners so the run stays continuous; the ruler's mark shows where the position is. */
+  .ts-player__seg.is-last, .ts-player__seg.is-thin { width: calc(var(--to) - var(--from)); }
+  .ts-player__seg.is-thin { border-radius: 0; }
+  .ts-player__segmark { display: none; position: absolute; top: 1px; left: calc(var(--ts-pos, 0) * 100%); width: 2px; height: 0.75rem; margin-left: -1px; border-radius: 1px; background: var(--ink); }
+  .ts-player__ruler.is-thin-now .ts-player__segmark { display: block; }
+  /* The chapter under the pointer is drawn by chapter-bar.js's .ts-chmark; on segments it is a plain ink wash over the bar. */
+  .ts-player__ruler .ts-chmark { top: 0.125rem; height: 0.625rem; }
+
+  /* The transport: skip back and forward are the large ones, chapter jumps the small ones, play the largest. */
+  .ts-player .ts-player__transport { padding-inline: var(--space-4); }
+  .ts-player .ts-player__transport [data-ts-full-prev], .ts-player .ts-player__transport [data-ts-full-next] { width: 3rem; height: 3rem; }
+  .ts-player .ts-player__transport :is([data-ts-full-prev], [data-ts-full-next]) .ts-icon { width: 1.625rem; height: 1.625rem; }
+  .ts-player .ts-player__transport :is([data-ts-full-back], [data-ts-full-forward]) .ts-icon { width: 2.125rem; height: 2.125rem; }
+  .ts-player .ts-player__transport [data-ts-full-toggle] .ts-icon { width: 2rem; height: 2rem; }
+
+  /* The settings bar: one raised block, equal columns for the items that show (three without an ebook, two for an episode). */
+  .ts-player .ts-player__bar { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0; align-items: stretch; padding-bottom: 0;
+    min-height: 4rem; box-sizing: content-box; background-color: var(--raised); border-radius: var(--radius-lg); }
+  .ts-player .ts-player-bar__item { min-height: 4rem; border-radius: var(--radius-lg); }
+  /* A running sleep timer: the moon stays and the time left stands where the label was. */
+  .ts-player .ts-player-bar__item.is-active > .ts-icon { display: block; }
+  .ts-player [data-ts-full-sleep-left] { order: 2; min-height: 1.125rem; font-size: 0.8125rem; line-height: 1.125rem; }
+  .ts-player .ts-player-bar__item:has([data-ts-full-sleep-left]:not([hidden])) .ts-player-bar__label { display: none; }
+  .ts-player .ts-player-bar__item > .ts-icon { order: 1; }
+  .ts-player .ts-player-bar__label { order: 3; }
+  .ts-player .ts-player-bar__item > .ts-player-bar__value:not([data-ts-full-sleep-left]) { order: 1; }
+  .ts-player__bar .ts-player-bar__label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Larger text: two columns, flowing in rows, so each label keeps its room. */
+  html[data-text-size="large"] .ts-player .ts-player__bar { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* The sleep card stands above the settings bar. */
+  .ts-sleepcard[data-ts-sleep-card="full"] { bottom: calc(4rem + var(--space-12) + var(--space-8) + env(safe-area-inset-bottom)); }
+
+  /* The scrubbing card over the cover: laid out here, shown by the scrub state (the next package). Until then it is invisible and takes no pointer. */
+  .ts-player__jump { display: flex; position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4);
+    border-radius: inherit; background: color-mix(in srgb, var(--ground) 82%, transparent); color: var(--ink); opacity: 0; pointer-events: none; }
+  .ts-player__jumptime { font: 500 2.5rem/1.1 var(--font-sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .ts-player__jumpleft { color: var(--accent); }
+
+  /* Forced colours and the contrast theme: the segments keep their meaning in system colours. */
+  @media (forced-colors: active) {
+    .ts-player__seg, .ts-player__segmark { forced-color-adjust: none; }
+    .ts-player__seg { background: GrayText; }
+    .ts-player__seg.is-done { background: Highlight; }
+    .ts-player__seg.is-now, .ts-player__segmark { background: CanvasText; }
+    .ts-player .ts-player__bar { outline: 1px solid CanvasText; }
+  }
+}

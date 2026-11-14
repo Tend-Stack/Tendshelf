@@ -34,7 +34,8 @@ type PlayerMsgs struct {
 	ChapterOf, LeftInChapter, LeftInBookMinutes, LeftInBookHours, LeftInBookBoth, SubtitleSep, ScrubLabel, ScrubValue, FineScrub string
 	ClosePlayer, PrevChapter, NextChapter, Speed, Sleep, Chapters           string
 	OpenReader                                                              string // the book icon: "Read this book"
-	OpenReaderShort                                                         string // its label in the full player's bottom row: "Read"
+	OpenReaderShort                                                         string // its label in the full player's bottom row: "Read along"
+	JumpTo, ScrubWas                                                        string // the phone player's scrub card ("Jump to") and the time row while dragging ("was {t}")
 	Bookmark, MoreActions, GoToBook, MarkFinished, ChapterPlayed, OpenPlayer, Resume string
 	ScrubBubble, UpNext                                                      string
 	// The chapter bar (chapter-bar.js): its label in the full player, the tip, the spoken value and a chapter with no title.
@@ -110,6 +111,7 @@ func (m PlayerMsgs) attrs() templ.Attributes {
 		"data-ts-msg-subtitle-sep":         m.SubtitleSep,
 		"data-ts-msg-scrub-label":     m.ScrubLabel,
 		"data-ts-msg-scrub-value":     m.ScrubValue,
+		"data-ts-msg-scrub-was":       m.ScrubWas,
 		"data-ts-msg-fine-scrub":      m.FineScrub,
 		"data-ts-msg-close-player":    m.ClosePlayer,
 		"data-ts-msg-prev-chapter":    m.PrevChapter,

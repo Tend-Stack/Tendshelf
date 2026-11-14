@@ -53,7 +53,8 @@ for (const name of ["close-player", "full-chapter", "full-cover", "full-cover-ti
   "full-back", "full-forward", "full-back-num", "full-forward-num", "full-toggle", "full-elapsed", "full-fine",
   "full-book-left", "full-speed", "full-book", "full-finish", "full-menu", "full-body", "chapters-sheet", "chapter-list",
   "chapter-row", "open-chapters", "speed-sheet", "sleep-sheet", "speed-range", "speed-out", "sleep-meta", "sleep-custom",
-  "sleep-minutes", "full-sleep-left", "full-toasts", "bookmark-toast", "open-speed", "open-sleep", "full-read", "speed-usual"]) {
+  "sleep-minutes", "full-sleep-left", "full-toasts", "bookmark-toast", "open-speed", "open-sleep", "full-read", "speed-usual",
+  "full-jump", "full-jump-time", "full-jump-left", "full-chapter-left", "full-bookbar-left"]) {
   ui[name] = $(name);
 }
 const miniOpen = $("open", slot);
@@ -123,7 +124,9 @@ function applyAccent() {
   const accent = name === "contrast" ? "" : book.accents[name];
   const tint = name === "contrast" ? "" : book.tint;
   dialog.dataset.tint = name === "dark" ? "full" : name === "contrast" ? "none" : "pale"; // how strong the fade is
-  for (const [property, value] of [["--cover-accent", accent], ["--cover-tint", tint]]) {
+  // --ts-mark colours the phone's played marks: the cover accent when the book has one, else the theme's
+  // played-wave token (the stylesheet's default), which always reaches 3:1.
+  for (const [property, value] of [["--cover-accent", accent], ["--ts-mark", accent], ["--cover-tint", tint]]) {
     dialog.style.setProperty(property, HEX.test(value || "") ? value : ""); // "" removes the property
   }
 }
@@ -139,7 +142,7 @@ function drawTimes(ms, speed) {
   if (book.kind === "radio") {
     // a live station has no clock: the Live badge stands where the chapter number is
     setText("full-chapter", msg("live"));
-    for (const name of ["full-clock", "full-left", "full-elapsed", "full-book-left", "full-chapter-title", "full-sep"]) setText(name, "");
+    for (const name of ["full-clock", "full-left", "full-elapsed", "full-book-left", "full-chapter-title", "full-sep", "full-chapter-left", "full-bookbar-left", "full-jump-time", "full-jump-left"]) setText(name, "");
     return;
   }
   const episode = book.kind === "episode";
@@ -149,6 +152,12 @@ function drawTimes(ms, speed) {
   setText("full-left", whole ? fill(msg("leftInEpisode"), { t: clock(Math.max(0, book.durationMs - ms)) }) : fill(msg("leftInChapter"), { t: clock(chapter.end - ms) }));
   setText("full-elapsed", clock(ms - chapter.start));
   setText("full-book-left", whole ? "" : episode ? fill(msg("leftInEpisode"), { t: clock(Math.max(0, book.durationMs - ms)) }) : leftInBookText(minutes));
+  // The phone player's twins, written from the same strings so the two layouts never disagree: its time row
+  // shows the chapter's time left, the label over its book bar the book's, and its scrub card the target time.
+  setText("full-chapter-left", ui["full-left"].textContent);
+  setText("full-bookbar-left", ui["full-book-left"].textContent);
+  setText("full-jump-time", ui["full-clock"].textContent);
+  setText("full-jump-left", ui["full-left"].textContent);
   // The board: the chapter's name in serif italic, then the author. A chapter without a title, or a
   // book of one chapter, shows the author alone.
   const named = book.chapters.length > 1 && chapter.title;
@@ -183,6 +192,50 @@ function drawScrub(s, ms, force, chapter = book.chapters[chapterAt(ms)]) {
 // The slim ruler across the whole book: the fill follows the position, not interactive.
 function drawRuler(ms) {
   setVars(ruler, { "--ts-pos": clamp(ms / (book.durationMs || 1), 0, 1).toFixed(4) });
+  drawSegments(ms);
+}
+
+// The phone's book bar draws one segment per chapter, as wide as the chapter is long, so a tap on a segment
+// is the chapter chapter-bar.js picks for that x. The segments are the ruler's children (--from/--to in
+// percent, like the ticks); done and now change only when the chapter does.
+function buildSegments() {
+  ruler.segmentIndex = -1;
+  const duration = book.durationMs || 1;
+  const spans = book.chapters.map((c, i) => {
+    const seg = document.createElement("span");
+    seg.className = "ts-player__seg";
+    if (i === book.chapters.length - 1) seg.classList.add("is-last");
+    setVars(seg, { "--from": (c.start / duration * 100).toFixed(3) + "%", "--to": (c.end / duration * 100).toFixed(3) + "%" });
+    return seg;
+  });
+  ruler.segs.querySelectorAll(".ts-player__seg").forEach((old) => old.remove());
+  ruler.segs.prepend(...spans);
+  fitSegments();
+  if (player.state) drawSegments(player.state().positionMs);
+}
+
+// A segment under 4 px (a 2 px bar and a 2 px gap) would vanish: it loses its gap and radius so the bar reads
+// as one run, and the ruler's mark stands in for it when it is the current one.
+function fitSegments() {
+  const width = ruler.segs.clientWidth;
+  if (!width || !book) return;
+  const segs = ruler.segs.querySelectorAll(".ts-player__seg");
+  book.chapters.forEach((c, i) => {
+    if (segs[i]) segs[i].classList.toggle("is-thin", (c.end - c.start) / (book.durationMs || 1) * width < 4);
+  });
+  ruler.classList.toggle("is-thin-now", !!segs[ruler.segmentIndex] && segs[ruler.segmentIndex].classList.contains("is-thin"));
+}
+
+function drawSegments(ms) {
+  const idx = chapterAt(ms);
+  if (idx === ruler.segmentIndex) return;
+  const segs = ruler.segs.querySelectorAll(".ts-player__seg");
+  ruler.segmentIndex = idx;
+  segs.forEach((seg, i) => {
+    seg.classList.toggle("is-done", i < idx);
+    seg.classList.toggle("is-now", i === idx);
+  });
+  ruler.classList.toggle("is-thin-now", !!segs[idx] && segs[idx].classList.contains("is-thin"));
 }
 
 // "1.0×", "1.5×", "2.35×": one decimal, or two when the speed has them.
@@ -292,6 +345,7 @@ function drawBook() {
     tick.style.setProperty("--at", (c.start / book.durationMs * 100).toFixed(2) + "%");
     return tick;
   }));
+  buildSegments();
   applyAccent();
 }
 
@@ -308,6 +362,10 @@ const scrub = { // the full player's chapter slider; the desktop bar's wave is w
 
 const ruler = document.querySelector("[data-ts-ruler]");
 ruler.ticks = $("ruler-ticks", ruler);
+ruler.segs = $("ruler-segs", ruler);
+ruler.segmentIndex = -1;
+// The ruler's width changes with the window and the text size; the thin segments follow it.
+new ResizeObserver(fitSegments).observe(ruler.segs);
 
 // The finger moves the position inside the chapter the drag began in (the line is that chapter's
 // length); the further it is from the bar vertically, the finer the scrub.
