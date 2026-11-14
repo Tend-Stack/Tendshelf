@@ -144,3 +144,59 @@ func TestReaderSpeakerStraight(t *testing.T) {
 		t.Errorf("the sheet itself still answers: %d", rec.Code)
 	}
 }
+
+func TestReadFromFragment(t *testing.T) {
+	l := rdrSeed(t)
+	rshChapters(t, l)
+	path := "/hx/books/" + l.book.ID + "/read-from"
+	hrefs := func(body string) []string {
+		var out []string
+		for _, part := range strings.Split(body, `class="ts-btn `)[1:] {
+			h := part[strings.Index(part, `href="`)+6:]
+			out = append(out, strings.ReplaceAll(h[:strings.Index(h, `"`)], "&amp;", "&"))
+		}
+		return out
+	}
+	// "Chapter 2" is document chapter 3 (after a title chapter): offered first, then the start.
+	rec := l.get(l.owner, path+"?ms=700000", true)
+	got := hrefs(rec.Body.String())
+	if rec.Code != http.StatusOK || len(got) != 2 || !strings.Contains(got[0], "ch=3") || !strings.Contains(got[1], "ch=2") {
+		t.Fatalf("with ms: %d %v", rec.Code, got)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, chooseReadTitle) || !strings.Contains(body, html.EscapeString(readFromListening)) || !strings.Contains(body, readFromStart) {
+		t.Error("labels")
+	}
+	if strings.Contains(body, `hx-boost="false" data-ts-close`) {
+		t.Error("a fragment has no page behind it to return to")
+	}
+	// A bad ms is ignored: nothing is listened to yet, so only the start remains and the person goes straight in.
+	for _, bad := range []string{"?ms=abc", "?ms=-5", ""} {
+		rec = l.get(l.owner, path+bad, true)
+		if rec.Code != http.StatusOK || rec.Body.Len() != 0 || !strings.Contains(rec.Header().Get("HX-Location"), `"path":"/books/`+l.book.ID+`/read"`) {
+			t.Errorf("%q: %d %q %q", bad, rec.Code, rec.Body.String(), rec.Header().Get("HX-Location"))
+		}
+	}
+	// The saved listening place stands in when ms is missing.
+	rshListened(t, l, 1300000, 5)
+	if got := hrefs(l.get(l.owner, path, true).Body.String()); len(got) != 2 || !strings.Contains(got[0], "ch=4") {
+		t.Errorf("saved place: %v", got)
+	}
+	// A reading place is newer than the listening one: continue reading (saved later) comes first, then the start. A live ms is newer than either.
+	sid, _ := l.sidIn(0)
+	if _, _, err := l.a.srv.progress.SaveReading(context.Background(), progress.ReadingSave{UserID: l.ownerID, BookID: l.book.ID,
+		EditionID: l.ed.ID, ChapterIdx: rdrCh, SID: sid, CharPos: 5, PercentBP: 100, ClientUpdatedAt: 10, DeviceID: "dev-test-1"}); err != nil {
+		t.Fatal(err)
+	}
+	got = hrefs(l.get(l.owner, path, true).Body.String())
+	if len(got) != 3 || !strings.HasSuffix(got[0], "/read") || !strings.Contains(got[1], "ch=4") {
+		t.Errorf("order: %v", got)
+	}
+	// A member who may listen but not read, and an unknown book, get 404.
+	if rec := l.get(l.noRead, path, true); rec.Code != http.StatusNotFound {
+		t.Errorf("no read right: %d", rec.Code)
+	}
+	if rec := l.get(l.owner, "/hx/books/bk_nope/read-from", true); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown book: %d", rec.Code)
+	}
+}

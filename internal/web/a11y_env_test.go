@@ -36,7 +36,8 @@ type a11yEnv struct {
 	EbookFoundID                           string // the ready ebook no book has (the Ebooks to pair inbox)
 	ReaderBookID                           string // the reader fixture's book (brSeed)
 	ReaderLab                              *rdrLab
-	TextBookID                             string // a text book (an ebook with no audiobook), with a ready ebook
+	ChoiceLab                              *rdrLab // a book with chapters and a duration, for the format choice sheets
+	TextBookID                             string  // a text book (an ebook with no audiobook), with a ready ebook
 	MemberID                               string
 	InviteToken, LinkToken                 string
 	PairToken, PairID                      string // a waiting pairing of the owner's session (decision 0028)
@@ -245,6 +246,12 @@ func a11ySeed(t *testing.T) *a11yEnv {
 	e.ReaderBookID = e.ReaderLab.book.ID
 	as("reader/owner", e.ReaderLab.a, e.ReaderLab.owner)
 	as("reader/admin", e.ReaderLab.a, e.ReaderLab.admin)
+
+	// choice: a book with audio chapters named like its ebook chapters, for the sheets that ask where to start
+	// (the shared reader lab's audio has no duration, so its listen sheet is a 404).
+	e.ChoiceLab = pgSeed(t, 6, 6)
+	rtocAudio(t, e.ChoiceLab)
+	as("choice/owner", e.ChoiceLab.a, e.ChoiceLab.owner)
 	return e
 }
 

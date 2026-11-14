@@ -236,6 +236,13 @@ func a11yStates() []a11yState {
 		{Key: "reader-contents", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2", "sheet=contents") }, Prepare: brSheetOpen},
 		{Key: "reader-marks", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2", "sheet=marks") }, Prepare: brSheetOpen},
 		{Key: "reader-settings", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2", "sheet=reading") }, Prepare: brSheetOpen},
+		{Key: "reader-listen", Role: "owner", Fixture: "choice", Path: func(e *a11yEnv) string { return brPath(e.ChoiceLab, "ch=2", "sheet=listen") }, Prepare: brSheetOpen},
+		// The player's read control fetches this sheet into #sheet; ms stands for the live position.
+		{Key: "player-read", Role: "owner", Fixture: "choice", Path: func(e *a11yEnv) string { return "/books/" + e.ChoiceLab.book.ID }, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
+			tab.WaitFor(`window.htmx !== undefined`, 8*time.Second)
+			tab.Eval(`window.htmx.ajax("GET", "/hx/books/`+e.ChoiceLab.book.ID+`/read-from?ms=45000", { target: "#sheet" })`, nil)
+			brSheetOpen(t, tab, e)
+		}},
 		{Key: "reader-search", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2", "sheet=search") }, Prepare: brSheetOpen},
 		{Key: "reader-footnote", Role: "owner", Fixture: "reader", Path: func(e *a11yEnv) string { return brPath(e.ReaderLab, "ch=2") }, Prepare: func(t *testing.T, tab *cdp.Tab, e *a11yEnv) {
 			tab.Eval(`document.querySelector("a[data-note-href]").click()`, nil)
