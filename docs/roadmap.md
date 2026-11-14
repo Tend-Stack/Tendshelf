@@ -948,7 +948,7 @@ share-link pages stay in link mode and never call it). Tests: `TestSeriesNext`. 
   No JS, new stylesheet `pages-timeline.css` (in `noPrefetch`). Checks: `TestTimeline*` (library: keyset, ties,
   scope, revoked, chapter; web: roles, other person's rows, day grouping across midnight, paging, links),
   `TestMigrationListeningRecent*`, the 4 x 33,000 session perf row (history 0.4 ms against 150 ms),
-  route matrix row, `TestTimelineVisual`. Limits: no night sleep, no editing or deleting sessions, no reading
+  route matrix row, `TestTimelineVisual`. Limits: night sleep came later (see "Night sleep" below), no editing or deleting sessions, no reading
   sessions, no API route. Words not in the deck are in `docs/copy-additions.md`.
 
 - **R1 All my highlights** (2026-11-06, done; plan section 10). Scope: `library/highlights.go`
@@ -1089,6 +1089,22 @@ device's fonts; every ebook is read again once after the upgrade; an offline cop
 left to right until it is opened online; PageUp, PageDown, Space and the Android volume keys keep their meaning.
 Not verified: the Wails window by hand, the Android WebView, a real Arabic or Hebrew book, captures at 768 and
 1024 px. This replaces the "no right-to-left" limit in the RD2 note above.
+
+## Night sleep (next-stage row 13, second half, 2026-11-14)
+
+Built. Reused: the sleep timer (`setSleep`), `user_settings`, the data-attribute path that carries the rewind settings
+to the player, the toast with an action, `POST /me/settings` and `/api/v1/settings`. Added: four settings
+(`sleep.night`, `sleep.night_from`, `sleep.night_to`, `sleep.night_minutes`; no migration), a switch with From, Until
+and Minutes in Settings, Playback, and in `player-full.js` a window check on the device's clock that starts the timer
+when playback starts inside the window and none is running, also for a play that happened before the module loaded.
+Turning an automatic timer off holds until the window ends (per tab). Books and podcast episodes; not radio. Checks:
+settings table tests in `internal/users`, form, player attribute and API tests, `TestNightSleepBrowser*` (starts,
+outside, off stays off, a manual timer is kept, window edges and the midnight wrap) and the settings layout at 390 and
+1440 px. Budgets raised from measurement: shared page JS 220,527 B (limit 220,672), reader page JS 288,089 B (limit
+288,256). Limits: playback started from the Android notification or Android Auto with the page closed starts no timer
+(no Kotlin change yet; the API already carries the values); a next book that starts by itself counts as a play; the
+form clamps Minutes to 5-180 while the API rejects values outside it. Not verified: the Android app and the desktop
+window by hand.
 
 ## Later
 

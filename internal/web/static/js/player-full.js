@@ -1331,6 +1331,8 @@ function start() {
   if (book) {
     drawBook();
     update("load");
+    // This module loads after the bar, so the first play may already have happened: it counts too.
+    if (player.state().playing) maybeStartNightSleep();
   }
 }
 
