@@ -215,6 +215,7 @@ function parseBook(el) {
     accents: { dark: d.accentDark, light: d.accentLight, sepia: d.accentSepia }, // cover colours for the full player
     tint: d.tint || "",
     readHref: d.readHref || "", // the book's reader, empty without an ebook the person may read
+    readChoose: d.readChoose || "", // the read-from sheet; the icon shows when this is set
     // A podcast episode (decision 0038): the same description with its own addresses. kind is "" for a book.
     kind: d.kind || "",
     progressHref: d.progressHref || "", // where the place is saved; empty means /progress/{id}
@@ -1489,8 +1490,8 @@ applyVolume();
 // The loaded book as player-full.js needs it (copies), or null.
 function info() {
   if (!book) return null;
-  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, kind, showHref } = book;
-  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, kind, showHref, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
+  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref } = book;
+  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
     files: book.files.map(({ id, offset, dur, playable }) => ({ id, offset, dur, playable })), // for the waveform
   };
 }

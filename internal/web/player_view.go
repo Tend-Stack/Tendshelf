@@ -103,6 +103,7 @@ func (s *server) playerView(ctx context.Context, u users.User, sc library.Scope,
 		return components.PlayerDataView{}, err
 	} else if ok {
 		v.ReadHref = readHref(book.ID)
+		v.ReadChoose = "/hx/books/" + book.ID + "/read-from"
 	}
 	return v, nil
 }

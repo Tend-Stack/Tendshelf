@@ -2,6 +2,8 @@ package web
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
+	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/textmatch"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
@@ -253,4 +256,89 @@ func (s *server) listenChoice(r *http.Request, rc readerCtx, readingCh int) (com
 			PlayAtMs: o.PlayAtMs, Play: o.Play, Primary: o.Primary})
 	}
 	return v, true, nil
+}
+
+// getReadFrom answers the player's read control with the "Read from" sheet. With fewer than two options
+// the person goes straight to the reader (HX-Location, a boosted swap of #main, so the player keeps playing).
+// Access is the reader's own: the book must be visible and readable, else 404.
+func (s *server) getReadFrom(w http.ResponseWriter, r *http.Request) {
+	book, ok := s.loadBook(w, r, r.PathValue("id"), share.ViewBook)
+	if !ok {
+		return
+	}
+	ctx, u := r.Context(), currentUser(r)
+	may, err := s.mayReadBook(ctx, u, book)
+	if err != nil {
+		s.serverError(w, r, "read-from access", err)
+		return
+	}
+	if !may {
+		s.notFound(w, r)
+		return
+	}
+	rc, found, err := s.readerLoad(ctx, u, book, "")
+	if err != nil {
+		s.serverError(w, r, "read-from reader", err)
+		return
+	}
+	if !found || rc.doc == nil {
+		s.notFound(w, r)
+		return
+	}
+	first := 1 // the first chapter that is not front matter, 1-based
+	for i, c := range rc.doc.Chapters {
+		if !c.Front {
+			first = i + 1
+			break
+		}
+	}
+	rp, err := s.readingOf(ctx, u.ID, book.ID)
+	if err != nil {
+		s.serverError(w, r, "read-from reading place", err)
+		return
+	}
+	var places []formatOption
+	if s.canPlay(ctx, u, book) {
+		p, err := s.playProgress(ctx, u.ID, book.ID)
+		if err != nil {
+			s.serverError(w, r, "read-from listening place", err)
+			return
+		}
+		ms, at, have := int64(0), int64(0), false
+		if n, err := strconv.ParseInt(r.URL.Query().Get("ms"), 10, 64); err == nil && n >= 0 {
+			ms, at, have = n, time.Now().UnixMilli(), true // the live position; a bad value is ignored
+		} else if listeningPlace(p) {
+			ms, at, have = p.PositionMs, p.ClientUpdatedAt, true
+		}
+		if have {
+			chs, m, err := s.listenMap(ctx, rc)
+			if err != nil {
+				s.serverError(w, r, "read-from chapters", err)
+				return
+			}
+			if a := audioChapterAt(chs, ms); a >= 0 && a < len(m.AudioToText) {
+				if k := m.AudioToText[a]; k >= 1 && k <= len(rc.doc.Chapters) && k != first && (rp == nil || rp.ChapterIdx != k) {
+					places = append(places, formatOption{Label: readFromListening, Where: rc.doc.Chapters[k-1].Title,
+						Href: readerHref(book.ID, rc.ed.ID, "ch", strconv.Itoa(k)), at: at})
+				}
+			}
+		}
+	}
+	if rp != nil && !rp.Finished() && rp.PercentBP > 0 {
+		places = append(places, formatOption{Label: readContinue, Where: fmt.Sprintf(readWhere, rp.ChapterIdx, rp.PercentBP/100),
+			Href: readHref(book.ID), at: rp.ClientUpdatedAt})
+	}
+	opts := orderOptions(places, formatOption{Label: readFromStart, Href: readerHref(book.ID, rc.ed.ID, "ch", strconv.Itoa(first))})
+	if len(opts) < 2 {
+		loc, _ := json.Marshal(map[string]string{"path": readHref(book.ID), "target": "#main", "select": "#main", "swap": "outerSync"})
+		w.Header().Set("HX-Location", string(loc))
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	v := components.FormatChoiceView{Title: chooseReadTitle, CloseLabel: readerCloseSheet, BookID: book.ID}
+	for _, o := range opts {
+		v.Options = append(v.Options, components.FormatChoiceOption{Label: o.Label, Where: o.Where, Href: o.Href, Primary: o.Primary})
+	}
+	s.fragment(w, r, http.StatusOK, components.FormatChoice(v))
 }

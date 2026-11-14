@@ -31,6 +31,7 @@ import (
 func (s *server) registerReader(mux *http.ServeMux) {
 	mux.HandleFunc("GET /books/{id}/read", s.getReader)
 	mux.HandleFunc("GET /hx/books/{id}/read/chapters/{idx}", s.getReaderChapter)
+	mux.HandleFunc("GET /hx/books/{id}/read-from", s.getReadFrom)
 	mux.HandleFunc("GET /books/{id}/read/images/{blockID}", s.getReaderImage)
 	mux.HandleFunc("POST /hx/books/{id}/highlights", s.postReaderHighlight)
 	mux.HandleFunc("PATCH /hx/highlights/{id}", s.patchReaderHighlight)
