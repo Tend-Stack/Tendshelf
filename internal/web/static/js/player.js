@@ -239,6 +239,7 @@ function parseBook(el) {
     kind: d.kind || "",
     progressHref: d.progressHref || "", // where the place is saved; empty means /progress/{id}
     showHref: d.showHref || "", // the episode's show page
+    hasNotes: d.hasNotes === "1", // the episode has show notes
     skipIntro: num(d.skipIntroMs), // ms skipped when an episode starts at its beginning
     skipOutro: num(d.skipOutroMs), // ms before the end at which an episode counts as ended
     chaptersHref: d.chaptersHref || "", // chapters not in the fragment yet; fetched on the first ask
@@ -1512,8 +1513,8 @@ applyVolume();
 // The loaded book as player-full.js needs it (copies), or null.
 function info() {
   if (!book) return null;
-  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, night, chapterTotal } = book;
-  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, night, chapterTotal, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
+  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, hasNotes, night, chapterTotal } = book;
+  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, hasNotes, night, chapterTotal, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
     files: book.files.map(({ id, offset, dur, playable }) => ({ id, offset, dur, playable })), // for the waveform
   };
 }

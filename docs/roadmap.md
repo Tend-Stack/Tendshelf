@@ -1147,6 +1147,18 @@ keep the old layout; the needle moves per tick, not continuously; "Read along" d
 verified: on a phone or the emulator; WebKit. Next: one player for books, episodes and stations
 ([plan](plans/player-kinds.md)).
 
+**One player, three kinds (2026-11-14, [plan](plans/player-kinds.md), decision [0043](decisions/0043-player-kinds.md))**: built in two packages
+(P4, P5) on the same dialog and the same data fragment. Reused: `drawKind()`, the sheets, the episode-panel fragment, the show settings
+route, `maybeStartNightSleep`. Extended: the kind and chapter attributes on the dialog, the live line for a station, kind-aware bar and menu
+(Go to show, Radio), a Show notes sheet filled from `/hx/player/episode-panel/{id}` (the `.ts-podnotes` rules moved to `now-panel.css`),
+night sleep for stations, an episode's speed saved to its show, B no longer adds a bookmark to an episode, the usual-speed button hidden for
+episodes and stations. Replaced: the speed sentence for episodes and the "usual speed set" toast that saved nothing. Checks: `TestPlayerKind*`
+(station, menu safety, episode with and without chapters, no dead band at three sizes, four themes, book unchanged, notes, speed saved),
+`TestPlayerDataEpisodeHasNotes`, `TestPlayerDataRadioNightSleep`, `TestPodcastNotesStyleMoved`, the older player, radio and podcast browser
+tests. Budgets raised from measurement: `player-phone.css` 4,454 B gzip, `player-full.js` 20,436 B gzip (65,642 B raw, ceiling raised to 68 KiB),
+all app scripts 136,396 B. Limits: at 1280 px and up the notes are in the Now playing panel, so the player's Show notes item is a phone and
+tablet item; no translations; saving a station from the player is not built. Not verified: on a phone or the emulator; WebKit.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a

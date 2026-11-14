@@ -220,3 +220,30 @@ func TestPodcastImportStatusPage(t *testing.T) {
 		t.Errorf("page after the import: %q", page)
 	}
 }
+
+// TestPlayerDataEpisodeHasNotes: the fragment says data-has-notes only when the cleaned show notes are not empty, so the
+// player offers its notes sheet only when there is something to read.
+func TestPlayerDataEpisodeHasNotes(t *testing.T) {
+	w := newPodWorld(t)
+	ep := w.eps[0]
+	set := func(notes string) {
+		t.Helper()
+		if _, err := w.a.st.Writer().Exec(`UPDATE podcast_episodes SET notes_html = ? WHERE id = ?`, notes, ep); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, c := range []struct {
+		name, notes string
+		want        bool
+	}{
+		{"notes", "<p>Hello there</p>", true},
+		{"none", "", false},
+		{"script only", "<script>x</script>", false},
+	} {
+		set(c.notes)
+		body := w.get("/hx/player/episode/"+ep, w.ben).Body.String()
+		if got := strings.Contains(body, `data-has-notes="1"`); got != c.want {
+			t.Errorf("%s: data-has-notes present = %v, want %v", c.name, got, c.want)
+		}
+	}
+}

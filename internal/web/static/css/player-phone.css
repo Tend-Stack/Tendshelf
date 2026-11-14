@@ -6,6 +6,9 @@
 /* Phone-only markup stays out of the way at 768 px and up and on landscape phones. PHONE below switches it on. */
 .ts-player__chleft, .ts-player__booklabel, .ts-player__segs, .ts-player__jump { display: none; }
 
+/* The show notes sheet's body: its own scroll, so a long text never pushes the sheet off the screen. */
+.ts-player__notes { padding: 0 var(--space-16) var(--space-16); max-height: 60dvh; overflow-y: auto; overscroll-behavior: contain; }
+
 /* Marks (played, unplayed) reach 3:1 against the player ground in every theme. --ts-mark is set by player-full.js from the cover's
    accent when the book has one, else this default; the unplayed grey is the strong line, because --wave-rest is under 3:1 in
    dark, light and sepia. The contrast theme keeps its wave token (4.89:1). */

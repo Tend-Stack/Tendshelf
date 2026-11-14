@@ -252,6 +252,7 @@ func (s *server) getPlayerRadio(w http.ResponseWriter, r *http.Request) {
 	v := components.PlayerDataView{
 		BookID: st.ID, Title: st.Name, CoverURL: s.playerArtURL(st), LogoInitials: components.StationInitials(st.Name), LogoColour: strconv.Itoa(components.StationColour(st.ID)), Author: s.radio.NowPlaying(st.ID), ServerNow: s.now().UnixMilli(),
 		Speed: "1.00", SkipBackS: set.SkipBackS, SkipForwardS: set.SkipForwardS, Rewind: rewindAttr(),
+		NightSleep: set.NightSleep, NightFrom: set.NightFrom, NightTo: set.NightTo, NightMinutes: set.NightMinutes,
 		Kind: radioKind, ShowHref: "/radio",
 		Files: []components.PlayerFileView{{ID: st.ID, Mime: "audio/mpeg", Playable: true, Href: "/radio/live/" + url.PathEscape(st.ID)}},
 	}

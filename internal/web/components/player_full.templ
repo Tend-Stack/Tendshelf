@@ -123,6 +123,10 @@ templ PlayerFull(m PlayerMsgs) {
 					@Icon("chapters", false)
 					<span class="ts-player-bar__label">{ m.Chapters }</span>
 				</button>
+				<button type="button" class="ts-player-bar__item" data-ts-open-notes hidden aria-haspopup="dialog">
+					@Icon("info", false)
+					<span class="ts-player-bar__label">{ m.ShowNotes }</span>
+				</button>
 				<a class="ts-player-bar__item" href="/radio" data-ts-full-radio data-ts-close-player hidden>
 					@Icon("radio", false)
 					<span class="ts-player-bar__label">{ m.RadioTitle }</span>
@@ -227,6 +231,19 @@ templ PlayerFull(m PlayerMsgs) {
 						<input id="ts-sleep-minutes" class="ts-input" type="number" min="1" max="240" step="1" inputmode="numeric" data-ts-sleep-minutes/>
 						<button type="button" class="ts-btn ts-btn--primary" data-ts-sleep-start>{ m.SleepStart }</button>
 					</div>
+				</section>
+			</div>
+			<div class="ts-player__sheetwrap" data-ts-notes-sheet hidden>
+				<div class="ts-scrim" data-ts-sheet-close></div>
+				<section class="ts-sheet" role="dialog" aria-labelledby="player-full-notes-title">
+					<div class="ts-sheet__grab"></div>
+					<div class="ts-sheet__head">
+						<h3 id="player-full-notes-title" class="ts-sheet__title">{ m.ShowNotes }</h3>
+						<button type="button" class="ts-iconbtn" data-ts-sheet-close aria-label={ m.KeysClose }>
+							@Icon("close", false)
+						</button>
+					</div>
+					<div class="ts-player__notes" data-ts-notes-body></div>
 				</section>
 			</div>
 		</div>

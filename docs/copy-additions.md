@@ -335,3 +335,5 @@ are not in the copy deck or on `DownloadsPhone` / `StateOffline`. Same voice rul
 **Full player bottom row (new, decision 0042).** Read (the short label under the book icon; the button's accessible name stays "Read this book").
 
 **Player kinds (new, decision 0043).** This speed is for this show. Other shows keep your usual speed. (the episode speed sheet; reused words: "Go to show" in an episode's player menu, "Radio" in the station's settings bar)
+
+**Player kinds, notes (decision 0043).** The show notes did not load. Try again in a moment. (the notes sheet in the full player; reused word: "Show notes" for the bar item and the sheet title)

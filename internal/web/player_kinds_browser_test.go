@@ -22,8 +22,19 @@ const pkThreeChapters = `{"version":"1.2.0","chapters":[{"startTime":0,"title":"
 // pkEpisode plays the first episode of a fake show (with three chapters, or none), pauses and opens the full player.
 func pkEpisode(t *testing.T, chapters bool, width, height int, theme string) (tab *cdp.Tab, w *podWorld, base string) {
 	t.Helper()
+	return pkEpisodeNotes(t, chapters, "", width, height, theme)
+}
+
+// pkEpisodeNotes is pkEpisode for an episode whose show notes are the given HTML (empty: none).
+func pkEpisodeNotes(t *testing.T, chapters bool, notes string, width, height int, theme string) (tab *cdp.Tab, w *podWorld, base string) {
+	t.Helper()
 	b := chromium(t)
 	w = podWavWorld(t)
+	if notes != "" {
+		if _, err := w.a.st.Writer().Exec(`UPDATE podcast_episodes SET notes_html = ? WHERE id = ?`, notes, w.eps[0]); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if chapters {
 		if _, err := w.a.st.Writer().Exec(`UPDATE podcast_episodes SET chapters_json = ? WHERE id = ?`, pkThreeChapters, w.eps[0]); err != nil {
 			t.Fatal(err)
@@ -205,7 +216,7 @@ func TestPlayerKindEpisodeChapters(t *testing.T) {
 }
 
 func TestPlayerKindEpisodeWhole(t *testing.T) {
-	for _, size := range [][2]int{{390, 844}, {1440, 900}} {
+	for _, size := range [][2]int{{390, 844}, {1024, 768}} {
 		tab, _, _ := pkEpisode(t, false, size[0], size[1], "dark")
 		what := fmt.Sprintf("%dx%d", size[0], size[1])
 		shown := pkShown(tab, ".ts-player__ruler", ".ts-player__booklabel", "[data-ts-full-prev]", "[data-ts-full-next]")
@@ -386,6 +397,127 @@ func TestPlayerKindBookUnchanged(t *testing.T) {
 	}
 }
 
+const pkNotes = `<p>Notes for the episode, with <a href="https://example.com/e">a link</a>.</p>`
+
+// pkNotesState reads the notes sheet: whether it is open, its text, the failure line, what has focus, and any repeated id.
+const pkNotesState = `(() => { const d = ` + ppDialog + `, wrap = d.querySelector("[data-ts-notes-sheet]"), a = document.activeElement;
+  const ids = {}, dup = []; for (const e of document.querySelectorAll("[id]")) { if (ids[e.id]) dup.push(e.id); ids[e.id] = 1; }
+  return {Open: !wrap.hidden, Text: d.querySelector("[data-ts-notes-body]").textContent.trim(), Focus: a && a.hasAttribute("data-ts-sheet-close") && wrap.contains(a),
+    OnOpener: a === d.querySelector("[data-ts-open-notes]"), ItemShown: d.querySelector("[data-ts-open-notes]").offsetWidth > 0, Dup: dup}; })()`
+
+type pkNotesView struct {
+	Open, Focus, OnOpener, ItemShown bool
+	Text                             string
+	Dup                              []string
+}
+
+func pkReadNotes(tab *cdp.Tab) (v pkNotesView) {
+	tab.Eval(pkNotesState, &v)
+	return v
+}
+
+// TestPlayerKindEpisodeNotes: the Show notes item opens a sheet with the notes (fetched from the episode panel), focus lands on
+// its close button, Escape gives focus back, no id appears twice, an episode without notes has no item, and a failed fetch shows
+// a plain line that the next open retries. It runs on the phone and on a tablet width (at 1280 and up the bar is hidden and the Now playing panel carries the notes).
+func TestPlayerKindEpisodeNotes(t *testing.T) {
+	for _, size := range []struct{ w, h int }{{390, 844}, {1024, 768}} {
+		t.Run(fmt.Sprintf("%dx%d", size.w, size.h), func(t *testing.T) {
+			tab, _, _ := pkEpisodeNotes(t, false, pkNotes, size.w, size.h, "dark")
+			v := pkReadNotes(tab)
+			if !v.ItemShown {
+				t.Fatalf("the Show notes item is not drawn")
+			}
+			// The first ask fails with a 500, the second goes through.
+			tab.Eval(`window.__failNotes = true; const f = window.fetch; window.fetch = (u, o) => String(u).includes("episode-panel") && window.__failNotes ? Promise.resolve(new Response("", {status: 500})) : f(u, o);`, nil)
+			playerClickSel(t, tab, "#player-full [data-ts-open-notes]")
+			tab.WaitFor(`!`+ppDialog+`.querySelector("[data-ts-notes-sheet]").hidden && `+ppDialog+`.querySelector("[data-ts-notes-body]").textContent.includes("did not load")`, 5*time.Second)
+			if v = pkReadNotes(tab); v.Text != "The show notes did not load. Try again in a moment." {
+				t.Fatalf("failure line: %q", v.Text)
+			}
+			fullpKey(t, tab, "Escape", 27)
+			tab.WaitFor(ppDialog+`.querySelector("[data-ts-notes-sheet]").hidden`, 3*time.Second)
+			tab.Eval(`window.__failNotes = false`, nil)
+			playerClickSel(t, tab, "#player-full [data-ts-open-notes]")
+			tab.WaitFor(ppDialog+`.querySelector("[data-ts-notes-body]").textContent.includes("Notes for the episode")`, 5*time.Second)
+			time.Sleep(200 * time.Millisecond)
+			v = pkReadNotes(tab)
+			if !v.Open || !strings.Contains(v.Text, "Notes for the episode, with a link.") {
+				t.Errorf("sheet after retry: open %v text %q", v.Open, v.Text)
+			}
+			if !v.Focus {
+				t.Errorf("focus is not on the sheet's close button")
+			}
+			if len(v.Dup) > 0 {
+				t.Errorf("repeated ids in the document: %v", v.Dup)
+			}
+			fullpKey(t, tab, "Escape", 27)
+			tab.WaitFor(ppDialog+`.querySelector("[data-ts-notes-sheet]").hidden`, 3*time.Second)
+			time.Sleep(200 * time.Millisecond)
+			if v = pkReadNotes(tab); v.Open || !v.OnOpener {
+				t.Errorf("after Escape: open %v, focus back on the item %v", v.Open, v.OnOpener)
+			}
+			tab.Close()
+		})
+	}
+	tab, _, _ := pkEpisode(t, false, 390, 844, "dark")
+	defer tab.Close()
+	if v := pkReadNotes(tab); v.ItemShown {
+		t.Errorf("an episode without notes still shows the Show notes item")
+	}
+}
+
+// TestPlayerKindEpisodeSpeedSaved: a speed chosen in the player is saved to the episode's show (the field speed only), and a
+// reload of the episode starts at it. A book's speed keeps its own route (TestFullPlayerBrowserSpeed).
+func TestPlayerKindEpisodeSpeedSaved(t *testing.T) {
+	tab, w, _ := pkEpisode(t, false, 390, 844, "dark")
+	defer tab.Close()
+	if body := w.get("/hx/player/episode/"+w.eps[0], w.ben).Body.String(); !strings.Contains(body, `data-speed="1.00"`) {
+		t.Fatalf("start speed is not 1.00: %s", body)
+	}
+	tab.Eval(`window.__posts = []; const f = window.fetch; window.fetch = (u, o) => { if (o && o.method === "POST") window.__posts.push([String(u), String(o.body)]); return f(u, o); };`, nil)
+	playerClickSel(t, tab, "[data-ts-open-speed]")
+	tab.WaitFor(`!`+ppDialog+`.querySelector("[data-ts-speed-sheet]").hidden`, 3*time.Second)
+	playerClickSel(t, tab, `#player-full [data-ts-speed-choice="1.5"]`)
+	tab.WaitFor(`window.__posts.some((p) => p[0].endsWith("/settings"))`, 5*time.Second)
+	var posts [][]string
+	tab.Eval(`window.__posts`, &posts)
+	var got []string
+	for _, p := range posts {
+		if strings.HasSuffix(p[0], "/settings") {
+			got = p
+		}
+		if strings.Contains(p[0], "/hx/books/") {
+			t.Errorf("an episode posted to a book route: %v", p)
+		}
+	}
+	if got == nil || got[0] != "/podcasts/shows/"+w.show+"/settings" || got[1] != "speed=1.50" {
+		t.Errorf("settings post: %v", got)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if body := w.get("/hx/player/episode/"+w.eps[0], w.ben).Body.String(); !strings.Contains(body, `data-speed="1.50"`) {
+		t.Errorf("a reload does not play at 1.5: %s", body)
+	}
+}
+
+// TestPodcastNotesStyleMoved: the show notes keep their 17 px text on the episode page after their rules moved to now-panel.css.
+func TestPodcastNotesStyleMoved(t *testing.T) {
+	b := chromium(t)
+	w := podWavWorld(t)
+	if _, err := w.a.st.Writer().Exec(`UPDATE podcast_episodes SET notes_html = ? WHERE id = ?`, pkNotes, w.eps[0]); err != nil {
+		t.Fatal(err)
+	}
+	base, _ := podPlayServer(t, w)
+	tab := b.NewTab(1440, 900, false, false)
+	defer tab.Close()
+	tab.Navigate(base + "/podcasts/episodes/" + w.eps[0])
+	tab.WaitFor(`document.querySelector(".ts-podnotes") !== null`, 10*time.Second)
+	var size string
+	tab.Eval(`getComputedStyle(document.querySelector(".ts-podnotes")).fontSize`, &size)
+	if size != "17px" {
+		t.Errorf(".ts-podnotes font-size %q, want 17px", size)
+	}
+}
+
 // TestPlayerKindsCaptures writes the phone player of each kind when TS_KIND_SHOTS names a folder, for a look at the layout.
 func TestPlayerKindsCaptures(t *testing.T) {
 	dir := os.Getenv("TS_KIND_SHOTS")
@@ -409,5 +541,11 @@ func TestPlayerKindsCaptures(t *testing.T) {
 	tab.Close()
 	tab, _, _ = pkStation(t, 390, 844, "dark")
 	tab.Screenshot(filepath.Join(dir, "kind-station-dark-390x844.png"))
+	tab.Close()
+	tab, _, _ = pkEpisodeNotes(t, true, pkNotes, 390, 844, "dark")
+	playerClickSel(t, tab, "#player-full [data-ts-open-notes]")
+	tab.WaitFor(ppDialog+`.querySelector("[data-ts-notes-body]").textContent.includes("Notes for the episode")`, 5*time.Second)
+	time.Sleep(500 * time.Millisecond)
+	tab.Screenshot(filepath.Join(dir, "kind-episode-notes-dark-390x844.png"))
 	tab.Close()
 }

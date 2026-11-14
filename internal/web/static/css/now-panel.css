@@ -90,3 +90,11 @@
 .ts-np--episode .ts-np__meta { color: var(--ink-muted); font-size: 0.8125rem; }
 .ts-np--episode .ts-chapters, .ts-np--episode .ts-podnotes { margin: 0; }
 .ts-np--episode .ts-podep__actions { gap: var(--space-8); }
+/* Show notes (the episode page, the 1280+ panel and the phone player's notes sheet): they moved here from pages-podcasts.css because every
+   page with a player loads this file. */
+.ts-podnotes { max-width: var(--size-read-measure); font-size: 1.0625rem; line-height: 1.625rem; overflow-wrap: anywhere; }
+.ts-podnotes > :first-child { margin-top: 0; }
+.ts-podnotes p, .ts-podnotes ul, .ts-podnotes ol, .ts-podnotes blockquote { margin: 0 0 var(--space-12); }
+.ts-podnotes ul, .ts-podnotes ol { padding-left: var(--space-24); }
+.ts-podnotes blockquote { padding-left: var(--space-12); border-left: 2px solid var(--line-strong); color: var(--ink-muted); }
+.ts-podnotes a { color: var(--accent); text-decoration: underline; }

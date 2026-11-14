@@ -54,7 +54,7 @@ for (const name of ["close-player", "full-chapter", "full-cover", "full-cover-ti
   "full-book-left", "full-speed", "full-book", "full-finish", "full-menu", "full-body", "chapters-sheet", "chapter-list",
   "chapter-row", "open-chapters", "speed-sheet", "sleep-sheet", "speed-range", "speed-out", "sleep-meta", "sleep-custom",
   "sleep-minutes", "full-sleep-left", "full-toasts", "bookmark-toast", "open-speed", "open-sleep", "full-read", "speed-usual",
-  "full-live", "full-show", "full-radio", "speed-for", "full-jump", "full-jump-time", "full-jump-left", "full-chapter-left", "full-bookbar-left"]) {
+  "full-live", "full-show", "full-radio", "speed-for", "open-notes", "notes-sheet", "notes-body", "full-jump", "full-jump-time", "full-jump-left", "full-chapter-left", "full-bookbar-left"]) {
   ui[name] = $(name);
 }
 const miniOpen = $("open", slot);
@@ -325,6 +325,8 @@ function drawKind() {
   // an episode without chapters of its own has nothing to list
   const noChapters = (episode || live) && book.chapters.length <= 1;
   ui["open-chapters"].hidden = noChapters;
+  ui["open-notes"].hidden = !(episode && book.hasNotes);
+  if (book.id !== ui["notes-body"].dataset.tsFor) ui["notes-body"].replaceChildren(); // another item: its notes are fetched on open
   bar.chapters.hidden = noChapters;
   for (const mark of [...slot.querySelectorAll("[data-ts-bookmark], [data-ts-bar-bookmark]"), ...dialog.querySelectorAll("[data-ts-bookmark]")]) {
     mark.hidden = episode || live || !!LINK;
@@ -650,7 +652,7 @@ dialog.addEventListener("close", () => {
 
 // ---- Sheets: chapters, speed, sleep timer ----
 
-const sheetWraps = { chapters: ui["chapters-sheet"], speed: ui["speed-sheet"], sleep: ui["sleep-sheet"] };
+const sheetWraps = { chapters: ui["chapters-sheet"], speed: ui["speed-sheet"], sleep: ui["sleep-sheet"], notes: ui["notes-sheet"] };
 
 function fillChapters() {
   const position = player.state();
@@ -683,6 +685,32 @@ function centreCurrentChapter(row) {
   list.scrollTop += above - (list.clientHeight - row.offsetHeight) / 2;
 }
 
+// Fills the notes sheet from the episode panel's fragment (the same gate as the page) and keeps only the
+// .ts-podnotes node, so no id of the panel lands twice in the document. A failure shows one plain line;
+// the next open asks again.
+function fillNotes() {
+  const body = ui["notes-body"];
+  const ep = book;
+  if (body.dataset.tsFor === ep.id) return;
+  const failed = () => {
+    if (book !== ep) return;
+    const line = document.createElement("p");
+    line.className = "meta";
+    line.textContent = msg("notesFailed");
+    body.replaceChildren(line);
+  };
+  fetch("/hx/player/episode-panel/" + encodeURIComponent(ep.id), { headers: { "HX-Request": "true" } })
+    .then((res) => (res.ok ? res.text() : Promise.reject(new Error("notes"))))
+    .then((html) => {
+      const node = new DOMParser().parseFromString(html, "text/html").querySelector(".ts-podnotes");
+      if (!node) return failed();
+      if (book !== ep) return;
+      body.replaceChildren(document.importNode(node, true));
+      body.dataset.tsFor = ep.id;
+    })
+    .catch(failed);
+}
+
 // Opens a sheet over the player, opening the player first when it is closed. from is the control
 // that asked, so closing the sheet gives focus back to it.
 function openSheet(name, from = document.activeElement) {
@@ -694,6 +722,7 @@ function openSheet(name, from = document.activeElement) {
   if (name === "chapters") fillChapters();
   if (name === "speed") drawSpeedSheet(player.state().speed);
   if (name === "sleep") drawSleep();
+  if (name === "notes") fillNotes();
   openName = name;
   sheetOpener = from;
   const wrap = sheetWraps[name];
@@ -702,7 +731,7 @@ function openSheet(name, from = document.activeElement) {
   ui["full-body"].inert = true;
   // Focus the current choice, else the first. preventScroll: a focus that scrolls would also scroll
   // the player body behind the sheet (the whole panel jumped); the chapter list scrolls itself.
-  const choice = wrap.querySelector("[aria-current], [aria-checked=true]") || wrap.querySelector("ol button, [role=radio]:not([hidden])");
+  const choice = wrap.querySelector("[aria-current], [aria-checked=true]") || wrap.querySelector("ol button, [role=radio]:not([hidden])") || wrap.querySelector("button[data-ts-sheet-close]");
   choice.focus({ preventScroll: true });
   if (name === "chapters") centreCurrentChapter(choice);
 }
@@ -786,7 +815,17 @@ function saveSpeed(leaving, makeUsual) {
   if ((!speedUnsaved && !makeUsual) || LINK) return;
   speedUnsaved = false;
   const state = player.state();
-  if (state.itemKind === "episode" || state.itemKind === "radio") return; // an episode's speed follows its show's settings
+  if (state.itemKind === "radio") return;
+  if (state.itemKind === "episode") { // an episode's speed is its show's: the settings handler keeps the fields not sent
+    if (!book || !book.showHref || book.id !== state.bookId) return;
+    fetch(book.showHref + "/settings", {
+      method: "POST",
+      keepalive: leaving === true,
+      headers: { "X-CSRF-Token": csrf(), "HX-Request": "true", "Content-Type": FORM_TYPE },
+      body: "speed=" + state.speed.toFixed(2),
+    }).catch(() => {});
+    return;
+  }
   fetch("/hx/books/" + encodeURIComponent(state.bookId) + "/speed", {
     method: "POST",
     keepalive: leaving === true,
@@ -1279,6 +1318,7 @@ const actions = {
   "open-chapters": () => openSheet("chapters", ui["open-chapters"]),
   "open-speed": () => openSheet("speed", ui["open-speed"]),
   "open-sleep": () => openSheet("sleep", ui["open-sleep"]),
+  "open-notes": () => openSheet("notes", ui["open-notes"]),
   "sheet-close": () => closeSheet(true),
   "bookmark": addBookmark,
   "sleep-plus": sleepPlus,

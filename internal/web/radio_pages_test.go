@@ -149,3 +149,28 @@ func TestRadioNavAndTabs(t *testing.T) {
 		t.Error("a Radio tab is drawn with radio off")
 	}
 }
+
+// TestPlayerDataRadioNightSleep: a station's fragment carries the night-sleep window when the person's setting is on (the
+// sleep timer then starts for the radio too) and nothing when it is off.
+func TestPlayerDataRadioNightSleep(t *testing.T) {
+	w := newRadioWorld(t)
+	id := w.add(w.ben, w.fx.liveURL())
+	body := w.get("/hx/player/radio/"+id, w.ben).Body.String()
+	if strings.Contains(body, "data-night-") {
+		t.Errorf("night sleep off: fragment has night attributes: %s", body)
+	}
+	set, err := w.a.srv.users.LoadSettings(context.Background(), w.benID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set.NightSleep, set.NightFrom, set.NightTo, set.NightMinutes = true, 1260, 420, 45
+	if err := w.a.srv.users.SaveSettings(context.Background(), w.benID, set); err != nil {
+		t.Fatal(err)
+	}
+	body = w.get("/hx/player/radio/"+id, w.ben).Body.String()
+	for _, want := range []string{`data-night-sleep="1"`, `data-night-from="1260"`, `data-night-to="420"`, `data-night-minutes="45"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("night sleep on: fragment lacks %s", want)
+		}
+	}
+}

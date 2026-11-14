@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
+	"github.com/Tend-Stack/tendshelf/internal/podcast/rss"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
@@ -57,7 +58,8 @@ func (s *server) episodePlayerView(ctx context.Context, u users.User, ep podcast
 		SkipBackS: set.SkipBackS, SkipForwardS: set.SkipForwardS,
 		AutoRewind: set.AutoRewind, Rewind: rewindAttr(),
 		NightSleep: set.NightSleep, NightFrom: set.NightFrom, NightTo: set.NightTo, NightMinutes: set.NightMinutes,
-		Kind: podEpisodeKind, ProgressHref: "/podcasts/progress/" + id,
+		HasNotes: rss.CleanHTML(ep.NotesHTML, rss.NotesMax) != "",
+		Kind:     podEpisodeKind, ProgressHref: "/podcasts/progress/" + id,
 		ShowHref:    "/podcasts/shows/" + url.PathEscape(ep.ShowID),
 		SkipIntroMs: int64(skipIntro) * 1000, SkipOutroMs: int64(skipOutro) * 1000,
 		Files: []components.PlayerFileView{{
