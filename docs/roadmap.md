@@ -1092,8 +1092,10 @@ Not verified: the Wails window by hand, the Android WebView, a real Arabic or He
 
 ## Later
 
-TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, OpenID
-Connect, merge MP3 folder to M4B, custom metadata providers, Chromecast.
+TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a
+decision, it writes audio files), custom metadata providers (needs a decision), Chromecast, vertical text in the reader.
+Built since this list was written, see their status notes above: OPDS, podcasts, RSS feeds of books and series, OpenID
+Connect.
 
 - **L5 Clips** (2026-11-06, done; plan `docs/plans/next-server.md` section 8). Scope: migration `0029_clips` (`end_ms`,
   `kind` on `bookmarks`; the orchestrator renumbers at merge), `progress.UpdateBookmark`/`BookmarkPatch`/`BookmarkKinds`
