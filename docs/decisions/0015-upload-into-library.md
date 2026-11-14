@@ -94,7 +94,12 @@ Amends AGENTS.md "Audio files are the user's" and architecture invariant 1.
    (`ebook.EnsureDefault`; a person's own choice cascades away with the file). "Remove the audiobook only" first moves the
    ebook files to text books of their own (`ebook.SplitText`: reading places, highlights and bookmarks go with them), then removes the
    audio through the whole-book path, sparing the text files placed in the same folder; the audiobook's own listening
-   progress and bookmarks go with it, as in a whole-book removal. `GET /books/{id}/remove?file=` confirms one edition and
+   progress and bookmarks go with it, as in a whole-book removal.
+   *Whole book of a combined book.* `upload.RemoveWhole` first removes every attached ebook file that is removable on its
+   own, by the code above (`ebook.RemoveUpload` or `RemoveEbookFile`), so no Text-page upload is left behind with rows or
+   stored bytes. An ebook file Tendshelf did not place (or that changed) stays on disk and is only unpaired; the confirm
+   page says "N files stay on disk because Tendshelf did not place them." The whole book is offered when its audio is
+   Tendshelf's, even if such a library ebook sits beside it. `GET /books/{id}/remove?file=` confirms one edition and
    `?part=whole|audio|text` confirms one part (the three-dot menu's quick actions). A book with one part keeps the old flow.
 12. **JavaScript.** One lazy module `js/upload.js`, about 5 KB gzip, imported by a generic 8-line loader in `shell.js`
    (`[data-ts-module]`) only on the Add books page. No-JavaScript fallback: **not built**; the page says

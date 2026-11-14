@@ -113,6 +113,7 @@ func a11yPages() []a11yPage {
 		row("book-bookmarks", "/books/{id}/{tab}", book("/bookmarks"), both, "main", true),
 		row("book-chapters-edit", "/books/{id}/chapters/edit", book("/chapters/edit"), owner, "main", true),
 		row("book-details", "/books/{id}/{tab}", book("/details"), owner, "main", true),
+		row("book-details-edit", "/books/{id}/{tab}", book("/details?edit=1"), owner, "main", true),
 		row("book-text", "/books/{id}/{tab}", book("/text"), owner, "main", true),
 		// B2: a text book (the member holds can_read = 0 and sees the sentence that says so) and the library's ebooks.
 		row("book-ebook", "/books/{id}", func(e *a11yEnv) string { return "/books/" + e.TextBookID }, both, "main", true),

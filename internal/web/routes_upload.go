@@ -268,7 +268,11 @@ func (s *server) postBookRemove(w http.ResponseWriter, r *http.Request) {
 	u := currentUser(r)
 	switch r.FormValue("part") {
 	case "":
-		if _, err := s.uploads.Remove(r.Context(), u.ID, b.ID, s.removePlacedBy(u)); err != nil {
+		var drop func(context.Context, string) error
+		if s.ebooks != nil {
+			drop = func(ctx context.Context, fileID string) error { return s.ebooks.RemoveUpload(ctx, u.ID, b.ID, fileID) }
+		}
+		if _, err := s.uploads.RemoveWhole(r.Context(), u.ID, b.ID, s.removePlacedBy(u), drop); err != nil {
 			s.removeFailed(w, r, err)
 			return
 		}

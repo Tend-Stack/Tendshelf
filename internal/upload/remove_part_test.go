@@ -107,8 +107,8 @@ func TestRemoveTextPartRefusesChangedAndLibraryFiles(t *testing.T) {
 	if p.AnyText() || !p.Audio {
 		t.Errorf("parts = %+v", p)
 	}
-	if p.Whole {
-		t.Error("whole removal offered with a library ebook")
+	if !p.Whole || p.Staying() != 1 {
+		t.Errorf("whole removal: %v, staying %d", p.Whole, p.Staying())
 	}
 	if _, err := e.svc.RemoveEbookFile(bg, me, bookID, fileID, ""); err == nil {
 		t.Error("a library ebook was removed")

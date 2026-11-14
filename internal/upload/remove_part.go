@@ -136,7 +136,73 @@ WHERE book_id = ? AND missing_since IS NULL ORDER BY created_at, id`, bookID)
 	if !p.Combined {
 		p.Audio = false
 	}
+	// A book with audio and text is removed whole when its audio is Tendshelf's: its removable ebook files go with it
+	// and a library ebook that is not Tendshelf's stays on disk, unpaired.
+	if p.Combined && p.Audio {
+		p.Whole = true
+	}
 	return p, nil
+}
+
+// Staying is how many attached ebook files a whole-book removal leaves on disk because Tendshelf did not place them.
+func (p Parts) Staying() int {
+	n := 0
+	for _, f := range p.Text {
+		if !f.Removable {
+			n++
+		}
+	}
+	return n
+}
+
+// RemoveWhole removes a whole book. A book with audio and ebook files first loses every ebook file that is
+// removable on its own, by the same rules and code as one edition (dropUpload removes a copy uploaded on the Text
+// page, ebook.Service.RemoveUpload; the others go through RemoveEbookFile); an ebook file that is not removable,
+// or that changed since it was placed, stays on disk and is only unpaired. Then the audio and the book go the
+// way Remove always did. Any other book is Remove.
+func (s *Service) RemoveWhole(ctx context.Context, userID, bookID, placedBy string, dropUpload func(ctx context.Context, fileID string) error) (RemoveResult, error) {
+	parts, err := s.PartsOf(ctx, bookID, placedBy)
+	if err != nil {
+		return RemoveResult{}, err
+	}
+	if !parts.Combined {
+		return s.Remove(ctx, userID, bookID, placedBy)
+	}
+	if !parts.Audio {
+		return RemoveResult{Deleted: []string{}, Kept: []string{}}, fail(409, "not_removable", "Tendshelf did not add this book, so it will not remove it.")
+	}
+	total := RemoveResult{Deleted: []string{}, Kept: []string{}}
+	for _, f := range parts.Text {
+		if !f.Removable {
+			continue
+		}
+		if f.Uploaded {
+			if dropUpload != nil {
+				if err := dropUpload(ctx, f.ID); err != nil {
+					return total, err
+				}
+			}
+			continue
+		}
+		res, err := s.RemoveEbookFile(ctx, userID, bookID, f.ID, placedBy)
+		if err != nil {
+			return total, err
+		}
+		total.Deleted = append(total.Deleted, res.Deleted...)
+		total.Kept = append(total.Kept, res.Kept...)
+	}
+	// What is left of the text only loses its place on the book (rows only, as when a book is deleted).
+	err = s.write(ctx, nil, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE ebook_files SET book_id = NULL, paired_by = NULL, book_default = 0 WHERE book_id = ?`, bookID)
+		return err
+	})
+	if err != nil {
+		return total, err
+	}
+	res, err := s.Remove(ctx, userID, bookID, placedBy)
+	total.Deleted = append(total.Deleted, res.Deleted...)
+	total.Kept = append(total.Kept, res.Kept...)
+	return total, err
 }
 
 // RemoveEbookFile removes one attached library ebook file of a book that also has audio (a copy uploaded on the

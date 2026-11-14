@@ -347,7 +347,11 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 			v.Choices = append(v.Choices, pages.RemoveChoice{Part: "audio", Label: bookRemoveAudioButton, Help: bookRemoveAudioHelp})
 		}
 		if parts.Whole {
-			v.Choices = append(v.Choices, pages.RemoveChoice{Label: bookRemoveWholeButton, Help: bookRemoveWholeHelp})
+			help := bookRemoveWholeHelp
+			if n := parts.Staying(); n > 0 {
+				help += " " + countText(n, bookRemoveStayingOne, bookRemoveStaying)
+			}
+			v.Choices = append(v.Choices, pages.RemoveChoice{Label: bookRemoveWholeButton, Help: help})
 		}
 	}
 	for _, f := range files {
