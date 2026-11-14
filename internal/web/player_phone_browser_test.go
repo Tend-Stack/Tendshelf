@@ -5,6 +5,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,12 +13,14 @@ import (
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/media"
+	"github.com/Tend-Stack/tendshelf/internal/mediajobs"
 	"github.com/Tend-Stack/tendshelf/internal/testutil/cdp"
 )
 
 // The phone full-screen player (handoff 2026-11-14, decision 0042): the wave, the time row, the
 // book bar of chapter segments, the transport and the raised settings bar. Header and cover are
-// untouched; the wave's own drawing and the scrub state belong to the next package.
+// untouched; the wave's drawing and the scrub state are covered here too.
 
 // ppChapters gives the book n chapters of uneven length over its 180 s (weights 1 to 5), so the segments
 // differ in width the way a real book's do.
@@ -322,15 +325,16 @@ func TestPlayerPhoneContrast(t *testing.T) {
 	for _, theme := range themes {
 		tab.Eval(`document.documentElement.setAttribute("data-theme", `+cdp.Quote(theme)+`)`, nil)
 		time.Sleep(150 * time.Millisecond)
-		var r struct{ Ground, Raised, Rest, Done, Now, Mark, Elapsed, ChLeft, Label, Value, BookLabel string }
+		var r struct{ Ground, Raised, Rest, Done, Now, Mark, Elapsed, ChLeft, Label, Value, BookLabel, WaveRest, WavePlayed string }
 		tab.Eval(`(() => { const d = `+ppDialog+`, segs = [...d.querySelectorAll(".ts-player__seg")], cs = (e) => getComputedStyle(e);
 		  const c = (v) => { const p = document.createElement("i"); p.style.color = v; d.appendChild(p); const x = getComputedStyle(p).color; p.remove(); return x; };
 		  d.querySelector("[data-ts-full-sleep-left]").hidden = false; d.querySelector("[data-ts-full-sleep-left]").textContent = "9:59";
 		  return {Ground: cs(d).backgroundColor, Raised: c("var(--raised)"), Rest: cs(segs[segs.length - 1]).backgroundColor, Done: cs(segs[0]).backgroundColor,
 		    Now: cs(segs.find((s) => s.classList.contains("is-now"))).backgroundColor, Mark: c("var(--ts-mark)"),
 		    Elapsed: cs(d.querySelector("[data-ts-full-elapsed]")).color, ChLeft: cs(d.querySelector("[data-ts-full-chapter-left]")).color,
-		    Label: cs(d.querySelector(".ts-player-bar__label")).color, Value: cs(d.querySelector("[data-ts-full-sleep-left]")).color, BookLabel: cs(d.querySelector(".ts-player__booklabel")).color}; })()`, &r)
-		marks := map[string]string{"unplayed segment": r.Rest, "played segment": r.Done, "current segment": r.Now, "--ts-mark": r.Mark}
+		    Label: cs(d.querySelector(".ts-player-bar__label")).color, Value: cs(d.querySelector("[data-ts-full-sleep-left]")).color, BookLabel: cs(d.querySelector(".ts-player__booklabel")).color,
+			    WaveRest: cs(d.querySelector(".ts-wave__rest path")).stroke, WavePlayed: cs(d.querySelector(".ts-wave__played path")).stroke}; })()`, &r)
+		marks := map[string]string{"unplayed segment": r.Rest, "played segment": r.Done, "current segment": r.Now, "--ts-mark": r.Mark, "wave rest stroke": r.WaveRest, "wave played stroke": r.WavePlayed}
 		for name, c := range marks {
 			if x := pnrRatio(c, r.Ground); x < 3 {
 				t.Errorf("%s: %s contrast %.2f < 3", theme, name, x)
@@ -342,8 +346,8 @@ func TestPlayerPhoneContrast(t *testing.T) {
 				t.Errorf("%s: %s contrast %.2f < 4.5", theme, name, x)
 			}
 		}
-		t.Logf("%s: rest %.2f done %.2f now %.2f mark %.2f | elapsed %.2f chapter-left %.2f book label %.2f bar label on raised %.2f", theme,
-			pnrRatio(r.Rest, r.Ground), pnrRatio(r.Done, r.Ground), pnrRatio(r.Now, r.Ground), pnrRatio(r.Mark, r.Ground),
+		t.Logf("%s: wave rest %.2f played %.2f | rest %.2f done %.2f now %.2f mark %.2f | elapsed %.2f chapter-left %.2f book label %.2f bar label on raised %.2f", theme,
+			pnrRatio(r.WaveRest, r.Ground), pnrRatio(r.WavePlayed, r.Ground), pnrRatio(r.Rest, r.Ground), pnrRatio(r.Done, r.Ground), pnrRatio(r.Now, r.Ground), pnrRatio(r.Mark, r.Ground),
 			pnrRatio(r.Elapsed, r.Ground), pnrRatio(r.ChLeft, r.Ground), pnrRatio(r.BookLabel, r.Ground), pnrRatio(r.Label, r.Raised))
 	}
 }
@@ -392,24 +396,210 @@ func TestPlayerPhoneTabletUnchanged(t *testing.T) {
 	}
 }
 
-// TestPlayerPhoneLook writes screenshots of the open phone player when TS_PHONE_SHOTS names a folder, for the
-// builder's own look at the layout: a 14-chapter book with a text edition, dark and light at 390x844 and dark at 360x640.
-func TestPlayerPhoneLook(t *testing.T) {
+// ppHold presses on the wave at share a of its width and moves to share b without releasing; the caller releases at the returned point.
+func ppHold(t *testing.T, tab *cdp.Tab, a, b float64) (x, y float64) {
+	t.Helper()
+	w := ppRectOf(tab, `[data-ts-scrub="full"]`)
+	y = w.Y + w.H/2
+	fullpMouse(t, tab, "mousePressed", w.X+w.W*a, y)
+	for i := 1; i <= 10; i++ {
+		time.Sleep(30 * time.Millisecond)
+		fullpMouse(t, tab, "mouseMoved", w.X+w.W*(a+(b-a)*float64(i)/10), y)
+	}
+	return w.X + w.W*b, y
+}
+
+// ppPause stops at the middle of chapter k and waits for the times to show it.
+func ppPause(t *testing.T, tab *cdp.Tab, k int) {
+	t.Helper()
+	tab.Eval(fmt.Sprintf(`(() => { window.tsPlayer.pause(); const c = window.tsPlayer.info().chapters[%d]; window.tsPlayer.seek(Math.floor((c.start + c.end) / 2)); })()`, k), nil)
+	tab.WaitFor(fmt.Sprintf(`window.tsPlayer.state().chapterIdx === %d`, k), 2*time.Second)
+	time.Sleep(250 * time.Millisecond)
+}
+
+// The scrub state: at rest no clock and no scrim; with the finger down the scrim over the cover shows the target
+// time, the row says where the book was, the lower half steps back and the needle grows; letting go seeks; keys do not show the scrim.
+func TestPlayerPhoneClock(t *testing.T) {
+	e := playerApp(t)
+	ppChapters(t, e, 12)
+	tab := ppOpen(t, e, 390, 844, "dark")
+	ppPause(t, tab, 3)
+	type state struct {
+		ClockShown                                 bool
+		Scrim, Transport, Bar, Ruler, Jump, Needle string
+		JumpTime, Elapsed, ChLeft                  string
+		Was                                        bool
+	}
+	read := func() state {
+		var r state
+		tab.Eval(`(() => { const d = `+ppDialog+`, cs = (s) => getComputedStyle(d.querySelector(s)), txt = (s) => d.querySelector(s).textContent;
+		  return {ClockShown: d.querySelector("[data-ts-full-clock]").checkVisibility(), Scrim: cs(".ts-player__jump").opacity, Transport: cs(".ts-player__transport").opacity,
+		    Bar: cs(".ts-player__bar").opacity, Ruler: cs(".ts-player__ruler").opacity, Jump: cs(".ts-wave__jump").opacity, Needle: cs(".ts-scrub__needle").width,
+		    JumpTime: txt("[data-ts-full-jump-time]"), Elapsed: txt("[data-ts-full-elapsed]"), ChLeft: txt("[data-ts-full-chapter-left]"),
+		    Was: d.querySelector("[data-ts-full-chapter-left]").classList.contains("is-was")}; })()`, &r)
+		return r
+	}
+	rest := read()
+	if rest.ClockShown || rest.Scrim != "0" || rest.Transport != "1" || rest.Jump != "0" || rest.Needle != "4px" || rest.Was {
+		t.Errorf("at rest: %+v", rest)
+	}
+	startAt := rest.Elapsed
+	near := func(s string, want float64) bool {
+		var v float64
+		fmt.Sscanf(s, "%f", &v)
+		return v > want-0.02 && v < want+0.02
+	}
+
+	// Mid-drag.
+	x, y := ppHold(t, tab, 0.5, 0.8)
+	tab.WaitFor(`getComputedStyle(`+ppDialog+`.querySelector(".ts-player__jump")).opacity === "1"`, 2*time.Second)
+	during := read()
+	if !near(during.Transport, 0.45) || !near(during.Bar, 0.45) || !near(during.Ruler, 0.45) || !near(during.Jump, 0.5) || during.Needle != "6px" {
+		t.Errorf("mid-drag: %+v", during)
+	}
+	if during.JumpTime != during.Elapsed || during.JumpTime == startAt {
+		t.Errorf("scrim shows %q, row elapsed %q, started at %q", during.JumpTime, during.Elapsed, startAt)
+	}
+	if during.ChLeft != "was "+startAt || !during.Was {
+		t.Errorf("chapter-left slot %q (is-was %v), want %q", during.ChLeft, during.Was, "was "+startAt)
+	}
+
+	// After release: the seek happens, everything is back.
+	fullpMouse(t, tab, "mouseReleased", x, y)
+	tab.WaitFor(`getComputedStyle(`+ppDialog+`.querySelector(".ts-player__jump")).opacity === "0" && !`+ppDialog+`.querySelector("[data-ts-full-chapter-left]").classList.contains("is-was")`, 2*time.Second)
+	after := read()
+	if after.Transport != "1" || after.Bar != "1" || after.Ruler != "1" || after.Needle != "4px" || after.Jump != "0" {
+		t.Errorf("after release: %+v", after)
+	}
+	var pos int64
+	tab.Eval(`window.tsPlayer.state().positionMs`, &pos)
+	var c struct{ Start, End int64 }
+	tab.Eval(`(() => { const c = window.tsPlayer.info().chapters[3]; return {Start: c.start, End: c.end}; })()`, &c)
+	if want := c.Start + (c.End-c.Start)*80/100; pos < want-(c.End-c.Start)/10 || pos > want+(c.End-c.Start)/10 {
+		t.Errorf("released at %d ms, want near %d (chapter %d-%d)", pos, want, c.Start, c.End)
+	}
+
+	// Keys seek at once, with no scrim.
+	tab.Eval(`document.querySelector("#player-full .ts-scrub__input").focus()`, nil)
+	fullpKey(t, tab, "ArrowLeft", 37)
+	time.Sleep(300 * time.Millisecond)
+	if k := read(); k.Scrim != "0" || k.Was {
+		t.Errorf("after ArrowLeft: %+v", k)
+	}
+}
+
+// The wave: 3 px round-capped lines every 5 px, 8 to 46 px tall, level while there is no picture, in three layers.
+func TestPlayerPhoneWave(t *testing.T) {
+	e := playerApp(t)
+	ppChapters(t, e, 12)
+	type wave struct {
+		N, Layers      int
+		Width          float64
+		Stroke, Cap    string
+		Pitch, Heights []float64
+	}
+	read := func(tab *cdp.Tab) wave {
+		var r wave
+		tab.Eval(`(() => { const w = `+ppDialog+`.querySelector('[data-ts-scrub="full"] .ts-wave'), p = w.querySelector(".ts-wave__rest path"), cs = getComputedStyle(p);
+		  const xs = [...p.getAttribute("d").matchAll(/M([\d.]+) ([\d.]+)V([\d.]+)/g)];
+		  return {N: xs.length, Layers: w.querySelectorAll(":scope > svg").length, Width: w.clientWidth, Stroke: cs.strokeWidth, Cap: cs.strokeLinecap,
+		    Pitch: xs.slice(1).map((m, i) => +m[1] - +xs[i][1]), Heights: xs.map((m) => +m[3] - +m[2] + 3)}; })()`, &r)
+		return r
+	}
+	check := func(what string, r wave, level bool) {
+		t.Helper()
+		if want := int(r.Width+2) / 5; r.N != want || r.Layers != 3 || r.Stroke != "3px" || r.Cap != "round" {
+			t.Errorf("%s: %d lines of %s/%s in %d layers on %.0f px, want %d", what, r.N, r.Stroke, r.Cap, r.Layers, r.Width, int(r.Width+2)/5)
+		}
+		lo, hi := 1e9, 0.0
+		for _, h := range r.Heights {
+			lo, hi = min(lo, h), max(hi, h)
+		}
+		if lo < 7.9 || hi > 46.1 {
+			t.Errorf("%s: heights %.1f to %.1f, want within 8 to 46", what, lo, hi)
+		}
+		if level && hi-lo > 0.2 || !level && hi-lo < 12 {
+			t.Errorf("%s: heights %.1f to %.1f, level=%v", what, lo, hi, level)
+		}
+		for _, p := range r.Pitch {
+			if p != 5 {
+				t.Errorf("%s: pitch %v, want 5", what, p)
+				break
+			}
+		}
+	}
+	// No peaks yet: level bars, the same count.
+	tab := ppOpen(t, e, 390, 844, "dark")
+	tab.WaitFor(`!!`+ppDialog+`.querySelector('[data-ts-scrub="full"] .ts-wave__rest')`, 3*time.Second)
+	check("flat", read(tab), true)
+	tab.Close()
+
+	// With peaks, the picture follows the loudness, at several phone widths.
+	pbwWithPeaks(t, e)
+	for _, w := range []int{390, 360, 430} {
+		tab := ppOpen(t, e, w, 844, "dark")
+		ppPause(t, tab, 2)
+		tab.WaitFor(`!!`+ppDialog+`.querySelector('[data-ts-scrub="full"] .ts-wave__rest')`, 3*time.Second)
+		check(fmt.Sprintf("peaks at %d", w), read(tab), false)
+		tab.Close()
+	}
+}
+
+// TestPlayerPhoneCaptures writes the phone player's screenshots when TS_PHONE_SHOTS names a folder, for a look at the
+// layout: a 14-chapter book with a text edition and varied peaks, at rest and with the pointer held mid-drag.
+func TestPlayerPhoneCaptures(t *testing.T) {
 	dir := os.Getenv("TS_PHONE_SHOTS")
 	if dir == "" {
 		t.Skip("TS_PHONE_SHOTS names a folder for the screenshots")
 	}
 	e := playerApp(t)
 	ppChapters(t, e, 14)
-	pbwWithPeaks(t, e)
+	ppWritePeaks(t, e)
 	for _, c := range []struct {
 		name, theme string
 		w, h        int
-	}{{"p1-390-dark", "dark", 390, 844}, {"p1-390-light", "light", 390, 844}, {"p1-360-dark", "dark", 360, 640}} {
+		scrub       bool
+	}{
+		{"phone-rest-dark-390x844", "dark", 390, 844, false}, {"phone-scrub-dark-390x844", "dark", 390, 844, true},
+		{"phone-rest-light-390x844", "light", 390, 844, false}, {"phone-scrub-light-390x844", "light", 390, 844, true},
+		{"phone-rest-dark-360x640", "dark", 360, 640, false}, {"phone-rest-dark-430x932", "dark", 430, 932, false},
+	} {
 		tab := ppOpen(t, e, c.w, c.h, c.theme)
 		tab.Eval(ppDialog+`.querySelector("[data-ts-full-read]").hidden = false`, nil)
-		time.Sleep(200 * time.Millisecond)
-		tab.Screenshot(filepath.Join(dir, c.name+".png"))
+		ppPause(t, tab, 4)
+		if c.scrub {
+			x, y := ppHold(t, tab, 0.4, 0.75)
+			tab.WaitFor(`getComputedStyle(`+ppDialog+`.querySelector(".ts-player__jump")).opacity === "1"`, 2*time.Second)
+			time.Sleep(200 * time.Millisecond)
+			tab.Screenshot(filepath.Join(dir, c.name+".png"))
+			fullpMouse(t, tab, "mouseReleased", x, y)
+		} else {
+			tab.Screenshot(filepath.Join(dir, c.name+".png"))
+		}
 		tab.Close()
+	}
+}
+
+// ppWritePeaks stores peaks that look like speech for both files: 100 ms bins with a slow swell, word-sized bursts
+// and a deterministic scatter, so a chapter a few seconds long still has varied bars.
+func ppWritePeaks(t *testing.T, e *playerEnv) {
+	t.Helper()
+	peaksAttach(t, e.a)
+	dir := mediajobs.PeaksDir(e.a.dir)
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range e.files[:2] {
+		values := make([]byte, 900)
+		for i := range values {
+			swell := 0.55 + 0.25*math.Sin(float64(i)/23)
+			burst := 0.5 + 0.5*math.Sin(float64(i)/2.7+math.Sin(float64(i)/9)*2)
+			scatter := float64((i*37+i*i*11)%100) / 100
+			values[i] = byte(25 + 215*math.Min(1, swell*(0.35+0.45*burst)+0.3*scatter*swell))
+		}
+		b := media.Peaks{BinMs: 100, Values: values}.Encode()
+		if err := os.WriteFile(filepath.Join(dir, f.QuickHash+"-v1.peaks"), b, 0o640); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
