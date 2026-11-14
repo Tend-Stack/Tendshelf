@@ -176,7 +176,7 @@ function drawScrub(s, ms, force, chapter = book.chapters[chapterAt(ms)]) {
   if (force || !s.input.hasAttribute("aria-valuetext") || now - s.textAt >= VALUE_TEXT_EVERY_MS) {
     s.textAt = now;
     const seconds = Math.floor(into / 1000);
-    s.input.setAttribute("aria-valuetext", fill(msg("scrubValue"), { chapter: player.chapterWords(book, book.chapters.indexOf(chapter)).inline, m: Math.floor(seconds / 60), s: seconds % 60 }));
+    s.input.setAttribute("aria-valuetext", fill(msg("scrubValue"), { chapter: player.chapterWords(book, book.chapters.indexOf(chapter)).lead, m: Math.floor(seconds / 60), s: seconds % 60 }));
   }
 }
 
