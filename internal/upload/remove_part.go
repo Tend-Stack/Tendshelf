@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"slices"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
@@ -141,6 +142,11 @@ WHERE book_id = ? AND missing_since IS NULL ORDER BY created_at, id`, bookID)
 	if p.Combined && p.Audio {
 		p.Whole = true
 	}
+	// A text-only book is Tendshelf's to remove when every one of its files is: stored Text-page uploads and
+	// ledger files alike.
+	if !p.HasAudio && len(p.Text) > 0 && !slices.ContainsFunc(p.Text, func(f PartFile) bool { return !f.Removable }) {
+		p.Whole = true
+	}
 	return p, nil
 }
 
@@ -164,6 +170,9 @@ func (s *Service) RemoveWhole(ctx context.Context, userID, bookID, placedBy stri
 	parts, err := s.PartsOf(ctx, bookID, placedBy)
 	if err != nil {
 		return RemoveResult{}, err
+	}
+	if !parts.HasAudio && len(parts.Text) > 0 {
+		return s.removeTextBook(ctx, userID, bookID, placedBy, parts, dropUpload)
 	}
 	if !parts.Combined {
 		return s.Remove(ctx, userID, bookID, placedBy)
@@ -304,4 +313,45 @@ func (s *Service) RemoveAudio(ctx context.Context, userID, bookID, placedBy stri
 		return RemoveResult{}, err
 	}
 	return s.remove(ctx, userID, bookID, placedBy, keep)
+}
+
+// removeTextBook removes a book that has no audio: every stored Text-page upload goes through dropUpload (the same
+// ebook.Service.RemoveUpload one edition uses), and ledger ebook files through Remove, which also deletes the book.
+// A book of stored uploads only is deleted here, with what cascades from it (progress, bookmarks, shelves,
+// metadata). Nothing is removed unless every file of the book is Tendshelf's.
+func (s *Service) removeTextBook(ctx context.Context, userID, bookID, placedBy string, parts Parts, dropUpload func(ctx context.Context, fileID string) error) (RemoveResult, error) {
+	res := RemoveResult{Deleted: []string{}, Kept: []string{}}
+	if !parts.Whole {
+		return res, fail(409, "not_removable", "Tendshelf did not add this book, so it will not remove it.")
+	}
+	book, err := s.repo.Book(ctx, bookID)
+	if errors.Is(err, library.ErrNotFound) {
+		return res, errNotFound
+	} else if err != nil {
+		return res, err
+	}
+	ledger := 0
+	for _, f := range parts.Text {
+		if f.Uploaded {
+			if dropUpload == nil {
+				return res, fail(409, "not_removable", "This book cannot be removed here.")
+			}
+			if err := dropUpload(ctx, f.ID); err != nil {
+				return res, err
+			}
+		} else {
+			ledger++
+		}
+	}
+	if ledger > 0 {
+		r, err := s.Remove(ctx, userID, bookID, placedBy)
+		return r, err
+	}
+	if err := s.repo.Update(ctx, func(tx *library.Tx) error { return tx.DeleteBookAndFiles(bookID) }); err != nil {
+		return res, err
+	}
+	err = s.write(ctx, nil, func(tx *sql.Tx) error {
+		return s.audit(ctx, tx, userID, "upload.remove", "book:"+bookID, map[string]any{"deleted": 0, "kept": 0, "title": book.Title})
+	})
+	return res, err
 }

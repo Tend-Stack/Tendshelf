@@ -99,7 +99,11 @@ Amends AGENTS.md "Audio files are the user's" and architecture invariant 1.
    own, by the code above (`ebook.RemoveUpload` or `RemoveEbookFile`), so no Text-page upload is left behind with rows or
    stored bytes. An ebook file Tendshelf did not place (or that changed) stays on disk and is only unpaired; the confirm
    page says "N files stay on disk because Tendshelf did not place them." The whole book is offered when its audio is
-   Tendshelf's, even if such a library ebook sits beside it. `GET /books/{id}/remove?file=` confirms one edition and
+   Tendshelf's, even if such a library ebook sits beside it.
+   *Text-only books.* A book with no audio is removable whole when every one of its ebook files is Tendshelf's: a stored
+   Text-page upload or an unchanged ledger file. `RemoveWhole` drops each stored upload through `ebook.RemoveUpload`, hands
+   ledger files to `Remove`, and deletes the book row (progress, bookmarks, shelves and metadata cascade). With several
+   editions each card also removes its own; the last edition is removed with the whole book. `GET /books/{id}/remove?file=` confirms one edition and
    `?part=whole|audio|text` confirms one part (the three-dot menu's quick actions). A book with one part keeps the old flow.
 12. **JavaScript.** One lazy module `js/upload.js`, about 5 KB gzip, imported by a generic 8-line loader in `shell.js`
    (`[data-ts-module]`) only on the Add books page. No-JavaScript fallback: **not built**; the page says

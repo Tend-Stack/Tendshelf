@@ -305,7 +305,7 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	combined := parts.Combined && (parts.Audio || parts.AnyText())
-	if !combined && !s.removableFor(r.Context(), currentUser(r), b.ID) {
+	if !combined && !parts.Whole {
 		s.notFound(w, r)
 		return
 	}
@@ -318,9 +318,25 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "remove book", err)
 		return
 	}
+	body := bookRemoveText(len(files))
+	if !parts.HasAudio && len(parts.Text) > 0 {
+		body = bookRemoveTextBody
+	}
 	v := pages.BookRemoveView{
-		Title: bookRemoveConfirm, Body: bookRemoveText(len(files)), Button: bookRemoveButton, Cancel: bookRemoveCancel,
+		Title: bookRemoveConfirm, Body: body, Button: bookRemoveButton, Cancel: bookRemoveCancel,
 		Action: "/books/" + b.ID + "/remove", CancelHref: "/books/" + b.ID, CSRF: s.csrf.TokenFrom(r.Context()),
+	}
+	if !parts.HasAudio {
+		// A book of ebooks only: the files Tendshelf stored or placed for it are listed by name.
+		for _, f := range parts.Text {
+			name := filepath.Base(f.Path)
+			if s.ebooks != nil {
+				if ef, found, err := s.ebooks.Store().File(r.Context(), f.ID); err == nil && found {
+					name = ebookName(ef)
+				}
+			}
+			v.Files = append(v.Files, name)
+		}
 	}
 	if combined {
 		// A book with audio and a text book: three plain choices, each its own button (the whole book first

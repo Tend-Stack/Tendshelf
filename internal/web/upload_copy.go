@@ -67,6 +67,7 @@ const (
 	bookRemoveAudioHelp       = "The text book stays, with your reading place, highlights and bookmarks. Your listening place goes with the audio."
 	bookRemoveWholeButton     = "Remove the whole book"
 	bookRemoveWholeHelp       = "Deletes the audio and every text book Tendshelf added."
+	bookRemoveTextBody        = "This deletes the book and the ebook files Tendshelf stored for it. Your reading places, bookmarks and shelves for it go too."
 	bookRemoveStayingOne      = "1 file stays on disk because Tendshelf did not place it."
 	bookRemoveStaying         = "%d files stay on disk because Tendshelf did not place them."
 	bookRemoveEditionLabel    = "Remove this edition"
