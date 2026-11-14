@@ -23,6 +23,7 @@ const (
 	apiContinueMax      = 24
 	apiSettingsBadSpeed = "Speed must be from 0.5 to 3.5, in steps of 0.05."
 	apiSettingsBadSkip  = "Skip must be 10, 15, 30 or 60 seconds."
+	apiSettingsBadNight = "Night times are minutes after midnight (0 to 1439); the length is 5 to 180 minutes."
 	apiSettingsBadBool  = "This must be true or false."
 )
 
@@ -42,6 +43,12 @@ type apiSettings struct {
 	NextInSeries bool    `json:"nextInSeries"`
 	SkipQuiet    bool    `json:"skipQuiet"`    // Android app only (decision 0033)
 	AutoDownload bool    `json:"autoDownload"` // Android app only (decision 0035)
+	// Night sleep: between nightFrom and nightTo (minutes after midnight, the device's clock) starting playback
+	// starts the sleep timer for nightMinutes (5-180).
+	NightSleep   bool `json:"nightSleep"`
+	NightFrom    int  `json:"nightFrom"`
+	NightTo      int  `json:"nightTo"`
+	NightMinutes int  `json:"nightMinutes"`
 	// RewindSteps is the smart-rewind table (rewind.go), read-only: a PATCH body's value is ignored.
 	RewindSteps []apiRewindStep `json:"rewindSteps"`
 }
@@ -62,7 +69,8 @@ func apiRewindSteps() []apiRewindStep {
 
 func apiSettingsOf(set users.Settings) apiSettings {
 	return apiSettings{Speed: set.Speed, SkipBackS: set.SkipBackS, SkipForwardS: set.SkipForwardS,
-		AutoRewind: set.AutoRewind, NextInSeries: set.NextInSeries, SkipQuiet: set.SkipQuiet, AutoDownload: set.AutoDownload, RewindSteps: apiRewindSteps()}
+		AutoRewind: set.AutoRewind, NextInSeries: set.NextInSeries, SkipQuiet: set.SkipQuiet, AutoDownload: set.AutoDownload,
+		NightSleep: set.NightSleep, NightFrom: set.NightFrom, NightTo: set.NightTo, NightMinutes: set.NightMinutes, RewindSteps: apiRewindSteps()}
 }
 
 func (s *server) writeAPISettings(w http.ResponseWriter, r *http.Request) {
@@ -154,6 +162,26 @@ func (s *server) patchAPISettings(w http.ResponseWriter, r *http.Request) {
 			v, ok := flag(raw)
 			c.AutoDownload = v
 			return ok
+		}) &&
+		try("nightSleep", apiSettingsBadBool, func(c *users.Settings, raw json.RawMessage) bool {
+			v, ok := flag(raw)
+			c.NightSleep = v
+			return ok
+		}) &&
+		try("nightFrom", apiSettingsBadNight, func(c *users.Settings, raw json.RawMessage) bool {
+			v, ok := whole(raw)
+			c.NightFrom = v
+			return ok
+		}) &&
+		try("nightTo", apiSettingsBadNight, func(c *users.Settings, raw json.RawMessage) bool {
+			v, ok := whole(raw)
+			c.NightTo = v
+			return ok
+		}) &&
+		try("nightMinutes", apiSettingsBadNight, func(c *users.Settings, raw json.RawMessage) bool {
+			v, ok := whole(raw)
+			c.NightMinutes = v
+			return ok && v >= 5 // Validate allows 0 for older callers; the API does not
 		})
 	if !ok {
 		return

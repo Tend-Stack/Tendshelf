@@ -215,3 +215,27 @@ func TestPlayerDataMime(t *testing.T) {
 		}
 	}
 }
+
+// TestNightSleepPlayerAttrs: the night window reaches the player as data attributes only while the switch is on.
+func TestNightSleepPlayerAttrs(t *testing.T) {
+	e := progRouteEnvOf(t)
+	ctx := context.Background()
+	set := users.Settings{Theme: "system", Speed: 1, SkipBackS: 15, SkipForwardS: 30, NextInSeries: true, PlayerTint: true,
+		NightFrom: 1290, NightTo: 330, NightMinutes: 40}
+	if err := e.a.srv.users.SaveSettings(ctx, e.ownerID, set); err != nil {
+		t.Fatal(err)
+	}
+	if _, body := e.player("/hx/player/"+e.book.ID, e.owner); strings.Contains(body, "data-night-") {
+		t.Error("night attributes present with the switch off")
+	}
+	set.NightSleep = true
+	if err := e.a.srv.users.SaveSettings(ctx, e.ownerID, set); err != nil {
+		t.Fatal(err)
+	}
+	_, body := e.player("/hx/player/"+e.book.ID, e.owner)
+	for _, frag := range []string{`data-night-sleep="1"`, `data-night-from="1290"`, `data-night-to="330"`, `data-night-minutes="40"`} {
+		if !strings.Contains(body, frag) {
+			t.Errorf("player data lacks %s", frag)
+		}
+	}
+}

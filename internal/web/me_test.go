@@ -111,7 +111,7 @@ func TestSettingsSaveHTMX(t *testing.T) {
 	if c := cookieNamed(rec, themeCookie); c == nil || c.Value != "sepia" || c.Path != "/" || !c.HttpOnly || c.MaxAge <= 0 {
 		t.Fatalf("theme cookie = %+v", c)
 	}
-	want := users.Settings{Theme: "sepia", Speed: 1.25, SkipBackS: 10, SkipForwardS: 60, AutoRewind: true, NextInSeries: false, PlayerTint: true, BigButtons: true, TextSize: "standard", Nav: "full"}
+	want := users.Settings{Theme: "sepia", Speed: 1.25, SkipBackS: 10, SkipForwardS: 60, AutoRewind: true, NextInSeries: false, PlayerTint: true, BigButtons: true, TextSize: "standard", Nav: "full", NightFrom: 1320, NightTo: 360, NightMinutes: 30}
 	if got := settingsOf(t, a); got != want {
 		t.Fatalf("stored %+v", got)
 	}
@@ -144,7 +144,7 @@ func TestSettingsSavePlain(t *testing.T) {
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/me/settings" {
 		t.Fatalf("plain save = %d %s", rec.Code, rec.Header().Get("Location"))
 	}
-	want := users.Settings{Theme: "light", Speed: 2, SkipBackS: 30, SkipForwardS: 15, TextSize: "standard", Nav: "full"}
+	want := users.Settings{Theme: "light", Speed: 2, SkipBackS: 30, SkipForwardS: 15, TextSize: "standard", Nav: "full", NightFrom: 1320, NightTo: 360, NightMinutes: 30}
 	if got := settingsOf(t, a); got != want {
 		t.Fatalf("stored %+v, want %+v (unchecked switches are false)", got, want)
 	}
@@ -455,5 +455,52 @@ func TestFeelSettingsSwitch(t *testing.T) {
 	form.Set("skip_quiet", "2")
 	if rec := settingsPost(t, a, ck, "/me/settings", form, true); rec.Code < 400 || rec.Code >= 500 {
 		t.Errorf("skip_quiet=2 = %d, want a 4xx", rec.Code)
+	}
+}
+
+func TestNightSleepSettingsForm(t *testing.T) {
+	a := newTestApp(t)
+	ck := a.owner(t)
+	form := url.Values{"night_sleep": {"0", "1"}, "night_from": {"21:30"}, "night_to": {"05:45"}, "night_minutes": {"45"}}
+	if rec := settingsPost(t, a, ck, "/me/settings", form, false); rec.Code != http.StatusSeeOther {
+		t.Fatalf("plain save = %d", rec.Code)
+	}
+	got := settingsOf(t, a)
+	if !got.NightSleep || got.NightFrom != 21*60+30 || got.NightTo != 5*60+45 || got.NightMinutes != 45 {
+		t.Fatalf("stored %+v", got)
+	}
+	// The page shows the saved values.
+	body := a.do(http.MethodGet, "/me/settings", nil, nil, ck).Body.String()
+	for _, frag := range []string{`name="night_from" value="21:30"`, `name="night_to" value="05:45"`, `name="night_minutes"`, `value="45"`, `id="st-night" name="night_sleep" value="1"`, "Start the sleep timer at night", "the sleep timer starts on its own."} {
+		if !strings.Contains(body, frag) {
+			t.Errorf("page lacks %q", frag)
+		}
+	}
+	if !regexp.MustCompile(`id="st-night"[^>]*checked`).MatchString(body) {
+		t.Error("the night switch is not checked")
+	}
+	// A bad time keeps the old value; the length is clamped.
+	form = url.Values{"night_from": {"25:00"}, "night_to": {"soon"}, "night_minutes": {"500"}}
+	if rec := settingsPost(t, a, ck, "/me/settings", form, true); rec.Code != http.StatusNoContent {
+		t.Fatalf("bad time = %d", rec.Code)
+	}
+	got = settingsOf(t, a)
+	if got.NightFrom != 21*60+30 || got.NightTo != 5*60+45 || got.NightMinutes != 180 {
+		t.Fatalf("after bad input %+v", got)
+	}
+	form.Set("night_minutes", "many")
+	settingsPost(t, a, ck, "/me/settings", form, true)
+	if got = settingsOf(t, a); got.NightMinutes != 180 {
+		t.Fatalf("a non-number changed the length: %+v", got)
+	}
+	// No token: refused. Signed out: sent to sign in.
+	if rec := a.do(http.MethodPost, "/me/settings", url.Values{"night_sleep": {"0"}}, nil, ck); rec.Code != http.StatusForbidden {
+		t.Errorf("no token = %d", rec.Code)
+	}
+	if !settingsOf(t, a).NightSleep {
+		t.Error("a post without a token changed the setting")
+	}
+	if rec := a.do(http.MethodPost, "/me/settings", url.Values{"night_sleep": {"0"}}, nil); rec.Code == http.StatusNoContent || rec.Code == http.StatusSeeOther && rec.Header().Get("Location") == "/me/settings" {
+		t.Errorf("signed out = %d %s", rec.Code, rec.Header().Get("Location"))
 	}
 }

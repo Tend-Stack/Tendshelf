@@ -25,12 +25,19 @@ type Settings struct {
 	TextSize     string // "standard" or "large"
 	Nav          string // "full" or "rail": the desktop sidebar
 	TimeZone     string // an IANA name from the person's browser; "" means the server's zone
+	// Night sleep: between NightFrom and NightTo (minutes after midnight, on the device's clock) starting
+	// playback starts the sleep timer for NightMinutes. NightFrom == NightTo is an empty window.
+	NightSleep   bool
+	NightFrom    int
+	NightTo      int
+	NightMinutes int
 }
 
 // DefaultSettings applies to every key a person has not set.
 var DefaultSettings = Settings{
 	Theme: "system", TextSize: "standard", Nav: "full", Speed: 1.0, SkipBackS: 15, SkipForwardS: 30,
 	AutoRewind: true, NextInSeries: true, PlayerTint: true,
+	NightFrom: 1320, NightTo: 360, NightMinutes: 30,
 }
 
 // ErrInvalidSetting means a settings value is outside its allowed set.
@@ -52,6 +59,10 @@ const (
 	keyNav          = "ui.nav"
 	keyTimeZone     = "ui.time_zone"
 	keyLibraryView  = "library.view"
+	keyNightSleep   = "sleep.night"
+	keyNightFrom    = "sleep.night_from"
+	keyNightTo      = "sleep.night_to"
+	keyNightMinutes = "sleep.night_minutes"
 )
 
 func validTheme(t string) bool {
@@ -98,9 +109,19 @@ func validSkip(n int) bool {
 	return false
 }
 
+// validDayMinute is a time of day in minutes after midnight.
+func validDayMinute(n int) bool { return n >= 0 && n < 24*60 }
+
+// ClampNightMinutes limits the night sleep length to 5-180 minutes.
+func ClampNightMinutes(n int) int { return min(max(n, 5), 180) }
+
+// validNightMinutes accepts 0 as well: a Settings built without it (older callers) means the default.
+func validNightMinutes(n int) bool { return n == 0 || (n >= 5 && n <= 180) }
+
 // Validate checks every field against its fixed set.
 func (s Settings) Validate() error {
-	if !validTheme(s.Theme) || !validTextSize(s.TextSize) || !validNav(s.Nav) || !validTimeZoneSetting(s.TimeZone) || !validSpeed(s.Speed) || !validSkip(s.SkipBackS) || !validSkip(s.SkipForwardS) {
+	if !validTheme(s.Theme) || !validTextSize(s.TextSize) || !validNav(s.Nav) || !validTimeZoneSetting(s.TimeZone) || !validSpeed(s.Speed) || !validSkip(s.SkipBackS) || !validSkip(s.SkipForwardS) ||
+		!validDayMinute(s.NightFrom) || !validDayMinute(s.NightTo) || !validNightMinutes(s.NightMinutes) {
 		return ErrInvalidSetting
 	}
 	return nil
@@ -119,6 +140,9 @@ func (s Settings) entries() []settingEntry {
 	if s.Nav == "" {
 		s.Nav = "full"
 	}
+	if s.NightMinutes == 0 {
+		s.NightMinutes = DefaultSettings.NightMinutes
+	}
 	return []settingEntry{
 		{keyTheme, s.Theme},
 		{keySpeed, math.Round(s.Speed*100) / 100},
@@ -133,6 +157,10 @@ func (s Settings) entries() []settingEntry {
 		{keyTextSize, s.TextSize},
 		{keyNav, s.Nav},
 		{keyTimeZone, s.TimeZone},
+		{keyNightSleep, s.NightSleep},
+		{keyNightFrom, s.NightFrom},
+		{keyNightTo, s.NightTo},
+		{keyNightMinutes, s.NightMinutes},
 	}
 }
 
@@ -181,6 +209,23 @@ func (s *Settings) apply(key, raw string) {
 		var v string
 		if json.Unmarshal([]byte(raw), &v) == nil && validNav(v) {
 			s.Nav = v
+		}
+	case keyNightSleep:
+		setBool(&s.NightSleep, raw)
+	case keyNightFrom:
+		var v int
+		if json.Unmarshal([]byte(raw), &v) == nil && validDayMinute(v) {
+			s.NightFrom = v
+		}
+	case keyNightTo:
+		var v int
+		if json.Unmarshal([]byte(raw), &v) == nil && validDayMinute(v) {
+			s.NightTo = v
+		}
+	case keyNightMinutes:
+		var v int
+		if json.Unmarshal([]byte(raw), &v) == nil && v >= 5 && v <= 180 {
+			s.NightMinutes = v
 		}
 	case keyTimeZone:
 		var v string

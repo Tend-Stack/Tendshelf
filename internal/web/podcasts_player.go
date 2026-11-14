@@ -56,6 +56,7 @@ func (s *server) episodePlayerView(ctx context.Context, u users.User, ep podcast
 		Speed:     strconv.FormatFloat(set.Speed, 'f', 2, 64),
 		SkipBackS: set.SkipBackS, SkipForwardS: set.SkipForwardS,
 		AutoRewind: set.AutoRewind, Rewind: rewindAttr(),
+		NightSleep: set.NightSleep, NightFrom: set.NightFrom, NightTo: set.NightTo, NightMinutes: set.NightMinutes,
 		Kind: podEpisodeKind, ProgressHref: "/podcasts/progress/" + id,
 		ShowHref:    "/podcasts/shows/" + url.PathEscape(ep.ShowID),
 		SkipIntroMs: int64(skipIntro) * 1000, SkipOutroMs: int64(skipOutro) * 1000,

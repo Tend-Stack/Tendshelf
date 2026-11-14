@@ -314,6 +314,8 @@ const (
 	msgJumpedFar         = "Jumped too far?"
 	msgJumpedBack        = "Go back"
 	msgSpeedUsualSet     = "This is now your usual speed."
+	msgNightSleepOn      = "Sleep timer on, {n} minutes" // night sleep started the timer on its own
+	msgNightSleepOff     = "Turn off"
 	msgSleepTitle        = "Sleep timer"
 	msgSleepEndOfChapter = "End of chapter"
 	msgSleepMinutes      = "{n} min"
@@ -359,7 +361,7 @@ func playerMsgs() components.PlayerMsgs {
 		NextChapter: msgNextChapter, Speed: msgSpeed, Sleep: msgSleep, Chapters: msgChapters, Bookmark: msgBookmark,
 		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
 		OpenPlayer: msgOpenPlayer, Resume: playResume, ScrubBubble: msgScrubBubble, ChBarLabel: msgChBarLabel, ChBarTip: msgChBarTip, ChBarValue: msgChBarValue, ChBarUntitled: msgChBarUntitled,
-		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SpeedForBook: msgSpeedForBook, SpeedMakeUsual: msgSpeedMakeUsual, JumpedFar: msgJumpedFar, JumpedBack: msgJumpedBack, SpeedUsualSet: msgSpeedUsualSet, SleepTitle: msgSleepTitle,
+		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SpeedForBook: msgSpeedForBook, SpeedMakeUsual: msgSpeedMakeUsual, NightSleepOn: msgNightSleepOn, NightSleepOff: msgNightSleepOff, JumpedFar: msgJumpedFar, JumpedBack: msgJumpedBack, SpeedUsualSet: msgSpeedUsualSet, SleepTitle: msgSleepTitle,
 		SleepEndOfChapter: msgSleepEndOfChapter, SleepEndOfEpisode: msgSleepEndOfEpisode, EpisodeLeft: msgEpisodeLeft, EpisodeWord: msgEpisodeWord, LeftInEpisode: msgLeftInEpisode, OpenEpisode: msgOpenEpisode, GoToEpisode: msgGoToEpisode, MarkPlayed: msgMarkPlayed, SleepMinutes: msgSleepMinutes, SleepIn: msgSleepIn,
 		SleepCustom: msgSleepCustom, SleepCustomLabel: msgSleepCustomLabel, SleepStart: msgSleepStart,
 		SleepTurnOff: msgSleepTurnOff, SleepOffLabel: msgSleepOffLabel, SleepOnLabel: msgSleepOnLabel,

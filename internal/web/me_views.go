@@ -150,8 +150,25 @@ func settingsView(csrf string, s users.Settings) pages.SettingsView {
 	return pages.SettingsView{
 		CSRF: csrf, Theme: s.Theme, Speed: s.Speed, SkipBackS: s.SkipBackS, SkipForwardS: s.SkipForwardS,
 		AutoRewind: s.AutoRewind, NextInSeries: s.NextInSeries, SkipQuiet: s.SkipQuiet, AutoDownload: s.AutoDownload, PlayerTint: s.PlayerTint, BigButtons: s.BigButtons,
-		TextSize: s.TextSize,
+		TextSize:   s.TextSize,
+		NightSleep: s.NightSleep, NightFrom: minutesClock(s.NightFrom), NightTo: minutesClock(s.NightTo), NightMinutes: s.NightMinutes,
 	}
+}
+
+// minutesClock writes minutes after midnight as the HH:MM an <input type="time"> takes.
+func minutesClock(n int) string { return fmt.Sprintf("%02d:%02d", n/60, n%60) }
+
+// clockMinutes reads an HH:MM (or HH:MM:SS) time field as minutes after midnight.
+func clockMinutes(v string) (int, bool) {
+	var h, m int
+	var rest string
+	if n, _ := fmt.Sscanf(v, "%2d:%2d%s", &h, &m, &rest); n < 2 || len(v) < 5 || v[2] != ':' {
+		return 0, false
+	}
+	if rest != "" && !(len(rest) == 3 && rest[0] == ':') {
+		return 0, false
+	}
+	return h*60 + m, h >= 0 && h < 24 && m >= 0 && m < 60
 }
 
 // settingsFromForm applies a posted form to the current settings. A key that is absent keeps its
@@ -185,6 +202,20 @@ func settingsFromForm(f url.Values, cur users.Settings) (next users.Settings, ok
 	flag("auto_download", &next.AutoDownload)
 	flag("player_tint", &next.PlayerTint)
 	flag("big_buttons", &next.BigButtons)
+	flag("night_sleep", &next.NightSleep)
+	// A bad time or length keeps the previous value rather than refusing the whole post.
+	for k, dst := range map[string]*int{"night_from": &next.NightFrom, "night_to": &next.NightTo} {
+		if v, has := last(k); has {
+			if n, good := clockMinutes(v); good {
+				*dst = n
+			}
+		}
+	}
+	if v, has := last("night_minutes"); has {
+		if n, err := strconv.Atoi(v); err == nil {
+			next.NightMinutes = users.ClampNightMinutes(n)
+		}
+	}
 
 	if v, has := last("speed"); has {
 		sp, err := strconv.ParseFloat(v, 64)

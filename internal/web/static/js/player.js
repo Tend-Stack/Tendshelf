@@ -208,6 +208,8 @@ function parseBook(el) {
     logoColour: d.logoColour || "",
     durationMs: num(d.durationMs),
     autoRewind: d.autoRewind === "1",
+    // Night sleep (settings): the window in minutes after midnight on the device's clock; null when off.
+    night: d.nightSleep === "1" ? { from: num(d.nightFrom), to: num(d.nightTo), minutes: num(d.nightMinutes) || 30 } : null,
     rewind: (d.rewind || "").split(",").map((step) => step.split(":").map(Number)), // [pause ms, seconds], longest last
     skipBack: num(d.skipBackS) || 15,
     skipForward: num(d.skipForwardS) || 30,
@@ -1490,8 +1492,8 @@ applyVolume();
 // The loaded book as player-full.js needs it (copies), or null.
 function info() {
   if (!book) return null;
-  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref } = book;
-  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
+  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, night } = book;
+  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, night, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
     files: book.files.map(({ id, offset, dur, playable }) => ({ id, offset, dur, playable })), // for the waveform
   };
 }

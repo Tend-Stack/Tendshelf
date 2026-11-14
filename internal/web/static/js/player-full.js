@@ -796,7 +796,75 @@ function onNativeSleep() {
   drawSleep();
 }
 
+// ---- Night sleep: playback that starts inside the person's night hours starts the timer ----
+
+const NIGHT_OFF_KEY = "ts-night-sleep-off"; // sessionStorage: when the window the person switched the timer off in ends
+let autoStarted = false; // the running timer was started by night sleep, not chosen
+
+// Whether a time of day (minutes after midnight) is inside the window; it wraps midnight when from is
+// later than to. The start is in, the end is out, and from == to is an empty window.
+function inNightWindow(nowMinutes, from, to) {
+  if (from === to) return false;
+  if (from < to) return nowMinutes >= from && nowMinutes < to;
+  return nowMinutes >= from || nowMinutes < to;
+}
+
+// The device's clock decides, not the stored time zone: the person is in bed where the device is.
+function nightNowMinutes(now) {
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+// The moment the window closes (only meaningful inside it).
+function nightWindowEndMs(now, to) {
+  const minutesLeft = (to - nightNowMinutes(now) + 1440) % 1440;
+  return now.getTime() + minutesLeft * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
+}
+
+function nightMarkRead() {
+  try {
+    return Number(sessionStorage.getItem(NIGHT_OFF_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function nightMarkWrite(untilMs) {
+  try {
+    sessionStorage.setItem(NIGHT_OFF_KEY, String(untilMs));
+  } catch {
+    // storage is blocked: the timer may start again on the next play, which is harmless
+  }
+}
+
+// The person turned an automatic timer off: leave it off until the window ends.
+function nightSwitchedOff() {
+  if (!autoStarted || !book || !book.night) return;
+  nightMarkWrite(nightWindowEndMs(new Date(), book.night.to));
+}
+
+// A choice made by the person (the sheet, Eyes-free, the toast): it may be the "off" that night sleep respects.
+function chooseSleep(choice, minutes) {
+  if (choice === "off") nightSwitchedOff();
+  setSleep(choice, minutes);
+}
+
+// Called when playback goes from paused to playing.
+function maybeStartNightSleep() {
+  const night = book && book.night;
+  if (!night || sleepState.mode !== "off") return;
+  const now = new Date();
+  if (!inNightWindow(nightNowMinutes(now), night.from, night.to)) return;
+  if (nightMarkRead() > now.getTime()) return;
+  setSleep("minutes", night.minutes);
+  autoStarted = true; // after setSleep, which clears it
+  player.toast("hint", fill(msg("nightSleepOn"), { n: night.minutes }), [{
+    label: msg("nightSleepOff"),
+    run: () => chooseSleep("off"),
+  }]);
+}
+
 function setSleep(choice, minutes) {
+  autoStarted = false;
   if (nativeSleep()) {
     nativeSleep().sleep(choice === "off" || choice === "chapter" || choice === "episode" ? choice : String(Math.min(999, Math.max(1, Math.round(minutes)))));
     // Shown at once; the app's answer, a moment later, replaces it (Eyes-free reads this right after the tap).
@@ -950,7 +1018,7 @@ ui["sleep-sheet"].addEventListener("click", (event) => {
       ui["sleep-minutes"].focus();
       return;
     }
-    setSleep(name, Number(name) || 0);
+    chooseSleep(name, Number(name) || 0);
     closeSheet(true);
   } else if (event.target.closest("[data-ts-sleep-start]")) {
     startCustomSleep();
@@ -968,7 +1036,7 @@ function startCustomSleep() {
     input.reportValidity();
     return;
   }
-  setSleep("custom", Number(input.value));
+  chooseSleep("custom", Number(input.value));
   closeSheet(true);
 }
 
@@ -1253,6 +1321,7 @@ function start() {
       book = player.info();
       if (book) drawBook();
     }
+    if (event.detail.kind === "play") maybeStartNightSleep(); // after the book is current
     update(event.detail.kind);
   });
   new MutationObserver(applyAccent).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
@@ -1267,7 +1336,7 @@ function start() {
 
 // The surface Eyes-free (js/eyes-free.js) uses; debug is for tests only (like tsPlayer.debug).
 window.tsPlayerFull = {
-  sleep: (choice, minutes) => setSleep(choice, minutes), // sync: iOS asks for motion access inside the tap
+  sleep: (choice, minutes) => chooseSleep(choice, minutes), // sync: iOS asks for motion access inside the tap
   sleepInfo: () => ({ mode: sleepState.mode, choice: sleepState.choice, leftMs: sleepState.mode === "off" ? 0 : sleepLeft() }),
   bookmark: (options) => addBookmark(options),
   debug: {
@@ -1276,6 +1345,7 @@ window.tsPlayerFull = {
       drawSleep();
     },
     sleep: () => ({ ...sleepState }),
+    inNightWindow,
     leftInBook: leftInBookText,
   },
 };

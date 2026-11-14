@@ -35,6 +35,10 @@ type SettingsView struct {
 	BigButtons   bool
 	// TextSize is standard or large.
 	TextSize string
+	// Night sleep: NightFrom and NightTo are HH:MM, NightMinutes the timer length.
+	NightSleep           bool
+	NightFrom, NightTo   string
+	NightMinutes         int
 }
 
 // skipChoices are the allowed skip lengths, in seconds.
@@ -224,6 +228,21 @@ templ SettingsPane(v SettingsView) {
 					<div class="ts-group">
 						@switchRow("st-rewind", "auto_rewind", "Rewind a little after a break", "After 5 minutes or more, go back 5 s so you never lose the thread.", v.AutoRewind)
 						@switchRow("st-next", "next_in_series", "Play the next book in a series", "When a book ends.", v.NextInSeries)
+						@switchRow("st-night", "night_sleep", "Start the sleep timer at night", "When you start listening between these hours, the sleep timer starts on its own.", v.NightSleep)
+						<div class="ts-pref-row ts-night">
+							<div class="ts-field ts-night__field">
+								<label class="ts-field__label" for="st-night-from">From</label>
+								<input type="time" class="ts-input" id="st-night-from" name="night_from" value={ v.NightFrom } required/>
+							</div>
+							<div class="ts-field ts-night__field">
+								<label class="ts-field__label" for="st-night-to">Until</label>
+								<input type="time" class="ts-input" id="st-night-to" name="night_to" value={ v.NightTo } required/>
+							</div>
+							<div class="ts-field ts-night__field">
+								<label class="ts-field__label" for="st-night-min">Minutes</label>
+								<input type="number" class="ts-input ts-num" id="st-night-min" name="night_minutes" min="5" max="180" step="1" inputmode="numeric" value={ strconv.Itoa(v.NightMinutes) } required/>
+							</div>
+						</div>
 						if v.InApp {
 							@switchRow("st-quiet", "skip_quiet", "Skip silence", "Shortens long pauses in the reading. Works in this app only.", v.SkipQuiet)
 							@switchRow("st-auto", "auto_download", "Download the next book on its own", "When a book is nearly over and you're on Wi-Fi, the next one downloads so it's ready. Uses up to 5 GB. Works in this app only.", v.AutoDownload)

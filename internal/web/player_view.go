@@ -142,6 +142,7 @@ func (s *server) bookPlayerView(ctx context.Context, sc library.Scope, book libr
 		Speed:      strconv.FormatFloat(set.Speed, 'f', 2, 64),
 		SkipBackS:  set.SkipBackS, SkipForwardS: set.SkipForwardS,
 		AutoRewind: set.AutoRewind, Rewind: rewindAttr(),
+		NightSleep: set.NightSleep, NightFrom: set.NightFrom, NightTo: set.NightTo, NightMinutes: set.NightMinutes,
 	}
 	if c := d.Card.Cover; c != nil {
 		v.CoverURL = cover(c.SHA)

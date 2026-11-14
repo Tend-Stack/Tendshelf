@@ -37,6 +37,10 @@
 /* A card of free content (a form, a list) instead of option rows: padded, its parts spaced by the gap. */
 .ts-group--pad { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16); }
 .ts-pref-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-16); min-height: 3.5rem; padding: var(--space-8) 0; border-bottom: 1px solid var(--line); }
+.ts-night { justify-content: flex-start; align-items: flex-end; padding-block: var(--space-12); }
+/* Three fields share the row and wrap onto the next line on a narrow pane; none is wider than it needs. */
+.ts-night__field { flex: 1 1 8rem; width: auto; max-width: 11rem; min-width: 0; }
+.ts-night__field .ts-input { width: 100%; min-height: 2.75rem; }
 .ts-pref-row__note { flex-basis: 100%; margin: 0; color: var(--ink-muted); }
 
 @container pane (width >= 44rem) {

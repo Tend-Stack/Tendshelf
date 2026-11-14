@@ -19,7 +19,7 @@ func TestSettingsDefaultsAndRoundTrip(t *testing.T) {
 	if err != nil || got != DefaultSettings {
 		t.Fatalf("defaults = %+v, %v", got, err)
 	}
-	want := Settings{Theme: "sepia", Speed: 1.25, SkipBackS: 10, SkipForwardS: 60, AutoRewind: false, NextInSeries: false, PlayerTint: false, BigButtons: true, TextSize: "large", Nav: "full"}
+	want := Settings{Theme: "sepia", Speed: 1.25, SkipBackS: 10, SkipForwardS: 60, AutoRewind: false, NextInSeries: false, PlayerTint: false, BigButtons: true, TextSize: "large", Nav: "full", NightFrom: 1320, NightTo: 360, NightMinutes: 30}
 	if err := r.SaveSettings(ctx, u.ID, want); err != nil {
 		t.Fatal(err)
 	}
@@ -213,5 +213,53 @@ func TestFeelSkipQuiet(t *testing.T) {
 	}
 	if got, err = r.LoadSettings(ctx, u.ID); err != nil || got.SkipQuiet {
 		t.Fatalf("stored \"yes\" loads %+v, %v", got, err)
+	}
+}
+
+func TestNightSleepSettings(t *testing.T) {
+	r := newRepo(t, Options{})
+	ctx := context.Background()
+	u, _ := createOwner(t, r, goodUser("ana"))
+	got, _ := r.LoadSettings(ctx, u.ID)
+	if got.NightSleep || got.NightFrom != 1320 || got.NightTo != 360 || got.NightMinutes != 30 {
+		t.Fatalf("defaults = %+v", got)
+	}
+	want := got
+	want.NightSleep, want.NightFrom, want.NightTo, want.NightMinutes = true, 60, 1439, 180
+	if err := r.SaveSettings(ctx, u.ID, want); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ = r.LoadSettings(ctx, u.ID); got != want {
+		t.Fatalf("round trip = %+v", got)
+	}
+	// Stored garbage and out-of-range values fall back to the default.
+	for key, raw := range map[string]string{
+		"sleep.night_from": "1440", "sleep.night_to": "-1", "sleep.night_minutes": "4", "sleep.night": `"yes"`,
+	} {
+		if _, err := r.st.Writer().ExecContext(ctx, `UPDATE user_settings SET value_json = ? WHERE key = ?`, raw, key); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, _ = r.LoadSettings(ctx, u.ID)
+	if got.NightFrom != 1320 || got.NightTo != 360 || got.NightMinutes != 30 || got.NightSleep {
+		t.Fatalf("fallback = %+v", got)
+	}
+	for _, raw := range []string{"181", `"x"`, "null", "30.5"} {
+		if _, err := r.st.Writer().ExecContext(ctx, `UPDATE user_settings SET value_json = ? WHERE key = 'sleep.night_minutes'`, raw); err != nil {
+			t.Fatal(err)
+		}
+		if got, _ = r.LoadSettings(ctx, u.ID); got.NightMinutes != 30 {
+			t.Errorf("minutes %s -> %d", raw, got.NightMinutes)
+		}
+	}
+	bad := DefaultSettings
+	bad.NightMinutes = 181
+	if bad.Validate() == nil {
+		t.Error("181 minutes valid")
+	}
+	for in, out := range map[int]int{0: 5, 4: 5, 5: 5, 90: 90, 180: 180, 999: 180} {
+		if ClampNightMinutes(in) != out {
+			t.Errorf("clamp %d = %d", in, ClampNightMinutes(in))
+		}
 	}
 }

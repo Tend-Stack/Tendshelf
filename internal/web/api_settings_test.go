@@ -69,7 +69,7 @@ func TestA1SettingsReadAndPatch(t *testing.T) {
 	// The answer holds the player keys and nothing else.
 	var keys map[string]any
 	apiDecode(t, e.send(e.owner, http.MethodGet, "/api/v1/settings", ""), &keys)
-	if len(keys) != 8 {
+	if len(keys) != 12 {
 		t.Errorf("keys = %v", keys)
 	}
 
@@ -98,6 +98,44 @@ func TestA1SettingsReadAndPatch(t *testing.T) {
 	// The member's settings are their own.
 	if s := e.a1Settings(t, e.member); s.Speed != 1 {
 		t.Errorf("member sees the owner's speed: %+v", s)
+	}
+}
+
+func TestNightSleepAPI(t *testing.T) {
+	e := syncSeed(t)
+	var got struct {
+		NightSleep   bool `json:"nightSleep"`
+		NightFrom    int  `json:"nightFrom"`
+		NightTo      int  `json:"nightTo"`
+		NightMinutes int  `json:"nightMinutes"`
+	}
+	apiDecode(t, e.send(e.owner, http.MethodGet, "/api/v1/settings", ""), &got)
+	if got.NightSleep || got.NightFrom != 1320 || got.NightTo != 360 || got.NightMinutes != 30 {
+		t.Fatalf("defaults = %+v", got)
+	}
+	rec := e.send(e.owner, http.MethodPatch, "/api/v1/settings", `{"nightSleep":true,"nightFrom":60,"nightTo":1439,"nightMinutes":180}`)
+	apiDecode(t, rec, &got)
+	if rec.Code != http.StatusOK || !got.NightSleep || got.NightFrom != 60 || got.NightTo != 1439 || got.NightMinutes != 180 {
+		t.Fatalf("patch = %d %+v", rec.Code, got)
+	}
+	for _, c := range []struct{ body, field string }{
+		{`{"nightFrom":1440}`, "nightFrom"}, {`{"nightFrom":-1}`, "nightFrom"}, {`{"nightTo":"late"}`, "nightTo"}, {`{"nightTo":1.5}`, "nightTo"},
+		{`{"nightMinutes":4}`, "nightMinutes"}, {`{"nightMinutes":181}`, "nightMinutes"}, {`{"nightMinutes":0}`, "nightMinutes"}, {`{"nightSleep":1}`, "nightSleep"},
+	} {
+		rec := e.send(e.owner, http.MethodPatch, "/api/v1/settings", c.body)
+		if rec.Code != http.StatusBadRequest || a1Field(t, rec) != c.field {
+			t.Errorf("%s = %d field %q, want %q", c.body, rec.Code, a1Field(t, rec), c.field)
+		}
+	}
+	// The member's settings are their own, untouched by the owner's patch.
+	var other struct {
+		NightSleep   bool `json:"nightSleep"`
+		NightFrom    int  `json:"nightFrom"`
+		NightMinutes int  `json:"nightMinutes"`
+	}
+	apiDecode(t, e.send(e.member, http.MethodGet, "/api/v1/settings", ""), &other)
+	if other.NightSleep || other.NightFrom != 1320 || other.NightMinutes != 30 {
+		t.Errorf("member sees the owner's night settings: %+v", other)
 	}
 }
 
