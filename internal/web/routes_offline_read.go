@@ -172,6 +172,7 @@ func (s *server) getOfflineShell(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		sv.CloseHref = "/books/" + rc.book.ID + "/read"
+		sv.CloseInPlace = false // the shell keeps its bare close address (offline_read_browser_test.go)
 		s.pageCached(w, r, http.StatusOK, "private, no-store", v.Title, "", pages.Reader(v), pages.ReaderSheet(sv), pages.ReaderStyles...)
 		return
 	}

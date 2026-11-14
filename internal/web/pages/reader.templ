@@ -50,6 +50,7 @@ type ReaderRoot struct {
 	Pages, Chapters                  int // the book's standard pages (p. n of N) and its chapters
 	Before                           int
 	Learned                          bool
+	Moved                            bool // the address names a place, so it is saved as the reading place at once
 }
 
 // ReaderMarkItem is one row of the "Highlights and notes" sheet.
@@ -80,6 +81,7 @@ type ReaderSheetView struct {
 	Items                                      []ReaderMarkItem
 	Exports                                    []ReaderExport // download links of the marks sheet
 	Search                                     *ReaderSearchView
+	CloseInPlace                               bool // the online reader: close and scrim shut the sheet where it is (data-ts-close)
 }
 
 // ReaderExport is a download link of the marks sheet.
@@ -246,6 +248,9 @@ templ Reader(v ReaderView) {
 			data-edition={ v.EditionID }
 			data-at={ v.Root.At }
 			data-off={ v.Root.Off }
+			if v.Root.Moved {
+				data-moved="1"
+			}
 			data-cpm={ strconv.Itoa(v.Root.Cpm) }
 			data-learned={ strconv.FormatBool(v.Root.Learned) }
 			data-total-chars={ strconv.Itoa(v.Root.TotalChars) }
@@ -494,12 +499,12 @@ templ ReaderBlock(b ReaderBlockView, oob bool) {
 // ReaderSheet is the contents or the marks panel over the page.
 templ ReaderSheet(v ReaderSheetView) {
 	<div class="ts-sheet-layer ts-sheet-layer--details">
-		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" aria-label={ v.CloseLabel } tabindex="-1"></a>
+		<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" if v.CloseInPlace { data-ts-close } aria-label={ v.CloseLabel } tabindex="-1"></a>
 		<div class="ts-sheet ts-details-sheet" role="dialog" aria-modal="true" aria-labelledby="reader-sheet-title" tabindex="-1">
 			<div class="ts-sheet__grab" aria-hidden="true"></div>
 			<div class="ts-sheet__head">
 				<h2 id="reader-sheet-title" class="ts-sheet__title">{ v.Title }</h2>
-				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" aria-label={ v.CloseLabel }>
+				<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" if v.CloseInPlace { data-ts-close } aria-label={ v.CloseLabel }>
 					@components.Icon("close", false)
 				</a>
 			</div>
@@ -512,6 +517,7 @@ templ ReaderSheet(v ReaderSheetView) {
 						<li>
 							<a
 								href={ templ.SafeURL(c.Href) }
+								data-ts-sheet-go
 								if c.Current {
 									aria-current="location"
 								}

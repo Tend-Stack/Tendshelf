@@ -209,7 +209,7 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, u, q := r.Context(), currentUser(r), r.URL.Query()
 	sheet := q.Get("sheet")
-	if sheet != "" && sheet != "contents" && sheet != "marks" && sheet != "reading" && sheet != "search" {
+	if sheet != "" && sheet != "contents" && sheet != "marks" && sheet != "reading" && sheet != "search" && sheet != "listen" {
 		s.notFound(w, r)
 		return
 	}
@@ -233,9 +233,22 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "reader view", err)
 		return
 	}
+	// An address that names a place is a move: the client saves it as the reading place at once.
+	v.Root.Moved = sheet == "" && (q.Has("ch") || q.Get("at") != "" || q.Get("bp") != "")
 	var sh templ.Component
 	switch sheet {
 	case "":
+	case "listen":
+		cv, ok, err := s.listenChoice(r, rc, pl.Ch)
+		if err != nil {
+			s.serverError(w, r, "reader listen choice", err)
+			return
+		}
+		if !ok {
+			s.notFound(w, r)
+			return
+		}
+		sh = components.FormatChoice(cv)
 	case "reading":
 		sv, err := s.readingSheet(r, rc, pl.Ch)
 		if err != nil {

@@ -97,3 +97,14 @@ func readButton(book library.Book, rp *progress.ReadingPosition, secondary bool)
 	}
 	return v
 }
+
+// Copy for choosing where to start in the other format. NEW; the voice follows BRAND.md.
+const (
+	chooseReadTitle   = "Read from"
+	chooseListenTitle = "Listen from"
+	readFromListening = "Read from where you're listening"
+	readFromStart     = "Read from the beginning"
+	listenFromReading = "Listen from where you're reading"
+	listenContinue    = "Continue listening"
+	listenFromStart   = "Listen from the start"
+)

@@ -1207,6 +1207,13 @@ listen(document, "click", (event) => {
     pause();
     return;
   }
+  if (data.tsChoose) {
+    // The reader's speaker asks where to listen from (the sheet shows the options). `at` is the sentence
+    // the person is on now, so the sheet maps the chapter being read, not the one the page opened at.
+    const at = document.getElementById("reader")?.dataset.at || "";
+    window.htmx.ajax("GET", data.tsChoose + "&at=" + encodeURIComponent(at), { target: "#sheet", select: "#sheet > *", swap: "innerHTML", source: el });
+    return;
+  }
   wantsFirstSound = true;
   if (book && book.id === data.tsPlay) {
     // a finished book that is still loaded (the Listen again link) starts at the beginning of the book
