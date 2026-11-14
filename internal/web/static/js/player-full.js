@@ -395,7 +395,7 @@ function endDrag(s, apply) {
   if (!d) return;
   s.drag = null;
   s.root.classList.remove("is-dragging");
-  s.root.style.removeProperty("--ts-from");
+  setVars(s.root, { "--ts-from": "" }); // an empty value removes it: the stylesheet's default follows the position again
   ui["full-chapter-left"].classList.remove("is-was");
   ui["full-fine"].textContent = "";
   if (apply) {

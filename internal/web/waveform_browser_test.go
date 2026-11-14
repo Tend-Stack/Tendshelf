@@ -57,6 +57,7 @@ type wavedrawRead struct {
 	Clip         string
 	Width        float64
 	Display      string
+	Phone        bool // the full player's wave drawn as the phone's lines (player-phone.css), not as the filled picture
 }
 
 func wavedrawState(tab *cdp.Tab, sel string) wavedrawRead {
@@ -65,13 +66,14 @@ func wavedrawState(tab *cdp.Tab, sel string) wavedrawRead {
 	  const w = document.querySelector(`+cdp.Quote(sel)+`);
 	  const m = w.querySelector(".ts-wave__muted, .ts-wave__rest"), p = w.querySelector(".ts-wave__played");
 	  const bar = w.dataset.tsWave === "bar";
-	  const paint = (s) => bar ? getComputedStyle(s.querySelector("path")).stroke : getComputedStyle(s).fill;
+	  const phone = w.dataset.tsWave === "full" && matchMedia("(width < 768px) and (height > 30rem)").matches;
+	  const paint = (s) => bar || phone ? getComputedStyle(s.querySelector("path")).stroke : getComputedStyle(s).fill;
 	  const d = (s) => s ? s.querySelector("path").getAttribute("d") : "";
 	  return {Svgs: w.querySelectorAll("svg").length, Bars: (d(m).match(/M/g) || []).length,
 	    Hidden: w.getAttribute("aria-hidden") === "true" || [...w.querySelectorAll("svg")].every((s) => s.getAttribute("aria-hidden") === "true"), D: d(m), PlayedD: d(p),
 	    Muted: m ? paint(m) : "", Fill: p ? paint(p) : "",
 	    MutedOpacity: m ? getComputedStyle(m).opacity : "", Clip: p ? getComputedStyle(p).clipPath : "",
-	    Width: w.getBoundingClientRect().width, Display: getComputedStyle(w).display};
+	    Width: w.getBoundingClientRect().width, Display: getComputedStyle(w).display, Phone: phone};
 	})()`, &r)
 	return r
 }
@@ -107,10 +109,14 @@ func wavedrawCheckDrawn(t *testing.T, what string, tab *cdp.Tab, sel string) wav
 	tab.WaitFor(`document.querySelector(`+cdp.Quote(sel)+`).querySelectorAll("svg").length > 0 && !document.querySelector(`+cdp.Quote(sel)+`).classList.contains("ts-wave--loading")`, 5*time.Second)
 	r := wavedrawState(tab, sel)
 	layers := 2
+	want := int(r.Width) / 4
 	if sel == wavedrawBar {
 		layers = 4 // rest, played, ahead, behind
 	}
-	want := int(r.Width) / 4
+	if r.Phone {
+		layers = 3 // rest, played, jump: 3 px lines every 5 px
+		want = int(r.Width+2) / 5
+	}
 	if want < 8 {
 		want = 8
 	}
@@ -118,7 +124,7 @@ func wavedrawCheckDrawn(t *testing.T, what string, tab *cdp.Tab, sel string) wav
 		t.Errorf("%s: %+v (want %d svgs, %d bars, aria-hidden, equal paths)", what, r, layers, want)
 	}
 	wantOpacity := "0.5" // the full player's rest layer is a faded line; the bar's is its own colour, token --wave-rest
-	if sel == wavedrawBar {
+	if sel == wavedrawBar || r.Phone {
 		wantOpacity = "1"
 	}
 	if r.Fill == r.Muted || r.MutedOpacity != wantOpacity {
@@ -151,10 +157,13 @@ func TestWaveformBrowser(t *testing.T) {
 		// scrubber still works: a click at 90 % of the line lands at 90 % of chapter 4.
 		time.Sleep(500 * time.Millisecond)
 		for _, sel := range sels {
-			// The bar draws flat bars (pulsing) while the values are on their way; the full player draws nothing.
+			// The bar draws flat bars (pulsing) while the values are on their way, the phone's wave level lines in
+			// three layers; the filled picture draws nothing.
 			want := 0
 			if sel == wavedrawBar {
 				want = 4
+			} else if vp.w < 768 {
+				want = 3
 			}
 			if r := wavedrawState(tab, sel); r.Svgs != want {
 				t.Errorf("%dpx %s: %d svgs drawn while /peaks/ answers 404, want %d", vp.w, sel, r.Svgs, want)
@@ -229,6 +238,9 @@ func TestWaveformBrowser(t *testing.T) {
 			}
 			if theme == "contrast" {
 				want := "rgb(255, 255, 255)"
+				if vp.w < 768 {
+					want = "rgb(255, 154, 102)" // the phone's played mark: no cover accent in contrast, so --wave-played (10:1 on the ground)
+				}
 				if sel0 == wavedrawBar {
 					want = wavedrawBarContrast
 				}
