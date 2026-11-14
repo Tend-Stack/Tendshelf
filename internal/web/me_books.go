@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -131,7 +132,7 @@ func (s *server) profileTiles(r *http.Request, ls []library.Listening, speed flo
 		case link != nil:
 			t.Play = link.button(fmt.Sprintf(rowResume, l.Book.Title), true)
 		}
-		t.Card.Left = continueLeft(l, speed)
+		t.Card.Left = s.continueLeft(ctx, u.ID, l, speed)
 		out = append(out, t)
 		cards = append(cards, l.Book)
 	}
@@ -150,10 +151,10 @@ func (s *server) profileTiles(r *http.Request, ls []library.Listening, speed flo
 
 // continueLeft is the line under a book in progress: the chapter and percent of a text, the time left of
 // an audiobook, nothing when the length is not known. Profile's tiles and Home's row share it.
-func continueLeft(l library.Listening, speed float64) string {
+func (s *server) continueLeft(ctx context.Context, userID string, l library.Listening, speed float64) string {
 	switch {
 	case l.Format == library.BookText:
-		return fmt.Sprintf(readWhere, l.ChapterIdx, l.PercentBP/100)
+		return readWhereText(s.readPlace(ctx, userID, l.Book.ID, l.EditionID, l.ChapterIdx), l.PercentBP)
 	case l.DurationMs > 0:
 		return fmt.Sprintf(bookWhereShortBook, bookLeftText(l.PositionMs, l.DurationMs, speed))
 	}

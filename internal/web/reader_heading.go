@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -62,6 +63,53 @@ func rdrOverline(chs []ebook.Chapter, idx int) string {
 		}
 	}
 	return fmt.Sprintf(readerChapter, n)
+}
+
+// readPlaceName names a chapter of a text the way the reader's own heading does, for the lines that say where
+// someone is reading ("Chapter 12 · 18 %"). A book's opening pages (cover, title page, contents) are chapters
+// of the file but not of the story, so the stored index is not the number a reader sees. A prologue or the
+// like goes by its title; empty when the chapter is not known.
+func readPlaceName(rows []ebook.ChapterRow, idx int) string {
+	if idx < 1 || idx > len(rows) {
+		return ""
+	}
+	chs := make([]ebook.Chapter, len(rows))
+	for i, r := range rows {
+		chs[i].Title, chs[i].Front = r.Title, r.Front
+	}
+	if name := rdrOverline(chs, idx); name != "" {
+		return name
+	}
+	return strings.TrimSpace(rows[idx-1].Title)
+}
+
+// readWhereText is the "Chapter 12 · 18 %" line; only the percent when the chapter has no name to give.
+func readWhereText(name string, percentBP int) string {
+	if name == "" {
+		return fmt.Sprintf(readWhereBare, percentBP/100)
+	}
+	return fmt.Sprintf(readWhere, name, percentBP/100)
+}
+
+// readPlace reads the chapter list of an edition and names chapter idx (see readPlaceName). A place saved
+// without an edition is in the one the person reads this book in. A list that cannot be read gives no
+// name, never a wrong number.
+func (s *server) readPlace(ctx context.Context, userID, bookID, editionID string, idx int) string {
+	if s.ebooks == nil {
+		return ""
+	}
+	if editionID == "" {
+		_, ed, ok, err := s.ebooks.Store().EditionFor(ctx, userID, bookID)
+		if err != nil || !ok {
+			return ""
+		}
+		editionID = ed.ID
+	}
+	rows, err := s.ebooks.Store().Chapters(ctx, editionID)
+	if err != nil {
+		return ""
+	}
+	return readPlaceName(rows, idx)
 }
 
 // rdrRepeatedHeading returns the index of the heading that opens a chapter's text and only repeats the

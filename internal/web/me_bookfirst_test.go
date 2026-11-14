@@ -301,8 +301,9 @@ func TestBookFirstLeftLine(t *testing.T) {
 	if !strings.Contains(body, "50 m left") {
 		t.Errorf("no '50 m left' at speed 1:\n%.800s", body)
 	}
-	if !strings.Contains(body, "Chapter 2 · 37 %") {
-		t.Errorf("no 'Chapter 2 · 37 %%' for the text book")
+	// The file's second section is the story's first chapter (a title page comes first).
+	if !strings.Contains(body, "Chapter 1 · 37 %") || strings.Contains(body, "Chapter 2 · 37 %") {
+		t.Errorf("no 'Chapter 1 · 37 %%' for the text book")
 	}
 	set, err := l.a.srv.users.LoadSettings(context.Background(), fmt2Uid(t, l, l.owner))
 	if err != nil {

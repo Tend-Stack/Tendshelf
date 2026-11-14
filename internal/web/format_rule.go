@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/progress"
@@ -23,7 +22,8 @@ const (
 	readOther      = "Read"
 	listenOther    = "Listen"
 	readNeedsRight = "You can see this book, but reading it needs permission."
-	readWhere      = "Chapter %d · %d %%"
+	readWhere      = "%s · %d %%" // the chapter as the reader names it ("Chapter 12", "Prologue", "Opening pages"), then the percent
+	readWhereBare  = "%d %%"
 )
 
 const (
@@ -53,18 +53,18 @@ func lastFormat(p *progress.Progress, rp *progress.ReadingPosition, mayListen, m
 	return formatAudio
 }
 
-// readState is the reading primary button's label, and the "Chapter n · pct %" line under it (empty
-// when there is no place to describe).
-func readState(rp *progress.ReadingPosition) (label, where string) {
+// readState is the reading primary button's label; under says whether there is a place to describe
+// beneath it (the "Chapter n · pct %" line, see readPlace).
+func readState(rp *progress.ReadingPosition) (label string, under bool) {
 	switch {
 	case rp == nil:
-		return readStart, ""
+		return readStart, false
 	case rp.Finished():
-		return readAgain, ""
+		return readAgain, false
 	case rp.PercentBP > 0:
-		return readContinue, fmt.Sprintf(readWhere, rp.ChapterIdx, rp.PercentBP/100)
+		return readContinue, true
 	}
-	return readStart, ""
+	return readStart, false
 }
 
 // readHref is the reader's address for a book.

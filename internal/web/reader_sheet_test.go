@@ -174,9 +174,15 @@ func TestReadFromFragment(t *testing.T) {
 		EditionID: l.ed.ID, ChapterIdx: rdrCh, SID: sid, CharPos: 5, PercentBP: 100, ClientUpdatedAt: 10, DeviceID: "dev-test-1"}); err != nil {
 		t.Fatal(err)
 	}
-	got = hrefs(l.get(l.owner, path, true).Body.String())
+	body = l.get(l.owner, path, true).Body.String()
+	got = hrefs(body)
 	if len(got) != 3 || !strings.HasSuffix(got[0], "/read") || !strings.Contains(got[1], "ch=4") {
 		t.Errorf("order: %v", got)
+	}
+	// The line under "Continue reading" names the chapter as the reader's heading does: the place is in the
+	// file's second section, which is the story's Chapter 1 (a title page comes first), so it must not say 2.
+	if !strings.Contains(body, "Chapter 1 · 1 %") || strings.Contains(body, "Chapter 2 · 1 %") {
+		t.Errorf("continue reading names the wrong chapter:\n%s", body)
 	}
 	// A member who may listen but not read, and an unknown book, get 404.
 	if rec := l.get(l.noRead, path, true); rec.Code != http.StatusNotFound {

@@ -52,7 +52,7 @@ func (s *server) homeHeroView(ctx context.Context, r *http.Request) (*pages.Home
 			cards := make([]library.BookCard, len(rest))
 			for i, l := range rest {
 				hero.Also[i] = cardView(l.Book)
-				hero.Also[i].Left = continueLeft(l, set.Speed)
+				hero.Also[i].Left = s.continueLeft(ctx, u.ID, l, set.Speed)
 				cards[i] = l.Book
 			}
 			if err := s.withCardProgress(ctx, u.ID, cards, hero.Also); err != nil {
@@ -275,14 +275,15 @@ func (s *server) textHeroView(ctx context.Context, r *http.Request, l library.Li
 	if err != nil {
 		return nil, "", err
 	}
+	place := s.readPlace(ctx, u.ID, l.Book.ID, l.EditionID, l.ChapterIdx)
 	v := &pages.HomeHeroView{
 		Cover: cardView(l.Book), Eyebrow: homeContinueReading, Title: l.Book.Title, Byline: bylineOf(l.Book.Authors),
 		BookHref:   "/books/" + l.Book.ID,
 		RulerLabel: readerRulerLabel, RulerNow: strconv.Itoa(l.PercentBP / 100),
-		Where: fmt.Sprintf(readWhere, l.ChapterIdx, l.PercentBP/100),
+		Where: readWhereText(place, l.PercentBP),
 	}
-	if left, ok := s.readingLeft(ctx, u.ID, l); ok {
-		v.Where = fmt.Sprintf(homeWhereReading, l.ChapterIdx, left.chapter, left.book)
+	if left, ok := s.readingLeft(ctx, u.ID, l); ok && place != "" {
+		v.Where = fmt.Sprintf(homeWhereReading, place, left.chapter, left.book)
 	}
 	ok, err := s.mayReadBook(ctx, u, book)
 	if err != nil {

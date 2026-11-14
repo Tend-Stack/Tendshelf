@@ -171,7 +171,7 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 		v.Read.Large = v.Read.Secondary
 		if textFirst {
 			v.ReadFirst = true
-			v.Ruler, v.Where, v.WhereShort = readRuler(rp)
+			v.Ruler, v.Where, v.WhereShort = s.readRuler(ctx, rp)
 		}
 	}
 	if !textFirst && p != nil && !p.Finished() && p.PositionMs > 0 && book.DurationMs > 0 {
@@ -211,7 +211,7 @@ func (s *server) textPlayView(r *http.Request, book library.Book, v *pages.BookP
 	}
 	if mayRead {
 		v.Read, v.ReadFirst = readButton(book, rp, false), true
-		v.Ruler, v.Where, v.WhereShort = readRuler(rp)
+		v.Ruler, v.Where, v.WhereShort = s.readRuler(ctx, rp)
 	} else {
 		v.Note = readNeedsRight
 		v.MarkLabel = "" // marking finished is a reader's act
@@ -225,11 +225,11 @@ func (s *server) textPlayView(r *http.Request, book library.Book, v *pages.BookP
 }
 
 // readRuler is the reading ruler (percent, no ticks) and its where-lines, nil when the book is not under way.
-func readRuler(rp *progress.ReadingPosition) (*components.RulerView, string, string) {
+func (s *server) readRuler(ctx context.Context, rp *progress.ReadingPosition) (*components.RulerView, string, string) {
 	if rp == nil || rp.Finished() || rp.PercentBP <= 0 {
 		return nil, "", ""
 	}
-	_, where := readState(rp)
+	where := readWhereText(s.readPlace(ctx, rp.UserID, rp.BookID, rp.EditionID, rp.ChapterIdx), rp.PercentBP)
 	return &components.RulerView{Label: readerRulerLabel, Now: strconv.Itoa(rp.PercentBP / 100)}, where, where
 }
 

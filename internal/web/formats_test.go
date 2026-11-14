@@ -136,8 +136,8 @@ func TestFormatsResumeRule(t *testing.T) {
 			t.Errorf("%+v: %q, want %q", c.rp, label, c.label)
 		}
 	}
-	if _, where := readState(&progress.ReadingPosition{PercentBP: 4250, ChapterIdx: 3}); where != "Chapter 3 · 42 %" {
-		t.Errorf("where %q", where)
+	if _, under := readState(&progress.ReadingPosition{PercentBP: 4250, ChapterIdx: 3}); !under {
+		t.Error("a book under way has no place line")
 	}
 }
 
@@ -164,7 +164,8 @@ func TestFormatsMixedPage(t *testing.T) {
 	fmt2Listened(t, l, l.owner, l.book.ID, 1000)
 	fmt2Reading(t, l, l.owner, l.book.ID, 4200, 2000)
 	r = page(l.owner)
-	for _, w := range []string{readContinue, ">Listen<", "Chapter 2 · 42 %"} {
+	// The place is in the file's second section, which is the story's first chapter (a title page comes first).
+	for _, w := range []string{readContinue, ">Listen<", "Chapter 1 · 42 %"} {
 		if !strings.Contains(r, w) {
 			t.Errorf("read last: missing %q", w)
 		}
@@ -290,7 +291,7 @@ func TestFormatsHomeContinue(t *testing.T) {
 	}
 	fmt2Reading(t, l, l.owner, l.tbook.ID, 4200, 5000)
 	body := home()
-	for _, w := range []string{"Continue reading", "Plain Prose", `href="/books/` + l.tbook.ID + `/read"`, "Chapter 2"} {
+	for _, w := range []string{"Continue reading", "Plain Prose", `href="/books/` + l.tbook.ID + `/read"`, "Chapter 1 · "} {
 		if !strings.Contains(body, w) {
 			t.Errorf("hero: missing %q", w)
 		}

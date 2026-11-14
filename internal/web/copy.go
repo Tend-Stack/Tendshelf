@@ -111,7 +111,7 @@ const (
 	homeContinue = "Continue listening"
 	// NEW (B2): the hero of a book last read; "Continue reading" is in the copy deck, the line follows homeWhere.
 	homeContinueReading = "Continue reading"
-	homeWhereReading    = "Chapter %d · about %s left in chapter · about %s left in book"
+	homeWhereReading    = "%s · about %s left in chapter · about %s left in book"
 	homeReadBy          = "read by %s"
 	homeWhere           = "Chapter %d · %d min left in chapter · %s left in book"
 	homeWhereBook       = "%s left in book"

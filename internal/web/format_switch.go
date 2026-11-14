@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -325,7 +324,7 @@ func (s *server) getReadFrom(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if rp != nil && !rp.Finished() && rp.PercentBP > 0 {
-		places = append(places, formatOption{Label: readContinue, Where: fmt.Sprintf(readWhere, rp.ChapterIdx, rp.PercentBP/100),
+		places = append(places, formatOption{Label: readContinue, Where: readWhereText(s.readPlace(r.Context(), rp.UserID, rp.BookID, rp.EditionID, rp.ChapterIdx), rp.PercentBP),
 			Href: readHref(book.ID), at: rp.ClientUpdatedAt})
 	}
 	opts := orderOptions(places, formatOption{Label: readFromStart, Href: readerHref(book.ID, rc.ed.ID, "ch", strconv.Itoa(first))})
