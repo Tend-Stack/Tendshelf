@@ -43,7 +43,9 @@ jobs:
     runs-on: [tend-ci, linux-arm64]
     container:
       image: docker.gitea.com/runner-images:ubuntu-24.04
-    timeout-minutes: 45
+    # 75 since 2026-11-14: the job had grown to 41-45 minutes (internal/web runs twice under -race, about 17 minutes
+    # each) and run 12406 was cut off at 45 during make build with every test green.
+    timeout-minutes: 75
     env:
       CI: "true"
     steps:
