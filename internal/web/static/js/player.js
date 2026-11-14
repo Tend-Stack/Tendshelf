@@ -1211,7 +1211,7 @@ listen(document, "click", (event) => {
     // The reader's speaker asks where to listen from (the sheet shows the options). `at` is the sentence
     // the person is on now, so the sheet maps the chapter being read, not the one the page opened at.
     const at = document.getElementById("reader")?.dataset.at || "";
-    window.htmx.ajax("GET", data.tsChoose + "&at=" + encodeURIComponent(at), { target: "#sheet", select: "#sheet > *", swap: "innerHTML", source: el });
+    window.htmx.ajax("GET", data.tsChoose + "&at=" + encodeURIComponent(at), { target: "#sheet", select: "#sheet > *", source: el });
     return;
   }
   wantsFirstSound = true;
