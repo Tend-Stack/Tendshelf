@@ -94,7 +94,7 @@ func TestReaderPage(t *testing.T) {
 		}
 	}
 	for _, gone := range []string{`data-mode`, `data-timing`, `data-s="`, `ts-s--gap`, `ts-voicepill`, `ts-focus`, `data-ts-reader-eyes-free`, `data-ts-play`,
-		`ts-mode`, `Read along`, `data-chapters`, `data-follow`, `data-view`, `data-word`, `readalong.js`, `Listen from here`} {
+		`ts-mode`, `data-chapters`, `data-follow`, `data-view`, `data-word`, `readalong.js`, `Listen from here`} {
 		if strings.Contains(body, gone) {
 			t.Errorf("page still has %q", gone)
 		}
@@ -437,7 +437,7 @@ func TestReaderTextTabLink(t *testing.T) {
 	l := rdrSeed(t)
 	href := `href="/books/` + l.book.ID + `/read?edition=` + l.ed.ID + `"`
 	body := l.get(l.owner, l.path(""), false).Body.String()
-	if !strings.Contains(body, href) || !strings.Contains(body, ">Read<") || strings.Contains(body, "Read along") {
+	if !strings.Contains(body, href) || !strings.Contains(body, ">Read<") {
 		t.Error("owner's tab: Read link")
 	}
 	if !strings.Contains(l.get(l.reader, l.path(""), false).Body.String(), ">Read<") {

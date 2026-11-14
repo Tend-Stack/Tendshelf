@@ -41,7 +41,7 @@
      The cover (player-fit.css) shrinks first, so there is no empty band at any height. */
   .ts-player [data-ts-scrub="full"], .ts-player .ts-player__booklabel, .ts-player .ts-player__transport, .ts-player .ts-player__bar {
     margin-top: auto; border-top: var(--space-8) solid transparent; background-clip: padding-box; }
-  .ts-player .ts-player__transport { border-top-width: calc(var(--space-8) - 5px); margin-bottom: 0; } /* the ruler's 5 px of air above its bars is part of the 8 px */
+  .ts-player .ts-player__transport { border-top-width: calc(var(--space-8) - 0.3125rem); margin-bottom: 0; } /* the ruler's 5 px of air above its bars is part of the 8 px */
   .ts-player .ts-player__bar { border-top-width: var(--space-12); }
 
   /* The chapter wave: a taller area than before. The wave keeps today's drawing; its line and fill give way to the wave itself
@@ -64,8 +64,8 @@
 
   /* The book bar. The ruler keeps chapter-bar.js's picker (tip, keys, tap, drag) and its 44 px touch border; only the drawing changes.
      Its 14 px box holds 4 px segments (the current one is 8 px), so there is 5 px of air above them; 3 px more makes the 8 px gap. */
-  .ts-player .ts-player__ruler { margin-top: 3px; }
-  .ts-player .ts-player__ruler[role="slider"] { margin-top: calc(var(--chbar-extra) * -1 + 3px); }
+  .ts-player .ts-player__ruler { margin-top: 0.1875rem; }
+  .ts-player .ts-player__ruler[role="slider"] { margin-top: calc(var(--chbar-extra) * -1 + 0.1875rem); }
   .ts-player__segs { display: block; position: absolute; inset: 0; pointer-events: none; }
   .ts-player__seg { position: absolute; top: 0.3125rem; height: 0.25rem; left: var(--from); width: calc(var(--to) - var(--from) - 2px); border-radius: 2px; background: var(--ts-rest); }
   .ts-player__seg.is-done { background: var(--ts-mark); }
