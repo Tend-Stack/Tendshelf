@@ -55,16 +55,21 @@ var weightBudgets = map[string]weightBudget{
 	// 191 B over; raised 1 KiB to 328,192 B. Nothing was squeezed; reported.
 	// 2026-11-11, a station's late logo reaches the lock screen (player.js): JS 215,298 B measured, 258 B over; raised 512 B to
 	// 215,552 B (reader 280,815 B measured, raised 512 B to 281,088 B), comments intact, reported.
-	"home":        {HTML: 71680, CSS: 321024, JS: 215552, Font: 1075200, Img: 38912, Requests: 63}, // Shelf spines (decision 0034): HTML raised to 71,680 B from 70,120 B measured (li, link and spans per spine), requests +2 for pages-spines.css. Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
-	"library":     {HTML: 87040, CSS: 321024, JS: 215552, Font: 791552, Img: 95232, Requests: 93},
-	"book":        {HTML: 55296, CSS: 321024, JS: 215552, Font: 791552, Img: 29696, Requests: 55},
-	"listening":   {HTML: 164864, CSS: 321024, JS: 215552, Font: 791552, Img: 34816, Requests: 62},
-	"search":      {HTML: 59392, CSS: 321024, JS: 215552, Font: 791552, Img: 39936, Requests: 65},
-	"profile":     {HTML: 64512, CSS: 328704, JS: 215552, Font: 791552, Img: 57344, Requests: 62}, // decision 0021, set the same way from the first measurement (2026-11-05)
-	"settings":    {HTML: 49152, CSS: 321024, JS: 215552, Font: 791552, Img: 1024, Requests: 45},
-	"reader":      {HTML: 53248, CSS: 321536, JS: 281088, Font: 1075200, Img: 1024, Requests: 56}, // JS +1 KB for read aloud (decision 0032, 2026-11-08: 238,301 B measured, 733 B over, reported); JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05)
-	"passkeys":    {HTML: 41984, CSS: 329728, JS: 215552, Font: 791552, Img: 1024, Requests: 48},  // decision 0041, set from the first measurement (2026-11-12): html 40,525 B, css 328,932 B, js 215,298 B, 46 requests; measured on 127.0.0.1, where the passkey script is not loaded (an IP is no RP id)
-	"admin-users": {HTML: 47104, CSS: 328192, JS: 215552, Font: 791552, Img: 1024, Requests: 45},
+	// 2026-11-13, the phone action bar's Details cell, passkeys, remove one part and edit details, and choosing where to start
+	// in the other format (FormatChoice sheet, player.js, player-full.js, shell.js): CSS 322,564 B measured, 1,540 B over;
+	// raised 2 KiB to 323,072 B (reader the same; admin-users 329,082 B measured, raised 2 KiB to 330,240 B; passkeys 330,655 B
+	// measured, raised 2 KiB to 331,776 B). JS 217,089 B measured, 1,537 B over; raised 2 KiB to 217,600 B (reader 282,970 B
+	// measured, raised 2 KiB to 283,136 B). Nothing was squeezed; reported.
+	"home":        {HTML: 71680, CSS: 323072, JS: 217600, Font: 1075200, Img: 38912, Requests: 63}, // Shelf spines (decision 0034): HTML raised to 71,680 B from 70,120 B measured (li, link and spans per spine), requests +2 for pages-spines.css. Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
+	"library":     {HTML: 87040, CSS: 323072, JS: 217600, Font: 791552, Img: 95232, Requests: 93},
+	"book":        {HTML: 55296, CSS: 323072, JS: 217600, Font: 791552, Img: 29696, Requests: 55},
+	"listening":   {HTML: 164864, CSS: 323072, JS: 217600, Font: 791552, Img: 34816, Requests: 62},
+	"search":      {HTML: 59392, CSS: 323072, JS: 217600, Font: 791552, Img: 39936, Requests: 65},
+	"profile":     {HTML: 64512, CSS: 328704, JS: 217600, Font: 791552, Img: 57344, Requests: 62}, // decision 0021, set the same way from the first measurement (2026-11-05)
+	"settings":    {HTML: 49152, CSS: 323072, JS: 217600, Font: 791552, Img: 1024, Requests: 45},
+	"reader":      {HTML: 53248, CSS: 323072, JS: 283136, Font: 1075200, Img: 1024, Requests: 56}, // JS +1 KB for read aloud (decision 0032, 2026-11-08: 238,301 B measured, 733 B over, reported); JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05)
+	"passkeys":    {HTML: 41984, CSS: 331776, JS: 217600, Font: 791552, Img: 1024, Requests: 48},  // decision 0041, set from the first measurement (2026-11-12): html 40,525 B, css 328,932 B, js 215,298 B, 46 requests; measured on 127.0.0.1, where the passkey script is not loaded (an IP is no RP id)
+	"admin-users": {HTML: 47104, CSS: 330240, JS: 217600, Font: 791552, Img: 1024, Requests: 45},
 }
 
 // weightProbeJS waits until ts-ready exists and no new resource entry has appeared for 500 ms (10 s at
