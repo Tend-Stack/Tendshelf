@@ -157,3 +157,10 @@
 2. A sheet that would hold only "Listen from the start" is accepted in the rare case described in D8's conditions; no extra logic.
 3. Without JavaScript the reader still does not save a place; unchanged.
 
+## Amendment, 2026-11-14
+
+The full gate showed that saving on every address that names a place (`data-moved`, steps 3 and 10) broke two
+existing rules: opening a book writes no place, and a skim jump saves nothing until the reader turns a page.
+`Moved` and `data-moved` are removed. Instead `shell.js` leaves a `ts-picked` mark in `sessionStorage` when a
+`[data-ts-sheet-go]` row is clicked, and `reader.js` saves at once only when it mounts within ten seconds of
+that mark. A contents pick and a "Read from" choice save at once; a plain `?ch=`, `?at=` or `?bp=` address does not.

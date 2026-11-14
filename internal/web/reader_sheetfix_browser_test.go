@@ -68,3 +68,38 @@ func TestReaderSheetFixedHead(t *testing.T) {
 		}
 	}
 }
+
+// TestReaderContentsPickSaves: picking a chapter in the contents sheet closes the sheet, shows that chapter
+// and saves it as the reading place at once, so closing the reader straight away keeps it. Opening the same
+// address without a pick still saves nothing.
+func TestReaderContentsPickSaves(t *testing.T) {
+	b := chromium(t)
+	l := pgSeed(t, 4, 40)
+	pgFlow(t, l, "pages")
+	srv := pgServe(t, l)
+	tab := pgOpen(t, b, srv, l, 390, 844, true, "ch=1")
+	tab.Eval(`document.querySelector('a[href*="sheet=contents"]').click()`, nil)
+	tab.WaitFor(`document.querySelectorAll("#sheet [data-ts-sheet-go]").length > 2`, 5*time.Second)
+	if _, _, ok := pgSaved(t, l); ok {
+		t.Fatal("opening the book and its contents must not write a place")
+	}
+	tab.Eval(`document.querySelectorAll("#sheet [data-ts-sheet-go]")[2].click()`, nil)
+	tab.WaitFor(`document.querySelector("#sheet .ts-sheet:not(.is-leaving)") === null && location.search.includes("ch=3")`, 5*time.Second)
+	deadline := time.Now().Add(5 * time.Second)
+	var sid string
+	for time.Now().Before(deadline) {
+		if got, _, ok := pgSaved(t, l); ok {
+			sid = got
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if len(sid) < 3 || sid[:3] != "c3." {
+		t.Fatalf("the picked chapter was saved as %q, want a place in the chapter ch=3 names", sid)
+	}
+	var search string
+	tab.Eval(`location.search`, &search)
+	if search != "?ch=3" {
+		t.Errorf("after the pick the address is %q; the sheet must not come back", search)
+	}
+}

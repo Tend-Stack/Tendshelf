@@ -79,6 +79,17 @@ function offer(text, actions) {
   document.getElementById("toasts").append(toast);
 }
 
+// pickedJustNow reports, once, whether a sheet row was picked in the last ten seconds (the mark shell.js leaves).
+function pickedJustNow() {
+  try {
+    const when = Number(sessionStorage.getItem("ts-picked"));
+    sessionStorage.removeItem("ts-picked");
+    return when > 0 && Date.now() - when < 10000;
+  } catch {
+    return false;
+  }
+}
+
 export function mount(root) {
   const copy = JSON.parse(root.dataset.copy || "{}");
   const shell = root.closest(".ts-readerpage");
@@ -574,9 +585,10 @@ export function mount(root) {
       here = firstShown();
       paint();
     }
-    // An address that names a place (a picked chapter, a search hit) is a move even when nothing is scrolled:
-    // save it now, so a reload opens here and not at the place saved before.
-    if (root.dataset.moved === "1") {
+    // A place picked in a sheet (a contents row, "Read from where you're listening") is a move even when
+    // nothing is scrolled: save it now, so leaving at once keeps it. shell.js marks the pick; an address
+    // opened any other way (a link, a skim jump) saves nothing until the reader turns a page.
+    if (pickedJustNow()) {
       dirty = true;
       save(false);
     }

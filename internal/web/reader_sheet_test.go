@@ -60,20 +60,6 @@ func TestReaderSheetClosesInPlace(t *testing.T) {
 	}
 }
 
-func TestReaderMovedFlag(t *testing.T) {
-	l := rdrSeed(t)
-	sid, _ := l.sidIn(0)
-	for q, want := range map[string]bool{
-		"ch=2": true, "at=" + sid: true, "bp=3000": true,
-		"": false, "ch=2&sheet=contents": false, "edition=" + l.ed.ID: false,
-	} {
-		body := l.get(l.owner, l.readPath(q), false).Body.String()
-		if got := strings.Contains(body, `data-moved="1"`); got != want {
-			t.Errorf("%q: moved %v, want %v", q, got, want)
-		}
-	}
-}
-
 func TestReaderListenSheet(t *testing.T) {
 	l := rdrSeed(t)
 	rshChapters(t, l)

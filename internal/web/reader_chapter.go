@@ -233,8 +233,6 @@ func (s *server) getReader(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "reader view", err)
 		return
 	}
-	// An address that names a place is a move: the client saves it as the reading place at once.
-	v.Root.Moved = sheet == "" && (q.Has("ch") || q.Get("at") != "" || q.Get("bp") != "")
 	var sh templ.Component
 	switch sheet {
 	case "":

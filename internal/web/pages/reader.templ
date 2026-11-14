@@ -50,7 +50,6 @@ type ReaderRoot struct {
 	Pages, Chapters                  int // the book's standard pages (p. n of N) and its chapters
 	Before                           int
 	Learned                          bool
-	Moved                            bool // the address names a place, so it is saved as the reading place at once
 }
 
 // ReaderMarkItem is one row of the "Highlights and notes" sheet.
@@ -248,9 +247,6 @@ templ Reader(v ReaderView) {
 			data-edition={ v.EditionID }
 			data-at={ v.Root.At }
 			data-off={ v.Root.Off }
-			if v.Root.Moved {
-				data-moved="1"
-			}
 			data-cpm={ strconv.Itoa(v.Root.Cpm) }
 			data-learned={ strconv.FormatBool(v.Root.Learned) }
 			data-total-chars={ strconv.Itoa(v.Root.TotalChars) }
