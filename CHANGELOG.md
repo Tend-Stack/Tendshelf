@@ -7,6 +7,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 ### Added
 
 - **Sign in with a passkey.** Add a passkey under Profile, Passkeys, and sign in with your fingerprint, face or screen lock instead of typing a password. Passkeys work when you reach Tendshelf by name over HTTPS; an admin can remove a person's passkeys from their page.
+- **Choose where to start in the other format.** The speaker in the reader asks whether to listen from where you are reading, continue listening, or start from the beginning. The book icon in the player asks whether to read from where you are listening, continue reading, or start from the beginning. With only one place to go, it goes straight there. Playing never stops while you choose or while you go to read.
 
 ### Fixed
 
