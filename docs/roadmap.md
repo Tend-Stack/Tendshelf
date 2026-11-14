@@ -1081,11 +1081,13 @@ and `reader-flip.js` that mirrors columns, taps, swipes, arrow keys, the slide a
 `internal/ebook` (detection, blocks, segmentation, the v4 re-read), `TestRTLReaderMarkup`,
 `TestRTLLTRMarkupUnchanged`, and the browser tests `TestRTLPagesTurn`, `TestRTLFlipTurn`, `TestRTLFlipDrag`,
 `TestRTLSlideOffset`, `TestRTLSpreadRibbons`, `TestRTLSkimMirrored`, `TestRTLScrollFlow`, `TestRTLHebrewMixed` at 390
-and 1440 px; the Latin golden documents changed only in the recipe string; all 68 reader captures identical before and
+and 1440 px; `TestRTLOfflineShell` (the shell the service worker answers is right to left, a turn works and the place
+survives an offline reload) and the opt-in `TestVisualWebKitRTLPages` (WebKitGTK at 447 and 1440 px, a turn gives a
+negative offset); the Latin golden documents changed only in the recipe string; all 68 reader captures identical before and
 after the markup and CSS. Limits: no vertical text; no Arabic or Hebrew font is shipped, so these books use the
 device's fonts; every ebook is read again once after the upgrade; an offline copy saved before the upgrade stays
 left to right until it is opened online; PageUp, PageDown, Space and the Android volume keys keep their meaning.
-Not verified: WebKit and the Wails window, the Android WebView, a real Arabic or Hebrew book, captures at 768 and
+Not verified: the Wails window by hand, the Android WebView, a real Arabic or Hebrew book, captures at 768 and
 1024 px. This replaces the "no right-to-left" limit in the RD2 note above.
 
 ## Later
