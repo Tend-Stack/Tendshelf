@@ -275,7 +275,9 @@ func (s *Service) SaveUserDetails(ctx context.Context, bookID string, in UserDet
 			return err
 		}
 		before, _ := Resolve(rows)
-		shown := effective(before, b, people, series).Values()
+		eff := effective(before, b, people, series)
+		shown := eff.Values()
+		prefilled := formOf(eff, b.Title)
 		hasUser := map[string]bool{}
 		for _, r := range rows {
 			if r.Source == SourceUser {
@@ -284,7 +286,27 @@ func (s *Service) SaveUserDetails(ctx context.Context, bookID string, in UserDet
 		}
 		now := s.now().UnixMilli()
 		for _, f := range fields {
+			if untouched(f.form, in, prefilled) {
+				continue // the person left what the form showed: it is not rewritten, not split, not pinned
+			}
 			cur, has := shown[f.field]
+			if f.field == FieldSeries && len(eff.Series) > 1 {
+				// The form edits the first series only; the others stay as they are.
+				rest := eff.Series[1:]
+				var refs []SeriesRef
+				if f.value != nil {
+					if err := json.Unmarshal(f.value, &refs); err != nil {
+						return err
+					}
+				}
+				if refs = append(refs, rest...); len(refs) > 0 {
+					raw, err := json.Marshal(refs)
+					if err != nil {
+						return err
+					}
+					f.value = raw
+				}
+			}
 			switch {
 			case f.value == nil && !hasUser[f.field]:
 				continue // nothing to clear
@@ -317,4 +339,44 @@ func (s *Service) SaveUserDetails(ctx context.Context, bookID string, in UserDet
 		return nil, err
 	}
 	return changed, nil
+}
+
+// formText is a submitted or prefilled value as compared: trimmed, with the line ends a browser sends (CRLF)
+// turned into LF.
+func formText(s string) string {
+	return strings.TrimSpace(strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(s))
+}
+
+// untouched reports whether the submitted form field says the same text the form was prefilled with, so saving
+// leaves that field alone (an author such as "Downey, Jr." is not split into two, a multi-line description is not
+// pinned as a "user" value just because the form was sent).
+func untouched(form string, in, prefilled UserDetails) bool {
+	same := func(a, b string) bool { return formText(a) == formText(b) }
+	switch form {
+	case "title":
+		return same(in.Title, prefilled.Title)
+	case "subtitle":
+		return same(in.Subtitle, prefilled.Subtitle)
+	case "authors":
+		return same(in.Authors, prefilled.Authors)
+	case "narrators":
+		return same(in.Narrators, prefilled.Narrators)
+	case "series":
+		return same(in.SeriesName, prefilled.SeriesName) && same(in.SeriesNumber, prefilled.SeriesNumber)
+	case "year":
+		return same(in.Year, prefilled.Year)
+	case "publisher":
+		return same(in.Publisher, prefilled.Publisher)
+	case "description":
+		return same(in.Description, prefilled.Description)
+	case "language":
+		return same(in.Language, prefilled.Language)
+	case "genres":
+		return same(in.Genres, prefilled.Genres)
+	case "isbn":
+		return same(in.ISBN, prefilled.ISBN)
+	case "asin":
+		return same(in.ASIN, prefilled.ASIN)
+	}
+	return false
 }

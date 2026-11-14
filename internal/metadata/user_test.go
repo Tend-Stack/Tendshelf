@@ -1,7 +1,9 @@
 package metadata_test
 
 import (
+	"encoding/json"
 	"errors"
+	"github.com/Tend-Stack/tendshelf/internal/library"
 	"slices"
 	"testing"
 
@@ -145,5 +147,65 @@ func TestHandEditSurvivesLookupAndRescan(t *testing.T) {
 	}
 	if b, _ := e.repo.Book(bg, id); b.Title != "Plain Title" {
 		t.Errorf("after a reset: %q", b.Title)
+	}
+}
+
+// putUser stores a "user" value the way the edit form would, so the book shows text the form cannot round-trip
+// through its list splitting.
+func putUser(t *testing.T, e *lookupEnv, id, field, raw string) {
+	t.Helper()
+	err := e.repo.Update(bg, func(tx *library.Tx) error {
+		return tx.PutUserMetadataValue(id, library.MetadataValue{Field: field, Value: json.RawMessage(raw), ObservedAt: 1})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSaveUserDetailsLeavesUntouchedFieldsAlone(t *testing.T) {
+	e, id := newLookupBook(t)
+	putUser(t, e, id, metadata.FieldAuthors, `["Downey, Jr."]`)
+	putUser(t, e, id, metadata.FieldDescription, `"First line\nSecond line"`)
+	form, err := e.svc.DetailsForm(bg, id)
+	if err != nil || form.Authors != "Downey, Jr." {
+		t.Fatalf("prefill: %+v %v", form, err)
+	}
+	// A browser sends a textarea with CRLF line ends; only the title is edited.
+	form.Description = "First line\r\nSecond line"
+	form.Title = "Another Title"
+	changed, err := e.svc.SaveUserDetails(bg, id, form, "")
+	if err != nil || !slices.Equal(changed, []string{"title"}) {
+		t.Fatalf("changed = %v, %v", changed, err)
+	}
+	d, _ := e.resolved(id)
+	if !slices.Equal(d.Authors, []string{"Downey, Jr."}) || d.Description != "First line\nSecond line" {
+		t.Errorf("rewritten: %+v", d)
+	}
+	// An author field that was edited is split as typed.
+	form, _ = e.svc.DetailsForm(bg, id)
+	form.Authors = "Downey, Jr., Bo Second"
+	if changed, err = e.svc.SaveUserDetails(bg, id, form, ""); err != nil || !slices.Equal(changed, []string{"authors"}) {
+		t.Fatalf("edited authors: %v %v", changed, err)
+	}
+}
+
+func TestSaveUserDetailsEditsFirstSeriesOnly(t *testing.T) {
+	e, id := newLookupBook(t)
+	putUser(t, e, id, metadata.FieldSeries, `[{"name":"Saga One","sequence":"1"},{"name":"Saga Two","sequence":"4"}]`)
+	form, err := e.svc.DetailsForm(bg, id)
+	if err != nil || form.SeriesName != "Saga One" || form.SeriesNumber != "1" {
+		t.Fatalf("prefill: %+v %v", form, err)
+	}
+	if changed, err := e.svc.SaveUserDetails(bg, id, form, ""); err != nil || len(changed) != 0 {
+		t.Fatalf("untouched: %v %v", changed, err)
+	}
+	form.SeriesName = "Renamed"
+	changed, err := e.svc.SaveUserDetails(bg, id, form, "")
+	if err != nil || !slices.Equal(changed, []string{"series"}) {
+		t.Fatalf("changed = %v, %v", changed, err)
+	}
+	d, _ := e.resolved(id)
+	if len(d.Series) != 2 || d.Series[0].Name != "Renamed" || d.Series[0].Sequence != "1" || d.Series[1].Name != "Saga Two" || d.Series[1].Sequence != "4" {
+		t.Errorf("series = %+v", d.Series)
 	}
 }
