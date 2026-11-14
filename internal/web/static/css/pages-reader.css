@@ -396,6 +396,9 @@ body:has(.ts-readerpage) :is(#nav-tabbar, #nav-rail, #nav-side) { visibility: hi
   .ts-reader--spread[dir="rtl"] .ts-ribbon[data-page="1"] { right: auto; left: 0; }
   .ts-reader--spread[dir="rtl"] .ts-ribbon[data-page="1"]::before, .ts-reader--spread[dir="rtl"] .ts-ribbon[data-page="1"]::after { right: auto; left: max(var(--space-4), calc(var(--ts-pad) / 2 - 0.4375rem)); }
 }
+/* The page foot sits inside the book's direction but its words are the interface's ("25 pages left in this
+   chapter"): each label keeps its own reading order, so the number does not jump to the far end. */
+[dir="rtl"] .ts-pagefoot > span { unicode-bidi: plaintext; }
 /* Book text inside left-to-right chrome takes its own direction from its first letters. */
 .ts-readerbar__title, .ts-reader__toctitle, .ts-note__quote, .ts-reader__hits a > span, .ts-readernote--note p, .ts-lookup__title, .ts-skim__tip, #reader-q { unicode-bidi: plaintext; }
 /* A right-to-left flight is drawn mirrored (the book starts on the left again) and each face is turned back. */

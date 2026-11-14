@@ -56,7 +56,7 @@ offline download with "Remove finished books", waveforms, per-person speed, and 
 | 22 | **R2 Listen to a text book with the phone's voice.** Android's on-device TextToSpeech, reading from the reading place. | M | Gives every ebook a listen button, and it fits one book, two formats. On the web, only voices marked local may be used: a browser's online voices would send the book's text to a third party. |
 | 23 | **R3 Reader feel on Android.** Volume keys turn pages, keep-awake, brightness swipe, offline reading in the app. | M | Reader work that needs the shell. |
 | 24 | **S10 Passkeys.** Done 2026-11-13; no module used (standard library, decision 0041). | M | After OIDC, because a WebView needs extra native setup for passkeys; check in A2. |
-| 25 | **R4 Right-to-left and vertical text.** | L | Readers of Arabic, Hebrew and Japanese cannot use the reader well. Paginator work, later because of its size. |
+| 25 | **R4 Right-to-left and vertical text.** Right-to-left done 2026-11-14 (plan `reader-rtl.md`); vertical text is still open. | L | Readers of Arabic, Hebrew and Japanese cannot use the reader well. Paginator work, later because of its size. |
 | 26 | **L10 Download a series or a shelf in one tap.** | S | Small once the app's download queue exists. |
 | 27 | **L11 Speed up to 3.5×.** | S | Audible's ceiling. Few people need it (judgement). |
 | 28 | **S11 Podcasts, feeds of books, MP3-to-M4B merge, custom metadata providers.** On the roadmap's Later list. | L each | Each is its own project. A merge also needs a decision, because it writes audio files. |

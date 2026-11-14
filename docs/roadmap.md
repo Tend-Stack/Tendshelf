@@ -1069,6 +1069,25 @@ closes in place, and the pick is saved at once). Checks: `TestReaderSheet*`, `Te
 the reader still saves no place; a book whose chapters do not match offers only "from the start"; saving a pick needs
 `sessionStorage` (a private window saves at the first turn). Not verified: the Android and desktop windows by hand.
 
+## Right-to-left text in the reader (R4, plan `docs/plans/reader-rtl.md`, 2026-11-14)
+
+Built in three packages. Reused: the document builder and `Finish`, the recipe re-read path (`EnqueueStale`, `rehome`),
+`readerView` (also the offline shell), the paginator, the flip and the skim bar. Added: `internal/ebook/direction.go`
+(direction from the book's letters, then the EPUB's `page-progression-direction`, `dir` on `html` or `body`, the
+language tag), `Meta.Dir` and `Block.Dir` (left out for left-to-right), recipe `tendshelf-ebook-v4` with segmenter v2
+(Arabic, Urdu and Hebrew sentence ends; a right-to-left letter can start a sentence), `dir` on the reader, on blocks
+that differ and on the skim ruler, swapped edge buttons, appended CSS, and one sign in `reader-pages.js`, `reader.js`
+and `reader-flip.js` that mirrors columns, taps, swipes, arrow keys, the slide and the flip. Checks: `TestRTL*` in
+`internal/ebook` (detection, blocks, segmentation, the v4 re-read), `TestRTLReaderMarkup`,
+`TestRTLLTRMarkupUnchanged`, and the browser tests `TestRTLPagesTurn`, `TestRTLFlipTurn`, `TestRTLFlipDrag`,
+`TestRTLSlideOffset`, `TestRTLSpreadRibbons`, `TestRTLSkimMirrored`, `TestRTLScrollFlow`, `TestRTLHebrewMixed` at 390
+and 1440 px; the Latin golden documents changed only in the recipe string; all 68 reader captures identical before and
+after the markup and CSS. Limits: no vertical text; no Arabic or Hebrew font is shipped, so these books use the
+device's fonts; every ebook is read again once after the upgrade; an offline copy saved before the upgrade stays
+left to right until it is opened online; PageUp, PageDown, Space and the Android volume keys keep their meaning.
+Not verified: WebKit and the Wails window, the Android WebView, a real Arabic or Hebrew book, captures at 768 and
+1024 px. This replaces the "no right-to-left" limit in the RD2 note above.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, OpenID
