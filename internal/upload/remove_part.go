@@ -152,11 +152,24 @@ WHERE book_id = ? AND missing_since IS NULL ORDER BY created_at, id`, bookID)
 	return p, nil
 }
 
-// Staying is how many attached ebook files a whole-book removal leaves on disk because Tendshelf did not place them.
+// Staying is how many attached library ebook files a whole-book removal leaves on disk because Tendshelf did not
+// place them.
 func (p Parts) Staying() int {
 	n := 0
 	for _, f := range p.Text {
-		if !f.Removable {
+		if !f.Removable && !f.Uploaded {
+			n++
+		}
+	}
+	return n
+}
+
+// StayingByOthers is how many stored Text-page uploads a whole-book removal leaves because someone else uploaded
+// them (a contributor removes only their own); they are not on disk as library files, so "Staying" is not the word.
+func (p Parts) StayingByOthers() int {
+	n := 0
+	for _, f := range p.Text {
+		if !f.Removable && f.Uploaded {
 			n++
 		}
 	}

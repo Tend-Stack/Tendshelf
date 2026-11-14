@@ -367,6 +367,9 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 			if n := parts.Staying(); n > 0 {
 				help += " " + countText(n, bookRemoveStayingOne, bookRemoveStaying)
 			}
+			if n := parts.StayingByOthers(); n > 0 {
+				help += " " + countText(n, bookRemoveStayingOthersOne, bookRemoveStayingOthers)
+			}
 			v.Choices = append(v.Choices, pages.RemoveChoice{Label: bookRemoveWholeButton, Help: help})
 		}
 	}

@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"log/slog"
 	"net/http"
@@ -203,5 +204,45 @@ func TestRemoveAudioPartLeavesTextBooks(t *testing.T) {
 		if _, err := os.Stat(p.stored[i]); err != nil {
 			t.Errorf("edition %d's file went: %v", i, err)
 		}
+	}
+}
+
+// The whole-book confirmation says what goes with the book, and a contributor who added the audio sees that
+// another person's stored text books stay, in their own words; removing the whole book leaves them.
+func TestRemoveWholeCopyAndContributorKeepsOthersStoredText(t *testing.T) {
+	p := newRemovePartApp(t)
+	page := func(ck *http.Cookie) string {
+		return html.UnescapeString(p.a.do(http.MethodGet, "/books/"+p.book.ID+"/remove", nil, nil, ck).Body.String())
+	}
+	if body := page(p.owner); !strings.Contains(body, "Your listening progress, bookmarks and reading places on this book go with it.") {
+		t.Error("the whole-book choice does not say that progress, bookmarks and places go with it")
+	}
+	contributor := p.a.as(t, users.RoleMember)
+	cid := sweepUserID(t, p.a, contributor)
+	if _, err := p.a.st.Writer().Exec(`UPDATE users SET adds_books = 1 WHERE id = ?`, cid); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.a.st.Writer().Exec(`INSERT INTO upload_books(root_path, upload_id, library_id, added_by, created_at) VALUES (?, 'up_x', ?, ?, 1)`,
+		p.book.RootPath, p.book.LibraryID, cid); err != nil {
+		t.Fatal(err)
+	}
+	body := page(contributor)
+	if !strings.Contains(body, "3 text books stay because someone else added them.") || strings.Contains(body, "did not place") {
+		t.Errorf("the contributor's page: %s", body)
+	}
+	rec := p.post(contributor, url.Values{})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("whole removal: %d", rec.Code)
+	}
+	for i := range p.stored {
+		if _, err := os.Stat(p.stored[i]); err != nil {
+			t.Errorf("another person's stored copy %d went: %v", i, err)
+		}
+	}
+	if n := p.a.count(t, `SELECT count(*) FROM ebook_files WHERE origin = 'upload'`); n != 3 {
+		t.Errorf("stored uploads left = %d, want 3", n)
+	}
+	if n := p.a.count(t, `SELECT count(*) FROM books WHERE id = ?`, p.book.ID); n != 0 {
+		t.Error("the book is still there")
 	}
 }

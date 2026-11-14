@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 )
 
 type editLab struct {
@@ -138,5 +139,39 @@ func TestEditDetailsRefusal(t *testing.T) {
 	}
 	if b, _ := l.a.lib.Book(upCtx, l.book.ID); b.Title != "Edit Me" {
 		t.Errorf("title = %q", b.Title)
+	}
+}
+
+// A contributor edits the details of a book their own upload placed, and gets 404 (like every other route) for
+// a book someone else added.
+func TestEditDetailsContributor(t *testing.T) {
+	l := newEditLab(t)
+	ck := l.a.as(t, users.RoleMember)
+	id := sweepUserID(t, l.a, ck)
+	if _, err := l.a.st.Writer().Exec(`UPDATE users SET adds_books = 1 WHERE id = ?`, id); err != nil {
+		t.Fatal(err)
+	}
+	addedBy := func(who string) {
+		if _, err := l.a.st.Writer().Exec(`INSERT OR REPLACE INTO upload_books(root_path, upload_id, library_id, added_by, created_at) VALUES (?, 'up_x', ?, ?, 1)`,
+			l.book.RootPath, l.book.LibraryID, who); err != nil {
+			t.Fatal(err)
+		}
+	}
+	addedBy("usr_somebody_else")
+	if rec := l.post(t, ck, l.full(t, url.Values{"title": {"Not mine"}})); rec.Code != http.StatusNotFound {
+		t.Errorf("another person's book: %d, want 404", rec.Code)
+	}
+	if strings.Contains(l.page(ck, ""), "edit-details") {
+		t.Error("the form is on a book the person did not add")
+	}
+	if n := l.userRows(t); n != 0 {
+		t.Errorf("user rows = %d after a refused edit", n)
+	}
+	addedBy(id)
+	if rec := l.post(t, ck, l.full(t, url.Values{"title": {"Mine now"}})); rec.Code != http.StatusSeeOther {
+		t.Errorf("own book: %d, want 303", rec.Code)
+	}
+	if n := l.userRows(t); n != 1 {
+		t.Errorf("user rows = %d after the contributor's edit", n)
 	}
 }
