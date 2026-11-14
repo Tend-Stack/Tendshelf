@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"io/fs"
 	"path/filepath"
 	"slices"
 
@@ -142,10 +143,11 @@ WHERE book_id = ? AND missing_since IS NULL ORDER BY created_at, id`, bookID)
 	if p.Combined && p.Audio {
 		p.Whole = true
 	}
-	// A text-only book is Tendshelf's to remove when every one of its files is: stored Text-page uploads and
-	// ledger files alike.
-	if !p.HasAudio && len(p.Text) > 0 && !slices.ContainsFunc(p.Text, func(f PartFile) bool { return !f.Removable }) {
-		p.Whole = true
+	// A text-only book is Tendshelf's (and the contributor's) to remove when every one of its files is: stored
+	// Text-page uploads and ledger files alike. One file that is not takes the whole choice away, whatever
+	// RemovableBy said about the ledger files alone.
+	if !p.HasAudio && len(p.Text) > 0 {
+		p.Whole = !slices.ContainsFunc(p.Text, func(f PartFile) bool { return !f.Removable })
 	}
 	return p, nil
 }
@@ -181,6 +183,10 @@ func (s *Service) RemoveWhole(ctx context.Context, userID, bookID, placedBy stri
 		return RemoveResult{Deleted: []string{}, Kept: []string{}}, fail(409, "not_removable", "Tendshelf did not add this book, so it will not remove it.")
 	}
 	total := RemoveResult{Deleted: []string{}, Kept: []string{}}
+	// Remove's refusals are checked before the first ebook file is dropped, so a refusal leaves everything as it was.
+	if _, _, err := s.removeChecks(ctx, bookID, placedBy, true); err != nil {
+		return total, err
+	}
 	for _, f := range parts.Text {
 		if !f.Removable {
 			continue
@@ -216,7 +222,7 @@ func (s *Service) RemoveWhole(ctx context.Context, userID, bookID, placedBy stri
 
 // RemoveEbookFile removes one attached library ebook file of a book that also has audio (a copy uploaded on the
 // Text page is ebook.Service.RemoveUpload's): the file when it is a ledger
-// file and unchanged, then its row (editions and the marks made in it go by cascade). The audio, the progress
+// file and unchanged, then its row (its editions go with it; reading places and highlights stay, unattached). The audio, the progress
 // and the bookmarks stay. A file that changed since the upload stays, is named in Kept, and its row stays.
 func (s *Service) RemoveEbookFile(ctx context.Context, userID, bookID, fileID, placedBy string) (RemoveResult, error) {
 	res := RemoveResult{Deleted: []string{}, Kept: []string{}}
@@ -276,8 +282,14 @@ func (s *Service) RemoveEbookFile(ctx context.Context, userID, bookID, fileID, p
 		}
 	}
 	if !gone {
-		if _, err := lr.Lstat(path); err != nil {
+		switch _, err := lr.Lstat(path); {
+		case err == nil:
+		case errors.Is(err, fs.ErrNotExist):
 			gone = true // already gone from the disk: only the row is left
+		default:
+			// Any other answer (a path outside the folder, no permission) proves nothing: the row stays.
+			s.log.Warn("upload: cannot look at an ebook file", "path", path, "err", err)
+			res.Kept = append(res.Kept, path)
 		}
 	}
 	if gone {
@@ -303,6 +315,10 @@ func (s *Service) RemoveAudio(ctx context.Context, userID, bookID, placedBy stri
 	if !parts.Combined || !parts.Audio {
 		return RemoveResult{Deleted: []string{}, Kept: []string{}}, fail(409, "not_removable", "Tendshelf did not add the audio of this book, so it will not remove it.")
 	}
+	// Remove's refusals are checked before the text is split off, so a refusal leaves the book as it was.
+	if _, _, err := s.removeChecks(ctx, bookID, placedBy, true); err != nil {
+		return RemoveResult{Deleted: []string{}, Kept: []string{}}, err
+	}
 	keep := map[string]bool{}
 	for _, f := range parts.Text {
 		if f.Path != "" {
@@ -321,14 +337,19 @@ func (s *Service) RemoveAudio(ctx context.Context, userID, bookID, placedBy stri
 // metadata). Nothing is removed unless every file of the book is Tendshelf's.
 func (s *Service) removeTextBook(ctx context.Context, userID, bookID, placedBy string, parts Parts, dropUpload func(ctx context.Context, fileID string) error) (RemoveResult, error) {
 	res := RemoveResult{Deleted: []string{}, Kept: []string{}}
-	if !parts.Whole {
+	// Every file must be Tendshelf's and, for a contributor, their own, before anything is dropped: a stored copy
+	// someone else uploaded is never theirs to remove, even when the ledger files of the book are.
+	for _, f := range parts.Text {
+		if f.Removable {
+			continue
+		}
+		if placedBy != "" && (f.Uploaded || s.pathOwned(ctx, f.Path, "")) {
+			return res, fail(409, "not_theirs", "Someone else added part of this book, so only an admin can remove it.")
+		}
 		return res, fail(409, "not_removable", "Tendshelf did not add this book, so it will not remove it.")
 	}
-	book, err := s.repo.Book(ctx, bookID)
-	if errors.Is(err, library.ErrNotFound) {
-		return res, errNotFound
-	} else if err != nil {
-		return res, err
+	if !parts.Whole {
+		return res, fail(409, "not_removable", "Tendshelf did not add this book, so it will not remove it.")
 	}
 	ledger := 0
 	for _, f := range parts.Text {
@@ -336,16 +357,31 @@ func (s *Service) removeTextBook(ctx context.Context, userID, bookID, placedBy s
 			if dropUpload == nil {
 				return res, fail(409, "not_removable", "This book cannot be removed here.")
 			}
-			if err := dropUpload(ctx, f.ID); err != nil {
-				return res, err
-			}
 		} else {
 			ledger++
 		}
 	}
+	book, err := s.repo.Book(ctx, bookID)
+	if errors.Is(err, library.ErrNotFound) {
+		return res, errNotFound
+	} else if err != nil {
+		return res, err
+	}
 	if ledger > 0 {
-		r, err := s.Remove(ctx, userID, bookID, placedBy)
-		return r, err
+		// Remove's own refusals first: the stored copies must not be dropped when it would then say no.
+		if _, _, err := s.removeChecks(ctx, bookID, placedBy, false); err != nil {
+			return res, err
+		}
+	}
+	for _, f := range parts.Text {
+		if f.Uploaded {
+			if err := dropUpload(ctx, f.ID); err != nil {
+				return res, err
+			}
+		}
+	}
+	if ledger > 0 {
+		return s.Remove(ctx, userID, bookID, placedBy)
 	}
 	if err := s.repo.Update(ctx, func(tx *library.Tx) error { return tx.DeleteBookAndFiles(bookID) }); err != nil {
 		return res, err
