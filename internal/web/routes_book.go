@@ -32,6 +32,7 @@ func (s *server) registerBook(mux *http.ServeMux) {
 	mux.HandleFunc("GET /series/{id}", s.getSeries)
 	mux.HandleFunc("GET /search", s.getSearch)
 	s.registerDetails(mux)
+	s.registerDetailsEdit(mux)
 	s.registerCoverPick(mux)
 	s.registerWrite(mux)
 	s.registerChapters(mux)

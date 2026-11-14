@@ -309,6 +309,10 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
+	if q := r.URL.Query().Get("part"); q != "" && !removeChoicePart(q) {
+		s.notFound(w, r)
+		return
+	}
 	files, err := s.lib.AudioFiles(r.Context(), b.ID)
 	if err != nil {
 		s.serverError(w, r, "remove book", err)
@@ -322,15 +326,22 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 		// A book with audio and a text book: three plain choices, each its own button (the whole book first
 		// only when every file is Tendshelf's).
 		v.Title, v.Body, v.Button = bookRemoveCombinedConfirm, bookRemoveCombinedBody, ""
-		for _, f := range parts.Text {
+		for i, f := range parts.Text {
+			name := filepath.Base(f.Path)
+			if s.ebooks != nil {
+				if ef, found, err := s.ebooks.Store().File(r.Context(), f.ID); err == nil && found {
+					name = ebookName(ef)
+				}
+			}
 			if f.Removable {
 				label := bookRemoveTextButton
 				if len(parts.Text) > 1 {
-					label = fmt.Sprintf(bookRemoveTextFileButton, "("+filepath.Base(f.Path)+")")
+					// Editions often share a name, so each is numbered in the order the Text tab lists them.
+					label = fmt.Sprintf(bookRemoveTextFileButton, fmt.Sprintf("%d (%s)", i+1, name))
 				}
 				v.Choices = append(v.Choices, pages.RemoveChoice{Part: "text", File: f.ID, Label: label, Help: bookRemoveTextHelp})
 			}
-			v.Files = append(v.Files, filepath.Base(f.Path))
+			v.Files = append(v.Files, name)
 		}
 		if parts.Audio {
 			v.Choices = append(v.Choices, pages.RemoveChoice{Part: "audio", Label: bookRemoveAudioButton, Help: bookRemoveAudioHelp})
@@ -346,8 +357,26 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 			v.Files = append(v.Files, filepath.Base(f.Path))
 		}
 	}
+	if q := r.URL.Query().Get("part"); q != "" && combined {
+		// The menu's quick actions: only the choices of that part, each still its own confirming button.
+		want := map[string]string{"whole": "", "audio": "audio", "text": "text"}[q]
+		var keep []pages.RemoveChoice
+		for _, c := range v.Choices {
+			if c.Part == want {
+				keep = append(keep, c)
+			}
+		}
+		if len(keep) == 0 {
+			s.notFound(w, r)
+			return
+		}
+		v.Choices = keep
+	}
 	s.pageStyled(w, r, http.StatusOK, bookRemoveConfirm, "library", pages.BookRemove(v), nil, uploadStyles...)
 }
+
+// removeChoicePart is true for the parts the menu names in ?part=.
+func removeChoicePart(q string) bool { return q == "whole" || q == "audio" || q == "text" }
 
 // adminUploadsView is the section "Adding books from this device"; nil when uploads are not set up.
 // errLib and errText put the refusal of a failed save under that library.

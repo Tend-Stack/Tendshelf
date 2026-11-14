@@ -520,6 +520,17 @@ Out of scope: TV layouts, `screens/directions/`, and new icons (use the existing
 
 ---
 
+## Addendum 2026-11-13: editing details by hand
+
+The Details tab has an "Edit details" form (`POST /books/{id}/details/edit`, `share.EditBook`, no lookup needed). A changed
+field becomes a `user` row (the highest source, so a rescan, a sidecar or a later lookup never replaces it); an unchanged
+field writes nothing; a cleared field deletes its `user` row so the derived value returns. `metadata.SaveUserDetails` then calls
+`syncResolved`, the same code a lookup apply and a rescan end in. Applying a lookup field again, or "Go back to the files'
+details", replaces or removes hand edits as before. Series is one name and number (the first series); genres, authors and
+narrators are comma lists.
+
+---
+
 ## Open items for the orchestrator
 
 - Before M4-4 merges: one read-only `curl` to `https://api.audnex.us/authors?name=…` and to `/authors/{asin}`, to confirm the shape guessed in M4-2 step 7.

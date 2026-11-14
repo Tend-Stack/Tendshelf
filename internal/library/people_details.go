@@ -38,6 +38,13 @@ func (t *Tx) PutUserMetadataValue(bookID string, v MetadataValue) error {
 	return mapErr(err, "book")
 }
 
+// DeleteUserMetadataValue removes the person's own value of one field, so the next resolve reads the
+// strongest other source again. No such row is not an error.
+func (t *Tx) DeleteUserMetadataValue(bookID, field string) error {
+	_, err := t.exec(`DELETE FROM metadata_values WHERE book_id = ? AND field = ? AND source = ?`, bookID, field, MetadataSourceUser)
+	return err
+}
+
 // DeleteChosenMetadata removes every "user" and "online" value of a book, so the next resolve
 // reads the files again.
 func (t *Tx) DeleteChosenMetadata(bookID string) error {

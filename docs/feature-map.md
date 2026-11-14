@@ -22,6 +22,8 @@ from general knowledge. Cells marked `?` are unverified guesses; check before qu
 | Field-by-field compare and merge with an online match | Partial (choose fields on apply) | n/a | P2 |
 | Custom metadata provider (HTTP spec) | Yes | n/a | Later |
 | Covers: embedded, folder image, online, upload | Yes | Yes | P1 (embedded, folder), P2 (online, upload) |
+| Edit a book's details by hand (title, people, series, year, ISBN, description; kept through rescans and lookups) | Yes | n/a | P2 |
+| Remove one part of a book (the text book, one edition, or the audiobook) | n/a | n/a | P2 |
 | Write details into the file (stream copy, verified, with backup and Undo) | Partial (embed tool; backup option?) | n/a | P2 |
 | Merge MP3 folder into one M4B | Yes | n/a | Later |
 | Authors and narrators pages, with photo and bio | Authors yes, narrators partial | Yes | P1 (pages), P2 (photo, bio) |

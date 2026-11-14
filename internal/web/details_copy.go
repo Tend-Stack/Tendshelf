@@ -59,6 +59,17 @@ const (
 	detailsResetBody     = "This removes the details you chose or took from the internet. The details in your audio files, folders and sidecar files come back."
 	detailsResetButton   = "Go back to the files' details"
 
+	// The hand-edit form on the Details tab.
+	detailsEditTitle        = "Edit details"
+	detailsEditIntro        = "Change what this book says about itself. Your changes stay when Tendshelf scans again or looks the book up."
+	detailsEditNote         = "Leave a box empty to use what the files or a lookup say."
+	detailsEditSave         = "Save details"
+	detailsEditProblem      = "Some details could not be saved. Check the boxes marked below."
+	detailsEditListHint     = "Separate names with commas."
+	detailsEditSeriesNumber = "Book number"
+	detailsEditSaved        = "Your changes were saved."
+	detailsEditNothing      = "Nothing was changed."
+
 	detailsLabelTitle       = "Title"
 	detailsLabelSubtitle    = "Subtitle"
 	detailsLabelAuthors     = "Written by"

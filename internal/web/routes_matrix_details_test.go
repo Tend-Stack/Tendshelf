@@ -37,9 +37,18 @@ func detailsSweepRows() []sweepRow {
 	apply.LocOf = func(e *sweepEnv) string { return "/books/" + e.book.ID + "/details?applied=1" }
 	reset := sweepPost("POST /books/{id}/details/reset", book("/details/reset"), sweepFormOf(url.Values{}), see, "")
 	reset.LocOf = func(e *sweepEnv) string { return "/books/" + e.book.ID + "/details" }
+	// The hand-edit form (needs no lookup service answer, only share.EditBook): unchanged and refused forms leave the book alone.
+	edit := sweepPost("POST /books/{id}/details/edit", book("/details/edit"), func(e *sweepEnv, _ int) url.Values {
+		return url.Values{"title": {e.book.Title}}
+	}, see, "")
+	edit.Label = "unchanged"
+	edit.LocOf = func(e *sweepEnv) string { return "/books/" + e.book.ID + "/details?edited=0" }
+	editBad := sweepPost("POST /books/{id}/details/edit", book("/details/edit"), sweepFormOf(url.Values{"title": {"Typed"}, "year": {"12"}}),
+		sweepStaff(http.StatusUnprocessableEntity, http.StatusNotFound), "")
+	editBad.Label = "refused year"
 	switchRow := sweepPost("POST /admin/online", sweepStatic("/admin/online"), sweepFormOf(url.Values{"on": {"0"}}),
 		sweepOwnerOnly(http.StatusSeeOther, http.StatusNotFound), "/admin/libraries")
-	rows := []sweepRow{lookupSheet, compareList, compareTable, poll, cover, match, apply, reset}
+	rows := []sweepRow{lookupSheet, compareList, compareTable, poll, cover, match, apply, reset, edit, editBad}
 	// The lookup rows come before the owner's switch, which turns lookups off.
 	return append(append(rows, lookupsSweepRows()...), switchRow)
 }

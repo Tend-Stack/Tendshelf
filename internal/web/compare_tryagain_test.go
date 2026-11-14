@@ -43,7 +43,7 @@ func TestCompareTryAgainKeepsQuery(t *testing.T) {
 			t.Errorf("Try again form misses %s", w)
 		}
 	}
-	if strings.Contains(body, `value="Sweepword Lantern"`) {
+	if strings.Contains(lookupSheetPart(body), `value="Sweepword Lantern"`) {
 		t.Error("Try again form shows the book's own title")
 	}
 	// Through hx-get as well.
@@ -56,7 +56,7 @@ func TestCompareTryAgainKeepsQuery(t *testing.T) {
 		t.Error("title not capped")
 	}
 	// Without the query, the form still starts from the book's own details.
-	if body = e.compareGet(sweepOwner, "/books/"+id+"/details?sheet=lookup", nil).Body.String(); !strings.Contains(body, `value="Sweepword Lantern"`) {
+	if body = e.compareGet(sweepOwner, "/books/"+id+"/details?sheet=lookup", nil).Body.String(); !strings.Contains(lookupSheetPart(body), `value="Sweepword Lantern"`) {
 		t.Error("plain form lost the book's title")
 	}
 	// A person who may not edit the book gets 404, query or not.
@@ -65,4 +65,13 @@ func TestCompareTryAgainKeepsQuery(t *testing.T) {
 			t.Errorf("%s: %d, want 404", sweepRoleNames[role], rec.Code)
 		}
 	}
+}
+
+// lookupSheetPart is the lookup sheet's form on a page; the Details tab's own edit form also holds the title.
+func lookupSheetPart(page string) string {
+	i := strings.Index(page, `class="ts-lookup"`)
+	if i < 0 {
+		return ""
+	}
+	return page[i:]
 }
