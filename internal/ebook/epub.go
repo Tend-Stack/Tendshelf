@@ -44,6 +44,7 @@ type opfData struct {
 	Items    []opfItem
 	Spine    []string // linear itemrefs
 	SpineTOC string
+	PPD      string              // page-progression-direction of the spine
 	Guide    map[string][]string // resolved path -> guide types
 	roles    map[string]string   // refines id -> role
 
@@ -182,6 +183,7 @@ func parseOPF(data []byte, opfDir string, lim Limits) (*opfData, error) {
 			o.Items = append(o.Items, opfItem{ID: attr(se, "id"), Href: attr(se, "href"), Type: attr(se, "media-type"), Props: attr(se, "properties")})
 		case "spine":
 			o.SpineTOC = attr(se, "toc")
+			o.PPD = attr(se, "page-progression-direction")
 		case "itemref":
 			if attr(se, "linear") != "no" {
 				o.Spine = append(o.Spine, attr(se, "idref"))
@@ -462,6 +464,7 @@ func parseEPUB(zb *zipBox, lim Limits) (*Doc, error) {
 		imgDims[p] = [2]int{w, h}
 		return w, h
 	}
+	b.HintDir(o.PPD)
 	for _, id := range o.Spine {
 		it, ok := byID[id]
 		if !ok || !(it.Type == "application/xhtml+xml" || it.Type == "text/html") {
@@ -482,6 +485,7 @@ func parseEPUB(zb *zipBox, lim Limits) (*Doc, error) {
 		if err != nil {
 			return nil, err
 		}
+		b.HintDir(hd.Dir)
 		title := titles[p]
 		if title == "" {
 			title = firstHeading(hd)

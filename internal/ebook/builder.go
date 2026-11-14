@@ -23,6 +23,18 @@ type builder struct {
 
 	// pageTargets are the print-page labels with their part#id (EPUB only), resolved in Finish.
 	pageTargets []tocEntry
+
+	// dirHint is the first declared direction ("rtl" or "ltr"); nR and nL count the book's letters.
+	dirHint string
+	nR, nL  int
+}
+
+// HintDir records a declared direction; the first "rtl" or "ltr" is kept, anything else is ignored.
+func (b *builder) HintDir(v string) {
+	v = strings.ToLower(strings.TrimSpace(v))
+	if b.dirHint == "" && (v == "rtl" || v == "ltr") {
+		b.dirHint = v
+	}
 }
 
 // extra is what an HTML block carries beyond text: its links (Link targets as part#id or URL) and the
@@ -130,6 +142,9 @@ func (b *builder) block(kind string, level int, segs []seg, src *SrcRef, img str
 	if kind == KindImg && img != "" && b.dims != nil {
 		blk.ImgW, blk.ImgH = b.dims(img)
 	}
+	blk.nR, blk.nL = letterDirs(rs)
+	b.nR += blk.nR
+	b.nL += blk.nL
 	blk.Sentences, blk.Words = segmentText(text, kind == KindH || kind == KindImg || kind == KindHR || kind == KindPre)
 	if src != nil {
 		s := *src
@@ -278,6 +293,19 @@ func (b *builder) Finish(meta Meta, pageCount int) (*Doc, error) {
 	meta.Title = normalizeString(meta.Title)
 	meta.Subtitle = normalizeString(meta.Subtitle)
 	meta.Language = strings.TrimSpace(meta.Language)
+	book := decideDir(b.dirHint, meta.Language, b.nR, b.nL)
+	if book == "rtl" {
+		meta.Dir = "rtl"
+	}
+	for i := range chs {
+		for j := range chs[i].Blocks {
+			bl := &chs[i].Blocks[j]
+			if own := blockDir(bl.nR, bl.nL); own != "" && own != book {
+				bl.Dir = own
+			}
+			bl.nR, bl.nL = 0, 0 // counts are spent; a document read back from disk has none
+		}
+	}
 	return &Doc{V: DocV, Recipe: Recipe, Format: b.format, Layout: b.layout, Meta: meta, PageCount: pageCount, PageList: list, Chapters: chs}, nil
 }
 

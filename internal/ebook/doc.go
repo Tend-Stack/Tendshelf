@@ -15,8 +15,8 @@ import (
 // Recipe names the parsing rules that made a document; a change to any rule bumps it so editions are
 // read again. Segmenter names the sentence and word rules.
 const (
-	Recipe    = "tendshelf-ebook-v3"
-	Segmenter = "tendshelf-segment-v1"
+	Recipe    = "tendshelf-ebook-v4"
+	Segmenter = "tendshelf-segment-v2"
 	DocV      = 1
 )
 
@@ -55,6 +55,7 @@ type Meta struct {
 	SeriesIndex string `json:"seriesIndex,omitempty"`
 	Year        int    `json:"year,omitempty"`
 	CoverPart   string `json:"coverPart,omitempty"` // zip path of the cover picture (EPUB)
+	Dir         string `json:"dir,omitempty"`       // recipe v4: "rtl" for a right-to-left book; absent for left to right
 }
 
 // Identifiers are the book numbers found in the file.
@@ -98,9 +99,12 @@ type Block struct {
 	Links     []Link   `json:"links,omitempty"`
 	ImgW      int      `json:"imgW,omitempty"`
 	ImgH      int      `json:"imgH,omitempty"`
+	Dir       string   `json:"dir,omitempty"` // recipe v4: this block's direction when it differs from the book's
 
 	// anchors are the source ids (part#id) that point into this block; only Finish reads them.
 	anchors []string
+	// nR and nL count the block's right-to-left and other letters; only Finish reads them.
+	nR, nL int
 }
 
 // Link is a clickable span of a block's text, UTF-16 units, half-open. To is the ID of the block it

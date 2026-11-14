@@ -98,7 +98,7 @@ func TestDocV2Determinism(t *testing.T) {
 	if !bytes.Equal(ja, jb) || DocSHA(ja) != DocSHA(jb) {
 		t.Error("the same input gave different bytes")
 	}
-	if a.Recipe != "tendshelf-ebook-v3" {
+	if a.Recipe != "tendshelf-ebook-v4" {
 		t.Errorf("recipe %q", a.Recipe)
 	}
 	// A v1 document (none of the new fields) still loads and hashes the same.

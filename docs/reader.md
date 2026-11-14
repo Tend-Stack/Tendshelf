@@ -57,6 +57,15 @@ between several), the old edition is deleted and its document file with it when 
 placed keeps its row with no edition: it stays in the marks list with its quote and has no jump; a position falls back to
 its percent.
 
+**Recipe v4 (direction).** `meta.dir` is `"rtl"` for a right-to-left book and absent for left to right; a block's `dir`
+(`"rtl"` or `"ltr"`) is stored only when the block's own letters (2:1, at least one letter) differ from the book's. The book's
+direction comes from, in order: the text itself when it has at least 200 strong letters and one direction holds 2:1 (tags lie,
+letters cannot); the EPUB spine's `page-progression-direction`; the first `dir` on an `<html>` or `<body>` (EPUB parts, the
+HTML importer); the language tag (`ebook.LangDir`); whichever letters are more. Until a book is read again, `ebook.Direction`
+falls back to the language tag for documents of recipe v1 to v3. The segmenter (`tendshelf-segment-v2`) also ends a sentence at
+`؟ ۔ ׃`, lets a right-to-left letter start one, and treats a one-letter token (د. م. هـ.) as an abbreviation; text with none of
+these segments as before, so sentence ids in Latin books do not move.
+
 ## The reader page (`internal/web`)
 
 `GET /books/{id}/read` takes `ch`, `part`, `at` (a sentence id), `off` and `sheet` (`contents`, `marks`, `reading`); an old

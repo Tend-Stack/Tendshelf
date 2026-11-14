@@ -34,6 +34,8 @@ type EPUBOptions struct {
 	Extra           []Entry
 	MetaXML         string // extra <metadata> children (description, publisher, date, series, cover)
 	ManifestXML     string // extra <manifest> children (images)
+	Dir             string // page-progression-direction on <spine> when set
+	HTMLDir         string // dir attribute on each chapter <html> when set
 }
 
 func esc(s string) string { return html.EscapeString(s) }
@@ -75,8 +77,12 @@ func EPUB(t testing.TB, o EPUBOptions) []byte {
 		if o.Version == 3 && c.EpubType != "" {
 			attrs = ` epub:type="` + c.EpubType + `"`
 		}
+		htmlDir := ""
+		if o.HTMLDir != "" {
+			htmlDir = ` dir="` + o.HTMLDir + `"`
+		}
 		es = append(es, Entry{Name: "OEBPS/" + id + ".xhtml", Data: []byte(`<?xml version="1.0" encoding="utf-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>x</title></head><body` + attrs + `>` + body + `</body></html>`)})
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"` + htmlDir + `><head><title>x</title></head><body` + attrs + `>` + body + `</body></html>`)})
 		if o.Version == 2 && c.EpubType != "" {
 			guide.WriteString(fmt.Sprintf(`<reference type="%s" title="%s" href="%s.xhtml"/>`, c.EpubType, esc(c.Title), id))
 		}
@@ -158,6 +164,9 @@ func EPUB(t testing.TB, o EPUBOptions) []byte {
 	tocAttr := ""
 	if o.Version == 2 {
 		tocAttr = ` toc="ncx"`
+	}
+	if o.Dir != "" {
+		tocAttr += ` page-progression-direction="` + o.Dir + `"`
 	}
 	opf := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?><package xmlns="http://www.idpf.org/2007/opf" version="%d.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">%s</metadata><manifest>%s</manifest><spine%s>%s</spine>%s</package>`,
 		o.Version, meta.String(), manifest.String(), tocAttr, spine.String(), g)

@@ -7,7 +7,10 @@ import (
 
 // segmenter "tendshelf-segment-v1": sentences and words over a normalised block text.
 
-const terminators = ".!?…"
+// v2 adds the Arabic question mark, the Urdu full stop and the Hebrew sof pasuq as terminators, lets a
+// right-to-left letter start a sentence (those scripts have no capitals) and treats a one-letter token
+// (د. م. هـ.) as an abbreviation. A text with none of them segments as in v1.
+const terminators = ".!?…؟۔׃"
 const closers = "”’\"')]»"
 const openers = "“‘\"'«([¿¡—–"
 
@@ -49,7 +52,7 @@ func isSpaceRune(r rune) bool { return unicode.IsSpace(r) }
 
 // startsSentence reports whether r may begin a sentence.
 func startsSentence(r rune) bool {
-	return unicode.IsUpper(r) || unicode.IsDigit(r) || strings.ContainsRune(openers, r)
+	return unicode.IsUpper(r) || unicode.IsDigit(r) || isRTLLetter(r) || strings.ContainsRune(openers, r)
 }
 
 // abbreviationBefore reports whether the single '.' at rs[dot] ends an abbreviation or an initial.
@@ -66,6 +69,12 @@ func abbreviationBefore(rs []rune, dot int) bool {
 		return false
 	}
 	if len(tok) == 1 && unicode.IsUpper(tok[0]) {
+		return true
+	}
+	if len(tok) == 1 && isRTLLetter(tok[0]) {
+		return true
+	}
+	if len(tok) == 2 && isRTLLetter(tok[0]) && tok[1] == 0x0640 {
 		return true
 	}
 	return abbreviations[strings.ToLower(string(tok))]

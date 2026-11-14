@@ -30,6 +30,7 @@ type htmlDoc struct {
 	Title  string
 	Meta   map[string]string // <meta name content>, lower-case names, first wins
 	Types  []string          // epub:type tokens of body, section and nav, in order
+	Dir    string            // "rtl" or "ltr" from the first html or body tag that has a dir attribute
 	Blocks []hblock
 }
 
@@ -275,6 +276,11 @@ func walkHTML(data []byte, part string, lim Limits) (*htmlDoc, error) {
 				continue
 			}
 			// start or self-closing tag
+			if (name == "html" || name == "body") && doc.Dir == "" {
+				if d := strings.ToLower(strings.TrimSpace(attrs["dir"])); d == "rtl" || d == "ltr" {
+					doc.Dir = d
+				}
+			}
 			if svgDepth > 0 {
 				switch name {
 				case "svg":

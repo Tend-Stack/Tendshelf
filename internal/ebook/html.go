@@ -59,6 +59,7 @@ func parseHTMLFile(data []byte, lim Limits) (*Doc, error) {
 	}
 	split := chapterLevel(levels, 2)
 	b := newBuilder("html", lim)
+	b.HintDir(hd.Dir)
 	if split == 0 {
 		b.Chapter(hd.Title, "", nil)
 	}

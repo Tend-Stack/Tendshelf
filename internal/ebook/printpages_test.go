@@ -41,7 +41,7 @@ func TestPrintPagesEPUB3(t *testing.T) {
 	if d.PageCount != 3 {
 		t.Errorf("pageCount = %d, want 3 (the largest number)", d.PageCount)
 	}
-	if d.Recipe != "tendshelf-ebook-v3" {
+	if d.Recipe != "tendshelf-ebook-v4" {
 		t.Errorf("recipe %q", d.Recipe)
 	}
 }
