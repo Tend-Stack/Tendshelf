@@ -585,6 +585,7 @@ export function mount(root) {
       here = firstShown();
       paint();
     }
+    if (here) root.dataset.at = here.sid; // the live place from the start, for the speaker's "Listen from" sheet
     // A place picked in a sheet (a contents row, "Read from where you're listening") is a move even when
     // nothing is scrolled: save it now, so leaving at once keeps it. shell.js marks the pick; an address
     // opened any other way (a link, a skim jump) saves nothing until the reader turns a page.
