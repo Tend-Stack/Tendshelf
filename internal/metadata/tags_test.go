@@ -95,6 +95,14 @@ func TestFromTags(t *testing.T) {
 		if !strings.HasPrefix(d.Description, "Hello world") || len([]rune(d.Description)) != 10000 {
 			t.Errorf("description has %d runes: %.30q", len([]rune(d.Description)), d.Description)
 		}
+		full := strings.Repeat("A long synopsis sentence. ", 40)
+		short := full[:255]
+		if got := FromTags(map[string]string{"description": short, "synopsis": full}, false).Description; got != strings.TrimSpace(full) {
+			t.Errorf("short description won over the synopsis: %d bytes", len(got))
+		}
+		if got := FromTags(map[string]string{"comment": "A note", "desc": "x"}, false).Description; got != "A note" {
+			t.Errorf("comment fallback = %q", got)
+		}
 		if got := FromTags(map[string]string{"date": "3001"}, false).Year; got != 0 {
 			t.Errorf("year 3001 accepted: %d", got)
 		}
