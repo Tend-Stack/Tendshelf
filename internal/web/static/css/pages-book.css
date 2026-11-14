@@ -86,6 +86,22 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
 /* From 1280 px the button can sit near the window's right edge: the panel opens toward the left there. */
 @media (width >= 1280px) { .ts-moremenu .ts-moremenu__body { left: auto; right: 0; } }
 .ts-moremenu--center .ts-moremenu__body { left: 50%; transform: translateX(-50%); } /* js/downloads.js shows one of the Download pair */
+/* Phones: the panel is anchored above the bottom navigation instead of hanging under its button, where a long menu
+   ran off the screen behind the navigation and could not be reached. It is as wide as the page, never taller than
+   the room above the navigation, and scrolls inside itself. The floating player, when one is showing, stays clear. */
+@media (width < 768px) {
+  .ts-moremenu[open] .ts-moremenu__body {
+    position: fixed; top: auto; left: var(--space-16); right: var(--space-16); transform: none;
+    bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--space-8));
+    width: auto; max-width: none; margin: 0;
+    max-height: calc(100dvh - var(--size-tab-bar) - env(safe-area-inset-bottom) - env(safe-area-inset-top) - var(--space-32));
+    overflow-y: auto; overscroll-behavior: contain;
+  }
+  body:has(.ts-player-slot:not([hidden], .is-suppressed)) .ts-moremenu[open] .ts-moremenu__body {
+    bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-16));
+    max-height: calc(100dvh - var(--size-tab-bar) - var(--size-mini-player) - env(safe-area-inset-bottom) - env(safe-area-inset-top) - var(--space-40));
+  }
+}
 .ts-book__lede { display: none; }
 
 /* Tabs and panel */

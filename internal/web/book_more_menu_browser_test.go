@@ -25,7 +25,7 @@ const bookMoreProbeJS = `(() => {
   const items = [...document.querySelectorAll(".ts-moremenu__body a")].map((a) => a.getBoundingClientRect().height);
   const cells = [...document.querySelectorAll(".ts-book__acts > *")].filter((c) => c.offsetParent).map((c) => c.getBoundingClientRect().width);
   return {btn: r(btn), shelf: r(shelf), open: document.querySelector(".ts-moremenu").open,
-    panel: body && body.offsetParent ? r(body) : null, items, cells, vw: innerWidth, vh: innerHeight,
+    panel: body && body.getClientRects().length ? r(body) : null, items, cells, vw: innerWidth, vh: innerHeight,
     overflow: document.documentElement.scrollWidth > innerWidth};
 })()`
 
