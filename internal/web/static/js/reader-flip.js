@@ -79,21 +79,23 @@ function standIn(el) {
 }
 
 // Which column of the part a box fragment is in.
-const columnOf = (rect, origin, step) => Math.floor((rect.left - origin + 1) / step);
+// In a right-to-left book the rect is read in the mirrored frame, where the book starts on the left again (see `geometry` in flipper).
+const columnOf = (rect, origin, step, axis) => Math.floor(((axis === undefined ? rect.left : axis - rect.right) - origin + 1) / step);
 
 // Which items of the section a column shows. This is all the reading of the real page's layout a face needs, so a flight
 // reads for every face first and only then writes: a write between two reads would lay the page out again each time.
 function plan(section, column, geo, list) {
   const step = geo.column + geo.gap;
-  const origin = geo.left - section.scrollLeft;
+  const origin = geo.left - (geo.rtl ? -1 : 1) * section.scrollLeft; // in the mirrored frame the part's offset runs the other way
   const at = { section, list, first: -1, last: list.length, startColumn: 0, offset: 0 };
   for (let i = 0; i < list.length; i++) {
     const rects = list[i].el.getClientRects();
     if (!rects.length) continue; // hidden: it has no place
-    const start = columnOf(rects[0], origin, step);
+    const axis = geo.rtl ? geo.axis : undefined;
+    const start = columnOf(rects[0], origin, step, axis);
     if (at.first < 0) {
       if (start > column) break; // nothing is in this column: a blank page
-      if (columnOf(rects[rects.length - 1], origin, step) < column) continue;
+      if (columnOf(rects[rects.length - 1], origin, step, axis) < column) continue;
       at.first = i;
       at.startColumn = start;
       at.offset = rects[0].top - geo.top;
@@ -145,7 +147,7 @@ function slice(at) {
 function prepare(section, list, column, geo, slot, labels = ["", ""]) {
   const live = section.closest(".ts-reader");
   const classes = [...live.classList].filter((name) => name !== "ts-reader--spread" && name !== "ts-reader--scroll").join(" ");
-  return { at: plan(section, column, geo, list), sheet: paper(geo, slot), geo, slot, column, labels, classes, lang: live.lang };
+  return { at: plan(section, column, geo, list), sheet: paper(geo, slot), geo, slot, column, labels, classes, lang: live.lang, dir: live.dir };
 }
 
 // Draw a face: paper with the text where the real page's text sits. It goes into `parent` first, and only then is its text
@@ -156,6 +158,7 @@ function draw(job, parent) {
   const el = make("div", "ts-flip__face");
   const wrap = make("div", job.classes);
   if (job.lang) wrap.lang = job.lang;
+  if (job.dir) wrap.dir = job.dir;
   wrap.style.setProperty("--ts-cols", "1");
   wrap.style.setProperty("--ts-col", px(geo.column));
   wrap.style.setProperty("--ts-gap", px(geo.gap));
@@ -170,7 +173,7 @@ function draw(job, parent) {
   wrap.append(page);
   el.append(wrap);
   parent.prepend(el); // under the shading
-  return { el, settle: () => (box.scrollLeft = job.at.first < 0 ? 0 : (job.column - job.at.startColumn) * step) };
+  return { el, settle: () => (box.scrollLeft = job.at.first < 0 ? 0 : (geo.rtl ? -1 : 1) * (job.column - job.at.startColumn) * step) };
 }
 
 // One page drawn as a face, settled (the form the tests use).
@@ -209,6 +212,23 @@ export function flipper(root, book) {
   // the browser re-test the page's :has() rules, which costs more than the whole build.
   const host = make("div", "ts-flip-host");
   shell.append(host);
+  const rtl = root.dir === "rtl";
+  // A right-to-left flight is drawn in a mirrored frame: the stage is flipped about the reader page's middle and each face is
+  // flipped back, so the book starts on the left again, the hinge is on the left and every x below is `axis - x`.
+  let axis = 0;
+  const readAxis = () => {
+    const box = shell.getBoundingClientRect();
+    axis = box.left + box.right;
+  };
+  const mx = (x) => (rtl ? axis - x : x);
+  // The book's geometry in that frame; for a left-to-right book it is the book's own.
+  function geometry() {
+    const geo = book.geometry();
+    if (!rtl) return geo;
+    readAxis();
+    const frame = geo.frame;
+    return { ...geo, left: axis - geo.right, axis, frame: { left: axis - frame.right, top: frame.top, width: frame.width, height: frame.height } };
+  }
   let stage = null;
   let flight = null;
   let lastBegin = -1e9;
@@ -239,7 +259,7 @@ export function flipper(root, book) {
     lastBegin = now;
     if (quick || slow()) return still;
     const started = performance.now();
-    const geo = book.geometry();
+    const geo = geometry();
     const spread = geo.cols === 2;
     const first = book.column();
     const max = spread ? 180 : 90;
@@ -272,7 +292,7 @@ export function flipper(root, book) {
     }
     const later = to < 0 && arriving;
 
-    stage = make("div", "ts-flip ts-flip--wait");
+    stage = make("div", rtl ? "ts-flip ts-flip--wait ts-flip--rtl" : "ts-flip ts-flip--wait");
     const mine = stage;
     stage.setAttribute("aria-hidden", "true");
     stage.inert = true;
@@ -481,7 +501,8 @@ export function flipper(root, book) {
       if (book.mover() !== "flip" || slow()) return;
       const edge = event.target.closest(".ts-edge");
       if (!edge && (event.pointerType === "mouse" || !root.contains(event.target) || event.target.closest(interactive))) return;
-      pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, edge, selecting: !getSelection().isCollapsed, started: false, dir: 0, last: [], target: event.target };
+      if (rtl) readAxis();
+      pointer = { id: event.pointerId, x: mx(event.clientX), y: event.clientY, edge, selecting: !getSelection().isCollapsed, started: false, dir: 0, last: [], target: event.target };
     },
     { signal: done.signal },
   );
@@ -490,16 +511,16 @@ export function flipper(root, book) {
     "pointermove",
     (event) => {
       if (!pointer || event.pointerId !== pointer.id) return;
-      const dx = event.clientX - pointer.x;
+      const dx = mx(event.clientX) - pointer.x;
       const dy = event.clientY - pointer.y;
-      pointer.last.push([event.timeStamp, event.clientX]);
+      pointer.last.push([event.timeStamp, mx(event.clientX)]);
       if (pointer.last.length > 6) pointer.last.shift();
       if (!pointer.started) {
         if (Math.abs(dy) > START_PX && Math.abs(dy) >= Math.abs(dx)) pointer = null; // a scroll or a selection gesture
         else if (Math.abs(dx) >= START_PX && Math.abs(dx) > 1.5 * Math.abs(dy) && !pointer.selecting) start(event, dx < 0 ? 1 : -1);
         return;
       }
-      if (pointer.flight) pointer.flight.follow(angleAt(event.clientX));
+      if (pointer.flight) pointer.flight.follow(angleAt(mx(event.clientX)));
     },
     { signal: done.signal },
   );
@@ -510,7 +531,7 @@ export function flipper(root, book) {
     pointer = null;
     if (!was.started) return;
     swallowClick();
-    const dx = event.clientX - was.x;
+    const dx = mx(event.clientX) - was.x;
     const velocity = event.timeStamp - was.last[was.last.length - 1]?.[0] > REST_MS ? 0 : speed(was.last); // a finger that rested has no flick
     if (was.flight) {
       if (cancelled) {
@@ -568,7 +589,7 @@ export function flipper(root, book) {
       if (!flightNow.quiet) drop();
       return; // no leaf: a swipe past 48 px turns on release
     }
-    const geo = book.geometry();
+    const geo = geometry();
     const spread = geo.cols === 2;
     const sheet = paper(geo, spread ? 1 : 0);
     flightNow.shifted = shifted;
@@ -576,11 +597,11 @@ export function flipper(root, book) {
     track = { max: flightNow.max, hinge: sheet.left, width: sheet.width, offset: 0 };
     // The tip of the leaf now: the right edge going forward, the left edge (or the spine) coming back.
     const tip = dir > 0 ? sheet.left + sheet.width : spread ? sheet.left - sheet.width : sheet.left;
-    track.offset = tip - event.clientX;
+    track.offset = tip - mx(event.clientX);
     pointer.flight = flightNow;
     pointer.progress = dir > 0 ? 0 : 1;
     flightNow.grab();
-    flightNow.follow(angleAt(event.clientX));
+    flightNow.follow(angleAt(mx(event.clientX)));
   }
 
   // The click that ends a drag must not also be a tap.

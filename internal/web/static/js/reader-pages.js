@@ -21,6 +21,11 @@ export function pages(root, kit) {
   const col = root.querySelector(".ts-reader__col");
   const shell = root.closest(".ts-readerpage");
   const section = () => root.querySelector("section[data-part]");
+  // The sign of the book's direction: 1 left to right, -1 right to left. A right-to-left book lays its columns out
+  // leftward from the right edge and its scrollLeft runs negative, so every physical x goes through S or mx().
+  const S = root.dir === "rtl" ? -1 : 1;
+  // A rect seen in a mirrored frame, where the start of the book is on the left again; for a left-to-right book it is itself.
+  const mx = (rect) => (S > 0 ? rect : { left: -rect.right, right: -rect.left, top: rect.top, bottom: rect.bottom });
   const copy = JSON.parse(root.dataset.copy || "{}");
   // A hidden box in the text's own font. Its CSS widths (30em and 24em) tell us what a column may measure.
   const probe = document.createElement("div");
@@ -161,7 +166,7 @@ export function pages(root, kit) {
       phys = Math.max(1, Math.round((box.scrollWidth + gap) / colStep));
     } else {
       const last = lastFragment(box);
-      phys = last ? Math.max(1, Math.floor((last.right - own.left - 1) / colStep) + 1) : 1;
+      phys = last ? Math.max(1, Math.floor((mx(last).right - mx(own).left - 1) / colStep) + 1) : 1;
       // A short part sits a little lower on its page, so it does not hug the top edge.
       if (phys === 1 && last && last.bottom - own.top < pageH / 2) box.classList.add("ts-reader__short");
     }
@@ -204,12 +209,12 @@ export function pages(root, kit) {
 
   function slide(dir) {
     if (!dir || mover() !== "slide") return;
-    col.animate({ transform: [`translateX(${dir * 24}px)`, "none"], opacity: [0.5, 1] }, { duration: SLIDE_MS, easing: "ease-out" });
+    col.animate({ transform: [`translateX(${dir * S * 24}px)`, "none"], opacity: [0.5, 1] }, { duration: SLIDE_MS, easing: "ease-out" });
   }
 
   function go(n, dir) {
     page = Math.max(0, Math.min(n, count - 1));
-    section().scrollLeft = page * step;
+    section().scrollLeft = S * page * step; // negative in a right-to-left book
     slide(dir);
     // Two pages or fewer left: fetch the next part now so the turn is instant.
     if (count - page <= 3) fetchPart(section().dataset.nextHref);
@@ -354,7 +359,7 @@ export function pages(root, kit) {
     "pointerup",
     (event) => {
       if (!from) return;
-      const across = event.clientX - from[0];
+      const across = S * (event.clientX - from[0]); // a swipe toward the end of the book is negative in either direction
       const down = event.clientY - from[1];
       from = null;
       if (Math.abs(across) >= SWIPE_PX && Math.abs(across) > 1.5 * Math.abs(down)) kit.turn(across < 0 ? 1 : -1);
@@ -369,7 +374,7 @@ export function pages(root, kit) {
   const live = document.getElementById("reader-page-live");
 
   // Where column k of the page now shown starts, in the same coordinates as a rect: text before it is "before".
-  const columnLeft = (k) => section().getBoundingClientRect().left + k * colStep - 1;
+  const columnLeft = (k) => mx(section().getBoundingClientRect()).left + k * colStep - 1;
 
   // Each ribbon belongs to a column of the page shown. It is pressed when a bookmark flag lies in that column; a right
   // page that does not exist (the end of a part) or a single page has no second ribbon.
@@ -380,7 +385,7 @@ export function pages(root, kit) {
       button.hidden = k >= cols || page * cols + k >= phys;
       if (button.hidden) continue;
       const flag = flags.find((el) => {
-        const left = el.getBoundingClientRect().left;
+        const left = mx(el.getBoundingClientRect()).left;
         return left >= columnLeft(k) && left < columnLeft(k + 1);
       });
       button.dataset.bm = flag?.dataset.bm || "";
@@ -407,7 +412,7 @@ export function pages(root, kit) {
       const button = event.target.closest(".ts-ribbon");
       if (!button) return;
       const k = Number(button.dataset.page);
-      const sid = button.dataset.bm || kit.firstOn((rect) => rect.left < columnLeft(k))?.dataset.sid;
+      const sid = button.dataset.bm || kit.firstOn((rect) => mx(rect).left < columnLeft(k))?.dataset.sid;
       const form = document.getElementById("reader-bm-form");
       if (!sid || !form) return;
       form.elements.sid.value = sid;
@@ -475,7 +480,7 @@ export function pages(root, kit) {
     geometry() {
       const own = section().getBoundingClientRect();
       const wide = innerWidth >= WIDE_PX;
-      return { cols, column: colW, gap: gapW, pageH: pageHt, margin: marginW, left: own.left, top: own.top, frame: wide ? col.getBoundingClientRect() : root.getBoundingClientRect() };
+      return { cols, column: colW, gap: gapW, pageH: pageHt, margin: marginW, left: own.left, right: own.right, rtl: S < 0, top: own.top, frame: wide ? col.getBoundingClientRect() : root.getBoundingClientRect() };
     },
     // The foot of a column: the number at the left, then the pages left (on a spread the left page has the one, the right page the other).
     labels(column) {
@@ -498,14 +503,14 @@ export function pages(root, kit) {
     decorate,
     // A rect is before the page when it starts left of the section's left edge.
     before() {
-      const left = section().getBoundingClientRect().left;
-      return (rect) => rect.left < left - 1;
+      const left = mx(section().getBoundingClientRect()).left;
+      return (rect) => mx(rect).left < left - 1;
     },
     show(sid, off) {
       const rect = kit.locate(sid, off);
       if (!rect) return false;
       const box = section();
-      go(Math.floor((rect.left - box.getBoundingClientRect().left + box.scrollLeft + 2) / step), 0);
+      go(Math.floor((mx(rect).left - mx(box.getBoundingClientRect()).left + S * box.scrollLeft + 2) / step), 0);
       return true;
     },
     next() {

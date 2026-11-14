@@ -398,3 +398,7 @@ body:has(.ts-readerpage) :is(#nav-tabbar, #nav-rail, #nav-side) { visibility: hi
 }
 /* Book text inside left-to-right chrome takes its own direction from its first letters. */
 .ts-readerbar__title, .ts-reader__toctitle, .ts-note__quote, .ts-reader__hits a > span, .ts-readernote--note p, .ts-lookup__title, .ts-skim__tip, #reader-q { unicode-bidi: plaintext; }
+/* A right-to-left flight is drawn mirrored (the book starts on the left again) and each face is turned back. */
+.ts-flip--rtl { scale: -1 1; }
+.ts-flip--rtl .ts-flip__face { scale: -1 1; }
+.ts-flip--rtl .ts-reader--pages .ts-reader__col { inset: 0 0 0 auto; padding: var(--flip-y, 0) var(--flip-x, 0) 0 0; }

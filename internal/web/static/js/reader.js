@@ -93,6 +93,7 @@ function pickedJustNow() {
 export function mount(root) {
   const copy = JSON.parse(root.dataset.copy || "{}");
   const shell = root.closest(".ts-readerpage");
+  const S = root.dir === "rtl" ? -1 : 1; // 1 left to right, -1 right to left: the way the arrows and taps turn
   const bookId = root.dataset.book;
   const stop = new AbortController();
   // Every listener stops once the reader has left the page.
@@ -279,8 +280,9 @@ export function mount(root) {
     ruler.querySelector(".ts-ruler__fill").style.setProperty("--ts-value", percent);
     shell.style.setProperty("--ts-value", percent); // the thin line along the bottom edge while the bar is hidden
     const stack = Math.round((8 * percent) / 100); // the two page-edge stacks, 8 px in all, thicken as the book is read
-    shell.style.setProperty("--ts-stack-l", stack + "px");
-    shell.style.setProperty("--ts-stack-r", 8 - stack + "px");
+    // The read pages pile up on the side the book starts: the right in a right-to-left book.
+    shell.style.setProperty("--ts-stack-l", (S < 0 ? 8 - stack : stack) + "px");
+    shell.style.setProperty("--ts-stack-r", (S < 0 ? stack : 8 - stack) + "px");
     ruler.setAttribute("aria-valuenow", Math.round(percent));
     if (skimBar && document.activeElement !== skimBar) skimBar.value = Math.round(percent * 100); // the skim bar follows the place unless it is in use
   }
@@ -454,7 +456,7 @@ export function mount(root) {
       if (pointerKind !== "mouse") shell.dataset.chrome = shell.dataset.chrome === "off" ? "on" : "off";
     } else if (flow === "pages") {
       const swapped = root.classList.contains("ts-reader--tapswap");
-      turn(across > 0.5 !== swapped ? 1 : -1);
+      turn((across > 0.5 !== swapped ? 1 : -1) * S); // the right half is back in a right-to-left book
     }
   }
 
@@ -498,8 +500,10 @@ export function mount(root) {
       if (document.querySelector("#sheet [role=dialog]")) return;
       const space = key === " ";
       let run = null;
-      if (key === "ArrowRight" || key === "PageDown" || (space && !event.shiftKey)) run = () => turn(1);
-      else if (key === "ArrowLeft" || key === "PageUp" || (space && event.shiftKey)) run = () => turn(-1);
+      if (key === "PageDown" || (space && !event.shiftKey)) run = () => turn(1);
+      else if (key === "PageUp" || (space && event.shiftKey)) run = () => turn(-1);
+      else if (key === "ArrowRight") run = () => turn(S); // the arrow points the way the page goes
+      else if (key === "ArrowLeft") run = () => turn(-S);
       else if ((key === "[" || key === "]") && here) {
         const chapter = here.chapter + (key === "]" ? 1 : -1);
         if (chapter >= 1 && chapter <= Number(root.dataset.chapterCount)) run = () => go(`/books/${bookId}/read?ch=${chapter}`);
