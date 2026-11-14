@@ -14,6 +14,10 @@
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const BAR_PX = 4; // 2 px bar and 2 px gap
+const PHONE_PX = 5; // the phone player's bars: 3 px line and 2 px gap
+const PHONE_MIN = 8; // the quietest phone bar is this tall (px) ...
+const PHONE_SPAN = 38; // ... and the loudest this much taller (46 px), round caps included
+const PHONE_STROKE = 3;
 const MIN_BARS = 8;
 const HEADER = 16; // bytes before the bins: "TSPK", format, bin ms, count, floor dB
 const FLAT_RANGE = 12; // a chapter whose bars differ by less than this (of 255) is drawn level
@@ -29,6 +33,8 @@ const KEY_STEPS = { ArrowLeft: -5000, ArrowDown: -5000, ArrowRight: 5000, ArrowU
 
 const slot = document.getElementById("player");
 const waves = [...document.querySelectorAll("[data-ts-wave]")];
+// The phone full-screen player's query (player-phone.css): there the full player's wave is drawn as lines.
+const PHONE = matchMedia("(width < 768px) and (height > 30rem)");
 const drawn = new WeakMap(); // wave element -> the key of what it shows
 let files = new Map(); // audio file id -> { status: "loading" | "wait" | "ready" | "none", bins, binMs }
 let generation = 0; // bumped on a book change so late answers are dropped
@@ -93,10 +99,16 @@ function paint(wave, hs) {
   for (const old of wave.querySelectorAll(":scope > svg")) old.remove();
   if (!hs.length) return;
   const isBar = wave.dataset.tsWave === "bar";
+  const isPhone = isFull(wave);
+  const lines = isBar || isPhone;
   const height = wave.clientHeight;
   let d = "";
   hs.forEach((h, j) => {
-    if (isBar) {
+    if (isPhone) {
+      // a 3 px line with round caps: its drawn length is 8 to 46 px with the caps
+      const half = Math.max(0, (PHONE_MIN + h * PHONE_SPAN - PHONE_STROKE) / 2);
+      d += "M" + (j * PHONE_PX + PHONE_STROKE / 2) + " " + (height / 2 - half).toFixed(1) + "V" + (height / 2 + half).toFixed(1);
+    } else if (isBar) {
       const half = Math.max(1, (h * (height - 4)) / 2);
       d += "M" + (j * BAR_PX + 1) + " " + (height / 2 - half).toFixed(1) + "V" + (height / 2 + half).toFixed(1);
     } else {
@@ -104,17 +116,22 @@ function paint(wave, hs) {
     }
   });
   const first = svgElement("svg", {
-    viewBox: isBar ? "0 0 " + wave.clientWidth + " " + height : "0 0 " + hs.length * BAR_PX + " 100",
+    viewBox: lines ? "0 0 " + wave.clientWidth + " " + height : "0 0 " + hs.length * BAR_PX + " 100",
     preserveAspectRatio: "none",
     "aria-hidden": "true", // the picture is decoration; the bar's wave also holds the real slider
   });
   first.append(svgElement("path", { d }));
-  const names = isBar ? ["rest", "played", "ahead", "behind"] : ["muted", "played"];
+  const names = isBar ? ["rest", "played", "ahead", "behind"] : isPhone ? ["rest", "played", "jump"] : ["muted", "played"];
   wave.prepend(...names.map((name) => {
     const layer = first.cloneNode(true);
     layer.setAttribute("class", "ts-wave__" + name);
     return layer;
   }));
+}
+
+// True for the full player's wave while the phone layout is on.
+function isFull(wave) {
+  return wave.dataset.tsWave === "full" && PHONE.matches;
 }
 
 // The loaded book; a different book forgets every file and drops answers still on the way.
@@ -206,11 +223,12 @@ function render(force) {
     for (const f of overlapping) {
       if (!files.has(f.id)) load(f, generation);
     }
-    const n = Math.max(MIN_BARS, Math.floor(width / BAR_PX));
+    const phone = isFull(wave);
+    const n = Math.max(MIN_BARS, phone ? Math.floor((width + PHONE_PX - PHONE_STROKE) / PHONE_PX) : Math.floor(width / BAR_PX));
     const states = overlapping.map((f) => files.get(f.id));
     const ready = states.length > 0 && states.every((s) => s.status === "ready");
     const isBar = wave === barWave;
-    const key = ready ? [state.bookId, chapter.start, chapter.end, n, overlapping.map((f) => f.id)].join("|") : isBar ? "flat|" + n : "";
+    const key = ready ? [state.bookId, chapter.start, chapter.end, n, phone, overlapping.map((f) => f.id)].join("|") : isBar || phone ? "flat|" + n + "|" + phone : "";
     if (isBar) {
       loadingNow = states.some((s) => s.status === "loading" || s.status === "wait");
       wave.classList.toggle("ts-wave--loading", loadingNow);
@@ -221,7 +239,7 @@ function render(force) {
         const sources = overlapping.map((f, i) => ({ offset: f.offset, binMs: states[i].binMs, bins: states[i].bins }));
         paint(wave, heights(sources, chapter.start, chapter.end, n, isBar ? BAR_MIN_HEIGHT : MIN_HEIGHT));
       } else {
-        paint(wave, isBar ? new Array(n).fill(FLAT_HEIGHT) : []);
+        paint(wave, isBar || phone ? new Array(n).fill(FLAT_HEIGHT) : []);
       }
     }
   }
@@ -442,6 +460,7 @@ function startVolumePop() {
 function start() {
   document.addEventListener("ts:player:tick", () => render(false));
   document.addEventListener("ts:player:state", () => render(true));
+  PHONE.addEventListener("change", () => render(true));
   const observer = new ResizeObserver(() => render(false));
   for (const wave of waves) observer.observe(wave);
   if (barWave) {

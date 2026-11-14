@@ -44,15 +44,28 @@
   .ts-player .ts-player__transport { border-top-width: calc(var(--space-8) - 0.3125rem); margin-bottom: 0; } /* the ruler's 5 px of air above its bars is part of the 8 px */
   .ts-player .ts-player__bar { border-top-width: var(--space-12); }
 
-  /* The chapter wave: a taller area than before. The wave keeps today's drawing; its line and fill give way to the wave itself
-     (under forced colours the wave is hidden, so they stay). */
-  .ts-player [data-ts-scrub="full"] { height: 3.5rem; }
+  /* The chapter wave: 3 px lines with round caps every 5 px (waveform.js draws them, 8 to 46 px tall). Three layers: the rest, the
+     played part (up to the earlier of where the position was and is) and, while a drag is pending, the stretch between the old
+     position and the finger at half strength. The line and fill give way to the wave (under forced colours the wave is hidden, so they stay). */
+  .ts-player [data-ts-scrub="full"] { height: 3.5rem; --ts-from: var(--ts-pos, 0); }
   .ts-player [data-ts-scrub="full"] .ts-wave { top: 0.25rem; height: 3rem; }
-  .ts-player [data-ts-scrub="full"] .ts-scrub__needle { top: 0.5rem; height: 2.5rem; }
+  .ts-player [data-ts-scrub="full"] .ts-wave svg { overflow: visible; }
+  .ts-player [data-ts-scrub="full"] .ts-wave path { fill: none; stroke-width: 3; stroke-linecap: round; }
+  .ts-player [data-ts-scrub="full"] .ts-wave__rest path { stroke: var(--ts-rest); }
+  .ts-player [data-ts-scrub="full"] .ts-wave__played, .ts-player [data-ts-scrub="full"] .ts-wave__jump { opacity: 1; }
+  .ts-player [data-ts-scrub="full"] .ts-wave__played path, .ts-player [data-ts-scrub="full"] .ts-wave__jump path { stroke: var(--ts-mark); }
+  .ts-player [data-ts-scrub="full"] .ts-wave__played { clip-path: inset(-0.25rem calc((1 - min(var(--ts-from, 0), var(--ts-pos, 0))) * 100%) -0.25rem 0); }
+  .ts-player [data-ts-scrub="full"] .ts-wave__jump { opacity: 0; clip-path: inset(-0.25rem calc((1 - max(var(--ts-from, 0), var(--ts-pos, 0))) * 100%) -0.25rem calc(min(var(--ts-from, 0), var(--ts-pos, 0)) * 100%)); }
+  .ts-player [data-ts-scrub="full"].is-dragging .ts-wave__jump { opacity: 0.5; }
   .ts-player [data-ts-scrub="full"] .ts-scrub__input { inset: -0.25rem 0; }
   @media not (forced-colors: active) {
     .ts-player [data-ts-scrub="full"] :is(.ts-scrub__line, .ts-scrub__fill) { display: none; }
   }
+  /* The needle: one ink line with a ground outline so it reads over any bar. While dragging it grows and gets a soft halo. */
+  .ts-player [data-ts-scrub="full"] .ts-scrub__needle { top: 0; width: 0.25rem; height: 3.5rem; margin-left: -0.125rem; border-radius: 2px; background: var(--ink);
+    box-shadow: 0 0 0 3px var(--ground); transform: none; transition: none; }
+  .ts-player [data-ts-scrub="full"].is-dragging .ts-scrub__needle { top: -0.375rem; width: 0.375rem; height: 4.25rem; margin-left: -0.1875rem;
+    box-shadow: 0 0 0 3px var(--ground), 0 0 0 12px color-mix(in srgb, var(--ink) 16%, transparent); }
 
   /* The time row: elapsed in the chapter on the left, the chapter's time left on the right in the accent. */
   .ts-player .ts-scrub__times { align-items: center; min-height: 1.25rem; margin-top: var(--space-4); color: var(--ink); font: 500 0.9375rem/1.25rem var(--font-sans); font-variant-numeric: tabular-nums; }
@@ -103,11 +116,19 @@
   /* The sleep card stands above the settings bar. */
   .ts-sleepcard[data-ts-sleep-card="full"] { bottom: calc(4rem + var(--space-12) + var(--space-8) + env(safe-area-inset-bottom)); }
 
-  /* The scrubbing card over the cover: laid out here, shown by the scrub state (the next package). Until then it is invisible and takes no pointer. */
+  /* The scrubbing card over the cover: "JUMP TO", the target time and the chapter's time left there. Invisible and without a pointer until a drag. */
   .ts-player__jump { display: flex; position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4);
-    border-radius: inherit; background: color-mix(in srgb, var(--ground) 82%, transparent); color: var(--ink); opacity: 0; pointer-events: none; }
-  .ts-player__jumptime { font: 500 2.5rem/1.1 var(--font-sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    container-type: size; border-radius: inherit; background: color-mix(in srgb, var(--ground) 82%, transparent); color: var(--ink); opacity: 0; pointer-events: none; }
+  .ts-player__jump .ts-overline { color: var(--ink-muted); }
+  .ts-player__jumptime { font: 500 min(3.5rem, 30cqi) / 1.07 var(--font-sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
   .ts-player__jumpleft { color: var(--accent); }
+  .ts-player__body:has([data-ts-scrub="full"].is-dragging) .ts-player__jump { opacity: 1; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ts-player__jump { transition: opacity var(--duration-fast) var(--easing-standard); }
+  }
+
+  /* While the finger is down the rest of the player steps back: the book bar, its label, the transport and the settings bar. */
+  .ts-player__body:has([data-ts-scrub="full"].is-dragging) :is(.ts-player__ruler, .ts-player__booklabel, .ts-player__transport, .ts-player__bar) { opacity: 0.45; }
 
   /* Forced colours and the contrast theme: the segments keep their meaning in system colours. */
   @media (forced-colors: active) {

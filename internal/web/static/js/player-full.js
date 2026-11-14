@@ -384,6 +384,9 @@ function dragTo(s, x, y) {
   const shownTitle = words.numbered || title !== words.lead ? title : "";
   s.bubble.textContent = fill(msg("scrubBubble"), { chapter: words.lead, title: shownTitle, t: clock(d.ms - chapter.start) }).replace(" ·  ·", " ·");
   drawTimes(d.ms, player.state().speed);
+  // The phone's time row shows where the book was before the finger went down, in place of the chapter's time left.
+  setText("full-chapter-left", fill(msg("scrubWas"), { t: clock(d.from - chapter.start) }));
+  ui["full-chapter-left"].classList.add("is-was");
   drawRuler(d.ms);
 }
 
@@ -392,6 +395,8 @@ function endDrag(s, apply) {
   if (!d) return;
   s.drag = null;
   s.root.classList.remove("is-dragging");
+  s.root.style.removeProperty("--ts-from");
+  ui["full-chapter-left"].classList.remove("is-was");
   ui["full-fine"].textContent = "";
   if (apply) {
     scrubFrom = d.from;
@@ -427,8 +432,11 @@ const scrubKeys = {
     const rect = input.getBoundingClientRect();
     const chapter = chapterNow();
     const ms = chapter.start + clamp((event.clientX - rect.left) / rect.width, 0, 1) * (chapter.end - chapter.start);
-    s.drag = { rect, chapter, x: event.clientX, ms, from: player.state().positionMs };
+    const from = player.state().positionMs;
+    s.drag = { rect, chapter, x: event.clientX, ms, from };
     s.root.classList.add("is-dragging");
+    // Where the position was, as a share of the chapter: the wave marks what the drag will skip over from there.
+    setVars(s.root, { "--ts-from": clamp((from - chapter.start) / Math.max(1, chapter.end - chapter.start), 0, 1).toFixed(4) });
     ui["full-fine"].textContent = msg("fineScrub");
     dragTo(s, event.clientX, event.clientY);
   });
