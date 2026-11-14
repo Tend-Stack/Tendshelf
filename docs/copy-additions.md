@@ -333,3 +333,5 @@ are not in the copy deck or on `DownloadsPhone` / `StateOffline`. Same voice rul
 **Night sleep (new, Settings and player).** Start the sleep timer at night · When you start listening between these hours, the sleep timer starts on its own. · From · Until · Minutes (Settings, Playback) · Sleep timer on, {n} minutes · Turn off (the toast when the timer starts on its own, `msgNightSleepOn`, `msgNightSleepOff` in `copy.go`).
 
 **Full player bottom row (new, decision 0042).** Read (the short label under the book icon; the button's accessible name stays "Read this book").
+
+**Player kinds (new, decision 0043).** This speed is for this show. Other shows keep your usual speed. (the episode speed sheet; reused words: "Go to show" in an episode's player menu, "Radio" in the station's settings bar)

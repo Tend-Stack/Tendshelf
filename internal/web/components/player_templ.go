@@ -51,13 +51,13 @@ type PlayerMsgs struct {
 	ChBarLabel, ChBarTip, ChBarValue, ChBarUntitled string
 
 	// Speed, sleep timer, volume and the bookmark key (P1c-5b).
-	NightSleepOn, NightSleepOff, SpeedForBook, SpeedMakeUsual, JumpedFar, JumpedBack, SpeedUsualSet  string
-	SpeedValue, SpeedLabel, SpeedFine, SleepTitle, SleepEndOfChapter, SleepMinutes                   string
-	SleepEndOfEpisode, EpisodeWord, LeftInEpisode, EpisodeLeft, OpenEpisode, GoToEpisode, MarkPlayed string
-	SleepIn, SleepCustom, SleepCustomLabel, SleepStart, SleepTurnOff, SleepOffLabel                  string
-	SleepOnLabel, Sleeping, SleepFading, SleepFadingShake, PlusTen, Volume                           string
-	BookmarkMoment, BookmarkFailed, KeysBookmark, Bookmarked, BookmarkMomentAt, BookmarkQueued       string
-	AddNote                                                                                          string
+	GoToShow, RadioTitle, SpeedForShow, NightSleepOn, NightSleepOff, SpeedForBook, SpeedMakeUsual, JumpedFar, JumpedBack, SpeedUsualSet string
+	SpeedValue, SpeedLabel, SpeedFine, SleepTitle, SleepEndOfChapter, SleepMinutes                                                      string
+	SleepEndOfEpisode, EpisodeWord, LeftInEpisode, EpisodeLeft, OpenEpisode, GoToEpisode, MarkPlayed                                    string
+	SleepIn, SleepCustom, SleepCustomLabel, SleepStart, SleepTurnOff, SleepOffLabel                                                     string
+	SleepOnLabel, Sleeping, SleepFading, SleepFadingShake, PlusTen, Volume                                                              string
+	BookmarkMoment, BookmarkFailed, KeysBookmark, Bookmarked, BookmarkMomentAt, BookmarkQueued                                          string
+	AddNote                                                                                                                             string
 
 	// The desktop bar's chapter waveform (PB1).
 	WaveLabel, WaveValue, Hour, Hours, Minute, Minutes, Second, Seconds, WaveDrawing, WaveChapter string
@@ -131,6 +131,7 @@ func (m PlayerMsgs) attrs() templ.Attributes {
 		"data-ts-msg-bookmark":             m.Bookmark,
 		"data-ts-msg-more-actions":         m.MoreActions,
 		"data-ts-msg-go-to-book":           m.GoToBook,
+		"data-ts-msg-speed-for-show":       m.SpeedForShow,
 		"data-ts-msg-mark-finished":        m.MarkFinished,
 		"data-ts-msg-chapter-played":       m.ChapterPlayed,
 		"data-ts-msg-open-player":          m.OpenPlayer,
@@ -246,7 +247,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(m.Live)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 206, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 207, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -291,7 +292,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(m.WaveLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 237, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 238, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -304,7 +305,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.Speed).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 247, Col: 121}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 248, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -317,7 +318,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.SleepOffLabel).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 250, Col: 129}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 251, Col: 129}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -338,7 +339,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.Chapters).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 254, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 255, Col: 112}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -359,7 +360,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.OpenReader).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 257, Col: 117}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 258, Col: 117}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -380,7 +381,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.BookmarkMoment).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 260, Col: 95}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 261, Col: 95}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -411,7 +412,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.Volume).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 264, Col: 138}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 265, Col: 138}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -432,7 +433,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(m.Volume)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 268, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 269, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -445,7 +446,7 @@ func PlayerSlot(m PlayerMsgs) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templruntime.NewAttributeExpression(m.OpenPlayer).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 272, Col: 111}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/components/player.templ`, Line: 273, Col: 111}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {

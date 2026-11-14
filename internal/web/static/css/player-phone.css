@@ -139,3 +139,25 @@
     .ts-player .ts-player__bar { outline: 1px solid CanvasText; }
   }
 }
+
+/* Player kinds (decision 0043, P4). The dialog carries data-ts-kind="book|episode|radio" and data-ts-chapters="one|many" (player-full.js drawKind).
+   Outside the phone: the live line is a phone-only piece; an episode with one chapter has nothing for the chapter buttons to do; the
+   station's now-playing line keeps one line (its height stays when it is empty). */
+.ts-player__live { display: none; }
+.ts-player[data-ts-kind="episode"][data-ts-chapters="one"] :is([data-ts-full-prev], [data-ts-full-next]) { display: none; }
+.ts-player[data-ts-kind="radio"] .ts-player__author { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1lh; }
+
+@media (width < 768px) and (height > 30rem) {
+  /* A station: a still "live line" stands where the wave sits (flat 3 px bars on a 5 px pitch, 8 px tall, no needle and no motion),
+     with the wave's own spacing: an auto margin and a fixed 8 px minimum drawn as a transparent top border. */
+  .ts-player[data-ts-kind="radio"] .ts-player__live { display: block; flex: none; order: 1; box-sizing: content-box; height: 3.5rem; margin-top: auto;
+    border-top: var(--space-8) solid transparent; background: repeating-linear-gradient(90deg, var(--ts-mark) 0 0.1875rem, transparent 0.1875rem 0.3125rem) center / 100% 0.5rem no-repeat;
+    background-clip: padding-box; }
+  /* One segment would repeat the wave: an episode without chapters has no book bar and no label. */
+  .ts-player[data-ts-kind="episode"][data-ts-chapters="one"] :is(.ts-player__ruler, .ts-player__booklabel) { display: none; }
+  /* Without the ruler the transport has no 5 px of air above it to count, so it takes the full 8 px minimum. */
+  .ts-player:is([data-ts-kind="radio"], [data-ts-kind="episode"][data-ts-chapters="one"]) .ts-player__transport { border-top-width: var(--space-8); }
+  @media (forced-colors: active) {
+    .ts-player[data-ts-kind="radio"] .ts-player__live { display: none; }
+  }
+}

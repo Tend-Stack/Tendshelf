@@ -48,6 +48,7 @@ func TestFullPlayerMarkup(t *testing.T) {
 		`class="ts-player-bar ts-player__bar"`, `data-ts-open-speed`, `data-ts-open-sleep`, `data-ts-open-chapters`,
 		`data-ts-full-sheet`, `data-ts-chapters-sheet`, `data-ts-chapter-list`, `data-ts-chapter-row`,
 		`data-ts-full-book`, `data-ts-full-finish`, `Go to book`, `Mark as finished`,
+		`data-ts-full-live`, `data-ts-full-show hidden`, `data-ts-full-radio data-ts-close-player hidden`, `data-ts-speed-for`, `Go to show`,
 		`<a class="ts-player__menuitem ts-player__menuqueue" href="/queue" data-ts-close-player>Up next</a>`,
 	} {
 		if !strings.Contains(dlg, want) {

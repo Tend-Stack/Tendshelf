@@ -54,7 +54,7 @@ for (const name of ["close-player", "full-chapter", "full-cover", "full-cover-ti
   "full-book-left", "full-speed", "full-book", "full-finish", "full-menu", "full-body", "chapters-sheet", "chapter-list",
   "chapter-row", "open-chapters", "speed-sheet", "sleep-sheet", "speed-range", "speed-out", "sleep-meta", "sleep-custom",
   "sleep-minutes", "full-sleep-left", "full-toasts", "bookmark-toast", "open-speed", "open-sleep", "full-read", "speed-usual",
-  "full-jump", "full-jump-time", "full-jump-left", "full-chapter-left", "full-bookbar-left"]) {
+  "full-live", "full-show", "full-radio", "speed-for", "full-jump", "full-jump-time", "full-jump-left", "full-chapter-left", "full-bookbar-left"]) {
   ui[name] = $(name);
 }
 const miniOpen = $("open", slot);
@@ -295,11 +295,27 @@ function drawKind() {
   const episode = book.kind === "episode";
   const live = book.kind === "radio";
   dialog.classList.toggle("is-live", live); // the stylesheet hides what a live stream cannot do
+  // The two facts the stylesheet keys on (the only place they are set): the kind, and whether there is more than one chapter.
+  dialog.dataset.tsKind = live ? "radio" : episode ? "episode" : "book";
+  dialog.dataset.tsChapters = book.chapters.length > 1 ? "many" : "one";
   const id = encodeURIComponent(book.id);
   ui["full-book"].href = episode ? "/podcasts/episodes/" + id : "/books/" + id;
   wordsFor(ui["full-book"], episode, msg("goToEpisode"));
   ui["full-finish"].action = episode ? "/podcasts/episodes/" + id + "/played" : "/hx/books/" + id + "/finished";
   wordsFor(ui["full-finish"].querySelector("button"), episode, msg("markPlayed"));
+  ui["full-show"].href = book.showHref || "/";
+  ui["full-show"].hidden = !episode || !book.showHref || !!LINK;
+  ui["full-radio"].hidden = !live;
+  // A station carries no address of a book or an episode, even while its entries are hidden.
+  if (live) {
+    ui["full-book"].href = "/radio";
+    ui["full-finish"].action = "/radio";
+  }
+  for (const item of [ui["full-book"], ui["full-finish"], dialog.querySelector(".ts-player__menuqueue"), dialog.querySelector("[data-ts-eyes-free-open]")]) {
+    item.hidden = live || !!LINK;
+  }
+  wordsFor(ui["speed-for"], episode, msg("speedForShow"));
+  ui["speed-usual"].hidden = episode || live;
   // found by either name: after an episode the field is called "played", and a lookup by "finished" alone would throw
   const finishField = ui["full-finish"].querySelector('[name="finished"], [name="played"]');
   finishField.name = episode ? "played" : "finished";
@@ -1122,7 +1138,7 @@ let bookmarking = false; // one request at a time
 
 // Always the live position at the moment of the press, never the position saved earlier.
 async function addBookmark(options) {
-  if (!book || bookmarking || LINK || book.kind === "radio") return;
+  if (!book || bookmarking || LINK || book.kind !== "") return; // a book only: an episode or a station has no bookmarks
   bookmarking = true;
   const positionMs = player.state().positionMs;
   try {
