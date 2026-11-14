@@ -87,6 +87,12 @@ func (s *Service) ebookPaths(ctx context.Context, bookID string) ([]string, erro
 // library ebook file must lie inside a root that person's uploads published, otherwise 409 not_theirs and
 // nothing is touched. A contributor always removes with placedBy set to themselves; owner and admin pass "".
 func (s *Service) Remove(ctx context.Context, userID, bookID, placedBy string) (RemoveResult, error) {
+	return s.remove(ctx, userID, bookID, placedBy, nil)
+}
+
+// remove is Remove that leaves the files in keep alone ("Remove the audiobook only": the text files that were
+// placed in the same folder stay). Every other rule is Remove's.
+func (s *Service) remove(ctx context.Context, userID, bookID, placedBy string, keep map[string]bool) (RemoveResult, error) {
 	res := RemoveResult{Deleted: []string{}, Kept: []string{}}
 	book, err := s.repo.Book(ctx, bookID)
 	if errors.Is(err, library.ErrNotFound) {
@@ -145,7 +151,7 @@ func (s *Service) Remove(ctx context.Context, userID, bookID, placedBy string) (
 			}
 			switch r.Kind {
 			case kindFile:
-				if !within(book.RootPath, r.Path) {
+				if !within(book.RootPath, r.Path) || keep[r.Path] {
 					continue
 				}
 				if s.removeFile(ctx, lr, r, &res) {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/api"
+	"github.com/Tend-Stack/tendshelf/internal/ebook"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/upload"
@@ -264,23 +265,96 @@ func (s *server) postBookRemove(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if _, err := s.uploads.Remove(r.Context(), currentUser(r).ID, b.ID, s.removePlacedBy(currentUser(r))); err != nil {
-		var ue *upload.Error
-		if errors.As(err, &ue) && ue.Status != http.StatusNotFound {
-			if r.Header.Get("HX-Request") == "true" {
-				// htmx swaps 4xx answers, so a refusal is an out-of-band toast, never a text page.
-				s.fragment(w, r, ue.Status, components.ErrorToast(ue.Message))
-				return
-			}
-			http.Error(w, ue.Message, ue.Status)
+	u := currentUser(r)
+	switch r.FormValue("part") {
+	case "":
+		if _, err := s.uploads.Remove(r.Context(), u.ID, b.ID, s.removePlacedBy(u)); err != nil {
+			s.removeFailed(w, r, err)
 			return
 		}
-		if errors.As(err, &ue) {
+		s.answerPage(w, r, "/libraries/"+b.LibraryID)
+	case "text":
+		// "Remove the text book only": one attached ebook file; the audio and its progress stay.
+		if s.ebooks == nil {
 			s.notFound(w, r)
 			return
 		}
-		s.serverError(w, r, "remove book", err)
+		ctx, fileID, by := r.Context(), r.FormValue("file"), s.removePlacedBy(u)
+		parts, err := s.uploads.PartsOf(ctx, b.ID, by)
+		if err != nil {
+			s.serverError(w, r, "remove book", err)
+			return
+		}
+		pf, ok := parts.EditionRemovable(fileID)
+		if !ok {
+			s.removeFailed(w, r, &upload.Error{Status: http.StatusConflict, Code: "not_removable", Message: bookRemoveEditionNo})
+			return
+		}
+		if pf.Uploaded {
+			// A copy uploaded on the Text page is Tendshelf's own stored file.
+			if err = s.ebooks.RemoveUpload(ctx, u.ID, b.ID, fileID); err != nil {
+				if errors.Is(err, ebook.ErrNotFound) {
+					s.notFound(w, r)
+				} else {
+					s.serverError(w, r, "remove edition", err)
+				}
+				return
+			}
+		} else {
+			res, err := s.uploads.RemoveEbookFile(ctx, u.ID, b.ID, fileID, by)
+			if err == nil && len(res.Deleted) == 0 && len(res.Kept) > 0 {
+				err = &upload.Error{Status: http.StatusConflict, Code: "kept", Message: bookRemoveTextKept}
+			}
+			if err != nil {
+				s.removeFailed(w, r, err)
+				return
+			}
+		}
+		if err := s.ebooks.EnsureDefault(ctx, b.ID); err != nil {
+			s.serverError(w, r, "remove edition", err)
+			return
+		}
+		s.answerPage(w, r, ebookTextHref(b.ID)+"?removed=edition")
+	case "audio":
+		// "Remove the audiobook only": the text files become text books first, then the audio goes the whole-book way.
+		if s.ebooks == nil {
+			s.notFound(w, r)
+			return
+		}
+		var made []string
+		_, err := s.uploads.RemoveAudio(r.Context(), u.ID, b.ID, s.removePlacedBy(u), func(ctx context.Context) (err error) {
+			made, err = s.ebooks.SplitText(ctx, b.ID, u.ID)
+			return err
+		})
+		if err != nil {
+			s.removeFailed(w, r, err)
+			return
+		}
+		if len(made) == 0 {
+			s.answerPage(w, r, "/libraries/"+b.LibraryID)
+			return
+		}
+		s.answerPage(w, r, "/books/"+made[0]+"/details?removed=audio")
+	default:
+		s.notFound(w, r)
+	}
+}
+
+// removeFailed answers a refused removal: a plain-words toast for htmx, a text answer otherwise.
+func (s *server) removeFailed(w http.ResponseWriter, r *http.Request, err error) {
+	var ue *upload.Error
+	if errors.As(err, &ue) && ue.Status != http.StatusNotFound {
+		if r.Header.Get("HX-Request") == "true" {
+			// htmx swaps 4xx answers, so a refusal is an out-of-band toast, never a text page.
+			s.fragment(w, r, ue.Status, components.ErrorToast(ue.Message))
+			return
+		}
+		http.Error(w, ue.Message, ue.Status)
 		return
 	}
-	s.answerPage(w, r, "/libraries/"+b.LibraryID)
+	if errors.As(err, &ue) {
+		s.notFound(w, r)
+		return
+	}
+	s.serverError(w, r, "remove book", err)
 }

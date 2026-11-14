@@ -39,6 +39,8 @@ type textCtx struct {
 	// bookEd and yourEd are file ids; multi is true when the book has two or more ready files.
 	bookEd, yourEd string
 	multi          bool
+	// removable is the ebook files that can be removed on their own ("Remove this edition").
+	removable map[string]bool
 }
 
 // textContext gathers the audiobook's side of the comparison (editors) and the editions in play.
@@ -69,6 +71,18 @@ func (s *server) textContext(r *http.Request, book library.Book, edit bool, file
 	}
 	if !edit {
 		return tc, nil
+	}
+	if s.uploads != nil && s.can.Can(ctx, u, share.RemoveBook, t) {
+		parts, err := s.uploads.PartsOf(ctx, book.ID, s.removePlacedBy(u))
+		if err != nil {
+			return nil, err
+		}
+		tc.removable = map[string]bool{}
+		for _, f := range parts.Text {
+			if _, ok := parts.EditionRemovable(f.ID); ok {
+				tc.removable[f.ID] = true
+			}
+		}
 	}
 	d, err := s.lib.BookDetail(ctx, s.scope(r), book.ID)
 	if err != nil {
@@ -165,6 +179,10 @@ func (tc *textCtx) decorate(book library.Book, f ebook.File, fv *pages.TextFileV
 	}
 	if !tc.edit || f.BookID != book.ID {
 		return
+	}
+	if tc.removable[f.ID] {
+		fv.RemoveHref, fv.RemoveLabel = "/books/"+book.ID+"/remove?file="+f.ID, bookRemoveEditionLabel
+		fv.RemoveAria = fmt.Sprintf(bookRemoveEditionAria, ebookName(f))
 	}
 	// A text book's only file cannot leave it, so "Not the same book" is offered only where there is a merge to undo.
 	if book.Kind != library.BookText || tc.multi {

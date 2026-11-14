@@ -1,11 +1,19 @@
 package pages
 
 // BookRemoveView is the confirmation page of "Remove this book" (decision 0015, point 11). It lists
-// the files Tendshelf will delete; the handler writes every word.
+// the files Tendshelf will delete; the handler writes every word. A book with audio and a text book
+// carries Choices instead of one Button: each choice is its own button (decision 0015, "Remove one part").
 type BookRemoveView struct {
 	Title, Body, Button, Cancel string
 	Action, CancelHref, CSRF    string
 	Files                       []string
+	Choices                     []RemoveChoice
+}
+
+// RemoveChoice is one way to remove part of a book. Part is "text", "audio" or empty for the whole book;
+// File is the ebook file for "text".
+type RemoveChoice struct {
+	Part, File, Label, Help string
 }
 
 // BookRemove asks before the files of a book Tendshelf added are deleted.
@@ -18,10 +26,29 @@ templ BookRemove(v BookRemoveView) {
 				<li class="ts-upload__path">{ f }</li>
 			}
 		</ul>
-		<form method="post" action={ templ.URL(v.Action) } class="ts-upset__btns">
-			<input type="hidden" name="_csrf" value={ v.CSRF }/>
-			<button type="submit" class="ts-btn ts-btn--primary">{ v.Button }</button>
-			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.CancelHref) }>{ v.Cancel }</a>
-		</form>
+		if len(v.Choices) > 0 {
+			for _, c := range v.Choices {
+				<form method="post" action={ templ.URL(v.Action) } class="ts-remove__choice">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					if c.Part != "" {
+						<input type="hidden" name="part" value={ c.Part }/>
+					}
+					if c.File != "" {
+						<input type="hidden" name="file" value={ c.File }/>
+					}
+					<button type="submit" class="ts-btn ts-btn--primary">{ c.Label }</button>
+					<p class="caption">{ c.Help }</p>
+				</form>
+			}
+			<p class="ts-upset__btns">
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.CancelHref) }>{ v.Cancel }</a>
+			</p>
+		} else {
+			<form method="post" action={ templ.URL(v.Action) } class="ts-upset__btns">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<button type="submit" class="ts-btn ts-btn--primary">{ v.Button }</button>
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.CancelHref) }>{ v.Cancel }</a>
+			</form>
+		}
 	</div>
 }

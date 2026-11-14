@@ -276,7 +276,36 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.removableFor(r.Context(), currentUser(r), b.ID) {
+	parts, err := s.uploads.PartsOf(r.Context(), b.ID, s.removePlacedBy(currentUser(r)))
+	if err != nil {
+		s.serverError(w, r, "remove book", err)
+		return
+	}
+	if fid := r.URL.Query().Get("file"); fid != "" {
+		// "Remove this edition" from a card on the Text tab: one ebook file, nothing else.
+		pf, ok := parts.EditionRemovable(fid)
+		if !ok {
+			s.notFound(w, r)
+			return
+		}
+		name := filepath.Base(pf.Path)
+		if s.ebooks == nil {
+			s.notFound(w, r)
+			return
+		}
+		if f, found, err := s.ebooks.Store().File(r.Context(), fid); err == nil && found {
+			name = ebookName(f)
+		}
+		v := pages.BookRemoveView{
+			Title: bookRemoveEditionConfirm, Body: fmt.Sprintf(bookRemoveEditionBody, "“"+name+"”"), Cancel: bookRemoveCancel,
+			Action: "/books/" + b.ID + "/remove", CancelHref: ebookTextHref(b.ID), CSRF: s.csrf.TokenFrom(r.Context()),
+			Choices: []pages.RemoveChoice{{Part: "text", File: fid, Label: bookRemoveEditionLabel}},
+		}
+		s.pageStyled(w, r, http.StatusOK, bookRemoveEditionConfirm, "library", pages.BookRemove(v), nil, uploadStyles...)
+		return
+	}
+	combined := parts.Combined && (parts.Audio || parts.AnyText())
+	if !combined && !s.removableFor(r.Context(), currentUser(r), b.ID) {
 		s.notFound(w, r)
 		return
 	}
@@ -288,6 +317,27 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 	v := pages.BookRemoveView{
 		Title: bookRemoveConfirm, Body: bookRemoveText(len(files)), Button: bookRemoveButton, Cancel: bookRemoveCancel,
 		Action: "/books/" + b.ID + "/remove", CancelHref: "/books/" + b.ID, CSRF: s.csrf.TokenFrom(r.Context()),
+	}
+	if combined {
+		// A book with audio and a text book: three plain choices, each its own button (the whole book first
+		// only when every file is Tendshelf's).
+		v.Title, v.Body, v.Button = bookRemoveCombinedConfirm, bookRemoveCombinedBody, ""
+		for _, f := range parts.Text {
+			if f.Removable {
+				label := bookRemoveTextButton
+				if len(parts.Text) > 1 {
+					label = fmt.Sprintf(bookRemoveTextFileButton, "("+filepath.Base(f.Path)+")")
+				}
+				v.Choices = append(v.Choices, pages.RemoveChoice{Part: "text", File: f.ID, Label: label, Help: bookRemoveTextHelp})
+			}
+			v.Files = append(v.Files, filepath.Base(f.Path))
+		}
+		if parts.Audio {
+			v.Choices = append(v.Choices, pages.RemoveChoice{Part: "audio", Label: bookRemoveAudioButton, Help: bookRemoveAudioHelp})
+		}
+		if parts.Whole {
+			v.Choices = append(v.Choices, pages.RemoveChoice{Label: bookRemoveWholeButton, Help: bookRemoveWholeHelp})
+		}
 	}
 	for _, f := range files {
 		if rel, err := filepath.Rel(b.RootPath, f.Path); err == nil && !strings.HasPrefix(rel, "..") && rel != "." {

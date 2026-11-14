@@ -95,6 +95,12 @@ func (s *server) detailsEditView(r *http.Request, id string, lookups bool) (page
 	if n, err := strconv.Atoi(r.URL.Query().Get("applied")); err == nil && n > 0 && n < 100 {
 		v.Applied = detailsUsed(n)
 	}
+	switch r.URL.Query().Get("removed") {
+	case "text":
+		v.Applied = bookRemoveTextDone
+	case "audio":
+		v.Applied = bookRemoveAudioDone
+	}
 	rows, err := s.lib.MetadataValues(r.Context(), id)
 	if err != nil {
 		return v, err
