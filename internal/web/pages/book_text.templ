@@ -60,6 +60,8 @@ type TextFileView struct {
 	// Chips say whose edition this is; Choose and MakeDefault change it (two or more editions).
 	Chips               []string
 	Choose, MakeDefault *TextActionView
+	// RemoveHref opens the confirmation of "Remove this edition"; empty unless this one file can be removed on its own.
+	RemoveHref, RemoveLabel, RemoveAria string
 }
 
 // TextUploadView is the "add a file" form. Error is the plain sentence of a refused upload.
@@ -70,6 +72,8 @@ type TextUploadView struct {
 // TextView is the Text tab. Editors get Lead, the form and every file; readers only the ready editions.
 type TextView struct {
 	Heading, Lead, FoundLabel string
+	// Notice is the plain sentence after an edition was removed.
+	Notice string
 	// FindHref and FindLabel link "Find the audiobook" on the Text tab of a text book, for people who manage libraries.
 	FindHref, FindLabel string
 	Suggestions         []TextSuggestionView
@@ -81,6 +85,12 @@ type TextView struct {
 templ TextPanel(v TextView) {
 	<div class="ts-ebook">
 		<h2 class="title-3 ts-ebook__title">{ v.Heading }</h2>
+		if v.Notice != "" {
+			<p class="ts-book__applied label" role="status">
+				@components.Icon("check", false)
+				{ v.Notice }
+			</p>
+		}
 		if v.Lead != "" {
 			<p class="body ts-ebook__lead">{ v.Lead }</p>
 		}
@@ -213,7 +223,7 @@ templ EbookEdition(f TextFileView) {
 				</li>
 			}
 		</ol>
-		if f.Choose != nil || f.MakeDefault != nil || (f.NotSame != nil && f.Card == nil) {
+		if f.Choose != nil || f.MakeDefault != nil || (f.NotSame != nil && f.Card == nil) || f.RemoveHref != "" {
 			<div class="ts-pair__actions">
 				if f.Choose != nil {
 					@textActionForm(*f.Choose)
@@ -223,6 +233,9 @@ templ EbookEdition(f TextFileView) {
 				}
 				if f.NotSame != nil && f.Card == nil {
 					@textActionForm(*f.NotSame)
+				}
+				if f.RemoveHref != "" {
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(f.RemoveHref) } aria-label={ f.RemoveAria }>{ f.RemoveLabel }</a>
 				}
 			</div>
 		}

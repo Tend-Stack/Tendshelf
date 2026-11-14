@@ -102,3 +102,12 @@ with
 Rewrap the paragraph to the file's width. In "Security and privacy", after the bullet starting "All authorization goes through `share.Can(user, action, target)`", (it ends "...counts and search must not leak titles)."), add the bullet
 "- A contributor is a member with `users.adds_books = 1` (decision 0029). They edit, look up and remove only books their own uploads placed (`upload_books`,
   read inside `share.Can`, never from the request), never write into a library file, and remove only files they placed."
+
+## Amendment 2026-11-13: removing parts of a combined book and Text-page uploads
+A contributor removes only what they added, down to the single file. On a book with audio and text, "Remove the whole book" is theirs only when
+the audio is theirs; it then removes the text they added and leaves any ebook someone else added (a library file on disk, or a copy stored from the
+Text page by another person), unpaired. "Remove the audiobook only" and "Remove the text book only" follow the same rule, and the contributor keeps
+their record (`upload_books`) of a text book that stays after the audio goes, so they can still edit and remove it. A book with no audio is theirs to
+remove whole only when every one of its files is theirs; a stored Text-page upload is theirs when `ebook_files.uploaded_by` is them. A refusal
+(`not_theirs`) happens before anything is dropped. Owner and admin remove any stored upload. Editing details by hand uses `share.EditBook`, so a
+contributor edits their own books and gets 404 for the others.

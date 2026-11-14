@@ -276,7 +276,40 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.removableFor(r.Context(), currentUser(r), b.ID) {
+	parts, err := s.uploads.PartsOf(r.Context(), b.ID, s.removePlacedBy(currentUser(r)))
+	if err != nil {
+		s.serverError(w, r, "remove book", err)
+		return
+	}
+	if fid := r.URL.Query().Get("file"); fid != "" {
+		// "Remove this edition" from a card on the Text tab: one ebook file, nothing else.
+		pf, ok := parts.EditionRemovable(fid)
+		if !ok {
+			s.notFound(w, r)
+			return
+		}
+		name := filepath.Base(pf.Path)
+		if s.ebooks == nil {
+			s.notFound(w, r)
+			return
+		}
+		if f, found, err := s.ebooks.Store().File(r.Context(), fid); err == nil && found {
+			name = ebookName(f)
+		}
+		v := pages.BookRemoveView{
+			Title: bookRemoveEditionConfirm, Body: fmt.Sprintf(bookRemoveEditionBody, "“"+name+"”"), Cancel: bookRemoveCancel,
+			Action: "/books/" + b.ID + "/remove", CancelHref: ebookTextHref(b.ID), CSRF: s.csrf.TokenFrom(r.Context()),
+			Choices: []pages.RemoveChoice{{Part: "text", File: fid, Label: bookRemoveEditionLabel}},
+		}
+		s.pageStyled(w, r, http.StatusOK, bookRemoveEditionConfirm, "library", pages.BookRemove(v), nil, uploadStyles...)
+		return
+	}
+	combined := parts.Combined && (parts.Audio || parts.AnyText())
+	if !combined && !parts.Whole {
+		s.notFound(w, r)
+		return
+	}
+	if q := r.URL.Query().Get("part"); q != "" && !removeChoicePart(q) {
 		s.notFound(w, r)
 		return
 	}
@@ -285,9 +318,60 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "remove book", err)
 		return
 	}
+	body := bookRemoveText(len(files))
+	if !parts.HasAudio && len(parts.Text) > 0 {
+		body = bookRemoveTextBody
+	}
 	v := pages.BookRemoveView{
-		Title: bookRemoveConfirm, Body: bookRemoveText(len(files)), Button: bookRemoveButton, Cancel: bookRemoveCancel,
+		Title: bookRemoveConfirm, Body: body, Button: bookRemoveButton, Cancel: bookRemoveCancel,
 		Action: "/books/" + b.ID + "/remove", CancelHref: "/books/" + b.ID, CSRF: s.csrf.TokenFrom(r.Context()),
+	}
+	if !parts.HasAudio {
+		// A book of ebooks only: the files Tendshelf stored or placed for it are listed by name.
+		for _, f := range parts.Text {
+			name := filepath.Base(f.Path)
+			if s.ebooks != nil {
+				if ef, found, err := s.ebooks.Store().File(r.Context(), f.ID); err == nil && found {
+					name = ebookName(ef)
+				}
+			}
+			v.Files = append(v.Files, name)
+		}
+	}
+	if combined {
+		// A book with audio and a text book: three plain choices, each its own button (the whole book first
+		// only when every file is Tendshelf's).
+		v.Title, v.Body, v.Button = bookRemoveCombinedConfirm, bookRemoveCombinedBody, ""
+		for i, f := range parts.Text {
+			name := filepath.Base(f.Path)
+			if s.ebooks != nil {
+				if ef, found, err := s.ebooks.Store().File(r.Context(), f.ID); err == nil && found {
+					name = ebookName(ef)
+				}
+			}
+			if f.Removable {
+				label := bookRemoveTextButton
+				if len(parts.Text) > 1 {
+					// Editions often share a name, so each is numbered in the order the Text tab lists them.
+					label = fmt.Sprintf(bookRemoveTextFileButton, fmt.Sprintf("%d (%s)", i+1, name))
+				}
+				v.Choices = append(v.Choices, pages.RemoveChoice{Part: "text", File: f.ID, Label: label, Help: bookRemoveTextHelp})
+			}
+			v.Files = append(v.Files, name)
+		}
+		if parts.Audio {
+			v.Choices = append(v.Choices, pages.RemoveChoice{Part: "audio", Label: bookRemoveAudioButton, Help: bookRemoveAudioHelp})
+		}
+		if parts.Whole {
+			help := bookRemoveWholeHelp
+			if n := parts.Staying(); n > 0 {
+				help += " " + countText(n, bookRemoveStayingOne, bookRemoveStaying)
+			}
+			if n := parts.StayingByOthers(); n > 0 {
+				help += " " + countText(n, bookRemoveStayingOthersOne, bookRemoveStayingOthers)
+			}
+			v.Choices = append(v.Choices, pages.RemoveChoice{Label: bookRemoveWholeButton, Help: help})
+		}
 	}
 	for _, f := range files {
 		if rel, err := filepath.Rel(b.RootPath, f.Path); err == nil && !strings.HasPrefix(rel, "..") && rel != "." {
@@ -296,8 +380,26 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 			v.Files = append(v.Files, filepath.Base(f.Path))
 		}
 	}
+	if q := r.URL.Query().Get("part"); q != "" && combined {
+		// The menu's quick actions: only the choices of that part, each still its own confirming button.
+		want := map[string]string{"whole": "", "audio": "audio", "text": "text"}[q]
+		var keep []pages.RemoveChoice
+		for _, c := range v.Choices {
+			if c.Part == want {
+				keep = append(keep, c)
+			}
+		}
+		if len(keep) == 0 {
+			s.notFound(w, r)
+			return
+		}
+		v.Choices = keep
+	}
 	s.pageStyled(w, r, http.StatusOK, bookRemoveConfirm, "library", pages.BookRemove(v), nil, uploadStyles...)
 }
+
+// removeChoicePart is true for the parts the menu names in ?part=.
+func removeChoicePart(q string) bool { return q == "whole" || q == "audio" || q == "text" }
 
 // adminUploadsView is the section "Adding books from this device"; nil when uploads are not set up.
 // errLib and errText put the refusal of a failed save under that library.

@@ -30,6 +30,13 @@ func eadmEPUB(t *testing.T, title, author string) []byte {
 // that hands ebooks to it, the way the server does.
 func eadmIngest(t *testing.T, e *env) *scan.Scanner {
 	t.Helper()
+	sc, _ := eadmIngestSvc(t, e)
+	return sc
+}
+
+// eadmIngestSvc is eadmIngest that also returns the ebook service.
+func eadmIngestSvc(t *testing.T, e *env) (*scan.Scanner, *ebook.Service) {
+	t.Helper()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	runner, err := jobs.New(e.st, jobs.Options{Logger: log, PollEvery: 20 * time.Millisecond, ProgressEvery: 50 * time.Millisecond})
 	if err != nil {
@@ -50,7 +57,7 @@ func eadmIngest(t *testing.T, e *env) *scan.Scanner {
 	sc := scan.New(e.repo, mediatest.FakeTools(t), &scanEnq{}, log)
 	sc.OnEbooks(svc.ScanSink())
 	sc.OnScanFinished(svc.Finisher())
-	return sc
+	return sc, svc
 }
 
 // eadmScanLast runs the scoped scan the last placement queued, then waits for the text book to appear.

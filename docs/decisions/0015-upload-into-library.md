@@ -86,6 +86,25 @@ Amends AGENTS.md "Audio files are the user's" and architecture invariant 1.
    is a `present` row in `upload_paths`. It deletes each recorded file whose size, mtime and quick hash are unchanged,
    keeps and names any other, removes the recorded folders that are now empty (deepest first) and deletes the book
    rows when no audio is left. This is the only delete path.
+   *Amendment 2026-11-13, remove one part.* A book with audio and attached ebook files can lose one part, through the same
+   service and the same `removeFile`: `POST /books/{id}/remove` takes `part` (`text` with `file`, `audio`, or empty for the
+   whole book). The ledger rule applies to that part alone. A library ebook is removed only when it is a `present`, unchanged
+   ledger file (`upload.RemoveEbookFile`); a copy uploaded on the Text page is Tendshelf's own stored file and goes with its
+   rows (`ebook.RemoveUpload`). If the removed file was the book's edition the newest ready one takes over
+   (`ebook.EnsureDefault`; a person's own choice cascades away with the file). "Remove the audiobook only" first moves the
+   ebook files to text books of their own (`ebook.SplitText`: reading places, highlights and bookmarks go with them), then removes the
+   audio through the whole-book path, sparing the text files placed in the same folder; the audiobook's own listening
+   progress and bookmarks go with it, as in a whole-book removal.
+   *Whole book of a combined book.* `upload.RemoveWhole` first removes every attached ebook file that is removable on its
+   own, by the code above (`ebook.RemoveUpload` or `RemoveEbookFile`), so no Text-page upload is left behind with rows or
+   stored bytes. An ebook file Tendshelf did not place (or that changed) stays on disk and is only unpaired; the confirm
+   page says "N files stay on disk because Tendshelf did not place them." The whole book is offered when its audio is
+   Tendshelf's, even if such a library ebook sits beside it.
+   *Text-only books.* A book with no audio is removable whole when every one of its ebook files is Tendshelf's: a stored
+   Text-page upload or an unchanged ledger file. `RemoveWhole` drops each stored upload through `ebook.RemoveUpload`, hands
+   ledger files to `Remove`, and deletes the book row (progress, bookmarks, shelves and metadata cascade). With several
+   editions each card also removes its own; the last edition is removed with the whole book. `GET /books/{id}/remove?file=` confirms one edition and
+   `?part=whole|audio|text` confirms one part (the three-dot menu's quick actions). A book with one part keeps the old flow.
 12. **JavaScript.** One lazy module `js/upload.js`, about 5 KB gzip, imported by a generic 8-line loader in `shell.js`
    (`[data-ts-module]`) only on the Add books page. No-JavaScript fallback: **not built**; the page says
    "Adding books needs JavaScript in this browser. You can also copy a book's folder into {path}, then press Scan."

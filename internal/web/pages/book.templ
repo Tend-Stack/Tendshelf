@@ -154,6 +154,22 @@ type DetailsEditView struct {
 	ResetTitle, ResetBody, ResetButton string
 	// LookupCaption is the line under the lookup button.
 	LookupCaption string
+	// Form is the edit-by-hand form; nil hides it (a person who may not edit, or no details service).
+	Form *DetailsFormView
+}
+
+// DetailsFormView is the "Edit details" form: the fields as text, each with its own refusal. Open shows it expanded.
+type DetailsFormView struct {
+	Action, CSRF, Title, Intro, Note, Submit, Problem string
+	Open, HasProblem                                  bool
+	Fields                                            []DetailsFormField
+	Description                                       DetailsFormField
+}
+
+// DetailsFormField is one box of the form; Multiline is a text area.
+type DetailsFormField struct {
+	components.Field
+	Multiline bool
 }
 
 templ backIcon() {
@@ -529,7 +545,7 @@ templ bookDetails(v BookView) {
 // hasDetailsPanel is true when the person has at least one control for the options panel.
 func hasDetailsPanel(v BookView) bool {
 	return v.PanelTitle != "" && (v.Edit.LookupHref != "" || v.Edit.ResetAction != "" || v.CoverHref != "" ||
-		v.Write.OpenHref != "" || v.Write.Pending.ConfirmAction != "" || v.Write.Note != "" || v.Edit.Applied != "" || v.Write.Attention != nil || v.RemoveHref != "")
+		v.Write.OpenHref != "" || v.Write.Pending.ConfirmAction != "" || v.Write.Note != "" || v.Edit.Applied != "" || v.Write.Attention != nil || v.RemoveHref != "" || v.Edit.Form != nil)
 }
 
 // bookDetailsPanel is the card of options about the book: the latest status first, the "Waiting
@@ -608,6 +624,9 @@ templ bookDetailsPanel(v BookView) {
 						</div>
 					}
 				</div>
+			}
+			if v.Edit.Form != nil {
+				@detailsEditForm(*v.Edit.Form)
 			}
 			if v.RemoveHref != "" {
 				<a class="ts-btn ts-btn--quiet ts-btn--block ts-book__remove" href={ templ.SafeURL(v.RemoveHref) }>{ v.RemoveLabel }</a>

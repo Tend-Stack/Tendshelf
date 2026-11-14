@@ -56,6 +56,31 @@ const (
 	bookRemoveBodyOne = "This deletes the file Tendshelf added for this book. Files changed since then stay."
 	bookRemoveButton  = "Remove this book"
 	bookRemoveCancel  = "Keep it"
+
+	// Removing one part of a book that has both audio and text (decision 0015, "Remove one part").
+	bookRemoveCombinedConfirm  = "What would you like to remove?"
+	bookRemoveCombinedBody     = "This book has audio and a text book. Pick what to remove. Files changed since Tendshelf added them stay."
+	bookRemoveTextButton       = "Remove the text book only"
+	bookRemoveTextHelp         = "The audiobook, your listening place and your bookmarks stay."
+	bookRemoveTextFileButton   = "Remove the text book %s only"
+	bookRemoveAudioButton      = "Remove the audiobook only"
+	bookRemoveAudioHelp        = "The text book stays, with your reading place, highlights and bookmarks. Your listening place goes with the audio."
+	bookRemoveWholeButton      = "Remove the whole book"
+	bookRemoveWholeHelp        = "Deletes the audio and every text book Tendshelf added. Your listening progress, bookmarks and reading places on this book go with it."
+	bookRemoveTextBody         = "This deletes the book and the ebook files Tendshelf stored for it. Your reading places, bookmarks and shelves for it go too."
+	bookRemoveStayingOne       = "1 file stays on disk because Tendshelf did not place it."
+	bookRemoveStaying          = "%d files stay on disk because Tendshelf did not place them."
+	bookRemoveStayingOthersOne = "1 text book stays because someone else added it."
+	bookRemoveStayingOthers    = "%d text books stay because someone else added them."
+	bookRemoveEditionLabel     = "Remove this edition"
+	bookRemoveEditionAria      = "Remove this edition: %s"
+	bookRemoveEditionConfirm   = "Remove this edition?"
+	bookRemoveEditionBody      = "This deletes the ebook %s from this book. The other editions, the audiobook and your places stay."
+	bookRemoveEditionNo        = "Tendshelf did not add this ebook, or it is the only text of the book, so it will not remove it here."
+	bookRemoveEditionDone      = "The edition was removed."
+	bookRemoveTextKept         = "That file changed since Tendshelf added it, so it stays."
+	bookRemoveTextDone         = "The text book was removed. The audiobook is still here."
+	bookRemoveAudioDone        = "The audiobook was removed. The text book is still here."
 )
 
 func uploadRowWords() components.UploadRowWords {

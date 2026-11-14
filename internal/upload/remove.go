@@ -87,26 +87,16 @@ func (s *Service) ebookPaths(ctx context.Context, bookID string) ([]string, erro
 // library ebook file must lie inside a root that person's uploads published, otherwise 409 not_theirs and
 // nothing is touched. A contributor always removes with placedBy set to themselves; owner and admin pass "".
 func (s *Service) Remove(ctx context.Context, userID, bookID, placedBy string) (RemoveResult, error) {
+	return s.remove(ctx, userID, bookID, placedBy, nil)
+}
+
+// remove is Remove that leaves the files in keep alone ("Remove the audiobook only": the text files that were
+// placed in the same folder stay). Every other rule is Remove's.
+func (s *Service) remove(ctx context.Context, userID, bookID, placedBy string, keep map[string]bool) (RemoveResult, error) {
 	res := RemoveResult{Deleted: []string{}, Kept: []string{}}
-	book, err := s.repo.Book(ctx, bookID)
-	if errors.Is(err, library.ErrNotFound) {
-		return res, errNotFound
-	} else if err != nil {
-		return res, err
-	}
-	if !s.Removable(ctx, bookID) {
-		return res, fail(409, "not_removable", "Tendshelf did not add this book, so it will not remove it.")
-	}
-	if placedBy != "" {
-		if theirs, err := s.allFilesAddedBy(ctx, bookID, placedBy); err != nil {
-			return res, err
-		} else if !theirs {
-			return res, fail(409, "not_theirs", "Someone else added part of this book, so only an admin can remove it.")
-		}
-	}
-	folder, err := s.repo.Folder(ctx, book.FolderID)
+	book, folder, err := s.removeChecks(ctx, bookID, placedBy, false)
 	if err != nil {
-		return res, fail(409, "not_removable", "The folder this book is in is no longer part of the library.")
+		return res, err
 	}
 	lr, err := openLroot(folder.Path)
 	if err != nil {
@@ -145,7 +135,7 @@ func (s *Service) Remove(ctx context.Context, userID, bookID, placedBy string) (
 			}
 			switch r.Kind {
 			case kindFile:
-				if !within(book.RootPath, r.Path) {
+				if !within(book.RootPath, r.Path) || keep[r.Path] {
 					continue
 				}
 				if s.removeFile(ctx, lr, r, &res) {
@@ -207,13 +197,17 @@ func (s *Service) Remove(ctx context.Context, userID, bookID, placedBy string) (
 		if err != nil {
 			return res, err
 		}
-		// The record of who added it goes with the book: its root and anything inside it.
-		err = s.write(ctx, nil, func(tx *sql.Tx) error {
-			_, err := tx.ExecContext(ctx, `DELETE FROM upload_books WHERE root_path = ?1 OR (root_path > ?1 || '/' AND root_path < ?1 || '0')`, book.RootPath)
-			return err
-		})
-		if err != nil {
-			return res, err
+		// The record of who added it goes with the book: its root and anything inside it. Not when files were kept
+		// on purpose ("Remove the audiobook only"): the text books that stay in that folder are still the person's
+		// to edit and remove, and that record is how the contributor's rights to them are read.
+		if len(keep) == 0 {
+			err = s.write(ctx, nil, func(tx *sql.Tx) error {
+				_, err := tx.ExecContext(ctx, `DELETE FROM upload_books WHERE root_path = ?1 OR (root_path > ?1 || '/' AND root_path < ?1 || '0')`, book.RootPath)
+				return err
+			})
+			if err != nil {
+				return res, err
+			}
 		}
 		err = s.write(ctx, nil, func(tx *sql.Tx) error { return s.audit(ctx, tx, userID, "upload.remove", "book:"+bookID, detail) })
 		return res, err
@@ -230,6 +224,44 @@ func (s *Service) Remove(ctx context.Context, userID, bookID, placedBy string) (
 	}
 	err = s.write(ctx, nil, func(tx *sql.Tx) error { return s.audit(ctx, tx, userID, "upload.remove", "book:"+bookID, detail) })
 	return res, err
+}
+
+// removeChecks runs every refusal Remove has before it touches anything, so a caller that does something
+// destructive first (drops a stored upload, splits the text off) can learn beforehand that Remove would refuse:
+// the book exists, the files are Tendshelf's (and the contributor's), the folder is still in the library and can
+// be opened. filesAreSetAside skips the file checks for a caller that takes the files it does not own off the
+// book before it calls Remove (the whole-book and audio-only removals of a combined book); it has checked the
+// audio itself.
+func (s *Service) removeChecks(ctx context.Context, bookID, placedBy string, filesAreSetAside bool) (library.Book, library.Folder, error) {
+	var folder library.Folder
+	book, err := s.repo.Book(ctx, bookID)
+	if errors.Is(err, library.ErrNotFound) {
+		return book, folder, errNotFound
+	} else if err != nil {
+		return book, folder, err
+	}
+	if !filesAreSetAside {
+		if !s.Removable(ctx, bookID) {
+			return book, folder, fail(409, "not_removable", "Tendshelf did not add this book, so it will not remove it.")
+		}
+		if placedBy != "" {
+			if theirs, err := s.allFilesAddedBy(ctx, bookID, placedBy); err != nil {
+				return book, folder, err
+			} else if !theirs {
+				return book, folder, fail(409, "not_theirs", "Someone else added part of this book, so only an admin can remove it.")
+			}
+		}
+	}
+	folder, err = s.repo.Folder(ctx, book.FolderID)
+	if err != nil {
+		return book, folder, fail(409, "not_removable", "The folder this book is in is no longer part of the library.")
+	}
+	lr, err := openLroot(folder.Path)
+	if err != nil {
+		return book, folder, err
+	}
+	lr.Close()
+	return book, folder, nil
 }
 
 // removeFile deletes one ledger file when it is unchanged. It reports whether the file is gone.

@@ -1,0 +1,30 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// detailsEditForm is the "Edit details" disclosure of the Details tab. It is a plain form that also works
+// without JavaScript, and it opens by itself after a refusal or when the More menu asks for it.
+templ detailsEditForm(f DetailsFormView) {
+	<details id="edit-details" class="ts-book__edit" open?={ f.Open }>
+		<summary class="ts-btn ts-btn--secondary ts-btn--block">{ f.Title }</summary>
+		<form method="post" action={ templ.URL(f.Action) } class="ts-book__editform">
+			<input type="hidden" name="_csrf" value={ f.CSRF }/>
+			<p class="caption">{ f.Intro }</p>
+			if f.HasProblem {
+				<p class="ts-field__error" role="alert">{ f.Problem }</p>
+			}
+			for _, fd := range f.Fields {
+				@components.TextField(fd.Field)
+			}
+			<div class="ts-field">
+				<label class="ts-field__label" for={ f.Description.ID }>{ f.Description.Label }</label>
+				<textarea id={ f.Description.ID } name={ f.Description.Name } class="ts-input" rows="6">{ f.Description.Value }</textarea>
+				if f.Description.Error != "" {
+					<p class="ts-field__error">{ f.Description.Error }</p>
+				}
+			</div>
+			<p class="caption">{ f.Note }</p>
+			<button type="submit" class="ts-btn ts-btn--primary ts-btn--block">{ f.Submit }</button>
+		</form>
+	</details>
+}

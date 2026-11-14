@@ -1051,6 +1051,12 @@ Checks: handler tests with forbidden cases, route matrix rows, a browser test wi
 Limits: passkeys are offered only on a named host over HTTPS (or localhost), not on an IP address and not inside the Android or desktop app windows; not checked with a real hardware key or a real phone.
 Next: a check with a real authenticator by the operator.
 
+## Remove one part of a book and edit details by hand (decisions 0015 and 0029, 2026-11-13)
+Scope: remove one edition, the text book only, the audiobook only or the whole book (`internal/upload/remove_part.go`, `remove.go`, the remove routes and copy); "Edit details" on the Details tab saves `user` rows (`internal/metadata/user.go`, `POST /books/{id}/details/edit`). Review fixes: a contributor removes only their own files, also among the stored Text-page uploads of a book (another person's stored copy stays, unpaired, and a text-only book with one is not removable by them); Remove's refusals run before a stored upload is dropped or the text is split off, so a refusal changes nothing; "Remove the audiobook only" keeps the contributor's record of the text books that stay; a file Tendshelf cannot look at keeps its row; saving the edit form skips every field left as the form showed it (a name such as "Downey, Jr." is not split, a description is not pinned) and changes only the first series.
+Checks: `go test -race` on `internal/upload`, `internal/metadata`, `internal/ebook` and `internal/web`; gofmt, `go vet`, `make generate` clean, `CGO_ENABLED=0 go build ./...`. No browser tests for the fixes.
+Limits: a text-only book with a library file Tendshelf did not place has no remove action; removing a stored upload leaves the derived text documents (`<data>/text/`) on disk; clearing a field of the edit form returns the derived value (the file, sidecar or lookup), not an empty one.
+Next: the lead's full gate on the merged tree, then the parity and visual checks of the remove pages.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), OPDS, podcasts, RSS feeds of books/series, OpenID

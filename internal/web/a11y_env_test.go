@@ -227,6 +227,13 @@ func a11ySeed(t *testing.T) *a11yEnv {
 		streamExec(t, up, `INSERT INTO upload_paths(id, upload_id, library_folder_id, path, kind, state, size, mtime_ns, quick_hash, created_at, updated_at)
 			SELECT ?, id, folder_id, ?, 'file', 'present', 1, 1, 'x', 1, 1 FROM uploads WHERE id = 'upl_a3'`, fmt.Sprintf("upp_a11y_%d", i), f.Path)
 	}
+	// Two editions uploaded on the Text page make the remove page the combined one (three choices, one button per edition).
+	for i, fill := range []string{"b", "c"} {
+		streamExec(t, up, `INSERT INTO ebook_files(id, origin, library_id, book_id, book_default, paired_by, ext, size, mtime_ns, quick_hash, sha256, state,
+			original_name, created_at, updated_at) SELECT ?, 'upload', library_id, id, ?, 'upload', 'epub', 10, 0, replace(hex(zeroblob(32)), '0', ?),
+			replace(hex(zeroblob(32)), '0', ?), 'ready', 'The Lantern Years.epub', ?, ? FROM books WHERE id = ?`,
+			fmt.Sprintf("ebf_a11y_rm%d", i), 1-i, fill, fill, i+1, i+1, e.UploadBookID)
+	}
 	as("upload/owner", up, up.owner(t))
 
 	// fresh: no owner yet (/setup); setup: an owner who has not finished the three steps.

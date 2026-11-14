@@ -13,6 +13,9 @@ const (
 	moreShare       = "Share"
 	moreFeed        = "Podcast feed"
 	moreEditDetails = "Edit details"
+	moreRemoveText  = "Remove the text book"
+	moreRemoveAudio = "Remove the audiobook only"
+	moreRemoveWhole = "Remove the whole book"
 )
 
 // bookMoreMenu is the three-dot menu of the book page. Each item is there only when the person may use it,
@@ -36,9 +39,44 @@ func (s *server) bookMoreMenu(r *http.Request, book library.Book, seriesHref str
 		items = append(items, components.MoreMenuItem{Label: coverChangeLink, Href: coverSheetHref(book.ID, ""), Sheet: true})
 	}
 	if canEdit && s.details != nil {
-		items = append(items, components.MoreMenuItem{Label: moreEditDetails, Href: detailsTabHref(book.ID)})
+		items = append(items, components.MoreMenuItem{Label: moreEditDetails, Href: detailsEditHref(book.ID)})
 	}
+	items = append(items, s.removeMenuItems(r, book, target)...)
 	return components.MoreMenuView{Items: items}
+}
+
+// removeMenuItems are the quick removal actions of the menu. They open the same confirm page as the buttons on the
+// book page (GET /books/{id}/remove with a part), and only for what is removable by the same rule.
+func (s *server) removeMenuItems(r *http.Request, book library.Book, target share.Target) []components.MoreMenuItem {
+	if s.uploads == nil || !s.can.Can(r.Context(), currentUser(r), share.RemoveBook, target) {
+		return nil
+	}
+	parts, err := s.uploads.PartsOf(r.Context(), book.ID, s.removePlacedBy(currentUser(r)))
+	if err != nil {
+		return nil
+	}
+	base := "/books/" + book.ID + "/remove"
+	var items []components.MoreMenuItem
+	if parts.Combined && parts.AnyText() {
+		href, n := base+"?part=text", 0
+		for _, f := range parts.Text {
+			if f.Removable {
+				n++
+				href = base + "?file=" + f.ID
+			}
+		}
+		if n > 1 {
+			href = base + "?part=text"
+		}
+		items = append(items, components.MoreMenuItem{Label: moreRemoveText, Href: href})
+	}
+	if parts.Combined && parts.Audio {
+		items = append(items, components.MoreMenuItem{Label: moreRemoveAudio, Href: base + "?part=audio"})
+	}
+	if parts.Whole {
+		items = append(items, components.MoreMenuItem{Label: moreRemoveWhole, Href: base + "?part=whole"})
+	}
+	return items
 }
 
 // bookSeriesHref is the address of the book's first series page, or "" (for the play region read on its own).

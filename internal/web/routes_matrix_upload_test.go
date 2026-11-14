@@ -52,6 +52,20 @@ func uploadSweepRows() []sweepRow {
 	// role gets 404 (the allowed answers are in routes_upload_pages_test.go).
 	addPage := sweepGet("GET /libraries/{id}/add", func(e *sweepEnv, _ int) string { return "/libraries/" + e.libID + "/add" }, sweepSame(http.StatusNotFound))
 	rowPage := sweepGet("GET /hx/uploads/{id}", sweepStatic("/hx/uploads/upl_none"), sweepSame(http.StatusNotFound))
-	removePage := sweepGet("GET /books/{id}/remove", sweepBookPath("/remove"), sweepSame(http.StatusNotFound))
-	return []sweepRow{create, get, chunk, finish, cancel, setting, remove, addPage, rowPage, removePage}
+	removePage := sweepGet("GET /books/{id}/remove", sweepBookPath("/remove"), staff(http.StatusOK))
+	// Removing one part (decision 0015, "Remove one part"): the same two routes with a part, a file and an unknown
+	// part. The sweep's book has no audio-and-text pair Tendshelf added, so staff get 409 or 404 and nobody else gets in.
+	removeText := sweepPost("POST /books/{id}/remove", sweepBookPath("/remove"), sweepFormOf(url.Values{"part": {"text"}, "file": {"ebf_none"}}),
+		staff(http.StatusConflict), "")
+	removeText.Label = "one edition"
+	removeAudio := sweepPost("POST /books/{id}/remove", sweepBookPath("/remove"), sweepFormOf(url.Values{"part": {"audio"}}),
+		staff(http.StatusConflict), "")
+	removeAudio.Label = "the audiobook only"
+	removeOdd := sweepPost("POST /books/{id}/remove", sweepBookPath("/remove"), sweepFormOf(url.Values{"part": {"sideways"}}),
+		sweepSame(http.StatusNotFound), "")
+	removeOdd.Label = "unknown part"
+	removeEdition := sweepGet("GET /books/{id}/remove", sweepBookPath("/remove?file=ebf_none"), sweepSame(http.StatusNotFound))
+	removeEdition.Label = "confirm one edition"
+	return []sweepRow{create, get, chunk, finish, cancel, setting, remove, addPage, rowPage, removePage,
+		removeText, removeAudio, removeOdd, removeEdition}
 }

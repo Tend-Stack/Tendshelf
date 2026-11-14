@@ -152,7 +152,7 @@ func TestVisualBookPages(t *testing.T) {
 
 	type page struct{ name, path string }
 	main4 := []page{{"book-about", "/books/" + bookID}, {"author", "/authors/" + authorID}, {"series", "/series/" + seriesID}, {"search", "/search?q=harbour"}}
-	extra := []page{{"book-chapters", "/books/" + bookID + "/chapters"}, {"book-details", "/books/" + bookID + "/details"}, {"narrator", "/narrators/" + narratorID}, {"search-none", "/search?q=lighthuose"}}
+	extra := []page{{"book-chapters", "/books/" + bookID + "/chapters"}, {"book-details", "/books/" + bookID + "/details"}, {"book-details-edit", "/books/" + bookID + "/details?edit=1"}, {"narrator", "/narrators/" + narratorID}, {"search-none", "/search?q=lighthuose"}}
 	type job struct {
 		pg    page
 		theme string

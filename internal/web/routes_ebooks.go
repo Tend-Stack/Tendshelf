@@ -61,6 +61,9 @@ func (s *server) textView(r *http.Request, book library.Book, edit, all bool, up
 		return pages.TextView{}, err
 	}
 	v := pages.TextView{Heading: ebookTabLabel}
+	if r.URL.Query().Get("removed") == "edition" {
+		v.Notice = bookRemoveEditionDone
+	}
 	csrf := s.csrf.TokenFrom(ctx)
 	if edit {
 		v.Heading, v.Lead = ebookAddTitle, ebookAddLead

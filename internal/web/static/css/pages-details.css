@@ -104,6 +104,11 @@
 .ts-book__reset summary { cursor: pointer; }
 .ts-book__reset form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); margin-top: var(--space-8); }
 .ts-book__reset p { margin: 0; color: var(--ink-muted); }
+/* The hand-edit form: a disclosure that opens into one column of labelled boxes. */
+.ts-book__edit summary { cursor: pointer; }
+.ts-book__editform { display: flex; flex-direction: column; gap: var(--space-12); margin-top: var(--space-12); }
+.ts-book__editform p { margin: 0; color: var(--ink-muted); }
+.ts-book__editform .ts-field__error { color: var(--danger); }
 
 /* Author page: round photo (96 px on phone, 128 px from tablet), bio at the reading measure. */
 .ts-person__photo { width: 6rem; height: 6rem; margin-bottom: var(--space-8); object-fit: cover; background: var(--raised); }

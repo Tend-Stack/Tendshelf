@@ -32,6 +32,7 @@ func (s *server) registerBook(mux *http.ServeMux) {
 	mux.HandleFunc("GET /series/{id}", s.getSeries)
 	mux.HandleFunc("GET /search", s.getSearch)
 	s.registerDetails(mux)
+	s.registerDetailsEdit(mux)
 	s.registerCoverPick(mux)
 	s.registerWrite(mux)
 	s.registerChapters(mux)
@@ -177,8 +178,16 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 	if canCover {
 		v.CoverHref, v.CoverLabel = coverSheetHref(id, ""), coverChangeLink
 	}
-	if s.uploads != nil && s.can.Can(ctx, currentUser(r), share.RemoveBook, target) && s.removableFor(ctx, currentUser(r), id) {
-		v.RemoveHref, v.RemoveLabel = "/books/"+id+"/remove", bookRemoveLabel
+	if s.uploads != nil && s.can.Can(ctx, currentUser(r), share.RemoveBook, target) {
+		// Offered when the whole book is removable, or, for a book with audio and a text book, when either part is.
+		parts, err := s.uploads.PartsOf(ctx, id, s.removePlacedBy(currentUser(r)))
+		if err != nil {
+			s.serverError(w, r, "remove parts", err)
+			return
+		}
+		if parts.Any() {
+			v.RemoveHref, v.RemoveLabel = "/books/"+id+"/remove", bookRemoveLabel
+		}
 	}
 	if r.URL.Query().Get("sheet") == "cover" {
 		if !canCover {
