@@ -58,6 +58,17 @@ func TestNativeDownloadsBrowser(t *testing.T) {
 			if hidden("[data-ts-download]") || !hidden("[data-ts-download-status]") || text("[data-ts-download] .ts-book__label") != "Download" {
 				t.Errorf("none: button hidden %v, label %q", hidden("[data-ts-download]"), text("[data-ts-download] .ts-book__label"))
 			}
+			// Drawn, not only laid out: the page ships the button undrawn (data-ts-pending) and the app's answer shows it.
+			var drawn string
+			tab.Eval(`getComputedStyle(document.querySelector("[data-ts-download]")).visibility`, &drawn)
+			if drawn != "visible" {
+				t.Errorf("none: the Download button's visibility is %q, want visible", drawn)
+			}
+			// The play region is swapped in again when progress is saved: the new button is drawn at once from the
+			// standing the page already knows, without waiting for the app to answer again.
+			tab.Eval(`document.querySelector("[data-ts-download]").dataset.old = "1"; document.body.dispatchEvent(new CustomEvent("progress-saved", {bubbles: true}))`, nil)
+			tab.WaitFor(`document.querySelector("[data-ts-download]") !== null && !document.querySelector("[data-ts-download]").dataset.old`, 8*time.Second)
+			tab.WaitFor(`getComputedStyle(document.querySelector("[data-ts-download]")).visibility === "visible"`, 3*time.Second)
 			tab.Eval(`document.querySelector("[data-ts-download]").click()`, nil)
 			tab.WaitFor(sent("dl add "+e.book.ID), 5*time.Second)
 

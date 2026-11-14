@@ -26,6 +26,8 @@ function start(bridge) {
     if (!button || !link) return;
     const label = button.querySelector(".ts-book__label");
     if (!firstLabel) firstLabel = label.textContent;
+    // The page lays the button out undrawn until someone knows how the book stands; here that is the app's answer.
+    button.removeAttribute("data-ts-pending");
     const listed = state === "ready" || state === "stale" || state === "paused";
     button.hidden = listed;
     // A waiting book keeps its button: an automatic download that waits for Wi-Fi turns into the person's own, and
@@ -88,7 +90,12 @@ function start(bridge) {
 
   function ask() {
     const id = bookId();
-    if (id) bridge.postMessage("dl ask " + id);
+    if (!id) return;
+    // The play region is swapped in again whenever progress is saved. A book whose standing is already known and
+    // at rest is drawn at once, so the button does not blink while the app answers.
+    const known = standing.get(id);
+    if (known === "none" || known === "ready" || known === "stale" || known === "paused" || known === "failed") show(known, 0, true);
+    bridge.postMessage("dl ask " + id);
   }
 
   bridge.addEventListener("message", (event) => {
