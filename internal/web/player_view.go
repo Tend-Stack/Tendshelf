@@ -157,8 +157,10 @@ func (s *server) bookPlayerView(ctx context.Context, sc library.Scope, book libr
 			MayNeedCompat: media.MayNeedCompat(f.Container, f.Codec), Playable: streamable(book, f),
 		})
 	}
-	for _, c := range d.Chapters {
-		v.Chapters = append(v.Chapters, components.PlayerChapterView{Idx: c.Idx, StartMs: c.StartMs, EndMs: c.EndMs, Title: c.Title})
+	chapterNum := chapterNamesOf(d.Chapters)
+	v.ChapterTotal = chapterNum.Total
+	for i, c := range d.Chapters {
+		v.Chapters = append(v.Chapters, components.PlayerChapterView{Idx: c.Idx, StartMs: c.StartMs, EndMs: c.EndMs, Title: c.Title, Num: chapterNum.Nums[i]})
 	}
 	return v, nil
 }

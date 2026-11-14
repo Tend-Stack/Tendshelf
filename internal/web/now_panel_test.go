@@ -22,26 +22,41 @@ import (
 // The Now playing panel's server side (NP1). Helpers start with "nowpanel".
 
 func TestNowChapterLine(t *testing.T) {
+	// titles is the whole book; the line is for chapter idx (0-based)
+	named := func(n int) []string {
+		out := make([]string, n)
+		for i := range out {
+			out[i] = fmt.Sprintf("Track %02d", i+1)
+		}
+		return out
+	}
+	with := func(base []string, idx int, title string) []string {
+		base[idx] = title
+		return base
+	}
 	for _, c := range []struct {
 		name        string
-		index, n    int
-		title       string
+		titles      []string
+		idx         int
 		lead, extra string
 	}{
-		{"no title", 13, 27, "", "Chapter 13 of 27", ""},
-		{"the number as a name", 13, 27, "Chapter 13", "Chapter 13 of 27", ""},
-		{"any case", 13, 27, "chapter 13", "Chapter 13 of 27", ""},
-		{"just the digits", 13, 27, "13", "Chapter 13 of 27", ""},
-		{"padded digits", 13, 27, " 13 ", "Chapter 13 of 27", ""},
-		{"another number is a name", 13, 27, "Chapter 12", "Chapter 13 of 27", "Chapter 12"},
-		{"a real name", 2, 19, "The Second Lamp", "Chapter 2 of 19", "The Second Lamp"},
-		{"one chapter", 1, 1, "The Whole Book", "", ""},
-		{"no chapters", 1, 0, "", "", ""},
+		{"no title", with(named(27), 12, ""), 12, "Chapter 13 of 27", ""},
+		{"just the digits", with(named(27), 12, "13"), 12, "Chapter 13 of 27", ""},
+		{"padded digits", with(named(27), 12, " 13 "), 12, "Chapter 13 of 27", ""},
+		{"a real name", with(named(19), 1, "The Second Lamp"), 1, "Chapter 2 of 19", "The Second Lamp"},
+		{"one chapter", []string{"The Whole Book"}, 0, "", ""},
+		{"no chapters", nil, 0, "", ""},
+		{"out of range", named(3), 5, "", ""},
+		// a book with a Prologue track: the title's own number leads, not the track's place
+		{"after a prologue", []string{"Prologue: 9:17 P.M.", "Chapter 1: Mud", "Chapter 2: Rain"}, 2, "Chapter 2 of 2", "Chapter 2: Rain"},
+		{"the prologue itself", []string{"Prologue: 9:17 P.M.", "Chapter 1: Mud", "Chapter 2: Rain"}, 0, "Prologue", "Prologue: 9:17 P.M."},
+		{"a bare name", []string{"Opening Credits", "Chapter 1", "Chapter 2"}, 0, "Opening Credits", ""},
+		{"a numbered title that only repeats", []string{"Opening Credits", "Chapter 1", "Chapter 2"}, 1, "Chapter 1 of 2", ""},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			lead, rest := ChapterLine(c.index, c.n, c.title)
+			lead, rest := ChapterLine(newChapterNames(c.titles), c.idx)
 			if lead != c.lead || rest != c.extra {
-				t.Errorf("ChapterLine(%d, %d, %q) = %q, %q; want %q, %q", c.index, c.n, c.title, lead, rest, c.lead, c.extra)
+				t.Errorf("ChapterLine(%q, %d) = %q, %q; want %q, %q", c.titles, c.idx, lead, rest, c.lead, c.extra)
 			}
 		})
 	}

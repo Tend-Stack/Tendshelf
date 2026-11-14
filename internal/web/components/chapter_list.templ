@@ -79,7 +79,11 @@ templ ChapterList(v ChapterListView) {
 }
 
 templ chapterCells(c ChapterRow) {
-	<span class="ts-chapter__num" aria-hidden="true">{ strconv.Itoa(c.Num) }</span>
+	<span class="ts-chapter__num" aria-hidden="true">
+		if c.Num > 0 {
+			{ strconv.Itoa(c.Num) }
+		}
+	</span>
 	<span class="ts-chapter__title">{ c.Title }</span>
 	if c.Played {
 		<span class="ts-chapter__state" aria-hidden="true">

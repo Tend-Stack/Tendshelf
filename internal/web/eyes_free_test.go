@@ -35,7 +35,7 @@ func TestEyesFreeMarkup(t *testing.T) {
 		`data-ts-ef-close`, `Back to the player`, `data-ts-ef-title`, `data-ts-ef-chapter`, `data-ts-ef-back`, `data-ts-ef-forward`,
 		`data-ts-ef-toggle`, `ts-eyesfree__zone--main`, `data-ts-ef-bookmark`, `>Bookmark<`, `data-ts-ef-sleep`, `data-ts-full-toasts`,
 		`data-ts-ef-status`, `Big buttons, no text to follow. The screen dims after 10 seconds; tap anywhere to wake it.`,
-		`data-ts-msg-chapter-line="Chapter {n} · {m} min left in chapter"`, `data-ts-msg-skip-back="Back {n} s"`,
+		`data-ts-msg-chapter-line="{chapter} · {m} min left in chapter"`, `data-ts-msg-skip-back="Back {n} s"`,
 		`data-ts-msg-skip-forward="Forward {n} s"`, `data-ts-msg-skip-back-label="Back {n} seconds"`, `data-ts-msg-sleep-chapter="End of chapter"`,
 		`data-ts-msg-sleep-minutes="{n} min"`, `data-ts-msg-sleep-off="Turn off"`,
 	} {

@@ -44,11 +44,11 @@ func bookmarkWhere(chapters []library.Chapter, posMs int64) (chapterNo int, cloc
 }
 
 // bookmarkWhenText is "Chapter 2 · 1:00", or just the clock without a chapter.
-func bookmarkWhenText(chapterNo int, clock string) string {
+func bookmarkWhenText(names chapterNames, chapterNo int, clock string) string {
 	if chapterNo <= 0 {
 		return clock
 	}
-	return fmt.Sprintf(bookmarkChapterN, chapterNo) + " · " + clock
+	return names.Name(chapterNo-1) + " · " + clock
 }
 
 // bookmarkDayText says when a bookmark was made in day words: "Today" before 18:00 and "Tonight"
@@ -77,7 +77,7 @@ func bookmarkDayText(at, now time.Time) string {
 // bookmarkRow turns a stored bookmark into the row the tab draws.
 func bookmarkRow(b progress.Bookmark, chapters []library.Chapter, now time.Time) components.BookmarkRowView {
 	n, clock := bookmarkWhere(chapters, b.PositionMs)
-	when := bookmarkWhenText(n, clock)
+	when := bookmarkWhenText(chapterNamesOf(chapters), n, clock)
 	v := components.BookmarkRowView{
 		ID: b.ID, BookID: b.BookID, WhenText: when, PlayAtMs: b.PositionMs, Note: b.Note,
 		DayText: bookmarkDayText(time.UnixMilli(b.CreatedAt).In(time.Local), now), NoNoteText: bookmarkNoNote,
@@ -202,7 +202,7 @@ func (s *server) bookmarksPanel(r *http.Request, d library.BookDetail) (pages.Bo
 		sv := pages.BookmarkSheetView{
 			ShowEnd: b.SID == "", KindLabel: clipKindName, EndLabel: clipEndLabel,
 			EndHint: fmt.Sprintf(clipEndHint, clockText(b.PositionMs)),
-			CSRF:    csrf, Title: bookmarkSheetTitle, When: bookmarkWhenText(n, clock), Note: b.Note,
+			CSRF:    csrf, Title: bookmarkSheetTitle, When: bookmarkWhenText(chapterNamesOf(d.Chapters), n, clock), Note: b.Note,
 			NoteLabel: bookmarkNoteLabel, SaveLabel: bookmarkSave, DeleteLabel: bookmarkDelete,
 			NoteAction: "/bookmarks/" + b.ID + "/note", DeleteAction: "/bookmarks/" + b.ID + "/delete",
 			CloseHref: base, CloseLabel: bookmarkClose, MaxRunes: progress.MaxNoteRunes,
@@ -269,11 +269,16 @@ func bookmarkGroupTitle(chapters []library.Chapter, n int) string {
 	if n <= 0 {
 		return bookmarkExportGroup
 	}
-	label := fmt.Sprintf(bookmarkChapterN, n)
-	if t := strings.TrimSpace(chapters[n-1].Title); t != "" {
-		return label + ": " + t
+	names := chapterNamesOf(chapters)
+	label := names.Name(n - 1)
+	t := strings.TrimSpace(chapters[n-1].Title)
+	if t == "" {
+		return label
 	}
-	return label
+	if !names.numbered(n - 1) {
+		return t // "Prologue: 9:17 P.M." already starts with its name
+	}
+	return label + ": " + t
 }
 
 // bookmarkExportBody writes the bookmarks (list is in position order) as plain text or Markdown,

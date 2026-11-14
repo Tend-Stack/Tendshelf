@@ -73,7 +73,7 @@ function draw() {
   const chapter = book.chapters[state.chapterIdx] || book.chapters[0];
   const minutes = Math.max(1, Math.ceil((chapter.end - state.positionMs) / 60000));
   setText(ui.title, book.title);
-  setText(ui.chapter, fill(msg("chapterLine"), { n: state.chapterIdx + 1, m: minutes }));
+  setText(ui.chapter, fill(msg("chapterLine"), { chapter: player.chapterWords(book, state.chapterIdx).lead, m: minutes }));
   setText(ui["back-text"], fill(msg("skipBack"), { n: book.skipBack }));
   setText(ui["forward-text"], fill(msg("skipForward"), { n: book.skipForward }));
   ui.back.setAttribute("aria-label", fill(msg("skipBackLabel"), { n: book.skipBack }));

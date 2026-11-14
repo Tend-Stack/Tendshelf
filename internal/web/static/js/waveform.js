@@ -295,17 +295,18 @@ function place(chapter, ms) {
 }
 
 function drawBar(state, info, chapter, force) {
-  const n = state.chapterIdx + 1;
+  const words = window.tsPlayer.chapterWords(info, state.chapterIdx);
   if (!drag) place(chapter, state.positionMs);
   // Many books name their chapters only "Chapter 12": that would read "Chapter 12 · Chapter 12".
   const plainTitle = /^(chapter|ch\.?|part)?\s*0*\d+\s*$/i.test(chapter.title || "");
-  const title = plainTitle ? "" : chapter.title || "";
+  // a chapter called by its short name ("Prologue") shows its fuller title only when that adds something
+  const title = plainTitle || chapter.title === words.lead ? "" : chapter.title || "";
   const episode = info.kind === "episode";
   // an episode of one piece has no chapter number to show
-  const name = episode && info.chapters.length <= 1 ? msg("episodeWord") : fill(msg("waveChapter"), { n, title }).replace(/ · $/, "");
-  setText(bar.title, loadingNow ? fill(msg("waveDrawing"), { n }) : name);
-  bar.input.setAttribute("aria-label", fill(msg("waveLabel"), { n }));
-  setText(bar.label, fill(msg("waveLabel"), { n }));
+  const name = episode && info.chapters.length <= 1 ? msg("episodeWord") : fill(msg("waveChapter"), { chapter: words.lead, title }).replace(/ · $/, "");
+  setText(bar.title, loadingNow ? fill(msg("waveDrawing"), { chapter: words.inline }) : name);
+  bar.input.setAttribute("aria-label", fill(msg("waveLabel"), { chapter: words.inline }));
+  setText(bar.label, fill(msg("waveLabel"), { chapter: words.inline }));
   const remaining = Math.max(0, state.durationMs - state.positionMs);
   const left = episode ? fill(msg("leftInEpisode"), { t: clock(remaining) }) : leftInBook(Math.ceil(remaining / state.speed / 60000));
   // "{author} · {left}" is two spans: the author may be cut short, the time left never is.
@@ -314,7 +315,7 @@ function drawBar(state, info, chapter, force) {
   if (!drag && (force || Date.now() - textAt >= VALUE_TEXT_EVERY_MS)) {
     textAt = Date.now();
     const length = chapter.end - chapter.start;
-    bar.input.setAttribute("aria-valuetext", fill(msg("waveValue"), { t: spoken(state.positionMs - chapter.start), total: spoken(length), n, title }).replace(/, $/, ""));
+    bar.input.setAttribute("aria-valuetext", fill(msg("waveValue"), { t: spoken(state.positionMs - chapter.start), total: spoken(length), chapter: words.inline, title }).replace(/, $/, ""));
   }
   if (barBook && hairlineFor !== info.id + info.chapters.length) {
     hairlineFor = info.id + info.chapters.length;
@@ -343,7 +344,7 @@ function showTip(chapter, ms) {
   barWave.style.setProperty("--ts-hover", (clamp(ms - chapter.start, 0, length) / length).toFixed(4));
   setText(bar.time, clock(ms - chapter.start));
   const delta = ms - window.tsPlayer.state().positionMs;
-  if (drag) setText(bar.rel, fill(msg("waveDragChapter"), { n: window.tsPlayer.state().chapterIdx + 1 }));
+  if (drag) setText(bar.rel, fill(msg("waveDragChapter"), { chapter: window.tsPlayer.chapterWords(window.tsPlayer.info(), window.tsPlayer.state().chapterIdx).inline }));
   else setText(bar.rel, Math.abs(delta) < HOVER_MIN_MS ? "" : fill(msg(delta > 0 ? "waveAhead" : "waveBack"), { d: distance(delta) }));
 }
 
@@ -413,7 +414,7 @@ function startBar() {
     const share = clamp((event.clientX - rect.left) / rect.width, 0, 1);
     const idx = Math.max(0, info.chapters.findLastIndex((c) => c.start <= share * info.durationMs));
     barBook.style.setProperty("--ts-hover", (share * 100).toFixed(2) + "%");
-    setText(bar.tip, fill(msg("bookTip"), { n: idx + 1, total: info.chapters.length, p: Math.round(share * 100) }));
+    setText(bar.tip, fill(msg("bookTip"), { chapter: player.chapterWords(info, idx).header, p: Math.round(share * 100) }));
   });
 }
 

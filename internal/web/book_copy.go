@@ -29,7 +29,7 @@ const (
 	cardThrough        = "%d %% through" // NEW: hidden words of the thin line on a started book's cover
 	bookTileUpNext     = "Next in series"
 	bookTileNotStarted = "Not started"
-	bookWhereShort     = "Chapter %d · %s left"
+	bookWhereShort     = "%s · %s left"
 	bookBylineSep      = " · "
 	// Board: SearchPhone and the copy deck (empty states, search).
 	searchFieldLabel    = "Search"

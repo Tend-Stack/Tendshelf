@@ -487,10 +487,10 @@ func TestBookmarkWhere(t *testing.T) {
 			t.Errorf("%s: %d %q, want %d %q", c.name, n, clock, c.n, c.clock)
 		}
 	}
-	if got := bookmarkWhenText(2, "1:00"); got != "Chapter 2 · 1:00" {
+	if got := bookmarkWhenText(newChapterNames([]string{"", ""}), 2, "1:00"); got != "Chapter 2 · 1:00" {
 		t.Errorf("when = %q", got)
 	}
-	if got := bookmarkWhenText(0, "1:00"); got != "1:00" {
+	if got := bookmarkWhenText(chapterNames{}, 0, "1:00"); got != "1:00" {
 		t.Errorf("when = %q", got)
 	}
 	for in, want := range map[string]string{"Lantern Tide": "lantern-tide", "  ": "book", "Élan — Vital!": "lan-vital", strings.Repeat("ab ", 40): strings.TrimRight(strings.Repeat("ab-", 40)[:60], "-")} {

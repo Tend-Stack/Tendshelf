@@ -44,7 +44,7 @@ function chaptersFor(bar) {
   const info = p.info();
   const id = bar.dataset.tsBook || (info && info.id);
   if (!id) return Promise.resolve(null);
-  if (info && info.id === id) return Promise.resolve({ id, durationMs: info.durationMs, chapters: info.chapters, loaded: true });
+  if (info && info.id === id) return Promise.resolve({ id, durationMs: info.durationMs, chapters: info.chapters, chapterTotal: info.chapterTotal, kind: info.kind, loaded: true });
   if (!PEEKED.has(id)) PEEKED.set(id, p.peek(id));
   return PEEKED.get(id).then((book) => {
     if (!book) PEEKED.delete(id); // try again next time
@@ -56,9 +56,9 @@ function chapterAtMs(data, ms) {
   return Math.max(0, data.chapters.findLastIndex((c) => c.start <= ms));
 }
 
-function titleOf(chapter, index) {
+function titleOf(chapter, index, data) {
   // a chapter with no name in the file is named by its number
-  return chapter.title || fill(msg("chbarUntitled"), { n: index + 1 });
+  return chapter.title || player().chapterWords(data, index).lead;
 }
 
 // ---- The full player's own bar follows the loaded book ----
@@ -88,7 +88,10 @@ function syncOwnBars() {
 // aria-valuenow and aria-valuetext: "Chapter 3 of 12: The Lamp".
 function describe(bar, data, index) {
   bar.setAttribute("aria-valuenow", String(index + 1));
-  bar.setAttribute("aria-valuetext", fill(msg("chbarValue"), { n: index + 1, m: data.chapters.length, title: titleOf(data.chapters[index], index) }));
+  const words = player().chapterWords(data, index);
+  const title = titleOf(data.chapters[index], index, data);
+  // a chapter without a number is its own name: "Prologue: 9:17 P.M." says it all
+  bar.setAttribute("aria-valuetext", words.numbered ? fill(msg("chbarValue"), { n: words.column, m: data.chapterTotal || data.chapters.length, title }) : title);
 }
 
 // ---- The tip ----
@@ -139,7 +142,7 @@ function show(bar, data, index, anchorX) {
   const tip = tipOf(bar);
   const mark = bar.querySelector(".ts-chmark");
   const rect = bar.getBoundingClientRect();
-  fillTip(tip, titleOf(chapter, index), clock(chapter.start));
+  fillTip(tip, titleOf(chapter, index, data), clock(chapter.start));
   bar.classList.add("is-tipped");
   const edge = limits(bar);
   const width = tip.offsetWidth;
