@@ -269,7 +269,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	v.Root = pages.ReaderRoot{
 		At: pl.At, Off: strconv.Itoa(pl.Off), Cpm: cpm, Learned: learned, TotalChars: chap.total,
 		Before: chap.view.Before, ChapterChars: chChars, Save: "/reading/" + id,
-		Flow: rs.Flow, Turn: rs.Turn, Lang: rc.doc.Meta.Language,
+		Flow: rs.Flow, Turn: rs.Turn, Lang: rc.doc.Meta.Language, Dir: ebook.Direction(rc.doc),
 		Pages: rc.doc.PageCount, Chapters: len(rc.doc.Chapters), Words: readerWords(),
 		Skim: rsSkim(rc.doc), NotesSrc: s.assetOr("js/reader-notes.js"), LookupSrc: s.assetOr("js/reader-lookup.js"),
 	}

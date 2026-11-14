@@ -374,3 +374,27 @@ body:has(.ts-readerpage) :is(#nav-tabbar, #nav-rail, #nav-side) { visibility: hi
 .ts-flip__cast { transform-origin: 0 50%; background: linear-gradient(to right, var(--flip-shade) 55%, transparent), linear-gradient(to right, var(--flip-shade) 30%, transparent 90%); }
 .ts-flip__cast--left { transform-origin: 100% 50%; background: linear-gradient(to left, var(--flip-shade) 55%, transparent), linear-gradient(to left, var(--flip-shade) 30%, transparent 90%); }
 .ts-flip__shade, .ts-flip__cast { opacity: 0; pointer-events: none; }
+
+/* Right-to-left books (docs/plans/reader-rtl.md, P2). Appended: no left-to-right rule above is edited, and a
+   left-to-right book never matches any selector below. Fonts are system fonts named by family only. */
+.ts-reader[dir="rtl"] {
+  --font-serif: "Fraunces", "Noto Naskh Arabic", "Noto Serif Hebrew", "Geeza Pro", "Times New Roman", serif;
+  --font-sans: "Fira Sans", "Noto Sans Arabic", "Noto Sans Hebrew", "Geeza Pro", Arial, system-ui, sans-serif;
+}
+.ts-reader[dir="rtl"]:lang(ur) {
+  --font-serif: "Noto Nastaliq Urdu", "Fraunces", "Noto Naskh Arabic", "Geeza Pro", "Times New Roman", serif;
+  --font-sans: "Noto Nastaliq Urdu", "Fira Sans", "Noto Sans Arabic", "Geeza Pro", Arial, system-ui, sans-serif;
+}
+.ts-reader__text blockquote:dir(rtl) { padding-left: 0; padding-right: var(--space-16); box-shadow: inset -2px 0 0 var(--line-strong); }
+.ts-reader__text .ts-reader__li:dir(rtl) { padding-left: 0; padding-right: 1.4em; }
+.ts-readdock__ruler[dir="rtl"] > .ts-ruler { scale: -1 1; }
+.ts-readdock__ruler[dir="rtl"] .ts-skim__tip { transform: translateX(calc(var(--ts-value, 0) * 1%)); }
+.ts-readerpage[data-chrome="off"]:has(> .ts-reader--pages[dir="rtl"])::before { inset: auto 0 0 auto; }
+@media (width >= 1024px) {
+  .ts-reader--spread[dir="rtl"] .ts-ribbon[data-page="0"] { right: 0; left: auto; }
+  .ts-reader--spread[dir="rtl"] .ts-ribbon[data-page="0"]::before, .ts-reader--spread[dir="rtl"] .ts-ribbon[data-page="0"]::after { left: auto; right: max(var(--space-4), calc(var(--ts-pad) / 2 - 0.4375rem)); }
+  .ts-reader--spread[dir="rtl"] .ts-ribbon[data-page="1"] { right: auto; left: 0; }
+  .ts-reader--spread[dir="rtl"] .ts-ribbon[data-page="1"]::before, .ts-reader--spread[dir="rtl"] .ts-ribbon[data-page="1"]::after { right: auto; left: max(var(--space-4), calc(var(--ts-pad) / 2 - 0.4375rem)); }
+}
+/* Book text inside left-to-right chrome takes its own direction from its first letters. */
+.ts-readerbar__title, .ts-reader__toctitle, .ts-note__quote, .ts-reader__hits a > span, .ts-readernote--note p, .ts-lookup__title, .ts-skim__tip, #reader-q { unicode-bidi: plaintext; }

@@ -132,7 +132,7 @@ func (s *server) readerChapter(ctx context.Context, u users.User, rc readerCtx, 
 		pg := rsPageLabel(rc.doc, idx, bi, cum, total)
 		n := rsUnits(b.Text)
 		v.PartChars += n
-		bv := pages.ReaderBlockView{Kind: b.Kind, ID: "b-" + b.ID, Pg: pg, C: c, Verse: verse[bi]}
+		bv := pages.ReaderBlockView{Kind: b.Kind, ID: "b-" + b.ID, Pg: pg, C: c, Dir: b.Dir, Verse: verse[bi]}
 		cum += n
 		c += n
 		switch {
