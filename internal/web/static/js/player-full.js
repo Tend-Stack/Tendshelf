@@ -214,6 +214,8 @@ function update(kind) {
   ui["full-toggle"].setAttribute("aria-label", (state.playing ? msg("pausePrefix") : msg("playPrefix")) + " " + book.title);
   setText("full-speed", speedText(state.speed));
   ui["open-speed"].setAttribute("aria-label", speedLabel);
+  // the value is drawn in the accent when it is not the normal speed (the text itself already says which)
+  ui["open-speed"].classList.toggle("is-active", state.speed !== 1);
   if (!ui["speed-sheet"].hidden) drawSpeedSheet(state.speed);
 }
 

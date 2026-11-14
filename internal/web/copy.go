@@ -340,6 +340,7 @@ const (
 	msgVolume            = "Volume"
 	msgBookmarkMoment    = "Bookmark this moment"
 	msgOpenReader        = "Read this book" // NEW (B2): the player's book icon
+	msgOpenReaderShort   = "Read"           // NEW (decision 0042): the label under the book icon in the full player's bottom row
 	msgBookmarkFailed    = "That bookmark didn't save. Try again."
 	msgBookmarkQueued    = "Bookmarked at {time}. It saves when you're back online."
 	msgKeysBookmark      = "Bookmark"
@@ -366,7 +367,7 @@ func playerMsgs() components.PlayerMsgs {
 		SleepCustom: msgSleepCustom, SleepCustomLabel: msgSleepCustomLabel, SleepStart: msgSleepStart,
 		SleepTurnOff: msgSleepTurnOff, SleepOffLabel: msgSleepOffLabel, SleepOnLabel: msgSleepOnLabel,
 		Sleeping: msgSleeping, SleepFading: msgSleepFading, SleepFadingShake: msgSleepFadingShake,
-		PlusTen: msgPlusTen, Volume: msgVolume, BookmarkMoment: msgBookmarkMoment, OpenReader: msgOpenReader, BookmarkFailed: msgBookmarkFailed,
+		PlusTen: msgPlusTen, Volume: msgVolume, BookmarkMoment: msgBookmarkMoment, OpenReader: msgOpenReader, OpenReaderShort: msgOpenReaderShort, BookmarkFailed: msgBookmarkFailed,
 		KeysBookmark: msgKeysBookmark,
 		// one source with the Bookmarks tab (P1c-7a): its %s becomes the player's {time}
 		Bookmarked:       strings.Replace(bookmarkToast, "%s", "{time}", 1),

@@ -118,9 +118,9 @@ templ PlayerFull(m PlayerMsgs) {
 					@Icon("chapters", false)
 					<span class="ts-player-bar__label">{ m.Chapters }</span>
 				</button>
-				<button type="button" class="ts-player-bar__item" data-ts-full-read hidden aria-haspopup="dialog">
+				<button type="button" class="ts-player-bar__item" data-ts-full-read hidden aria-haspopup="dialog" aria-label={ m.OpenReader }>
 					@Icon("book-open", false)
-					<span class="ts-player-bar__label">{ m.OpenReader }</span>
+					<span class="ts-player-bar__label">{ m.OpenReaderShort }</span>
 				</button>
 				<button type="button" class="ts-player-bar__item ts-player__barmark" data-ts-bookmark aria-keyshortcuts="B" aria-label={ m.BookmarkMoment } if m.Link { hidden }>
 					@Icon("bookmark", false)

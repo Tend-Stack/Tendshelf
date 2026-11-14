@@ -100,7 +100,9 @@
 
 /* Scrubber: drawn from custom properties set by player-full.js */
 /* The book ruler above the chapter scrubber: ticks at the chapter starts; chapter-bar.js makes it a chapter picker. */
-.ts-player__ruler { --scrub-fill: var(--cover-accent); }
+/* Decision 0042: the chapter bar is neutral ink; the waveform under it keeps the accent as the one bar you scrub. */
+.ts-player__ruler { --scrub-fill: var(--ink); }
+.ts-player__ruler .ts-ruler__line { background: var(--line-strong); }
 .ts-player__ruler-ticks { position: absolute; inset: 0; pointer-events: none; }
 .ts-player__ruler .ts-ruler__tick { left: var(--at); }
 .ts-player__ruler .ts-ruler__fill { width: calc(var(--ts-pos, 0) * 100%); background: var(--scrub-fill); }

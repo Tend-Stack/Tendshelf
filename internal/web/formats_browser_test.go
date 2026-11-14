@@ -101,7 +101,7 @@ func TestPlayerReadIconBrowser(t *testing.T) {
 	phone.Eval(`(() => {
 	  const a = document.querySelector("[data-ts-full-read]"), c = document.querySelector("[data-ts-open-chapters]");
 	  const r = a.getBoundingClientRect(), cr = c.getBoundingClientRect();
-	  return { Hidden: a.hidden, Shown: a.offsetParent !== null, Href: a.tagName, Name: a.textContent.trim(),
+	  return { Hidden: a.hidden, Shown: a.offsetParent !== null, Href: a.tagName, Name: a.getAttribute("aria-label"), /* decision 0042: the label says "Read"; the full sentence is the accessible name */
 	    Left: r.left, Right: r.right, ChapRight: cr.right, Width: r.width, Height: r.height };
 	})()`, &full)
 	if full.Hidden || !full.Shown || full.Href != "BUTTON" || full.Name != "Read this book" {
