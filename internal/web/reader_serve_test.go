@@ -501,7 +501,9 @@ func TestReaderSpeaker(t *testing.T) {
 	if !strings.Contains(bar, `aria-label="Play the audiobook"`) || !strings.Contains(bar, `data-ts-play="`+l.book.ID+`"`) {
 		t.Fatalf("the speaker is missing from the bar: %s", bar)
 	}
-	if !strings.Contains(bar, `data-ts-start-ms="120000"`) || !strings.Contains(bar, "#t=") {
+	// With a listening place the speaker asks where to listen from: its link is that sheet (format-switch P1),
+	// and its data still names the audiobook's own place.
+	if !strings.Contains(bar, `data-ts-start-ms="120000"`) || !strings.Contains(bar, "sheet=listen") || !strings.Contains(bar, "data-ts-choose=") {
 		t.Errorf("the speaker does not start at the audiobook's own place: %s", bar)
 	}
 	if strings.Contains(bar, "data-ts-from-start") || strings.Count(body, "data-ts-play=") != 1 {

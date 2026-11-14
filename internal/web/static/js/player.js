@@ -215,6 +215,7 @@ function parseBook(el) {
     accents: { dark: d.accentDark, light: d.accentLight, sepia: d.accentSepia }, // cover colours for the full player
     tint: d.tint || "",
     readHref: d.readHref || "", // the book's reader, empty without an ebook the person may read
+    readChoose: d.readChoose || "", // the read-from sheet; the icon shows when this is set
     // A podcast episode (decision 0038): the same description with its own addresses. kind is "" for a book.
     kind: d.kind || "",
     progressHref: d.progressHref || "", // where the place is saved; empty means /progress/{id}
@@ -1207,6 +1208,13 @@ listen(document, "click", (event) => {
     pause();
     return;
   }
+  if (data.tsChoose) {
+    // The reader's speaker asks where to listen from (the sheet shows the options). `at` is the sentence
+    // the person is on now, so the sheet maps the chapter being read, not the one the page opened at.
+    const at = document.getElementById("reader")?.dataset.at || "";
+    window.htmx.ajax("GET", data.tsChoose + "&at=" + encodeURIComponent(at), { target: "#sheet", select: "#sheet > *", source: el });
+    return;
+  }
   wantsFirstSound = true;
   if (book && book.id === data.tsPlay) {
     // a finished book that is still loaded (the Listen again link) starts at the beginning of the book
@@ -1482,8 +1490,8 @@ applyVolume();
 // The loaded book as player-full.js needs it (copies), or null.
 function info() {
   if (!book) return null;
-  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, kind, showHref } = book;
-  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, kind, showHref, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
+  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref } = book;
+  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
     files: book.files.map(({ id, offset, dur, playable }) => ({ id, offset, dur, playable })), // for the waveform
   };
 }

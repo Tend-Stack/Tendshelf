@@ -21,6 +21,8 @@ type PlayButtonView struct {
 	Secondary bool
 	// Large makes the secondary button as tall as a primary one (see ReadButtonView.Large).
 	Large bool
+	// Choose is the address of the choice sheet (the reader's speaker): the script opens it instead of playing.
+	Choose string
 }
 
 // playBtnIcon is the picture before the pause swap: the triangle, or the named icon when one is set.
@@ -72,6 +74,9 @@ templ PlayButton(v PlayButtonView) {
 		}
 		if v.ShowsPlayer {
 			data-ts-show-player
+		}
+		if v.Choose != "" {
+			data-ts-choose={ v.Choose }
 		}
 	>
 		@Icon(playBtnIcon(v), v.Icon == "")

@@ -1,0 +1,74 @@
+package components
+
+import "strconv"
+
+// FormatChoiceView is the sheet that asks where to start in the other format. CloseHref is empty when the
+// sheet is fetched as a fragment (there is no page behind it to return to without a script).
+type FormatChoiceView struct {
+	Title, CloseLabel, CloseHref, BookID string
+	Options                              []FormatChoiceOption
+}
+
+// FormatChoiceOption is one row: a label, an optional caption, and where it goes. A Play row starts the
+// audiobook at PlayAtMs (player.js, data-ts-play-at); any other row is a link.
+type FormatChoiceOption struct {
+	Label, Where, Href string
+	PlayAtMs           int64
+	Play, Primary      bool
+}
+
+func choiceBtnClass(o FormatChoiceOption) string {
+	if o.Primary {
+		return "ts-btn ts-btn--primary ts-btn--lg ts-choice__btn"
+	}
+	return "ts-btn ts-btn--secondary ts-btn--lg ts-choice__btn"
+}
+
+// FormatChoice is one bottom sheet shared by the reader's speaker and the player's read control.
+templ FormatChoice(v FormatChoiceView) {
+	<div class="ts-sheet-layer">
+		if v.CloseHref != "" {
+			<a class="ts-scrim" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel } tabindex="-1"></a>
+		} else {
+			<div class="ts-scrim" data-ts-close></div>
+		}
+		<div class="ts-sheet ts-choice-sheet" role="dialog" aria-modal="true" aria-labelledby="format-choice-title" tabindex="-1">
+			<div class="ts-sheet__grab" aria-hidden="true"></div>
+			<div class="ts-sheet__head">
+				<h2 id="format-choice-title" class="ts-sheet__title">{ v.Title }</h2>
+				if v.CloseHref != "" {
+					<a class="ts-iconbtn" href={ templ.SafeURL(v.CloseHref) } hx-boost="false" data-ts-close aria-label={ v.CloseLabel }>
+						@Icon("close", false)
+					</a>
+				} else {
+					<button type="button" class="ts-iconbtn" data-ts-close aria-label={ v.CloseLabel }>
+						@Icon("close", false)
+					</button>
+				}
+			</div>
+			<div class="ts-sheet__body">
+				<ul class="ts-choice">
+					for _, o := range v.Options {
+						<li>
+							if o.Play {
+								<a class={ choiceBtnClass(o) } href={ templ.SafeURL(o.Href) } hx-boost="false" data-ts-sheet-go data-ts-play-at={ strconv.FormatInt(o.PlayAtMs, 10) } data-ts-book={ v.BookID }>
+									<span>{ o.Label }</span>
+									if o.Where != "" {
+										<span class="caption ts-choice__where">{ o.Where }</span>
+									}
+								</a>
+							} else {
+								<a class={ choiceBtnClass(o) } href={ templ.SafeURL(o.Href) } data-ts-sheet-go>
+									<span>{ o.Label }</span>
+									if o.Where != "" {
+										<span class="caption ts-choice__where">{ o.Where }</span>
+									}
+								</a>
+							}
+						</li>
+					}
+				</ul>
+			</div>
+		</div>
+	</div>
+}

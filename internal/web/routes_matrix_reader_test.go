@@ -66,6 +66,7 @@ func readerSweepRows() []sweepRow {
 	chapter := sweepGet("GET /hx/books/{id}/read/chapters/{idx}", func(e *sweepEnv, _ int) string {
 		return "/hx/books/" + e.book.ID + "/read/chapters/1" + q(e)
 	}, staff)
+	readFrom := sweepGet("GET /hx/books/{id}/read-from", func(e *sweepEnv, _ int) string { return "/hx/books/" + e.book.ID + "/read-from" }, staff)
 	create := sweepPost("POST /hx/books/{id}/highlights", func(e *sweepEnv, _ int) string { return "/hx/books/" + e.book.ID + "/highlights" },
 		func(e *sweepEnv, _ int) url.Values {
 			return url.Values{"edition": {e.rdr.ed}, "start_sid": {"c1.p1.s0"}, "start_off": {"0"}, "end_sid": {"c1.p1.s0"}, "end_off": {"5"}}
@@ -105,7 +106,7 @@ func readerSweepRows() []sweepRow {
 	word := sweepPost("POST /hx/books/{id}/words", func(e *sweepEnv, _ int) string { return "/hx/books/" + e.book.ID + "/words" },
 		sweepFormOf(url.Values{"word": {"alpha"}, "quote": {"Alpha beta."}}), staff, "")
 	word.HX = true
-	rows := []sweepRow{page, chapter, create, patch, del, image, readingGet, readingPost, finished, note, search, lookup, word}
+	rows := []sweepRow{page, chapter, readFrom, create, patch, del, image, readingGet, readingPost, finished, note, search, lookup, word}
 	for _, ext := range []string{"md", "txt", "json"} {
 		rows = append(rows, sweepGet("GET /books/{id}/read/marks."+ext, func(e *sweepEnv, _ int) string {
 			return "/books/" + e.book.ID + "/read/marks." + ext + q(e)

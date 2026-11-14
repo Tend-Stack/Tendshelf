@@ -266,7 +266,7 @@ func (s *server) readerSearchSheet(r *http.Request, rc readerCtx, cur int) pages
 		ed = rc.ed.ID
 	}
 	return pages.ReaderSheetView{Kind: "search", Title: readerSearchTitle, CloseLabel: readerCloseSheet, BookID: rc.book.ID,
-		CloseHref: rc.href("ch", strconv.Itoa(cur)),
+		CloseHref: rc.href("ch", strconv.Itoa(cur)), CloseInPlace: true,
 		Search: &pages.ReaderSearchView{Action: "/books/" + rc.book.ID + "/read", HxAction: "/hx/books/" + rc.book.ID + "/read/search", EditionID: ed, Q: q,
 			Label: readerSearchField, Button: readerSearchGo, Hits: s.readerHits(rc, q)}}
 }

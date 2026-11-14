@@ -329,6 +329,7 @@ export function mount(root) {
     const now = firstShown();
     if (!now || (was && was.sid === now.sid && was.off === now.off)) return;
     here = now;
+    root.dataset.at = now.sid; // the live place, read by the speaker's "Listen from" sheet
     const gone = now.charPos - (was ? was.charPos : now.charPos);
     const standard = Number(root.dataset.totalChars) / (Number(root.dataset.pages) || 1);
     if (gone > 0 && gone <= 3 * Math.max(standard, 1500)) chars += gone; // forward turns of up to three pages
@@ -572,6 +573,12 @@ export function mount(root) {
       view.lay();
       here = firstShown();
       paint();
+    }
+    // An address that names a place (a picked chapter, a search hit) is a move even when nothing is scrolled:
+    // save it now, so a reload opens here and not at the place saved before.
+    if (root.dataset.moved === "1") {
+      dirty = true;
+      save(false);
     }
     watch();
     ask(true);

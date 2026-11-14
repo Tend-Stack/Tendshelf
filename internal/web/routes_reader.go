@@ -31,6 +31,7 @@ import (
 func (s *server) registerReader(mux *http.ServeMux) {
 	mux.HandleFunc("GET /books/{id}/read", s.getReader)
 	mux.HandleFunc("GET /hx/books/{id}/read/chapters/{idx}", s.getReaderChapter)
+	mux.HandleFunc("GET /hx/books/{id}/read-from", s.getReadFrom)
 	mux.HandleFunc("GET /books/{id}/read/images/{blockID}", s.getReaderImage)
 	mux.HandleFunc("POST /hx/books/{id}/highlights", s.postReaderHighlight)
 	mux.HandleFunc("PATCH /hx/highlights/{id}", s.patchReaderHighlight)
@@ -285,6 +286,17 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 	if link != nil {
 		btn := link.button(readerSpeaker, true)
 		btn.Icon = "output" // the set's speaker with sound waves
+		// With a place to listen from, or a chapter that maps onto the audiobook, the speaker asks where to
+		// start (player.js opens the sheet) instead of resuming; without JavaScript it links to that sheet.
+		chs, m, err := s.listenMap(ctx, rc)
+		if err != nil {
+			return v, err
+		}
+		if listeningPlace(p) || m.hasStart(chs) {
+			cur := strconv.Itoa(chap.view.Idx)
+			btn.Choose = rc.href("sheet", "listen")
+			btn.Href = rc.href("ch", cur, "sheet", "listen")
+		}
 		v.Speaker = btn
 	}
 	hls, err := s.progress.Highlights(ctx, u.ID, rc.book.ID)
@@ -304,7 +316,7 @@ func (s *server) readerView(r *http.Request, rc readerCtx, chap rdrChap, pl rsPl
 func (s *server) readerSheet(r *http.Request, rc readerCtx, kind string, cur int) (pages.ReaderSheetView, error) {
 	ctx, u, q := r.Context(), currentUser(r), r.URL.Query()
 	sv := pages.ReaderSheetView{Kind: kind, CloseLabel: readerCloseSheet, BookID: rc.book.ID,
-		CloseHref: rc.href("ch", strconv.Itoa(cur))}
+		CloseHref: rc.href("ch", strconv.Itoa(cur)), CloseInPlace: true}
 	if kind == "search" {
 		return s.readerSearchSheet(r, rc, cur), nil
 	}

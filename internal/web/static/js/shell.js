@@ -123,6 +123,12 @@ document.addEventListener("htmx:after:swap", (event) => {
 document.addEventListener("click", (event) => {
   if (event.target.closest && event.target.closest("[data-ts-close]") && closeSheet()) event.preventDefault();
 });
+// A link inside a sheet that goes somewhere (a contents row, a choice row) closes the sheet as the page
+// changes. It does not stop the click: the boosted navigation or the player still runs. Without this the
+// sheet stays open over the new page, and closing it later would go back to the address it was drawn for.
+document.addEventListener("click", (event) => {
+  if (event.target.closest && event.target.closest("#sheet [data-ts-sheet-go]")) closeSheet();
+});
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && closeSheet()) event.preventDefault();
 });

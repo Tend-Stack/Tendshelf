@@ -63,10 +63,10 @@ func TestPlayerReadIconBrowser(t *testing.T) {
 	tab.Eval(`(() => {
 	  const a = document.querySelector("[data-ts-bar-read]"), c = document.querySelector("[data-ts-bar-chapters]");
 	  const r = a.getBoundingClientRect(), cr = c.getBoundingClientRect();
-	  return { Hidden: a.hidden, Shown: a.offsetParent !== null, Href: a.getAttribute("href"), Label: a.getAttribute("aria-label"),
+	  return { Hidden: a.hidden, Shown: a.offsetParent !== null, Href: a.tagName, Label: a.getAttribute("aria-label"),
 	    Left: r.left, Right: r.right, ChapRight: cr.right, Width: r.width, Height: r.height };
 	})()`, &bar)
-	if bar.Hidden || !bar.Shown || bar.Href != "/books/"+e.book.ID+"/read" || bar.Label != "Read this book" {
+	if bar.Hidden || !bar.Shown || bar.Href != "BUTTON" || bar.Label != "Read this book" {
 		t.Errorf("bar icon: %+v", bar)
 	}
 	if bar.Left < bar.ChapRight-1 {
@@ -101,10 +101,10 @@ func TestPlayerReadIconBrowser(t *testing.T) {
 	phone.Eval(`(() => {
 	  const a = document.querySelector("[data-ts-full-read]"), c = document.querySelector("[data-ts-open-chapters]");
 	  const r = a.getBoundingClientRect(), cr = c.getBoundingClientRect();
-	  return { Hidden: a.hidden, Shown: a.offsetParent !== null, Href: a.getAttribute("href"), Name: a.textContent.trim(),
+	  return { Hidden: a.hidden, Shown: a.offsetParent !== null, Href: a.tagName, Name: a.textContent.trim(),
 	    Left: r.left, Right: r.right, ChapRight: cr.right, Width: r.width, Height: r.height };
 	})()`, &full)
-	if full.Hidden || !full.Shown || full.Href != "/books/"+e.book.ID+"/read" || full.Name != "Read this book" {
+	if full.Hidden || !full.Shown || full.Href != "BUTTON" || full.Name != "Read this book" {
 		t.Errorf("full player item: %+v", full)
 	}
 	if full.Left < full.ChapRight-1 {

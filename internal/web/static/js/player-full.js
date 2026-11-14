@@ -263,11 +263,8 @@ function drawKind() {
 
 // What changes only when another book loads.
 function drawBook() {
-  // The book icon opens the reader; it shows only for a book that has an ebook the person may read.
-  for (const link of [bar.read, ui["full-read"]]) {
-    link.href = book.readHref || "/";
-    link.hidden = !book.readHref;
-  }
+  // The book icon asks where to read from; it shows only for a book that has an ebook the person may read.
+  for (const button of [bar.read, ui["full-read"]]) button.hidden = !book.readChoose;
   setText("full-title", book.title);
   setText("full-author", book.author);
   if (book.cover && ui["full-cover"].getAttribute("src") !== book.cover) ui["full-cover"].src = book.cover;
@@ -1162,6 +1159,20 @@ ui["full-menu"].addEventListener("click", (event) => {
   // Eyes-free is a module of its own, fetched the first time it is asked for (the worker precaches it)
   import(item.dataset.tsSrc).then((module) => module.openEyesFree(ui["full-menu"].querySelector("summary"))).catch(() => {});
 });
+
+// The book icon of the bar and of the full screen player: the read-from sheet (the server goes straight to the
+// reader when only one place is on offer). Playback is never touched; going to read is a boosted swap of #main.
+function openReadChoice(event) {
+  if (!book.readChoose) return;
+  if (!navigator.onLine) {
+    location.assign(book.readHref); // the offline reader shell, as before
+    return;
+  }
+  if (dialog.open && !sidePanel()) closeNow(); // the sheet belongs to the page behind the full screen player
+  const ms = Math.max(0, Math.round(player.state().positionMs));
+  window.htmx.ajax("GET", book.readChoose + "?ms=" + ms, { target: "#sheet", source: event.currentTarget });
+}
+for (const button of [bar.read, ui["full-read"]]) button.addEventListener("click", openReadChoice);
 
 ui["full-book"].addEventListener("click", () => {
   if (!sidePanel()) closeNow(); // the page behind the full screen player is the destination

@@ -366,13 +366,7 @@ func currentChapterIdx(chs []library.Chapter, play *chapterPlay) int {
 	if play == nil || play.p == nil || play.p.Finished() || play.p.PositionMs <= 0 {
 		return -1
 	}
-	cur := -1
-	for i, c := range chs {
-		if c.StartMs <= play.p.PositionMs {
-			cur = i
-		}
-	}
-	return cur
+	return audioChapterAt(chs, play.p.PositionMs)
 }
 
 // bookDetailsView lists the Details rows. Empty values are left out. The folder on disk shows only

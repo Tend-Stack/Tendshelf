@@ -10,9 +10,11 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 - **Edit a book's details by hand.** The Details tab has an "Edit details" form (also in the three-dot menu) for title, subtitle, authors, narrators, series and number, year, publisher, language, genres, ISBN, ASIN and description. It works with online lookups off. What you type stays when Tendshelf scans again or looks the book up; clear a box to get the value from the files back.
 
 - **Sign in with a passkey.** Add a passkey under Profile, Passkeys, and sign in with your fingerprint, face or screen lock instead of typing a password. Passkeys work when you reach Tendshelf by name over HTTPS; an admin can remove a person's passkeys from their page.
+- **Choose where to start in the other format.** The speaker in the reader asks whether to listen from where you are reading, continue listening, or start from the beginning. The book icon in the player asks whether to read from where you are listening, continue reading, or start from the beginning. With only one place to go, it goes straight there. Playing never stops while you choose or while you go to read.
 
 ### Fixed
 
+- **Picking a chapter in the reader's contents now stays on it.** Closing the contents list used to jump back to the chapter you had opened it from. A pick now goes to the chapter, the list closes, and the place is saved, so reopening the book starts there. The reader's speaker also asks where to listen from (the chapter you are reading, where you left off, or the start) when the audiobook has matching chapters.
 - **A book's action bar on a phone always shows three actions.** When there is nothing to download (a book the server only streams, or a browser that cannot keep books), a Details button takes the empty place, so the bar no longer shows two wide buttons.
 
 ## 2026.10.0
