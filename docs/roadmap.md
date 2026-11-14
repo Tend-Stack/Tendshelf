@@ -1101,7 +1101,8 @@ Turning an automatic timer off holds until the window ends (per tab). Books and 
 settings table tests in `internal/users`, form, player attribute and API tests, `TestNightSleepBrowser*` (starts,
 outside, off stays off, a manual timer is kept, window edges and the midnight wrap) and the settings layout at 390 and
 1440 px. Budgets raised from measurement: shared page JS 220,527 B (limit 220,672), reader page JS 288,089 B (limit
-288,256). Limits: playback started from the Android notification or Android Auto with the page closed starts no timer
+288,256); gzip `player-full.js` 18,310 B (limit 18,432), `player.js` 18,219 B (limit 18,432), all app scripts 133,135 B
+(limit 133,376). Limits: playback started from the Android notification or Android Auto with the page closed starts no timer
 (no Kotlin change yet; the API already carries the values); a next book that starts by itself counts as a play; the
 form clamps Minutes to 5-180 while the API rejects values outside it. Not verified: the Android app and the desktop
 window by hand.
