@@ -1128,6 +1128,25 @@ chapter package (134,144), `player.css` 5,240 B (5,376), page JS 223,003 B (223,
 (290,816). Limits: the tick bar still has one segment per track; the API keeps `idx` and titles only; the 1280 px side
 panel hides the row by design. Not verified: on a phone or the emulator after the change; captures at 768 and 1024 px.
 
+## Phone full-screen player (operator handoff, 2026-11-14, [plan](plans/player-phone.md), decision 0042)
+
+Built in two packages on the existing player (no parallel player). Reused: the scrubber and its range input, the
+chapter bar's script unchanged, the sheets, `chapterWords`. Added: `css/player-phone.css` (every phone rule, inside
+one media query), segments drawn by `player-full.js` (`buildSegments`, `fitSegments`, `drawSegments`), a phone mode in
+`waveform.js` (stroked lines, a `jump` layer), the scrim markup over the cover, the copy "Jump to", "was {t}" and
+"Read along". Operator amendments to the handoff: header and cover unchanged; both bars keep their behaviour. Declared
+deviations: unplayed lines use `--line-strong` (the handoff's `wave-rest` is under 3:1 in three themes); segment
+widths follow chapter length; "left in chapter" uses `--accent`; the book row's left side is empty. Checks: the
+`TestPlayerPhone*` set (bars behave as before, clock only while dragging, wave geometry, book row, settings bar at
+360 and 390, spacing at 360x640, 390x844 and 430x932, contrast in four themes, large text, tablet unchanged), the
+older player, chapter bar, waveform, sleep and speed browser tests, accessibility and page weight. Budgets raised
+from measurement: `player-phone.css` 3,863 B gzip (limit 4,096), `player-full.js` 19,562 B (19,712), `waveform.js`
+7,742 B (7,936), all app scripts 135,494 B (135,680), page CSS 339,612 B (339,712), page JS 228,145 B (228,352),
+reader page JS 295,707 B (295,936); one more request per page for the new stylesheet. Limits: phones on their side
+keep the old layout; the needle moves per tick, not continuously; "Read along" does not synchronise anything. Not
+verified: on a phone or the emulator; WebKit. Next: one player for books, episodes and stations
+([plan](plans/player-kinds.md)).
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a
