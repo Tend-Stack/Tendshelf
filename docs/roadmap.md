@@ -1107,6 +1107,27 @@ outside, off stays off, a manual timer is kept, window edges and the midnight wr
 form clamps Minutes to 5-180 while the API rejects values outside it. Not verified: the Android app and the desktop
 window by hand.
 
+## Player: chapter numbers and the native row (operator reports from a phone, 2026-11-14)
+
+Three reports, fixed. (1) The book page's Download button was laid out but never drawn in the Android app since
+2026.9.0 (`native-downloads.js` never cleared `data-ts-pending`); fixed, and the test now checks computed visibility.
+(2) The line under "Continue reading" used the ebook section's index; `readPlaceName` reuses `rdrOverline`, so the
+Read from sheet, the book page, Home and the tiles say what the reader's heading says. (3) An audiobook chapter is
+named by its own number: `internal/web/chapter_names.go` (reuses `rdrOwnNumber`) gives each chapter a number and the
+book a total that counts only numbered chapters, when any title carries a number; unnumbered tracks show their short
+name; books without numbered titles keep the position. The player data carries `data-num` and `data-total` and one JS
+helper (`tsPlayer.chapterWords`) feeds the header, bar, scrub bubble, chapter list, Eyes-free, chapter bar and
+waveform; Go sites: book page and Home where-lines, now-playing panel, Downloads, timeline fallback, bookmarks,
+chapter rows. The Android widget follows through the bar's text; the notification shows the file's chapter title.
+Decision [0042](decisions/0042-player-native-row.md): the full player's chapter bar plays in `--ink`, the bottom row
+is four borderless buttons, "Read" is the short label. Checks: `chapter_names_test.go`, `TestChapterNumbersBrowser`,
+`TestPlayerNativeRow`, `TestPlayerRulerColour`, contrast in four themes (lowest 3.54:1 for the unplayed bar in
+light), `TestReadPlaceName`, `TestReadFromFragment`, `TestNativeDownloadsBrowser`. Budgets raised from measurement:
+`player.js` 18,758 B gzip (limit 18,944), `player-full.js` 18,484 B (18,688), all app scripts 133,997 B at the
+chapter package (134,144), `player.css` 5,240 B (5,376), page JS 223,003 B (223,232), reader page JS 290,565 B
+(290,816). Limits: the tick bar still has one segment per track; the API keeps `idx` and titles only; the 1280 px side
+panel hides the row by design. Not verified: on a phone or the emulator after the change; captures at 768 and 1024 px.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a
