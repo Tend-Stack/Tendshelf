@@ -10,6 +10,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Fixed
 
+- **Picking a chapter in the reader's contents now stays on it.** Closing the contents list used to jump back to the chapter you had opened it from. A pick now goes to the chapter, the list closes, and the place is saved, so reopening the book starts there. The reader's speaker also asks where to listen from (the chapter you are reading, where you left off, or the start) when the audiobook has matching chapters.
 - **A book's action bar on a phone always shows three actions.** When there is nothing to download (a book the server only streams, or a browser that cannot keep books), a Details button takes the empty place, so the bar no longer shows two wide buttons.
 
 ## 2026.10.0
