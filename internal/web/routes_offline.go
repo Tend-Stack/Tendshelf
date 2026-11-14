@@ -344,7 +344,7 @@ func (s *server) offlineMeta(r *http.Request, book library.Book, p *progress.Pro
 		return "", err
 	}
 	if cur := currentChapter(chs, p.PositionMs); cur >= 0 {
-		return fmt.Sprintf(offlineReadyChap, cur+1), nil
+		return fmt.Sprintf(offlineReadyChap, chapterNamesOf(chs).Name(cur)), nil
 	}
 	dur := book.DurationMs
 	if dur <= 0 {

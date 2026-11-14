@@ -74,6 +74,23 @@ function fill(message, values) {
   return message.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? "");
 }
 
+// How chapter idx of a book is called, decided by the server's numbers (chapter.num, book.chapterTotal):
+// numbered "Chapter 13" / "Chapter 13 of 51" / "chapter 13", and a chapter without a number (a Prologue)
+// by its short name, the title up to the first ":", " - " or " – ". column is the number list rows show.
+// A chapter with no number and no title, and every episode chapter, is counted by its place.
+function chapterWords(book, idx) {
+  const chapter = book.chapters[idx] || {};
+  const own = book.kind !== EPISODE && chapter.num > 0;
+  const name = String(chapter.title || "").split(/:| - | – /)[0].trim();
+  if (!own && book.kind !== EPISODE && name && book.chapterTotal > 0 && book.chapters.some((c) => c.num > 0)) {
+    return { numbered: false, column: "", lead: name, header: name, inline: name };
+  }
+  const n = own ? chapter.num : idx + 1;
+  const total = own && book.chapterTotal ? book.chapterTotal : book.chapters.length;
+  const lead = fill(msg("chbarUntitled"), { n });
+  return { numbered: true, column: String(n), lead, header: fill(msg("chapterOf"), { n, total }), inline: lead.charAt(0).toLowerCase() + lead.slice(1) };
+}
+
 function clamp(value, low, high) {
   return Math.min(high, Math.max(low, value));
 }
@@ -238,7 +255,9 @@ function parseBook(el) {
       playable: x.playable === "1",
       href: x.href || "", // where the sound comes from when it is not /stream/{id} (an episode)
     })),
-    chapters: rows("[data-ts-chapters]", (x, li) => ({ start: num(x.startMs), end: num(x.endMs), title: li.textContent })),
+    // num is the chapter's own number from the server (0 for a Prologue or the like); the script never counts.
+    chapters: rows("[data-ts-chapters]", (x, li) => ({ start: num(x.startMs), end: num(x.endMs), title: li.textContent, num: num(x.num) })),
+    chapterTotal: num(el.querySelector("[data-ts-chapters]")?.dataset.total), // how many chapters carry a number
   };
   if (!parsed.chapters.length) {
     parsed.chapters.push({ start: 0, end: parsed.durationMs, title: "" }); // no chapters: the book is one
@@ -853,9 +872,10 @@ function render(force) {
     controls.open.href = "/podcasts/episodes/" + encode(book.id);
     setLabel("open", fill(msg("openEpisode"), { title: book.title, m: left }));
   } else {
-    controls.meta.textContent = fill(msg("chapterLeft"), { n: chapterIdx + 1, m: minutesLeft });
+    const words = chapterWords(book, chapterIdx);
+    controls.meta.textContent = fill(msg("chapterLeft"), { chapter: words.lead, m: minutesLeft });
     controls.open.href = LINK || "/books/" + encode(book.id);
-    setLabel("open", fill(msg("openPlayer") || msg("open"), { title: book.title, n: chapterIdx + 1, m: minutesLeft }));
+    setLabel("open", fill(msg("openPlayer") || msg("open"), { title: book.title, chapter: words.inline, m: minutesLeft }));
   }
   if (book.cover && shownCover !== book.cover) {
     shownCover = book.cover;
@@ -1492,8 +1512,8 @@ applyVolume();
 // The loaded book as player-full.js needs it (copies), or null.
 function info() {
   if (!book) return null;
-  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, night } = book;
-  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, night, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
+  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, night, chapterTotal } = book;
+  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, night, chapterTotal, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
     files: book.files.map(({ id, offset, dur, playable }) => ({ id, offset, dur, playable })), // for the waveform
   };
 }
@@ -1503,13 +1523,14 @@ function info() {
 async function peekBook(id) {
   const fetched = await fetchBook(id);
   if (!fetched) return null;
-  return { id: fetched.id, durationMs: fetched.durationMs, chapters: fetched.chapters };
+  return { id: fetched.id, durationMs: fetched.durationMs, chapters: fetched.chapters, chapterTotal: fetched.chapterTotal, kind: fetched.kind };
 }
 
 // The public surface; debug is for tests only.
 window.tsPlayer = {
   state,
   info,
+  chapterWords,
   peek: peekBook,
   load: loadBook,
   play,

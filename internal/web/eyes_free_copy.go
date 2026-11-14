@@ -7,7 +7,7 @@ import "github.com/Tend-Stack/tendshelf/internal/web/components"
 const (
 	msgEyesFree      = "Eyes-free"
 	msgEyesFreeBack  = "Back to the player" // NEW: the board's "Back to reading" belongs to the reader
-	msgEyesFreeChap  = "Chapter {n} · {m} min left in chapter"
+	msgEyesFreeChap  = "{chapter} · {m} min left in chapter"
 	msgEyesFreeSkip  = "Back {n} s"
 	msgEyesFreeFwd   = "Forward {n} s"
 	msgEyesFreePlay  = "Play"

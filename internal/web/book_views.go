@@ -332,12 +332,13 @@ func bookChapters(v *pages.BookView, d library.BookDetail, all bool, play *chapt
 		v.Chapters.BookID = d.Book.ID
 	}
 	current := currentChapterIdx(d.Chapters, play)
+	names := chapterNamesOf(d.Chapters)
 	for i, c := range rows {
 		title := strings.TrimSpace(c.Title)
 		if title == "" {
 			title = fmt.Sprintf(bookChapterN, i+1)
 		}
-		row := components.ChapterRow{Num: i + 1, Title: title, Dur: clockText(c.EndMs - c.StartMs), PlayAtMs: -1}
+		row := components.ChapterRow{Num: names.Nums[i], Title: title, Dur: clockText(c.EndMs - c.StartMs), PlayAtMs: -1}
 		if play != nil {
 			if id, off, ok := playTarget(play.book, play.files, c.StartMs); ok {
 				row.PlayAtMs = c.StartMs

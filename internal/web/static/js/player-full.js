@@ -144,7 +144,7 @@ function drawTimes(ms, speed) {
   }
   const episode = book.kind === "episode";
   const whole = episode && book.chapters.length <= 1; // an episode of one piece: its own words, one "left" line
-  setText("full-chapter", whole ? msg("episodeWord") : fill(msg("chapterOf"), { n: idx + 1, total: book.chapters.length }));
+  setText("full-chapter", whole ? msg("episodeWord") : player.chapterWords(book, idx).header);
   setText("full-clock", clock(ms - chapter.start));
   setText("full-left", whole ? fill(msg("leftInEpisode"), { t: clock(Math.max(0, book.durationMs - ms)) }) : fill(msg("leftInChapter"), { t: clock(chapter.end - ms) }));
   setText("full-elapsed", clock(ms - chapter.start));
@@ -176,7 +176,7 @@ function drawScrub(s, ms, force, chapter = book.chapters[chapterAt(ms)]) {
   if (force || !s.input.hasAttribute("aria-valuetext") || now - s.textAt >= VALUE_TEXT_EVERY_MS) {
     s.textAt = now;
     const seconds = Math.floor(into / 1000);
-    s.input.setAttribute("aria-valuetext", fill(msg("scrubValue"), { n: book.chapters.indexOf(chapter) + 1, m: Math.floor(seconds / 60), s: seconds % 60 }));
+    s.input.setAttribute("aria-valuetext", fill(msg("scrubValue"), { chapter: player.chapterWords(book, book.chapters.indexOf(chapter)).lead, m: Math.floor(seconds / 60), s: seconds % 60 }));
   }
 }
 
@@ -226,7 +226,7 @@ function syncExpand() {
   const at = player.state().positionMs;
   const idx = chapterAt(at);
   const left = Math.max(1, Math.ceil((book.chapters[idx].end - at) / 60000));
-  const open = book.kind === "radio" ? fill(msg("openStation"), { title: book.title }) : fill(msg("openPlayer"), { title: book.title, n: idx + 1, m: left });
+  const open = book.kind === "radio" ? fill(msg("openStation"), { title: book.title }) : fill(msg("openPlayer"), { title: book.title, chapter: player.chapterWords(book, idx).inline, m: left });
   bar.expand.setAttribute("aria-label", dialog.open ? msg("closePlayer") : open);
 }
 
@@ -321,7 +321,10 @@ function dragTo(s, x, y) {
   drawScrub(s, d.ms, false, chapter);
   // A title that is only "Chapter 6" would repeat the number the bubble already shows.
   const title = /^\D*\d+$/.test(chapter.title) ? "" : chapter.title;
-  s.bubble.textContent = fill(msg("scrubBubble"), { n: book.chapters.indexOf(chapter) + 1, title, t: clock(d.ms - chapter.start) }).replace(" ·  ·", " ·");
+  const words = player.chapterWords(book, book.chapters.indexOf(chapter));
+  // A chapter shown by its short name ("Prologue") would repeat it in front of its longer title.
+  const shownTitle = words.numbered || title !== words.lead ? title : "";
+  s.bubble.textContent = fill(msg("scrubBubble"), { chapter: words.lead, title: shownTitle, t: clock(d.ms - chapter.start) }).replace(" ·  ·", " ·");
   drawTimes(d.ms, player.state().speed);
   drawRuler(d.ms);
 }
@@ -572,9 +575,10 @@ function fillChapters() {
   const rows = book.chapters.map((chapter, idx) => {
     const row = ui["chapter-row"].content.firstElementChild.cloneNode(true);
     const button = row.firstElementChild;
-    const title = chapter.title || fill(msg("chapterOf"), { n: idx + 1, total: book.chapters.length });
+    const words = player.chapterWords(book, idx);
+    const title = chapter.title || words.header;
     const played = idx < position.chapterIdx;
-    button.children[0].textContent = String(idx + 1);
+    button.children[0].textContent = words.column; // empty for a chapter without a number
     button.children[1].textContent = title;
     button.children[2].textContent = clock(chapter.end - chapter.start);
     button.children[3].hidden = !played;

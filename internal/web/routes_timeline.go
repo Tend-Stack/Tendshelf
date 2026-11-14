@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -40,6 +41,7 @@ func (s *server) getTimeline(w http.ResponseWriter, r *http.Request) {
 	if bookID != "" && len(rows) > 0 {
 		v.Only, v.OnlyHref, v.AllLabel = fmt.Sprintf(timelineOneBookFmt, rows[0].BookTitle), "/me/listening/history", timelineAllBooks
 	}
+	names := map[string]chapterNames{} // each book's chapter numbering, read once per page
 	var day string
 	for _, x := range rows {
 		end := time.UnixMilli(x.EndedAt).In(loc)
@@ -49,7 +51,7 @@ func (s *server) getTimeline(w http.ResponseWriter, r *http.Request) {
 		}
 		chapter := x.Chapter
 		if chapter == "" && x.ChapterIdx >= 0 {
-			chapter = fmt.Sprintf(timelineChapterFmt, x.ChapterIdx+1)
+			chapter = s.timelineChapterName(ctx, names, x.BookID, x.ChapterIdx)
 		}
 		span := fmt.Sprintf(timelineRangeFmt, clockText(x.StartMs), clockText(x.EndMs))
 		if chapter != "" {
@@ -72,4 +74,20 @@ func (s *server) getTimeline(w http.ResponseWriter, r *http.Request) {
 		v.OlderHref, v.OlderLabel = "/me/listening/history?"+q.Encode(), timelineOlder
 	}
 	s.pageStyled(w, r, http.StatusOK, timelineTitle, "profile", pages.Timeline(v), nil, timelineStyles...)
+}
+
+// timelineChapterName names chapter idx (0-based) of a book whose row kept no chapter text, by the chapter's own
+// number. A book whose chapters cannot be read falls back to the place.
+func (s *server) timelineChapterName(ctx context.Context, cache map[string]chapterNames, bookID string, idx int) string {
+	names, ok := cache[bookID]
+	if !ok {
+		if chs, err := s.lib.Chapters(ctx, bookID); err == nil {
+			names = chapterNamesOf(chs)
+		}
+		cache[bookID] = names
+	}
+	if idx >= len(names.Nums) {
+		return fmt.Sprintf(timelineChapterFmt, idx+1)
+	}
+	return names.Name(idx)
 }

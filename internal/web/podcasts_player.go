@@ -75,8 +75,9 @@ func (s *server) episodePlayerView(ctx context.Context, u users.User, ep podcast
 		if i+1 < len(chapters) {
 			end = chapters[i+1].StartMs
 		}
-		v.Chapters = append(v.Chapters, components.PlayerChapterView{Idx: i, StartMs: c.StartMs, EndMs: max(end, c.StartMs), Title: c.Title})
+		v.Chapters = append(v.Chapters, components.PlayerChapterView{Idx: i, StartMs: c.StartMs, EndMs: max(end, c.StartMs), Title: c.Title, Num: i + 1}) // an episode's chapters keep their place as the number
 	}
+	v.ChapterTotal = len(chapters)
 	if len(chapters) == 0 && (ep.ChaptersURL != "" || s.podcasts.FileChaptersPossible(ep)) {
 		v.ChaptersHref = "/podcasts/chapters/" + id
 	}

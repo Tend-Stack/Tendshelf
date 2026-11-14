@@ -21,13 +21,21 @@ import (
 // ChapterLine splits "Chapter 12 of 19 · The Second Lamp" into its lead and the chapter's own name.
 // index is 1-based. A book of one chapter (or none) has no line. Many files name their chapters
 // "Chapter 13" or just "13", which would print twice, so those give no name.
-func ChapterLine(index, count int, title string) (lead, rest string) {
-	if count <= 1 {
+func ChapterLine(names chapterNames, idx int) (lead, rest string) {
+	if len(names.titles) <= 1 || idx < 0 || idx >= len(names.titles) {
 		return "", ""
 	}
-	lead = fmt.Sprintf(nowPanelChapterOf, index, count)
-	t := strings.TrimSpace(title)
-	if t == "" || strings.EqualFold(t, fmt.Sprintf("Chapter %d", index)) || t == strconv.Itoa(index) {
+	lead = names.Of(idx)
+	t := strings.TrimSpace(names.titles[idx])
+	if !names.numbered(idx) {
+		// "Prologue: 9:17 P.M." leads with "Prologue"; a title that is only the short name adds nothing
+		if t == lead {
+			return lead, ""
+		}
+		return lead, t
+	}
+	n := names.Nums[idx]
+	if t == "" || strings.EqualFold(t, fmt.Sprintf(chapterLeadFmt, n)) || t == strconv.Itoa(n) {
 		return lead, ""
 	}
 	return lead, t
@@ -44,10 +52,7 @@ func nowLinks(people []library.PersonRef, role string) []components.NowLink {
 
 // nowChapterLine is the lead and name of the 0-based chapter idx (both empty when out of range).
 func nowChapterLine(chs []library.Chapter, idx int) (string, string) {
-	if idx < 0 || idx >= len(chs) {
-		return "", ""
-	}
-	return ChapterLine(idx+1, len(chs), chs[idx].Title)
+	return ChapterLine(chapterNamesOf(chs), idx)
 }
 
 // nowPanelHref is the address of one of the panel's fragments.

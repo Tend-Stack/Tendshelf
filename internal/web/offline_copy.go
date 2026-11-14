@@ -18,7 +18,7 @@ const (
 	offlineEmptyBy = "Download a book to listen without a connection."
 
 	offlineReady      = "Ready offline"
-	offlineReadyChap  = "Ready offline · Chapter %d"
+	offlineReadyChap  = "Ready offline · %s"
 	offlineReadyPct   = "Ready offline · %d%%"
 	offlineNeedsNet   = "Needs a connection"
 	offlinePlayAria   = "Play %s"

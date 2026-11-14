@@ -51,9 +51,10 @@ func listenRulerFor(chs []library.Chapter, posMs, durMs int64, speed float64) li
 	if cur := currentChapter(chs, pos); cur >= 0 {
 		v.Current = cur + 1
 		left := int64(math.Ceil(float64(max(chs[cur].EndMs-pos, 0)) / speed / 60_000))
-		v.Label = fmt.Sprintf(homeRulerChapter, cur+1, len(chs))
-		v.Where = fmt.Sprintf(homeWhere, cur+1, max(left, 1), bookLeft)
-		v.WhereShort = fmt.Sprintf(bookWhereShort, cur+1, fmt.Sprintf("%d min", max(left, 1)))
+		names := chapterNamesOf(chs)
+		v.Label = fmt.Sprintf(homeRulerChapter, names.InlineOf(cur)) // "Book progress, chapter 13 of 51"
+		v.Where = fmt.Sprintf(homeWhere, names.Name(cur), max(left, 1), bookLeft)
+		v.WhereShort = fmt.Sprintf(bookWhereShort, names.Name(cur), fmt.Sprintf("%d min", max(left, 1)))
 	}
 	return v
 }

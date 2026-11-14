@@ -65,16 +65,16 @@ var weightBudgets = map[string]weightBudget{
 	// 2026-11-14, the right-to-left reader rules in pages-reader.css (reader-rtl P2): the CSS total measured 324,667 B on every
 	// page that loads it, so each CSS row that was crossed is raised 3 KiB (reported, nothing squeezed).
 	// JS 220,672 -> 220,928 B (measured 220,703; the reader row 288,256 -> 288,512, measured 288,265: the speed value takes the accent, decision 0042, 2026-11-14), reported, not squeezed.
-	"home":        {HTML: 71680, CSS: 326144, JS: 220928, Font: 1075200, Img: 38912, Requests: 63}, // Shelf spines (decision 0034): HTML raised to 71,680 B from 70,120 B measured (li, link and spans per spine), requests +2 for pages-spines.css. Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB
-	"library":     {HTML: 87040, CSS: 326144, JS: 220928, Font: 791552, Img: 95232, Requests: 93},
-	"book":        {HTML: 55296, CSS: 326144, JS: 220928, Font: 791552, Img: 29696, Requests: 55},
-	"listening":   {HTML: 164864, CSS: 326144, JS: 220928, Font: 791552, Img: 34816, Requests: 62},
-	"search":      {HTML: 59392, CSS: 326144, JS: 220928, Font: 791552, Img: 39936, Requests: 65},
-	"profile":     {HTML: 64512, CSS: 328704, JS: 220928, Font: 791552, Img: 57344, Requests: 62}, // decision 0021, set the same way from the first measurement (2026-11-05)
-	"settings":    {HTML: 49152, CSS: 326144, JS: 220928, Font: 791552, Img: 1024, Requests: 45},
-	"reader":      {HTML: 53248, CSS: 326144, JS: 288512, Font: 1075200, Img: 1024, Requests: 56}, // JS +1.5 KB for right-to-left reading (R4 P3, 2026-11-14: 285,045 B measured, 885 B over, reported); earlier: JS +1 KB for read aloud (decision 0032, 2026-11-08: 238,301 B measured, 733 B over, reported); JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05)
-	"passkeys":    {HTML: 41984, CSS: 334848, JS: 220928, Font: 791552, Img: 1024, Requests: 48},  // decision 0041, set from the first measurement (2026-11-12): html 40,525 B, css 328,932 B, js 215,298 B, 46 requests; measured on 127.0.0.1, where the passkey script is not loaded (an IP is no RP id)
-	"admin-users": {HTML: 47104, CSS: 333312, JS: 220928, Font: 791552, Img: 1024, Requests: 45},
+	"home":        {HTML: 71680, CSS: 326144, JS: 223232, Font: 1075200, Img: 38912, Requests: 63}, // Shelf spines (decision 0034): HTML raised to 71,680 B from 70,120 B measured (li, link and spans per spine), requests +2 for pages-spines.css. Img raised for the row of three covers (decision 0021, PR3): 33761 B measured x 1.15, next KiB // chapter numbers (2026-11-14): js 223,001 B measured, row raised from 220,672 to 223,232 B, reported
+	"library":     {HTML: 87040, CSS: 326144, JS: 223232, Font: 791552, Img: 95232, Requests: 93},  // chapter numbers (2026-11-14): js 223,001 B measured, row raised from 220,672 to 223,232 B, reported
+	"book":        {HTML: 55296, CSS: 326144, JS: 223232, Font: 791552, Img: 29696, Requests: 55},  // chapter numbers (2026-11-14): js 223,001 B measured, row raised from 220,672 to 223,232 B, reported
+	"listening":   {HTML: 164864, CSS: 326144, JS: 223232, Font: 791552, Img: 34816, Requests: 62}, // chapter numbers (2026-11-14): js 223,001 B measured, row raised from 220,672 to 223,232 B, reported
+	"search":      {HTML: 59392, CSS: 326144, JS: 223232, Font: 791552, Img: 39936, Requests: 65},  // chapter numbers (2026-11-14): js 223,001 B measured, row raised from 220,672 to 223,232 B, reported
+	"profile":     {HTML: 64512, CSS: 328704, JS: 223232, Font: 791552, Img: 57344, Requests: 62},  // decision 0021, set the same way from the first measurement (2026-11-05) // chapter numbers (2026-11-14): js 223,003 B measured, row raised from 220,672 to 223,232 B, reported
+	"settings":    {HTML: 49152, CSS: 326144, JS: 223232, Font: 791552, Img: 1024, Requests: 45},   // chapter numbers (2026-11-14): js 223,001 B measured, row raised from 220,672 to 223,232 B, reported
+	"reader":      {HTML: 53248, CSS: 326144, JS: 290816, Font: 1075200, Img: 1024, Requests: 56},  // JS +1.5 KB for right-to-left reading (R4 P3, 2026-11-14: 285,045 B measured, 885 B over, reported); earlier: JS +1 KB for read aloud (decision 0032, 2026-11-08: 238,301 B measured, 733 B over, reported); JS +1 KB for the rising player (2026-11-07, 518 B over, reported); M5 RD4, set the same way from the first measurement (2026-11-05) // chapter numbers (2026-11-14): js 290,565 B measured, row raised from 288,256 to 290,816 B, reported
+	"passkeys":    {HTML: 41984, CSS: 334848, JS: 223232, Font: 791552, Img: 1024, Requests: 48},   // decision 0041, set from the first measurement (2026-11-12): html 40,525 B, css 328,932 B, js 215,298 B, 46 requests; measured on 127.0.0.1, where the passkey script is not loaded (an IP is no RP id) // chapter numbers (2026-11-14): js 223,003 B measured, row raised from 220,672 to 223,232 B, reported
+	"admin-users": {HTML: 47104, CSS: 333312, JS: 223232, Font: 791552, Img: 1024, Requests: 45},   // chapter numbers (2026-11-14): js 223,003 B measured, row raised from 220,672 to 223,232 B, reported
 }
 
 // weightProbeJS waits until ts-ready exists and no new resource entry has appeared for 500 ms (10 s at
