@@ -542,6 +542,13 @@ func TestPlayerKindsCaptures(t *testing.T) {
 	tab, _, _ = pkStation(t, 390, 844, "dark")
 	tab.Screenshot(filepath.Join(dir, "kind-station-dark-390x844.png"))
 	tab.Close()
+	tab, _, _ = pkStation(t, 390, 844, "dark") // a station starts saved: the button is pressed
+	tab.Screenshot(filepath.Join(dir, "kind-station-saved-dark-390x844.png"))
+	tab.Close()
+	tab, _, _ = pkEpisode(t, false, 390, 844, "dark")
+	pkPressFav(t, tab, true)
+	tab.Screenshot(filepath.Join(dir, "kind-episode-favourite-dark-390x844.png"))
+	tab.Close()
 	tab, _, _ = pkEpisodeNotes(t, true, pkNotes, 390, 844, "dark")
 	playerClickSel(t, tab, "#player-full [data-ts-open-notes]")
 	tab.WaitFor(ppDialog+`.querySelector("[data-ts-notes-body]").textContent.includes("Notes for the episode")`, 5*time.Second)

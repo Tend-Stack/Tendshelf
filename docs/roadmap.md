@@ -1159,6 +1159,15 @@ tests. Budgets raised from measurement: `player-phone.css` 4,454 B gzip, `player
 all app scripts 136,396 B. Limits: at 1280 px and up the notes are in the Now playing panel, so the player's Show notes item is a phone and
 tablet item; no translations; saving a station from the player is not built. Not verified: on a phone or the emulator; WebKit.
 
+**Save a station and star an episode from the player (2026-11-15, decision [0043](decisions/0043-player-kinds.md) addendum)**: built. Reused: the radio save and remove
+routes, the episode favourite route, `PlayerDataView`, `drawKind()`, the toast. Extended: those routes answer `204` (and plain-text refusals) to a request
+that asks for JSON, every other request unchanged; `data-favourite` in the fragment; one star button in the full player header, in a book's bookmark place
+(a live station's header tools are otherwise hidden, so that rule now spares the star). New copy: five toasts in `docs/copy-additions.md`. Checks:
+`TestRadioSaveRemovePlayerAsked`, `TestPodcastFavouritePlayerAsked`, `TestPlayerDataFavourite`, `TestFullPlayerMarkup`, `TestPlayerKindStationSave`,
+`TestPlayerKindEpisodeStar`, `TestPlayerKindBookNoFav`, `TestPlayerKindFavContrast`. Budgets raised from measurement: `player-full.js` 21,039 B gzip (limit 21,248),
+all app scripts 137,112 B (137,216); page-weight rows raised to the next 256 B. Limits: the page under the player (Radio, the episode page) keeps its own
+button as it was until the next visit, since no helper re-fetches the current page. Not verified: on a phone or the emulator; WebKit.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a

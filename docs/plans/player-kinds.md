@@ -166,8 +166,6 @@ Gates per package: `make generate` (clean tree), `make check`, `make build`, the
 - player.css and bundle.css must not move.
 
 ## 8. Out of scope
-- Saving or removing a station from the player (`postRadioSave` answers with a page redirect; it needs its own fragment answer).
-- Favouriting an episode from the player.
 - A now-playing history.
 - Share and download in the player.
 - An episode "end of chapter" sleep choice.

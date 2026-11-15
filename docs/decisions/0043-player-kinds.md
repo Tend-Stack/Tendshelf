@@ -49,5 +49,13 @@ carry the night-sleep attributes (`data-night-sleep`, `data-night-from`, `data-n
 
 ## Out of scope
 
-Saving a station from the player, favouriting an episode, a now-playing history, share and download in the player, an episode "end of chapter"
+A now-playing history, share and download in the player, an episode "end of chapter"
 sleep choice, Eyes-free for stations, a new mini bar or tablet layout, `android/`, translations.
+
+## Addendum (2026-11-15): save and star from the full player
+
+The full player's header carries one toggle (`data-ts-full-fav`, `aria-pressed`, the star icon) for a station and an episode, in the place a book keeps its bookmark;
+the two never show together. It posts to the existing routes (`/radio/stations/{id}/save` and `/remove`, `/podcasts/episodes/{id}/favourite`) with
+`Accept: application/json`. For that request, and only that one (an htmx request and a plain form keep their answers), success is `204 No Content` and a refusal keeps
+its status (404, 422, 429) with a short plain-text body, never a page. Gates, `share.Can` and the hourly allowance are unchanged. The fragment carries
+`data-favourite="1"` when the station is saved or the episode starred. The page under the player is not refreshed: its own save or star button stays as it was until the next visit.

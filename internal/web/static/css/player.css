@@ -239,7 +239,7 @@ html[data-text-size="large"] .ts-player-slot.is-covered { visibility: hidden; }
 .ts-player-slot.is-live .ts-pbar__book { display: none; }
 .ts-player.is-live [data-ts-full-back], .ts-player.is-live [data-ts-full-forward], .ts-player.is-live [data-ts-full-prev], .ts-player.is-live [data-ts-full-next],
 .ts-player.is-live [data-ts-open-speed], .ts-player.is-live [data-ts-open-chapters], .ts-player.is-live [data-ts-full-read], .ts-player.is-live .ts-player__scrub,
-.ts-player.is-live .ts-player__times, .ts-player.is-live .ts-player__tools { display: none; }
+.ts-player.is-live .ts-player__times, .ts-player.is-live .ts-player__tools > :not(.ts-player__fav) { display: none; }
 .ts-player.is-live .ts-player__transport { justify-content: center; }
 .ts-player.is-live .ts-player__chapter { color: var(--accent); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 

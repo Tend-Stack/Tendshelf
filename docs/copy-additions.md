@@ -337,3 +337,5 @@ are not in the copy deck or on `DownloadsPhone` / `StateOffline`. Same voice rul
 **Player kinds (new, decision 0043).** This speed is for this show. Other shows keep your usual speed. (the episode speed sheet; reused words: "Go to show" in an episode's player menu, "Radio" in the station's settings bar)
 
 **Player kinds, notes (decision 0043).** The show notes did not load. Try again in a moment. (the notes sheet in the full player; reused word: "Show notes" for the bar item and the sheet title)
+
+**Player kinds, save and star (decision 0043).** Saved to your stations. · Removed from your stations. · Episode starred. · Star removed. · That did not save. Try again in a moment. (toasts of the full player star button; reused words: "Save {name}" and "Remove {name}" from the Radio page, "Star" from the episode page, and the Radio page limit lines for 429 and 422)

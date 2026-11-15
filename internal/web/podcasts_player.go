@@ -60,7 +60,7 @@ func (s *server) episodePlayerView(ctx context.Context, u users.User, ep podcast
 		NightSleep: set.NightSleep, NightFrom: set.NightFrom, NightTo: set.NightTo, NightMinutes: set.NightMinutes,
 		HasNotes:  rss.CleanHTML(ep.NotesHTML, rss.NotesMax) != "",
 		Favourite: ep.State.Favourite,
-		Kind:     podEpisodeKind, ProgressHref: "/podcasts/progress/" + id,
+		Kind:      podEpisodeKind, ProgressHref: "/podcasts/progress/" + id,
 		ShowHref:    "/podcasts/shows/" + url.PathEscape(ep.ShowID),
 		SkipIntroMs: int64(skipIntro) * 1000, SkipOutroMs: int64(skipOutro) * 1000,
 		Files: []components.PlayerFileView{{
