@@ -374,6 +374,7 @@ async function toggleFavourite() {
       player.setFavourite(sent.id, on);
       if (book === sent) drawFavourite();
       player.toast("hint", msg(live ? (on ? "favSaved" : "favRemoved") : (on ? "favStarred" : "favUnstarred")));
+      refreshPageUnder(live);
     } else if (res.status === 429) {
       player.toast("err", msg("favBusy"));
     } else if (res.status === 422) {
@@ -386,6 +387,28 @@ async function toggleFavourite() {
   } finally {
     favouriting = false;
   }
+}
+
+// The page under the player may show the same item (a show's episodes, Favourites, Your stations) with a star or
+// Save button of its own. After the player changes it, the page is fetched again so the two agree. Only the
+// podcast pages for an episode and the radio pages for a station, and never while someone is typing in the page.
+function refreshPageUnder(live) {
+  const path = location.pathname;
+  const section = live ? "/radio" : "/podcasts";
+  if (path !== section && !path.startsWith(section + "/")) return;
+  if (!window.htmx || !navigator.onLine) return;
+  const focused = document.activeElement;
+  if (focused && focused.closest("#main input, #main textarea, #main select")) return;
+  const scrollTop = window.scrollY;
+  window.htmx
+    .ajax("GET", path + location.search, { target: "#main", select: "#main", swap: "outerSync" })
+    .then(() => {
+      // The shell focuses #main after every swap of it; the person is still in the player, so put focus and
+      // the scroll position back where they were.
+      window.scrollTo(0, scrollTop);
+      if (focused && focused.isConnected && dialog.open) focused.focus({ preventScroll: true });
+    })
+    .catch(() => {});
 }
 
 // What changes only when another book loads.

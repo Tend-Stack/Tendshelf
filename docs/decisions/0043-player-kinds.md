@@ -58,4 +58,4 @@ The full player's header carries one toggle (`data-ts-full-fav`, `aria-pressed`,
 the two never show together. It posts to the existing routes (`/radio/stations/{id}/save` and `/remove`, `/podcasts/episodes/{id}/favourite`) with
 `Accept: application/json`. For that request, and only that one (an htmx request and a plain form keep their answers), success is `204 No Content` and a refusal keeps
 its status (404, 422, 429) with a short plain-text body, never a page. Gates, `share.Can` and the hourly allowance are unchanged. The fragment carries
-`data-favourite="1"` when the station is saved or the episode starred. The page under the player is not refreshed: its own save or star button stays as it was until the next visit.
+`data-favourite="1"` when the station is saved or the episode starred. After a save or a star from the player, a podcast page (for an episode) or a radio page (for a station) under it is fetched again into `#main`, so its own button and lists agree (2026-11-15); it is skipped while someone is typing in that page, and focus and scroll stay where they were.

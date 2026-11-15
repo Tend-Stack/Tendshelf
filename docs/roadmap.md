@@ -1165,8 +1165,11 @@ that asks for JSON, every other request unchanged; `data-favourite` in the fragm
 (a live station's header tools are otherwise hidden, so that rule now spares the star). New copy: five toasts in `docs/copy-additions.md`. Checks:
 `TestRadioSaveRemovePlayerAsked`, `TestPodcastFavouritePlayerAsked`, `TestPlayerDataFavourite`, `TestFullPlayerMarkup`, `TestPlayerKindStationSave`,
 `TestPlayerKindEpisodeStar`, `TestPlayerKindBookNoFav`, `TestPlayerKindFavContrast`. Budgets raised from measurement: `player-full.js` 21,039 B gzip (limit 21,248),
-all app scripts 137,112 B (137,216); page-weight rows raised to the next 256 B. Limits: the page under the player (Radio, the episode page) keeps its own
-button as it was until the next visit, since no helper re-fetches the current page. Not verified: on a phone or the emulator; WebKit.
+all app scripts 137,112 B (137,216); page-weight rows raised to the next 256 B. Follow-up (2026-11-15): the page under the
+player (a podcast page for an episode, a radio page for a station) is fetched again into `#main` after a star or save, so its own button and lists agree; skipped
+while someone types in that page; focus and scroll are put back. Checks: `TestPlayerKindStationSave` and `TestPlayerKindEpisodeStar` now read the page under the
+player; `make page-weight`. Budgets raised from measurement: `player-full.js` 21,551 B (21,760), all app scripts 137,624 B (137,728), page rows js 235,198 B
+(235,264) and reader 302,760 B (302,848). Not verified: on a phone or the emulator; WebKit.
 
 ## Later
 

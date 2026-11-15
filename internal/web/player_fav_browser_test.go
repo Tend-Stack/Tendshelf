@@ -56,6 +56,8 @@ func TestPlayerKindStationSave(t *testing.T) {
 		if saved() {
 			t.Errorf("%v: the station is still saved after the press", size)
 		}
+		// The Radio page under the player lists saved stations: it follows the player's button, both ways.
+		tab.WaitFor(`document.querySelector('#main form[action$="/radio/stations/`+id+`/remove"]') === null`, 5*time.Second)
 		if v = pkFav(tab); v.Label != "Save Harbour FM" {
 			t.Errorf("%v: label after remove %q", size, v.Label)
 		}
@@ -63,6 +65,7 @@ func TestPlayerKindStationSave(t *testing.T) {
 		if !saved() {
 			t.Errorf("%v: the station is not saved after the second press", size)
 		}
+		tab.WaitFor(`document.querySelector('#main form[action$="/radio/stations/`+id+`/remove"]') !== null`, 5*time.Second)
 		if v = pkFav(tab); v.Label != "Remove Harbour FM" {
 			t.Errorf("%v: label after save %q", size, v.Label)
 		}
@@ -94,6 +97,16 @@ func TestPlayerKindEpisodeStar(t *testing.T) {
 		pkPressFav(t, tab, true)
 		if !starred() {
 			t.Errorf("%v: not starred after the press", size)
+		}
+		// The episode page under the player has a star of its own: it follows, and the person stays in the player.
+		tab.WaitFor(`document.querySelector('#main form[action$="/favourite"] button').getAttribute("aria-pressed") === "true"`, 5*time.Second)
+		var under struct {
+			Open, FocusInPlayer bool
+			ScrollY             float64
+		}
+		tab.Eval(`(() => { const d = `+ppDialog+`; return {Open: d.open, FocusInPlayer: d.contains(document.activeElement), ScrollY: window.scrollY}; })()`, &under)
+		if !under.Open || !under.FocusInPlayer || under.ScrollY != 0 {
+			t.Errorf("%v: after the page refresh %+v", size, under)
 		}
 		pkPressFav(t, tab, false)
 		if starred() {
