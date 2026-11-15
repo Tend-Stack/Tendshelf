@@ -276,9 +276,10 @@ func TestFullPlayerBrowserTimesAndChapters(t *testing.T) {
 		tab.Eval(`Object.fromEntries(["chapter", "clock", "left", "elapsed", "book-left", "speed"].map((n) => [n, document.querySelector("#player-full [data-ts-full-" + n + "]").textContent]))`, &m)
 		return m
 	}
-	// 100 s in: chapter 4 runs 90 s to 120 s; 80 s of the book are left.
+	// 100 s in: chapter 4 runs 90 s to 120 s; 80 s of the book are left, which rounds to the nearest minute (1 m), as the
+	// length on the book's page does.
 	got := texts()
-	want := map[string]string{"chapter": "Chapter 4 of 6", "clock": "0:10", "left": "0:20 left in chapter", "elapsed": "0:10", "book-left": "2 m left in book", "speed": "1.0×"}
+	want := map[string]string{"chapter": "Chapter 4 of 6", "clock": "0:10", "left": "0:20 left in chapter", "elapsed": "0:10", "book-left": "1 m left in book", "speed": "1.0×"}
 	for k, v := range want {
 		if got[k] != v {
 			t.Errorf("speed 1: %s = %q, want %q", k, got[k], v)
