@@ -230,7 +230,7 @@ const (
 	msgCompatWait     = compatWaitText
 	msgCompatFailed   = "This book can't play in this browser."
 	// Android app only (A4): the app could not stream the book. Not in the copy deck; listed for review.
-	msgNativeFailed = "This book can't play right now. Check your connection."
+	msgNativeFailed = "This can't play right now. Check your connection."
 	// msgNativeBackground: Android refused to start playback while the app was out of sight.
 	msgNativeBackground = "Tendshelf can't start by itself while it is closed. Tap Play to listen."
 	msgSignedOut        = "You're signed out. Sign in to keep your place."

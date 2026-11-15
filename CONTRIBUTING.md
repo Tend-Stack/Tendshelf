@@ -13,6 +13,8 @@ were using, what happened, what you expected, and what the server log says.
   and the address of your server. Never post a token. If one slips out, sign that device out in Tendshelf
   at once.
 
+A security problem is different: do not open an issue, follow [SECURITY.md](SECURITY.md).
+
 ## Propose a feature
 
 Open an issue and pick "Feature request". **Describe the problem first**: what you were trying to do, what

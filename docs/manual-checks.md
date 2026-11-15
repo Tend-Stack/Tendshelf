@@ -10,11 +10,12 @@ Each line names the section below that holds the rows. Nothing here blocks the s
 the checks only a person with the device can make.
 
 - **iPhone Safari**: "M3a offline pocket" (the iOS Safari rows) and "M5 book reader: WebKit and phone (RD4)".
-- **Screen readers** (Orca, TalkBack, VoiceOver): "M3c keyboard and screen reader".
+- **Screen readers**: done, reported by the operator on 2026-11-15 (the rows in "M3c keyboard and screen reader"
+  were not filled in one by one).
 - **Desktop app on your own computer**: "Desktop app on your own computer (X4 to X6)" and "Desktop media
   keys and tray (M6 D5)".
-- **Android phone**: "Android Auto (A8)", "Android app" (the widget, automatic downloads, PA2-5 and RA-1
-  again), "L8: the next book is ready on the phone".
+- **Android phone**: done, reported by the operator on 2026-11-15 after testing on an Android phone only (the
+  rows in "Android app" and "L8" were not filled in one by one). Still open: "Android Auto (A8)", which needs a car.
 - **Sign-in with a real provider**: "S7 sign-in with a provider".
 - **Radio**: "Radio on the web": RW-1 to RW-3, and RH-1 and RH-2 for an HLS station (so far proven only
   against a simulated station).

@@ -52,6 +52,9 @@ var refusedPrefixes = mustPrefixes(
 	"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24", "198.18.0.0/15",
 	"198.51.100.0/24", "203.0.113.0/24", "240.0.0.0/4", "255.255.255.255/32",
 	"2001:db8::/32", "fc00::/7",
+	// Forms that can carry or stand for a private IPv4 address, or that are only local (security review 2026-11-15):
+	// local-use NAT64, old site-local, 6to4 and IPv4-compatible addresses.
+	"64:ff9b:1::/48", "fec0::/10", "2002::/16", "::/96",
 )
 
 // nat64 is the well-known NAT64 prefix; its last four bytes are an IPv4 address.

@@ -149,6 +149,7 @@ with `libgtk-3-dev libwebkit2gtk-4.1-dev` is its legacy fallback).
 
 - [docs/vision.md](docs/vision.md): who it is for, what "wow" means here, and what Tendshelf will not do
 - [CONTRIBUTING.md](CONTRIBUTING.md): how to report a problem, propose a feature and build it
+- [SECURITY.md](SECURITY.md): how to report a vulnerability privately, and which versions get fixes
 - [docs/feature-map.md](docs/feature-map.md): features against Audiobookshelf and Audible, by phase
 - [docs/architecture.md](docs/architecture.md): packages, data model, routes, streaming, jobs
 - [docs/roadmap.md](docs/roadmap.md): phases and their exit criteria
