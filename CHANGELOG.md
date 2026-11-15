@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+## 2026.11.0
+
+Released 2026-11-15. One full-screen player for books, podcast episodes and radio stations, with a new layout on phones and a star to save a station or an episode. Passkeys, right-to-left books, a sleep timer that starts by itself at night, and a desktop app whose menu and player bar stay still while you scroll.
+
 ### Added
 
 - **Save a station or star an episode from the player.** The full-screen player has a star in its top corner for a station or an episode (where a book has its bookmark). It saves or removes the station, or stars or unstars the episode, without leaving the player.

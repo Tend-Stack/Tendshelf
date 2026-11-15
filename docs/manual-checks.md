@@ -12,6 +12,8 @@ the checks only a person with the device can make.
 - **iPhone Safari**: "M3a offline pocket" (the iOS Safari rows) and "M5 book reader: WebKit and phone (RD4)".
 - **Screen readers**: done, reported by the operator on 2026-11-15 (the rows in "M3c keyboard and screen reader"
   were not filled in one by one).
+- **Desktop app, scrolling** (2026-11-15): the operator confirmed in the real window that the menu and the player bar stay
+  still while the Library scrolls, after `#main` became the scroller (decision 0011 addendum).
 - **Desktop app on your own computer**: "Desktop app on your own computer (X4 to X6)" and "Desktop media
   keys and tray (M6 D5)".
 - **Android phone**: done, reported by the operator on 2026-11-15 after testing on an Android phone only (the
