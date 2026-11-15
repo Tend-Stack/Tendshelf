@@ -139,6 +139,7 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 		v, err := s.textPlayView(r, book, v)
 		if err == nil {
 			v.More = s.bookMoreMenu(r, book, seriesHref, false)
+			s.bookFit(v)
 		}
 		return v, err
 	}
@@ -189,6 +190,7 @@ func (s *server) bookPlayView(r *http.Request, book library.Book, files []librar
 	v.Download = s.bookDownloadView(r, book, v.Button != nil || mayRead)
 	// A podcast feed needs the download right and audio.
 	v.More = s.bookMoreMenu(r, book, seriesHref, v.Download != nil && v.Button != nil)
+	s.bookFit(v)
 	return v, nil
 }
 
@@ -266,4 +268,30 @@ func (l playLink) button(aria string, round bool) *components.PlayButtonView {
 		BookID: l.BookID, FileID: l.FileID, Mime: l.Mime, Href: l.Href(), Label: l.Label, AriaLabel: aria,
 		FileStartMs: l.FileStartMs, StartMs: l.StartMs, MayNeedCompat: l.MayNeedCompat, FromStart: l.FromStart, Round: round,
 	}
+}
+
+// bookFit makes the region's actions fold into the three-dot menu when they do not fit one line (decision 0044).
+// The primary button (the one resume button) never folds; the other format's button, Add to shelf, Download and
+// the mark do, the last of them first. Each gets a twin in the menu, in the row's order, with the same words.
+func (s *server) bookFit(v *pages.BookPlayView) {
+	var fit []components.MoreMenuFitItem
+	if v.Button != nil && v.ReadFirst {
+		v.PlayFit = true
+		fit = append(fit, components.MoreMenuFitItem{Key: "play", Label: v.Button.Label, Icon: "play"})
+	}
+	if v.Read != nil && !v.ReadFirst && v.Button != nil {
+		v.Read.FitKey = "read"
+		fit = append(fit, components.MoreMenuFitItem{Key: "read", Label: v.Read.Label, Icon: "book-open"})
+	}
+	if v.ShelfHref != "" {
+		fit = append(fit, components.MoreMenuFitItem{Key: "shelf", Label: v.ShelfLabel, Icon: "plus"})
+	}
+	if v.Download != nil {
+		fit = append(fit, components.MoreMenuFitItem{Key: "download", Label: v.Download.Label, Icon: "download"})
+	}
+	if v.MarkLabel != "" {
+		fit = append(fit, components.MoreMenuFitItem{Key: "mark", Label: v.MarkLabel, Icon: "check"})
+	}
+	v.More.Fit = fit
+	v.FitModule = s.assets.URL("js/fit-row.js")
 }

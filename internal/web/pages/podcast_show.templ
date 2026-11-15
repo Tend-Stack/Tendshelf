@@ -20,6 +20,10 @@ type PodcastShowView struct {
 	// Following is the quiet mark beside the title; Unfollow and Refresh are the two forms.
 	Following, UnfollowLabel, RefreshLabel string
 	UnfollowAction, RefreshAction          string
+	// FitModule and More keep the buttons on one line: Refresh and Stop following fold into the three-dot menu
+	// when they do not fit (decision 0044). Both are set only for a show that is followed.
+	FitModule string
+	More      components.MoreMenuView
 	SiteHref, SiteLabel                    string
 	// Notes is the show's description, already cleaned to the few tags the server allows.
 	Notes, NotesTitle string
@@ -97,7 +101,7 @@ templ PodcastShow(v PodcastShowView) {
 						@notesBlock(v.Notes)
 					</details>
 				}
-				<div class="ts-podshow__actions">
+				<div class="ts-podshow__actions" if v.FitModule != "" { data-ts-module={ v.FitModule } data-ts-fit }>
 					if v.LatestHref != "" {
 						<a class="ts-btn ts-btn--primary" href={ templ.SafeURL(v.LatestHref) } hx-boost="false" data-ts-play={ v.LatestID }>
 							@components.Icon("play", true)
@@ -109,14 +113,15 @@ templ PodcastShow(v PodcastShowView) {
 							@components.Icon("check", false)
 							{ v.Following }
 						</span>
-						<form method="post" action={ templ.SafeURL(v.RefreshAction) }>
+						<form method="post" action={ templ.SafeURL(v.RefreshAction) } data-ts-fit-item="refresh">
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>
 							<button type="submit" class="ts-btn ts-btn--secondary">{ v.RefreshLabel }</button>
 						</form>
-						<form method="post" action={ templ.SafeURL(v.UnfollowAction) }>
+						<form method="post" action={ templ.SafeURL(v.UnfollowAction) } data-ts-fit-item="unfollow">
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>
 							<button type="submit" class="ts-btn ts-btn--quiet">{ v.UnfollowLabel }</button>
 						</form>
+						@components.MoreMenu(v.More)
 					} else {
 						<form method="post" action={ templ.SafeURL(v.FollowAction) }>
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>

@@ -39,6 +39,10 @@ type BookPlayView struct {
 	// sentence a person sees instead of it when they may see the book but not read it.
 	Read      *components.ReadButtonView
 	ReadFirst bool
+	// FitModule is the address of js/fit-row.js: with it the region's actions stay on one line and fold into the
+	// three-dot menu (decision 0044). PlayFit lets the play button fold too, when Read is the primary one.
+	FitModule string
+	PlayFit   bool
 	Note      string
 	// Queue is the dropdown on the button's right quarter (Play next, Add to queue); nil draws the
 	// button alone.
@@ -204,6 +208,10 @@ templ BookPlay(v *BookPlayView) {
 			hx-get={ v.Refresh }
 			hx-trigger="progress-saved from:body"
 			hx-swap="outerHTML"
+			if v.FitModule != "" {
+				data-ts-module={ v.FitModule }
+				data-ts-fit
+			}
 		>
 			if v.Read != nil && v.ReadFirst {
 				@components.ReadButton(*v.Read)
@@ -212,7 +220,7 @@ templ BookPlay(v *BookPlayView) {
 				<p class="ts-book__note">{ v.Note }</p>
 			}
 			if v.Button != nil && v.Queue != nil {
-				<div class="ts-split" role="group">
+				<div class="ts-split" role="group" if v.PlayFit { data-ts-fit-item="play" }>
 					@components.PlayButton(*v.Button)
 					@components.QueueMenu(*v.Queue)
 				</div>
@@ -229,9 +237,9 @@ templ BookPlay(v *BookPlayView) {
 					<p class="caption ts-book__whereshort">{ v.WhereShort }</p>
 				</div>
 			}
-			<div class="ts-book__acts">
+			<div class="ts-book__acts" data-ts-fit-track>
 				if v.ShelfHref != "" {
-					@bookShelfLink(v.ShelfHref, v.ShelfLabel)
+					@bookShelfLink(v.ShelfHref, v.ShelfLabel, "shelf")
 				}
 				if v.Download != nil {
 					@bookDownload(*v.Download)
@@ -243,7 +251,7 @@ templ BookPlay(v *BookPlayView) {
 					</a>
 				}
 				if v.MarkLabel != "" {
-					<form method="post" action={ templ.SafeURL(v.Action) } hx-post={ v.Action } hx-swap="none">
+					<form method="post" action={ templ.SafeURL(v.Action) } hx-post={ v.Action } hx-swap="none" data-ts-fit-item="mark">
 						<input type="hidden" name="_csrf" value={ v.CSRF }/>
 						<input type="hidden" name="finished" value={ v.MarkValue }/>
 						<input type="hidden" name="next" value={ v.Next }/>
@@ -267,6 +275,7 @@ templ bookDownload(v BookDownloadView) {
 	<button
 		type="button"
 		class="ts-btn ts-btn--secondary ts-btn--lg ts-book__download"
+		data-ts-fit-item="download"
 		data-ts-download={ v.ID }
 		data-ts-msg-downloading={ v.Downloading }
 		data-ts-msg-working={ v.Working }
@@ -284,6 +293,7 @@ templ bookDownload(v BookDownloadView) {
 		class="ts-btn ts-btn--secondary ts-btn--lg ts-book__download"
 		href={ templ.SafeURL(v.Href) }
 		data-ts-download-status
+		data-ts-fit-item="download"
 		data-ts-msg-ready={ v.Ready }
 		data-ts-msg-paused={ v.Paused }
 		data-ts-msg-failed={ v.Failed }
@@ -294,8 +304,11 @@ templ bookDownload(v BookDownloadView) {
 	</a>
 }
 
-templ bookShelfLink(href, label string) {
+templ bookShelfLink(href, label, fitKey string) {
 	<a
+		if fitKey != "" {
+			data-ts-fit-item={ fitKey }
+		}
 		class="ts-btn ts-btn--secondary ts-btn--lg ts-book__shelf"
 		href={ templ.SafeURL(href) }
 		hx-get={ href }
@@ -392,7 +405,7 @@ templ Book(v BookView) {
 				<div class="ts-book__play">
 					<div class="ts-book__acts">
 						if v.ShelfHref != "" {
-							@bookShelfLink(v.ShelfHref, v.ShelfLabel)
+							@bookShelfLink(v.ShelfHref, v.ShelfLabel, "")
 						}
 						@components.MoreMenu(v.More)
 					</div>

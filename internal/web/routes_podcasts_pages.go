@@ -396,6 +396,10 @@ func (s *server) showView(w http.ResponseWriter, r *http.Request, sh podcast.Sho
 		Episodes: rows, Empty: podNoEpisodes, ListLabel: podEpisodesLabel, MoreText: podLoadMore,
 		Notes: rss.CleanHTML(sh.NotesHTML, rss.NotesMax),
 	}
+	if following {
+		v.FitModule = s.assets.URL("js/fit-row.js")
+		v.More.Fit = []components.MoreMenuFitItem{{Key: "refresh", Label: podRefresh}, {Key: "unfollow", Label: podUnfollow}}
+	}
 	if sh.Title == "" {
 		v.Title = podHostName(sh.FeedURL) // never the feed address as a headline
 	}

@@ -221,3 +221,8 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-podstartpage__form { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-8); margin-top: var(--space-16); }
 .ts-podstartpage__fields { display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; }
 .ts-podstartpage__choice { display: flex; align-items: center; gap: var(--space-4); min-height: var(--size-tap); }
+
+/* A followed show's buttons stay on one line: Refresh, then Stop following, fold into the three-dot menu (js/fit-row.js,
+   decision 0044). Before the script runs, and without it, the row wraps as before. */
+.ts-podshow__actions[data-ts-fit-on] { flex-wrap: nowrap; min-width: 0; }
+.ts-podshow__actions[data-ts-fit-on] > :is(.ts-btn, form, .ts-chip, .ts-moremenu) { flex: none; }

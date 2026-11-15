@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Changed
+
+- **Buttons that do not fit move into the three-dot menu.** On a book page (and on a followed show) the buttons stay on one line; "Add to shelf", "Download" or "Mark as finished" no longer drop onto a line of their own when the window is narrow. What does not fit moves into the three-dot menu, and comes back when there is room. Play and Resume, and the three-dot button, always show.
+
 ## 2026.11.0
 
 Released 2026-11-15. One full-screen player for books, podcast episodes and radio stations, with a new layout on phones and a star to save a station or an episode. Passkeys, right-to-left books, a sleep timer that starts by itself at night, and a desktop app whose menu and player bar stay still while you scroll.

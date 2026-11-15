@@ -19,6 +19,9 @@ func moreMenuItems(body string) ([]string, bool) {
 		return nil, false
 	}
 	j := strings.Index(body[i:], "</details>")
+	if strings.Contains(body[i:i+j], "data-ts-fit-only") {
+		return nil, false // only the fit twins: no button until js/fit-row.js needs it
+	}
 	var out []string
 	for _, m := range regexp.MustCompile(`class="ts-chipmenu__item"[^<]*>([^<>]+)</a>`).FindAllStringSubmatch(body[i:i+j], -1) {
 		out = append(out, m[1])

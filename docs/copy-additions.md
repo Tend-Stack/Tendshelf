@@ -339,3 +339,5 @@ are not in the copy deck or on `DownloadsPhone` / `StateOffline`. Same voice rul
 **Player kinds, notes (decision 0043).** The show notes did not load. Try again in a moment. (the notes sheet in the full player; reused word: "Show notes" for the bar item and the sheet title)
 
 **Player kinds, save and star (decision 0043).** Saved to your stations. · Removed from your stations. · Episode starred. · Star removed. · That did not save. Try again in a moment. (toasts of the full player star button; reused words: "Save {name}" and "Remove {name}" from the Radio page, "Star" from the episode page, and the Radio page limit lines for 429 and 422)
+
+**Action rows that fit (decision 0044).** No new words. The three-dot menu repeats the labels of the buttons that fold into it: "Add to shelf", "Download", "Mark as finished" / "Mark as not started", "Read", "Refresh", "Stop following".

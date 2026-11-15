@@ -7,10 +7,19 @@ type MoreMenuItem struct {
 	Sheet       bool
 }
 
+// MoreMenuFitItem is the menu's twin of an action button that may not fit its row (js/fit-row.js, decision 0044).
+// Key names the row's data-ts-fit-item; the twin stays hidden until the button folds away, then does what it does.
+type MoreMenuFitItem struct {
+	Key, Label, Icon string
+}
+
 // MoreMenuView is the menu behind the three-dot button. Items hold only what the person may use; no
 // items draws no button.
 type MoreMenuView struct {
 	Items []MoreMenuItem
+	// Fit holds the twins of the row's collapsible buttons, in the row's order; they come before Items. A menu with
+	// only twins is drawn, but js/fit-row.js hides its button while every action fits.
+	Fit []MoreMenuFitItem
 	// Centered opens the panel under the middle of the button, for a button alone on a centred line.
 	Centered bool
 }
@@ -18,13 +27,21 @@ type MoreMenuView struct {
 // MoreMenu is the square three-dot button and its panel. It is the library's chip menu (a <details>, so it
 // opens without a script; shell.js closes it on Escape and on a click elsewhere), drawn as an icon button.
 templ MoreMenu(v MoreMenuView) {
-	if len(v.Items) > 0 {
-		<details class={ "ts-chipmenu ts-moremenu", templ.KV("ts-moremenu--center", v.Centered) } data-ts-chipmenu>
+	if len(v.Items) > 0 || len(v.Fit) > 0 {
+		<details class={ "ts-chipmenu ts-moremenu", templ.KV("ts-moremenu--center", v.Centered) } data-ts-chipmenu if len(v.Items) == 0 { data-ts-fit-only hidden }>
 			<summary class="ts-btn ts-btn--secondary ts-btn--lg ts-moremenu__btn" aria-label="More options">
 				@Icon("more", false)
 			</summary>
 			<div class="ts-chipmenu__body ts-moremenu__body">
 				<div class="ts-chipmenu__group" role="group" aria-label="More options">
+					for _, f := range v.Fit {
+						<button type="button" class="ts-chipmenu__item ts-chipmenu__item--fit" data-ts-fit-for={ f.Key } hidden>
+							if f.Icon != "" {
+								@Icon(f.Icon, false)
+							}
+							<span data-ts-fit-label>{ f.Label }</span>
+						</button>
+					}
 					for _, it := range v.Items {
 						if it.Sheet {
 							<a

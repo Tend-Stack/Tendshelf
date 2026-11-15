@@ -1173,6 +1173,20 @@ while someone types in that page; focus and scroll are put back. Checks: `TestPl
 player; `make page-weight`. Budgets raised from measurement: `player-full.js` 21,551 B (21,760), all app scripts 137,624 B (137,728), page rows js 235,198 B
 (235,264) and reader 302,760 B (302,848). Not verified: on a phone or the emulator; WebKit.
 
+## Action rows stay on one line (operator rule, 2026-11-15, decision 0044)
+
+Buttons that do not fit a row go into its three-dot menu, as many as the room needs, never onto a second line. One
+script (`js/fit-row.js`) and one menu (`MoreMenu` with hidden twins, `Fit`) serve every row; without JavaScript the row
+wraps as before. Done: the book page (Read, Add to shelf, Download, Mark as finished; Mark folds first), the phone action
+bar (never a second row), and a followed show's buttons (Refresh, Stop following). Checks: `TestBookPlayFitTwins`, and in
+Chromium `TestFitRowBookBrowser` (1440 to 390 and back, large text), `TestFitRowBookPhone`, `TestFitRowTwinsWork` (the
+Mark and shelf twins), `TestFitRowPodShowBrowser`; the existing More menu, play button and book action tests; `make
+page-weight`, `make a11y`. Budgets raised from measurement: `pages-book.css` 6,089 B (6,144), `pages-podcasts.css` 4,617 B
+(4,864), `fit-row.js` 2,581 B (2,816), all app scripts 140,267 B (140,288), page rows css 344,703 B (344,832), book js
+242,007 B (242,176). Limits: the series header is a column, not a row, so it is unchanged; the Now playing panel at 1280 px
+was not driven in the browser test (the script watches the row, not the window, so it follows the panel). Next: the other
+rows that can still wrap (Home hero, episode panel, author page, radio cards, admin headers, Words).
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a

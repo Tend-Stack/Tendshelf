@@ -257,3 +257,28 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   html:not([data-text-size="large"]) #book-tabs { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
   #book-tabs .ts-tabs__item { flex: none; padding-inline: var(--space-8); white-space: nowrap; }
 }
+
+/* Action rows that fit (js/fit-row.js, decision 0044): the row stays on ONE line and the buttons that do not fit fold
+   into the three-dot menu. Everything here applies only once the script has run (data-ts-fit-on); without it the row
+   wraps as it always did. */
+[data-ts-fit-off], .ts-moremenu[hidden], .ts-chipmenu__item--fit[hidden] { display: none !important; }
+/* The menu's twins are buttons that look like the menu's links. */
+.ts-chipmenu__item--fit { width: 100%; box-sizing: border-box; justify-content: flex-start; border: 0; background: transparent; font: inherit; font-size: 0.9375rem; text-align: left; cursor: pointer; }
+.ts-chipmenu__item--fit .ts-icon { flex: none; }
+/* Book page, tablet and phone: the action cells (the bar) never wrap. */
+.ts-book__play[data-ts-fit-on] .ts-book__acts { flex-wrap: nowrap; }
+@media (width < 768px) {
+  /* A cell keeps room for its icon and a short word; what cannot have it folds away instead of making a second row. */
+  .ts-book__play[data-ts-fit-on] .ts-book__acts > * { min-width: 4.5rem; }
+}
+@media (width >= 768px) {
+  .ts-book__play[data-ts-fit-on] .ts-book__acts > * { flex: none; }
+  /* The Mark control sits in the row's order (it no longer drops to a second line behind More). */
+  .ts-book__play[data-ts-fit-on] .ts-book__acts > form { order: 0; }
+}
+/* Book page, desktop: the play row is the line itself (the actions' wrapper is display: contents). */
+@media (width >= 1280px) {
+  #book-play[data-ts-fit-on] { flex-wrap: nowrap; min-width: 0; }
+  #book-play[data-ts-fit-on] > :is(.ts-split, .ts-btn, .ts-moremenu, form), #book-play[data-ts-fit-on] .ts-book__acts > * { flex: none; }
+  #book-play[data-ts-fit-on] > .ts-book__note { flex: 0 1 auto; width: auto; min-width: 0; }
+}

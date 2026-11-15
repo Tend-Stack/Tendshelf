@@ -10,6 +10,8 @@ type ReadButtonView struct {
 	Large bool
 	// Round draws the icon-only variant of a series row, named by AriaLabel.
 	Round bool
+	// FitKey makes the button collapse into the row's three-dot menu when it does not fit (js/fit-row.js).
+	FitKey string
 }
 
 func readBtnClass(v ReadButtonView) string {
@@ -31,6 +33,9 @@ templ ReadButton(v ReadButtonView) {
 		class={ readBtnClass(v) }
 		href={ templ.SafeURL(v.Href) }
 		data-ts-read
+		if v.FitKey != "" {
+			data-ts-fit-item={ v.FitKey }
+		}
 		if v.AriaLabel != "" {
 			aria-label={ v.AriaLabel }
 		}
