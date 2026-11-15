@@ -34,9 +34,9 @@ const fitProbeJS = `(async (root, lineSel) => {
     menu.open = false;
   }
   const dupes = twins.filter((k) => [...row.querySelectorAll('[data-ts-fit-item="' + k + '"]')].some(drawn));
-  const play = row.querySelector("[data-ts-play], .ts-split");
+  const play = row.querySelector("[data-ts-play], .ts-split, [data-ts-read]");
   return {lines: spread <= 2 ? 1 : 2, spread, folded, twins, dupes, reachable, menuShown, playShown: !!play && drawn(play),
-    fitOn: row.hasAttribute("data-ts-fit-on"), over: document.documentElement.scrollWidth > innerWidth + 1};
+    menuRight: menu ? menu.getBoundingClientRect().right : 0, vw: innerWidth, fitOn: row.hasAttribute("data-ts-fit-on"), over: document.documentElement.scrollWidth > innerWidth + 1};
 })`
 
 type fitProbe struct {
@@ -45,6 +45,7 @@ type fitProbe struct {
 	Folded, Twins, Dupes []string
 	Reachable            int
 	MenuShown, PlayShown bool
+	MenuRight, VW        float64
 	FitOn, Over          bool
 }
 
@@ -92,6 +93,9 @@ func (p fitProbe) check(t *testing.T, what string) {
 	}
 	if p.Reachable > 0 {
 		t.Errorf("%s: %d folded controls can still be reached", what, p.Reachable)
+	}
+	if p.MenuShown && p.MenuRight > p.VW+1 {
+		t.Errorf("%s: the three-dot button ends at %.0f px, past the %.0f px window", what, p.MenuRight, p.VW)
 	}
 	if p.Over {
 		t.Errorf("%s: the page scrolls sideways", what)
@@ -167,6 +171,15 @@ func TestFitRowBookBrowser(t *testing.T) {
 	tab.Eval(`document.documentElement.dataset.textSize = "large"`, nil)
 	fitProbeOf(tab, bookFitRow, bookFitLine(1280)).check(t, "book large text 1280")
 	tab.Eval(`delete document.documentElement.dataset.textSize`, nil)
+	// Text at 200 % (the way the accessibility audit sets it): the row refits itself, and the three-dot button stays on screen.
+	for _, w := range []int{1440, 1280, 1024} {
+		resizeTab(t, tab, w, 900)
+		tab.Eval(`document.documentElement.style.fontSize = "200%"`, nil)
+		p := fitProbeOf(tab, bookFitRow, bookFitLine(w))
+		p.Over = false // the title column beside the cover is wider than the window at 200 % (not this row's doing)
+		p.check(t, "book 200% text "+strconv.Itoa(w))
+		tab.Eval(`document.documentElement.style.fontSize = ""`, nil)
+	}
 }
 
 // TestFitRowBookPhone: the phone bar keeps its cells on one line, with and without large text.
@@ -183,7 +196,7 @@ func TestFitRowBookPhone(t *testing.T) {
 		tab.Navigate(base + "/books/" + l.book.ID + "?theme=dark")
 		tab.WaitFor(`document.querySelector("#book-play[data-ts-fit-on]") !== null`, 10*time.Second)
 		fitProbeOf(tab, bookFitRow, ".ts-book__acts > *").check(t, "phone "+strconv.Itoa(w))
-		tab.Eval(`document.documentElement.dataset.textSize = "large"`, nil)
+		tab.Eval(`document.documentElement.style.fontSize = "200%"`, nil)
 		p := fitProbeOf(tab, bookFitRow, ".ts-book__acts > *")
 		p.check(t, "phone large "+strconv.Itoa(w))
 		t.Logf("%d px large text: folded %v", w, p.Folded)
@@ -262,4 +275,24 @@ func TestFitRowPodShowBrowser(t *testing.T) {
 			t.Errorf("show %d: %v folded first, want Stop following", w, p.Folded)
 		}
 	}
+}
+
+// TestFitRowTextBookLargeText: a text book (Read is the primary button) at 200 % text and 1440 px keeps the three-dot
+// button on screen, even though the column beside the cover is narrower than the Read button and the menu together.
+func TestFitRowTextBookLargeText(t *testing.T) {
+	b := chromium(t)
+	l := fmt2Seed(t)
+	owner := l.owner
+	base := themedServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.AddCookie(&http.Cookie{Name: owner.Name, Value: owner.Value})
+		l.a.h.ServeHTTP(w, r)
+	}))
+	tab := b.NewTab(1440, 900, false, true)
+	tab.Navigate(base + "/books/" + l.tbook.ID + "?theme=dark")
+	tab.WaitFor(`document.querySelector("#book-play[data-ts-fit-on]") !== null`, 10*time.Second)
+	fitProbeOf(tab, bookFitRow, bookFitLine(1440)).check(t, "text book 1440")
+	tab.Eval(`document.documentElement.style.fontSize = "200%"`, nil)
+	p := fitProbeOf(tab, bookFitRow, bookFitLine(1440))
+	p.Lines, p.Over = 1, false // this narrow, the row may wrap once (the last resort); the button must stay on screen
+	p.check(t, "text book 200% 1440")
 }

@@ -1181,9 +1181,9 @@ wraps as before. Done: the book page (Read, Add to shelf, Download, Mark as fini
 bar (never a second row), and a followed show's buttons (Refresh, Stop following). Checks: `TestBookPlayFitTwins`, and in
 Chromium `TestFitRowBookBrowser` (1440 to 390 and back, large text), `TestFitRowBookPhone`, `TestFitRowTwinsWork` (the
 Mark and shelf twins), `TestFitRowPodShowBrowser`; the existing More menu, play button and book action tests; `make
-page-weight`, `make a11y`. Budgets raised from measurement: `pages-book.css` 6,089 B (6,144), `pages-podcasts.css` 4,617 B
-(4,864), `fit-row.js` 2,581 B (2,816), all app scripts 140,267 B (140,288), page rows css 344,703 B (344,832), book js
-242,007 B (242,176). Limits: the series header is a column, not a row, so it is unchanged; the Now playing panel at 1280 px
+page-weight`, `make a11y`. Budgets raised from measurement: `pages-book.css` 6,159 B (6,400), `pages-podcasts.css` 4,617 B
+(4,864), `fit-row.js` 2,581 B (2,816), all app scripts 140,433 B (140,544), page rows css 345,109 B (345,344), book js
+242,510 B (242,688). Limits: the series header is a column, not a row, so it is unchanged; the Now playing panel at 1280 px
 was not driven in the browser test (the script watches the row, not the window, so it follows the panel). Next: the other
 rows that can still wrap (Home hero, episode panel, author page, radio cards, admin headers, Words).
 

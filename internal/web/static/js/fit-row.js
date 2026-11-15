@@ -81,6 +81,7 @@ export function mount(row) {
     const focused = document.activeElement;
     const groups = groupsOf(row);
     const line = lineOf();
+    row.removeAttribute("data-ts-fit-tight");
     const setOff = (members, off) => members.forEach((el) => el.toggleAttribute(OFF, off));
     for (const members of groups.values()) setOff(members, false);
 
@@ -92,6 +93,10 @@ export function mount(row) {
       const live = [...groups.values()].filter((members) => members.some(occupies));
       for (let i = live.length - 1; i >= 0 && overflows(line); i--) setOff(live[i], true);
     }
+
+    // Everything that may fold is folded and the line is still too long (very large text in a very narrow column):
+    // the stylesheet lets the row wrap, so the three-dot button stays on screen. The only case that wraps.
+    row.toggleAttribute("data-ts-fit-tight", overflows(line));
 
     // Twins: shown for what is collapsed, with the words and state of the control they stand for.
     for (const [key, members] of groups) {
@@ -112,6 +117,8 @@ export function mount(row) {
     // Focus that was on a control now folded away moves to the three-dot button.
     if (focused && focused.isConnected && focused.closest(`[${OFF}]`)) summary.focus();
     row.setAttribute("data-ts-fit-on", "");
+    // A change of text size or of a button's words resizes the buttons, not the row: watch them too.
+    for (const item of itemsOf(line)) resize.observe(item);
     observer.takeRecords();
     fitting = false;
   }
@@ -144,7 +151,7 @@ export function mount(row) {
   const track = row.querySelector("[data-ts-fit-track]");
   if (track) resize.observe(track);
   observer.observe(row, { subtree: true, attributes: true, attributeFilter: ["hidden", "data-ts-pending", "disabled"] });
-  page.observe(document.documentElement, { attributes: true, attributeFilter: ["data-text-size", "lang", "class"] });
+  page.observe(document.documentElement, { attributes: true, attributeFilter: ["data-text-size", "lang", "class", "style"] });
   fit();
   document.fonts?.ready.then(() => row.isConnected && fit());
 }

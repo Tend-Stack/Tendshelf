@@ -282,3 +282,9 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   #book-play[data-ts-fit-on] > :is(.ts-split, .ts-btn, .ts-moremenu, form), #book-play[data-ts-fit-on] .ts-book__acts > * { flex: none; }
   #book-play[data-ts-fit-on] > .ts-book__note { flex: 0 1 auto; width: auto; min-width: 0; }
 }
+/* Last resort (very large text in a very narrow column, where even the play button and the three-dot button do not fit
+   together): the row may wrap, so the three-dot button stays reachable. This is the only case that wraps. */
+.ts-book__play[data-ts-fit-tight] .ts-book__acts { flex-wrap: wrap; }
+@media (width >= 1280px) {
+  #book-play[data-ts-fit-tight] { flex-wrap: wrap; min-width: min-content; }
+}

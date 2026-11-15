@@ -226,3 +226,4 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
    decision 0044). Before the script runs, and without it, the row wraps as before. */
 .ts-podshow__actions[data-ts-fit-on] { flex-wrap: nowrap; min-width: 0; }
 .ts-podshow__actions[data-ts-fit-on] > :is(.ts-btn, form, .ts-chip, .ts-moremenu) { flex: none; }
+.ts-podshow__actions[data-ts-fit-tight] { flex-wrap: wrap; } /* last resort at very large text: the three-dot button stays reachable */
