@@ -50,3 +50,46 @@ if (channel) {
     if (button) button.click();
   });
 }
+
+// #main is the scroller in this shell (decision 0011 addendum, 2026-11-15), so what the browser does for the
+// document by itself is done here (this file loads only in the desktop shell).
+// htmx's own scroll to the top moves the window, which does not scroll in this shell, and htmx 4 keeps no
+// scroll position for Back and Forward.
+// One record per history entry, keyed by address: where #main was scrolled when the person left that page.
+const positions = new Map();
+let pageKey = location.pathname + location.search;
+let restoring = false;
+const main = () => document.getElementById("main");
+const remember = () => {
+  const el = main();
+  if (el) positions.set(pageKey, el.scrollTop);
+};
+
+// Leaving by a link: the page is still on screen, so its position is exact. The address changes after this.
+document.addEventListener("htmx:before:request", (event) => {
+  if (event.target && event.target.closest && event.target.closest("a, form")) remember();
+});
+// Back and Forward: popstate comes first and #main still shows the page being left.
+window.addEventListener("popstate", () => {
+  remember();
+  pageKey = location.pathname + location.search;
+  restoring = true;
+});
+// After the new page has settled (and htmx has done its own scroll): the top for a new page, the record for Back.
+document.addEventListener("htmx:after:settle", (event) => {
+  const el = main();
+  if (!el || event.target !== el) return;
+  const wasRestoring = restoring;
+  restoring = false;
+  pageKey = location.pathname + location.search;
+  if (location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)))) return;
+  el.scrollTop = wasRestoring ? positions.get(pageKey) || 0 : 0;
+});
+
+// PageDown, Space and the arrow keys scroll what has focus: with nothing focused, that is #main.
+const focusMain = () => {
+  const el = main();
+  if (el && (!document.activeElement || document.activeElement === document.body)) el.focus({ preventScroll: true });
+};
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", focusMain);
+else focusMain();

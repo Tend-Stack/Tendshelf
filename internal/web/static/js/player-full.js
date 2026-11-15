@@ -399,13 +399,16 @@ function refreshPageUnder(live) {
   if (!window.htmx || !navigator.onLine) return;
   const focused = document.activeElement;
   if (focused && focused.closest("#main input, #main textarea, #main select")) return;
-  const scrollTop = window.scrollY;
+  // The page scroller: #main in the desktop shell, the window everywhere else.
+  const inDesktop = document.documentElement.dataset.shell === "desktop";
+  const scrollTop = inDesktop ? document.getElementById("main").scrollTop : window.scrollY;
   window.htmx
     .ajax("GET", path + location.search, { target: "#main", select: "#main", swap: "outerSync" })
     .then(() => {
       // The shell focuses #main after every swap of it; the person is still in the player, so put focus and
       // the scroll position back where they were.
-      window.scrollTo(0, scrollTop);
+      if (inDesktop) document.getElementById("main").scrollTop = scrollTop;
+      else window.scrollTo(0, scrollTop);
       if (focused && focused.isConnected && dialog.open) focused.focus({ preventScroll: true });
     })
     .catch(() => {});

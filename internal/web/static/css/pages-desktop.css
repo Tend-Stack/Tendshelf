@@ -39,17 +39,50 @@ html[data-shell="desktop"] a[href="/me/downloads"] {
 html[data-shell="desktop"] { --desktop-bar: var(--size-tap); scroll-padding-top: var(--desktop-bar); }
 html[data-shell="desktop"] body { padding-top: var(--desktop-bar); }
 
-/* The page's own scrollbar starts below the title bar, not through it. WebKitGTK paints the root scrollbar with
-   these pseudo-elements; the track's top margin is the bar's height (2.75rem = --size-tap). Colours are tokens, so
-   all four themes follow; the thumb is --line-strong, 3:1 or more against --ground in each theme. The scrollbar's
-   own lane is the bar's colour with the bar's hairline on its last row, so the bar looks like it runs to the edge. */
-html[data-shell="desktop"] .ts-wbar-host { inset-inline-end: calc(100% - 100vw); }
-html[data-shell="desktop"]::-webkit-scrollbar { width: 0.875rem; height: 0.875rem; background: linear-gradient(var(--line), var(--line)) left 2.6875rem / 100% 0.0625rem no-repeat, var(--ground); }
-html[data-shell="desktop"]::-webkit-scrollbar-track { margin-block-start: 2.75rem; background: var(--ground); }
-html[data-shell="desktop"]::-webkit-scrollbar-corner { background: var(--ground); }
-html[data-shell="desktop"]::-webkit-scrollbar-thumb { min-height: 2.75rem; border: 0.25rem solid var(--ground); border-radius: 0.5rem; background-color: var(--line-strong); background-clip: padding-box; }
-html[data-shell="desktop"]::-webkit-scrollbar-thumb:hover { background-color: var(--ink-subtle); }
-html[data-shell="desktop"]::-webkit-scrollbar-thumb:active { background-color: var(--ink-muted); }
+/* In the desktop shell #main is the scroller, not the document (decision 0011 addendum, 2026-11-15). WebKitGTK scrolls
+   the root on its own thread and repositions sticky and fixed layers a frame late, so the rail, the sidebar and the player
+   bar shook while the page scrolled; and a root scrollbar runs the whole window height beside the player bar. Here the body
+   is exactly one window tall, the shell fills what the title bar and an offline banner leave, and #main scrolls inside it:
+   its scrollbar starts under the title bar and stops on top of the player bar. Everything below is scoped to the shell, so
+   the browser, the PWA and Android keep the document as the scroller. */
+html[data-shell="desktop"] { scrollbar-gutter: auto; }
+html[data-shell="desktop"] body:has(> .ts-shell) { box-sizing: border-box; display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+html[data-shell="desktop"] .ts-shell { flex: 1 1 0; min-height: 0; width: 100%; /* its auto side margin would shrink it in a flex column */ overflow-y: clip; grid-template-rows: minmax(0, 1fr); }
+/* The rail and the sidebar fill the shell, so they need no sticky offset: they never move. */
+html[data-shell="desktop"] .ts-shell > .ts-nav-side,
+html[data-shell="desktop"] .ts-shell > .ts-nav-rail { position: relative; top: 0; height: auto; align-self: stretch; }
+html[data-shell="desktop"] .ts-shell > #main { overflow-y: auto; min-height: 0; overscroll-behavior: contain; scrollbar-gutter: stable; }
+/* #main ends where the bottom bars begin: the tab bar on a phone width (and the floating player bar above it), the
+   player bar from 768 px. A hidden or sliding-away bar leaves no room (same switch as player.css), eased in step with it. */
+html[data-shell="desktop"] .ts-shell > #main { --desk-foot: var(--size-tab-bar); margin-block-end: var(--desk-foot); padding-block-end: var(--space-16);
+  transition: margin-block-end var(--duration-slow) var(--easing-standard); }
+html[data-shell="desktop"] .ts-shell:has(~ .ts-player-slot:not([hidden], .is-suppressed)) > #main { margin-block-end: calc(var(--desk-foot) + var(--space-8) + var(--size-mini-player)); }
+@media (width >= 768px) {
+  html[data-shell="desktop"]:not([data-text-size="large"]) .ts-shell > #main { --desk-foot: 0rem; padding-block-end: var(--space-24); }
+  html[data-shell="desktop"]:not([data-text-size="large"]) .ts-shell:has(~ .ts-player-slot:not([hidden], .is-suppressed)) > #main { margin-block-end: calc(var(--size-mini-player) + var(--space-8)); }
+}
+@media (width >= 960px) {
+  html[data-shell="desktop"][data-text-size="large"] .ts-shell > #main { --desk-foot: 0rem; padding-block-end: var(--space-24); }
+  html[data-shell="desktop"][data-text-size="large"] .ts-shell:has(~ .ts-player-slot:not([hidden], .is-suppressed)) > #main { margin-block-end: calc(var(--size-mini-player) + var(--space-8)); }
+}
+@media (width >= 1280px) {
+  /* From 1280 px the bar is --size-pbar tall and has no inset below it. */
+  html[data-shell="desktop"]:not([data-text-size="large"]) .ts-shell:has(~ .ts-player-slot:not([hidden], .is-suppressed)) > #main { margin-block-end: var(--size-mini-player); }
+  /* The Now playing panel takes its own column: #main ends beside it, so its scrollbar shows left of the panel. */
+  html[data-shell="desktop"]:not([data-text-size="large"]) body:has(dialog.ts-player[open]) .ts-shell > #main { margin-inline-end: var(--size-player-panel); padding-inline-end: var(--space-12); }
+}
+@media (prefers-reduced-motion: reduce) { html[data-shell="desktop"] .ts-shell > #main { transition: none; } }
+/* Sticky layers inside #main measure from #main's own top, which already sits under the title bar. */
+html[data-shell="desktop"] .ts-bookmarks__add { bottom: var(--space-8); }
+
+/* The scrollbar is #main's own (decision 0023's look): colours are tokens, so all four themes follow; the thumb is
+   --line-strong, 3:1 or more against --ground in each theme. The title bar sits above #main, so the track needs no top margin. */
+html[data-shell="desktop"] .ts-main::-webkit-scrollbar { width: 0.875rem; height: 0.875rem; background: var(--ground); }
+html[data-shell="desktop"] .ts-main::-webkit-scrollbar-track { background: var(--ground); }
+html[data-shell="desktop"] .ts-main::-webkit-scrollbar-corner { background: var(--ground); }
+html[data-shell="desktop"] .ts-main::-webkit-scrollbar-thumb { min-height: 2.75rem; border: 0.25rem solid var(--ground); border-radius: 0.5rem; background-color: var(--line-strong); background-clip: padding-box; }
+html[data-shell="desktop"] .ts-main::-webkit-scrollbar-thumb:hover { background-color: var(--ink-subtle); }
+html[data-shell="desktop"] .ts-main::-webkit-scrollbar-thumb:active { background-color: var(--ink-muted); }
 .ts-wbar-host { position: fixed; z-index: 30; inset: 0 0 auto 0; }
 .ts-wbar { box-sizing: border-box; position: relative; flex: none; display: flex; align-items: center; height: var(--size-tap); padding-inline-start: var(--space-8); background: var(--ground); box-shadow: inset 0 -1px 0 var(--line); color: var(--ink); user-select: none; -webkit-user-select: none; }
 .ts-wbar__brand { display: flex; align-items: center; gap: var(--space-8); flex: none; min-width: 2.75rem; height: 100%; padding-inline-start: var(--space-8); box-sizing: border-box; color: inherit; text-decoration: none; }
@@ -133,6 +166,5 @@ html[data-shell="desktop"] .ts-eyesfree { top: var(--desktop-bar); height: calc(
 html[data-shell="desktop"] .ts-readerpage,
 html[data-shell="desktop"] .ts-sheet-layer,
 html[data-shell="desktop"] .ts-offline { top: var(--desktop-bar); }
-html[data-shell="desktop"] .ts-prefs__frame > .ts-prefs__nav { top: calc(var(--desktop-bar) + var(--space-24)); }
-html[data-shell="desktop"] .ts-shell { min-height: calc(100vh - var(--desktop-bar)); min-height: calc(100svh - var(--desktop-bar)); }
+html[data-shell="desktop"] .ts-prefs__frame > .ts-prefs__nav { top: 0; } /* #main is the scroller: it starts under the bar, and its own 24 px of padding is where sticky stops */
 html[data-shell="desktop"] .ts-frame__main { min-height: calc(100vh - var(--desktop-bar)); min-height: calc(100dvh - var(--desktop-bar)); }

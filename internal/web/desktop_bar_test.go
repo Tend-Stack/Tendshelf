@@ -48,8 +48,8 @@ func TestDeskBarServed(t *testing.T) {
 	}
 }
 
-// TestDeskBarScrollbarRuleShellOnly: the rule that starts the page's scrollbar below the title bar lives in
-// the desktop stylesheet, which only the desktop cookie loads, and every selector in it is scoped to the shell.
+// TestDeskBarScrollbarRuleShellOnly: the rules that style the page scrollbar (#main's own in the
+// desktop shell, no longer the root's) live in the desktop stylesheet, which only the desktop cookie loads, and every selector in it is scoped to the shell.
 func TestDeskBarScrollbarRuleShellOnly(t *testing.T) {
 	css, err := os.ReadFile("static/css/pages-desktop.css")
 	if err != nil {
@@ -59,13 +59,13 @@ func TestDeskBarScrollbarRuleShellOnly(t *testing.T) {
 	for _, line := range strings.Split(string(css), "\n") {
 		if strings.Contains(line, "::-webkit-scrollbar") {
 			rules++
-			if !strings.HasPrefix(line, `html[data-shell="desktop"]::-webkit-scrollbar`) {
+			if !strings.HasPrefix(line, `html[data-shell="desktop"] .ts-main::-webkit-scrollbar`) {
 				t.Errorf("scrollbar rule not scoped to the shell: %q", line)
 			}
 		}
 	}
-	if rules == 0 || !strings.Contains(string(css), "::-webkit-scrollbar-track { margin-block-start: 2.75rem;") {
-		t.Errorf("desktop stylesheet lacks the track margin rule (%d scrollbar rules)", rules)
+	if rules == 0 || strings.Contains(string(css), "margin-block-start: 2.75rem") {
+		t.Errorf("desktop stylesheet lacks the #main scrollbar rules or still has the root track margin (%d scrollbar rules)", rules)
 	}
 	a := newTestApp(t)
 	owner := a.as(t, users.RoleOwner)

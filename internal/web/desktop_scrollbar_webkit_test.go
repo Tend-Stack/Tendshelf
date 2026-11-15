@@ -14,10 +14,10 @@ import (
 )
 
 // TestDeskBarScrollbarWebKit runs the desktop shell's page in WebKitGTK (the desktop's real engine) and checks
-// that the root scrollbar starts below the 44 px title bar: in the right-hand lane every pixel above the bar's
-// bottom is the bar's colour, and the thumb's first pixel is at or below it. Opt-in like the other WebKit tests:
-// scripts/isolated-display.sh with TENDSHELF_TEST_WEBKIT_DRIVER=/usr/bin/WebKitWebDriver. Shots go to
-// .local/tests/desktop-bar/.
+// that #main is the scroller (decision 0011 addendum, 2026-11-15): the document has no scrollbar and does not
+// scroll, #main has its own 14 px lane that starts under the 44 px title bar, and the thumb is painted in it.
+// Opt-in like the other WebKit tests: scripts/isolated-display.sh with
+// TENDSHELF_TEST_WEBKIT_DRIVER=/usr/bin/WebKitWebDriver. Shots go to .local/tests/desktop-bar/.
 func TestDeskBarScrollbarWebKit(t *testing.T) {
 	driver := os.Getenv("TENDSHELF_TEST_WEBKIT_DRIVER")
 	if driver == "" {
@@ -44,18 +44,20 @@ func TestDeskBarScrollbarWebKit(t *testing.T) {
 			// Make the page long enough to scroll (CSSOM, not a style attribute).
 			s.Exec(`document.getElementById("main").style.minHeight = "3000px";`, nil)
 			var m struct {
-				Bar, Gutter, Host float64
+				Bar, Gutter, Right, RootGutter, RootScroll, RootRange float64
 			}
 			s.Eval(`({bar: document.querySelector("[data-wbar]").getBoundingClientRect().bottom,
-				gutter: innerWidth - document.documentElement.clientWidth,
-				host: document.getElementById("desktop-bar").getBoundingClientRect().width})`, &m)
-			t.Logf("bar host width %.0f", m.Host)
-			if m.Gutter < 1 {
-				t.Fatalf("no scrollbar lane (gutter %.0f px)", m.Gutter)
+				gutter: document.getElementById("main").offsetWidth - document.getElementById("main").clientWidth,
+				right: document.getElementById("main").getBoundingClientRect().right,
+				rootGutter: innerWidth - document.documentElement.clientWidth,
+				rootScroll: document.scrollingElement.scrollTop,
+				rootRange: document.scrollingElement.scrollHeight - document.scrollingElement.clientHeight})`, &m)
+			if m.RootGutter != 0 || m.RootRange != 0 || m.RootScroll != 0 {
+				t.Errorf("the document must not scroll: gutter %.0f, range %.0f, top %.0f", m.RootGutter, m.RootRange, m.RootScroll)
 			}
-			var dim struct{ H, Inner, Client float64 }
-			s.Eval(`({h: document.documentElement.scrollHeight, inner: innerHeight, client: document.documentElement.clientWidth})`, &dim)
-			t.Logf("scrollHeight %.0f, innerHeight %.0f, clientWidth %.0f, gutter %.0f", dim.H, dim.Inner, dim.Client, m.Gutter)
+			if m.Gutter < 1 {
+				t.Fatalf("#main has no scrollbar lane (gutter %.0f px)", m.Gutter)
+			}
 			shot := filepath.Join(out, "scrollbar-webkit-"+theme+".png")
 			var img image.Image
 			var x, first int
@@ -74,16 +76,9 @@ func TestDeskBarScrollbarWebKit(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				x = img.Bounds().Dx() - int(m.Gutter)/2 - 1
-				bg = img.At(x, 2)
-				// The bar's last row is its hairline: the lane above it must be the bar's colour, and the thumb
-				// must start below it.
+				x = int(m.Right) - int(m.Gutter)/2 - 1
+				bg = img.At(x, int(m.Bar)+1)
 				first = -1
-				for y := 0; y < int(m.Bar)-1; y++ {
-					if img.At(x, y) != bg {
-						t.Errorf("lane pixel at y=%d is not the bar's colour", y)
-					}
-				}
 				for y := int(m.Bar); y < img.Bounds().Dy(); y++ {
 					if img.At(x, y) != bg {
 						first = y
@@ -91,12 +86,9 @@ func TestDeskBarScrollbarWebKit(t *testing.T) {
 					}
 				}
 			}
-			if img.At(x, int(m.Bar)-1) != img.At(500, int(m.Bar)-1) {
-				t.Errorf("the bar's hairline does not run across the scrollbar lane")
-			}
 			t.Logf("bar bottom %.0f, lane x=%d, thumb starts at y=%d", m.Bar, x, first)
 			if first < int(m.Bar) {
-				t.Errorf("the scrollbar thumb starts at y=%d, above the bar's bottom %.0f", first, m.Bar)
+				t.Errorf("no scrollbar thumb painted in #main's lane (first=%d)", first)
 			}
 		})
 	}

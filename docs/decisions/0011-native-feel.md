@@ -75,6 +75,10 @@ sheets ignore the home bar, form controls and scrollbars ignore the chosen theme
 - The manifest, `apple-mobile-web-app-*` metas and the status-bar style stay in M3; the top-inset work here is
   what makes a translucent status bar safe then.
 
+## Addendum, 2026-11-15: in the desktop shell `#main` is the scroller
+
+"The document stays the scroller" now holds everywhere except the desktop shell (`html[data-shell="desktop"]`, decision 0020). There the document does not scroll and `<main id="main">` has `overflow-y: auto` and `overscroll-behavior: contain`. Why: WebKitGTK scrolls the root on its own thread and moves sticky and fixed layers a frame late, so the sidebar and the player bar shook and lagged behind the page; and a root scrollbar runs the whole window height, leaving a gap at the player bar's right edge. With `#main` as the scroller the rail, sidebar and bar never move, the scrollbar (decision 0023's look) starts under the title bar and stops on top of the player bar, and the bar runs edge to edge. The browser, the PWA and Android keep the document as the scroller and `overflow: hidden` stays off `html` and `body` there. The cost, paid in `desktop.js`: a boosted navigation resets `#main` to the top, Back and Forward restore a per-address scroll record, and `#main` takes focus so the keyboard scrolls it.
+
 ## Rule text for AGENTS.md
 Add under "Accessibility and layout":
 

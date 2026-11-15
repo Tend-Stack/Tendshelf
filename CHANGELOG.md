@@ -21,6 +21,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Fixed
 
+- **The desktop app scrolls smoothly under the menu and the player bar.** In the desktop app, the menu and the player bar stay still while you scroll, and the scrollbar stops above the player bar, which now runs edge to edge.
 - **The page behind the player follows a star or a save.** After you star an episode or save or remove a station from the full-screen player, the Podcasts or Radio page underneath shows the same thing at once, instead of keeping its old button until the next visit.
 - **Player messages on a phone sit on the cover.** "Jumped too far?" and the other short messages used to cover the chapter and author lines. "Left in book" now rounds to the nearest minute, so a 17 minute book no longer says 18.
 - **"This can't play right now" for episodes and stations too.** The Android app's message said "This book" whatever was playing.
