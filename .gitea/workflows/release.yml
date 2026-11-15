@@ -16,6 +16,14 @@ on:
 permissions:
   contents: read
 
+# Checkout over HTTP/1.1 (2026-11-15): from the arm64 runners an HTTP/2 download from Gitea stalls at exactly
+# 10 MiB and is cut ("curl 92 ... early EOF"), so every checkout failed; the same fetch over HTTP/1.1 finishes.
+# git reads these three variables as one config entry, so actions/checkout's own fetch follows it.
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: http.version
+  GIT_CONFIG_VALUE_0: HTTP/1.1
+
 jobs:
   release:
     name: build binaries and publish the release
