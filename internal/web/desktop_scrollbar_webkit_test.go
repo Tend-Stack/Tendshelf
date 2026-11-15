@@ -41,8 +41,8 @@ func TestDeskBarScrollbarWebKit(t *testing.T) {
 			s.SetViewport(1024, 800)
 			s.Navigate(base + "/?shell=desktop")
 			s.Navigate(base + "/?theme=" + theme)
-			// Make the page long enough to scroll (CSSOM, not a style attribute).
-			s.Exec(`document.getElementById("main").style.minHeight = "3000px";`, nil)
+			// Make the page long enough to scroll (a constructed stylesheet, not a style attribute).
+			s.Exec(`const sheet = new CSSStyleSheet(); sheet.replaceSync('#main::after { content: ""; display: block; height: 3000px; }'); document.adoptedStyleSheets = [sheet];`, nil)
 			var m struct {
 				Bar, Gutter, Right, RootGutter, RootScroll, RootRange float64
 			}
