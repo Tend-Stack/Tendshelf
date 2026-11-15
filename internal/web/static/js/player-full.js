@@ -138,7 +138,9 @@ function drawTimes(ms, speed) {
   const idx = chapterAt(ms);
   const chapter = book.chapters[idx];
   const leftMs = Math.max(0, book.durationMs - ms) / speed;
-  const minutes = Math.ceil(leftMs / 60000);
+  // Rounded to the nearest minute, like the length on the book's page, so the player never says more is left than
+  // the book is long (17 m 20 s read "18 m left" beside "17 m"); it still never says 0 m while sound remains.
+  const minutes = leftMs > 0 ? Math.max(1, Math.round(leftMs / 60000)) : 0;
   if (book.kind === "radio") {
     // a live station has no clock: the Live badge stands where the chapter number is
     setText("full-chapter", msg("live"));
@@ -166,7 +168,7 @@ function drawTimes(ms, speed) {
 }
 
 // "2 m", "2 h" or "1 h 5 m" left in book, in the words the cards use (the server owns them). The live
-// count rounds up so it never says "0 m" while sound remains; 0 m shows only when nothing is left.
+// count rounds to the nearest minute but never says "0 m" while sound remains; 0 m shows only when nothing is left.
 function leftInBookText(minutes) {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;

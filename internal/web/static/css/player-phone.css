@@ -120,6 +120,8 @@
   .ts-sleepcard[data-ts-sleep-card="full"] { bottom: calc(4rem + var(--space-12) + var(--space-8) + env(safe-area-inset-bottom)); }
 
   /* The scrubbing card over the cover: "JUMP TO", the target time and the chapter's time left there. Invisible and without a pointer until a drag. */
+  /* Toasts ("Jumped too far?", "Episode starred.") sit over the lower part of the cover, not on the chapter and author line. */
+  .ts-player .ts-player__toasts { top: 30%; }
   .ts-player__jump { display: flex; position: absolute; inset: 0; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4);
     container-type: size; border-radius: inherit; background: color-mix(in srgb, var(--ground) 82%, transparent); color: var(--ink); opacity: 0; pointer-events: none; }
   .ts-player__jump .ts-overline { color: var(--ink-muted); }
