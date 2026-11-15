@@ -197,7 +197,8 @@ func TestBookPageNoPlayControls(t *testing.T) {
 				t.Errorf("%q on the book page contains %q", tab, not)
 			}
 		}
-		if n := strings.Count(main, "<button"); n != 1 || !strings.Contains(main, "Mark as finished") {
+		// The three-dot menu's hidden twins (decision 0044) stand for the row's actions; they are not controls of their own.
+		if n := strings.Count(main, "<button") - strings.Count(main, "data-ts-fit-for="); n != 1 || !strings.Contains(main, "Mark as finished") {
 			t.Errorf("%q on the book page has %d buttons, want only Mark as finished", tab, n)
 		}
 	}

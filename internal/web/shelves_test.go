@@ -244,7 +244,7 @@ func TestShelfSheet(t *testing.T) {
 	shelfAdd(t, a, ck, two, books[0].ID)
 
 	page := browseGet(a, "/books/"+books[0].ID, false, ck).Body.String()
-	if strings.Count(page, ">Add to shelf<") != 1 || !strings.Contains(page, `href="/books/`+books[0].ID+`?sheet=shelves"`) || !strings.Contains(page, `hx-target="#sheet"`) {
+	if strings.Count(page, ">Add to shelf<")-strings.Count(page, "<span data-ts-fit-label>Add to shelf<") != 1 || !strings.Contains(page, `href="/books/`+books[0].ID+`?sheet=shelves"`) || !strings.Contains(page, `hx-target="#sheet"`) {
 		t.Error("the book page has no single Add to shelf button")
 	}
 	if strings.Contains(bookMain(page), "ts-shelf-sheet") {
