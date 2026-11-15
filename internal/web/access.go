@@ -41,6 +41,10 @@ func (s *server) notFound(w http.ResponseWriter, r *http.Request) {
 		api.StatusError(w, http.StatusNotFound)
 		return
 	}
+	if isAskedPlain(r) {
+		http.Error(w, "We couldn't find that.", http.StatusNotFound)
+		return
+	}
 	if r.Header.Get("HX-Request") == "true" {
 		s.fragment(w, r, http.StatusNotFound, components.ErrorToast("We couldn't find that."))
 		return

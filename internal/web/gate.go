@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -86,6 +87,35 @@ func (s *server) redirect(w http.ResponseWriter, r *http.Request, loc string) {
 		return
 	}
 	http.Redirect(w, r, loc, http.StatusSeeOther)
+}
+
+// plainAnswerKey marks a request from the full-screen player's save / favourite button: it asks for JSON,
+// wants no page back, and gets 204 on success and a short plain-text refusal.
+type plainAnswerKey struct{}
+
+// askedPlain returns r marked when the player asked for it (the Accept header names JSON, the way the
+// bookmark button asks), so notFound and errorPage answer plain words and answerToggle answers 204. Every
+// other request, an htmx one included, is returned unchanged.
+func askedPlain(r *http.Request) *http.Request {
+	if r.Header.Get("HX-Request") == "true" || !strings.HasPrefix(r.Header.Get("Accept"), "application/json") {
+		return r
+	}
+	return r.WithContext(context.WithValue(r.Context(), plainAnswerKey{}, true))
+}
+
+func isAskedPlain(r *http.Request) bool {
+	v, _ := r.Context().Value(plainAnswerKey{}).(bool)
+	return v
+}
+
+// answerToggle ends a save / favourite toggle: 204 for the player's own request, otherwise answerPage.
+func (s *server) answerToggle(w http.ResponseWriter, r *http.Request, loc string) {
+	if isAskedPlain(r) {
+		w.Header().Set("Cache-Control", "private, no-store")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	s.answerPage(w, r, loc)
 }
 
 // answerPage ends an unsafe request from a signed-in page in the normal layout. A plain form is

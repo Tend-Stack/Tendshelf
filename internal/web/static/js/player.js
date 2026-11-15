@@ -240,6 +240,7 @@ function parseBook(el) {
     progressHref: d.progressHref || "", // where the place is saved; empty means /progress/{id}
     showHref: d.showHref || "", // the episode's show page
     hasNotes: d.hasNotes === "1", // the episode has show notes
+    favourite: d.favourite === "1", // the station is saved or the episode starred (the full player's header button)
     skipIntro: num(d.skipIntroMs), // ms skipped when an episode starts at its beginning
     skipOutro: num(d.skipOutroMs), // ms before the end at which an episode counts as ended
     chaptersHref: d.chaptersHref || "", // chapters not in the fragment yet; fetched on the first ask
@@ -1513,10 +1514,15 @@ applyVolume();
 // The loaded book as player-full.js needs it (copies), or null.
 function info() {
   if (!book) return null;
-  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, hasNotes, night, chapterTotal } = book;
-  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, hasNotes, night, chapterTotal, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
+  const { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, hasNotes, favourite, night, chapterTotal } = book;
+  return { id, title, author, cover, durationMs, skipBack, skipForward, tint, readHref, readChoose, kind, showHref, hasNotes, favourite, night, chapterTotal, accents: { ...book.accents }, chapters: book.chapters.map((c) => ({ ...c })),
     files: book.files.map(({ id, offset, dur, playable }) => ({ id, offset, dur, playable })), // for the waveform
   };
+}
+
+// The full player's save / star button changed the loaded item: keep the fact here, so a later info() agrees.
+function setFavourite(id, on) {
+  if (book && book.id === id) book.favourite = on;
 }
 
 // A book's chapters without loading it (the chapter bar on Home asks when a person points at it).
@@ -1531,6 +1537,7 @@ async function peekBook(id) {
 window.tsPlayer = {
   state,
   info,
+  setFavourite,
   chapterWords,
   peek: peekBook,
   load: loadBook,

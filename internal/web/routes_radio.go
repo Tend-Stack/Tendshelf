@@ -267,6 +267,7 @@ func (s *server) postRadioPlay(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) postRadioRemove(w http.ResponseWriter, r *http.Request) {
+	r = askedPlain(r)
 	if !s.radioGate(w, r) || !s.parseForm(w, r) {
 		return
 	}
@@ -276,7 +277,7 @@ func (s *server) postRadioRemove(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, "remove station", err)
 	default:
-		s.answerPage(w, r, "/radio")
+		s.answerToggle(w, r, "/radio")
 	}
 }
 
@@ -405,6 +406,7 @@ func (s *server) getRadioNow(w http.ResponseWriter, r *http.Request) {
 // postRadioSave puts a station the person has played (a Recent row) back among their saved ones by its id. The
 // station row exists already, so nothing is dialled; the 100 limit and the 30 an hour apply as for any addition.
 func (s *server) postRadioSave(w http.ResponseWriter, r *http.Request) {
+	r = askedPlain(r)
 	if !s.radioGate(w, r) || !s.parseForm(w, r) {
 		return
 	}
@@ -429,7 +431,7 @@ func (s *server) postRadioSave(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.serverError(w, r, "save station", err)
 	default:
-		s.answerPage(w, r, "/radio")
+		s.answerToggle(w, r, "/radio")
 	}
 }
 

@@ -40,6 +40,9 @@ templ PlayerFull(m PlayerMsgs) {
 					<button type="button" class="ts-iconbtn ts-player__mark" data-ts-bookmark aria-label={ m.BookmarkMoment } if m.Link { hidden }>
 						@Icon("bookmark", false)
 					</button>
+					<button type="button" class="ts-iconbtn ts-player__fav" data-ts-full-fav aria-pressed="false" aria-label={ m.StarEpisode } hidden>
+						@Icon("star", false)
+					</button>
 					<details class="ts-player__menu" data-ts-chipmenu data-ts-full-menu>
 						<summary class="ts-iconbtn" aria-label={ m.MoreActions }>
 							<svg class="ts-icon ts-icon--fill" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg>

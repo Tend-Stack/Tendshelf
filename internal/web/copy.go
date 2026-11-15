@@ -306,12 +306,22 @@ const (
 
 	// P1c-5b speed, sleep timer, volume, bookmark key. The board and the deck give the words marked
 	// there; the rest follows the voice rules.
-	msgSpeedValue        = "{v}×"
-	msgSpeedLabel        = "Playback speed, {v} times"
-	msgSpeedFine         = "Fine-tune"
-	msgSpeedForBook      = "This speed is for this book. Other books keep your usual speed."
-	msgSpeedForShow      = "This speed is for this show. Other shows keep your usual speed."
-	msgNotesFailed       = "The show notes did not load. Try again in a moment."
+	msgSpeedValue   = "{v}×"
+	msgSpeedLabel   = "Playback speed, {v} times"
+	msgSpeedFine    = "Fine-tune"
+	msgSpeedForBook = "This speed is for this book. Other books keep your usual speed."
+	msgSpeedForShow = "This speed is for this show. Other shows keep your usual speed."
+	msgNotesFailed  = "The show notes did not load. Try again in a moment."
+	// The full player's save / star button: names reuse the Radio page's "Save" / "Remove" and the episode page's "Star".
+	msgSaveStation       = radioSave + " {name}"
+	msgRemoveStation     = radioRemove + " {name}"
+	msgFavSaved          = "Saved to your stations."
+	msgFavRemoved        = "Removed from your stations."
+	msgFavStarred        = "Episode starred."
+	msgFavUnstarred      = "Star removed."
+	msgFavBusy           = radioErrBusy
+	msgFavFull           = radioErrTooMany
+	msgFavFailed         = "That did not save. Try again in a moment."
 	msgSpeedMakeUsual    = "Make it my usual speed"
 	msgJumpedFar         = "Jumped too far?"
 	msgJumpedBack        = "Go back"
@@ -366,7 +376,7 @@ func playerMsgs() components.PlayerMsgs {
 		NextChapter: msgNextChapter, Speed: msgSpeed, Sleep: msgSleep, Chapters: msgChapters, Bookmark: msgBookmark,
 		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
 		OpenPlayer: msgOpenPlayer, Resume: playResume, ScrubBubble: msgScrubBubble, ChBarLabel: msgChBarLabel, ChBarTip: msgChBarTip, ChBarValue: msgChBarValue, ChBarUntitled: msgChBarUntitled,
-		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SpeedForBook: msgSpeedForBook, SpeedForShow: msgSpeedForShow, GoToShow: podGoToShow, RadioTitle: radioTitle, ShowNotes: podAboutEpisode, NotesFailed: msgNotesFailed, SpeedMakeUsual: msgSpeedMakeUsual, NightSleepOn: msgNightSleepOn, NightSleepOff: msgNightSleepOff, JumpedFar: msgJumpedFar, JumpedBack: msgJumpedBack, SpeedUsualSet: msgSpeedUsualSet, SleepTitle: msgSleepTitle,
+		SpeedValue: msgSpeedValue, SpeedLabel: msgSpeedLabel, SpeedFine: msgSpeedFine, SpeedForBook: msgSpeedForBook, SpeedForShow: msgSpeedForShow, GoToShow: podGoToShow, RadioTitle: radioTitle, ShowNotes: podAboutEpisode, NotesFailed: msgNotesFailed, SaveStation: msgSaveStation, RemoveStation: msgRemoveStation, StarEpisode: podStar, FavSaved: msgFavSaved, FavRemoved: msgFavRemoved, FavStarred: msgFavStarred, FavUnstarred: msgFavUnstarred, FavBusy: msgFavBusy, FavFull: msgFavFull, FavFailed: msgFavFailed, SpeedMakeUsual: msgSpeedMakeUsual, NightSleepOn: msgNightSleepOn, NightSleepOff: msgNightSleepOff, JumpedFar: msgJumpedFar, JumpedBack: msgJumpedBack, SpeedUsualSet: msgSpeedUsualSet, SleepTitle: msgSleepTitle,
 		SleepEndOfChapter: msgSleepEndOfChapter, SleepEndOfEpisode: msgSleepEndOfEpisode, EpisodeLeft: msgEpisodeLeft, EpisodeWord: msgEpisodeWord, LeftInEpisode: msgLeftInEpisode, OpenEpisode: msgOpenEpisode, GoToEpisode: msgGoToEpisode, MarkPlayed: msgMarkPlayed, SleepMinutes: msgSleepMinutes, SleepIn: msgSleepIn,
 		SleepCustom: msgSleepCustom, SleepCustomLabel: msgSleepCustomLabel, SleepStart: msgSleepStart,
 		SleepTurnOff: msgSleepTurnOff, SleepOffLabel: msgSleepOffLabel, SleepOnLabel: msgSleepOnLabel,

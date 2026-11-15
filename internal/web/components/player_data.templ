@@ -56,6 +56,9 @@ type PlayerDataView struct {
 	SkipIntroMs, SkipOutroMs                                 int64
 	// HasNotes: the episode has show notes (data-has-notes), so the player offers its notes sheet.
 	HasNotes bool
+	// Favourite: the station is among the person's saved ones, or the episode is starred (data-favourite), so the
+	// full player's header button starts pressed.
+	Favourite bool
 	// ChapterTotal is how many chapters carry a number (data-total); the header says "Chapter 13 of 51" with it.
 	ChapterTotal int
 }
@@ -108,6 +111,9 @@ templ PlayerData(v PlayerDataView) {
 			data-show-href={ v.ShowHref }
 			if v.HasNotes {
 				data-has-notes="1"
+			}
+			if v.Favourite {
+				data-favourite="1"
 			}
 			data-skip-intro-ms={ strconv.FormatInt(v.SkipIntroMs, 10) }
 			data-skip-outro-ms={ strconv.FormatInt(v.SkipOutroMs, 10) }

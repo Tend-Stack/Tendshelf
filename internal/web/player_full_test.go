@@ -38,7 +38,7 @@ func TestFullPlayerMarkup(t *testing.T) {
 	}
 	for _, want := range []string{
 		`class="ts-player"`, `aria-labelledby="player-full-title"`, ` hx-preserve`,
-		`data-ts-close-player`, `aria-label="Close player"`, `data-ts-full-chapter`, `data-ts-bookmark`, `data-ts-chipmenu`,
+		`data-ts-close-player`, `aria-label="Close player"`, `data-ts-full-chapter`, `data-ts-bookmark`, `data-ts-full-fav aria-pressed="false" aria-label="Star" hidden`, `data-ts-chipmenu`,
 		`data-ts-full-cover`, `id="player-full-title"`, `data-ts-full-title`, `data-ts-full-author`, `data-ts-full-clock`, `data-ts-full-left`,
 		`data-ts-full-prev`, `aria-label="Previous chapter"`, `data-ts-full-back`, `data-ts-full-back-num`, `data-ts-full-toggle`,
 		`ts-iconbtn ts-iconbtn--cover ts-iconbtn--xl`, `data-ts-full-forward`, `data-ts-full-forward-num`, `data-ts-full-next`, `aria-label="Next chapter"`,

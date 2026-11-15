@@ -493,6 +493,10 @@ func (s *server) errorPage(w http.ResponseWriter, r *http.Request, status int) {
 		api.StatusError(w, status)
 		return
 	}
+	if isAskedPlain(r) {
+		http.Error(w, http.StatusText(status), status)
+		return
+	}
 	if _, ok := auth.UserFrom(r.Context()); !ok {
 		s.frame(w, r, status, pages.ErrorTitle(status), pages.ErrorPage(status))
 		return

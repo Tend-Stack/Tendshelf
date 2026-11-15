@@ -54,7 +54,7 @@ for (const name of ["close-player", "full-chapter", "full-cover", "full-cover-ti
   "full-book-left", "full-speed", "full-book", "full-finish", "full-menu", "full-body", "chapters-sheet", "chapter-list",
   "chapter-row", "open-chapters", "speed-sheet", "sleep-sheet", "speed-range", "speed-out", "sleep-meta", "sleep-custom",
   "sleep-minutes", "full-sleep-left", "full-toasts", "bookmark-toast", "open-speed", "open-sleep", "full-read", "speed-usual",
-  "full-live", "full-show", "full-radio", "speed-for", "open-notes", "notes-sheet", "notes-body", "full-jump", "full-jump-time", "full-jump-left", "full-chapter-left", "full-bookbar-left"]) {
+  "full-live", "full-show", "full-radio", "speed-for", "open-notes", "full-fav", "notes-sheet", "notes-body", "full-jump", "full-jump-time", "full-jump-left", "full-chapter-left", "full-bookbar-left"]) {
   ui[name] = $(name);
 }
 const miniOpen = $("open", slot);
@@ -332,6 +332,58 @@ function drawKind() {
     mark.hidden = episode || live || !!LINK;
   }
   choice.closest("li").hidden = live; // no end of a chapter on the radio
+  drawFavourite();
+}
+
+// The save / star button replaces the bookmark for an episode or a station; a book keeps its bookmark.
+function drawFavourite() {
+  const button = ui["full-fav"];
+  const episode = book.kind === "episode";
+  const live = book.kind === "radio";
+  button.hidden = !(episode || live) || !!LINK;
+  const on = Boolean(book.favourite);
+  button.setAttribute("aria-pressed", on ? "true" : "false");
+  // A star is a toggle with a fixed name; a station says what pressing does, as the Radio page does.
+  const label = live ? fill(msg(on ? "removeStation" : "saveStation"), { name: book.title }) : msg("starEpisode");
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  const filled = button.querySelector("svg");
+  if (filled) filled.classList.toggle("ts-icon--fill", on); // the filled star is the second cue beside aria-pressed
+}
+
+let favouriting = false; // one request at a time
+
+async function toggleFavourite() {
+  if (!book || favouriting || LINK || (book.kind !== "episode" && book.kind !== "radio")) return;
+  favouriting = true;
+  const live = book.kind === "radio";
+  const on = !book.favourite;
+  const id = encodeURIComponent(book.id);
+  const url = live ? "/radio/stations/" + id + (on ? "/save" : "/remove") : "/podcasts/episodes/" + id + "/favourite";
+  const sent = book; // a press for one item must not change the next item if the player moved on meanwhile
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Accept: "application/json", "X-CSRF-Token": csrf(), "Content-Type": FORM_TYPE },
+      body: live ? "" : "on=" + (on ? "1" : "0"),
+    });
+    if (res.status === 204) {
+      sent.favourite = on;
+      player.setFavourite(sent.id, on);
+      if (book === sent) drawFavourite();
+      player.toast("hint", msg(live ? (on ? "favSaved" : "favRemoved") : (on ? "favStarred" : "favUnstarred")));
+    } else if (res.status === 429) {
+      player.toast("err", msg("favBusy"));
+    } else if (res.status === 422) {
+      player.toast("err", msg("favFull"));
+    } else {
+      player.toast("err", msg("favFailed"));
+    }
+  } catch {
+    player.toast("err", msg("favFailed"));
+  } finally {
+    favouriting = false;
+  }
 }
 
 // What changes only when another book loads.
@@ -1321,6 +1373,7 @@ const actions = {
   "open-notes": () => openSheet("notes", ui["open-notes"]),
   "sheet-close": () => closeSheet(true),
   "bookmark": addBookmark,
+  "full-fav": toggleFavourite,
   "sleep-plus": sleepPlus,
 };
 

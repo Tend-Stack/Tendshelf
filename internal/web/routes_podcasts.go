@@ -388,6 +388,7 @@ func (s *server) postPodcastPlayed(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) postPodcastFavourite(w http.ResponseWriter, r *http.Request) {
+	r = askedPlain(r)
 	ep, ok := s.loadEpisode(w, r)
 	if !ok {
 		return
@@ -400,7 +401,7 @@ func (s *server) postPodcastFavourite(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "star episode", err)
 		return
 	}
-	s.answerPage(w, r, backTarget(r, "/podcasts/episodes/"+url.PathEscape(ep.ID)))
+	s.answerToggle(w, r, backTarget(r, "/podcasts/episodes/"+url.PathEscape(ep.ID)))
 }
 
 // podProgressBody bounds a progress save: a few short fields.
