@@ -71,7 +71,7 @@ type TextFileView struct {
 	Choose, MakeDefault *TextActionView
 	// RemoveHref opens the confirmation of "Remove this edition"; empty unless this one file can be removed on its own.
 	RemoveHref, RemoveLabel, RemoveAria string
-	// FitModule is the address of js/fit-row.js: the edition's answers stay on one line and the later ones fold into a
+	// FitModule is the address of the fit script (js/fit-row.js); the edition's answers stay on one line and the later ones fold into a
 	// three-dot menu (decision 0044).
 	FitModule string
 }

@@ -39,7 +39,7 @@ type PodcastEpisodeView struct {
 	// Menu is the Play next and Add to queue menu; Download is the offline control (js/downloads.js fills it in).
 	Menu     components.EpisodeMenuView
 	Download *BookDownloadView
-	// FitModule is the address of js/fit-row.js: with it the action row stays on one line and Save the file, Download,
+	// FitModule is the address of the fit script (js/fit-row.js); with it the action row stays on one line and Save the file, Download,
 	// the star and the played mark fold, in that order, into Menu (decision 0044). Menu.Fit holds their twins.
 	FitModule string
 }
