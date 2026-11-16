@@ -181,7 +181,7 @@ func TestAddEbookRefusals(t *testing.T) {
 			if res.State != StateRefused {
 				t.Fatalf("state = %s", res.State)
 			}
-			if got := tree(t, e.root); len(got) != 0 {
+			if got := heldTree(t, e.root); len(got) != 0 {
 				t.Errorf("something reached the library folder: %v", got)
 			}
 			if _, err := os.Stat(e.svc.stagingDir(v.ID)); !os.IsNotExist(err) {
@@ -219,7 +219,7 @@ func TestAddEbookRemove(t *testing.T) {
 	if len(res.Deleted) != 1 || len(res.Kept) != 0 {
 		t.Errorf("result = %+v", res)
 	}
-	if got := tree(t, e.root); len(got) != 0 {
+	if got := heldTree(t, e.root); len(got) != 0 {
 		t.Errorf("folders it made are still there: %v", got)
 	}
 	if n := booksCount(t, e); n != 0 {

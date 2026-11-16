@@ -58,6 +58,10 @@ const (
 	RemovalRestored = "restored"
 	RemovalPurged   = "purged"
 	RemovalFailed   = "failed"
+
+	// Where a removal came from (removals.source): a book put in the library folder by hand, or one Add books placed.
+	SourceLibrary = "library"
+	SourceUpload  = "upload"
 )
 
 const (
@@ -107,6 +111,7 @@ type Removal struct {
 	Files                                            int
 	Bytes                                            int64
 	JobID, RemovedBy                                 string
+	Source                                           string // SourceLibrary or SourceUpload
 	CreatedAt, UpdatedAt, PurgeAfter                 int64 // Unix ms; PurgeAfter is 0 when not set
 }
 
@@ -426,40 +431,12 @@ func (s *Service) StartRemoval(ctx context.Context, userID, bookID, planHash, mo
 		return "", err
 	}
 	rid := db.NewID("rmv")
-	now := s.nowMs()
 	state := RemovalPlanned
 	if mode == ModeKeepFiles {
 		state = RemovalHeld
 	}
 	insert := func(ctx context.Context, tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO removals(id, library_id, folder_id, book_id, title, root_path, mode, state, plan_hash, files, bytes,
-  removed_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT id FROM users WHERE id = ?), ?, ?)`,
-			rid, plan.LibraryID, plan.FolderID, bookID, plan.Title, plan.RootPath, mode, state, plan.Hash, len(plan.Files)+len(plan.Extras), plan.Bytes, userID, now, now)
-		if err != nil {
-			return err
-		}
-		for i, it := range plan.items {
-			held := ""
-			if it.kind != "dir" {
-				held = filepath.Join(folder.Path, HoldingDir, rid, filepath.FromSlash(it.rel))
-			}
-			var quick, heldPath any
-			if it.quick != "" {
-				quick = it.quick
-			}
-			if held != "" && mode == ModeFiles {
-				heldPath = held
-			}
-			st := "planned"
-			if mode == ModeKeepFiles {
-				st = "kept"
-			}
-			if _, err := tx.ExecContext(ctx, `INSERT INTO removal_paths(removal_id, idx, kind, path, held_path, size, mtime_ns, quick_hash, state)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, rid, i, it.kind, it.path, heldPath, it.size, it.mtime, quick, st); err != nil {
-				return err
-			}
-		}
-		return nil
+		return s.insertRemoval(ctx, tx, rid, plan, mode, SourceLibrary, userID, folder.Path, state)
 	}
 	if mode == ModeKeepFiles {
 		shared := plan.RootIsFolder
@@ -511,6 +488,52 @@ func (s *Service) StartRemoval(ctx context.Context, userID, bookID, planHash, mo
 	return rid, nil
 }
 
+// insertRemoval records one removal and every path it will move, before anything on disk changes. For mode
+// "files" it also records which upload ledger rows the moved files and folders are, so Put back can re-present
+// them (decision 0045 addendum, migration 0046).
+func (s *Service) insertRemoval(ctx context.Context, tx *sql.Tx, rid string, plan RemovalPlan, mode, source, userID, folderPath, state string) error {
+	now := s.nowMs()
+	_, err := tx.ExecContext(ctx, `INSERT INTO removals(id, library_id, folder_id, book_id, title, root_path, mode, state, source, plan_hash, files, bytes,
+  removed_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT id FROM users WHERE id = ?), ?, ?)`,
+		rid, plan.LibraryID, plan.FolderID, plan.BookID, plan.Title, plan.RootPath, mode, state, source, plan.Hash, len(plan.Files)+len(plan.Extras), plan.Bytes, userID, now, now)
+	if err != nil {
+		return err
+	}
+	for i, it := range plan.items {
+		held := ""
+		if it.kind != "dir" {
+			held = filepath.Join(folderPath, HoldingDir, rid, filepath.FromSlash(it.rel))
+		}
+		var quick, heldPath any
+		if it.quick != "" {
+			quick = it.quick
+		}
+		if held != "" && mode == ModeFiles {
+			heldPath = held
+		}
+		st := "planned"
+		if mode == ModeKeepFiles {
+			st = "kept"
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO removal_paths(removal_id, idx, kind, path, held_path, size, mtime_ns, quick_hash, state)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, rid, i, it.kind, it.path, heldPath, it.size, it.mtime, quick, st); err != nil {
+			return err
+		}
+		if mode != ModeFiles {
+			continue
+		}
+		ledgerKind := kindFile
+		if it.kind == "dir" {
+			ledgerKind = kindDir
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO removal_ledger(removal_id, upload_path_id)
+  SELECT ?, id FROM upload_paths WHERE path = ? AND kind = ? AND state = 'present'`, rid, it.path, ledgerKind); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func mapBusy(err error) error {
 	if err != nil && strings.Contains(err.Error(), "removals.book_id") {
 		return fail(409, CodeBusy, "This book is already being removed.")
@@ -531,6 +554,11 @@ func (s *Service) dropBookRows(ctx context.Context, tx *sql.Tx, bookID string, m
 	if _, err := tx.ExecContext(ctx, `DELETE FROM ebook_files WHERE book_id = ?1 AND origin = 'library' AND missing_since IS NOT NULL`, bookID); err != nil {
 		return err
 	}
+	return s.dropMovedRows(ctx, tx, bookID, moved)
+}
+
+// dropMovedRows deletes the library ebook row and marks the upload ledger row of each moved path.
+func (s *Service) dropMovedRows(ctx context.Context, tx *sql.Tx, bookID string, moved []string) error {
 	for _, p := range moved {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM ebook_files WHERE book_id = ? AND origin = 'library' AND path = ?`, bookID, p); err != nil {
 			return err
@@ -552,6 +580,12 @@ func (s *Service) handleRemoveFiles(ctx context.Context, t *jobs.Task) (any, err
 
 // removeFiles is the job body (g is the fence check; nil in tests).
 func (s *Service) removeFiles(ctx context.Context, g guard, rid string) (any, error) {
+	return s.moveRemoval(ctx, g, rid, "")
+}
+
+// moveRemoval holds the removal's lock and runs the move: verify every file, rename each into the holding folder,
+// commit. scope is only used by a removal that Add books placed (SourceUpload), which the request runs itself.
+func (s *Service) moveRemoval(ctx context.Context, g guard, rid string, scope holdScope) (any, error) {
 	l := s.lock("rmv:" + rid)
 	l.Lock()
 	defer l.Unlock()
@@ -674,6 +708,9 @@ func (s *Service) removeFiles(ctx context.Context, g guard, rid string) (any, er
 	if err := s.crash("remove_files:before_commit"); err != nil {
 		return nil, err
 	}
+	if rm.Source == SourceUpload {
+		return s.commitUpload(ctx, g, lr, rm, folder, paths, moved, scope)
+	}
 	now := s.nowMs()
 	err = s.repo.UpdateGuarded(ctx, func(ctx context.Context, tx *sql.Tx) error {
 		if g != nil {
@@ -682,6 +719,9 @@ func (s *Service) removeFiles(ctx context.Context, g guard, rid string) (any, er
 			}
 		}
 		if err := s.dropBookRows(ctx, tx, rm.BookID, moved, false); err != nil {
+			return err
+		}
+		if err := s.snapshotOwners(ctx, tx, rid, rm.RootPath); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM upload_books WHERE root_path = ?1 OR (root_path > ?1 || '/' AND root_path < ?1 || '0')`, rm.RootPath); err != nil {
@@ -715,6 +755,121 @@ func (s *Service) removeFiles(ctx context.Context, g guard, rid string) (any, er
 		_, _ = s.st.Writer().ExecContext(ctx, `UPDATE removal_paths SET state = ? WHERE removal_id = ? AND idx = ?`, st, rid, d.idx)
 	}
 	return RemoveFilesResult{RemovalID: rid, Moved: len(moved)}, nil
+}
+
+// commitUpload finishes a removal Add books placed: every file is in the holding folder, so the book's rows go
+// (or stay, when a changed file keeps audio on disk) and the removal becomes held.
+func (s *Service) commitUpload(ctx context.Context, g guard, lr *lroot, rm Removal, folder library.Folder, paths []removalPath, moved []string, scope holdScope) (any, error) {
+	book, err := s.repo.Book(ctx, rm.BookID)
+	if err != nil {
+		cur, _ := s.Removal(context.WithoutCancel(ctx), rm.ID)
+		_ = s.rollbackRemoval(context.WithoutCancel(ctx), cur, CodeCannotMove)
+		return nil, err
+	}
+	dirIDs := map[string][]string{}
+	rows, err := s.st.Reader().QueryContext(ctx, `SELECT p.id, p.path FROM upload_paths p JOIN removal_ledger l ON l.upload_path_id = p.id
+  WHERE l.removal_id = ? AND p.kind = 'dir'`, rm.ID)
+	if err == nil {
+		for rows.Next() {
+			var id, path string
+			if rows.Scan(&id, &path) == nil {
+				dirIDs[path] = append(dirIDs[path], id)
+			}
+		}
+		rows.Close()
+	}
+	var dirs []holdDir
+	for _, pr := range paths {
+		if pr.kind == "dir" {
+			dirs = append(dirs, holdDir{path: pr.path, idx: pr.idx, ids: dirIDs[pr.path]})
+		}
+	}
+	fin := holdFinish{rid: rm.ID, userID: rm.RemovedBy, book: book, folder: folder, scope: scope, moved: moved, dirs: dirs}
+	if _, err := s.finishUpload(ctx, g, lr, fin); err != nil {
+		cur, _ := s.Removal(context.WithoutCancel(ctx), rm.ID)
+		_ = s.rollbackRemoval(context.WithoutCancel(ctx), cur, CodeCannotMove)
+		return nil, err
+	}
+	return RemoveFilesResult{RemovalID: rm.ID, Moved: len(moved)}, nil
+}
+
+// snapshotOwners copies who-added-it for the book's root (and anything inside it) into the removal, so Put back
+// can return it: the uploads rows are pruned after 30 days and cannot be rebuilt later.
+func (s *Service) snapshotOwners(ctx context.Context, tx *sql.Tx, rid, root string) error {
+	_, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO removal_upload_books(removal_id, root_path, upload_id, library_id, added_by, created_at)
+  SELECT ?1, root_path, upload_id, library_id, added_by, created_at FROM upload_books
+  WHERE root_path = ?2 OR (root_path > ?2 || '/' AND root_path < ?2 || '0')`, rid, root)
+	return err
+}
+
+// ledgerRow is a ledger row a removal took.
+type ledgerRow struct{ id, path, kind string }
+
+// ledgerToRepresent lists the ledger rows Put back makes present again: files that are back in place, and folders
+// that exist again.
+func (s *Service) ledgerToRepresent(ctx context.Context, lr *lroot, rid string) ([]string, error) {
+	paths, err := s.removalPaths(ctx, rid)
+	if err != nil {
+		return nil, err
+	}
+	back := map[string]bool{}
+	for _, pr := range paths {
+		if pr.kind != "dir" && pr.state == "restored" {
+			back[filepath.Clean(pr.path)] = true
+		}
+	}
+	rows, err := s.st.Reader().QueryContext(ctx, `SELECT p.id, p.path, p.kind FROM removal_ledger l JOIN upload_paths p ON p.id = l.upload_path_id
+  WHERE l.removal_id = ?`, rid)
+	if err != nil {
+		return nil, err
+	}
+	var all []ledgerRow
+	for rows.Next() {
+		var r ledgerRow
+		if err := rows.Scan(&r.id, &r.path, &r.kind); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		all = append(all, r)
+	}
+	rows.Close()
+	var ids []string
+	for _, r := range all {
+		switch r.kind {
+		case kindFile:
+			if back[filepath.Clean(r.path)] {
+				ids = append(ids, r.id)
+			}
+		case kindDir:
+			if fi, err := lr.lstatNoLinks(r.path); err == nil && fi.IsDir() {
+				ids = append(ids, r.id)
+			}
+		}
+	}
+	return ids, nil
+}
+
+// representLedger makes the returned files and folders 'present' in the upload ledger again (a newer upload's live
+// row on the same path wins), and, when everything came back, who-added-it too; then the snapshot is dropped.
+func (s *Service) representLedger(ctx context.Context, tx *sql.Tx, rid string, ids []string, all bool) error {
+	for _, id := range ids {
+		if _, err := tx.ExecContext(ctx, `UPDATE OR IGNORE upload_paths SET state = 'present', updated_at = ? WHERE id = ? AND state IN ('removed','kept')`, s.nowMs(), id); err != nil {
+			return err
+		}
+	}
+	if !all {
+		return nil
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO upload_books(root_path, upload_id, library_id, added_by, created_at)
+  SELECT root_path, upload_id, library_id, added_by, created_at FROM removal_upload_books WHERE removal_id = ?
+  ON CONFLICT(root_path) DO NOTHING`, rid); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM removal_ledger WHERE removal_id = ?`, rid); err != nil {
+		return err
+	}
+	_, err := tx.ExecContext(ctx, `DELETE FROM removal_upload_books WHERE removal_id = ?`, rid)
+	return err
 }
 
 // verifyPath checks one path against its record: an ordinary file of the same size and time (and, for a scanned
@@ -805,8 +960,16 @@ func (s *Service) failRemoval(ctx context.Context, g guard, rid, code string, fr
 				args = append(args, f)
 			}
 		}
-		_, err := tx.ExecContext(ctx, q, args...)
-		return err
+		res, err := tx.ExecContext(ctx, q, args...)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n > 0 { // a failed removal moved nothing, so its ledger snapshot is not needed
+			if _, err := tx.ExecContext(ctx, `DELETE FROM removal_ledger WHERE removal_id = ?`, rid); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
@@ -925,7 +1088,7 @@ func (s *Service) HeldRemovals(ctx context.Context, libraryID string) ([]Removal
 
 func (s *Service) removals(ctx context.Context, where string, args ...any) ([]Removal, error) {
 	rows, err := s.st.Reader().QueryContext(ctx, `SELECT id, library_id, folder_id, book_id, title, root_path, mode, state, COALESCE(error_code, ''),
-  plan_hash, files, bytes, COALESCE(job_id, ''), COALESCE(removed_by, ''), created_at, updated_at, COALESCE(purge_after, 0)
+  plan_hash, files, bytes, COALESCE(job_id, ''), COALESCE(removed_by, ''), source, created_at, updated_at, COALESCE(purge_after, 0)
   FROM removals `+where+` ORDER BY created_at DESC, id DESC`, args...)
 	if err != nil {
 		return nil, err
@@ -935,7 +1098,7 @@ func (s *Service) removals(ctx context.Context, where string, args ...any) ([]Re
 	for rows.Next() {
 		var r Removal
 		if err := rows.Scan(&r.ID, &r.LibraryID, &r.FolderID, &r.BookID, &r.Title, &r.RootPath, &r.Mode, &r.State, &r.ErrorCode,
-			&r.PlanHash, &r.Files, &r.Bytes, &r.JobID, &r.RemovedBy, &r.CreatedAt, &r.UpdatedAt, &r.PurgeAfter); err != nil {
+			&r.PlanHash, &r.Files, &r.Bytes, &r.JobID, &r.RemovedBy, &r.Source, &r.CreatedAt, &r.UpdatedAt, &r.PurgeAfter); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -1025,7 +1188,14 @@ func (s *Service) RestoreRemoval(ctx context.Context, userID, rid string) (Resto
 			_ = lr.Remove(filepath.Join(folder.Path, HoldingDir))
 		}
 	}
+	represent, err := s.ledgerToRepresent(ctx, lr, rid)
+	if err != nil {
+		return res, err
+	}
 	err = s.write(ctx, nil, func(tx *sql.Tx) error {
+		if err := s.representLedger(ctx, tx, rid, represent, len(res.Kept) == 0); err != nil {
+			return err
+		}
 		if len(res.Kept) == 0 {
 			if _, err := tx.ExecContext(ctx, `UPDATE removals SET state = 'restored', updated_at = ?, purge_after = NULL WHERE id = ? AND state = 'held'`, s.nowMs(), rid); err != nil {
 				return err
@@ -1092,6 +1262,12 @@ func (s *Service) PurgeRemoval(ctx context.Context, userID, rid string) error {
 		if _, err := tx.ExecContext(ctx, `UPDATE removal_paths SET state = 'purged' WHERE removal_id = ? AND kind <> 'dir' AND state IN ('planned','held','kept')`, rid); err != nil {
 			return err
 		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM removal_ledger WHERE removal_id = ?`, rid); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM removal_upload_books WHERE removal_id = ?`, rid); err != nil {
+			return err
+		}
 		return s.audit(ctx, tx, userID, "removal.purge", "book:"+rm.BookID, map[string]any{"title": rm.Title, "removal": rid, "files": rm.Files})
 	})
 }
@@ -1101,7 +1277,7 @@ func (s *Service) PurgeRemoval(ctx context.Context, userID, rid string) error {
 // purges held removals past their keep period.
 func (s *Service) sweepRemovals(ctx context.Context) error {
 	now := s.cfg.Now()
-	stuck, err := s.ids(ctx, `SELECT id FROM removals WHERE state = 'moving' AND updated_at < ?`, now.Add(-movingStale).UnixMilli())
+	stuck, err := s.ids(ctx, `SELECT id FROM removals WHERE state = 'moving' AND (source = 'upload' OR updated_at < ?)`, now.Add(-movingStale).UnixMilli())
 	if err != nil {
 		return err
 	}
@@ -1117,7 +1293,18 @@ func (s *Service) sweepRemovals(ctx context.Context) error {
 			s.log.Warn("upload: cannot put back an interrupted removal", "removal", id, "err", err)
 		}
 	}
-	planned, err := s.ids(ctx, `SELECT id FROM removals WHERE state = 'planned' AND mode = 'files' AND updated_at < ?
+	// A removal Add books placed runs inside its request and holds its lock for the whole move, so once the sweep
+	// can take that lock a 'moving' row has no mover left; a 'planned' one has no job to pick it up.
+	uploadPlanned, err := s.ids(ctx, `SELECT id FROM removals WHERE state = 'planned' AND source = 'upload' AND updated_at < ?`, now.Add(-movingStale).UnixMilli())
+	if err != nil {
+		return err
+	}
+	for _, id := range uploadPlanned {
+		if err := s.failRemoval(ctx, nil, id, "stuck", RemovalPlanned); err != nil {
+			s.log.Warn("upload: cannot fail a stuck removal", "removal", id, "err", err)
+		}
+	}
+	planned, err := s.ids(ctx, `SELECT id FROM removals WHERE state = 'planned' AND mode = 'files' AND source = 'library' AND updated_at < ?
   AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.id = removals.job_id AND j.state IN ('queued','running','held'))`, now.Add(-staleAfter).UnixMilli())
 	if err != nil {
 		return err
