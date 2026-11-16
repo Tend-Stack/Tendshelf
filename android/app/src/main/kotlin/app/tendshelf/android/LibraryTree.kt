@@ -21,6 +21,7 @@ import app.tendshelf.shared.ShowCard
 import app.tendshelf.shared.completionOf
 import app.tendshelf.shared.completionPercent
 import app.tendshelf.shared.episodeActions
+import app.tendshelf.shared.withFavourite
 import app.tendshelf.shared.episodeRowTitle
 import app.tendshelf.shared.episodeSubline
 import app.tendshelf.shared.StationCard
@@ -61,6 +62,9 @@ class LibraryTree(
     private val searches = lru<String, List<BookCard>>(8)
     private val episodes = lru<String, EpisodeCard>(300)
     private val stations = lru<String, StationCard>(100)
+
+    /** The lists the car last loaded that hold episodes: parent id to how many items it answered with. */
+    private val episodeLists = lru<String, Int>(50)
 
     private fun <K, V> lru(max: Int): MutableMap<K, V> = java.util.Collections.synchronizedMap(
         object : LinkedHashMap<K, V>(16, 0.75f, true) {
@@ -163,7 +167,20 @@ class LibraryTree(
                 it.set(LibraryResult.ofError(SessionError(SessionError.ERROR_BAD_VALUE, words(R.string.car_not_found))))
             }
         }
-        return guarded { LibraryResult.ofItemList(paged(load(node), Page(page, size)), null) }
+        return guarded {
+            val all = load(node)
+            if (all.any { it.mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE }) episodeLists[parentId] = all.size
+            LibraryResult.ofItemList(paged(all, Page(page, size)), null)
+        }
+    }
+
+    /**
+     * The page starred or unstarred an episode: the cached row takes the new state, so the next item() answers it, and the
+     * lists the car loaded that hold episodes are returned so the caller can tell the car to ask again.
+     */
+    fun favouriteChanged(id: String, on: Boolean): List<Pair<String, Int>> {
+        episodes[id]?.let { episodes[id] = withFavourite(it, on) }
+        return synchronized(episodeLists) { episodeLists.entries.map { it.key to it.value } }
     }
 
     fun item(mediaId: String): ListenableFuture<LibraryResult<MediaItem>> {

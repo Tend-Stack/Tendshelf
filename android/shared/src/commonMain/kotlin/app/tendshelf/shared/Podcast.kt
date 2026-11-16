@@ -170,6 +170,9 @@ data class EpisodeCard(
     val favourite: Boolean,
 )
 
+/** The card as the page just starred or unstarred it (the car's cached row follows the page). */
+fun withFavourite(e: EpisodeCard, on: Boolean): EpisodeCard = e.copy(favourite = on)
+
 /** What a row's action buttons can do (decision 0038). Download is not here: a car is not where a download is started. */
 enum class EpisodeAction(val word: String) { PLAYED("played"), UNPLAYED("unplayed"), STAR("star"), UNSTAR("unstar"), PLAY_NEXT("next") }
 

@@ -189,6 +189,13 @@ function build(bridge) {
   sendTheme();
   document.addEventListener("htmx:after:swap", sendTheme);
 
+  // A star or save made in the page reaches the car's lists: the app learns which item and which way. Only an episode
+  // (pe_) or station (rs_) id is sent; the app checks the word again.
+  document.addEventListener("ts:favourite", (event) => {
+    const { id, on } = event.detail;
+    if (/^(pe|rs)_[A-Za-z0-9_-]+$/.test(id)) send("fav " + id + " " + (on ? "1" : "0"));
+  });
+
   // player.js calls this once its listeners are on, so the full state the app answers with is not missed.
   audio.hello = () => send("hello 1");
 
