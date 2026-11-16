@@ -1347,6 +1347,17 @@ function checkOutro() {
 
 // The sound's length is known now: an episode whose feed gave none takes it from the file.
 listen(audio, "loadedmetadata", learnDuration);
+
+// The place a file starts from travels in the address (#t=seconds), and not every engine honours it: WebKitGTK,
+// the desktop app's engine, starts the file at 0. The book then restarted from the beginning and saved that as its
+// place (operator report, 2026-11-15). Once the file's metadata is in, a start that did not take is applied by a seek.
+function applyStartOffset() {
+  if (NATIVE || !book || book.kind === RADIO || !current.loaded || current.startApplied) return;
+  current.startApplied = true; // once per loaded file: a later seek is the person's own
+  const wantSeconds = current.startMs / 1000;
+  if (wantSeconds > 1 && audio.currentTime < wantSeconds - 1) audio.currentTime = wantSeconds;
+}
+listen(audio, "loadedmetadata", applyStartOffset);
 listen(audio, "durationchange", learnDuration);
 function learnDuration() {
   if (!book || book.kind !== EPISODE || !isFinite(audio.duration) || audio.duration <= 0) return;

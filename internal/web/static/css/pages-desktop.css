@@ -14,7 +14,10 @@ html[data-shell="desktop"] .ts-iconbtn {
   cursor: default;
 }
 
-/* The app plays from its library or server and keeps no downloads (the page says so). */
+/* The app plays from its library or server and keeps no downloads (the page says so). A book's Download button is
+   never drawn here either: its script does not load in the app, so the button stayed an invisible cell that left a gap
+   in the row of actions (operator report, 2026-11-15). */
+html[data-shell="desktop"] .ts-book__download,
 html[data-shell="desktop"] a[href="/me/downloads"] {
   display: none;
 }

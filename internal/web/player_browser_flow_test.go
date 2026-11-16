@@ -543,3 +543,29 @@ func TestPlayerBrowserLayout(t *testing.T) {
 		}
 	}
 }
+
+// TestPlayerBrowserStartWithoutFragment: an engine that ignores the #t= start in a media address (WebKitGTK, the
+// desktop app) must still resume at the saved place, not at 0, and must not save 0 over it. Chromium honours the
+// fragment, so the test strips it from every address the player sets.
+func TestPlayerBrowserStartWithoutFragment(t *testing.T) {
+	e := playerApp(t)
+	e.store(t, 10_000, "nofragdev", "First device", 0, false)
+	tab := playerOpen(t, chromium(t), e.URL, 390, 800)
+	tab.WaitFor(`window.tsPlayer.state().bookId !== "" && !document.getElementById("player").hidden`, 8*time.Second)
+	tab.Eval(`(() => { const a = document.getElementById("audio"), d = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "src");
+	  Object.defineProperty(a, "src", {configurable: true, get() { return d.get.call(a); }, set(v) { d.set.call(a, String(v).split("#")[0]); }}); })()`, nil)
+	playerClickSel(t, tab, "[data-ts-toggle]")
+	tab.WaitFor(`window.tsPlayer.state().playing && document.getElementById("audio").readyState >= 2`, 8*time.Second)
+	var at struct {
+		Src        string
+		Seconds    float64
+		PositionMs int64
+	}
+	tab.Eval(`({Src: document.getElementById("audio").src, Seconds: document.getElementById("audio").currentTime, PositionMs: window.tsPlayer.state().positionMs})`, &at)
+	if strings.Contains(at.Src, "#t=") {
+		t.Fatalf("the test did not strip the fragment: %s", at.Src)
+	}
+	if at.Seconds < 9 || at.PositionMs < 9000 {
+		t.Errorf("resumed at %.1f s (book %d ms), want the saved 10 s", at.Seconds, at.PositionMs)
+	}
+}
