@@ -66,8 +66,11 @@ func (c *contributorApp) addedRealBook(t *testing.T, f library.Folder, title, by
 // removal each); another contributor, a member and a guest get 404 and nothing moves.
 func TestRemoveHeldRoleMatrix(t *testing.T) {
 	c := newContributorApp(t)
+	var location string
 	post := func(ck *http.Cookie, id string) int {
-		return c.a.do(http.MethodPost, "/books/"+id+"/remove", url.Values{"_csrf": {c.a.tokenFor(t, ck)}}, nil, ck).Code
+		rec := c.a.do(http.MethodPost, "/books/"+id+"/remove", url.Values{"_csrf": {c.a.tokenFor(t, ck)}}, nil, ck)
+		location = rec.Header().Get("Location")
+		return rec.Code
 	}
 	type tc struct {
 		name     string
@@ -87,6 +90,17 @@ func TestRemoveHeldRoleMatrix(t *testing.T) {
 		b, paths := c.addedRealBook(t, c.folderB, "Held "+x.name, x.by)
 		if got := post(x.ck, b.ID); got != x.wantCode {
 			t.Errorf("%s: %d, want %d", x.name, got, x.wantCode)
+		}
+		if x.wantCode == http.StatusSeeOther {
+			var rid string
+			_ = c.a.st.Reader().QueryRow(`SELECT id FROM removals WHERE book_id = ?`, b.ID).Scan(&rid)
+			want := "/libraries/" + b.LibraryID // a contributor lands where they always did
+			if x.by == "" {
+				want = "/removals/" + rid // the owner and admins land on the removal, where Put back is
+			}
+			if location != want {
+				t.Errorf("%s: redirected to %q, want %q", x.name, location, want)
+			}
 		}
 		if n := c.a.count(t, `SELECT count(*) FROM removals WHERE book_id = ?`, b.ID); n != x.removals {
 			t.Errorf("%s: removals = %d, want %d", x.name, n, x.removals)

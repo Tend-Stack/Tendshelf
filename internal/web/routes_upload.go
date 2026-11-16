@@ -348,8 +348,14 @@ func (s *server) postBookRemove(w http.ResponseWriter, r *http.Request) {
 		if s.ebooks != nil {
 			drop = func(ctx context.Context, fileID string) error { return s.ebooks.RemoveUpload(ctx, u.ID, b.ID, fileID) }
 		}
-		if _, err := s.uploads.RemoveWhole(r.Context(), u.ID, b.ID, s.removePlacedBy(u), drop); err != nil {
+		res, err := s.uploads.RemoveWhole(r.Context(), u.ID, b.ID, s.removePlacedBy(u), drop)
+		if err != nil {
 			s.removeFailed(w, r, err)
+			return
+		}
+		// The files wait in the holding folder: the owner and admins land on the removal, where Put back is one click.
+		if res.RemovalID != "" && s.can.Can(r.Context(), u, share.RemoveLibraryFiles, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) {
+			s.answerPage(w, r, "/removals/"+res.RemovalID)
 			return
 		}
 		s.answerPage(w, r, "/libraries/"+b.LibraryID)
