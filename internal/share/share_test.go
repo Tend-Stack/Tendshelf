@@ -457,3 +457,27 @@ func TestContributorLibraryFilter(t *testing.T) {
 		t.Errorf("nested = %v, prefix sibling = %v", b["bk_in"], b["bk_pre"])
 	}
 }
+
+// TestRemoveLibraryFilesOnlyOwnerAndAdmin names the refusals of decision 0045 one by one: a contributor on a book
+// they added, a member with a grant on the library, a guest with a grant on the book, and a disabled person.
+func TestRemoveLibraryFilesOnlyOwnerAndAdmin(t *testing.T) {
+	f := openFixture(t)
+	ctx := context.Background()
+	for _, c := range []struct {
+		who, book string
+		want      bool
+	}{
+		{"u_own", "bk_a1", true}, {"u_adm", "bk_b1", true},
+		{"u_con", "bk_b1", false}, // a contributor on a book they added
+		{"u_con", "bk_a1", false},
+		{"u_lib", "bk_a1", false}, // a member with a library grant
+		{"u_all", "bk_a1", false},
+		{"u_g", "bk_b1", false}, // a guest with a book grant
+		{"u_dis", "bk_a1", false},
+	} {
+		tg := Target{Kind: TargetBook, ID: c.book, LibraryID: fixtureBooks[c.book]}
+		if got := f.c.Can(ctx, f.user(c.who), RemoveLibraryFiles, tg); got != c.want {
+			t.Errorf("%s on %s: got %v want %v", c.who, c.book, got, c.want)
+		}
+	}
+}

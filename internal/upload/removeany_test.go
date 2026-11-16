@@ -1,7 +1,9 @@
 package upload
 
 import (
+	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -606,6 +608,26 @@ func TestRestoreRemovalKeepsAFileWhoseOldPlaceIsTaken(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(e.root, HoldingDir, rid, "Ann/Hand/01.mp3")); err != nil {
 		t.Errorf("the kept file left the holding folder: %v", err)
 	}
+	// The removal stays held with its purge date, so the kept file is listed and can be deleted.
+	rm, _ := e.svc.Removal(bg, rid)
+	if rm.State != RemovalHeld || rm.PurgeAfter == 0 {
+		t.Fatalf("state %s purge_after %d", rm.State, rm.PurgeAfter)
+	}
+	if held, _ := e.svc.HeldRemovals(bg, e.lib.ID); len(held) != 1 {
+		t.Errorf("held = %v", held)
+	}
+	if files, _ := e.svc.RemovalFiles(bg, rid); len(files) != 2 {
+		t.Errorf("files = %v", files)
+	}
+	if err := e.svc.PurgeRemoval(bg, me, rid); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(e.root, HoldingDir)); err == nil {
+		t.Error("the holding folder is still there after the purge")
+	}
+	if st, _ := e.removalState(rid); st != RemovalPurged {
+		t.Errorf("state = %s", st)
+	}
 }
 
 func TestPurgeRemovalAfterTheKeepPeriod(t *testing.T) {
@@ -782,5 +804,162 @@ func TestExistingUploadRemoveIsNotOfferedTheHandPath(t *testing.T) {
 	e.scanAll()
 	if e.svc.Removable(bg, e.bookAt("Ann/Hand")) {
 		t.Error("a hand-added book is removable through the upload path")
+	}
+}
+
+func TestKeepFilesRefusedWhenTheFolderHoldsOtherBooks(t *testing.T) {
+	e := newEnv(t, nil)
+	e.handBook("Mix", "a1.mp3", "a2.mp3")
+	e.handBook("Mix/Inner", "b1.mp3", "b2.mp3")
+	e.handBook("Ann/Top", "t1.mp3")
+	e.scanAll()
+	// The outer files become one book rooted at the folder that also holds another book.
+	var a1, a2 string
+	e.st.Reader().QueryRow(`SELECT id FROM books WHERE root_path = ?`, filepath.Join(e.root, "Mix/a1.mp3")).Scan(&a1)
+	e.st.Reader().QueryRow(`SELECT id FROM books WHERE root_path = ?`, filepath.Join(e.root, "Mix/a2.mp3")).Scan(&a2)
+	e.exec(`UPDATE audio_files SET book_id = ? WHERE book_id = ?`, a1, a2)
+	e.exec(`DELETE FROM books WHERE id = ?`, a2)
+	e.exec(`UPDATE books SET root_path = ? WHERE id = ?`, filepath.Join(e.root, "Mix"), a1)
+	// A loose book whose root is the library folder itself.
+	top := e.bookAt("Ann/Top")
+	e.exec(`UPDATE books SET root_path = ? WHERE id = ?`, e.root, top)
+	before := snapshot(t, e.root)
+	books := e.bookCount()
+	for _, id := range []string{a1, top} {
+		plan, err := e.svc.PlanRemoval(bg, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.svc.StartRemoval(bg, me, id, plan.Hash, ModeKeepFiles); codeOf(err) != CodeNotRemovable {
+			t.Errorf("keep files on %s: %v", id, err)
+		}
+	}
+	if countRows(t, e, "removals") != 0 || e.bookCount() != books || !reflect.DeepEqual(before, snapshot(t, e.root)) {
+		t.Error("a refused keep-files removal changed something")
+	}
+}
+
+func TestKeepFilesIsBusyWhileAFilesRemovalIsPlanned(t *testing.T) {
+	e := newEnv(t, nil)
+	e.handBook("Ann/Hand", "01.mp3")
+	e.scanAll()
+	e.start("Ann/Hand", ModeFiles)
+	id := e.bookAt("Ann/Hand")
+	plan, _ := e.svc.PlanRemoval(bg, id)
+	if _, err := e.svc.StartRemoval(bg, me, id, plan.Hash, ModeKeepFiles); codeOf(err) != CodeBusy {
+		t.Fatalf("err = %v", err)
+	}
+	if countRows(t, e, "removals") != 1 || e.bookCount() != 1 {
+		t.Error("the refused request changed something")
+	}
+}
+
+func TestRemoveFilesPlantedHoldingLinkFailsAndCreatesNothingAtItsTarget(t *testing.T) {
+	e := newEnv(t, nil)
+	e.handBook("Ann/Hand", "01.mp3")
+	e.scanAll()
+	target := t.TempDir()
+	if err := os.Symlink(target, filepath.Join(e.root, HoldingDir)); err != nil {
+		t.Skip("no symbolic links here")
+	}
+	rid := e.start("Ann/Hand", ModeFiles)
+	_, err := e.svc.removeFiles(bg, nil, rid)
+	if codeOf(err) != CodeCannotMove {
+		t.Fatalf("err = %v", err)
+	}
+	if entries, _ := os.ReadDir(target); len(entries) != 0 {
+		t.Errorf("something was created at the link's target: %v", entries)
+	}
+	if _, err := os.Stat(filepath.Join(e.root, "Ann/Hand/01.mp3")); err != nil {
+		t.Errorf("the file moved: %v", err)
+	}
+	if st, code := e.removalState(rid); st != RemovalFailed || code != CodeCannotMove || e.bookCount() != 1 {
+		t.Errorf("state %s %s books %d", st, code, e.bookCount())
+	}
+}
+
+func TestPurgeRefusesAHoldingFolderThatIsALink(t *testing.T) {
+	e := newEnv(t, nil)
+	e.handBook("Ann/Hand", "01.mp3")
+	e.scanAll()
+	rid := e.start("Ann/Hand", ModeFiles)
+	if _, err := e.svc.removeFiles(bg, nil, rid); err != nil {
+		t.Fatal(err)
+	}
+	// Swap the removal's folder for a link to somewhere else.
+	elsewhere := t.TempDir()
+	os.WriteFile(filepath.Join(elsewhere, "precious.txt"), []byte("x"), 0o644)
+	dir := filepath.Join(e.root, HoldingDir, rid)
+	os.RemoveAll(dir)
+	if err := os.Symlink(elsewhere, dir); err != nil {
+		t.Skip("no symbolic links here")
+	}
+	if err := e.svc.PurgeRemoval(bg, me, rid); codeOf(err) != CodeNotRemovable {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(elsewhere, "precious.txt")); err != nil {
+		t.Errorf("a file behind the link went: %v", err)
+	}
+	if st, _ := e.removalState(rid); st != RemovalHeld {
+		t.Errorf("state = %s", st)
+	}
+}
+
+func TestRemoveFilesCancelledMidMoveIsRetriedAndEndsHeld(t *testing.T) {
+	e := newEnv(t, nil)
+	e.handBook("Ann/Hand", "01.mp3", "02.mp3")
+	e.scanAll()
+	before := snapshot(t, filepath.Join(e.root, "Ann"))
+	rid := e.start("Ann/Hand", ModeFiles)
+	ctx, cancel := context.WithCancel(bg)
+	e.svc.crash = func(p string) error {
+		if p == "remove_files:after_move:1" {
+			cancel()
+		}
+		return nil
+	}
+	if _, err := e.svc.removeFiles(ctx, nil, rid); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v", err)
+	}
+	e.svc.crash = func(string) error { return nil }
+	if st, _ := e.removalState(rid); st != RemovalPlanned {
+		t.Fatalf("state after the cancel = %s", st)
+	}
+	if after := snapshot(t, filepath.Join(e.root, "Ann")); !reflect.DeepEqual(before, after) {
+		t.Fatalf("files not back: %v", tree(t, e.root))
+	}
+	if _, err := e.svc.removeFiles(bg, nil, rid); err != nil {
+		t.Fatalf("second run: %v", err)
+	}
+	if st, _ := e.removalState(rid); st != RemovalHeld || e.bookCount() != 0 {
+		t.Errorf("state %s books %d", st, e.bookCount())
+	}
+}
+
+func TestPutBackNeverOverwritesAFileCreatedInBetween(t *testing.T) {
+	dir := t.TempDir()
+	lr, err := openLroot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lr.Close()
+	held, orig := filepath.Join(dir, "held.mp3"), filepath.Join(dir, "orig.mp3")
+	os.WriteFile(held, []byte("old"), 0o644)
+	os.WriteFile(orig, []byte("new"), 0o644)
+	if err := lr.putBack(held, orig); !errors.Is(err, fs.ErrExist) {
+		t.Fatalf("err = %v", err)
+	}
+	if b, _ := os.ReadFile(orig); string(b) != "new" {
+		t.Error("overwritten")
+	}
+	if _, err := os.Stat(held); err != nil {
+		t.Error("the held file went")
+	}
+	os.Remove(orig)
+	if err := lr.putBack(held, orig); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(held); err == nil {
+		t.Error("the held name is still there")
 	}
 }
