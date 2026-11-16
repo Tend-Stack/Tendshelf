@@ -1057,6 +1057,7 @@ function chooseSleep(choice, minutes) {
 
 // Called when playback goes from paused to playing.
 function maybeStartNightSleep() {
+  if (nativeSleep()) return; // the Android app owns the rule, so every way of starting playback gets it
   const night = book && book.night;
   if (!night || sleepState.mode !== "off") return;
   const now = new Date();

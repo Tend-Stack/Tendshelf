@@ -1234,7 +1234,7 @@ were not driven in the browser; the stacked or tool rows listed in the decision 
 
 Not built. Line numbers come from a scout and were not re-checked.
 
-- **Night sleep only starts from the page.** The rule lives in `player-full.js` (`maybeStartNightSleep`); `SleepTimer.kt` has no night code, so a start from the car or the notification while the page is frozen starts no timer.
+- **Done (2026-11-16): night sleep starts from every Android start.** The app owns the rule: `NightSleep.kt` (shared, tested in `NightSleepTest`), night fields in `PlayerSettings` and the kept settings, `SleepTimer.playbackStarted()` on Media3's play event, the "off until the window ends" marker in the car prefs; the page skips its own rule in the app. Checks: shared tests, `make apk-debug`, `make check`; not run on the emulator. The page's start toast is not shown for a native start.
 - **A star made in the page does not reach the car's row.** `encodeState` in `android/shared/.../BridgeProtocol.kt` has no favourite field; the car stars through its own API call (`LibraryTree.kt`, `Api.kt`).
 - **Episode downloads have a receiver and no sender.** `Offline.kt` accepts episode ids, but only the book page carries `data-ts-download`.
 - **The daily downloads check removes a gone book only on 404** (`checkVerdict`, pinned by `OfflineTest.kt`). Verified 2026-11-16: removing a book (decision 0045) deletes its row, and `loadBook` answers 404 for an unknown id and for a book the person may no longer see, so a removed book and a lost grant both delete the download; a merged book answers 308 to the book that took over, which the check leaves alone. `TestRemoveAnyFilesEndToEnd` pins the 404 (with a 200 control). No Android change needed.

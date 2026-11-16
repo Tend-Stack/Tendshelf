@@ -77,6 +77,11 @@ class ApiJsonTest {
         assertTrue(ApiJson.settings("""{"speed":1,"skipBackS":1,"skipForwardS":1,"autoRewind":true,"nextInSeries":true,"autoDownload":true}""").autoDownload)
         // an older server has no autoDownload: false
         assertEquals(false, ApiJson.settings("""{"speed":1,"skipBackS":1,"skipForwardS":1,"autoRewind":true,"nextInSeries":true}""").autoDownload)
+        // night sleep: absent or off is disabled; on carries the window and the minutes, and survives the kept copy
+        assertEquals(NightSettings.OFF, ApiJson.settings("""{"speed":1,"skipBackS":1,"skipForwardS":1,"autoRewind":true,"nextInSeries":true}""").night)
+        val night = ApiJson.settings("""{"speed":1,"skipBackS":1,"skipForwardS":1,"autoRewind":true,"nextInSeries":true,"nightSleep":true,"nightFrom":1320,"nightTo":360,"nightMinutes":45}""")
+        assertEquals(NightSettings(true, 1320, 360, 45), night.night)
+        assertEquals(night.night, decodeKeptSettings(encodeKeptSettings(night)).night)
         assertFailsWith<JsonShapeException> { ApiJson.settings("""{"speed":1,"skipBackS":1,"skipForwardS":1,"autoRewind":true}""") }
         assertFailsWith<JsonShapeException> { ApiJson.settings("""{"speed":"fast","skipBackS":1,"skipForwardS":1,"autoRewind":true,"nextInSeries":true}""") }
         val steps = ApiJson.rewindSteps(parseJsonObject("""{"rewindSteps":[{"fromMs":0,"seconds":2},{"fromMs":-5,"seconds":1},{"fromMs":9,"seconds":-1},7,{"fromMs":60000}]}"""))

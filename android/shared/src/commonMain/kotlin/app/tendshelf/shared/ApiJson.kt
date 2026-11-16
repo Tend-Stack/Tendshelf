@@ -74,7 +74,14 @@ object ApiJson {
             j.getBoolean("autoRewind"), j.getBoolean("nextInSeries"), rewindSteps(j),
             skipQuiet = j.optBoolean("skipQuiet", false), // older servers lack it
             autoDownload = j.optBoolean("autoDownload", false), // older servers lack it
+            night = nightSettings(j),
         )
+    }
+
+    /** The night sleep fields of the settings; a server without them means off. */
+    fun nightSettings(j: JsonObject): NightSettings {
+        if (!j.optBoolean("nightSleep", false)) return NightSettings.OFF
+        return NightSettings(true, j.optInt("nightFrom", 0), j.optInt("nightTo", 0), j.optInt("nightMinutes", 30).coerceIn(1, 999))
     }
 
     /** `GET /api/v1/books/{id}`; [paths] words the cover address. */

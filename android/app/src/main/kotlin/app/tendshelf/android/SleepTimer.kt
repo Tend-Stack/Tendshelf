@@ -1,5 +1,6 @@
 package app.tendshelf.android
 
+import android.content.SharedPreferences
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -9,12 +10,17 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.media3.exoplayer.ExoPlayer
 import app.tendshelf.shared.Chapter
+import app.tendshelf.shared.NightSettings
 import app.tendshelf.shared.ShakeDetector
 import app.tendshelf.shared.SleepClock
 import app.tendshelf.shared.SleepInfo
 import app.tendshelf.shared.SleepMode
 import app.tendshelf.shared.SleepStep
 import app.tendshelf.shared.chapterEndFor
+import app.tendshelf.shared.inNightWindow
+import app.tendshelf.shared.nightWindowEndMs
+import app.tendshelf.shared.shouldStartNightSleep
+import java.util.Calendar
 
 /**
  * The sleep timer in the service (A6), so a frozen page or a dark screen changes nothing. The rules are
@@ -28,6 +34,8 @@ class SleepTimer(
     private val player: BookPlayer,
     private val sensors: SensorManager?,
     private val main: Handler,
+    private val prefs: SharedPreferences,
+    private val night: () -> NightSettings,
     private val publish: (SleepInfo) -> Unit,
 ) {
     private val clock = SleepClock()
@@ -64,6 +72,7 @@ class SleepTimer(
 
     /** The page's choice: `off`, `plus`, `chapter` or minutes as digits. */
     fun command(asked: String, minutes: Int) {
+        if (asked == "off") nightSwitchedOff()
         // "End of episode": a chapter timer whose end is the end of the episode, whatever chapters it has.
         wholeEpisode = asked == "episode"
         val choice = if (wholeEpisode) "chapter" else asked
@@ -77,6 +86,36 @@ class SleepTimer(
                 begin()
             }
         }
+    }
+
+    private fun nowMinutes(cal: Calendar) = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+
+    /**
+     * Night sleep (the page's rule, [shouldStartNightSleep]): called when playback starts, from any start (page, car,
+     * notification, widget, next book). Inside the person's night hours with no timer running it starts the timer.
+     * Applies to books, episodes and stations alike, as on the page.
+     */
+    fun playbackStarted() {
+        val settings = night()
+        if (!settings.enabled) return
+        val cal = Calendar.getInstance()
+        val now = cal.timeInMillis
+        val offUntil = prefs.getLong(NIGHT_OFF_KEY, 0L)
+        if (!shouldStartNightSleep(settings, now, nowMinutes(cal), clock.isOn, offUntil)) return
+        Log.i(TAG, "sleep: night sleep starts the timer for ${settings.minutes} min")
+        clock.set(settings.minutes.toString(), settings.minutes, 0L)
+        wholeEpisode = false
+        begin()
+    }
+
+    /** The person turned the timer off inside the night window: it stays off until the window ends. Outside it nothing is kept. */
+    private fun nightSwitchedOff() {
+        val settings = night()
+        if (!settings.enabled) return
+        val cal = Calendar.getInstance()
+        val minutes = nowMinutes(cal)
+        if (!inNightWindow(minutes, settings.fromMinutes, settings.toMinutes)) return
+        prefs.edit().putLong(NIGHT_OFF_KEY, nightWindowEndMs(cal.timeInMillis, minutes, settings.toMinutes)).apply()
     }
 
     private fun begin() {
@@ -213,5 +252,6 @@ class SleepTimer(
     companion object {
         private const val TAG = "Tendshelf"
         private const val STEP_MS = 250L
+        private const val NIGHT_OFF_KEY = "nightOffUntilMs" // in the car prefs: until when the person switched night sleep off
     }
 }

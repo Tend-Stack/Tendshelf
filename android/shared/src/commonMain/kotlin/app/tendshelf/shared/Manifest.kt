@@ -58,4 +58,6 @@ data class PlayerSettings(
     val skipQuiet: Boolean = false,
     /** Download the next book on Wi-Fi when this one is nearly over (decision 0035); Android app only. */
     val autoDownload: Boolean = false,
+    /** Night sleep: playback that starts in the person's night hours starts the sleep timer; the app owns the rule. */
+    val night: NightSettings = NightSettings.OFF,
 )

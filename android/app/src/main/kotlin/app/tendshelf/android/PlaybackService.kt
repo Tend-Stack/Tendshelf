@@ -118,7 +118,8 @@ class PlaybackService : MediaLibraryService() {
         engine.fallbackArt = { AppIcon.png(this) }
         player.onLiveKindChanged = { refreshButtons() } // RA-1: a station shows no Back or Forward
         player.onLiveToggle = { play -> engine.liveToggle(play) } // R3: pause lets go of a station's stream, play joins it live
-        sleep = SleepTimer(exo, player, getSystemService(android.hardware.SensorManager::class.java), main) { info ->
+        sleep = SleepTimer(exo, player, getSystemService(android.hardware.SensorManager::class.java), main,
+            getSharedPreferences(CAR_PREFS, MODE_PRIVATE), { Offline.loadSettings().night }) { info ->
             putExtras {
                 putString(EXTRA_SLEEP_MODE, info.mode.name.lowercase())
                 putString(EXTRA_SLEEP_CHOICE, info.choice)
@@ -126,6 +127,12 @@ class PlaybackService : MediaLibraryService() {
                 putBoolean(EXTRA_SLEEP_FADING, info.fading)
             }
         }
+        // Night sleep, whoever pressed play (page, car, notification, widget, the next book): one place.
+        exo.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) sleep.playbackStarted()
+            }
+        })
         wireProgress()
         wireCar()
         wireWidget()

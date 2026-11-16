@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Fixed
+
+- **Night sleep starts in the Android app however you press play.** Starting a book from the car, the notification, the widget or the next-book queue inside your night hours now starts the sleep timer, as it already did from the page. The "turned off" choice holds until your night hours end.
+
 ### Changed
 
 - **Removing a book you uploaded can be undone.** Its files now wait in the holding folder for 30 days, and the owner or an admin can put them back from Removed books, like any other removed book. Text books uploaded on a book's Text page are still deleted at once.
