@@ -115,7 +115,8 @@ func storedDraft(d library.BookDetail) chedDraft {
 func (s *server) renderChapters(w http.ResponseWriter, r *http.Request, d library.BookDetail, dr chedDraft) {
 	id := d.Book.ID
 	v := pages.ChaptersEditData{
-		CSRF: s.csrf.TokenFrom(r.Context()), Action: "/books/" + id + "/chapters", BookID: id, BookTitle: d.Book.Title,
+		FitModule: s.assets.URL("js/fit-row.js"),
+		CSRF:      s.csrf.TokenFrom(r.Context()), Action: "/books/" + id + "/chapters", BookID: id, BookTitle: d.Book.Title,
 		BackHref: bookTabHref(id, "chapters"), Title: chedTitle, Lead: chedLead, BackLabel: chedBack,
 		Rev: dr.rev, Origin: dr.origin, Saved: dr.saved, Error: dr.err,
 		StartHead: chedStart, NameHead: chedName, ListenWord: chedListen, DeleteWord: chedDelete, AddWord: chedAdd, SaveLabel: chedSave,

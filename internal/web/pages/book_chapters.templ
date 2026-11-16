@@ -1,9 +1,13 @@
 package pages
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
+)
 
 // ChaptersStyles is the stylesheet of the chapter editor and its reset page.
-var ChaptersStyles = []string{"css/pages-chapters.css"}
+var ChaptersStyles = []string{"css/pages-fit.css", "css/pages-chapters.css"}
 
 // ChaptersEditRow is one row of the form. Start and Title are the text as typed; Error is the
 // plain-words problem with this row, if any. PlayAtMs is -1 when the row has no valid start.
@@ -21,6 +25,8 @@ type ChaptersEditRow struct {
 
 // ChaptersEditData is the data of the Edit chapters page.
 type ChaptersEditData struct {
+	// FitModule is the address of js/fit-row.js (decision 0044): a chapter's Delete and Add fold into its three-dot menu.
+	FitModule string
 	CSRF, Action, BookID, BookTitle, BackHref string
 	Title, Lead, BackLabel                    string
 	Rev, Origin                               string
@@ -115,17 +121,18 @@ templ ChaptersEditView(v ChaptersEditData) {
 						if r.Error != "" {
 							<p class="ts-field__error" role="alert">{ r.Error }</p>
 						}
-						<div class="ts-chapted__actions">
+						<div class="ts-chapted__actions ts-fitline" data-ts-module={ v.FitModule } data-ts-fit>
 							if r.PlayAtMs >= 0 {
 								<button type="button" class="ts-btn ts-btn--quiet" data-ts-play-at={ strconv.FormatInt(r.PlayAtMs, 10) } data-ts-book={ v.BookID } aria-label={ r.ListenLabel }>{ v.ListenWord }</button>
 							}
-							<button type="submit" name="op" value={ r.DeleteOp } class="ts-btn ts-btn--quiet" aria-label={ r.DeleteLabel }>{ v.DeleteWord }</button>
-							<button type="submit" name="op" value={ r.AddOp } class="ts-btn ts-btn--quiet" aria-label={ r.AddLabel }>{ v.AddWord }</button>
+							<button type="submit" name="op" value={ r.DeleteOp } class="ts-btn ts-btn--quiet" data-ts-fit-item="delete" aria-label={ r.DeleteLabel }>{ v.DeleteWord }</button>
+							<button type="submit" name="op" value={ r.AddOp } class="ts-btn ts-btn--quiet" data-ts-fit-item="add" aria-label={ r.AddLabel }>{ v.AddWord }</button>
+							@components.MoreMenu(components.MoreMenuView{Fit: []components.MoreMenuFitItem{{Key: "delete", Label: v.DeleteWord}, {Key: "add", Label: v.AddWord}}})
 						</div>
 					</li>
 				}
 			</ol>
-			<div class="ts-chapted__bar">
+			<div class="ts-chapted__bar ts-oneline">
 				<button type="submit" name="op" value="save" class="ts-btn ts-btn--primary">{ v.SaveLabel }</button>
 				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.BackHref) }>{ v.BackLabel }</a>
 			</div>
@@ -163,7 +170,7 @@ templ ChaptersResetConfirm(v ChaptersResetView) {
 	<div class="ts-chapted ts-chapted--narrow">
 		<h1 class="title-1">{ v.Title }</h1>
 		<p class="body">{ v.Body }</p>
-		<form class="ts-chapted__bar" method="post" action={ templ.URL(v.Action) }>
+		<form class="ts-chapted__bar ts-oneline" method="post" action={ templ.URL(v.Action) }>
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			<button type="submit" class="ts-btn ts-btn--danger">{ v.Confirm }</button>
 			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.Back) }>{ v.Keep }</a>
@@ -194,7 +201,7 @@ templ ChaptersLookupBox(v ChaptersLookupResult) {
 				if !v.CanTitles {
 					<p class="caption">{ v.TitlesNote }</p>
 				}
-				<div class="ts-chapted__actions">
+				<div class="ts-chapted__actions ts-oneline">
 					<button type="submit" name="op" value="lookup_all" class="ts-btn ts-btn--secondary">{ v.UseAll }</button>
 					if v.CanTitles {
 						<button type="submit" name="op" value="lookup_titles" class="ts-btn ts-btn--secondary">{ v.UseTitles }</button>

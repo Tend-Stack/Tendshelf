@@ -99,6 +99,7 @@ func (s *server) usersPageView(r *http.Request) (pages.UsersView, error) {
 		return s.can.Can(ctx, actor, share.ManageUsers, share.Target{Kind: share.TargetUser, ID: u.ID, Role: u.Role})
 	}
 	v := usersView(s.csrf.TokenFrom(ctx), now, actor, list, len(pending), manage)
+	v.FitModule = s.assets.URL("js/fit-row.js")
 	if len(pending) > 0 {
 		v.TabInvites = fmt.Sprintf(inviteTabLabel, len(pending))
 		v.Invites = s.inviteRows(pending)

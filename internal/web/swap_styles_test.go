@@ -31,8 +31,8 @@ func TestPageStylesTravelInMain(t *testing.T) {
 	bm := bookmarkAdd(t, f, f.ownerID, f.book.ID, 100_000, "A note", time.Now())
 
 	browse := []string{"pages-admin", "pages-home", "pages-spines", "pages-library"}
-	bookStyles := []string{"pages-home", "pages-library", "pages-book", "pages-shelves", "pages-bookmarks"}
-	adminStyles := []string{"pages-onboard", "pages-admin", "pages-settings"}
+	bookStyles := []string{"pages-home", "pages-library", "pages-fit", "pages-book", "pages-shelves", "pages-bookmarks"}
+	adminStyles := []string{"pages-onboard", "pages-admin", "pages-fit", "pages-settings"}
 	cases := []struct {
 		path string
 		want []string
@@ -46,8 +46,8 @@ func TestPageStylesTravelInMain(t *testing.T) {
 		{"/me", []string{"pages-home", "pages-library", "pages-shelves", "pages-me", "pages-profile"}},
 		{"/me/settings", []string{"pages-me", "pages-settings"}},
 		{"/me/password", []string{"pages-onboard", "pages-me", "pages-settings"}},
-		{"/admin/libraries", slices.Insert(slices.Clone(adminStyles), 2, "pages-me")},
-		{"/admin/libraries/folders/new", slices.Insert(slices.Clone(adminStyles), 2, "pages-folders")},
+		{"/admin/libraries", slices.Insert(slices.Clone(adminStyles), 3, "pages-me")},
+		{"/admin/libraries/folders/new", slices.Insert(slices.Clone(adminStyles), 3, "pages-folders")},
 		// The book page links the styles of its tabs and sheets whatever tab it opens on, because the
 		// tabs swap only #book-panel.
 		{book, bookStyles},

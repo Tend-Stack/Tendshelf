@@ -1,0 +1,52 @@
+/* Action rows that fit (decision 0044): the three-dot menu, the folded buttons' twins and the rows that stay on ONE line.
+   Loaded by every page that draws a MoreMenu or a .ts-oneline / .ts-fitline row, before pages-book.css. */
+/* More options: a square three-dot button (the library's chip menu) whose panel floats over the page. */
+.ts-moremenu { flex: 0 0 auto; }
+.ts-moremenu[open] { flex: 0 0 auto; }
+.ts-moremenu > .ts-moremenu__btn, .ts-moremenu[open] > .ts-moremenu__btn { width: 3.5rem; padding: 0; justify-content: center; }
+.ts-moremenu .ts-moremenu__body { position: absolute; top: 100%; left: 0; right: auto; z-index: 5; box-sizing: border-box; width: 15rem; max-width: calc(100vw - 2 * var(--space-16)); box-shadow: var(--shadow-float); }
+/* Closed, the panel takes no room at all: some engines lay out a closed <details>' content, and a wide panel (200 % text)
+   then widened the page. */
+.ts-moremenu:not([open]) > .ts-moremenu__body { display: none; }
+/* From 1280 px the button can sit near the window's right edge: the panel opens toward the left there. */
+@media (width >= 1280px) { .ts-moremenu .ts-moremenu__body { left: auto; right: 0; } }
+.ts-moremenu--center .ts-moremenu__body { left: 50%; transform: translateX(-50%); } /* js/downloads.js shows one of the Download pair */
+/* Phones: the panel is anchored above the bottom navigation instead of hanging under its button, where a long menu
+   ran off the screen behind the navigation and could not be reached. It is as wide as the page, never taller than
+   the room above the navigation, and scrolls inside itself. The floating player, when one is showing, stays clear. */
+@media (width < 768px) {
+  .ts-moremenu[open] .ts-moremenu__body {
+    position: fixed; top: auto; left: var(--space-16); right: var(--space-16); transform: none;
+    bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--space-8));
+    width: auto; max-width: none; margin: 0;
+    max-height: calc(100dvh - var(--size-tab-bar) - env(safe-area-inset-bottom) - env(safe-area-inset-top) - var(--space-32));
+    overflow-y: auto; overscroll-behavior: contain;
+  }
+  body:has(.ts-player-slot:not([hidden], .is-suppressed)) .ts-moremenu[open] .ts-moremenu__body {
+    bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-16));
+    max-height: calc(100dvh - var(--size-tab-bar) - var(--size-mini-player) - env(safe-area-inset-bottom) - env(safe-area-inset-top) - var(--space-40));
+  }
+}
+/* Action rows that fit (js/fit-row.js, decision 0044): the row stays on ONE line and the buttons that do not fit fold
+   into the three-dot menu. Everything here applies only once the script has run (data-ts-fit-on); without it the row
+   wraps as it always did. */
+[data-ts-fit-off], .ts-moremenu[hidden], .ts-chipmenu__item--fit[hidden] { display: none !important; }
+/* The menu's twins are buttons that look like the menu's links. */
+.ts-chipmenu__item--fit { width: 100%; box-sizing: border-box; justify-content: flex-start; border: 0; background: transparent; font: inherit; font-size: 0.9375rem; text-align: left; cursor: pointer; }
+.ts-chipmenu__item--fit .ts-icon { flex: none; }
+/* Action rows that stay on ONE line (decision 0044). .ts-oneline: a pair (or a few short words) shares the line and the words wrap
+   inside the buttons, never onto a row of their own. .ts-fitline: js/fit-row.js folds the later buttons into the row's
+   three-dot menu; the specificity bump (:is) outranks the page rules that gave these rows flex-wrap before. */
+.ts-oneline:is(div, form, p) { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-8); }
+.ts-oneline form { display: contents; }
+.ts-oneline .ts-btn { flex: 0 1 auto; min-width: 0; max-width: 100%; height: auto; min-height: var(--size-tap); white-space: normal; text-align: center; }
+.ts-fitline:is(div, form) { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-8); }
+.ts-fitline > * { min-width: 0; }
+.ts-fitline .ts-btn { height: auto; min-height: var(--size-tap); max-width: 100%; white-space: normal; }
+.ts-fitline[data-ts-fit-on] > * { flex: none; }
+.ts-fitline[data-ts-fit-on] .ts-btn { white-space: nowrap; }
+.ts-fitline[data-ts-fit-tight] { flex-wrap: wrap; } /* last resort at very large text */
+.ts-bookmarks__head[data-ts-fit-on] { flex-wrap: nowrap; }
+.ts-bookmarks__head[data-ts-fit-on] > * { flex: none; }
+.ts-bookmarks__head[data-ts-fit-on] > .ts-bookmarks__title { flex: 1 1 0; min-width: 6rem; overflow-wrap: anywhere; }
+.ts-bookmarks__head[data-ts-fit-on] .ts-btn { white-space: nowrap; }

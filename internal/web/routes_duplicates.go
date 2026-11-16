@@ -134,7 +134,7 @@ func (s *server) renderDupMerge(w http.ResponseWriter, r *http.Request, status i
 		return
 	}
 	p, err := s.lib.MergePreview(r.Context(), keepID, dropID)
-	v := pages.AdminDupMergeView{CSRF: s.csrf.TokenFrom(r.Context()), Title: dupConfirmTitle, Lead: dupConfirmLead, Error: msg,
+	v := pages.AdminDupMergeView{FitModule: s.assets.URL("js/fit-row.js"), CSRF: s.csrf.TokenFrom(r.Context()), Title: dupConfirmTitle, Lead: dupConfirmLead, Error: msg,
 		MovesHead: dupMovesHead, KeepID: keepID, DropID: dropID, Cancel: dupCancel, CancelHref: "/admin/duplicates"}
 	if text, refused := dupErrorText(err); refused {
 		v.Error, status = text, http.StatusUnprocessableEntity

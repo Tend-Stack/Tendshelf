@@ -23,6 +23,8 @@ type UserRow struct {
 
 // UsersView is the Users & invites page (People tab).
 type UsersView struct {
+	// FitModule is the address of js/fit-row.js (decision 0044): an invite's Cancel folds into its three-dot menu.
+	FitModule string
 	CSRF string
 	// Subtitle is "5 people · 1 invite waiting · 3 listening this week", zero segments dropped.
 	Subtitle string
@@ -258,20 +260,21 @@ templ InvitesList(v UsersView) {
 			}
 			<ul class="ts-users__list">
 				for _, r := range v.Invites {
-					<li class="ts-invite__item">
+					<li class="ts-invite__item" data-ts-module={ v.FitModule } data-ts-fit>
 						<span class="ts-invite__icon">@components.Icon("link", false)</span>
 						<span class="ts-users__text">
 							<span class="body ts-users__name">{ r.Line }</span>
 							<span class="caption ts-users__meta">{ r.Meta }</span>
 						</span>
-						<form method="post" action={ templ.URL("/admin/invites/" + r.ID + "/link") }>
+						<form class="ts-invite__copy" method="post" action={ templ.URL("/admin/invites/" + r.ID + "/link") }>
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>
 							<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ "Copy link again for " + r.Name }>Copy link again</button>
 						</form>
-						<form method="post" action={ templ.URL("/admin/invites/" + r.ID + "/cancel") }>
+						<form method="post" action={ templ.URL("/admin/invites/" + r.ID + "/cancel") } data-ts-fit-item="cancel">
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>
 							<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ "Cancel invite for " + r.Name }>Cancel invite</button>
 						</form>
+						@components.MoreMenu(components.MoreMenuView{Fit: []components.MoreMenuFitItem{{Key: "cancel", Label: "Cancel invite"}}})
 					</li>
 				}
 			</ul>
