@@ -11,6 +11,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Changed
 
+- **The last rows that wrapped now stay on one line.** The chapter editor (each chapter's Delete and Add fold into its three-dot menu; Save and Back share the line), the bookmarks tab head (History and Share bookmarks fold), merging two books (Swap and Cancel fold), the invites list (Cancel invite folds), and the confirm pages and an admin's grant and added-books buttons (the words wrap inside the buttons) no longer drop buttons onto a row of their own, at any window width or text size.
 - **Removing a book you uploaded can be undone.** Its files now wait in the holding folder for 30 days, and the owner or an admin can put them back from Removed books, like any other removed book. Text books uploaded on a book's Text page are still deleted at once.
 
 ## 2026.12.0

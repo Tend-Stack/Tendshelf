@@ -205,8 +205,14 @@ a.ts-users__item:hover { background: var(--raised); }
 .ts-invite__icon .ts-icon { width: 1.25rem; height: 1.25rem; }
 .ts-invite__card .ts-users__list { display: block; }
 .ts-invite__card .ts-users__list > li:last-child { border-bottom: 0; }
-.ts-invite__item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); padding: var(--space-12) 0; }
-.ts-invite__item .ts-users__text { flex: 1 1 12rem; }
+.ts-invite__item { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-12); padding: var(--space-12) 0; }
+.ts-invite__item .ts-users__text { flex: 1 1 0; min-width: 3rem; } /* the words wrap in their own cell; the buttons never drop to a row of their own (decision 0044) */
+.ts-invite__item .ts-btn { min-width: 0; max-width: 100%; height: auto; min-height: var(--size-tap); white-space: normal; }
+.ts-invite__item[data-ts-fit-on] > * { flex: none; }
+.ts-invite__item[data-ts-fit-on] > .ts-users__text { flex: 1 1 0; }
+.ts-invite__item[data-ts-fit-on] .ts-btn { white-space: nowrap; }
+.ts-invite__item[data-ts-fit-on] > .ts-invite__copy { flex: 0 1 auto; } /* the kept button may wrap its words so the three-dot button still fits beside it */
+.ts-invite__item[data-ts-fit-on] > .ts-invite__copy .ts-btn { white-space: normal; }
 .ts-invite__item form { margin: 0; }
 /* Devices tab (P3-7b): one card, a small heading per person, rows like the invite rows. */
 .ts-users__devname { margin: var(--space-4) 0 0; color: var(--ink-muted); }
@@ -250,7 +256,8 @@ a.ts-users__item:hover { background: var(--raised); }
   .ts-users__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-.ts-upset__btns { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.ts-upset__btns { display: flex; flex-wrap: nowrap; gap: var(--space-8); }
+.ts-upset__btns .ts-btn { min-width: 0; max-width: 100%; height: auto; min-height: var(--size-tap); white-space: normal; text-align: center; }
 
 /* Duplicate books (S4): groups of copies, the confirm page and the list of merged copies. */
 .ts-dup { display: flex; flex-direction: column; gap: var(--space-16); }

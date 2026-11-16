@@ -119,7 +119,8 @@ func (s *server) bookmarksPanel(r *http.Request, d library.BookDetail) (pages.Bo
 	}
 	now := bookmarkNow()
 	v := pages.BookmarksView{
-		Heading: bookmarkHeading, ExportLabel: bookmarkExport, ExportHref: base + "?sheet=export",
+		FitModule: s.assets.URL("js/fit-row.js"),
+		Heading:   bookmarkHeading, ExportLabel: bookmarkExport, ExportHref: base + "?sheet=export",
 		ChipsLabel: bookmarkChipsLabel, HistoryLabel: timelineBookLink, HistoryHref: "/me/listening/history?book=" + url.QueryEscape(id),
 		Chips: []pages.BookmarkChip{
 			{Label: fmt.Sprintf(bookmarkChipAll, all), Href: base, Current: only == "" && kind == ""},

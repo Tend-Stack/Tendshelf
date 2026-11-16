@@ -88,6 +88,8 @@ type DupCopy struct {
 
 // AdminDupMergeView is /admin/duplicates/merge: the confirm page. With Error set it shows the refusal and no form.
 type AdminDupMergeView struct {
+	// FitModule is the address of js/fit-row.js (decision 0044): Swap and Cancel fold into the three-dot menu.
+	FitModule string
 	CSRF, Title, Lead, Error                string
 	Keep, Drop                              DupCopy
 	MovesHead                               string
@@ -120,13 +122,14 @@ templ AdminDupMerge(v AdminDupMergeView) {
 			<p class="body ts-dup__note">{ n }</p>
 		}
 		if v.Merge != "" {
-			<form class="ts-dup__actions" method="post" action="/admin/duplicates/merge">
+			<form class="ts-dup__actions ts-fitline" data-ts-module={ v.FitModule } data-ts-fit method="post" action="/admin/duplicates/merge">
 				<input type="hidden" name="_csrf" value={ v.CSRF }/>
 				<input type="hidden" name="keep" value={ v.KeepID }/>
 				<input type="hidden" name="drop" value={ v.DropID }/>
 				<button type="submit" class="ts-btn ts-btn--primary">{ v.Merge }</button>
-				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.SwapHref) }>{ v.Swap }</a>
-				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.CancelHref) }>{ v.Cancel }</a>
+				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.SwapHref) } data-ts-fit-item="swap">{ v.Swap }</a>
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.CancelHref) } data-ts-fit-item="cancel">{ v.Cancel }</a>
+				@components.MoreMenu(components.MoreMenuView{Fit: []components.MoreMenuFitItem{{Key: "swap", Label: v.Swap}, {Key: "cancel", Label: v.Cancel}}})
 			</form>
 		} else {
 			<p><a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.CancelHref) }>{ v.Cancel }</a></p>

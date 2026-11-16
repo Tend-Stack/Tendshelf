@@ -92,7 +92,7 @@ templ AdminUserConfirm(v ConfirmView) {
 	<div class="ts-admin ts-admin--narrow">
 		<h1 class="title-1">{ v.Title }</h1>
 		<p class="ts-users__lead">{ v.Body }</p>
-		<form class="ts-users__confirm" method="post" action={ templ.URL(v.Action) } hx-boost="false">
+		<form class="ts-users__confirm ts-oneline" method="post" action={ templ.URL(v.Action) } hx-boost="false">
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			if v.Return != "" {
 				<input type="hidden" name="back" value={ v.Return }/>
@@ -130,7 +130,7 @@ templ userGrantRow(v AdminUserView, g GrantRow) {
 			</div>
 			<button type="submit" class="ts-btn ts-btn--secondary">Save</button>
 		</form>
-		<div class="ts-users__grantactions">
+		<div class="ts-users__grantactions ts-oneline">
 			if g.Expired {
 				<form method="post" action={ templ.URL("/admin/users/" + v.ID + "/grants/" + g.ID + "/renew") }>
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
@@ -326,7 +326,7 @@ templ userAddedBooks(a AddedBooksView) {
 			<p class="caption ts-users__meta">{ a.Note }</p>
 		}
 		if a.Count > 0 {
-			<div class="ts-users__addedactions">
+			<div class="ts-users__addedactions ts-oneline">
 				<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(a.SeeHref) }>{ a.SeeLabel }</a>
 				<a class="ts-btn ts-btn--danger" href={ templ.SafeURL(a.RemoveHref) }>{ a.RemoveLabel }</a>
 			</div>

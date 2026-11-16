@@ -94,8 +94,22 @@ func TestFitRowsBrowser(t *testing.T) {
 		{"radio-hits-world", func() string { return radioURL }, "/radio/search?q=cool", ".ts-podhit__actions", ".ts-btn", false, 1},
 		{"admin-libraries", owner, "/admin/libraries", ".ts-admin__actions", ".ts-btn--primary", false, 1},
 		{"admin-ebooks", owner, "/admin/ebooks", ".ts-pair__actions", ".ts-btn", true, 1},
+		{"chapters-rows", owner, "/books/" + e.BookID + "/chapters/edit", ".ts-chapted__actions", ".ts-btn", false, 1},
+		{"chapters-bar", owner, "/books/" + e.BookID + "/chapters/edit", ".ts-chapted__bar", ".ts-btn--primary", false, 1},
+		{"bookmarks-head", owner, "/books/" + e.BookID + "/bookmarks", ".ts-bookmarks__head", "", true, 1},
+		{"admin-user", owner, "/admin/users/" + e.MemberID, ".ts-users__grantactions, .ts-users__addedactions", ".ts-btn", false, 0},
+		{"admin-user-stop", owner, "/admin/users/" + e.MemberID + "/stop", ".ts-users__confirm", ".ts-btn", false, 1},
+		{"admin-user-disable", owner, "/admin/users/" + e.MemberID + "/disable", ".ts-users__confirm", ".ts-btn", false, 1},
+		{"admin-user-remove-all", owner, "/admin/users/" + e.MemberID + "/books/remove", ".ts-users__confirm", ".ts-btn", false, 1},
+		{"dup-merge", owner, a11yDupMergePath(e), ".ts-dup__actions", ".ts-btn--primary", false, 1},
+		{"book-remove", func() string { return e.url("upload", "owner") }, "/books/" + e.UploadBookID + "/remove", ".ts-upset__btns", ".ts-btn", false, 1},
+		{"users-invites", owner, "/admin/users", ".ts-invite__item", "", false, 0},
+		{"share-invites", owner, "/share", ".ts-invite__item", "", false, 0},
 		{"book-text", owner, "/books/" + e.BookID + "/text", ".ts-pair__actions", ".ts-btn", false, 1},
 	}
+	// oneLineAlways are the rows of the operator rule of 2026-11-15 ("do not create a new row"): not even the fit
+	// script's last-resort wrap is allowed for them.
+	oneLineAlways := map[string]bool{"chapters-rows": true, "chapters-bar": true, "bookmarks-head": true, "admin-user": true, "admin-user-stop": true, "admin-user-disable": true, "admin-user-remove-all": true, "dup-merge": true, "book-remove": true, "users-invites": true, "share-invites": true}
 	type shot struct{ w, h int }
 	sizes := []shot{{390, 900}, {768, 900}, {1024, 900}, {1440, 900}}
 	for _, c := range cases {
@@ -120,7 +134,7 @@ func TestFitRowsBrowser(t *testing.T) {
 				for i, p := range ps {
 					what := what + " #" + strconv.Itoa(i)
 					t.Logf("%s: n=%d spread=%.0f folded=%v", what, p.N, p.Spread, p.Folded)
-					wrapOK := p.Tight && large
+					wrapOK := p.Tight && large && !oneLineAlways[c.name]
 					if p.Spread > 6 && !wrapOK {
 						t.Errorf("%s: the controls are on more than one line (centres %.0f px apart)", what, p.Spread)
 					}

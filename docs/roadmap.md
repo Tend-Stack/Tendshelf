@@ -1230,6 +1230,16 @@ text sizes in Chromium), `TestFitRowsEpisodeTwins`, `TestFitRowsInboxTwins`, `Te
 `TestEpisodeRowMenuStillSwaps`. Limits: the Now playing panel at 1280 px and the Words page rows (no words in the fixture)
 were not driven in the browser; the stacked or tool rows listed in the decision were left as they are.
 
+**Third half (2026-11-16, operator: "wrap buttons in the three dots, never a new row")**: the rows the second half listed
+as not changed are done (decision 0044, "Third half"). Fold into the three-dot menu: each chapter's Delete and Add
+(chapter editor), History and Share bookmarks (bookmarks tab head), Swap and Cancel (merge two books), Cancel invite
+(Admin users, Invites). Share one line, words wrapped inside the buttons: the chapter editor's Save and Back bars, its
+reset and lookup buttons, every confirm page (Turn off, Stop sharing, remove all, remove a book), an admin user's grant
+buttons and added-books buttons. Not changed, not an action row: the book edit form (one full-width Save under its
+summary); the dev kitchen sink. Checks: `TestFitRowsBrowser` (now 23 rows x 4 widths x 2 text sizes; the new rows may not
+even use the last-resort wrap), `TestRemainingRowsFitTwins`. The three-dot menu rules moved from `pages-book.css` into
+the new `pages-fit.css`, which every page with a fit row loads.
+
 ## After 2026.12.0: where the Android app lags the page (read-only scout, 2026-11-15)
 
 Not built. Line numbers come from a scout and were not re-checked.

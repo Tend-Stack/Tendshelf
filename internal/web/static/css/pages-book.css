@@ -75,33 +75,6 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
    person may not download, or a browser that cannot keep books, would leave the bar with two actions. */
 .ts-book__alt { display: none; }
 
-/* More options: a square three-dot button (the library's chip menu) whose panel floats over the page. */
-.ts-moremenu { flex: 0 0 auto; }
-.ts-moremenu[open] { flex: 0 0 auto; }
-.ts-moremenu > .ts-moremenu__btn, .ts-moremenu[open] > .ts-moremenu__btn { width: 3.5rem; padding: 0; justify-content: center; }
-.ts-moremenu .ts-moremenu__body { position: absolute; top: 100%; left: 0; right: auto; z-index: 5; box-sizing: border-box; width: 15rem; max-width: calc(100vw - 2 * var(--space-16)); box-shadow: var(--shadow-float); }
-/* Closed, the panel takes no room at all: some engines lay out a closed <details>' content, and a wide panel (200 % text)
-   then widened the page. */
-.ts-moremenu:not([open]) > .ts-moremenu__body { display: none; }
-/* From 1280 px the button can sit near the window's right edge: the panel opens toward the left there. */
-@media (width >= 1280px) { .ts-moremenu .ts-moremenu__body { left: auto; right: 0; } }
-.ts-moremenu--center .ts-moremenu__body { left: 50%; transform: translateX(-50%); } /* js/downloads.js shows one of the Download pair */
-/* Phones: the panel is anchored above the bottom navigation instead of hanging under its button, where a long menu
-   ran off the screen behind the navigation and could not be reached. It is as wide as the page, never taller than
-   the room above the navigation, and scrolls inside itself. The floating player, when one is showing, stays clear. */
-@media (width < 768px) {
-  .ts-moremenu[open] .ts-moremenu__body {
-    position: fixed; top: auto; left: var(--space-16); right: var(--space-16); transform: none;
-    bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--space-8));
-    width: auto; max-width: none; margin: 0;
-    max-height: calc(100dvh - var(--size-tab-bar) - env(safe-area-inset-bottom) - env(safe-area-inset-top) - var(--space-32));
-    overflow-y: auto; overscroll-behavior: contain;
-  }
-  body:has(.ts-player-slot:not([hidden], .is-suppressed)) .ts-moremenu[open] .ts-moremenu__body {
-    bottom: calc(var(--size-tab-bar) + env(safe-area-inset-bottom) + var(--size-mini-player) + var(--space-16));
-    max-height: calc(100dvh - var(--size-tab-bar) - var(--size-mini-player) - env(safe-area-inset-bottom) - env(safe-area-inset-top) - var(--space-40));
-  }
-}
 .ts-book__lede { display: none; }
 
 /* Tabs and panel */
@@ -258,13 +231,6 @@ html[data-theme="contrast"] .ts-book__band.is-tinted { background: none; }
   #book-tabs .ts-tabs__item { flex: none; padding-inline: var(--space-8); white-space: nowrap; }
 }
 
-/* Action rows that fit (js/fit-row.js, decision 0044): the row stays on ONE line and the buttons that do not fit fold
-   into the three-dot menu. Everything here applies only once the script has run (data-ts-fit-on); without it the row
-   wraps as it always did. */
-[data-ts-fit-off], .ts-moremenu[hidden], .ts-chipmenu__item--fit[hidden] { display: none !important; }
-/* The menu's twins are buttons that look like the menu's links. */
-.ts-chipmenu__item--fit { width: 100%; box-sizing: border-box; justify-content: flex-start; border: 0; background: transparent; font: inherit; font-size: 0.9375rem; text-align: left; cursor: pointer; }
-.ts-chipmenu__item--fit .ts-icon { flex: none; }
 /* Book page, tablet and phone: the action cells (the bar) never wrap. */
 .ts-book__play[data-ts-fit-on] .ts-book__acts { flex-wrap: nowrap; }
 @media (width < 768px) {

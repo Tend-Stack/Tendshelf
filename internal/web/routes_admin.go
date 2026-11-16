@@ -28,7 +28,7 @@ import (
 )
 
 // adminStyles are the stylesheets the admin pages add to the shell.
-var adminStyles = []string{"css/pages-onboard.css", "css/pages-admin.css"}
+var adminStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-fit.css"}
 
 func (s *server) registerAdmin(mux *http.ServeMux) {
 	mux.HandleFunc("GET /hx/jobs/{id}", s.getJob)

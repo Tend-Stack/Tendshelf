@@ -17,7 +17,7 @@ import (
 )
 
 // PodcastStyles are the sheets of the podcast pages.
-var PodcastStyles = []string{"css/pages-home.css", "css/pages-library.css", "css/pages-book.css", "css/pages-podcasts.css"}
+var PodcastStyles = []string{"css/pages-home.css", "css/pages-library.css", "css/pages-fit.css", "css/pages-book.css", "css/pages-podcasts.css"}
 
 // PodcastAdminStyles are the sheets of the owner's podcast settings page.
 var PodcastAdminStyles = []string{"css/pages-onboard.css", "css/pages-admin.css", "css/pages-email.css", "css/pages-me.css", "css/pages-podcasts.css"}

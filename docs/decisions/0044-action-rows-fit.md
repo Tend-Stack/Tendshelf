@@ -51,9 +51,20 @@ lightest rule that keeps one line:
   with an ellipsis, it is not folded because it is a stateful widget).
 - **Never wrap (guarded by the table test)**: the Home hero (Resume, Chapters), the author and narrator head (one button),
   a followed show's buttons (the first half).
-- **Listed, not changed** (sections stacked by design or tools, not an action row of the page): the chapter editor's bars,
-  the bookmarks page head, an admin user's added-by buttons and sign-in pages' stacked groups, duplicates merge and
-  confirm pages (Confirm over Cancel at large text), the dev kitchen sink.
+- **Listed, not changed** (sections stacked by design or tools, not an action row of the page): sign-in pages' stacked
+  groups and the dev kitchen sink. (The chapter editor's bars, the bookmarks head, an admin user's buttons, the merge and
+  confirm pages and the invites were listed here too and were done in the third half.)
+
+## Third half (2026-11-16)
+
+The operator repeated the rule ("wrap buttons inside the three dots when they do not fit; do not create a new row;
+Play/Resume and the three dots always show") and the rows left over were done. Folded into the row's three-dot menu with
+twins (same script, `MoreMenu`): a chapter's Delete and Add, the bookmarks head's History and Share bookmarks, the merge
+page's Swap and Cancel, an invite's Cancel invite (its Copy link again stays and may wrap its words). One line with
+the words wrapped inside the buttons (`.ts-oneline`): Save and Back, reset and lookup buttons, the confirm pages, an
+admin user's grant and added-books buttons, a remove page's buttons; a destructive button is never the only one shown
+because these pairs never fold. The shared rules live in `pages-fit.css` (with the three-dot menu, moved out of
+`pages-book.css`). The new rows are tested to be one line with no use of the last-resort wrap.
 
 ## Consequences
 
