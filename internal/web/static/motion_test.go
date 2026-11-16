@@ -123,7 +123,7 @@ func TestCSSBudget(t *testing.T) {
 		"css/now-panel.css": {3 * 1024, 24 * 1024},
 		// The Users and invite pages share this file (list, person page, pending invites, the Invite someone
 		// header); P3-4b's header rules took it past 3 KB, so it gets 4 KB rather than being squeezed.
-		"css/pages-admin.css":       {5 * 1024, 24 * 1024},     // full-width lists, about 4828 B gzip, reported
+		"css/pages-admin.css":       {5*1024 + 256, 24 * 1024}, // Scan now and Add a folder share one line (decision 0044, 2026-11-15): 5,135 B measured, was 5,120, raised, reported; before: full-width lists, about 4828 B gzip
 		"css/pages-downloadall.css": {1024, 24 * 1024},         // L10 Download all
 		"css/pages-chapters.css":    {2 * 1024, 24 * 1024},     // L3a: the chapter editor
 		"css/pages-reader.css":      {9*1024 + 768, 39 * 1024}, // page foot labels keep their order in a right-to-left book (2026-11-14): 9,774 B gzip measured, row raised 256 B, OVERRUN reported; was: right-to-left reader (reader-rtl P2, 2026-11-14): 9,616 B gzip / 38,656 B raw measured, row raised 256 B and ceiling 3 KB, OVERRUN reported, comments kept; was: page edges, ribbon and hint (Package C): row 8,448 B, measured 8,157 B, OVERRUN of the plan row reported, comments kept; was: pages by default (decision 0036): row 6,912 B, measured 6,551 B (the plan's 6.75 KB); was: reader fixes (2026-11-09): row 5,376 B (sheet body, contents rows, bar handle), OVERRUN reported; was: read aloud (decision 0032, R1): 4,958 B measured, plan row 5,248 B; the reading settings and the book reader; 4.5 KB approved 2026-11-04, 4.53 KB measured with comfort and look-up together, reported, 4.5 KB with the skim bar (G4)
@@ -331,7 +331,7 @@ var jsBudgets = map[string]struct{ Gzip, Raw int }{
 	// L5: stops a clip at its end; loaded only by the Bookmarks tab when it shows a clip. The plan's 0.5 KB target
 	// was sized for a squeezed file; written for reading, with its comments, it is about 0.8 KB, so 1 KB (reported).
 	"clip.js":    {1 * 1024, 4 * 1024},
-	"fit-row.js": {2*1024 + 768, 8 * 1024}, // action rows fold into the three-dot menu (decision 0044, 2026-11-15): 2,581 B measured, comments intact
+	"fit-row.js": {3 * 1024, 8 * 1024}, // the episode menu is a fit menu too (decision 0044, 2026-11-15): 2,883 B measured, was 2,816, raised, reported; before: 2,581 B measured, comments intact
 	// M3a offline pocket (decision 0012), approved by the operator on 2026-11-03: the service worker
 	// 3 KB, the page module 3.25 KB, the download manager 5.5 KB (written in package B2).
 	"sw.js":      {4*1024 + 512, 24 * 1024}, // Firefox hang fix (2026-11-05): 4.3 KB with the stored-file list, reported; G6a (operator, 2026-11-04): reader text and shell, 3.5 KB; 3.53 KB with the slow-server fallback, reported

@@ -1212,6 +1212,13 @@ press, full player cover at 390 and 1440, reduced motion, ring contrast in four 
 Limits: no `stalled` listener (Chromium fires it with data in hand); no spoken "Loading" (the player has no polite
 region, so only `aria-busy`); the desktop title bar chip is native and unchanged; WebKitGTK and a phone were not seen.
 
+**Second half (2026-11-15)**: every row on that list measured and fixed or guarded (decision 0044, "Second half"): the
+episode page and panel, ebook pairing cards and editions fold into a three-dot menu; show Play/Follow, station cards and
+hits, Admin libraries, Words and the series header share one line. Checks: `TestFitRowsBrowser` (12 rows x 4 widths x 2
+text sizes in Chromium), `TestFitRowsEpisodeTwins`, `TestFitRowsInboxTwins`, `TestEpisodeActionsFitTwins`,
+`TestEpisodeRowMenuStillSwaps`. Limits: the Now playing panel at 1280 px and the Words page rows (no words in the fixture)
+were not driven in the browser; the stacked or tool rows listed in the decision were left as they are.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a

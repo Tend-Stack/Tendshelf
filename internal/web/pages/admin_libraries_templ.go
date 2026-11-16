@@ -249,7 +249,7 @@ func AdminLibraries(v AdminLibrariesView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\"> <button type=\"submit\" class=\"ts-btn ts-btn--primary\">Scan now</button></form><a class=\"ts-btn ts-btn--secondary\" href=\"/admin/libraries/folders/new\">Add a folder</a></div><ul class=\"ts-libs__links\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\"> <button type=\"submit\" class=\"ts-btn ts-btn--primary\" title=\"Scan now\">Scan now</button></form><a class=\"ts-btn ts-btn--secondary\" href=\"/admin/libraries/folders/new\" title=\"Add a folder\">Add a folder</a></div><ul class=\"ts-libs__links\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

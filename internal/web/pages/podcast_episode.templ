@@ -39,6 +39,9 @@ type PodcastEpisodeView struct {
 	// Menu is the Play next and Add to queue menu; Download is the offline control (js/downloads.js fills it in).
 	Menu     components.EpisodeMenuView
 	Download *BookDownloadView
+	// FitModule is the address of the fit script (js/fit-row.js); with it the action row stays on one line and Save the file, Download,
+	// the star and the played mark fold, in that order, into Menu (decision 0044). Menu.Fit holds their twins.
+	FitModule string
 }
 
 // PodcastEpisode is the page of one episode.
@@ -82,7 +85,7 @@ func boolWordPage(b bool) string {
 // podEpisodeActions is the row of episode actions: play, mark played, star, the more menu, download and save. The
 // episode page and the Now playing panel draw the same forms.
 templ podEpisodeActions(v PodcastEpisodeView) {
-	<div class="ts-podep__actions">
+	<div class="ts-podep__actions" if v.FitModule != "" { data-ts-module={ v.FitModule } data-ts-fit }>
 		if v.Video {
 			<p class="ts-banner" role="status">{ v.VideoLine }</p>
 		} else if !v.NoPlay {
@@ -94,7 +97,7 @@ templ podEpisodeActions(v PodcastEpisodeView) {
 				<span data-ts-play-label>{ v.PlayLabel }</span>
 			</a>
 		}
-		<form method="post" action={ templ.SafeURL(v.PlayedAction) }>
+		<form method="post" action={ templ.SafeURL(v.PlayedAction) } if v.FitModule != "" { data-ts-fit-item="played" }>
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			<input type="hidden" name="played" value={ v.PlayedValue }/>
 			<button type="submit" class="ts-btn ts-btn--secondary">
@@ -104,7 +107,7 @@ templ podEpisodeActions(v PodcastEpisodeView) {
 				{ v.PlayedLabel }
 			</button>
 		</form>
-		<form method="post" action={ templ.SafeURL(v.StarAction) }>
+		<form method="post" action={ templ.SafeURL(v.StarAction) } if v.FitModule != "" { data-ts-fit-item="star" }>
 			<input type="hidden" name="_csrf" value={ v.CSRF }/>
 			<input type="hidden" name="on" value={ v.StarValue }/>
 			<button type="submit" class="ts-btn ts-btn--secondary" aria-pressed={ boolWordPage(v.Starred) }>
@@ -112,17 +115,17 @@ templ podEpisodeActions(v PodcastEpisodeView) {
 				{ v.StarLabel }
 			</button>
 		</form>
-		if !v.Video {
-			@components.EpisodeMenu(v.Menu)
-		}
 		if v.Download != nil {
 			@bookDownload(*v.Download)
 		}
 		if v.SaveHref != "" {
-			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SaveHref) } hx-boost="false">
+			<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.SaveHref) } hx-boost="false" if v.FitModule != "" { data-ts-fit-item="save" }>
 				@components.Icon("download", false)
 				{ v.SaveLabel }
 			</a>
+		}
+		if !v.Video {
+			@components.EpisodeMenu(v.Menu)
 		}
 	</div>
 }

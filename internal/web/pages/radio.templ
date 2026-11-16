@@ -129,12 +129,12 @@ templ RadioSearch(v RadioSearchView) {
 								<form method="post" action="/radio/play" class="ts-podhit__follow" hx-boost="false" data-ts-play-slug>
 									<input type="hidden" name="_csrf" value={ v.CSRF }/>
 									<input type="hidden" name="slug" value={ h.Slug }/>
-									<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ h.PlayLabel }>{ v.PlayWord }</button>
+									<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ h.PlayLabel } title={ v.PlayWord }><span class="ts-truncate">{ v.PlayWord }</span></button>
 								</form>
 								<form method="post" action="/radio/stations" class="ts-podhit__follow">
 									<input type="hidden" name="_csrf" value={ v.CSRF }/>
 									<input type="hidden" name="slug" value={ h.Slug }/>
-									<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.AddAria + " " + h.Title }>{ v.AddLabel }</button>
+									<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.AddAria + " " + h.Title } title={ v.AddLabel }><span class="ts-truncate">{ v.AddLabel }</span></button>
 								</form>
 							</span>
 						</li>

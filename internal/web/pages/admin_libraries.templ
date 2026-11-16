@@ -139,9 +139,9 @@ templ AdminLibraries(v AdminLibrariesView) {
 			<div class="ts-admin__actions">
 				<form method="post" action="/admin/libraries/scan">
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
-					<button type="submit" class="ts-btn ts-btn--primary">Scan now</button>
+					<button type="submit" class="ts-btn ts-btn--primary" title="Scan now">Scan now</button>
 				</form>
-				<a class="ts-btn ts-btn--secondary" href="/admin/libraries/folders/new">Add a folder</a>
+				<a class="ts-btn ts-btn--secondary" href="/admin/libraries/folders/new" title="Add a folder">Add a folder</a>
 			</div>
 			<ul class="ts-libs__links">
 				if v.EbooksHref != "" {
