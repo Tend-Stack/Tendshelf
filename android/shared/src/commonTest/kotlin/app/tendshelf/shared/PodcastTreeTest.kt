@@ -67,6 +67,14 @@ class PodcastTreeTest {
     }
 
     @Test
+    fun aStarFromThePageFlipsTheRowsStarCommand() {
+        val row = PodcastJson.episodeCards(feed)[1]
+        assertEquals(EpisodeAction.STAR, episodeActions(row)[1])
+        assertEquals(EpisodeAction.UNSTAR, episodeActions(withFavourite(row, true))[1])
+        assertEquals(EpisodeAction.STAR, episodeActions(withFavourite(withFavourite(row, true), false))[1])
+    }
+
+    @Test
     fun actionsFollowTheRowsState() {
         val rows = PodcastJson.episodeCards(feed)
         assertEquals(listOf(EpisodeAction.PLAYED, EpisodeAction.UNSTAR, EpisodeAction.PLAY_NEXT), episodeActions(rows[0]))

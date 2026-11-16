@@ -1661,7 +1661,30 @@ function info() {
 // The full player's save / star button changed the loaded item: keep the fact here, so a later info() agrees.
 function setFavourite(id, on) {
   if (book && book.id === id) book.favourite = on;
+  announceFavourite(id, on);
 }
+
+// Tells whoever listens (the Android shell, which keeps the car's rows right) that a star or save changed.
+// Fired only after the server confirmed it; in a browser nothing listens.
+function announceFavourite(id, on) {
+  document.dispatchEvent(new CustomEvent("ts:favourite", { detail: { id, on } }));
+}
+
+// The star and save forms in lists and on pages are plain forms that htmx submits. When the server took one, say so.
+// An episode form carries `on` (1 or 0); a station form's address ends in /save or /remove.
+listen(document, "htmx:after:request", (event) => {
+  const ctx = event.detail && event.detail.ctx;
+  if (!ctx || !ctx.response || ctx.response.status >= 400 || !(ctx.sourceElement instanceof HTMLFormElement)) return;
+  const action = new URL(ctx.sourceElement.action, location.href).pathname;
+  const episode = action.match(/^\/podcasts\/episodes\/([^/]+)\/favourite$/);
+  if (episode) {
+    const flag = ctx.sourceElement.elements.namedItem("on");
+    if (flag) announceFavourite(decodeURIComponent(episode[1]), flag.value === "1");
+    return;
+  }
+  const station = action.match(/^\/radio\/stations\/([^/]+)\/(save|remove)$/);
+  if (station) announceFavourite(decodeURIComponent(station[1]), station[2] === "save");
+});
 
 // A book's chapters without loading it (the chapter bar on Home asks when a person points at it).
 // Null when the book cannot be fetched.

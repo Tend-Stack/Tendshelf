@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Fixed
+
+- **A star made in the Android app reaches Android Auto at once.** Starring or unstarring an episode in the page now tells the car, so its rows show Star or Unstar correctly without browsing the list again.
+
 ### Changed
 
 - **Removing a book you uploaded can be undone.** Its files now wait in the holding folder for 30 days, and the owner or an admin can put them back from Removed books, like any other removed book. Text books uploaded on a book's Text page are still deleted at once.

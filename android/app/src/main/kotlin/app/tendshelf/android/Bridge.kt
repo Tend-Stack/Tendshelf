@@ -196,6 +196,7 @@ class Bridge(
             is BridgeMessage.Wake -> feel.awake(msg.on)?.let(onKeepScreenOn)
             is BridgeMessage.PageKeys -> feel.keys(msg.on)
             is BridgeMessage.Quiet -> r?.setSkipQuiet(msg.on)
+            is BridgeMessage.Favourite -> r?.favourite(msg.id, msg.on)
             is BridgeMessage.AutoDownload -> Offline.setAutoDownload(msg.on)
             BridgeMessage.DownloadRoom -> sendTo(reply, encodeRoom(Offline.freeBytes()))
             BridgeMessage.TtsVoices -> speech.voices { sendTo(reply, it) }
