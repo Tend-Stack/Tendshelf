@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Changed
+
+- **Removing a book you uploaded can be undone.** Its files now wait in the holding folder for 30 days, and the owner or an admin can put them back from Removed books, like any other removed book. Text books uploaded on a book's Text page are still deleted at once.
+
 ## 2026.12.0
 
 Released 2026-11-16. Tendshelf can now remove any book, including ones you copied into the library folder yourself, into a holding folder you can put them back from for 30 days, and it warns you before adding a book that is already there. The player shows when it is loading, buttons that do not fit fold into the three-dot menu, the Android app says why something cannot play, and the desktop app resumes where you left off.
@@ -16,7 +20,6 @@ Released 2026-11-16. Tendshelf can now remove any book, including ones you copie
 
 ### Changed
 
-- **Removing a book you uploaded can be undone.** Its files now wait in the holding folder for 30 days, and the owner or an admin can put them back from Removed books, like any other removed book. Text books uploaded on a book's Text page are still deleted at once.
 - **Buttons that do not fit move into the three-dot menu.** On a book page (and on a followed show) the buttons stay on one line; "Add to shelf", "Download" or "Mark as finished" no longer drop onto a line of their own when the window is narrow. What does not fit moves into the three-dot menu, and comes back when there is room. Play and Resume, and the three-dot button, always show. The same now holds for an episode's page and its Now playing panel (the played mark, the star, Download and Save the file fold into the episode's three-dot menu, next to Play next and Add to queue), and for the answers on an ebook pairing card. Pairs of buttons share one line instead of stacking: Play latest and Follow on a show you only opened, Play and Save on a radio station, Scan now and Add a folder in the admin, Jump and Remove in the word list, and Download all beside the three-dot button on a series page.
 
 ### Fixed

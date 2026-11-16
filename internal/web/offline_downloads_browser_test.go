@@ -22,15 +22,18 @@ import (
 // copy (T8).
 // Run by: TENDSHELF_TEST_BROWSER=<chromium> go test -tags dev -run OfflineDownload ./internal/web/
 
-// offlineCacheJS lists the person cache's keys and the bytes held in chunks.
+// offlineCacheJS lists the person cache's keys and the bytes held in chunks. An entry deleted while the list is read
+// (a removal still clearing its chunks) is left out: it is gone, not left over (nightly flake, 2026-11-16).
 const offlineCacheJS = `(async () => {
   const cache = await caches.open("ts-person-" + document.documentElement.dataset.tsPerson);
   const keys = [];
   let bytes = 0;
   for (const req of await cache.keys()) {
     const u = new URL(req.url);
+    const res = await cache.match(req);
+    if (!res) continue;
     keys.push(u.pathname + u.search);
-    if (u.search.includes("chunk=")) bytes += (await (await cache.match(req)).arrayBuffer()).byteLength;
+    if (u.search.includes("chunk=")) bytes += (await res.arrayBuffer()).byteLength;
   }
   return { keys, bytes };
 })()`
