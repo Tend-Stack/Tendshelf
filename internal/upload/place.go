@@ -174,6 +174,10 @@ func (s *Service) place(ctx context.Context, g guard, progress func(any), upload
 		if refused.file != "" {
 			return s.refuse(ctx, g, up, refused)
 		}
+		step("checking")
+		if err := s.holdIfInLibrary(ctx, g, up, files, names, place); err != nil {
+			return nil, err
+		}
 		step("placing")
 		if err := s.build(ctx, g, up, lr, files, names, place); err != nil {
 			return nil, s.plainFail(ctx, g, uploadID, err)
@@ -187,7 +191,13 @@ func (s *Service) place(ctx context.Context, g guard, progress func(any), upload
 }
 
 // bookNames are the names the layout is built from.
-type bookNames struct{ author, title, series, seq string }
+type bookNames struct {
+	author, title, series, seq string
+	// What the staged audio's own tags say (the scanner's mapping, metadata.FromTags) and its total length,
+	// for the "looks like the same book" check (decision 0045). Empty or zero when the tags do not say.
+	tagTitle, tagAuthor, tagNarrator string
+	durationMs                       int64
+}
 
 // refusal names the staged file that stops a whole upload and why: media.CodeDRM for copy-protected
 // audio or ebooks, CodeUnreadable for an ebook Tendshelf cannot open.
@@ -208,6 +218,7 @@ func (s *Service) inspect(ctx context.Context, up uploadRow, files []fileRow) (b
 	}
 	sort.Slice(audio, func(i, j int) bool { return audio[i].RelPath < audio[j].RelPath })
 	var first *media.Probe
+	var totalMs int64
 	for i, f := range audio {
 		pr, err := s.tools.Probe(ctx, s.partPath(f.UploadID, f.ID))
 		var me *media.Error
@@ -234,6 +245,12 @@ func (s *Service) inspect(ctx context.Context, up uploadRow, files []fileRow) (b
 			p := pr
 			first = &p
 		}
+		// The length the scanner records for a file: its first audio stream, else the container.
+		dur := pr.DurationMs
+		if len(pr.Audio) > 0 && pr.Audio[0].DurationMs > 0 {
+			dur = pr.Audio[0].DurationMs
+		}
+		totalMs += dur
 	}
 	// Ebooks are opened the way the library will open them: a copy-protected or unreadable one refuses
 	// the whole upload before anything reaches the library folder. A PDF beside audio is a booklet the
@@ -264,9 +281,11 @@ func (s *Service) inspect(ctx context.Context, up uploadRow, files []fileRow) (b
 		}
 	}
 	var d metadata.Details
+	var tagTitle, tagAuthor, tagNarrator string
 	switch {
 	case first != nil:
 		d = metadata.FromTags(first.Tags, len(audio) == 1)
+		tagTitle, tagAuthor, tagNarrator = d.Title, first0(d.Authors), first0(d.Narrators)
 	case firstDoc != nil:
 		d.Title, d.Authors = firstDoc.Meta.Title, firstDoc.Meta.Authors
 		if firstDoc.Meta.Series != "" {
@@ -289,7 +308,15 @@ func (s *Service) inspect(ctx context.Context, up uploadRow, files []fileRow) (b
 	} else {
 		n.series, n.seq = bn.Series, bn.Sequence
 	}
+	n.tagTitle, n.tagAuthor, n.tagNarrator, n.durationMs = tagTitle, tagAuthor, tagNarrator, totalMs
 	return n, refusal{}, nil
+}
+
+func first0(s []string) string {
+	if len(s) == 0 {
+		return ""
+	}
+	return s[0]
 }
 
 // refuse ends an upload whose staged audio is encrypted: nothing was written to the library

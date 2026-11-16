@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Tend-Stack/tendshelf/internal/db"
+	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/upload"
 	"github.com/Tend-Stack/tendshelf/internal/users"
@@ -27,5 +28,18 @@ func mayPlace(st *db.Store) func(ctx context.Context, userID, libraryID string) 
 			return upload.PlaceOwnFolder
 		}
 		return upload.PlaceRefused
+	}
+}
+
+// scopeFor answers upload.Config.ScopeFor: the filters of the books and libraries a person may list, built
+// exactly as the web layer builds them, so the "already in the library" check names only what they can see.
+func scopeFor(st *db.Store) func(ctx context.Context, userID string) (library.Scope, bool) {
+	ur, can := users.New(st, users.Options{}), share.New(st)
+	return func(ctx context.Context, userID string) (library.Scope, bool) {
+		u, err := ur.ByID(ctx, userID)
+		if err != nil || u.Disabled {
+			return library.Scope{}, false
+		}
+		return library.Scope{Books: can.BookFilter(u, "b"), Libraries: can.LibraryFilter(u, "l"), Shared: can.SharedBooks(u)}, true
 	}
 }

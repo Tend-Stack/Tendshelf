@@ -62,6 +62,10 @@ type Config struct {
 	// MayPlace is asked again before a book is built, because a person can be demoted, switched off or
 	// ungranted while their bytes travel (decision 0029). nil means PlaceTop for everyone.
 	MayPlace func(ctx context.Context, userID, libraryID string) Placement
+	// ScopeFor returns the books and libraries a person may list; the "already in the library" check
+	// (decision 0045) sees only those, so a title never leaks. false means the person lists nothing. nil
+	// turns the check off.
+	ScopeFor func(ctx context.Context, userID string) (library.Scope, bool)
 }
 
 func (c *Config) defaults() {
@@ -98,6 +102,21 @@ type Error struct {
 	Message string
 	Field   string // the offending path, when there is one
 	Offset  int64  // the server's offset, for wrong_offset
+	Match   *Match // the book an already_in_library refusal found
+}
+
+// CodeAlreadyInLibrary is the error code of an upload held because the library already has the book.
+const CodeAlreadyInLibrary = "already_in_library"
+
+// Match is the library book an upload matched (decision 0045). Tier is same_files (an exact copy: every file
+// is already there), some_files, or same_details (looks like the same book). MayAddAnyway says whether the
+// person who uploaded may add it regardless: the owner and admins always, a contributor only on same_details.
+type Match struct {
+	BookID       string `json:"book_id"`
+	Title        string `json:"title"`
+	Href         string `json:"href"`
+	Tier         string `json:"tier"`
+	MayAddAnyway bool   `json:"may_add_anyway"`
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Message }
@@ -225,18 +244,23 @@ type uploadRow struct {
 	RefusedFile, ErrorCode                           string
 	Skipped                                          int
 	CreatedAt, UpdatedAt                             int64
+	// DupBookID and DupTier name the library book a held upload matched; AddAnyway is the person's choice to add it regardless.
+	DupBookID, DupTier string
+	AddAnyway          bool
 }
 
 const uploadCols = `id, library_id, folder_id, created_by, label, state, bytes_total, bytes_received,
   COALESCE(job_id,''), COALESCE(scan_job_id,''), COALESCE(book_path,''), COALESCE(temp_path,''),
-  COALESCE(refused_file,''), COALESCE(error_code,''), skipped, created_at, updated_at`
+  COALESCE(refused_file,''), COALESCE(error_code,''), skipped, created_at, updated_at,
+  COALESCE(dup_book_id,''), COALESCE(dup_tier,''), add_anyway`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
 func scanUpload(r rowScanner) (uploadRow, error) {
 	var u uploadRow
 	err := r.Scan(&u.ID, &u.LibraryID, &u.FolderID, &u.CreatedBy, &u.Label, &u.State, &u.BytesTotal, &u.BytesReceived,
-		&u.JobID, &u.ScanJobID, &u.BookPath, &u.TempPath, &u.RefusedFile, &u.ErrorCode, &u.Skipped, &u.CreatedAt, &u.UpdatedAt)
+		&u.JobID, &u.ScanJobID, &u.BookPath, &u.TempPath, &u.RefusedFile, &u.ErrorCode, &u.Skipped, &u.CreatedAt, &u.UpdatedAt,
+		&u.DupBookID, &u.DupTier, &u.AddAnyway)
 	return u, err
 }
 
@@ -372,6 +396,8 @@ type View struct {
 	// ScanJobID is the scoped import after placement; the page reads it, the uploader does not.
 	ScanJobID string `json:"scan_job_id,omitempty"`
 	LibraryID string `json:"library_id,omitempty"`
+	// Match is set while the upload is held as already_in_library (decision 0045).
+	Match *Match `json:"match,omitempty"`
 }
 
 func (s *Service) view(u uploadRow, files []fileRow) View {
@@ -393,7 +419,9 @@ func (s *Service) Get(ctx context.Context, userID, id string) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	return s.view(u, files), nil
+	v := s.view(u, files)
+	s.attachMatch(ctx, u, &v)
+	return v, nil
 }
 
 // LibraryOf returns the library an upload of the person belongs to, for the route's authorization.
@@ -424,6 +452,17 @@ func (s *Service) Cancel(ctx context.Context, userID, id string) error {
 // Finish starts the upload.place job once every byte has arrived. It also restarts a failed upload
 // whose staged bytes are still there. It returns the job's id.
 func (s *Service) Finish(ctx context.Context, userID, id string) (string, error) {
+	return s.finish(ctx, userID, id, false)
+}
+
+// FinishAnyway is Finish for a person who chose "Add anyway" on an upload held as already_in_library
+// (decision 0045). The owner and admins may on any match; a contributor only on a look-alike, never on an exact
+// copy or a shared file (403 not_allowed).
+func (s *Service) FinishAnyway(ctx context.Context, userID, id string) (string, error) {
+	return s.finish(ctx, userID, id, true)
+}
+
+func (s *Service) finish(ctx context.Context, userID, id string, addAnyway bool) (string, error) {
 	if _, err := s.loadOwn(ctx, userID, id); err != nil {
 		return "", err
 	}
@@ -449,6 +488,18 @@ func (s *Service) Finish(ctx context.Context, userID, id string) (string, error)
 			if fi, err := os.Stat(s.partPath(id, f.ID)); err != nil || fi.Size() != f.Size {
 				return "", fail(409, "incomplete", "The files were removed from the server. Choose them again.")
 			}
+		}
+	}
+	if addAnyway {
+		if u.DupTier != "" && !s.mayAddAnyway(ctx, userID, u.LibraryID, u.DupTier) {
+			return "", fail(403, "not_allowed", "Ask an admin if you need a second copy.")
+		}
+		err := s.write(ctx, nil, func(tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx, `UPDATE uploads SET add_anyway = 1 WHERE id = ?`, id)
+			return err
+		})
+		if err != nil {
+			return "", err
 		}
 	}
 	if err := s.setState(ctx, nil, id, StateQueued, "", u.State); err != nil {

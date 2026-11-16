@@ -25,12 +25,18 @@ type FileIn struct {
 	ModifiedMs int64  `json:"modified_ms"`
 	// SHA256 is the optional hex SHA-256 of the whole file; when present placement verifies it.
 	SHA256 string `json:"sha256,omitempty"`
+	// Quick is the optional quick hash of the file (media.QuickHash: size, first and last MiB), which lets the
+	// server say before any byte is sent that the library already has it (decision 0045).
+	Quick string `json:"quick,omitempty"`
 }
 
 // Manifest describes one book before any byte is sent.
 type Manifest struct {
 	Label string   `json:"label"`
 	Files []FileIn `json:"files"`
+	// AddAnyway is the person's choice to add the book although the library has it; who may is decided by
+	// mayAddAnyway (the owner and admins always, a contributor only on a look-alike).
+	AddAnyway bool `json:"add_anyway,omitempty"`
 }
 
 // noBookFile is the refusal for an upload with neither audio nor an ebook.
@@ -186,6 +192,9 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 		if f.SHA256 != "" && !sha256Re.MatchString(f.SHA256) {
 			return View{}, &Error{Status: 422, Code: "bad_checksum", Message: "That file's checksum is not valid.", Field: f.Path}
 		}
+		if f.Quick != "" && !sha256Re.MatchString(f.Quick) {
+			return View{}, &Error{Status: 422, Code: "bad_checksum", Message: "That file's checksum is not valid.", Field: f.Path}
+		}
 		if msg := checkPath(f.Path); msg != "" {
 			return View{}, &Error{Status: 422, Code: "bad_path", Message: msg, Field: f.Path}
 		}
@@ -220,6 +229,21 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 	}
 	if audio == 0 && ebooks == 0 && !zipOnly {
 		return View{}, fail(422, "no_audio", noBookFile)
+	}
+	// Already in the library? Only when every book file came with its quick hash; a .zip hides its files, so
+	// the check after staging decides alone.
+	if !zipOnly {
+		hit, err := s.matchBeforeSend(ctx, userID, lib.ID, files)
+		if err != nil {
+			return View{}, err
+		}
+		switch {
+		case hit == nil:
+		case !hit.MayAddAnyway && m.AddAnyway:
+			return View{}, fail(403, "not_allowed", "Ask an admin if you need a second copy.")
+		case !m.AddAnyway:
+			return View{}, &Error{Status: 409, Code: CodeAlreadyInLibrary, Message: holdText, Match: hit}
+		}
 	}
 
 	var receiving int
@@ -271,8 +295,8 @@ func (s *Service) Create(ctx context.Context, userID, libraryID string, m Manife
 	syncDir(s.incomingDir())
 	err = s.write(ctx, nil, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO uploads(id, library_id, folder_id, created_by, label, state, bytes_total,
-  bytes_received, skipped, created_at, updated_at) VALUES (?,?,?,?,?,?,?,0,?,?,?)`,
-			id, lib.ID, folder.ID, userID, label, StateReceiving, total, skipped, now, now); err != nil {
+  bytes_received, skipped, created_at, updated_at, add_anyway) VALUES (?,?,?,?,?,?,?,0,?,?,?,?)`,
+			id, lib.ID, folder.ID, userID, label, StateReceiving, total, skipped, now, now, m.AddAnyway); err != nil {
 			return err
 		}
 		for _, r := range rows {

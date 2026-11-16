@@ -39,7 +39,9 @@ func (s *Service) List(ctx context.Context, userID string) ([]View, error) {
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, s.view(u, files))
+		v := s.view(u, files)
+		s.attachMatch(ctx, u, &v)
+		out = append(out, v)
 	}
 	return out, nil
 }
