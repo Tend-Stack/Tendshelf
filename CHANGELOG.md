@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Added
+
+- **The player says when it is loading.** When you press Play or Resume and the sound takes a moment (a large file, a slow connection, a compatibility copy being made, a live station connecting, or buffering in the middle), the play button of that book, episode or station shows a quiet ring instead of its icon, and the cover in the full player dims a little with the same ring on it. It appears only after a quarter of a second, so quick starts show nothing, and pressing the button again stops the start. With reduced motion the ring is three still dots.
+
 ### Changed
 
 - **Buttons that do not fit move into the three-dot menu.** On a book page (and on a followed show) the buttons stay on one line; "Add to shelf", "Download" or "Mark as finished" no longer drop onto a line of their own when the window is narrow. What does not fit moves into the three-dot menu, and comes back when there is room. Play and Resume, and the three-dot button, always show.

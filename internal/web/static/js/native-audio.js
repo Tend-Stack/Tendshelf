@@ -61,6 +61,7 @@ function build(bridge) {
       fire("pause");
     }
     if (state.buffering && !(before && before.buffering)) fire("waiting");
+    else if (!state.buffering && before && before.buffering && state.playing) fire("playing"); // the wait is over
     if (state.ended && !(before && before.ended)) fire("ended");
     fire("timeupdate");
     // Repeated at every push, which heals a race between a start and the page loading the book.
