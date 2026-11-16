@@ -1237,7 +1237,7 @@ Not built. Line numbers come from a scout and were not re-checked.
 - **Night sleep only starts from the page.** The rule lives in `player-full.js` (`maybeStartNightSleep`); `SleepTimer.kt` has no night code, so a start from the car or the notification while the page is frozen starts no timer.
 - **A star made in the page does not reach the car's row.** `encodeState` in `android/shared/.../BridgeProtocol.kt` has no favourite field; the car stars through its own API call (`LibraryTree.kt`, `Api.kt`).
 - **Episode downloads have a receiver and no sender.** `Offline.kt` accepts episode ids, but only the book page carries `data-ts-download`.
-- **The daily downloads check removes a gone book only on 404** (`checkVerdict`, pinned by `OfflineTest.kt`). Not verified: what the server answers for a book removed under decision 0045.
+- **The daily downloads check removes a gone book only on 404** (`checkVerdict`, pinned by `OfflineTest.kt`). Verified 2026-11-16: removing a book (decision 0045) deletes its row, and `loadBook` answers 404 for an unknown id and for a book the person may no longer see, so a removed book and a lost grant both delete the download; a merged book answers 308 to the book that took over, which the check leaves alone. `TestRemoveAnyFilesEndToEnd` pins the 404 (with a 200 control). No Android change needed.
 - Also noted: the page ignores the `chapterIdx` native sends; the app module has no unit tests of its own (logic is tested in `android/shared`); the 49 Android rows in `docs/manual-checks.md` have no recorded result.
 
 ## Later

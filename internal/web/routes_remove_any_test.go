@@ -361,6 +361,14 @@ func TestRemoveAnyFilesEndToEnd(t *testing.T) {
 	if rec := l.get(t, l.owner, "/books/"+id); rec.Code != http.StatusNotFound {
 		t.Errorf("the removed book's page: %d", rec.Code)
 	}
+	// The phone's daily check reads this record, and only a 404 makes it delete its download (checkVerdict in
+	// android/shared Offline.kt): a removed book must answer exactly that.
+	if rec := l.get(t, l.owner, "/api/v1/books/"+id); rec.Code != http.StatusNotFound {
+		t.Errorf("the removed book's API record: %d, want 404", rec.Code)
+	}
+	if rec := l.get(t, l.owner, "/api/v1/books/"+l.bookAt(t, "Other")); rec.Code != http.StatusOK {
+		t.Errorf("the other book's API record: %d, want 200 (the 404 above must come from the removal)", rec.Code)
+	}
 	// The status reaches "held" with Put back and Delete now and no polling.
 	frag := l.get(t, l.owner, "/hx/removals/"+rid).Body.String()
 	for _, want := range []string{"Removed. The files are kept until", removeAnyPutBack, removeAnyDeleteNow} {
