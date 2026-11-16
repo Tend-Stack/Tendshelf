@@ -103,6 +103,8 @@ type Result struct {
 	BooksSettled    int `json:"books_settled"`
 	// BooksMerged counts folders left out because their book was merged into another copy (S4).
 	BooksMerged int `json:"books_merged"`
+	// BooksKeptOut counts folders left out because a person removed their book from Tendshelf and kept the files (decision 0045).
+	BooksKeptOut int `json:"books_kept_out"`
 }
 
 // RefusalText is the plain sentence for a book's refused reason, empty for any other reason.
@@ -201,6 +203,11 @@ func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree,
 	if err != nil {
 		return res, err
 	}
+	// So do folders whose book was removed from Tendshelf with the files kept (decision 0045).
+	keptOut, err := s.repo.KeptOutRoots(ctx, libraryID)
+	if err != nil {
+		return res, err
+	}
 
 	for _, fo := range folders {
 		walkRoot := fo.Path
@@ -216,6 +223,16 @@ func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree,
 			for i := range ebooks {
 				ebooks[i].RelDir = path.Join(sc.subdir, ebooks[i].RelDir)
 			}
+		}
+		// Ebook files inside a kept-out book folder stay out too, or the ebook service would make a text book of them.
+		if len(keptOut) > 0 {
+			left := ebooks[:0]
+			for _, e := range ebooks {
+				if !underKeptOut(e.Path, keptOut) {
+					left = append(left, e)
+				}
+			}
+			ebooks = left
 		}
 		if ctx.Err() != nil {
 			return res, context.Cause(ctx)
@@ -248,11 +265,15 @@ func (s *Scanner) scanScoped(ctx context.Context, libraryID string, sc *subtree,
 
 		// Immediately after grouping and before hashing or matching moved files: a merged folder's files are not
 		// seen at all, so they are not hashed, not added as a book and never taken for moved files of another book.
-		if len(mergedRoots) > 0 {
+		if len(mergedRoots) > 0 || len(keptOut) > 0 {
 			var left []Found
 			for _, g := range GroupFiles(fo.Path, files) {
 				if _, merged := mergedRoots[g.Root]; merged {
 					res.BooksMerged++
+					continue
+				}
+				if keptOut[g.Root] {
+					res.BooksKeptOut++
 					continue
 				}
 				left = append(left, g.Files...)
@@ -377,13 +398,17 @@ func (s *Scanner) apply(tx *library.Tx, p *plan) (Result, error) {
 	if err != nil {
 		return res, err
 	}
+	keptOut, err := tx.KeptOutRoots(p.libraryID)
+	if err != nil {
+		return res, err
+	}
 	walked := p.walked
-	if len(merged) > 0 {
+	if len(merged) > 0 || len(keptOut) > 0 {
 		walked = make([]walkedFolder, 0, len(p.walked))
 		for _, w := range p.walked {
 			var left []Found
 			for _, g := range GroupFiles(w.folder.Path, w.files) {
-				if _, gone := merged[g.Root]; !gone {
+				if _, gone := merged[g.Root]; !gone && !keptOut[g.Root] {
 					left = append(left, g.Files...)
 				}
 			}
@@ -695,4 +720,14 @@ func protect(r *library.AudioFile) {
 	if media.Classify(r.Path) == media.KindProtected {
 		r.Encrypted, r.ProbeError = true, media.CodeDRM
 	}
+}
+
+// underKeptOut reports whether p is a kept-out book root or lies inside one.
+func underKeptOut(p string, roots map[string]bool) bool {
+	for root := range roots {
+		if p == root || strings.HasPrefix(p, root+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
 }

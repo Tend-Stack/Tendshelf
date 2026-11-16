@@ -1187,6 +1187,14 @@ page-weight`, `make a11y`. Budgets raised from measurement: `pages-book.css` 6,1
 was not driven in the browser test (the script watches the row, not the window, so it follows the panel). Next: the other
 rows that can still wrap (Home hero, episode panel, author page, radio cards, admin headers, Words).
 
+## Manage every book (operator, 2026-11-15, decision 0045)
+
+Plan `docs/plans/manage-all-books.md`. The app manages books that were copied into the library folder by hand, not only upload-placed
+ones: owner and admin can remove such a book after a warning that lists its files; the files move to a hidden `.tendshelf-removed`
+folder, can be put back, and are deleted after 30 days. Adding a book checks whether it is already in the library. Packages: P0 rule
+texts, P1 removal service (migration 0045, `share.RemoveLibraryFiles`, `internal/upload/removeany.go`, scanner keep-out), P2 pages, P3
+duplicate check, P4 duplicate UI. Status: P0 and P1 built 2026-11-15; P2 to P4 open.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a

@@ -111,3 +111,8 @@ their record (`upload_books`) of a text book that stays after the audio goes, so
 remove whole only when every one of its files is theirs; a stored Text-page upload is theirs when `ebook_files.uploaded_by` is them. A refusal
 (`not_theirs`) happens before anything is dropped. Owner and admin remove any stored upload. Editing details by hand uses `share.EditBook`, so a
 contributor edits their own books and gets 404 for the others.
+
+## Addendum 2026-11-15 (decision 0045)
+Contributors are unchanged: they still remove only books their own uploads placed, through the upload path, and never remove a hand-added
+book. When an upload is an exact copy of a book already in the library (every file matches), a contributor may not "Add anyway"; an owner or
+admin may.

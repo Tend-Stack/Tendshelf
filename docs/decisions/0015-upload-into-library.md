@@ -150,3 +150,8 @@ Answered by the operator on 2026-11-04 ("use your picks"):
    `upload.js` 5 KB, `shell.js` 5.625 KB.
 2. Accept the residual empty-folder race; no `renameat2`.
 3. Remove deletes the files Tendshelf created and the book row (with its cascades), after a confirmation.
+
+## Addendum 2026-11-15 (decision 0045)
+Point 11 (Remove) now has a second path for the owner and admins: a book whose files were put in the library folder by hand can be
+removed after a warning, by moving its files into a hidden holding folder (kept 30 days, can be put back). The upload-placed path of point 11
+is unchanged. Adding a book also checks whether it is already in the library and holds the upload with "Add anyway" and "Do not add".
