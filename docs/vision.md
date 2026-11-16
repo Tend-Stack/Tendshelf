@@ -90,8 +90,8 @@ request is sometimes answered with a kind no.
   book aloud, but only with a voice the device already has, so the book's text never leaves it
   ([decision 0018](decisions/0018-book-reader.md), [decision 0032](decisions/0032-read-aloud.md)).
 - **No library file changed behind your back.** Library files are read-only to Tendshelf except for the
-  two jobs the owner starts: writing details into a file (with a backup and Undo) and adding a book by
-  upload (`AGENTS.md`).
+  jobs the owner starts: writing details into a file (with a backup and Undo), adding a book by upload, and
+  removing a book after a warning (its files are kept for 30 days and can be put back) (`AGENTS.md`).
 
 ## A new option has to earn its place
 

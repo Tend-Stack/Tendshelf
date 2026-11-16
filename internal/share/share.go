@@ -19,31 +19,32 @@ type Action string
 
 // The actions. Names are stable: they appear in docs and in the audit log.
 const (
-	ViewLibrary     Action = "library.view"
-	ViewBook        Action = "book.view" // details and covers
-	ListenBook      Action = "book.listen"
-	DownloadBook    Action = "book.download"
-	EditBook        Action = "book.edit"
-	ReadText        Action = "text.read"
-	DownloadText    Action = "text.download"
-	ManageLibraries Action = "libraries.manage"
-	ManageJobs      Action = "jobs.manage"
-	ManageUsers     Action = "users.manage"
-	ManageServer    Action = "server.manage"
-	AddBooks        Action = "books.add"        // upload books into a library folder (decisions 0015, 0029); owner and admin, and a contributor with an active whole-library or whole-server grant
-	RemoveBook      Action = "book.remove"      // "Remove this book": owner and admin, and a contributor for their own books (decision 0029)
-	WriteFiles      Action = "book.write_files" // "Write details into the file": owner and admin only (decision 0029)
-	UseShelves      Action = "shelves.use"
-	ViewShelf       Action = "shelf.view"     // reading a shelf that is not one's own
-	UsePodcasts     Action = "podcasts.use"   // follow shows and use the Podcasts pages: owner, admin and member, never a guest (decision 0038)
-	ListenEpisode   Action = "episode.listen" // play, download or save progress on an episode: the person follows or opened its show, or already has state for it
-	UseRadio        Action = "radio.use"      // stations: owner, admin and member (decision 0038)
+	ViewLibrary        Action = "library.view"
+	ViewBook           Action = "book.view" // details and covers
+	ListenBook         Action = "book.listen"
+	DownloadBook       Action = "book.download"
+	EditBook           Action = "book.edit"
+	ReadText           Action = "text.read"
+	DownloadText       Action = "text.download"
+	ManageLibraries    Action = "libraries.manage"
+	ManageJobs         Action = "jobs.manage"
+	ManageUsers        Action = "users.manage"
+	ManageServer       Action = "server.manage"
+	AddBooks           Action = "books.add"         // upload books into a library folder (decisions 0015, 0029); owner and admin, and a contributor with an active whole-library or whole-server grant
+	RemoveBook         Action = "book.remove"       // "Remove this book": owner and admin, and a contributor for their own books (decision 0029)
+	WriteFiles         Action = "book.write_files"  // "Write details into the file": owner and admin only (decision 0029)
+	RemoveLibraryFiles Action = "book.remove_files" // "Remove this book and its files" for a book put in the library folder by hand: owner and admin only (decision 0045)
+	UseShelves         Action = "shelves.use"
+	ViewShelf          Action = "shelf.view"     // reading a shelf that is not one's own
+	UsePodcasts        Action = "podcasts.use"   // follow shows and use the Podcasts pages: owner, admin and member, never a guest (decision 0038)
+	ListenEpisode      Action = "episode.listen" // play, download or save progress on an episode: the person follows or opened its show, or already has state for it
+	UseRadio           Action = "radio.use"      // stations: owner, admin and member (decision 0038)
 )
 
 var knownActions = map[Action]bool{
 	ViewLibrary: true, ViewBook: true, ListenBook: true, DownloadBook: true, EditBook: true,
 	ReadText: true, DownloadText: true, ManageLibraries: true, ManageJobs: true,
-	ManageUsers: true, ManageServer: true, UseShelves: true, ViewShelf: true, AddBooks: true, RemoveBook: true, WriteFiles: true,
+	ManageUsers: true, ManageServer: true, UseShelves: true, ViewShelf: true, AddBooks: true, RemoveBook: true, WriteFiles: true, RemoveLibraryFiles: true,
 	UsePodcasts: true, ListenEpisode: true, UseRadio: true,
 }
 
