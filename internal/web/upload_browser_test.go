@@ -57,8 +57,8 @@ func newUploadBrowser(t *testing.T) *uploadBrowser {
 		if err := scan.New(o.Library, tools, r, quiet).Register(r); err != nil {
 			t.Fatal(err)
 		}
-		svc := upload.New(upload.Config{DataDir: o.DataDir, ChunkSize: 64 << 10, Margin: 0, ScopeFor: func(context.Context, string) (library.Scope, bool) {
-			return library.Scope{Books: share.Filter{SQL: "1=1"}, Libraries: share.Filter{SQL: "1=1"}}, true
+		svc := upload.New(upload.Config{DataDir: o.DataDir, ChunkSize: 64 << 10, Margin: 0, ScopeFor: func(context.Context, string) (library.Scope, bool, error) {
+			return library.Scope{Books: share.Filter{SQL: "1=1"}, Libraries: share.Filter{SQL: "1=1"}}, true, nil
 		}}, o.Store, o.Library, tools, r, quiet)
 		if err := svc.Register(r); err != nil {
 			t.Fatal(err)

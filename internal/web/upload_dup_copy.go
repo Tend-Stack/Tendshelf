@@ -72,6 +72,7 @@ func (s *server) alreadyRow(v *components.UploadRowView, u upload.View, libName 
 	v.Line = alreadyLine(u.Match, libName)
 	v.OpenHref = u.Match.Href // empty for an upload the scan has not listed yet: no link, no bare /books/
 	v.AddAnyway = u.Match.MayAddAnyway
+	v.Listing = u.Match.BookID == ""
 }
 
 // uploadRowFor is uploadRow for a request: an "already" row also gets the CSRF token of its forms and,

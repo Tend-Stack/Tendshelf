@@ -44,12 +44,12 @@ func newDupApp(t *testing.T) *dupApp {
 		ur, can := users.New(o.Store, users.Options{}), share.New(o.Store)
 		svc := upload.New(upload.Config{
 			DataDir: o.DataDir, ChunkSize: 1024, MaxFile: 1 << 20, MaxBook: 4 << 20, Margin: 0,
-			ScopeFor: func(ctx context.Context, id string) (library.Scope, bool) {
+			ScopeFor: func(ctx context.Context, id string) (library.Scope, bool, error) {
 				u, err := ur.ByID(ctx, id)
 				if err != nil || u.Disabled {
-					return library.Scope{}, false
+					return library.Scope{}, false, nil
 				}
-				return library.Scope{Books: can.BookFilter(u, "b"), Libraries: can.LibraryFilter(u, "l"), Shared: can.SharedBooks(u)}, true
+				return library.Scope{Books: can.BookFilter(u, "b"), Libraries: can.LibraryFilter(u, "l"), Shared: can.SharedBooks(u)}, true, nil
 			},
 			MayPlace: func(_ context.Context, id, _ string) upload.Placement {
 				if id == contributorID {
@@ -262,7 +262,7 @@ func TestAlreadyRowOfAnUploadTheScanHasNotListed(t *testing.T) {
 		out := sb.String()
 		if !strings.Contains(out, "You added this a moment ago. It will show up once the library scan has seen it.") ||
 			strings.Contains(out, "/books/") || strings.Contains(out, "Open it") || strings.Contains(out, "Edit details") ||
-			!strings.Contains(out, "Do not add") || strings.Contains(out, "Add anyway") == !may {
+			!strings.Contains(out, "Do not add") || strings.Contains(out, "Add anyway") == !may || !strings.Contains(out, `hx-trigger="every 2s"`) {
 			t.Errorf("may=%v: %s", may, out)
 		}
 	}

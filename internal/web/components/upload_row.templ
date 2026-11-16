@@ -25,6 +25,8 @@ type UploadRowView struct {
 	OpenHref          string
 	EditHref          string
 	AddAnyway         bool
+	// Listing is true while the match is the person's own upload the scan has not listed yet; the row polls until the book has an address.
+	Listing bool
 	// CSRF is the token of the "already" forms.
 	CSRF  string
 	Words             UploadRowWords
@@ -82,7 +84,7 @@ func uploadWorking(v UploadRowView) bool {
 
 // uploadPolls is true for a live row that asks the server for itself.
 func uploadPolls(v UploadRowView) bool {
-	return !v.Template && uploadWorking(v)
+	return !v.Template && (uploadWorking(v) || v.Listing)
 }
 
 // UploadIcon draws one of the Add books icons without any attribute of its own.
