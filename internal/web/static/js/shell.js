@@ -333,12 +333,29 @@ sendTimeZone();
 // Page modules: an element with data-ts-module names a script only its page needs (the uploader).
 // Each is imported on first use and mounted on every fresh element, at start and after a swap.
 const mounted = new WeakSet();
-function loadPageModules() {
-  for (const el of document.querySelectorAll("#main [data-ts-module]")) {
+// rowsOnly: mount only the action rows (fit-row.js), which need no finished layout; the others (the reader measures
+// its page) wait for htmx:after:swap.
+function loadPageModules(rowsOnly = false) {
+  const selector = rowsOnly ? "#main [data-ts-module][data-ts-fit]" : "#main [data-ts-module]";
+  for (const el of document.querySelectorAll(selector)) {
     if (mounted.has(el)) continue;
     mounted.add(el);
-    import(el.dataset.tsModule).then((m) => m.mount(el)).catch(() => {});
+    // An action row (fit-row.js, decision 0044) takes its one-line layout now, in the swap, not when the module
+    // arrives: otherwise a slow first load paints the row wrapped and the page below it jumps up a frame later.
+    // If the module cannot load, the row wraps again as it does without JavaScript.
+    const fitRow = el.hasAttribute("data-ts-fit");
+    if (fitRow) el.setAttribute("data-ts-fit-on", "");
+    import(el.dataset.tsModule)
+      .then((m) => m.mount(el))
+      .catch(() => {
+        if (fitRow) el.removeAttribute("data-ts-fit-on");
+      });
   }
 }
 loadPageModules();
-document.addEventListener("htmx:after:swap", loadPageModules);
+document.addEventListener("htmx:after:swap", () => loadPageModules());
+// htmx:after:swap comes only after the page transition, a few hundred milliseconds after the new page is in the
+// document. A mutation callback runs before the next frame is drawn, so an action row never shows unfolded.
+new MutationObserver((records) => {
+  if (records.some((record) => record.addedNodes.length > 0)) loadPageModules(true);
+}).observe(document.body, { childList: true, subtree: true });
