@@ -462,8 +462,24 @@ func (s *Service) StartRemoval(ctx context.Context, userID, bookID, planHash, mo
 		return nil
 	}
 	if mode == ModeKeepFiles {
+		shared := plan.RootIsFolder
+		if !shared {
+			if shared, err = s.sharedFolder(ctx, bookID, plan.LibraryID, plan.RootPath); err != nil {
+				return "", err
+			}
+		}
+		if shared {
+			return "", errNotRemovable("The folder holds other books, so Tendshelf cannot leave just this one out. Remove it with its files instead, or move it into a folder of its own.")
+		}
 		// One transaction: the record that keeps the scanner away and the deletion of the book's rows.
 		err := s.repo.UpdateGuarded(ctx, func(ctx context.Context, tx *sql.Tx) error {
+			var active int
+			if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM removals WHERE book_id = ? AND state IN ('planned','moving')`, bookID).Scan(&active); err != nil {
+				return err
+			}
+			if active > 0 {
+				return fail(409, CodeBusy, "This book is already being removed.")
+			}
 			if err := insert(ctx, tx); err != nil {
 				return err
 			}
@@ -596,6 +612,10 @@ func (s *Service) removeFiles(ctx context.Context, g guard, rid string) (any, er
 			}
 			return nil, s.failJob(ctx, g, rid, CodeCannotMove, errCannotMove())
 		}
+		// A name that already exists must be a real folder, never a link planted there.
+		if fi, err := lr.lstatNoLinks(d); err != nil || !fi.IsDir() {
+			return nil, s.failJob(ctx, g, rid, CodeCannotMove, errCannotMove())
+		}
 	}
 
 	var moved []string
@@ -625,7 +645,7 @@ func (s *Service) removeFiles(ctx context.Context, g guard, rid string) (any, er
 			cur, _ := s.Removal(context.WithoutCancel(ctx), rid)
 			_ = s.rollbackRemoval(context.WithoutCancel(ctx), cur, "")
 			_ = s.write(context.WithoutCancel(ctx), nil, func(tx *sql.Tx) error {
-				_, err := tx.ExecContext(ctx, `UPDATE removals SET state = 'planned', error_code = NULL, updated_at = ? WHERE id = ?`, s.nowMs(), rid)
+				_, err := tx.ExecContext(context.WithoutCancel(ctx), `UPDATE removals SET state = 'planned', error_code = NULL, updated_at = ? WHERE id = ?`, s.nowMs(), rid)
 				return err
 			})
 			return nil, ctx.Err()
@@ -644,7 +664,7 @@ func (s *Service) removeFiles(ctx context.Context, g guard, rid string) (any, er
 		cur, _ := s.Removal(context.WithoutCancel(ctx), rid)
 		_ = s.rollbackRemoval(context.WithoutCancel(ctx), cur, "")
 		_ = s.write(context.WithoutCancel(ctx), nil, func(tx *sql.Tx) error {
-			_, err := tx.ExecContext(ctx, `UPDATE removals SET state = 'planned', error_code = NULL, updated_at = ? WHERE id = ?`, s.nowMs(), rid)
+			_, err := tx.ExecContext(context.WithoutCancel(ctx), `UPDATE removals SET state = 'planned', error_code = NULL, updated_at = ? WHERE id = ?`, s.nowMs(), rid)
 			return err
 		})
 		return nil, ctx.Err()
@@ -826,7 +846,7 @@ func (s *Service) rollbackRemoval(ctx context.Context, rm Removal, code string) 
 			left++
 			continue
 		}
-		if err := lr.Rename(pr.heldPath, pr.path); err != nil {
+		if err := lr.putBack(pr.heldPath, pr.path); err != nil {
 			left++
 			s.log.Warn("upload: cannot put a file back", "removal", rm.ID, "path", pr.path, "err", err)
 			continue
@@ -840,7 +860,36 @@ func (s *Service) rollbackRemoval(ctx context.Context, rm Removal, code string) 
 	if code == "" {
 		return nil
 	}
+	if left > 0 {
+		// Some files could not go back: the removal stays held, so they can be put back again or deleted later.
+		return s.write(ctx, nil, func(tx *sql.Tx) error {
+			now := s.nowMs()
+			_, err := tx.ExecContext(ctx, `UPDATE removals SET state = 'held', error_code = ?, updated_at = ?, purge_after = ? WHERE id = ?`,
+				code, now, now+int64(RemovedKeepDays)*24*time.Hour.Milliseconds(), rm.ID)
+			return err
+		})
+	}
 	return s.failRemoval(ctx, nil, rm.ID, code)
+}
+
+// putBack returns a held file to its old name without ever overwriting: a hard link fails when the name exists, and
+// only then is the held name removed. Where the filesystem refuses hard links it falls back to a check and a
+// rename, which can lose a race with a file created in between (a very small window).
+func (l *lroot) putBack(held, orig string) error {
+	err := l.Link(held, orig)
+	switch {
+	case err == nil:
+		if rerr := l.Remove(held); rerr != nil {
+			return fmt.Errorf("upload: put back %q but cannot remove the held name: %w", orig, rerr)
+		}
+		return nil
+	case errors.Is(err, fs.ErrExist):
+		return err
+	}
+	if _, serr := l.Lstat(orig); serr == nil {
+		return fs.ErrExist
+	}
+	return l.Rename(held, orig)
 }
 
 // pruneEmpty removes the empty folders below and including dir (rmdir only: a folder with anything in it stays).
@@ -963,7 +1012,7 @@ func (s *Service) RestoreRemoval(ctx context.Context, userID, rid string) (Resto
 				res.Kept = append(res.Kept, pr.path)
 				continue
 			}
-			if err := lr.Rename(pr.heldPath, pr.path); err != nil {
+			if err := lr.putBack(pr.heldPath, pr.path); err != nil {
 				s.log.Warn("upload: cannot put a file back", "removal", rid, "path", pr.path, "err", err)
 				res.Kept = append(res.Kept, pr.path)
 				continue
@@ -977,8 +1026,12 @@ func (s *Service) RestoreRemoval(ctx context.Context, userID, rid string) (Resto
 		}
 	}
 	err = s.write(ctx, nil, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, `UPDATE removals SET state = 'restored', updated_at = ?, purge_after = NULL WHERE id = ? AND state = 'held'`, s.nowMs(), rid); err != nil {
-			return err
+		if len(res.Kept) == 0 {
+			if _, err := tx.ExecContext(ctx, `UPDATE removals SET state = 'restored', updated_at = ?, purge_after = NULL WHERE id = ? AND state = 'held'`, s.nowMs(), rid); err != nil {
+				return err
+			}
+		} else if _, err := tx.ExecContext(ctx, `UPDATE removals SET updated_at = ? WHERE id = ?`, s.nowMs(), rid); err != nil {
+			return err // files stay in the holding folder: the removal stays held, with its purge date
 		}
 		return s.audit(ctx, tx, userID, "removal.restore", "book:"+rm.BookID, map[string]any{"title": rm.Title, "removal": rid, "restored": len(res.Restored), "kept": len(res.Kept)})
 	})
@@ -1024,6 +1077,9 @@ func (s *Service) PurgeRemoval(ctx context.Context, userID, rid string) error {
 	}
 	defer lr.Close()
 	dir := filepath.Join(folder.Path, HoldingDir, rid)
+	if _, err := lr.lstatNoLinks(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return errNotRemovable("The holding folder has a link in it, so Tendshelf will not delete anything there.")
+	}
 	if err := lr.RemoveAll(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}

@@ -108,6 +108,19 @@ func (l *lroot) Rename(from, to string) error {
 	return l.r.Rename(a, b)
 }
 
+// Link makes newAbs a second name for oldAbs; it fails when newAbs exists.
+func (l *lroot) Link(oldAbs, newAbs string) error {
+	a, err := l.rel(oldAbs)
+	if err != nil || a == "." {
+		return fmt.Errorf("upload: cannot link %q", oldAbs)
+	}
+	b, err := l.rel(newAbs)
+	if err != nil || b == "." {
+		return fmt.Errorf("upload: cannot link to %q", newAbs)
+	}
+	return l.r.Link(a, b)
+}
+
 // Remove deletes one file or one empty directory.
 func (l *lroot) Remove(abs string) error {
 	r, err := l.rel(abs)
