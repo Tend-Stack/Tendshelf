@@ -1220,6 +1220,16 @@ text sizes in Chromium), `TestFitRowsEpisodeTwins`, `TestFitRowsInboxTwins`, `Te
 `TestEpisodeRowMenuStillSwaps`. Limits: the Now playing panel at 1280 px and the Words page rows (no words in the fixture)
 were not driven in the browser; the stacked or tool rows listed in the decision were left as they are.
 
+## After 2026.12.0: where the Android app lags the page (read-only scout, 2026-11-15)
+
+Not built. Line numbers come from a scout and were not re-checked.
+
+- **Night sleep only starts from the page.** The rule lives in `player-full.js` (`maybeStartNightSleep`); `SleepTimer.kt` has no night code, so a start from the car or the notification while the page is frozen starts no timer.
+- **A star made in the page does not reach the car's row.** `encodeState` in `android/shared/.../BridgeProtocol.kt` has no favourite field; the car stars through its own API call (`LibraryTree.kt`, `Api.kt`).
+- **Episode downloads have a receiver and no sender.** `Offline.kt` accepts episode ids, but only the book page carries `data-ts-download`.
+- **The daily downloads check removes a gone book only on 404** (`checkVerdict`, pinned by `OfflineTest.kt`). Not verified: what the server answers for a book removed under decision 0045.
+- Also noted: the page ignores the `chapterIdx` native sends; the app module has no unit tests of its own (logic is tested in `android/shared`); the 49 Android rows in `docs/manual-checks.md` have no recorded result.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a
