@@ -16,6 +16,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/upload"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 	"github.com/Tend-Stack/tendshelf/internal/web/pages"
 )
@@ -70,6 +71,7 @@ func (s *server) getAddBooks(w http.ResponseWriter, r *http.Request) {
 		NeedsJS: needsJS,
 		Module:  s.assets.URL("js/upload.js"), Messages: uploadMessages(),
 		Template: components.UploadRowView{State: "sending", Template: true, Words: uploadRowWords()},
+		CanEdit:  currentUser(r).Role == users.RoleOwner || currentUser(r).Role == users.RoleAdmin,
 	}
 	libs, err := s.lib.Libraries(ctx)
 	if err != nil {
@@ -88,7 +90,7 @@ func (s *server) getAddBooks(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, u := range views {
 		if u.LibraryID == lib.ID {
-			v.Rows = append(v.Rows, s.uploadRow(ctx, u, lib.Name, folder.Path))
+			v.Rows = append(v.Rows, s.uploadRowFor(r, u, lib.Name, folder.Path))
 		}
 	}
 	s.pageStyled(w, r, http.StatusOK, uploadTitle, "library", pages.AddBooks(v), nil, uploadStyles...)
@@ -156,7 +158,7 @@ func (s *server) renderUploadRow(w http.ResponseWriter, r *http.Request, libID, 
 		return
 	}
 	folder, _ := s.uploadFolder(ctx, lib)
-	row := s.uploadRow(ctx, v, lib.Name, folder.Path)
+	row := s.uploadRowFor(r, v, lib.Name, folder.Path)
 	// An archive that was split into several books: the books this poll has not shown yet join the
 	// list beside this row, and later polls ask only for the ones after them.
 	var more []components.UploadRowView
@@ -164,7 +166,7 @@ func (s *server) renderUploadRow(w http.ResponseWriter, r *http.Request, libID, 
 		seen, _ := strconv.Atoi(r.URL.Query().Get("seen"))
 		seen = max(0, min(seen, len(sibs)))
 		for _, sib := range sibs[seen:] {
-			m := s.uploadRow(ctx, sib, lib.Name, folder.Path)
+			m := s.uploadRowFor(r, sib, lib.Name, folder.Path)
 			more = append(more, m)
 		}
 		row.Seen = len(sibs)
@@ -209,6 +211,12 @@ func (s *server) uploadRow(ctx context.Context, u upload.View, libName, folderPa
 		if u.ErrorCode == upload.CodeUnreadable {
 			v.Line = "Not added. Tendshelf could not open " + path.Base(u.Refused) + "."
 		}
+	case upload.StateFailed:
+		if u.ErrorCode == upload.CodeAlreadyInLibrary {
+			s.alreadyRow(&v, u, libName)
+			break
+		}
+		fallthrough
 	default:
 		v.State, v.Title = "failed", fmt.Sprintf(uploadNotAddedYet, u.Label)
 		v.Line = uploadPlaceFailed

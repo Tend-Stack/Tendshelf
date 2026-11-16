@@ -23,7 +23,9 @@
 .ts-upload__icon .ts-icon { width: 1.25rem; height: 1.25rem; }
 .ts-upload__icon--added { color: var(--success); }
 .ts-upload__icon--refused, .ts-upload__icon--failed { color: var(--danger); }
-.ts-upload__icon--stopped { color: var(--warning); }
+.ts-upload__icon--stopped, .ts-upload__icon--already { color: var(--warning); }
+/* The "already in the library" choices are forms so they work without JavaScript; the form adds no box. */
+.ts-upload__form { display: contents; }
 .ts-upload__text { min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
 .ts-upload__title { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 .ts-upload__meta, .ts-upload__line, .ts-upload__path { margin: 0; color: var(--ink-muted); }
