@@ -99,12 +99,7 @@ was reused, extended or replaced.
   ([decision 0029](docs/decisions/0029-contributors.md)), only creates new
   folders and files, records every path before creating it in `upload_paths`, builds the book inside a
   hidden `.tendshelf-upload-<id>` folder and publishes it by one rename to a name that did not exist, and
-  never overwrites, renames or deletes anything it did not create. "Remove this book" deletes only
-  `upload_paths` files still unchanged since they were placed (size, mtime and quick hash), then only the
-  empty folders it created. The owner and admins may also remove a book whose files were put in the library
-  folder by hand (decision 0045): its scanned files, and listed cover and sidecar files, each checked against
-  the scan's record, are moved into a hidden `.tendshelf-removed` folder after a warning that lists them, can
-  be put back, and are deleted 30 days later. No other code path may write, rename or delete a library file.
+  never overwrites, renames or deletes anything it did not create. "Remove this book" moves only `upload_paths` files still unchanged since they were placed (size, mtime and quick hash) into a hidden `.tendshelf-removed` folder in the same library folder, then removes only the empty folders it created; a changed file stays and is named. The owner and admins may also remove a book whose files were put in the library folder by hand (decision 0045): its scanned files, and listed cover and sidecar files, each checked against the scan's record, are moved into the same holding folder after a warning that lists them. Either way the owner or an admin can put the files back, and they are deleted 30 days later or by "Delete now". Ebooks uploaded on a book's Text page are Tendshelf's own copies in the data folder and are still deleted at once. No other code path may write, rename or delete a library file.
 - Podcast episodes Tendshelf downloads into `<data>/cache/podcasts/` are its own cache, not library files; they are never
   scanned or listed in a library, and backups leave them out (decision 0038).
 - Copy-protected files (`.aax`, `.aaxc`, `.aa`, `.m4p`, or streams ffprobe reports as encrypted) are

@@ -13,8 +13,8 @@ import (
 
 // Removing one part of a combined book (decision 0015, amendment "Remove one part"): a book that has audio and
 // attached ebook files can lose its text or its audio on its own. The rules are the whole-book ones applied to
-// that part alone: only a file this package placed (a present ledger row) that is unchanged is deleted, through
-// the same removeFile, and a library file is never touched.
+// that part alone: only a file this package placed (a present ledger row) that is unchanged is moved into the holding folder, through
+// the same planner (planUpload), and a library file is never touched.
 
 // PartFile is one attached ebook file and whether it can be removed on its own.
 type PartFile struct {

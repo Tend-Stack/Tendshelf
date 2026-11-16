@@ -1197,6 +1197,14 @@ duplicate check, P4 duplicate UI. Status: P0 and P1 built 2026-11-15; P2 built 2
 
 - **P2 remove pages** (2026-11-15). Scope: `GET /books/{id}/remove` shows the new warning page (`pages.BookRemoveAny`) when the upload removal is not offered and the person may `RemoveLibraryFiles`; `POST /books/{id}/remove-files` (plan hash, box, mode), `GET /removals/{rid}` and `GET /hx/removals/{rid}` (polls every 2 s until held or failed), `POST /removals/{rid}/restore` and `/purge` (Delete now has its own box), `GET /admin/libraries/{id}/removed` (linked from each library on Libraries & scanning), the menu entry "Remove this book", `ts-remove-any__*` classes in `bundle.css`. The confirm form is not boosted (`hx-boost="false"`), so a refusal such as `plan_changed` comes back as the page with the fresh list; an htmx request gets a toast. Keep-files needs no box (it deletes nothing). Checks: `internal/web/routes_remove_any_test.go` (roles, CSRF, box, stale plan, every failure text, both modes on a real temp library, menu), route-matrix rows, a Chromium test at 390 and 1440 (`remove_any_browser_test.go`), a11y rows `book-remove-hand`, `removal`, `admin-removed`, page weight (css rows raised to 346,368 B). Limits: a book whose only files are an uploaded edition stored in the data folder shows the menu entry but the page says it cannot be removed this way; no per-person count of listeners is shown (the fixed loss line covers it); a purge needs its own tick, which the plan did not list. Next: P3 and P4.
 
+- **Upload removals held** (2026-11-15, follow-up 5 of decision 0045). Plan `docs/plans/upload-removals-held.md`. Scope: removing a book, one part or
+  one edition that Add books placed now moves its unchanged ledger files into `.tendshelf-removed` through the same mover as a hand-added book
+  (`removals.source = 'upload'`, migration 0046 `removal_ledger` and `removal_upload_books`); Put back restores files, ledger rows and
+  who-added-it (only when every file returned); the sweep rolls back a dead upload mover at once. Checks: `go test -race` on `internal/upload`,
+  `internal/db` (migration from the 0045 fixture and from empty), the web remove, upload, contributor and matrix tests; a 300-file book moved in
+  under a second inside the request (no server write timeout). Limits: listening places, bookmarks, shelves and edited details do not come back;
+  an ebook stored from the Text page is still deleted at once; Put back's scan covers the book's folder only. Next: L5, hold the Text-page copies.
+
 ## The player says it is loading (operator report, 2026-11-15)
 
 While a book, episode or station finds its place nothing showed. The player now has one more state, `loading`
