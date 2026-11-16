@@ -15,6 +15,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Fixed
 
+- **The Android app says why something cannot play.** Every failure used to read "This can't play right now. Check your connection.", even when the book was gone, the phone was signed out, a station was busy, or a different Tendshelf now answered at the address. Each now has its own plain line, and an unknown reason still gets the general one.
 - **The desktop app resumes a book where you left it.** The app's engine ignored the place a book should start from, so pressing play started the book at the beginning and then saved that as your place, losing the real one. The player now moves to the saved place itself when the engine has not.
 - **No gap in a book's buttons in the desktop app.** The app keeps no downloads, but an invisible Download button still took its space in the row.
 

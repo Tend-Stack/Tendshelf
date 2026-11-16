@@ -280,7 +280,7 @@ class PlaybackService : MediaLibraryService() {
         }
         engine.onFailed = { kind ->
             tellCar(kind)
-            // The one-live-per-person 503 (R3): the page shows only a general error, so the phone says why in plain words.
+            // The one-live-per-person 503 (R3): the page also says why (its own words by error code); the phone adds a toast for a dark screen.
             if (kind == "busy") android.widget.Toast.makeText(this, R.string.radio_busy, android.widget.Toast.LENGTH_LONG).show()
         }
         exo.addListener(object : Player.Listener {
@@ -337,6 +337,7 @@ class PlaybackService : MediaLibraryService() {
             "signedOut" -> SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED to R.string.car_sign_in
             "background" -> SessionError.ERROR_SESSION_SETUP_REQUIRED to R.string.car_keep_listening
             "stream" -> SessionError.ERROR_IO to R.string.car_no_connection
+            "otherServer" -> SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED to R.string.car_other_server
             "busy" -> SessionError.ERROR_SESSION_CONCURRENT_STREAM_LIMIT to R.string.radio_busy
             else -> SessionError.ERROR_UNKNOWN to R.string.car_cant_play
         }

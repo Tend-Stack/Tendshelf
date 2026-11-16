@@ -14,6 +14,9 @@ import app.tendshelf.shared.sameServer
  * pinned at connect time. A yes is trusted for a minute and is forgotten the moment the default network changes.
  * The probe sends no credential. Blocking: call it from a worker thread.
  */
+/** The one failure [ServerGate] raises, so the engine can tell it from a lost connection without reading its message. */
+class OtherServerException : java.io.IOException("the address does not answer as the connected server")
+
 object ServerGate {
     private const val FRESH_MS = 60_000L
 
@@ -68,7 +71,7 @@ object ServerGate {
     fun gated(upstream: androidx.media3.datasource.DataSource.Factory): androidx.media3.datasource.DataSource.Factory =
         androidx.media3.datasource.ResolvingDataSource.Factory(upstream) { spec ->
             val u = spec.uri
-            if (!ok("${u.scheme}://${u.authority}")) throw java.io.IOException("the address does not answer as the connected server")
+            if (!ok("${u.scheme}://${u.authority}")) throw OtherServerException()
             spec
         }
 }

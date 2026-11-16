@@ -91,6 +91,7 @@
     <string name="radio_busy">You already have a station playing, or the server is busy. Try again in a moment.</string>
     <string name="car_sign_in">Open Tendshelf on your phone to sign in.</string>
     <string name="car_no_connection">Can\'t reach your library. Downloaded books still play.</string>
+    <string name="car_other_server">A different Tendshelf answers at this address. Open Tendshelf on your phone.</string>
     <string name="car_not_found">I couldn\'t find that book.</string>
     <string name="car_cant_play">That book can\'t play right now.</string>
     <string name="car_keep_listening">Open Tendshelf on your phone to keep listening.</string>

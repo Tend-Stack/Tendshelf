@@ -327,6 +327,14 @@ Needs the debug or release APK on a real phone, signed in to a server with a ser
 | QR-5 | Open `tendshelf://open?link=...` from another app or a web page while signed in. | Only the dialog or "already signed in" shows; nothing signs out. | |
 | QR-6 | Scan a dark-themed QR on a screen with the camera. | The code still reads. | |
 
+## Android: why something cannot play (A-errors)
+
+| ID | Check | Expected | Result |
+| --- | --- | --- | --- |
+| AE-1 | Start a book that is not downloaded, then switch the phone to airplane mode and press play on another book. | "This can't play right now. Check your connection." | Not run. |
+| AE-2 | On the server, sign this phone's device out (or delete its token), then press play. | "This phone is signed out. Sign in again to keep listening." The car, if connected, says to open Tendshelf on the phone. | Not run. |
+| AE-3 | Point the phone's address at a different or wiped Tendshelf (same address, new install), then press play. | "This phone was connected to a different Tendshelf at this address. Disconnect and connect again to use this one." Nothing is sent to that server. | Not run. |
+
 
 ## L8: the next book is ready on the phone (decision 0035)
 

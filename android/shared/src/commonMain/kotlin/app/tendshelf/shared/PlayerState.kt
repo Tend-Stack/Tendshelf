@@ -2,7 +2,7 @@ package app.tendshelf.shared
 
 /**
  * What any client of the player sees, in book time. [bookId] and [error] are empty when there is none.
- * [error] is one of `stream`, `book`, `signedOut`, `background` (the system refused a foreground start).
+ * [error] is one of [ERROR_CODES] (see [playFailureKind]); `background` is the system refusing a foreground start.
  * [ask] is the open place question, [rewoundS] the seconds the last resume went back.
  */
 data class PlayerSnapshot(

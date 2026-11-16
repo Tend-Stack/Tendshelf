@@ -233,12 +233,17 @@ const (
 	msgNativeFailed = "This can't play right now. Check your connection."
 	// msgNativeBackground: Android refused to start playback while the app was out of sight.
 	msgNativeBackground = "Tendshelf can't start by itself while it is closed. Tap Play to listen."
-	msgSignedOut        = "You're signed out. Sign in to keep your place."
-	msgSignIn           = "Sign in"
-	msgContinueAsk      = "You were at {time} on {device}. Continue there?"
-	msgOtherDevice      = "another device"
-	msgContinueThere    = "Continue there"
-	msgStayHere         = "Stay here"
+	// The Android app names why playback failed; an unknown reason falls back to msgNativeFailed.
+	msgNativeGone        = "This is no longer on your server, or you can no longer open it."
+	msgNativeSignedOut   = "This phone is signed out. Sign in again to keep listening."
+	msgNativeBusy        = "This station is busy right now. Try again in a moment."
+	msgNativeOtherServer = "This phone was connected to a different Tendshelf at this address. Disconnect and connect again to use this one."
+	msgSignedOut         = "You're signed out. Sign in to keep your place."
+	msgSignIn            = "Sign in"
+	msgContinueAsk       = "You were at {time} on {device}. Continue there?"
+	msgOtherDevice       = "another device"
+	msgContinueThere     = "Continue there"
+	msgStayHere          = "Stay here"
 
 	// P1c-5a full player: the board and the HANDOFF words; the rest follows the voice rules.
 	msgChapterOf     = "Chapter {n} of {total}"
@@ -366,6 +371,7 @@ func playerMsgs() components.PlayerMsgs {
 		Open: msgPlayerOpen, OpenBook: msgOpenBook, MinLeft: msgMinLeft, PlayPrefix: msgPlayPrefix, PausePrefix: msgPausePrefix,
 		BackSeconds: msgBackSeconds, ForwardSeconds: msgForwardSeconds, ChapterLeft: msgChapterLeft,
 		Rewound: msgRewound, CompatWait: msgCompatWait, CompatFailed: msgCompatFailed, NativeFailed: msgNativeFailed, NativeBackground: msgNativeBackground,
+		NativeGone: msgNativeGone, NativeSignedOut: msgNativeSignedOut, NativeBusy: msgNativeBusy, NativeOtherServer: msgNativeOtherServer,
 		SignedOut: msgSignedOut, SignIn: msgSignIn, ContinueAsk: msgContinueAsk, OtherDevice: msgOtherDevice,
 		ContinueThere: msgContinueThere, StayHere: msgStayHere,
 		KeysTitle: msgKeysTitle, KeysPlay: msgKeysPlay, KeysSkip: msgKeysSkip, KeysSearch: msgKeysSearch,
