@@ -19,6 +19,8 @@ type AdminLibrarySection struct {
 	Watch  *AdminWatchLibrary
 	Lookup *AdminLookupLibrary
 	Upload *AdminUploadLibrary
+	// RemovedHref and RemovedLabel link the library's removed books (decision 0045); empty when removing is not set up.
+	RemovedHref, RemovedLabel string
 }
 
 // AdminLibrariesView is the Libraries & scanning page.
@@ -197,6 +199,9 @@ templ adminLibrary(v AdminLibrariesView, l AdminLibrarySection) {
 				<input type="hidden" name="_csrf" value={ v.CSRF }/>
 				<button type="submit" class="ts-btn ts-btn--secondary">Scan this library</button>
 			</form>
+			if l.RemovedHref != "" {
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(l.RemovedHref) }>{ l.RemovedLabel }</a>
+			}
 			if l.Scan != nil {
 				@components.ScanStatus(*l.Scan)
 			}

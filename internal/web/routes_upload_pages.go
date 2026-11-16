@@ -30,6 +30,7 @@ func (s *server) registerUploadPages(mux *http.ServeMux) {
 	mux.HandleFunc("GET /libraries/{id}/add", s.getAddBooks)
 	mux.HandleFunc("GET /hx/uploads/{id}", s.getUploadRow)
 	mux.HandleFunc("GET /books/{id}/remove", s.getBookRemove)
+	s.registerRemoveAny(mux)
 }
 
 // getAddBooks is the Add books page of one library.
@@ -306,6 +307,11 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 	}
 	combined := parts.Combined && (parts.Audio || parts.AnyText())
 	if !combined && !parts.Whole {
+		// Not a book Tendshelf placed: the owner and admins may still remove it after a warning (decision 0045).
+		if s.can.Can(r.Context(), currentUser(r), share.RemoveLibraryFiles, share.Target{Kind: share.TargetBook, ID: b.ID, LibraryID: b.LibraryID}) {
+			s.renderRemoveAny(w, r, b, http.StatusOK, "")
+			return
+		}
 		s.notFound(w, r)
 		return
 	}

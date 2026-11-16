@@ -1,0 +1,64 @@
+package pages
+
+// RemovedRow is one held removal: a book taken out of the library, with its files in the holding folder (or left
+// where they were). Restore is the label of the one button that brings it back ("Put back" or "Show again").
+type RemovedRow struct {
+	ID, Title, Path, Meta, Left, Href string
+	CanDelete                         bool
+	Restore, RestoreAria              string
+	Delete, DeleteAria, DeleteCheck   string
+}
+
+// AdminRemovedView is /admin/libraries/{id}/removed. The handler writes every word.
+type AdminRemovedView struct {
+	CSRF, Title, Lead, Empty, Banner, Back, BackHref, Next string
+	Rows                                                   []RemovedRow
+}
+
+// AdminRemoved lists the removed books of one library with Put back and Delete now and the days left.
+templ AdminRemoved(v AdminRemovedView) {
+	<div class="ts-admin ts-admin--list ts-remove-any">
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		if v.Banner != "" {
+			<p class="ts-banner ts-admin__banner" role="status">{ v.Banner }</p>
+		}
+		<p class="body-lg ts-admin__lead">{ v.Lead }</p>
+		if len(v.Rows) == 0 {
+			<p class="body ts-admin__lead" role="status">{ v.Empty }</p>
+		} else {
+			<ul class="ts-group ts-group--pad ts-needs ts-remove-any__list">
+				for _, r := range v.Rows {
+					<li class="ts-needs__row ts-remove-any__row">
+						<div class="ts-needs__text">
+							<a class="body ts-needs__title" href={ templ.SafeURL(r.Href) }>{ r.Title }</a>
+							<span class="caption ts-needs__author ts-remove-any__path">{ r.Path }</span>
+							<span class="caption ts-needs__outcome ts-num">{ r.Meta }</span>
+							if r.Left != "" {
+								<span class="caption ts-needs__outcome">{ r.Left }</span>
+							}
+						</div>
+						<div class="ts-needs__actions ts-remove-any__actions">
+							<form class="ts-remove-any__act" method="post" action={ templ.URL("/removals/" + r.ID + "/restore") } hx-boost="false">
+								<input type="hidden" name="_csrf" value={ v.CSRF }/>
+								<input type="hidden" name="next" value={ v.Next }/>
+								<button type="submit" class="ts-btn ts-btn--primary" aria-label={ r.RestoreAria }>{ r.Restore }</button>
+							</form>
+							if r.CanDelete {
+								<form class="ts-remove-any__act" method="post" action={ templ.URL("/removals/" + r.ID + "/purge") } hx-boost="false">
+									<input type="hidden" name="_csrf" value={ v.CSRF }/>
+									<input type="hidden" name="next" value={ v.Next }/>
+									<label class="ts-remove-any__check">
+										<input class="ts-check" type="checkbox" name="understand" value="1" required/>
+										{ r.DeleteCheck }
+									</label>
+									<button type="submit" class="ts-btn ts-btn--danger" aria-label={ r.DeleteAria }>{ r.Delete }</button>
+								</form>
+							}
+						</div>
+					</li>
+				}
+			</ul>
+		}
+		<p class="caption"><a href={ templ.SafeURL(v.BackHref) }>{ v.Back }</a></p>
+	</div>
+}

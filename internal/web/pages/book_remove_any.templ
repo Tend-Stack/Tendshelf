@@ -1,0 +1,64 @@
+package pages
+
+// RemoveAnyFile is one line of the list on the confirm page: the path below the library folder and its size.
+type RemoveAnyFile struct {
+	Line string
+}
+
+// BookRemoveAnyView is the confirm page of removing a book Tendshelf did not place (decision 0045). The handler
+// writes every word. With Error set it shows the refusal and no form; with Notice set it shows the fresh list
+// under a message (the files changed, or a box was not ticked).
+type BookRemoveAnyView struct {
+	Title, Body, Total, Staying, Loss string
+	Notice, Error                     string
+	Files                             []RemoveAnyFile
+	Action, CSRF, Hash                string
+	Check, FilesButton                string
+	KeepButton, KeepHelp              string
+	Cancel, CancelHref                string
+}
+
+// BookRemoveAny asks before a book and its files leave the library: the exact list, a box to tick, and two
+// buttons. The form is not boosted, so a refusal comes back as this page with the fresh list.
+templ BookRemoveAny(v BookRemoveAnyView) {
+	<div class="ts-upload ts-remove ts-remove-any">
+		<h1 class="title-1 ts-upload__title">{ v.Title }</h1>
+		if v.Notice != "" {
+			<p class="ts-banner ts-remove-any__notice" role="alert">{ v.Notice }</p>
+		}
+		if v.Error != "" {
+			<p class="body ts-remove-any__error" role="alert">{ v.Error }</p>
+			<p class="ts-upset__btns">
+				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.CancelHref) }>{ v.Cancel }</a>
+			</p>
+		} else {
+			<p class="body ts-upload__lead">{ v.Body }</p>
+			<ul class="caption ts-remove-any__files">
+				for _, f := range v.Files {
+					<li class="ts-upload__path ts-remove-any__file">{ f.Line }</li>
+				}
+			</ul>
+			<p class="label ts-remove-any__total ts-num">{ v.Total }</p>
+			if v.Staying != "" {
+				<p class="caption ts-remove-any__staying">{ v.Staying }</p>
+			}
+			<p class="body ts-remove-any__loss">{ v.Loss }</p>
+			<form method="post" action={ templ.URL(v.Action) } class="ts-remove-any__form" hx-boost="false">
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<input type="hidden" name="plan" value={ v.Hash }/>
+				<label class="ts-remove-any__check">
+					<input class="ts-check" type="checkbox" name="understand" value="1" required/>
+					{ v.Check }
+				</label>
+				<div class="ts-upset__btns">
+					<button type="submit" name="mode" value="files" class="ts-btn ts-btn--danger">{ v.FilesButton }</button>
+					<a class="ts-btn ts-btn--primary" href={ templ.SafeURL(v.CancelHref) }>{ v.Cancel }</a>
+				</div>
+				<div class="ts-remove-any__keep">
+					<button type="submit" name="mode" value="keep_files" formnovalidate class="ts-btn ts-btn--secondary">{ v.KeepButton }</button>
+					<p class="caption">{ v.KeepHelp }</p>
+				</div>
+			</form>
+		}
+	</div>
+}
