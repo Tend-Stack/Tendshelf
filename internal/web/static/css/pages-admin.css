@@ -18,9 +18,10 @@
 .ts-admin__ready { display: flex; align-items: center; gap: var(--space-8); margin: 0; }
 .ts-admin__ready .ts-icon { flex: none; width: 1.25rem; height: 1.25rem; color: var(--success); }
 .ts-admin__last { margin: 0; color: var(--ink-muted); }
-.ts-admin__actions { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+/* The buttons share ONE line (decision 0044); a long word wraps inside its button instead of making a second row. */
+.ts-admin__actions { display: flex; flex-wrap: nowrap; gap: var(--space-8); }
 .ts-admin__actions form { display: contents; }
-.ts-admin__actions .ts-btn { flex: 1 1 auto; justify-content: center; }
+.ts-admin__actions .ts-btn { flex: 1 1 0; min-width: 0; height: auto; min-height: var(--size-tap); white-space: normal; justify-content: center; text-align: center; }
 .ts-admin__confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); }
 
 

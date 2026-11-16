@@ -63,9 +63,17 @@
 .ts-podhit__open.htmx-request .ts-podhit__link { cursor: progress; }
 .ts-podhit__open.htmx-request .ts-cover { opacity: 0.6; }
 .ts-podshow__hint { margin: var(--space-8) 0 0; }
-/* Play and Save stack, so a result row keeps one line of controls even at 200 % text on a phone. */
-.ts-podhit__actions { display: flex; flex-direction: column; gap: var(--space-8); flex: none; }
-.ts-podhit__actions .ts-btn { width: 100%; justify-content: center; }
+/* Play and Save of a station result share ONE line (decision 0044): beside the name on a wide row, under it on a phone.
+   Equal cells, the words cut with an ellipsis (the full word is in the title), never a second row of buttons. */
+.ts-podhit__actions { display: flex; flex-wrap: nowrap; gap: var(--space-8); flex: none; }
+.ts-podhit__actions > form { flex: 1 1 0; min-width: 8rem; margin: 0; }
+.ts-podhit__actions .ts-btn { width: 100%; justify-content: center; padding-inline: var(--space-12); }
+@media (width < 40rem) {
+  .ts-podhit:has(> .ts-podhit__actions) { flex-wrap: wrap; }
+  .ts-podhit:has(> .ts-podhit__actions) > .ts-row__text { flex: 1 1 0; min-width: 0; }
+  .ts-podhit__actions { flex: 1 1 100%; }
+  .ts-podhit__actions > form { min-width: 0; }
+}
 .ts-podsearch__none { margin: 0; color: var(--ink-muted); }
 .ts-podsearch__summary { min-height: var(--size-tap); display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); cursor: pointer; font-weight: 600; list-style: none; }
 .ts-podsearch__summary::-webkit-details-marker { display: none; }
@@ -202,10 +210,10 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-stncard__art--small .ts-cover img { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
 .ts-stncard__name { font-weight: 600; overflow-wrap: anywhere; }
 .ts-stncard__meta { min-height: 1.25rem; font-size: 0.8125rem; line-height: 1.25rem; color: var(--ink-muted); }
-/* Play and Save share a narrow card: tighter side padding fits both, and they stack when the text is enlarged. */
-.ts-stncard__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-top: var(--space-4); }
-.ts-stncard__actions .ts-btn { padding-inline: var(--space-12); }
-.ts-stncard__play { flex: 1 1 auto; min-width: 0; justify-content: center; }
+/* Play and Save share a narrow card on ONE line (decision 0044): tighter side padding, equal cells, the words cut with an ellipsis. */
+.ts-stncard__actions { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-4); margin-top: var(--space-4); }
+.ts-stncard__actions .ts-btn { padding-inline: var(--space-12); max-width: 100%; min-width: 0; }
+.ts-stncard__play { flex: 1 1 0; min-width: 0; justify-content: center; }
 .ts-stncard__keep { margin: 0; flex: none; }
 .ts-stncard .ts-iconbtn { width: var(--size-tap); height: var(--size-tap); }
 .ts-stncard .ts-iconbtn.is-on { color: var(--accent); }
@@ -213,7 +221,7 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-podstart .section, .ts-podstart .caption { margin: 0; }
 .ts-podstart__group { margin: var(--space-8) 0 0; font-size: 1rem; font-weight: 600; }
 .ts-radio .ts-podstart { max-width: none; }
-.ts-stncard__add { margin: 0; flex: 1 1 auto; display: flex; }
+.ts-stncard__add { margin: 0; flex: 1 1 0; min-width: 0; display: flex; }
 .ts-stncard__add .ts-btn { flex: 1 1 auto; justify-content: center; }
 .ts-podstartpage { max-width: 40rem; }
 .ts-podstartpage__list { margin: 0 0 var(--space-16); padding-left: 1.25rem; }
@@ -227,3 +235,9 @@ details[open] > .ts-podsearch__summary .ts-icon { transform: rotate(180deg); }
 .ts-podshow__actions[data-ts-fit-on] { flex-wrap: nowrap; min-width: 0; }
 .ts-podshow__actions[data-ts-fit-on] > :is(.ts-btn, form, .ts-chip, .ts-moremenu) { flex: none; }
 .ts-podshow__actions[data-ts-fit-tight] { flex-wrap: wrap; } /* last resort at very large text: the three-dot button stays reachable */
+
+/* A show only opened, not followed: Play latest and Follow share ONE line, equal cells, the words cut with an ellipsis (title keeps them). */
+.ts-podshow__actions--pair { flex-wrap: nowrap; }
+.ts-podshow__actions--pair > .ts-btn--primary, .ts-podshow__actions--pair > form { flex: 1 1 0; min-width: 0; }
+.ts-podshow__actions--pair > .ts-btn--primary { justify-content: center; }
+.ts-podshow__actions--pair > form .ts-btn { width: 100%; }

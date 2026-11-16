@@ -31,8 +31,29 @@ One mechanism, no second menu system:
 
 Applied to: the book page (Read, Add to shelf, Download, Mark; when Read is the primary button the play button folds
 last of these instead), the phone action bar (never a second row), and a followed show's buttons (Refresh, Stop
-following). The series page header stacks the three-dot button and Download all in a column, never a row, so it is
-unchanged. Other rows are scheduled separately (see the roadmap note).
+following). The other rows follow in "Second half" below.
+
+## Second half (2026-11-15, "do the rest")
+
+Measured in Chromium at 390, 768, 1024 and 1440 px, standard and large text (`TestFitRowsBrowser`), then fixed by the
+lightest rule that keeps one line:
+
+- **Fold into the three-dot menu** (the same script and `MoreMenu`, twins use the buttons' own words): the episode page
+  and the Now playing panel's action row (Play stays; the played mark, star, Download and Save the file fold, last first,
+  into the episode's own menu, which gets `data-ts-fit-menu`; with twins its Play next / Add to queue answer with a toast
+  and do not replace the menu, so the twins stay); the pairing cards on Ebooks to pair (Make one book stays) and an
+  edition's answers on the Text tab (Make this the default, Not the same book, Remove this edition).
+- **Share one line, words cut or wrapped inside the button** (a pair needs no menu): Play latest and Follow on a show only
+  opened; Play and Save on a station card (`ts-truncate`, the full word in `title`); Play and Save on a station search hit
+  (beside the name on a wide row, under it on a phone, never stacked); Scan now and Add a folder on Admin libraries; Jump
+  and Remove (and the two export links) on the Words page; the panel's Show and Episode page links; Download all and the
+  three-dot button on a series page (they were a column; Download all keeps its own states and its progress words are cut
+  with an ellipsis, it is not folded because it is a stateful widget).
+- **Never wrap (guarded by the table test)**: the Home hero (Resume, Chapters), the author and narrator head (one button),
+  a followed show's buttons (the first half).
+- **Listed, not changed** (sections stacked by design or tools, not an action row of the page): the chapter editor's bars,
+  the bookmarks page head, an admin user's added-by buttons and sign-in pages' stacked groups, duplicates merge and
+  confirm pages (Confirm over Cancel at large text), the dev kitchen sink.
 
 ## Consequences
 

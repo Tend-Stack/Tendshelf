@@ -6,3 +6,10 @@
 .ts-dlall__dialog:not([open]) { display: none; }
 .ts-dlall__dialog { margin: auto; color: var(--ink); width: min(27.5rem, calc(100vw - var(--space-32))); }
 .ts-dlall__dialog::backdrop { background: var(--scrim); }
+
+/* The series header: Download all and the three-dot button share ONE line (decision 0044). The progress words are cut with an ellipsis. */
+.ts-series__acts { display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: var(--space-8); max-width: 100%; margin: var(--space-12) 0; }
+.ts-series__acts:empty { display: none; }
+.ts-series__acts .ts-dlall { flex: 0 1 auto; flex-wrap: nowrap; min-width: 0; margin: 0; gap: var(--space-8); }
+.ts-series__acts .ts-dlall__status { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-series__acts .ts-dlall .ts-btn { flex: none; }

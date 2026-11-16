@@ -109,7 +109,7 @@ func (s *server) textView(r *http.Request, book library.Book, edit, all bool, up
 
 // textFileView is one file of the book in the words of its state.
 func (s *server) textFileView(ctx context.Context, book library.Book, f ebook.File, edit, all bool, csrf string, tc *textCtx) (pages.TextFileView, error) {
-	fv := pages.TextFileView{ID: f.ID, State: f.State, Name: ebookName(f)}
+	fv := pages.TextFileView{ID: f.ID, State: f.State, Name: ebookName(f), FitModule: s.assets.URL("js/fit-row.js")}
 	if edit {
 		fv.Source = ebookFromThis
 		if f.Origin == "library" {

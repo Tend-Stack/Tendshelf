@@ -66,6 +66,31 @@ func uploadSweepRows() []sweepRow {
 	removeOdd.Label = "unknown part"
 	removeEdition := sweepGet("GET /books/{id}/remove", sweepBookPath("/remove?file=ebf_none"), sweepSame(http.StatusNotFound))
 	removeEdition.Label = "confirm one edition"
-	return []sweepRow{create, get, chunk, finish, cancel, setting, remove, addPage, rowPage, removePage,
+	rows := []sweepRow{create, get, chunk, finish, cancel, setting, remove, addPage, rowPage, removePage,
 		removeText, removeAudio, removeOdd, removeEdition}
+	return append(rows, removeAnySweepRows()...)
+}
+
+// removeAnySweepRows are the rows of removing any book (decision 0045): owner and admin only, everyone else 404.
+// The sweep's book is not a real file on disk, so a removal of it is refused, never started.
+func removeAnySweepRows() []sweepRow {
+	staff := func(ok int) [4]int { return sweepStaff(ok, http.StatusNotFound) }
+	noMode := sweepPost("POST /books/{id}/remove-files", sweepBookPath("/remove-files"), sweepFormOf(url.Values{}),
+		staff(http.StatusUnprocessableEntity), "")
+	noMode.Label = "no mode"
+	noBox := sweepPost("POST /books/{id}/remove-files", sweepBookPath("/remove-files"), sweepFormOf(url.Values{"mode": {"files"}, "plan": {"x"}}),
+		staff(http.StatusUnprocessableEntity), "")
+	noBox.Label = "box not ticked"
+	notRemovable := sweepPost("POST /books/{id}/remove-files", sweepBookPath("/remove-files"),
+		sweepFormOf(url.Values{"mode": {"keep_files"}, "plan": {"x"}}), staff(http.StatusConflict), "")
+	notRemovable.Label = "a book with no file on disk"
+	page := sweepGet("GET /removals/{rid}", sweepStatic("/removals/rmv_none"), sweepSame(http.StatusNotFound))
+	frag := sweepGet("GET /hx/removals/{rid}", sweepStatic("/hx/removals/rmv_none"), sweepSame(http.StatusNotFound))
+	restore := sweepPost("POST /removals/{rid}/restore", sweepStatic("/removals/rmv_none/restore"), sweepFormOf(url.Values{}),
+		sweepSame(http.StatusNotFound), "")
+	purge := sweepPost("POST /removals/{rid}/purge", sweepStatic("/removals/rmv_none/purge"), sweepFormOf(url.Values{"understand": {"1"}}),
+		sweepSame(http.StatusNotFound), "")
+	list := sweepGet("GET /admin/libraries/{id}/removed", func(e *sweepEnv, _ int) string { return "/admin/libraries/" + e.libID + "/removed" },
+		staff(http.StatusOK))
+	return []sweepRow{noMode, noBox, notRemovable, page, frag, restore, purge, list}
 }

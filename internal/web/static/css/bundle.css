@@ -754,3 +754,18 @@ html[data-text-size="large"] .ts-player-bar { display: grid; grid-template-colum
 /* The caption takes the button's own text colour: the muted caption colour and a fade fail contrast on the primary button in sepia and contrast. */
 .ts-choice .ts-choice__where { color: inherit; }
 .ts-choice-sheet { display: flex; flex-direction: column; max-height: 85vh; max-height: 85dvh; overflow-y: auto; overscroll-behavior: contain; max-width: 40rem; margin: 0 auto; }
+
+/* Removing any book (decision 0045): the confirm page, the status of a removal and the removed books list. */
+.ts-remove-any__files { display: flex; flex-direction: column; gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
+.ts-remove-any__file { overflow-wrap: anywhere; }
+.ts-remove-any__total, .ts-remove-any__staying, .ts-remove-any__loss, .ts-remove-any__detail, .ts-remove-any__meta, .ts-remove-any__line { margin: var(--space-8) 0 0; }
+.ts-remove-any__error { color: var(--danger); }
+.ts-remove-any__form, .ts-remove-any__act { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-12); margin: var(--space-12) 0 0; }
+.ts-remove-any__check { display: flex; align-items: center; min-height: 2.75rem; gap: var(--space-4); }
+.ts-remove-any__keep { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-4); }
+.ts-remove-any__keep p { margin: 0; color: var(--ink-muted); }
+.ts-remove-any__actions { display: flex; flex-wrap: wrap; gap: var(--space-12); }
+.ts-remove-any__path { overflow-wrap: anywhere; }
+.ts-remove-any .ts-btn { max-width: 100%; height: auto; min-height: 2.75rem; padding-block: var(--space-8); white-space: normal; text-align: start; }
+.ts-remove-any__back { margin: var(--space-12) 0 0; }
+.ts-remove-any__row .ts-needs__title { display: inline-flex; align-items: center; min-height: 2.75rem; }

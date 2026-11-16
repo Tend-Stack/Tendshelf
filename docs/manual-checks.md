@@ -415,3 +415,17 @@ Needs a real provider reachable over https from the browser (Authelia 4.39, Auth
 | RW-3 | Paste a stream address of a station that is down, and an address of a normal web page. | Plain words, nothing added. | Not run. |
 | RH-1 | On the web at 390 px, add a public HLS broadcaster by its `.m3u8` address, then press Play. A second time, press Play on a search result you have not saved. | It plays, the title updates within about 15 seconds, and the unsaved station appears under Recent with Save. | Not run. |
 | RH-2 | In the Android app, play the same HLS station from Radio. | It plays, the notification shows the station and the song title. | Not run. |
+
+## Removing any book (decision 0045, P2)
+
+Use a real library folder you can look into, and a book you copied in by hand (not added with Add books).
+
+| ID | Check | Expected | Result |
+| --- | --- | --- | --- |
+| RM-1 | As owner, open the hand-added book, three-dot menu, "Remove this book". | A page lists every file with its size, the total, how many other files stay, that the files move to a holding folder for 30 days, and that listening places, bookmarks and shelf entries go. | Not run. |
+| RM-2 | Press "Remove this book and its files" without ticking the box. | The browser asks for the tick; nothing moves. | Not run. |
+| RM-3 | Tick the box and remove. Look inside the library folder with a file manager (show hidden files). | "Moving the files…" turns into "Removed. The files are kept until {date}." The files are under `.tendshelf-removed/<id>/` in their old sub-folders, the book is gone from the library, and other books are untouched. | Not run. |
+| RM-4 | Libraries & scanning, "Removed books", then "Put back". Run a scan. | The files are back in their old place and the book returns with its title. | Not run. |
+| RM-5 | Remove another hand-added book with "Remove from Tendshelf, keep the files". Scan the library. | The files stay in place, the scan does not add the book, and it is listed under Removed books with "Show again". "Show again" and a scan bring it back. | Not run. |
+| RM-6 | Open the confirm page, copy a new file into the book's folder, then press remove. | The page says the files changed and shows the fresh list; nothing moved. | Not run. |
+| RM-7 | As an admin, repeat RM-1; as a member or a guest, open the same address. | The admin sees the page; the member and the guest get "We couldn't find that." | Not run. |

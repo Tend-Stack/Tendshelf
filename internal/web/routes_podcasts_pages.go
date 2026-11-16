@@ -537,5 +537,15 @@ func (s *server) episodeView(r *http.Request, ep podcast.Episode) pages.PodcastE
 	if !ep.State.Played && ep.State.PositionMs > 0 && ep.DurationMs > ep.State.PositionMs {
 		v.Progress = durationText(ep.DurationMs-ep.State.PositionMs) + " " + podLeftWord
 	}
+	if !v.Video {
+		// The action row stays on one line (decision 0044): what does not fit folds into the menu, last first.
+		v.FitModule = s.assets.URL("js/fit-row.js")
+		v.Menu.Fit = []components.MoreMenuFitItem{
+			{Key: "played", Label: v.PlayedLabel, Icon: "check"},
+			{Key: "star", Label: v.StarLabel, Icon: "star"},
+			{Key: "download", Label: v.Download.Label, Icon: "download"},
+			{Key: "save", Label: v.SaveLabel, Icon: "download"},
+		}
+	}
 	return v
 }

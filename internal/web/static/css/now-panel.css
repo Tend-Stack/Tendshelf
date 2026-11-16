@@ -98,3 +98,15 @@
 .ts-podnotes ul, .ts-podnotes ol { padding-left: var(--space-24); }
 .ts-podnotes blockquote { padding-left: var(--space-12); border-left: 2px solid var(--line-strong); color: var(--ink-muted); }
 .ts-podnotes a { color: var(--accent); text-decoration: underline; }
+
+/* Action rows that fit (js/fit-row.js, decision 0044). This file is on every page with the shell, so the folding rules every row needs
+   live here: a folded button leaves the row (and the Tab order), and a twin stays hidden until its button folds. */
+[data-ts-fit-off], [data-ts-fit-for][hidden] { display: none !important; }
+/* The episode page and the Now playing panel: one line; Save the file, Download, the star and Played fold, last first, into the menu. */
+.ts-podep__actions[data-ts-fit-on] { flex-wrap: nowrap; min-width: 0; }
+.ts-podep__actions[data-ts-fit-on] > * { flex: none; }
+.ts-podep__actions[data-ts-fit-tight] { flex-wrap: wrap; } /* last resort at very large text: the three-dot button stays reachable */
+.ts-podep__actions .ts-player__menuitem svg { flex: none; margin-inline-end: var(--space-8); }
+/* The panel's second row (the show and the episode page) stays on one line too; a long word wraps inside its button. */
+.ts-np--episode .ts-podep__actions:not([data-ts-fit]) { flex-wrap: nowrap; }
+.ts-np--episode .ts-podep__actions:not([data-ts-fit]) > .ts-btn { flex: 1 1 0; min-width: 0; height: auto; min-height: var(--size-tap); white-space: normal; justify-content: center; text-align: center; }

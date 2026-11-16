@@ -76,6 +76,11 @@ func (s *server) removeMenuItems(r *http.Request, book library.Book, target shar
 	if parts.Whole {
 		items = append(items, components.MoreMenuItem{Label: moreRemoveWhole, Href: base + "?part=whole"})
 	}
+	if !parts.Whole && !(parts.Combined && (parts.Audio || parts.AnyText())) &&
+		s.can.Can(r.Context(), currentUser(r), share.RemoveLibraryFiles, target) {
+		// A book put in the library folder by hand: the owner and admins remove it after a warning (decision 0045).
+		items = append(items, components.MoreMenuItem{Label: bookRemoveLabel, Href: base})
+	}
 	return items
 }
 

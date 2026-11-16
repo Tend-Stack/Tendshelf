@@ -5,7 +5,8 @@
 //   - the row carries data-ts-module="<this file>" and data-ts-fit;
 //   - a button that may collapse (or its cell) carries data-ts-fit-item="<key>"; several elements may share a key
 //     (the Download button and its status link), and the key stands for whichever of them is showing;
-//   - the three-dot menu holds a hidden twin per key: <button data-ts-fit-for="<key>">;
+//   - the three-dot menu holds a hidden twin per key: <button data-ts-fit-for="<key>">; the menu is a .ts-moremenu, or
+//     any <details> marked data-ts-fit-menu (the episode menu);
 //   - when the row itself is not a horizontal flex line (the book page's column at phone and tablet widths), the line
 //     to measure is the descendant marked data-ts-fit-track.
 // Elements without data-ts-fit-item (the play button, the three-dot button) never collapse.
@@ -60,9 +61,14 @@ function overflows(line) {
 }
 
 export function mount(row) {
-  const menu = row.querySelector(".ts-moremenu");
+  // The row's three-dot menu: components.MoreMenu, or an episode's own menu that carries twins (data-ts-fit-menu).
+  const menu = row.querySelector(".ts-moremenu, [data-ts-fit-menu]");
   if (!menu) return;
   const summary = menu.querySelector("summary");
+  // A choice the episode menu holds itself (Play next, Add to queue) closes it, as its twins do.
+  menu.addEventListener("click", (event) => {
+    if (menu.hasAttribute("data-ts-fit-menu") && event.target instanceof Element && event.target.closest("button[type=submit]")) menu.open = false;
+  });
   const twinOf = (key) => menu.querySelector(`[data-ts-fit-for="${key}"]`);
 
   // The line to measure: the row, or the marked descendant when the row stacks its children.

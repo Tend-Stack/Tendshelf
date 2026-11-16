@@ -215,9 +215,10 @@ func (s *server) textSuggestions(ctx context.Context, book library.Book, tc *tex
 			return nil, err
 		}
 		out = append(out, pages.TextSuggestionView{
-			Card:    tc.card(f, ed, rows),
-			Pair:    *tc.action(book, f, "pair", ebookPairGo, "primary"),
-			NotSame: *tc.action(book, f, "not-same", ebookNotSame, "quiet"),
+			Card:      tc.card(f, ed, rows),
+			Pair:      *tc.action(book, f, "pair", ebookPairGo, "primary"),
+			FitModule: s.assets.URL("js/fit-row.js"),
+			NotSame:   *tc.action(book, f, "not-same", ebookNotSame, "quiet"),
 		})
 	}
 	return out, nil

@@ -219,6 +219,9 @@ func (s *server) librariesView(ctx context.Context, r *http.Request, sc library.
 		n, seen := at[f.LibraryID]
 		if !seen {
 			sec := pages.AdminLibrarySection{ID: f.LibraryID, Name: f.LibraryName}
+			if s.uploads != nil {
+				sec.RemovedHref, sec.RemovedLabel = "/admin/libraries/"+f.LibraryID+"/removed", removeAnyListTitle
+			}
 			if j, ok, err := s.jobs.ActiveFor(ctx, scan.KindScan, "library_id", f.LibraryID); err != nil {
 				return v, err
 			} else if ok {

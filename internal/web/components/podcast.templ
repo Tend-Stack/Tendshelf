@@ -108,20 +108,41 @@ templ EpisodeRow(v EpisodeRowView) {
 // handler. Next is where a plain form returns to.
 type EpisodeMenuView struct {
 	ID, CSRF, Next, Toggle, PlayNext, AddEnd string
+	// Fit holds the twins of the action row's buttons that may fold into this menu (js/fit-row.js, decision 0044): the
+	// episode page and the Now playing panel. A menu with twins answers its choices without replacing itself, so the
+	// twins stay in place; the toast still arrives.
+	Fit []MoreMenuFitItem
 }
 
 // EpisodeMenuID is the menu's id; htmx replaces the menu by it after a choice.
 func EpisodeMenuID(id string) string { return "ep-menu-" + id }
 
+// episodeMenuSwap is how a choice in the menu is answered: the closed menu replaces it, except in a row that folds
+// buttons into it (the twins would be lost), where only the toast is taken.
+func episodeMenuSwap(v EpisodeMenuView) string {
+	if len(v.Fit) > 0 {
+		return "none"
+	}
+	return "outerHTML"
+}
+
 // EpisodeMenu is a <details> that shell.js's chip menu handling opens and closes (outside click, Escape, one at
 // a time). Each choice is a form: htmx answers in place with the closed menu and a toast, a plain post is
 // redirected back.
 templ EpisodeMenu(v EpisodeMenuView) {
-	<details id={ EpisodeMenuID(v.ID) } class="ts-player__menu ts-eprow__menu" data-ts-chipmenu>
+	<details id={ EpisodeMenuID(v.ID) } class="ts-player__menu ts-eprow__menu" data-ts-chipmenu if len(v.Fit) > 0 { data-ts-fit-menu }>
 		<summary class="ts-iconbtn" aria-label={ v.Toggle }>
 			@Icon("more", false)
 		</summary>
 		<div class="ts-player__menubody" role="group" aria-label={ v.Toggle }>
+			for _, f := range v.Fit {
+				<button type="button" class="ts-player__menuitem" data-ts-fit-for={ f.Key } hidden>
+					if f.Icon != "" {
+						@Icon(f.Icon, false)
+					}
+					<span data-ts-fit-label>{ f.Label }</span>
+				</button>
+			}
 			@episodeMenuForm(v, "next", v.PlayNext)
 			@episodeMenuForm(v, "end", v.AddEnd)
 		</div>
@@ -129,7 +150,7 @@ templ EpisodeMenu(v EpisodeMenuView) {
 }
 
 templ episodeMenuForm(v EpisodeMenuView, where, label string) {
-	<form method="post" action="/queue" hx-post="/queue" hx-target={ "#" + EpisodeMenuID(v.ID) } hx-swap="outerHTML">
+	<form method="post" action="/queue" hx-post="/queue" hx-target={ "#" + EpisodeMenuID(v.ID) } hx-swap={ episodeMenuSwap(v) }>
 		<input type="hidden" name="_csrf" value={ v.CSRF }/>
 		<input type="hidden" name="episode_id" value={ v.ID }/>
 		<input type="hidden" name="where" value={ where }/>

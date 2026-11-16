@@ -131,7 +131,8 @@ func (s *server) renderInbox(w http.ResponseWriter, r *http.Request, status int,
 		return
 	}
 	v := pages.AdminEbooksView{Error: msg, Title: inboxTitle, Lead: inboxLead, Empty: inboxEmpty,
-		MaybeTitle: inboxMaybeTitle, MaybeLead: inboxMaybeLead, CannotTitle: inboxCannotHead}
+		MaybeTitle: inboxMaybeTitle, MaybeLead: inboxMaybeLead, CannotTitle: inboxCannotHead,
+		FitModule: s.assets.URL("js/fit-row.js")}
 	csrf := s.csrf.TokenFrom(ctx)
 	for _, sg := range suggested {
 		d, err := s.lib.BookDetail(ctx, s.scope(r), sg.Match.BookID)
@@ -159,7 +160,8 @@ func (s *server) renderInbox(w http.ResponseWriter, r *http.Request, status int,
 	if total > len(rows) {
 		v.More = fmt.Sprintf(inboxMore, total-len(rows))
 	}
-	styles := append(append([]string{}, adminStyles...), pages.TextStyles...)
+	// The pairing cards' three-dot menu (decision 0044) is styled by the book page's sheet.
+	styles := append(append(append([]string{}, adminStyles...), pages.TextStyles...), "css/pages-book.css")
 	s.prefsPage(w, r, status, inboxTitle, "admin-libraries", "libraries", false, pages.AdminEbooks(v), nil, styles...)
 }
 
