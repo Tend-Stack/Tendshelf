@@ -109,7 +109,10 @@
 #users { padding: 0 var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
 .ts-users__list > li:last-child { border-bottom: 0; }
 .ts-users__table { display: none; }
-.ts-users__list { list-style: none; margin: 0; padding: 0; }
+.ts-users__list { list-style: none; margin: 0; padding: 0; container-type: inline-size; }
+/* Large text in a narrow column (under 20rem holds only at about 200 % text on a phone): the decorative icon gives its room
+   to the words and the button, so the row stays on one line. */
+@container (width < 20rem) { .ts-invite__item > .ts-invite__icon { display: none; } }
 .ts-users__list > li { border-bottom: 1px solid var(--line); }
 .ts-users__item {
   display: flex; align-items: center; gap: var(--space-12); min-height: 2.75rem;

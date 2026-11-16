@@ -266,7 +266,7 @@ templ InvitesList(v UsersView) {
 							<span class="body ts-users__name">{ r.Line }</span>
 							<span class="caption ts-users__meta">{ r.Meta }</span>
 						</span>
-						<form class="ts-invite__copy" method="post" action={ templ.URL("/admin/invites/" + r.ID + "/link") }>
+						<form class="ts-invite__copy" method="post" action={ templ.URL("/admin/invites/" + r.ID + "/link") } data-ts-fit-item="copy">
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>
 							<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ "Copy link again for " + r.Name }>Copy link again</button>
 						</form>
@@ -274,7 +274,7 @@ templ InvitesList(v UsersView) {
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>
 							<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ "Cancel invite for " + r.Name }>Cancel invite</button>
 						</form>
-						@components.MoreMenu(components.MoreMenuView{Fit: []components.MoreMenuFitItem{{Key: "cancel", Label: "Cancel invite"}}})
+						@components.MoreMenu(components.MoreMenuView{Fit: []components.MoreMenuFitItem{{Key: "copy", Label: "Copy link again"}, {Key: "cancel", Label: "Cancel invite"}}})
 					</li>
 				}
 			</ul>

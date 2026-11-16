@@ -86,7 +86,7 @@ func TestRemainingRowsFitTwins(t *testing.T) {
 			t.Fatalf("%d invite rows", len(items))
 		}
 		for _, it := range items {
-			checkFitRow(t, "invite row", it, []string{"cancel"})
+			checkFitRow(t, "invite row", it, []string{"copy", "cancel"})
 		}
 	})
 }

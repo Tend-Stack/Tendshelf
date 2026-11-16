@@ -978,7 +978,7 @@ func InvitesList(v UsersView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\"><input type=\"hidden\" name=\"_csrf\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\" data-ts-fit-item=\"copy\"><input type=\"hidden\" name=\"_csrf\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1047,7 +1047,7 @@ func InvitesList(v UsersView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = components.MoreMenu(components.MoreMenuView{Fit: []components.MoreMenuFitItem{{Key: "cancel", Label: "Cancel invite"}}}).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = components.MoreMenu(components.MoreMenuView{Fit: []components.MoreMenuFitItem{{Key: "copy", Label: "Copy link again"}, {Key: "cancel", Label: "Cancel invite"}}}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

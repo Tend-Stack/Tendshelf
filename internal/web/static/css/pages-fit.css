@@ -40,6 +40,9 @@
 .ts-oneline:is(div, form, p) { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-8); }
 .ts-oneline form { display: contents; }
 .ts-oneline .ts-btn { flex: 0 1 auto; min-width: 0; max-width: 100%; height: auto; min-height: var(--size-tap); white-space: normal; text-align: center; }
+/* Large text grows the words, not the side padding: at 200 % the doubled padding alone pushed a pair past a phone's
+   width. 5vw is the usual 20 px at 390 px and never binds on a wider window. */
+.ts-oneline .ts-btn { padding-inline: min(var(--space-20), 5vw); }
 .ts-fitline:is(div, form) { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-8); }
 .ts-fitline > * { min-width: 0; }
 .ts-fitline .ts-btn { height: auto; min-height: var(--size-tap); max-width: 100%; white-space: normal; }
