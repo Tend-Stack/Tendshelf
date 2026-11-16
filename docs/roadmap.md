@@ -1193,7 +1193,9 @@ Plan `docs/plans/manage-all-books.md`. The app manages books that were copied in
 ones: owner and admin can remove such a book after a warning that lists its files; the files move to a hidden `.tendshelf-removed`
 folder, can be put back, and are deleted after 30 days. Adding a book checks whether it is already in the library. Packages: P0 rule
 texts, P1 removal service (migration 0045, `share.RemoveLibraryFiles`, `internal/upload/removeany.go`, scanner keep-out), P2 pages, P3
-duplicate check, P4 duplicate UI. Status: P0 and P1 built 2026-11-15; P2 to P4 open.
+duplicate check, P4 duplicate UI. Status: P0 and P1 built 2026-11-15; P2 built 2026-11-15; P3 and P4 open.
+
+- **P2 remove pages** (2026-11-15). Scope: `GET /books/{id}/remove` shows the new warning page (`pages.BookRemoveAny`) when the upload removal is not offered and the person may `RemoveLibraryFiles`; `POST /books/{id}/remove-files` (plan hash, box, mode), `GET /removals/{rid}` and `GET /hx/removals/{rid}` (polls every 2 s until held or failed), `POST /removals/{rid}/restore` and `/purge` (Delete now has its own box), `GET /admin/libraries/{id}/removed` (linked from each library on Libraries & scanning), the menu entry "Remove this book", `ts-remove-any__*` classes in `bundle.css`. The confirm form is not boosted (`hx-boost="false"`), so a refusal such as `plan_changed` comes back as the page with the fresh list; an htmx request gets a toast. Keep-files needs no box (it deletes nothing). Checks: `internal/web/routes_remove_any_test.go` (roles, CSRF, box, stale plan, every failure text, both modes on a real temp library, menu), route-matrix rows, a Chromium test at 390 and 1440 (`remove_any_browser_test.go`), a11y rows `book-remove-hand`, `removal`, `admin-removed`, page weight (css rows raised to 346,368 B). Limits: a book whose only files are an uploaded edition stored in the data folder shows the menu entry but the page says it cannot be removed this way; no per-person count of listeners is shown (the fixed loss line covers it); a purge needs its own tick, which the plan did not list. Next: P3 and P4.
 
 ## The player says it is loading (operator report, 2026-11-15)
 

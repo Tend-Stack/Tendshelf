@@ -1,0 +1,85 @@
+package pages
+
+import "github.com/Tend-Stack/tendshelf/internal/web/components"
+
+// RemovalView is the status of one removal: the moving of its files, then what is kept and the actions that
+// follow. State is "moving", "held", "kept_out" (the files stayed), "restored", "purged" or "failed". Poll is the
+// address of the fragment while the files are moving. The handler writes every word.
+type RemovalView struct {
+	ID, State, Title, Line, Detail, Banner string
+	Poll                                   string
+	CSRF, Next                             string
+	Meta                                   string
+	PutBack, PutBackAria                   string
+	Delete, DeleteAria, DeleteCheck        string
+	ShowAgain, ShowAgainAria               string
+	CanDelete                              bool
+	BackHref, Back                         string
+}
+
+// RemovalPage is /removals/{id}: the heading and the status.
+templ RemovalPage(v RemovalView) {
+	<div class="ts-upload ts-remove ts-remove-any">
+		<h1 class="title-1 ts-upload__title">{ v.Title }</h1>
+		if v.Banner != "" {
+			<p class="ts-banner ts-remove-any__notice" role="status">
+				@components.Icon("check", false)
+				{ v.Banner }
+			</p>
+		}
+		@RemovalStatus(v)
+		<p class="ts-remove-any__back"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.BackHref) }>{ v.Back }</a></p>
+	</div>
+}
+
+// RemovalStatus is the part that changes. While the files are moving it asks for itself every 2 seconds
+// (GET /hx/removals/{id}) and is replaced by what comes back.
+templ RemovalStatus(v RemovalView) {
+	<section
+		id={ "removal-" + v.ID }
+		class={ "ts-remove-any__status ts-remove-any__status--" + v.State }
+		role="status"
+		data-state={ v.State }
+		if v.Poll != "" {
+			hx-get={ v.Poll }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		<p class="body ts-remove-any__line">{ v.Line }</p>
+		if v.Detail != "" {
+			<p class="caption ts-remove-any__detail">{ v.Detail }</p>
+		}
+		if v.Meta != "" {
+			<p class="caption ts-num ts-remove-any__meta">{ v.Meta }</p>
+		}
+		if v.State == "held" || v.State == "kept_out" {
+			<div class="ts-remove-any__actions">
+				if v.State == "held" {
+					<form method="post" action={ templ.URL("/removals/" + v.ID + "/restore") } class="ts-remove-any__act" hx-boost="false">
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<input type="hidden" name="next" value={ v.Next }/>
+						<button type="submit" class="ts-btn ts-btn--primary" aria-label={ v.PutBackAria }>{ v.PutBack }</button>
+					</form>
+					if v.CanDelete {
+						<form method="post" action={ templ.URL("/removals/" + v.ID + "/purge") } class="ts-remove-any__act" hx-boost="false">
+							<input type="hidden" name="_csrf" value={ v.CSRF }/>
+							<input type="hidden" name="next" value={ v.Next }/>
+							<label class="ts-remove-any__check">
+								<input class="ts-check" type="checkbox" name="understand" value="1" required/>
+								{ v.DeleteCheck }
+							</label>
+							<button type="submit" class="ts-btn ts-btn--danger" aria-label={ v.DeleteAria }>{ v.Delete }</button>
+						</form>
+					}
+				} else {
+					<form method="post" action={ templ.URL("/removals/" + v.ID + "/restore") } class="ts-remove-any__act" hx-boost="false">
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<input type="hidden" name="next" value={ v.Next }/>
+						<button type="submit" class="ts-btn ts-btn--primary" aria-label={ v.ShowAgainAria }>{ v.ShowAgain }</button>
+					</form>
+				}
+			</div>
+		}
+	</section>
+}

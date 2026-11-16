@@ -7,6 +7,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 ### Added
 
 - **The player says when it is loading.** When you press Play or Resume and the sound takes a moment (a large file, a slow connection, a compatibility copy being made, a live station connecting, or buffering in the middle), the play button of that book, episode or station shows a quiet ring instead of its icon, and the cover in the full player dims a little with the same ring on it. It appears only after a quarter of a second, so quick starts show nothing, and pressing the button again stops the start. With reduced motion the ring is three still dots.
+- **Remove any book, even one you copied into the library folder yourself.** Owners and admins now see "Remove this book" in the three-dot menu of every book. Tendshelf first lists the exact files it will move and what stays, and asks you to tick a box. The files then move to a hidden holding folder inside the library and are deleted for good after 30 days, and "Put back" returns them at any time before that. A second choice removes the book from Tendshelf and leaves the files where they are. The Removed books page of each library, linked from Libraries & scanning, lists what is waiting with the days left, and offers Put back and Delete now.
 
 ### Changed
 
