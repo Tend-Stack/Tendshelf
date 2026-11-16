@@ -51,7 +51,7 @@ func TestRemoveDeletesOnlyLedgerPaths(t *testing.T) {
 	}
 	// The author folder was made by the upload but now holds someone else's book: it stays.
 	want := []string{"Ann Author/", "Ann Author/Other Book/", "Ann Author/Other Book/their.mp3", "Mine/", "Mine/keep.txt"}
-	if got := tree(t, e.root); !reflect.DeepEqual(got, want) {
+	if got := heldTree(t, e.root); !reflect.DeepEqual(got, want) {
 		t.Errorf("tree = %v", got)
 	}
 	if after := snapshot(t, filepath.Join(e.root, "Mine")); !reflect.DeepEqual(before, after) {
@@ -79,7 +79,7 @@ func TestRemoveEmptiesWhatItMade(t *testing.T) {
 	if _, err := e.svc.Remove(bg, me, bookID, ""); err != nil {
 		t.Fatal(err)
 	}
-	if got := tree(t, e.root); len(got) != 0 {
+	if got := heldTree(t, e.root); len(got) != 0 {
 		t.Errorf("folders it made are still there: %v", got)
 	}
 }
@@ -102,7 +102,7 @@ func TestRemoveKeepsChangedAndAddedFiles(t *testing.T) {
 		t.Errorf("result = %+v", res)
 	}
 	want := []string{"Ann Author/", "Ann Author/Great Title/", "Ann Author/Great Title/cover.jpg", "Ann Author/Great Title/notes.txt"}
-	if got := tree(t, e.root); !reflect.DeepEqual(got, want) {
+	if got := heldTree(t, e.root); !reflect.DeepEqual(got, want) {
 		t.Errorf("tree = %v", got)
 	}
 	if b, _ := os.ReadFile(cover); string(b) != "my own cover, different size" {

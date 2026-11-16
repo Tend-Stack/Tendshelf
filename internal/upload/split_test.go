@@ -67,7 +67,7 @@ func TestSplitTwoFoldersAreTwoBooks(t *testing.T) {
 	if res := e.mustPlace(sibs[0].ID); res.State != StatePlaced {
 		t.Fatalf("second book = %s", res.State)
 	}
-	got := strings.Join(tree(t, e.root), "\n")
+	got := strings.Join(heldTree(t, e.root), "\n")
 	for _, want := range []string{"Ann Author/First Tale/01.mp3", "Bob Writer/Second Tale/02.mp3"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %s in %s", want, got)
@@ -155,7 +155,7 @@ func TestSplitOneBadBookIsRefusedAlone(t *testing.T) {
 					t.Errorf("%s is %s, want %s", b.Label, b.State, want)
 				}
 			}
-			got := strings.Join(tree(t, e.root), "\n")
+			got := strings.Join(heldTree(t, e.root), "\n")
 			if strings.Contains(got, tc.bad) || len(got) == 0 {
 				t.Errorf("tree = %s", got)
 			}
@@ -235,7 +235,7 @@ func TestSplitRemoveLeavesTheOtherBook(t *testing.T) {
 	if _, err := e.svc.Remove(bg, me, bookID, ""); err != nil {
 		t.Fatal(err)
 	}
-	got := strings.Join(tree(t, e.root), "\n")
+	got := strings.Join(heldTree(t, e.root), "\n")
 	if strings.Contains(got, "First Tale") || !strings.Contains(got, "Bob Writer/Second Tale/01.mp3") {
 		t.Errorf("tree = %s", got)
 	}

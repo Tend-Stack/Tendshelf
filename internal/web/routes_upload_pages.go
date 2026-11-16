@@ -305,8 +305,12 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 		if f, found, err := s.ebooks.Store().File(r.Context(), fid); err == nil && found {
 			name = ebookName(f)
 		}
+		editionBody := bookRemoveEditionBody
+		if !pf.Uploaded {
+			editionBody = bookRemoveEditionHeld // a library file is held; a copy stored on the Text page is deleted now
+		}
 		v := pages.BookRemoveView{
-			Title: bookRemoveEditionConfirm, Body: fmt.Sprintf(bookRemoveEditionBody, "“"+name+"”"), Cancel: bookRemoveCancel,
+			Title: bookRemoveEditionConfirm, Body: fmt.Sprintf(editionBody, "“"+name+"”"), Cancel: bookRemoveCancel,
 			Action: "/books/" + b.ID + "/remove", CancelHref: ebookTextHref(b.ID), CSRF: s.csrf.TokenFrom(r.Context()),
 			Choices: []pages.RemoveChoice{{Part: "text", File: fid, Label: bookRemoveEditionLabel}},
 		}
@@ -333,8 +337,15 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body := bookRemoveText(len(files))
+	storedGone := false // a copy stored on the Text page is deleted at once, not held
+	for _, f := range parts.Text {
+		storedGone = storedGone || (f.Uploaded && f.Removable)
+	}
 	if !parts.HasAudio && len(parts.Text) > 0 {
 		body = bookRemoveTextBody
+		if storedGone {
+			body += " " + bookRemoveStoredGone
+		}
 	}
 	v := pages.BookRemoveView{
 		Title: bookRemoveConfirm, Body: body, Button: bookRemoveButton, Cancel: bookRemoveCancel,
@@ -378,6 +389,9 @@ func (s *server) getBookRemove(w http.ResponseWriter, r *http.Request) {
 		}
 		if parts.Whole {
 			help := bookRemoveWholeHelp
+			if storedGone {
+				help += " " + bookRemoveStoredGone
+			}
 			if n := parts.Staying(); n > 0 {
 				help += " " + countText(n, bookRemoveStayingOne, bookRemoveStaying)
 			}

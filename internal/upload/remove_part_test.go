@@ -66,6 +66,9 @@ func TestRemoveTextPartKeepsAudio(t *testing.T) {
 	if _, err := os.Stat(epub); !os.IsNotExist(err) {
 		t.Error("the ebook file is still on disk")
 	}
+	if got := holdingFiles(t, e.root, res.RemovalID); len(got) != 1 {
+		t.Errorf("the ebook file is not in the holding folder: %v", got)
+	}
 	if n := countRows(t, e, "ebook_files"); n != 0 {
 		t.Errorf("ebook_files = %d", n)
 	}
@@ -137,6 +140,9 @@ func TestRemoveAudioPartLeavesTextBook(t *testing.T) {
 	}
 	if len(res.Deleted) != 3 || len(res.Kept) != 0 {
 		t.Errorf("result = %+v", res)
+	}
+	if got := holdingFiles(t, e.root, res.RemovalID); len(got) != 3 {
+		t.Errorf("the audio is not in the holding folder: %v", got)
 	}
 	if _, err := os.Stat(epub); err != nil {
 		t.Errorf("the text file went: %v", err)

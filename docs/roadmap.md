@@ -1200,6 +1200,14 @@ duplicate check, P4 duplicate UI. Status: P0 and P1 built 2026-11-15; P2 built 2
 
 - **P4 duplicate UI** (2026-11-15). Scope: `js/upload.js` sends each file's quick hash (`quickHash`, equal to `media.QuickHash`; skipped without `crypto.subtle` or for a .zip) in the manifest; a 409 `already_in_library` (the web layer now passes `match` on) turns the row into the `already` state with Open it, Edit details (owner and admin), Add anyway (only when `may_add_anyway`; it sends the manifest again with `add_anyway`) and Do not add, before any piece is sent. A held upload (found after staging) renders the same state from the polled fragment, with plain forms (`POST /uploads/{id}/finish` with `add_anyway=1`, `POST /uploads/{id}/cancel`; htmx gets the row back or an empty answer, a refusal is an out-of-band toast, a plain post is redirected to the page). A match with no book yet (the person's own upload the scan has not listed) shows no link. The book page shows owner and admin "Another copy of this book is in the library." with Compare them (`library.SameAudioCopies`, link to the merge preview keeping the older book). Checks: `internal/web/upload_dup_test.go` (409 match per role, rows per tier, forms, CSRF, staged bytes deleted, notice per role), `upload_dup_browser_test.go` (JS hash equals Go at 0, 1, 1 MiB-1, 2 MiB-1, 2 MiB, 2 MiB+1 and 5 MiB; no PUT before the choice at 390 and 1440; the held path without `crypto.subtle`; the book-page notice). Limits: the Edit details link needs the details editor, which the test app lacks, so only the markup rule is tested; the upload row has no captures at four widths beyond the 390 and 1440 browser checks.
 
+- **Upload removals held** (2026-11-15, follow-up 5 of decision 0045). Plan `docs/plans/upload-removals-held.md`. Scope: removing a book, one part or
+  one edition that Add books placed now moves its unchanged ledger files into `.tendshelf-removed` through the same mover as a hand-added book
+  (`removals.source = 'upload'`, migration 0046 `removal_ledger` and `removal_upload_books`); Put back restores files, ledger rows and
+  who-added-it (only when every file returned); the sweep rolls back a dead upload mover at once. Checks: `go test -race` on `internal/upload`,
+  `internal/db` (migration from the 0045 fixture and from empty), the web remove, upload, contributor and matrix tests; a 300-file book moved in
+  under a second inside the request (no server write timeout). Limits: listening places, bookmarks, shelves and edited details do not come back;
+  an ebook stored from the Text page is still deleted at once; Put back's scan covers the book's folder only. Next: L5, hold the Text-page copies.
+
 ## The player says it is loading (operator report, 2026-11-15)
 
 While a book, episode or station finds its place nothing showed. The player now has one more state, `loading`

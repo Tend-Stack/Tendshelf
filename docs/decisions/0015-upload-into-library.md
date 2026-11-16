@@ -155,3 +155,10 @@ Answered by the operator on 2026-11-04 ("use your picks"):
 Point 11 (Remove) now has a second path for the owner and admins: a book whose files were put in the library folder by hand can be
 removed after a warning, by moving its files into a hidden holding folder (kept 30 days, can be put back). The upload-placed path of point 11
 is unchanged. Adding a book also checks whether it is already in the library and holds the upload with "Add anyway" and "Do not add".
+
+## Addendum 2026-11-15 (follow-up of decision 0045): removal is held
+Point 11 and "Remove one part" no longer delete: the files Tendshelf placed move into the hidden `.tendshelf-removed` folder of the library folder,
+the same holding folder, Put back and 30-day wait as a hand-added book. The checks are the same (a present ledger row, size, mtime and quick hash
+unchanged, inside the library folder, no link followed, all or nothing); a changed file stays and is named. Put back returns the files, their ledger
+rows (`upload_paths` back to `present`) and who-added-it (`upload_books`) when every file came back. Listening places, bookmarks, shelves and edited
+details do not return. A copy uploaded on a book's Text page lives in the data folder and is still deleted at once (follow-up L5).

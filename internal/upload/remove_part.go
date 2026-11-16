@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"io/fs"
-	"path/filepath"
 	"slices"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
@@ -14,8 +13,8 @@ import (
 
 // Removing one part of a combined book (decision 0015, amendment "Remove one part"): a book that has audio and
 // attached ebook files can lose its text or its audio on its own. The rules are the whole-book ones applied to
-// that part alone: only a file this package placed (a present ledger row) that is unchanged is deleted, through
-// the same removeFile, and a library file is never touched.
+// that part alone: only a file this package placed (a present ledger row) that is unchanged is moved into the holding folder, through
+// the same planner (planUpload), and a library file is never touched.
 
 // PartFile is one attached ebook file and whether it can be removed on its own.
 type PartFile struct {
@@ -200,6 +199,9 @@ func (s *Service) RemoveWhole(ctx context.Context, userID, bookID, placedBy stri
 	if _, _, err := s.removeChecks(ctx, bookID, placedBy, true); err != nil {
 		return total, err
 	}
+	// Every removable library ebook file (also one outside the book's folder) goes in the same removal as the audio, so
+	// one Put back returns the whole book; a copy stored on the Text page is dropped at once (decision 0045 addendum).
+	extra := map[string]bool{}
 	for _, f := range parts.Text {
 		if !f.Removable {
 			continue
@@ -212,25 +214,9 @@ func (s *Service) RemoveWhole(ctx context.Context, userID, bookID, placedBy stri
 			}
 			continue
 		}
-		res, err := s.RemoveEbookFile(ctx, userID, bookID, f.ID, placedBy)
-		if err != nil {
-			return total, err
-		}
-		total.Deleted = append(total.Deleted, res.Deleted...)
-		total.Kept = append(total.Kept, res.Kept...)
+		extra[f.Path] = true
 	}
-	// What is left of the text only loses its place on the book (rows only, as when a book is deleted).
-	err = s.write(ctx, nil, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE ebook_files SET book_id = NULL, paired_by = NULL, book_default = 0 WHERE book_id = ?`, bookID)
-		return err
-	})
-	if err != nil {
-		return total, err
-	}
-	res, err := s.Remove(ctx, userID, bookID, placedBy)
-	total.Deleted = append(total.Deleted, res.Deleted...)
-	total.Kept = append(total.Kept, res.Kept...)
-	return total, err
+	return s.removeHeld(ctx, userID, bookID, placedBy, scopeWhole, nil, extra)
 }
 
 // RemoveEbookFile removes one attached library ebook file of a book that also has audio (a copy uploaded on the
@@ -278,23 +264,25 @@ func (s *Service) RemoveEbookFile(ctx context.Context, userID, bookID, fileID, p
 		return res, err
 	}
 	defer lr.Close()
-	uploads, err := s.uploadsOfPaths(ctx, map[string]bool{path: true})
+	up, err := s.planUpload(ctx, book, folder, lr, path, nil, nil)
 	if err != nil {
 		return res, err
 	}
-	gone := false
-	for _, uid := range uploads {
-		rows, err := s.pathsOf(ctx, uid)
+	res.Kept = append(res.Kept, up.kept...)
+	if err := s.settleLedger(ctx, bookID, up); err != nil {
+		return res, err
+	}
+	if hasFile(up.plan.items) {
+		rid, err := s.holdNow(ctx, userID, up, scopeText)
 		if err != nil {
 			return res, err
 		}
-		for _, r := range rows {
-			if r.Kind == kindFile && r.State == pathPresent && filepath.Clean(r.Path) == filepath.Clean(path) && within(folder.Path, r.Path) {
-				gone = s.removeFile(ctx, lr, r, &res)
-			}
-		}
+		res.RemovalID = rid
+		res.Deleted = append(res.Deleted, path)
+		return res, nil
 	}
-	if !gone {
+	gone := len(up.goneIDs) > 0
+	if !gone && len(up.kept) == 0 {
 		switch _, err := lr.Lstat(path); {
 		case err == nil:
 		case errors.Is(err, fs.ErrNotExist):
@@ -341,7 +329,7 @@ func (s *Service) RemoveAudio(ctx context.Context, userID, bookID, placedBy stri
 	if err := split(ctx); err != nil {
 		return RemoveResult{}, err
 	}
-	return s.remove(ctx, userID, bookID, placedBy, keep)
+	return s.removeHeld(ctx, userID, bookID, placedBy, scopeAudio, keep, nil)
 }
 
 // removeTextBook removes a book that has no audio: every stored Text-page upload goes through dropUpload (the same

@@ -116,3 +116,8 @@ contributor edits their own books and gets 404 for the others.
 Contributors are unchanged: they still remove only books their own uploads placed, through the upload path, and never remove a hand-added
 book. When an upload is an exact copy of a book already in the library (every file matches), a contributor may not "Add anyway"; an owner or
 admin may.
+
+## Addendum 2026-11-15 (follow-up of decision 0045): a contributor's removal is held
+A contributor's removal moves the files into the holding folder instead of deleting them. A contributor still removes only what their own uploads
+placed. Only the owner or an admin can put the files back or delete them now; the contributor has no page for the removal. Put back gives the
+contributor their rights over the book again only when every file returned.

@@ -28,6 +28,9 @@ func TestRemoveWholeTextOnlyLedger(t *testing.T) {
 	if err != nil || len(res.Deleted) != 1 {
 		t.Fatalf("remove: %+v %v", res, err)
 	}
+	if got := holdingFiles(t, e.root, res.RemovalID); len(got) != 1 {
+		t.Errorf("the ebook is not in the holding folder: %v", got)
+	}
 	if n := booksCount(t, e); n != 0 {
 		t.Errorf("books = %d", n)
 	}

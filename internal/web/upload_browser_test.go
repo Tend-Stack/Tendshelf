@@ -175,6 +175,9 @@ func placedAudio(t *testing.T, dir string) []string {
 	t.Helper()
 	var out []string
 	_ = filepath.Walk(dir, func(p string, fi os.FileInfo, err error) error {
+		if err == nil && fi.IsDir() && fi.Name() == upload.HoldingDir {
+			return filepath.SkipDir // removed files wait there; they are not placed any more
+		}
 		if err == nil && !fi.IsDir() && strings.HasSuffix(p, ".wav") {
 			out = append(out, p)
 		}
@@ -185,7 +188,7 @@ func placedAudio(t *testing.T, dir string) []string {
 
 // TestUploadBrowserAddsABook: a generated tone goes through the real file input and becomes a book
 // under "Unknown author"; the row ends "Added to Audiobooks" with Open book; the book page offers
-// "Remove this book", the confirmation lists the file, and removing deletes it. A copy-protected
+// "Remove this book", the confirmation lists the file, and removing moves it into the holding folder. A copy-protected
 // name is refused before anything is sent.
 func TestUploadBrowserAddsABook(t *testing.T) {
 	b := chromium(t)
@@ -241,6 +244,16 @@ func TestUploadBrowserAddsABook(t *testing.T) {
 	}
 	if left := placedAudio(t, u.folderDir); len(left) != 0 {
 		t.Errorf("Remove left %v", left)
+	}
+	var held []string
+	_ = filepath.Walk(filepath.Join(u.folderDir, upload.HoldingDir), func(p string, fi os.FileInfo, err error) error {
+		if err == nil && !fi.IsDir() && strings.HasSuffix(p, ".wav") {
+			held = append(held, p)
+		}
+		return nil
+	})
+	if len(held) != 1 {
+		t.Errorf("the removed file is not in the holding folder: %v", held)
 	}
 }
 
