@@ -84,7 +84,7 @@ func (s *server) heroFor(ctx context.Context, r *http.Request, l library.Listeni
 		return nil, "", err
 	}
 	v := &pages.HomeHeroView{
-		Cover: cardView(l.Book), Eyebrow: homeContinue, Title: l.Book.Title, Byline: bylineOf(l.Book.Authors),
+		Cover: heroCover(l.Book), Eyebrow: homeContinue, Title: l.Book.Title, Byline: bylineOf(l.Book.Authors),
 		BookHref: "/books/" + l.Book.ID, ChaptersHref: "/books/" + l.Book.ID + "/chapters", ChaptersLabel: homeChapters,
 	}
 	if n := bylineOf(l.Book.Narrators); n != "" {
@@ -277,7 +277,7 @@ func (s *server) textHeroView(ctx context.Context, r *http.Request, l library.Li
 	}
 	place := s.readPlace(ctx, u.ID, l.Book.ID, l.EditionID, l.ChapterIdx)
 	v := &pages.HomeHeroView{
-		Cover: cardView(l.Book), Eyebrow: homeContinueReading, Title: l.Book.Title, Byline: bylineOf(l.Book.Authors),
+		Cover: heroCover(l.Book), Eyebrow: homeContinueReading, Title: l.Book.Title, Byline: bylineOf(l.Book.Authors),
 		BookHref:   "/books/" + l.Book.ID,
 		RulerLabel: readerRulerLabel, RulerNow: strconv.Itoa(l.PercentBP / 100),
 		Where: readWhereText(place, l.PercentBP),
@@ -323,4 +323,16 @@ func (s *server) readingLeft(ctx context.Context, userID string, l library.Liste
 		chapter: fmt.Sprintf("%d min", mins(start+chs[l.ChapterIdx-1].CharCount-l.Char)),
 		book:    durationText(int64(mins(ed.CharCount-l.Char)) * 60_000),
 	}, true
+}
+
+// heroCover is the cover of the Home hero. The hero draws it up to 220 px wide (440 device pixels on a dense screen),
+// but a card's image list is sized for a shelf cell: an engine without sizes="auto" (WebKitGTK, the desktop app) took
+// the 160 px file from it and stretched it, so the cover looked soft there (operator report, 2026-11-15). Like the
+// book page, the hero asks for the large file directly.
+func heroCover(c library.BookCard) components.CardView {
+	v := cardView(c)
+	if c.Cover != nil && c.Cover.SHA != "" {
+		v.CoverSrc, v.CoverSrcset = coverURL(c.ID, c.Cover.SHA, 640), ""
+	}
+	return v
 }
