@@ -207,6 +207,32 @@ func TestNativeAudioIgnoredInBrowserAndLink(t *testing.T) {
 	}
 }
 
+// TestNativeAudioErrorWords: each failure kind the app reports gets its own plain words, and a kind the page does not
+// know (an app newer than the server) gets the general line. The page never shows a raw code.
+func TestNativeAudioErrorWords(t *testing.T) {
+	b := chromium(t)
+	e := playerApp(t)
+	srv := httptest.NewServer(e.spy)
+	t.Cleanup(srv.Close)
+	tab := a4Tab(t, b, 390)
+	tab.Navigate(srv.URL + "/?shell=android&next=/libraries")
+	tab.WaitFor(`window.tsPlayer !== undefined && window.tsNativeAudio !== undefined`, 10*time.Second)
+	a4WaitSent(t, tab, "hello 1")
+	cases := []struct{ code, words string }{
+		{"stream", msgNativeFailed},
+		{"book", msgNativeGone},
+		{"signedOut", msgNativeSignedOut},
+		{"busy", msgNativeBusy},
+		{"otherServer", msgNativeOtherServer},
+		{"background", msgNativeBackground},
+		{"somethingNew", msgNativeFailed},
+	}
+	for _, c := range cases {
+		a4Push(tab, fmt.Sprintf(`{"t":"error","code":%q}`, c.code))
+		tab.WaitFor(fmt.Sprintf(`[...document.querySelectorAll(".ts-toast")].some((t) => t.textContent === %s)`, cdp.Quote(c.words)), 5*time.Second)
+	}
+}
+
 // TestNativeAudioOtherBookButton: when the app moves on to a book the page cannot load (no connection), the old
 // book's button stops saying Pause; it does not wait for a load that never comes.
 func TestNativeAudioOtherBookButton(t *testing.T) {

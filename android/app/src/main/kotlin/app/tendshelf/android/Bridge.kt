@@ -11,6 +11,7 @@ import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import app.tendshelf.shared.Ask
+import app.tendshelf.shared.ERROR_CODES
 import app.tendshelf.shared.BridgeMessage
 import app.tendshelf.shared.Origin
 import app.tendshelf.shared.ReaderFeel
@@ -236,8 +237,7 @@ class Bridge(
         // Errors cross as one of two fixed codes; `signedOut` does not (sign-out replaces the page).
         if (s.error != lastError) {
             lastError = s.error
-            // `background` crosses as its own code (encodeError).
-            if (s.error == "stream" || s.error == "book" || s.error == "background") send(p, encodeError(s.error))
+            if (s.error in ERROR_CODES) send(p, encodeError(s.error))
         }
         // The sleep timer: with every push while it runs, and once more when it turns off.
         if (s.sleep != SleepInfo.OFF || lastSleepOn) send(p, encodeSleep(s.sleep))

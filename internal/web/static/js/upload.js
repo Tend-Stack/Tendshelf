@@ -40,13 +40,36 @@ async function pieceSum(blob) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// A JSON request to the upload routes. A refusal throws Stop with the server's own words.
+const QUICK_SPAN = 1 << 20;
+
+// The quick hash of a file, the same value the server computes (internal/media/quickhash.go): SHA-256
+// over the size as 8 bytes big-endian, the first 1 MiB and the last 1 MiB; a file under 2 MiB is
+// hashed whole. It lets the server say "already in the library" before a single piece is sent. It
+// needs crypto.subtle, which only a secure context has, so it answers "" on plain http: the server
+// then checks again after the files arrive. Only the two ends are read, so nothing big is held in memory.
+export async function quickHash(blob) {
+  if (!globalThis.crypto || !crypto.subtle) return "";
+  const size = blob.size;
+  const headEnd = Math.min(size, QUICK_SPAN);
+  const tailStart = Math.max(headEnd, size - QUICK_SPAN);
+  const head = new Uint8Array(await blob.slice(0, headEnd).arrayBuffer());
+  const tail = new Uint8Array(await blob.slice(tailStart, size).arrayBuffer());
+  const bytes = new Uint8Array(8 + head.length + tail.length);
+  new DataView(bytes.buffer).setBigUint64(0, BigInt(size), false);
+  bytes.set(head, 8);
+  bytes.set(tail, 8 + head.length);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// A JSON request to the upload routes. A refusal throws Stop with the server's own words; an
+// "already in the library" refusal also carries the book it found (match).
 async function call(method, url, body) {
   const headers = { "X-CSRF-Token": csrf() };
   if (body) headers["Content-Type"] = "application/json";
   const res = await fetch(url, { method, headers, body: body && JSON.stringify(body), credentials: "same-origin" });
   const data = res.status === 204 ? {} : await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Stop((data.error && data.error.message) || ""), { code: data.error && data.error.code });
+  if (!res.ok) throw Object.assign(new Stop((data.error && data.error.message) || ""), { code: data.error && data.error.code, match: data.match });
   return data;
 }
 
@@ -84,7 +107,7 @@ export function mount(root) {
     const row = up.row;
     row.className = "ts-upload__row ts-upload__row--" + state;
     row.querySelector("[data-ts-icons]").className = "ts-upload__icon ts-upload__icon--" + state;
-    const icon = state === "failed" ? "warn" : state === "paused" || state === "refused" ? state : "sending";
+    const icon = state === "failed" || state === "already" ? "warn" : state === "paused" || state === "refused" ? state : "sending";
     for (const svg of row.querySelectorAll("[data-ts-icon]")) svg.hidden = svg.dataset.tsIcon !== icon;
     for (const button of row.querySelectorAll("[data-ts-for]")) {
       button.hidden = !button.dataset.tsFor.split(" ").includes(state) || (button.dataset.tsAct === "cancel" && !up.id);
@@ -162,6 +185,7 @@ export function mount(root) {
   async function run(up) {
     up.paused = false;
     setState(up, "sending");
+    up.row.querySelector("[data-ts-bar]").hidden = false;
     up.samples = [];
     up.shownAt = 0;
     try {
@@ -237,21 +261,56 @@ export function mount(root) {
       return;
     }
     setState(up, "checking", say("checking"));
-    // Books are created one at a time, as they are sent: the server limits unfinished uploads.
-    turn = turn.then(async () => {
-      try {
-        const manifest = files.map((f) => ({ path: name(f), size: f.size, modified_ms: f.lastModified }));
-        const created = await call("POST", "/libraries/" + root.dataset.tsLibrary + "/uploads", { label, files: manifest });
-        const byPath = new Map(files.map((f) => [name(f), f]));
-        adopt(up, created, created.files.map((f) => byPath.get(f.path)));
-      } catch (error) {
-        if (error.code === "no_audio") refuse(up, title, say("refused-none"));
-        else if (error.code === "copy_protected") refuse(up, title, error.message);
-        else setState(up, "failed", error.message || say("failed"));
-        return;
-      }
-      await run(up);
-    });
+    // The row remembers how to start again, for "Add anyway" after the library said it has the book.
+    up.start = (addAnyway) => {
+      // Books are created one at a time, as they are sent: the server limits unfinished uploads.
+      turn = turn.then(async () => {
+        try {
+          const manifest = await Promise.all(files.map(async (f) => {
+            const entry = { path: name(f), size: f.size, modified_ms: f.lastModified };
+            // A zip hides its files, so only the server can check it, after it has the zip.
+            const quick = extension(f.name) === "zip" ? "" : await quickHash(f).catch(() => "");
+            if (quick) entry.quick = quick;
+            return entry;
+          }));
+          const body = { label, files: manifest };
+          if (addAnyway) body.add_anyway = true;
+          const created = await call("POST", "/libraries/" + root.dataset.tsLibrary + "/uploads", body);
+          const byPath = new Map(files.map((f) => [name(f), f]));
+          adopt(up, created, created.files.map((f) => byPath.get(f.path)));
+        } catch (error) {
+          if (error.code === "no_audio") refuse(up, title, say("refused-none"));
+          else if (error.code === "copy_protected") refuse(up, title, error.message);
+          else if (error.code === "already_in_library" && error.match) already(up, error.match);
+          else setState(up, "failed", error.message || say("failed"));
+          return;
+        }
+        await run(up);
+      });
+    };
+    up.start(false);
+  }
+
+  // The library already has this book: say which case it is and wait for the person's choice. Nothing
+  // has been sent. The words are the server's (data-ts-msg-already-*); the links are plain links.
+  function already(up, match) {
+    const row = up.row;
+    const key = match.tier === "same_files" ? "already-same" : match.tier === "some_files" ? "already-some" : "already-like";
+    // No address: the match is this person's own upload that the scan has not listed yet.
+    const listed = Boolean(match.href);
+    let line = say(listed ? key : "already-recent", { title: match.title, library: root.dataset.tsLibraryName });
+    if (!match.may_add_anyway) line += " " + say("already-ask", {});
+    if (listed) {
+      row.querySelector("[data-ts-open]").href = match.href;
+      row.querySelector("[data-ts-edit]").href = match.href + "/details?edit=1#edit-details";
+    }
+    setState(up, "already", line);
+    // Edit details is for the people who may edit any book; Add anyway only when the server allows it.
+    row.querySelector("[data-ts-open]").hidden = !listed;
+    row.querySelector("[data-ts-edit]").hidden = !listed || root.dataset.tsCanEdit !== "1";
+    row.querySelector("[data-ts-act=anyway]").hidden = !match.may_add_anyway;
+    const bar = row.querySelector("[data-ts-bar]");
+    if (bar) bar.hidden = true; // Add anyway sends the files with the same bar
   }
 
   // Pair what the server expects with the files the person picked (one blob for each expected file).
@@ -322,6 +381,14 @@ export function mount(root) {
         break;
       case "resume":
         send(up);
+        break;
+      case "anyway":
+        // Nothing was sent yet: ask again, this time with the person's choice.
+        setState(up, "checking", say("checking"));
+        up.start(true);
+        break;
+      case "skip":
+        row.remove();
         break;
       case "cancel":
         if (up) up.paused = true;

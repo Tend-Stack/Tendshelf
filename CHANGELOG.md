@@ -8,6 +8,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 - **The player says when it is loading.** When you press Play or Resume and the sound takes a moment (a large file, a slow connection, a compatibility copy being made, a live station connecting, or buffering in the middle), the play button of that book, episode or station shows a quiet ring instead of its icon, and the cover in the full player dims a little with the same ring on it. It appears only after a quarter of a second, so quick starts show nothing, and pressing the button again stops the start. With reduced motion the ring is three still dots.
 - **Remove any book, even one you copied into the library folder yourself.** Owners and admins now see "Remove this book" in the three-dot menu of every book. Tendshelf first lists the exact files it will move and what stays, and asks you to tick a box. The files then move to a hidden holding folder inside the library and are deleted for good after 30 days, and "Put back" returns them at any time before that. A second choice removes the book from Tendshelf and leaves the files where they are. The Removed books page of each library, linked from Libraries & scanning, lists what is waiting with the days left, and offers Put back and Delete now.
+- **Adding a book that is already there asks first.** When you choose files on Add books that the library already has, Tendshelf now says so before it sends anything: "This book is already in the library", or "Some of these files are already in the library", or "This looks like ..." for a book with the same title, author and narrator. You can open that book, edit its details, add the copy anyway, or leave it out. Where the browser cannot check ahead (a plain http address, a zip file), the files are sent and the same choices appear afterwards. Owners and admins also see a note on a book page when another copy of the same audio is in the library, with a link to compare and merge them. A contributor cannot add an exact copy and is told to ask an admin.
 
 ### Changed
 
@@ -16,6 +17,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Fixed
 
+- **The Android app says why something cannot play.** Every failure used to read "This can't play right now. Check your connection.", even when the book was gone, the phone was signed out, a station was busy, or a different Tendshelf now answered at the address. Each now has its own plain line, and an unknown reason still gets the general one.
 - **The desktop app resumes a book where you left it.** The app's engine ignored the place a book should start from, so pressing play started the book at the beginning and then saved that as your place, losing the real one. The player now moves to the saved place itself when the engine has not.
 - **No gap in a book's buttons in the desktop app.** The app keeps no downloads, but an invisible Download button still took its space in the row.
 

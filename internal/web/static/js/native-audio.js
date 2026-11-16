@@ -86,7 +86,8 @@ function build(bridge) {
         speed: Number(message.speed) || 1,
       });
     } else if (message.t === "error") {
-      failure = { code: message.code === "book" ? 3 : 2, background: message.code === "background" };
+      // `kind` is the app's own word for the failure; the page picks its words by it and treats an unknown kind as a general error.
+      failure = { code: message.code === "book" ? 3 : 2, background: message.code === "background", kind: String(message.code) };
       fire("error");
     } else if (message.t === "sleep") {
       audio.sleepState = { mode: String(message.mode), choice: String(message.choice), leftMs: Number(message.leftMs), fading: message.fading === true };

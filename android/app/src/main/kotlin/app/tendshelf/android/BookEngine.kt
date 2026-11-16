@@ -21,7 +21,7 @@ import app.tendshelf.shared.RADIO_NOW_POLL_MS
 import app.tendshelf.shared.StationCard
 import app.tendshelf.shared.episodeSpeed
 import app.tendshelf.shared.isStationId
-import app.tendshelf.shared.liveFailureKind
+import app.tendshelf.shared.playFailureKind
 import app.tendshelf.shared.liveRetryDelayMs
 import app.tendshelf.shared.isEpisodeId
 import app.tendshelf.shared.skipRules
@@ -113,10 +113,10 @@ class BookEngine(
             override fun onPlayerError(e: PlaybackException) {
                 Log.w(TAG, "player error ${e.errorCodeName}")
                 if (station != null) {
-                    liveBroke(httpCodeOf(e), retryAfterOf(e))
+                    liveBroke(httpCodeOf(e), retryAfterOf(e), failureKindOf(e, live = true) == "otherServer")
                     return
                 }
-                fail(errorOf(e))
+                fail(failureKindOf(e))
                 exo.playWhenReady = false
             }
 
@@ -177,12 +177,10 @@ class BookEngine(
                 val art = api.cover(conn.token, manifest.id)
                 val pending = pendingFor(manifest.id)
                 main.post { if (sequence.get() == mine) begin(api, conn, manifest, settings, art, atMs, pending) }
-            } catch (e: ApiException) {
-                Log.w(TAG, "could not start the book: server answered ${e.code}")
-                main.post { if (sequence.get() == mine) fail(if (e.code == 401) "signedOut" else "book") }
             } catch (e: IOException) {
-                Log.w(TAG, "could not start the book: ${e.javaClass.simpleName}")
-                main.post { if (sequence.get() == mine) fail("stream") }
+                Log.w(TAG, "could not start the book: ${e.javaClass.simpleName} ${(e as? ApiException)?.code ?: ""}")
+                val kind = failureKindOf(e)
+                main.post { if (sequence.get() == mine) fail(kind) }
             } catch (e: Exception) {
                 Log.w(TAG, "could not read the book: ${e.javaClass.simpleName}")
                 main.post { if (sequence.get() == mine) fail("book") }
@@ -238,12 +236,10 @@ class BookEngine(
                     val list = api.chapters(conn.token, doc.chaptersUrl, doc.durationMs)
                     if (list.isNotEmpty()) main.post { if (sequence.get() == mine) player.setChapters(list) }
                 }
-            } catch (e: ApiException) {
-                Log.w(TAG, "could not start the episode: server answered ${e.code}")
-                main.post { if (sequence.get() == mine) fail(if (e.code == 401) "signedOut" else "book") }
             } catch (e: IOException) {
-                Log.w(TAG, "could not start the episode: ${e.javaClass.simpleName}")
-                main.post { if (sequence.get() == mine) fail("stream") }
+                Log.w(TAG, "could not start the episode: ${e.javaClass.simpleName} ${(e as? ApiException)?.code ?: ""}")
+                val kind = failureKindOf(e)
+                main.post { if (sequence.get() == mine) fail(kind) }
             } catch (e: Exception) {
                 Log.w(TAG, "could not read the episode: ${e.javaClass.simpleName}")
                 main.post { if (sequence.get() == mine) fail("book") }
@@ -376,12 +372,10 @@ class BookEngine(
                 if (sequence.get() != mine) return@execute
                 val art = api.radioArt(conn.token, id, card.artUrl)
                 main.post { if (sequence.get() == mine) beginStation(card, art) }
-            } catch (e: ApiException) {
-                Log.w(TAG, "could not start the station: server answered ${e.code}")
-                main.post { if (sequence.get() == mine) fail(if (e.code == 401) "signedOut" else if (e.code == 404) "book" else "stream") }
             } catch (e: Exception) {
-                Log.w(TAG, "could not start the station: ${e.javaClass.simpleName}")
-                main.post { if (sequence.get() == mine) fail("stream") }
+                Log.w(TAG, "could not start the station: ${e.javaClass.simpleName} ${(e as? ApiException)?.code ?: ""}")
+                val kind = failureKindOf(e, live = true)
+                main.post { if (sequence.get() == mine) fail(kind) }
             }
         }
     }
@@ -443,11 +437,16 @@ class BookEngine(
     }
 
     /** The stream failed or the relay closed it: try again by the rules, then tell the person once (a busy relay in plain words). */
-    private fun liveBroke(code: Int, retryAfterS: Int) {
+    private fun liveBroke(code: Int, retryAfterS: Int, otherServer: Boolean = false) {
+        if (otherServer) {
+            Log.w(TAG, "station: the address is not the connected server")
+            fail(playFailureKind(code, true, live = true))
+            return
+        }
         val wait = liveRetryDelayMs(code, liveAttempt, retryAfterS)
         if (wait == null) {
             Log.w(TAG, "station: giving up (code $code)")
-            fail(liveFailureKind(code))
+            fail(playFailureKind(code, false, live = true))
             return
         }
         liveAttempt++
@@ -542,21 +541,6 @@ class BookEngine(
         exo.playWhenReady = false
         publishState()
         onFailed?.invoke(kind)
-    }
-
-    private fun errorOf(e: PlaybackException): String {
-        var c: Throwable? = e
-        while (c != null) {
-            if (c is HttpDataSource.InvalidResponseCodeException) {
-                return when (c.responseCode) {
-                    401 -> "signedOut"
-                    404, 403, 410 -> "book"
-                    else -> "stream"
-                }
-            }
-            c = c.cause
-        }
-        return "stream"
     }
 
     private fun publishState() {

@@ -1554,7 +1554,10 @@ let nativeToast = null; // the app's "can't play" toast, removed once sound is b
 listen(audio, "error", () => {
   if (NATIVE) {
     dismissToast(nativeToast);
-    nativeToast = toast("err", audio.error && audio.error.background ? msg("nativeBackground") : msg("nativeFailed"));
+    // The app says why by kind; a kind this page does not know (an app newer or older than the server) gets the general line.
+    const nativeWords = { background: "nativeBackground", book: "nativeGone", signedOut: "nativeSignedOut", busy: "nativeBusy", otherServer: "nativeOtherServer" };
+    const kind = audio.error && (audio.error.background ? "background" : audio.error.kind);
+    nativeToast = toast("err", (nativeWords[kind] && msg(nativeWords[kind])) || msg("nativeFailed"));
     emit("error");
     return;
   }

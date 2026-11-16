@@ -166,6 +166,7 @@ func (s *server) renderBookWith(w http.ResponseWriter, r *http.Request, id, tab 
 		// The Text tab swaps only #book-panel, so its stylesheet is linked whichever tab opens.
 		styles = append(append([]string(nil), styles...), pages.TextStyles...)
 	}
+	v.DupNotice, v.DupLabel, v.DupHref = s.sameAudioNotice(r, d.Book)
 	canEdit := s.details != nil && s.can.Can(ctx, currentUser(r), share.EditBook, target)
 	lookups := false
 	if canEdit {

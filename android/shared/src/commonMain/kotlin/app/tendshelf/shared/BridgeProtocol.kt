@@ -185,9 +185,9 @@ fun encodeState(s: PlayerSnapshot): String =
         "\"durationMs\":${s.durationMs.coerceAtLeast(0)},\"playing\":${s.playing},\"buffering\":${s.buffering}," +
         "\"ended\":${s.ended},\"speed\":${speedText(s.speed)},\"chapterIdx\":${s.chapterIdx.coerceAtLeast(0)}}"
 
-/** Only three codes exist; anything else is `stream`, so no error text can cross. `background` is a refused foreground start. */
+/** Only the codes in [ERROR_CODES] exist; anything else is `stream`, so no error text can cross. `background` is a refused foreground start. */
 fun encodeError(code: String): String =
-    "{\"t\":\"error\",\"code\":${jsonString(if (code == "book" || code == "background") code else "stream")}}"
+    "{\"t\":\"error\",\"code\":${jsonString(if (code in ERROR_CODES) code else "stream")}}"
 
 /** The sleep timer for the page to draw. [leftMs] is real listening time; the page counts it down between pushes. */
 fun encodeSleep(s: SleepInfo): String =

@@ -190,6 +190,27 @@ func closeLengths(a, b int64) bool {
 	return diff <= dupLengthSlackMs || diff*100 <= max(a, b)*dupLengthSlackPct
 }
 
+// DupKey is what the "same details" rule compares: a title, the first author, the first narrator and the length.
+type DupKey struct {
+	Title, Author, Narrator string
+	DurationMs              int64
+}
+
+// SameDetails is the one "same details" rule, used by the Duplicates page and by the upload check: title, first
+// author and first narrator all present and equal once normalised, and lengths within 60 seconds or 2 percent.
+func SameDetails(a, b DupKey) bool {
+	t, au, na := textmatch.Norm(a.Title), textmatch.Norm(a.Author), textmatch.Norm(a.Narrator)
+	if t == "" || au == "" || na == "" || a.DurationMs <= 0 {
+		return false
+	}
+	return t == textmatch.Norm(b.Title) && au == textmatch.Norm(b.Author) && na == textmatch.Norm(b.Narrator) &&
+		closeLengths(a.DurationMs, b.DurationMs)
+}
+
+func (b DuplicateBook) key() DupKey {
+	return DupKey{Title: b.Title, Author: b.author, Narrator: b.narrator, DurationMs: b.DurationMs}
+}
+
 // groupDuplicates is the pass in Go. books are in library, then oldest-first order.
 func groupDuplicates(books []DuplicateBook, notSame map[string]bool) []DuplicateGroup {
 	var audio, details []DuplicateGroup
@@ -251,7 +272,7 @@ func groupDuplicates(books []DuplicateBook, notSame map[string]bool) []Duplicate
 			var members []int
 			for _, j := range idx[n+1:] {
 				o := books[j]
-				if !taken[j] && closeLengths(anchor.DurationMs, o.DurationMs) && !sameAudio(anchor, o) && !notSame[pairKey(anchor.ID, o.ID)] {
+				if !taken[j] && SameDetails(anchor.key(), o.key()) && !sameAudio(anchor, o) && !notSame[pairKey(anchor.ID, o.ID)] {
 					g.Books = append(g.Books, o)
 					members = append(members, j)
 				}

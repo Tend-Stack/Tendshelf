@@ -82,12 +82,7 @@ fun liveRetryDelayMs(code: Int, attempt: Int, retryAfterS: Int): Long? = when {
  * The failure word the player reports once retries are over: `signedOut`, `book` (the station is gone), `busy` (the
  * one-live-per-person or server-slot 503) or `stream`.
  */
-fun liveFailureKind(code: Int): String = when (code) {
-    401 -> "signedOut"
-    403, 404, 410 -> "book"
-    503 -> "busy"
-    else -> "stream"
-}
+fun liveFailureKind(code: Int): String = playFailureKind(code, false, live = true)
 
 /** The extra buttons the media card, lock screen and car can show beside play and pause. */
 enum class MediaButton { Back, Forward, Speed }

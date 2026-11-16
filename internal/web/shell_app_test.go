@@ -230,6 +230,11 @@ func TestA1ShellPage(t *testing.T) {
 	if !strings.Contains(ab, "data-ts-msg-native-background=") || !strings.Contains(ab, "data-ts-msg-native-failed=") || strings.Contains(pb, "native-failed") {
 		t.Errorf("native-failed: android %v, browser %v", strings.Contains(ab, "data-ts-msg-native-failed="), strings.Contains(pb, "native-failed"))
 	}
+	for _, k := range []string{"native-gone", "native-signed-out", "native-busy", "native-other-server"} {
+		if !strings.Contains(ab, "data-ts-msg-"+k+"=") || strings.Contains(pb, k) {
+			t.Errorf("%s: android %v, browser %v", k, strings.Contains(ab, "data-ts-msg-"+k+"="), strings.Contains(pb, k))
+		}
+	}
 	if plain.Header().Get("Content-Security-Policy") == "" || plain.Header().Get("Content-Security-Policy") != app.Header().Get("Content-Security-Policy") {
 		t.Errorf("CSP differs: %q vs %q", plain.Header().Get("Content-Security-Policy"), app.Header().Get("Content-Security-Policy"))
 	}

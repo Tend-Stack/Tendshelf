@@ -19,6 +19,8 @@ type PlayerMsgs struct {
 	Android      bool
 	NativeFailed string
 	NativeBackground string
+	// The app's other reasons, by error kind (book gone, signed out, busy station, a different server).
+	NativeGone, NativeSignedOut, NativeBusy, NativeOtherServer string
 
 	// Eyes-free (M3b): its words and the addresses of its script and stylesheet, loaded on first use.
 	EyesFree                EyesFreeMsgs
@@ -82,6 +84,10 @@ func (m PlayerMsgs) Attrs() templ.Attributes {
 	if m.Android {
 		attrs["data-ts-msg-native-failed"] = m.NativeFailed
 		attrs["data-ts-msg-native-background"] = m.NativeBackground
+		attrs["data-ts-msg-native-gone"] = m.NativeGone
+		attrs["data-ts-msg-native-signed-out"] = m.NativeSignedOut
+		attrs["data-ts-msg-native-busy"] = m.NativeBusy
+		attrs["data-ts-msg-native-other-server"] = m.NativeOtherServer
 	}
 	return attrs
 }
