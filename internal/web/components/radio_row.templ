@@ -82,21 +82,21 @@ templ StationCard(v StationRowView) {
 		<span class="ts-stncard__meta ts-truncate">{ v.Meta }</span>
 		<span class="ts-stncard__actions">
 			if v.PlayHref != "" {
-			<a class="ts-btn ts-btn--secondary ts-stncard__play" href={ templ.SafeURL(v.PlayHref) } hx-boost="false" data-ts-play={ v.ID } aria-label={ v.PlayLabel }>
+			<a class="ts-btn ts-btn--secondary ts-stncard__play" href={ templ.SafeURL(v.PlayHref) } hx-boost="false" data-ts-play={ v.ID } aria-label={ v.PlayLabel } title={ v.PlayWord }>
 				@Icon("play", true)
 				<span hidden data-ts-pause-icon>
 					@Icon("pause", true)
 				</span>
-				<span data-ts-play-label>{ v.PlayWord }</span>
+				<span class="ts-truncate" data-ts-play-label>{ v.PlayWord }</span>
 			</a>
 			}
 			if v.PlaySlug != "" {
 				<form class="ts-stncard__add" method="post" action="/radio/play" hx-boost="false" data-ts-play-slug>
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
 					<input type="hidden" name="slug" value={ v.PlaySlug }/>
-					<button type="submit" class="ts-btn ts-btn--secondary ts-stncard__play" aria-label={ v.PlayLabel }>
+					<button type="submit" class="ts-btn ts-btn--secondary ts-stncard__play" aria-label={ v.PlayLabel } title={ v.PlayWord }>
 						@Icon("play", true)
-						<span>{ v.PlayWord }</span>
+						<span class="ts-truncate">{ v.PlayWord }</span>
 					</button>
 				</form>
 			}
@@ -104,7 +104,7 @@ templ StationCard(v StationRowView) {
 				<form class="ts-stncard__add" method="post" action="/radio/stations">
 					<input type="hidden" name="_csrf" value={ v.CSRF }/>
 					<input type="hidden" name="slug" value={ v.AddSlug }/>
-					<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.AddLabel }>{ v.SaveWord }</button>
+					<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.AddLabel } title={ v.SaveWord }><span class="ts-truncate">{ v.SaveWord }</span></button>
 				</form>
 			}
 			if v.SaveAction != "" {

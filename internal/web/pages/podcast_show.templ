@@ -101,11 +101,11 @@ templ PodcastShow(v PodcastShowView) {
 						@notesBlock(v.Notes)
 					</details>
 				}
-				<div class="ts-podshow__actions" if v.FitModule != "" { data-ts-module={ v.FitModule } data-ts-fit }>
+				<div class={ "ts-podshow__actions", templ.KV("ts-podshow__actions--pair", !v.Followed && v.LatestHref != "") } if v.FitModule != "" { data-ts-module={ v.FitModule } data-ts-fit }>
 					if v.LatestHref != "" {
-						<a class="ts-btn ts-btn--primary" href={ templ.SafeURL(v.LatestHref) } hx-boost="false" data-ts-play={ v.LatestID }>
+						<a class="ts-btn ts-btn--primary" href={ templ.SafeURL(v.LatestHref) } hx-boost="false" data-ts-play={ v.LatestID } title={ v.LatestLabel }>
 							@components.Icon("play", true)
-							<span data-ts-play-label>{ v.LatestLabel }</span>
+							<span class="ts-truncate" data-ts-play-label>{ v.LatestLabel }</span>
 						</a>
 					}
 					if v.Followed {
@@ -127,7 +127,7 @@ templ PodcastShow(v PodcastShowView) {
 							<input type="hidden" name="_csrf" value={ v.CSRF }/>
 							<input type="hidden" name="show_id" value={ v.FollowShowID }/>
 							if v.LatestHref != "" {
-								<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.FollowAria + " " + v.Title }>{ v.FollowLabel }</button>
+								<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.FollowAria + " " + v.Title } title={ v.FollowLabel }><span class="ts-truncate">{ v.FollowLabel }</span></button>
 							} else {
 								<button type="submit" class="ts-btn ts-btn--primary" aria-label={ v.FollowAria + " " + v.Title }>{ v.FollowLabel }</button>
 							}

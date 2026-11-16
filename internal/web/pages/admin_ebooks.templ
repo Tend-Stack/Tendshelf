@@ -45,6 +45,9 @@ type AdminEbooksView struct {
 	Cannot                    []InboxRow
 	// More is "And {n} more." when a list is cut.
 	More string
+	// FitModule is the address of js/fit-row.js: a pairing card keeps its answers on one line and folds the later ones
+	// into a three-dot menu (decision 0044).
+	FitModule string
 }
 
 // AdminEbooks lists the suggested merges of ebooks with audiobooks, then the files that could not be opened.
@@ -66,11 +69,16 @@ templ AdminEbooks(v AdminEbooksView) {
 					for _, sg := range v.Maybe {
 						<div id={ "inbox-" + sg.ID }>
 							@components.PairingCard(sg.Card) {
-								<div class="ts-pair__actions">
-									@inboxActionForm(sg.Make)
-									@inboxActionForm(sg.NotSame)
-									@inboxActionForm(sg.Keep)
-									<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(sg.PickHref) }>{ sg.PickLabel }</a>
+								<div class="ts-pair__actions" data-ts-module={ v.FitModule } data-ts-fit>
+									@inboxActionForm(sg.Make, "")
+									@inboxActionForm(sg.NotSame, "notsame")
+									@inboxActionForm(sg.Keep, "keep")
+									<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(sg.PickHref) } data-ts-fit-item="pick">{ sg.PickLabel }</a>
+									@components.MoreMenu(components.MoreMenuView{Fit: []components.MoreMenuFitItem{
+										{Key: "notsame", Label: sg.NotSame.Label},
+										{Key: "keep", Label: sg.Keep.Label},
+										{Key: "pick", Label: sg.PickLabel},
+									}})
 								</div>
 							}
 						</div>
@@ -119,8 +127,8 @@ templ inboxList(rows []InboxRow) {
 }
 
 // inboxActionForm is one answer in its own plain POST form: htmx boosts it, and it works without JavaScript.
-templ inboxActionForm(a InboxAction) {
-	<form class="ts-pair__form" method="post" action={ templ.URL(a.Action) }>
+templ inboxActionForm(a InboxAction, fit string) {
+	<form class="ts-pair__form" method="post" action={ templ.URL(a.Action) } if fit != "" { data-ts-fit-item={ fit } }>
 		<input type="hidden" name="_csrf" value={ a.CSRF }/>
 		if a.BookID != "" {
 			<input type="hidden" name="book" value={ a.BookID }/>

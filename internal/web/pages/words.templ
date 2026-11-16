@@ -58,11 +58,11 @@ templ Words(v WordsView) {
 						</p>
 						<div class="ts-words__actions">
 							if r.JumpHref != "" {
-								<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(r.JumpHref) }>{ r.JumpLabel }</a>
+								<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(r.JumpHref) } title={ r.JumpLabel }>{ r.JumpLabel }</a>
 							}
 							<form method="post" action={ templ.URL(r.DeleteAction) }>
 								<input type="hidden" name="_csrf" value={ v.CSRF }/>
-								<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ r.DeleteLabel }>{ v.RemoveLabel }</button>
+								<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ r.DeleteLabel } title={ v.RemoveLabel }>{ v.RemoveLabel }</button>
 							</form>
 						</div>
 					</li>

@@ -136,11 +136,12 @@ templ Series(v SeriesView) {
 			if v.Total != "" {
 				<p class="caption ts-num ts-person__count">{ v.Total }</p>
 			}
-			@components.MoreMenu(v.More)
-			if v.DownloadAll != nil {
-				@DownloadAll(*v.DownloadAll)
-			}
-			if v.Description != "" {
+			<div class="ts-series__acts">
+				if v.DownloadAll != nil {
+					@DownloadAll(*v.DownloadAll)
+				}
+				@components.MoreMenu(v.More)
+			</div>			if v.Description != "" {
 				<p class="ts-book__desc ts-person__desc">{ v.Description }</p>
 			}
 		</header>

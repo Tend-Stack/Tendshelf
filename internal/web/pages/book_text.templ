@@ -62,6 +62,9 @@ type TextFileView struct {
 	Choose, MakeDefault *TextActionView
 	// RemoveHref opens the confirmation of "Remove this edition"; empty unless this one file can be removed on its own.
 	RemoveHref, RemoveLabel, RemoveAria string
+	// FitModule is the address of js/fit-row.js: the edition's answers stay on one line and the later ones fold into a
+	// three-dot menu (decision 0044).
+	FitModule string
 }
 
 // TextUploadView is the "add a file" form. Error is the plain sentence of a refused upload.
@@ -114,8 +117,8 @@ templ TextBody(v TextView) {
 				for _, sg := range v.Suggestions {
 					@components.PairingCard(sg.Card) {
 						<div class="ts-pair__actions">
-							@textActionForm(sg.Pair)
-							@textActionForm(sg.NotSame)
+							@textActionForm(sg.Pair, "")
+							@textActionForm(sg.NotSame, "")
 						</div>
 					}
 				}
@@ -144,7 +147,7 @@ templ EbookFileRow(f TextFileView) {
 					@components.PairingCard(*f.Card) {
 						if f.NotSame != nil {
 							<div class="ts-pair__actions">
-								@textActionForm(*f.NotSame)
+								@textActionForm(*f.NotSame, "")
 							</div>
 						}
 					}
@@ -224,19 +227,20 @@ templ EbookEdition(f TextFileView) {
 			}
 		</ol>
 		if f.Choose != nil || f.MakeDefault != nil || (f.NotSame != nil && f.Card == nil) || f.RemoveHref != "" {
-			<div class="ts-pair__actions">
+			<div class="ts-pair__actions" data-ts-module={ f.FitModule } data-ts-fit>
 				if f.Choose != nil {
-					@textActionForm(*f.Choose)
+					@textActionForm(*f.Choose, "")
 				}
 				if f.MakeDefault != nil {
-					@textActionForm(*f.MakeDefault)
+					@textActionForm(*f.MakeDefault, "default")
 				}
 				if f.NotSame != nil && f.Card == nil {
-					@textActionForm(*f.NotSame)
+					@textActionForm(*f.NotSame, "notsame")
 				}
 				if f.RemoveHref != "" {
-					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(f.RemoveHref) } aria-label={ f.RemoveAria }>{ f.RemoveLabel }</a>
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(f.RemoveHref) } aria-label={ f.RemoveAria } data-ts-fit-item="remove">{ f.RemoveLabel }</a>
 				}
+				@components.MoreMenu(components.MoreMenuView{Fit: editionFit(f)})
 			</div>
 		}
 		if f.ShowAll != "" {
@@ -339,10 +343,25 @@ templ EbookUploadForm(u TextUploadView) {
 	</form>
 }
 
+// editionFit is the three-dot menu's twins for an edition's answers that may fold: the ones the row draws, in its order.
+func editionFit(f TextFileView) []components.MoreMenuFitItem {
+	var fit []components.MoreMenuFitItem
+	if f.MakeDefault != nil {
+		fit = append(fit, components.MoreMenuFitItem{Key: "default", Label: f.MakeDefault.Label})
+	}
+	if f.NotSame != nil && f.Card == nil {
+		fit = append(fit, components.MoreMenuFitItem{Key: "notsame", Label: f.NotSame.Label})
+	}
+	if f.RemoveHref != "" {
+		fit = append(fit, components.MoreMenuFitItem{Key: "remove", Label: f.RemoveLabel})
+	}
+	return fit
+}
+
 // textActionForm is one button in its own plain POST form: htmx boosts it, and it works without
 // JavaScript (the answer is a redirect back to the tab).
-templ textActionForm(a TextActionView) {
-	<form class="ts-pair__form" method="post" action={ templ.URL(a.Action) }>
+templ textActionForm(a TextActionView, fit string) {
+	<form class="ts-pair__form" method="post" action={ templ.URL(a.Action) } if fit != "" { data-ts-fit-item={ fit } }>
 		<input type="hidden" name="_csrf" value={ a.CSRF }/>
 		<button type="submit" class={ "ts-btn", "ts-btn--" + a.Kind } aria-label={ a.Aria }>{ a.Label }</button>
 	</form>
