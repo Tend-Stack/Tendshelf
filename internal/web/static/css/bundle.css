@@ -767,3 +767,5 @@ html[data-text-size="large"] .ts-player-bar { display: grid; grid-template-colum
 .ts-remove-any__actions { display: flex; flex-wrap: wrap; gap: var(--space-12); }
 .ts-remove-any__path { overflow-wrap: anywhere; }
 .ts-remove-any .ts-btn { max-width: 100%; height: auto; min-height: 2.75rem; padding-block: var(--space-8); white-space: normal; text-align: start; }
+.ts-remove-any__back { margin: var(--space-12) 0 0; }
+.ts-remove-any__row .ts-needs__title { display: inline-flex; align-items: center; min-height: 2.75rem; }

@@ -28,7 +28,7 @@ templ RemovalPage(v RemovalView) {
 			</p>
 		}
 		@RemovalStatus(v)
-		<p class="caption"><a href={ templ.SafeURL(v.BackHref) }>{ v.Back }</a></p>
+		<p class="ts-remove-any__back"><a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.BackHref) }>{ v.Back }</a></p>
 	</div>
 }
 

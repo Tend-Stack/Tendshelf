@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Added
+
+- **Remove any book, even one you copied into the library folder yourself.** Owners and admins now see "Remove this book" in the three-dot menu of every book. Tendshelf first lists the exact files it will move and what stays, and asks you to tick a box. The files then move to a hidden holding folder inside the library and are deleted for good after 30 days, and "Put back" returns them at any time before that. A second choice removes the book from Tendshelf and leaves the files where they are. The Removed books page of each library, linked from Libraries & scanning, lists what is waiting with the days left, and offers Put back and Delete now.
+
 ### Changed
 
 - **Buttons that do not fit move into the three-dot menu.** On a book page (and on a followed show) the buttons stay on one line; "Add to shelf", "Download" or "Mark as finished" no longer drop onto a line of their own when the window is narrow. What does not fit moves into the three-dot menu, and comes back when there is room. Play and Resume, and the three-dot button, always show.

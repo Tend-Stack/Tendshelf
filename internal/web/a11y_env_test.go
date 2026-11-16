@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/auth/oidc"
 	"github.com/Tend-Stack/tendshelf/internal/library"
+	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/podcast/rss"
 	"github.com/Tend-Stack/tendshelf/internal/radio"
@@ -43,6 +46,7 @@ type a11yEnv struct {
 	PairToken, PairID                      string // a waiting pairing of the owner's session (decision 0028)
 	SignInToken, SignInPanelID             string // an unspent sign-in link; the person whose page "main/panel" shows a new one (decision 0030)
 	UploadLibID, UploadBookID              string
+	HandBookID, RemovalID                  string // a book put in the library by hand and a held removal (decision 0045)
 	PodShowID, PodEpisodeID                string // a followed show of the owner and one of its episodes (decision 0038)
 
 	Main, Upload, Fresh, Setup *testApp
@@ -235,6 +239,7 @@ func a11ySeed(t *testing.T) *a11yEnv {
 			replace(hex(zeroblob(32)), '0', ?), 'ready', 'The Lantern Years.epub', ?, ? FROM books WHERE id = ?`,
 			fmt.Sprintf("ebf_a11y_rm%d", i), 1-i, fill, fill, i+1, i+1, e.UploadBookID)
 	}
+	a11yHandBook(t, e, up, upLib)
 	as("upload/owner", up, up.owner(t))
 
 	// fresh: no owner yet (/setup); setup: an owner who has not finished the three steps.
@@ -392,4 +397,38 @@ func a11yPodcasts(t *testing.T, a *testApp, fx *podFix, owner string) (showID, e
 		t.Fatal(err)
 	}
 	return id, eps[0]
+}
+
+// a11yHandBook gives the upload fixture a book put in the library folder by hand, with real files on disk whose
+// size and time match the scan's record (so its remove page is the warning), and a removal waiting in the holding
+// folder (so the removed books list and the removal's page have a row).
+func a11yHandBook(t *testing.T, e *a11yEnv, up *testApp, libID string) {
+	t.Helper()
+	folders, err := up.lib.Folders(context.Background(), libID)
+	if err != nil || len(folders) == 0 {
+		t.Fatalf("folders: %v", err)
+	}
+	hand := librarytest.AddBook(t, up.lib, folders[0], librarytest.BookSpec{Title: "Copied In By Hand", Authors: []string{"Ann Marlowe"}, Files: 2})
+	e.HandBookID = hand.ID
+	if err := os.MkdirAll(hand.RootPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files, err := up.lib.AudioFiles(context.Background(), hand.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, f := range files {
+		if err := os.WriteFile(f.Path, []byte(strings.Repeat("x", 1000+i)), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		fi, err := os.Stat(f.Path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		streamExec(t, up, `UPDATE audio_files SET size = ?, mtime_ns = ? WHERE book_id = ? AND idx = ?`, fi.Size(), fi.ModTime().UnixNano(), hand.ID, f.Idx)
+	}
+	e.RemovalID = "rmv_a11y"
+	streamExec(t, up, `INSERT INTO removals(id, library_id, folder_id, book_id, title, root_path, mode, state, plan_hash, files, bytes, created_at, updated_at, purge_after)
+  VALUES ('rmv_a11y', ?, ?, 'bk_a11y_gone', 'Weather for Beginners', ?, 'files', 'held', ?, 3, 3000000, 1, 1, ?)`,
+		libID, folders[0].ID, filepath.Join(folders[0].Path, "Rosa Lindqvist", "Weather for Beginners"), strings.Repeat("a", 64), time.Now().Add(21*24*time.Hour).UnixMilli())
 }

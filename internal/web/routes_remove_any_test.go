@@ -39,7 +39,7 @@ func newRemoveLab(t *testing.T) *removeLab {
 	t.Helper()
 	l := &removeLab{}
 	a := newTestApp(t, func(o *Options) {
-		r2, err := jobs.New(o.Store, jobs.Options{})
+		r2, err := jobs.New(o.Store, jobs.Options{PollEvery: 50 * time.Millisecond})
 		if err != nil {
 			t.Fatal(err)
 		}
