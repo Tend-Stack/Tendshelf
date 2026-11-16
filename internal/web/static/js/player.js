@@ -400,7 +400,7 @@ function loadSource(url, offsetMs, shouldPlay) {
   audio.defaultPlaybackRate = book.speed;
   // a live stream has no place to start from, so no #t= fragment
   audio.src = book.kind === RADIO ? url : url + "#t=" + (offsetMs / 1000).toFixed(3);
-  if (shouldPlay) audio.play().catch(() => {});
+  if (shouldPlay) audio.play().catch(refused);
 }
 
 // Switches to another file, or to its converted copy if the browser cannot decode it.
@@ -515,10 +515,14 @@ function afterBreak() {
 // nothing here awaits before reaching it.
 function play() {
   if (NATIVE) {
-    if (book) audio.start(book.id);
+    if (book) {
+      setLoading(book.id);
+      audio.start(book.id);
+    }
     return;
   }
   if (!book || current.fileIdx < 0) return;
+  setLoading(book.id);
   if (outroEnded) {
     // pressing Play on an episode that stopped at its outro starts it again
     outroEnded = false;
@@ -528,7 +532,7 @@ function play() {
   if (!current.loaded) {
     setSource(current.fileIdx, current.startMs, true);
   } else {
-    audio.play().catch(() => {});
+    audio.play().catch(refused);
   }
 }
 
@@ -902,9 +906,10 @@ function render(force) {
 }
 
 function state() {
-  if (!book) return { bookId: "", playing: false };
+  if (!book) return { bookId: "", playing: false, loading: loadingId !== "" };
   return {
     bookId: book.id,
+    loading: loadingId !== "",
     title: book.title,
     positionMs: Math.round(bookPosition()),
     durationMs: book.durationMs,
@@ -919,10 +924,100 @@ function state() {
 
 // Redraws and tells the page (ts:player:state).
 function emit(kind) {
+  if (kind === "pause" || kind === "error") setLoading(""); // a stop or a failure ends the wait
   render(true);
   syncPageButtons();
   updateSuppression();
+  paintLoading(); // the buttons were redrawn above, so the ring is drawn again
   fire(document, "ts:player:state", { kind, ...state() });
+}
+
+// ---- Loading: the player says it is working while the sound is not there yet ----
+
+// loadingId is the item that is starting or buffering ("" when none): true from the press of Play (the
+// fetch of the player document, a compatibility copy being made, the engine finding its place) until the
+// engine reports sound, and again while it reports waiting. What the person sees is later and steadier
+// (shownId): it appears only after LOADING_SHOW_MS and stays at least LOADING_HOLD_MS, so a fast start
+// shows nothing and a medium one does not blink.
+const LOADING_SHOW_MS = 250;
+const LOADING_HOLD_MS = 400;
+let loadingId = "";
+let loadingSince = 0;
+let shownId = "";
+let shownAt = 0;
+let loadingTimer = 0;
+let startSeq = 0; // a press that cancels a start bumps this, so a start still being fetched does not play
+
+// A refused play() (no gesture yet) leaves the player paused: nothing is loading then. An abort caused
+// by a newer source leaves the audio playing-to-be, so it keeps the state.
+function refused() {
+  if (audio.paused) setLoading("");
+}
+
+function setLoading(id) {
+  if (id === loadingId) return;
+  const was = loadingId;
+  loadingId = id;
+  if (id && !was) loadingSince = perfNow();
+  clearTimeout(loadingTimer);
+  if (id) {
+    if (shownId) {
+      shownId = id; // still showing (a pending hide is cancelled)
+      paintLoading();
+    } else {
+      loadingTimer = setTimeout(() => {
+        shownId = loadingId;
+        shownAt = perfNow();
+        paintLoading();
+      }, Math.max(0, LOADING_SHOW_MS - (perfNow() - loadingSince)));
+    }
+  } else if (shownId) {
+    loadingTimer = setTimeout(() => {
+      shownId = "";
+      paintLoading();
+    }, Math.max(0, LOADING_HOLD_MS - (perfNow() - shownAt)));
+  }
+  fire(document, "ts:player:loading", state()); // its own event: the state listeners redraw everything on every kind
+}
+
+// Puts the ring in place of the control's visible icon. The ring takes the icon's size, so nothing moves.
+function markLoading(el) {
+  el.dataset.tsLoading = "";
+  el.setAttribute("aria-busy", "true");
+  const icon = [...el.querySelectorAll("svg")].find((svg) => svg.getClientRects().length > 0);
+  if (!icon) return;
+  const box = icon.getBoundingClientRect();
+  const size = Math.round(Math.min(box.width, box.height)) + "px";
+  const ring = document.createElement("span");
+  ring.className = "ts-spinner ts-loadring";
+  ring.dataset.tsRing = "";
+  ring.setAttribute("aria-hidden", "true");
+  ring.style.setProperty("width", size);
+  ring.style.setProperty("height", size);
+  icon.dataset.tsRinged = "";
+  icon.before(ring);
+}
+
+function unmarkLoading(el) {
+  delete el.dataset.tsLoading;
+  el.removeAttribute("aria-busy");
+  for (const ring of el.querySelectorAll("[data-ts-ring]")) ring.remove();
+  for (const icon of el.querySelectorAll("[data-ts-ringed]")) delete icon.dataset.tsRinged;
+}
+
+// Shows or clears the visible state on every control of the item that is loading, and on the full
+// player (its cover gets the veil). Other items' controls are left alone.
+function paintLoading() {
+  for (const el of document.querySelectorAll("[data-ts-loading]")) unmarkLoading(el);
+  const full = document.getElementById("player-full");
+  if (full) full.toggleAttribute("data-ts-loading-item", shownId !== "" && !!book && book.id === shownId);
+  if (!shownId) return;
+  const targets = [...document.querySelectorAll("[data-ts-play]")].filter((el) => el.dataset.tsPlay === shownId);
+  if (book && book.id === shownId) {
+    targets.push(controls.toggle);
+    if (full) targets.push(...full.querySelectorAll("[data-ts-full-toggle]"));
+  }
+  for (const el of targets) markLoading(el);
 }
 
 // ---- One resume per screen ----
@@ -996,6 +1091,7 @@ function watchPageResumeButtons() {
   visibleResumeButtons.clear();
   syncPageButtons();
   updateSuppression();
+  paintLoading();
   if (!book) return;
   resumeWatcher = new IntersectionObserver((entries) => {
     for (const entry of entries) {
@@ -1110,6 +1206,7 @@ function adopt(newBook, posMs) {
     audio.removeAttribute("src");
     audio.load();
   }
+  if (loadingId && loadingId !== newBook.id) setLoading(""); // another item replaced the one that was starting
   book = newBook;
   prompting = false;
   outroEnded = false;
@@ -1159,7 +1256,9 @@ async function fetchChapters(episode) {
 
 // Fetches and adopts a book. options.positionMs overrides the saved place; options.play plays.
 async function loadBook(id, options) {
+  const seq = startSeq;
   const fetched = await fetchBook(id, options && options.init);
+  if (options && options.play && seq !== startSeq) options = { ...options, play: false }; // the press was cancelled while this was fetched
   const given = options && options.positionMs;
   const savedStart = fetched && fetched.stored && !fetched.stored.finished ? fetched.stored.positionMs : 0;
   if (!fetched || !adopt(fetched, given !== undefined ? given : savedStart)) return false;
@@ -1239,13 +1338,26 @@ listen(document, "click", (event) => {
     window.htmx.ajax("GET", data.tsChoose + "&at=" + encodeURIComponent(at), { target: "#sheet", select: "#sheet > *", source: el });
     return;
   }
+  if (loadingId && loadingId === data.tsPlay) {
+    // pressing the busy button of a start that is still being fetched cancels it
+    startSeq++;
+    compatSeq++;
+    audio.pause();
+    setLoading("");
+    return;
+  }
   wantsFirstSound = true;
   if (book && book.id === data.tsPlay) {
     // a finished book that is still loaded (the Listen again link) starts at the beginning of the book
     if (data.tsFromStart === "1") seek(0, true);
     play();
-  } else if (data.tsFile) startFromLink(data);
-  else loadBook(data.tsPlay, { play: true });
+  } else {
+    setLoading(data.tsPlay); // from the press, which includes fetching the player document
+    const started = data.tsFile ? startFromLink(data) : loadBook(data.tsPlay, { play: true });
+    Promise.resolve(started).then((ok) => {
+      if (ok === false && loadingId === data.tsPlay) setLoading("");
+    });
+  }
 });
 
 // Play on a station that is not saved yet (a search result or a suggestion): the form posts the slug to
@@ -1308,10 +1420,22 @@ listen(audio, "playing", () => {
     liveRetries = 0;
     scheduleNow(3000);
   }
+  setLoading("");
   render(true);
 });
 
-listen(audio, "waiting", () => accrueHeard(true)); // buffering is not listening
+listen(audio, "waiting", () => {
+  accrueHeard(true); // buffering is not listening
+  if (book && !audio.paused) setLoading(book.id);
+});
+
+// A seek during playback is a wait until the engine has data at the new place.
+listen(audio, "seeking", () => {
+  if (book && !audio.paused) setLoading(book.id);
+});
+listen(audio, "seeked", () => {
+  if (loadingId && audio.readyState >= 3 && !audio.paused) setLoading("");
+});
 
 listen(audio, "pause", () => {
   if (audio.ended || outroEnded || !book) return; // the end has its own handler

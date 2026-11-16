@@ -253,3 +253,18 @@ html[data-text-size="large"] .ts-player-slot.is-covered { visibility: hidden; }
 .ts-stnlogo--36 { width: 2.25rem; height: 2.25rem; }
 .ts-stnlogo--56 { width: 3.5rem; height: 3.5rem; }
 .ts-mini__cover .ts-stnlogo, .ts-player__cover .ts-stnlogo { height: 100%; border-radius: inherit; }
+
+/* Loading (js/player.js, paintLoading): a quiet ring replaces the icon of the item's play controls and sits on the
+   full player's cover, only after the wait has lasted a moment. The ring takes the icon's size (set by the script),
+   so the control does not move. Under reduced motion it does not spin: three static dots show instead. */
+.ts-loadring { display: inline-flex; flex: none; box-sizing: border-box; align-items: center; justify-content: center; }
+[data-ts-loading] svg[data-ts-ringed] { display: none; }
+[data-ts-loading] { cursor: progress; }
+.ts-player[data-ts-loading-item] .ts-player__cover > img, .ts-player[data-ts-loading-item] .ts-player__cover > .ts-stnlogo { opacity: 0.7; }
+.ts-player[data-ts-loading-item] .ts-player__cover::before { content: ""; position: absolute; z-index: 1; inset-block-start: 50%; inset-inline-start: 50%; width: 3.5rem; height: 3.5rem; margin: -1.75rem 0 0 -1.75rem; border-radius: 50%; background: var(--raised); }
+.ts-player[data-ts-loading-item] .ts-player__cover::after { content: ""; position: absolute; z-index: 2; inset-block-start: 50%; inset-inline-start: 50%; box-sizing: border-box; width: 2rem; height: 2rem; margin: -1rem 0 0 -1rem; border-radius: 50%; border: 0.1875rem solid var(--ink); border-right-color: transparent; animation: ts-spin 800ms linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .ts-loadring { animation: none; border: 0; }
+  .ts-loadring::before { content: "\2022\2022\2022"; font-size: 0.8125rem; line-height: 1; letter-spacing: 0.0625rem; white-space: nowrap; }
+  .ts-player[data-ts-loading-item] .ts-player__cover::after { content: "\2022\2022\2022"; display: flex; align-items: center; justify-content: center; border: 0; animation: none; color: var(--ink); font-size: 1.5rem; line-height: 1; letter-spacing: 0.0625rem; }
+}

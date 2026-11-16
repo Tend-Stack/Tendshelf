@@ -1195,6 +1195,21 @@ folder, can be put back, and are deleted after 30 days. Adding a book checks whe
 texts, P1 removal service (migration 0045, `share.RemoveLibraryFiles`, `internal/upload/removeany.go`, scanner keep-out), P2 pages, P3
 duplicate check, P4 duplicate UI. Status: P0 and P1 built 2026-11-15; P2 to P4 open.
 
+## The player says it is loading (operator report, 2026-11-15)
+
+While a book, episode or station finds its place nothing showed. The player now has one more state, `loading`
+(`tsPlayer.state().loading`, event `ts:player:loading`, separate so the full player does not redraw): true from the press of Play (including the player
+document fetch and a compatibility-copy wait) until the engine reports `playing`, and again on `waiting` or a seek during
+playback; cleared by `playing`, a pause, an error, the end, or another item replacing it. The picture is later and
+steadier: after 250 ms, at least 400 ms. It is the ring (`.ts-spinner`, the handoff's loading state for an icon button is
+`aria-busy` plus spinner) in place of the icon of every play control of that item (bar, full player, page buttons, rows,
+station cards; `aria-busy`, `data-ts-loading`, same size and place, still pressable), and a veil with the ring on the full
+player's cover. Reduced motion: three still dots. The Android shell's `buffering` flag already fired `waiting`; it now
+also fires `playing` when buffering ends. Checks: `TestPlayerLoading*` in Chromium (book page, fast start, cancel by
+press, full player cover at 390 and 1440, reduced motion, ring contrast in four themes, an episode and a station).
+Limits: no `stalled` listener (Chromium fires it with data in hand); no spoken "Loading" (the player has no polite
+region, so only `aria-busy`); the desktop title bar chip is native and unchanged; WebKitGTK and a phone were not seen.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a
