@@ -148,12 +148,15 @@ func New(cfg Config, st *db.Store, repo *library.Repo, tools media.Tools, enq sc
 	}
 }
 
-// Register adds the upload.place and upload.remove_all job kinds.
+// Register adds the upload.place, upload.remove_all and upload.remove_files job kinds.
 func (s *Service) Register(r *jobs.Runner) error {
 	if err := r.Register(jobs.Kind{Name: KindPlace, Concurrency: 1, MaxAttempts: 3, Handler: s.handlePlace}); err != nil {
 		return err
 	}
-	return r.Register(jobs.Kind{Name: KindRemoveAll, Concurrency: 1, MaxAttempts: 1, Handler: s.handleRemoveAll})
+	if err := r.Register(jobs.Kind{Name: KindRemoveAll, Concurrency: 1, MaxAttempts: 1, Handler: s.handleRemoveAll}); err != nil {
+		return err
+	}
+	return r.Register(jobs.Kind{Name: KindRemoveFiles, Concurrency: 1, MaxAttempts: 1, Handler: s.handleRemoveFiles})
 }
 
 func (s *Service) nowMs() int64 { return s.cfg.Now().UnixMilli() }

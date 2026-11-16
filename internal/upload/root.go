@@ -1,10 +1,12 @@
 package upload
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // lroot is the chosen upload folder, opened as an os.Root. Every library-side operation goes through
@@ -52,6 +54,36 @@ func (l *lroot) Mkdir(abs string, perm os.FileMode) error {
 		return fmt.Errorf("upload: cannot create %q", abs)
 	}
 	return l.r.Mkdir(r, perm)
+}
+
+// MkdirAll creates abs and any missing folder above it inside the root, one Mkdir at a time, so every step is
+// resolved below the open folder. A name that exists as anything but a folder (or as a link) is an error.
+func (l *lroot) MkdirAll(abs string, perm os.FileMode) error {
+	r, err := l.rel(abs)
+	if err != nil {
+		return err
+	}
+	if r == "." {
+		return nil
+	}
+	cur := ""
+	for _, part := range strings.Split(filepath.ToSlash(r), "/") {
+		cur = filepath.Join(cur, part)
+		fi, err := l.r.Lstat(cur)
+		switch {
+		case err == nil:
+			if !isDirNoLink(fi) {
+				return fmt.Errorf("upload: %q is not a folder", filepath.Join(l.path, cur))
+			}
+		case errors.Is(err, fs.ErrNotExist):
+			if err := l.r.Mkdir(cur, perm); err != nil && !errors.Is(err, fs.ErrExist) {
+				return err
+			}
+		default:
+			return err
+		}
+	}
+	return nil
 }
 
 func (l *lroot) OpenFile(abs string, flag int, perm os.FileMode) (*os.File, error) {

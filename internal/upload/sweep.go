@@ -35,7 +35,8 @@ func (s *Service) Run(ctx context.Context) {
 
 // Sweep expires receiving uploads with no chunk for 24 hours, removes staging folders that have no
 // upload row (older than 24 hours) or whose upload has ended, and deletes rows of ended uploads
-// older than 30 days. The ledger (upload_paths) is never pruned.
+// older than 30 days. The ledger (upload_paths) is never pruned. It also puts back interrupted
+// removals and deletes the held files of removals past their keep period (removeany.go).
 func (s *Service) Sweep(ctx context.Context) error {
 	now := s.cfg.Now()
 	cut := now.Add(-staleAfter).UnixMilli()
@@ -148,7 +149,7 @@ func (s *Service) Sweep(ctx context.Context) error {
 			return err
 		}
 	}
-	return nil
+	return s.sweepRemovals(ctx)
 }
 
 // ids runs a query that selects upload ids.

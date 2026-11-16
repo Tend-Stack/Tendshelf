@@ -223,3 +223,31 @@ func (r *Repo) NotDuplicates(ctx context.Context, a, b, userID string) error {
 		return err
 	})
 }
+
+// KeptOutRoots lists the book roots of a library that a person removed from Tendshelf while keeping their files
+// (decision 0045, removals with mode 'keep_files' that are held). A scan keeps these folders out like merged ones.
+func (r *Repo) KeptOutRoots(ctx context.Context, libraryID string) (map[string]bool, error) {
+	return keptOutRoots(ctx, r.st.Reader(), libraryID)
+}
+
+// KeptOutRoots is Repo.KeptOutRoots inside the transaction, for the scan's diff.
+func (t *Tx) KeptOutRoots(libraryID string) (map[string]bool, error) {
+	return keptOutRoots(t.ctx, t.tx, libraryID)
+}
+
+func keptOutRoots(ctx context.Context, q queryer, libraryID string) (map[string]bool, error) {
+	rows, err := q.QueryContext(ctx, `SELECT root_path FROM removals WHERE library_id = ? AND mode = 'keep_files' AND state = 'held'`, libraryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, err
+		}
+		out[p] = true
+	}
+	return out, rows.Err()
+}
