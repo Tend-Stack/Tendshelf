@@ -1,7 +1,7 @@
 package pages
 
 // BookRemoveView is the confirmation page of "Remove this book" (decision 0015, point 11). It lists
-// the files Tendshelf will delete; the handler writes every word. A book with audio and a text book
+// the files Tendshelf will move into the holding folder; the handler writes every word. A book with audio and a text book
 // carries Choices instead of one Button: each choice is its own button (decision 0015, "Remove one part").
 type BookRemoveView struct {
 	Title, Body, Button, Cancel string
@@ -16,7 +16,7 @@ type RemoveChoice struct {
 	Part, File, Label, Help string
 }
 
-// BookRemove asks before the files of a book Tendshelf added are deleted.
+// BookRemove asks before the files of a book Tendshelf added move into the holding folder.
 templ BookRemove(v BookRemoveView) {
 	<div class="ts-upload ts-remove">
 		<h1 class="title-1 ts-upload__title">{ v.Title }</h1>

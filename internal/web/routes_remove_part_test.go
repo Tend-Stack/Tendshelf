@@ -214,7 +214,7 @@ func TestRemoveWholeCopyAndContributorKeepsOthersStoredText(t *testing.T) {
 	page := func(ck *http.Cookie) string {
 		return html.UnescapeString(p.a.do(http.MethodGet, "/books/"+p.book.ID+"/remove", nil, nil, ck).Body.String())
 	}
-	if body := page(p.owner); !strings.Contains(body, "Your listening progress, bookmarks and reading places on this book go with it.") {
+	if body := page(p.owner); !strings.Contains(body, "Your listening progress, bookmarks and reading places on this book go, and putting the files back does not bring them back.") {
 		t.Error("the whole-book choice does not say that progress, bookmarks and places go with it")
 	}
 	contributor := p.a.as(t, users.RoleMember)

@@ -10,7 +10,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 // BookRemoveView is the confirmation page of "Remove this book" (decision 0015, point 11). It lists
-// the files Tendshelf will delete; the handler writes every word. A book with audio and a text book
+// the files Tendshelf will move into the holding folder; the handler writes every word. A book with audio and a text book
 // carries Choices instead of one Button: each choice is its own button (decision 0015, "Remove one part").
 type BookRemoveView struct {
 	Title, Body, Button, Cancel string
@@ -25,7 +25,7 @@ type RemoveChoice struct {
 	Part, File, Label, Help string
 }
 
-// BookRemove asks before the files of a book Tendshelf added are deleted.
+// BookRemove asks before the files of a book Tendshelf added move into the holding folder.
 func BookRemove(v BookRemoveView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

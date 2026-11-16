@@ -112,7 +112,7 @@ type Removal struct {
 	Bytes                                            int64
 	JobID, RemovedBy                                 string
 	Source                                           string // SourceLibrary or SourceUpload
-	CreatedAt, UpdatedAt, PurgeAfter                 int64 // Unix ms; PurgeAfter is 0 when not set
+	CreatedAt, UpdatedAt, PurgeAfter                 int64  // Unix ms; PurgeAfter is 0 when not set
 }
 
 // RestoreResult says what "Put back" did: the files that returned, and the ones that stayed in the holding folder
