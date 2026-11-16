@@ -43,6 +43,9 @@ interface PlayerRemote {
 }
 
 /** The remote over a Media3 controller connected to [PlaybackService]. */
+// The service's commands and extras live in PlaybackService, which is Media3 unstable API: the class opts in once here
+// instead of each new command leaning on lint-baseline.xml (CI lint, 2026-11-16).
+@androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 class ControllerRemote(private val controller: MediaController) : PlayerRemote {
     private val listeners = mutableListOf<(PlayerSnapshot) -> Unit>()
     private val watcher = object : Player.Listener {
