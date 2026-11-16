@@ -24,10 +24,16 @@ type AddBooksView struct {
 	Rows     []components.UploadRowView
 	// Template is the row js/upload.js clones for each upload it starts.
 	Template components.UploadRowView
+	// CanEdit is true for a person who may edit any book of the library (owner and admin): the
+	// "already in the library" warning then offers Edit details beside Open it.
+	CanEdit bool
 }
 
 func (v AddBooksView) attrs() templ.Attributes {
-	a := templ.Attributes{"data-ts-module": v.Module, "data-ts-library": v.LibraryID}
+	a := templ.Attributes{"data-ts-module": v.Module, "data-ts-library": v.LibraryID, "data-ts-library-name": v.LibraryName}
+	if v.CanEdit {
+		a["data-ts-can-edit"] = "1"
+	}
 	for _, m := range v.Messages {
 		a["data-ts-msg-"+m.Key] = m.Text
 	}

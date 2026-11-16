@@ -100,7 +100,10 @@ type BookView struct {
 	BandTint, BandClass string
 	// Banner is the status line for a missing or refused book.
 	Banner string
-	Tabs   []BookTab
+	// DupNotice, DupLabel and DupHref are the owner's and admins' line "Another copy of this book is in
+	// the library." with its link to the merge preview (decision 0045); empty for everyone else.
+	DupNotice, DupLabel, DupHref string
+	Tabs                         []BookTab
 	// Tab is "about", "chapters", "bookmarks", "text" or "details".
 	Tab string
 	// The description (Intro, then Rest behind MoreLabel) shows in the header on a wide screen and
@@ -396,6 +399,12 @@ templ Book(v BookView) {
 					<p class="ts-banner" role="status">
 						@components.Icon("alert", false)
 						{ v.Banner }
+					</p>
+				}
+				if v.DupNotice != "" {
+					<p class="ts-banner ts-book__dup" role="status">
+						@components.Icon("alert", false)
+						<span>{ v.DupNotice } <a href={ templ.SafeURL(v.DupHref) }>{ v.DupLabel }</a></span>
 					</p>
 				}
 			</div>

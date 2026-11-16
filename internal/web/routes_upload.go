@@ -48,6 +48,8 @@ type uploadRefusal struct {
 		Field   string `json:"field,omitempty"`
 	} `json:"error"`
 	Offset *int64 `json:"offset,omitempty"`
+	// Match is the library book an already_in_library refusal found (decision 0045).
+	Match *upload.Match `json:"match,omitempty"`
 }
 
 // uploadError answers an error of the upload service: its own status and words, or a 500.
@@ -66,7 +68,33 @@ func (s *server) uploadError(w http.ResponseWriter, r *http.Request, what string
 	if ue.Code == "wrong_offset" {
 		body.Offset = &ue.Offset
 	}
+	body.Match = ue.Match
 	api.Write(w, ue.Status, body)
+}
+
+// uploadFormPost is true for the plain form and htmx posts of the "already" row (not the JSON of js/upload.js).
+func uploadFormPost(r *http.Request) bool {
+	ct := strings.TrimSpace(strings.SplitN(r.Header.Get("Content-Type"), ";", 2)[0])
+	return r.Header.Get("HX-Request") == "true" || strings.EqualFold(ct, "application/x-www-form-urlencoded")
+}
+
+// uploadFormRefused answers a refused form post: a toast for htmx, a plain text answer otherwise.
+func (s *server) uploadFormRefused(w http.ResponseWriter, r *http.Request, what string, err error) {
+	var ue *upload.Error
+	if errors.As(err, &ue) && ue.Status != http.StatusNotFound {
+		if r.Header.Get("HX-Request") == "true" {
+			s.fragment(w, r, ue.Status, components.ErrorToast(ue.Message))
+			return
+		}
+		http.Error(w, ue.Message, ue.Status)
+		return
+	}
+	s.uploadError(w, r, what, err)
+}
+
+// addBooksBack sends a plain form post back to the Add books page of the upload's library.
+func addBooksBack(w http.ResponseWriter, r *http.Request, libID string) {
+	http.Redirect(w, r, "/libraries/"+libID+"/add", http.StatusSeeOther)
 }
 
 // uploadsReady answers 404 unless uploads are set up and the person may add books at all.
@@ -157,27 +185,75 @@ func (s *server) putUploadChunk(w http.ResponseWriter, r *http.Request) {
 	api.Write(w, http.StatusOK, map[string]int64{"offset": n})
 }
 
+// postUploadFinish starts the placing once every byte is in. "add_anyway" (a form field or a JSON body) is the
+// person's choice to add a book the library already has (decision 0045); the service decides who may. The
+// "already" row posts it as a form: htmx gets the row back, a plain form is sent back to the Add books page.
 func (s *server) postUploadFinish(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.ownUpload(w, r); !ok {
+	libID, ok := s.ownUpload(w, r)
+	if !ok {
 		return
 	}
-	job, err := s.uploads.Finish(r.Context(), currentUser(r).ID, r.PathValue("id"))
+	form := uploadFormPost(r)
+	anyway := false
+	if form {
+		anyway = r.FormValue("add_anyway") == "1"
+	} else if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		var body struct {
+			AddAnyway bool `json:"add_anyway"`
+		}
+		_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10)).Decode(&body)
+		anyway = body.AddAnyway
+	}
+	id, userID := r.PathValue("id"), currentUser(r).ID
+	var job string
+	var err error
+	if anyway {
+		job, err = s.uploads.FinishAnyway(r.Context(), userID, id)
+	} else {
+		job, err = s.uploads.Finish(r.Context(), userID, id)
+	}
 	if err != nil {
+		if form {
+			s.uploadFormRefused(w, r, "finish upload", err)
+			return
+		}
 		s.uploadError(w, r, "finish upload", err)
 		return
 	}
-	api.Write(w, http.StatusAccepted, map[string]string{"job_id": job})
+	switch {
+	case r.Header.Get("HX-Request") == "true":
+		s.renderUploadRow(w, r, libID, id)
+	case form:
+		addBooksBack(w, r, libID)
+	default:
+		api.Write(w, http.StatusAccepted, map[string]string{"job_id": job})
+	}
 }
 
+// postUploadCancel stops an upload and deletes its staged bytes ("Do not add" on the "already" row posts it
+// as a form: htmx gets an empty answer that removes the row, a plain form is sent back to the Add books page).
 func (s *server) postUploadCancel(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.ownUpload(w, r); !ok {
+	libID, ok := s.ownUpload(w, r)
+	if !ok {
 		return
 	}
 	if err := s.uploads.Cancel(r.Context(), currentUser(r).ID, r.PathValue("id")); err != nil {
+		if uploadFormPost(r) {
+			s.uploadFormRefused(w, r, "cancel upload", err)
+			return
+		}
 		s.uploadError(w, r, "cancel upload", err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	switch {
+	case r.Header.Get("HX-Request") == "true":
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+	case uploadFormPost(r):
+		addBooksBack(w, r, libID)
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 // uploadsCannotWrite is shown when the chosen folder fails the write check.

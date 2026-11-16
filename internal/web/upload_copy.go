@@ -85,7 +85,8 @@ const (
 
 func uploadRowWords() components.UploadRowWords {
 	return components.UploadRowWords{Pause: uploadPause, Resume: uploadResume, ChooseAgain: uploadChooseAgain,
-		Cancel: uploadCancel, TryAgain: uploadTryAgain, OpenBook: uploadOpenBook}
+		Cancel: uploadCancel, TryAgain: uploadTryAgain, OpenBook: uploadOpenBook,
+		OpenIt: uploadOpenIt, EditDetails: moreEditDetails, AddAnyway: uploadAddAnyway, DoNotAdd: uploadDoNotAdd}
 }
 
 // bookRemoveText is the sentence on the remove confirmation: "the file" for one, "the N files" for more.
@@ -118,6 +119,11 @@ func uploadMessages() []pages.UploadMsg {
 		{Key: "min", Text: "{n} min"},
 		{Key: "hour", Text: "{n} h"},
 		{Key: "failed", Text: "Tendshelf could not reach the server. Reload this page, then choose the same files again."},
+		{Key: "already-same", Text: uploadAlreadySame},
+		{Key: "already-some", Text: uploadAlreadySome},
+		{Key: "already-like", Text: uploadAlreadyLike},
+		{Key: "already-ask", Text: uploadAlreadyAsk},
+		{Key: "already-recent", Text: uploadAlreadyRecent},
 		{Key: "mismatch", Text: "These are not the same files. Choose the files you picked before."},
 	}
 }

@@ -437,3 +437,16 @@ Use a real library folder you can look into, and a book you copied in by hand (n
 | RM-5 | Remove another hand-added book with "Remove from Tendshelf, keep the files". Scan the library. | The files stay in place, the scan does not add the book, and it is listed under Removed books with "Show again". "Show again" and a scan bring it back. | Not run. |
 | RM-6 | Open the confirm page, copy a new file into the book's folder, then press remove. | The page says the files changed and shows the fresh list; nothing moved. | Not run. |
 | RM-7 | As an admin, repeat RM-1; as a member or a guest, open the same address. | The admin sees the page; the member and the guest get "We couldn't find that." | Not run. |
+
+## Already in the library (decision 0045, P4)
+
+Use a library with uploads turned on and a book you copied into its folder by hand (then scanned).
+
+| ID | Check | Expected | Result |
+| --- | --- | --- | --- |
+| DUP-1 | Over https, Add books, choose the same files as the hand-copied book. | Before any progress bar: "This book is already in {library}: {title}." with Open it, Add anyway and Do not add (and Edit details for owner and admin). Nothing was sent. | Not run. |
+| DUP-2 | Press Open it, go back, press Add anyway. | The book opens. Add anyway then sends the files and the row ends "Added to {library}". | Not run. |
+| DUP-3 | Over plain http (for example the server's LAN address), choose the same files. | The files are sent, then the row says the same sentence and offers the same choices. Do not add removes the row and the staged bytes. | Not run. |
+| DUP-4 | Add a .zip of the same book. | The zip is sent, then the row warns as in DUP-3. | Not run. |
+| DUP-5 | Add a book with Add books, then copy the same files into the folder by hand and scan. As owner open either book. | The book page says "Another copy of this book is in the library." with Compare them, which opens the merge preview keeping the older book. A member sees nothing. | Not run. |
+| DUP-6 | As a contributor, add the same files as an existing book. | The warning has no Add anyway and says "Ask an admin if you need a second copy." | Not run. |

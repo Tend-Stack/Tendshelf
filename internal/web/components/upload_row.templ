@@ -6,19 +6,29 @@ import "strconv"
 // comes from the server (upload_copy.go).
 type UploadRowWords struct {
 	Pause, Resume, ChooseAgain, Cancel, TryAgain, OpenBook string
+	// OpenIt, EditDetails, AddAnyway and DoNotAdd are the choices of the "already" state.
+	OpenIt, EditDetails, AddAnyway, DoNotAdd string
 }
 
 // UploadRowView is one row of the Add books queue (decision 0015, board UploadBooks). State is
 // sending, paused, stopped (an upload that lost its page: choose the same files again), checking,
 // placing, adding, added, refused or failed. The handler writes every sentence; js/upload.js fills
-// the "sending" template (Template true) and moves a live row between sending, paused, refused and
-// failed.
+// the "sending" template (Template true) and moves a live row between sending, paused, already,
+// refused and failed. The "already" state (decision 0045) is an upload the library already has: OpenHref
+// opens that book, EditHref (empty when the person may not edit it) opens its details, and the two forms
+// work without JavaScript. AddAnyway is false when the person may not add a second copy.
 type UploadRowView struct {
 	ID, State         string
 	Title, Meta, Line string
 	Path, Left        string
 	Percent           int
 	OpenHref          string
+	EditHref          string
+	AddAnyway         bool
+	// Listing is true while the match is the person's own upload the scan has not listed yet; the row polls until the book has an address.
+	Listing bool
+	// CSRF is the token of the "already" forms.
+	CSRF  string
 	Words             UploadRowWords
 	// Template marks the hidden row js/upload.js clones for each new upload.
 	Template bool
@@ -59,7 +69,7 @@ var uploadShapes = map[string]string{
 // uploadIconName maps a row state to its icon.
 func uploadIconName(state string) string {
 	switch state {
-	case "stopped", "failed":
+	case "stopped", "failed", "already":
 		return "warn"
 	case "checking", "placing":
 		return "adding"
@@ -74,7 +84,7 @@ func uploadWorking(v UploadRowView) bool {
 
 // uploadPolls is true for a live row that asks the server for itself.
 func uploadPolls(v UploadRowView) bool {
-	return !v.Template && uploadWorking(v)
+	return !v.Template && (uploadWorking(v) || v.Listing)
 }
 
 // UploadIcon draws one of the Add books icons without any attribute of its own.
@@ -148,6 +158,10 @@ templ UploadRow(v UploadRowView) {
 					{ v.Words.Resume }
 				</button>
 				<button type="button" class="ts-btn ts-btn--quiet" data-ts-act="cancel" data-ts-for="paused failed" hidden>{ v.Words.Cancel }</button>
+				<a class="ts-btn ts-btn--secondary" href="#" data-ts-open data-ts-for="already" hidden>{ v.Words.OpenIt }</a>
+				<a class="ts-btn ts-btn--quiet" href="#" data-ts-edit data-ts-for="already" hidden>{ v.Words.EditDetails }</a>
+				<button type="button" class="ts-btn ts-btn--primary" data-ts-act="anyway" data-ts-for="already" hidden>{ v.Words.AddAnyway }</button>
+				<button type="button" class="ts-btn ts-btn--quiet" data-ts-act="skip" data-ts-for="already" hidden>{ v.Words.DoNotAdd }</button>
 			}
 			if v.State == "stopped" {
 				<label class="ts-btn ts-btn--secondary ts-upload__choose">
@@ -158,6 +172,25 @@ templ UploadRow(v UploadRowView) {
 			}
 			if v.State == "failed" && !v.Template {
 				<button type="button" class="ts-btn ts-btn--secondary" data-ts-act="retry">{ v.Words.TryAgain }</button>
+			}
+			if v.State == "already" && !v.Template {
+				if v.OpenHref != "" {
+					<a class="ts-btn ts-btn--secondary" href={ templ.SafeURL(v.OpenHref) }>{ v.Words.OpenIt }</a>
+				}
+				if v.EditHref != "" {
+					<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.EditHref) }>{ v.Words.EditDetails }</a>
+				}
+				if v.AddAnyway {
+					<form class="ts-upload__form" method="post" action={ templ.URL("/uploads/" + v.ID + "/finish") } hx-post={ "/uploads/" + v.ID + "/finish" } hx-target="closest li" hx-swap="outerHTML">
+						<input type="hidden" name="_csrf" value={ v.CSRF }/>
+						<input type="hidden" name="add_anyway" value="1"/>
+						<button type="submit" class="ts-btn ts-btn--primary">{ v.Words.AddAnyway }</button>
+					</form>
+				}
+				<form class="ts-upload__form" method="post" action={ templ.URL("/uploads/" + v.ID + "/cancel") } hx-post={ "/uploads/" + v.ID + "/cancel" } hx-target="closest li" hx-swap="outerHTML">
+					<input type="hidden" name="_csrf" value={ v.CSRF }/>
+					<button type="submit" class="ts-btn ts-btn--quiet">{ v.Words.DoNotAdd }</button>
+				</form>
 			}
 			if v.State == "added" && v.OpenHref != "" {
 				<a class="ts-btn ts-btn--quiet" href={ templ.SafeURL(v.OpenHref) }>{ v.Words.OpenBook }</a>

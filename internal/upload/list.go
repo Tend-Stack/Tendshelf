@@ -14,8 +14,9 @@ const RecentWindow = 24 * time.Hour
 func (s *Service) List(ctx context.Context, userID string) ([]View, error) {
 	since := s.cfg.Now().Add(-RecentWindow).UnixMilli()
 	rows, err := s.st.Reader().QueryContext(ctx, `SELECT `+uploadCols+` FROM uploads
-  WHERE created_by = ? AND updated_at >= ? AND state NOT IN (?, ?) ORDER BY created_at DESC, id DESC`,
-		userID, since, StateCancelled, StateExpired)
+  WHERE created_by = ? AND ((updated_at >= ? AND state NOT IN (?, ?))
+    OR (state = ? AND error_code = ?)) ORDER BY created_at DESC, id DESC`,
+		userID, since, StateCancelled, StateExpired, StateFailed, CodeAlreadyInLibrary)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +40,9 @@ func (s *Service) List(ctx context.Context, userID string) ([]View, error) {
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, s.view(u, files))
+		v := s.view(u, files)
+		s.attachMatch(ctx, u, &v)
+		out = append(out, v)
 	}
 	return out, nil
 }
