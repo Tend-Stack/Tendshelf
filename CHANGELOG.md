@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+## 2026.12.0
+
+Released 2026-11-16. Tendshelf can now remove any book, including ones you copied into the library folder yourself, into a holding folder you can put them back from for 30 days, and it warns you before adding a book that is already there. The player shows when it is loading, buttons that do not fit fold into the three-dot menu, the Android app says why something cannot play, and the desktop app resumes where you left off.
+
 ### Added
 
 - **The player says when it is loading.** When you press Play or Resume and the sound takes a moment (a large file, a slow connection, a compatibility copy being made, a live station connecting, or buffering in the middle), the play button of that book, episode or station shows a quiet ring instead of its icon, and the cover in the full player dims a little with the same ring on it. It appears only after a quarter of a second, so quick starts show nothing, and pressing the button again stops the start. With reduced motion the ring is three still dots.
@@ -16,6 +20,8 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Fixed
 
+- **A book's page no longer jumps as it opens.** On a wide screen the buttons showed on two rows for a moment before the extra ones folded into the three-dot menu, so the tabs below moved up; they now fold before the page is drawn.
+- **The cover on Home is sharp in the desktop app.** It was drawn from the small shelf-sized picture and stretched; it now uses the large one, like a book's page.
 - **The Android app says why something cannot play.** Every failure used to read "This can't play right now. Check your connection.", even when the book was gone, the phone was signed out, a station was busy, or a different Tendshelf now answered at the address. Each now has its own plain line, and an unknown reason still gets the general one.
 - **The desktop app resumes a book where you left it.** The app's engine ignored the place a book should start from, so pressing play started the book at the beginning and then saved that as your place, losing the real one. The player now moves to the saved place itself when the engine has not.
 - **No gap in a book's buttons in the desktop app.** The app keeps no downloads, but an invisible Download button still took its space in the row.

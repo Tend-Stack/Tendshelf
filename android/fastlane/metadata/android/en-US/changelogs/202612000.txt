@@ -1,0 +1,1 @@
+The app now says why something cannot play: signed out, a busy station, a book you can no longer open, or a different Tendshelf at the same address. The player shows when it is loading, and buttons that do not fit fold into the three-dot menu.
