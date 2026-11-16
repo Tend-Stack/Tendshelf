@@ -33,5 +33,7 @@ keep-out.
 11. **Confirmation** is a required checkbox plus a button, not typed text; the holding folder makes it recoverable. Upload-placed removals keep
     today's direct path. On the book pages, owner and admin see a notice when another copy exists, linking to the merge preview.
 
+Known limit: re-tagging a file changes its first mebibyte, so its quick hash changes and an exact copy of a re-tagged file is seen as a look-alike ("same details"), which a contributor may still add anyway.
+
 Rejected: deleting outright (no way back); the OS trash (the XDG trash needs `$HOME` on the same filesystem and has no standard-library API);
 a second ignore table (the `removals` row does both jobs).

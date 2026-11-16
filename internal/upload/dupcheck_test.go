@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/media"
@@ -20,7 +21,7 @@ var everyone = library.Scope{Books: share.Filter{SQL: "1=1"}, Libraries: share.F
 func dupEnv(t *testing.T, place Placement) *env {
 	t.Helper()
 	return newEnv(t, func(c *Config) {
-		c.ScopeFor = func(context.Context, string) (library.Scope, bool) { return everyone, true }
+		c.ScopeFor = func(context.Context, string) (library.Scope, bool, error) { return everyone, true, nil }
 		if place != PlaceTop {
 			c.MayPlace = func(context.Context, string, string) Placement { return place }
 		}
@@ -129,14 +130,24 @@ func TestHeldWhenHandCopiedFirst(t *testing.T) {
 func TestHeldWhenUploadedTwice(t *testing.T) {
 	e := dupEnv(t, PlaceTop)
 	b := twoParts(t, 100)
+	// No scan between the two uploads: the first book is in upload_paths only, not in audio_files yet.
 	e.mustPlace(e.send("B", b).ID)
+	before := e.libraryFiles()
+	v, u := e.held(b)
+	if u.DupTier != library.MatchSameFiles {
+		t.Errorf("tier = %q", u.DupTier)
+	}
+	// What the screens get while the first book is not scanned: the person's own upload label, no book id, no link.
+	got, err := e.svc.Get(bg, me, v.ID)
+	if err != nil || got.Match == nil || got.Match.BookID != "" || got.Match.Href != "" || got.Match.Title != "B" || got.Match.Tier != "same_files" || !got.Match.MayAddAnyway {
+		t.Errorf("unscanned own match = %+v, %v", got.Match, err)
+	}
+	// Once the scan has run, the same held upload names the real book.
 	if _, err := e.scanner().ScanLibrary(bg, e.lib.ID, nil); err != nil {
 		t.Fatal(err)
 	}
-	before := e.libraryFiles()
-	_, u := e.held(b)
-	if u.DupTier != library.MatchSameFiles {
-		t.Errorf("tier = %q", u.DupTier)
+	if got, _ = e.svc.Get(bg, me, v.ID); got.Match == nil || got.Match.BookID == "" || got.Match.Href != "/books/"+got.Match.BookID {
+		t.Errorf("scanned own match = %+v", got.Match)
 	}
 	if got := e.libraryFiles(); strings.Join(got, ",") != strings.Join(before, ",") {
 		t.Errorf("a second copy reached the library: %v", got)
@@ -154,7 +165,7 @@ func TestLookAlikeAndSomeFiles(t *testing.T) {
 	// Only one of the two files is in the library: some_files, never same_files.
 	e2 := dupEnv(t, PlaceTop)
 	full := twoParts(t, 100)
-	e2.handCopy("Part", full, "01.mp3")
+	e2.handCopy("Part", full, "02.mp3")
 	_, u = e2.held(full)
 	if u.DupTier != library.MatchSomeFiles {
 		t.Errorf("tier = %q, want some_files", u.DupTier)
@@ -189,8 +200,8 @@ func TestNoMatchAcrossLibrariesOrScope(t *testing.T) {
 		e := dupEnv(t, PlaceTop)
 		handID := e.handCopy("Hand Copy", b)
 		secret := handID
-		e.svc.cfg.ScopeFor = func(context.Context, string) (library.Scope, bool) {
-			return library.Scope{Books: share.Filter{SQL: "b.id <> ?", Args: []any{secret}}, Libraries: share.Filter{SQL: "1=1"}}, true
+		e.svc.cfg.ScopeFor = func(context.Context, string) (library.Scope, bool, error) {
+			return library.Scope{Books: share.Filter{SQL: "b.id <> ?", Args: []any{secret}}, Libraries: share.Filter{SQL: "1=1"}}, true, nil
 		}
 		v := e.send("B", twoParts(t, 100))
 		res, err := e.place(v.ID)
@@ -205,8 +216,8 @@ func TestNoMatchAcrossLibrariesOrScope(t *testing.T) {
 		e := dupEnv(t, PlaceTop)
 		e.handCopy("Hand Copy", b)
 		v, _ := e.held(b)
-		e.svc.cfg.ScopeFor = func(context.Context, string) (library.Scope, bool) {
-			return library.Scope{Books: share.Filter{SQL: "0=1"}, Libraries: share.Filter{SQL: "1=1"}}, true
+		e.svc.cfg.ScopeFor = func(context.Context, string) (library.Scope, bool, error) {
+			return library.Scope{Books: share.Filter{SQL: "0=1"}, Libraries: share.Filter{SQL: "1=1"}}, true, nil
 		}
 		if got, _ := e.svc.Get(bg, me, v.ID); got.Match != nil {
 			t.Errorf("match = %+v, want none", got.Match)
@@ -271,6 +282,81 @@ func TestAddAnywayContributor(t *testing.T) {
 	}
 	if _, err := e.place(v3.ID); err == nil || e.upload(v3.ID).ErrorCode != CodeAlreadyInLibrary {
 		t.Errorf("an exact copy passed with the manifest flag: %v", err)
+	}
+}
+
+func TestSharedIntroFileDoesNotHoldAContributor(t *testing.T) {
+	e := dupEnv(t, PlaceOwnFolder)
+	e.setName("Ana")
+	mk := func(album string, pad int) []byte {
+		return fakeAudio(t, mediatest.FakeFile{Container: "mp3", Codec: "mp3", PadBytes: pad,
+			Tags: map[string]string{"album": album, "artist": "Ann Author", "narrator": "Nat Voice"}})
+	}
+	intro := mk("Series", 10)
+	e.handCopy("Book One", book{"B/intro.mp3": intro, "B/01.mp3": mk("Book One", 3000)})
+	// Book two shares only the intro, a small part of its bytes: not a file match, and the tags differ.
+	two := book{"B/intro.mp3": intro, "B/02.mp3": mk("Book Two", 3500)}
+	if res := e.mustPlace(e.send("B", two).ID); res.State != StatePlaced {
+		t.Errorf("state = %q, want placed", res.State)
+	}
+}
+
+func TestHeldAfterAForgedOrMissingQuick(t *testing.T) {
+	e := dupEnv(t, PlaceTop)
+	b := twoParts(t, 100)
+	e.handCopy("Hand Copy", b)
+	for name, quick := range map[string]string{"forged": strings.Repeat("a", 64), "missing": ""} {
+		m := manifestOf("B", b)
+		for i := range m.Files {
+			m.Files[i].Quick = quick
+		}
+		v, err := e.svc.Create(bg, me, e.lib.ID, m)
+		if err != nil {
+			t.Fatalf("%s: Create: %v", name, err)
+		}
+		e.sendFrom(v, b, nil)
+		if _, err := e.svc.Finish(bg, me, v.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.place(v.ID); err == nil || e.upload(v.ID).ErrorCode != CodeAlreadyInLibrary {
+			t.Errorf("%s: not held after staging (%v)", name, err)
+		}
+	}
+}
+
+func TestHeldUploadStaysListedAndIsPrivate(t *testing.T) {
+	e := dupEnv(t, PlaceTop)
+	b := twoParts(t, 100)
+	e.handCopy("Hand Copy", b)
+	v, _ := e.held(b)
+	e.svc.cfg.Now = func() time.Time { return time.Now().Add(72 * time.Hour) }
+	list, err := e.svc.List(bg, me)
+	if err != nil || len(list) != 1 || list[0].ID != v.ID || list[0].Match == nil {
+		t.Errorf("a held upload must stay listed for Cancel after 24 h: %+v, %v", list, err)
+	}
+	// Someone else cannot finish it or read it.
+	if _, err := e.svc.FinishAnyway(bg, "us_other", v.ID); err == nil {
+		t.Error("FinishAnyway on someone else's upload worked")
+	} else if ue := (*Error)(nil); !errors.As(err, &ue) || ue.Status != 404 {
+		t.Errorf("err = %v, want 404", err)
+	}
+}
+
+func TestFailingScopeLookupPlacesNothing(t *testing.T) {
+	e := dupEnv(t, PlaceTop)
+	b := twoParts(t, 100)
+	v := e.send("B", b)
+	e.svc.cfg.ScopeFor = func(context.Context, string) (library.Scope, bool, error) {
+		return library.Scope{}, false, errors.New("database is busy")
+	}
+	if _, err := e.place(v.ID); err == nil {
+		t.Fatal("placement went ahead without a scope")
+	}
+	if u := e.upload(v.ID); u.State != StateFailed || u.ErrorCode == CodeAlreadyInLibrary {
+		t.Errorf("state %s code %q, want failed (retryable)", u.State, u.ErrorCode)
+	}
+	if files := e.libraryFiles(); len(files) != 0 {
+		t.Errorf("files placed: %v", files)
 	}
 }
 

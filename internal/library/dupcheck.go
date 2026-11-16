@@ -32,6 +32,24 @@ type DupMatch struct {
 	Matched, Total      int
 }
 
+// dupChunk is how many size and hash pairs one query carries.
+const dupChunk = 200
+
+// FileTier is the tier of an upload whose files match a book in part: same_files when every file matches;
+// some_files only when the matched files are at least half of the upload's bytes (a publisher's intro or credits
+// file shared across a series is not the same book); otherwise "".
+func FileTier(matched, total int, matchedBytes, totalBytes int64) string {
+	switch {
+	case matched <= 0 || total <= 0:
+		return ""
+	case matched >= total:
+		return MatchSameFiles
+	case matchedBytes*2 >= totalBytes:
+		return MatchSomeFiles
+	}
+	return ""
+}
+
 // FileMatches finds the books of one library, listable by sc, that hold files with the given size and quick hash.
 // A book that holds every one of the pairs is same_files; one that holds some is some_files. Best tier first,
 // at most three books.
@@ -45,17 +63,12 @@ func (r *Repo) FileMatches(ctx context.Context, sc Scope, libraryID string, pair
 	if len(want) == 0 {
 		return nil, nil
 	}
-	var or strings.Builder
-	var args []any
+	var totalBytes int64
+	list := make([]SizeQuick, 0, len(want))
 	for p := range want {
-		if or.Len() > 0 {
-			or.WriteString(" OR ")
-		}
-		or.WriteString("(size = ? AND quick_hash = ?)")
-		args = append(args, p.Size, p.Quick)
+		list = append(list, p)
+		totalBytes += p.Size
 	}
-	cond := or.String()
-	all := append(append([]any{}, args...), args...)
 	w := visible(sc, true)
 	w.add("b.library_id = ?", libraryID)
 	type hit struct {
@@ -63,20 +76,38 @@ func (r *Repo) FileMatches(ctx context.Context, sc Scope, libraryID string, pair
 		added     int64
 		p         SizeQuick
 	}
-	hits, err := many(ctx, r.st.Reader(), func(s scanner) (hit, error) {
-		var h hit
-		return h, s.Scan(&h.id, &h.title, &h.added, &h.p.Size, &h.p.Quick)
-	}, `SELECT b.id, b.title, b.added_at, x.size, x.quick_hash FROM (
+	var hits []hit
+	// Chunks keep the OR chain far below SQLite's expression depth limit; every pair stays a bound parameter.
+	for lo := 0; lo < len(list); lo += dupChunk {
+		part := list[lo:min(lo+dupChunk, len(list))]
+		var or strings.Builder
+		var args []any
+		for _, p := range part {
+			if or.Len() > 0 {
+				or.WriteString(" OR ")
+			}
+			or.WriteString("(size = ? AND quick_hash = ?)")
+			args = append(args, p.Size, p.Quick)
+		}
+		cond := or.String()
+		all := append(append([]any{}, args...), args...)
+		got, err := many(ctx, r.st.Reader(), func(s scanner) (hit, error) {
+			var h hit
+			return h, s.Scan(&h.id, &h.title, &h.added, &h.p.Size, &h.p.Quick)
+		}, `SELECT b.id, b.title, b.added_at, x.size, x.quick_hash FROM (
   SELECT book_id, size, quick_hash FROM audio_files WHERE missing_since IS NULL AND (`+cond+`)
   UNION ALL
   SELECT book_id, size, quick_hash FROM ebook_files WHERE origin = 'library' AND missing_since IS NULL AND book_id IS NOT NULL AND (`+cond+`)
   ) x JOIN books b ON b.id = x.book_id JOIN libraries l ON l.id = b.library_id WHERE `+w.sql(), append(all, w.args...)...)
-	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
+		hits = append(hits, got...)
 	}
 	byBook := map[string]*DupMatch{}
 	seen := map[string]map[SizeQuick]bool{}
 	added := map[string]int64{}
+	bytes := map[string]int64{}
 	var order []string
 	for _, h := range hits {
 		m := byBook[h.id]
@@ -88,16 +119,15 @@ func (r *Repo) FileMatches(ctx context.Context, sc Scope, libraryID string, pair
 		if !seen[h.id][h.p] {
 			seen[h.id][h.p] = true
 			m.Matched++
+			bytes[h.id] += h.p.Size
 		}
 	}
 	out := make([]DupMatch, 0, len(order))
 	for _, id := range order {
 		m := *byBook[id]
-		m.Tier = MatchSomeFiles
-		if m.Matched == m.Total {
-			m.Tier = MatchSameFiles
+		if m.Tier = FileTier(m.Matched, m.Total, bytes[id], totalBytes); m.Tier != "" {
+			out = append(out, m)
 		}
-		out = append(out, m)
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		a, b := out[i], out[j]

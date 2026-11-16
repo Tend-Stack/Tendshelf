@@ -63,9 +63,9 @@ type Config struct {
 	// ungranted while their bytes travel (decision 0029). nil means PlaceTop for everyone.
 	MayPlace func(ctx context.Context, userID, libraryID string) Placement
 	// ScopeFor returns the books and libraries a person may list; the "already in the library" check
-	// (decision 0045) sees only those, so a title never leaks. false means the person lists nothing. nil
-	// turns the check off.
-	ScopeFor func(ctx context.Context, userID string) (library.Scope, bool)
+	// (decision 0045) sees only those, so a title never leaks. false means the person lists nothing. An error
+	// (a failed lookup) fails the upload as retryable: a book is never placed unchecked. nil turns the check off.
+	ScopeFor func(ctx context.Context, userID string) (library.Scope, bool, error)
 }
 
 func (c *Config) defaults() {
