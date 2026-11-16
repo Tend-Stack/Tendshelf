@@ -69,6 +69,9 @@
    later answers fold into the three-dot menu (js/fit-row.js) and its buttons keep their words on one line so the fit can be measured. */
 .ts-pair__actions { flex-wrap: nowrap; }
 .ts-pair__actions > * { min-width: 0; }
+.ts-pair__actions .ts-btn { max-width: 100%; }
+.ts-pair__actions[data-ts-fit-on] { align-items: center; }
 .ts-pair__actions[data-ts-fit-on] > * { flex: none; }
 .ts-pair__actions[data-ts-fit-on] .ts-btn { white-space: nowrap; }
+.ts-pair__actions[data-ts-fit-on] > :first-child .ts-btn { white-space: normal; } /* the first answer stays, so its words may wrap */
 .ts-pair__actions[data-ts-fit-tight] { flex-wrap: wrap; } /* last resort at very large text: the three-dot button stays reachable */

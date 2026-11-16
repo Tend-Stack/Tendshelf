@@ -29,6 +29,9 @@ type TextActionView struct {
 type TextSuggestionView struct {
 	Card          components.PairingCardView
 	Pair, NotSame TextActionView
+	// FitModule is the address of the fit script (js/fit-row.js); Not the same book folds into a three-dot menu
+	// when the card is too narrow for both answers (decision 0044).
+	FitModule string
 }
 
 // TextFileView is one ebook file of the book. State is "ready", "pending", "refused" or "failed".
@@ -116,9 +119,10 @@ templ TextBody(v TextView) {
 			<div id="ebook-suggestions" class="ts-ebook__files">
 				for _, sg := range v.Suggestions {
 					@components.PairingCard(sg.Card) {
-						<div class="ts-pair__actions">
+						<div class="ts-pair__actions" data-ts-module={ sg.FitModule } data-ts-fit>
 							@textActionForm(sg.Pair, "")
-							@textActionForm(sg.NotSame, "")
+							@textActionForm(sg.NotSame, "notsame")
+							@components.MoreMenu(components.MoreMenuView{Fit: []components.MoreMenuFitItem{{Key: "notsame", Label: sg.NotSame.Label}}})
 						</div>
 					}
 				}
