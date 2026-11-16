@@ -326,6 +326,7 @@ Needs the debug or release APK on a real phone, signed in to a server with a ser
 | QR-4 | Join from an invitation over `http` to a LAN address (not `localhost`). | Joining works, or the server's "This form expired" is seen (see roadmap, Android status). | |
 | QR-5 | Open `tendshelf://open?link=...` from another app or a web page while signed in. | Only the dialog or "already signed in" shows; nothing signs out. | |
 | QR-6 | Scan a dark-themed QR on a screen with the camera. | The code still reads. | |
+| EP-1 | Follow a real podcast, open one of its episodes in the app and press Download; then turn on airplane mode and play it. | The button shows the app's progress and then "Downloaded"; the episode plays with no connection. Remove takes it off the phone. | |
 
 ## Android: why something cannot play (A-errors)
 

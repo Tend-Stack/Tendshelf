@@ -94,6 +94,8 @@ func TestPlayerKindEpisodeStar(t *testing.T) {
 		if !v.Shown || v.BookmarkShown || v.Pressed || v.Label != "Star" || v.W < 44 || v.H < 44 {
 			t.Errorf("%v episode: %+v", size, v)
 		}
+		// Every confirmed star or unstar says so on the document, which the Android shell relays to the car.
+		tab.Eval(`window.__favs = []; document.addEventListener("ts:favourite", (e) => window.__favs.push(e.detail.id + " " + e.detail.on))`, nil)
 		pkPressFav(t, tab, true)
 		if !starred() {
 			t.Errorf("%v: not starred after the press", size)
@@ -111,6 +113,16 @@ func TestPlayerKindEpisodeStar(t *testing.T) {
 		pkPressFav(t, tab, false)
 		if starred() {
 			t.Errorf("%v: still starred after the second press", size)
+		}
+		// The star on the page under the player is a form: its confirmed change is announced the same way.
+		tab.WaitFor(`document.querySelector('#main form[action$="/favourite"] button').getAttribute("aria-pressed") === "false"`, 5*time.Second)
+		tab.Eval(`document.querySelector('#main form[action$="/favourite"] button').click()`, nil)
+		tab.WaitFor(`window.__favs.length === 3`, 5*time.Second)
+		var favs []string
+		tab.Eval(`window.__favs`, &favs)
+		id := w.eps[0]
+		if len(favs) != 3 || favs[0] != id+" true" || favs[1] != id+" false" || favs[2] != id+" true" {
+			t.Errorf("%v: ts:favourite events %v, want true, false, true for %s", size, favs, id)
 		}
 		tab.Eval(`window.fetch = () => Promise.resolve(new Response("x", {status: 429}))`, nil)
 		playerClickSel(t, tab, "#player-full [data-ts-full-fav]")

@@ -31,6 +31,9 @@ interface PlayerRemote {
 
     /** Whether the page is on screen (the activity is started), so the service knows where to ask. */
     fun pageVisible(visible: Boolean)
+
+    /** The page starred or unstarred an episode (or saved a station): the car's rows follow. */
+    fun favourite(id: String, on: Boolean)
     fun snapshot(): PlayerSnapshot
     fun observe(listener: (PlayerSnapshot) -> Unit)
     fun release()
@@ -83,6 +86,13 @@ class ControllerRemote(private val controller: MediaController) : PlayerRemote {
     @androidx.media3.common.util.UnstableApi
     override fun setSkipQuiet(on: Boolean) {
         controller.sendCustomCommand(PlaybackService.QUIET_COMMAND, Bundle().apply { putBoolean("on", on) })
+    }
+
+    override fun favourite(id: String, on: Boolean) {
+        controller.sendCustomCommand(PlaybackService.FAVOURITE_COMMAND, Bundle().apply {
+            putString("id", id)
+            putBoolean("on", on)
+        })
     }
 
     override fun pageVisible(visible: Boolean) {

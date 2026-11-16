@@ -147,6 +147,17 @@ class FeelBridgeTest {
     }
 
     @Test
+    fun favouriteWord() {
+        assertEquals(BridgeMessage.Favourite("pe_01ABC", true), parseBridge("fav pe_01ABC 1"))
+        assertEquals(BridgeMessage.Favourite("pe_01ABC", false), parseBridge("fav pe_01ABC 0"))
+        assertEquals(BridgeMessage.Favourite("rs_01ABC", true), parseBridge("fav rs_01ABC 1"))
+        // A book id, a bad id, a bad flag, extra or missing fields, odd spacing: all ignored.
+        for (bad in listOf("fav", "fav pe_01ABC", "fav 01BOOK 1", "fav pe_ 1", "fav pe_a/b 1", "fav pe_01ABC 2", "fav pe_01ABC on", "fav pe_01ABC 1 1", "fav  pe_01ABC 1", "Fav pe_01ABC 1")) {
+            assertNull(parseBridge(bad), bad)
+        }
+    }
+
+    @Test
     fun badWords() {
         for (bad in listOf("wake", "wake 2", "wake 01", "wake  1", "wake 1 ", "Wake 1", "pagekeys on", "quiet -1", "quiet 1 1")) {
             assertNull(parseBridge(bad), bad)

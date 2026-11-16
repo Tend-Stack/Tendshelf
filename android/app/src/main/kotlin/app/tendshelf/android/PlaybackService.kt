@@ -452,6 +452,7 @@ class PlaybackService : MediaLibraryService() {
                     add(VISIBLE_COMMAND)
                     add(SLEEP_COMMAND)
                     add(QUIET_COMMAND)
+                    add(FAVOURITE_COMMAND)
                 }
                 if (who.speed) add(SPEED_COMMAND)
                 if (who.browse) ROW_COMMANDS.forEach { add(it) } // the row actions of an episode, for whoever may browse
@@ -567,6 +568,11 @@ class PlaybackService : MediaLibraryService() {
                 VISIBLE_ACTION -> askPrompt.setPageVisible(args.getBoolean("visible"))
                 SLEEP_ACTION -> sleep.command(args.getString("choice").orEmpty(), args.getInt("minutes", 0))
                 QUIET_ACTION -> engine.setSkipQuiet(args.getBoolean("on"))
+                FAVOURITE_ACTION -> args.getString("id")?.takeIf { isEpisodeId(it) }?.let { id ->
+                    // The page starred it: the cached row follows and the car's lists that hold it are told to ask again.
+                    val on = args.getBoolean("on")
+                    tree.favouriteChanged(id, on).forEach { (parent, count) -> this@PlaybackService.session?.notifyChildrenChanged(parent, count, null) }
+                }
                 else -> return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -617,6 +623,7 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_ASK_POSITION = "ts.ask.positionMs"
         const val EXTRA_ASK_DEVICE = "ts.ask.device"
         const val SLEEP_ACTION = "app.tendshelf.SLEEP"
+        const val FAVOURITE_ACTION = "app.tendshelf.FAVOURITE"
         const val QUIET_ACTION = "app.tendshelf.SKIP_QUIET"
         const val EXTRA_SLEEP_MODE = "ts.sleep.mode"
         const val EXTRA_SLEEP_CHOICE = "ts.sleep.choice"
@@ -627,6 +634,7 @@ class PlaybackService : MediaLibraryService() {
         val ANSWER_COMMAND = SessionCommand(ANSWER_ACTION, Bundle.EMPTY)
         val ROW_COMMANDS = EpisodeAction.entries.map { SessionCommand(LibraryTree.actionName(it), Bundle.EMPTY) }
         val SPEED_COMMAND = SessionCommand(SPEED_ACTION, Bundle.EMPTY)
+        val FAVOURITE_COMMAND = SessionCommand(FAVOURITE_ACTION, Bundle.EMPTY)
         val QUIET_COMMAND = SessionCommand(QUIET_ACTION, Bundle.EMPTY)
         val SLEEP_COMMAND = SessionCommand(SLEEP_ACTION, Bundle.EMPTY)
         val VISIBLE_COMMAND = SessionCommand(VISIBLE_ACTION, Bundle.EMPTY)
