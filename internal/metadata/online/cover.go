@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Tend-Stack/tendshelf/internal/metadata/online/podnet"
 )
 
 // imageKind names a picture by its first bytes ("jpeg", "png", "webp"), never by name or content type.
@@ -32,6 +34,42 @@ func coverURLOK(raw string) bool {
 	return err == nil && u.Scheme == "https" && u.Port() == "" && isCoverHost(strings.ToLower(u.Hostname()))
 }
 
+// coverRoute says which client fetches a cover and under which dial policy.
+type coverRoute int
+
+const (
+	routeAllowlist coverRoute = iota // the allowlisted client, today's path
+	routeProvider                    // the guarded client, a configured site's own origin (local addresses allowed)
+	routePublic                      // the guarded client, public addresses only
+)
+
+// coverAllowed decides whether a cover address may be fetched and by which route (decision 0046):
+// an allowlisted cover host as before; a configured site's own origin; any other https host, only
+// while at least one site is configured, so with none the behaviour is exactly as before.
+func (c *Client) coverAllowed(raw string) (coverRoute, bool) {
+	if coverURLOK(raw) {
+		return routeAllowlist, true
+	}
+	if c.customCount() == 0 {
+		return 0, false
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" || u.User != nil || u.Opaque != "" {
+		return 0, false
+	}
+	scheme := strings.ToLower(u.Scheme)
+	if (scheme != "https" && scheme != "http") || !podnet.PortOK(u.Port()) {
+		return 0, false
+	}
+	if c.customOrigin(originOf(u)) {
+		return routeProvider, true
+	}
+	if scheme == "https" {
+		return routePublic, true
+	}
+	return 0, false
+}
+
 func (c *Client) coverPath(rawURL string) string {
 	if c.coverDir == "" {
 		return ""
@@ -42,7 +80,7 @@ func (c *Client) coverPath(rawURL string) string {
 // CachedCover reads a cover from the disk cache only. It never fetches.
 func (c *Client) CachedCover(rawURL string) ([]byte, string, bool) {
 	p := c.coverPath(rawURL)
-	if p == "" || !coverURLOK(rawURL) {
+	if _, ok := c.coverAllowed(rawURL); p == "" || !ok {
 		return nil, "", false
 	}
 	st, err := os.Stat(p)
@@ -60,7 +98,8 @@ func (c *Client) CachedCover(rawURL string) ([]byte, string, bool) {
 // FetchCover returns the picture bytes and their kind ("jpeg", "png" or "webp"). The browser never
 // contacts the cover site; the answer is cached on disk for seven days.
 func (c *Client) FetchCover(ctx context.Context, rawURL string) ([]byte, string, error) {
-	if !coverURLOK(rawURL) {
+	route, ok := c.coverAllowed(rawURL)
+	if !ok {
 		return nil, "", &Error{Code: "refused"}
 	}
 	if b, kind, ok := c.CachedCover(rawURL); ok {
@@ -68,7 +107,14 @@ func (c *Client) FetchCover(ctx context.Context, rawURL string) ([]byte, string,
 	}
 	u, _ := url.Parse(rawURL)
 	site := siteName(strings.ToLower(u.Hostname()))
-	status, body, err := c.fetch(ctx, rawURL, "image/jpeg,image/png,image/webp", maxCoverBytes)
+	var status int
+	var body []byte
+	var err error
+	if route == routeAllowlist {
+		status, body, err = c.fetch(ctx, rawURL, "image/jpeg,image/png,image/webp", maxCoverBytes)
+	} else {
+		status, body, err = c.fetchWith(withPolicy(ctx, rawURL, route == routeProvider), c.chc, rawURL, "image/jpeg,image/png,image/webp", "", maxCoverBytes)
+	}
 	if err != nil {
 		return nil, "", err
 	}

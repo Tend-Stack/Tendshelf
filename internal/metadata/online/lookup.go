@@ -21,14 +21,25 @@ var DefaultProviders = []string{"audnexus"}
 // ExtraProviders are the optional places, in the order they are listed and asked.
 var ExtraProviders = []string{"openlibrary", "itunes"}
 
+// maxCustomChosen is the most added sites one search may ask; it is also the most an admin can add.
+const maxCustomChosen = 10
+
 // ChosenProviders turns saved or posted choices into the providers a search asks: always the
-// reliable one first, then each chosen extra once, in list order. Unknown names (including the
-// retired "google") and the reliable one itself are ignored.
+// reliable one first, then each chosen extra once, in list order, then the well-formed custom keys
+// (decision 0046) once each in the order given, at most ten. Unknown names (including the retired
+// "google") and the reliable one itself are ignored.
 func ChosenProviders(extras []string) []string {
 	out := append([]string(nil), DefaultProviders...)
 	for _, p := range ExtraProviders {
 		if contains(extras, p) {
 			out = append(out, p)
+		}
+	}
+	custom := 0
+	for _, p := range extras {
+		if custom < maxCustomChosen && IsCustomKey(p) && !contains(out, p) {
+			out = append(out, p)
+			custom++
 		}
 	}
 	return out
@@ -156,12 +167,12 @@ func (c *Client) LookupWith(ctx context.Context, q Query, providers []string, o 
 	res := Result{Errors: map[string]string{}}
 	var planned []string
 	for _, p := range providers {
-		if contains(Providers, p) && !contains(planned, p) {
+		if (contains(Providers, p) || c.hasCustom(p)) && !contains(planned, p) {
 			planned = append(planned, p)
 		}
 	}
 	rec := &recorder{emit: onStep, cur: -1}
-	rec.plan(planned)
+	rec.plan(planned, c.label)
 	ctx = context.WithValue(ctx, recorderKey{}, rec)
 	for _, p := range planned {
 		res.Searched = append(res.Searched, p)
@@ -202,6 +213,12 @@ func (c *Client) searchProvider(ctx context.Context, provider string, q Query) (
 		return c.searchAudnexus(ctx, q)
 	}
 	rec := recorderFrom(ctx)
+	if IsCustomKey(provider) {
+		rec.begin(provider, c.label(provider), "", q.titleAsk())
+		books, err := c.searchCustom(ctx, provider, q)
+		rec.end(len(books), err)
+		return books, err
+	}
 	rec.begin(provider, label(provider), "", q.askFor(provider))
 	books, err := c.searchOther(ctx, provider, q)
 	rec.end(len(books), err)

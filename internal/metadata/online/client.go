@@ -1,19 +1,24 @@
 // Ports the Extractor extractor_online.py (Fetcher, ALLOWED_HOSTS, spacing); see NOTICES.md.
 
-// Package online looks up book details on a short list of public sites. It is the only package
-// that builds an http.Client: every request, including each redirect hop, passes guardTransport.
-// Only the title, author, ASIN and ISBN of a query ever leave the machine.
+// Package online looks up book details on a short list of public sites and on the lookup sites an
+// admin added (decision 0046). It builds two http.Clients that never share a transport: the
+// allowlisted one, where every request, including each redirect hop, passes guardTransport, and the
+// guarded one in customnet.go, where every connection is checked after DNS. Only the title, author,
+// ASIN and ISBN of a query ever leave the machine; an admin-added site gets only title and author.
 package online
 
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -98,19 +103,27 @@ type Options struct {
 	Transport http.RoundTripper
 	// Sleep replaces the waits between requests and after a 429 (tests only); nil sleeps for real.
 	Sleep func(ctx context.Context, d time.Duration) error
+	// CustomLookup, CustomDial and CustomRootCAs replace the resolver, the dialler and the trusted
+	// roots of the guarded client (tests only). The address classes are still applied.
+	CustomLookup  func(ctx context.Context, host string) ([]netip.Addr, error)
+	CustomDial    func(ctx context.Context, network, addr string) (net.Conn, error)
+	CustomRootCAs *x509.CertPool
 }
 
 // Client talks to the allowed sites.
 type Client struct {
 	hc       *http.Client
+	chc      *http.Client // the guarded client for admin-added sites
 	cache    Cache
 	coverDir string
 	ua       string
 	now      func() time.Time
 	sleep    func(ctx context.Context, d time.Duration) error
 
-	mu   sync.Mutex
-	last map[string]time.Time
+	mu          sync.Mutex
+	last        map[string]time.Time
+	custom      map[string]CustomProvider // by key, see CustomKey
+	customOrder []string
 }
 
 // New builds a Client.
@@ -139,6 +152,7 @@ func New(o Options) *Client {
 			return nil
 		},
 	}
+	c.chc = newCustomHTTP(o)
 	return c
 }
 
@@ -193,6 +207,12 @@ func (e *Error) Text() string {
 		return "Audnexus has no chapters for this book."
 	case "bad_answer":
 		return fmt.Sprintf("%s sent an answer Tendshelf could not use.", site)
+	case "blocked":
+		return "Tendshelf will not connect to that address."
+	case "insecure":
+		return "Use an https address for a site on the internet. Plain http works only for a site on your own network."
+	case "unauthorized":
+		return fmt.Sprintf("%s did not accept the authorization header.", site)
 	default:
 		return fmt.Sprintf("%s had a problem and could not answer. Try again later.", site)
 	}
@@ -232,6 +252,11 @@ func (c *Client) wait(ctx context.Context, host string) error {
 
 // fetch makes one spaced GET with one retry after a 429. It returns the status and a body capped at limit.
 func (c *Client) fetch(ctx context.Context, rawURL, accept string, limit int64) (int, []byte, error) {
+	return c.fetchWith(ctx, c.hc, rawURL, accept, "", limit)
+}
+
+// fetchWith is fetch through the given client. The Authorization header is set only when auth is not empty.
+func (c *Client) fetchWith(ctx context.Context, hc *http.Client, rawURL, accept, auth string, limit int64) (int, []byte, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return 0, nil, &Error{Code: "refused"}
@@ -248,7 +273,10 @@ func (c *Client) fetch(ctx context.Context, rawURL, accept string, limit int64) 
 		}
 		req.Header.Set("User-Agent", c.ua)
 		req.Header.Set("Accept", accept)
-		resp, err := c.hc.Do(req)
+		if auth != "" {
+			req.Header.Set("Authorization", auth)
+		}
+		resp, err := hc.Do(req)
 		if err != nil {
 			if ctx.Err() != nil {
 				return 0, nil, ctx.Err()
