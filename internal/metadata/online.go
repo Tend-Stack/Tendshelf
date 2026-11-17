@@ -109,6 +109,7 @@ func cleanNames(in []string) []string {
 // data directory (<data>/people). Without a client, lookups answer ErrOnlineOff.
 func (s *Service) SetOnline(c *online.Client, tools media.Tools, dataDir string) {
 	s.online, s.tools, s.dataDir = c, tools, dataDir
+	s.reloadCustom(context.Background())
 }
 
 // LookupQuery prefills a lookup from the book's resolved details: title, first author, ASIN, ISBN

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/Tend-Stack/tendshelf/internal/metadata/online"
 )
@@ -18,8 +19,10 @@ type lookupSources struct {
 	Places []string `json:"places"`
 }
 
-// CleanSources keeps the optional places in list order, once each. Unknown names (the retired
-// "google" included) and the reliable source are dropped.
+// CleanSources keeps the optional places in list order, once each, then the well-formed keys of
+// added lookup sites in the order given, at most ten (decision 0046). Unknown names (the retired
+// "google" included) and the reliable source are dropped. A key of a site that was removed stays
+// until it is saved again without it; the lookup skips it.
 func CleanSources(in []string) []string {
 	var out []string
 	for _, p := range online.ExtraProviders {
@@ -28,6 +31,13 @@ func CleanSources(in []string) []string {
 				out = append(out, p)
 				break
 			}
+		}
+	}
+	custom := 0
+	for _, x := range in {
+		if custom < MaxCustomProviders && online.IsCustomKey(x) && !slices.Contains(out, x) {
+			out = append(out, x)
+			custom++
 		}
 	}
 	return out
