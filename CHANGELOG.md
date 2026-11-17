@@ -4,8 +4,13 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+## 2026.13.0
+
+Released 2026-11-17. Removing a book you uploaded can now be undone for 30 days, like any other removed book. In the Android app, night sleep starts however you press play (the car, the notification, the widget or the queue), and a star made in the app reaches Android Auto at once. The last button rows that wrapped now stay on one line, also with large text on a phone.
+
 ### Fixed
 
+- **Rows fit with large text on a phone.** With text at 200 % on a phone, the buttons of an invite and of a person's added books spilled past the screen edge; they now stay inside it, and the extra ones fold into the three-dot menu.
 - **A star made in the Android app reaches Android Auto at once.** Starring or unstarring an episode in the page now tells the car, so its rows show Star or Unstar correctly without browsing the list again.
 - **Night sleep starts in the Android app however you press play.** Starting a book from the car, the notification, the widget or the next-book queue inside your night hours now starts the sleep timer, as it already did from the page. The "turned off" choice holds until your night hours end.
 
