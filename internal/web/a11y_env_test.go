@@ -19,6 +19,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/auth/oidc"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/library/librarytest"
+	"github.com/Tend-Stack/tendshelf/internal/metadata"
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
 	"github.com/Tend-Stack/tendshelf/internal/podcast/rss"
 	"github.com/Tend-Stack/tendshelf/internal/radio"
@@ -134,6 +135,9 @@ func a11ySeed(t *testing.T) *a11yEnv {
 		}
 	}
 	e.PodShowID, e.PodEpisodeID = a11yPodcasts(t, a, podFx, owner)
+	if _, err := a.srv.details.AddCustomProvider(ctx, metadata.CustomProviderInput{Name: "Audiobookshelf at home", Address: "http://192.168.1.20:3001", Auth: "Bearer x"}, owner); err != nil {
+		t.Fatal(err)
+	}
 	if _, _, err := radio.NewStore(a.st, nil).Save(ctx, owner, radio.Input{StreamURL: "https://radio.test/live.mp3", Name: "Harbour FM", Genre: "Talk", Country: "NL"}); err != nil {
 		t.Fatal(err)
 	}

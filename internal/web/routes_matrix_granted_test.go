@@ -102,6 +102,7 @@ func TestRouteMatrixGranted(t *testing.T) {
 		}
 	}
 	shared := sweepSeedGranted(t)
+	providersSeed(t, shared)
 	for _, row := range rows {
 		if row.Method != http.MethodGet {
 			continue

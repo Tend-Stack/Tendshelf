@@ -33,6 +33,7 @@ func TestUnsafeRoutesNeverReloadTheWindow(t *testing.T) {
 		t.Run(row.name(), func(t *testing.T) {
 			t.Parallel()
 			e := sweepSeed(t)
+			providersSeed(t, e)
 			form := map[string][]string{}
 			if row.Form != nil {
 				for k, v := range row.Form(e, sweepOwner) {

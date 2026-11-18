@@ -19,27 +19,40 @@ const (
 	placesAll    = "all"
 )
 
-var placeLabels = map[string]string{"openlibrary": "Open Library", "itunes": "Apple Books"}
+// lookupPlaces are the places to offer: Open Library, Apple Books, then the sites an admin added.
+func (s *server) lookupPlaces() []online.Place {
+	if s.details == nil {
+		return nil
+	}
+	return s.details.LookupPlaces()
+}
 
 // placeChoices are the checkboxes for a saved choice. When every place is chosen only "All" is
 // ticked, so a plain form (no script) reads the same way it was drawn: All wins, else the ticked ones.
-func placeChoices(saved []string) []pages.PlaceChoice {
+// A saved key of a site that was removed is not offered.
+func placeChoices(saved []string, places []online.Place) []pages.PlaceChoice {
 	saved = metadata.CleanSources(saved)
-	all := len(saved) == len(online.ExtraProviders)
-	out := make([]pages.PlaceChoice, 0, len(online.ExtraProviders)+1)
-	for _, p := range online.ExtraProviders {
-		out = append(out, pages.PlaceChoice{Value: p, Label: placeLabels[p], Checked: !all && slices.Contains(saved, p)})
+	all := len(places) > 0
+	for _, p := range places {
+		all = all && slices.Contains(saved, p.Key)
+	}
+	out := make([]pages.PlaceChoice, 0, len(places)+1)
+	for _, p := range places {
+		out = append(out, pages.PlaceChoice{Value: p.Key, Label: p.Label, Checked: !all && slices.Contains(saved, p.Key)})
 	}
 	return append(out, pages.PlaceChoice{Value: placesAll, Label: "All", Checked: all})
 }
 
 // postedPlaces reads the checkboxes of a posted form. set is false when the form carried no places
 // (an old page), so the saved choice stays as it was. "All" means every place; junk is ignored.
-func postedPlaces(r *http.Request) (places []string, set bool) {
+func postedPlaces(r *http.Request, places []online.Place) (chosen []string, set bool) {
 	set = r.PostFormValue("places_set") == "1"
 	vals := r.PostForm["place"]
 	if slices.Contains(vals, placesAll) {
-		return slices.Clone(online.ExtraProviders), set
+		for _, p := range places {
+			chosen = append(chosen, p.Key)
+		}
+		return chosen, set
 	}
 	return metadata.CleanSources(vals), set
 }

@@ -72,3 +72,22 @@ a.ts-share__tab:focus-visible { outline: 2px solid transparent; box-shadow: var(
 .ts-backups__name { color: var(--ink-muted); overflow-wrap: anywhere; }
 .ts-backups .caption, .ts-backups h2 { margin: 0; }
 .ts-backups .caption { color: var(--ink-muted); }
+
+/* Your own lookup sites (decision 0046). The rows are the invite rows: the name and the host share one cell
+   that gives way, and Test and Remove stay on the same line (decision 0044). */
+.ts-providers .ts-btn { align-self: auto; }
+.ts-providers .ts-providers__form .ts-btn { align-self: flex-start; }
+.ts-providers__item { border-bottom: 1px solid var(--line); }
+.ts-providers__item:last-child { border-bottom: 0; }
+.ts-providers__item .ts-invite__item { padding-block: var(--space-8); }
+.ts-providers__name, .ts-providers__meta { overflow-wrap: anywhere; }
+/* With text at 200 % on a phone the two buttons give way before the row leaves the screen: the words squeeze first. */
+.ts-providers .ts-invite__item .ts-users__text { min-width: 0; }
+.ts-providers .ts-invite__item > form { flex: 0 1 auto; min-width: 0; }
+.ts-providers .ts-invite__item .ts-btn { padding-inline: var(--space-8); overflow-wrap: anywhere; }
+.ts-providers__test:empty { display: none; }
+.ts-providers__test { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-8) var(--space-12); margin-bottom: var(--space-8); border-radius: var(--radius-md); background: var(--raised); }
+.ts-providers__test p { margin: 0; }
+.ts-providers__test--failed { color: var(--danger); font-weight: 600; }
+.ts-providers__form h2 { margin: 0; }
+.ts-providers .ts-field__error { color: var(--danger); }

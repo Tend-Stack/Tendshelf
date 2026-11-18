@@ -170,7 +170,7 @@ func (s *server) lookupSheetView(r *http.Request, id string, f *lookupForm) page
 		Title: detailsSheetTitle, CloseLabel: detailsSheetClose, Intro: detailsQueryIntro, Submit: detailsQueryGo,
 		TitleLabel: detailsQueryTitle, AuthorLabel: detailsQueryAuthor, ASINLabel: detailsQueryASIN, ISBNLabel: detailsQueryISBN,
 		QTitle: f.title, QAuthor: f.author, QASIN: f.asin, QISBN: f.isbn, Error: f.err,
-		More: len(f.places) > 0, MoreTitle: detailsMoreTitle, PlacesLegend: placesLegend, PlacesNote: placesNote, Places: placeChoices(f.places),
+		More: len(f.places) > 0, MoreTitle: detailsMoreTitle, PlacesLegend: placesLegend, PlacesNote: placesNote, Places: placeChoices(f.places, s.lookupPlaces()),
 		Styles: s.sheetStyles(pages.DetailsStyles...),
 	}
 }
@@ -186,7 +186,7 @@ func (s *server) postMatch(w http.ResponseWriter, r *http.Request) {
 		title: capRunes(r.PostFormValue("title")), author: capRunes(r.PostFormValue("author")),
 		asin: capRunes(r.PostFormValue("asin")), isbn: capRunes(r.PostFormValue("isbn")),
 	}
-	f.places, f.placesSet = postedPlaces(r)
+	f.places, f.placesSet = postedPlaces(r, s.lookupPlaces())
 	q := online.Query{Title: f.title, Author: f.author, ASIN: f.asin, ISBN: f.isbn}
 	if pre, err := s.details.LookupQuery(r.Context(), book.ID); err == nil {
 		q.Language = pre.Language

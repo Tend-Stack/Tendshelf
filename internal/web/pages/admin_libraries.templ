@@ -36,6 +36,8 @@ type AdminLibrariesView struct {
 	Libraries        []AdminLibrarySection
 	// Online is the owner-only switch for lookups; nil for everyone else.
 	Online *AdminOnlineView
+	// ProvidersLink leads to the owner's own lookup sites (decision 0046); nil for everyone else.
+	ProvidersLink *AdminProvidersLink
 	// Lookups holds the words of the per-library lookup settings; nil when lookups are off. OnlineTitle and
 	// OnlineBody head the section for an admin, who does not see the owner's switch.
 	Lookups                 *AdminLookupsView
@@ -111,6 +113,9 @@ type AdminLookupLibrary struct {
 	NeedsLabel string
 }
 
+// AdminProvidersLink is the quiet link to the lookup sites page with how many there are.
+type AdminProvidersLink struct{ Label, Count string }
+
 // AdminOnlineView is the switch that allows online lookups. The handler writes every word.
 type AdminOnlineView struct {
 	Title, Body, OnLabel, OffLabel, Save string
@@ -161,6 +166,12 @@ templ AdminLibraries(v AdminLibrariesView) {
 				<p class="caption">{ v.OnlineBody }</p>
 				if v.Online != nil {
 					@adminOnlineSwitch(v)
+				}
+				if v.ProvidersLink != nil {
+					<div class="ts-libs__act ts-libs__providers">
+						<a class="ts-btn ts-btn--quiet" href="/admin/providers">{ v.ProvidersLink.Label }</a>
+						<span class="caption">{ v.ProvidersLink.Count }</span>
+					</div>
 				}
 			</section>
 		}

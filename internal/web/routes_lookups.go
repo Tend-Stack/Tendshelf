@@ -100,7 +100,7 @@ func (s *server) postBulkStart(w http.ResponseWriter, r *http.Request) {
 		s.refuseSetting(w, r, http.StatusUnprocessableEntity, detailsFailed)
 		return
 	}
-	places, set := postedPlaces(r)
+	places, set := postedPlaces(r, s.lookupPlaces())
 	if !set {
 		places = s.savedPlaces(r)
 	}
@@ -241,7 +241,7 @@ func (s *server) lookupsView(ctx context.Context, r *http.Request, libs []librar
 	}
 	v := &pages.AdminLookupsView{AutoLabel: lookupAutoLabel, AutoHint: lookupAutoHint, Save: lookupAutoSave,
 		StartLabel: lookupStart, PlacesLegend: placesLegend, ScopeLabel: lookupScopeLabel,
-		Places: placeChoices(s.savedPlaces(r))}
+		Places: placeChoices(s.savedPlaces(r), s.lookupPlaces())}
 	for _, l := range libs {
 		row := pages.AdminLookupLibrary{ID: l.ID, Name: l.Name, Auto: l.AutoLookupAt > 0}
 		j, found, err := s.latestBulk(ctx, l.ID)

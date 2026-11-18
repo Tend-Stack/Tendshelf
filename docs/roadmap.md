@@ -1273,6 +1273,11 @@ Connect.
 
 - **Custom metadata providers: yes.** An owner or admin adds a provider by address; lookups may ask it alongside the built-in
   sources. Planned next (plan and decision to follow).
+  Status 2026-11-17, web half (P2, `docs/plans/custom-metadata-providers.md`, decision 0046): the owner's page
+  `/admin/providers` (add, Test as a polled job, Remove; the header is saved and never shown), a link and count under the
+  Online switch on Libraries, the sites under Also search on the book sheet and the Libraries Look up list (All includes
+  them), activity sentences, route-matrix rows (owner only), a11y row and captures. Checks: web and metadata tests, a11y,
+  page weight. Limits: no editing in place (remove and add); automatic lookups of new books do not ask these sites.
 - **Merge an MP3 folder into one M4B: held.** It re-encodes audio and writes a new file into the library, which only the
   "write details into the file" job may do today. Stays here, not built, until the operator picks it up again.
 - **Chromecast: yes, as an option each person turns on themself.** Off by default; Settings explains in plain words what
