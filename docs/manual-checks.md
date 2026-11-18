@@ -4,6 +4,25 @@ Checks that need a real device. Automated tests cover the rest; this file is for
 browser cannot say (touch feel, one-handed reach, the lock screen, shake, the phone's own audio rules).
 Run a check, write what you saw in the Result column, and date it under the table.
 
+## Casting from Chrome (decision 0047, P2): open, no result yet
+
+Needs Chrome on a computer and Chrome on Android, a Chromecast or Google TV on the same network, and the server on an https name the TV can resolve (not localhost, not a tailnet name). Turn casting on in Settings, Playback. Write what you saw in Result; any `securitypolicyviolation` line in the console becomes an addendum to decision 0047, not a silent CSP edit.
+
+| # | Step | Expected | Result |
+| --- | --- | --- | --- |
+| C1 | Open the full player with casting off, then on. | Off: no request to gstatic.com. On: one request to gstatic.com when the full player first opens, and the console shows no CSP report. | |
+| C2 | With a device on, open the full player (phone and 1440 px). | A Cast button shows after Sleep (and in the desktop bar). Tapping it lists the TV. | |
+| C3 | Cast a single-file m4b. | The TV plays from the place; the page says "Playing on {TV}"; the button reads "Casting" and its icon is in the accent. The page's own audio is silent. | |
+| C4 | Cast a multi-file mp3 book across a file boundary. | The TV goes on to the next file; the clock, chapter and "left in book" follow. | |
+| C5 | Cast a podcast episode. | The TV plays it from the place. | |
+| C6 | Play, pause, skip back and forward, drag the scrubber (within a file and into another file), set a sleep timer. | The TV follows each; the sleep timer pauses the TV. | |
+| C7 | While casting, look at Speed. | Speed is disabled and reads 1x. If the TV can in fact change speed (try the Media Router), note it here: that would be a plan change. | |
+| C8 | Pause on the TV, then open the book on another device. | The other device offers the place the TV reached (it was saved from the device's position). | |
+| C9 | Stop casting from Chrome's own dialog. | The page's audio is paused at the place the TV reached; pressing Play continues there; the place is saved once. | |
+| C10 | Cast, then turn casting off in Settings. | The page reloads without the button; the TV stops soon after. | |
+| C11 | Cast to a TV that cannot reach the server (a host it cannot resolve). | The toast says the TV can't reach this server and the book still plays here. | |
+| C12 | Open the same page in the Wails window and in the Android app. | No Cast button, no cast.js, no request to gstatic.com. | |
+
 ## Still open before 2026.8.2 (index, 2026-11-10)
 
 Each line names the section below that holds the rows. Nothing here blocks the server release; these are

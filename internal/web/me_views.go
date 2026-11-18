@@ -152,6 +152,7 @@ func settingsView(csrf string, s users.Settings) pages.SettingsView {
 		AutoRewind: s.AutoRewind, NextInSeries: s.NextInSeries, SkipQuiet: s.SkipQuiet, AutoDownload: s.AutoDownload, PlayerTint: s.PlayerTint, BigButtons: s.BigButtons,
 		TextSize:   s.TextSize,
 		NightSleep: s.NightSleep, NightFrom: minutesClock(s.NightFrom), NightTo: minutesClock(s.NightTo), NightMinutes: s.NightMinutes,
+		Cast: s.Cast,
 	}
 }
 
@@ -203,6 +204,7 @@ func settingsFromForm(f url.Values, cur users.Settings) (next users.Settings, ok
 	flag("player_tint", &next.PlayerTint)
 	flag("big_buttons", &next.BigButtons)
 	flag("night_sleep", &next.NightSleep)
+	flag("cast", &next.Cast)
 	// A bad time or length keeps the previous value rather than refusing the whole post.
 	for k, dst := range map[string]*int{"night_from": &next.NightFrom, "night_to": &next.NightTo} {
 		if v, has := last(k); has {

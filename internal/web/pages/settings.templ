@@ -39,6 +39,9 @@ type SettingsView struct {
 	NightSleep           bool
 	NightFrom, NightTo   string
 	NightMinutes         int
+	// Cast: the casting switch (decision 0047). CastSecure and CastReachable say whether this address can
+	// start casting; CastShell is true inside the desktop or phone app, where casting does not run.
+	Cast, CastSecure, CastReachable, CastShell bool
 }
 
 // skipChoices are the allowed skip lengths, in seconds.
@@ -247,6 +250,29 @@ templ SettingsPane(v SettingsView) {
 							@switchRow("st-quiet", "skip_quiet", "Skip silence", "Shortens long pauses in the reading. Works in this app only.", v.SkipQuiet)
 							@switchRow("st-auto", "auto_download", "Download the next book on its own", "When a book is nearly over and you're on Wi-Fi, the next one downloads so it's ready. Uses up to 5 GB. Works in this app only.", v.AutoDownload)
 						}
+					</div>
+					<div class="ts-group" id="st-cast-group" role="group" aria-labelledby="st-cast-title">
+						<div class="ts-pref-row">
+							<h2 class="ts-switch-row__label" id="st-cast-title">Cast to a TV or speaker</h2>
+							<p class="caption ts-pref-row__note">Play on a Chromecast, a Google TV or a speaker with Google Cast. This is off until you turn it on. When it is on:</p>
+							<ul class="caption ts-pref-row__note ts-cast-list">
+								<li>Google's casting code runs in this browser when you open the player.</li>
+								<li>Your TV or speaker gets the sound straight from this server, through a private address that works only for that book or episode, and only for a short while.</li>
+								<li>Google may learn that you cast something. The title and cover go to the TV so it can show them.</li>
+								<li>Your TV must be able to reach this server at the address you use now, and it works in Chrome and browsers built on it.</li>
+							</ul>
+						</div>
+						@switchRow("st-cast", "cast", "Cast to a TV or speaker", "Off: nothing from Google loads.", v.Cast)
+						<div class="ts-pref-row">
+							<p class="caption ts-pref-row__note">Turning it off stops Google's code loading and ends every casting address at once. Anything playing on a TV stops soon after.</p>
+							if v.CastShell {
+								<p class="caption ts-pref-row__note">Casting works in Chrome, not in this app.</p>
+							} else if !v.CastSecure {
+								<p class="caption ts-pref-row__note">This address is not secure (https), so casting can't start here.</p>
+							} else if !v.CastReachable {
+								<p class="caption ts-pref-row__note">This server is open only on this computer, so a TV can't reach it.</p>
+							}
+						</div>
 					</div>
 				}
 			}

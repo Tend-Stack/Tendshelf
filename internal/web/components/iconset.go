@@ -19,6 +19,7 @@ var iconShapes = map[string]string{
 	"skip-forward": `<path d="M19.5 12a7.5 7.5 0 1 1-2.4-5.5"/><path d="M19.5 3.5v4h-4"/>`,
 	"prev-chapter": `<path d="M6 5v14"/><path d="M18.5 6.5v11L10 12z"/>`,
 	"next-chapter": `<path d="M18 5v14"/><path d="M5.5 6.5v11L14 12z"/>`,
+	"cast":         `<path d="M4 8V6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v11a1.5 1.5 0 0 1-1.5 1.5H14"/><path d="M4 19h.01M4 15a4 4 0 0 1 4 4M4 11a8 8 0 0 1 8 8"/>`,
 	"sleep":        `<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/>`,
 	"bookmark":     `<path d="M6.5 4h11v16.5L12 16.8l-5.5 3.7z"/>`,
 	"chapters":     `<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>`,

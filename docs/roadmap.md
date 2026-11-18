@@ -1250,10 +1250,22 @@ Not built. Line numbers come from a scout and were not re-checked.
 - **The daily downloads check removes a gone book only on 404** (`checkVerdict`, pinned by `OfflineTest.kt`). Verified 2026-11-16: removing a book (decision 0045) deletes its row, and `loadBook` answers 404 for an unknown id and for a book the person may no longer see, so a removed book and a lost grant both delete the download; a merged book answers 308 to the book that took over, which the check leaves alone. `TestRemoveAnyFilesEndToEnd` pins the 404 (with a 200 control). No Android change needed.
 - Also noted: the page ignores the `chapterIdx` native sends (by design, checked 2026-11-16: the page works the chapter out from the native position with the same chapter list, `chapterIndexAt` in `player.js`, so the two cannot disagree); the app module has no unit tests of its own (logic is tested in `android/shared`); the 49 Android rows in `docs/manual-checks.md` have no recorded result.
 
+### Casting (decision 0047), P1 built 2026-11-17
+
+**Scope.** The server side of casting, with no Cast button yet: the per-person switch `playback.cast` (Settings, Playback, off by default, with the consent text above it), `cast_tokens` (migration 0048, numbered 0048 if custom providers land first), `POST /casting/address` and `GET|HEAD /cast/{token}/audio/{fileID}`, `/episode` and `/art`, the cast CSP for a plain browser when the person turned casting on, deletion of a person's tokens at sign-out and when casting is turned off, and `/cast/` and `/casting/` kept out of the service worker. `serveEpisodeAudio` and `serveShowArt` were extracted from the signed-in handlers and shared. Operator answers (2026-11-17): no Android Cast, Speed disabled while casting if the API cannot set it, https-only copy with no workaround, a token covers a whole book for at most 72 hours.
+**Checks.** `go vet ./...`, `go test -race ./internal/web/... ./internal/share/... ./internal/db/... ./internal/users/...`, `make build`.
+**Limits.** No `cast.js` and no button until P2; stations wait for P3; the manual device check (Chrome desktop and Android, a Chromecast) is P2's.
+
+### Casting (decision 0047), P2 built 2026-11-17
+
+**Scope.** The web sender: `static/js/cast.js` (loaded only for a person who turned casting on, never in a shell; Google's script is inserted on the first open of the full player), the Cast button in the full player's row (after Sleep) and in the desktop bar, the `ts:cast:*` events, and `player.js` following the device (clock, transport, scrub, sleep pause, progress saved from the device's place, the place handed back paused when the device stops). Speed is off while casting and the clock reads 1x: the Default Media Receiver's rate cannot be set from this sender (uncertain on a real device, see the manual check), and it is not sent. The phone's row loses its side padding so "Read along" fits with five items.
+**Checks.** `go test -tags dev -run TestPlayerCast` (hidden without the SDK, absent when off, events drive the player, a stub session, the row at 390, 768 and large text, the desktop bar button), `TestPlayerNativeRow`, the full-player browser tests, `make page-weight`; budgets raised and reported (cast.js 5,120 B gzip, player.js, the all-JS total, the weight rows).
+**Limits.** Tested with a test double of the Cast SDK, never against Google or a device; the real-device check is in `docs/manual-checks.md` and is open. A converted (compat) copy that is still being made answers 503 and the TV cannot wait for it. Stations wait for P3.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a
-decision, it writes audio files), custom metadata providers (needs a decision), Chromecast, vertical text in the reader.
+decision, it writes audio files), custom metadata providers (needs a decision), Chromecast from the Android app (the web sender is decision 0047), vertical text in the reader.
 Built since this list was written, see their status notes above: OPDS, podcasts, RSS feeds of books and series, OpenID
 Connect.
 

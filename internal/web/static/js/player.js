@@ -50,6 +50,9 @@ let seekSaveTimer = 0;
 let userVolume = storedVolume(); // 0 to 1, per device
 let fade = 1; // 0 to 1, the sleep timer's ramp
 let memoryDeviceId = ""; // used when localStorage is unavailable
+// While a Cast device plays (decision 0047, cast.js): {positionMs, paused, device}, else null. The local element stays
+// loaded but paused; the clock, the buttons and the progress saves read this instead of it.
+let casting = null;
 
 // ---- Small helpers ----
 
@@ -377,9 +380,15 @@ function localMs() {
 
 // Position in the whole book.
 function bookPosition() {
+  if (casting) return casting.positionMs;
   if (NATIVE) return book ? audio.bookMs : 0;
   if (!book || current.fileIdx < 0) return 0;
   return book.files[current.fileIdx].offset + localMs();
+}
+
+// Whether nothing is playing: the Cast device when casting, else the local element.
+function isPaused() {
+  return casting ? casting.paused : audio.paused;
 }
 
 function nextPlayableIndex(after) {
@@ -462,6 +471,17 @@ function seek(ms, shouldPlay) {
     emit("seek");
     return;
   }
+  if (casting) {
+    // the device moves; the clock follows at once and corrects itself from its next position
+    casting.positionMs = clamp(ms, 0, lastMs);
+    fire(document, "ts:cast:command", { action: "seek", positionMs: casting.positionMs });
+    if (casting.paused) {
+      clearTimeout(seekSaveTimer);
+      seekSaveTimer = setTimeout(() => save("seek"), 2000);
+    }
+    emit("seek");
+    return;
+  }
 
   if (!current.loaded) {
     // nothing loaded yet: only remember where to start
@@ -514,6 +534,10 @@ function afterBreak() {
 // audio.play() must run synchronously inside the click or key press, or browsers refuse it, so
 // nothing here awaits before reaching it.
 function play() {
+  if (casting) {
+    fire(document, "ts:cast:command", { action: "play" });
+    return;
+  }
   if (NATIVE) {
     if (book) {
       setLoading(book.id);
@@ -537,6 +561,10 @@ function play() {
 }
 
 function pause() {
+  if (casting) {
+    fire(document, "ts:cast:command", { action: "pause" });
+    return;
+  }
   compatSeq++; // also cancels a wait for a converted copy
   audio.pause();
   if (book && book.kind === RADIO) {
@@ -588,7 +616,7 @@ async function pollNow() {
 }
 
 function toggle() {
-  if (audio.paused) play();
+  if (isPaused()) play();
   else pause();
 }
 
@@ -597,6 +625,73 @@ function skip(direction) {
   const seconds = direction < 0 ? book.skipBack : book.skipForward;
   seek(bookPosition() + direction * seconds * 1000);
 }
+
+// ---- Casting: cast.js drives a Cast device and tells this module through ts:cast:* events (decision 0047) ----
+
+// The device took the book: the local element pauses and the device's position becomes the clock.
+function beginCast(detail) {
+  if (!book || LINK || NATIVE || casting || book.kind === RADIO) return;
+  const place = typeof detail.positionMs === "number" ? detail.positionMs : bookPosition();
+  audio.pause(); // saves once through its pause event, still as the local player
+  accrueHeard(true);
+  casting = { positionMs: place, paused: false, device: detail.device || "" };
+  heardSince = perfNow();
+  emit("cast");
+}
+
+// The device reported its position (cast.js sends this about once a second while it plays).
+function castPosition(detail) {
+  if (!casting) return;
+  const wasPaused = casting.paused;
+  casting.positionMs = detail.positionMs;
+  casting.paused = !!detail.paused;
+  if (casting.paused) {
+    accrueHeard(true);
+  } else if (!heardSince) {
+    heardSince = perfNow();
+  }
+  if (wasPaused !== casting.paused) {
+    if (casting.paused) {
+      idleAt = Date.now();
+      save("pause");
+    }
+    emit(casting.paused ? "pause" : "play");
+  } else if (perfNow() - lastRenderAt >= 1000) {
+    render();
+    updateMediaSession();
+    if (!casting.paused) fire(document, "ts:player:tick", state());
+  }
+}
+
+// The device stopped (the person ended it, the TV failed, the book finished): the local element takes the place and
+// stays paused, and the place is saved once.
+function endCast(detail) {
+  if (!casting) return;
+  accrueHeard(true);
+  const place = typeof detail.positionMs === "number" ? detail.positionMs : casting.positionMs;
+  casting = null;
+  const finished = !!book && book.durationMs > 0 && place >= book.durationMs - 1000;
+  seek(finished ? 0 : place, false);
+  clearTimeout(seekSaveTimer);
+  idleAt = Date.now();
+  if (finished) {
+    lastSavedMs = -1;
+    save("end");
+  } else {
+    save("pause");
+  }
+  emit("pause");
+}
+
+// This module ends casting itself (another item was loaded): the device is told, no place comes back.
+function stopCasting() {
+  casting = null;
+  fire(document, "ts:cast:command", { action: "stop" });
+}
+
+listen(document, "ts:cast:begin", (event) => beginCast(event.detail || {}));
+listen(document, "ts:cast:position", (event) => castPosition(event.detail || {}));
+listen(document, "ts:cast:end", (event) => endCast(event.detail || {}));
 
 // ---- Volume: the person's level and the sleep timer's fade ----
 
@@ -719,7 +814,7 @@ async function save(kind) {
   if (!book || stopped || current.fileIdx < 0 || book.kind === RADIO) return; // a live station keeps no place
   if ((audio.ended || outroEnded) && kind !== "end") return; // a book that ended keeps its finished mark
   if (kind === "tick" && (prompting || nearLastSave())) return;
-  if (kind === "beacon" && (!current.loaded || (audio.paused && nearLastSave()))) return;
+  if (kind === "beacon" && ((!current.loaded && !casting) || (isPaused() && nearLastSave()))) return;
 
   const id = book.id;
   const episode = book.kind === EPISODE;
@@ -896,8 +991,8 @@ function render(force) {
   controls["forward-num"].textContent = book.skipForward;
   setLabel("back", fill(msg("backSeconds"), { n: book.skipBack }));
   setLabel("forward", fill(msg("forwardSeconds"), { n: book.skipForward }));
-  setLabel("toggle", (audio.paused ? msg("playPrefix") : msg("pausePrefix")) + " " + book.title);
-  slot.classList.toggle("is-playing", !audio.paused);
+  setLabel("toggle", (isPaused() ? msg("playPrefix") : msg("pausePrefix")) + " " + book.title);
+  slot.classList.toggle("is-playing", !isPaused());
   slot.classList.toggle("is-live", book.kind === RADIO);
   for (const badge of slot.querySelectorAll("[data-ts-live]")) badge.hidden = book.kind !== RADIO;
   const fraction = book.durationMs ? clamp(position / book.durationMs, 0, 1).toFixed(4) : "0";
@@ -913,8 +1008,9 @@ function state() {
     title: book.title,
     positionMs: Math.round(bookPosition()),
     durationMs: book.durationMs,
-    playing: !audio.paused,
-    speed: book.speed,
+    playing: !isPaused(),
+    speed: casting ? 1 : book.speed, // the TV plays at 1x: Speed is off while casting (decision 0047)
+    casting: casting ? casting.device || "?" : "",
     volume: userVolume,
     fileIdx: NATIVE ? book.files.findLastIndex((f) => f.offset <= bookPosition()) : current.fileIdx,
     chapterIdx: chapterIndexAt(bookPosition()),
@@ -1035,7 +1131,7 @@ function setSuppressed(suppressed) {
 
 // Hides the bar while a resume button for the paused book is in view; never while it plays.
 function updateSuppression() {
-  setSuppressed(!!book && audio.paused && visibleResumeButtons.size > 0);
+  setSuppressed(!!book && isPaused() && visibleResumeButtons.size > 0);
 }
 
 // The loaded book's buttons on this page: Pause while it plays, their own words otherwise. The
@@ -1048,7 +1144,7 @@ function setDisplay(el, value) {
 
 function syncPageButtons() {
   // In the app, the sound may already be another book than the one this page has loaded.
-  const playing = !!book && !audio.paused && (!NATIVE || audio.nativeBookId === book.id);
+  const playing = !!book && !isPaused() && (!NATIVE || audio.nativeBookId === book.id);
   for (const el of document.querySelectorAll("[data-ts-play]")) {
     const pauses = playing && el.dataset.tsPlay === book.id;
     if ((el.dataset.tsPausing === "1") === pauses) continue;
@@ -1136,7 +1232,7 @@ function setLiveMediaActions(live) {
 function updateMediaSession() {
   if (!hasMediaSession || !book) return;
   setLiveMediaActions(book.kind === RADIO);
-  navigator.mediaSession.playbackState = audio.paused ? "paused" : "playing"; // the lock screen and the side panel follow the audio
+  navigator.mediaSession.playbackState = isPaused() ? "paused" : "playing"; // the lock screen and the side panel follow the audio
   if (book.kind === RADIO) {
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -1198,6 +1294,7 @@ if (hasMediaSession) {
 // Makes newBook the loaded one and shows the bar. A switch saves the old book first. False when
 // no file is playable.
 function adopt(newBook, posMs) {
+  if (casting && book && book.id !== newBook.id) stopCasting(); // another item replaces the one on the TV
   if (book && book.id !== newBook.id) {
     save("pause");
     clearTimeout(nowTimer);
@@ -1611,7 +1708,7 @@ listen(window, "pagehide", sendBeaconOnce);
 // ---- Start-up ----
 
 setInterval(() => {
-  if (!audio.paused) save("tick");
+  if (!isPaused()) save("tick");
 }, SAVE_EVERY_MS);
 
 // htmx swapped in content: watch its resume buttons, show its bookmark buttons.
@@ -1658,6 +1755,17 @@ function info() {
   };
 }
 
+// What cast.js needs to send the loaded item to a Cast device: its files with their types, and the place now.
+// Null for a station, a share-link page or the Android shell (never cast).
+function castSource() {
+  if (!book || LINK || NATIVE || book.kind === RADIO) return null;
+  const { id, title, author, kind } = book;
+  return {
+    id, title, author, kind: kind === EPISODE ? "episode" : "book", positionMs: Math.round(bookPosition()),
+    files: book.files.map(({ id: fileId, offset, dur, mime, mayCompat, playable }) => ({ id: fileId, offset, dur, mime, mayCompat, playable })),
+  };
+}
+
 // The full player's save / star button changed the loaded item: keep the fact here, so a later info() agrees.
 function setFavourite(id, on) {
   if (book && book.id === id) book.favourite = on;
@@ -1698,6 +1806,7 @@ async function peekBook(id) {
 window.tsPlayer = {
   state,
   info,
+  castSource,
   setFavourite,
   chapterWords,
   peek: peekBook,

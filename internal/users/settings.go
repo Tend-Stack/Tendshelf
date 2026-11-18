@@ -19,6 +19,7 @@ type Settings struct {
 	AutoRewind   bool
 	NextInSeries bool
 	SkipQuiet    bool // Android app only: shorten long pauses (decision 0033)
+	Cast         bool // Cast to a TV or speaker from a browser; off until turned on (decision 0047)
 	AutoDownload bool // Android app only: download the next book on Wi-Fi (decision 0035)
 	PlayerTint   bool
 	BigButtons   bool
@@ -52,6 +53,7 @@ const (
 	keyAutoRewind   = "playback.auto_rewind"
 	keyNextInSeries = "playback.next_in_series"
 	keyQuietSkip    = "playback.skip_quiet"
+	keyCast         = "playback.cast"
 	keyAutoDownload = "playback.auto_download"
 	keyPlayerTint   = "ui.player_tint"
 	keyBigButtons   = "ui.big_buttons"
@@ -151,6 +153,7 @@ func (s Settings) entries() []settingEntry {
 		{keyAutoRewind, s.AutoRewind},
 		{keyNextInSeries, s.NextInSeries},
 		{keyQuietSkip, s.SkipQuiet},
+		{keyCast, s.Cast},
 		{keyAutoDownload, s.AutoDownload},
 		{keyPlayerTint, s.PlayerTint},
 		{keyBigButtons, s.BigButtons},
@@ -194,6 +197,8 @@ func (s *Settings) apply(key, raw string) {
 		setBool(&s.NextInSeries, raw)
 	case keyAutoDownload:
 		setBool(&s.AutoDownload, raw)
+	case keyCast:
+		setBool(&s.Cast, raw)
 	case keyQuietSkip:
 		setBool(&s.SkipQuiet, raw)
 	case keyPlayerTint:
@@ -380,12 +385,16 @@ func (r *Repo) Theme(ctx context.Context, userID string) (string, error) {
 
 // Look is the part of a person's settings every page render needs: the theme and the text size.
 // An absent or invalid value is "".
-type Look struct{ Theme, TextSize, Nav, TimeZone, LibraryView string }
+type Look struct {
+	Theme, TextSize, Nav, TimeZone, LibraryView string
+	// Cast is the casting switch (decision 0047): the page needs it to choose its CSP and its scripts.
+	Cast bool
+}
 
-// Look reads ui.theme, ui.text_size, ui.nav, ui.time_zone and library.view in one query.
+// Look reads ui.theme, ui.text_size, ui.nav, ui.time_zone, library.view and playback.cast in one query.
 func (r *Repo) Look(ctx context.Context, userID string) (Look, error) {
 	rows, err := r.st.Reader().QueryContext(ctx,
-		`SELECT key, value_json FROM user_settings WHERE user_id = ? AND key IN (?, ?, ?, ?, ?)`, userID, keyTheme, keyTextSize, keyNav, keyTimeZone, keyLibraryView)
+		`SELECT key, value_json FROM user_settings WHERE user_id = ? AND key IN (?, ?, ?, ?, ?, ?)`, userID, keyTheme, keyTextSize, keyNav, keyTimeZone, keyLibraryView, keyCast)
 	if err != nil {
 		return Look{}, err
 	}
@@ -395,6 +404,10 @@ func (r *Repo) Look(ctx context.Context, userID string) (Look, error) {
 		var k, raw string
 		if err := rows.Scan(&k, &raw); err != nil {
 			return Look{}, err
+		}
+		if k == keyCast {
+			setBool(&l.Cast, raw)
+			continue
 		}
 		var v string
 		if json.Unmarshal([]byte(raw), &v) != nil {

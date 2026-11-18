@@ -10,7 +10,7 @@ const READER = /^\/books\/[^/]+\/read$/;
 
 // Paths the worker never touches: share links, invitations, sign-in links, the API, sign-in and sign-out, the
 // health check and the worker itself.
-const PASS = ["/s/", "/invite/", "/signin/", "/api/", "/login", "/setup", "/logout", "/healthz", "/sw.js"];
+const PASS = ["/s/", "/invite/", "/signin/", "/api/", "/login", "/setup", "/logout", "/healthz", "/sw.js", "/cast/", "/casting/"];
 
 self.addEventListener("install", (event) => {
   // No skipWaiting: a new worker waits until the page says nothing is playing.

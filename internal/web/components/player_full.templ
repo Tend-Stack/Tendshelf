@@ -111,6 +111,7 @@ templ PlayerFull(m PlayerMsgs) {
 					<span class="ts-player__chleft" data-ts-full-chapter-left></span>
 				</div>
 				<span class="meta ts-player__booklabel" data-ts-full-bookbar-left></span>
+				<span class="meta ts-player__booklabel" data-ts-cast-where hidden></span>
 			</div>
 			<div class="ts-player-bar ts-player__bar">
 				<button type="button" class="ts-player-bar__item" data-ts-open-speed aria-haspopup="dialog" aria-label={ m.Speed }>
@@ -121,6 +122,10 @@ templ PlayerFull(m PlayerMsgs) {
 					<span class="ts-player-bar__value" data-ts-full-sleep-left hidden></span>
 					@Icon("sleep", false)
 					<span class="ts-player-bar__label">{ m.Sleep }</span>
+				</button>
+				<button type="button" class="ts-player-bar__item" data-ts-cast hidden aria-pressed="false" aria-label={ m.CastLabel }>
+					@Icon("cast", false)
+					<span class="ts-player-bar__label" data-ts-cast-label>{ m.Cast }</span>
 				</button>
 				<button type="button" class="ts-player-bar__item" data-ts-open-chapters>
 					@Icon("chapters", false)

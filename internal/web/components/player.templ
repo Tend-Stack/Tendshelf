@@ -55,6 +55,9 @@ type PlayerMsgs struct {
 	BookmarkMoment, BookmarkFailed, KeysBookmark, Bookmarked, BookmarkMomentAt, BookmarkQueued string
 	AddNote                                                                        string
 
+	// Casting (decision 0047). CastWhere is "Playing on {device}"; the rest are the button, its pressed name and the toasts.
+	Cast, CastLabel, Casting, CastWhere, CastUnreachable, CastFailed, CastTVError, CastKeepOpen string
+
 	// The desktop bar's chapter waveform (PB1).
 	WaveLabel, WaveValue, Hour, Hours, Minute, Minutes, Second, Seconds, WaveDrawing, WaveChapter string
 	WaveLeft, WaveAhead, WaveBack, WaveDragChapter, DeltaMin, DeltaSec, BookTip, BarMeta         string
@@ -177,6 +180,14 @@ func (m PlayerMsgs) attrs() templ.Attributes {
 		"data-ts-msg-bookmarked":          m.Bookmarked,
 		"data-ts-msg-bookmark-moment-at":  m.BookmarkMomentAt,
 		"data-ts-msg-bookmark-queued":     m.BookmarkQueued,
+		"data-ts-msg-cast":                m.Cast,
+		"data-ts-msg-cast-label":          m.CastLabel,
+		"data-ts-msg-casting":             m.Casting,
+		"data-ts-msg-cast-where":          m.CastWhere,
+		"data-ts-msg-cast-unreachable":    m.CastUnreachable,
+		"data-ts-msg-cast-failed":         m.CastFailed,
+		"data-ts-msg-cast-tv-error":       m.CastTVError,
+		"data-ts-msg-cast-keep-open":      m.CastKeepOpen,
 
 		"data-ts-msg-wave-label":        m.WaveLabel,
 		"data-ts-msg-wave-value":        m.WaveValue,
@@ -280,6 +291,9 @@ templ PlayerSlot(m PlayerMsgs) {
 				</button>
 				<button type="button" class="ts-iconbtn" data-ts-bar-bookmark aria-label={ m.BookmarkMoment } if m.Link { hidden }>
 					@Icon("bookmark", false)
+				</button>
+				<button type="button" class="ts-iconbtn" data-ts-cast hidden aria-pressed="false" aria-label={ m.CastLabel }>
+					@Icon("cast", false)
 				</button>
 				<div class="ts-pbar__volume" data-ts-volume-wrap>
 					<button type="button" class="ts-iconbtn" data-ts-bar-volume aria-expanded="false" aria-controls="ts-volume-pop" aria-label={ m.Volume }>

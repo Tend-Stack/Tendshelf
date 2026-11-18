@@ -104,7 +104,8 @@
   /* The settings bar: one raised block, equal columns for the items that show (three without an ebook, two for an episode). */
   .ts-player .ts-player__bar { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0; align-items: stretch; padding-bottom: 0;
     min-height: 4rem; box-sizing: content-box; background-color: var(--raised); border-radius: var(--radius-lg); }
-  .ts-player .ts-player-bar__item { min-height: 4rem; border-radius: var(--radius-lg); }
+  /* No side padding: with the Cast button and an ebook the row has five items at 390 px and "Read along" must fit whole (decision 0047). */
+  .ts-player .ts-player-bar__item { min-height: 4rem; border-radius: var(--radius-lg); padding-inline: 0; }
   /* A running sleep timer: the moon stays and the time left stands where the label was. */
   .ts-player .ts-player-bar__item.is-active > .ts-icon { display: block; }
   .ts-player [data-ts-full-sleep-left] { order: 2; min-height: 1.125rem; font-size: 0.8125rem; line-height: 1.125rem; }

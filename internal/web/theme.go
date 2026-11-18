@@ -39,6 +39,12 @@ func (s *server) themeFor(r *http.Request) string {
 // "large" or "", and only a signed-in person has one: sign-in, frame and link pages render the
 // standard size. One read covers both.
 func (s *server) lookFor(r *http.Request) (theme, textSize string, navRail bool, timeZone string) {
+	theme, textSize, navRail, timeZone, _ = s.lookCast(r)
+	return
+}
+
+// lookCast is lookFor plus whether casting runs on this page (castOn): the same one read.
+func (s *server) lookCast(r *http.Request) (theme, textSize string, navRail bool, timeZone string, cast bool) {
 	if u, ok := auth.UserFrom(r.Context()); ok {
 		l, err := s.users.Look(r.Context(), u.ID)
 		if err != nil {
@@ -48,16 +54,17 @@ func (s *server) lookFor(r *http.Request) (theme, textSize string, navRail bool,
 			textSize = "large"
 		}
 		navRail = l.Nav == "rail"
+		cast = l.Cast && shellFrom(r) == ""
 		switch {
 		case err != nil:
 		case l.Theme == "system":
-			return "", textSize, navRail, l.TimeZone
+			return "", textSize, navRail, l.TimeZone, cast
 		case l.Theme != "":
-			return l.Theme, textSize, navRail, l.TimeZone
+			return l.Theme, textSize, navRail, l.TimeZone, cast
 		}
-		return themeFrom(r), textSize, navRail, l.TimeZone
+		return themeFrom(r), textSize, navRail, l.TimeZone, cast
 	}
-	return themeFrom(r), "", false, ""
+	return themeFrom(r), "", false, "", false
 }
 
 // setThemeCookie mirrors the saved theme into the cookie, so the sign-in pages match the person's

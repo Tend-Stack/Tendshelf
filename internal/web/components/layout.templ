@@ -58,6 +58,8 @@ type Page struct {
 	// It is written as data-shell on <html>. NoOffline keeps offline.js out of the page (no service
 	// worker inside an app window).
 	Shell     string
+	// Cast is true when the person turned casting on and the window is a plain browser: the page carries the cast CSP (decision 0047).
+	Cast bool
 	NoOffline bool
 	// Crumb is the parent of a book, series, author or reader page. Only the desktop app's title bar shows
 	// it, as "Library / The Cartographer's Silence"; a browser never sees it (Layout only).
@@ -188,6 +190,9 @@ templ Layout(p Page, body templ.Component) {
 			<script type="module" async src={ p.Assets.URL("js/waveform.js") }></script>
 			<script type="module" async src={ p.Assets.URL("js/now-panel.js") }></script>
 			<script type="module" async src={ p.Assets.URL("js/chapter-bar.js") }></script>
+			if p.Cast {
+				<script type="module" async src={ p.Assets.URL("js/cast.js") }></script>
+			}
 			@OfflineScript(p)
 		</body>
 	</html>
