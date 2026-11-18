@@ -123,7 +123,7 @@ was reused, extended or replaced.
   person's downloads. ("The only package that creates an `http.Client`" stays a server rule.)
 - Read aloud uses only voices on the device (a browser voice with `localService` true, an Android voice that needs no network), so book text never leaves it (decision 0032).
 - **No telemetry**, analytics, crash reporting, update pings or third-party assets (fonts, CDNs, map
-  tiles). The only outbound requests are user-initiated metadata lookups and cover downloads through `internal/metadata/online`, and podcasts
+  tiles; one exception: Google's Cast sender script, loaded in a browser only for a person who turned casting on, decision 0047). The only outbound requests are user-initiated metadata lookups and cover downloads through `internal/metadata/online`, and podcasts
   and radio through its sub-package `internal/metadata/online/podnet`, both off until the owner turns podcasts or radio on: a search
   sends only the typed words to `ondacast.com` (no account, no identifiers); opening a show from search or the suggestions, following a show, Refresh, opening Podcasts, and a
   scheduled refresh only when the owner picks an interval fetch the publishers' feeds; playing, downloading or auto-downloading an
@@ -140,7 +140,7 @@ was reused, extended or replaced.
   by grants in SQL; never fetch everything and filter in Go (counts and search must not leak titles).
 - A contributor is a member with `users.adds_books = 1` (decision 0029). They edit, look up and remove only books their own uploads placed (`upload_books`,
   read inside `share.Can`, never from the request), never write into a library file, and remove only files they placed.
-- Session, invite, sign-in link, podcast feed and API tokens are random 32-byte values; only their SHA-256 is stored. The one exception is an app key (OPDS, KOReader
+- Session, invite, sign-in link, podcast feed, cast and API tokens are random 32-byte values; only their SHA-256 is stored. The one exception is an app key (OPDS, KOReader
   sync): 24 typable characters from `a-z2-7` (120 bits), one surface each, rate limited, SHA-256 stored ([decision 0025](docs/decisions/0025-app-keys.md)).
 - **A device token never becomes a session.** No route takes a bearer token and answers with a cookie, so a token reaches
   `/api/v1/` only and never a page, `/hx/`, `/admin` or `/me` route. The phone app signs in on the server's own page and trades a
@@ -148,13 +148,14 @@ was reused, extended or replaced.
   ([decision 0026](docs/decisions/0026-app-sign-in.md)).
 - A podcast feed token reaches only `/feeds/{token}/` (GET), never a page, `/hx/`, `/api/`, `/stream/` or `/me`, and
   never becomes a session (decision 0031).
+- A cast address token (decision 0047) reaches only `/cast/{token}/` (GET, HEAD), never a page, `/hx/`, `/api/`, `/stream/`, `/feeds/` or `/me`, never becomes a session, and is deleted at sign-out and when casting is turned off.
 - The server binds `127.0.0.1:8095` by default; exposing it is an explicit setting.
 - The service worker (`/sw.js`, source `internal/web/static/js/sw.js`) answers only hashed `/static/` files and,
   from the signed-in person's own cache, `/stream/{id}` (with or without `?compat=1`), `/covers/{bookID}`,
   `/peaks/{id}`, `/hx/player/{bookID}`, `/podcasts/audio/{id}`, `/podcasts/art/{showID}`, `/podcasts/chapters/{id}`, `/hx/player/episode/{id}`, `/hx/books/{id}/read/chapters/{idx}`, `/books/{id}/read/images/{blockID}`,
   the `/offline` shell for a navigation that cannot reach the server, and the book's reader shell for a
   navigation to `/books/{id}/read` (or `?sheet=contents`) that cannot reach it. It never caches or answers
-  `/s/...`, `/invite/...`, `/pair/...`, `/signin/...`, `/feeds/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any other `/podcasts/...` address, `/radio/...`, any request with
+  `/s/...`, `/invite/...`, `/pair/...`, `/signin/...`, `/feeds/...`, `/cast/...`, `/casting/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any other `/podcasts/...` address, `/radio/...`, any request with
   `download=1`, any non-GET request, or any other page. It is never registered inside a Wails window, inside the Android
   app's window (`/sw.js` answers 404 there), on share-link pages or outside a secure context. Sign-out and a change of person delete that person's caches
   and offline records (decisions [0012](docs/decisions/0012-offline-pocket.md),

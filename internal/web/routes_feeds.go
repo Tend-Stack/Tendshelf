@@ -49,11 +49,15 @@ func (s *server) registerFeeds(outer *http.ServeMux) {
 	outer.Handle(feedPrefix, m)
 }
 
-// feedsFront answers 404 for a /feeds/ path that is not clean, before the mux can redirect it: a redirect's Location
-// would repeat the token.
-func feedsFront(next http.Handler) http.Handler {
+// tokenPathsFront answers 404 for a /feeds/ or /cast/ path that is not clean, before the mux can redirect it: a
+// redirect's Location would repeat the token.
+func tokenPathsFront(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if rest, ok := strings.CutPrefix(r.URL.Path, feedPrefix); ok {
+		rest, ok := strings.CutPrefix(r.URL.Path, feedPrefix)
+		if !ok {
+			rest, ok = strings.CutPrefix(r.URL.Path, castPrefix)
+		}
+		if ok {
 			segs := strings.Split(strings.TrimSuffix(rest, "/"), "/")
 			if slices.Contains(segs, "") && rest != "" || slices.Contains(segs, ".") || slices.Contains(segs, "..") {
 				linkMediaNotFound(w)

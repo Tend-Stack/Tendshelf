@@ -122,8 +122,9 @@ type server struct {
 	grants     *share.Grants
 	invites    *share.Invites
 	links      *share.Links
-	feeds      *share.Feeds // podcast feeds (decision 0031), see routes_feeds.go
-	linkKey    []byte       // signs the share-link unlock cookie; derived from the CSRF key, never the same bytes
+	feeds      *share.Feeds      // podcast feeds (decision 0031), see routes_feeds.go
+	casts      *share.CastTokens // cast addresses (decision 0047), see routes_cast.go
+	linkKey    []byte            // signs the share-link unlock cookie; derived from the CSRF key, never the same bytes
 	proxies    auth.Proxies
 	lib        *library.Repo
 	dataDir    string
@@ -255,6 +256,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 		invites:    invites,
 		links:      share.NewLinks(opts.Store, checker, opts.Now),
 		feeds:      share.NewFeeds(opts.Store, opts.Now),
+		casts:      share.NewCastTokens(opts.Store, opts.Now),
 		linkKey:    lk.Sum(nil),
 		proxies:    opts.TrustedProxies,
 		lib:        opts.Library,
@@ -356,6 +358,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerAppConnect(mux)
 	s.registerPodcasts(mux)
 	s.registerRadio(mux)
+	mux.HandleFunc("POST /casting/address", s.postCastAddress) // decision 0047; the fetch side is registerCast
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 	})
@@ -385,8 +388,9 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerInstall(outer)
 	s.registerOPDS(outer)  // app-key surface: outside the cookie chain, see appauth.go
 	s.registerFeeds(outer) // feed-token surface: outside the cookie chain, see routes_feeds.go
+	s.registerCast(outer)  // cast-token surface: outside the cookie chain, see routes_cast.go
 	outer.Handle("/", s.shellLink(guarded))
-	return s, SecurityHeaders(feedsFront(s.kosyncFront(outer))), nil
+	return s, SecurityHeaders(tokenPathsFront(s.kosyncFront(outer))), nil
 }
 
 // sessionOrCookieBinding binds a CSRF token to the signed-in session, or to the ts_csrf cookie when
@@ -419,7 +423,7 @@ func (s *server) pageStyled(w http.ResponseWriter, r *http.Request, status int, 
 func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, cacheControl, title, current string, body, sheet templ.Component, styles ...string) {
 	var buf bytes.Buffer
 	showUsers, usersWaiting := s.usersLink(r)
-	theme, textSize, navRail, timeZone := s.lookFor(r)
+	theme, textSize, navRail, timeZone, cast := s.lookCast(r)
 	shell := shellFrom(r)
 	err := components.Layout(components.Page{
 		Title:        title,
@@ -447,6 +451,7 @@ func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, 
 		NoOffline:    noOfflineScript(shell),
 		Crumb:        crumbFor(r.URL.Path),
 		AddBooks:     s.desktopAddBooks(r, shell),
+		Cast:         cast,
 	}, body).Render(r.Context(), &buf)
 	if err != nil {
 		slog.Error("render page", "path", logPath(r), "err", err)
@@ -456,6 +461,9 @@ func (s *server) pageCached(w http.ResponseWriter, r *http.Request, status int, 
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
 	h.Set("Cache-Control", cacheControl)
+	if cast {
+		h.Set("Content-Security-Policy", contentSecurityPolicyCast) // casting is on for this person (decision 0047)
+	}
 	w.WriteHeader(status)
 	_, _ = w.Write(buf.Bytes())
 }
@@ -538,6 +546,11 @@ func (s *server) forbidden(w http.ResponseWriter, r *http.Request) {
 // contentSecurityPolicy matches docs/architecture.md ("Auth and sharing").
 const contentSecurityPolicy = "default-src 'self'; img-src 'self' data:; media-src 'self' blob:; " +
 	"script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+
+// contentSecurityPolicyCast is contentSecurityPolicy with Google's sender script allowed, for a page of a person who
+// turned casting on in a plain browser (decision 0047). Nothing else differs.
+const contentSecurityPolicyCast = "default-src 'self'; img-src 'self' data:; media-src 'self' blob:; " +
+	"script-src 'self' https://www.gstatic.com; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 
 // SecurityHeaders sets the CSP and the other fixed headers on every answer. Exported because the
 // desktop start page server (decision 0020) must send the same policy.

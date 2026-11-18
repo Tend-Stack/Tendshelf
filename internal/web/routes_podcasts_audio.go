@@ -51,6 +51,13 @@ func (s *server) getEpisodeAudio(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	s.serveEpisodeAudio(w, r, ep, currentUser(r).ID, download)
+}
+
+// serveEpisodeAudio sends an episode the caller has already authorized for userID: from the kept file, or
+// streamed through from the publisher. Shared by the signed-in route and the cast address (decision 0047),
+// which names its owner explicitly and never reads a session.
+func (s *server) serveEpisodeAudio(w http.ResponseWriter, r *http.Request, ep podcast.Episode, userID string, download bool) {
 	if strings.HasPrefix(strings.ToLower(ep.AudioType), "video/") {
 		s.plainError(w, r, http.StatusUnsupportedMediaType, podErrVideo)
 		return
@@ -72,8 +79,7 @@ func (s *server) getEpisodeAudio(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	u := currentUser(r)
-	release, ok := s.podcasts.AcquireStream(u.ID)
+	release, ok := s.podcasts.AcquireStream(userID)
 	if !ok {
 		h.Set("Retry-After", "5")
 		h.Set("Content-Type", "text/plain; charset=utf-8")
@@ -165,12 +171,17 @@ func (s *server) getPodcastArt(w http.ResponseWriter, r *http.Request) {
 	if !s.podcastsGate(w, r) {
 		return
 	}
+	s.serveShowArt(w, r, currentUser(r).ID, r.PathValue("showID"))
+}
+
+// serveShowArt answers a show's picture to ownerID, who must follow the show or keep something of it. Shared by
+// getPodcastArt and the cast address (decision 0047).
+func (s *server) serveShowArt(w http.ResponseWriter, r *http.Request, ownerID, id string) {
 	width, ok := s.artWidth(w, r)
 	if !ok {
 		return
 	}
-	id := r.PathValue("showID")
-	if !s.podcasts.Knows(r.Context(), currentUser(r).ID, id) {
+	if !s.podcasts.Knows(r.Context(), ownerID, id) {
 		s.notFound(w, r)
 		return
 	}

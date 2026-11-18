@@ -207,6 +207,10 @@ func (s *server) postLogout(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "logout", err)
 		return
 	}
+	// Cast addresses of this person end with the session (decision 0047); a failure must not keep them signed in.
+	if err := s.casts.DeleteForUser(r.Context(), sess.UserID); err != nil {
+		slog.Error("sign-out: delete cast tokens", "err", err)
+	}
 	auth.ClearCookie(w, s.proxies.Secure(r))
 	// Clear-Site-Data wipes what the browser holds for this site (downloads, queued saves, the
 	// worker); the sign-in page's signed_out=1 makes offline.js do the same where the header is

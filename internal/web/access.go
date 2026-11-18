@@ -33,7 +33,7 @@ func (s *server) scope(r *http.Request) library.Scope {
 
 // notFound answers 404: a toast fragment for htmx, the error page otherwise.
 func (s *server) notFound(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/feeds/") {
+	if strings.HasPrefix(r.URL.Path, "/feeds/") || strings.HasPrefix(r.URL.Path, castPrefix) {
 		linkMediaNotFound(w) // a podcast app gets plain text, never a page or a toast
 		return
 	}

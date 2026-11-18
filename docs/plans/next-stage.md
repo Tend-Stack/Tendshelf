@@ -66,8 +66,7 @@ offline download with "Remove finished books", waveforms, per-person speed, and 
 - **Prometheus or `/metrics`.** Not built (no match in the code). It would be a pull endpoint, so it is not telemetry in the
   strict sense, but it is a surface nobody on the vision's list needs. `/healthz` stays, and S3 and S9 show the owner what
   matters. Keep the "no".
-- **Chromecast.** Needs Google's sender library, proprietary on Android and a third-party script on the web, which breaks
-  the rules. AirPlay works from Safari's own audio element.
+- **Chromecast: opt-in per person, web only, decision 0047.** AirPlay works from Safari's own audio element.
 - **CarPlay.** Needs an iOS app. Android Auto comes first; CarPlay waits for an iOS decision.
 - **Cloud backup clients and AI features** (Audible's Character Guide and the like). They need third parties or models
   Tendshelf will not download.

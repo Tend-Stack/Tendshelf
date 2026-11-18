@@ -234,6 +234,9 @@ func (s *server) settingsPage(w http.ResponseWriter, r *http.Request, status int
 	}
 	v := settingsView(s.csrf.TokenFrom(r.Context()), cur)
 	v.InApp = shellFrom(r) == "android"
+	v.CastShell = shellFrom(r) != ""
+	v.CastSecure = s.proxies.Secure(r)
+	v.CastReachable = reachableHost(r.Host)
 	v.Section, v.Index, v.Error = section, index, refusal
 	title := "Settings"
 	if !index {
@@ -286,6 +289,13 @@ func (s *server) postSettings(w http.ResponseWriter, r *http.Request) {
 		s.settingsPage(w, r, http.StatusUnprocessableEntity, section, false, msgSettingInvalid)
 		return
 	}
+	if cur.Cast && !next.Cast {
+		// Turning casting off ends every cast address of this person before the answer says so.
+		if err := s.casts.DeleteForUser(ctx, u.ID); err != nil {
+			s.serverError(w, r, "delete cast tokens", err)
+			return
+		}
+	}
 	if err := s.users.SaveSettings(ctx, u.ID, next); err != nil {
 		s.serverError(w, r, "save settings", err)
 		return
@@ -293,8 +303,8 @@ func (s *server) postSettings(w http.ResponseWriter, r *http.Request) {
 	// The cookie follows the saved theme, so the sign-in pages on this browser match it.
 	s.setThemeCookie(w, r, next.Theme)
 	if r.Header.Get("HX-Request") == "true" {
-		if next.Theme != cur.Theme {
-			w.Header().Set("HX-Refresh", "true") // the page re-renders in the new theme
+		if next.Theme != cur.Theme || next.Cast != cur.Cast {
+			w.Header().Set("HX-Refresh", "true") // the page re-renders in the new theme, or with the cast CSP
 		}
 		w.Header().Set("Cache-Control", "no-store")
 		w.WriteHeader(http.StatusNoContent)
