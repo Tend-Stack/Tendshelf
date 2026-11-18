@@ -66,7 +66,7 @@ func (r *recorder) snapshot() []Step {
 }
 
 // plan lists the providers that are about to be asked as waiting steps.
-func (r *recorder) plan(providers []string) {
+func (r *recorder) plan(providers []string, labelOf func(string) string) {
 	if r == nil {
 		return
 	}
@@ -75,7 +75,7 @@ func (r *recorder) plan(providers []string) {
 	r.cur = -1
 	for _, p := range providers {
 		if len(r.steps) < MaxSteps {
-			r.steps = append(r.steps, Step{Provider: p, Label: label(p), State: StepWaiting})
+			r.steps = append(r.steps, Step{Provider: p, Label: labelOf(p), State: StepWaiting})
 		}
 	}
 	r.publish()

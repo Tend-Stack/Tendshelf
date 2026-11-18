@@ -68,27 +68,62 @@ func mustPrefixes(s ...string) []netip.Prefix {
 	return out
 }
 
-// checkAddr refuses every address that is not a public unicast address. IPv4-mapped and NAT64 forms
-// are reduced to their IPv4 address first, so ::ffff:127.0.0.1 and 64:ff9b::7f00:1 are loopback.
-func checkAddr(a netip.Addr) error {
+// AddrClass sorts an address for the callers that may reach a private network (decision 0046).
+type AddrClass int
+
+const (
+	// AddrPublic is a public unicast address.
+	AddrPublic AddrClass = iota
+	// AddrLocal is loopback, private (RFC 1918, fc00::/7) or CGNAT 100.64.0.0/10, which tailnets use.
+	AddrLocal
+	// AddrRefused is everything else that is not public: link-local, unspecified, multicast, broadcast,
+	// documentation and reserved ranges, site-local and the IPv6 forms that can hide an IPv4 address.
+	AddrRefused
+)
+
+var cgnat = netip.MustParsePrefix("100.64.0.0/10")
+
+// ClassifyAddr sorts one address. IPv4-mapped and NAT64 forms are reduced to their IPv4 address first,
+// so ::ffff:127.0.0.1 and 64:ff9b::7f00:1 are loopback.
+func ClassifyAddr(a netip.Addr) AddrClass {
 	if !a.IsValid() {
-		return refused()
+		return AddrRefused
 	}
 	a = a.WithZone("").Unmap()
 	if a.Is6() && nat64.Contains(a) {
 		b := a.As16()
 		a = netip.AddrFrom4([4]byte{b[12], b[13], b[14], b[15]})
 	}
-	if a.IsLoopback() || a.IsPrivate() || a.IsLinkLocalUnicast() || a.IsLinkLocalMulticast() ||
+	if a.IsLoopback() || a.IsPrivate() || cgnat.Contains(a) {
+		return AddrLocal
+	}
+	if a.IsLinkLocalUnicast() || a.IsLinkLocalMulticast() ||
 		a.IsMulticast() || a.IsUnspecified() || a.IsInterfaceLocalMulticast() {
-		return refused()
+		return AddrRefused
 	}
 	for _, p := range refusedPrefixes {
 		if p.Contains(a) {
-			return refused()
+			return AddrRefused
 		}
 	}
+	return AddrPublic
+}
+
+// checkAddr refuses every address that is not a public unicast address.
+func checkAddr(a netip.Addr) error {
+	if ClassifyAddr(a) != AddrPublic {
+		return refused()
+	}
 	return nil
+}
+
+// PortOK reports whether a URL port is allowed: 80, 443 or 1024-65535. An empty port is the scheme's own.
+func PortOK(p string) bool {
+	if p == "" {
+		return true
+	}
+	n, err := strconv.Atoi(p)
+	return err == nil && (n == 80 || n == 443 || (n >= 1024 && n <= 65535))
 }
 
 // checkURL applies the address rules that need no DNS. ondaBase is the one allowed scheme and host
@@ -108,11 +143,8 @@ func checkURL(u *url.URL, kind Kind, ondaBase *url.URL) error {
 	if host == "" {
 		return refused()
 	}
-	if p := u.Port(); p != "" {
-		n, err := strconv.Atoi(p)
-		if err != nil || !(n == 80 || n == 443 || (n >= 1024 && n <= 65535)) {
-			return refused()
-		}
+	if !PortOK(u.Port()) {
+		return refused()
 	}
 	if kind == KindOndaCast {
 		if ondaBase == nil || scheme != ondaBase.Scheme || !strings.EqualFold(u.Host, ondaBase.Host) {

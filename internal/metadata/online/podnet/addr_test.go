@@ -67,3 +67,28 @@ func TestCheckURL(t *testing.T) {
 		}
 	}
 }
+
+func TestClassifyAddr(t *testing.T) {
+	for want, list := range map[AddrClass][]string{
+		AddrLocal:   {"127.0.0.1", "10.1.2.3", "100.100.1.1", "fd00::1", "::ffff:192.168.1.1", "::1"},
+		AddrRefused: {"169.254.169.254", "fe80::1", "0.0.0.0", "224.0.0.1", "255.255.255.255", "64:ff9b::a9fe:a9fe"},
+		AddrPublic:  {"8.8.8.8", "2606:4700::1"},
+	} {
+		for _, s := range list {
+			if got := ClassifyAddr(netip.MustParseAddr(s)); got != want {
+				t.Errorf("ClassifyAddr(%s) = %d, want %d", s, got, want)
+			}
+		}
+	}
+	if ClassifyAddr(netip.Addr{}) != AddrRefused {
+		t.Error("invalid address not refused")
+	}
+}
+
+func TestPortOK(t *testing.T) {
+	for p, want := range map[string]bool{"": true, "80": true, "443": true, "1024": true, "65535": true, "25": false, "22": false, "1023": false, "65536": false, "x": false} {
+		if PortOK(p) != want {
+			t.Errorf("PortOK(%q) = %v, want %v", p, !want, want)
+		}
+	}
+}

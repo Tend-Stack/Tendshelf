@@ -34,7 +34,11 @@ func (s *Service) Register(r *jobs.Runner) error {
 	if err := r.Register(jobs.Kind{Name: KindAuthor, Concurrency: 1, MaxAttempts: 1, Handler: s.handleAuthor}); err != nil {
 		return err
 	}
-	return r.Register(jobs.Kind{Name: KindChapterLookup, Concurrency: 1, MaxAttempts: 1, Handler: s.handleChapterLookup})
+	if err := r.Register(jobs.Kind{Name: KindChapterLookup, Concurrency: 1, MaxAttempts: 1, Handler: s.handleChapterLookup}); err != nil {
+		return err
+	}
+	// A test of an added lookup site runs once, like the email test: a person starts it again.
+	return r.Register(jobs.Kind{Name: KindProviderTest, Concurrency: 1, MaxAttempts: 1, Handler: s.handleProviderTest})
 }
 
 func (s *Service) handle(ctx context.Context, t *jobs.Task) (any, error) {
