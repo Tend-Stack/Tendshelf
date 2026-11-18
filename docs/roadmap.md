@@ -1256,6 +1256,12 @@ Not built. Line numbers come from a scout and were not re-checked.
 **Checks.** `go vet ./...`, `go test -race ./internal/web/... ./internal/share/... ./internal/db/... ./internal/users/...`, `make build`.
 **Limits.** No `cast.js` and no button until P2; stations wait for P3; the manual device check (Chrome desktop and Android, a Chromecast) is P2's.
 
+### Casting (decision 0047), P2 built 2026-11-17
+
+**Scope.** The web sender: `static/js/cast.js` (loaded only for a person who turned casting on, never in a shell; Google's script is inserted on the first open of the full player), the Cast button in the full player's row (after Sleep) and in the desktop bar, the `ts:cast:*` events, and `player.js` following the device (clock, transport, scrub, sleep pause, progress saved from the device's place, the place handed back paused when the device stops). Speed is off while casting and the clock reads 1x: the Default Media Receiver's rate cannot be set from this sender (uncertain on a real device, see the manual check), and it is not sent. The phone's row loses its side padding so "Read along" fits with five items.
+**Checks.** `go test -tags dev -run TestPlayerCast` (hidden without the SDK, absent when off, events drive the player, a stub session, the row at 390, 768 and large text, the desktop bar button), `TestPlayerNativeRow`, the full-player browser tests, `make page-weight`; budgets raised and reported (cast.js 5,120 B gzip, player.js, the all-JS total, the weight rows).
+**Limits.** Tested with a test double of the Cast SDK, never against Google or a device; the real-device check is in `docs/manual-checks.md` and is open. A converted (compat) copy that is still being made answers 503 and the TV cannot wait for it. Stations wait for P3.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a

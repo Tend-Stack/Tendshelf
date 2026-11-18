@@ -260,6 +260,8 @@ function update(kind) {
   const speedLabel = fill(msg("speedLabel"), { v: speedNumber(state.speed) });
   bar.speedValue.textContent = speedText(state.speed);
   bar.speed.setAttribute("aria-label", speedLabel);
+  // While a TV plays, Speed is off: the Cast device plays at 1x (decision 0047).
+  bar.speed.disabled = !!state.casting;
   if (document.activeElement !== bar.volume) bar.volume.value = Math.round(state.volume * 100);
   syncAddForms(ms);
   syncExpand();
@@ -269,6 +271,7 @@ function update(kind) {
   ui["full-toggle"].setAttribute("aria-label", (state.playing ? msg("pausePrefix") : msg("playPrefix")) + " " + book.title);
   setText("full-speed", speedText(state.speed));
   ui["open-speed"].setAttribute("aria-label", speedLabel);
+  ui["open-speed"].disabled = !!state.casting;
   // the value is drawn in the accent when it is not the normal speed (the text itself already says which)
   ui["open-speed"].classList.toggle("is-active", state.speed !== 1);
   if (!ui["speed-sheet"].hidden) drawSpeedSheet(state.speed);

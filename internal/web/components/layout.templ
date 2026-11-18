@@ -190,6 +190,9 @@ templ Layout(p Page, body templ.Component) {
 			<script type="module" async src={ p.Assets.URL("js/waveform.js") }></script>
 			<script type="module" async src={ p.Assets.URL("js/now-panel.js") }></script>
 			<script type="module" async src={ p.Assets.URL("js/chapter-bar.js") }></script>
+			if p.Cast {
+				<script type="module" async src={ p.Assets.URL("js/cast.js") }></script>
+			}
 			@OfflineScript(p)
 		</body>
 	</html>

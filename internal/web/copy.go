@@ -363,6 +363,14 @@ const (
 	msgBookmarkFailed    = "That bookmark didn't save. Try again."
 	msgBookmarkQueued    = "Bookmarked at {time}. It saves when you're back online."
 	msgKeysBookmark      = "Bookmark"
+	msgCast              = "Cast"                    // NEW (decision 0047): the full player's row button
+	msgCastLabel         = "Cast to a TV or speaker" // its accessible name
+	msgCasting           = "Casting"                 // the same button while casting (text changes, not only colour)
+	msgCastWhere         = "Playing on {device}"     // under the times while casting
+	msgCastUnreachable   = "Your TV can't reach this server at this address. The book still plays here."
+	msgCastFailed        = "Couldn't start casting. The book still plays here."
+	msgCastTVError       = "The TV couldn't play this. It still plays here."
+	msgCastKeepOpen      = "Keep this page open so your place is saved."
 )
 
 // playerMsgs fills the strings the layout hands to the player (data-ts-msg-* on #player).
@@ -379,6 +387,8 @@ func playerMsgs() components.PlayerMsgs {
 		ChapterOf: msgChapterOf, LeftInChapter: msgLeftInChapter, LeftInBookMinutes: msgLeftInBookMinutes,
 		LeftInBookHours: msgLeftInBookHours, LeftInBookBoth: msgLeftInBookBoth, SubtitleSep: msgSubtitleSep, ScrubLabel: msgScrubLabel,
 		ScrubValue: msgScrubValue, FineScrub: msgFineScrub, ClosePlayer: msgClosePlayer, PrevChapter: msgPrevChapter,
+		Cast: msgCast, CastLabel: msgCastLabel, Casting: msgCasting, CastWhere: msgCastWhere, CastUnreachable: msgCastUnreachable,
+		CastFailed: msgCastFailed, CastTVError: msgCastTVError, CastKeepOpen: msgCastKeepOpen,
 		NextChapter: msgNextChapter, Speed: msgSpeed, Sleep: msgSleep, Chapters: msgChapters, Bookmark: msgBookmark,
 		MoreActions: msgMoreActions, GoToBook: msgGoToBook, MarkFinished: msgMarkFinished, ChapterPlayed: msgChapterPlayed,
 		OpenPlayer: msgOpenPlayer, Resume: playResume, ScrubBubble: msgScrubBubble, ChBarLabel: msgChBarLabel, ChBarTip: msgChBarTip, ChBarValue: msgChBarValue, ChBarUntitled: msgChBarUntitled,
