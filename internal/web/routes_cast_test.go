@@ -146,7 +146,7 @@ func TestCastMintForbiddenRoles(t *testing.T) {
 	if rec := l.mintReq(t, "owner", "book", l.single.ID, func(r *http.Request) { r.Header.Set("Content-Type", "application/json") }); rec.Code != http.StatusUnsupportedMediaType {
 		t.Errorf("json body = %d", rec.Code)
 	}
-	for _, c := range []struct{ kind, id string }{{"station", "x"}, {"file", "x"}, {"book", ""}, {"book", strings.Repeat("x", 80)}} {
+	for _, c := range []struct{ kind, id string }{{"stations", "x"}, {"file", "x"}, {"book", ""}, {"book", strings.Repeat("x", 80)}} {
 		if rec := l.mintReq(t, "owner", c.kind, c.id); rec.Code != http.StatusBadRequest {
 			t.Errorf("%q %q = %d", c.kind, c.id, rec.Code)
 		}

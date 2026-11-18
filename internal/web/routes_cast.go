@@ -12,6 +12,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/db"
 	"github.com/Tend-Stack/tendshelf/internal/library"
 	"github.com/Tend-Stack/tendshelf/internal/podcast"
+	"github.com/Tend-Stack/tendshelf/internal/radio"
 	"github.com/Tend-Stack/tendshelf/internal/share"
 	"github.com/Tend-Stack/tendshelf/internal/users"
 )
@@ -35,6 +36,7 @@ func (s *server) registerCast(outer *http.ServeMux) {
 	// No method in the patterns: castRoute answers any method but GET and HEAD with 405 and Allow itself.
 	m.HandleFunc("/cast/{token}/audio/{fileID}", s.castRoute(share.CastBook, s.getCastAudio))
 	m.HandleFunc("/cast/{token}/episode", s.castRoute(share.CastEpisode, s.getCastEpisode))
+	m.HandleFunc("/cast/{token}/live", s.castRoute(share.CastStation, s.getCastLive))
 	m.HandleFunc("/cast/{token}/art", s.castAnyRoute(s.getCastArt))
 	m.HandleFunc(castPrefix, func(w http.ResponseWriter, r *http.Request) { castNotFound(w) })
 	outer.Handle(castPrefix, m)
@@ -169,6 +171,37 @@ func (s *server) castEpisode(w http.ResponseWriter, r *http.Request, cr castReq)
 	return ep, true
 }
 
+// castStation loads the owner's station of a station token if radio is on and its owner may still use it. The same
+// switch and right the player's loadStation checks, with the owner passed in instead of read from a cookie session.
+func (s *server) castStation(w http.ResponseWriter, r *http.Request, cr castReq) (radio.Station, bool) {
+	ctx := r.Context()
+	if !s.radioOn(r) || !s.can.Can(ctx, cr.owner, share.UseRadio, podServer) {
+		http.Error(w, "Not found.", http.StatusNotFound)
+		return radio.Station{}, false
+	}
+	st, err := s.radio.Get(ctx, cr.owner.ID, cr.tok.TargetID)
+	if errors.Is(err, radio.ErrNotFound) {
+		http.Error(w, "Not found.", http.StatusNotFound)
+		return radio.Station{}, false
+	}
+	if err != nil {
+		s.castServerError(w, "cast station", err)
+		return radio.Station{}, false
+	}
+	return st, true
+}
+
+// getCastLive relays the station the token names through the player's own relay: the same stream slot, the guarded
+// client (podnet) and the radio-off stop. The slot is taken here, so a station still held by a local player answers
+// 503 with Retry-After; cast.js stops local play first and retries.
+func (s *server) getCastLive(w http.ResponseWriter, r *http.Request, cr castReq) {
+	st, ok := s.castStation(w, r, cr)
+	if !ok {
+		return
+	}
+	s.serveRadioLive(w, r, cr.owner, st)
+}
+
 func (s *server) getCastAudio(w http.ResponseWriter, r *http.Request, cr castReq) {
 	ctx := r.Context()
 	book, ok := s.castBook(w, r, cr)
@@ -219,7 +252,7 @@ func (s *server) getCastArt(w http.ResponseWriter, r *http.Request, cr castReq) 
 	s.serveCoverFile(w, r, book.CoverID, 0, "private, no-store")
 }
 
-// postCastAddress answers POST /casting/address (cookie chain, CSRF header): it mints a token for a book or episode the
+// postCastAddress answers POST /casting/address (cookie chain, CSRF header): it mints a token for a book, episode or station the
 // signed-in person may listen to and answers where the TV can fetch it. Order: form type, the casting switch, the
 // fields, the right on the target, then whether a TV could reach this address at all.
 func (s *server) postCastAddress(w http.ResponseWriter, r *http.Request) {
@@ -244,7 +277,7 @@ func (s *server) postCastAddress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	kind, id := r.PostForm.Get("kind"), r.PostForm.Get("id")
-	if kind != share.CastBook && kind != share.CastEpisode {
+	if kind != share.CastBook && kind != share.CastEpisode && kind != share.CastStation {
 		jsonError(w, http.StatusBadRequest, "invalid", "kind")
 		return
 	}
@@ -266,6 +299,22 @@ func (s *server) postCastAddress(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		id, life = b.ID, share.CastLife(b.DurationMs)
+	case share.CastStation:
+		if !s.radioOn(r) || !s.can.Can(ctx, u, share.UseRadio, podServer) {
+			jsonError(w, http.StatusNotFound, "not_found", "")
+			return
+		}
+		st, err := s.radio.Get(ctx, u.ID, id)
+		if errors.Is(err, radio.ErrNotFound) {
+			jsonError(w, http.StatusNotFound, "not_found", "")
+			return
+		}
+		if err != nil {
+			slog.Error("cast mint station", "err", err)
+			jsonError(w, http.StatusInternalServerError, "server", "")
+			return
+		}
+		id, life = st.ID, share.CastStationLife
 	default:
 		if !s.podcastsOn(r) || !s.can.Can(ctx, u, share.ListenEpisode, share.Target{Kind: share.TargetEpisode, ID: id}) {
 			jsonError(w, http.StatusNotFound, "not_found", "")

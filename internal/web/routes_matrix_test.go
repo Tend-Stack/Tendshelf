@@ -584,7 +584,7 @@ func sweepRows() []sweepRow {
 		sweepPost("POST /hx/me/nav", sweepStatic("/hx/me/nav"), sweepFormOf(url.Values{"nav": {"full"}}), sweepSame(200), ""),
 		sweepPost("POST /books/{id}/feed", sweepBookPath("/feed"), nil, sweepStaff(200, 404), ""),
 		sweepPost("POST /series/{id}/feed", id(func(e *sweepEnv) string { return e.series }, "/series/", "/feed"), nil, sweepStaff(200, 404), ""),
-		// Casting is off for everyone in the sweep, so every role gets the same JSON 404 (decision 0047); routes_cast_test.go
+		// Casting is off for everyone in the sweep, so every role gets the same JSON 404 for any kind (book, episode, station; decision 0047); routes_cast_test.go
 		// covers the roles with it on.
 		sweepPost("POST /casting/address", sweepStatic("/casting/address"), sweepFormOf(url.Values{"kind": {"book"}, "id": {"bk_none"}}), sweepSame(404), ""),
 		sweepPost("POST /me/feeds/{id}/revoke", sweepStatic("/me/feeds/zz-none/revoke"), nil, sweepSame(404), ""),
@@ -879,7 +879,7 @@ func sweepRegistered(t *testing.T) []string {
 			case path == "/feeds/" || strings.HasPrefix(path, "/feeds/"):
 				continue // feed token in the path, not a cookie: feeds_test.go covers it
 			case path == "/cast/" || strings.HasPrefix(path, "/cast/"):
-				continue // cast token in the path, not a cookie: routes_cast_test.go covers it
+				continue // cast token in the path (audio, episode, art, live), not a cookie: routes_cast_test.go and radio_test.go cover it
 			}
 			seen[p] = true
 		}

@@ -16,6 +16,7 @@ import (
 	"github.com/Tend-Stack/tendshelf/internal/radio"
 	"github.com/Tend-Stack/tendshelf/internal/radio/hls"
 	"github.com/Tend-Stack/tendshelf/internal/share"
+	"github.com/Tend-Stack/tendshelf/internal/users"
 	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
@@ -291,7 +292,12 @@ func (s *server) getRadioLive(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	u := currentUser(r)
+	s.serveRadioLive(w, r, currentUser(r), st)
+}
+
+// serveRadioLive is the live relay after the checks: the owner and the station are explicit arguments so the cast
+// route (decision 0047), which has no cookie session, runs the same slot, dial and relay code as the player.
+func (s *server) serveRadioLive(w http.ResponseWriter, r *http.Request, u users.User, st radio.Station) {
 	h := w.Header()
 	release, err := s.radio.Acquire(u.ID, st.ID)
 	if err != nil {
@@ -308,7 +314,7 @@ func (s *server) getRadioLive(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	go s.stopWhenRadioOff(ctx, cancel, radioEnabledEvery) // the interval is read here, in the handler, not in the goroutine
 	if st.Format == "hls" {
-		s.relayHLS(ctx, w, r, st)
+		s.relayHLS(ctx, w, r, u, st)
 		return
 	}
 	up, metaint, err := s.radio.Net.OpenLive(ctx, st.StreamURL)
@@ -369,8 +375,7 @@ func (s *server) radioCheckFailed(ctx context.Context, id string, err error) {
 // relayHLS serves an HLS station as one continuous ADTS or MPEG audio stream (decision 0039). ctx already
 // carries the 12 hour session limit and the radio-off stop, so cancelling it ends the session and every
 // request it has in flight. The caller holds the live place and the stream slot.
-func (s *server) relayHLS(ctx context.Context, w http.ResponseWriter, r *http.Request, st radio.Station) {
-	u := currentUser(r)
+func (s *server) relayHLS(ctx context.Context, w http.ResponseWriter, r *http.Request, u users.User, st radio.Station) {
 	sess, err := hls.Open(ctx, s.radio.Net, st.StreamURL, hls.Options{OnTitle: func(t string) { s.radio.SetTitle(st.ID, t) }})
 	if err != nil {
 		s.radioCheckFailed(r.Context(), st.ID, err)

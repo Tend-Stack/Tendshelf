@@ -11,6 +11,7 @@
 //   ts:cast:position {positionMs, paused}  cast.js -> player.js  the device's place in the whole book
 //   ts:cast:end      {positionMs}          cast.js -> player.js  the device stopped; the local player takes the place
 //   ts:cast:command  {action, positionMs}  player.js -> cast.js  "play", "pause", "seek" or "stop"
+// A station is cast like a book with one live item and no place (docs/plans/casting.md, P3).
 //
 // CSP: no inline script or style, no eval. Every word comes from data-ts-msg-* attributes on #player.
 
@@ -128,10 +129,10 @@ function buttons() {
   return document.querySelectorAll("[data-ts-cast]");
 }
 
-// A station has no place to carry over (stations wait for a later package); a share link never casts.
+// A share link never casts (castSource answers null there); a station casts like a book, with no place to carry over.
 function castable() {
   const state = window.tsPlayer ? window.tsPlayer.state() : null;
-  return !!state && state.bookId !== "" && state.itemKind !== "radio";
+  return !!state && state.bookId !== "";
 }
 
 function fill(text, values) {
@@ -178,7 +179,7 @@ function onSession(event) {
 // POST /casting/address: the private address for this book or episode. Rejects with the HTTP status (0: no answer).
 async function mint(src) {
   if (address && address.bookId === src.id && address.expiresAt - Date.now() > ADDRESS_SPARE_MS) return address;
-  const body = new URLSearchParams({ kind: src.kind === "episode" ? "episode" : "book", id: src.id });
+  const body = new URLSearchParams({ kind: src.kind, id: src.id });
   let res;
   try {
     res = await fetch("/casting/address", {
@@ -223,6 +224,8 @@ async function begin() {
   if (context.getCurrentSession() !== session) return; // the person ended it while the address was being made
   active = { src, base: minted.base, device, lastMs: src.positionMs };
   try {
+    if (src.kind === "station") active.liveType = await freeLiveSlot(minted.base);
+    if (context.getCurrentSession() !== session) throw new Error("ended");
     await load(src.positionMs, true);
   } catch {
     active = null;
@@ -233,13 +236,42 @@ async function begin() {
   }
   fire("ts:cast:begin", { device, positionMs: src.positionMs });
   paint();
-  if (!hinted) {
+  if (!hinted && src.kind !== "station") { // a station keeps no place, so the page need not stay open
     hinted = true;
     toast("hint", msg("castKeepOpen"));
   }
 }
 
+// ---- A station: the server lets one stream run per person and station ----
+
+const SLOT_TRIES = 8;
+
+// A station's relay holds a stream slot for the person, so the page's own stream must be closed before the device
+// opens the address, or the device would get a 503. Stop the local stream, then ask the address with HEAD (it takes
+// and frees the same slot) until it answers; the answer's type is the one the device is told. Throws when it never does.
+async function freeLiveSlot(base) {
+  window.tsPlayer.pause(); // a station's pause drops the stream
+  for (let attempt = 0; attempt < SLOT_TRIES; attempt++) {
+    const res = await fetch(base + "/live", { method: "HEAD" });
+    if (res.ok) return (res.headers.get("Content-Type") || "audio/mpeg").split(";")[0];
+    if (res.status !== 503) throw res.status;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw 503;
+}
+
 // ---- Telling the device what to play ----
+
+// A station: one live item with no start place, no artwork (the address has no art route for a station).
+function liveMedia(base) {
+  const media = new chrome.cast.media.MediaInfo(base + "/live", active.liveType);
+  media.streamType = chrome.cast.media.StreamType.LIVE;
+  const meta = new chrome.cast.media.GenericMediaMetadata();
+  meta.title = active.src.title;
+  meta.subtitle = active.src.author;
+  media.metadata = meta;
+  return media;
+}
 
 function mediaFor(file, base) {
   const compat = file.mayCompat && audio && audio.canPlayType(file.mime) === "";
@@ -258,6 +290,12 @@ function mediaFor(file, base) {
 // The playable files of the book, in order, as the device's queue; the queue starts at the file holding positionMs.
 function load(positionMs, autoplay) {
   const { src, base } = active;
+  if (src.kind === "station") {
+    active.files = [{ id: "live", offset: 0, dur: 0 }];
+    const request = new chrome.cast.media.QueueLoadRequest([new chrome.cast.media.QueueItem(liveMedia(base))]);
+    request.repeatMode = chrome.cast.media.RepeatMode.OFF;
+    return new Promise((resolve, reject) => context.getCurrentSession().getSessionObj().queueLoad(request, resolve, reject));
+  }
   active.files = src.files.filter((f) => f.playable);
   let start = active.files.findIndex((f) => positionMs < f.offset + f.dur);
   if (start < 0) start = 0;
@@ -282,7 +320,7 @@ function currentFile() {
   const info = remote.mediaInfo;
   if (!info || !active || !active.files) return null;
   const id = decodeURIComponent(info.contentId.split("?")[0].split("/").pop());
-  if (active.src.kind === "episode") return active.files[0];
+  if (active.src.kind !== "book") return active.files[0]; // an episode or a station: one item
   return active.files.find((f) => f.id === id) || null;
 }
 
@@ -290,7 +328,8 @@ function report() {
   if (!active || !remote.isMediaLoaded) return;
   const file = currentFile();
   if (!file) return;
-  const positionMs = Math.round(file.offset + remote.currentTime * 1000);
+  // A live stream has no place: its clock stays at zero.
+  const positionMs = active.src.kind === "station" ? 0 : Math.round(file.offset + remote.currentTime * 1000);
   active.lastMs = positionMs;
   fire("ts:cast:position", { positionMs, paused: remote.isPaused });
 }

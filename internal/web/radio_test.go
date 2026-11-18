@@ -213,6 +213,7 @@ func (f *radioFix) mod(t *testing.T) func(*Options) {
 		}
 		f.svc = radio.New(o.Store, f.pub.Client, f.pod, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
 		o.Podcasts, o.Radio = f.pod, f.svc
+		o.TrustedProxies, _ = auth.ParseProxies("10.0.0.0/8") // the cast tests mint through a proxied https name
 	}
 }
 
@@ -778,5 +779,123 @@ func (f *radioFix) serveSilence(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-time.After(80 * time.Millisecond):
 		}
+	}
+}
+
+// castMint turns casting on for a person and posts to /casting/address for a station (decision 0047, P3). It returns
+// the response; on 200 the raw token is the last path segment of the answered base.
+func (w *radioWorld) castMint(ck *http.Cookie, userID, id string) (*httptest.ResponseRecorder, string) {
+	w.t.Helper()
+	ctx := context.Background()
+	set, err := w.a.srv.users.LoadSettings(ctx, userID)
+	if err != nil {
+		w.t.Fatal(err)
+	}
+	set.Cast = true
+	if err := w.a.srv.users.SaveSettings(ctx, userID, set); err != nil {
+		w.t.Fatal(err)
+	}
+	csrf := w.a.tokenFor(w.t, ck)
+	rec := w.a.do(http.MethodPost, "/casting/address", url.Values{"kind": {"station"}, "id": {id}}, func(r *http.Request) {
+		proxyDefault(r)
+		r.Header.Set("X-CSRF-Token", csrf)
+	}, ck)
+	var out struct{ Base string }
+	_ = json.Unmarshal(rec.Body.Bytes(), &out)
+	return rec, out.Base[strings.LastIndex(out.Base, "/")+1:]
+}
+
+func (w *radioWorld) castGet(method, tok string) *httptest.ResponseRecorder {
+	return w.a.do(method, "/cast/"+tok+"/live", nil, nil)
+}
+
+func TestCastStationLive(t *testing.T) {
+	w := newRadioWorld(t)
+	id := w.add(w.ben, w.fx.liveURL())
+	rec, tok := w.castMint(w.ben, w.benID, id)
+	if rec.Code != http.StatusOK || len(tok) != 43 {
+		t.Fatalf("mint = %d %q", rec.Code, rec.Body)
+	}
+	_, audio := radioAudio()
+	rec = w.castGet(http.MethodGet, tok)
+	if rec.Code != http.StatusOK || !bytes.Equal(rec.Body.Bytes(), audio) {
+		t.Fatalf("cast live: %d, %d bytes (want %d)", rec.Code, rec.Body.Len(), len(audio))
+	}
+	h := rec.Header()
+	if h.Get("Content-Type") != "audio/mpeg" || h.Get("Cache-Control") != "private, no-store" || h.Get("X-Content-Type-Options") != "nosniff" ||
+		h.Get("Content-Security-Policy") != "default-src 'none'; sandbox" || h.Get("Access-Control-Allow-Origin") != "*" || h.Get("Set-Cookie") != "" {
+		t.Errorf("headers %v", h)
+	}
+	if rec = w.castGet(http.MethodHead, tok); rec.Code != http.StatusOK || rec.Body.Len() != 0 {
+		t.Errorf("HEAD = %d, %d bytes", rec.Code, rec.Body.Len())
+	}
+	if rec = w.castGet(http.MethodPost, tok); rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("POST = %d", rec.Code)
+	}
+	// The token reaches only the cast path: not the player's live route.
+	if rec = w.get("/radio/live/"+tok, w.ben); rec.Code == http.StatusOK {
+		t.Errorf("token as a station id = %d", rec.Code)
+	}
+	// A station token is not a book or episode token, and the station must be the owner's own.
+	for _, p := range []string{"/episode", "/art", "/audio/x"} {
+		if rec = w.a.do(http.MethodGet, "/cast/"+tok+p, nil, nil); rec.Code != http.StatusNotFound {
+			t.Errorf("station token on %s = %d", p, rec.Code)
+		}
+	}
+	if rec, _ = w.castMint(w.cy, w.cyID, id); rec.Code != http.StatusNotFound {
+		t.Errorf("another person's station = %d", rec.Code)
+	}
+	if rec, _ = w.castMint(w.ben, w.benID, "st_nope"); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown station = %d", rec.Code)
+	}
+	// Casting turned off: the fetch stops at once.
+	set, _ := w.a.srv.users.LoadSettings(context.Background(), w.benID)
+	set.Cast = false
+	if err := w.a.srv.users.SaveSettings(context.Background(), w.benID, set); err != nil {
+		t.Fatal(err)
+	}
+	if rec = w.castGet(http.MethodGet, tok); rec.Code != http.StatusNotFound {
+		t.Errorf("casting off = %d", rec.Code)
+	}
+}
+
+func TestCastStationBusy(t *testing.T) {
+	w := newRadioWorld(t)
+	w.fx.setHold(make(chan struct{}))
+	id := w.add(w.ben, w.fx.liveURL())
+	_, tok := w.castMint(w.ben, w.benID, id)
+	base := w.fx.hits.Load()
+	_, cancel, done := w.liveGet(w.ben, "/radio/live/"+id)
+	w.waitHits(base + 1)
+	rec := w.castGet(http.MethodGet, tok)
+	if rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Retry-After") != "5" {
+		t.Errorf("while local holds the slot: %d %v", rec.Code, rec.Header())
+	}
+	if w.fx.hits.Load() != base+1 {
+		t.Errorf("a refused cast reached the station (%d)", w.fx.hits.Load())
+	}
+	cancel()
+	<-done
+	close(w.fx.holdCh())
+	w.fx.setHold(nil)
+	if rec = w.castGet(http.MethodGet, tok); rec.Code != http.StatusOK {
+		t.Errorf("after local ended: %d", rec.Code)
+	}
+}
+
+func TestCastStationRadioOff(t *testing.T) {
+	w := newRadioWorld(t)
+	id := w.add(w.ben, w.fx.liveURL())
+	_, tok := w.castMint(w.ben, w.benID, id)
+	w.fx.enable(t, w.a, false)
+	base := w.fx.hits.Load()
+	if rec := w.castGet(http.MethodGet, tok); rec.Code != http.StatusNotFound {
+		t.Errorf("radio off at fetch = %d", rec.Code)
+	}
+	if rec, _ := w.castMint(w.ben, w.benID, id); rec.Code != http.StatusNotFound {
+		t.Errorf("radio off at mint = %d", rec.Code)
+	}
+	if w.fx.hits.Load() != base {
+		t.Errorf("radio off reached the station")
 	}
 }

@@ -1262,6 +1262,12 @@ Not built. Line numbers come from a scout and were not re-checked.
 **Checks.** `go test -tags dev -run TestPlayerCast` (hidden without the SDK, absent when off, events drive the player, a stub session, the row at 390, 768 and large text, the desktop bar button), `TestPlayerNativeRow`, the full-player browser tests, `make page-weight`; budgets raised and reported (cast.js 5,120 B gzip, player.js, the all-JS total, the weight rows).
 **Limits.** Tested with a test double of the Cast SDK, never against Google or a device; the real-device check is in `docs/manual-checks.md` and is open. A converted (compat) copy that is still being made answers 503 and the TV cannot wait for it. Stations wait for P3.
 
+### Casting (decision 0047), P3 built 2026-11-17
+
+**Scope.** Stations. `POST /casting/address` takes `kind=station` (radio on, `share.UseRadio`, the person's own station, life `CastStationLife` of 12 h); `GET|HEAD /cast/{token}/live` re-checks casting, radio and the right at each fetch and relays through the player's own code (`serveRadioLive`, extracted from `getRadioLive`: the same stream slot, `relayHLS` and the guarded `podnet` client, the radio-off stop). `cast.js` casts a station as one live item (`StreamType.LIVE`, no place, no artwork), stops the page's own stream first and asks the address with HEAD until the slot is free (the server answers 503 with `Retry-After` while the page still holds it); `player.js` lets a station begin and end a cast without a place.
+**Checks.** `go test -race ./internal/web/...` (`TestCastStationLive`, `TestCastStationBusy`, `TestCastStationRadioOff`, the sweep row for a station mint), the cast browser tests, `make page-weight`.
+**Limits.** Browser tests use a book; a station session through the SDK test double is not written. A station's picture is not sent to the TV (no art route for a station token). Tested with the fake station, never against a real TV; manual rows C13 to C16 are open.
+
 ## Later
 
 TV app (its own layouts, in the spirit of Apple TV and LG apps; not designed yet), merge MP3 folder to M4B (needs a

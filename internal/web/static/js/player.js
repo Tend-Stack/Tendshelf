@@ -630,9 +630,10 @@ function skip(direction) {
 
 // The device took the book: the local element pauses and the device's position becomes the clock.
 function beginCast(detail) {
-  if (!book || LINK || NATIVE || casting || book.kind === RADIO) return;
+  if (!book || LINK || NATIVE || casting) return;
   const place = typeof detail.positionMs === "number" ? detail.positionMs : bookPosition();
   audio.pause(); // saves once through its pause event, still as the local player
+  if (book.kind === RADIO) dropLive(); // a station keeps no place; the local stream closes so the device can open it
   accrueHeard(true);
   casting = { positionMs: place, paused: false, device: detail.device || "" };
   heardSince = perfNow();
@@ -1756,12 +1757,12 @@ function info() {
 }
 
 // What cast.js needs to send the loaded item to a Cast device: its files with their types, and the place now.
-// Null for a station, a share-link page or the Android shell (never cast).
+// Null for a share-link page or the Android shell (never cast). A station has no files and no place.
 function castSource() {
-  if (!book || LINK || NATIVE || book.kind === RADIO) return null;
+  if (!book || LINK || NATIVE) return null;
   const { id, title, author, kind } = book;
   return {
-    id, title, author, kind: kind === EPISODE ? "episode" : "book", positionMs: Math.round(bookPosition()),
+    id, title, author, kind: kind === EPISODE ? "episode" : kind === RADIO ? "station" : "book", positionMs: kind === RADIO ? 0 : Math.round(bookPosition()),
     files: book.files.map(({ id: fileId, offset, dur, mime, mayCompat, playable }) => ({ id: fileId, offset, dur, mime, mayCompat, playable })),
   };
 }

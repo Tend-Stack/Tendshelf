@@ -22,6 +22,10 @@ Needs Chrome on a computer and Chrome on Android, a Chromecast or Google TV on t
 | C10 | Cast, then turn casting off in Settings. | The page reloads without the button; the TV stops soon after. | |
 | C11 | Cast to a TV that cannot reach the server (a host it cannot resolve). | The toast says the TV can't reach this server and the book still plays here. | |
 | C12 | Open the same page in the Wails window and in the Android app. | No Cast button, no cast.js, no request to gstatic.com. | |
+| C13 | Play a radio station, open the full player, tap Cast and pick the TV (radio on, casting on). | The page's own stream stops, the TV plays the station live within a few seconds, the page says "Playing on {TV}". No place is shown or saved. | |
+| C14 | Cast an HLS station and a plain MP3 or AAC station. | Both play on the TV; the title and the now-playing line show on the TV. A station that the page itself plays but the TV refuses shows "The TV couldn't play this. It still plays here." | |
+| C15 | While a station plays on the TV, turn radio off (Admin, Podcasts and radio), or turn casting off in Settings. | The TV stops within about a minute; nothing keeps the stream open (the station's relay ends). | |
+| C16 | Stop casting a station from Chrome's own dialog, then press Play. | The page plays the station live again (no resume place, no rewind). | |
 
 ## Still open before 2026.8.2 (index, 2026-11-10)
 

@@ -6,7 +6,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Added
 
-- **Cast to a Chromecast or Google TV.** In Chrome, the full player has a Cast button that sends the book or podcast episode to a TV or speaker on your network, and your place keeps saving while it plays there. It is off until you turn it on in Settings, Playback, which explains first what changes: Google's casting code runs in your browser and the device fetches the sound from your server through a short-lived address.
+- **Cast to a Chromecast or Google TV.** In Chrome, the full player has a Cast button that sends the book, podcast episode or radio station to a TV or speaker on your network, and your place keeps saving while it plays there. It is off until you turn it on in Settings, Playback, which explains first what changes: Google's casting code runs in your browser and the device fetches the sound from your server through a short-lived address.
 - **Your own lookup sites.** An owner can add lookup sites made for Audiobookshelf (an address and an optional authorization header); everyone can choose them under Also search.
 
 ## 2026.13.0
