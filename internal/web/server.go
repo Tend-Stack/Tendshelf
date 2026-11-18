@@ -327,6 +327,7 @@ func newServer(ctx context.Context, opts Options) (*server, http.Handler, error)
 	s.registerShare(mux)
 	s.registerLinks(mux)
 	s.registerEmail(mux)
+	s.registerProviders(mux)
 	s.registerReader(mux)
 	s.registerReaderSettings(mux)
 	//

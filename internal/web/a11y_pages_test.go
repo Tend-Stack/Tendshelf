@@ -179,6 +179,7 @@ func a11yPages() []a11yPage {
 		row("admin-user-disable", "/admin/users/{id}/disable", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID + "/disable" }, owner, "main", true),
 		row("admin-user-stop", "/admin/users/{id}/stop", func(e *a11yEnv) string { return "/admin/users/" + e.MemberID + "/stop" }, owner, "main", true),
 		row("admin-email", "/admin/email", a11yStatic("/admin/email"), owner, "main", true),
+		row("admin-providers", "/admin/providers", a11yStatic("/admin/providers"), owner, "main", true),
 		row("admin-sso", "/admin/sso", a11yStatic("/admin/sso"), owner, "main", true),
 		row("me-sso", "/me/sso", a11yStatic("/me/sso"), both, "main", true),
 		row("me-passkeys", "/me/passkeys", a11yStatic("/me/passkeys"), both, "main", true),

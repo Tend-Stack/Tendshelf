@@ -4,6 +4,10 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+### Added
+
+- **Your own lookup sites.** An owner can add lookup sites made for Audiobookshelf (an address and an optional authorization header); everyone can choose them under Also search.
+
 ## 2026.13.0
 
 Released 2026-11-17. Removing a book you uploaded can now be undone for 30 days, like any other removed book. In the Android app, night sleep starts however you press play (the car, the notification, the widget or the queue), and a star made in the app reaches Android Auto at once. The last button rows that wrapped now stay on one line, also with large text on a phone.

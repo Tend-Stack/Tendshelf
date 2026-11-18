@@ -168,6 +168,12 @@ func (s *server) renderAdminLibrariesFor(w http.ResponseWriter, r *http.Request,
 		}
 		view.Online = &pages.AdminOnlineView{Title: adminOnlineTitle, Body: adminOnlineBody,
 			OnLabel: adminOnlineOn, OffLabel: adminOnlineOff, Save: adminOnlineSave, On: on}
+		sites, err := s.details.List(ctx)
+		if err != nil {
+			s.serverError(w, r, "lookup sites", err)
+			return
+		}
+		view.ProvidersLink = &pages.AdminProvidersLink{Label: providersLink, Count: providersCount(len(sites))}
 	}
 	if view.Watch, err = s.adminWatchView(r); err != nil {
 		s.serverError(w, r, "watch setting", err)

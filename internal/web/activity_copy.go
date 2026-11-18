@@ -43,7 +43,7 @@ var activityKinds = []activityKind{
 	{"people", activityKindPeople, []string{"user.", "invite."}},
 	{"sharing", activityKindSharing, []string{"grant.", "link.", "shelf.", "feed."}},
 	{"books", activityKindBooks, []string{"book.", "ebook.", "chapters.", "upload."}},
-	{"server", activityKindServer, []string{"library.", "settings.", "smtp.", "backups.", "podcast."}},
+	{"server", activityKindServer, []string{"library.", "settings.", "smtp.", "custom_provider.", "backups.", "podcast."}},
 }
 
 // activityWho is what a sentence needs to name people. Actor is the person who did it ("Someone" when none is
@@ -194,6 +194,12 @@ func activitySentence(action string, w activityWho, d map[string]any) string {
 		return a + " turned email off"
 	case "smtp.test":
 		return a + " sent a test email"
+	case "custom_provider.add":
+		return a + " added a lookup site"
+	case "custom_provider.remove":
+		return a + " removed a lookup site"
+	case "custom_provider.test":
+		return a + " tested a lookup site"
 	case "podcast.settings":
 		return a + " changed the podcast settings"
 	case "podcast.follow":

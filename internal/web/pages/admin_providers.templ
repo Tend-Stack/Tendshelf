@@ -1,0 +1,160 @@
+package pages
+
+import "net/url"
+
+// ProviderRow is one lookup site. The authorization header is never part of it, only whether one is saved.
+type ProviderRow struct {
+	ID, Name, Host string
+	HasAuth        bool
+	// Test is the answer to "Test" for this site, or nil.
+	Test *ProviderTestView
+}
+
+// ProviderTestView is the line under a site after "Test". While the job runs it polls for itself.
+type ProviderTestView struct {
+	ProviderID, JobID, Line string
+	Pending, Failed         bool
+}
+
+// AdminProvidersView is the "Your own lookup sites" page. Errors maps a field name to its message; the
+// header is never part of the view.
+type AdminProvidersView struct {
+	CSRF                                  string
+	Title, Intro, OffNote, Empty          string
+	NameLabel, NameHint                   string
+	AddressLabel, AddressHint             string
+	AuthLabel, AuthHint, AuthSaved        string
+	AddHeading, AddLabel, ListLabel       string
+	RemoveLabel, TestLabel, CheckLabel    string
+	AddedNotice, RemovedNotice            string
+	Name, Address                         string
+	Errors                                map[string]string
+	Rows                                  []ProviderRow
+	Off, Added, Removed                   bool
+}
+
+func providerTestPath(v ProviderTestView) string {
+	return "/hx/admin/providers/test/" + url.PathEscape(v.JobID)
+}
+
+func providerTestQuery(v ProviderTestView) string {
+	return "/admin/providers?test=" + url.QueryEscape(v.JobID)
+}
+
+func providerSlot(id string) string { return "provider-test-" + id }
+
+// ProviderTestPanel is the result line of a site test. While the job runs it asks for itself again every
+// 2 seconds and swaps itself out; without JavaScript the link checks the result.
+templ ProviderTestPanel(v ProviderTestView, checkLabel string) {
+	<div
+		id={ providerSlot(v.ProviderID) }
+		class="ts-providers__test"
+		role="status"
+		if v.Pending {
+			hx-get={ providerTestPath(v) }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		<p class={ "caption", templ.KV("ts-providers__test--failed", v.Failed) }>{ v.Line }</p>
+		if v.Pending {
+			<a class="caption" href={ templ.SafeURL(providerTestQuery(v)) }>{ checkLabel }</a>
+		}
+	</div>
+}
+
+templ providerFieldError(msg string, id string) {
+	if msg != "" {
+		<span class="ts-field__hint ts-field__error" id={ id } role="alert">{ msg }</span>
+	}
+}
+
+// AdminProviders lists the lookup sites an admin added and the form that adds one.
+templ AdminProviders(v AdminProvidersView) {
+	<div class="ts-admin ts-email ts-providers">
+		<span class="ts-overline">Your server</span>
+		<h1 class="title-1 ts-admin__title">{ v.Title }</h1>
+		<p class="body">{ v.Intro }</p>
+		if v.Added {
+			<p class="ts-banner ts-admin__banner" role="status">{ v.AddedNotice }</p>
+		}
+		if v.Removed {
+			<p class="ts-banner ts-admin__banner" role="status">{ v.RemovedNotice }</p>
+		}
+		if v.Off {
+			<p class="caption ts-email__status" role="status">{ v.OffNote }</p>
+		}
+		<div class="ts-groups ts-email__groups ts-providers__groups">
+			<section class="ts-group ts-group--pad ts-invite__card ts-providers__list" aria-label={ v.ListLabel }>
+				if len(v.Rows) == 0 {
+					<p class="caption">{ v.Empty }</p>
+				} else {
+					<ul class="ts-users__list">
+						for _, p := range v.Rows {
+							<li class="ts-providers__item">
+								<div class="ts-invite__item">
+									<span class="ts-users__text">
+										<span class="body ts-users__name ts-providers__name">{ p.Name }</span>
+										<span class="caption ts-users__meta ts-providers__meta">
+											{ p.Host }
+											if p.HasAuth {
+												<span class="ts-providers__auth">{ " · " + v.AuthSaved }</span>
+											}
+										</span>
+									</span>
+									<form method="post" action={ templ.URL("/admin/providers/" + url.PathEscape(p.ID) + "/test") } hx-post={ "/admin/providers/" + url.PathEscape(p.ID) + "/test" } hx-target={ "#" + providerSlot(p.ID) } hx-swap="outerHTML">
+										<input type="hidden" name="_csrf" value={ v.CSRF }/>
+										<button type="submit" class="ts-btn ts-btn--secondary" aria-label={ v.TestLabel + " " + p.Name }>{ v.TestLabel }</button>
+									</form>
+									<form method="post" action={ templ.URL("/admin/providers/" + url.PathEscape(p.ID) + "/remove") }>
+										<input type="hidden" name="_csrf" value={ v.CSRF }/>
+										<button type="submit" class="ts-btn ts-btn--quiet" aria-label={ v.RemoveLabel + " " + p.Name }>{ v.RemoveLabel }</button>
+									</form>
+								</div>
+								if p.Test != nil {
+									@ProviderTestPanel(*p.Test, v.CheckLabel)
+								} else {
+									<div id={ providerSlot(p.ID) } class="ts-providers__test" role="status"></div>
+								}
+							</li>
+						}
+					</ul>
+				}
+			</section>
+			<form class="ts-group ts-group--pad ts-email__form ts-providers__form" method="post" action="/admin/providers" aria-label={ v.AddHeading }>
+				<input type="hidden" name="_csrf" value={ v.CSRF }/>
+				<h2 class="section">{ v.AddHeading }</h2>
+				<div class="ts-field">
+					<label class="ts-field__label" for="provider-name">{ v.NameLabel }</label>
+					<input id="provider-name" class="ts-input" type="text" name="name" value={ v.Name } maxlength="40" autocomplete="off" required aria-describedby={ describedBy("provider-name-hint", v.Errors["name"], "provider-name-err") }/>
+					<span class="ts-field__hint" id="provider-name-hint">{ v.NameHint }</span>
+					@providerFieldError(v.Errors["name"], "provider-name-err")
+				</div>
+				<div class="ts-field">
+					<label class="ts-field__label" for="provider-address">{ v.AddressLabel }</label>
+					<input id="provider-address" class="ts-input" type="url" name="address" value={ v.Address } maxlength="500" autocomplete="off" autocapitalize="none" spellcheck="false" required aria-describedby={ describedBy("provider-address-hint", v.Errors["address"], "provider-address-err") }/>
+					<span class="ts-field__hint" id="provider-address-hint">{ v.AddressHint }</span>
+					@providerFieldError(v.Errors["address"], "provider-address-err")
+				</div>
+				<div class="ts-field">
+					<label class="ts-field__label" for="provider-auth">{ v.AuthLabel }</label>
+					<input id="provider-auth" class="ts-input" type="password" name="auth" value="" maxlength="1000" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby={ describedBy("provider-auth-hint", v.Errors["auth"], "provider-auth-err") }/>
+					<span class="ts-field__hint" id="provider-auth-hint">{ v.AuthHint }</span>
+					@providerFieldError(v.Errors["auth"], "provider-auth-err")
+				</div>
+				if v.Errors["form"] != "" {
+					<p class="ts-field__hint ts-field__error" role="alert">{ v.Errors["form"] }</p>
+				}
+				<button type="submit" class="ts-btn ts-btn--primary">{ v.AddLabel }</button>
+			</form>
+		</div>
+	</div>
+}
+
+// describedBy joins the hint's id with the error's id when there is an error.
+func describedBy(hint, errMsg, errID string) string {
+	if errMsg == "" {
+		return hint
+	}
+	return hint + " " + errID
+}

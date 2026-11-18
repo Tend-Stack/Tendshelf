@@ -51,7 +51,7 @@ func TestPlaceChoicesTable(t *testing.T) {
 	}
 	for _, c := range cases {
 		var on []string
-		for _, p := range placeChoices(c.in) {
+		for _, p := range placeChoices(c.in, builtinPlaces) {
 			if p.Checked {
 				on = append(on, p.Value)
 			}
@@ -83,7 +83,7 @@ func TestPostedPlacesTable(t *testing.T) {
 		if err := r.ParseForm(); err != nil {
 			t.Fatal(err)
 		}
-		got, set := postedPlaces(r)
+		got, set := postedPlaces(r, builtinPlaces)
 		if strings.Join(got, ",") != c.want || set != c.set {
 			t.Errorf("%s: %v %v, want %q %v", c.name, got, set, c.want, c.set)
 		}

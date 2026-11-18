@@ -77,6 +77,8 @@ type sweepEnv struct {
 	// emailJob is a finished test email of the owner; inviteMail and inviteMailAdmin are invites with an
 	// address, for the email rows (P3-8a).
 	emailJob, inviteMail, inviteMailAdmin string
+	// providerID is a lookup site and providerJob a finished test of it, for the provider rows (decision 0046).
+	providerID, providerJob string
 	// link holds the share links and the link book of the link rows (P3-5a).
 	link                     linkSweep
 	book                     library.Book
@@ -727,6 +729,7 @@ func sweepRows() []sweepRow {
 	rows = append(rows, devicesSweepRows()...)
 	rows = append(rows, pairSweepRows()...)
 	rows = append(rows, emailSweepRows()...)
+	rows = append(rows, providersSweepRows()...)
 	rows = append(rows, oidcSweepRows()...)
 	rows = append(rows, passkeySweepRows()...)
 	rows = append(rows, readerSweepRows()...)
@@ -918,6 +921,7 @@ func TestRouteMatrix(t *testing.T) {
 
 	// Safe rows share one seeded app: nothing here writes.
 	shared := sweepSeed(t)
+	providersSeed(t, shared)
 	for _, row := range rows {
 		if row.Method != http.MethodGet {
 			continue
@@ -950,6 +954,7 @@ func TestRouteMatrix(t *testing.T) {
 			t.Parallel()
 			for role := range sweepRoles {
 				e := sweepSeed(t)
+				providersSeed(t, e)
 				e.check(t, row, role, e.send(t, row, role, true))
 			}
 			sharedMu.Lock()
