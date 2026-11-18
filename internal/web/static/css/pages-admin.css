@@ -303,6 +303,8 @@ a.ts-users__item:hover { background: var(--raised); }
 .ts-saved .ts-icon { width: 1rem; height: 1rem; color: var(--success); }
 .ts-libs__act { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-16); }
 .ts-libs__act .ts-scan { flex: 1 1 16rem; margin-top: 0; }
+/* The link to the own lookup sites (decision 0046): its label may wrap at large text instead of leaving the screen. */
+.ts-libs__providers .ts-btn { max-width: 100%; height: auto; min-height: var(--size-tap); white-space: normal; }
 .ts-libs__lookup, .ts-libs__scopes { display: flex; flex-direction: column; margin: 0; padding: 0; border: 0; }
 .ts-libs__lookup { gap: var(--space-4); }
 .ts-libs__scopes legend { padding: 0; margin-bottom: var(--space-4); }

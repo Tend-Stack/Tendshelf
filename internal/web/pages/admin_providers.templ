@@ -138,7 +138,7 @@ templ AdminProviders(v AdminProvidersView) {
 				</div>
 				<div class="ts-field">
 					<label class="ts-field__label" for="provider-auth">{ v.AuthLabel }</label>
-					<input id="provider-auth" class="ts-input" type="password" name="auth" value="" maxlength="1000" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby={ describedBy("provider-auth-hint", v.Errors["auth"], "provider-auth-err") }/>
+					<input id="provider-auth" class="ts-input" type="password" name="auth" value="" maxlength="1000" autocomplete="new-password" autocapitalize="none" spellcheck="false" aria-describedby={ describedBy("provider-auth-hint", v.Errors["auth"], "provider-auth-err") }/>
 					<span class="ts-field__hint" id="provider-auth-hint">{ v.AuthHint }</span>
 					@providerFieldError(v.Errors["auth"], "provider-auth-err")
 				</div>

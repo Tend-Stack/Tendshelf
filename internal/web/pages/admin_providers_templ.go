@@ -792,14 +792,14 @@ func AdminProviders(v AdminProvidersView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</label> <input id=\"provider-auth\" class=\"ts-input\" type=\"password\" name=\"auth\" value=\"\" maxlength=\"1000\" autocomplete=\"off\" autocapitalize=\"none\" spellcheck=\"false\" aria-describedby=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</label> <input id=\"provider-auth\" class=\"ts-input\" type=\"password\" name=\"auth\" value=\"\" maxlength=\"1000\" autocomplete=\"new-password\" autocapitalize=\"none\" spellcheck=\"false\" aria-describedby=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var46 string
 		templ_7745c5c3_Var46, templ_7745c5c3_Err = templruntime.NewAttributeExpression(describedBy("provider-auth-hint", v.Errors["auth"], "provider-auth-err")).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/admin_providers.templ`, Line: 141, Col: 253}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/pages/admin_providers.templ`, Line: 141, Col: 262}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 		if templ_7745c5c3_Err != nil {

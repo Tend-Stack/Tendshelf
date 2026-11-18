@@ -141,6 +141,7 @@ func TestA1SessionExpiryLeavesTheToken(t *testing.T) {
 // route matrix answers 401, and nothing under /api/v1 sets a session cookie.
 func TestA1TokenNeverBecomesASession(t *testing.T) {
 	e := sweepSeed(t)
+	providersSeed(t, e)
 	tok := deviceBearer(t, e.a, e.uid[sweepOwner])
 	var pages, apiGets int
 	for _, row := range sweepRows() {
@@ -172,6 +173,7 @@ func TestA1TokenNeverBecomesASession(t *testing.T) {
 // mark as without, except the Connect routes; the mark is not a credential.
 func TestA1ShellMarkChangesNoStatus(t *testing.T) {
 	e := sweepSeed(t)
+	providersSeed(t, e)
 	checked := 0
 	for _, row := range sweepRows() {
 		if row.Method != http.MethodGet || strings.HasPrefix(row.Pattern, "GET /app/connect") {
