@@ -1257,6 +1257,16 @@ decision, it writes audio files), custom metadata providers (needs a decision), 
 Built since this list was written, see their status notes above: OPDS, podcasts, RSS feeds of books and series, OpenID
 Connect.
 
+**Operator decisions on three Later items (2026-11-17):**
+
+- **Custom metadata providers: yes.** An owner or admin adds a provider by address; lookups may ask it alongside the built-in
+  sources. Planned next (plan and decision to follow).
+- **Merge an MP3 folder into one M4B: held.** It re-encodes audio and writes a new file into the library, which only the
+  "write details into the file" job may do today. Stays here, not built, until the operator picks it up again.
+- **Chromecast: yes, as an option each person turns on themself.** Off by default; Settings explains in plain words what
+  turning it on does (Google's casting code and the cast device reach the server) before it can be switched on. Planned
+  next (plan and decision to follow).
+
 - **L5 Clips** (2026-11-06, done; plan `docs/plans/next-server.md` section 8). Scope: migration `0029_clips` (`end_ms`,
   `kind` on `bookmarks`; the orchestrator renumbers at merge), `progress.UpdateBookmark`/`BookmarkPatch`/`BookmarkKinds`
   (`SetBookmarkNote` calls it; an end needs an audio bookmark and must be after the position), the note sheet's kind

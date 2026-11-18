@@ -3,6 +3,7 @@
 # Safe to run again after a failed run: an existing release is reused, and a file already attached under the same
 # name is replaced, so a half-uploaded file never stays. Each request retries, because the runners' Docker network
 # can drop for a few seconds (curl exit 7, 2026-11-07 and 2026-11-08).
+# HTTP/1.1: HTTP/2 uploads to Gitea stall on the arm64 runners like checkouts do (curl exit 92, v2026.13.0 release run 13261).
 #
 # Usage: scripts/release-attach.sh <tag> [--create] <file>...
 # Needs API (the repository's API base URL) and RELEASE_TOKEN in the environment.
@@ -23,12 +24,12 @@ test -n "${API:-}" || { echo "API is not set"; exit 1; }
 call() {
 	want="$1"
 	shift
-	got="$(curl -sS --retry 5 --retry-all-errors --retry-delay 5 -H "Authorization: token $RELEASE_TOKEN" -w '%{http_code}' "$@")"
+	got="$(curl -sS --http1.1 --retry 5 --retry-all-errors --retry-delay 5 -H "Authorization: token $RELEASE_TOKEN" -w '%{http_code}' "$@")"
 	[ "$got" = "$want" ] || { echo "HTTP $got for: $*"; return 1; }
 }
 
 # The release's own id is the first "id" in its JSON; the author and the assets come after it.
-code="$(curl -sS --retry 5 --retry-all-errors --retry-delay 5 -H "Authorization: token $RELEASE_TOKEN" -w '%{http_code}' \
+code="$(curl -sS --http1.1 --retry 5 --retry-all-errors --retry-delay 5 -H "Authorization: token $RELEASE_TOKEN" -w '%{http_code}' \
 	"$API/releases/tags/$tag" -o release.json)"
 if [ "$code" = 404 ]; then
 	[ "$create" = yes ] || { echo "no release for $tag"; exit 1; }
