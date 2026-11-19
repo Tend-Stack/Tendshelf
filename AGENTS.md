@@ -26,6 +26,8 @@ was reused, extended or replaced.
   (exoplayer, session, datasource), `androidx.webkit`, `androidx.core`, `androidx.work` if downloads need it, and `kotlinx-serialization-json` (with the Kotlin serialization compiler plugin), `android/shared` only (operator, 2026-11-08); every
   other module needs approval. Each gets a `NOTICES.md` row and is pinned by Gradle dependency verification. The
   "no build step" rule stays for the shipped server; Gradle is allowed under `android/` only, and fetches at build time only.
+  iPhone (decision 0048), under `ios/` only: Apple system frameworks, and the Kotlin/Native toolchain the Kotlin Gradle
+  plugin fetches at build time for the iOS targets; what Gradle resolves is pinned in `android/gradle/verification-metadata.xml`.
 - **One server binary**, pure Go (`CGO_ENABLED=0` must build). Static assets and migrations are embedded
   with `embed`. External programs: `ffmpeg` and `ffprobe` only, located via config or `PATH`
   ([decision 0018](docs/decisions/0018-book-reader.md)). Tendshelf never downloads runtimes or models.
@@ -44,7 +46,13 @@ was reused, extended or replaced.
   (decision 0020). The window keeps GTK's decorations with a hidden titlebar, never `Frameless`
   (decision 0023). **Android** is a separate Gradle project under `android/`: Kotlin, AndroidX and Media3,
   built by the Gradle wrapper with no Android Studio and no Node. It never links into the server. No Google Play
-  services, Firebase or analytics. Other mobile platforms are later ([decision 0024](docs/decisions/0024-android-app.md)).
+  services, Firebase or analytics. **iPhone** is a Swift app under `ios/`
+  ([decision 0048](docs/decisions/0048-iphone-app.md)): a `WKWebView` on the server's pages plus native glue, built by
+  `xcodebuild` on a Mac from the hand-kept `ios/Tendshelf.xcodeproj` (synchronized folders, settings in
+  `ios/Config/*.xcconfig`). Apple system frameworks only: no CocoaPods, no Swift packages, no project generators, no
+  Homebrew. Its logic is `android/shared`, built as `TendshelfShared.xcframework` (targets `iosArm64` and
+  `iosSimulatorArm64`, declared only on a macOS host); new logic goes into `android/shared` `commonMain` unless it needs a
+  platform API. It never links into the server. Other mobile platforms are later.
 
 ## templ and HTMX conventions
 
@@ -119,7 +127,7 @@ was reused, extended or replaced.
 
 ## Security and privacy
 
-- The Android app talks only to the server the person typed in, with no other outbound request. Sign-out deletes the
+- The phone apps (Android and iPhone) talk only to the server the person typed in, with no other outbound request. Sign-out deletes the
   person's downloads. ("The only package that creates an `http.Client`" stays a server rule.)
 - Read aloud uses only voices on the device (a browser voice with `localService` true, an Android voice that needs no network), so book text never leaves it (decision 0032).
 - **No telemetry**, analytics, crash reporting, update pings or third-party assets (fonts, CDNs, map
@@ -157,7 +165,7 @@ was reused, extended or replaced.
   navigation to `/books/{id}/read` (or `?sheet=contents`) that cannot reach it. It never caches or answers
   `/s/...`, `/invite/...`, `/pair/...`, `/signin/...`, `/feeds/...`, `/cast/...`, `/casting/...`, `/login`, `/setup`, `/logout`, `/api/...`, `/reading/...`, any other `/podcasts/...` address, `/radio/...`, any request with
   `download=1`, any non-GET request, or any other page. It is never registered inside a Wails window, inside the Android
-  app's window (`/sw.js` answers 404 there), on share-link pages or outside a secure context. Sign-out and a change of person delete that person's caches
+  or iPhone app's window (`/sw.js` answers 404 there), on share-link pages or outside a secure context. Sign-out and a change of person delete that person's caches
   and offline records (decisions [0012](docs/decisions/0012-offline-pocket.md),
   [0019](docs/decisions/0019-offline-reading.md)).
 
@@ -184,7 +192,7 @@ was reused, extended or replaced.
 - Its `tokens.css` and `bundle.css` are the app's stylesheets (`internal/web/static/css/`); extend
   `bundle.css` with new `ts-` classes. No hard-coded colours, no inline styles; every page works in
   `dark`, `light`, `sepia` and `contrast` (7:1). Board HTML is reference markup, not code to paste.
-- The Android app's bundled start and offline pages use the same `tokens.css` and `bundle.css`, copied at build time.
+- The phone apps' bundled start, join and offline pages (one copy, `android/app/src/main/assets/`) use the same `tokens.css` and `bundle.css`, copied at build time.
 - Fonts are self-hosted (Fraunces, Fira Sans, Fira Mono); ignore the handoff's Google Fonts link.
 - Use the copy deck's words exactly; a missing string follows the voice rules in `BRAND.md` and is
   listed in the report. 13 px is the smallest text. One resume button per book on any screen: for a book in two formats it belongs to the format used last (`lastFormat`, the newer of the listening and reading places), and the other format is a plain secondary button with no place and no time.
@@ -211,6 +219,8 @@ get a row.
 - Captures are repeatable: to prove a change is pixel-identical, run `TENDSHELF_VISUAL_OUT=/tmp/before make visual`, make the change, run it again into `/tmp/after`, then `go run ./internal/testutil/capturediff /tmp/before /tmp/after` (prints the names that differ and "N of M identical"); `make visual-compare` runs the set twice and does the same. New visual tests must not put random values on screen (map order, `t.TempDir()` paths, random ids, tokens): use the `visualTempDir`/seeded-id helpers in `internal/web/visual_ids_dev_test.go`.
 - Android: `make apk` builds the release APK (signed only when the `TS_ANDROID_*` variables are set, see `docs/android.md`); `make apk-debug` builds the debug APK (`android/`, Gradle wrapper); an emulator checklist is recorded in the
   roadmap's status note. A CI job comes with A10, gated on the Android SDK being on the runner.
+- iPhone: `make ios-sim` (needs `TS_MAC_HOST`) syncs the tree to the Mac and runs `ios/tools/ios-build.sh`: the shared
+  module's iOS tests, the XCFramework, then `xcodebuild build` and `test` on a simulator. A CI job comes with the macOS runner.
 - Gates: `make check` (gofmt, `go vet`, `go test -race ./...`) and `make build`. Run both before a commit.
 - Size budgets for CSS and JS measure the gzip bytes the server sends (static assets are precompressed at start-up). Write JS and CSS for reading: one statement per line, names that say what they do, and a comment wherever the reason is not obvious. Never minify, squeeze or strip comments to meet a budget; report the overrun instead.
 - Do not report a check you did not run.
