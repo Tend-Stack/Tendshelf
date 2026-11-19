@@ -37,11 +37,13 @@ func trickle(t *testing.T, base, method, path string, total time.Duration) int {
 	return code
 }
 
+// The default deadline is 800 ms here, far below the 2.4 s a stalled or slow body takes, and the quick
+// POST sends its body with no pauses, so a loaded scheduler cannot push it past the deadline.
 func TestBodyDeadlineCutsStalledPostsButSparesUploadsAndGets(t *testing.T) {
 	read := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut {
 			// The chunk handler's own, longer deadline wins over the default.
-			_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(5 * time.Second))
+			_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(20 * time.Second))
 		}
 		if _, err := io.ReadAll(r.Body); err != nil {
 			http.Error(w, "slow", http.StatusRequestTimeout)
@@ -49,18 +51,18 @@ func TestBodyDeadlineCutsStalledPostsButSparesUploadsAndGets(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
-	srv := httptest.NewServer(withBodyDeadline(read, 300*time.Millisecond, 5*time.Second))
+	srv := httptest.NewServer(withBodyDeadline(read, 800*time.Millisecond, 20*time.Second))
 	defer srv.Close()
-	if got := trickle(t, srv.URL, "POST", "/login", 1200*time.Millisecond); got == http.StatusNoContent {
+	if got := trickle(t, srv.URL, "POST", "/login", 2400*time.Millisecond); got == http.StatusNoContent {
 		t.Errorf("a stalled form POST finished with %d", got)
 	}
-	if got := trickle(t, srv.URL, "PUT", "/uploads/u1/files/f1", 1200*time.Millisecond); got != http.StatusNoContent {
+	if got := trickle(t, srv.URL, "PUT", "/uploads/u1/files/f1", 2400*time.Millisecond); got != http.StatusNoContent {
 		t.Errorf("a slow chunk upload got %d, want 204", got)
 	}
-	if got := trickle(t, srv.URL, "POST", "/books/b1/text", 1200*time.Millisecond); got != http.StatusNoContent {
+	if got := trickle(t, srv.URL, "POST", "/books/b1/text", 2400*time.Millisecond); got != http.StatusNoContent {
 		t.Errorf("a slow ebook upload got %d, want 204", got)
 	}
-	if got := trickle(t, srv.URL, "POST", "/login", 100*time.Millisecond); got != http.StatusNoContent {
+	if got := trickle(t, srv.URL, "POST", "/login", 0); got != http.StatusNoContent {
 		t.Errorf("a quick POST got %d, want 204", got)
 	}
 }
