@@ -37,7 +37,7 @@ final class SharedFrameworkTests: XCTestCase {
     private func decide(_ url: String, mainFrame: Bool = true, pending: Bool = false, fromBundled: Bool) -> Nav {
         NavigationKt.decide(
             url: url, mainFrame: mainFrame, origin: server, codePending: pending, fromBundled: fromBundled,
-            signInOrigins: [], bundled: BundledSite.companion.IOS
+            signInOrigins: [], bundled: BundledSite.companion.IOS, reader: nil
         )
     }
 

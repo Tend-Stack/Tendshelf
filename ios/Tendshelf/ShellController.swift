@@ -7,6 +7,8 @@ import WebKit
 /// only from `/app/connect/done` on the exact origin while a verifier is held, and anything else leaves the window.
 final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     let pages = BundledPages()
+    /// The offline reader's handler: registered with the web view's configuration, so it exists before the engine does.
+    let reader = OfflineReader()
     /// What the SwiftUI view shows; the web view inside it is replaced at sign-out.
     let container = UIView()
     private(set) var webView: WKWebView
@@ -26,6 +28,7 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         config.applicationNameForUserAgent = "Tendshelf-iOS"
         config.websiteDataStore = .default()
         config.setURLSchemeHandler(pages, forURLScheme: BundledPages.scheme)
+        config.setURLSchemeHandler(reader, forURLScheme: OfflineReader.scheme)
         configuration = config
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
@@ -36,10 +39,15 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         playback = Playback(store: store, client: client)
         let paths = OfflinePaths()
         try? paths.prepare()
+        let offline = SqliteOfflineStore(path: paths.database)
         downloads = Downloads(
-            store: SqliteOfflineStore(path: paths.database), paths: paths, transport: BackgroundTransport(incoming: paths.incoming),
+            store: offline, paths: paths, transport: BackgroundTransport(incoming: paths.incoming),
             api: { PlayerApi(origin: $0, client: client) }, connection: { store.current() }, userId: { store.userId },
             free: { Downloads.freeBytes(important: $0) }, notice: { [weak self] in self?.notice($0) })
+        // The stored text is fetched with the web view's session cookie for the connected origin's host only (read for the request).
+        downloads.text.cookieHeader = { origin in await Self.cookieHeader(for: origin) }
+        // The offline reader's own origin `tsread://app`: stored text only (decision 0048, I3d).
+        reader.configure(text: downloads.text, store: offline, origin: { [weak self] in self?.flow?.origin }, userId: { store.userId })
         _ = UnmeteredMonitor.shared // starts watching the network for the Wi-Fi rule
         playback.attach(downloads)
         pages.coverData = { [weak self] in self?.downloads.coverData($0) }
@@ -57,6 +65,7 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         bridge = Bridge(
             control: playback,
             downloads: downloads,
+            reading: downloads,
             userContent: config.userContentController,
             currentView: { [weak self] in self?.webView },
             currentOrigin: { [weak self] in self?.flow?.origin },
@@ -98,14 +107,14 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         let rows = downloads.rows().map { book in
             DownloadRow(
                 book: book, view: downloads.view(book.bookId), hasCover: downloads.coverData(book.bookId) != nil,
-                readable: false, hasAudio: downloads.hasAudio(book.bookId), auto: downloads.isAuto(book.bookId))
+                readable: downloads.readable(book.bookId), hasAudio: downloads.hasAudio(book.bookId), auto: downloads.isAuto(book.bookId))
         }
         let home = flow.origin?.homeUrl(shell: .ios) ?? ""
         return DownloadsInput(
             rows: rows, shows: downloads.episodes.showRows(), playingId: snapshot.bookId, playing: snapshot.playing,
             unmetered: downloads.unmetered(), autoNoRoom: downloads.autoNoRoomNoted(),
             offline: offline, offlineAddress: pages.offlineAddress, homeUrl: home.isEmpty ? BundledPages.startUrl.absoluteString : home,
-            readBase: offline ? "" : (flow.origin?.text ?? ""))
+            readBase: offline ? "\(OfflineReader.scheme)://\(OfflineReader.host)" : (flow.origin?.text ?? ""))
     }
 
     /// Runs [work] for at most [seconds]; the page does not wait longer for a slow server.
@@ -128,6 +137,28 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     private func showOffline(_ origin: Origin) {
         pages.offlineAddress = origin.text
         load(BundledPages.offlineUrl)
+    }
+
+    /// The reader page of a book whose text is stored, when the server cannot be reached: it opens at `tsread://app` with the same
+    /// path and query, instead of the offline page. False for any other address or a book with no whole text.
+    private func openStored(_ url: URL, _ origin: Origin) -> Bool {
+        guard let route = OfflineRoutesKt.offlineRoute(url: url.absoluteString, origin: origin) as? OfflineRouteShell,
+              downloads.readable(route.bookId), let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let target = OfflineReader.url(path: parts.percentEncodedPath, query: parts.percentEncodedQuery) else { return false }
+        load(target)
+        return true
+    }
+
+    /// The `Cookie` header the web view holds for [origin]'s host, read for one request and never kept.
+    private static func cookieHeader(for origin: Origin) async -> String {
+        let all = await WKWebsiteDataStore.default().httpCookieStore.allCookies()
+        let host = origin.host.lowercased()
+        let secure = origin.scheme == "https"
+        let mine = all.filter { cookie in
+            let domain = cookie.domain.lowercased().drop { $0 == "." }
+            return (domain == host || (cookie.domain.hasPrefix(".") && host.hasSuffix("." + domain))) && (secure || !cookie.isSecure)
+        }
+        return mine.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
     }
 
     /// `theme #rrggbb` from the page: the colour behind the page while it overscrolls, and behind the window.
@@ -227,7 +258,8 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
             codePending: flow.codePending,
             fromBundled: isBundled(webView.url),
             signInOrigins: flow.signInOrigins,
-            bundled: BundledSite.companion.IOS
+            bundled: BundledSite.companion.IOS,
+            reader: BundledSite.companion.IOS_READER
         )
         switch nav {
         case is NavStay:
@@ -255,6 +287,10 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
             playback.start(n.bookId, atMs: nil)
             reloadDownloads()
             return .cancel
+        case let n as NavOnline:
+            // The stored reader asked for a page it does not hold: the server's page, loaded as a link the app itself followed.
+            if let target = URL(string: n.url) { Task { @MainActor [weak self] in self?.load(target) } }
+            return .cancel
         case is NavTogglePlay:
             if playback.snapshot().playing { playback.pause() } else { playback.play() }
             reloadDownloads()
@@ -281,6 +317,7 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse) async -> WKNavigationResponsePolicy {
         if navigationResponse.isForMainFrame, let http = navigationResponse.response as? HTTPURLResponse, http.statusCode >= 500,
            let url = http.url, let origin = flow.origin, origin.matches(url: url.absoluteString), flow.state == .connected {
+            if openStored(url, origin) { return .cancel }
             showOffline(origin)
             return .cancel
         }
@@ -292,7 +329,11 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        if let url = webView.url { flow.pageFinished(url.absoluteString) }
+        if let url = webView.url {
+            flow.pageFinished(url.absoluteString)
+            // A server page loaded, so the session exists: a text that waited for it goes on.
+            if flow.origin?.matches(url: url.absoluteString) == true { Task { await downloads.pageLoaded() } }
+        }
         #if DEBUG
         DebugDriver.pageFinished(webView)
         #endif
@@ -314,6 +355,7 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         guard let url = ns.userInfo[NSURLErrorFailingURLErrorKey] as? URL else { return }
         // A connected person whose server cannot be reached sees what the phone holds, not the start page.
         if flow.state == .connected, let origin = flow.origin, origin.matches(url: url.absoluteString) {
+            if openStored(url, origin) { return }
             showOffline(origin)
         } else {
             flow.loadFailed(url.absoluteString)

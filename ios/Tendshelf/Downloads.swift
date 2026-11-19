@@ -15,6 +15,8 @@ final class Downloads: DownloadEvents {
     let store: SqliteOfflineStore
     let paths: OfflinePaths
     let transport: DownloadTransport
+    /// The stored text of the downloaded books (I3d).
+    let text: TextStore
     let api: (Origin) -> PlayerAPI
     let connection: () -> Connection?
     let userId: () -> String?
@@ -36,6 +38,8 @@ final class Downloads: DownloadEvents {
     private var floors: [String: Int32] = [:]
     private var retries: [String: Task<Void, Never>] = [:]
     private var adding: Set<String> = []
+    /// The books whose text is being fetched now (a second request for the same book waits for the first).
+    var textBusy: Set<String> = []
     private var wiping: Task<Void, Never>?
 
     /// [free] gets true for a person's own download (the room that counts as important), false for an automatic one.
@@ -44,11 +48,12 @@ final class Downloads: DownloadEvents {
         store: SqliteOfflineStore, paths: OfflinePaths, transport: DownloadTransport, api: @escaping (Origin) -> PlayerAPI,
         connection: @escaping () -> Connection?, userId: @escaping () -> String? = { nil }, free: @escaping (Bool) -> Int64,
         notice: @escaping (String) -> Void, now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
-        defaults: UserDefaults = .standard, retryScale: Double = 1, unmetered: @escaping () -> Bool = { UnmeteredMonitor.shared.value }
+        defaults: UserDefaults = .standard, retryScale: Double = 1, unmetered: @escaping () -> Bool = { UnmeteredMonitor.shared.value }, text: TextStore? = nil
     ) {
         self.store = store
         self.paths = paths
         self.transport = transport
+        self.text = text ?? TextStore(paths: paths)
         self.api = api
         self.connection = connection
         self.userId = userId
@@ -116,6 +121,7 @@ final class Downloads: DownloadEvents {
                     place: manifest.progress, artwork: { await service.cover(token: conn.token, bookId: id) }, chapters: nil)
             case is PlanNotAllowed: refuse(Words.Key.downloadNotAllowed)
             case is PlanNoRoom: refuse(Words.Key.downloadNoRoom)
+            case is PlanNothingToPlay: await addTextOnly(id, conn, service, manifest: manifest, manifestJson: text)
             default: refuse(Words.Key.downloadNothing)
             }
         } catch let e as ApiError {
@@ -216,9 +222,11 @@ final class Downloads: DownloadEvents {
         store.putFiles(id, files)
         for file in files { start(file, with: conn) }
         changed(id)
+        // One Download (0019, point 1): the text follows the audio when the person may read and download it.
+        if !isEpisode { Task { [weak self] in await self?.fetchText(id) } }
     }
 
-    private func write(_ data: Data, to url: URL) {
+    func write(_ data: Data, to url: URL) {
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
@@ -259,7 +267,7 @@ final class Downloads: DownloadEvents {
         store.remove(id: id)
         if let cover = paths.cover(id) { try? FileManager.default.removeItem(at: cover) }
         if let chapters = paths.chapters(id) { try? FileManager.default.removeItem(at: chapters) }
-        if let text = paths.text(id) { try? FileManager.default.removeItem(at: text) }
+        self.text.remove(id)
         floors[id] = nil
         changed(id)
     }

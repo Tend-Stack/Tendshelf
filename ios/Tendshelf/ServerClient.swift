@@ -2,7 +2,7 @@ import Foundation
 @preconcurrency import TendshelfShared
 
 /// Refuses every redirect: the answer is the 3xx itself, and nothing is followed.
-private final class RedirectRefuser: NSObject, URLSessionTaskDelegate {
+final class RedirectRefuser: NSObject, URLSessionTaskDelegate {
     nonisolated func urlSession(
         _ session: URLSession,
         task: URLSessionTask,

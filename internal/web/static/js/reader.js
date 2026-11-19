@@ -323,6 +323,12 @@ export function mount(root) {
     chars = active = 0;
     tell("place", form);
     if (beacon) {
+      // The iPhone app's stored reader (tsread://app) is not http(s), where sendBeacon throws; the app answers a plain
+      // request itself and keeps the place, so a keepalive request carries it and needs no network.
+      if (location.protocol === "tsread:") {
+        fetch(root.dataset.save, { method: "POST", body: form, keepalive: true, headers: { "X-CSRF-Token": csrfToken() } }).catch(() => tell("unsent", form));
+        return;
+      }
       if (!navigator.onLine || !navigator.sendBeacon(root.dataset.save, form)) tell("unsent", form);
       return;
     }

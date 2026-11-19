@@ -73,6 +73,7 @@ func TestIOSReadingScripts(t *testing.T) {
 		"native-downloads.js": {`"rd ask"`, `"rd done "`, "ts:reading:adopted", "tsReaderOfflineSrc"},
 		"reader-offline.js":   {"export function adopt(", "ts.offline.reading.seq", `"tsread:"`},
 		"offline.js":          {"ts:reading:adopted"},
+		"reader.js":           {`"tsread:"`, "keepalive: true"},
 	} {
 		src := read(name)
 		for _, w := range words {

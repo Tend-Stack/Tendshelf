@@ -29,6 +29,15 @@ protocol DownloadsControl: AnyObject {
     func setAutoDownload(_ on: Bool)
 }
 
+/// What the bridge asks of the stored reader's kept places (`OfflineReader`'s `reading_out` rows; a fake in the tests).
+@MainActor
+protocol ReadingControl: AnyObject {
+    /// The oldest places of the current person, at most 100 and about 256 KiB.
+    func readingItems() -> [ReadingItem]
+    /// The page took every place up to [seq].
+    func readingDone(_ seq: Int64)
+}
+
 /// Holds the bridge weakly: a `WKUserContentController` keeps its handler alive, so without this the bridge never goes.
 @MainActor
 private final class BridgeProxy: NSObject, WKScriptMessageHandler {
@@ -50,6 +59,7 @@ final class Bridge {
 
     private let control: PlaybackControl
     private let downloads: DownloadsControl?
+    private let reading: ReadingControl?
     private let userContent: WKUserContentController
     private let currentView: () -> WKWebView?
     private let currentOrigin: () -> Origin?
@@ -75,6 +85,7 @@ final class Bridge {
     init(
         control: PlaybackControl,
         downloads: DownloadsControl? = nil,
+        reading: ReadingControl? = nil,
         userContent: WKUserContentController,
         currentView: @escaping () -> WKWebView?,
         currentOrigin: @escaping () -> Origin?,
@@ -84,6 +95,7 @@ final class Bridge {
     ) {
         self.control = control
         self.downloads = downloads
+        self.reading = reading
         self.userContent = userContent
         self.currentView = currentView
         self.currentOrigin = currentOrigin
@@ -191,6 +203,12 @@ final class Bridge {
             deliver(BridgeProtocolKt.encodeRoom(freeBytes: downloads.freeBytes()), web)
         case let m as BridgeMessageAutoDownload:
             downloads?.setAutoDownload(m.on)
+        case is BridgeMessageReadingAsk:
+            // The page asked, so it is listening: no `hello` is needed, the page and the connection are still checked.
+            guard let reading, attached, isConnected(), let web = currentView() else { return }
+            deliver(BridgeProtocolKt.encodeReading(items: reading.readingItems()), web)
+        case let m as BridgeMessageReadingDone:
+            reading?.readingDone(m.seq)
         default:
             // back, tts, say, fav, quiet, pagekeys: later phases or Android only.
             break

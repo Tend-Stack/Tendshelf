@@ -65,6 +65,13 @@ class TextManifest(
     }
 }
 
+/** [TextManifest.parse], or null for a manifest that does not parse (the iPhone app must not see a Kotlin exception). */
+fun parseTextManifestOrNull(text: String): TextManifest? = try {
+    TextManifest.parse(text)
+} catch (_: Exception) {
+    null
+}
+
 /** One answer kept on disk: the file's name, its content type, and the Content-Security-Policy (empty when none). */
 class TextIndexEntry(val file: String, val type: String, val csp: String)
 

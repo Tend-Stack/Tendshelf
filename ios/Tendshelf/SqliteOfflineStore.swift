@@ -261,6 +261,41 @@ final class SqliteOfflineStore: NSObject, OfflineStore {
         run("DELETE FROM reading_out", [])
     }
 
+    // MARK: Reading places made at the stored reader (I3d)
+
+    /// Keeps a reading place the stored reader answered, until the server's own page takes it (`rd`).
+    func addReading(userId: String, bookId: String, form: String, at: Int64) {
+        run("INSERT INTO reading_out (user_id, book_id, form, at) VALUES (?, ?, ?, ?)", [.text(userId), .text(bookId), .text(form), .int(at)])
+    }
+
+    /// The oldest places of [userId], at most [limit] rows and about [bytes] of forms (the first row always comes).
+    func readingRows(userId: String, limit: Int, bytes: Int) -> [ReadingItem] {
+        var out: [ReadingItem] = []
+        var size = 0
+        var full = false
+        query("SELECT seq, book_id, form FROM reading_out WHERE user_id = ? ORDER BY seq LIMIT ?", [.text(userId), .int(Int64(limit))]) { c in
+            let form = str(c, 2)
+            if full || (!out.isEmpty && size + form.utf8.count > bytes) {
+                full = true
+                return
+            }
+            size += form.utf8.count
+            out.append(ReadingItem(seq: sqlite3_column_int64(c, 0), bookId: str(c, 1), form: form))
+        }
+        return out
+    }
+
+    /// The places of [userId] up to [seq] were taken by the page.
+    func deleteReading(userId: String, upTo seq: Int64) {
+        run("DELETE FROM reading_out WHERE user_id = ? AND seq <= ?", [.text(userId), .int(seq)])
+    }
+
+    func readingCount() -> Int {
+        var n = 0
+        query("SELECT COUNT(*) FROM reading_out", []) { n = Int(sqlite3_column_int64($0, 0)) }
+        return n
+    }
+
     // MARK: Extras
 
     func checkedAt(_ id: String) -> Int64 {

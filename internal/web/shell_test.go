@@ -133,8 +133,8 @@ func TestShellAttrOnAllFrames(t *testing.T) {
 			if strings.Contains(body, "manifest.webmanifest") {
 				t.Errorf("%s as %s: install link present", p.name, shell)
 			}
-			// A9 (decision 0027): the Android app's pages carry offline.js (reading flush); no other shell does, and no link page.
-			if got := strings.Contains(body, "js/offline"); got != (shell == "android" && p.name != "link shell") {
+			// A9 (decision 0027) and I3d (decision 0048): the phone apps' pages carry offline.js (reading flush); no other shell does, and no link page.
+			if got := strings.Contains(body, "js/offline"); got != ((shell == "android" || shell == "ios") && p.name != "link shell") {
 				t.Errorf("%s as %s: offline.js present = %v", p.name, shell, got)
 			}
 		}

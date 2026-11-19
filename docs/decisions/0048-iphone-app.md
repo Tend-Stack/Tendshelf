@@ -134,3 +134,10 @@ a WidgetKit widget, device read aloud, in-app QR scanning, the privacy manifest,
 - Skip silence and the next-book download switch stay Android-only: AVFoundation has no silence skipping, and downloads
   are I3. The native scripts loaded for `ios` are `native-audio.js` and `native-feel.js`.
 - Stations play from a live address (decision 0049); books and episodes keep the resource loader.
+
+## Addendum 2026-11-19 (I3)
+- The Downloads item and `native-downloads.js` (I3b), the next-book switch (I3c) and `offline.js` (I3d) now include `ios`. Skip
+  silence, volume-key page turns and the new-episode notification stay Android-only.
+- Downloads use a background `URLSession` with the bearer as a header; files in `Application Support/offline/`, excluded from
+  backups; automatic downloads only on an unexpensive, unconstrained network.
+- The stored reader answers at `tsread://app`, because WKWebView cannot answer at the server's own address.

@@ -185,6 +185,7 @@ extension Downloads {
     func foreground() async {
         await autoSync()
         if let want = defaults.string(forKey: Self.autoWantKey), !want.isEmpty { await autoFetch(want) }
+        await retryStoppedText()
         await dailyCheck()
         await episodes.syncIfDue()
     }
@@ -212,10 +213,12 @@ extension Downloads {
                     store.touchChecked(row.bookId, at: at)
                 default: break
                 }
+                await checkText(row.bookId)
             } catch let e as ApiError {
                 if OfflineKt.checkVerdict(status: Int32(e.status), old: nil, new: nil) == .remove { await remove(row.bookId, byPerson: false) }
             } catch {}
             changed(row.bookId)
         }
+        text.prune(keep: [])
     }
 }

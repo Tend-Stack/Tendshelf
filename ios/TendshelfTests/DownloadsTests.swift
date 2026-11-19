@@ -126,7 +126,8 @@ final class DownloadsRig {
         downloads = Downloads(
             store: store, paths: paths, transport: transport, api: { _ in rig!.api }, connection: { rig!.connection },
             userId: { "usr-1" }, free: { _ in rig!.freeBytes }, notice: { rig!.notices.append($0) }, now: { rig!.clock },
-            defaults: defaults, retryScale: retryScale, unmetered: { rig!.unmetered })
+            defaults: defaults, retryScale: retryScale, unmetered: { rig!.unmetered },
+            text: TextStore(paths: paths, protocolClasses: [StubProtocol.self]))
         rig = self
         downloads.onChange = { [unowned self] in changes.append($0) }
         let (root, suite) = (self.root, self.suite)

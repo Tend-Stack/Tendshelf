@@ -38,6 +38,7 @@ enum DebugDriver {
         startPlayback(web, url)
         startDownload(url)
         tap(web, url)
+        read(web, url)
         startRowsProbe(web)
         if path == "/start", args.string(forKey: "TSTestAddress") != nil, !done.contains("choose") {
             // The first-run page offers two buttons; "I have a server" opens the address form.
@@ -77,7 +78,7 @@ enum DebugDriver {
                     let v = downloads.view(r.bookId)
                     return "\(r.bookId)=\(r.state.name)/\(v.pct)/auto=\(downloads.isAuto(r.bookId))"
                 }
-                print("TSDRIVE rows \(rows) unmetered=\(downloads.unmetered())")
+                print("TSDRIVE rows \(rows) unmetered=\(downloads.unmetered()) reading=\(downloads.store.readingCount())")
             }
         }
     }
@@ -93,6 +94,29 @@ enum DebugDriver {
             if (value as? Bool) == true {
                 done.insert("tap\(index)")
                 print("TSDRIVE tapped \(list[index])")
+            }
+        }
+    }
+
+    /// I3d: `-TSTestRead <turns>` presses PageDown that many times, a second apart, on a page at `tsread://app`, and prints the
+    /// reader's text and how many reading places the phone holds after each turn.
+    private static func read(_ web: WKWebView, _ url: URL) {
+        guard url.scheme == OfflineReader.scheme, let turns = args.string(forKey: "TSTestRead").flatMap(Int.init), turns > 0,
+              !done.contains("read") else { return }
+        done.insert("read")
+        for turn in 1...turns {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2 + Double(turn)) {
+                MainActor.assumeIsolated {
+                    run(web, "window.dispatchEvent(new KeyboardEvent('keydown',{key:'PageDown',bubbles:true}))")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        MainActor.assumeIsolated {
+                            let rows = downloads?.store.readingCount() ?? -1
+                            web.evaluateJavaScript("(document.getElementById('reader-text')?.innerText || 'none').slice(0,40)") { value, _ in
+                                print("TSDRIVE read turn=\(turn) text=\(String(describing: value ?? "nil")) reading_rows=\(rows)")
+                            }
+                        }
+                    }
+                }
             }
         }
     }

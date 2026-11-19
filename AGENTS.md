@@ -160,6 +160,10 @@ was reused, extended or replaced.
   device token: minted only by that device token at `POST /api/v1/radio/live/{stationID}/address`, it reaches only
   `/cast/{token}/live` (GET, HEAD), lives one hour, is one per device (a new one deletes the old), is refused as soon as
   its device token is revoked and deleted when the app signs out; it does not need casting on.
+- In the iPhone app, a stored reader page opens only at `tsread://app` (decision 0048, addendum I3): it answers GET only from the
+  signed-in person's stored text, through the shared `offlineRoute`, and one POST, `/reading/{id}`, which is kept on the phone
+  until the server's own page takes it through the bridge (`rd`). That origin sends nothing to the network, never gets
+  `window.tsNative` and is never a bundled page.
 - The server binds `127.0.0.1:8095` by default; exposing it is an explicit setting.
 - The service worker (`/sw.js`, source `internal/web/static/js/sw.js`) answers only hashed `/static/` files and,
   from the signed-in person's own cache, `/stream/{id}` (with or without `?compat=1`), `/covers/{bookID}`,

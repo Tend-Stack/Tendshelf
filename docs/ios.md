@@ -151,7 +151,19 @@ sign-out wipe; a downloaded book still streams until I3c plays it from its files
   The daily check (`Downloads.dailyCheck`) covers books. Android-only: the new-episode notification, the 6 h WorkManager job,
   PAUSED. Debug driver: `-TSTestTap "/play;/autoshow"` taps links on the bundled pages, `-TSTestProbe 1` prints player and rows.
   Opt-in server: `TENDSHELF_IOS_OFFLINE_SERVE=<host:port> go test ./internal/web -run TestIOSOfflineServe`.
-- **Limits.** No stored text (I3d), no download notification, no cellular setting.
+- **I3d: stored text and the offline reader.** `TextStore` (port of `TextStore.kt`) keeps a downloaded book's text under
+  `offline/text/<bookId>/` and the shared `offline/static/` (files named for the SHA-256 of the address, `index.json` through the
+  shared `TextIndex`); it fetches with the web view's session cookie for the connected host only (built per request, never kept,
+  never a POST) plus `ts_shell=ios`, refuses a redirect (sign-in) and any address the shared `textFetchList` does not accept, and
+  stores the shell last. A text-only book is a ready row with no audio; a text that waited for the session goes on at the next
+  server page. `OfflineReader` is the `WKURLSchemeHandler` for `tsread://app`: GET through `offlineRoute` from the store (stored
+  type and CSP, `no-store`), one POST `/reading/<id>` kept in `reading_out`, nothing else; no `window.tsNative`. When a reader page
+  of a stored book cannot be reached the app opens `tsread://app` + the same path instead of the offline page. The bridge words
+  `rd ask` and `rd done <seq>` hand the kept places to the server's page, where `reader-offline.js` `adopt` merges them into the
+  queue `offline.js` sends. Proven in a real `WKWebView`: CSP `'self'` and ES modules (static and dynamic) work on the scheme, a
+  `fetch` POST reaches the handler, and `navigator.sendBeacon` throws there (http(s) only), so `reader.js` sends a keepalive
+  request on that origin. Debug driver: `-TSTestRead <turns>`. Out of scope: read aloud (I4), highlights and lookups offline.
+- **Limits.** No download notification, no cellular setting.
 
 ## Cleanup
 

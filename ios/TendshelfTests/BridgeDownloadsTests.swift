@@ -3,6 +3,15 @@ import XCTest
 @preconcurrency import TendshelfShared
 @testable import Tendshelf
 
+/// The stored reader's kept places, as a fake.
+@MainActor
+final class FakeReadingControl: ReadingControl {
+    var items = [ReadingItem(seq: 3, bookId: "bk_1", form: "sid=c1&chars_read=2")]
+    var done: [Int64] = []
+    func readingItems() -> [ReadingItem] { items }
+    func readingDone(_ seq: Int64) { done.append(seq) }
+}
+
 /// A download engine that records what the bridge asked of it.
 @MainActor
 final class FakeDownloadsControl: DownloadsControl {
@@ -97,5 +106,22 @@ final class BridgeDownloadsTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 20_000_000)
         }
         XCTAssertTrue(downloads.adds.isEmpty)
+    }
+
+    func testReadingAskGetsThePlacesAndDoneIsPassedOn() async {
+        let reading = FakeReadingControl()
+        bridge = Bridge(
+            control: FakePlayback(), downloads: downloads, reading: reading, userContent: web.configuration.userContentController,
+            currentView: { [unowned self] in web }, currentOrigin: { [unowned self] in origin }, isConnected: { true },
+            front: true, clock: { 1_000_000 })
+        await load("tsNative.postMessage('rd ask'); tsNative.postMessage('rd done 3'); tsNative.postMessage('rd done x');")
+        var text = ""
+        for _ in 0..<200 {
+            text = await log()
+            if text.contains("\"t\":\"rd\"") && !reading.done.isEmpty { break }
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(text.contains("{\"t\":\"rd\",\"items\":[{\"seq\":3,\"bookId\":\"bk_1\",\"form\":\"sid=c1&chars_read=2\"}]}"), text)
+        XCTAssertEqual(reading.done, [3])
     }
 }
