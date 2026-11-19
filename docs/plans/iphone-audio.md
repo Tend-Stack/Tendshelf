@@ -107,3 +107,102 @@ Out of scope: downloads, offline starts and the phone fallback for the next book
 - Seeks in VBR MP3 without a Xing header are approximate in AVFoundation (Android uses constant-bitrate seeking).
 - Android `ProgressWriter.kt:78` drains the listened time and discards it before `record("pause")`, so the last stretch before a pause counts 0 ms on Android. The iPhone port does not repeat the extra drain; whether to fix Android is the orchestrator's call (a one-line change, not in I2).
 - Only iOS 26 simulators: iOS 17 behaviour untested.
+
+---
+## I2r: radio through a live address (builder; Go on Linux, then Swift on the Mac)
+Decision [0049](../decisions/0049-iphone-live-address.md). I2b showed an endless stream never settles in the resource
+loader; AVPlayer fetches the station itself from `/cast/{token}/live` with a one-station, one-device, one-hour token.
+**Reused**: `cast_tokens`, `CastTokens`, `castGate`, `/cast/{token}/live`, `getCastLive` -> `serveRadioLive`, `loadStation`,
+the access-log `/cast/` redaction, `liveBroke`/`liveRetryDelayMs`, the `radioFix`/`radioWorld` fixtures. **Extended**:
+migration 0049 (one column), `CastToken`, `Lookup`, `DeleteForUser`, `castGate`, two revoke handlers, `ApiPaths`,
+`PlayerApi`, `AudioPlayer.connectLive`. **Replaced**: the loader's live branch (removed). **New**: one endpoint.
+Invariants:
+1. The device token never reaches a URL; the live token reaches only `GET`/`HEAD /cast/{token}/live` and is never a session.
+2. Minted only by a `mobile` device token, only for the caller's own station, with radio on and `share.UseRadio`.
+3. One row per device; life one hour; refused (404, no limiter failure) once the device is revoked by any path.
+4. Casting off and a browser sign-out still delete every row with `device_id IS NULL`, and only those.
+5. Android, browsers, casting and the book/episode loader behave exactly as before.
+6. No Python and no proxy in any check.
+
+Steps, Go (commit 1, `feat(radio): live address for the iPhone app (decision 0049, I2r)`):
+1. `internal/db/migrations/0049_cast_tokens_device.sql`: `ALTER TABLE cast_tokens ADD COLUMN device_id TEXT REFERENCES
+   devices(id) ON DELETE CASCADE CHECK (device_id IS NULL OR kind = 'station');` and `CREATE INDEX cast_tokens_device ON
+   cast_tokens(device_id) WHERE device_id IS NOT NULL;`. Bump `SchemaVersion` (`internal/db/db.go`) to 49, plus every
+   list 0048 touched (`git show --stat` of the commit that added `0048_cast_tokens.sql`).
+2. `internal/share/cast.go`: `CastToken` gains `DeviceID string`; `const LiveAddressLife = time.Hour`; new
+   `func (c *CastTokens) MintLive(ctx context.Context, userID, deviceID, stationID string) (string, int64, error)`: an empty
+   argument -> `ErrCastUnknown`; one `WriteTx`: delete expired, `DELETE FROM cast_tokens WHERE device_id = ?`, insert
+   (kind `station`, `device_id`), then the existing per-person trim. `Lookup`: `LEFT JOIN devices d ON d.id = c.device_id`,
+   scan `coalesce(c.device_id,'')` and `(d.revoked_at IS NULL AND d.token_hash IS NOT NULL)`; a device row whose device is
+   not live returns `(t, CastExpired, ErrCastExpired)`. `DeleteForUser` adds `AND device_id IS NULL` (comment: a phone's
+   live address ends with its device token, decision 0049). New `DeleteForDevice(ctx context.Context, deviceID string) error`.
+3. `internal/web/routes_cast.go` `castGate`: the 404 condition becomes `tok.DeviceID == "" && !set.Cast || !kindOK(tok.Kind)`.
+4. `internal/web/routes_api_radio.go`: register `POST /api/v1/radio/live/{stationID}/address` -> `postAPILiveAddress`:
+   `dev, ok := auth.DeviceFrom(ctx)`; `!ok || dev.Kind != auth.KindMobile` -> `api.Error(w, 403, api.CodeForbidden, "Only
+   the phone app can ask for a live address.")`; `st, ok := s.loadStation(w, r)`; `s.casts.MintLive(ctx, u.ID, dev.ID,
+   st.ID)` (error -> `s.serverError`, never the token in a log); `Cache-Control: no-store`; `api.Write(w, 200,
+   map[string]any{"path": castPrefix + tok + "/live", "expiresAt": ms})`.
+5. `internal/web/routes_api.go` `deleteAPIToken` and `routes_me.go` `postDeviceSignOut` (when `ok`): after the revoke,
+   `s.casts.DeleteForDevice(ctx, deviceID)`; a failure is `slog.Error`ed, the answer is unchanged.
+6. `docs/api.md` after the `GET /api/v1/radio/live/{id}` row: the endpoint, its 200 shape, 401/403/404, "the iPhone app
+   (decision 0049)". `AGENTS.md`: the cast line replaced by 0049's exact wording. `docs/decisions/0048-iphone-app.md`
+   addendum line: "Stations play from a live address (decision 0049); books and episodes keep the resource loader."
+Go tests (`go test -race ./internal/db ./internal/share ./internal/web`, then `make check`, `make build`):
+- `internal/db/migration_cast_tokens_device_test.go` `TestMigration0049CastTokensDevice`: a v48 file with one book row keeps
+  it, `device_id` NULL; a station row with a real device id inserts; a book row with a device id and a row with an unknown
+  device id are refused; deleting the device removes its row.
+- `internal/share/cast_test.go` `TestCastLive*`: two mints for one device leave one row (the first token is Unknown); two
+  devices, two rows; +1 h on the fake `now` is Expired; an SQL revoke (`revoked_at=1, token_hash=NULL`) is Expired;
+  `DeleteForUser` keeps device rows and removes the rest; `DeleteForDevice` removes only that device's rows.
+- `internal/web/ios_live_address_test.go`, names `TestIOSLive*`, on `newRadioWorld` and `w.bearer(uid)`:
+  `MintAndPlay` (casting off; 200; path matches `^/cast/[A-Za-z0-9_-]{43}/live$`; a GET with no cookie and no
+  `Authorization` gives 200, `audio/mpeg`, `Accept-Ranges: none`, the sandbox CSP and the `/live.mp3` bytes);
+  `Forbidden` (no auth 401; cookie session with CSRF 403; guest bearer 403; ben's bearer on the owner's station 404; radio
+  off 404; unknown station 404; GET on `/address` 405; `cast_tokens` stays empty after each);
+  `OnlyLiveRoute` (`/cast/{t}/art`, `/cast/{t}/episode`, `/cast/{t}/audio/x` 404; POST `/cast/{t}/live` 405; `Bearer <t>` on
+  `/api/v1/me` 401; cookie `ts_session=<t>` on `/me` is not signed in; `/feeds/{t}/` 404);
+  `CastingSwitchAndBrowserSignOut` (casting on then off through `/me/settings`, then a browser logout: the live path still
+  200; a book cast token minted before both is gone);
+  `RevokedDevice` (`DELETE /api/v1/auth/token` -> 404 and row gone; `/me/devices/{did}` sign-out -> 404 and row gone; an
+  SQL-only revoke -> 404, row kept, and 30 such GETs never answer 429);
+  `OnePerDevice` (after a second mint the first path is 404, the second 200).
+  Existing `TestCast*` and `TestRadio*` pass unchanged.
+
+Steps, shared and Swift (commit 2, `feat(ios): stations play natively from a live address (decision 0049, I2r)`):
+7. `android/shared/.../ApiPaths.kt`: `fun liveAddressUrl(stationId: String): String =
+   "$base/api/v1/radio/live/${segment(stationId)}/address"`, one assert in its commonTest. Android does not call it.
+8. `ios/Tendshelf/PlayerApi.swift`: `PlayerAPI.liveAddress(token: String, id: String, origin: Origin) async throws -> URL`:
+   `POST` `liveAddressUrl`, body `{}`, bearer, 4 KiB limit, non-2xx throws `ApiError`; the `path` goes through
+   `static func liveURL(origin: Origin, path: String) -> URL?` (nil unless it matches `^/cast/[A-Za-z0-9_-]{43}/live$`, else
+   `URL(string: origin.text + path)`); nil throws `ApiError(status: 0, retryAfterS: nil)`.
+9. `ios/Tendshelf/AudioPlayer.swift` `connectLive`: keep the clears and the id check; then a `Task` under the start
+   sequence guard: `liveAddress(...)`; `ApiError` -> `liveBroke(status:, retryAfterS: ?? 0, otherServer: false)`; success ->
+   `makeLiveItem(url)` (default: `AVPlayerItem(asset: AVURLAsset(url:, options: [AVURLAssetHTTPCookiesKey: [HTTPCookie]()]))`),
+   then today's `willPlay`, insert, play, `scheduleNow`. `player.allowsExternalPlayback = false` once in init. Every
+   reconnect mints anew. A station's item failure (`:733`, `:749-752`): status = `item.errorLog()?.events.last?.errorStatusCode`
+   when in 400...599, else 0; `retryAfterS` 0; `otherServer` false.
+10. `ios/Tendshelf/MediaLoader.swift`: remove `live` (the `Entry` field, `register`'s parameter, `liveLength`, the live
+   branches); update callers. Delete `testLiveBusyRecordsRetryAfter`, `testLiveAdtsStreamWithNoLengthPlays`,
+   `testLiveMp3StreamWithNoOverridePlays`.
+11. `docs/ios.md` "Native audio (I2)": stations use a live address (0049), why, and that the URL is never logged.
+XCTest `TendshelfTests/LiveAddressTests.swift`: the mint is a POST to `.../radio/live/<id>/address` with bearer and no
+`Cookie` (URLProtocol stub); `liveURL` refuses `/cast/x/live`, `/cast/<43>/art`, `//evil.test/cast/<43>/live`,
+`https://evil.test/cast/<43>/live`, a `?` or `#` suffix, and accepts the real shape; with a fake `PlayerAPI`: mint 404 ->
+`fail("book")` and no item; 401 -> `signedOut`; 503 with `Retry-After 7` -> a second mint; success -> `makeLiveItem` got
+origin + path; an item failure mints again. Gate: `make ios-sim`, all tests pass.
+Simulator check: new opt-in `internal/web/ios_radio_serve_test.go` `TestIOSRadioServe`, skipped unless
+`TENDSHELF_IOS_RADIO_SERVE=<host:port>`: `newRadioWorld`; a new `/paced.mp3` case in `radioFix.serve` (one
+`silentMP3Frame()` each 26 ms, `audio/mpeg`, until the client leaves); `w.add(w.owner, w.fx.pub.URL("radio.test",
+"/paced.mp3"))`; serve `w.a.h` on that address; print `origin=... user=<owner's username> password=<testPassword>
+station=<id>` and every 10 s `cast_requests=<n> open=<n> header_names=<sorted, /cast/ requests only>`; stop after
+`TENDSHELF_IOS_RADIO_SERVE_FOR` (default 20m). The podnet guard stays: the fixture's fake DNS makes `radio.test` public.
+Run on Linux at `0.0.0.0:8097`; launch with `-TSTestAddress http://<tailscale ip -4>:8097 -TSTestLogin <user>:<password>
+-TSTestStart <station>`. Pass: `.playing` within 15 s; over 60 s at most 2 `/cast/` requests and no 503; no
+`Authorization` or `Cookie` header name; pause then play adds one request; 60 s in the background keeps `open=1`. Put the
+counts in the report and `docs/roadmap.md` M9 status; operator row IOS-10 in `docs/manual-checks.md` (a real station on a
+device, locked, 10 min). If AVPlayer overlaps requests into 503, or never reaches `.playing`, commit what is green and
+report `PLAN GAP: <the counts>`; do not change `radio.Acquire` or add a transport.
+Out of scope: books and episodes (stay on the loader); Android (keeps its bearer route); HLS segments for the app; AirPlay
+video hand-off; a mint rate limit (the device token can already stream); downloads (I3); CarPlay (I4).
+Risk: `errorStatusCode` may not carry the HTTP status of a progressive stream (guess); then a stream failure is code 0
+(two retries, then `stream`), while the mint's own status still yields `signedOut` and `book`.
