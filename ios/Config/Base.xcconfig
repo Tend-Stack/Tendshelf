@@ -1,0 +1,16 @@
+// Settings shared by Debug and Release (decision 0048). The project file holds none of these.
+PRODUCT_BUNDLE_IDENTIFIER = app.tendshelf.ios
+IPHONEOS_DEPLOYMENT_TARGET = 17.0
+TARGETED_DEVICE_FAMILY = 1
+SWIFT_VERSION = 6.0
+SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor
+INFOPLIST_FILE = Config/Info.plist
+GENERATE_INFOPLIST_FILE = NO
+MARKETING_VERSION = 2026.1.0
+CURRENT_PROJECT_VERSION = 1
+ENABLE_USER_SCRIPT_SANDBOXING = NO
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+TS_BUILD_DESCRIBE = unknown
+// The owner's own signing settings (never committed); absent on a simulator build.
+#include? "Signing.local.xcconfig"
