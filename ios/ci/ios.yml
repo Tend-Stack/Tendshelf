@@ -1,0 +1,56 @@
+name: Tendshelf iPhone checks
+
+# NOT ENABLED. This file lives under ios/ci/ so Gitea never runs it. It needs a runner with the labels tend-ci and
+# macos-arm64 (a Mac in host mode, no container). To enable it once such a runner exists:
+#   git mv ios/ci/ios.yml .gitea/workflows/ios.yml
+# See docs/ios.md, "CI (not enabled)".
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "android/shared/**"
+      - "android/app/src/main/assets/**"
+      - "android/app/src/main/res/values/strings.xml"
+      # The four paths android.yml watches (what the shells embed).
+      - "internal/web/static/css/tokens.css"
+      - "internal/web/static/css/bundle.css"
+      - "internal/web/static/css/fonts.css"
+      - "internal/web/static/fonts/**"
+      - ".gitea/workflows/ios.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Its own group: a third workflow in tendshelf-side silently cancels runs of the same push.
+concurrency:
+  group: tendshelf-ios-${{ gitea.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ios:
+    name: iPhone build, tests and release check
+    runs-on: [tend-ci, macos-arm64]
+    timeout-minutes: 60
+    env:
+      CI: "true"
+    steps:
+      - name: Check out the candidate
+        uses: https://j.santanafam.com/Rubirosa/gh-actions-checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # checkout v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Version rule
+        run: ios/tools/version-test.sh
+      - name: Build and test in the simulator
+        run: ios/tools/ios-build.sh all
+      - name: Release build and checks
+        run: ios/tools/ios-build.sh release
+      - name: Unsigned archive
+        run: ios/tools/archive.sh --unsigned
+      - name: Clean up
+        if: always()
+        run: |
+          ios/tools/ios-build.sh clean
+          xcrun simctl shutdown all

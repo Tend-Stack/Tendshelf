@@ -174,15 +174,21 @@ final class LiveAddressTests: XCTestCase {
         XCTAssertTrue(box.failures.isEmpty)
     }
 
+    /// An item failure makes the station mint a new address. The retry wait is replaced by none, so nothing here
+    /// depends on a timer; the test waits for the second mint itself. (The item's file does not exist, so AVFoundation
+    /// may fail it on its own before the posted notification arrives: either way it is an item failure, and the
+    /// first one counts, so the check is "at least two", not an exact snapshot.)
     func testAnItemFailureMintsAgain() async {
         let api = FakeLiveAPI()
         api.answers = [.success(good)]
         let (p, box) = player(api)
+        var waits: [UInt64] = []
+        p.liveRetrySleep = { waits.append($0) }
         p.start(station, atMs: nil)
-        _ = await waitFor { box.items.count == 1 }
-        let item = p.player.currentItem
-        NotificationCenter.default.post(name: AVPlayerItem.failedToPlayToEndTimeNotification, object: item)
-        let again = await waitFor(10) { api.mints.count == 2 && box.items.count == 2 }
+        _ = await waitFor { box.items.count >= 1 && p.player.currentItem != nil }
+        NotificationCenter.default.post(name: AVPlayerItem.failedToPlayToEndTimeNotification, object: p.player.currentItem)
+        let again = await waitFor(10) { api.mints.count >= 2 && box.items.count >= 2 }
         XCTAssertTrue(again, "mints \(api.mints.count), items \(box.items.count)")
+        XCTAssertEqual(waits.first, 3_000_000_000, "the first retry waits the shared 3 s")
     }
 }

@@ -6,3 +6,4 @@
 /ios/build/
 xcuserdata/
 /data/
+/ios/Config/Signing.local.xcconfig

@@ -141,3 +141,6 @@ a WidgetKit widget, device read aloud, in-app QR scanning, the privacy manifest,
 - Downloads use a background `URLSession` with the bearer as a header; files in `Application Support/offline/`, excluded from
   backups; automatic downloads only on an unexpensive, unconstrained network.
 - The stored reader answers at `tsread://app`, because WKWebView cannot answer at the server's own address.
+
+## Addendum 2026-11-19 (I4)
+**Addendum 2026-11-19 (I4).** Read aloud: `native-speech.js` loads for `ios`; the app speaks with `AVSpeechSynthesizer`, only voices that are not Personal or novelty voices, and stops when it leaves the front. Links: the app scans QR codes itself (AVFoundation); a scanned code goes to the same parser and confirmation as a pasted link; an iPhone browser on `/pair/` or `/invite/` is told to scan in the app and never gets a `tendshelf:` address. The widget (`TendshelfWidget`, WidgetKit and App Intents) draws what the app writes into the app group `group.app.tendshelf.ios` and makes no request. CarPlay (`CPTemplateApplicationScene`) is in every simulator build and on devices once Apple grants the audio entitlement. Release: `make ios-release`, `ios/tools/archive.sh`, versions as Android's versionCode.

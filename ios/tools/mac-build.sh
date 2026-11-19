@@ -2,13 +2,15 @@
 # Runs ios/tools/ios-build.sh on the Mac from Linux (decision 0048; docs/ios.md): syncs this tree to the Mac,
 # runs the step there under a lock, prints its output. Nothing is installed on the Mac.
 #
-#   TS_MAC_HOST=<ssh host> ios/tools/mac-build.sh [shared|build|test|all|clean]
+#   TS_MAC_HOST=<ssh host> ios/tools/mac-build.sh [shared|build|test|all|release|clean]
+#   TS_MAC_HOST=<ssh host> ios/tools/mac-build.sh archive [--unsigned]
 #
 # Environment:
 #   TS_MAC_HOST  the Mac's ssh host (required)
 #   TS_MAC_DIR   directory on the Mac, relative to its home (default "tendshelf-ios"); the tree lands in
 #                $TS_MAC_DIR/<name of this checkout>
 #
+# The version (ios/tools/version.sh) is computed here, because the tree on the Mac has no .git.
 # Exit codes: 2 TS_MAC_HOST unset, 6 another build holds the Mac; the rest come from ios-build.sh.
 set -euo pipefail
 
@@ -21,6 +23,14 @@ if [ -z "${TS_MAC_HOST:-}" ]; then
 fi
 
 step=${1:-all}
+extra=${2:-}
+case "$step" in
+  shared | build | test | all | release | archive | clean) ;;
+  *)
+    echo "usage: mac-build.sh [shared|build|test|all|release|clean] | archive [--unsigned]" >&2
+    exit 2
+    ;;
+esac
 base=${TS_MAC_DIR:-tendshelf-ios}
 dir=$base/$(basename "$repo")
 ssh_opts=(-o BatchMode=yes)
@@ -45,4 +55,10 @@ describe=$(git describe --tags --long --dirty 2>/dev/null || echo unknown)
 ssh "${ssh_opts[@]}" "$TS_MAC_HOST" "mkdir -p '$dir'"
 rsync -a --delete --exclude-from=ios/tools/rsync-exclude -e "ssh ${ssh_opts[*]}" "$repo/" "$TS_MAC_HOST:$dir/"
 
-ssh "${ssh_opts[@]}" "$TS_MAC_HOST" "cd '$dir' && TS_BUILD_DESCRIBE='$describe' ios/tools/ios-build.sh $step"
+versions=$(ios/tools/version.sh | tr '\n' ' ')
+if [ "$step" = archive ]; then
+  remote="ios/tools/archive.sh $extra"
+else
+  remote="ios/tools/ios-build.sh $step"
+fi
+ssh "${ssh_opts[@]}" "$TS_MAC_HOST" "cd '$dir' && TS_BUILD_DESCRIBE='$describe' $versions $remote"

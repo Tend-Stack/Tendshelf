@@ -8,7 +8,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell (git describe --tags --long --always --dirty 2>/dev/null || echo dev) | sed -E 's/-0-g[0-9a-f]+//')
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: apk apk-debug ios-sim ios-shared version desktop desktop-check desktop-purego deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full site-shots visual-webkit player perf test-media test-scan-real
+.PHONY: apk apk-debug ios-sim ios-shared ios-release ios-archive version desktop desktop-check desktop-purego deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full site-shots visual-webkit player perf test-media test-scan-real
 
 # Prints the version string builds embed.
 version:
@@ -36,6 +36,14 @@ ios-sim:
 
 ios-shared:
 	ios/tools/mac-build.sh shared
+
+# Release for the simulator and the device (unsigned), debug-hook and privacy checks; then the signed archive,
+# which needs the owner's signing on the Mac (docs/ios.md). Pass ARGS=--unsigned to check the archive without signing.
+ios-release:
+	ios/tools/mac-build.sh release
+
+ios-archive:
+	ios/tools/mac-build.sh archive $(ARGS)
 
 build:
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/tendshelf

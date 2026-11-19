@@ -42,6 +42,8 @@
 	<array>
 		<string>app.tendshelf.ios.episodes</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>

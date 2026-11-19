@@ -45,7 +45,7 @@
 /* Begin PBXFileReference section */
 		1A0000000000000000000020 /* Tendshelf.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tendshelf.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A0000000000000000000021 /* TendshelfTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TendshelfTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		1A0000000000000000000022 /* TendshelfShared.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = TendshelfShared.xcframework; path = ../android/shared/build/XCFrameworks/debug/TendshelfShared.xcframework; sourceTree = "<group>"; };
+		1A0000000000000000000022 /* TendshelfShared.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = TendshelfShared.xcframework; path = build/shared/TendshelfShared.xcframework; sourceTree = "<group>"; };
 		1A0000000000000000000040 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		1A0000000000000000000041 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		1A0000000000000000000042 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -381,6 +381,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "$(TS_APP_ENTITLEMENTS)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(TS_PROFILE_APP)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -393,6 +394,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "$(TS_APP_ENTITLEMENTS)";
+				PROVISIONING_PROFILE_SPECIFIER = "$(TS_PROFILE_APP)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -450,6 +452,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Config/TendshelfWidget.entitlements;
+				PROVISIONING_PROFILE_SPECIFIER = "$(TS_PROFILE_WIDGET)";
 				INFOPLIST_FILE = "Config/Widget-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -468,6 +471,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = Config/TendshelfWidget.entitlements;
+				PROVISIONING_PROFILE_SPECIFIER = "$(TS_PROFILE_WIDGET)";
 				INFOPLIST_FILE = "Config/Widget-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

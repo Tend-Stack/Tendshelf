@@ -531,3 +531,12 @@ Run in the Simulator: I/O > External Displays > CarPlay, against a server you co
 | IOS-19 | Stop the server. Open Continue and Up next. | Continue shows the downloaded book with a place; Up next says "Can't reach your library. Downloaded books still play." | Not run (needs the Simulator window). |
 | IOS-20 | Sign out on the phone, look at the car. | Back at the tab bar; every tab says "Open Tendshelf on your phone to sign in." | Not run (needs the Simulator window). |
 | IOS-21 | Quit the app, then start it from the CarPlay screen alone. Open Shelves (Podcasts and Radio rows when the server has them) and play. | Lists load and playback starts with no phone window open. | Not run (needs the Simulator window). |
+
+## iPhone release build (decision 0048, I4d)
+
+Needs the operator's Apple setup (docs/ios.md, App Store checklist) and a device.
+
+| ID | Check | Expected | Result |
+| --- | --- | --- | --- |
+| IOS-22 | Install a TestFlight build on an iPhone. Look at the home screen and the App Library. | The Tendshelf icon (the ember square with the shelf and wave mark), no white border, same drawing as the Android icon. | Not run (needs the operator's signing). |
+| IOS-23 | Open Settings > General > About on the build, and Tendshelf's page in Settings. | Version is the tag (for example 2026.1.0); no debug launch argument changes anything. | Not run (needs the operator's signing). |

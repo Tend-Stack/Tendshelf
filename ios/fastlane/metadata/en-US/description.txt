@@ -1,0 +1,12 @@
+Tendshelf is the iPhone app for your own Tendshelf server. It plays the audiobooks you keep on your own computer or NAS, keeps your place, and lets you read the matching ebook.
+
+You type the address of your server once and sign in. There is no account with us, no tracking and no advertising: the app talks only to the server you chose.
+
+What you can do:
+- Listen with chapters, a sleep timer and speed control, from the lock screen or a home-screen widget.
+- Download books to the phone and listen or read with no connection.
+- Read ebooks in the same app, with your place kept across devices, and have them read aloud with a voice on your phone.
+- Follow podcasts and listen to radio stations from your server.
+- Pick up where you stopped, on this phone or any other.
+
+Tendshelf needs a Tendshelf server of your own. The server is free and open source, and runs on a computer you control.

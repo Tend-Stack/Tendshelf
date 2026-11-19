@@ -528,6 +528,9 @@ final class AudioPlayer {
         return item
     }
 
+    /// The wait before a station tries again. Tests replace it so a retry needs no real time.
+    var liveRetrySleep: (UInt64) async -> Void = { try? await Task.sleep(nanoseconds: $0) }
+
     private func leaveLive() {
         liveConnect?.cancel()
         liveRetry?.cancel()
@@ -553,7 +556,7 @@ final class AudioPlayer {
         Self.log.info("station: trying again in \(wait.int64Value / 1000) s (status \(status))")
         liveRetry?.cancel()
         liveRetry = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(wait.int64Value) * 1_000_000)
+            await self?.liveRetrySleep(UInt64(wait.int64Value) * 1_000_000)
             guard !Task.isCancelled else { return }
             self?.connectLive()
         }

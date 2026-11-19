@@ -1,0 +1,7 @@
+// Copy to ~/.config/tendshelf/Signing.local.xcconfig on the Mac and fill in the two profile names (docs/ios.md, App Store
+// checklist). ios/tools/archive.sh copies it next to this file for one archive and removes it after. Never commit the copy.
+DEVELOPMENT_TEAM = 9L5KXK9K44
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = Apple Distribution
+TS_PROFILE_APP = <profile name>
+TS_PROFILE_WIDGET = <profile name>

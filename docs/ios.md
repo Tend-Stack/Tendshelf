@@ -19,15 +19,16 @@ connect; I1c sign-in, sign-out and links (see "The sign-in flow" below). Nothing
 
 All three are in `ios/tools/`.
 
-- `ios-build.sh [shared|build|test|all|clean]` runs on the Mac (CI will call it). Steps: check Xcode's first-launch
+- `ios-build.sh [shared|build|test|all|release|clean]` runs on the Mac (CI will call it). Steps: check Xcode's first-launch
   components (exit 3 if missing), pick JDK 21 with `/usr/libexec/java_home -v 21`, find the simulator's UDID (exit 4 if
-  none). `shared` runs `:shared:iosSimulatorArm64Test` and `:shared:assembleTendshelfSharedDebugXCFramework`; `build` and
+  none). `shared` runs `:shared:iosSimulatorArm64Test` (Debug only) and assembles the XCFramework for `TS_IOS_CONFIG` into `ios/build/shared/`; `build` and
   `test` run `xcodebuild` on `ios/Tendshelf.xcodeproj` (exit 5 until I1b adds it). Logs go to `ios/build/logs/`, result
   bundles to `ios/build/results/` (newest three kept). `clean` removes `ios/build` and `android/shared/build`.
 - `mac-build.sh [step]` runs from Linux: it syncs the tree to the Mac with `rsync` (excludes in `rsync-exclude`), takes a
   lock (`<dir>.lock`, exit 6 when another build holds it), runs `ios-build.sh` over `ssh` and prints its output.
   `mac-build.sh clean` also removes the synced tree on the Mac. It needs `TS_MAC_HOST` (exit 2 otherwise).
-- `make ios-shared` is `mac-build.sh shared`; `make ios-sim` is `mac-build.sh all`.
+- `make ios-shared` is `mac-build.sh shared`; `make ios-sim` is `mac-build.sh all`; `make ios-release` is `mac-build.sh release`;
+  `make ios-archive` is `mac-build.sh archive` (`make ios-archive ARGS=--unsigned` checks the archive without signing).
 
 | Variable | Meaning | Default |
 | --- | --- | --- |
@@ -35,6 +36,8 @@ All three are in `ios/tools/`.
 | `TS_MAC_DIR` | directory on the Mac, relative to its home | `tendshelf-ios` |
 | `TS_IOS_SIM` | simulator name | `iPhone 17` |
 | `TS_IOS_SIM_OS` | iOS runtime of the simulator | newest installed |
+| `TS_IOS_CONFIG` | `Debug` or `Release`; the shared framework is built to match | `Debug` |
+| `TS_VERSION`, `TS_BUILD_NUMBER` | version and build number (`version.sh`, passed by `mac-build.sh`) | `0.0.0`, `1` |
 | `TS_BUILD_DESCRIBE` | version string baked into the build | `git describe --tags --long --dirty`, else `unknown` |
 
 The Gradle property `tendshelf.iosSimulator` (set by `ios-build.sh` to the UDID) names the simulator that the shared
@@ -80,7 +83,7 @@ build, fetched at build time on the Mac only, never at runtime and never in the 
 - **Provider pages.** `/login/oidc/origins` (public) gives the sign-in provider origins the window may stay on; refreshed at
   launch and when `/login` finishes.
 - **Limits.** Browser history is not cleared after a connect (WKWebView has no API; sign-out replaces the view). Audio is the
-  web `<audio>` and stops when the screen locks (I2). No downloads, QR scanning, icon or signing yet.
+  web `<audio>` and stops when the screen locks (I2). Downloads, QR scanning, the icon and release builds came in later packages (below).
 - **Debug driver.** Debug builds only (`DebugDriver.swift`): launch arguments `-TSTestAddress`, `-TSTestLogin user:pass`,
   `-TSTestSignOut 1`, `-TSTestAutoYes 1` fill the page forms so a headless simulator run can sign in. Release builds contain none
   of it: check with `strings` on a Release binary (`xcodebuild -configuration Release -arch arm64`; an all-architecture Release
@@ -216,6 +219,67 @@ No search and no Siri voice (CarPlay audio apps get neither).
 - **Checked headless.** `CarLibraryTests` (signed out, offline fallback, 401, podcasts off, leaves, empty, 5 s budget), `CarPlayItemsTests`
   (row models, cap, image cache, scene declared and class exists), shared `LibraryTreeTest`. Not seen: the CarPlay display itself
   (needs the Simulator window; `docs/manual-checks.md` IOS-17 to IOS-21).
+
+## Release builds (I4d)
+
+- **Framework path.** The shared framework is copied to `ios/build/shared/TendshelfShared.xcframework` whatever the configuration, and
+  `ios/build/shared/CONFIG` says which one it is; `build` and `test` assemble it again when the configuration changed, so Release links the
+  Release framework. The framework has no x86_64 slice, so `EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64` (Apple-silicon Mac only); this
+  replaces the old note that an all-architecture Release build fails to link.
+- **`release` step.** `ios-build.sh release` (`make ios-release`) builds Release for `generic/platform=iOS Simulator` and for
+  `generic/platform=iOS` with `CODE_SIGNING_ALLOWED=NO`, fails when `strings` of the device app or its widget finds `TSTest` (the debug
+  hooks are `#if DEBUG`), runs `privacy-check.sh` on the device app and prints `release: ok`.
+- **Icon.** `ios/tools/make-icon.sh` (Linux) renders the handoff's `design-system/assets/logos/tendshelf-app-icon.svg` (the icon Android
+  draws) full-bleed on its own ember fill with a Chromium (`TENDSHELF_TEST_BROWSER`), and `iconflat.go` checks 1024 by 1024 and no alpha.
+  The PNG is committed in `ios/Tendshelf/Assets.xcassets/AppIcon.appiconset/`; run the script only when the handoff icon changes. iOS rounds the
+  corners. No dark or tinted variant.
+- **Privacy manifests.** `ios/Tendshelf/PrivacyInfo.xcprivacy` declares no tracking, no collected data and four required-reason APIs
+  (UserDefaults `CA92.1`, system boot time `35F9.1`, disk space `E174.1`, file timestamp `C617.1`); the widget's declares nothing.
+  `ios/tools/privacy-check.sh <App.app>` lists what the app and each extension binary reach (`nm -u` and `strings`) against the manifests: a
+  used, undeclared category fails, a declared, unseen one is a warning. `Info.plist` sets `ITSAppUsesNonExemptEncryption` to false (HTTPS only).
+- **`archive.sh [--unsigned]`** (`make ios-archive`) on the Mac: builds the Release framework, then `xcodebuild archive` to
+  `ios/build/dist/Tendshelf-<version>-<build>.xcarchive` (newest three kept). `--unsigned` stops there. Signed: reads
+  `~/.config/tendshelf/Signing.local.xcconfig` (copied to `ios/Config/` for the archive and removed after, never committed; the
+  `.example` is committed), checks the identity and both profiles, exports an `.ipa` with an `ExportOptions.plist` written by `plutil`
+  (`app-store-connect`, manual signing) and runs `privacy-check.sh`. Exit codes: 7 no signing set up or a setting empty, 8 identity not in
+  the keychain, 9 profile not installed, 10 a store build without a version, 3 Xcode first launch. A keychain that is locked prints the
+  `security unlock-keychain` line. Nothing is uploaded.
+
+## Version numbers
+
+`YEAR.RELEASE.FIX` as everywhere. `ios/tools/version.sh [VERSION]` (Linux or Mac) takes the argument or the exact tag of HEAD
+(`v2026.3.0` gives `2026.3.0`) and prints `TS_VERSION` and `TS_BUILD_NUMBER`: the marketing version and the build number
+year * 100000 + release * 1000 + fix, Android's versionCode (`2026.3.0` is `202603000`). No tag is a development build: `0.0.0` and `1`
+(the archive script refuses it when signing). Release is 1..99, fix 0..999. `TS_IOS_BUILD_SUFFIX` (1..99) appends `.<n>` for a second
+upload of the same version (`202603000.2`). The Mac tree has no `.git`, so `mac-build.sh` computes the version on Linux and passes it.
+`ios/tools/version-test.sh` checks the table.
+
+## App Store checklist
+
+For the operator, in Apple's portal; nothing here is done from the repository.
+1. Membership (Team 9L5KXK9K44) is active past the first upload; it renews 2027-03-05 with auto-renew off.
+2. Identifiers: register the App Group `group.app.tendshelf.ios`; App ID `app.tendshelf.ios` (explicit) and `app.tendshelf.ios.widget`,
+   both with App Groups set to that group.
+3. CarPlay: request the CarPlay **audio** entitlement for `app.tendshelf.ios` (developer.apple.com/contact/carplay). When granted, enable
+   it on the App ID, regenerate the profiles, uncomment the one line in `ios/Config/Base.xcconfig`, add the CarPlay line to
+   `ios/fastlane/metadata/en-US/description.txt`.
+4. Certificate: an Apple Distribution certificate in the Mac's login keychain (Xcode > Settings > Accounts > Manage Certificates).
+5. Profiles: App Store Connect distribution profiles for both App IDs, downloaded into Xcode; their names into
+   `~/.config/tendshelf/Signing.local.xcconfig` (from `ios/Config/Signing.local.xcconfig.example`).
+6. App Store Connect: new app with bundle id `app.tendshelf.ios`; privacy policy URL (`https://tendshelf.com/privacy`: confirm the page
+   exists); App Privacy "Data Not Collected" (the app talks only to the person's own server: a recommendation, the operator answers);
+   age rating; review notes with a throwaway demo server reachable from the internet with a synthetic library and a reviewer account
+   (never the operator's own). The listing text is in `ios/fastlane/metadata/` (text only; the copyright line says "Tendshelf
+   contributors" because `LICENSE` and `NOTICES.md` name no holder: confirm it).
+7. Build: tag `vYEAR.RELEASE.FIX`, `make ios-archive` from a Mac session with the keychain unlocked; upload the `.ipa` with Transporter or
+   `xcrun altool --upload-package` and an API key; TestFlight internal testing first.
+
+## CI (not enabled)
+
+`ios/ci/ios.yml` is the workflow, kept outside `.gitea/workflows/` so it never runs: it needs a runner labelled `tend-ci` and `macos-arm64`
+(host mode, no container). It runs `version-test.sh`, `ios-build.sh all`, `ios-build.sh release` and `archive.sh --unsigned`, and cleans
+up. It has its own concurrency group because a third workflow in `tendshelf-side` cancels runs. To enable it:
+`git mv ios/ci/ios.yml .gitea/workflows/ios.yml`.
 
 ## Cleanup
 

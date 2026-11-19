@@ -1,0 +1,5 @@
+Tendshelf is a client for a self-hosted server that the person runs themselves; it has no server of its own and no account with us.
+
+To review the app, enter the demo server address and sign in with the reviewer account given in the App Store Connect review fields (the address and the account are entered there, not in this file). The demo server holds a synthetic library of public-domain audio and a few ebooks.
+
+The camera is used only to scan the QR code on a Tendshelf sign-in or invitation page. Read aloud uses only voices on the device. The app makes no request to any server except the one the person typed.

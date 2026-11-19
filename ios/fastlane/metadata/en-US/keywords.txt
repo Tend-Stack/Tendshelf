@@ -1,0 +1,1 @@
+audiobook,ebook,self-hosted,server,podcast,radio,reader,library,offline,nas,sleep timer

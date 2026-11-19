@@ -6,7 +6,7 @@ SWIFT_VERSION = 6.0
 SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor
 INFOPLIST_FILE = Config/Info.plist
 GENERATE_INFOPLIST_FILE = NO
-MARKETING_VERSION = 2026.1.0
+MARKETING_VERSION = 0.0.0
 CURRENT_PROJECT_VERSION = 1
 ENABLE_USER_SCRIPT_SANDBOXING = NO
 // The outbox store (I2c) uses the system SQLite.
@@ -14,6 +14,12 @@ OTHER_LDFLAGS = $(inherited) -lsqlite3
 CODE_SIGN_STYLE = Manual
 CODE_SIGN_IDENTITY = -
 TS_BUILD_DESCRIBE = unknown
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+// The framework has no x86_64 slice (Apple-silicon Mac only).
+EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64
+// Release names for the signing profiles; Signing.local.xcconfig sets them (docs/ios.md).
+TS_PROFILE_APP =
+TS_PROFILE_WIDGET =
 // The app group the widget shares with the app (decision 0048, I4b).
 TS_APP_ENTITLEMENTS = Config/Tendshelf.entitlements
 // CarPlay audio (decision 0048, I4c): every simulator build carries the entitlement (the simulator checks no profile).
