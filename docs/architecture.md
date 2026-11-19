@@ -51,6 +51,7 @@ is not an audio file or a cached image. ffmpeg/ffprobe are the only child proces
 | `internal/ebook` | Ebook ingestion (R1): format detection, copy-protection check, one parser per format (EPUB 2/3 with SMIL, PDF text layer, TXT/Markdown, DOCX, HTML, FB2, DRM-free MOBI/AZW3), the canonical document `tendshelf-doc-v1` with stable IDs and source offsets, sentence segmenter, pairing scores. No HTTP, no model. |
 | `desktop/` (P5) | Separate Go module: Wails v3 shell. Not imported by the server. |
 | `android/` (M8) | Separate Gradle project: Kotlin app with a WebView shell and Media3 playback (decision 0024; release build and signing: docs/android.md). A shared Kotlin module with no Android imports holds API and position logic. Not imported by the server; `make build` is unchanged. |
+| `ios/` (M9) | Xcode project, built on a Mac only (`make ios-sim`, docs/ios.md; decision 0048). SwiftUI window around one `WKWebView`; `ShellController` (navigation policy through the shared `decide`), `ConnectFlow` (address check, PKCE sign-in, code swap, reconnect, change of server, invitation and pairing links), `SignOut`, `ServerClient` (ephemeral URLSession, no cookies, bearer on `/api/v1/` only), `TokenStore` (Keychain), `BundledPages` (`tsbundle://app`). Uses `android/shared` as the `TendshelfShared` framework. Not imported by the server; Linux never builds it. |
 
 Dependency direction: `web`, `api` → services (`library`, `progress`, `share`, `users`, `metadata`,
 `scan`, `jobs`, `ebook`) → `db`, `media`. `ebook` imports neither. Services never import `web` or `api`.

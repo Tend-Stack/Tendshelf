@@ -1,8 +1,8 @@
 # iPhone app: building on a Mac
 
-Decision [0048](decisions/0048-iphone-app.md), plan [iphone-app.md](plans/iphone-app.md). Phase I1a (this page's scope): the
-shared Kotlin module builds for iOS, the server treats `ts_shell=ios` as a phone app, and the Mac scripts exist. The Swift
-shell comes in I1b and I1c. Nothing here is part of `make check` or `make build`; Linux and CI never touch an iOS target.
+Decision [0048](decisions/0048-iphone-app.md), plan [iphone-app.md](plans/iphone-app.md). Phase I1 is built: I1a the
+shared Kotlin module for iOS, the server's `ts_shell=ios` rules and the Mac scripts; I1b the Swift shell, bundled pages and
+connect; I1c sign-in, sign-out and links (see "The sign-in flow" below). Nothing here is part of `make check` or `make build`; Linux and CI never touch an iOS target.
 
 ## What builds where
 
@@ -55,6 +55,36 @@ pinned by sha256). Kotlin/Native then downloads its own helper packages (LLVM an
 `download.jetbrains.com/kotlin/native` into `~/.konan/dependencies` (about 1.5 GB with the compiler). Those are not covered
 by Gradle's verification and carry no checksum in Kotlin's own configuration: they are the one unpinned download of the iOS
 build, fetched at build time on the Mac only, never at runtime and never in the shipped app.
+
+## The sign-in flow (I1c)
+
+- **Connect.** The start page's address form reaches `ConnectFlow.onAddress` through the shared `decide` (a bundled command from
+  a bundled page only). Each candidate address gets `/healthz`; plain http asks once per address. A fresh PKCE verifier is held
+  in memory and `/app/connect?shell=ios` opens in the window. The person signs in on the server's own page; the password never
+  touches native code.
+- **The code.** The consent page's redirect to `/app/connect/done` is caught by the navigation policy (exact origin, main frame,
+  verifier held), cancelled, and the code is swapped for a device token by native HTTP. The token goes to the Keychain
+  (readable after first unlock, this device only), the ids to `UserDefaults`, and the verifier is cleared by that one swap.
+  A 409 with a held token signs out ("This sign-in belongs to someone else"); without one it opens `/me/devices`.
+- **Reconnect and launch.** `/login` with a held token asks `/api/v1/me`: 401 signs out, 200 starts a reconnect. Launch asks
+  once; a network failure leaves the person where they are.
+- **Another server.** Typing a different address while signed in asks "Change server?"; confirming revokes the old device,
+  wipes the web data and starts the new sign-in. A token never follows the person to another address.
+- **Links.** `tendshelf://open?link=` and the join page go through `parseHandoff`, then a confirmation naming the address,
+  then `/healthz`, then the invitation page or the pairing page (the verifier is held for pairing). Nothing is requested
+  before the tap; a link to the connected server only gets a sentence.
+- **Sign-out.** `SignOut.run`: the token and ids go first, then every cookie, storage and cache entry, then the `WKWebView` is
+  replaced (no history), then the start page shows the address and the reason, then the device is revoked in the background.
+  The page's own Sign out is a POST to `/logout`; the server revokes the device, the next `/login` check finds a 401 and the same
+  path runs.
+- **Provider pages.** `/login/oidc/origins` (public) gives the sign-in provider origins the window may stay on; refreshed at
+  launch and when `/login` finishes.
+- **Limits.** Browser history is not cleared after a connect (WKWebView has no API; sign-out replaces the view). Audio is the
+  web `<audio>` and stops when the screen locks (I2). No downloads, QR scanning, icon or signing yet.
+- **Debug driver.** Debug builds only (`DebugDriver.swift`): launch arguments `-TSTestAddress`, `-TSTestLogin user:pass`,
+  `-TSTestSignOut 1`, `-TSTestAutoYes 1` fill the page forms so a headless simulator run can sign in. Release builds contain none
+  of it: check with `strings` on a Release binary (`xcodebuild -configuration Release -arch arm64`; an all-architecture Release
+  build fails to link because the shared framework is arm64 only).
 
 ## Cleanup
 

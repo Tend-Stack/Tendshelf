@@ -7,8 +7,12 @@ import WebKit
 /// only from `/app/connect/done` on the exact origin while a verifier is held, and anything else leaves the window.
 final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     let pages = BundledPages()
-    let webView: WKWebView
+    /// What the SwiftUI view shows; the web view inside it is replaced at sign-out.
+    let container = UIView()
+    private(set) var webView: WKWebView
     private(set) var flow: ConnectFlow!
+    private(set) var signOut: SignOut!
+    private let configuration: WKWebViewConfiguration
 
     /// The one address the app itself is loading: it passes the policy once (a load that native code started is not a
     /// link a page offered).
@@ -19,16 +23,31 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         config.applicationNameForUserAgent = "Tendshelf-iOS"
         config.websiteDataStore = .default()
         config.setURLSchemeHandler(pages, forURLScheme: BundledPages.scheme)
+        configuration = config
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
         pages.dark = { [weak self] in self?.webView.traitCollection.userInterfaceStyle == .dark }
-        webView.navigationDelegate = self
-        webView.scrollView.bounces = false
-        webView.allowsBackForwardNavigationGestures = true
+        install(webView)
+        signOut = SignOut(store: store, api: client, host: self, pages: pages)
+        flow = ConnectFlow(store: store, client: client, pages: pages, host: self, signOut: signOut)
+    }
+
+    /// Puts [view] in the container and makes this controller its delegate.
+    private func install(_ view: WKWebView) {
+        view.navigationDelegate = self
+        view.scrollView.bounces = false
+        view.allowsBackForwardNavigationGestures = true
         #if DEBUG
-        webView.isInspectable = true
+        view.isInspectable = true
         #endif
-        flow = ConnectFlow(store: store, client: client, pages: pages, host: self)
+        view.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(view)
+        NSLayoutConstraint.activate([
+            view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            view.topAnchor.constraint(equalTo: container.topAnchor),
+            view.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
     }
 
     // MARK: ShellHost
@@ -39,10 +58,36 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     }
 
     func confirm(title: String, message: String, ok: String, cancel: String, completion: @escaping (Bool) -> Void) {
+        #if DEBUG
+        if DebugDriver.autoYes {
+            completion(true)
+            return
+        }
+        #endif
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: cancel, style: .cancel) { _ in completion(false) })
         alert.addAction(UIAlertAction(title: ok, style: .default) { _ in completion(true) })
         topViewController()?.present(alert, animated: true)
+    }
+
+    func notice(_ message: String) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        topViewController()?.present(alert, animated: true)
+    }
+
+    /// Sign-out and change of server: every cookie, storage and cache entry goes, and a new view replaces the old one so
+    /// no history, form data or page memory survives.
+    func resetWeb() async {
+        let old = webView
+        old.navigationDelegate = nil
+        old.stopLoading()
+        old.removeFromSuperview()
+        expected = nil
+        await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
+        let fresh = WKWebView(frame: .zero, configuration: configuration)
+        webView = fresh
+        install(fresh)
     }
 
     private func topViewController() -> UIViewController? {
@@ -61,13 +106,17 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
             self.expected = nil
             return .allow
         }
+        // The page's own Sign out is a form POST to /logout: it tells a chosen sign-out from an expired one.
+        if mainFrame, navigationAction.request.httpMethod == "POST", url.path == "/logout", flow.origin?.matches(url: url.absoluteString) == true {
+            signOut.logoutSeen = true
+        }
         let nav = NavigationKt.decide(
             url: url.absoluteString,
             mainFrame: mainFrame,
             origin: flow.origin,
             codePending: flow.codePending,
             fromBundled: isBundled(webView.url),
-            signInOrigins: [],
+            signInOrigins: flow.signInOrigins,
             bundled: BundledSite.companion.IOS
         )
         switch nav {
@@ -93,6 +142,9 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         if let url = webView.url { flow.pageFinished(url.absoluteString) }
+        #if DEBUG
+        DebugDriver.pageFinished(webView)
+        #endif
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {

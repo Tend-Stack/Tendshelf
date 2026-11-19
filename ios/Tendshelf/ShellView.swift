@@ -1,13 +1,13 @@
 import SwiftUI
 import WebKit
 
-/// The window: the controller's `WKWebView`, full screen.
+/// The window: the controller's container, full screen. The web view inside it is replaced at sign-out.
 struct ShellView: UIViewRepresentable {
     let controller: ShellController
 
-    func makeUIView(context: Context) -> WKWebView {
-        controller.webView
+    func makeUIView(context: Context) -> UIView {
+        controller.container
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {}
+    func updateUIView(_ view: UIView, context: Context) {}
 }

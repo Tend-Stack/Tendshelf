@@ -25,11 +25,24 @@ enum Words {
         static let httpWarningPublic = "http_warning_public"
         static let httpWarningContinue = "http_warning_continue"
         static let httpWarningCancel = "http_warning_cancel"
+        static let changeServerTitle = "change_server_title"
+        static let changeServerBody = "change_server_body"
+        static let changeServerContinue = "change_server_continue"
+        static let linkOnly = "link_only"
+        static let linkConnected = "link_connected"
+        static let linkTitle = "link_title"
+        static let linkBody = "link_body"
+        static let linkConnect = "link_connect"
+        static let expired = "expired"
+        static let otherPerson = "other_person"
+        static let signedOut = "signed_out"
 
         static let all = [
             startTitle, startBody, startLabel, startButton, startHint, startServer, startInvited,
             joinLabel, joinHint, joinButton, addressOnly, unreachable, certificate, notTendshelf, oldServer,
             httpWarningTitle, httpWarningBody, httpWarningPublic, httpWarningContinue, httpWarningCancel,
+            changeServerTitle, changeServerBody, changeServerContinue, linkOnly, linkConnected, linkTitle, linkBody,
+            linkConnect, expired, otherPerson, signedOut,
         ]
     }
 

@@ -14,10 +14,20 @@ private final class RedirectRefuser: NSObject, URLSessionTaskDelegate {
     }
 }
 
+/// What the connect flow asks of the server: `ServerClient` in the app, a fake in the tests.
+protocol ServerAPI: AnyObject {
+    func health(_ origin: Origin) async -> Health
+    func identity(_ origin: Origin) async -> Identity?
+    func signInOriginsBody(_ origin: Origin) async -> String?
+    func swap(_ origin: Origin, code: String, verifier: String, name: String, bearer: String?) async -> Swap
+    func me(_ origin: Origin, token: String) async -> Me
+    func revoke(_ origin: Origin, token: String) async
+}
+
 /// The shell's own HTTP (invariant 4): /healthz, the code swap, /me and revoke. One ephemeral session: no cookies, no
 /// cache, redirects refused, answers read up to 4096 bytes. The token goes in an `Authorization` header only on
 /// `/api/v1/` paths. The WebView's cookie jar is never touched.
-final class ServerClient {
+final class ServerClient: ServerAPI {
     /// What one call got: status and at most 4096 bytes of body, or the TLS-failure flag.
     struct Reply {
         let status: Int

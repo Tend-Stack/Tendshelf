@@ -474,3 +474,14 @@ Use a library with uploads turned on and a book you copied into its folder by ha
 | DUP-4 | Add a .zip of the same book. | The zip is sent, then the row warns as in DUP-3. | Not run. |
 | DUP-5 | Add a book with Add books, then copy the same files into the folder by hand and scan. As owner open either book. | The book page says "Another copy of this book is in the library." with Compare them, which opens the merge preview keeping the older book. A member sees nothing. | Not run. |
 | DUP-6 | As a contributor, add the same files as an existing book. | The warning has no Add anyway and says "Ask an admin if you need a second copy." | Not run. |
+
+## iPhone shell (decision 0048, I1c)
+
+Run in the simulator or on a phone against a server you control (`make ios-sim` builds and tests; Xcode runs the app).
+
+| ID | Check | Expected | Result |
+| --- | --- | --- | --- |
+| IOS-1 | Tap I have a server, type the address, Connect. Over http, read the alert and Continue. | The server's sign-in page opens in the window; the alert names the address. | Not run by hand (the driver did the same steps in the simulator, 2026-11-19). |
+| IOS-2 | Sign in, tap the consent button. | Home opens in the app; Profile lists this device as "iPhone". | Not run by hand (driver, 2026-11-19: passed). |
+| IOS-3 | Force-quit and open the app. | Home opens, still signed in. Revoke the device on the server, reopen: the start page says "You were signed out". | Not run by hand (relaunch passed with the driver; the revoke path is covered by tests). |
+| IOS-4 | Profile, Sign out. | The start page shows the address and "You were signed out"; the device is revoked on the server; Back does not return to a page. | Not run by hand (driver: start page and revoked device passed). |
