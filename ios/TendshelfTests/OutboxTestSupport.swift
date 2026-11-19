@@ -70,6 +70,7 @@ final class FakePlayerApi: PlayerAPI {
     func radioStation(token: String, id: String) async throws -> StationCard { throw ApiError(status: 0) }
     func radioArt(token: String, id: String, artPath: String) async -> Data? { nil }
     func radioNow(token: String, id: String) async -> String? { nil }
+    func liveAddress(token: String, id: String, origin: Origin) async throws -> URL { throw ApiError(status: 0) }
     func putSpeed(token: String, bookId: String, speed: Double) async throws {}
 }
 
