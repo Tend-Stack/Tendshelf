@@ -5,5 +5,11 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 : "${ANDROID_HOME:?ANDROID_HOME is not set}"
+cd "$root"
+# commonMain is shared with the iPhone app: no JVM-only import and no Math.* (decision 0048, I1 invariant 1).
+if grep -rnE '^import java\.|^import javax\.|\bMath\.' android/shared/src/commonMain; then
+  echo "android/shared/src/commonMain must stay platform-neutral: the lines above use java, javax or Math" >&2
+  exit 1
+fi
 cd "$root/android"
 ./gradlew --no-daemon :shared:jvmTest lintRelease

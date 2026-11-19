@@ -1,5 +1,7 @@
 package app.tendshelf.shared
 
+import kotlin.math.roundToLong
+
 /**
  * The words the web page and the app say to each other (plan A4, protocol version 1).
  *
@@ -143,11 +145,11 @@ private fun validSayText(t: String): Boolean {
         val ch = t[i]
         when {
             ch.code < 0x20 || ch.code in 0x7f..0x9f -> return false
-            Character.isHighSurrogate(ch) -> {
-                if (i + 1 >= t.length || !Character.isLowSurrogate(t[i + 1])) return false
+            ch.isHighSurrogate() -> {
+                if (i + 1 >= t.length || !t[i + 1].isLowSurrogate()) return false
                 i++
             }
-            Character.isLowSurrogate(ch) -> return false
+            ch.isLowSurrogate() -> return false
         }
         i++
     }
@@ -241,7 +243,7 @@ fun encodePageKey(next: Boolean): String = "{\"t\":\"pagekey\",\"dir\":\"${if (n
 fun encodeBack(): String = "{\"t\":\"back\"}"
 
 private fun speedText(speed: Double): String {
-    val h = if (speed.isNaN()) 100 else Math.round((speed * 100).coerceIn(50.0, 350.0)).toInt()
+    val h = if (speed.isNaN()) 100 else (speed * 100).coerceIn(50.0, 350.0).roundToLong().toInt()
     return "${h / 100}.${(h % 100).toString().padStart(2, '0')}"
 }
 

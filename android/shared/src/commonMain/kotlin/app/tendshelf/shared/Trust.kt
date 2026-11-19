@@ -1,7 +1,5 @@
 package app.tendshelf.shared
 
-import javax.crypto.AEADBadTagException
-
 /** What `/healthz` said about itself: the `app` word and the install's `id` (null when the server sends none). */
 data class Identity(val app: String?, val id: String?)
 
@@ -16,10 +14,3 @@ fun sameServer(pinned: String?, answer: Identity?): Boolean {
     if (pinned.isNullOrEmpty()) return true
     return answer.id == pinned
 }
-
-/**
- * Whether a failure to read the saved token means the token is gone for good. Only a ciphertext that fails its tag
- * does (the key is a different one). A Keystore that is busy, locked or restarting throws other things and must not
- * sign the person out.
- */
-fun tokenIsLost(e: Throwable): Boolean = e is AEADBadTagException

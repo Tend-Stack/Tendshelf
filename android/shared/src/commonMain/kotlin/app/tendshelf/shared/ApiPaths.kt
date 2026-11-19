@@ -81,7 +81,8 @@ class ApiPaths(server: String) {
     }
 
     /** The page the WebView opens: the shell mark makes the server treat the visitor as the Android app. */
-    val shellUrl: String get() = "$base/?shell=android&next=/"
+    fun shellUrlFor(shell: AppShell): String = "$base/?shell=${shell.word}&next=/"
+    val shellUrl: String get() = shellUrlFor(AppShell.ANDROID)
 
     private fun segment(id: String): String {
         require(id.isNotEmpty() && id.none { it == '/' || it == '?' || it == '#' || it.isWhitespace() }) { "bad id" }

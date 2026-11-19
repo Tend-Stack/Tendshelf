@@ -13,6 +13,7 @@ import androidx.webkit.WebViewFeature
 import app.tendshelf.shared.Ask
 import app.tendshelf.shared.ERROR_CODES
 import app.tendshelf.shared.BridgeMessage
+import app.tendshelf.shared.ConnectState
 import app.tendshelf.shared.Origin
 import app.tendshelf.shared.ReaderFeel
 import app.tendshelf.shared.encodePageKey
@@ -40,7 +41,7 @@ import app.tendshelf.shared.parseBridge
  */
 @androidx.media3.common.util.UnstableApi
 class Bridge(
-    private val flow: () -> ConnectFlow.State,
+    private val flow: () -> ConnectState,
     private val currentOrigin: () -> Origin?,
     /** Bar colour (the page's `theme-color`), or null to go back to the app's own. */
     private val onTheme: (String?) -> Unit,
@@ -53,7 +54,7 @@ class Bridge(
     private val feel = ReaderFeel()
 
     /** True while the reader page wants the volume keys, the app is in front and the bridge is connected. */
-    val pageKeysArmed: Boolean get() = feel.keysArmed && proxy != null && flow() == ConnectFlow.State.Connected
+    val pageKeysArmed: Boolean get() = feel.keysArmed && proxy != null && flow() == ConnectState.Connected
 
     /** A volume key the activity took: tell the reader to turn a page. */
     fun pageKey(next: Boolean) {
@@ -156,7 +157,7 @@ class Bridge(
             return
         }
         if (!isMainFrame) return
-        if (flow() != ConnectFlow.State.Connected) return
+        if (flow() != ConnectState.Connected) return
         // Exact, normalised compare (B5): a sandboxed document's origin is "null" and parses to nothing.
         val now = currentOrigin()
         if (now == null || now != origin || !origin.sameSource(sourceOrigin.toString())) return
@@ -214,7 +215,7 @@ class Bridge(
     /** Android Back: the page closes a sheet or dialog if it has one; otherwise [fallback] (history) after 150 ms. */
     fun askBack(fallback: () -> Unit) {
         val p = proxy
-        if (p == null || !started || flow() != ConnectFlow.State.Connected) {
+        if (p == null || !started || flow() != ConnectState.Connected) {
             fallback()
             return
         }
@@ -233,7 +234,7 @@ class Bridge(
     private fun push(s: PlayerSnapshot) {
         if (!started) return
         val p = proxy ?: return
-        if (flow() != ConnectFlow.State.Connected) return
+        if (flow() != ConnectState.Connected) return
         send(p, encodeState(s))
         // Errors cross as one of two fixed codes; `signedOut` does not (sign-out replaces the page).
         if (s.error != lastError) {
@@ -256,7 +257,7 @@ class Bridge(
     /** How a book stands on the phone, for the Download button; sent for the asked-for book and whenever it moves. */
     fun pushDownload(bookId: String) {
         val p = proxy ?: return
-        if (!started || flow() != ConnectFlow.State.Connected) return
+        if (!started || flow() != ConnectState.Connected) return
         val v = Offline.view(bookId)
         send(p, encodeDl(bookId, v.state, v.pct, v.known))
     }
@@ -278,7 +279,7 @@ class Bridge(
 
     /** Speech answers go to the frame that asked, only while the same page and the same connection hold. */
     private fun sendTo(p: JavaScriptReplyProxy, text: String) {
-        if (p !== proxy || flow() != ConnectFlow.State.Connected) return
+        if (p !== proxy || flow() != ConnectState.Connected) return
         send(p, text)
     }
 

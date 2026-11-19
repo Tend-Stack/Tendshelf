@@ -30,6 +30,15 @@ func shellFrom(r *http.Request) string {
 	return ""
 }
 
+// isAppShell reports whether shell is one of the two phone apps (decision 0048, D12): "android" or "ios".
+// It governs the four rules that belong to a phone app's window alone: the Connect page and its code
+// hand-over (/app/connect), the pairing handover and its POSTs (/pair), the wrong-address sign-in page
+// (/login/oidc, /me/sso/link) and the missing service worker (/sw.js answers 404). The desktop shell
+// and a browser are not phone apps. Every other check of one named shell stays as written.
+func isAppShell(shell string) bool {
+	return shell == "android" || shell == "ios"
+}
+
 // shellLink handles GET /?shell=<name>&next=<path>: the one link a shell opens to mark its window.
 // A valid name sets the cookie and "browser" removes it; either way the answer is a 303 to next
 // (checked with auth.SafeNext). Anything else falls through to the normal handler untouched.

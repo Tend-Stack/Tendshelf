@@ -8,7 +8,7 @@ ADDR     ?= 127.0.0.1:8095
 VERSION  ?= $(shell (git describe --tags --long --always --dirty 2>/dev/null || echo dev) | sed -E 's/-0-g[0-9a-f]+//')
 LDFLAGS  := -s -w -X main.version=$(VERSION)
 
-.PHONY: apk apk-debug version desktop desktop-check desktop-purego deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full site-shots visual-webkit player perf test-media test-scan-real
+.PHONY: apk apk-debug ios-sim ios-shared version desktop desktop-check desktop-purego deb isolated app build generate test run run-dev check fmt vet clean visual visual-compare visual-full site-shots visual-webkit player perf test-media test-scan-real
 
 # Prints the version string builds embed.
 version:
@@ -27,6 +27,15 @@ apk:
 apk-debug:
 	cd android && ./gradlew --no-daemon assembleDebug
 	@ls -l android/app/build/outputs/apk/debug/app-debug.apk
+
+# iPhone app (decision 0048; docs/ios.md): sync to the Mac and build there. TS_MAC_HOST names the Mac's ssh host.
+# ios-sim builds and tests the app in the simulator, ios-shared builds only the shared Kotlin module for iOS and runs
+# its tests. Not part of check or build.
+ios-sim:
+	ios/tools/mac-build.sh all
+
+ios-shared:
+	ios/tools/mac-build.sh shared
 
 build:
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/tendshelf

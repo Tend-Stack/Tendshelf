@@ -88,30 +88,30 @@ class Outbox(private val store: OutboxStore, private val now: () -> Long) {
     private var sendingUpTo = 0L
 
     /** A plain save while playing or after a pause: merged into the last unsent row when that is safe. */
-    @Synchronized
+    @SynchronizedOnJvm
     fun tick(bookId: String, positionMs: Long, speed: Double, listenedMs: Long, hold: Boolean = false): Save =
         write(bookId, positionMs, speed, listenedMs, finished = false, force = false, hold = hold)
 
-    @Synchronized
+    @SynchronizedOnJvm
     fun pause(bookId: String, positionMs: Long, speed: Double, listenedMs: Long, hold: Boolean = false): Save =
         tick(bookId, positionMs, speed, listenedMs, hold)
 
     /** The book is over: its own row, never merged. */
-    @Synchronized
+    @SynchronizedOnJvm
     fun finish(bookId: String, positionMs: Long, speed: Double, listenedMs: Long): Save =
         write(bookId, positionMs, speed, listenedMs, finished = true, force = false, hold = false)
 
     /** A save that must win on the server ("Stay here"). */
-    @Synchronized
+    @SynchronizedOnJvm
     fun force(bookId: String, positionMs: Long, speed: Double, listenedMs: Long): Save =
         write(bookId, positionMs, speed, listenedMs, finished = false, force = true, hold = false)
 
     /** The place to start from: the newest row of the book, if one is waiting. */
-    @Synchronized
+    @SynchronizedOnJvm
     fun newest(bookId: String): Save? = store.last(bookId)
 
     /** The question was answered. "Stay here" ([force]) makes the held row win; otherwise it goes out plain. */
-    @Synchronized
+    @SynchronizedOnJvm
     fun release(bookId: String, force: Boolean): Save? {
         val last = store.last(bookId) ?: return null
         if (!last.held) return last
@@ -121,20 +121,20 @@ class Outbox(private val store: OutboxStore, private val now: () -> Long) {
     }
 
     /** "Continue there": the held place is dropped. */
-    @Synchronized
+    @SynchronizedOnJvm
     fun dropHeld(bookId: String) {
         val last = store.last(bookId) ?: return
         if (last.held) store.delete(listOf(last.seq))
     }
 
     /** After a restart no question is open: held rows go out plain, newest wins. */
-    @Synchronized
+    @SynchronizedOnJvm
     fun releaseAllHeld() {
         for (h in store.held()) store.update(h.copy(held = false))
     }
 
     /** The next rows to send, which are then frozen until [settled] or [failed]. */
-    @Synchronized
+    @SynchronizedOnJvm
     fun nextBatch(n: Int = BATCH_SIZE): List<Save> {
         val rows = store.firstBatch(n)
         if (rows.isNotEmpty()) sendingUpTo = rows.last().seq
@@ -142,7 +142,7 @@ class Outbox(private val store: OutboxStore, private val now: () -> Long) {
     }
 
     /** Applies the server's answer to the rows [nextBatch] gave. */
-    @Synchronized
+    @SynchronizedOnJvm
     fun settled(sent: List<Save>, results: List<BatchItemResult>): Applied {
         val applied = applyResults(sent, results)
         if (applied.deleteSeqs.isNotEmpty()) store.delete(applied.deleteSeqs)
@@ -151,12 +151,12 @@ class Outbox(private val store: OutboxStore, private val now: () -> Long) {
     }
 
     /** The send did not get an answer; the rows stay as they were. */
-    @Synchronized
+    @SynchronizedOnJvm
     fun failed() {
         sendingUpTo = 0
     }
 
-    @Synchronized
+    @SynchronizedOnJvm
     fun clear() {
         store.clear()
         sendingUpTo = 0

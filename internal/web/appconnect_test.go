@@ -216,8 +216,8 @@ func TestA1ConnectPageForbidden(t *testing.T) {
 	if rec := a.do(http.MethodPost, "/app/connect", url.Values{"_csrf": {tok}, "challenge": {f.challenge}}, nil, ck); rec.Code != http.StatusForbidden || rec.Header().Get("Location") != "" {
 		t.Errorf("POST without the mark = %d %q", rec.Code, rec.Header().Get("Location"))
 	}
-	// Other marks are not the Android app.
-	for _, v := range []string{"desktop", "ios", "browser", "ANDROID"} {
+	// Other marks are not a phone app (the iPhone app is covered in shell_iosapp_test.go).
+	for _, v := range []string{"desktop", "browser", "ANDROID"} {
 		c := &http.Cookie{Name: shellCookie, Value: v}
 		if rec := a.do(http.MethodGet, "/app/connect?challenge="+f.challenge, nil, nil, ck, c); rec.Code != http.StatusForbidden {
 			t.Errorf("mark %q = %d", v, rec.Code)

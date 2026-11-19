@@ -34,4 +34,5 @@ rootProject.name = "tendshelf-android"
 // shared: Kotlin with no Android imports. API paths and position maths live here from the start so an
 // iPhone app can reuse them later (operator answer, 2026-11-05).
 include(":shared")
-include(":app")
+// The Mac builds only :shared for iOS and has no Android SDK: -Ptendshelf.sharedOnly=true leaves :app out (decision 0048).
+if (providers.gradleProperty("tendshelf.sharedOnly").orNull != "true") include(":app")

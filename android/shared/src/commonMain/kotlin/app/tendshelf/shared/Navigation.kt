@@ -38,34 +38,27 @@ sealed interface Nav {
 
 const val BUNDLED_HOST = "appassets.androidplatform.net"
 
+/** Where the app's own bundled pages are served from: Android's asset loader host, or the iPhone's `tsbundle://app`. */
+data class BundledSite(val scheme: String, val host: String) {
+    companion object {
+        val ANDROID = BundledSite("https", BUNDLED_HOST)
+        val IOS = BundledSite("tsbundle", "app")
+    }
+}
+
 /**
  * The one navigation policy of the WebView (plan A2, invariants 1 and 4). Pure: values in, a verdict out.
  * [fromBundled] is true only when the page the person is looking at is one of the bundled pages. The bundled
  * addresses (`/connect`, `/play`, `/remove`, `/toggle`) are commands, so a link in a book or any server page
  * (page text is untrusted) must never reach them: they are obeyed only from the main frame of a bundled page.
  */
-fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolean, fromBundled: Boolean, signInOrigins: Set<Origin> = emptySet()): Nav {
+fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolean, fromBundled: Boolean, signInOrigins: Set<Origin> = emptySet(), bundled: BundledSite = BundledSite.ANDROID): Nav {
+    val b = bundledMatch(url, bundled)
+    if (b != null) return decideBundled(b, mainFrame, fromBundled)
     val scheme = url.substringBefore(':', "").lowercase()
     if (scheme == "mailto") return Nav.External
     if (scheme != "http" && scheme != "https") return Nav.Block
     val u = parseUrl(url) ?: return Nav.Block
-    if (u.scheme == "https" && u.host == BUNDLED_HOST && u.port == null) {
-        if (!mainFrame || !fromBundled) return Nav.Block
-        if (u.path == "/connect") return Nav.Connect(queryParam(u.query, "address") ?: "")
-        if (u.path == "/link") return Nav.Link(queryParam(u.query, "link") ?: "")
-        if (u.path == "/toggle") return Nav.TogglePlay
-        if (u.path == "/autoshow") {
-            val id = queryParam(u.query, "id")?.takeIf { validId(it) } ?: return Nav.Block
-            val on = queryParam(u.query, "on")
-            return if (on == "1" || on == "0") Nav.AutoShow(id, on == "1") else Nav.Block
-        }
-        if (u.path == "/play" || u.path == "/remove") {
-            // An id outside the bridge's charset is refused, never loaded (A7).
-            val id = queryParam(u.query, "id")?.takeIf { validId(it) } ?: return Nav.Block
-            return if (u.path == "/play") Nav.PlayBook(id) else Nav.RemoveBook(id)
-        }
-        return Nav.Stay
-    }
     if (origin != null && u.scheme == origin.scheme && u.host == origin.host && u.port == origin.port) {
         if (u.path == "/app/connect/done") {
             val code = queryParam(u.query, "code")
@@ -78,6 +71,41 @@ fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolea
     // sub-frame never loads. Checked after the bundled host and the server origin, so the set cannot widen either rule.
     if (mainFrame && signInOrigins.any { it.scheme == u.scheme && it.host == u.host && it.port == u.port }) return Nav.Stay
     return if (mainFrame) Nav.External else Nav.Block
+}
+
+/** The command block of a bundled page: obeyed only from the main frame of a bundled page. */
+private fun decideBundled(u: ParsedUrl, mainFrame: Boolean, fromBundled: Boolean): Nav {
+    if (!mainFrame || !fromBundled) return Nav.Block
+    if (u.path == "/connect") return Nav.Connect(queryParam(u.query, "address") ?: "")
+    if (u.path == "/link") return Nav.Link(queryParam(u.query, "link") ?: "")
+    if (u.path == "/toggle") return Nav.TogglePlay
+    if (u.path == "/autoshow") {
+        val id = queryParam(u.query, "id")?.takeIf { validId(it) } ?: return Nav.Block
+        val on = queryParam(u.query, "on")
+        return if (on == "1" || on == "0") Nav.AutoShow(id, on == "1") else Nav.Block
+    }
+    if (u.path == "/play" || u.path == "/remove") {
+        // An id outside the bridge's charset is refused, never loaded (A7).
+        val id = queryParam(u.query, "id")?.takeIf { validId(it) } ?: return Nav.Block
+        return if (u.path == "/play") Nav.PlayBook(id) else Nav.RemoveBook(id)
+    }
+    return Nav.Stay
+}
+
+/**
+ * The address as a page of the bundled site, or null. The bundled address has no port, no userinfo, no backslash or
+ * whitespace; https goes through the strict http(s) parser, other schemes (`tsbundle`) through [parseRawUri].
+ */
+private fun bundledMatch(url: String, site: BundledSite): ParsedUrl? {
+    if (url.any { it == '\\' || it.isWhitespace() }) return null
+    if (site.scheme == "http" || site.scheme == "https") {
+        val u = parseUrl(url) ?: return null
+        return if (u.scheme == site.scheme && u.host == site.host && u.port == null) u else null
+    }
+    val r = parseRawUri(url) ?: return null
+    if (r.scheme?.lowercase() != site.scheme.lowercase() || r.host?.lowercase() != site.host.lowercase()) return null
+    if (r.port != -1 || r.rawUserInfo != null) return null
+    return ParsedUrl(site.scheme.lowercase(), site.host.lowercase(), null, r.rawPath ?: "", r.rawQuery)
 }
 
 private fun queryParam(query: String?, name: String): String? {

@@ -4,12 +4,19 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.os.Build
 import android.webkit.WebView
+import app.tendshelf.shared.ConnectState
 import app.tendshelf.shared.Handoff
+import app.tendshelf.shared.Health
 import app.tendshelf.shared.Kind
+import app.tendshelf.shared.Me
 import app.tendshelf.shared.Origin
+import app.tendshelf.shared.PageStep
 import app.tendshelf.shared.Pkce
+import app.tendshelf.shared.Swap
+import app.tendshelf.shared.afterPageFinished
 import app.tendshelf.shared.parseHandoff
-import java.net.URI
+import app.tendshelf.shared.pathOf
+import app.tendshelf.shared.signInPath
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.concurrent.Executors
@@ -27,12 +34,10 @@ class ConnectFlow(
     private val pages: StartPages,
     private val signOut: SignOut,
 ) {
-    enum class State { NoServer, NeedsSignIn, Connecting, Connected, Reconnecting }
-
     /** The bridge follows this: it attaches in Connected and detaches in NoServer (plan A4). */
-    var onState: ((State) -> Unit)? = null
+    var onState: ((ConnectState) -> Unit)? = null
 
-    var state = State.NoServer
+    var state = ConnectState.NoServer
         private set(value) {
             field = value
             onState?.invoke(value)
@@ -62,7 +67,7 @@ class ConnectFlow(
             verifier = null
             pending = null
             pairToken = null
-            state = State.NoServer
+            state = ConnectState.NoServer
             clearHistoryNext = true
             // A page that was loading when the wipe began may still finish; it must not start a connect on its own.
             suppressAutoConnect = true
@@ -82,7 +87,7 @@ class ConnectFlow(
             showStart(StartState(o.text))
             return
         }
-        state = State.Connected
+        state = ConnectState.Connected
         web.loadUrl(o.homeUrl())
         // One check at launch: a revoked or expired token ends here; a network failure leaves the person where they are.
         io.execute {
@@ -105,7 +110,7 @@ class ConnectFlow(
             return
         }
         suppressAutoConnect = false
-        state = State.Connecting
+        state = ConnectState.Connecting
         io.execute {
             var found: Origin? = null
             var foundId: String? = null
@@ -121,7 +126,7 @@ class ConnectFlow(
             }
             ui {
                 if (found == null) {
-                    state = if (store.hasToken()) State.Connected else State.NoServer
+                    state = if (store.hasToken()) ConnectState.Connected else ConnectState.NoServer
                     showStart(StartState(trimmed, healthWords(failure)))
                 } else {
                     accept(found, foundId)
@@ -153,7 +158,7 @@ class ConnectFlow(
                 }
                 .setNegativeButton(R.string.http_warning_cancel) { _, _ ->
                     pending = null
-                    state = if (store.hasToken()) State.Connected else State.NoServer
+                    state = if (store.hasToken()) ConnectState.Connected else ConnectState.NoServer
                     showStart(StartState(o.text.removePrefix("http://")))
                 }
                 .show()
@@ -166,7 +171,7 @@ class ConnectFlow(
         val old = store.origin
         if (old == o && store.hasToken()) {
             pending = null
-            state = State.Connected
+            state = ConnectState.Connected
             web.loadUrl(o.homeUrl())
             return
         }
@@ -193,7 +198,7 @@ class ConnectFlow(
                     .setMessage(sb.toString())
                     .setCancelable(false)
                     .setPositiveButton(R.string.change_server_continue) { _, _ ->
-                        state = State.Connecting
+                        state = ConnectState.Connecting
                         signOut.leave(old) {
                             store.origin = o
                             store.serverId = id
@@ -205,7 +210,7 @@ class ConnectFlow(
                         // A link cancels back to the page behind it; a typed address goes back to the start page, as before.
                         val fromLink = pending != null
                         pending = null
-                        state = if (store.hasToken()) State.Connected else State.NoServer
+                        state = if (store.hasToken()) ConnectState.Connected else ConnectState.NoServer
                         if (!fromLink) showStart(StartState(old.text.removePrefix("http://")))
                     }
                     .show()
@@ -239,7 +244,7 @@ class ConnectFlow(
     private fun beginConnect(o: Origin) {
         val challenge = newChallenge()
         connectLoading = true
-        state = if (store.hasToken()) State.Reconnecting else State.NeedsSignIn
+        state = if (store.hasToken()) ConnectState.Reconnecting else ConnectState.NeedsSignIn
         web.loadUrl(o.connectUrl(challenge))
     }
 
@@ -247,7 +252,7 @@ class ConnectFlow(
     private fun beginInvite(o: Origin, token: String) {
         connectLoading = true
         suppressAutoConnect = false
-        state = State.NeedsSignIn
+        state = ConnectState.NeedsSignIn
         web.loadUrl(o.inviteUrl(token))
     }
 
@@ -257,7 +262,7 @@ class ConnectFlow(
         pairToken = token
         connectLoading = true
         suppressAutoConnect = false
-        state = State.NeedsSignIn
+        state = ConnectState.NeedsSignIn
         web.loadUrl(o.pairUrl(token, challenge, Build.MODEL))
     }
 
@@ -328,7 +333,7 @@ class ConnectFlow(
         pairToken = null
         val o = store.origin ?: return
         val bearer = store.current()?.token
-        state = State.Connecting
+        state = ConnectState.Connecting
         io.execute {
             val r = api.swap(o, code, v, Build.MODEL, bearer)
             ui { swapped(o, r, bearer != null) }
@@ -347,7 +352,7 @@ class ConnectFlow(
                     Offline.wipe()
                 }
                 if (a.token != null) store.save(a.token!!, a.deviceId, a.userId) else store.saveIds(a.deviceId, a.userId)
-                state = State.Connected
+                state = ConnectState.Connected
                 clearHistoryNext = true
                 web.loadUrl(o.homeUrl())
             }
@@ -371,29 +376,21 @@ class ConnectFlow(
             web.clearHistory()
         }
         val o = store.origin ?: return
-        if (!o.matches(url)) return
-        val path = try { URI(url).rawPath ?: "" } catch (_: Exception) { return }
+        val path = o.pathOf(url) ?: return
         val held = store.current()
         if (signInPath(path)) connectLoading = false
-        if (path == "/login" && held != null && state != State.Reconnecting) {
-            io.execute {
-                when (api.me(o, held.token)) {
+        when (afterPageFinished(state, path, held != null, connectLoading, suppressAutoConnect)) {
+            PageStep.CheckMe -> io.execute {
+                when (api.me(o, held!!.token)) {
                     Me.Unauthorized -> ui { signOut.run(R.string.signed_out) }
-                    is Me.Ok -> ui { state = State.Reconnecting }
+                    is Me.Ok -> ui { state = ConnectState.Reconnecting }
                     Me.Unreachable -> {}
                 }
             }
-            return
+            PageStep.BeginConnect -> beginConnect(o)
+            PageStep.None -> {}
         }
-        if (state == State.Reconnecting && held != null && !connectLoading && path != "/login" && !path.startsWith("/app/connect")) {
-            beginConnect(o)
-            return
-        }
-        if (held == null && !suppressAutoConnect && !connectLoading && state != State.Connecting && !signInPath(path)) beginConnect(o)
     }
-
-    private fun signInPath(path: String): Boolean =
-        path == "/login" || path == "/setup" || path == "/welcome" || path.startsWith("/invite/") || path.startsWith("/pair/") || path.startsWith("/app/connect")
 
     private fun ui(block: () -> Unit) = activity.runOnUiThread(block)
 }

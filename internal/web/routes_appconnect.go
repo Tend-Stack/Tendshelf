@@ -14,7 +14,7 @@ import (
 // challenge; the answer is a same-origin 303 that the app's window takes and cancels, so the code
 // reaches no script, no history entry and no other app. These routes sit behind the sign-in gate and
 // take a browser session only: a device token is refused before it gets here (bearer.go). The window
-// mark ts_shell=android is not a credential; without it the page shows words and makes no code.
+// mark ts_shell=android or ts_shell=ios is not a credential; without it the page shows words and makes no code.
 
 // appDonePath is where the 303 sends the app's window.
 const appDonePath = "/app/connect/done"
@@ -39,7 +39,7 @@ func (s *server) appConnectNotInApp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) getAppConnect(w http.ResponseWriter, r *http.Request) {
-	if shellFrom(r) != "android" {
+	if !isAppShell(shellFrom(r)) {
 		s.appConnectNotInApp(w, r)
 		return
 	}
@@ -55,7 +55,7 @@ func (s *server) getAppConnect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) postAppConnect(w http.ResponseWriter, r *http.Request) {
-	if shellFrom(r) != "android" {
+	if !isAppShell(shellFrom(r)) {
 		s.appConnectNotInApp(w, r)
 		return
 	}
@@ -86,7 +86,7 @@ func (s *server) postAppConnect(w http.ResponseWriter, r *http.Request) {
 // getAppConnectDone is where the 303 lands if nothing took it. It never reads its query: the code in
 // it is for the app's window alone and nothing on this page may touch it.
 func (s *server) getAppConnectDone(w http.ResponseWriter, r *http.Request) {
-	if shellFrom(r) != "android" {
+	if !isAppShell(shellFrom(r)) {
 		s.appConnectNotInApp(w, r)
 		return
 	}

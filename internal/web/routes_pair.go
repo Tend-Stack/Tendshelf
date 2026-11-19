@@ -254,7 +254,7 @@ func (s *server) getPair(w http.ResponseWriter, r *http.Request) {
 		s.pairEnded(w, r)
 		return
 	}
-	if shellFrom(r) != "android" {
+	if !isAppShell(shellFrom(r)) {
 		v := pages.PairHandoverView{Title: pairHandoverTitle, Lead: pairHandoverOthers}
 		if androidBrowser(r) {
 			if r.URL.Query().Get("noapp") == "1" {
@@ -281,7 +281,7 @@ func (s *server) getPair(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) postPair(w http.ResponseWriter, r *http.Request) {
-	if shellFrom(r) != "android" {
+	if !isAppShell(shellFrom(r)) {
 		s.notInApp(w, r)
 		return
 	}
@@ -358,7 +358,7 @@ func (s *server) getPairWait(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) postPairFinish(w http.ResponseWriter, r *http.Request) {
-	if shellFrom(r) != "android" {
+	if !isAppShell(shellFrom(r)) {
 		s.notInApp(w, r)
 		return
 	}

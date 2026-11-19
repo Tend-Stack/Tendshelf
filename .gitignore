@@ -22,3 +22,8 @@ node_modules/
 
 # Agent worktrees (Claude Code); each is its own checkout
 /.claude/worktrees/
+
+# iPhone app (docs/ios.md): build output, the local signing file and per-user Xcode state
+/ios/build/
+/ios/Config/Signing.local.xcconfig
+xcuserdata/

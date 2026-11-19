@@ -87,7 +87,7 @@ class SleepClock {
         if (mode == SleepMode.OFF) SleepInfo.OFF else SleepInfo(mode, choice, left(positionMs, speed), fading)
 
     private fun left(positionMs: Long, speed: Double): Long =
-        if (mode == SleepMode.CHAPTER) (Math.max(0L, endMs - positionMs) / speed).toLong() else leftMs
+        if (mode == SleepMode.CHAPTER) (maxOf(0L, endMs - positionMs) / speed).toLong() else leftMs
 
     private fun stopFade() {
         fading = false

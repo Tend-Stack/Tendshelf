@@ -49,12 +49,12 @@ func (s *server) registerInstall(outer *http.ServeMux) {
 	outer.Handle("/manifest.webmanifest", s.manifestHandler())
 }
 
-// noWorkerInApp answers 404 to /sw.js inside the Android app's window (decision 0026, D10). The page
+// noWorkerInApp answers 404 to /sw.js inside a phone app's window (decision 0026, D10). The page
 // already leaves offline.js out there; this keeps a page that lost its script choice from
 // registering a worker anyway. Browsers and the desktop shell are not changed.
 func noWorkerInApp(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if shellFrom(r) == "android" {
+		if isAppShell(shellFrom(r)) {
 			http.NotFound(w, r)
 			return
 		}

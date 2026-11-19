@@ -15,6 +15,7 @@ import android.webkit.WebView
 import android.widget.FrameLayout
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
+import app.tendshelf.shared.ConnectState
 import app.tendshelf.shared.PageKey
 import app.tendshelf.shared.pageKeyFor
 import androidx.core.view.ViewCompat
@@ -227,13 +228,13 @@ class MainActivity : Activity() {
             PageKey.Prev -> { bridge.pageKey(false); true }
         }
 
-    private fun syncBridge(state: ConnectFlow.State) {
+    private fun syncBridge(state: ConnectState) {
         when (state) {
-            ConnectFlow.State.Connected -> {
+            ConnectState.Connected -> {
                 val origin = store.origin
                 if (bridgeEnabled && origin != null) bridge.attach(web, origin)
             }
-            ConnectFlow.State.NoServer -> bridge.detach()
+            ConnectState.NoServer -> bridge.detach()
             else -> {}
         }
         updateBack()

@@ -253,7 +253,7 @@ func TestA1ShellPage(t *testing.T) {
 
 func TestA1ServiceWorkerAbsentInTheApp(t *testing.T) {
 	a := newTestApp(t)
-	for mark, want := range map[string]int{"android": http.StatusNotFound, "desktop": http.StatusOK, "ios": http.StatusOK, "": http.StatusOK} {
+	for mark, want := range map[string]int{"android": http.StatusNotFound, "ios": http.StatusNotFound, "desktop": http.StatusOK, "": http.StatusOK} {
 		var cks []*http.Cookie
 		if mark != "" {
 			cks = append(cks, &http.Cookie{Name: shellCookie, Value: mark})

@@ -43,7 +43,7 @@ class BridgeProtocolTest {
             "héllo 1", "play\u007f", "‮play", "seek 5\u0000", "😀",
             "x".repeat(129), "seek " + "1".repeat(124),
         )
-        for (raw in bad) assertNull(parseBridge(raw), "should drop: ${raw.take(40).map { if (it.code < 32 || it.code > 126) "\\u%04x".format(it.code) else it.toString() }.joinToString("")}")
+        for (raw in bad) assertNull(parseBridge(raw), "should drop: ${raw.take(40).map { if (it.code < 32 || it.code > 126) "\\u" + it.code.toString(16).padStart(4, '0') else it.toString() }.joinToString("")}")
         assertNull(parseBridge(null))
     }
 
@@ -83,6 +83,17 @@ class BridgeProtocolTest {
         )
         assertTrue(encodeState(PlayerSnapshot("", 0, 0, false, false, false, 1e-9, 0, "")).contains("\"speed\":0.50"))
         assertTrue(encodeState(PlayerSnapshot("", 0, 0, false, false, false, Double.POSITIVE_INFINITY, 0, "")).contains("\"speed\":3.50"))
+    }
+
+    @Test
+    fun stateSpeedRounding() {
+        // Rounds half up on every platform (the clamped value is never negative).
+        for ((speed, text) in listOf(1.005 to "1.00", 1.025 to "1.02", 3.5 to "3.50", Double.NaN to "1.00", 1.5 to "1.50")) {
+            assertTrue(
+                encodeState(PlayerSnapshot("", 0, 0, false, false, false, speed, 0, "")).contains("\"speed\":$text"),
+                "speed $speed",
+            )
+        }
     }
 
     @Test

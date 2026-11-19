@@ -130,6 +130,57 @@ class NavigationTest {
     }
 
     @Test
+    fun bundledIosSiteRules() {
+        val ios = BundledSite.IOS
+        fun d(url: String, main: Boolean = true, fromBundled: Boolean = true) = decide(url, main, good, false, fromBundled, emptySet(), ios)
+        val b = "tsbundle://app"
+        assertEquals(Nav.Stay, d("$b/start"))
+        assertEquals(Nav.Connect("tendshelf.home:8095"), d("$b/connect?address=tendshelf.home%3A8095"))
+        assertEquals(Nav.Connect(""), d("$b/connect"))
+        assertEquals(Nav.Link("https://a.example/invite/X"), d("$b/link?link=https%3A%2F%2Fa.example%2Finvite%2FX"))
+        assertEquals(Nav.TogglePlay, d("$b/toggle"))
+        assertEquals(Nav.RemoveBook("x"), d("$b/remove?id=x"))
+        assertEquals(Nav.PlayBook("pe_abc"), d("$b/play?id=pe_abc"))
+        assertEquals(Nav.AutoShow("ps_1", true), d("$b/autoshow?id=ps_1&on=1"))
+        assertEquals(Nav.Block, d("$b/autoshow?id=ps_1&on=2"))
+        assertEquals(Nav.Block, d("$b/play?id=a%2Fb"))
+        assertEquals(Nav.Stay, d("TSBUNDLE://APP/start"), "case")
+        for (path in listOf("/connect?address=evil.example", "/remove?id=x", "/play?id=x", "/toggle", "/start", "/link?link=x")) {
+            assertEquals(Nav.Block, d(b + path, true, false), "from a server page: $path")
+            assertEquals(Nav.Block, d(b + path, false, true), "sub-frame: $path")
+        }
+        assertEquals(Nav.Block, d("tsbundle://evil/connect"))
+        assertEquals(Nav.Block, d("tsbundle://app:1/connect"))
+        assertEquals(Nav.Block, d("tsbundle://u@app/connect"))
+        assertEquals(Nav.Block, d("tsbundle://app\\@evil/connect"))
+        assertEquals(Nav.Block, d("tsbundle://app /connect"))
+        // On the iPhone the Android host is just another site, and the iPhone scheme means nothing to Android.
+        assertEquals(Nav.External, d("https://$BUNDLED_HOST/connect"))
+        assertEquals(Nav.Block, decide("tsbundle://app/connect", true, good, false, true))
+        assertEquals(Nav.Stay, d("https://good.example/books"))
+        assertEquals(Nav.TakeCode("XYZ"), decide("https://good.example/app/connect/done?code=XYZ", true, good, true, false, emptySet(), ios))
+    }
+
+    @Test
+    fun urlsForBothShells() {
+        val o = Origin.parse("https://a.example:8443")!!
+        for (shell in AppShell.entries) {
+            val w = shell.word
+            val p = "https://a.example:8443/?shell=$w&next="
+            assertEquals(p + "/", o.homeUrl(shell))
+            assertEquals(p + "%2Fbooks%2Fb1", o.bookUrl("b1", shell))
+            assertEquals(p + "%2Fpodcasts%2Fepisodes%2Fe1", o.episodeUrl("e1", shell))
+            assertEquals(p + "%2Fradio", o.radioUrl(shell))
+            assertEquals(p + "%2Fapp%2Fconnect%3Fchallenge%3Dabc", o.connectUrl("abc", shell))
+            assertEquals(p + "%2Finvite%2FTOK", o.inviteUrl("TOK", shell))
+            assertEquals(p + "%2Fpair%2FTOK%3Fchallenge%3DCH-_%26name%3DPixel%2B7", o.pairUrl("TOK", "CH-_", "Pixel 7", shell))
+            assertEquals(p + "/", ApiPaths(o.text).shellUrlFor(shell))
+        }
+        assertEquals("https://a.example:8443/?shell=android&next=/", ApiPaths(o.text).shellUrl)
+        assertEquals("https://a.example:8443/?shell=ios&next=/", o.homeUrl(AppShell.IOS))
+    }
+
+    @Test
     fun inviteAndPairUrls() {
         val o = Origin.parse("https://a.example:8443")!!
         assertEquals("https://a.example:8443/?shell=android&next=%2Finvite%2FTOK", o.inviteUrl("TOK"))

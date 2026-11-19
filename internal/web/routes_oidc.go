@@ -151,9 +151,9 @@ func (s *server) getOIDCStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.requestOrigin(r) != cfg.ServerAddress {
-		// The state cookie and the session must land on the origin the provider returns to. The Android
+		// The state cookie and the session must land on the origin the provider returns to. The phone app
 		// window keeps its own origin (the app's /app/connect/done), so it says where to connect instead.
-		if shellFrom(r) == "android" || r.URL.Query().Get("ro") == "1" {
+		if isAppShell(shellFrom(r)) || r.URL.Query().Get("ro") == "1" {
 			v := s.ssoLoginView(r, next)
 			v.FormError = fmt.Sprintf(ssoWrongAddr, cfg.Name, cfg.ServerAddress)
 			s.frame(w, r, http.StatusOK, "Sign in", pages.Login(v))
@@ -311,7 +311,7 @@ func (s *server) getMeSSOLink(w http.ResponseWriter, r *http.Request) {
 		s.errorPage(w, r, http.StatusNotFound)
 		return
 	}
-	if s.requestOrigin(r) != cfg.ServerAddress && shellFrom(r) != "android" && r.URL.Query().Get("ro") != "1" {
+	if s.requestOrigin(r) != cfg.ServerAddress && !isAppShell(shellFrom(r)) && r.URL.Query().Get("ro") != "1" {
 		http.Redirect(w, r, cfg.ServerAddress+"/me/sso/link?ro=1", http.StatusSeeOther)
 		return
 	}

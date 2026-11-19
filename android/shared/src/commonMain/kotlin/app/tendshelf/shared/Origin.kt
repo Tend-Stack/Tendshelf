@@ -25,27 +25,27 @@ data class Origin(val scheme: String, val host: String, val port: Int?) {
 
     fun healthUrl(): String = "$text/healthz"
     fun meUrl(): String = "$text/api/v1/me"
-    fun homeUrl(): String = "$text/?shell=android&next=/"
+    fun homeUrl(shell: AppShell = AppShell.ANDROID): String = "$text/?shell=${shell.word}&next=/"
 
     /** A book's page (the widget's tap). [bookId] must pass [validId]; the caller checks. */
-    fun bookUrl(bookId: String): String = "$text/?shell=android&next=%2Fbooks%2F$bookId"
+    fun bookUrl(bookId: String, shell: AppShell = AppShell.ANDROID): String = "$text/?shell=${shell.word}&next=%2Fbooks%2F$bookId"
 
     /** An episode's page (the widget's tap when an episode plays). [episodeId] must pass [validId]; the caller checks. */
-    fun episodeUrl(episodeId: String): String = "$text/?shell=android&next=%2Fpodcasts%2Fepisodes%2F$episodeId"
+    fun episodeUrl(episodeId: String, shell: AppShell = AppShell.ANDROID): String = "$text/?shell=${shell.word}&next=%2Fpodcasts%2Fepisodes%2F$episodeId"
 
     /** The radio page (the widget's tap when a station plays): a station has no page of its own, the list is where it is. */
-    fun radioUrl(): String = "$text/?shell=android&next=%2Fradio"
+    fun radioUrl(shell: AppShell = AppShell.ANDROID): String = "$text/?shell=${shell.word}&next=%2Fradio"
 
     /** The page that signs in and then asks for a code, as A1's flow says: next is the escaped /app/connect path. */
-    fun connectUrl(challenge: String): String = "$text/?shell=android&next=%2Fapp%2Fconnect%3Fchallenge%3D$challenge"
+    fun connectUrl(challenge: String, shell: AppShell = AppShell.ANDROID): String = "$text/?shell=${shell.word}&next=%2Fapp%2Fconnect%3Fchallenge%3D$challenge"
 
     /** The sign-in page that ends at an invitation (A1 flow in decision 0028): `next` is the escaped /invite path. */
-    fun inviteUrl(token: String): String = "$text/?shell=android&next=%2Finvite%2F$token"
+    fun inviteUrl(token: String, shell: AppShell = AppShell.ANDROID): String = "$text/?shell=${shell.word}&next=%2Finvite%2F$token"
 
     /** The same for a pairing: `next` holds /pair/TOKEN with the challenge and this phone's name, each escaped. */
-    fun pairUrl(token: String, challenge: String, name: String): String {
+    fun pairUrl(token: String, challenge: String, name: String, shell: AppShell = AppShell.ANDROID): String {
         val inner = "/pair/$token?challenge=" + formUrlEncode(challenge) + "&name=" + formUrlEncode(name)
-        return "$text/?shell=android&next=" + formUrlEncode(inner)
+        return "$text/?shell=${shell.word}&next=" + formUrlEncode(inner)
     }
 
     companion object {
