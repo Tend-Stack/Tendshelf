@@ -23,9 +23,9 @@ type PlayerMsgs struct {
 	// Desktop adds the window's rows to the keyboard sheet, in the desktop app only (decision 0023).
 	Desktop bool
 
-	// Android is the Android app's window, where the app plays the book. NativeFailed is its one extra word and is
+	// App is a phone app's window (Android or iPhone), where the app plays the book. NativeFailed is its one extra word and is
 	// rendered only there, so a browser's page is byte-identical (A1, invariant 8).
-	Android          bool
+	App              bool
 	NativeFailed     string
 	NativeBackground string
 	// The app's other reasons, by error kind (book gone, signed out, busy station, a different server).
@@ -81,7 +81,7 @@ type PlayerMsgs struct {
 // inShell returns the words for the shell the page is in: the desktop app's sheet has window rows.
 func (m PlayerMsgs) inShell(shell string) PlayerMsgs {
 	m.Desktop = shell == "desktop"
-	m.Android = shell == "android"
+	m.App = IsAppShell(shell)
 	return m
 }
 
@@ -93,7 +93,7 @@ func fillN(s string, n int) string {
 // Attrs are the data-ts-msg-* attributes of #player, one per string player.js uses.
 func (m PlayerMsgs) Attrs() templ.Attributes {
 	attrs := m.attrs()
-	if m.Android {
+	if m.App {
 		attrs["data-ts-msg-native-failed"] = m.NativeFailed
 		attrs["data-ts-msg-native-background"] = m.NativeBackground
 		attrs["data-ts-msg-native-gone"] = m.NativeGone

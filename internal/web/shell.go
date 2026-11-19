@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
+	"github.com/Tend-Stack/tendshelf/internal/web/components"
 )
 
 // shellCookie marks a browser window that is the desktop (or a phone) shell around Tendshelf, not a
@@ -36,7 +37,7 @@ func shellFrom(r *http.Request) string {
 // (/login/oidc, /me/sso/link) and the missing service worker (/sw.js answers 404). The desktop shell
 // and a browser are not phone apps. Every other check of one named shell stays as written.
 func isAppShell(shell string) bool {
-	return shell == "android" || shell == "ios"
+	return components.IsAppShell(shell)
 }
 
 // shellLink handles GET /?shell=<name>&next=<path>: the one link a shell opens to mark its window.

@@ -5,6 +5,10 @@ import androidx.media3.common.ParserException
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
+import app.tendshelf.shared.STREAM_MAX_BUSY_TRIES
+import app.tendshelf.shared.STREAM_MAX_IO_TRIES
+import app.tendshelf.shared.STREAM_RETRY_MS
+import app.tendshelf.shared.streamRetryDelayMs
 import java.io.IOException
 
 /**
@@ -17,21 +21,20 @@ class RetryPolicy : DefaultLoadErrorHandlingPolicy() {
 
     override fun getRetryDelayMsFor(info: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
         val e = info.exception
+        // The rule is shared with the iPhone app; a 503, a 401 and a lost network follow it, the rest is ExoPlayer's.
         if (e is HttpDataSource.InvalidResponseCodeException) {
-            return when (e.responseCode) {
-                503 -> if (info.errorCount <= MAX_BUSY_TRIES) RETRY_MS else C.TIME_UNSET
-                401 -> C.TIME_UNSET
-                else -> super.getRetryDelayMsFor(info)
-            }
+            return if (e.responseCode == 503 || e.responseCode == 401) delay(e.responseCode, info.errorCount) else super.getRetryDelayMsFor(info)
         }
         if (e is ParserException) return super.getRetryDelayMsFor(info)
-        if (e is IOException) return if (info.errorCount <= MAX_IO_TRIES) RETRY_MS else C.TIME_UNSET
+        if (e is IOException) return delay(0, info.errorCount)
         return super.getRetryDelayMsFor(info)
     }
 
+    private fun delay(status: Int, errorCount: Int): Long = streamRetryDelayMs(status, errorCount) ?: C.TIME_UNSET
+
     companion object {
-        const val RETRY_MS = 5_000L
-        const val MAX_BUSY_TRIES = 120
-        const val MAX_IO_TRIES = 24
+        const val RETRY_MS = STREAM_RETRY_MS
+        const val MAX_BUSY_TRIES = STREAM_MAX_BUSY_TRIES
+        const val MAX_IO_TRIES = STREAM_MAX_IO_TRIES
     }
 }

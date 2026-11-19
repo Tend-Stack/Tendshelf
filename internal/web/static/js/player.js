@@ -6,8 +6,8 @@
 // properties only through style.setProperty. Every word shown comes from server-rendered
 // data-ts-msg-* attributes.
 
-// In the Android app the app plays the book and this page is its remote control (native-audio.js).
-const NATIVE = document.documentElement.dataset.shell === "android" && !!window.tsNative && !document.body.dataset.tsLink;
+// In a phone app (data-shell android or ios) the app plays the book and this page is its remote control (native-audio.js).
+const NATIVE = ["android", "ios"].includes(document.documentElement.dataset.shell) && !!window.tsNative && !document.body.dataset.tsLink;
 const audio = NATIVE ? await nativeAudio() : document.getElementById("audio");
 const slot = document.getElementById("player");
 

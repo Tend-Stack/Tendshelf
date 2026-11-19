@@ -129,3 +129,7 @@ a WidgetKit widget, device read aloud, in-app QR scanning, the privacy manifest,
 - Android changes only by moves (connect rules, health and swap answers into `shared`) and default parameters; its
   behaviour and its tests stay the same.
 - The Mac needs Xcode's first-launch components installed once (`xcodebuild -checkFirstLaunchStatus` exits 69 today).
+
+## Addendum 2026-11-19 (I2)
+- Skip silence and the next-book download switch stay Android-only: AVFoundation has no silence skipping, and downloads
+  are I3. The native scripts loaded for `ios` are `native-audio.js` and `native-feel.js`.

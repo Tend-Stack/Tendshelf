@@ -10,8 +10,7 @@ import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
-import app.tendshelf.shared.Ask
-import app.tendshelf.shared.ERROR_CODES
+import app.tendshelf.shared.PushDiff
 import app.tendshelf.shared.BridgeMessage
 import app.tendshelf.shared.ConnectState
 import app.tendshelf.shared.Origin
@@ -20,14 +19,8 @@ import app.tendshelf.shared.encodePageKey
 import app.tendshelf.shared.encodeRoom
 import app.tendshelf.shared.PlayerSnapshot
 import app.tendshelf.shared.TokenBucket
-import app.tendshelf.shared.encodeAsk
 import app.tendshelf.shared.encodeDl
 import app.tendshelf.shared.encodeBack
-import app.tendshelf.shared.encodeError
-import app.tendshelf.shared.SleepInfo
-import app.tendshelf.shared.encodeRewound
-import app.tendshelf.shared.encodeSleep
-import app.tendshelf.shared.encodeState
 import app.tendshelf.shared.parseBridge
 
 /**
@@ -77,10 +70,7 @@ class Bridge(
     private var started = false
     private var bucket = TokenBucket(RATE, SystemClock.uptimeMillis())
     private var dropped = 0
-    private var lastError = ""
-    private var lastAsk: Ask? = null
-    private var lastRewoundSeq = UNSET
-    private var lastSleepOn = false
+    private val diff = PushDiff()
     private var pendingBack: (() -> Unit)? = null
 
     /** True when the page can be asked to go back (it holds the object and the person is connected). */
@@ -144,7 +134,7 @@ class Bridge(
         started = false
         feel.front(false)?.let(onKeepScreenOn)
         speech.stop() // speech runs while the app is in front; the page hears "stopped" and shows Paused (decision 0032)
-        lastRewoundSeq = UNSET // a rewind heard with the screen off is not announced later
+        diff.hidden() // a rewind heard with the screen off is not announced later
         main.removeCallbacks(ticker)
     }
 
@@ -176,8 +166,7 @@ class Bridge(
             BridgeMessage.Hello -> {
                 proxy = reply
                 // A new page knows nothing: it gets the open question again, and no old rewind.
-                lastAsk = null
-                lastRewoundSeq = UNSET
+                diff.hello()
                 pushState()
             }
             is BridgeMessage.Start -> r?.start(msg.bookId, msg.atMs)
@@ -235,22 +224,7 @@ class Bridge(
         if (!started) return
         val p = proxy ?: return
         if (flow() != ConnectState.Connected) return
-        send(p, encodeState(s))
-        // Errors cross as one of two fixed codes; `signedOut` does not (sign-out replaces the page).
-        if (s.error != lastError) {
-            lastError = s.error
-            if (s.error in ERROR_CODES) send(p, encodeError(s.error))
-        }
-        // The sleep timer: with every push while it runs, and once more when it turns off.
-        if (s.sleep != SleepInfo.OFF || lastSleepOn) send(p, encodeSleep(s.sleep))
-        lastSleepOn = s.sleep != SleepInfo.OFF
-        if (s.ask != lastAsk) {
-            // Only the changes cross: a question opens the toast, none closes it.
-            if (s.ask != null || lastAsk != null) send(p, encodeAsk(s.ask))
-            lastAsk = s.ask
-        }
-        if (lastRewoundSeq != UNSET && s.rewoundSeq != lastRewoundSeq && s.rewoundS > 0) send(p, encodeRewound(s.rewoundS))
-        lastRewoundSeq = s.rewoundSeq
+        for (m in diff.messages(s)) send(p, m)
         tick()
     }
 
@@ -303,7 +277,6 @@ class Bridge(
         const val OBJECT = "tsNative"
         private const val TAG = "Tendshelf"
         private const val RATE = 30
-        private const val UNSET = -1
         private const val BACK_WAIT_MS = 150L
     }
 }

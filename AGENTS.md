@@ -37,8 +37,8 @@ was reused, extended or replaced.
 - **HTMX** is vendored as one static file (no CDN). Plain JavaScript is allowed only in
   `internal/web/static/js/` as ES modules loaded directly by the browser: the audio player, the
   service worker, offline storage, the book uploader (`upload.js`, loaded only on the Add books page,
-  decision 0015) and small progressive enhancements. the read-aloud strip (`reader-aloud.js`, loaded on its first use). No framework, no transpiling. `native-audio.js` is loaded only in the Android shell
-  (`data-shell="android"`).
+  decision 0015) and small progressive enhancements. the read-aloud strip (`reader-aloud.js`, loaded on its first use). No framework, no transpiling. The `native-*.js` files are loaded only in a phone app's window (`data-shell` `android` or `ios`),
+  each only for a shell that implements its bridge words.
 - **CSS** is hand-written in `internal/web/static/css/` with custom properties for design tokens.
 - **SQLite** via the pure-Go driver, WAL mode, one database file in the data directory.
 - **Wails v3** for desktop, in a separate Go module under `desktop/` so the server binary never links

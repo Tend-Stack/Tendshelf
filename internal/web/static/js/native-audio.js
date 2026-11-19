@@ -1,6 +1,6 @@
-// native-audio.js is loaded only inside the Tendshelf Android app's window (data-shell="android").
+// native-audio.js is loaded only inside a Tendshelf phone app's window (data-shell android or ios).
 //
-// The app plays the book itself, in a foreground service, so sound survives a frozen page and a locked
+// The app plays the book itself (on Android in a foreground service, on the iPhone through AVFoundation), so sound survives a frozen page and a locked
 // screen. This file lets player.js treat that sound like an audio element: it builds window.tsNativeAudio,
 // an object with the parts of the media element API that player.js uses, and the app's pushed state becomes
 // the element's events. The page draws what the app says; it never saves a place and never reads a token.
@@ -13,7 +13,7 @@
 
 const native = window.tsNative;
 
-if (native && document.documentElement.dataset.shell === "android" && !document.body.dataset.tsLink) {
+if (native && ["android", "ios"].includes(document.documentElement.dataset.shell) && !document.body.dataset.tsLink) {
   build(native);
 }
 

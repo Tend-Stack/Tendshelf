@@ -9,6 +9,9 @@ import android.util.Log
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import app.tendshelf.shared.Backoff
+import app.tendshelf.shared.ListenedClock
+import app.tendshelf.shared.SaveCadence
 import app.tendshelf.shared.isStationId
 import app.tendshelf.shared.Lost
 import app.tendshelf.shared.Outbox
@@ -41,7 +44,7 @@ class ProgressWriter(
     private val cm = context.getSystemService(ConnectivityManager::class.java)
 
     @Volatile private var device = prefs.getString("device", "") ?: ""
-    @Volatile private var backoffMs = FIRST_BACKOFF_MS
+    private val backoff = Backoff()
 
     /** The book whose question is open: its saves are held, not sent. Set on the main thread. */
     @Volatile var heldBook: String? = null
@@ -52,17 +55,14 @@ class ProgressWriter(
     /** The server refused the token (401). The rows stay; the person is signed out elsewhere. */
     var onSignedOut: (() -> Unit)? = null
 
-    private var playingSince = 0L
-    private var heardMs = 0L
-    private var lastSaveAt = 0L
-    private var lastSavedPos = -1L
-    private var lastSavedBook = ""
+    private val listened = ListenedClock()
+    private val cadence = SaveCadence()
 
     private val afterSeek = Runnable { record("seek") }
 
     private val network = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            backoffMs = FIRST_BACKOFF_MS
+            backoff.reset()
             flush()
         }
     }
@@ -72,10 +72,11 @@ class ProgressWriter(
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 val now = SystemClock.elapsedRealtime()
                 if (isPlaying) {
-                    playingSince = now
-                    lastSaveAt = now
+                    listened.playing(now)
+                    cadence.playing(now)
                 } else {
-                    drainListened()
+                    // The stretch before the pause counts: record("pause") below drains it.
+                    listened.stopped(now)
                     record("pause")
                 }
             }
@@ -100,29 +101,15 @@ class ProgressWriter(
 
     /** Listening time since the last save, as the page's `heardMs`: wall time while playing. */
     fun drainListened(): Long {
-        val now = SystemClock.elapsedRealtime()
-        if (playingSince != 0L) {
-            heardMs += now - playingSince
-            playingSince = if (exo.isPlaying) now else 0L
-        }
-        val out = heardMs
-        heardMs = 0
-        return out
+        return listened.drain(SystemClock.elapsedRealtime(), exo.isPlaying)
     }
 
     /** Called about twice a second while playing: every 10 s the place goes to disk, if it moved at least a second. */
     fun onTick(bookId: String) {
         val now = SystemClock.elapsedRealtime()
-        if (now - lastSaveAt < TICK_MS) return
-        if (unsaved != null) {
-            record("retry") // the disk refused the last place: try again with the current one
-            return
-        }
-        if (bookId == lastSavedBook && kotlin.math.abs(exo.currentPosition - lastSavedPos) < 1_000) {
-            lastSaveAt = now
-            return
-        }
-        record("tick")
+        if (!cadence.due(now, bookId, exo.currentPosition, retry = unsaved != null)) return
+        // The disk refused the last place: try again with the current one.
+        record(if (unsaved != null) "retry" else "tick")
     }
 
     /** Chapter change, task removal, destroy: save now. */
@@ -158,24 +145,22 @@ class ProgressWriter(
         val conn = connections().current() ?: return // no sign-in: nothing is saved under nobody's token
         val pos = exo.currentPosition
         val speed = exo.playbackParameters.speed.toDouble()
-        val listened = drainListened()
+        val heard = drainListened()
         val hold = heldBook == id
-        lastSaveAt = SystemClock.elapsedRealtime()
-        lastSavedPos = pos
-        lastSavedBook = id
+        cadence.saved(SystemClock.elapsedRealtime(), id, pos)
         onDisk {
             try {
                 adopt(conn)
                 // A place that could not be written earlier is older than this one; its listening time is kept.
                 val before = unsaved?.takeIf { it.bookId == id }?.listened ?: 0L
-                outbox.tick(id, pos, speed, listened + before, hold)
+                outbox.tick(id, pos, speed, heard + before, hold)
                 Offline.store.notePlace(id, pos, System.currentTimeMillis()) // a downloaded book keeps its place beside the row (D6)
                 unsaved = null
                 Log.d(TAG, "outbox: saved ($why)")
             } catch (e: Exception) {
                 // A full disk or a locked database: playing goes on, the place stays in memory and the next tick writes it again.
                 val before = unsaved?.takeIf { it.bookId == id }?.listened ?: 0L
-                unsaved = Unsaved(id, listened + before)
+                unsaved = Unsaved(id, heard + before)
                 Log.w(TAG, "outbox: place not written (${e.javaClass.simpleName}), kept in memory")
                 return@onDisk
             }
@@ -254,7 +239,7 @@ class ProgressWriter(
             adopt(conn)
             val batch = outbox.nextBatch()
             if (batch.isEmpty()) {
-                backoffMs = FIRST_BACKOFF_MS
+                backoff.reset()
                 return true
             }
             val results = try {
@@ -286,8 +271,7 @@ class ProgressWriter(
     }
 
     private fun retryLater() {
-        retryIn(backoffMs)
-        backoffMs = (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
+        retryIn(backoff.next())
     }
 
     private fun retryIn(ms: Long) {
@@ -327,10 +311,7 @@ class ProgressWriter(
 
     companion object {
         private const val TAG = "Tendshelf"
-        private const val TICK_MS = 10_000L
         private const val SEEK_SETTLE_MS = 2_000L
-        private const val FIRST_BACKOFF_MS = 5_000L
-        private const val MAX_BACKOFF_MS = 300_000L
 
         /**
          * Activity start (D10): rows left by a killed process go out now, on a worker thread, without a service. A

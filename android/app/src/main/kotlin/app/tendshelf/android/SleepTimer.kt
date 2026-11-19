@@ -9,17 +9,17 @@ import android.os.Handler
 import android.os.SystemClock
 import android.util.Log
 import androidx.media3.exoplayer.ExoPlayer
-import app.tendshelf.shared.Chapter
 import app.tendshelf.shared.NightSettings
 import app.tendshelf.shared.ShakeDetector
 import app.tendshelf.shared.SleepClock
 import app.tendshelf.shared.SleepInfo
 import app.tendshelf.shared.SleepMode
 import app.tendshelf.shared.SleepStep
-import app.tendshelf.shared.chapterEndFor
 import app.tendshelf.shared.inNightWindow
 import app.tendshelf.shared.nightWindowEndMs
 import app.tendshelf.shared.shouldStartNightSleep
+import app.tendshelf.shared.sleepChapterEnd
+import app.tendshelf.shared.sleepRestAt
 import java.util.Calendar
 
 /**
@@ -179,7 +179,7 @@ class SleepTimer(
                 val duration = exo.duration
                 s.restAtMs?.takeIf { !player.isLive }?.let { rest ->
                     // The last chapter ends at the end of the book; resting 1 s short keeps the queue from popping (D6).
-                    exo.seekTo(if (duration > 0) minOf(rest, duration - 1000).coerceAtLeast(0) else rest)
+                    exo.seekTo(sleepRestAt(rest, duration))
                 }
                 settle()
             }
@@ -193,22 +193,8 @@ class SleepTimer(
         publishNow()
     }
 
-    /** A book with no chapters is one chapter (as the page treats it), so its end is the end of the book. */
     private fun chapterEnd(): Long? {
-        if (player.isLive) return null // a station has no end of a chapter or an episode (R3)
-        if (wholeEpisode) {
-            val duration = exo.duration
-            return if (duration > 1000) duration - 1000 else null
-        }
-        val list = player.chapterList.ifEmpty {
-            val duration = exo.duration
-            if (duration > 0) listOf(Chapter(0, 0, duration, "")) else emptyList()
-        }
-        val end = chapterEndFor(list, exo.currentPosition) ?: return null
-        // The last chapter ends where the book does. Stop 1 s short, so the player never reaches its end and the queue
-        // is not asked (D6).
-        val duration = exo.duration
-        return if (duration > 1000) minOf(end, duration - 1000) else end
+        return sleepChapterEnd(player.isLive, wholeEpisode, player.chapterList, exo.currentPosition, exo.duration)
     }
 
     private fun speed() = exo.playbackParameters.speed.toDouble().coerceAtLeast(0.1)

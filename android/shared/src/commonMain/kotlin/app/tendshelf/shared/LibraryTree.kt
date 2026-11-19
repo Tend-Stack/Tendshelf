@@ -112,12 +112,13 @@ fun allowedCommands(trusted: Boolean, auto: Boolean, own: Boolean): Allowed {
 /** The rate commands a controller may use: only this app's own page sets a speed directly; the car has its button. */
 fun mayRate(own: Boolean): Boolean = own
 
-private val SpeedSteps = listOf(1.0, 1.25, 1.5, 1.75, 2.0, 0.75)
+/** The speeds a lock screen or notification offers, in the order the speed button cycles. */
+val SPEED_STEPS = listOf(1.0, 1.25, 1.5, 1.75, 2.0, 0.75)
 
 /** The car's speed button (D7): 1.0, 1.25, 1.5, 1.75, 2.0, 0.75, then round again. Any other speed goes to 1.0. */
 fun speedCycle(current: Double): Double {
-    val at = SpeedSteps.indexOfFirst { kotlin.math.abs(it - current) < 0.01 }
-    return if (at < 0) 1.0 else SpeedSteps[(at + 1) % SpeedSteps.size]
+    val at = SPEED_STEPS.indexOfFirst { kotlin.math.abs(it - current) < 0.01 }
+    return if (at < 0) 1.0 else SPEED_STEPS[(at + 1) % SPEED_STEPS.size]
 }
 
 /** "1.25x" the way the button says it; a whole speed keeps one decimal ("1.0x"). */

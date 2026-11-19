@@ -4,9 +4,8 @@ import android.util.Log
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import app.tendshelf.shared.BREAK_MS
 import app.tendshelf.shared.PlayerSettings
-import app.tendshelf.shared.rewindMs
+import app.tendshelf.shared.ResumeClock
 
 /**
  * Smart rewind and the check for a place elsewhere, on every start of sound after a break (A5, D6). It listens
@@ -26,8 +25,7 @@ class Resume(
     /** Called when the break was a minute or more and the book is the same: look at the server's place. */
     var checkRemote: ((String) -> Unit)? = null
 
-    private var idleAt: Long? = null
-    private var fresh = false
+    private val clock = ResumeClock(now)
 
     init {
         exo.addListener(object : Player.Listener {
@@ -35,7 +33,7 @@ class Resume(
                 if (!isPlaying) {
                     // Buffering with the play button on is not a pause.
                     val buffering = exo.playWhenReady && exo.playbackState == Player.STATE_BUFFERING
-                    if (!buffering && book().isNotEmpty() && idleAt == null) idleAt = now()
+                    clock.stopped(book().isNotEmpty(), buffering)
                 } else {
                     resumed()
                 }
@@ -45,28 +43,22 @@ class Resume(
 
     /** A book was loaded. [placeWrittenAt] is when its stored place was saved; null with [atGiven] or no place. */
     fun bookLoaded(placeWrittenAt: Long?, atGiven: Boolean) {
-        idleAt = if (atGiven) null else placeWrittenAt
-        fresh = true
+        clock.bookLoaded(placeWrittenAt, atGiven)
     }
 
     fun clear() {
-        idleAt = null
+        clock.clear()
     }
 
     private fun resumed() {
-        val wasFresh = fresh
-        fresh = false // the first sound after a load is the start, whatever came before it
-        val since = idleAt ?: return
-        idleAt = null
-        val away = (now() - since).coerceAtLeast(0)
         val s = settings()
-        val step = rewindMs(away, s.rewindSteps, s.autoRewind)
-        if (step > 0) {
-            exo.seekTo((exo.currentPosition - step).coerceAtLeast(0))
-            Log.i(TAG, "rewound ${step / 1000} s after ${away / 1000} s away")
-            onRewound?.invoke((step / 1000).toInt())
+        val step = clock.resumed(s.rewindSteps, s.autoRewind) ?: return
+        if (step.rewindMs > 0) {
+            exo.seekTo((exo.currentPosition - step.rewindMs).coerceAtLeast(0))
+            Log.i(TAG, "rewound ${step.rewindMs / 1000} s")
+            onRewound?.invoke((step.rewindMs / 1000).toInt())
         }
-        if (!wasFresh && away >= BREAK_MS) checkRemote?.invoke(book())
+        if (step.checkRemote) checkRemote?.invoke(book())
     }
 
     companion object {

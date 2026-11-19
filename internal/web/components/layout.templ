@@ -241,11 +241,8 @@ templ Head(p Page, extraCSS ...string) {
 			<script type="module" src={ p.Assets.URL("js/desktop.js") }></script>
 			<script type="module" src={ p.Assets.URL("js/desktop-shell.js") }></script>
 		}
-		if p.Shell == "android" {
-			<script type="module" src={ p.Assets.URL("js/native-audio.js") }></script>
-			<script type="module" src={ p.Assets.URL("js/native-downloads.js") }></script>
-			<script type="module" src={ p.Assets.URL("js/native-speech.js") }></script>
-			<script type="module" src={ p.Assets.URL("js/native-feel.js") }></script>
+		for _, name := range NativeScripts(p.Shell) {
+			<script type="module" src={ p.Assets.URL("js/" + name) }></script>
 		}
 	</head>
 }

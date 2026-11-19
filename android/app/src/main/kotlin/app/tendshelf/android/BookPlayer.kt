@@ -13,8 +13,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import app.tendshelf.shared.Chapter
 import app.tendshelf.shared.PlayerSettings
 import app.tendshelf.shared.Position
-import app.tendshelf.shared.liveSubtitle
 import app.tendshelf.shared.nextChapterStart
+import app.tendshelf.shared.nowLines
 import app.tendshelf.shared.parseNode
 import app.tendshelf.shared.playableId
 import app.tendshelf.shared.previousChapterStart
@@ -197,22 +197,15 @@ class BookPlayer(private val exo: ExoPlayer) : ForwardingPlayer(exo) {
     }
 
     override fun getMediaMetadata(): MediaMetadata {
-        if (live) {
-            // A radio station (R3): its name is the title and the song on air the line beneath, as a radio app shows it.
-            val line = liveSubtitle(liveNow, liveWord)
-            val b = MediaMetadata.Builder().setTitle(title).setSubtitle(line).setArtist(line).setAlbumTitle(title)
-                .setIsPlayable(true).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
-            art?.let { b.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
-            return b.build()
-        }
-        val chapter = Position.chapterAt(chapters, exo.currentPosition)
-        val episode = episodeTitle
+        val lines = nowLines(live, title, author, episodeTitle, chapters, if (live) 0L else exo.currentPosition, liveNow, liveWord)
         val b = MediaMetadata.Builder()
-            .setTitle(episode ?: chapter?.title ?: title)
-            .setAlbumTitle(title)
-            .setArtist(if (episode != null) title else author)
+            .setTitle(lines.title)
+            .setAlbumTitle(lines.album)
+            .setArtist(lines.artist)
             .setIsPlayable(true)
-        if (episode != null && chapter != null) b.setSubtitle(chapter.title)
+        lines.subtitle?.let { b.setSubtitle(it) }
+        // A radio station (R3) shows as one.
+        if (live) b.setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
         art?.let { b.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
         return b.build()
     }

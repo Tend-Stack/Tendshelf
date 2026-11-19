@@ -1,6 +1,7 @@
-// native-feel.js is loaded only inside the Tendshelf Android app's window (data-shell="android").
+// native-feel.js is loaded only inside a Tendshelf phone app's window (data-shell android or ios).
 //
-// Android feel (decision 0033). The words sent to the app, all fixed, the second part exactly 0 or 1:
+// Phone-app feel (decision 0033). On the iPhone only "wake" is acted on; "pagekeys", "quiet" and "autodl" are ignored
+// there (no volume-key API; no silence skipping; downloads come with I3). The words sent to the app, all fixed, the second part exactly 0 or 1:
 //   "wake 1" / "wake 0"         the page holds / lets go of the screen (the app sets FLAG_KEEP_SCREEN_ON)
 //   "pagekeys 1" / "pagekeys 0" the reader is in front with "Turn pages with the volume buttons" on / not
 //   "quiet 1" / "quiet 0"       the Skip silence switch in Settings changed
@@ -12,7 +13,7 @@
 
 const native = window.tsNative;
 
-if (native && document.documentElement.dataset.shell === "android" && !document.body.dataset.tsLink) {
+if (native && ["android", "ios"].includes(document.documentElement.dataset.shell) && !document.body.dataset.tsLink) {
   start(native);
 }
 
