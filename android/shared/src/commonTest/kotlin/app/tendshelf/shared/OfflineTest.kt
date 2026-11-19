@@ -251,4 +251,74 @@ class OfflineTest {
         for (again in listOf(0, 301, 400, 401, 403, 429, 500, 503)) assertTrue(!queueDeleteDone(again), "status=$again")
         assertEquals("http://10.0.2.2:8103/api/v1/queue/b1", paths.queueEntryUrl("b1"))
     }
+
+    @Test
+    fun bookStateFold() {
+        val d = FileStep.DONE
+        val q = FileStep.QUEUED
+        val r = FileStep.RUNNING
+        val x = FileStep.BROKEN
+        val f = FileStep.FAILED
+        val any = OfflineState.QUEUED
+        assertNull(bookStateOf(emptyList(), 1, any, false))
+        assertEquals(OfflineState.FAILED, bookStateOf(listOf(d, f), 2, any, false))
+        assertEquals(OfflineState.FAILED, bookStateOf(listOf(r, f), 2, any, true))
+        assertEquals(OfflineState.READY, bookStateOf(listOf(d, d), 2, OfflineState.DOWNLOADING, false))
+        assertEquals(OfflineState.READY, bookStateOf(listOf(d, d), 2, OfflineState.READY, true))
+        assertEquals(OfflineState.STALE, bookStateOf(listOf(d, d), 2, OfflineState.STALE, false))
+        assertEquals(OfflineState.FAILED, bookStateOf(listOf(d, x), 2, OfflineState.STALE, false))
+        // Fewer steps than expected files never finish.
+        assertEquals(OfflineState.QUEUED, bookStateOf(listOf(d), 2, any, false))
+        assertEquals(OfflineState.DOWNLOADING, bookStateOf(listOf(d, r), 3, any, false))
+        assertEquals(OfflineState.PAUSED, bookStateOf(listOf(d, q), 2, any, true))
+        assertEquals(OfflineState.DOWNLOADING, bookStateOf(listOf(r, q), 2, any, false))
+        assertEquals(OfflineState.QUEUED, bookStateOf(listOf(q, q), 2, any, false))
+        assertEquals(OfflineState.READY, bookStateOf(listOf(d, d, d), 2, any, false))
+    }
+
+    @Test
+    fun dlViewOfRows() {
+        fun row(s: OfflineState) = OfflineBook("b", "u", "t", "a", 1, 1, s, 0, 0)
+        val p = DownloadPercent(42, false)
+        assertEquals(DlView("none", 0), dlView(null, p))
+        assertEquals(DlView("ready", 100), dlView(row(OfflineState.READY), p))
+        assertEquals(DlView("stale", 100), dlView(row(OfflineState.STALE), p))
+        assertEquals(DlView("downloading", 42, false), dlView(row(OfflineState.DOWNLOADING), p))
+        assertEquals(DlView("failed", 7, true), dlView(row(OfflineState.FAILED), DownloadPercent(7, true)))
+    }
+
+    @Test
+    fun retryDelays() {
+        for (s in listOf(0, 503, 429, 408, 500, 599)) assertEquals(5_000L, downloadRetryDelayMs(s, 0, 0), "status=$s")
+        for (s in listOf(200, 206, 301, 302, 400, 401, 403, 404, 600)) assertNull(downloadRetryDelayMs(s, 0, 0), "status=$s")
+        assertEquals(10_000L, downloadRetryDelayMs(503, 1, 0))
+        assertEquals(80_000L, downloadRetryDelayMs(503, 4, 0))
+        assertNull(downloadRetryDelayMs(503, DOWNLOAD_MAX_TRIES, 0))
+        assertEquals(7_000L, downloadRetryDelayMs(429, 0, 7))
+        assertEquals(3_600_000L, downloadRetryDelayMs(429, 0, 3600))
+        assertEquals(5_000L, downloadRetryDelayMs(429, 0, 7200))
+        assertEquals(5_000L, downloadRetryDelayMs(429, 0, -3))
+        assertEquals(300_000L, minOf(5_000L shl 6, 300_000L))
+    }
+
+    @Test
+    fun fileNames() {
+        assertEquals("mp3", audioFileExtension("audio/mpeg"))
+        assertEquals("mp3", audioFileExtension("Audio/MP3; charset=x"))
+        for (m in listOf("audio/mp4", "audio/x-m4a", "audio/m4a", "audio/x-m4b")) assertEquals("m4a", audioFileExtension(m))
+        for (m in listOf("audio/aac", "audio/aacp")) assertEquals("aac", audioFileExtension(m))
+        for (m in listOf("audio/wav", "audio/x-wav", "audio/wave")) assertEquals("wav", audioFileExtension(m))
+        assertEquals("flac", audioFileExtension("audio/flac"))
+        assertEquals("ogg", audioFileExtension("audio/ogg"))
+        assertEquals("opus", audioFileExtension("audio/opus"))
+        assertEquals("bin", audioFileExtension("video/mp4"))
+        assertEquals("bin", audioFileExtension(""))
+        assertEquals("ab.c.mp3", offlineFileName("ab:c", "audio/mpeg"))
+        assertEquals("ab.mp3", offlineFileName("ab", "audio/mpeg"))
+        assertEquals("pe_1.bin", offlineFileName("pe_1", "x"))
+        assertEquals("", offlineFileName("../x", "audio/mpeg"))
+        assertEquals("", offlineFileName("a/b:c", "audio/mpeg"))
+        assertEquals("", offlineFileName("", "audio/mpeg"))
+        assertEquals("", offlineFileName(":c", "audio/mpeg"))
+    }
 }

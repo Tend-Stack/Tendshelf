@@ -4,6 +4,8 @@
 # Builds this worktree's server into <dir>, makes synthetic audio with ffmpeg, seeds owner "tester" and member
 # "member" (password in <dir>/password), starts the server on 127.0.0.1:<port> and prints its pid (also in
 # <dir>/server.pid). Stop it by that pid, then delete <dir>. Reach it from the emulator at http://10.0.2.2:<port>.
+# TS_TEST_BIND sets the bind address (default 127.0.0.1); the Mac's simulator reaches it with
+# TS_TEST_BIND=$(tailscale ip -4).
 # Never use port 8095 or a real data folder. <dir> belongs under .local/tests/android/<pkg>/<run-id>/.
 set -euo pipefail
 port=${1:?port} dir=${2:?dir}
@@ -54,10 +56,13 @@ if [ "${WITH_EBOOKS:-}" = 1 ]; then
 fi
 
 "$dir/androidseed" -data "$dir/data" -books "$dir/books" -password "$pass"
-"$dir/tendshelf" -addr "127.0.0.1:$port" -data "$dir/data" > "$dir/server.log" 2>&1 &
+bind=${TS_TEST_BIND:-127.0.0.1}
+probe=127.0.0.1
+if [ "$bind" != "0.0.0.0" ] && [ "$bind" != "127.0.0.1" ]; then probe=$bind; fi
+"$dir/tendshelf" -addr "$bind:$port" -data "$dir/data" > "$dir/server.log" 2>&1 &
 echo $! > "$dir/server.pid"
 for _ in $(seq 1 60); do
-  if curl -fsS "http://127.0.0.1:$port/healthz" > /dev/null 2>&1; then echo "pid $(cat "$dir/server.pid")"; exit 0; fi
+  if curl -fsS "http://$probe:$port/healthz" > /dev/null 2>&1; then echo "pid $(cat "$dir/server.pid")"; exit 0; fi
   sleep 0.5
 done
 echo "server did not start; see $dir/server.log" >&2

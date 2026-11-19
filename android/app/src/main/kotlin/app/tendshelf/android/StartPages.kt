@@ -6,8 +6,12 @@ import android.net.Uri
 import android.webkit.WebResourceResponse
 import androidx.webkit.WebViewAssetLoader
 import androidx.media3.common.util.UnstableApi
-import app.tendshelf.shared.OfflineBook
-import app.tendshelf.shared.OfflineState
+import app.tendshelf.shared.AutoShowRow
+import app.tendshelf.shared.DownloadRow
+import app.tendshelf.shared.DownloadsInput
+import app.tendshelf.shared.DownloadsWords
+import app.tendshelf.shared.downloadsPage
+import app.tendshelf.shared.htmlEscape
 import app.tendshelf.shared.validId
 import java.io.ByteArrayInputStream
 
@@ -110,107 +114,63 @@ class StartPages(private val context: Context) {
     }
 
     /**
-     * The one list of downloaded books, drawn by native with every value escaped and no script. [offline] adds the
-     * "can't reach your server" words and Try again above it. While a book downloads the page reloads itself every 5 s.
+     * The one list of downloaded books, drawn by the shared renderer with every value escaped and no script. [offline] adds
+     * the "can't reach your server" words and Try again above it. While a book downloads the page reloads itself every 2 s.
      */
     private fun downloads(offline: Boolean): Map<String, String> {
-        val books = Offline.store.all()
         val (playingId, playing) = playingNow
-        val active = books.filter { it.state == OfflineState.QUEUED || it.state == OfflineState.DOWNLOADING || it.state == OfflineState.PAUSED || it.state == OfflineState.FAILED }
-        val ready = books.filter { it.state == OfflineState.READY || it.state == OfflineState.STALE }
-        val list = StringBuilder()
-        if (books.isEmpty()) {
-            list.append("<p><strong>${esc(context.getString(R.string.downloads_empty))}</strong><br>${esc(context.getString(R.string.downloads_empty_how))}</p>")
+        val rows = Offline.store.all().map {
+            DownloadRow(it, Offline.view(it.bookId), Offline.coverBytes(it.bookId) != null, Offline.readable(it.bookId), Offline.hasAudio(it.bookId), Offline.isAuto(it.bookId))
         }
-        section(list, context.getString(R.string.downloads_active), active, playingId, playing)
-        section(list, context.getString(R.string.downloads_ready), ready, playingId, playing)
-        shows(list)
-        val noRoom = if (Offline.autoNoRoomNoted()) "<p class=\"start__note\" role=\"status\">${esc(context.getString(R.string.downloads_auto_no_room))}</p>" else ""
-        val note = noRoom + if (!offline) "" else
-            "<p class=\"start__note\" role=\"status\">${esc(context.getString(R.string.offline_title))}. ${esc(context.getString(R.string.offline_body))}</p>" +
-                "<form method=\"get\" action=\"/connect\"><input type=\"hidden\" name=\"address\" value=\"${esc(offlineAddress)}\">" +
-                "<button type=\"submit\" class=\"ts-btn ts-btn--primary ts-btn--lg ts-btn--block\">${esc(context.getString(R.string.offline_retry))}</button></form>"
-        return mapOf(
-            "TITLE" to esc(context.getString(R.string.downloads_title)),
-            "LEAD" to esc(context.getString(R.string.downloads_lead)),
-            "NOTE" to note,
-            "LIST" to list.toString(),
-            "LIBRARY" to esc(context.getString(R.string.downloads_library)),
-            "HOMEURL" to esc(homeUrl.ifEmpty { startUrl }),
-            "REFRESH" to if (active.any { it.state == OfflineState.DOWNLOADING || it.state == OfflineState.QUEUED }) "<meta http-equiv=\"refresh\" content=\"2\">" else "",
-        )
-    }
-
-    /** "Podcasts on this phone" (A2): one row per followed show with its on/off link; the choice is kept on the phone only. */
-    private fun shows(out: StringBuilder) {
-        val known = EpisodeAuto.knownShows()
-        if (known.isEmpty()) return
         val on = EpisodeAuto.enabled()
-        out.append("<h2>${esc(context.getString(R.string.downloads_podcasts))}</h2>")
-        out.append("<p>${esc(context.getString(R.string.downloads_podcasts_lead))}</p><ul class=\"dl__list\">")
-        for (s in known) {
-            if (!validId(s.id)) continue
-            val enabled = s.id in on
-            val meta = if (enabled) context.getString(R.string.downloads_podcast_on_row, s.keepLatest) else context.getString(R.string.downloads_podcast_off_row)
-            val label = context.getString(if (enabled) R.string.downloads_podcast_turn_off else R.string.downloads_podcast_turn_on)
-            out.append("<li class=\"ts-row dl__row\"><span class=\"ts-row__text\"><span class=\"ts-row__title\">${esc(s.title)}</span><span class=\"ts-row__meta\">${esc(meta)}</span></span>")
-            out.append("<span class=\"dl__actions\"><a class=\"ts-btn ts-btn--${if (enabled) "quiet" else "secondary"}\" href=\"/autoshow?id=${esc(s.id)}&amp;on=${if (enabled) 0 else 1}\">${esc(label)}</a></span></li>")
-        }
-        out.append("</ul>")
+        val shows = EpisodeAuto.knownShows().map { AutoShowRow(it.id, it.title, it.keepLatest, it.id in on) }
+        val input = DownloadsInput(
+            rows = rows,
+            shows = shows,
+            playingId = playingId,
+            playing = playing,
+            unmetered = Offline.unmetered(),
+            autoNoRoom = Offline.autoNoRoomNoted(),
+            offline = offline,
+            offlineAddress = offlineAddress,
+            homeUrl = homeUrl.ifEmpty { startUrl },
+            readBase = homeOrigin,
+        )
+        return downloadsPage(input, downloadsWords())
     }
 
-    private fun section(out: StringBuilder, heading: String, books: List<OfflineBook>, playingId: String, playing: Boolean) {
-        if (books.isEmpty()) return
-        out.append("<h2>${esc(heading)} \u00b7 ${books.size}</h2><ul class=\"dl__list\">")
-        for (b in books) {
-            val id = esc(b.bookId)
-            val here = b.bookId == playingId
-            val canPlay = b.state == OfflineState.READY || b.state == OfflineState.STALE
-            val meta = esc(listOf(b.author, stateWords(b)).filter { it.isNotEmpty() }.joinToString(" \u00b7 "))
-            // A bar only while the percent is known; unknown shows the plain words, so nothing animates here.
-            val bar = Offline.view(b.bookId).takeIf { b.state == OfflineState.DOWNLOADING && it.known }?.let {
-                "<progress class=\"dl__bar\" max=\"100\" value=\"${it.pct}\" aria-label=\"${esc(context.getString(R.string.downloads_active))}\"></progress>"
-            }.orEmpty()
-            val cover = if (Offline.coverBytes(b.bookId) != null) "<img class=\"dl__cover\" alt=\"\" src=\"/covers/$id\">" else ""
-            out.append("<li class=\"ts-row dl__row\">$cover")
-            out.append("<span class=\"ts-row__text\"><span class=\"ts-row__title\">${esc(b.title)}</span><span class=\"ts-row__meta\">$meta</span>$bar</span>")
-            out.append("<span class=\"dl__actions\">")
-            // The two formats are two plain buttons: this page shows no place and no time, so neither one is "the resume button".
-            if (Offline.readable(b.bookId) && homeOrigin.isNotEmpty()) {
-                out.append("<a class=\"ts-btn ts-btn--secondary\" href=\"${esc(homeOrigin)}/books/$id/read\">${esc(context.getString(R.string.downloads_read))}</a>")
-            }
-            if (canPlay && Offline.hasAudio(b.bookId)) {
-                val href = if (here) "/toggle" else "/play?id=$id"
-                val label = if (here && playing) R.string.downloads_pause else R.string.downloads_play
-                out.append("<a class=\"ts-btn ts-btn--secondary\" href=\"$href\">${esc(context.getString(label))}</a>")
-            }
-            out.append("<a class=\"ts-btn ts-btn--quiet\" href=\"/remove?id=$id\">${esc(context.getString(R.string.downloads_remove))}</a>")
-            out.append("</span></li>")
-        }
-        out.append("</ul>")
-    }
-
-    private fun stateWords(b: OfflineBook): String = when (b.state) {
-        // A book downloaded on its own says so, and says when it waits for Wi-Fi (decision 0035).
-        OfflineState.READY, OfflineState.QUEUED, OfflineState.PAUSED ->
-            if (Offline.isAuto(b.bookId)) autoWords(b) else plainWords(b)
-        else -> plainWords(b)
-    }
-
-    private fun autoWords(b: OfflineBook): String = when {
-        b.state == OfflineState.READY -> context.getString(R.string.downloads_auto_row)
-        !Offline.unmetered() -> context.getString(R.string.downloads_auto_waiting)
-        else -> plainWords(b)
-    }
-
-    private fun plainWords(b: OfflineBook): String = when (b.state) {
-        OfflineState.QUEUED -> context.getString(R.string.downloads_waiting)
-        OfflineState.DOWNLOADING -> Offline.view(b.bookId).let { if (it.known) context.getString(R.string.downloads_percent, it.pct) else context.getString(R.string.downloads_working) }
-        OfflineState.PAUSED -> context.getString(R.string.downloads_paused_row)
-        OfflineState.FAILED -> context.getString(R.string.downloads_failed_row)
-        OfflineState.STALE -> context.getString(R.string.downloads_stale_row)
-        OfflineState.READY -> ""
-    }
+    /** The words raw, as `strings.xml` holds them; the shared renderer fills `%1$d` itself. */
+    private fun downloadsWords() = DownloadsWords(
+        title = context.getString(R.string.downloads_title),
+        lead = context.getString(R.string.downloads_lead),
+        empty = context.getString(R.string.downloads_empty),
+        emptyHow = context.getString(R.string.downloads_empty_how),
+        active = context.getString(R.string.downloads_active),
+        ready = context.getString(R.string.downloads_ready),
+        percent = context.getString(R.string.downloads_percent),
+        working = context.getString(R.string.downloads_working),
+        waiting = context.getString(R.string.downloads_waiting),
+        pausedRow = context.getString(R.string.downloads_paused_row),
+        failedRow = context.getString(R.string.downloads_failed_row),
+        staleRow = context.getString(R.string.downloads_stale_row),
+        play = context.getString(R.string.downloads_play),
+        read = context.getString(R.string.downloads_read),
+        pause = context.getString(R.string.downloads_pause),
+        remove = context.getString(R.string.downloads_remove),
+        library = context.getString(R.string.downloads_library),
+        autoRow = context.getString(R.string.downloads_auto_row),
+        autoWaiting = context.getString(R.string.downloads_auto_waiting),
+        autoNoRoom = context.getString(R.string.downloads_auto_no_room),
+        podcasts = context.getString(R.string.downloads_podcasts),
+        podcastsLead = context.getString(R.string.downloads_podcasts_lead),
+        podcastOnRow = context.getString(R.string.downloads_podcast_on_row),
+        podcastOffRow = context.getString(R.string.downloads_podcast_off_row),
+        turnOn = context.getString(R.string.downloads_podcast_turn_on),
+        turnOff = context.getString(R.string.downloads_podcast_turn_off),
+        offlineTitle = context.getString(R.string.offline_title),
+        offlineBody = context.getString(R.string.offline_body),
+        offlineRetry = context.getString(R.string.offline_retry),
+    )
 
     private fun page(asset: String, values: Map<String, String>): WebResourceResponse {
         var html = context.assets.open(asset).bufferedReader().use { it.readText() }
@@ -222,16 +182,7 @@ class StartPages(private val context: Context) {
         return r
     }
 
-    private fun esc(s: String): String = buildString {
-        for (ch in s) when (ch) {
-            '&' -> append("&amp;")
-            '<' -> append("&lt;")
-            '>' -> append("&gt;")
-            '"' -> append("&quot;")
-            '\'' -> append("&#39;")
-            else -> append(ch)
-        }
-    }
+    private fun esc(s: String): String = htmlEscape(s)
 
     private companion object {
         const val HOST = "appassets.androidplatform.net"

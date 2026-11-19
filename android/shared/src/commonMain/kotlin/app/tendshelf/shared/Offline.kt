@@ -233,3 +233,67 @@ fun offlineNextFor(stored: String?, ended: String, isReady: (String) -> Boolean)
 
 /** A queue delete is done on any 2xx and on 404 (already gone, or it came from the series); anything else is tried again. */
 fun queueDeleteDone(status: Int): Boolean = status in 200..299 || status == 404
+
+/** How a book stands for the page, the list and the notification: [state] word, [pct], and whether [pct] is known. */
+data class DlView(val state: String, val pct: Int, val known: Boolean = true)
+
+/** One file of a book as the platform's download engine reports it. DONE arrived and is whole, BROKEN arrived and is not. */
+enum class FileStep { QUEUED, RUNNING, DONE, BROKEN, FAILED }
+
+/**
+ * Folds the files' steps into the book's one state; null when there are no files. `READY` only when every file is whole
+ * (invariant 1). [expected] is the number of playable files; fewer steps than that stay queued. [paused] is Android's
+ * data-sync pause; the iPhone never sets it.
+ */
+fun bookStateOf(steps: List<FileStep>, expected: Int, previous: OfflineState, paused: Boolean): OfflineState? = when {
+    steps.isEmpty() -> null
+    steps.any { it == FileStep.FAILED } -> OfflineState.FAILED
+    steps.all { it == FileStep.DONE || it == FileStep.BROKEN } && steps.size >= expected ->
+        if (steps.any { it == FileStep.BROKEN }) OfflineState.FAILED else if (previous == OfflineState.STALE) OfflineState.STALE else OfflineState.READY
+    paused -> OfflineState.PAUSED
+    steps.any { it == FileStep.RUNNING } -> OfflineState.DOWNLOADING
+    else -> OfflineState.QUEUED
+}
+
+/** The page's view of a row: none for no row, a full bar for a finished one, else the live [p]. */
+fun dlView(row: OfflineBook?, p: DownloadPercent): DlView = when {
+    row == null -> DlView("none", 0)
+    row.state == OfflineState.READY || row.state == OfflineState.STALE -> DlView(row.state.name.lowercase(), 100)
+    else -> DlView(row.state.name.lowercase(), p.pct, p.known)
+}
+
+/** Most failed tries of one file before it is left failed. */
+const val DOWNLOAD_MAX_TRIES = 5
+
+/**
+ * How long to wait before trying a file again, or null to give up. A retry follows a network failure (status 0), a timeout,
+ * a rate limit or a server error; an answer such as 401, 403, 404 or a redirect never improves by asking again.
+ * A server's `Retry-After` of 1 to 3600 seconds wins; otherwise 5 s doubling to at most 5 minutes.
+ */
+fun downloadRetryDelayMs(status: Int, failuresBefore: Int, retryAfterS: Int): Long? {
+    if (failuresBefore >= DOWNLOAD_MAX_TRIES) return null
+    if (!(status == 0 || status == 408 || status == 429 || status in 500..599)) return null
+    if (retryAfterS in 1..3600) return retryAfterS * 1000L
+    return minOf(5_000L shl failuresBefore, 300_000L)
+}
+
+/** The file extension a stored audio file gets, from its mime type (parameters after `;` ignored). */
+fun audioFileExtension(mime: String): String = when (mime.substringBefore(';').trim().lowercase()) {
+    "audio/mpeg", "audio/mp3" -> "mp3"
+    "audio/mp4", "audio/x-m4a", "audio/m4a", "audio/x-m4b" -> "m4a"
+    "audio/aac", "audio/aacp" -> "aac"
+    "audio/wav", "audio/x-wav", "audio/wave" -> "wav"
+    "audio/flac" -> "flac"
+    "audio/ogg" -> "ogg"
+    "audio/opus" -> "opus"
+    else -> "bin"
+}
+
+/**
+ * The on-disk name of a stored audio file: its cache key with `:` as `.` plus the extension. A key that is not an id (with
+ * an optional `:c`) gives "" and callers refuse it, so a name never carries a path.
+ */
+fun offlineFileName(cacheKey: String, mime: String): String {
+    if (!validId(cacheKey.removeSuffix(":c"))) return ""
+    return cacheKey.replace(':', '.') + "." + audioFileExtension(mime)
+}

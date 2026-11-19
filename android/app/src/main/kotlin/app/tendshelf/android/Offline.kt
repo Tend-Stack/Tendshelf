@@ -34,6 +34,10 @@ import app.tendshelf.shared.DownloadPercent
 import app.tendshelf.shared.decodeKeptSettings
 import app.tendshelf.shared.encodeKeptSettings
 import app.tendshelf.shared.FileProgress
+import app.tendshelf.shared.FileStep
+import app.tendshelf.shared.DlView
+import app.tendshelf.shared.bookStateOf
+import app.tendshelf.shared.dlView
 import app.tendshelf.shared.OfflineBook
 import app.tendshelf.shared.OfflineState
 import app.tendshelf.shared.PlayerSettings
@@ -199,14 +203,15 @@ object Offline {
         val m = manager()
         val ds = downloadsOf(m, book)
         if (ds.isEmpty()) return
-        val next = when {
-            ds.any { it.state == Download.STATE_FAILED } -> OfflineState.FAILED
-            ds.all { it.state == Download.STATE_COMPLETED } && ds.size >= expectedFiles(book) ->
-                if (ds.all { whole(it) }) (if (row.state == OfflineState.STALE) OfflineState.STALE else OfflineState.READY) else OfflineState.FAILED
-            m.getDownloadsPaused() -> OfflineState.PAUSED
-            ds.any { it.state == Download.STATE_DOWNLOADING } -> OfflineState.DOWNLOADING
-            else -> OfflineState.QUEUED
+        val steps = ds.map {
+            when (it.state) {
+                Download.STATE_FAILED -> FileStep.FAILED
+                Download.STATE_COMPLETED -> if (whole(it)) FileStep.DONE else FileStep.BROKEN
+                Download.STATE_DOWNLOADING -> FileStep.RUNNING
+                else -> FileStep.QUEUED
+            }
         }
+        val next = bookStateOf(steps, expectedFiles(book), row.state, m.getDownloadsPaused()) ?: return
         if (next != row.state) store.setState(book, next)
         // The feed's announced size is often wrong: a finished episode shows (and counts against the quota) what arrived.
         if (next == OfflineState.READY && row.kind == KIND_EPISODE) cache().getCachedBytes(book, 0, Long.MAX_VALUE).let { if (it > 0) store.setSize(book, it) }
@@ -240,22 +245,18 @@ object Offline {
         return ok
     }
 
-    /** How a book stands for the page, the list and the notification: [state] word, [pct], and whether [pct] is known. */
-    data class DlView(val state: String, val pct: Int, val known: Boolean = true)
-
     /** The last percent shown per book, so the number never goes back; and the poll's latest answer. */
     private val floors = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private val live = java.util.concurrent.ConcurrentHashMap<String, DownloadPercent>()
 
     fun view(book: String): DlView {
-        val row = store.get(book) ?: return DlView("none", 0)
+        val row = store.get(book) ?: return dlView(null, DownloadPercent(0, false))
         if (row.state == OfflineState.READY || row.state == OfflineState.STALE) {
             floors.remove(book)
             live.remove(book)
-            return DlView(row.state.name.lowercase(), 100)
+            return dlView(row, DownloadPercent(100, true))
         }
-        val p = live[book] ?: progress(book, emptyList())
-        return DlView(row.state.name.lowercase(), p.pct, p.known)
+        return dlView(row, live[book] ?: progress(book, emptyList()))
     }
 
     /**
