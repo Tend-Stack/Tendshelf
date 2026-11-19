@@ -68,12 +68,12 @@ func chipItem(it NavItem, a NavAccount) bool {
 // navFor is MainNav for the window it is drawn in. The phone app keeps the Downloads item (A7) but draws the list itself
 // from what the phone holds, so the link is a plain navigation (NoBoost) that the app's navigation policy catches.
 func navFor(shell string, pod PodNav) []NavItem {
-	if shell != "android" && !pod.Show {
+	if !IsAppShell(shell) && !pod.Show {
 		return MainNav
 	}
 	out := make([]NavItem, 0, len(MainNav)+1)
 	for _, it := range MainNav {
-		if it.Key == "downloads" && shell == "android" {
+		if it.Key == "downloads" && IsAppShell(shell) {
 			it.NoBoost = true
 		}
 		out = append(out, it)

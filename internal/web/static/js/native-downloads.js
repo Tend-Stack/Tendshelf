@@ -1,4 +1,4 @@
-// native-downloads.js is loaded only inside the Tendshelf Android app's window (data-shell="android").
+// native-downloads.js is loaded only inside a Tendshelf phone app's window (data-shell="android" or "ios").
 //
 // The book page's Download button, driven by the app instead of by downloads.js (which needs chunks, a cache and
 // Web Locks that the app's window does not use). The app keeps the files and tells this page how the book stands:
@@ -8,7 +8,7 @@
 
 const native = window.tsNative;
 
-if (native && document.documentElement.dataset.shell === "android" && !document.body.dataset.tsLink) {
+if (native && ["android", "ios"].includes(document.documentElement.dataset.shell) && !document.body.dataset.tsLink) {
   start(native);
 }
 
