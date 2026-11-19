@@ -7,18 +7,29 @@ enum CarRow: Equatable {
     case book(BookCard)
     case episode(EpisodeCard)
     case station(StationCard)
+    /// A book on Home: the card, how far in the person is, and the series line when it is a series row.
+    case homeBook(HomeBook)
+}
+
+/// One titled section of the Home list (a `CPListSection` in the car).
+struct CarSection: Equatable {
+    let title: String
+    let rows: [CarRow]
 }
 
 /// What a node shows: rows, or plain words (a failure, or an empty list) for the empty-view of the template.
 enum CarList: Equatable {
     case rows([CarRow])
+    case sections([CarSection])
     case message(String)
 }
 
 /// The car words. They are Android's `car_*` strings; the keys sit here so this package does not touch `Words.Key` (`CarLibraryTests` checks each exists).
 enum CarWords {
     static let keys = [
-        "car_continue", "car_up_next", "car_shelves", "car_downloaded", "car_podcasts", "car_podcasts_new", "car_podcasts_shows",
+        "car_home", "car_library", "car_home_continue", "car_home_series", "car_home_new", "car_home_because", "car_home_episodes",
+        "car_series_line", "car_not_started", "car_recent", "car_by_title", "car_by_author",
+        "car_up_next", "car_shelves", "car_downloaded", "car_podcasts", "car_podcasts_new", "car_podcasts_shows",
         "car_radio", "car_radio_stations", "car_radio_recent", "car_sign_in", "car_no_connection", "car_not_found", "car_nothing_here",
     ]
     static func text(_ key: String) -> String { words(key) }
@@ -82,7 +93,9 @@ final class CarLibrary {
                 try? await Task.sleep(for: budget)
                 if race.claim() {
                     work.cancel()
-                    answer.resume(returning: .message(CarWords.text("car_no_connection")))
+                    // Home, unlike the other lists, answers its offline sections when the network is late.
+                    let stored = node is NodeHome ? self.offlineHome() : []
+                    answer.resume(returning: stored.isEmpty ? .message(CarWords.text("car_no_connection")) : .sections(stored))
                 }
             }
         }
@@ -99,6 +112,10 @@ final class CarLibrary {
     private func run(_ node: Node) async -> CarList {
         do {
             guard connection() != nil else { throw CarFailure.signIn } // signed out: words, even for the tabs
+            if node is NodeHome {
+                let sections = try await homeSections()
+                return sections.isEmpty ? .message(CarWords.text("car_nothing_here")) : .sections(sections)
+            }
             let rows = try await rows(node)
             return rows.isEmpty ? .message(CarWords.text("car_nothing_here")) : .rows(rows)
         } catch CarFailure.signIn {
@@ -116,16 +133,33 @@ final class CarLibrary {
             return try await online({ [self] in Self.cards(carContinueOffline()) }) { api, t in Self.cards(try await api.continueList(token: t)) }
         case is NodeUpNext:
             return try await online(nil) { api, t in Self.cards(try await api.queue(token: t)) }
-        case is NodeShelves:
-            var out: [CarRow] = []
+        case is NodeLibrary:
+            var out: [CarRow] = [
+                .folder(id: LibraryTreeKt.nodeId(n: NodeContinue.shared), title: CarWords.text("car_home_continue")),
+                .folder(id: LibraryTreeKt.nodeId(n: NodeLibraryNotStarted.shared), title: CarWords.text("car_not_started")),
+                .folder(id: LibraryTreeKt.nodeId(n: NodeLibraryRecent.shared), title: CarWords.text("car_recent")),
+                .folder(id: LibraryTreeKt.nodeId(n: NodeLibraryTitle.shared), title: CarWords.text("car_by_title")),
+                .folder(id: LibraryTreeKt.nodeId(n: NodeLibraryAuthor.shared), title: CarWords.text("car_by_author")),
+            ]
+            if await hasShelves() { out.append(.folder(id: LibraryTreeKt.nodeId(n: NodeShelves.shared), title: CarWords.text("car_shelves"))) }
             if await answers({ api, t in _ = try await api.podcastShows(token: t) }) {
                 out.append(.folder(id: LibraryTreeKt.nodeId(n: NodePodcasts.shared), title: CarWords.text("car_podcasts")))
             }
             if await answers({ api, t in _ = try await api.radioStations(token: t) }) {
                 out.append(.folder(id: LibraryTreeKt.nodeId(n: NodeRadio.shared), title: CarWords.text("car_radio")))
             }
+            return out
+        case is NodeLibraryNotStarted:
+            return try await online(nil) { api, t in Self.cards(try await api.books(token: t, sort: "title", show: "not_started")) }
+        case is NodeLibraryRecent:
+            return try await online(nil) { api, t in Self.cards(try await api.books(token: t, sort: "added", show: nil)) }
+        case is NodeLibraryTitle:
+            return try await online(nil) { api, t in Self.cards(try await api.books(token: t, sort: "title", show: nil)) }
+        case is NodeLibraryAuthor:
+            return try await online(nil) { api, t in Self.cards(try await api.books(token: t, sort: "author", show: nil)) }
+        case is NodeShelves:
             let shelves = try await online(nil) { api, t in try await api.shelves(token: t) }
-            return out + shelves.map { .folder(id: LibraryTreeKt.nodeId(n: NodeShelf(id: $0.id)), title: $0.name) }
+            return shelves.map { .folder(id: LibraryTreeKt.nodeId(n: NodeShelf(id: $0.id)), title: $0.name) }
         case is NodePodcasts:
             return [
                 .folder(id: LibraryTreeKt.nodeId(n: NodePodcastNew.shared), title: CarWords.text("car_podcasts_new")),
@@ -162,6 +196,48 @@ final class CarLibrary {
     }
 
     private static func cards(_ books: [BookCard]) -> [CarRow] { books.map { .book($0) } }
+
+    // MARK: Home
+
+    /// The Home sections. Online: one request. An old server (404) gives Continue listening from `/continue`; no network gives the stored ones.
+    private func homeSections() async throws -> [CarSection] {
+        try await online({ [self] in offlineHome() }) { api, t in
+            do {
+                return Self.sections(try await api.home(token: t))
+            } catch let e as ApiError where e.status == 404 {
+                let books = try await api.continueList(token: t).prefix(Int(CarHomeKt.homeCap(k: .continue_)))
+                let rows = books.map { HomeRowBook(book: HomeBook(card: $0, positionMs: 0, series: nil)) }
+                return Self.sections(CarHome(sections: [HomeSection(kind: .continue_, seed: "", rows: rows)]))
+            }
+        }
+    }
+
+    /// Continue listening and Downloaded from the person's stored rows.
+    private func offlineHome() -> [CarSection] {
+        Self.sections(CarHomeKt.carHomeOffline(mine: mine()) { [coverData] in KotlinBoolean(bool: coverData($0) != nil) })
+    }
+
+    private static func sections(_ home: CarHome) -> [CarSection] {
+        home.sections.map { section in
+            let key = CarHomeKt.homeTitleKey(k: section.kind)
+            let title = section.kind == .because ? words(key, section.seed) : words(key)
+            let rows: [CarRow] = section.rows.compactMap { row in
+                if let b = row as? HomeRowBook { return .homeBook(b.book) }
+                if let e = row as? HomeRowEpisode { return .episode(e.card) }
+                return nil
+            }
+            return CarSection(title: title, rows: rows)
+        }
+    }
+
+    /// Whether the person has a shelf; a refused token still signs out, any other failure leaves the row out.
+    private func hasShelves() async -> Bool {
+        do {
+            return !(try await online(nil) { api, t in try await api.shelves(token: t) }).isEmpty
+        } catch {
+            return false
+        }
+    }
 
     // MARK: Server calls
 
@@ -200,14 +276,24 @@ final class CarLibrary {
 
     /// The picture of a row: a stored cover first (no request), else the server's, for the pinned origin only. Nil when there is none.
     func picture(for row: CarRow) async -> Data? {
-        if case .book(let b) = row, let stored = coverData(b.id) { return stored }
+        let card = Self.card(of: row)
+        if let card, let stored = coverData(card.id) { return stored }
         guard let conn = connection() else { return nil }
         let api = api(conn.origin)
         switch row {
         case .folder: return nil
-        case .book(let b): return b.hasCover ? await api.cover(token: conn.token, bookId: b.id) : nil
+        case .book, .homeBook: return card?.hasCover == true ? await api.cover(token: conn.token, bookId: card!.id) : nil
         case .episode(let e): return e.showId.isEmpty ? nil : await api.showArt(token: conn.token, showId: e.showId)
         case .station(let s): return s.artUrl.isEmpty ? nil : await api.radioArt(token: conn.token, id: s.id, artPath: s.artUrl)
+        }
+    }
+
+    /// The book behind a row, when it is one (a `.homeBook` row is a book as far as its picture goes).
+    private static func card(of row: CarRow) -> BookCard? {
+        switch row {
+        case .book(let b): return b
+        case .homeBook(let h): return h.card
+        default: return nil
         }
     }
 

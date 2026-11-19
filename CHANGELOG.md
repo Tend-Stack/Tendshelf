@@ -14,7 +14,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ### Added
 
-- **A Home page in the car.** Android Auto now opens on Home: what you are listening to, the next book in your series, books you have not started yet, suggestions and new episodes, with covers (CarPlay follows). A new Library tab lists books by title, by author, recently added and not started, beside your shelves, podcasts and radio. With no connection, Home shows your downloads.
+- **A Home page in the car.** Android Auto and CarPlay now open on Home: what you are listening to, the next book in your series, books you have not started yet, suggestions and new episodes, with covers. A new Library tab lists books by title, by author, recently added and not started, beside your shelves, podcasts and radio. With no connection, Home shows your downloads.
 - **Adding an iPhone from a QR code or invitation link.** Opened in Safari on an iPhone, an "add a phone" or invitation page now says to open the Tendshelf app and tap Scan a code. The iPhone app reads the code with its camera.
 - **Cast to a Chromecast or Google TV.** In Chrome, the full player has a Cast button that sends the book, podcast episode or radio station to a TV or speaker on your network, and your place keeps saving while it plays there. It is off until you turn it on in Settings, Playback, which explains first what changes: Google's casting code runs in your browser and the device fetches the sound from your server through a short-lived address.
 - **Your own lookup sites.** An owner can add lookup sites made for Audiobookshelf (an address and an optional authorization header); everyone can choose them under Also search.

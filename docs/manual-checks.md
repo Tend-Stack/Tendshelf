@@ -535,7 +535,11 @@ Run in the Simulator: I/O > External Displays > CarPlay, against a server you co
 | IOS-18 | Tap a book, then use the rate button on Now Playing. | The book plays; Now Playing shows title and chapter; the rate button cycles 1.0, 1.25, 1.5, 1.75, 2.0, 0.75. | Not run (needs the Simulator window). |
 | IOS-19 | Stop the server. Open Continue and Up next. | Continue shows the downloaded book with a place; Up next says "Can't reach your library. Downloaded books still play." | Not run (needs the Simulator window). |
 | IOS-20 | Sign out on the phone, look at the car. | Back at the tab bar; every tab says "Open Tendshelf on your phone to sign in." | Not run (needs the Simulator window). |
-| IOS-21 | Quit the app, then start it from the CarPlay screen alone. Open Shelves (Podcasts and Radio rows when the server has them) and play. | Lists load and playback starts with no phone window open. | Not run (needs the Simulator window). |
+| IOS-21 | Quit the app, then start it from the CarPlay screen alone. Open Library (Podcasts and Radio rows when the server has them) and play. | Lists load and playback starts with no phone window open. | Not run (needs the Simulator window). |
+| IOS-24 | CarPlay Simulator (I/O > External Displays > CarPlay), connected to a server (CH2). | Tabs read Home, Up next, Library, Downloaded; Home sections have headers, covers and a progress bar on Continue rows. | |
+| IOS-25 | Tap a New on the shelf book on Home. | Now Playing opens; reselect Home: the book leads Continue listening. | |
+| IOS-26 | Network Link Conditioner "100% Loss", open Home. | Continue listening and Downloaded show within 5 s, no error. | |
+| IOS-27 | Open each Library row and play. | Lists open and play; a shelf, a podcast episode and a station still play. | |
 
 ## iPhone release build (decision 0048, I4d)
 

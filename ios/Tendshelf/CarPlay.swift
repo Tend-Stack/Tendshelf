@@ -9,6 +9,8 @@ struct CarItemModel: Equatable {
     let text: String
     let detail: String?
     let isFolder: Bool
+    /// How far in a Continue listening row is (0 to 1); nil for any other row.
+    var progress: Double? = nil
 }
 
 /// A small least-recently-used cache of scaled pictures, so a list that is shown again does not fetch its covers again.
@@ -46,7 +48,7 @@ struct CarImageCache {
     }
 }
 
-/// The CarPlay audio app (decision 0048, I4c): a tab bar of Continue, Up next, Shelves and Downloaded over `CarLibrary`, a tap that plays through
+/// The CarPlay audio app (decision 0048, I4c): a tab bar of Home, Up next, Library and Downloaded over `CarLibrary`, a tap that plays through
 /// the one `Playback` the page drives, and the system's Now Playing screen on the lock-screen info and remote commands that already exist.
 @MainActor
 final class CarPlay: NSObject, CPTabBarTemplateDelegate {
@@ -55,9 +57,9 @@ final class CarPlay: NSObject, CPTabBarTemplateDelegate {
 
     /// The tabs: node id, words key and the SF Symbol, in Android's order.
     static let tabs: [(node: String, words: String, symbol: String)] = [
-        ("continue", "car_continue", "play.circle"),
+        ("home", "car_home", "house"),
         ("queue", "car_up_next", "list.bullet"),
-        ("shelves", "car_shelves", "books.vertical"),
+        ("library", "car_library", "books.vertical"),
         ("downloaded", "car_downloaded", "arrow.down.circle"),
     ]
     /// The pictures fetched for the first rows only.
@@ -81,6 +83,16 @@ final class CarPlay: NSObject, CPTabBarTemplateDelegate {
                 return CarItemModel(id: id, text: title, detail: nil, isFolder: true)
             case .book(let b):
                 return CarItemModel(id: LibraryTreeKt.nodeId(n: NodeBook(id: b.id)), text: b.title, detail: b.author.isEmpty ? nil : b.author, isFolder: false)
+            case .homeBook(let h):
+                let detail: String
+                if let series = h.series {
+                    detail = words("car_series_line", "\(series.index)", "\(series.total)", series.name)
+                } else {
+                    detail = h.card.author
+                }
+                return CarItemModel(
+                    id: LibraryTreeKt.nodeId(n: NodeBook(id: h.card.id)), text: h.card.title, detail: detail.isEmpty ? nil : detail,
+                    isFolder: false, progress: CarHomeKt.homeProgress(b: h)?.doubleValue)
             case .episode(let e):
                 let line = PodcastKt.episodeSubline(e: e)
                 return CarItemModel(id: LibraryTreeKt.nodeId(n: NodeEpisode(id: e.id)), text: PodcastKt.episodeRowTitle(e: e), detail: line.isEmpty ? nil : line, isFolder: false)
@@ -89,6 +101,13 @@ final class CarPlay: NSObject, CPTabBarTemplateDelegate {
                 return CarItemModel(id: LibraryTreeKt.nodeId(n: NodeStation(id: s.id)), text: RadioKt.stationRowTitle(s: s), detail: line.isEmpty ? nil : line, isFolder: false)
             }
         }
+    }
+
+    /// The Home sections as list models: the shared `fitSections` cut (every section keeps two rows before any gets more) and the section cap.
+    static func sectionModels(_ sections: [CarSection], maxItems: Int, maxSections: Int) -> [(String, [CarItemModel])] {
+        let kept = Array(sections.filter { !$0.rows.isEmpty }.prefix(max(0, maxSections)))
+        let sizes = CarHomeKt.fitSections(sizes: kept.map { KotlinInt(int: Int32($0.rows.count)) }, max: Int32(maxItems))
+        return zip(kept, sizes).map { section, size in (section.title, items(section.rows, max: size.intValue)) }
     }
 
     /// The id the player starts for a leaf node id (`book:x`, `episode:x`, `station:x`), nil for a folder or a bad id.
@@ -173,11 +192,27 @@ final class CarPlay: NSObject, CPTabBarTemplateDelegate {
             let listItems = zip(rows, models).map { row, model in listItem(row, model) }
             template.updateSections([CPListSection(items: listItems)])
             loadImages(Array(zip(rows, listItems).prefix(Self.imageRows)))
+        case .sections(let sections):
+            // Rows are cut the same way as the models, so the pairs line up; pictures go to the first rows across all sections.
+            let kept = Array(sections.filter { !$0.rows.isEmpty }.prefix(max(0, CPListTemplate.maximumSectionCount)))
+            let sizes = CarHomeKt.fitSections(sizes: kept.map { KotlinInt(int: Int32($0.rows.count)) }, max: Int32(CPListTemplate.maximumItemCount))
+            let cut = zip(kept, sizes).map { CarSection(title: $0.title, rows: Array($0.rows.prefix($1.intValue))) }
+            let models = Self.sectionModels(sections, maxItems: CPListTemplate.maximumItemCount, maxSections: CPListTemplate.maximumSectionCount)
+            var pairs: [(CarRow, CPListItem)] = []
+            var built: [CPListSection] = []
+            for (section, shown) in zip(cut, models) {
+                let items = zip(section.rows, shown.1).map { row, model in listItem(row, model) }
+                pairs += zip(section.rows, items)
+                built.append(CPListSection(items: items, header: section.title, sectionIndexTitle: nil))
+            }
+            template.updateSections(built)
+            loadImages(Array(pairs.prefix(Self.imageRows)))
         }
     }
 
     private func listItem(_ row: CarRow, _ model: CarItemModel) -> CPListItem {
         let item = CPListItem(text: model.text, detailText: model.detail, image: nil, accessoryImage: nil, accessoryType: model.isFolder ? .disclosureIndicator : .none)
+        if let p = model.progress { item.playbackProgress = CGFloat(p) }
         if let cached = images.image(for: Self.imageKey(row)) { item.setImage(cached) }
         item.handler = { [weak self] _, completion in
             MainActor.assumeIsolated {
@@ -214,6 +249,7 @@ final class CarPlay: NSObject, CPTabBarTemplateDelegate {
         switch row {
         case .folder(let id, _): return "folder:\(id)"
         case .book(let b): return "book:\(b.id)"
+        case .homeBook(let h): return "book:\(h.card.id)"
         case .episode(let e): return "show:\(e.showId)"
         case .station(let s): return "station:\(s.id)"
         }

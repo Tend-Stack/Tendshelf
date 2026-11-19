@@ -26,6 +26,31 @@ final class CarPlayItemsTests: XCTestCase {
         XCTAssertEqual(models[4], CarItemModel(id: "station:rs_1", text: "Jazz FM", detail: RadioKt.stationSubline(s: station), isFolder: false))
     }
 
+    func testTabsAreHomeUpNextLibraryDownloaded() {
+        XCTAssertEqual(CarPlay.tabs.map { $0.node }, ["home", "queue", "library", "downloaded"])
+        XCTAssertEqual(CarPlay.tabs.map { $0.words }, ["car_home", "car_up_next", "car_library", "car_downloaded"])
+    }
+
+    func testHomeBookDetailAndProgress() {
+        let card = BookCard(id: "b1", title: "Dune", author: "Herbert", durationMs: 60 * 60_000, hasCover: false)
+        let series = HomeBook(card: card, positionMs: 30 * 60_000, series: SeriesNote(name: "Saga", index: 2, total: 5))
+        let plain = HomeBook(card: card, positionMs: 0, series: nil)
+        let models = CarPlay.items([.homeBook(series), .homeBook(plain)], max: 10)
+        XCTAssertEqual(models[0].detail, "Book 2 of 5 \u{B7} Saga")
+        XCTAssertEqual(models[0].progress, 0.5)
+        XCTAssertEqual(models[1].detail, "Herbert")
+        XCTAssertNil(models[1].progress)
+    }
+
+    func testSectionModelsFitTheCar() {
+        let sizes = [6, 4, 8, 4, 4]
+        let sections = sizes.enumerated().map { i, n in
+            CarSection(title: "S\(i)", rows: (0..<n).map { .folder(id: "f\(i)-\($0)", title: "t") })
+        }
+        XCTAssertEqual(CarPlay.sectionModels(sections, maxItems: 12, maxSections: 5).map { $0.1.count }, [4, 2, 2, 2, 2])
+        XCTAssertEqual(CarPlay.sectionModels(sections, maxItems: 26, maxSections: 2).map { $0.0 }, ["S0", "S1"])
+    }
+
     func testTheListIsCapped() {
         let rows = (0..<30).map { CarRow.folder(id: "shelf:\($0)", title: "S\($0)") }
         XCTAssertEqual(CarPlay.items(rows, max: 12).count, 12)

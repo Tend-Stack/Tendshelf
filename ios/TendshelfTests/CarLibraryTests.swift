@@ -14,13 +14,27 @@ final class FakeCarAPI: CarAPI, @unchecked Sendable {
     var stations: [StationCard]?
     var newEpisodes: [EpisodeCard] = []
     var tokens: [String] = []
+    var homeResult: CarHome?
+    var homeFailure: Error?
+    var listed: [(String, String?)] = []
 
-    private func gate(_ token: String) async throws {
+    private func gate(_ token: String, skipFailure: Bool = false) async throws {
         tokens.append(token)
         if let delay { try await Task.sleep(for: delay) }
-        if let failure { throw failure }
+        if !skipFailure, let failure { throw failure }
     }
 
+    func home(token: String) async throws -> CarHome {
+        try await gate(token, skipFailure: true)
+        if let homeFailure { throw homeFailure }
+        if let failure { throw failure }
+        return homeResult ?? CarHome(sections: [])
+    }
+    func books(token: String, sort: String, show: String?) async throws -> [BookCard] {
+        try await gate(token)
+        listed.append((sort, show))
+        return continueBooks
+    }
     func continueList(token: String) async throws -> [BookCard] { try await gate(token); return continueBooks }
     func queue(token: String) async throws -> [BookCard] { try await gate(token); return queueBooks }
     func shelves(token: String) async throws -> [ShelfCard] { try await gate(token); return shelfList }
@@ -68,7 +82,7 @@ final class CarLibraryTests: XCTestCase {
 
     func testSignedOutSaysSignInOnEveryTab() async {
         let lib = library(FakeCarAPI(), signedIn: false)
-        for node in ["continue", "queue", "shelves", "downloaded"] {
+        for node in ["home", "queue", "library", "downloaded"] {
             let list = await lib.load(node)
             XCTAssertEqual(list, .message(CarWords.text("car_sign_in")), node)
         }
@@ -112,15 +126,113 @@ final class CarLibraryTests: XCTestCase {
         XCTAssertEqual(list, .message(CarWords.text("car_no_connection")))
     }
 
-    func testPodcastsOffLeavesTheFolderOutAndRadioOnShowsItsRow() async {
+    private var libraryBookRows: [CarRow] {
+        [
+            .folder(id: "continue", title: "Continue listening"), .folder(id: "library-not-started", title: "Not started"),
+            .folder(id: "library-recent", title: "Recently added"), .folder(id: "library-title", title: "By title"),
+            .folder(id: "library-author", title: "By author"),
+        ]
+    }
+
+    func testLibraryWithPodcastsOffAndNoShelvesListsTheFiveBookRows() async {
+        let list = await library(FakeCarAPI()).load("library")
+        XCTAssertEqual(list, .rows(libraryBookRows))
+    }
+
+    func testLibraryAddsShelvesPodcastsAndRadioWhereTheyExist() async {
         let api = FakeCarAPI()
         api.shelfList = [ShelfCard(id: "s1", name: "Mine", books: 2)]
         api.stations = []
-        let list = await library(api).load("shelves")
-        XCTAssertEqual(list, .rows([.folder(id: "radio", title: "Radio"), .folder(id: "shelf:s1", title: "Mine")]))
+        let radio = await library(api).load("library")
+        XCTAssertEqual(radio, .rows(libraryBookRows + [.folder(id: "shelves", title: "Shelves"), .folder(id: "radio", title: "Radio")]))
         api.shows = []
-        let both = await library(api).load("shelves")
-        XCTAssertEqual(both, .rows([.folder(id: "podcasts", title: "Podcasts"), .folder(id: "radio", title: "Radio"), .folder(id: "shelf:s1", title: "Mine")]))
+        let both = await library(api).load("library")
+        XCTAssertEqual(
+            both, .rows(libraryBookRows + [.folder(id: "shelves", title: "Shelves"), .folder(id: "podcasts", title: "Podcasts"), .folder(id: "radio", title: "Radio")]))
+    }
+
+    func testShelvesListsOnlyShelves() async {
+        let api = FakeCarAPI()
+        api.shelfList = [ShelfCard(id: "s1", name: "Mine", books: 2)]
+        api.shows = []
+        api.stations = []
+        let list = await library(api).load("shelves")
+        XCTAssertEqual(list, .rows([.folder(id: "shelf:s1", title: "Mine")]))
+    }
+
+    func testTheFourListNodesAskForTheirSortAndShow() async {
+        let api = FakeCarAPI()
+        api.continueBooks = [book("b1")]
+        let lib = library(api)
+        for node in ["library-not-started", "library-recent", "library-title", "library-author"] {
+            let list = await lib.load(node)
+            XCTAssertEqual(list, .rows([.book(book("b1"))]), node)
+        }
+        XCTAssertEqual(api.listed.map { $0.0 }, ["title", "added", "title", "author"])
+        let shows: [String?] = ["not_started", nil, nil, nil]
+        XCTAssertEqual(api.listed.map { $0.1 }, shows)
+    }
+
+    // MARK: Home
+
+    private func homeBook(_ id: String, position: Int64 = 0) -> HomeBook { HomeBook(card: book(id), positionMs: position, series: nil) }
+
+    private func section(_ kind: HomeKind, _ seed: String, _ ids: [String]) -> HomeSection {
+        HomeSection(kind: kind, seed: seed, rows: ids.map { HomeRowBook(book: homeBook($0)) as HomeRow })
+    }
+
+    private func titles(_ list: CarList) -> [String] {
+        guard case .sections(let s) = list else { return ["not sections: \(list)"] }
+        return s.map { $0.title }
+    }
+
+    func testHomeOnlineGivesTheSectionsInOrderWithTheSeedInTheBecauseTitle() async {
+        let api = FakeCarAPI()
+        let episode = EpisodeCard(
+            id: "pe_1", showId: "sh", title: "Pilot", show: "S", durationMs: 1, publishedAt: 0, positionMs: 0, played: false, favourite: false)
+        let episodes: [HomeRow] = [HomeRowEpisode(card: episode)]
+        let all: [HomeSection] = [
+            section(.continue_, "", ["a"]), section(.series, "", ["b"]), section(.theNew, "", ["c"]),
+            section(.because, "Dune", ["d"]), HomeSection(kind: .episodes, seed: "", rows: episodes),
+        ]
+        api.homeResult = CarHome(sections: all)
+        let list = await library(api).load("home")
+        XCTAssertEqual(titles(list), [
+            "Continue listening", "Your series in progress", "New on the shelf", "Because you listened to Dune", "New episodes",
+        ])
+    }
+
+    func testHomeWithNoNetworkGivesContinueAndDownloadedFromThisPersonsRows() async {
+        let api = FakeCarAPI()
+        api.homeFailure = URLError(.notConnectedToInternet)
+        let rows = [row("a", title: "A", place: 5, at: 10), row("b", title: "B"), row("x", title: "X", place: 9, at: 99, user: "someone")]
+        let list = await library(api, rows: rows).load("home")
+        XCTAssertEqual(titles(list), ["Continue listening", "Downloaded"])
+        guard case .sections(let s) = list else { return XCTFail("\(list)") }
+        XCTAssertEqual(s[0].rows.count, 1)
+        XCTAssertEqual(s[1].rows.count, 1)
+    }
+
+    func testHomeOn404GivesOnlyContinueListening() async {
+        let api = FakeCarAPI()
+        api.homeFailure = ApiError(status: 404)
+        api.continueBooks = [book("a"), book("b")]
+        let list = await library(api).load("home")
+        XCTAssertEqual(titles(list), ["Continue listening"])
+    }
+
+    func testHomeSlowerThanTheBudgetAnswersTheOfflineSectionsNotWords() async {
+        let api = FakeCarAPI()
+        api.delay = .seconds(2)
+        let list = await library(api, rows: [row("a", title: "A", place: 5, at: 10), row("b", title: "B")], budget: .milliseconds(200)).load("home")
+        XCTAssertEqual(titles(list), ["Continue listening", "Downloaded"])
+    }
+
+    func testHomeSlowWithNothingDownloadedSaysNoConnection() async {
+        let api = FakeCarAPI()
+        api.delay = .seconds(2)
+        let list = await library(api, budget: .milliseconds(200)).load("home")
+        XCTAssertEqual(list, .message(CarWords.text("car_no_connection")))
     }
 
     func testLeavesAndUnknownIdsAreNotFound() async {

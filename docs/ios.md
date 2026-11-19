@@ -207,18 +207,23 @@ sign-out wipe; a downloaded book still streams until I3c plays it from its files
 
 ## CarPlay (I4c)
 
-A `CPTemplateApplicationScene` audio app (`CarPlayScene.swift`, `CarPlay.swift`, `CarLibrary.swift`): a tab bar of Continue, Up next, Shelves
-(with Podcasts and Radio rows) and Downloaded, the lists Android Auto shows, built from the shared `LibraryTree` (`carMine`,
+A `CPTemplateApplicationScene` audio app (`CarPlayScene.swift`, `CarPlay.swift`, `CarLibrary.swift`): a tab bar of Home, Up next, Library
+(Continue listening, Not started, Recently added, By title, By author, Shelves, Podcasts, Radio) and Downloaded, the lists Android Auto shows, built from the shared `LibraryTree` (`carMine`,
 `carDownloadedBooks`, `carContinueOffline` moved there; Android calls them). A tap plays through the one `Playback` and shows the system's
 Now Playing screen, which reads the lock-screen info and remote commands that already exist; the one added button is the speed cycle.
 No search and no Siri voice (CarPlay audio apps get neither).
+- **Home (CH2, [plan](plans/car-home.md)).** One `CPListTemplate` with a `CPListSection` per section (Continue listening with a progress bar, Your series
+  in progress, New on the shelf, Because you listened to ..., New episodes) from one `GET /api/v1/home`; the shared `fitSections` gives every
+  section two rows before any gets more, within `CPListTemplate.maximumItemCount` and `maximumSectionCount`. An old server (404) gives Continue
+  listening alone; no network or a late answer (5 s) gives Continue listening and Downloaded from the stored rows. The Library book lists are
+  one request of 120 (`CarAPI.books`).
 - **Entitlement.** Simulator builds carry `com.apple.developer.carplay-audio` (`Config/TendshelfCarPlay.entitlements`, set in `Base.xcconfig`);
   device builds do not until Apple grants it for `app.tendshelf.ios`: then uncomment the `TS_APP_ENTITLEMENTS[sdk=iphoneos*]` line there.
 - **Info.plist.** `UIApplicationSceneManifest` declares only the CarPlay role. Checked: the SwiftUI phone window still opens and shows the
   start page with it (no `configurationForConnecting` fallback was needed).
 - **Checked headless.** `CarLibraryTests` (signed out, offline fallback, 401, podcasts off, leaves, empty, 5 s budget), `CarPlayItemsTests`
   (row models, cap, image cache, scene declared and class exists), shared `LibraryTreeTest`. Not seen: the CarPlay display itself
-  (needs the Simulator window; `docs/manual-checks.md` IOS-17 to IOS-21).
+  (needs the Simulator window; `docs/manual-checks.md` IOS-17 to IOS-21, Home IOS-24 to IOS-27).
 
 ## Release builds (I4d)
 

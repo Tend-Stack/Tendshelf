@@ -275,6 +275,10 @@ protocol CarAPI: AnyObject {
     func showEpisodes(token: String, showId: String) async throws -> [EpisodeCard]
     func radioStations(token: String) async throws -> [StationCard]
     func radioRecent(token: String) async throws -> [StationCard]
+    /// Home in one request (`GET /api/v1/home`).
+    func home(token: String) async throws -> CarHome
+    /// A book list for the Library tab (120 at most): sort `added`, `title` or `author`, show `not_started` or all.
+    func books(token: String, sort: String, show: String?) async throws -> [BookCard]
     func cover(token: String, bookId: String) async -> Data?
     /// A show's picture by the show's id (what an episode row shows).
     func showArt(token: String, showId: String) async -> Data?
@@ -285,6 +289,18 @@ extension PlayerApi: CarAPI {
     func showArt(token: String, showId: String) async -> Data? {
         guard BridgeProtocolKt.validId(s: showId) else { return nil }
         return try? await get(paths.showArtUrl(showId: showId, width: 512), token, 2 * 1024 * 1024)
+    }
+
+    func home(token: String) async throws -> CarHome {
+        let body = try await get(paths.homeUrl, token, 1024 * 1024)
+        guard let home = PlayerParseKt.parseCarHome(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return home
+    }
+
+    func books(token: String, sort: String, show: String?) async throws -> [BookCard] {
+        let body = try await get(paths.booksUrl(sort: sort, show: show, limit: 120), token, 2 * 1024 * 1024)
+        guard let list = PlayerParseKt.parseListBooks(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return list
     }
 
     func continueList(token: String) async throws -> [BookCard] {
