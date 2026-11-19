@@ -61,9 +61,11 @@ function csrfToken() {
 // A toast with buttons, in #toasts. It stays until a button is pressed.
 function offer(text, actions) {
   const toast = document.createElement("div");
-  toast.className = "ts-toast";
+  toast.className = "ts-toast ts-toast--ask";
   toast.setAttribute("role", "status");
-  toast.append(text);
+  const words = toast.appendChild(document.createElement("span"));
+  words.className = "ts-toast__text";
+  words.textContent = text;
   const row = toast.appendChild(document.createElement("span"));
   row.className = "ts-toast__actions";
   for (const [label, run] of actions) {

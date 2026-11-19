@@ -41,6 +41,11 @@
 
 /* Toasts with a choice (continue there, signed out) */
 .ts-toast__actions { display: inline-flex; gap: var(--space-4); }
+/* The question takes the toast's full width: the words first, the buttons on a row below when they do not fit
+   beside it (a phone), pushed to the end. */
+.ts-toast--ask { flex-wrap: wrap; max-width: 100%; padding-block: var(--space-8); }
+.ts-toast--ask .ts-toast__text { flex: 1 1 14rem; min-width: 0; overflow-wrap: anywhere; }
+.ts-toast--ask .ts-toast__actions { margin-inline-start: auto; flex-wrap: wrap; }
 
 /* Keyboard shortcuts sheet */
 .ts-keys { box-sizing: border-box; width: min(26.25rem, calc(100vw - var(--space-32))); padding: var(--space-24); border: 1px solid var(--line-strong);

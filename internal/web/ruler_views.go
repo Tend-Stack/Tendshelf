@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/library"
 )
@@ -31,6 +32,16 @@ func bookLeftText(posMs, durMs int64, speed float64) string {
 	return left
 }
 
+// whereBookLeft is bookLeft as the where-line says it. Under an hour the line already says "min" for the
+// chapter, so the book's minutes say "min" too ("2 min left in chapter · 2 min left in book"); from an hour
+// up the copy deck's "6 h 40 m" stays.
+func whereBookLeft(bookLeft string) string {
+	if strings.Contains(bookLeft, " h") || !strings.HasSuffix(bookLeft, " m") {
+		return bookLeft
+	}
+	return strings.TrimSuffix(bookLeft, " m") + " min"
+}
+
 // listenRulerFor builds the ruler for a position in a book of durMs, at the person's speed. Chapter
 // words appear only when the book has chapters.
 func listenRulerFor(chs []library.Chapter, posMs, durMs int64, speed float64) listenRuler {
@@ -45,7 +56,8 @@ func listenRulerFor(chs []library.Chapter, posMs, durMs int64, speed float64) li
 		speed = 1
 	}
 	bookLeft := bookLeftText(pos, dur, speed)
-	v.Label, v.Where = homeBookProgress, fmt.Sprintf(homeWhereBook, bookLeft)
+	whereLeft := whereBookLeft(bookLeft)
+	v.Label, v.Where = homeBookProgress, fmt.Sprintf(homeWhereBook, whereLeft)
 	v.WhereShort = fmt.Sprintf(bookWhereShortBook, bookLeft)
 	v.Chapters = len(chs)
 	if cur := currentChapter(chs, pos); cur >= 0 {
@@ -53,7 +65,7 @@ func listenRulerFor(chs []library.Chapter, posMs, durMs int64, speed float64) li
 		left := int64(math.Ceil(float64(max(chs[cur].EndMs-pos, 0)) / speed / 60_000))
 		names := chapterNamesOf(chs)
 		v.Label = fmt.Sprintf(homeRulerChapter, names.InlineOf(cur)) // "Book progress, chapter 13 of 51"
-		v.Where = fmt.Sprintf(homeWhere, names.Name(cur), max(left, 1), bookLeft)
+		v.Where = fmt.Sprintf(homeWhere, names.Name(cur), max(left, 1), whereLeft)
 		v.WhereShort = fmt.Sprintf(bookWhereShort, names.Name(cur), fmt.Sprintf("%d min", max(left, 1)))
 	}
 	return v

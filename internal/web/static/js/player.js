@@ -146,8 +146,13 @@ function toast(kind, text, actions) {
   const el = document.createElement("div");
   el.className = kind === "hint" ? "ts-toast ts-toast--hint" : "ts-toast";
   el.role = kind === "err" ? "alert" : "status";
-  el.append(text);
+  if (!actions) el.append(text);
   if (actions) {
+    // A choice: the words get the full width and the buttons wrap below them when the row is narrow.
+    el.classList.add("ts-toast--ask");
+    const words = el.appendChild(document.createElement("span"));
+    words.className = "ts-toast__text";
+    words.textContent = text;
     const row = el.appendChild(document.createElement("span"));
     row.className = "ts-toast__actions";
     for (const action of actions) {
