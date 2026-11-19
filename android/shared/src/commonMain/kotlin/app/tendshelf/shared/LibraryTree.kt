@@ -130,11 +130,11 @@ fun speedLabel(speed: Double): String = speed.toString() + "x" // Double.toStrin
 fun carMine(all: List<OfflineBook>, userId: String?): List<OfflineBook> =
     all.filter { (it.state == OfflineState.READY || it.state == OfflineState.STALE) && (userId == null || userId == it.userId) }
 
-/** The Downloaded tab's books, by lowercased title. */
+/** The Downloaded tab's books, by lowercased title. Downloaded episodes are not books: they stay out of this list. */
 fun carDownloadedBooks(mine: List<OfflineBook>, hasCover: (String) -> Boolean): List<BookCard> =
-    mine.sortedBy { it.title.lowercase() }.map { BookCard(it.bookId, it.title, it.author, it.durationMs, hasCover(it.bookId)) }
+    mine.filter { it.kind == KIND_BOOK }.sortedBy { it.title.lowercase() }.map { BookCard(it.bookId, it.title, it.author, it.durationMs, hasCover(it.bookId)) }
 
-/** The Continue tab with no network: downloads with a place, the most recently listened first. */
+/** The Continue tab with no network: downloaded books with a place, the most recently listened first (episodes left out). */
 fun carContinueOffline(mine: List<OfflineBook>, hasCover: (String) -> Boolean): List<BookCard> =
-    mine.filter { it.placeMs > 0 }.sortedByDescending { it.placeAt }
+    mine.filter { it.kind == KIND_BOOK && it.placeMs > 0 }.sortedByDescending { it.placeAt }
         .map { BookCard(it.bookId, it.title, it.author, it.durationMs, hasCover(it.bookId)) }

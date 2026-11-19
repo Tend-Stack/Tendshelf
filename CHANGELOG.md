@@ -9,6 +9,7 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 - **"Continue there?" fits on a phone.** The question was squeezed into a narrow column beside its two buttons; the words now take the full width and the buttons sit in a row below them.
 - **A book without a cover no longer shows its title underlined like a link** on the Home page card.
 - **The where-you-are line uses one unit.** Under an hour it now reads "2 min left in chapter · 2 min left in book" instead of mixing "min" and "m".
+- **Downloaded podcast episodes no longer show up as books in the car.** In Android Auto, the Downloaded and Continue lists now hold only books.
 - **Listening time counts the last minutes before you pause, on Android.** The stretch you listened just before pausing was left out of your listening time; it now counts.
 
 ### Added

@@ -107,4 +107,12 @@ class LibraryTreeTest {
         val rows = listOf(dl("1", "A", place = 5, at = 10), dl("2", "B"), dl("3", "C", place = 7, at = 30), dl("4", "D", place = 1, at = 20))
         assertEquals(listOf("3", "4", "1"), carContinueOffline(rows) { true }.map { it.id })
     }
+
+    @Test
+    fun carBookListsLeaveDownloadedEpisodesOut() {
+        val episode = dl("e", "An episode", place = 9, at = 99).copy(kind = KIND_EPISODE, showId = "s")
+        val rows = listOf(dl("1", "Book", place = 5, at = 10), episode)
+        assertEquals(listOf("1"), carDownloadedBooks(rows) { true }.map { it.id })
+        assertEquals(listOf("1"), carContinueOffline(rows) { true }.map { it.id })
+    }
 }
