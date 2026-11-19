@@ -261,3 +261,73 @@ final class PlayerApi: PlayerAPI {
         return reply.body
     }
 }
+
+// MARK: Car lists (decision 0048, I4c)
+
+/// What CarPlay lists ask of the server, port of the list calls of `Api.kt:123-227` with the same size caps. A fake stands in for it in the tests.
+protocol CarAPI: AnyObject {
+    func continueList(token: String) async throws -> [BookCard]
+    func queue(token: String) async throws -> [BookCard]
+    func shelves(token: String) async throws -> [ShelfCard]
+    func shelfBooks(token: String, shelfId: String) async throws -> [BookCard]
+    func podcastNew(token: String) async throws -> [EpisodeCard]
+    func podcastShows(token: String) async throws -> [ShowCard]
+    func showEpisodes(token: String, showId: String) async throws -> [EpisodeCard]
+    func radioStations(token: String) async throws -> [StationCard]
+    func radioRecent(token: String) async throws -> [StationCard]
+    func cover(token: String, bookId: String) async -> Data?
+    /// A show's picture by the show's id (what an episode row shows).
+    func showArt(token: String, showId: String) async -> Data?
+    func radioArt(token: String, id: String, artPath: String) async -> Data?
+}
+
+extension PlayerApi: CarAPI {
+    func showArt(token: String, showId: String) async -> Data? {
+        guard BridgeProtocolKt.validId(s: showId) else { return nil }
+        return try? await get(paths.showArtUrl(showId: showId, width: 512), token, 2 * 1024 * 1024)
+    }
+
+    func continueList(token: String) async throws -> [BookCard] {
+        let body = try await get(paths.continueUrl(limit: 24), token, 1024 * 1024)
+        guard let list = PlayerParseKt.parseItemBooks(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return list
+    }
+
+    func queue(token: String) async throws -> [BookCard] {
+        let body = try await get(paths.queueUrl, token, 1024 * 1024)
+        guard let list = PlayerParseKt.parseItemBooks(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return list
+    }
+
+    func shelves(token: String) async throws -> [ShelfCard] {
+        let body = try await get(paths.shelvesUrl, token, 1024 * 1024)
+        guard let list = PlayerParseKt.parseShelves(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return list
+    }
+
+    /// The first page of a shelf (48 books); a longer shelf is reached by search.
+    func shelfBooks(token: String, shelfId: String) async throws -> [BookCard] {
+        guard BridgeProtocolKt.validId(s: shelfId) else { throw ApiError(status: 404) }
+        let body = try await get(paths.shelfUrl(shelfId: shelfId), token, 2 * 1024 * 1024)
+        guard let list = PlayerParseKt.parseShelfBooks(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return list
+    }
+
+    func podcastNew(token: String) async throws -> [EpisodeCard] {
+        let body = try await get(paths.newEpisodesUrl, token, 2 * 1024 * 1024)
+        guard let list = PlayerParseKt.parseEpisodeCards(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return list
+    }
+
+    func radioStations(token: String) async throws -> [StationCard] {
+        let body = try await get(paths.radioStationsUrl, token, 1024 * 1024)
+        guard let list = PlayerParseKt.parseStations(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return list
+    }
+
+    func radioRecent(token: String) async throws -> [StationCard] {
+        let body = try await get(paths.radioRecentUrl, token, 1024 * 1024)
+        guard let list = PlayerParseKt.parseStations(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return list
+    }
+}

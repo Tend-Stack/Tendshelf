@@ -51,6 +51,23 @@
 	<string>Tendshelf connects to the server you chose on your network.</string>
 	<key>TSBuildDescribe</key>
 	<string>$(TS_BUILD_DESCRIBE)</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>CPTemplateApplicationSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>CarPlay</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).CarPlayScene</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

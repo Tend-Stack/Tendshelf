@@ -10,6 +10,13 @@ private inline fun <T : Any> safely(block: () -> T): T? = try {
     null
 }
 
+/** The car's lists (CarPlay): `/continue` and `/queue`, a shelf's first page, and the shelf names. */
+fun parseItemBooks(body: String): List<BookCard>? = safely { ApiJson.itemBooks(body) }
+
+fun parseShelfBooks(body: String): List<BookCard>? = safely { ApiJson.shelfBooks(body) }
+
+fun parseShelves(body: String): List<ShelfCard>? = safely { ApiJson.shelves(body) }
+
 fun parseSettings(body: String): PlayerSettings? = safely { ApiJson.settings(body) }
 
 fun parseManifest(body: String, paths: ApiPaths): BookManifest? = safely { ApiJson.manifest(body, paths) }

@@ -61,6 +61,7 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         signOut.beforeWipe = { [weak self] connection in
             self?.playback.signOut(connection)
             self?.playback.widget.signedOut()
+            CarPlay.shared.signedOut()
             self?.downloads.wipe()
             self?.bridge.detach()
         }

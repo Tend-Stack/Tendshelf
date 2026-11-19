@@ -504,3 +504,16 @@ Run in the Simulator window (or on a phone) against a server you control. Add th
 | IOS-14 | Tap Pause, then Play, then Forward on the medium widget. Then quit the app (swipe it away) and tap Play. | Each acts at once and the glyph changes; after the quit, Play starts the last book where the server holds the place. The buttons are the widget's own App Intents, so this also proves they run in the app's process. | Not run (needs the Simulator window). |
 | IOS-15 | Tap the cover or title. Then play a station and a podcast episode and look again. | The app opens on that book's page (episode page, Radio page). A station's widget has no skip buttons. | Not run (needs the Simulator window). |
 | IOS-16 | Sign out in the app, look at the widget. VoiceOver on: swipe through the widget. | The signed-out line, with no title or cover left; every button has a label ("Back 30 seconds", "Play", "Open <title>"). | Not run (needs the Simulator window). |
+
+## iPhone CarPlay (decision 0048, I4c)
+
+Run in the Simulator: I/O > External Displays > CarPlay, against a server you control (a throwaway one with a synthetic library).
+`xcrun simctl io <udid> screenshot --display=external <file>` takes the car screen.
+
+| ID | Check | Expected | Result |
+| --- | --- | --- | --- |
+| IOS-17 | Signed in, open the CarPlay screen. | Four tabs: Continue, Up next, Shelves, Downloaded. Continue lists the server's books with covers. | Not run (needs the Simulator window). |
+| IOS-18 | Tap a book, then use the rate button on Now Playing. | The book plays; Now Playing shows title and chapter; the rate button cycles 1.0, 1.25, 1.5, 1.75, 2.0, 0.75. | Not run (needs the Simulator window). |
+| IOS-19 | Stop the server. Open Continue and Up next. | Continue shows the downloaded book with a place; Up next says "Can't reach your library. Downloaded books still play." | Not run (needs the Simulator window). |
+| IOS-20 | Sign out on the phone, look at the car. | Back at the tab bar; every tab says "Open Tendshelf on your phone to sign in." | Not run (needs the Simulator window). |
+| IOS-21 | Quit the app, then start it from the CarPlay screen alone. Open Shelves (Podcasts and Radio rows when the server has them) and play. | Lists load and playback starts with no phone window open. | Not run (needs the Simulator window). |

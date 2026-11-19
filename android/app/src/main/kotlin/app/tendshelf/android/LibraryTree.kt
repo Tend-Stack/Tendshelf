@@ -33,6 +33,9 @@ import app.tendshelf.shared.showRowTitle
 import app.tendshelf.shared.Node
 import app.tendshelf.shared.OfflineState
 import app.tendshelf.shared.Page
+import app.tendshelf.shared.carContinueOffline
+import app.tendshelf.shared.carDownloadedBooks
+import app.tendshelf.shared.carMine
 import app.tendshelf.shared.nodeId
 import app.tendshelf.shared.parseNode
 import app.tendshelf.shared.slice
@@ -278,7 +281,7 @@ class LibraryTree(
         connection() // signed out: words, even for the tabs
         return when (node) {
             Node.Root -> tabs()
-            Node.Continue -> online({ downloadedBooks().filter { placeOf(it.id) > 0 }.sortedByDescending { placeAt(it.id) } }) { api, t -> api.continueList(t) }.map(::bookItem)
+            Node.Continue -> online({ Offline.init(context); carContinueOffline(mine()) { Offline.coverBytes(it) != null } }) { api, t -> api.continueList(t) }.map(::bookItem)
             Node.UpNext -> online(null) { api, t -> api.queue(t) }.map(::bookItem)
             Node.Shelves -> podcastsRow() + radioRow() + online(null) { api, t -> api.shelves(t) }.map { s ->
                 shelfNames[s.id] = s.name
@@ -392,13 +395,11 @@ class LibraryTree(
 
     // ---- Downloaded books (A7's store): no network, the signed-in person's only ----
 
-    private fun mine() = Offline.store.all().filter {
-        (it.state == OfflineState.READY || it.state == OfflineState.STALE) && (TokenStore(context).userId.let { id -> id == null || id == it.userId })
-    }
+    private fun mine() = carMine(Offline.store.all(), TokenStore(context).userId)
 
     private fun downloadedBooks(): List<BookCard> {
         Offline.init(context)
-        return mine().sortedBy { it.title.lowercase() }.map { BookCard(it.bookId, it.title, it.author, it.durationMs, Offline.coverBytes(it.bookId) != null) }
+        return carDownloadedBooks(mine()) { Offline.coverBytes(it) != null }
     }
 
     /** Downloaded episodes of the signed-in person, newest first: no network. */
@@ -407,8 +408,6 @@ class LibraryTree(
         return readyEpisodes(mine()).map { it.asEpisodeCard() }
     }
 
-    private fun placeOf(id: String): Long = Offline.store.get(id)?.placeMs ?: 0
-    private fun placeAt(id: String): Long = Offline.store.get(id)?.placeAt ?: 0
 
     companion object {
         const val BUDGET_MS = 5_000L

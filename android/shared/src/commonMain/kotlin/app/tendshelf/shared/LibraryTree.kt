@@ -123,3 +123,18 @@ fun speedCycle(current: Double): Double {
 
 /** "1.25x" the way the button says it; a whole speed keeps one decimal ("1.0x"). */
 fun speedLabel(speed: Double): String = speed.toString() + "x" // Double.toString keeps one decimal on a whole speed ("1.0")
+
+// ---- The car's downloaded-book lists (shared by Android Auto and CarPlay): no network, the signed-in person's only ----
+
+/** The person's whole downloads: READY or STALE rows, and only theirs when someone is signed in ([userId] null accepts any). */
+fun carMine(all: List<OfflineBook>, userId: String?): List<OfflineBook> =
+    all.filter { (it.state == OfflineState.READY || it.state == OfflineState.STALE) && (userId == null || userId == it.userId) }
+
+/** The Downloaded tab's books, by lowercased title. */
+fun carDownloadedBooks(mine: List<OfflineBook>, hasCover: (String) -> Boolean): List<BookCard> =
+    mine.sortedBy { it.title.lowercase() }.map { BookCard(it.bookId, it.title, it.author, it.durationMs, hasCover(it.bookId)) }
+
+/** The Continue tab with no network: downloads with a place, the most recently listened first. */
+fun carContinueOffline(mine: List<OfflineBook>, hasCover: (String) -> Boolean): List<BookCard> =
+    mine.filter { it.placeMs > 0 }.sortedByDescending { it.placeAt }
+        .map { BookCard(it.bookId, it.title, it.author, it.durationMs, hasCover(it.bookId)) }

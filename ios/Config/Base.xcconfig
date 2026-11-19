@@ -16,5 +16,9 @@ CODE_SIGN_IDENTITY = -
 TS_BUILD_DESCRIBE = unknown
 // The app group the widget shares with the app (decision 0048, I4b).
 TS_APP_ENTITLEMENTS = Config/Tendshelf.entitlements
+// CarPlay audio (decision 0048, I4c): every simulator build carries the entitlement (the simulator checks no profile).
+TS_APP_ENTITLEMENTS[sdk=iphonesimulator*] = Config/TendshelfCarPlay.entitlements
+// Uncomment when Apple has granted CarPlay audio for app.tendshelf.ios (docs/ios.md).
+// TS_APP_ENTITLEMENTS[sdk=iphoneos*] = Config/TendshelfCarPlay.entitlements
 // The owner's own signing settings (never committed); absent on a simulator build.
 #include? "Signing.local.xcconfig"

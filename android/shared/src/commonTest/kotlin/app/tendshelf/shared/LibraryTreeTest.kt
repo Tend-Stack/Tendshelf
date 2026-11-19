@@ -80,4 +80,31 @@ class LibraryTreeTest {
         assertEquals("http://h/api/v1/books/b1/speed", api.speedUrl("b1"))
         assertFailsWith<IllegalArgumentException> { api.shelfUrl("a/b") }
     }
+
+    private fun dl(id: String, title: String, user: String = "u", state: OfflineState = OfflineState.READY, place: Long = 0, at: Long = 0) =
+        OfflineBook(id, user, title, "A", 1000, 1, state, place, at)
+
+    @Test
+    fun carMineKeepsWholeRowsOfThePerson() {
+        val all = listOf(
+            dl("a", "A"), dl("b", "B", state = OfflineState.STALE), dl("c", "C", state = OfflineState.PAUSED),
+            dl("d", "D", user = "other"),
+        )
+        assertEquals(listOf("a", "b"), carMine(all, "u").map { it.bookId })
+        assertEquals(listOf("a", "b", "d"), carMine(all, null).map { it.bookId })
+    }
+
+    @Test
+    fun carDownloadedBooksSortByLowercasedTitle() {
+        val rows = listOf(dl("1", "banana"), dl("2", "Apple"), dl("3", "cherry"))
+        val cards = carDownloadedBooks(rows) { it == "2" }
+        assertEquals(listOf("2", "1", "3"), cards.map { it.id })
+        assertEquals(listOf(true, false, false), cards.map { it.hasCover })
+    }
+
+    @Test
+    fun carContinueOfflineIsPlacedBooksNewestFirst() {
+        val rows = listOf(dl("1", "A", place = 5, at = 10), dl("2", "B"), dl("3", "C", place = 7, at = 30), dl("4", "D", place = 1, at = 20))
+        assertEquals(listOf("3", "4", "1"), carContinueOffline(rows) { true }.map { it.id })
+    }
 }

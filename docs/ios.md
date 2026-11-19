@@ -185,6 +185,21 @@ sign-out wipe; a downloaded book still streams until I3c plays it from its files
   place, Sign out left only the signed-out file. Not seen: the widget drawn, and a tap on it (needs the Simulator window; see
   `docs/manual-checks.md` IOS-12 to IOS-15).
 
+## CarPlay (I4c)
+
+A `CPTemplateApplicationScene` audio app (`CarPlayScene.swift`, `CarPlay.swift`, `CarLibrary.swift`): a tab bar of Continue, Up next, Shelves
+(with Podcasts and Radio rows) and Downloaded, the lists Android Auto shows, built from the shared `LibraryTree` (`carMine`,
+`carDownloadedBooks`, `carContinueOffline` moved there; Android calls them). A tap plays through the one `Playback` and shows the system's
+Now Playing screen, which reads the lock-screen info and remote commands that already exist; the one added button is the speed cycle.
+No search and no Siri voice (CarPlay audio apps get neither).
+- **Entitlement.** Simulator builds carry `com.apple.developer.carplay-audio` (`Config/TendshelfCarPlay.entitlements`, set in `Base.xcconfig`);
+  device builds do not until Apple grants it for `app.tendshelf.ios`: then uncomment the `TS_APP_ENTITLEMENTS[sdk=iphoneos*]` line there.
+- **Info.plist.** `UIApplicationSceneManifest` declares only the CarPlay role. Checked: the SwiftUI phone window still opens and shows the
+  start page with it (no `configurationForConnecting` fallback was needed).
+- **Checked headless.** `CarLibraryTests` (signed out, offline fallback, 401, podcasts off, leaves, empty, 5 s budget), `CarPlayItemsTests`
+  (row models, cap, image cache, scene declared and class exists), shared `LibraryTreeTest`. Not seen: the CarPlay display itself
+  (needs the Simulator window; `docs/manual-checks.md` IOS-17 to IOS-21).
+
 ## Cleanup
 
 `make ios-shared` leaves the synced tree and its build output on the Mac. `ios/tools/mac-build.sh clean` removes that tree;
