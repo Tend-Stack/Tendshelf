@@ -103,6 +103,7 @@ func apiSweepRows() []sweepRow {
 		api(apiUnsafe("PATCH /api/v1/settings", http.MethodPatch, sweepStatic("/api/v1/settings"), sweepSame(http.StatusUnsupportedMediaType))),
 		api(apiUnsafe("PUT /api/v1/books/{id}/speed", http.MethodPut, bookPath("/api/v1/books/", "/speed"), staff415)),
 		api(sweepGet("GET /api/v1/continue", sweepStatic("/api/v1/continue"), ok)),
+		api(sweepGet("GET /api/v1/home", sweepStatic("/api/v1/home"), ok)),
 		api(apiUnsafe("DELETE /api/v1/queue/{bookID}", http.MethodDelete, bookPath("/api/v1/queue/", ""), sweepSame(http.StatusNotFound))),
 	}
 }

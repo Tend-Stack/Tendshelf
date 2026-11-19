@@ -140,13 +140,24 @@ puts the answers back in order; a group that fails settles only the rows before 
 sleep word `episode` ends the timer at the end of the item. Left for later: the "continue on another device?" question for episodes
 (the episode state names no device). The mixed queue and downloads came with A2 (below).
 
+## Home in the car (CH1)
+
+Android Auto shows four tabs: **Home**, Up next, **Library**, Downloaded (CarPlay gets the same in CH2). Home is a grid with the
+section titles Continue listening (a progress bar on each cover), Your series in progress (the next unstarted book of a series you are in,
+"Book 2 of 5 · Author"), New on the shelf (audiobooks you have not started, newest first), Because you listened to ..., and New episodes.
+It is one request, `GET /api/v1/home`, cut to 26 rows by `fitHome` (`android/shared` `CarHome.kt`: every section keeps two rows before
+any keeps more). With no network, or when the answer is later than 5 s, Home answers Continue listening and Downloaded from the
+downloads. An older server (404) shows Continue listening from `/continue`. After a new item starts, the service calls
+`notifyChildrenChanged("home")`. Library holds Continue listening, Not started, Recently added, By title and By author (one request of
+120 books each), then Shelves (only when you have one), Podcasts and Radio (only when on). Voice and search are unchanged.
+
 ## Podcasts in the car, the widget and the media button (A3, decision 0038)
 
 `android/shared` `LibraryTree.kt` has the nodes `podcasts`, `podcasts-new`, `podcasts-downloaded`, `podcasts-shows`, `show:<id>` and
 `episode:<id>` (`playableId` is the id the engine starts for a book or an episode); `Podcast.kt` has the rows (`ShowCard`,
 `EpisodeCard`, read from `GET /api/v1/podcasts`, `/podcasts/new` and `/podcasts/shows/{id}/episodes?limit=50`; withdrawn `gone` episodes
 are left out), the row text and Auto's completion status, and the row actions. `LibraryTree` (app) puts **Podcasts** as the first row
-of the Shelves tab, only when the server answers the shows list (podcasts on): Android Auto shows four tabs, so a fifth would be dropped.
+of the Library tab, only when the server answers the shows list (podcasts on): Android Auto shows four tabs, so a fifth would be dropped.
 Podcasts holds New, Downloaded (A2: the downloaded episodes, newest first; the top-level Downloaded tab lists them too, because it works with no connection) and Shows; a show opens its newest 50 episodes. Artwork goes through the server:
 `content://app.tendshelf.android.covers/<showId>` (`CoverProvider` fetches `/api/v1/podcasts/art/{id}?w=512` for an id starting `ps_`
 and caches it once per show). Episode ids are saved as `LAST_BOOK`, so a media button with nothing loaded resumes the episode.

@@ -28,6 +28,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.tendshelf.shared.allowedCommands
+import app.tendshelf.shared.nodeId
 import app.tendshelf.shared.parseNode
 import app.tendshelf.shared.playableId
 import app.tendshelf.shared.Allowed
@@ -334,6 +335,11 @@ class PlaybackService : MediaLibraryService() {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) = update()
             override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) = update()
+
+            // What just started leads Continue listening: the car asks for Home again (CH1).
+            override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+                session?.notifyChildrenChanged(nodeId(Node.Home), tree.homeCount, null)
+            }
         })
     }
 

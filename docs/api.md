@@ -92,7 +92,7 @@ The libraries the person may see: `{"items":[{"id","name","books"}]}` (`books` c
 A page of `BookCard` with the Library page's filters, as a `List` with `total`.
 Query: `sort` (`added` newest first, the default; `title`, `author`, `duration`), `genre` (repeat, up to 5), `author`,
 `narrator`, `series` (ids), `length` (`short`, `medium`, `long`), `title` (contains), `show` (`unfinished`,
-`not_started`, `finished`, `shared`), `cursor`, `limit` (1..120, default 48). An unknown filter value is ignored,
+`not_started`, `finished`, `shared`), `format` (`audio`, `text`), `cursor`, `limit` (1..120, default 48). An unknown filter value is ignored,
 as on the page. Errors: 400 `limit` or `cursor`; 404 for a library the person cannot see.
 
 ### GET /api/v1/books/{id}
@@ -269,6 +269,18 @@ the book's own is dropped. 400 `speed`; 404 for a book the person cannot listen 
 ### GET /api/v1/continue?limit=
 `limit` 1 to 24 (default 12), otherwise `400 invalid` field `limit`. `{"items":[{"book":BookCard,"positionMs","durationMs","updatedAt"}]}`,
 `no-store`: audiobooks the person started and did not finish, most recent first. Books they may not listen to never appear.
+
+### GET /api/v1/home
+The car's start page in one request (docs/plans/car-home.md). No parameters; `no-store`; cookie or device token.
+```
+{"continue":[{"book":BookCard,"positionMs","durationMs","updatedAt"}],   // at most 6, as /continue
+ "series":[{"book":BookCard,"seriesName","index","total"}],              // at most 4: the next unstarted book of a series in progress
+ "new":[BookCard],                                                       // at most 8: newest added audiobooks not started
+ "because":{"seed":"Title","books":[BookCard]}|null,                     // at most 4
+ "episodes":[PodEpisode]}                                                // at most 4 new episodes; [] when podcasts are off or refused
+```
+Arrays are `[]`, never `null`. A book appears once, in the first of continue, series, new, because; a text-only book never appears.
+Every list filters by the person's grants in SQL and each book is checked for `listenBook` once more. Errors: 401; 500.
 
 ## Podcasts (decision [0038](decisions/0038-podcasts.md))
 

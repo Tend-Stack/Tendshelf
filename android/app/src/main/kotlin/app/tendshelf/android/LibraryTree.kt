@@ -30,6 +30,16 @@ import app.tendshelf.shared.stationSubline
 import app.tendshelf.shared.isEpisodeId
 import app.tendshelf.shared.isStationId
 import app.tendshelf.shared.showRowTitle
+import app.tendshelf.shared.CarHome
+import app.tendshelf.shared.HOME_MAX_ROWS
+import app.tendshelf.shared.HOME_MAX_SECTIONS
+import app.tendshelf.shared.HomeBook
+import app.tendshelf.shared.HomeKind
+import app.tendshelf.shared.HomeRow
+import app.tendshelf.shared.HomeSection
+import app.tendshelf.shared.carHomeOffline
+import app.tendshelf.shared.fitHome
+import app.tendshelf.shared.homeProgress
 import app.tendshelf.shared.Node
 import app.tendshelf.shared.OfflineState
 import app.tendshelf.shared.Page
@@ -44,6 +54,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import java.io.IOException
 import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicReference
 
 /** A failure the car should read in plain words (A8, invariant 4). */
 private class CarError(val code: Int, @StringRes val words: Int) : Exception()
@@ -94,19 +105,33 @@ class LibraryTree(
         ).build()
     }
 
-    fun bookItem(c: BookCard): MediaItem {
+    /** A book leaf. [group] is the section title Android Auto draws over a grid; [detail] replaces the author line; [percent] draws a progress bar. */
+    fun bookItem(c: BookCard, group: String? = null, detail: String? = null, percent: Double? = null): MediaItem {
         books[c.id] = c
         val md = MediaMetadata.Builder().setTitle(c.title).setArtist(c.author).setIsBrowsable(false).setIsPlayable(true)
             .setMediaType(MediaMetadata.MEDIA_TYPE_AUDIO_BOOK)
+        detail?.let { md.setSubtitle(it) }
+        if (group != null || percent != null) {
+            md.setExtras(
+                Bundle().apply {
+                    group?.let { putString(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE, it) }
+                    if (percent != null) {
+                        putInt(MediaConstants.EXTRAS_KEY_COMPLETION_STATUS, MediaConstants.EXTRAS_VALUE_COMPLETION_STATUS_PARTIALLY_PLAYED)
+                        putDouble(MediaConstants.EXTRAS_KEY_COMPLETION_PERCENTAGE, percent)
+                    }
+                },
+            )
+        }
         if (c.durationMs > 0) md.setDurationMs(c.durationMs)
         if (c.hasCover) md.setArtworkUri(CoverProvider.uriOf(c.id))
         return MediaItem.Builder().setMediaId(nodeId(Node.Book(c.id))).setMediaMetadata(md.build()).build()
     }
 
     /** An episode leaf (A3): its title, the show and length beneath, the show's picture, and the row's actions. */
-    fun episodeItem(c: EpisodeCard): MediaItem {
+    fun episodeItem(c: EpisodeCard, group: String? = null): MediaItem {
         episodes[c.id] = c
         val extras = Bundle().apply {
+            group?.let { putString(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE, it) }
             putInt(MediaConstants.EXTRAS_KEY_COMPLETION_STATUS, completionOf(c))
             if (completionOf(c) == 1) putDouble(MediaConstants.EXTRAS_KEY_COMPLETION_PERCENTAGE, completionPercent(c) / 100.0)
         }
@@ -154,12 +179,31 @@ class LibraryTree(
         }
     }
 
+    /** Home, Up next, Library, Downloaded: the same four tabs, in the same order, as CarPlay (CH1, invariant 6). */
     private fun tabs(): List<MediaItem> = listOf(
-        folder(Node.Continue, words(R.string.car_continue), playableStyle = LIST),
+        folder(Node.Home, words(R.string.car_home), playableStyle = GRID),
         folder(Node.UpNext, words(R.string.car_up_next), playableStyle = LIST),
-        folder(Node.Shelves, words(R.string.car_shelves), browsableStyle = GRID, playableStyle = LIST),
+        folder(Node.Library, words(R.string.car_library), browsableStyle = LIST, playableStyle = LIST),
         folder(Node.Downloaded, words(R.string.car_downloaded), playableStyle = GRID),
     )
+
+    /** The folders inside Library that are not podcasts or radio: the Continue list, three book lists and the shelves. */
+    private fun libraryFolders(): List<MediaItem> = listOf(
+        folder(Node.Continue, words(R.string.car_home_continue), playableStyle = LIST),
+        folder(Node.LibraryNotStarted, words(R.string.car_not_started), playableStyle = LIST),
+        folder(Node.LibraryRecent, words(R.string.car_recent), playableStyle = LIST),
+        folder(Node.LibraryTitle, words(R.string.car_by_title), playableStyle = LIST),
+        folder(Node.LibraryAuthor, words(R.string.car_by_author), playableStyle = LIST),
+        folder(Node.Shelves, words(R.string.car_shelves), browsableStyle = GRID, playableStyle = LIST),
+    )
+
+    /** How many items Home last answered with: the count a refresh after a new item tells the car about (CH1). */
+    @Volatile
+    var homeCount: Int = 0
+        private set
+
+    /** Home's offline items, set before the network call so a slow answer can fall back to them (invariant 3). */
+    private val homeOffline = AtomicReference<List<MediaItem>?>(null)
 
     // ---- Calls ----
 
@@ -170,7 +214,17 @@ class LibraryTree(
                 it.set(LibraryResult.ofError(SessionError(SessionError.ERROR_BAD_VALUE, words(R.string.car_not_found))))
             }
         }
-        return guarded {
+        // Home, unlike the other lists, answers its downloads when the network is late: never an error while downloads exist.
+        val late: (() -> LibraryResult<ImmutableList<MediaItem>>)? = if (node is Node.Home) {
+            {
+                val items = homeOffline.get()
+                if (items != null) LibraryResult.ofItemList(paged(items, Page(page, size)), null)
+                else LibraryResult.ofError(error(CarError(SessionError.ERROR_IO, R.string.car_no_connection)))
+            }
+        } else {
+            null
+        }
+        return guarded(late) {
             val all = load(node)
             if (all.any { it.mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE }) episodeLists[parentId] = all.size
             LibraryResult.ofItemList(paged(all, Page(page, size)), null)
@@ -237,10 +291,12 @@ class LibraryTree(
 
     // ---- Work, on the io executor ----
 
-    private fun <T : Any> guarded(work: () -> LibraryResult<T>): ListenableFuture<LibraryResult<T>> {
+    private fun <T : Any> guarded(late: (() -> LibraryResult<T>)? = null, work: () -> LibraryResult<T>): ListenableFuture<LibraryResult<T>> {
         val future = SettableFuture.create<LibraryResult<T>>()
-        val late = Runnable { future.set(LibraryResult.ofError(error(CarError(SessionError.ERROR_IO, R.string.car_no_connection)))) }
-        main.postDelayed(late, BUDGET_MS)
+        val tooLate = Runnable {
+            future.set(late?.invoke() ?: LibraryResult.ofError(error(CarError(SessionError.ERROR_IO, R.string.car_no_connection))))
+        }
+        main.postDelayed(tooLate, BUDGET_MS)
         io.execute {
             val result = try {
                 work()
@@ -250,7 +306,7 @@ class LibraryTree(
                 android.util.Log.w(PlaybackService.TAG, "browse failed: ${e.javaClass.simpleName}")
                 LibraryResult.ofError(error(CarError(SessionError.ERROR_IO, R.string.car_no_connection)))
             }
-            main.removeCallbacks(late)
+            main.removeCallbacks(tooLate)
             future.set(result)
         }
         return future
@@ -281,12 +337,15 @@ class LibraryTree(
         connection() // signed out: words, even for the tabs
         return when (node) {
             Node.Root -> tabs()
+            Node.Home -> loadHome()
+            Node.Library -> libraryRows()
+            Node.LibraryNotStarted -> online(null) { api, t -> api.books(t, "title", "not_started") }.map(::bookItem)
+            Node.LibraryRecent -> online(null) { api, t -> api.books(t, "added", null) }.map(::bookItem)
+            Node.LibraryTitle -> online(null) { api, t -> api.books(t, "title", null) }.map(::bookItem)
+            Node.LibraryAuthor -> online(null) { api, t -> api.books(t, "author", null) }.map(::bookItem)
             Node.Continue -> online({ Offline.init(context); carContinueOffline(mine()) { Offline.coverBytes(it) != null } }) { api, t -> api.continueList(t) }.map(::bookItem)
             Node.UpNext -> online(null) { api, t -> api.queue(t) }.map(::bookItem)
-            Node.Shelves -> podcastsRow() + radioRow() + online(null) { api, t -> api.shelves(t) }.map { s ->
-                shelfNames[s.id] = s.name
-                folder(Node.Shelf(s.id), s.name, playableStyle = LIST)
-            }
+            Node.Shelves -> shelfFolders()
             Node.Podcasts -> podcastFolders()
             Node.PodcastNew -> online(null) { api, t -> api.podcastNew(t) }.map(::episodeItem)
             Node.PodcastDownloaded -> downloadedEpisodes().map(::episodeItem)
@@ -306,10 +365,16 @@ class LibraryTree(
 
     private fun itemOf(node: Node): MediaItem = when (node) {
         Node.Root -> rootItem()
-        Node.Continue -> tabs()[0]
+        Node.Home -> tabs()[0]
         Node.UpNext -> tabs()[1]
-        Node.Shelves -> tabs()[2]
+        Node.Library -> tabs()[2]
         Node.Downloaded -> tabs()[3]
+        Node.Continue -> libraryFolders()[0]
+        Node.LibraryNotStarted -> libraryFolders()[1]
+        Node.LibraryRecent -> libraryFolders()[2]
+        Node.LibraryTitle -> libraryFolders()[3]
+        Node.LibraryAuthor -> libraryFolders()[4]
+        Node.Shelves -> libraryFolders()[5]
         Node.Podcasts -> podcastsFolder()
         Node.PodcastNew -> podcastFolders()[0]
         Node.PodcastDownloaded -> podcastFolders()[1]
@@ -344,6 +409,76 @@ class LibraryTree(
         )
     }
 
+    // ---- Home and Library (CH1) ----
+
+    private fun sectionTitle(s: HomeSection): String = when (s.kind) {
+        HomeKind.CONTINUE -> words(R.string.car_home_continue)
+        HomeKind.SERIES -> words(R.string.car_home_series)
+        HomeKind.NEW -> words(R.string.car_home_new)
+        HomeKind.BECAUSE -> context.getString(R.string.car_home_because, s.seed)
+        HomeKind.EPISODES -> words(R.string.car_home_episodes)
+        HomeKind.DOWNLOADED -> words(R.string.car_downloaded)
+    }
+
+    private fun homeItems(h: CarHome): List<MediaItem> = h.sections.flatMap { s ->
+        val group = sectionTitle(s)
+        s.rows.map { row ->
+            when (row) {
+                is HomeRow.Episode -> episodeItem(row.card, group)
+                is HomeRow.Book -> {
+                    val b = row.book
+                    val note = b.series
+                    val detail = if (note != null) {
+                        context.getString(R.string.car_series_line, note.index.toString(), note.total.toString(), b.card.author)
+                    } else {
+                        null
+                    }
+                    bookItem(b.card, group, detail, if (s.kind == HomeKind.CONTINUE) homeProgress(b) else null)
+                }
+            }
+        }
+    }
+
+    /**
+     * Home: one server call. The offline sections are worked out first and kept for a late answer; a network failure
+     * answers them too. An older server (404) gives Continue listening from /continue alone.
+     */
+    private fun loadHome(): List<MediaItem> {
+        Offline.init(context)
+        val offline = carHomeOffline(mine()) { Offline.coverBytes(it) != null }
+        homeOffline.set(homeItems(fitHome(offline, HOME_MAX_ROWS, HOME_MAX_SECTIONS)))
+        val home = online({ offline }) { api, t ->
+            try {
+                api.home(t)
+            } catch (e: ApiException) {
+                if (e.code != 404) throw e
+                CarHome(listOf(HomeSection(HomeKind.CONTINUE, "", api.continueList(t).take(6).map { HomeRow.Book(HomeBook(it)) })))
+            }
+        }
+        val items = homeItems(fitHome(home, HOME_MAX_ROWS, HOME_MAX_SECTIONS))
+        homeCount = items.size
+        return items
+    }
+
+    /** The Library tab: the Continue list, three book lists, the shelves (only when there are some), Podcasts and Radio. */
+    private fun libraryRows(): List<MediaItem> {
+        val folders = libraryFolders()
+        return folders.take(5) + shelvesRow(folders[5]) + podcastsRow() + radioRow()
+    }
+
+    /** The Shelves row is there only when the person has a shelf; a missing endpoint or any failure leaves it out. */
+    private fun shelvesRow(row: MediaItem): List<MediaItem> = try {
+        if (online(null) { api, t -> api.shelves(t) }.isEmpty()) emptyList() else listOf(row)
+    } catch (e: CarError) {
+        if (e.code == SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED) throw e
+        emptyList()
+    }
+
+    private fun shelfFolders(): List<MediaItem> = online(null) { api, t -> api.shelves(t) }.map { s ->
+        shelfNames[s.id] = s.name
+        folder(Node.Shelf(s.id), s.name, playableStyle = LIST)
+    }
+
     // ---- Podcasts (A3) ----
 
     private fun podcastsFolder(): MediaItem = folder(Node.Podcasts, words(R.string.car_podcasts), browsableStyle = LIST)
@@ -355,7 +490,7 @@ class LibraryTree(
     )
 
     /**
-     * Podcasts is a row in the Shelves tab, not a fifth tab: Android Auto shows four. The row is there only when the
+     * Podcasts is a row in the Library tab, not a fifth tab: Android Auto shows four. The row is there only when the
      * server has podcasts on for this person (the list answers); any failure leaves it out rather than hiding the shelves.
      */
     private fun podcastsRow(): List<MediaItem> = try {
@@ -375,7 +510,7 @@ class LibraryTree(
         folder(Node.RadioRecent, words(R.string.car_radio_recent), playableStyle = LIST),
     )
 
-    /** Radio is a row in the Shelves tab like Podcasts, there only when the server has radio on for this person (the list answers). */
+    /** Radio is a row in the Library tab like Podcasts, there only when the server has radio on for this person (the list answers). */
     private fun radioRow(): List<MediaItem> = try {
         online(null) { api, t -> api.radioStations(t) }
         listOf(radioFolder())

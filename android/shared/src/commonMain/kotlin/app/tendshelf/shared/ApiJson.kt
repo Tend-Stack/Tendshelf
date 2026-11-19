@@ -161,6 +161,9 @@ object ApiJson {
     /** `{"items":[{"book":{...}}]}` from /continue and /queue. */
     fun itemBooks(body: String): List<BookCard> = cards(parseJsonObject(body).optArray("items")) { it.optObject("book") }
 
+    /** `{"items":[BookCard],...}` from GET /books (the `api.NewList` shape). */
+    fun listBooks(body: String): List<BookCard> = cards(parseJsonObject(body).optArray("items")) { it }
+
     /** `{"books":[...]}` from /search. */
     fun searchBooks(body: String): List<BookCard> = cards(parseJsonObject(body).optArray("books")) { it }
 

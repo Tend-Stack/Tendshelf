@@ -15,6 +15,10 @@ fun parseItemBooks(body: String): List<BookCard>? = safely { ApiJson.itemBooks(b
 
 fun parseShelfBooks(body: String): List<BookCard>? = safely { ApiJson.shelfBooks(body) }
 
+fun parseCarHome(body: String): CarHome? = safely { CarHomeJson.home(body) }
+
+fun parseListBooks(body: String): List<BookCard>? = safely { ApiJson.listBooks(body) }
+
 fun parseShelves(body: String): List<ShelfCard>? = safely { ApiJson.shelves(body) }
 
 fun parseSettings(body: String): PlayerSettings? = safely { ApiJson.settings(body) }

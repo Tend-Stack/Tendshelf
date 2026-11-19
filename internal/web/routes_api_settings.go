@@ -32,6 +32,7 @@ func (s *server) registerAPISettings(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v1/settings", s.patchAPISettings)
 	mux.HandleFunc("PUT /api/v1/books/{id}/speed", s.putAPIBookSpeed)
 	mux.HandleFunc("GET /api/v1/continue", s.getAPIContinue)
+	mux.HandleFunc("GET /api/v1/home", s.getAPIHome)
 }
 
 // apiSettings is the settings the app reads and writes.

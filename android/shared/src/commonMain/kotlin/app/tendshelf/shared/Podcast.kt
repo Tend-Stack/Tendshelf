@@ -1,5 +1,7 @@
 package app.tendshelf.shared
 
+import kotlinx.serialization.json.JsonObject
+
 /**
  * Podcast episodes for the native player (A1, decision 0038). An episode is a one-file item whose id starts with `pe_`;
  * everything here is plain logic with no platform calls, so a later iOS app reuses it as it is.
@@ -228,22 +230,25 @@ fun showRowTitle(s: ShowCard): String = s.title.trim().ifEmpty { "Podcast" }
 /** Episodes the car lists: the ones the publisher withdrew (`gone`) are left out. Order is the server's. */
 fun PodcastJson.episodeCards(body: String): List<EpisodeCard> {
     val arr = parseJsonObject(body).getArray("items")
-    return (0 until arr.size).mapNotNull { arr.optObject(it) }.mapNotNull { o ->
-        val id = o.optString("id")
-        if (!isEpisodeId(id) || !validId(id) || o.optBoolean("gone")) return@mapNotNull null
-        val st = o.optObject("state")
-        EpisodeCard(
-            id = id,
-            showId = o.optString("showId"),
-            title = o.optString("title"),
-            show = o.optString("show"),
-            durationMs = o.optLong("durationMs", 0).coerceAtLeast(0),
-            publishedAt = o.optLong("publishedAt", 0),
-            positionMs = st?.optLong("positionMs", 0) ?: 0,
-            played = st?.optBoolean("played") ?: false,
-            favourite = st?.optBoolean("favourite") ?: false,
-        )
-    }
+    return (0 until arr.size).mapNotNull { arr.optObject(it) }.mapNotNull { episodeCardOf(it) }
+}
+
+/** One episode object as a row, or null for a bad id or a withdrawn (`gone`) episode. */
+fun PodcastJson.episodeCardOf(o: JsonObject): EpisodeCard? {
+    val id = o.optString("id")
+    if (!isEpisodeId(id) || !validId(id) || o.optBoolean("gone")) return null
+    val st = o.optObject("state")
+    return EpisodeCard(
+        id = id,
+        showId = o.optString("showId"),
+        title = o.optString("title"),
+        show = o.optString("show"),
+        durationMs = o.optLong("durationMs", 0).coerceAtLeast(0),
+        publishedAt = o.optLong("publishedAt", 0),
+        positionMs = st?.optLong("positionMs", 0) ?: 0,
+        played = st?.optBoolean("played") ?: false,
+        favourite = st?.optBoolean("favourite") ?: false,
+    )
 }
 
 fun PodcastJson.showCards(body: String): List<ShowCard> {

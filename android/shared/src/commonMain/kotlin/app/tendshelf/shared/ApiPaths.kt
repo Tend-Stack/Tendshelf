@@ -33,6 +33,13 @@ class ApiPaths(server: String) {
     /** The lists the car browses (A8). */
     fun continueUrl(limit: Int): String = "$base/api/v1/continue?limit=$limit"
     val queueUrl: String get() = "$base/api/v1/queue"
+
+    /** The car's Home in one request (CH1). */
+    val homeUrl: String get() = "$base/api/v1/home"
+
+    /** A list of audiobooks for the Library tab: [sort] is `added`, `title` or `author`; [show] e.g. `not_started`. */
+    fun booksUrl(sort: String, show: String?, limit: Int): String =
+        "$base/api/v1/books?sort=${segment(sort)}&format=audio&limit=$limit" + (if (show != null) "&show=${segment(show)}" else "")
     val shelvesUrl: String get() = "$base/api/v1/shelves"
     fun shelfUrl(shelfId: String): String = "$base/api/v1/shelves/${segment(shelfId)}"
     fun searchUrl(query: String, limit: Int): String =

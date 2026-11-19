@@ -7,6 +7,14 @@ sealed interface Node {
     object UpNext : Node
     object Shelves : Node
     object Downloaded : Node
+
+    /** The car's start page and the Library tab with its book lists (CH1). */
+    object Home : Node
+    object Library : Node
+    object LibraryNotStarted : Node
+    object LibraryRecent : Node
+    object LibraryTitle : Node
+    object LibraryAuthor : Node
     data class Shelf(val id: String) : Node
     data class Book(val id: String) : Node
 
@@ -32,6 +40,12 @@ fun parseNode(id: String): Node? = when (id) {
     "queue" -> Node.UpNext
     "shelves" -> Node.Shelves
     "downloaded" -> Node.Downloaded
+    "home" -> Node.Home
+    "library" -> Node.Library
+    "library-not-started" -> Node.LibraryNotStarted
+    "library-recent" -> Node.LibraryRecent
+    "library-title" -> Node.LibraryTitle
+    "library-author" -> Node.LibraryAuthor
     "podcasts" -> Node.Podcasts
     "podcasts-new" -> Node.PodcastNew
     "podcasts-downloaded" -> Node.PodcastDownloaded
@@ -55,6 +69,12 @@ fun nodeId(n: Node): String = when (n) {
     Node.UpNext -> "queue"
     Node.Shelves -> "shelves"
     Node.Downloaded -> "downloaded"
+    Node.Home -> "home"
+    Node.Library -> "library"
+    Node.LibraryNotStarted -> "library-not-started"
+    Node.LibraryRecent -> "library-recent"
+    Node.LibraryTitle -> "library-title"
+    Node.LibraryAuthor -> "library-author"
     is Node.Shelf -> "shelf:${n.id}"
     is Node.Book -> "book:${n.id}"
     Node.Podcasts -> "podcasts"

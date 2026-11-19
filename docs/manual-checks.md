@@ -323,6 +323,11 @@ Start head unit server, then `adb forward tcp:5277 tcp:5277` and start the head 
 | A8-10 | Tunnel: lose the network mid-chapter. | The 5 minute buffer plays on; no error in the car until it runs out. | |
 | A8-11 | Update Android Auto while the app is sideloaded (Unknown sources on). | Tendshelf is still listed and keeps its place. This alone decides how the app is distributed. | |
 | A8-12 | Open the voice and driving-mode limits of the car's screen: a shelf of 48 books. | The list is usable or the car trims it; note the car's make and any trimming. | |
+| A8-13 | Open Tendshelf in the car (CH1). | Tabs read Home, Up next, Library, Downloaded. Home shows covers grouped under Continue listening, Your series in progress, New on the shelf, Because you listened to ..., New episodes (those that have rows); Continue covers show a progress bar. | |
+| A8-14 | Tap a New on the shelf book. | It starts at 0:00; back on Home it now leads Continue listening. | |
+| A8-15 | Phone in airplane mode, open Home. | Continue listening and Downloaded from downloads within 5 s, no error. | |
+| A8-16 | Open Library. | Continue listening, Not started, Recently added, By title, By author, Shelves, Podcasts and Radio open and play. | |
+| A8-17 | Say "play <title>" and use search. | Both still work. | |
 
 ## Android app (one row per package, from A5b)
 

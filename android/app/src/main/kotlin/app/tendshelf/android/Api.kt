@@ -5,6 +5,9 @@ import app.tendshelf.shared.ApiJson
 import app.tendshelf.shared.ApiPaths
 import app.tendshelf.shared.BatchItemResult
 import app.tendshelf.shared.BookCard
+import app.tendshelf.shared.CarHome
+import app.tendshelf.shared.CarHomeJson
+import app.tendshelf.shared.LIBRARY_LIST_MAX
 import app.tendshelf.shared.ShelfCard
 import app.tendshelf.shared.Save
 import app.tendshelf.shared.batchBody
@@ -219,6 +222,14 @@ class Api(origin: String) {
     // ---- The lists the car browses (A8). Each is one small GET; a failure is an exception for the caller to word. ----
 
     fun continueList(token: String): List<BookCard> = ApiJson.itemBooks(String(get(paths.continueUrl(24), token, 1024 * 1024)))
+
+    /** The car's Home in one request (CH1). An older server answers 404, which reaches the caller. */
+    fun home(token: String): CarHome = CarHomeJson.home(String(get(paths.homeUrl, token, 1024 * 1024)))
+
+    /** One book list of the Library tab: [sort] `added`, `title` or `author`; [show] `not_started` or null. */
+    fun books(token: String, sort: String, show: String?): List<BookCard> =
+        ApiJson.listBooks(String(get(paths.booksUrl(sort, show, LIBRARY_LIST_MAX), token, 2 * 1024 * 1024)))
+
     fun queue(token: String): List<BookCard> = ApiJson.itemBooks(String(get(paths.queueUrl, token, 1024 * 1024)))
     fun shelves(token: String): List<ShelfCard> = ApiJson.shelves(String(get(paths.shelvesUrl, token, 1024 * 1024)))
 

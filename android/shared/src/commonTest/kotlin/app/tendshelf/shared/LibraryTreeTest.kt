@@ -15,6 +15,14 @@ class LibraryTreeTest {
     }
 
     @Test
+    fun homeAndLibraryNodesRoundTrip() {
+        val ids = listOf("home", "library", "library-not-started", "library-recent", "library-title", "library-author")
+        for (id in ids) assertEquals(id, parseNode(id)?.let(::nodeId), id)
+        assertEquals(Node.Home, parseNode("home"))
+        assertEquals(Node.LibraryAuthor, parseNode("library-author"))
+    }
+
+    @Test
     fun badIdsAreNull() {
         for (bad in listOf("", "book:", "book:a/b", "book:a b", "shelf:?x", "shelf:", "series", "Root", "book:" + "a".repeat(65), "book:a\nb", "../x")) {
             assertNull(parseNode(bad), bad)
