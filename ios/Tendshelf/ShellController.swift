@@ -33,6 +33,12 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         signOut = SignOut(store: store, api: client, host: self, pages: pages)
         flow = ConnectFlow(store: store, client: client, pages: pages, host: self, signOut: signOut)
         playback = Playback(store: store, client: client)
+        // Nothing keeps playing for someone who signed out or left the server: the player stops, its last place is sent once
+        // with the connection that is going, the outbox is emptied, the bridge is cut.
+        signOut.beforeWipe = { [weak self] connection in
+            self?.playback.signOut(connection)
+            self?.bridge.detach()
+        }
         bridge = Bridge(
             control: playback,
             userContent: config.userContentController,
@@ -112,9 +118,6 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     /// Sign-out and change of server: every cookie, storage and cache entry goes, and a new view replaces the old one so
     /// no history, form data or page memory survives.
     func resetWeb() async {
-        // Nothing keeps playing for someone who signed out or left the server.
-        bridge.detach()
-        playback.stopAndClear()
         let old = webView
         old.navigationDelegate = nil
         old.stopLoading()

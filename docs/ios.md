@@ -101,6 +101,15 @@ build, fetched at build time on the Mac only, never at runtime and never in the 
 - **Debug driver.** `-TSTestStart <id>` starts playback after sign-in; `-TSTestScript "pause;play;seek 20000;speed 1.50"` sends those
   messages from the page; a probe line each 2 s shows the snapshot, the lock-screen card and the last state the page got.
 
+## Native audio (I2)
+
+- **Store.** `SqliteOutbox` (Swift over the system `SQLite3`) implements the shared `OutboxStore`: `Application Support/outbox.sqlite`, WAL, excluded from backups, readable after first unlock, the table of `SqliteOutbox.kt`. Rows of another device id are invisible and cleared at the next save under a new sign-in. A failed step sets `lastWriteFailed` and the writer keeps the place in memory until the next tick.
+- **Writer.** `ProgressWriter` writes a place before any send (every 10 s while playing, on pause, chapter, book change, a settled seek, sign-out), then sends through one serial loop: 401 keeps rows and fails `signedOut`, 429 waits `Retry-After`, other failures back off 5 s doubling to 5 min; a network that returns, and app launch, flush. Flushes and the end-of-book hand-off run inside `beginBackgroundTask`.
+- **Resume, question, sleep, next book.** `Resume` (smart rewind, remote place check for books), `AskState` (the page shows the question; while hidden it waits and is repeated on return), `SleepTimer` (shared rules, 250 ms tick only while on, shake from device motion during the fade), `NextBook` (finished sent first, then the queue asked once, started only while still ended).
+- **Sign-out.** `SignOut.beforeWipe` runs before the token is cleared: playback stops, the last place is written and sent once with the connection that is going, every row is cleared, the bridge is cut.
+- **Android only / limits.** No notification for the question, no downloads or offline next book (I3), the radio stream is unresolved (see the roadmap).
+- **Debug driver.** Script steps `wait N` and `signout`; the probe line shows `ask`, `rewound`, `sleep` and `rows`.
+
 ## Cleanup
 
 `make ios-shared` leaves the synced tree and its build output on the Mac. `ios/tools/mac-build.sh clean` removes that tree;
