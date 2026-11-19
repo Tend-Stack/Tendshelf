@@ -20,6 +20,7 @@ protocol PlayerAPI: AnyObject {
     func radioStation(token: String, id: String) async throws -> StationCard
     func radioArt(token: String, id: String, artPath: String) async -> Data?
     func radioNow(token: String, id: String) async -> String?
+    func liveAddress(token: String, id: String, origin: Origin) async throws -> URL
     func progress(token: String, bookId: String) async throws -> RemoteProgress?
     func queueNext(token: String, ended: String) async throws -> String?
     func putSpeed(token: String, bookId: String, speed: Double) async throws
@@ -117,6 +118,24 @@ final class PlayerApi: PlayerAPI {
     func radioNow(token: String, id: String) async -> String? {
         guard BridgeProtocolKt.validId(s: id), let body = try? await get(paths.radioNowUrl(stationId: id), token, 16 * 1024) else { return nil }
         return PlayerParseKt.parseRadioNow(body: Self.text(body))
+    }
+
+    /// Asks for the one-hour live address of a station (decision 0049): a POST with the bearer, answered with a path that is
+    /// checked and joined with the pinned origin. The address is a credential: it is never logged or kept.
+    func liveAddress(token: String, id: String, origin: Origin) async throws -> URL {
+        guard BridgeProtocolKt.validId(s: id) else { throw ApiError(status: 404) }
+        let body = try await send(paths.liveAddressUrl(stationId: id), "POST", "{}", token, 4 * 1024)
+        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let path = object["path"] as? String,
+              let url = Self.liveURL(origin: origin, path: path)
+        else { throw ApiError(status: 0) }
+        return url
+    }
+
+    /// The address only when [path] has the one shape the server answers: `/cast/<43 characters>/live`, nothing else.
+    static func liveURL(origin: Origin, path: String) -> URL? {
+        guard path.range(of: #"^/cast/[A-Za-z0-9_-]{43}/live\z"#, options: .regularExpression) != nil else { return nil }
+        return URL(string: origin.text + path)
     }
 
     // MARK: Saves

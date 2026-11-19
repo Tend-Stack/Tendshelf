@@ -181,6 +181,24 @@ func (f *radioFix) serve(w http.ResponseWriter, r *http.Request) {
 			}
 			w.(http.Flusher).Flush()
 		}
+	case "/paced.mp3": // silent MP3 at real time (one frame per 26 ms) until the client leaves: the simulator check of decision 0049
+		f.hits.Add(1)
+		w.Header().Set("Content-Type", "audio/mpeg")
+		w.WriteHeader(http.StatusOK)
+		frame := silentMP3Frame()
+		tick := time.NewTicker(26 * time.Millisecond)
+		defer tick.Stop()
+		for {
+			if _, err := w.Write(frame); err != nil {
+				return
+			}
+			w.(http.Flusher).Flush()
+			select {
+			case <-r.Context().Done():
+				return
+			case <-tick.C:
+			}
+		}
 	case "/x.png": // the logo OndaCast names for Cool FM
 		var b bytes.Buffer
 		png.Encode(&b, solidImage(96))

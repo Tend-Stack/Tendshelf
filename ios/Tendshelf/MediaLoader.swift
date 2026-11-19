@@ -31,15 +31,11 @@ nonisolated enum MediaLoaderError: Error {
 /// Handles are opaque counters, so file ids stay out of AVFoundation's URL cache keys.
 nonisolated final class MediaLoader: NSObject, AVAssetResourceLoaderDelegate, URLSessionDataDelegate, @unchecked Sendable {
     static let scheme = "tsmedia"
-    /// The length told for an endless stream: a guess, since the stream has none. The spike test (`MediaLoaderAVTests`) proves
-    /// an ADTS stream plays with it: AVFoundation first probes with a two-byte request, then asks for everything.
-    static let liveLength: Int64 = 1 << 40
 
     private nonisolated struct Entry {
         let url: String
         let origin: Origin
         let mime: String
-        let live: Bool
     }
 
     private nonisolated final class Job {
@@ -88,10 +84,10 @@ nonisolated final class MediaLoader: NSObject, AVAssetResourceLoaderDelegate, UR
     // MARK: Handles
 
     /// A handle for [url] that AVFoundation may load while the connection is on [origin]. Call off the loader's queue.
-    func register(url: String, origin: Origin, mime: String, live: Bool) -> URL {
+    func register(url: String, origin: Origin, mime: String) -> URL {
         queue.sync {
             counter += 1
-            entries[counter] = Entry(url: url, origin: origin, mime: mime, live: live)
+            entries[counter] = Entry(url: url, origin: origin, mime: mime)
             return URL(string: "\(Self.scheme)://m/\(counter)")!
         }
     }
@@ -167,20 +163,18 @@ nonisolated final class MediaLoader: NSObject, AVAssetResourceLoaderDelegate, UR
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
         request.httpShouldHandleCookies = false
         request.setValue("Bearer \(conn.token)", forHTTPHeaderField: "Authorization")
-        if !job.entry.live {
-            let start = job.request.offset + job.delivered
-            if job.infoOnly {
-                request.setValue("bytes=0-1", forHTTPHeaderField: "Range")
-            } else if job.request.toEnd {
-                request.setValue("bytes=\(start)-", forHTTPHeaderField: "Range")
-            } else {
-                let end = job.request.offset + Int64(job.request.length) - 1
-                if start > end {
-                    finish(job, error: nil)
-                    return
-                }
-                request.setValue("bytes=\(start)-\(end)", forHTTPHeaderField: "Range")
+        let start = job.request.offset + job.delivered
+        if job.infoOnly {
+            request.setValue("bytes=0-1", forHTTPHeaderField: "Range")
+        } else if job.request.toEnd {
+            request.setValue("bytes=\(start)-", forHTTPHeaderField: "Range")
+        } else {
+            let end = job.request.offset + Int64(job.request.length) - 1
+            if start > end {
+                finish(job, error: nil)
+                return
             }
+            request.setValue("bytes=\(start)-\(end)", forHTTPHeaderField: "Range")
         }
         let task = session.dataTask(with: request)
         job.task = task
@@ -205,21 +199,19 @@ nonisolated final class MediaLoader: NSObject, AVAssetResourceLoaderDelegate, UR
         job.task?.cancel()
         if let id = job.task?.taskIdentifier { tasks[id] = nil }
         job.task = nil
-        if !job.entry.live {
-            job.errorCount += 1
-            if let wait = StreamRetryKt.streamRetryDelayMs(status: Int32(status), errorCount: Int32(job.errorCount)) {
-                let delay = Double(wait.int64Value) / 1000 * retryScale
-                queue.asyncAfter(deadline: .now() + delay) { [self] in
-                    guard !job.finished else { return }
-                    guard let conn = connection(), conn.origin == job.entry.origin else {
-                        failures[job.handle] = (status, retryAfterS, true)
-                        finish(job, error: MediaLoaderError.otherServer)
-                        return
-                    }
-                    send(job, conn)
+        job.errorCount += 1
+        if let wait = StreamRetryKt.streamRetryDelayMs(status: Int32(status), errorCount: Int32(job.errorCount)) {
+            let delay = Double(wait.int64Value) / 1000 * retryScale
+            queue.asyncAfter(deadline: .now() + delay) { [self] in
+                guard !job.finished else { return }
+                guard let conn = connection(), conn.origin == job.entry.origin else {
+                    failures[job.handle] = (status, retryAfterS, true)
+                    finish(job, error: MediaLoaderError.otherServer)
+                    return
                 }
-                return
+                send(job, conn)
             }
+            return
         }
         failures[job.handle] = (status, retryAfterS, false)
         finish(job, error: MediaLoaderError.status(status))
@@ -250,17 +242,13 @@ nonisolated final class MediaLoader: NSObject, AVAssetResourceLoaderDelegate, UR
             return
         }
         // A server that ignored the Range answers 200 with the whole file: drop what came before the wanted offset.
-        if status == 200, !job.entry.live {
+        if status == 200 {
             job.skip = job.request.offset + job.delivered
         }
         if job.request.wantsInfo, !job.infoDone {
             job.infoDone = true
-            if job.entry.live {
-                job.request.setInfo(type: Self.type(http, fallback: job.entry.mime), length: Self.liveLength, ranges: false)
-            } else {
-                let total = Self.total(http) ?? 0
-                job.request.setInfo(type: Self.type(http, fallback: job.entry.mime), length: total, ranges: status == 206)
-            }
+            let total = Self.total(http) ?? 0
+            job.request.setInfo(type: Self.type(http, fallback: job.entry.mime), length: total, ranges: status == 206)
         }
         if job.infoOnly {
             completionHandler(.cancel)
@@ -278,7 +266,7 @@ nonisolated final class MediaLoader: NSObject, AVAssetResourceLoaderDelegate, UR
             piece = piece.dropFirst(Int(cut))
             job.skip -= cut
         }
-        // A request for a few bytes (AVFoundation probes with two) gets only those, live or not.
+        // A request for a few bytes (AVFoundation probes with two) gets only those.
         if !job.request.toEnd {
             let left = Int64(job.request.length) - job.delivered
             if Int64(piece.count) > left { piece = piece.prefix(Int(max(0, left))) }

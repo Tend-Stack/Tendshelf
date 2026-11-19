@@ -17,7 +17,7 @@ final class MediaLoaderTests: XCTestCase {
     func testBearerAndRangeSentAndNoCookie() async {
         MediaStub.reset { _ in partialScript(Data(repeating: 1, count: 100), from: 0, total: 1000) }
         let l = loader()
-        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg", live: false)
+        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg")
         let req = FakeMediaRequest(offset: 0, length: 100, wantsInfo: true)
         l.begin(req, url: handle)
         let done = await waitFor { req.done }
@@ -36,7 +36,7 @@ final class MediaLoaderTests: XCTestCase {
     func testInfoOnlyAsksTwoBytes() async {
         MediaStub.reset { _ in partialScript(Data([1, 2]), from: 0, total: 5000) }
         let l = loader()
-        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg", live: false)
+        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg")
         let req = FakeMediaRequest(wantsInfo: true)
         l.begin(req, url: handle)
         _ = await waitFor { req.done }
@@ -54,7 +54,7 @@ final class MediaLoaderTests: XCTestCase {
         _ = await waitFor { unknown.done }
         XCTAssertNotNil(unknown.error)
 
-        let foreign = l.register(url: "https://evil.example/api/v1/stream/f1", origin: origin, mime: "audio/mpeg", live: false)
+        let foreign = l.register(url: "https://evil.example/api/v1/stream/f1", origin: origin, mime: "audio/mpeg")
         let r2 = FakeMediaRequest(length: 10)
         l.begin(r2, url: foreign)
         _ = await waitFor { r2.done }
@@ -63,7 +63,7 @@ final class MediaLoaderTests: XCTestCase {
 
         let other = Origin.companion.parse(input: "https://other.example")!
         let moved = loader(connection: Connection(origin: other, token: "t", deviceId: "d"))
-        let h3 = moved.register(url: streamUrl, origin: origin, mime: "audio/mpeg", live: false)
+        let h3 = moved.register(url: streamUrl, origin: origin, mime: "audio/mpeg")
         let r3 = FakeMediaRequest(length: 10)
         moved.begin(r3, url: h3)
         _ = await waitFor { r3.done }
@@ -79,7 +79,7 @@ final class MediaLoaderTests: XCTestCase {
             return partialScript(Data(repeating: 7, count: 50), from: 0, total: 50)
         }
         let l = loader(retryScale: 0.001)
-        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg", live: false)
+        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg")
         let req = FakeMediaRequest(length: 50)
         l.begin(req, url: handle)
         _ = await waitFor { req.done }
@@ -91,7 +91,7 @@ final class MediaLoaderTests: XCTestCase {
     func testUnauthorizedFailsAtOnce() async {
         MediaStub.reset { _ in MediaScript(status: 401) }
         let l = loader()
-        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg", live: false)
+        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg")
         let req = FakeMediaRequest(length: 50)
         l.begin(req, url: handle)
         _ = await waitFor { req.done }
@@ -106,7 +106,7 @@ final class MediaLoaderTests: XCTestCase {
         let body = whole
         MediaStub.reset { _ in MediaScript(status: 200, headers: ["Content-Length": "5000"], pieces: [body]) }
         let l = loader()
-        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg", live: false)
+        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg")
         let req = FakeMediaRequest(offset: 4096, length: 904)
         l.begin(req, url: handle)
         _ = await waitFor { req.done }
@@ -114,25 +114,10 @@ final class MediaLoaderTests: XCTestCase {
         XCTAssertEqual(req.data, whole.subdata(in: 4096..<5000))
     }
 
-    func testLiveBusyRecordsRetryAfter() async {
-        MediaStub.reset { _ in MediaScript(status: 503, headers: ["Retry-After": "7"]) }
-        let l = loader()
-        let handle = l.register(url: "https://books.example/api/v1/radio/live/rs_1", origin: origin, mime: "audio/mpeg", live: true)
-        let req = FakeMediaRequest(toEnd: true, wantsInfo: true)
-        l.begin(req, url: handle)
-        _ = await waitFor { req.done }
-        XCTAssertNotNil(req.error)
-        let f = l.lastFailure(handle)
-        XCTAssertEqual(f?.status, 503)
-        XCTAssertEqual(f?.retryAfterS, 7)
-        XCTAssertEqual(MediaStub.seen.count, 1)
-        XCTAssertNil(MediaStub.seen[0].value(forHTTPHeaderField: "Range"))
-    }
-
     func testForgetAllCancelsTasks() async {
         MediaStub.reset { _ in MediaScript(status: 206, headers: ["Content-Range": "bytes 0-9/100"], pieces: [Data(count: 10)], hold: true) }
         let l = loader()
-        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg", live: false)
+        let handle = l.register(url: streamUrl, origin: origin, mime: "audio/mpeg")
         let req = FakeMediaRequest(length: 100)
         l.begin(req, url: handle)
         _ = await waitFor { req.data.count == 10 }

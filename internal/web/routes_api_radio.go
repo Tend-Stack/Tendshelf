@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tend-Stack/tendshelf/internal/api"
+	"github.com/Tend-Stack/tendshelf/internal/auth"
 	"github.com/Tend-Stack/tendshelf/internal/radio"
 )
 
@@ -20,6 +21,7 @@ func (s *server) registerAPIRadio(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/radio/stations", s.postAPIRadioStation)
 	mux.HandleFunc("DELETE /api/v1/radio/stations/{stationID}", s.deleteAPIRadioStation)
 	mux.HandleFunc("GET /api/v1/radio/live/{stationID}", s.getRadioLive)
+	mux.HandleFunc("POST /api/v1/radio/live/{stationID}/address", s.postAPILiveAddress)
 	mux.HandleFunc("GET /api/v1/radio/art/{stationID}", s.getRadioArt)
 	mux.HandleFunc("GET /api/v1/radio/now/{stationID}", s.getAPIRadioNow)
 }
@@ -140,4 +142,26 @@ func (s *server) getAPIRadioNow(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "private, no-store")
 	api.Write(w, http.StatusOK, map[string]any{"title": s.radio.NowPlaying(st.ID)})
+}
+
+// postAPILiveAddress mints the iPhone app's live address for one of the caller's own stations (decision 0049). Only a
+// phone's device token may ask; the answer is the path only, which the app joins with its own pinned origin. The
+// address reaches only GET /cast/{token}/live and lives one hour. The token is never logged.
+func (s *server) postAPILiveAddress(w http.ResponseWriter, r *http.Request) {
+	dev, ok := auth.DeviceFrom(r.Context())
+	if !ok || dev.Kind != auth.KindMobile {
+		api.Error(w, http.StatusForbidden, api.CodeForbidden, "Only the phone app can ask for a live address.")
+		return
+	}
+	st, ok := s.loadStation(w, r)
+	if !ok {
+		return
+	}
+	tok, expires, err := s.casts.MintLive(r.Context(), currentUser(r).ID, dev.ID, st.ID)
+	if err != nil {
+		s.serverError(w, r, "mint live address", err)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	api.Write(w, http.StatusOK, map[string]any{"path": castPrefix + tok + "/live", "expiresAt": expires})
 }

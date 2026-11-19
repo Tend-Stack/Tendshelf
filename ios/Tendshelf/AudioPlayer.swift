@@ -70,6 +70,7 @@ final class AudioPlayer {
     private var outroDone = false
     private var liveAttempt = 0
     private var liveRetry: Task<Void, Never>?
+    private var liveConnect: Task<Void, Never>?
     private var liveNowTask: Task<Void, Never>?
     private var preparing = false
     private var wantsPlay = false
@@ -90,6 +91,8 @@ final class AudioPlayer {
         self.loader = loader ?? MediaLoader(connection: connection)
         player.automaticallyWaitsToMinimizeStalling = true
         player.actionAtItemEnd = .advance
+        // A station's address is never handed to an AirPlay video receiver (decision 0049); AirPlay audio still routes through the session.
+        player.allowsExternalPlayback = false
         observers.append(player.observe(\.timeControlStatus) { [weak self] _, _ in
             Task { @MainActor in self?.statusChanged() }
         })
@@ -240,7 +243,7 @@ final class AudioPlayer {
         onBookStarted?(doc.id, PositionKt.placeWrittenAt(p: doc.progress, pending: pending)?.int64Value, given)
         let place = PositionKt.startPlace(p: doc.progress, atMs: atMs.map { KotlinLong(value: $0) }, pending: pending)
         let from = given ? place : (rules?.startAt(placeMs: place) ?? place)
-        let handle = loader.register(url: url, origin: conn.origin, mime: doc.mime, live: false)
+        let handle = loader.register(url: url, origin: conn.origin, mime: doc.mime)
         let item = makeItem(handle, mime: doc.mime.hasPrefix("audio/") ? doc.mime : nil, file: 0)
         willPlay?(false)
         wantsPlay = true
@@ -305,6 +308,12 @@ final class AudioPlayer {
         asset.resourceLoader.setDelegate(loader, queue: loader.queue)
         let item = AVPlayerItem(asset: asset)
         item.audioTimePitchAlgorithm = .timeDomain
+        watch(item, file: file)
+        return item
+    }
+
+    /// Records [item] as file [file] and follows its status.
+    private func watch(_ item: AVPlayerItem, file: Int) {
         let id = ObjectIdentifier(item)
         fileOf[id] = file
         itemObservers[id] = item.observe(\.status) { [weak self, weak item] _, _ in
@@ -313,14 +322,13 @@ final class AudioPlayer {
                 self?.itemStatusChanged(item)
             }
         }
-        return item
     }
 
     private func fileItem(_ index: Int, _ conn: Connection) -> AVPlayerItem? {
         guard files.indices.contains(index), BridgeProtocolKt.validId(s: files[index].id) else { return nil }
         let f = files[index]
         let url = ApiPaths(server: conn.origin.text).streamUrl(fileId: f.id, compat: f.needsCompat)
-        let handle = loader.register(url: url, origin: conn.origin, mime: f.mime, live: false)
+        let handle = loader.register(url: url, origin: conn.origin, mime: f.mime)
         return makeItem(handle, mime: f.needsCompat ? nil : f.mime, file: index)
     }
 
@@ -403,19 +411,45 @@ final class AudioPlayer {
             fail("book")
             return
         }
-        let url = ApiPaths(server: conn.origin.text).liveUrl(stationId: card.id)
-        let handle = loader.register(url: url, origin: conn.origin, mime: "", live: true)
-        // No mime override: a station's type is whatever its answer says.
-        let item = makeItem(handle, mime: nil, file: 0)
-        willPlay?(true)
-        wantsPlay = true
-        preparing = true
-        player.insert(item, after: nil)
-        player.play()
-        scheduleNow(after: 2)
+        // A station plays from a one-hour live address AVPlayer fetches itself (decision 0049); every connect asks for a new one.
+        // The address is a credential: never logged, never kept beyond the item.
+        let mine = seq
+        let api = makeApi(conn.origin)
+        liveConnect?.cancel()
+        liveConnect = Task { [weak self] in
+            let url: URL
+            do {
+                url = try await api.liveAddress(token: conn.token, id: card.id, origin: conn.origin)
+            } catch {
+                guard let self, !Task.isCancelled, self.seq == mine, self.station?.id == card.id else { return }
+                let e = error as? ApiError
+                self.liveBroke(status: e?.status ?? 0, retryAfterS: e?.retryAfterS ?? 0, otherServer: false)
+                return
+            }
+            guard let self, !Task.isCancelled, self.seq == mine, self.station?.id == card.id else { return }
+            let item = self.makeLiveItem(url)
+            self.willPlay?(true)
+            self.wantsPlay = true
+            self.preparing = true
+            self.player.removeAllItems()
+            self.watch(item, file: 0)
+            self.player.insert(item, after: nil)
+            self.player.play()
+            self.scheduleNow(after: 2)
+        }
+    }
+
+    /// The station's item: a plain URL item with no cookies and no type override (a station's type is what its answer says).
+    /// Tests replace this to see the address without a network.
+    var makeLiveItem: (URL) -> AVPlayerItem = { url in
+        let options: [String: Any] = [AVURLAssetHTTPCookiesKey: [HTTPCookie]()]
+        let item = AVPlayerItem(asset: AVURLAsset(url: url, options: options))
+        item.audioTimePitchAlgorithm = .timeDomain
+        return item
     }
 
     private func leaveLive() {
+        liveConnect?.cancel()
         liveRetry?.cancel()
         liveNowTask?.cancel()
         station = nil
@@ -632,7 +666,7 @@ final class AudioPlayer {
                     let paths = ApiPaths(server: conn.origin.text)
                     guard let url = paths.podcastUrl(path: doc.audioUrl, width: 0) else { return }
                     resetItems()
-                    let handle = loader.register(url: url, origin: conn.origin, mime: doc.mime, live: false)
+                    let handle = loader.register(url: url, origin: conn.origin, mime: doc.mime)
                     let item = makeItem(handle, mime: doc.mime.hasPrefix("audio/") ? doc.mime : nil, file: 0)
                     wantsPlay = play
                     preparing = play
@@ -777,13 +811,17 @@ final class AudioPlayer {
     private func itemFailed(_ item: AVPlayerItem?) {
         guard let item, fileOf[ObjectIdentifier(item)] != nil, !reported.contains(ObjectIdentifier(item)) else { return }
         reported.insert(ObjectIdentifier(item))
+        if live {
+            // A station's item fetched its own address: the HTTP status, when AVFoundation kept one, is in the error log.
+            let code = item.errorLog()?.events.last?.errorStatusCode ?? 0
+            let status = (400...599).contains(code) ? code : 0
+            Self.log.warning("station error: status \(status)")
+            liveBroke(status: status, retryAfterS: 0, otherServer: false)
+            return
+        }
         let handle = (item.asset as? AVURLAsset)?.url
         let seen = handle.flatMap { loader.lastFailure($0) }
         Self.log.warning("player error: status \(seen?.status ?? 0)")
-        if live {
-            liveBroke(status: seen?.status ?? 0, retryAfterS: seen?.retryAfterS ?? 0, otherServer: seen?.otherServer ?? false)
-            return
-        }
         fail(PlayFailureKt.playFailureKind(status: Int32(seen?.status ?? 0), otherServer: seen?.otherServer ?? false, live: false))
     }
 

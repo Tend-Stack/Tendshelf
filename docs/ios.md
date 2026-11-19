@@ -96,8 +96,14 @@ build, fetched at build time on the Mac only, never at runtime and never in the 
   `NowPlaying` (lock screen card and remote commands, by hand).
 - **Bridge.** `Bridge` carries the shared bridge grammar over a `WKScriptMessageHandler` (`tsShell`) and `window.tsNative`
   (`NativeScript`); main frame only, connected origin only, 30 messages a second.
-- **Limits.** No saving, smart rewind, sleep or next book yet (I2c). Radio: an endless stream through the loader did not settle
-  in the simulator (AVFoundation keeps probing far offsets); see the roadmap note. Ogg, Opus and FLAC are not played.
+- **Stations (I2r, decision 0049).** The loader models a file of known length, so an endless stream never settled in it
+  (AVFoundation probed far offsets). A station instead plays from a live address: `POST /api/v1/radio/live/{id}/address` with the
+  bearer answers a path `/cast/<token>/live`, which the app checks (one shape), joins with its pinned origin and gives to a plain
+  `AVPlayerItem` with no cookies; `allowsExternalPlayback` is off. The address is a one-station, one-device, one-hour cast token, a
+  new one for every connect, and it is never logged or kept. Books and episodes stay on the loader, which no longer has a live mode.
+  Simulator check: `TENDSHELF_IOS_RADIO_SERVE=0.0.0.0:8097 go test ./internal/web -run TestIOSRadioServe -v` serves a paced station
+  and prints the `/cast/` request counts.
+- **Limits.** No saving, smart rewind, sleep or next book yet (I2c). Ogg, Opus and FLAC are not played.
 - **Debug driver.** `-TSTestStart <id>` starts playback after sign-in; `-TSTestScript "pause;play;seek 20000;speed 1.50"` sends those
   messages from the page; a probe line each 2 s shows the snapshot, the lock-screen card and the last state the page got.
 

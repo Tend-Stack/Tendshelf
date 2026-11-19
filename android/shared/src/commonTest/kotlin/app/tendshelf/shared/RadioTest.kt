@@ -99,6 +99,7 @@ class RadioTest {
     fun radioUrls() {
         val p = ApiPaths("https://x.example/")
         assertEquals("https://x.example/api/v1/radio/live/rs_1", p.liveUrl("rs_1"))
+        assertEquals("https://x.example/api/v1/radio/live/rs_1/address", p.liveAddressUrl("rs_1"))
         assertEquals("https://x.example/api/v1/radio/now/rs_1", p.radioNowUrl("rs_1"))
         assertEquals("https://x.example/api/v1/radio/stations", p.radioStationsUrl)
         assertEquals("https://x.example/api/v1/radio/art/rs_1", p.radioArtUrl("rs_1"))

@@ -184,6 +184,10 @@ func (s *server) deleteAPIToken(w http.ResponseWriter, r *http.Request) {
 		api.Error(w, http.StatusServiceUnavailable, api.CodeUnavailable, "Something went wrong on our side. Try again in a moment.")
 		return
 	}
+	// The device's live address ends with its token (decision 0049); Lookup refuses it already, this removes the row.
+	if err := s.casts.DeleteForDevice(r.Context(), dev.ID); err != nil {
+		slog.Error("delete live address", "err", err)
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusNoContent)
 }
