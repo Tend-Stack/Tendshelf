@@ -156,7 +156,10 @@ was reused, extended or replaced.
   ([decision 0026](docs/decisions/0026-app-sign-in.md)).
 - A podcast feed token reaches only `/feeds/{token}/` (GET), never a page, `/hx/`, `/api/`, `/stream/` or `/me`, and
   never becomes a session (decision 0031).
-- A cast address token (decision 0047) reaches only `/cast/{token}/` (GET, HEAD), never a page, `/hx/`, `/api/`, `/stream/`, `/feeds/` or `/me`, never becomes a session, and is deleted at sign-out and when casting is turned off.
+- A cast address token (decision 0047) reaches only `/cast/{token}/` (GET, HEAD), never a page, `/hx/`, `/api/`, `/stream/`, `/feeds/` or `/me`, never becomes a session, and is deleted at sign-out and when casting is turned off. The iPhone app's live address (decision 0049) is a cast token for one station bound to one
+  device token: minted only by that device token at `POST /api/v1/radio/live/{stationID}/address`, it reaches only
+  `/cast/{token}/live` (GET, HEAD), lives one hour, is one per device (a new one deletes the old), is refused as soon as
+  its device token is revoked and deleted when the app signs out; it does not need casting on.
 - The server binds `127.0.0.1:8095` by default; exposing it is an explicit setting.
 - The service worker (`/sw.js`, source `internal/web/static/js/sw.js`) answers only hashed `/static/` files and,
   from the signed-in person's own cache, `/stream/{id}` (with or without `?compat=1`), `/covers/{bookID}`,
