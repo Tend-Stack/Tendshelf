@@ -234,7 +234,8 @@ func (s *server) settingsPage(w http.ResponseWriter, r *http.Request, status int
 		return
 	}
 	v := settingsView(s.csrf.TokenFrom(r.Context()), cur)
-	v.InApp = shellFrom(r) == "android"
+	v.QuietSwitch = shellFrom(r) == "android"
+	v.AutoSwitch = isAppShell(shellFrom(r))
 	v.CastShell = shellFrom(r) != ""
 	v.CastSecure = s.proxies.Secure(r)
 	v.CastReachable = reachableHost(r.Host)

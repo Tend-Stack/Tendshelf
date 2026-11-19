@@ -85,9 +85,16 @@ func TestIOSAudioSettings(t *testing.T) {
 	a := newTestApp(t)
 	ck := a.owner(t)
 	ios := a.do(http.MethodGet, "/me/settings", nil, nil, ck, a1IOS).Body.String()
+	if strings.Contains(ios, `name="skip_quiet"`) {
+		t.Error("ios settings has skip_quiet: skip silence stays Android-only")
+	}
+	if !strings.Contains(ios, `name="auto_download"`) {
+		t.Error("ios settings lacks auto_download")
+	}
+	br := a.do(http.MethodGet, "/me/settings", nil, nil, ck).Body.String()
 	for _, name := range []string{`name="skip_quiet"`, `name="auto_download"`} {
-		if strings.Contains(ios, name) {
-			t.Errorf("ios settings has %s: skip silence and the next-book download stay Android-only", name)
+		if strings.Contains(br, name) {
+			t.Errorf("browser settings has %s", name)
 		}
 	}
 	and := a.do(http.MethodGet, "/me/settings", nil, nil, ck, &http.Cookie{Name: shellCookie, Value: "android"}).Body.String()
