@@ -86,6 +86,21 @@ build, fetched at build time on the Mac only, never at runtime and never in the 
   of it: check with `strings` on a Release binary (`xcodebuild -configuration Release -arch arm64`; an all-architecture Release
   build fails to link because the shared framework is arm64 only).
 
+## Native audio (I2b)
+
+- **Loader.** `MediaLoader` is the `AVAssetResourceLoaderDelegate`: AVPlayer sees only `tsmedia://m/<n>` handles; each loading
+  request becomes one GET to the registered `/api/v1/` address with `Authorization: Bearer` and a `Range`, no cookies, only while the
+  connection is on the handle's origin. A busy server (503) is retried by the shared rule. The token is never in a URL.
+- **Player.** `AudioPlayer` (an `AVQueuePlayer`, one item per playable file, the current and the next) ports `BookEngine`; book time
+  comes from `BookTimeline`. `Playback` owns it with `AudioSession` (category `.playback`, interruptions, route changes) and
+  `NowPlaying` (lock screen card and remote commands, by hand).
+- **Bridge.** `Bridge` carries the shared bridge grammar over a `WKScriptMessageHandler` (`tsShell`) and `window.tsNative`
+  (`NativeScript`); main frame only, connected origin only, 30 messages a second.
+- **Limits.** No saving, smart rewind, sleep or next book yet (I2c). Radio: an endless stream through the loader did not settle
+  in the simulator (AVFoundation keeps probing far offsets); see the roadmap note. Ogg, Opus and FLAC are not played.
+- **Debug driver.** `-TSTestStart <id>` starts playback after sign-in; `-TSTestScript "pause;play;seek 20000;speed 1.50"` sends those
+  messages from the page; a probe line each 2 s shows the snapshot, the lock-screen card and the last state the page got.
+
 ## Cleanup
 
 `make ios-shared` leaves the synced tree and its build output on the Mac. `ios/tools/mac-build.sh clean` removes that tree;

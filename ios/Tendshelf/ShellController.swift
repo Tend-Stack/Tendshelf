@@ -12,6 +12,8 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     private(set) var webView: WKWebView
     private(set) var flow: ConnectFlow!
     private(set) var signOut: SignOut!
+    private(set) var playback: Playback!
+    private(set) var bridge: Bridge!
     private let configuration: WKWebViewConfiguration
 
     /// The one address the app itself is loading: it passes the policy once (a load that native code started is not a
@@ -30,6 +32,35 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         install(webView)
         signOut = SignOut(store: store, api: client, host: self, pages: pages)
         flow = ConnectFlow(store: store, client: client, pages: pages, host: self, signOut: signOut)
+        playback = Playback(store: store, client: client)
+        bridge = Bridge(
+            control: playback,
+            userContent: config.userContentController,
+            currentView: { [weak self] in self?.webView },
+            currentOrigin: { [weak self] in self?.flow?.origin },
+            isConnected: { [weak self] in self?.flow?.state == .connected },
+            front: UIApplication.shared.applicationState != .background)
+        bridge.onTheme = { [weak self] hex in self?.applyTheme(hex) }
+        let center = NotificationCenter.default
+        center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.bridge.front(true) }
+        }
+        center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.bridge.front(false) }
+        }
+        #if DEBUG
+        DebugDriver.playback = playback
+        #endif
+    }
+
+    /// `theme #rrggbb` from the page: the colour behind the page while it overscrolls, and behind the window.
+    private func applyTheme(_ hex: String) {
+        guard hex.count == 7, let value = UInt32(hex.dropFirst(), radix: 16) else { return }
+        let color = UIColor(
+            red: CGFloat((value >> 16) & 0xff) / 255, green: CGFloat((value >> 8) & 0xff) / 255,
+            blue: CGFloat(value & 0xff) / 255, alpha: 1)
+        webView.underPageBackgroundColor = color
+        container.backgroundColor = color
     }
 
     /// Puts [view] in the container and makes this controller its delegate.
@@ -53,6 +84,8 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     // MARK: ShellHost
 
     func load(_ url: URL) {
+        // The page script goes in before a page on the connected origin loads; other pages get nothing.
+        if let origin = flow.origin, origin.matches(url: url.absoluteString) { bridge.attach(origin: origin) }
         expected = url
         webView.load(URLRequest(url: url))
     }
@@ -79,6 +112,9 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     /// Sign-out and change of server: every cookie, storage and cache entry goes, and a new view replaces the old one so
     /// no history, form data or page memory survives.
     func resetWeb() async {
+        // Nothing keeps playing for someone who signed out or left the server.
+        bridge.detach()
+        playback.stopAndClear()
         let old = webView
         old.navigationDelegate = nil
         old.stopLoading()
@@ -138,6 +174,10 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
             // Block, and the Downloads, PlayBook, RemoveBook, AutoShow and TogglePlay commands of later phases.
             return .cancel
         }
+    }
+
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        bridge.pageStarted()
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

@@ -485,3 +485,6 @@ Run in the simulator or on a phone against a server you control (`make ios-sim` 
 | IOS-2 | Sign in, tap the consent button. | Home opens in the app; Profile lists this device as "iPhone". | Not run by hand (driver, 2026-11-19: passed). |
 | IOS-3 | Force-quit and open the app. | Home opens, still signed in. Revoke the device on the server, reopen: the start page says "You were signed out". | Not run by hand (relaunch passed with the driver; the revoke path is covered by tests). |
 | IOS-4 | Profile, Sign out. | The start page shows the address and "You were signed out"; the device is revoked on the server; Back does not return to a page. | Not run by hand (driver: start page and revoked device passed). |
+| IOS-5 | Play a book, lock the phone. Open Control Center and the lock screen. | Title (chapter), book, author, cover, book time and speed show; play, pause, 30 s back and forward, chapter next and previous, the scrubber and the speed buttons work. | Not run by hand (the card's values were read in the simulator; the controls are the operator's). |
+| IOS-6 | Play with headphones, pull them out. | Playback pauses. | Not run (needs a device). |
+| IOS-7 | Play, then take a call or ask Siri. | Playback pauses and resumes when the call ends. | Not run (needs a device). |

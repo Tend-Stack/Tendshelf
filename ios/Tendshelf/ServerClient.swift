@@ -42,8 +42,18 @@ final class ServerClient: ServerAPI {
     private let session: URLSession
     private let refuser = RedirectRefuser()
 
-    /// [protocolClasses] is for tests (a `URLProtocol` stub in front of the network).
-    init(protocolClasses: [AnyClass] = []) {
+    /// What one data call got: status, the body (at most `limit` bytes), and the `Retry-After` seconds when sent.
+    struct DataReply {
+        let status: Int
+        let body: Data
+        /// True when the answer was longer than the limit (the body then holds the first `limit` bytes).
+        let tooLarge: Bool
+        let retryAfterS: Int?
+    }
+
+    /// No cookies, no cache, no waiting for connectivity: the settings of every native session (this one and the media
+    /// loader's). Redirects are refused by each session's own delegate.
+    nonisolated static func ephemeralConfiguration() -> URLSessionConfiguration {
         let config = URLSessionConfiguration.ephemeral
         config.httpCookieStorage = nil
         config.httpShouldSetCookies = false
@@ -51,6 +61,12 @@ final class ServerClient: ServerAPI {
         config.urlCache = nil
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         config.waitsForConnectivity = false
+        return config
+    }
+
+    /// [protocolClasses] is for tests (a `URLProtocol` stub in front of the network).
+    init(protocolClasses: [AnyClass] = []) {
+        let config = Self.ephemeralConfiguration()
         if !protocolClasses.isEmpty { config.protocolClasses = protocolClasses }
         session = URLSession(configuration: config, delegate: refuser, delegateQueue: nil)
     }
@@ -91,6 +107,22 @@ final class ServerClient: ServerAPI {
 
     /// One request. Nil means no answer at all (network failure); a TLS failure is a reply with `certificate` set.
     func call(_ urlText: String, _ method: String, _ json: String?, _ bearer: String?, _ timeout: TimeInterval) async -> Reply? {
+        let limit = Self.bodyLimit
+        do {
+            guard let r = try await callData(urlText, method, json, bearer, timeout, limit: limit) else { return nil }
+            return Reply(status: r.status, body: String(decoding: r.body, as: UTF8.self), truncated: r.tooLarge)
+        } catch let error as URLError where Self.isCertificateFailure(error.code) {
+            return Reply(status: 0, body: "", certificate: true)
+        } catch {
+            return nil
+        }
+    }
+
+    /// One request that keeps its bytes: reads chunks and stops one byte past [limit], so `tooLarge` is exact. Nil means no
+    /// answer at all; a TLS failure throws its `URLError` (`call` turns that into a reply).
+    func callData(
+        _ urlText: String, _ method: String, _ json: String?, _ bearer: String?, _ timeout: TimeInterval, limit: Int
+    ) async throws -> DataReply? {
         guard let url = URL(string: urlText) else { return nil }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
         request.httpMethod = method
@@ -107,18 +139,19 @@ final class ServerClient: ServerAPI {
         do {
             let (bytes, response) = try await session.bytes(for: request)
             guard let http = response as? HTTPURLResponse else { return nil }
-            var body = Data()
-            var truncated = false
+            var body = [UInt8]()
+            var tooLarge = false
             for try await byte in bytes {
-                if body.count >= Self.bodyLimit {
-                    truncated = true
+                if body.count >= limit {
+                    tooLarge = true
                     break
                 }
                 body.append(byte)
             }
-            return Reply(status: http.statusCode, body: String(decoding: body, as: UTF8.self), truncated: truncated)
+            let wait = http.value(forHTTPHeaderField: "Retry-After").flatMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+            return DataReply(status: http.statusCode, body: Data(body), tooLarge: tooLarge, retryAfterS: wait)
         } catch let error as URLError where Self.isCertificateFailure(error.code) {
-            return Reply(status: 0, body: "", certificate: true)
+            throw error
         } catch {
             return nil
         }

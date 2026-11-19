@@ -12,7 +12,7 @@ nonisolated struct Connection: Equatable {
 /// The device token lives only in the Keychain (invariant 3), readable after the first unlock so playback can use it
 /// while the phone is locked, and never copied to another device. Everything that is not a secret is in `UserDefaults`.
 /// The token is sent only by native HTTP; nothing here logs it or hands it to the WebView.
-nonisolated final class TokenStore {
+nonisolated final class TokenStore: @unchecked Sendable {
     static let service = "app.tendshelf.ios"
     private static let account = "device-token"
 

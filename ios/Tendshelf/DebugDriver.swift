@@ -1,11 +1,20 @@
 #if DEBUG
+import MediaPlayer
 import WebKit
 
 /// Debug builds only (the whole file is compiled out of Release; `ios/tools` checks the binary for these strings).
 /// Lets a headless simulator run fill the forms a person would: launch arguments `-TSTestAddress <address>`,
 /// `-TSTestLogin <user>:<password>`, `-TSTestSignOut 1`, `-TSTestAutoYes 1`. It types only into the page's own fields and
 /// taps its own buttons; the app's native code is exercised unchanged. Progress goes to stdout as `TSDRIVE ...` lines.
+/// I2b: `-TSTestStart <id>` calls `Playback.start` once a page on the server has loaded; `-TSTestScript "pause;seek 20000;speed 1.50"`
+/// sends those bridge messages from the page (`window.tsNative.postMessage`), six seconds apart; a probe line each two seconds
+/// shows the player's snapshot, the lock-screen card (`MPNowPlayingInfoCenter`) and the last message the page received.
+@MainActor
 enum DebugDriver {
+    static weak var playback: Playback?
+    private static var started = false
+    private static var probe: Timer?
+
     private static var args: UserDefaults { .standard }
     private static var done = Set<String>()
 
@@ -17,6 +26,7 @@ enum DebugDriver {
         let path = url.path
         let key = "\(url.absoluteString)"
         report(web, path)
+        startPlayback(web, url)
         if path == "/start", args.string(forKey: "TSTestAddress") != nil, !done.contains("choose") {
             // The first-run page offers two buttons; "I have a server" opens the address form.
             done.insert("choose")
@@ -38,6 +48,40 @@ enum DebugDriver {
         } else if path == "/me", args.bool(forKey: "TSTestSignOut"), !done.contains("signout") {
             done.insert("signout")
             run(web, "var f=document.querySelector('form[action=\"/logout\"]'); if(f){f.requestSubmit();}")
+        }
+    }
+
+    private static func startPlayback(_ web: WKWebView, _ url: URL) {
+        guard let id = args.string(forKey: "TSTestStart"), !started, url.scheme?.hasPrefix("http") == true,
+              url.path != "/login", !url.path.hasPrefix("/app/connect"), let playback else { return }
+        started = true
+        // Collect what the page receives, so the probe can show the bar would follow.
+        run(web, "window.__tsLog=[]; if(window.tsNative){window.tsNative.addEventListener('message',e=>{window.__tsLog.push(e.data);});}")
+        playback.start(id, atMs: nil)
+        probe = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+            MainActor.assumeIsolated { probeNow(web) }
+        }
+        let steps = (args.string(forKey: "TSTestScript") ?? "").split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }
+        for (i, step) in steps.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8 + Double(i) * 6) {
+                print("TSDRIVE script step \(step)")
+                run(web, "window.tsNative.postMessage(\(literal(step)))")
+            }
+        }
+    }
+
+    private static func probeNow(_ web: WKWebView) {
+        guard let playback else { return }
+        let s = playback.snapshot()
+        let info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+        let title = (info[MPMediaItemPropertyTitle] as? String) ?? "-"
+        let artist = (info[MPMediaItemPropertyArtist] as? String) ?? "-"
+        let elapsed = (info[MPNowPlayingInfoPropertyElapsedPlaybackTime] as? Double).map { String(format: "%.1f", $0) } ?? "-"
+        let rate = (info[MPNowPlayingInfoPropertyPlaybackRate] as? Double).map { String($0) } ?? "-"
+        let art = info[MPMediaItemPropertyArtwork] != nil
+        web.evaluateJavaScript("(window.__tsLog||[]).length + ' ' + ((window.__tsLog||[]).filter(m=>m.indexOf('\"state\"')>0).slice(-1)[0]||'')") { value, _ in
+            let last = String(describing: value ?? "nil").prefix(220)
+            print("TSDRIVE probe book=\(s.bookId) pos=\(s.positionMs) dur=\(s.durationMs) playing=\(s.playing) buf=\(s.buffering) speed=\(s.speed) ch=\(s.chapterIdx) err=\(s.error) card[title=\(title) artist=\(artist) elapsed=\(elapsed) rate=\(rate) art=\(art)] page=\(last)")
         }
     }
 
