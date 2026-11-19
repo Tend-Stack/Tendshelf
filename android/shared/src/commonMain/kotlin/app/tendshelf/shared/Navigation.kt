@@ -34,6 +34,9 @@ sealed interface Nav {
 
     /** The bundled Downloads page: pause or resume the playing book. */
     object TogglePlay : Nav
+
+    /** The iPhone's stored reader asked for a page that is not stored: load this address on the server instead. */
+    data class Online(val url: String) : Nav
 }
 
 const val BUNDLED_HOST = "appassets.androidplatform.net"
@@ -43,6 +46,9 @@ data class BundledSite(val scheme: String, val host: String) {
     companion object {
         val ANDROID = BundledSite("https", BUNDLED_HOST)
         val IOS = BundledSite("tsbundle", "app")
+
+        /** The iPhone's offline reader origin (I3d): stored text only, never a bundled page, never `window.tsNative`. */
+        val IOS_READER = BundledSite("tsread", "app")
     }
 }
 
@@ -52,9 +58,11 @@ data class BundledSite(val scheme: String, val host: String) {
  * addresses (`/connect`, `/play`, `/remove`, `/toggle`) are commands, so a link in a book or any server page
  * (page text is untrusted) must never reach them: they are obeyed only from the main frame of a bundled page.
  */
-fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolean, fromBundled: Boolean, signInOrigins: Set<Origin> = emptySet(), bundled: BundledSite = BundledSite.ANDROID): Nav {
+fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolean, fromBundled: Boolean, signInOrigins: Set<Origin> = emptySet(), bundled: BundledSite = BundledSite.ANDROID, reader: BundledSite? = null): Nav {
     val b = bundledMatch(url, bundled)
     if (b != null) return decideBundled(b, mainFrame, fromBundled)
+    val r = if (reader != null) bundledMatch(url, reader) else null
+    if (r != null) return decideReader(r, mainFrame, origin)
     val scheme = url.substringBefore(':', "").lowercase()
     if (scheme == "mailto") return Nav.External
     if (scheme != "http" && scheme != "https") return Nav.Block
@@ -71,6 +79,18 @@ fun decide(url: String, mainFrame: Boolean, origin: Origin?, codePending: Boolea
     // sub-frame never loads. Checked after the bundled host and the server origin, so the set cannot widen either rule.
     if (mainFrame && signInOrigins.any { it.scheme == u.scheme && it.host == u.host && it.port == u.port }) return Nav.Stay
     return if (mainFrame) Nav.External else Nav.Block
+}
+
+/**
+ * A page of the iPhone's stored reader origin. Only the main frame may leave it, and only for a connected server: a stored
+ * reader address stays (the scheme handler answers it), anything else the handler would refuse loads on the server instead.
+ */
+private fun decideReader(u: ParsedUrl, mainFrame: Boolean, origin: Origin?): Nav {
+    if (!mainFrame || origin == null) return Nav.Block
+    val path = u.path
+    val withQuery = if (u.query == null) path else "$path?${u.query}"
+    if (offlineRoute(origin.text + withQuery, origin) is OfflineRoute.Shell) return Nav.Stay
+    return Nav.Online(origin.text + withQuery)
 }
 
 /** The command block of a bundled page: obeyed only from the main frame of a bundled page. */

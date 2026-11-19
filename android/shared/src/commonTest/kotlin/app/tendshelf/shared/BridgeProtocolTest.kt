@@ -201,4 +201,19 @@ class SleepBridgeTest {
             encodeSleep(SleepInfo(SleepMode.CHAPTER, "chapter", 1500, true)),
         )
     }
+
+    @Test fun readingWords() {
+        assertEquals(BridgeMessage.ReadingAsk, parseBridge("rd ask"))
+        assertEquals(BridgeMessage.ReadingDone(12), parseBridge("rd done 12"))
+        for (bad in listOf("rd", "rd ask 1", "rd done", "rd done x", "rd done -1", "rd done 1 2", "rd  ask", "rd other")) assertNull(parseBridge(bad), bad)
+    }
+
+    @Test fun encodeReadingLimitsAndEscapes() {
+        assertEquals("{\"t\":\"rd\",\"items\":[]}", encodeReading(emptyList()))
+        assertEquals(
+            "{\"t\":\"rd\",\"items\":[{\"seq\":1,\"bookId\":\"b1\",\"form\":\"{\\\"a\\\":1}\"}]}",
+            encodeReading(listOf(ReadingItem(1, "b1", "{\"a\":1}"), ReadingItem(2, "bad id", "{}"))),
+        )
+        assertEquals(100, Regex("\"seq\"").findAll(encodeReading((1L..150L).map { ReadingItem(it, "b", "{}") })).count())
+    }
 }

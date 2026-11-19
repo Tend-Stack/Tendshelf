@@ -604,9 +604,10 @@ func crumbFor(path string) components.Crumb {
 	return components.Crumb{}
 }
 
-// noOfflineScript keeps offline.js out of a shell window, except the Android app's: there it carries the reading
-// flush and the bookmark queue (A9, decision 0027) and its worker and download code stay off by data-shell.
-func noOfflineScript(shell string) bool { return shell != "" && shell != "android" }
+// noOfflineScript keeps offline.js out of a shell window, except a phone app's: there it carries the reading
+// flush and the bookmark queue (A9, decision 0027; the iPhone app, decision 0048) and its worker and download code stay
+// off by data-shell.
+func noOfflineScript(shell string) bool { return shell != "" && !isAppShell(shell) }
 
 // navAccount is the person the navigation's account chip shows: avatar, name and kind.
 func (s *server) navAccount(r *http.Request) components.NavAccount {

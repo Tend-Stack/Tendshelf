@@ -66,6 +66,12 @@ sealed interface BridgeMessage {
 
     /** The Download the next book switch in Settings changed (decision 0035). */
     data class AutoDownload(val on: Boolean) : BridgeMessage
+
+    /** `rd ask`: the server's page asks for the reading places made offline at the iPhone's stored reader (I3d). */
+    data object ReadingAsk : BridgeMessage
+
+    /** `rd done <seq>`: the page took every place up to [seq]; the phone may forget them (I3d). */
+    data class ReadingDone(val seq: Long) : BridgeMessage
 }
 
 const val MAX_LENGTH = 128
@@ -111,6 +117,11 @@ fun parseBridge(raw: String?): BridgeMessage? {
         "quiet" -> if (parts.size == 2 && (parts[1] == "0" || parts[1] == "1")) BridgeMessage.Quiet(parts[1] == "1") else null
         "fav" -> if (parts.size == 3 && validId(parts[1]) && (isEpisodeId(parts[1]) || isStationId(parts[1])) && (parts[2] == "0" || parts[2] == "1")) BridgeMessage.Favourite(parts[1], parts[2] == "1") else null
         "dl" -> if (parts.size == 2 && parts[1] == "room") BridgeMessage.DownloadRoom else if (parts.size == 3 && validId(parts[2]) && parts[1] in DL_WORDS) BridgeMessage.Download(parts[1], parts[2]) else null
+        "rd" -> when {
+            parts.size == 2 && parts[1] == "ask" -> BridgeMessage.ReadingAsk
+            parts.size == 3 && parts[1] == "done" -> millis(parts[2])?.let { BridgeMessage.ReadingDone(it) }
+            else -> null
+        }
         else -> null
     }
 }
@@ -215,6 +226,20 @@ fun encodeRewound(s: Int): String = "{\"t\":\"rewound\",\"s\":${s.coerceIn(0, 36
 fun encodeDl(bookId: String, state: String, pct: Int, sized: Boolean = true): String {
     val known = state in setOf("none", "queued", "downloading", "paused", "ready", "failed", "stale")
     return "{\"t\":\"dl\",\"bookId\":${jsonString(bookId)},\"state\":\"${if (known) state else "none"}\",\"pct\":${pct.coerceIn(0, 100)}${if (sized) "" else ",\"known\":false"}}"
+}
+
+/** One reading place waiting at the iPhone's stored reader: its order, the book and the place's form as JSON text. */
+data class ReadingItem(val seq: Long, val bookId: String, val form: String)
+
+/** The most places one `rd` message carries. */
+const val MAX_READING_ITEMS = 100
+
+/** `{"t":"rd","items":[{"seq":1,"bookId":"..","form":".."}]}`: places for the server's page to send; ids outside [validId] are left out. */
+fun encodeReading(items: List<ReadingItem>): String {
+    val list = items.filter { validId(it.bookId) }.take(MAX_READING_ITEMS).joinToString(",") {
+        "{\"seq\":${it.seq.coerceAtLeast(0)},\"bookId\":${jsonString(it.bookId)},\"form\":${jsonString(it.form)}}"
+    }
+    return "{\"t\":\"rd\",\"items\":[$list]}"
 }
 
 /** The room left for downloads, after the spare every download keeps free ([SPARE_BYTES]); the page compares a whole batch with it. */

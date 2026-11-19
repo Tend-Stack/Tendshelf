@@ -59,3 +59,17 @@ fun offlineRoute(url: String, origin: Origin): OfflineRoute? {
     ) return OfflineRoute.Part(seg[3], storeKey(withQuery))
     return null
 }
+
+/**
+ * The addresses of a book's text to fetch, in order (parts, pictures, hashed files), or null when the manifest lists an
+ * address the app would not answer for this book: nothing else is ever fetched.
+ */
+fun textFetchList(m: TextManifest, origin: Origin): List<String>? {
+    if (!validId(m.bookId)) return null
+    val listed = m.parts.map { offlineRoute(origin.text + it, origin) is OfflineRoute.Part } +
+        m.images.map { offlineRoute(origin.text + it, origin) is OfflineRoute.Image } +
+        m.assets.map { offlineRoute(origin.text + it, origin) is OfflineRoute.Static }
+    val mine = (m.parts + m.images).all { it.contains("/${m.bookId}/") }
+    if (!mine || listed.any { !it }) return null
+    return m.parts + m.images + m.assets
+}

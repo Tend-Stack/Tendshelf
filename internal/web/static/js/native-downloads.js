@@ -109,9 +109,26 @@ function start(bridge) {
       standing.set(message.bookId, String(message.state));
       for (const callback of listeners) callback();
     }
+    if (message.t === "rd") takeReading(message.items);
     if (message.t === "room" && roomAnswer) roomAnswer(Number(message.bytes) || 0);
     if (message.t === "dl" && message.bookId === bookId()) show(String(message.state), Number(message.pct), message.known !== false);
   });
+
+  // Reading places made at the app's stored reader while the server could not be reached (iPhone only). The app keeps them
+  // until this page says it took them; reader-offline.js merges them into the queue offline.js sends with this page's token.
+  async function takeReading(items) {
+    const src = document.getElementById("ts-offline")?.dataset.tsReaderOfflineSrc;
+    if (!src || !Array.isArray(items)) return;
+    try {
+      const seq = (await import(src)).adopt(items);
+      if (seq > 0) bridge.postMessage("rd done " + seq);
+      document.dispatchEvent(new CustomEvent("ts:reading:adopted"));
+    } catch {
+      /* the app offers them again at the next page */
+    }
+  }
+
+  const askReading = () => bridge.postMessage("rd ask");
 
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-ts-download]");
@@ -183,6 +200,10 @@ function start(bridge) {
   document.addEventListener("htmx:after:swap", ask);
   document.addEventListener("htmx:after:swap", loadAll);
   document.addEventListener("ts:native:ready", ask);
+  if (document.documentElement.dataset.shell === "ios") {
+    document.addEventListener("ts:native:ready", askReading);
+    askReading();
+  }
   ask();
   loadAll();
 }

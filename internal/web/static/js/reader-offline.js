@@ -48,9 +48,51 @@ function note(name, id, detail) {
   localStorage.setItem(QUEUE, JSON.stringify(queue));
 }
 
+// The iPhone app's stored reader (tsread://app) answers a place itself and keeps it on the phone until the server's own page
+// takes it through the app (native-downloads.js, "rd"). These are those places, in the order they were made: for each book the
+// newer form wins, the reading counts add up, and the queue then sends them like any other (offline.js). Returns the highest
+// order number seen, even for one taken before, so the app can forget it; 0 when there was none.
+const SEQ = "ts.offline.reading.seq";
+
+export function adopt(items) {
+  const taken = Number(localStorage.getItem(SEQ)) || 0;
+  const queue = load(QUEUE, {});
+  const deviceId = localStorage.getItem("ts.deviceId");
+  const valid = (Array.isArray(items) ? items : []).filter(
+    (item) => item && /^[A-Za-z0-9_-]{1,64}$/.test(item.bookId) && Number.isFinite(item.seq) && typeof item.form === "string",
+  );
+  valid.sort((a, b) => a.seq - b.seq);
+  let top = 0;
+  let adopted = 0;
+  for (const item of valid) {
+    top = Math.max(top, item.seq);
+    if (item.seq <= taken) continue;
+    const fields = new URLSearchParams(item.form);
+    const record = queue[item.bookId] || { form: "", chars: 0, active: 0 };
+    const mine = Number(new URLSearchParams(record.form).get("client_updated_at")) || 0;
+    const newer = (Number(fields.get("client_updated_at")) || 0) > mine;
+    const form = new URLSearchParams(newer || !record.form ? strip(item.form) : record.form);
+    if (deviceId) form.set("device_id", deviceId);
+    queue[item.bookId] = {
+      form: form.toString(),
+      chars: record.chars + (Number(fields.get("chars_read")) || 0),
+      active: record.active + (Number(fields.get("active_ms")) || 0),
+      sent: false,
+    };
+    adopted = Math.max(adopted, item.seq);
+  }
+  if (adopted) {
+    localStorage.setItem(QUEUE, JSON.stringify(queue));
+    localStorage.setItem(SEQ, String(adopted));
+  }
+  return top;
+}
+
 // Sends every unsent record, a slice at a time within the server's per-save caps (200,000 characters and
 // 10 minutes). Returns false when sending should stop and be tried again.
 export async function flushReading(csrf) {
+  // At tsread://app the app already keeps every save; sending from here would count them twice.
+  if (location.protocol === "tsread:") return true;
   for (const id of Object.keys(load(QUEUE, {}))) {
     let record = load(QUEUE, {})[id];
     while (record && !record.sent) {

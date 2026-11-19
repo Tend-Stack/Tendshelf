@@ -77,4 +77,14 @@ class OfflineRoutesTest {
     @Test fun storeKeyIsTheAddressAsSent() {
         assertEquals("/a?b=2&a=1", storeKey("/a?b=2&a=1"))
     }
+
+    @Test fun textFetchListKeepsOrderAndRefusesForeignAddresses() {
+        fun m(parts: List<String>, images: List<String> = emptyList(), assets: List<String> = emptyList()) =
+            TextManifest("b1", "e1", "r1", "", "", 10, parts, images, assets)
+        val ok = m(listOf("/hx/books/b1/read/chapters/0"), listOf("/books/b1/read/images/x"), listOf("/static/a.js"))
+        assertEquals(listOf("/hx/books/b1/read/chapters/0", "/books/b1/read/images/x", "/static/a.js"), textFetchList(ok, http))
+        assertNull(textFetchList(m(listOf("/hx/books/b2/read/chapters/0")), http))
+        assertNull(textFetchList(m(listOf("/hx/books/b1/read/chapters/0"), assets = listOf("/other/x.js")), http))
+        assertNull(textFetchList(m(listOf("http://evil.example/hx/books/b1/read/chapters/0")), http))
+    }
 }

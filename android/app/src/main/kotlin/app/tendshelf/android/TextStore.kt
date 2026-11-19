@@ -6,7 +6,7 @@ import android.util.Log
 import android.webkit.CookieManager
 import app.tendshelf.shared.Origin
 import app.tendshelf.shared.OfflineRoute
-import app.tendshelf.shared.offlineRoute
+import app.tendshelf.shared.textFetchList
 import app.tendshelf.shared.validId
 import app.tendshelf.shared.TextIndex
 import app.tendshelf.shared.TextIndexEntry
@@ -182,11 +182,7 @@ object TextStore {
         val sdir = staticDir.apply { mkdirs() }
         try {
             // Whatever the server lists must be an address the app would answer for this book; nothing else is fetched.
-            val listed = m.parts.map { offlineRoute(origin.text + it, origin) is OfflineRoute.Part } +
-                m.images.map { offlineRoute(origin.text + it, origin) is OfflineRoute.Image } +
-                m.assets.map { offlineRoute(origin.text + it, origin) is OfflineRoute.Static }
-            val mine = (m.parts + m.images).all { it.contains("/${m.bookId}/") }
-            if (!mine || listed.any { !it }) return TextResult.FAILED
+            if (textFetchList(m, origin) == null) return TextResult.FAILED
             val keep = synchronized(indexLock) { readIndex(dir) }
             val fresh = TextIndex()
             for (key in m.parts + m.images) {

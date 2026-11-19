@@ -230,6 +230,8 @@ window.addEventListener("online", () => {
 });
 
 document.addEventListener("htmx:after:swap", renderBanner);
+// The iPhone app handed over reading places made at its stored reader (native-downloads.js): send them now.
+document.addEventListener("ts:reading:adopted", flush);
 
 // ---- The service worker ----
 

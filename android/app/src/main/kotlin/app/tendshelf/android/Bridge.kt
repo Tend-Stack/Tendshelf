@@ -188,6 +188,8 @@ class Bridge(
             is BridgeMessage.Quiet -> r?.setSkipQuiet(msg.on)
             is BridgeMessage.Favourite -> r?.favourite(msg.id, msg.on)
             is BridgeMessage.AutoDownload -> Offline.setAutoDownload(msg.on)
+            // The iPhone's stored reader keeps places for the page to send; Android answers at the server's own address, so none.
+            BridgeMessage.ReadingAsk, is BridgeMessage.ReadingDone -> {}
             BridgeMessage.DownloadRoom -> sendTo(reply, encodeRoom(Offline.freeBytes()))
             BridgeMessage.TtsVoices -> speech.voices { sendTo(reply, it) }
             BridgeMessage.TtsStop -> speech.stop(silent = true)
