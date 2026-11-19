@@ -488,3 +488,4 @@ Run in the simulator or on a phone against a server you control (`make ios-sim` 
 | IOS-5 | Play a book, lock the phone. Open Control Center and the lock screen. | Title (chapter), book, author, cover, book time and speed show; play, pause, 30 s back and forward, chapter next and previous, the scrubber and the speed buttons work. | Not run by hand (the card's values were read in the simulator; the controls are the operator's). |
 | IOS-6 | Play with headphones, pull them out. | Playback pauses. | Not run (needs a device). |
 | IOS-7 | Play, then take a call or ask Siri. | Playback pauses and resumes when the call ends. | Not run (needs a device). |
+| IOS-10 | Play a real radio station on a device, lock the phone, leave it 10 minutes. | The station keeps playing; the lock screen shows the station name and "Live"; pause and play resume it; a second device on the same account does not cut it off. | Not run (needs a device; decision 0049, I2r). |

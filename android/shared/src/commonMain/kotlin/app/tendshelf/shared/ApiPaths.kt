@@ -68,6 +68,9 @@ class ApiPaths(server: String) {
     // ---- Radio (R3). The live address is the server's own relay; the app never contacts a station. ----
 
     fun liveUrl(stationId: String): String = "$base/api/v1/radio/live/${segment(stationId)}"
+
+    /** Mints the iPhone app's one-hour live address for a station (decision 0049). Android keeps the bearer route above. */
+    fun liveAddressUrl(stationId: String): String = "$base/api/v1/radio/live/${segment(stationId)}/address"
     val radioStationsUrl: String get() = "$base/api/v1/radio/stations"
     val radioRecentUrl: String get() = "$base/api/v1/radio/recent"
     fun radioNowUrl(stationId: String): String = "$base/api/v1/radio/now/${segment(stationId)}"

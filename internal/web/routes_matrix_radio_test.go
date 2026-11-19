@@ -81,6 +81,8 @@ func radioSweepRows() []sweepRow {
 		api(sweepGet("GET /api/v1/radio/recent", sweepStatic("/api/v1/radio/recent"), notGuest)),
 		api(sweepGet("GET /api/v1/radio/live/{stationID}", station("/api/v1/radio/live/", ""), notGuest)),
 		api(labelled(sweepGet("GET /api/v1/radio/live/{stationID}", otherStation("/api/v1/radio/live/", ""), ownerOnly), "someone else's station")),
+		// The sweep's device tokens are not a phone's, so every role gets 403 here; the phone's own answers are in TestIOSLive*.
+		api(apiUnsafe("POST /api/v1/radio/live/{stationID}/address", http.MethodPost, station("/api/v1/radio/live/", "/address"), [4]int{http.StatusForbidden, http.StatusForbidden, http.StatusForbidden, http.StatusForbidden})),
 		api(sweepGet("GET /api/v1/radio/now/{stationID}", station("/api/v1/radio/now/", ""), notGuest)),
 		api(labelled(sweepGet("GET /api/v1/radio/now/{stationID}", otherStation("/api/v1/radio/now/", ""), ownerOnly), "someone else's station")),
 		api(apiUnsafe("POST /api/v1/radio/stations", http.MethodPost, sweepStatic("/api/v1/radio/stations"), staff415)),

@@ -112,7 +112,8 @@ func (s *server) castGate(kindOK func(string) bool, h func(http.ResponseWriter, 
 			s.castServerError(w, "cast owner settings", err)
 			return
 		}
-		if !set.Cast || !kindOK(tok.Kind) {
+		// An iPhone live address (decision 0049) does not need casting on; its device binding was checked in Lookup.
+		if tok.DeviceID == "" && !set.Cast || !kindOK(tok.Kind) {
 			http.Error(w, "Not found.", http.StatusNotFound)
 			return
 		}

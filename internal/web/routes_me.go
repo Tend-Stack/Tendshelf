@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/Tend-Stack/tendshelf/internal/auth"
@@ -395,6 +396,10 @@ func (s *server) postDeviceSignOut(w http.ResponseWriter, r *http.Request) {
 	case !ok:
 		s.notFound(w, r)
 	default:
+		// The device's live address ends with its token (decision 0049).
+		if err := s.casts.DeleteForDevice(r.Context(), r.PathValue("did")); err != nil {
+			slog.Error("delete live address", "err", err)
+		}
 		http.Redirect(w, r, "/me/devices", http.StatusSeeOther)
 	}
 }

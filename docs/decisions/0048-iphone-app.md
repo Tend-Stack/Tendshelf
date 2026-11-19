@@ -133,3 +133,4 @@ a WidgetKit widget, device read aloud, in-app QR scanning, the privacy manifest,
 ## Addendum 2026-11-19 (I2)
 - Skip silence and the next-book download switch stay Android-only: AVFoundation has no silence skipping, and downloads
   are I3. The native scripts loaded for `ios` are `native-audio.js` and `native-feel.js`.
+- Stations play from a live address (decision 0049); books and episodes keep the resource loader.
