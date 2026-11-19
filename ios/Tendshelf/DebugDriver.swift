@@ -62,11 +62,26 @@ enum DebugDriver {
             MainActor.assumeIsolated { probeNow(web) }
         }
         let steps = (args.string(forKey: "TSTestScript") ?? "").split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }
-        for (i, step) in steps.enumerated() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 8 + Double(i) * 6) {
-                print("TSDRIVE script step \(step)")
-                run(web, "window.tsNative.postMessage(\(literal(step)))")
+        // A step is a bridge message, sent six seconds after the one before; `wait N` adds N seconds; `signout` is the page's
+        // own Sign out (the me page's form).
+        var at = 8.0
+        for step in steps {
+            if step.hasPrefix("wait "), let n = Double(step.dropFirst(5)) {
+                at += n
+                continue
             }
+            DispatchQueue.main.asyncAfter(deadline: .now() + at) {
+                print("TSDRIVE script step \(step)")
+                if step == "signout" {
+                    run(web, "location.href='/me'")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                        run(web, "var f=document.querySelector('form[action=\"/logout\"]'); if(f){f.requestSubmit();}")
+                    }
+                } else {
+                    run(web, "window.tsNative.postMessage(\(literal(step)))")
+                }
+            }
+            at += 6
         }
     }
 
@@ -81,7 +96,7 @@ enum DebugDriver {
         let art = info[MPMediaItemPropertyArtwork] != nil
         web.evaluateJavaScript("(window.__tsLog||[]).length + ' ' + ((window.__tsLog||[]).filter(m=>m.indexOf('\"state\"')>0).slice(-1)[0]||'')") { value, _ in
             let last = String(describing: value ?? "nil").prefix(220)
-            print("TSDRIVE probe book=\(s.bookId) pos=\(s.positionMs) dur=\(s.durationMs) playing=\(s.playing) buf=\(s.buffering) speed=\(s.speed) ch=\(s.chapterIdx) err=\(s.error) card[title=\(title) artist=\(artist) elapsed=\(elapsed) rate=\(rate) art=\(art)] page=\(last)")
+            print("TSDRIVE probe book=\(s.bookId) pos=\(s.positionMs) dur=\(s.durationMs) playing=\(s.playing) buf=\(s.buffering) speed=\(s.speed) ch=\(s.chapterIdx) err=\(s.error) ask=\(s.ask.map { "\($0.deviceLabel)@\($0.positionMs)" } ?? "-") rewound=\(s.rewoundS)/\(s.rewoundSeq) sleep=\(s.sleep.mode.name)/\(s.sleep.leftMs)/\(s.sleep.fading) rows=\(playback.writer.rowCount()) card[title=\(title) artist=\(artist) elapsed=\(elapsed) rate=\(rate) art=\(art)] page=\(last)")
         }
     }
 

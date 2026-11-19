@@ -17,6 +17,10 @@ final class SignOut {
     /// delete (I3); I1 has nothing else to tell a chosen sign-out from an expired one.
     var logoutSeen = false
 
+    /// Called with the connection that is about to go, before the token is cleared (on a sign-out and on leaving a server):
+    /// playback stops, its last place is written and sent once with that connection, the outbox is emptied (decision 0048).
+    var beforeWipe: ((Connection?) -> Void)?
+
     init(store: TokenStore, api: ServerAPI, host: ShellHost, pages: BundledPages) {
         self.store = store
         self.api = api
@@ -29,6 +33,7 @@ final class SignOut {
         let origin = store.origin
         let token = store.current()?.token
         logoutSeen = false
+        beforeWipe?(store.current())
         store.clearToken()
         after?()
         Task { @MainActor in
@@ -42,7 +47,9 @@ final class SignOut {
     /// The person confirmed another server: the old device is revoked, then the token and the web data go, so the new
     /// server's pages start clean; [done] runs when that is finished.
     func leave(oldOrigin: Origin, done: @escaping () -> Void) {
-        let token = store.current()?.token
+        let held = store.current()
+        let token = held?.token
+        beforeWipe?(held)
         store.clearToken()
         Task { @MainActor in
             await host?.resetWeb()

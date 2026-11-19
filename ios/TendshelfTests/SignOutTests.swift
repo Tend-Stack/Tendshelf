@@ -60,4 +60,78 @@ final class SignOutTests: XCTestCase {
         await eventually("start") { r.host.loads.last == BundledPages.startUrl }
         XCTAssertEqual(r.api.revokes, [])
     }
+
+    func testBeforeWipeGetsTheConnectionWhileTheTokenIsStillThere() async {
+        let r = Rig(self)
+        r.signedIn()
+        var seen: Connection?
+        var tokenPresent = false
+        r.signOut.beforeWipe = { conn in
+            seen = conn
+            tokenPresent = r.store.current() != nil
+        }
+        r.signOut.run(reason: nil)
+        XCTAssertEqual(seen?.token, "tok-1")
+        XCTAssertEqual(seen?.deviceId, "dev-1")
+        XCTAssertTrue(tokenPresent, "the hook runs before the token is cleared")
+        XCTAssertNil(r.store.current())
+    }
+
+    func testLeavingAServerAlsoRunsTheHook() async {
+        let r = Rig(self)
+        r.signedIn()
+        var seen: String?
+        r.signOut.beforeWipe = { seen = $0?.token }
+        r.signOut.leave(oldOrigin: r.origin) {}
+        XCTAssertEqual(seen, "tok-1")
+    }
+}
+
+/// What sign-out does to the outbox: the last rows are sent once with the connection that is going, then every row goes.
+@MainActor
+final class SignOutOutboxTests: XCTestCase {
+    func testRowsAreFlushedOnceWithTheCapturedConnectionThenCleared() async {
+        let r = WriterRig(self)
+        let captured = r.conn
+        r.api.batchError = ApiError(status: 0)
+        r.writer.saveNow("tick")
+        await eventually("first try") { r.api.batches.count == 1 }
+        r.api.batchError = nil
+        r.conn = nil // the token is already gone when the flush runs
+        await r.writer.flushAndClear(connection: captured)
+        XCTAssertEqual(r.api.batches.count, 2, "one more try, with the held connection")
+        XCTAssertEqual(r.api.tokens.last, "tok-1")
+        XCTAssertEqual(r.store.count(), 0, "and nothing is left")
+    }
+
+    func testAFailedFlushStillClears() async {
+        let r = WriterRig(self)
+        let captured = r.conn
+        r.api.batchError = ApiError(status: 0)
+        r.writer.saveNow("tick")
+        await r.writer.flushAndClear(connection: captured)
+        XCTAssertEqual(r.store.count(), 0)
+    }
+
+    func testRowsOfAnotherDeviceAreNeverSent() async {
+        let r = WriterRig(self)
+        r.api.batchError = ApiError(status: 0)
+        r.writer.saveNow("tick")
+        await eventually("try") { r.api.batches.count == 1 }
+        r.api.batchError = nil
+        let other = Connection(origin: r.conn!.origin, token: "tok-9", deviceId: "dev-9")
+        await r.writer.flushAndClear(connection: other)
+        XCTAssertEqual(r.api.batches.count, 1)
+        XCTAssertEqual(r.store.count(), 0)
+    }
+
+    func testNoFlushIsStartedWhileClosing() async {
+        let r = WriterRig(self)
+        let captured = r.conn
+        r.writer.saveNow("tick")
+        await r.writer.flushAndClear(connection: captured)
+        r.writer.flush()
+        await settle(60)
+        XCTAssertEqual(r.store.count(), 0)
+    }
 }

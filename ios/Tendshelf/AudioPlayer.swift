@@ -32,6 +32,14 @@ final class AudioPlayer {
     var willPlay: ((Bool) -> Void)?
     /// The chapter shown changed (book time moved across a chapter).
     var onChapterChanged: (() -> Void)?
+    /// The sound started or stopped (from `timeControlStatus`): playing, paused, or waiting while a play is wanted.
+    var onSound: ((Sound) -> Void)?
+    /// A seek was made by a command (the writer settles a place after a seek while paused).
+    var onSeek: (() -> Void)?
+    /// The player left its ended state (a replay): the end is a hand-off again.
+    var onLeftEnded: (() -> Void)?
+
+    enum Sound { case playing, paused, waiting }
     var liveWord = "Live"
 
     // MARK: State
@@ -39,7 +47,9 @@ final class AudioPlayer {
     private var seq = 0
     private(set) var bookId = ""
     private(set) var error = ""
-    private(set) var ended = false
+    private(set) var ended = false {
+        didSet { if oldValue, !ended { onLeftEnded?() } }
+    }
     private(set) var settings: PlayerSettings?
     private(set) var title = ""
     private(set) var author = ""
@@ -521,6 +531,7 @@ final class AudioPlayer {
         }
         changed()
         onChapterChanged?()
+        onSeek?()
     }
 
     private func seekItem(_ item: AVPlayerItem, ms: Int64) {
@@ -660,6 +671,15 @@ final class AudioPlayer {
 
     var playing: Bool { player.timeControlStatus == .playing }
 
+    /// The speed the player takes at play (a station has one).
+    var rate: Double { Double(player.defaultRate) }
+
+    /// A place worth saving: an item is ready and no start seek is waiting, so `positionMs` is the real place and not 0.
+    var hasPlace: Bool {
+        guard !bookId.isEmpty, pendingSeek == nil, let item = player.currentItem else { return false }
+        return item.status == .readyToPlay
+    }
+
     var chapterIdx: Int {
         if live { return -1 }
         return Int(Position.shared.chapterAt(chapters: chapters, bookMs: positionMs)?.idx ?? -1)
@@ -693,8 +713,20 @@ final class AudioPlayer {
             liveAttempt = 0
             if !error.isEmpty { error = "" }
         }
+        let sound: Sound
+        switch player.timeControlStatus {
+        case .playing: sound = .playing
+        case .waitingToPlayAtSpecifiedRate: sound = wantsPlay ? .waiting : .paused
+        default: sound = .paused
+        }
+        if sound != lastSound {
+            lastSound = sound
+            onSound?(sound)
+        }
         changed()
     }
+
+    private var lastSound = Sound.paused
 
     /// The queue moved to its next file: queue the one after it.
     private func currentItemChanged() {
