@@ -263,6 +263,9 @@ func (s *server) getPair(w http.ResponseWriter, r *http.Request) {
 				v.AppLink, v.AppLabel = appOpenURL(s.pairURL(r, tok)), pairHandoverOpen
 				v.Lead = ""
 			}
+		} else if iPhoneBrowser(r) {
+			v.Lead = ""
+			v.Note = pairIPhone
 		}
 		s.pairPage(w, r, http.StatusOK, pairHandoverTitle, pages.PairHandover(v))
 		return

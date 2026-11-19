@@ -29,6 +29,19 @@ final class WordsTests: XCTestCase {
         XCTAssertEqual(Words.parse(Data(xml.utf8)), ["a": "Don't", "b": "x & y"])
     }
 
+    func testIosWordsExistAndNoKeyIsInBothFiles() throws {
+        for key in ["ios_scan_button", "ios_scan_hint", "ios_scan_cancel", "ios_scan_denied", "ios_scan_settings", "ios_scan_no_camera"] {
+            XCTAssertNotNil(Words.shared[key], key)
+        }
+        XCTAssertEqual(words(Words.Key.iosScanButton), "Scan a code")
+        XCTAssertTrue(words(Words.Key.iosScanDenied).contains("can't use the camera"))
+        let common = Words.load("strings")
+        let ios = Words.load("strings-ios")
+        XCTAssertFalse(ios.isEmpty)
+        XCTAssertTrue(Set(common.keys).isDisjoint(with: Set(ios.keys)), "a word is in both files")
+        XCTAssertTrue(ios.keys.allSatisfy { $0.hasPrefix("ios_") })
+    }
+
     func testFilledWordFromTheFile() {
         // The app's own start words come through the same path the pages use.
         XCTAssertEqual(words(Words.Key.startButton), "Connect")

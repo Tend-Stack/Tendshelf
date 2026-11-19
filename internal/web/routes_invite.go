@@ -208,6 +208,8 @@ func (s *server) getInvite(w http.ResponseWriter, r *http.Request) {
 		} else {
 			v.AppLink, v.AppLabel = appOpenURL(s.inviteURL(r, tok)), inviteOpenInApp
 		}
+	case iPhoneBrowser(r):
+		v.AppNote = inviteIPhone
 	case shellFrom(r) == "" && reachableHost(r.Host):
 		if q, ok := qrView(s.inviteURL(r, tok), inviteQRLabel); ok {
 			v.QR, v.QRSummary = &q, inviteOnPhone

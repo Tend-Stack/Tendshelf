@@ -20,7 +20,7 @@ func TestIOSAudioScripts(t *testing.T) {
 		cookie *http.Cookie
 		want   []string
 	}{
-		{"ios", a1IOS, []string{"js/native-audio.", "js/native-downloads.", "js/native-feel."}},
+		{"ios", a1IOS, all},
 		{"android", &http.Cookie{Name: shellCookie, Value: "android"}, all},
 		{"desktop", &http.Cookie{Name: shellCookie, Value: "desktop"}, nil},
 		{"none", nil, nil},
@@ -112,7 +112,7 @@ func TestIOSAudioNativeScriptsList(t *testing.T) {
 		list  []string
 	}{
 		{"android", true, []string{"native-audio.js", "native-downloads.js", "native-speech.js", "native-feel.js"}},
-		{"ios", true, []string{"native-audio.js", "native-downloads.js", "native-feel.js"}},
+		{"ios", true, []string{"native-audio.js", "native-downloads.js", "native-speech.js", "native-feel.js"}},
 		{"desktop", false, nil},
 		{"", false, nil},
 		{"browser", false, nil},

@@ -1,4 +1,4 @@
-// native-speech.js is loaded only inside the Tendshelf Android app's window (data-shell="android").
+// native-speech.js is loaded only inside a Tendshelf phone app's window (android or ios).
 //
 // Read aloud (decision 0032) in the app: Android System WebView has no usable speechSynthesis, so the app speaks through
 // the phone's own text-to-speech engine and this file is the engine reader-aloud.js expects (window.tsNativeSpeech):
@@ -12,7 +12,7 @@
 
 const native = window.tsNative;
 
-if (native && document.documentElement.dataset.shell === "android" && !document.body.dataset.tsLink) {
+if (native && ["android", "ios"].includes(document.documentElement.dataset.shell) && !document.body.dataset.tsLink) {
   start(native);
 }
 

@@ -47,9 +47,11 @@ const (
 	pairHandoverOpen   = "Open in the app"
 	pairHandoverOthers = "Open this link on the phone you want to add."
 	pairNoApp          = "The Tendshelf app isn't on this phone yet."
+	pairIPhone         = "To add this iPhone, open the Tendshelf app, tap Scan a code and scan the code again."
 
 	// The invite page.
 	inviteOpenInApp   = "Open in the app"
+	inviteIPhone      = "Have the Tendshelf app? Open it, tap Scan a code and scan this invitation again. Or join here in your browser."
 	inviteNoApp       = "The Tendshelf app isn't on this phone yet. You can join here in your browser."
 	inviteOnPhone     = "Continue on your phone"
 	inviteBoundNotice = "This phone is signed in. Sign out first to use this invitation."

@@ -37,6 +37,9 @@ sealed interface Nav {
 
     /** The iPhone's stored reader asked for a page that is not stored: load this address on the server instead. */
     data class Online(val url: String) : Nav
+
+    /** The iPhone start pages' Scan a code: open the camera screen. Android ignores it. */
+    object Scan : Nav
 }
 
 const val BUNDLED_HOST = "appassets.androidplatform.net"
@@ -109,6 +112,7 @@ private fun decideBundled(u: ParsedUrl, mainFrame: Boolean, fromBundled: Boolean
         val id = queryParam(u.query, "id")?.takeIf { validId(it) } ?: return Nav.Block
         return if (u.path == "/play") Nav.PlayBook(id) else Nav.RemoveBook(id)
     }
+    if (u.path == "/scan") return Nav.Scan
     return Nav.Stay
 }
 

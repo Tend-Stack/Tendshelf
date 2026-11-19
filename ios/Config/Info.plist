@@ -31,6 +31,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Tendshelf uses the camera only to read a sign-in or invitation code. Nothing is recorded or sent.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

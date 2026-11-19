@@ -143,8 +143,9 @@ final class BundledPages: NSObject, WKURLSchemeHandler {
             "TITLE": Self.esc(words(Words.Key.startTitle)),
             "SERVER": Self.esc(words(Words.Key.startServer)),
             "INVITED": Self.esc(words(Words.Key.startInvited)),
-            // The camera hint does not apply on the iPhone (no QR scanning in I1).
+            // The Android camera hint does not apply; the iPhone has its own button (I4a).
             "SCAN": "",
+            "SCAN_LINK": Self.scanLink(),
         ]
     }
 
@@ -157,7 +158,13 @@ final class BundledPages: NSObject, WKURLSchemeHandler {
             "HINT": Self.esc(words(Words.Key.joinHint)),
             "BUTTON": Self.esc(words(Words.Key.joinButton)),
             "SERVER": Self.esc(words(Words.Key.startServer)),
+            "SCAN_LINK": Self.scanLink(),
         ]
+    }
+
+    /// The Scan a code button of the choose and join pages; the shell turns `/scan` into the camera screen.
+    static func scanLink() -> String {
+        "<a class=\"ts-btn ts-btn--secondary ts-btn--lg ts-btn--block\" href=\"/scan\">\(esc(words(Words.Key.iosScanButton)))</a>"
     }
 
     private func start() -> [String: String] {
