@@ -165,6 +165,23 @@ sign-out wipe; a downloaded book still streams until I3c plays it from its files
   request on that origin. Debug driver: `-TSTestRead <turns>`. Out of scope: read aloud (I4), highlights and lookups offline.
 - **Limits.** No download notification, no cellular setting.
 
+## Read aloud and the QR scanner (I4a)
+
+- **Read aloud.** `native-speech.js` loads for `ios` like for Android; the bridge words `tts voices`, `tts stop` and `say` reach
+  `Speech.swift`, which speaks with `AVSpeechSynthesizer` through the app's `.playback` audio session (`Playback.prepareSessionForSpeech`).
+  Only on-device voices that are not a Personal Voice or a novelty voice are offered. An identifier such as
+  `com.apple.voice.compact.en-US.Samantha` has dots, which the bridge's id charset refuses, so the page's id writes each dot as `_`
+  and `Speech` maps it back. Speech stops, and the page hears `stopped`, when the app leaves the front. The text is never
+  logged (a length only). Out of scope: the stored reader (`tsread://app` has no bridge) and speech with the screen locked.
+- **Scanner.** The choose and join pages hold "Scan a code" (`/scan`, shared `Nav.Scan`); `ShellController.presentScanner` asks
+  for the camera, then shows `ScannerController` (AVFoundation, QR only). A scanned text is untrusted: it goes to
+  `ConnectFlow.onLink`, the path of a pasted link (shared parser, then the address confirmation); nothing is requested before
+  the person confirms. The words live in `ios/Resources/strings-ios.xml` (copied next to Android's `strings.xml`; a key may not be in both).
+  An iPhone browser on `/pair/` or `/invite/` is told to scan in the app and never gets an `intent:` or `tendshelf:` address.
+- **Debug driver.** `-TSTestScan "<text>"` (as a scan would), `-TSTestAloud 1` (on a reader page: opens the strip and prints
+  `TSDRIVE tts ...`). The simulator has no camera: the decode path is tested with a generated QR image; the camera is a
+  manual check (docs/manual-checks.md).
+
 ## Cleanup
 
 `make ios-shared` leaves the synced tree and its build output on the Mac. `ios/tools/mac-build.sh clean` removes that tree;

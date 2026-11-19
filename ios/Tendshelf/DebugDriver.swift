@@ -13,6 +13,7 @@ import WebKit
 enum DebugDriver {
     static weak var playback: Playback?
     static weak var downloads: Downloads?
+    static weak var flow: ConnectFlow?
     private static var started = false
     private static var downloadStarted = false
     private static var downloadProbe: Timer?
@@ -35,6 +36,8 @@ enum DebugDriver {
                 run(web, "var f=document.querySelector('form[action=\"/connect\"]'); if(f){f.requestSubmit();}")
             }
         }
+        scan(url)
+        aloud(web, url)
         startPlayback(web, url)
         startDownload(url)
         tap(web, url)
@@ -65,6 +68,35 @@ enum DebugDriver {
         } else if path == "/me", args.bool(forKey: "TSTestSignOut"), !done.contains("signout") {
             done.insert("signout")
             run(web, "var f=document.querySelector('form[action=\"/logout\"]'); if(f){f.requestSubmit();}")
+        }
+    }
+
+    /// I4a: `-TSTestScan "<text>"` hands the text to `ConnectFlow.onLink` once the start page has loaded, as a scan would.
+    private static func scan(_ url: URL) {
+        guard url.scheme == BundledPages.scheme, url.path == "/start", let text = args.string(forKey: "TSTestScan"),
+              !done.contains("scan"), let flow else { return }
+        done.insert("scan")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { MainActor.assumeIsolated { flow.onLink(text) } }
+    }
+
+    /// I4a: `-TSTestAloud 1` on a reader page presses the first read-aloud opener (which starts the strip speaking), and
+    /// prints `TSDRIVE tts n=<last n> ev=<last event> voices=<count>` each two seconds from the page's own engine object.
+    private static func aloud(_ web: WKWebView, _ url: URL) {
+        guard args.bool(forKey: "TSTestAloud"), url.scheme?.hasPrefix("http") == true, url.path.hasSuffix("/read"),
+              !done.contains("aloud") else { return }
+        done.insert("aloud")
+        run(web, "window.__tsTts=[]; if(window.tsNative){window.tsNative.addEventListener('message',e=>{if(typeof e.data==='string'&&e.data.indexOf('\"t\":\"tts\"')>0){window.__tsTts.push(JSON.parse(e.data));}});}")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            MainActor.assumeIsolated {
+                run(web, "var o=document.querySelector('[data-aloud-src]'); if(o){o.click();}")
+                Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+                    MainActor.assumeIsolated {
+                        web.evaluateJavaScript("(function(){var l=window.__tsTts||[];var e=l[l.length-1]||{};var v=window.tsNativeSpeech?window.tsNativeSpeech.voices().length:-1;return 'n='+e.n+' ev='+e.ev+' events='+l.map(x=>x.n+x.ev).join(',')+' voices='+v;})()") { value, _ in
+                            print("TSDRIVE tts \(String(describing: value ?? "nil"))")
+                        }
+                    }
+                }
+            }
         }
     }
 

@@ -185,6 +185,9 @@ final class Playback: PlaybackControl, RemoteHandler {
         audio.fail("stream")
     }
 
+    /// Read aloud (I4a) speaks through the same audio session: category `.playback`, spoken audio, activated.
+    func prepareSessionForSpeech() { session.prepare(live: false) }
+
     /// Everything stops and is forgotten.
     func stopAndClear() {
         audio.stopAndClear()

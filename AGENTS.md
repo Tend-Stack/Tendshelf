@@ -129,7 +129,7 @@ was reused, extended or replaced.
 
 - The phone apps (Android and iPhone) talk only to the server the person typed in, with no other outbound request. Sign-out deletes the
   person's downloads. ("The only package that creates an `http.Client`" stays a server rule.)
-- Read aloud uses only voices on the device (a browser voice with `localService` true, an Android voice that needs no network), so book text never leaves it (decision 0032).
+- Read aloud uses only voices on the device (a browser voice with `localService` true, an Android voice that needs no network, an iPhone voice that is not a Personal Voice), so book text never leaves it (decision 0032).
 - **No telemetry**, analytics, crash reporting, update pings or third-party assets (fonts, CDNs, map
   tiles; one exception: Google's Cast sender script, loaded in a browser only for a person who turned casting on, decision 0047). The only outbound requests are user-initiated metadata lookups and cover downloads through `internal/metadata/online`, and podcasts
   and radio through its sub-package `internal/metadata/online/podnet`, both off until the owner turns podcasts or radio on: a search
@@ -178,7 +178,9 @@ was reused, extended or replaced.
 
 - `tendshelf:` carries only a link, never a code (decision 0028): the app's one way in from outside is
   `tendshelf://open?link=<address>`, treated as untrusted text, and no page or message ever offers a bare
-  `tendshelf:` link (the server's `intent:` address names the app's package).
+  `tendshelf:` link (the server's `intent:` address names the app's package). The iPhone app also reads QR codes with its own
+  camera screen; a scanned code is untrusted text that goes through the same parser and address confirmation as a pasted
+  link, and no page offers an iPhone browser a `tendshelf:` address.
 
 ## Accessibility and layout
 

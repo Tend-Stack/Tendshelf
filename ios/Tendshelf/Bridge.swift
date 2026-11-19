@@ -60,6 +60,7 @@ final class Bridge {
     private let control: PlaybackControl
     private let downloads: DownloadsControl?
     private let reading: ReadingControl?
+    private let speech: SpeechControl?
     private let userContent: WKUserContentController
     private let currentView: () -> WKWebView?
     private let currentOrigin: () -> Origin?
@@ -86,6 +87,7 @@ final class Bridge {
         control: PlaybackControl,
         downloads: DownloadsControl? = nil,
         reading: ReadingControl? = nil,
+        speech: SpeechControl? = nil,
         userContent: WKUserContentController,
         currentView: @escaping () -> WKWebView?,
         currentOrigin: @escaping () -> Origin?,
@@ -96,6 +98,7 @@ final class Bridge {
         self.control = control
         self.downloads = downloads
         self.reading = reading
+        self.speech = speech
         self.userContent = userContent
         self.currentView = currentView
         self.currentOrigin = currentOrigin
@@ -125,6 +128,7 @@ final class Bridge {
         attached = false
         hello = false
         ticker?.invalidate()
+        speech?.drop()
         if let on = feel.reset() { setIdleTimerDisabled(on.boolValue) }
     }
 
@@ -137,6 +141,7 @@ final class Bridge {
     func pageStarted() {
         hello = false
         ticker?.invalidate()
+        speech?.drop()
         if let on = feel.reset() { setIdleTimerDisabled(on.boolValue) }
     }
 
@@ -148,6 +153,8 @@ final class Bridge {
         } else {
             diff.hidden()
             ticker?.invalidate()
+            // Like Android: speech stops when the app leaves the front, and the page hears it.
+            speech?.stop(silent: false)
         }
         if let screenOn = feel.front(on: on) { setIdleTimerDisabled(screenOn.boolValue) }
         if on { pushState() }
@@ -209,8 +216,21 @@ final class Bridge {
             deliver(BridgeProtocolKt.encodeReading(items: reading.readingItems()), web)
         case let m as BridgeMessageReadingDone:
             reading?.readingDone(m.seq)
+        case is BridgeMessageTtsVoices:
+            // Asked by the page, so no `hello` is needed; the page and the connection are still checked.
+            guard let speech, attached, isConnected(), let web = currentView() else { return }
+            deliver(speech.voicesJson(), web)
+        case is BridgeMessageTtsStop:
+            speech?.stop(silent: true)
+        case let m as BridgeMessageSay:
+            guard let speech, attached, isConnected(), let web = currentView() else { return }
+            // The answer goes only to the page that asked, while it is still the current page and still connected.
+            speech.say(n: Int(m.n), rate: m.rate, voiceId: m.voiceId, text: m.text) { [weak self, weak web] json in
+                guard let self, let web, self.attached, self.isConnected(), self.currentView() === web else { return }
+                self.deliver(json, web)
+            }
         default:
-            // back, tts, say, fav, quiet, pagekeys: later phases or Android only.
+            // back, fav, quiet, pagekeys: Android only.
             break
         }
     }

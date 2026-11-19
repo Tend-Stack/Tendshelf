@@ -1,3 +1,4 @@
+import AVFoundation
 import UIKit
 import WebKit
 @preconcurrency import TendshelfShared
@@ -62,10 +63,12 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         flow.beforeSave = { [weak self] userId in
             if self?.downloads.hasOtherPerson(userId) == true { self?.downloads.wipe() }
         }
+        let speech = Speech(activate: { [weak self] in self?.playback.prepareSessionForSpeech() })
         bridge = Bridge(
             control: playback,
             downloads: downloads,
             reading: downloads,
+            speech: speech,
             userContent: config.userContentController,
             currentView: { [weak self] in self?.webView },
             currentOrigin: { [weak self] in self?.flow?.origin },
@@ -90,6 +93,7 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         #if DEBUG
         DebugDriver.playback = playback
         DebugDriver.downloads = downloads
+        DebugDriver.flow = flow
         #endif
     }
 
@@ -231,6 +235,42 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         install(fresh)
     }
 
+    // MARK: Scanner
+
+    /// The camera screen for a sign-in or invitation code (decision 0048, I4a). What it reads goes the way a pasted link goes:
+    /// shared parser, then the address confirmation; nothing is requested before the person confirms.
+    private func presentScanner() {
+        let access = ScanAccess.access(
+            status: AVCaptureDevice.authorizationStatus(for: .video),
+            hasCamera: AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) != nil)
+        switch access {
+        case .ask:
+            AVCaptureDevice.requestAccess(for: .video) { _ in
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    let next = ScanAccess.access(status: AVCaptureDevice.authorizationStatus(for: .video), hasCamera: true)
+                    if next != .ask { self.presentScanner() }
+                }
+            }
+        case .denied:
+            let alert = UIAlertController(title: nil, message: words(Words.Key.iosScanDenied), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: words(Words.Key.iosScanCancel), style: .cancel))
+            alert.addAction(UIAlertAction(title: words(Words.Key.iosScanSettings), style: .default) { _ in
+                if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+            })
+            topViewController()?.present(alert, animated: true)
+        case .noCamera:
+            let alert = UIAlertController(title: nil, message: words(Words.Key.iosScanNoCamera), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            topViewController()?.present(alert, animated: true)
+        case .ready:
+            let scanner = ScannerController()
+            scanner.modalPresentationStyle = .fullScreen
+            scanner.onResult = { [weak self] text in self?.flow.onLink(text) }
+            topViewController()?.present(scanner, animated: true)
+        }
+    }
+
     private func topViewController() -> UIViewController? {
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         var top = scene?.windows.first(where: \.isKeyWindow)?.rootViewController
@@ -275,6 +315,9 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
             return .cancel
         case let n as NavLink:
             flow.onLink(n.text)
+            return .cancel
+        case is NavScan:
+            presentScanner()
             return .cancel
         case is NavDownloads:
             // The followed shows are read first (two seconds at most), so the page lists them; then the page loads.

@@ -9,14 +9,14 @@ func IsAppShell(shell string) bool {
 
 // NativeScripts returns the native-*.js files the layout loads for shell, in load order. A script is listed
 // for a shell only when that shell implements its bridge words (decision 0048, D4): the iPhone app plays
-// audio, keeps the screen awake and keeps downloads (I3b), but has no read-aloud voices, so it gets three of
-// the four. A browser, the desktop shell and any other value get none.
+// audio, keeps the screen awake, keeps downloads (I3b) and speaks with its own voices (I4a), so it gets the
+// same four as Android. A browser, the desktop shell and any other value get none.
 func NativeScripts(shell string) []string {
 	switch shell {
 	case "android":
 		return []string{"native-audio.js", "native-downloads.js", "native-speech.js", "native-feel.js"}
 	case "ios":
-		return []string{"native-audio.js", "native-downloads.js", "native-feel.js"}
+		return []string{"native-audio.js", "native-downloads.js", "native-speech.js", "native-feel.js"}
 	}
 	return nil
 }

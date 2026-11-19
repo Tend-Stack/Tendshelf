@@ -69,6 +69,12 @@ enum Words {
         static let offlineTitle = "offline_title"
         static let offlineBody = "offline_body"
         static let offlineRetry = "offline_retry"
+        static let iosScanButton = "ios_scan_button"
+        static let iosScanHint = "ios_scan_hint"
+        static let iosScanCancel = "ios_scan_cancel"
+        static let iosScanDenied = "ios_scan_denied"
+        static let iosScanSettings = "ios_scan_settings"
+        static let iosScanNoCamera = "ios_scan_no_camera"
 
         static let all = [
             startTitle, startBody, startLabel, startButton, startHint, startServer, startInvited,
@@ -82,6 +88,7 @@ enum Words {
             downloadsRemove, downloadsLibrary, downloadsAutoRow, downloadsAutoWaiting, downloadsAutoNoRoom, downloadsPodcasts,
             downloadsPodcastsLead, downloadsPodcastOnRow, downloadsPodcastOffRow, downloadsPodcastTurnOn,
             downloadsPodcastTurnOff, offlineTitle, offlineBody, offlineRetry,
+            iosScanButton, iosScanHint, iosScanCancel, iosScanDenied, iosScanSettings, iosScanNoCamera,
         ]
     }
 
@@ -131,12 +138,26 @@ enum Words {
         return out
     }
 
-    static let shared: [String: String] = {
-        guard let url = Bundle(for: Marker.self).url(forResource: "strings", withExtension: "xml", subdirectory: "ShellAssets"),
+    /// `strings.xml` (shared with Android) merged with `strings-ios.xml` (the iPhone's own words, decision 0048, I4a).
+    static let shared: [String: String] = merged(load("strings"), load("strings-ios"))
+
+    /// The words of one file in the app's `ShellAssets`, or none when it is missing.
+    static func load(_ name: String) -> [String: String] {
+        guard let url = Bundle(for: Marker.self).url(forResource: name, withExtension: "xml", subdirectory: "ShellAssets"),
               let data = try? Data(contentsOf: url)
         else { return [:] }
         return parse(data)
-    }()
+    }
+
+    /// The two word files as one. A key in both is a mistake: it asserts in DEBUG and the iPhone file wins.
+    static func merged(_ common: [String: String], _ ios: [String: String]) -> [String: String] {
+        var out = common
+        for (k, v) in ios {
+            if common[k] != nil { assertionFailure("word in both files: \(k)") }
+            out[k] = v
+        }
+        return out
+    }
 
     private final class Marker {}
 

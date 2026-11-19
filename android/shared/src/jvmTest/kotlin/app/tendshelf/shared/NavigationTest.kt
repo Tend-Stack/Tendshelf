@@ -100,7 +100,7 @@ class NavigationTest {
     @Test
     fun bundledCommandsAreObeyedOnlyFromABundledMainFrame() {
         val b = "https://appassets.androidplatform.net"
-        for (path in listOf("/connect?address=evil.example", "/remove?id=x", "/play?id=x", "/autoshow?id=ps_1&on=1", "/toggle", "/start", "/link?link=https%3A%2F%2Fevil.example%2Finvite%2Fx")) {
+        for (path in listOf("/connect?address=evil.example", "/remove?id=x", "/play?id=x", "/autoshow?id=ps_1&on=1", "/toggle", "/scan", "/start", "/link?link=https%3A%2F%2Fevil.example%2Finvite%2Fx")) {
             assertEquals(Nav.Block, decide(b + path, true, good, false, false), "from a book page: $path")
             assertEquals(Nav.Block, decide(b + path, false, good, false, true), "subframe: $path")
         }
@@ -125,6 +125,7 @@ class NavigationTest {
         assertEquals(Nav.Block, decide(b, true, good, false, false), "a book or server page")
         assertEquals(Nav.Block, decide(b, false, good, false, true), "a subframe")
         assertEquals(Nav.Link(""), decide("https://appassets.androidplatform.net/link", true, null, false, true))
+        assertEquals(Nav.Scan, decide("https://appassets.androidplatform.net/scan", true, good, false, true), "parsed on Android too, ignored there")
         // A server page linking to the app's own scheme never starts anything.
         assertEquals(Nav.Block, decide("tendshelf://open?link=https%3A%2F%2Fa.example%2Finvite%2FX", true, good, false, false))
     }
@@ -139,17 +140,19 @@ class NavigationTest {
         assertEquals(Nav.Connect(""), d("$b/connect"))
         assertEquals(Nav.Link("https://a.example/invite/X"), d("$b/link?link=https%3A%2F%2Fa.example%2Finvite%2FX"))
         assertEquals(Nav.TogglePlay, d("$b/toggle"))
+        assertEquals(Nav.Scan, d("$b/scan"))
         assertEquals(Nav.RemoveBook("x"), d("$b/remove?id=x"))
         assertEquals(Nav.PlayBook("pe_abc"), d("$b/play?id=pe_abc"))
         assertEquals(Nav.AutoShow("ps_1", true), d("$b/autoshow?id=ps_1&on=1"))
         assertEquals(Nav.Block, d("$b/autoshow?id=ps_1&on=2"))
         assertEquals(Nav.Block, d("$b/play?id=a%2Fb"))
         assertEquals(Nav.Stay, d("TSBUNDLE://APP/start"), "case")
-        for (path in listOf("/connect?address=evil.example", "/remove?id=x", "/play?id=x", "/toggle", "/start", "/link?link=x")) {
+        for (path in listOf("/connect?address=evil.example", "/remove?id=x", "/play?id=x", "/toggle", "/scan", "/start", "/link?link=x")) {
             assertEquals(Nav.Block, d(b + path, true, false), "from a server page: $path")
             assertEquals(Nav.Block, d(b + path, false, true), "sub-frame: $path")
         }
         assertEquals(Nav.Block, d("tsbundle://evil/connect"))
+        assertEquals(Nav.Block, d("tsbundle://evil/scan"))
         assertEquals(Nav.Block, d("tsbundle://app:1/connect"))
         assertEquals(Nav.Block, d("tsbundle://u@app/connect"))
         assertEquals(Nav.Block, d("tsbundle://app\\@evil/connect"))

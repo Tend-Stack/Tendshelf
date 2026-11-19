@@ -40,8 +40,8 @@ func TestIOSDownloadsScripts(t *testing.T) {
 			}
 			last = at
 		}
-		if c.name == "ios" && strings.Contains(body, "native-speech.") {
-			t.Errorf("ios page loads native-speech")
+		if c.name == "ios" && !strings.Contains(body, "native-speech.") {
+			t.Errorf("ios page does not load native-speech (I4a)")
 		}
 	}
 }

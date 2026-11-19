@@ -77,6 +77,7 @@ class StartPages(private val context: Context) {
         "SERVER" to esc(context.getString(R.string.start_server)),
         "INVITED" to esc(context.getString(R.string.start_invited)),
         "SCAN" to esc(context.getString(R.string.start_scan_hint)),
+        "SCAN_LINK" to "",
     )
 
     private fun join(): Map<String, String> {
@@ -88,6 +89,7 @@ class StartPages(private val context: Context) {
             "HINT" to esc(context.getString(R.string.join_hint)),
             "BUTTON" to esc(context.getString(R.string.join_button)),
             "SERVER" to esc(context.getString(R.string.start_server)),
+            "SCAN_LINK" to "",
         )
     }
 

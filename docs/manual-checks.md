@@ -27,6 +27,20 @@ Needs Chrome on a computer and Chrome on Android, a Chromecast or Google TV on t
 | C15 | While a station plays on the TV, turn radio off (Admin, Podcasts and radio), or turn casting off in Settings. | The TV stops within about a minute; nothing keeps the stream open (the station's relay ends). | |
 | C16 | Stop casting a station from Chrome's own dialog, then press Play. | The page plays the station live again (no resume place, no rewind). | |
 
+## iPhone QR scanner and read aloud (decision 0048, I4a): open, no result yet
+
+Needs an iPhone with the app installed and a server it can reach.
+
+| # | Step | Expected | Result |
+| --- | --- | --- | --- |
+| Q1 | Signed out, tap "Scan a code" for the first time. | iOS asks for the camera with the app's sentence; allowing opens a full-screen camera with the hint on top and Cancel at the bottom. | |
+| Q2 | Scan the QR of an invitation shown on a computer. | The screen closes and the app names the address and asks before connecting; nothing is requested before Continue. | |
+| Q3 | Scan the QR of Add a phone (signed in elsewhere), confirm. | The pairing page opens in the app and the number step follows as with a pasted link. | |
+| Q4 | Scan any other QR (a web address, a Wi-Fi code). | "That doesn't look like an invitation link." | |
+| Q5 | Refuse the camera, then tap Scan a code. | The words say the camera is off, with Open Settings and Cancel; Open Settings opens this app's page. | |
+| Q6 | Open an ebook in the app, open Read aloud, press play. | A voice on the iPhone reads and the sentence follows; the voice list holds no Personal Voice. | |
+| Q7 | While it reads, press Home or lock the phone. | Speech stops; back in the app the strip shows it stopped. | |
+
 ## Still open before 2026.8.2 (index, 2026-11-10)
 
 Each line names the section below that holds the rows. Nothing here blocks the server release; these are

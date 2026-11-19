@@ -64,7 +64,8 @@ object ShellWeb {
                 when (val nav = decide(request.url.toString(), request.isForMainFrame, store.origin, f.codePending, onBundledPage(view), SignInWindow.origins)) {
                     Nav.Stay -> return false
                     // Nav.Online comes only from the iPhone reader origin, which Android never passes to decide.
-                    Nav.Block, is Nav.Online -> {}
+                    // Nav.Scan comes only from the iPhone's start pages.
+                    Nav.Block, is Nav.Online, Nav.Scan -> {}
                     Nav.External -> openOutside(activity, request.url)
                     is Nav.TakeCode -> f.onCode(nav.code)
                     is Nav.Connect -> f.onAddress(nav.address)

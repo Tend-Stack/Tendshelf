@@ -24,3 +24,10 @@ func appOpenURL(link string) string {
 func androidBrowser(r *http.Request) bool {
 	return shellFrom(r) == "" && strings.Contains(r.UserAgent(), "Android")
 }
+
+// iPhoneBrowser reports whether the request looks like a browser on an iPhone. iOS has no handover bound to one
+// app, so such a browser is told to scan the code in the app and is never given a tendshelf: address
+// (decision 0048, I4a; decision 0028 addendum).
+func iPhoneBrowser(r *http.Request) bool {
+	return shellFrom(r) == "" && strings.Contains(r.UserAgent(), "iPhone")
+}

@@ -64,3 +64,5 @@ any password. Accepted. **Stolen session:** can already mint a token (0026), so 
 Migration `0033_device_pairings`, one module, four public `/pair` routes, a `tendshelf` intent filter, and an `Add a phone` page. Browsers see only the named
 additions. A person without a working camera QR reader uses the copyable link and the app's paste box, or a password. Out of scope: an in-app scanner, signing a
 browser in by QR, QR on share links, a public-address setting, email or push alerts for a new device.
+
+**Addendum 2026-11-19 (iPhone, decision 0048 I4).** D2 does not hold on iPhone: iOS has no handover bound to one app like `intent:`, and any app can claim `tendshelf:`, so the iPhone app reads the QR itself and asks for the camera on first use. The QR, the claim, the number and the approval are unchanged.

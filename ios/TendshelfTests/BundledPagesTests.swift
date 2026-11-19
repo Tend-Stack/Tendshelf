@@ -31,6 +31,8 @@ final class BundledPagesTests: XCTestCase {
         let choose = text(pages.reply(for: "/start"))
         XCTAssertTrue(choose.contains("href=\"/server\""))
         XCTAssertFalse(choose.contains("<form"))
+        XCTAssertTrue(choose.contains("<a class=\"ts-btn ts-btn--secondary ts-btn--lg ts-btn--block\" href=\"/scan\">Scan a code</a>"))
+        XCTAssertTrue(text(pages.reply(for: "/join")).contains("href=\"/scan\">Scan a code</a>"))
         XCTAssertFalse(choose.contains("{{"))
 
         pages.state = StartState(address: "books.example")

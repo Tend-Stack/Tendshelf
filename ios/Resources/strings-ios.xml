@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Words only the iPhone app uses (decision 0048, I4a). Android's strings.xml stays as it is; a key here is never also there. -->
+    <string name="ios_scan_button">Scan a code</string>
+    <string name="ios_scan_hint">Point the camera at the code on your other screen.</string>
+    <string name="ios_scan_cancel">Cancel</string>
+    <string name="ios_scan_denied">Tendshelf can\'t use the camera. Turn it on in Settings to scan a code, or paste the link instead.</string>
+    <string name="ios_scan_settings">Open Settings</string>
+    <string name="ios_scan_no_camera">This iPhone has no camera to scan with. Paste the link instead.</string>
+</resources>
