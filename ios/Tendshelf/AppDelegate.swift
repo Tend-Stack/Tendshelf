@@ -6,6 +6,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // The refresh task that checks the followed shows for new episodes (decision 0048, I3c); the handler must exist now.
         EpisodeAuto.register()
+        // The home-screen widget's buttons (decision 0048, I4b): they run in this process and reach the one controller's player.
+        _ = ShellController.shared
+        WidgetCommands.handler = { ShellController.shared.widgetCommand($0) }
         return true
     }
 

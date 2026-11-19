@@ -11,6 +11,8 @@ final class Playback: PlaybackControl, RemoteHandler {
 
     let audio: AudioPlayer
     private let session = AudioSession()
+    /// What the home-screen widget draws (decision 0048, I4b), written beside every lock-screen card update.
+    let widget = WidgetFeed()
     private var nowPlaying: NowPlaying!
     private let store: TokenStore
     private let client: ServerClient
@@ -176,6 +178,8 @@ final class Playback: PlaybackControl, RemoteHandler {
         if !force, key == shown { return }
         shown = key
         nowPlaying.update(audio)
+        // With nothing loaded the widget keeps its last book, so Play there can resume it.
+        if !audio.bookId.isEmpty { widget.update(audio, signedIn: store.current() != nil) }
     }
 
     private func mediaServicesReset() {

@@ -6,6 +6,10 @@ import WebKit
 /// (invariants 5 and 6): the app's own commands are obeyed only from the main frame of a bundled page, a code is taken
 /// only from `/app/connect/done` on the exact origin while a verifier is held, and anything else leaves the window.
 final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
+    /// The one controller of the running app: the widget's buttons run in the app's process and reach the same player the page drives
+    /// (decision 0048, I4b). Tests construct their own controllers.
+    static let shared = ShellController()
+
     let pages = BundledPages()
     /// The offline reader's handler: registered with the web view's configuration, so it exists before the engine does.
     let reader = OfflineReader()
@@ -56,10 +60,12 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         // with the connection that is going, the outbox is emptied, every download and background task goes, the bridge is cut.
         signOut.beforeWipe = { [weak self] connection in
             self?.playback.signOut(connection)
+            self?.playback.widget.signedOut()
             self?.downloads.wipe()
             self?.bridge.detach()
         }
         flow.beforeSave = { [weak self] userId in
+            self?.playback.widget.ensureSignedIn()
             if self?.downloads.hasOtherPerson(userId) == true { self?.downloads.wipe() }
         }
         bridge = Bridge(
@@ -77,6 +83,7 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.bridge.front(true)
+                if self?.flow.state == .connected { self?.playback.widget.ensureSignedIn() }
                 // A file the system no longer holds a task for starts again.
                 Task {
                     await self?.downloads.reconcile()
@@ -91,6 +98,27 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         DebugDriver.playback = playback
         DebugDriver.downloads = downloads
         #endif
+    }
+
+    // MARK: Widget
+
+    /// The last item the widget showed, read where the app wrote it (a test replaces it).
+    var widgetLastItem: () -> String? = { WidgetStore.read()?.itemId }
+
+    /// A button of the home-screen widget (I4b): the same `Playback` the page drives. With nothing loaded (the app was quit), Play and
+    /// the skips start the last item at the place the server holds.
+    func widgetCommand(_ command: WidgetCommand) {
+        WidgetCommander(
+            loaded: { [weak self] in !(self?.playback.audio.bookId.isEmpty ?? true) },
+            playing: { [weak self] in self?.playback.snapshot().playing ?? false },
+            connectedOrigin: { [weak self] in self?.flow.state == .connected ? self?.flow.origin : nil },
+            lastItem: widgetLastItem,
+            pause: { [weak self] in self?.playback.pause() },
+            play: { [weak self] in self?.playback.play() },
+            skip: { [weak self] in self?.playback.remoteSkip(forward: $0) },
+            start: { [weak self] in self?.playback.start($0, atMs: nil) },
+            load: { [weak self] in self?.load($0) }
+        ).run(command)
     }
 
     // MARK: Downloads page

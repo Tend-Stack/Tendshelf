@@ -492,3 +492,15 @@ Run in the simulator or on a phone against a server you control (`make ios-sim` 
 | IOS-9 | Turn on night sleep in the settings, start playback inside the night hours. | The sleep timer starts at play with the chosen minutes. | Not run (needs a device; covered by unit tests). |
 | IOS-10 | Play a real radio station on a device, lock the phone, leave it 10 minutes. | The station keeps playing; the lock screen shows the station name and "Live"; pause and play resume it; a second device on the same account does not cut it off. | Not run (needs a device; decision 0049, I2r). |
 | IOS-11 | On a device, download a book that has audio and text, switch on airplane mode, open Downloads, play it, then tap Read and turn pages. | The book plays from the phone, the text opens at its own address and turns pages; with the network back, open any page and the reading place on the server is the place you reached. | Not run (needs a device; covered by the simulator run in `docs/ios.md`). |
+
+## iPhone widget (decision 0048, I4b)
+
+Run in the Simulator window (or on a phone) against a server you control. Add the widget: long-press the home screen, plus, Tendshelf.
+
+| ID | Check | Expected | Result |
+| --- | --- | --- | --- |
+| IOS-12 | Signed out, add the small and the medium widget. | Both say "Sign in to listen. Tap to open Tendshelf." Tapping opens the app. | Not run (needs the Simulator window). |
+| IOS-13 | Sign in, start a book, go Home. Look at the medium widget. | Cover (or a grey square when the book has none), the title on at most two lines, the chapter, Back 30, Pause, Forward 30. The small one shows cover and title with only the middle button. | Not run (needs the Simulator window; the file the widget reads was checked headless). |
+| IOS-14 | Tap Pause, then Play, then Forward on the medium widget. Then quit the app (swipe it away) and tap Play. | Each acts at once and the glyph changes; after the quit, Play starts the last book where the server holds the place. The buttons are the widget's own App Intents, so this also proves they run in the app's process. | Not run (needs the Simulator window). |
+| IOS-15 | Tap the cover or title. Then play a station and a podcast episode and look again. | The app opens on that book's page (episode page, Radio page). A station's widget has no skip buttons. | Not run (needs the Simulator window). |
+| IOS-16 | Sign out in the app, look at the widget. VoiceOver on: swipe through the widget. | The signed-out line, with no title or cover left; every button has a label ("Back 30 seconds", "Play", "Open <title>"). | Not run (needs the Simulator window). |

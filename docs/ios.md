@@ -165,6 +165,26 @@ sign-out wipe; a downloaded book still streams until I3c plays it from its files
   request on that origin. Debug driver: `-TSTestRead <turns>`. Out of scope: read aloud (I4), highlights and lookups offline.
 - **Limits.** No download notification, no cellular setting.
 
+## Home-screen widget (I4b)
+
+- **Shape.** Target `TendshelfWidget` (WidgetKit and App Intents, no Kotlin framework, no network, no token; about 440 KB). Sizes small
+  (cover, title) and medium (plus chapter, back, play or pause, forward); station: no skip; signed out and no-book show their plain line.
+  The app decides what each size shows with the shared `widgetLook` (`WidgetFeed`, called beside the lock-screen card) and writes it;
+  the widget only draws `widget/state.json` and `widget/cover.jpg` in the app group `group.app.tendshelf.ios` (`WidgetShared/`, files,
+  not `UserDefaults`). The cover is the player's picture scaled to 360 px, JPEG. Reloads happen only when the file changed.
+- **Buttons.** `TogglePlayIntent` and `SkipIntent` are `AudioPlaybackIntent`s (they run in the app's process, so they drive the real
+  `Playback`); Open is an `AppIntent` with `openAppWhenRun` and loads the book, episode or Radio page (valid id, connected only).
+  With nothing loaded (app quit) Play and the skips start the last item. `WidgetCommander` holds this logic (tests use closures).
+  `ShellController.shared` is the one controller; the app delegate sets `WidgetCommands.handler` at launch.
+- **Sign-out** clears both files and writes the signed-out line before the token goes. Out of scope: lock-screen and StandBy families,
+  Live Activities, a configurable widget.
+- **Entitlements.** `Config/Tendshelf.entitlements` and `TendshelfWidget.entitlements` hold the app group; the simulator build is signed
+  ad hoc and honours it (a unit test reads the container). On a device the group must be registered for both App IDs (I4d checklist).
+- **Checked headless (simulator, Debug driver `-TSTestWidget "toggle;back;forward;open:<id>"` runs the real intents).** Toggle pauses
+  and plays, forward and back move 30 s and 15 s, the file shows `playing` after each, quit-and-Play resumed the last book at the server's
+  place, Sign out left only the signed-out file. Not seen: the widget drawn, and a tap on it (needs the Simulator window; see
+  `docs/manual-checks.md` IOS-12 to IOS-15).
+
 ## Cleanup
 
 `make ios-shared` leaves the synced tree and its build output on the Mac. `ios/tools/mac-build.sh clean` removes that tree;

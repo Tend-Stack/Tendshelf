@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1A0000000000000000000023 /* TendshelfShared.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A0000000000000000000022 /* TendshelfShared.xcframework */; };
+		1A0000000000000000000101 /* TendshelfWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1A0000000000000000000102 /* TendshelfWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -18,7 +19,28 @@
 			remoteGlobalIDString = 1A0000000000000000000010;
 			remoteInfo = Tendshelf;
 		};
+		1A0000000000000000000103 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1A0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1A0000000000000000000120;
+			remoteInfo = TendshelfWidget;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1A0000000000000000000113 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				1A0000000000000000000101 /* TendshelfWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		1A0000000000000000000020 /* Tendshelf.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tendshelf.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -28,6 +50,10 @@
 		1A0000000000000000000041 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		1A0000000000000000000042 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		1A0000000000000000000043 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1A0000000000000000000102 /* TendshelfWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TendshelfWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A0000000000000000000104 /* Tendshelf.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Tendshelf.entitlements; sourceTree = "<group>"; };
+		1A0000000000000000000105 /* TendshelfWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TendshelfWidget.entitlements; sourceTree = "<group>"; };
+		1A0000000000000000000106 /* Widget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widget-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -39,6 +65,16 @@
 		1A0000000000000000000031 /* TendshelfTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = TendshelfTests;
+			sourceTree = "<group>";
+		};
+		1A0000000000000000000110 /* TendshelfWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = TendshelfWidget;
+			sourceTree = "<group>";
+		};
+		1A0000000000000000000111 /* WidgetShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = WidgetShared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -59,6 +95,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1A0000000000000000000112 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -68,6 +111,8 @@
 				1A0000000000000000000005 /* Config */,
 				1A0000000000000000000030 /* Tendshelf */,
 				1A0000000000000000000031 /* TendshelfTests */,
+				1A0000000000000000000110 /* TendshelfWidget */,
+				1A0000000000000000000111 /* WidgetShared */,
 				1A0000000000000000000004 /* Frameworks */,
 				1A0000000000000000000003 /* Products */,
 			);
@@ -78,6 +123,7 @@
 			children = (
 				1A0000000000000000000020 /* Tendshelf.app */,
 				1A0000000000000000000021 /* TendshelfTests.xctest */,
+				1A0000000000000000000102 /* TendshelfWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -97,6 +143,9 @@
 				1A0000000000000000000041 /* Debug.xcconfig */,
 				1A0000000000000000000042 /* Release.xcconfig */,
 				1A0000000000000000000043 /* Info.plist */,
+				1A0000000000000000000106 /* Widget-Info.plist */,
+				1A0000000000000000000104 /* Tendshelf.entitlements */,
+				1A0000000000000000000105 /* TendshelfWidget.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -112,13 +161,16 @@
 				1A0000000000000000000051 /* Frameworks */,
 				1A0000000000000000000052 /* Resources */,
 				1A0000000000000000000053 /* Copy shell assets */,
+				1A0000000000000000000113 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				1A0000000000000000000116 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				1A0000000000000000000030 /* Tendshelf */,
+				1A0000000000000000000111 /* WidgetShared */,
 			);
 			name = Tendshelf;
 			packageProductDependencies = (
@@ -150,6 +202,29 @@
 			productReference = 1A0000000000000000000021 /* TendshelfTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		1A0000000000000000000120 /* TendshelfWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1A0000000000000000000123 /* Build configuration list for PBXNativeTarget "TendshelfWidget" */;
+			buildPhases = (
+				1A0000000000000000000114 /* Sources */,
+				1A0000000000000000000112 /* Frameworks */,
+				1A0000000000000000000115 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				1A0000000000000000000110 /* TendshelfWidget */,
+				1A0000000000000000000111 /* WidgetShared */,
+			);
+			name = TendshelfWidget;
+			packageProductDependencies = (
+			);
+			productName = TendshelfWidget;
+			productReference = 1A0000000000000000000102 /* TendshelfWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -166,6 +241,9 @@
 					1A0000000000000000000011 = {
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = 1A0000000000000000000010;
+					};
+					1A0000000000000000000120 = {
+						CreatedOnToolsVersion = 26.2;
 					};
 				};
 			};
@@ -185,6 +263,7 @@
 			targets = (
 				1A0000000000000000000010 /* Tendshelf */,
 				1A0000000000000000000011 /* TendshelfTests */,
+				1A0000000000000000000120 /* TendshelfWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -198,6 +277,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		1A0000000000000000000056 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1A0000000000000000000115 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -243,6 +329,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1A0000000000000000000114 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -250,6 +343,11 @@
 			isa = PBXTargetDependency;
 			target = 1A0000000000000000000010 /* Tendshelf */;
 			targetProxy = 1A0000000000000000000071 /* PBXContainerItemProxy */;
+		};
+		1A0000000000000000000116 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1A0000000000000000000120 /* TendshelfWidget */;
+			targetProxy = 1A0000000000000000000103 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -282,6 +380,7 @@
 		1A0000000000000000000065 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "$(TS_APP_ENTITLEMENTS)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -293,6 +392,7 @@
 		1A0000000000000000000066 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "$(TS_APP_ENTITLEMENTS)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -345,6 +445,42 @@
 			};
 			name = Release;
 		};
+		1A0000000000000000000121 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Config/TendshelfWidget.entitlements;
+				INFOPLIST_FILE = "Config/Widget-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.tendshelf.ios.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+			};
+			name = Debug;
+		};
+		1A0000000000000000000122 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Config/TendshelfWidget.entitlements;
+				INFOPLIST_FILE = "Config/Widget-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.tendshelf.ios.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -371,6 +507,15 @@
 			buildConfigurations = (
 				1A0000000000000000000067 /* Debug */,
 				1A0000000000000000000068 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1A0000000000000000000123 /* Build configuration list for PBXNativeTarget "TendshelfWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1A0000000000000000000121 /* Debug */,
+				1A0000000000000000000122 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

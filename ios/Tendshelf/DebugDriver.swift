@@ -15,6 +15,7 @@ enum DebugDriver {
     static weak var downloads: Downloads?
     private static var started = false
     private static var downloadStarted = false
+    private static var widgetStarted = false
     private static var downloadProbe: Timer?
     private static var probe: Timer?
 
@@ -36,6 +37,7 @@ enum DebugDriver {
             }
         }
         startPlayback(web, url)
+        widgetSteps(url)
         startDownload(url)
         tap(web, url)
         read(web, url)
@@ -132,6 +134,35 @@ enum DebugDriver {
                 let v = downloads.view(id)
                 print("TSDRIVE dl=\(v.state)/\(v.pct) files=\(downloads.store.files(id).map { "\($0.step.name):\($0.bytes)" })")
             }
+        }
+    }
+
+    /// I4b: `-TSTestWidget "toggle;forward;back;open:<id>"` runs the widget's real App Intents (`perform()`), six seconds apart, once a page
+    /// on the server has loaded, and prints `TSDRIVE widget <step> book=<id> playing=<bool> file=<kind>/<playing>/<cover bytes>` after each.
+    private static func widgetSteps(_ url: URL) {
+        guard let text = args.string(forKey: "TSTestWidget"), !widgetStarted, url.scheme?.hasPrefix("http") == true,
+              url.path != "/login", !url.path.hasPrefix("/app/connect"), let playback else { return }
+        widgetStarted = true
+        var at = 3.0
+        for step in text.split(separator: ";").map({ $0.trimmingCharacters(in: .whitespaces) }) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + at) {
+                Task { @MainActor in
+                    switch step {
+                    case "toggle": _ = try? await TogglePlayIntent().perform()
+                    case "forward": _ = try? await SkipIntent(forward: true).perform()
+                    case "back": _ = try? await SkipIntent(forward: false).perform()
+                    default:
+                        if step.hasPrefix("open:") { _ = try? await OpenItemIntent(itemId: String(step.dropFirst(5))).perform() }
+                    }
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    let s = playback.snapshot()
+                    let file = WidgetStore.read()
+                    let cover = WidgetStore.coverURL().flatMap { try? Data(contentsOf: $0).count } ?? 0
+                    print("TSDRIVE widget \(step) book=\(s.bookId) pos=\(s.positionMs) playing=\(s.playing) file=\(file?.kind ?? "-")/\(file?.playing ?? false)/\(cover)")
+                    fflush(stdout)
+                }
+            }
+            at += 6
         }
     }
 

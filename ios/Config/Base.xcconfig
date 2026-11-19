@@ -14,5 +14,7 @@ OTHER_LDFLAGS = $(inherited) -lsqlite3
 CODE_SIGN_STYLE = Manual
 CODE_SIGN_IDENTITY = -
 TS_BUILD_DESCRIBE = unknown
+// The app group the widget shares with the app (decision 0048, I4b).
+TS_APP_ENTITLEMENTS = Config/Tendshelf.entitlements
 // The owner's own signing settings (never committed); absent on a simulator build.
 #include? "Signing.local.xcconfig"

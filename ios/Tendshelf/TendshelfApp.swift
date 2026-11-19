@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct TendshelfApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var controller = ShellController()
+    @State private var controller = ShellController.shared
 
     var body: some Scene {
         WindowGroup {
