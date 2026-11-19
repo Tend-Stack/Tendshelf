@@ -14,15 +14,21 @@ final class Downloads: DownloadEvents {
 
     let store: SqliteOfflineStore
     let paths: OfflinePaths
-    private let transport: DownloadTransport
-    private let api: (Origin) -> PlayerAPI
-    private let connection: () -> Connection?
-    private let userId: () -> String?
-    private let free: (Bool) -> Int64
-    private let notice: (String) -> Void
-    private let now: () -> Int64
-    private let defaults: UserDefaults
+    let transport: DownloadTransport
+    let api: (Origin) -> PlayerAPI
+    let connection: () -> Connection?
+    let userId: () -> String?
+    let free: (Bool) -> Int64
+    let notice: (String) -> Void
+    let now: () -> Int64
+    let defaults: UserDefaults
     private let retryScale: Double
+    /// True while the active network is Wi-Fi-like: satisfied, not expensive, not constrained (decision 0048, I3c).
+    let unmetered: () -> Bool
+    /// The automatic episode rules of the followed shows (`EpisodeAuto.swift`).
+    private(set) lazy var episodes = EpisodeAuto(self)
+    /// The book or episode the player has now: a rule never removes it.
+    var playingNow = ""
 
     /// A book's row or files changed (its id): the Downloads page and the book page's button follow.
     var onChange: ((String) -> Void)?
@@ -38,7 +44,7 @@ final class Downloads: DownloadEvents {
         store: SqliteOfflineStore, paths: OfflinePaths, transport: DownloadTransport, api: @escaping (Origin) -> PlayerAPI,
         connection: @escaping () -> Connection?, userId: @escaping () -> String? = { nil }, free: @escaping (Bool) -> Int64,
         notice: @escaping (String) -> Void, now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
-        defaults: UserDefaults = .standard, retryScale: Double = 1
+        defaults: UserDefaults = .standard, retryScale: Double = 1, unmetered: @escaping () -> Bool = { UnmeteredMonitor.shared.value }
     ) {
         self.store = store
         self.paths = paths
@@ -51,6 +57,7 @@ final class Downloads: DownloadEvents {
         self.now = now
         self.defaults = defaults
         self.retryScale = retryScale
+        self.unmetered = unmetered
         transport.events = self
         // Files a kill left between "moved" and "recorded" are not trusted: their task is restarted by `reconcile`.
         try? FileManager.default.removeItem(at: paths.incoming)
@@ -85,10 +92,11 @@ final class Downloads: DownloadEvents {
         defer { adding.remove(id) }
         await wiping?.value
         if PodcastKt.isEpisodeId(id: id) {
-            _ = await addEpisode(id, conn, auto: false)
+            _ = await addEpisode(id, conn, auto: nil)
             return
         }
         if let existing = store.get(id: id), existing.state != .failed, existing.state != .stale {
+            if isAuto(id) { await makePersons(id, existing, conn) }
             changed(id)
             return
         }
@@ -121,8 +129,10 @@ final class Downloads: DownloadEvents {
     /// One episode: the playback document (so it starts with no network), the picture, the chapters and the file.
     /// Returns false when nothing was queued.
     @discardableResult
-    func addEpisode(_ id: String, _ conn: Connection, auto: Bool) async -> Bool {
+    func addEpisode(_ id: String, _ conn: Connection, auto: AutoKind?) async -> Bool {
         if let existing = store.get(id: id), existing.state != .failed, existing.state != .stale {
+            // Pressing Download on an automatic episode makes it the person's own.
+            if auto == nil, isAuto(id) { await makePersons(id, existing, conn) }
             changed(id)
             return false
         }
@@ -130,39 +140,54 @@ final class Downloads: DownloadEvents {
         do {
             let text = try await service.episodeText(token: conn.token, id: id)
             guard let doc = PlayerParseKt.parseEpisode(body: text), doc.id == id else {
-                refuse(Words.Key.downloadFailed)
+                if auto == nil { refuse(Words.Key.downloadFailed) }
                 return false
             }
             let apiPaths = ApiPaths(server: conn.origin.text)
-            switch EpisodeDownloadsKt.episodePlan(doc: doc, paths: apiPaths, freeBytes: free(true)) {
+            let plan: Plan
+            if auto != nil {
+                switch EpisodeDownloadsKt.autoEpisodePlan(
+                    doc: doc, paths: apiPaths, freeBytes: free(false), keptAutoBytes: OfflineKt.autoBytes(rows: store.all(), marks: allMarks()))
+                {
+                case let go as AutoPlanGo: plan = go.plan
+                case is AutoPlanNoRoom:
+                    defaults.set(true, forKey: auto == .nextItem ? Self.autoNoRoomKey : Self.autoNoRoomShowKey)
+                    return false
+                default: return false
+                }
+            } else {
+                plan = EpisodeDownloadsKt.episodePlan(doc: doc, paths: apiPaths, freeBytes: free(true))
+            }
+            switch plan {
             case let ok as PlanOk:
                 let chapters: (() async -> String?)? = doc.chaptersUrl.isEmpty ? nil : { await service.chaptersText(token: conn.token, path: doc.chaptersUrl) }
                 await enqueue(
                     id, conn, service, plan: ok, mimes: [id: doc.mime], text: text, title: doc.title, author: doc.show,
                     durationMs: doc.durationMs, kind: OfflineKt.KIND_EPISODE, showId: doc.showId, publishedAt: doc.publishedAt,
-                    place: doc.progress, artwork: { await service.podcastArt(token: conn.token, artPath: doc.artUrl) }, chapters: chapters)
+                    place: doc.progress, artwork: { await service.podcastArt(token: conn.token, artPath: doc.artUrl) }, chapters: chapters,
+                    auto: auto)
                 return true
             case is PlanNoRoom: refuse(Words.Key.downloadNoRoom)
             default: refuse(Words.Key.downloadNothing)
             }
         } catch let e as ApiError {
             Self.log.warning("episode not started: server answered \(e.status)")
-            refuse(e.status == 404 || e.status == 403 ? Words.Key.downloadNotAllowed : Words.Key.downloadFailed)
+            if auto == nil { refuse(e.status == 404 || e.status == 403 ? Words.Key.downloadNotAllowed : Words.Key.downloadFailed) }
         } catch {
-            refuse(Words.Key.downloadFailed)
+            if auto == nil { refuse(Words.Key.downloadFailed) }
         }
         return false
     }
 
-    private func refuse(_ key: String) {
+    func refuse(_ key: String) {
         notice(words(key))
     }
 
     /// Keeps the cover, the chapters, the row and the files, then makes one task for every file.
-    private func enqueue(
+    func enqueue(
         _ id: String, _ conn: Connection, _ service: PlayerAPI, plan: PlanOk, mimes: [String: String], text: String,
         title: String, author: String, durationMs: Int64, kind: String, showId: String, publishedAt: Int64,
-        place: RemoteProgress?, artwork: () async -> Data?, chapters: (() async -> String?)?
+        place: RemoteProgress?, artwork: () async -> Data?, chapters: (() async -> String?)?, auto: AutoKind? = nil
     ) async {
         // A failed or stale book being added again: the old tasks and files go first.
         await dropFiles(id)
@@ -175,6 +200,8 @@ final class Downloads: DownloadEvents {
         if let bytes = await artwork(), let cover = paths.cover(id) { write(bytes, to: cover) }
         if let chapters, let json = await chapters(), let file = paths.chapters(id) { write(Data(json.utf8), to: file) }
         floors[id] = nil
+        // The mark is written before the row; a mark without a row counts as nothing.
+        markFor(id, auto)
         let isEpisode = kind == OfflineKt.KIND_EPISODE
         let row = OfflineBook(
             bookId: id, userId: userId() ?? "", title: title, author: author, durationMs: durationMs, sizeBytes: plan.total,
@@ -184,7 +211,7 @@ final class Downloads: DownloadEvents {
         let files = plan.files.map {
             OfflineFile(
                 bookId: id, cacheKey: $0.cacheKey, url: $0.url, planned: isEpisode ? 0 : $0.size, mime: mimes[$0.fileId] ?? "",
-                auto: false)
+                auto: auto != nil)
         }
         store.putFiles(id, files)
         for file in files { start(file, with: conn) }
@@ -200,7 +227,7 @@ final class Downloads: DownloadEvents {
 
     /// One background task for [file]: a GET with the bearer, 60 s of silence allowed. A person's download may use any
     /// network; an automatic one never an expensive or constrained network (invariant 4).
-    private func start(_ file: OfflineFile, with conn: Connection, resume: Data? = nil) {
+    func start(_ file: OfflineFile, with conn: Connection, resume: Data? = nil) {
         guard conn.origin.matches(url: file.url), let url = URL(string: file.url) else {
             store.setStep(file.bookId, file.cacheKey, .failed, failures: file.failures)
             return
@@ -223,7 +250,12 @@ final class Downloads: DownloadEvents {
 
     /// Drops the book's tasks, bytes, row and cover. [byPerson] is kept for the automatic rules of I3c.
     func remove(_ id: String, byPerson: Bool) async {
+        if byPerson, PodcastKt.isEpisodeId(id: id) { episodes.decline(id) }
         await dropFiles(id)
+        unmark(id)
+        episodes.unmark(id)
+        defaults.removeObject(forKey: Self.autoNoRoomKey)
+        defaults.removeObject(forKey: Self.autoNoRoomShowKey)
         store.remove(id: id)
         if let cover = paths.cover(id) { try? FileManager.default.removeItem(at: cover) }
         if let chapters = paths.chapters(id) { try? FileManager.default.removeItem(at: chapters) }
@@ -233,7 +265,7 @@ final class Downloads: DownloadEvents {
     }
 
     /// Cancels the book's tasks and deletes its audio folder; the row stays.
-    private func dropFiles(_ id: String) async {
+    func dropFiles(_ id: String) async {
         let files = store.files(id)
         for file in files {
             let key = Self.key(id, file.cacheKey)
@@ -338,7 +370,7 @@ final class Downloads: DownloadEvents {
         changed(id)
     }
 
-    private func changed(_ id: String) {
+    func changed(_ id: String) {
         onChange?(id)
     }
 
@@ -365,9 +397,11 @@ final class Downloads: DownloadEvents {
     }
 
     /// A row the player may start from the phone: finished and not removed.
-    func playable(_ id: String) -> Bool {
-        guard let row = store.get(id: id) else { return false }
-        return row.state == .ready || row.state == .stale
+    func playable(_ id: String) -> Bool { playableRow(id) != nil }
+
+    func playableRow(_ id: String) -> OfflineBook? {
+        guard let row = store.get(id: id), row.state == .ready || row.state == .stale else { return nil }
+        return row
     }
 
     /// Whether the book's audio files are on disk (the page offers Play only then).
@@ -422,6 +456,10 @@ final class Downloads: DownloadEvents {
     @discardableResult
     func wipe() -> Task<Void, Never> {
         defaults.set(true, forKey: Self.wipePendingKey)
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("offline.") && key != Self.wipePendingKey {
+            defaults.removeObject(forKey: key)
+        }
+        episodes.wipe()
         store.clear()
         floors = [:]
         for task in retries.values { task.cancel() }
@@ -446,3 +484,6 @@ final class Downloads: DownloadEvents {
 }
 
 extension Downloads: DownloadsControl {}
+
+/// Why a download is automatic: the next item of the queue (decision 0035) or a followed show's new episode (decision 0038).
+enum AutoKind { case nextItem, show }

@@ -40,6 +40,8 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
             store: SqliteOfflineStore(path: paths.database), paths: paths, transport: BackgroundTransport(incoming: paths.incoming),
             api: { PlayerApi(origin: $0, client: client) }, connection: { store.current() }, userId: { store.userId },
             free: { Downloads.freeBytes(important: $0) }, notice: { [weak self] in self?.notice($0) })
+        _ = UnmeteredMonitor.shared // starts watching the network for the Wi-Fi rule
+        playback.attach(downloads)
         pages.coverData = { [weak self] in self?.downloads.coverData($0) }
         pages.downloadsInput = { [weak self] offline in self?.downloadsInput(offline: offline) ?? Self.emptyDownloads }
         // Nothing keeps playing for someone who signed out or left the server: the player stops, its last place is sent once
@@ -67,7 +69,10 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
             MainActor.assumeIsolated {
                 self?.bridge.front(true)
                 // A file the system no longer holds a task for starts again.
-                Task { await self?.downloads.reconcile() }
+                Task {
+                    await self?.downloads.reconcile()
+                    await self?.downloads.foreground()
+                }
             }
         }
         center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
@@ -93,13 +98,24 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         let rows = downloads.rows().map { book in
             DownloadRow(
                 book: book, view: downloads.view(book.bookId), hasCover: downloads.coverData(book.bookId) != nil,
-                readable: false, hasAudio: downloads.hasAudio(book.bookId), auto: false)
+                readable: false, hasAudio: downloads.hasAudio(book.bookId), auto: downloads.isAuto(book.bookId))
         }
         let home = flow.origin?.homeUrl(shell: .ios) ?? ""
         return DownloadsInput(
-            rows: rows, shows: [], playingId: snapshot.bookId, playing: snapshot.playing, unmetered: true, autoNoRoom: false,
+            rows: rows, shows: downloads.episodes.showRows(), playingId: snapshot.bookId, playing: snapshot.playing,
+            unmetered: downloads.unmetered(), autoNoRoom: downloads.autoNoRoomNoted(),
             offline: offline, offlineAddress: pages.offlineAddress, homeUrl: home.isEmpty ? BundledPages.startUrl.absoluteString : home,
             readBase: offline ? "" : (flow.origin?.text ?? ""))
+    }
+
+    /// Runs [work] for at most [seconds]; the page does not wait longer for a slow server.
+    private static func within(seconds: Double, _ work: @escaping @MainActor () async -> Void) async {
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await work() }
+            group.addTask { try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) }
+            await group.next()
+            group.cancelAll()
+        }
     }
 
     private func reloadDownloads(after seconds: Double = 0.4) {
@@ -229,7 +245,11 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
             flow.onLink(n.text)
             return .cancel
         case is NavDownloads:
-            load(BundledPages.downloadsUrl)
+            // The followed shows are read first (two seconds at most), so the page lists them; then the page loads.
+            Task { @MainActor [weak self] in
+                await Self.within(seconds: 2) { await self?.downloads.episodes.refreshShows() }
+                self?.load(BundledPages.downloadsUrl)
+            }
             return .cancel
         case let n as NavPlayBook:
             playback.start(n.bookId, atMs: nil)
@@ -246,9 +266,11 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
                 reloadDownloads(after: 0)
             }
             return .cancel
-        case is NavAutoShow:
-            // Automatic downloads of a show are I3c.
-            reloadDownloads(after: 0)
+        case let n as NavAutoShow:
+            Task { @MainActor [weak self] in
+                await self?.downloads.episodes.setShow(n.showId, on: n.on)
+                self?.reloadDownloads(after: 0)
+            }
             return .cancel
         default:
             return .cancel

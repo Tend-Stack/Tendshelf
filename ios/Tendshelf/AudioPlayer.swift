@@ -28,6 +28,9 @@ final class AudioPlayer {
     var onFailed: ((String) -> Void)?
     /// The place this device has not sent yet (I2c); nil until then.
     var pendingFor: (String) -> Save? = { _ in nil }
+    /// The phone's own downloads (I3c): a downloaded book or episode starts with no request, and a file that is on the phone plays
+    /// from it. Nil in tests that stream.
+    var offline: OfflineSource?
     /// Asked before sound starts: the audio session is set up for the kind of item ([live] for a station).
     var willPlay: ((Bool) -> Void)?
     /// The chapter shown changed (book time moved across a chapter).
@@ -126,7 +129,13 @@ final class AudioPlayer {
         if RadioKt.isStationId(id: id) {
             Task { await startStation(id, conn, mine) }
         } else if PodcastKt.isEpisodeId(id: id) {
-            Task { await startEpisode(id, atMs, conn, mine) }
+            if let offline, offline.playableRow(id) != nil {
+                startDownloadedEpisode(id, atMs, conn, offline)
+            } else {
+                Task { await startEpisode(id, atMs, conn, mine) }
+            }
+        } else if let offline, offline.playableRow(id) != nil {
+            startDownloaded(id, atMs, conn, offline)
         } else {
             Task { await startBook(id, atMs, conn, mine) }
         }
@@ -142,6 +151,7 @@ final class AudioPlayer {
         let api = makeApi(conn.origin)
         do {
             let settings = try await api.settings(token: conn.token)
+            offline?.keep(settings)
             guard seq == mine else { return }
             let manifest = try await api.manifest(token: conn.token, bookId: id)
             guard seq == mine else { return }
@@ -154,7 +164,48 @@ final class AudioPlayer {
         }
     }
 
-    private func begin(_ conn: Connection, _ manifest: BookManifest, _ settings: PlayerSettings, _ art: Data?, _ atMs: Int64?, _ pending: Save?) {
+    /// A downloaded book starts from what the phone holds, with no request (`BookEngine.kt:195-213`): the stored answer, the last
+    /// settings, the stored cover and the newest place written on this phone. The place question is asked after, as usual.
+    private func startDownloaded(_ id: String, _ atMs: Int64?, _ conn: Connection, _ offline: OfflineSource) {
+        let paths = ApiPaths(server: conn.origin.text)
+        guard let text = offline.manifestJson(id), let manifest = PlayerParseKt.parseManifest(body: text, paths: paths) else {
+            Self.log.warning("could not read the downloaded book")
+            fail("book")
+            return
+        }
+        let progress = newerPlace(manifest.progress, offline.playableRow(id), conn)
+        begin(conn, manifest, offline.keptSettings(), offline.coverData(id), atMs, pendingFor(manifest.id), progress: progress)
+    }
+
+    /// A downloaded episode starts from what the phone holds (`BookEngine.kt:252-270`); its chapters come from the stored file.
+    private func startDownloadedEpisode(_ id: String, _ atMs: Int64?, _ conn: Connection, _ offline: OfflineSource) {
+        guard let text = offline.manifestJson(id), let doc = PlayerParseKt.parseEpisode(body: text),
+              let file = offline.localFile(id, OfflineKt.cacheKey(fileId: id, compat: false))
+        else {
+            Self.log.warning("could not read the downloaded episode")
+            fail("book")
+            return
+        }
+        let progress = newerPlace(doc.progress, offline.playableRow(id), conn)
+        beginEpisode(
+            conn, doc, offline.keptSettings(), offline.coverData(id), atMs, pendingFor(doc.id), progress: progress, local: file)
+        if let chapters = offline.chaptersText(id).flatMap({ PlayerParseKt.parseEpisodeChapters(body: $0, durationMs: doc.durationMs) }), !chapters.isEmpty {
+            self.chapters = chapters
+            changed()
+        }
+    }
+
+    /// The place kept beside the row replaces the stored answer's when it is newer.
+    private func newerPlace(_ stored: RemoteProgress?, _ row: OfflineBook?, _ conn: Connection) -> RemoteProgress? {
+        guard let row, row.placeAt > (stored?.clientUpdatedAt ?? 0) else { return stored }
+        return RemoteProgress(positionMs: row.placeMs, finished: false, clientUpdatedAt: row.placeAt, deviceId: conn.deviceId, deviceLabel: "")
+    }
+
+    private func begin(
+        _ conn: Connection, _ manifest: BookManifest, _ settings: PlayerSettings, _ art: Data?, _ atMs: Int64?, _ pending: Save?,
+        progress: RemoteProgress?? = nil
+    ) {
+        let place0 = progress ?? manifest.progress
         guard manifest.files.contains(where: { $0.playable }) else {
             fail("book")
             return
@@ -181,8 +232,9 @@ final class AudioPlayer {
         speed = manifest.speed
         player.defaultRate = Float(speed)
         let given = (atMs ?? -1) >= 0
-        onBookStarted?(manifest.id, PositionKt.placeWrittenAt(p: manifest.progress, pending: pending)?.int64Value, given)
-        let place = PositionKt.startPlace(p: manifest.progress, atMs: atMs.map { KotlinLong(value: $0) }, pending: pending)
+        offline?.playingNow = manifest.id
+        onBookStarted?(manifest.id, PositionKt.placeWrittenAt(p: place0, pending: pending)?.int64Value, given)
+        let place = PositionKt.startPlace(p: place0, atMs: atMs.map { KotlinLong(value: $0) }, pending: pending)
         load(atBookMs: place, play: true)
         Self.log.info("started book: \(manifest.files.count) files, \(manifest.chapters.count) chapters")
         changed()
@@ -192,6 +244,7 @@ final class AudioPlayer {
         let api = makeApi(conn.origin)
         do {
             let settings = try await api.settings(token: conn.token)
+            offline?.keep(settings)
             guard seq == mine else { return }
             let doc = try await api.episode(token: conn.token, id: id)
             guard seq == mine else { return }
@@ -211,11 +264,16 @@ final class AudioPlayer {
         }
     }
 
-    private func beginEpisode(_ conn: Connection, _ doc: EpisodeDoc, _ settings: PlayerSettings, _ art: Data?, _ atMs: Int64?, _ pending: Save?) {
-        guard let url = ApiPaths(server: conn.origin.text).podcastUrl(path: doc.audioUrl, width: 0) else {
+    private func beginEpisode(
+        _ conn: Connection, _ doc: EpisodeDoc, _ settings: PlayerSettings, _ art: Data?, _ atMs: Int64?, _ pending: Save?,
+        progress: RemoteProgress?? = nil, local: URL? = nil
+    ) {
+        let url = ApiPaths(server: conn.origin.text).podcastUrl(path: doc.audioUrl, width: 0)
+        guard local != nil || url != nil else {
             fail("book")
             return
         }
+        let place0 = progress ?? doc.progress
         onBookChanging?()
         leaveLive()
         resetItems()
@@ -240,11 +298,17 @@ final class AudioPlayer {
         speed = PodcastKt.episodeSpeed(settings: doc.settings, personal: settings.speed)
         player.defaultRate = Float(speed)
         let given = (atMs ?? -1) >= 0
-        onBookStarted?(doc.id, PositionKt.placeWrittenAt(p: doc.progress, pending: pending)?.int64Value, given)
-        let place = PositionKt.startPlace(p: doc.progress, atMs: atMs.map { KotlinLong(value: $0) }, pending: pending)
+        offline?.playingNow = doc.id
+        onBookStarted?(doc.id, PositionKt.placeWrittenAt(p: place0, pending: pending)?.int64Value, given)
+        let place = PositionKt.startPlace(p: place0, atMs: atMs.map { KotlinLong(value: $0) }, pending: pending)
         let from = given ? place : (rules?.startAt(placeMs: place) ?? place)
-        let handle = loader.register(url: url, origin: conn.origin, mime: doc.mime)
-        let item = makeItem(handle, mime: doc.mime.hasPrefix("audio/") ? doc.mime : nil, file: 0)
+        let mime = doc.mime.hasPrefix("audio/") ? doc.mime : nil
+        let item: AVPlayerItem
+        if let local {
+            item = makeLocalItem(local, mime: mime, file: 0)
+        } else {
+            item = makeItem(loader.register(url: url!, origin: conn.origin, mime: doc.mime), mime: mime, file: 0)
+        }
         willPlay?(false)
         wantsPlay = true
         preparing = true
@@ -273,6 +337,7 @@ final class AudioPlayer {
         leaveLive()
         resetItems()
         bookId = card.id
+        offline?.playingNow = ""
         error = ""
         ended = false
         isEpisode = false
@@ -312,6 +377,17 @@ final class AudioPlayer {
         return item
     }
 
+    /// A file on the phone plays from its file URL: AVFoundation reads local files natively, with exact seeks, and no loader or
+    /// bearer is involved (decision 0048, I3c).
+    private func makeLocalItem(_ file: URL, mime: String?, file index: Int) -> AVPlayerItem {
+        var options: [String: Any] = [:]
+        if let mime, !mime.isEmpty, mime != "audio/x-m4b" { options[AVURLAssetOverrideMIMETypeKey] = mime }
+        let item = AVPlayerItem(asset: AVURLAsset(url: file, options: options.isEmpty ? nil : options))
+        item.audioTimePitchAlgorithm = .timeDomain
+        watch(item, file: index)
+        return item
+    }
+
     /// Records [item] as file [file] and follows its status.
     private func watch(_ item: AVPlayerItem, file: Int) {
         let id = ObjectIdentifier(item)
@@ -327,6 +403,10 @@ final class AudioPlayer {
     private func fileItem(_ index: Int, _ conn: Connection) -> AVPlayerItem? {
         guard files.indices.contains(index), BridgeProtocolKt.validId(s: files[index].id) else { return nil }
         let f = files[index]
+        // Local first for each file: a book half downloaded plays its whole files from the phone and streams the rest.
+        if let local = offline?.localFile(bookId, OfflineKt.cacheKey(fileId: f.id, compat: f.needsCompat)) {
+            return makeLocalItem(local, mime: f.needsCompat ? nil : f.mime, file: index)
+        }
         let url = ApiPaths(server: conn.origin.text).streamUrl(fileId: f.id, compat: f.needsCompat)
         let handle = loader.register(url: url, origin: conn.origin, mime: f.mime)
         return makeItem(handle, mime: f.needsCompat ? nil : f.mime, file: index)
@@ -620,6 +700,7 @@ final class AudioPlayer {
         resetItems()
         pendingSeek = nil
         bookId = ""
+        offline?.playingNow = ""
         error = ""
         ended = false
         wantsPlay = false

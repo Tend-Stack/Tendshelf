@@ -31,6 +31,10 @@ final class FakeLiveAPI: PlayerAPI {
     func podcastArt(token: String, artPath: String) async -> Data? { nil }
     func progress(token: String, bookId: String) async throws -> RemoteProgress? { nil }
     func queueNext(token: String, ended: String) async throws -> String? { nil }
+    func queuePeek(token: String, ended: String) async throws -> String? { nil }
+    func queueRemove(token: String, bookId: String) async throws -> Int { 204 }
+    func podcastShows(token: String) async throws -> [ShowCard] { [] }
+    func showEpisodes(token: String, showId: String) async throws -> [EpisodeCard] { [] }
     func putSpeed(token: String, bookId: String, speed: Double) async throws {}
     func manifestText(token: String, bookId: String) async throws -> String { throw ApiError(status: 0) }
     func episodeText(token: String, id: String) async throws -> String { throw ApiError(status: 0) }

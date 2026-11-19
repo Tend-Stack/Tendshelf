@@ -18,6 +18,11 @@ fun parseEpisode(body: String): EpisodeDoc? = safely { PodcastJson.episode(body)
 
 fun parseEpisodeChapters(body: String, durationMs: Long): List<Chapter>? = safely { PodcastJson.chapters(body, durationMs) }
 
+/** The followed shows (`GET /api/v1/podcasts`) and one show's episode cards, or null on a bad shape (the iPhone's automatic episodes). */
+fun parseShowCards(body: String): List<ShowCard>? = safely { PodcastJson.showCards(body) }
+
+fun parseEpisodeCards(body: String): List<EpisodeCard>? = safely { PodcastJson.episodeCards(body) }
+
 fun parseStations(body: String): List<StationCard>? = safely { RadioJson.stations(body) }
 
 fun parseRadioNow(body: String): String? = safely { RadioJson.now(body) }

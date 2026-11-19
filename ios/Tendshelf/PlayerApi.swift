@@ -27,6 +27,13 @@ protocol PlayerAPI: AnyObject {
     func liveAddress(token: String, id: String, origin: Origin) async throws -> URL
     func progress(token: String, bookId: String) async throws -> RemoteProgress?
     func queueNext(token: String, ended: String) async throws -> String?
+    /// The read-only peek at the next item after [ended] (decision 0035): nothing is taken off the queue. Nil: none.
+    func queuePeek(token: String, ended: String) async throws -> String?
+    /// `DELETE /api/v1/queue/{id}`: the status, for `queueDeleteDone` to judge; a failure to connect is an error.
+    func queueRemove(token: String, bookId: String) async throws -> Int
+    /// The followed shows (their automatic-download choice is `keepLatest`), and the newest episodes of one show.
+    func podcastShows(token: String) async throws -> [ShowCard]
+    func showEpisodes(token: String, showId: String) async throws -> [EpisodeCard]
     func putSpeed(token: String, bookId: String, speed: Double) async throws
     func batch(token: String, saves: [Save], deviceId: String) async throws -> [BatchItemResult]
 }
@@ -85,7 +92,37 @@ final class PlayerApi: PlayerAPI {
         return id
     }
 
+    func queuePeek(token: String, ended: String) async throws -> String? {
+        guard BridgeProtocolKt.validId(s: ended) else { throw ApiError(status: 404) }
+        let body = try await get(paths.queuePeekUrl(ended: ended), token, 64 * 1024)
+        if body.isEmpty { return nil }
+        guard let id = PlayerParseKt.parseNextItemId(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return id
+    }
+
+    func queueRemove(token: String, bookId: String) async throws -> Int {
+        guard BridgeProtocolKt.validId(s: bookId) else { throw ApiError(status: 404) }
+        do {
+            return try await client.callData(paths.queueEntryUrl(bookId: bookId), "DELETE", nil, token, 20, limit: 16 * 1024)?.status ?? 0
+        } catch {
+            throw ApiError(status: 0)
+        }
+    }
+
     // MARK: Podcasts
+
+    func podcastShows(token: String) async throws -> [ShowCard] {
+        let body = try await get(paths.showsUrl, token, 1024 * 1024)
+        guard let list = PlayerParseKt.parseShowCards(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return list
+    }
+
+    func showEpisodes(token: String, showId: String) async throws -> [EpisodeCard] {
+        guard BridgeProtocolKt.validId(s: showId) else { throw ApiError(status: 404) }
+        let body = try await get(paths.showEpisodesUrl(showId: showId, limit: 50), token, 2 * 1024 * 1024)
+        guard let list = PlayerParseKt.parseEpisodeCards(body: Self.text(body)) else { throw ApiError(status: 0) }
+        return list
+    }
 
     func episode(token: String, id: String) async throws -> EpisodeDoc {
         let text = try await episodeText(token: token, id: id)

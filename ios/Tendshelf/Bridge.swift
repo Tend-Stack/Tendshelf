@@ -25,6 +25,8 @@ protocol DownloadsControl: AnyObject {
     func view(_ id: String) -> DlView
     /// The bytes a person's own download may still use, before the spare is taken off.
     func freeBytes() -> Int64
+    /// The Download the next book switch in Settings changed (`autodl 0|1`).
+    func setAutoDownload(_ on: Bool)
 }
 
 /// Holds the bridge weakly: a `WKUserContentController` keeps its handler alive, so without this the bridge never goes.
@@ -187,8 +189,10 @@ final class Bridge {
         case is BridgeMessageDownloadRoom:
             guard let downloads, let web = pushTarget() else { return }
             deliver(BridgeProtocolKt.encodeRoom(freeBytes: downloads.freeBytes()), web)
+        case let m as BridgeMessageAutoDownload:
+            downloads?.setAutoDownload(m.on)
         default:
-            // back, tts, say, fav, quiet, autodl, pagekeys: later phases or Android only.
+            // back, tts, say, fav, quiet, pagekeys: later phases or Android only.
             break
         }
     }

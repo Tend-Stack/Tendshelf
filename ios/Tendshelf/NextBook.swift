@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 @preconcurrency import TendshelfShared
 
-/// The book ended, possibly with the screen off (port of `NextBook.kt` without the phone fallback, which is I3). A background
+/// The book ended, possibly with the screen off (port of `NextBook.kt`, with the phone fallback of I3c). A background
 /// task covers the hand-off (the iPhone's analogue of the 30 s wake lock). `finished` is written and sent first; only when
 /// that went out is the queue asked, once. The ask is never repeated: a lost answer costs one queued book, a retry could
 /// skip a second. No page is involved. A sleep timer ends the book without any start.
@@ -18,6 +18,10 @@ final class NextBook {
     private let once = EndOnce()
     /// How long the background task stays after the hand-off: the next book's manifest fetch runs on.
     var lingerSeconds: Double = 8
+    /// The phone fallback (`NextBook.kt:84-95`, I3c): the remembered next book when it is whole here, cleared when used; and a
+    /// note that it started without the server's say, so the server's queue is tidied later.
+    var offlineNext: ((String) -> String?)?
+    var autoDrop: ((String) -> Void)?
 
     init(
         writer: ProgressWriter, connection: @escaping () -> Connection?, makeApi: @escaping (Origin) -> PlayerAPI,
@@ -59,6 +63,7 @@ final class NextBook {
         }
         guard sent, let conn else {
             Self.log.info("finished not sent, nothing popped")
+            fromPhone(bookId, stillEnded)
             return
         }
         let next: String?
@@ -66,6 +71,7 @@ final class NextBook {
             next = try await makeApi(conn.origin).queueNext(token: conn.token, ended: bookId)
         } catch {
             Self.log.warning("no answer from the queue, not asked again")
+            fromPhone(bookId, stillEnded)
             return
         }
         guard let next else {
@@ -76,5 +82,16 @@ final class NextBook {
         guard connection()?.deviceId == conn.deviceId, stillEnded() else { return }
         Self.log.info("next book: starting")
         start(next)
+    }
+
+    /// The ask gave no answer: start the remembered book if it is whole here, and remember to take it off the queue later.
+    private func fromPhone(_ bookId: String, _ stillEnded: () -> Bool) {
+        guard let next = offlineNext?(bookId) else {
+            Self.log.info("next book: nothing on the phone to start")
+            return
+        }
+        Self.log.info("next book: starting from the phone")
+        autoDrop?(next)
+        if stillEnded() { start(next) }
     }
 }

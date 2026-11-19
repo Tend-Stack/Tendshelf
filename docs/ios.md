@@ -141,8 +141,17 @@ sign-out wipe; a downloaded book still streams until I3c plays it from its files
   list and Try again. The Downloads nav link, Play, Remove and Pause are the shared `Nav` commands.
 - **Debug driver.** `-TSTestDownload <id>` adds a book after sign-in and prints `TSDRIVE dl=<state>/<pct>`; `-TSTestGo <path>`
   opens one page of the server after sign-in.
-- **Limits.** No playing from the files, automatic downloads or podcast shows (I3c), no stored text (I3d), no download
-  notification, no cellular setting.
+- **I3c: offline playback and automatic downloads.** A ready book or episode starts from the phone with no request
+  (`AudioPlayer.startDownloaded`, a file URL, `OfflineSource`); a half-downloaded book plays its whole files locally and streams
+  the rest. A place made on the phone is kept beside the row. The next book downloads itself on Wi-Fi (`AutoNext`,
+  `DownloadsAuto`), is remembered for an offline hand-off (`NextBook.fromPhone`), and the server's queue is tidied later. A show's
+  "Download new episodes" (`EpisodeAuto`) checks on foreground, while playing, and by a `BGAppRefreshTask`
+  (`app.tendshelf.ios.episodes`, at most every 6 h, system timed). The Wi-Fi rule is the request's own flags
+  (`allowsExpensiveNetworkAccess`/`allowsConstrainedNetworkAccess` false) and low task priority; a held download stays QUEUED.
+  The daily check (`Downloads.dailyCheck`) covers books. Android-only: the new-episode notification, the 6 h WorkManager job,
+  PAUSED. Debug driver: `-TSTestTap "/play;/autoshow"` taps links on the bundled pages, `-TSTestProbe 1` prints player and rows.
+  Opt-in server: `TENDSHELF_IOS_OFFLINE_SERVE=<host:port> go test ./internal/web -run TestIOSOfflineServe`.
+- **Limits.** No stored text (I3d), no download notification, no cellular setting.
 
 ## Cleanup
 

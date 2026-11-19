@@ -67,6 +67,8 @@ final class ProgressWriter {
     private let mono: () -> Int64
     private weak var source: SaveSource?
     private let deviceBox: DeviceBox
+    /// A downloaded book keeps its place beside the row (I3c, `ProgressWriter.kt:157,178`), so a start with no network resumes there.
+    var offline: OfflineSource?
 
     private let listened = ListenedClock()
     private let cadence = SaveCadence()
@@ -206,6 +208,7 @@ final class ProgressWriter {
             return
         }
         unsaved = nil
+        offline?.notePlace(id, ms: position, at: Int64(Date().timeIntervalSince1970 * 1000))
         Self.log.debug("outbox: saved (\(why))")
         flush()
     }
@@ -220,6 +223,7 @@ final class ProgressWriter {
             Self.log.warning("finish not written")
             return false
         }
+        offline?.notePlace(bookId, ms: positionMs, at: Int64(Date().timeIntervalSince1970 * 1000))
         let job = enqueue()
         return await withTaskGroup(of: Bool.self) { group in
             group.addTask { await job.value }

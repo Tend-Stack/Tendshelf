@@ -20,7 +20,7 @@ type Settings struct {
 	NextInSeries bool
 	SkipQuiet    bool // Android app only: shorten long pauses (decision 0033)
 	Cast         bool // Cast to a TV or speaker from a browser; off until turned on (decision 0047)
-	AutoDownload bool // Android app only: download the next book on Wi-Fi (decision 0035)
+	AutoDownload bool // phone apps only: download the next book on Wi-Fi (decision 0035; the iPhone app since decision 0048, I3c)
 	PlayerTint   bool
 	BigButtons   bool
 	TextSize     string // "standard" or "large"

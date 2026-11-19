@@ -37,6 +37,8 @@ enum DebugDriver {
         }
         startPlayback(web, url)
         startDownload(url)
+        tap(web, url)
+        startRowsProbe(web)
         if path == "/start", args.string(forKey: "TSTestAddress") != nil, !done.contains("choose") {
             // The first-run page offers two buttons; "I have a server" opens the address form.
             done.insert("choose")
@@ -65,6 +67,36 @@ enum DebugDriver {
         }
     }
 
+    /// I3c: `-TSTestProbe 1` prints the player's state and every download row each two seconds from the first page on.
+    private static func startRowsProbe(_ web: WKWebView) {
+        guard args.bool(forKey: "TSTestProbe"), probe == nil, let downloads else { return }
+        probe = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+            MainActor.assumeIsolated {
+                if let playback { probeNow(web, playback) }
+                let rows = downloads.rows().map { r -> String in
+                    let v = downloads.view(r.bookId)
+                    return "\(r.bookId)=\(r.state.name)/\(v.pct)/auto=\(downloads.isAuto(r.bookId))"
+                }
+                print("TSDRIVE rows \(rows) unmetered=\(downloads.unmetered())")
+            }
+        }
+    }
+
+    /// I3c: `-TSTestTap "/play;/autoshow"` taps, on the app's own bundled pages (Downloads, offline), the first link whose address
+    /// starts with each prefix, once each, in order, on a page load where it exists. The app's native code runs unchanged.
+    private static func tap(_ web: WKWebView, _ url: URL) {
+        guard url.scheme == BundledPages.scheme, let taps = args.string(forKey: "TSTestTap") else { return }
+        let list = taps.split(separator: ";").map(String.init)
+        guard let index = list.indices.first(where: { !done.contains("tap\($0)") }) else { return }
+        let script = "var a=document.querySelector('a[href^=\"\(list[index])\"]'); if(a){a.click(); true}else{false}"
+        web.evaluateJavaScript(script) { value, _ in
+            if (value as? Bool) == true {
+                done.insert("tap\(index)")
+                print("TSDRIVE tapped \(list[index])")
+            }
+        }
+    }
+
     /// I3b: `-TSTestDownload <id>` adds that book once a page on the server has loaded, and prints `dl=<state>/<pct>` each second.
     private static func startDownload(_ url: URL) {
         guard let id = args.string(forKey: "TSTestDownload"), !downloadStarted, url.scheme?.hasPrefix("http") == true,
@@ -87,7 +119,7 @@ enum DebugDriver {
         run(web, "window.__tsLog=[]; if(window.tsNative){window.tsNative.addEventListener('message',e=>{window.__tsLog.push(e.data);});}")
         playback.start(id, atMs: nil)
         probe = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
-            MainActor.assumeIsolated { probeNow(web) }
+            MainActor.assumeIsolated { probeNow(web, playback) }
         }
         let steps = (args.string(forKey: "TSTestScript") ?? "").split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }
         // A step is a bridge message, sent six seconds after the one before; `wait N` adds N seconds; `signout` is the page's
@@ -113,8 +145,7 @@ enum DebugDriver {
         }
     }
 
-    private static func probeNow(_ web: WKWebView) {
-        guard let playback else { return }
+    private static func probeNow(_ web: WKWebView, _ playback: Playback) {
         let s = playback.snapshot()
         let info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
         let title = (info[MPMediaItemPropertyTitle] as? String) ?? "-"

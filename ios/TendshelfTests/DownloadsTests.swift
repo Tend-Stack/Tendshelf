@@ -30,16 +30,28 @@ final class FakeDownloadApi: PlayerAPI {
     var episode = ""
     var error: ApiError?
     var calls: [String] = []
+    var peek: String?
+    var peekError: ApiError?
+    var removeStatus = 204
+    var removed: [String] = []
+    var shows: [ShowCard] = []
+    var showsError: ApiError?
+    var episodesOf: [String: [EpisodeCard]] = [:]
+    /// Episode documents by id, for an automatic fetch of several (falls back to `episode`).
+    var episodeDocs: [String: String] = [:]
+    var manifests: [String: String] = [:]
 
     func manifestText(token: String, bookId: String) async throws -> String {
         calls.append("manifest \(token)")
         if let error { throw error }
+        if let text = manifests[bookId] { return text }
         return manifest
     }
 
     func episodeText(token: String, id: String) async throws -> String {
         calls.append("episode \(token)")
         if let error { throw error }
+        if let text = episodeDocs[id] { return text }
         return episode
     }
 
@@ -56,6 +68,23 @@ final class FakeDownloadApi: PlayerAPI {
     func liveAddress(token: String, id: String, origin: Origin) async throws -> URL { throw ApiError(status: 0) }
     func progress(token: String, bookId: String) async throws -> RemoteProgress? { nil }
     func queueNext(token: String, ended: String) async throws -> String? { nil }
+    func queuePeek(token: String, ended: String) async throws -> String? {
+        calls.append("peek \(ended)")
+        if let peekError { throw peekError }
+        return peek
+    }
+
+    func queueRemove(token: String, bookId: String) async throws -> Int {
+        removed.append(bookId)
+        return removeStatus
+    }
+
+    func podcastShows(token: String) async throws -> [ShowCard] {
+        if let showsError { throw showsError }
+        return shows
+    }
+
+    func showEpisodes(token: String, showId: String) async throws -> [EpisodeCard] { episodesOf[showId] ?? [] }
     func putSpeed(token: String, bookId: String, speed: Double) async throws {}
     func batch(token: String, saves: [Save], deviceId: String) async throws -> [BatchItemResult] { [] }
 }
@@ -76,6 +105,8 @@ final class DownloadsRig {
     var connection: Connection? = Connection(origin: DownloadsRig.origin, token: "tok-1", deviceId: "dev-1")
     var freeBytes: Int64 = 10 * 1024 * 1024 * 1024
     var notices: [String] = []
+    var unmetered = true
+    var clock: Int64 = 1_000
     var changes: [String] = []
     let downloads: Downloads
     private let suite: String
@@ -94,8 +125,8 @@ final class DownloadsRig {
         var rig: DownloadsRig?
         downloads = Downloads(
             store: store, paths: paths, transport: transport, api: { _ in rig!.api }, connection: { rig!.connection },
-            userId: { "usr-1" }, free: { _ in rig!.freeBytes }, notice: { rig!.notices.append($0) }, now: { 1_000 },
-            defaults: defaults, retryScale: retryScale)
+            userId: { "usr-1" }, free: { _ in rig!.freeBytes }, notice: { rig!.notices.append($0) }, now: { rig!.clock },
+            defaults: defaults, retryScale: retryScale, unmetered: { rig!.unmetered })
         rig = self
         downloads.onChange = { [unowned self] in changes.append($0) }
         let (root, suite) = (self.root, self.suite)

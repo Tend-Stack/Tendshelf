@@ -19,6 +19,8 @@ final class Playback: PlaybackControl, RemoteHandler {
     private var resume: Resume!
     private(set) var sleepTimer: SleepTimer!
     private var nextBook: NextBook!
+    private var autoNext: AutoNext?
+    private weak var offline: OfflineSource?
     private var rewoundS = 0
     private var rewoundSeq = 0
     private var lastChapter = -2
@@ -49,6 +51,17 @@ final class Playback: PlaybackControl, RemoteHandler {
         session.pause = { [weak self] in self?.audio.pause() }
         session.reset = { [weak self] in self?.mediaServicesReset() }
         wireProgress(makeApi: makeApi, background: work, defaults: defaults)
+    }
+
+    /// The phone's own downloads (I3c): downloaded items start with no request, places are kept beside their rows, an ended
+    /// episode is marked played, and the next book is made ready on Wi-Fi and remembered for an offline hand-off.
+    func attach(_ downloads: Downloads) {
+        offline = downloads
+        audio.offline = downloads
+        writer.offline = downloads
+        autoNext = AutoNext(downloads)
+        nextBook.offlineNext = { [weak downloads] in downloads?.offlineNext($0) }
+        nextBook.autoDrop = { [weak downloads] in downloads?.autoDrop($0) }
     }
 
     /// Saving, rewinding, the place question, the sleep timer and the next book. None of it needs a page.
@@ -85,6 +98,7 @@ final class Playback: PlaybackControl, RemoteHandler {
             ask.dismissPlain()
             if !RadioKt.isStationId(id: id) { resume.bookLoaded(writtenAt: writtenAt, atGiven: given) }
             nextBook.reset()
+            autoNext?.reset()
             sleepTimer.bookChanged()
             lastChapter = -2
         }
@@ -122,12 +136,15 @@ final class Playback: PlaybackControl, RemoteHandler {
         if lastChapter != -2, chapter != lastChapter { writer.saveNow("chapter") }
         lastChapter = chapter
         writer.onTick()
+        // Near the end: the next item is made ready on Wi-Fi (decision 0035).
+        autoNext?.tick(book: book, positionMs: audio.positionMs, durationMs: audio.duration, playing: audio.playing)
     }
 
     /// A running sleep timer wins over the queue: the item is finished, nothing new starts. After a book or an episode the one
     /// queue is asked.
     private func ended() {
         let askQueue = !sleepTimer.endedBook()
+        if PodcastKt.isEpisodeId(id: audio.bookId) { offline?.markPlayed(audio.bookId) }
         let position = audio.duration > 0 ? audio.duration : audio.positionMs
         nextBook.ended(bookId: audio.bookId, positionMs: position, speed: audio.rate, askQueue: askQueue) { [weak self] in
             self?.audio.ended ?? false

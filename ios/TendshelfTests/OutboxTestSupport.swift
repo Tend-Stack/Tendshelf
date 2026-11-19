@@ -61,6 +61,10 @@ final class FakePlayerApi: PlayerAPI {
         return queueAnswer
     }
 
+    func queuePeek(token: String, ended: String) async throws -> String? { nil }
+    func queueRemove(token: String, bookId: String) async throws -> Int { 204 }
+    func podcastShows(token: String) async throws -> [ShowCard] { [] }
+    func showEpisodes(token: String, showId: String) async throws -> [EpisodeCard] { [] }
     func settings(token: String) async throws -> PlayerSettings { throw ApiError(status: 0) }
     func manifest(token: String, bookId: String) async throws -> BookManifest { throw ApiError(status: 0) }
     func cover(token: String, bookId: String) async -> Data? { nil }

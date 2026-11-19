@@ -339,6 +339,11 @@ final class SqliteOfflineStore: NSObject, OfflineStore {
             [.text(step.name), .int(Int64(failures)), .text(bookId), .text(key)])
     }
 
+    /// A person pressed Download on an automatic item: its files are the person's own from now on.
+    func setAuto(_ bookId: String, auto: Bool) {
+        run("UPDATE offline_files SET auto = ? WHERE book_id = ?", [.int(auto ? 1 : 0), .text(bookId)])
+    }
+
     func setArrived(_ bookId: String, _ key: String, length: Int64, bytes: Int64, name: String) {
         run("UPDATE offline_files SET length = ?, bytes = ?, name = ? WHERE book_id = ? AND cache_key = ?",
             [.int(length), .int(bytes), .text(name), .text(bookId), .text(key)])

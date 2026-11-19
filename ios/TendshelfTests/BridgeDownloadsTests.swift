@@ -15,6 +15,8 @@ final class FakeDownloadsControl: DownloadsControl {
     func remove(_ id: String, byPerson: Bool) async { removes.append(id) }
     func view(_ id: String) -> DlView { dl }
     func freeBytes() -> Int64 { free }
+    var autoCalls: [Bool] = []
+    func setAutoDownload(_ on: Bool) { autoCalls.append(on) }
 }
 
 @MainActor

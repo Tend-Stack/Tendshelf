@@ -15,6 +15,8 @@ class PlayerParseTest {
         assertNull(parseEpisode("{}"))
         assertNull(parseStations("nope"))
         assertNull(parseRadioNow("x"))
+        assertNull(parseShowCards("nope"))
+        assertNull(parseEpisodeCards("nope"))
         assertNull(parseProgress("x"))
         assertNull(parseNextItemId("{}"))
         assertNull(parseBookBatch("{}"))

@@ -59,7 +59,14 @@ final class BackgroundTransport: NSObject, DownloadTransport, URLSessionDownload
     func start(key: String, request: URLRequest, resumeData: Data?) {
         let task = resumeData.map { session.downloadTask(withResumeData: $0) } ?? session.downloadTask(with: request)
         task.taskDescription = key
+        task.priority = Self.priority(for: request)
         task.resume()
+    }
+
+    /// A person's download runs before an automatic one (decision 0048, I3c): a request that forbids an expensive network is
+    /// the automatic kind (invariant 4), so its priority is low and a person's is high. Background tasks cannot be held.
+    nonisolated static func priority(for request: URLRequest) -> Float {
+        request.allowsExpensiveNetworkAccess ? URLSessionTask.highPriority : URLSessionTask.lowPriority
     }
 
     func cancel(key: String) async {
