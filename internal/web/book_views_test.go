@@ -102,7 +102,7 @@ func TestListenRuler(t *testing.T) {
 		t.Errorf("where short: %q", v.WhereShort)
 	}
 	none := listenRulerFor(nil, 90_000, 3_600_000, 0)
-	if none.Label != "Book progress" || len(none.Ticks) != 0 || none.Where != "59 m left in book" || none.WhereShort != "59 m left" {
+	if none.Label != "Book progress" || len(none.Ticks) != 0 || none.Where != "59 min left in book" || none.WhereShort != "59 m left" {
 		t.Errorf("no chapters: %+v", none)
 	}
 	// A faster speed shortens the time left.
