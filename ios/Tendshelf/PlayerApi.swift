@@ -13,6 +13,10 @@ nonisolated struct ApiError: Error, Equatable {
 protocol PlayerAPI: AnyObject {
     func settings(token: String) async throws -> PlayerSettings
     func manifest(token: String, bookId: String) async throws -> BookManifest
+    /// The manifest's own text, kept as the row's answer so the book starts with no network (and parsed with `manifest`).
+    func manifestText(token: String, bookId: String) async throws -> String
+    func episodeText(token: String, id: String) async throws -> String
+    func chaptersText(token: String, path: String) async -> String?
     func cover(token: String, bookId: String) async -> Data?
     func episode(token: String, id: String) async throws -> EpisodeDoc
     func chapters(token: String, path: String, durationMs: Int64) async -> [Chapter]
@@ -47,10 +51,14 @@ final class PlayerApi: PlayerAPI {
     }
 
     func manifest(token: String, bookId: String) async throws -> BookManifest {
-        guard BridgeProtocolKt.validId(s: bookId) else { throw ApiError(status: 404) }
-        let body = try await get(paths.bookUrl(bookId: bookId), token, 4 * 1024 * 1024)
-        guard let m = PlayerParseKt.parseManifest(body: Self.text(body), paths: paths) else { throw ApiError(status: 0) }
+        let text = try await manifestText(token: token, bookId: bookId)
+        guard let m = PlayerParseKt.parseManifest(body: text, paths: paths) else { throw ApiError(status: 0) }
         return m
+    }
+
+    func manifestText(token: String, bookId: String) async throws -> String {
+        guard BridgeProtocolKt.validId(s: bookId) else { throw ApiError(status: 404) }
+        return Self.text(try await get(paths.bookUrl(bookId: bookId), token, 4 * 1024 * 1024))
     }
 
     func cover(token: String, bookId: String) async -> Data? {
@@ -80,10 +88,19 @@ final class PlayerApi: PlayerAPI {
     // MARK: Podcasts
 
     func episode(token: String, id: String) async throws -> EpisodeDoc {
-        guard BridgeProtocolKt.validId(s: id) else { throw ApiError(status: 404) }
-        let body = try await get(paths.episodeUrl(episodeId: id), token, 256 * 1024)
-        guard let doc = PlayerParseKt.parseEpisode(body: Self.text(body)) else { throw ApiError(status: 0) }
+        let text = try await episodeText(token: token, id: id)
+        guard let doc = PlayerParseKt.parseEpisode(body: text) else { throw ApiError(status: 0) }
         return doc
+    }
+
+    func episodeText(token: String, id: String) async throws -> String {
+        guard BridgeProtocolKt.validId(s: id) else { throw ApiError(status: 404) }
+        return Self.text(try await get(paths.episodeUrl(episodeId: id), token, 256 * 1024))
+    }
+
+    func chaptersText(token: String, path: String) async -> String? {
+        guard let url = paths.podcastUrl(path: path, width: 0), let body = try? await get(url, token, 512 * 1024) else { return nil }
+        return Self.text(body)
     }
 
     func chapters(token: String, path: String, durationMs: Int64) async -> [Chapter] {

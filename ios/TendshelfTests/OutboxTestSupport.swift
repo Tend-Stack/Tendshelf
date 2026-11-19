@@ -72,6 +72,9 @@ final class FakePlayerApi: PlayerAPI {
     func radioNow(token: String, id: String) async -> String? { nil }
     func liveAddress(token: String, id: String, origin: Origin) async throws -> URL { throw ApiError(status: 0) }
     func putSpeed(token: String, bookId: String, speed: Double) async throws {}
+    func manifestText(token: String, bookId: String) async throws -> String { throw ApiError(status: 0) }
+    func episodeText(token: String, id: String) async throws -> String { throw ApiError(status: 0) }
+    func chaptersText(token: String, path: String) async -> String? { nil }
 }
 
 @MainActor

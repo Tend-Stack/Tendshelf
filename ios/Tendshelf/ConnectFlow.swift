@@ -37,6 +37,10 @@ final class ConnectFlow {
     // The token of the pairing whose sign-in page is loading; the same link arriving again changes nothing.
     private var pairToken: String?
 
+    /// Called with the person's id once a code was traded, before anything is saved: the downloads of another person go
+    /// (`ConnectFlow.kt:351`). Leaving a server already wiped them in `SignOut.leave`.
+    var beforeSave: ((String) -> Void)?
+
     private(set) var state = ConnectState.noserver
     private var verifier: String?
     /// True while a code is awaited: the navigation policy takes `/app/connect/done` only then.
@@ -323,6 +327,8 @@ final class ConnectFlow {
         switch r {
         case let done as SwapDone:
             let a = done.answer
+            // Someone else's downloads are gone before this person can reach anything (I3 invariant 2).
+            beforeSave?(a.userId)
             if let token = a.token {
                 store.save(token: token, deviceId: a.deviceId, userId: a.userId)
             } else {

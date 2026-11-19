@@ -1,5 +1,6 @@
 import UIKit
 import WebKit
+@preconcurrency import TendshelfShared
 
 /// What the start page shows: the address to fill in and, after a failure, one sentence of plain words.
 struct StartState: Equatable {
@@ -22,12 +23,20 @@ final class BundledPages: NSObject, WKURLSchemeHandler {
     static let host = "app"
     static var startUrl: URL { URL(string: "tsbundle://app/start")! }
     static var joinUrl: URL { URL(string: "tsbundle://app/join")! }
+    static var downloadsUrl: URL { URL(string: "tsbundle://app/downloads")! }
+    static var offlineUrl: URL { URL(string: "tsbundle://app/offline")! }
 
     var state = StartState()
     /// The join page's note (its field is always empty: a pasted link is never put back on a page).
     var joinState = StartState()
     /// "dark" or "light" for the page's `data-theme`; the controller supplies the trait collection's answer.
     var dark: () -> Bool = { UITraitCollection.current.userInterfaceStyle == .dark }
+    /// What the Downloads and offline pages list; the argument is true for the offline page. Set by the controller (I3b).
+    var downloadsInput: ((Bool) -> DownloadsInput)?
+    /// A downloaded book's cover (a stored file); nil for none.
+    var coverData: ((String) -> Data?)?
+    /// The address the offline page says it could not reach.
+    var offlineAddress = ""
 
     private let assets: URL?
 
@@ -64,7 +73,21 @@ final class BundledPages: NSObject, WKURLSchemeHandler {
             return page("start.html", start())
         case "/join":
             return page("join.html", join())
+        case "/downloads":
+            return downloadsPage(offline: false)
+        case "/offline":
+            return downloadsPage(offline: true)
         default:
+            if path.hasPrefix("/covers/") {
+                let id = String(path.dropFirst("/covers/".count))
+                guard BridgeProtocolKt.validId(s: id), let bytes = coverData?(id) else { return notFound }
+                return BundledReply(status: 200, mime: "image/jpeg", body: bytes)
+            }
+            if path == "/assets/safe-area.css" {
+                // The pages' CSP allows no inline style, so the rule that keeps them clear of the status bar is a file.
+                let css = "body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}\n"
+                return BundledReply(status: 200, mime: "text/css; charset=utf-8", body: Data(css.utf8))
+            }
             if path.hasPrefix("/assets/"), let file = asset(String(path.dropFirst("/assets/".count))) {
                 return file
             }
@@ -89,6 +112,30 @@ final class BundledPages: NSObject, WKURLSchemeHandler {
         guard allowedFolder else { return nil }
         guard let data = try? Data(contentsOf: assets.appendingPathComponent(name)) else { return nil }
         return BundledReply(status: 200, mime: mime, body: data)
+    }
+
+    /// The one list of downloaded books, drawn by the shared renderer (the same as Android's) with every value escaped and no
+    /// script. The offline page adds the "can't reach your server" words and Try again above it.
+    private func downloadsPage(offline: Bool) -> BundledReply {
+        guard let input = downloadsInput?(offline) else { return notFound }
+        return page("offline.html", DownloadsPageKt.downloadsPage(input: input, w: downloadsWords()))
+    }
+
+    /// The words raw, as `strings.xml` holds them; the shared renderer fills `%1$d` itself.
+    private func downloadsWords() -> DownloadsWords {
+        typealias K = Words.Key
+        return DownloadsWords(
+            title: words(K.downloadsTitle), lead: words(K.downloadsLead), empty: words(K.downloadsEmpty),
+            emptyHow: words(K.downloadsEmptyHow), active: words(K.downloadsActive), ready: words(K.downloadsReady),
+            percent: words(K.downloadsPercent), working: words(K.downloadsWorking), waiting: words(K.downloadsWaiting),
+            pausedRow: words(K.downloadsPausedRow), failedRow: words(K.downloadsFailedRow), staleRow: words(K.downloadsStaleRow),
+            play: words(K.downloadsPlay), read: words(K.downloadsRead), pause: words(K.downloadsPause),
+            remove: words(K.downloadsRemove), library: words(K.downloadsLibrary), autoRow: words(K.downloadsAutoRow),
+            autoWaiting: words(K.downloadsAutoWaiting), autoNoRoom: words(K.downloadsAutoNoRoom),
+            podcasts: words(K.downloadsPodcasts), podcastsLead: words(K.downloadsPodcastsLead),
+            podcastOnRow: words(K.downloadsPodcastOnRow), podcastOffRow: words(K.downloadsPodcastOffRow),
+            turnOn: words(K.downloadsPodcastTurnOn), turnOff: words(K.downloadsPodcastTurnOff),
+            offlineTitle: words(K.offlineTitle), offlineBody: words(K.offlineBody), offlineRetry: words(K.offlineRetry))
     }
 
     private func choose() -> [String: String] {
@@ -133,6 +180,10 @@ final class BundledPages: NSObject, WKURLSchemeHandler {
             return notFound
         }
         var html = raw.replacingOccurrences(of: "{{THEME}}", with: dark() ? "dark" : "light")
+        // The window runs under the status bar and the home indicator, so the page keeps clear of them (the server's own
+        // pages do the same with env()); the Android pages need no such rule.
+        html = html.replacingOccurrences(of: "content=\"width=device-width, initial-scale=1\"", with: "content=\"width=device-width, initial-scale=1, viewport-fit=cover\"")
+        html = html.replacingOccurrences(of: "</head>", with: "<link rel=\"stylesheet\" href=\"/assets/safe-area.css\"></head>")
         for (key, value) in values {
             html = html.replacingOccurrences(of: "{{\(key)}}", with: value)
         }

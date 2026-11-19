@@ -116,6 +116,34 @@ build, fetched at build time on the Mac only, never at runtime and never in the 
 - **Android only / limits.** No notification for the question, no downloads or offline next book (I3), the radio stream is unresolved (see the roadmap).
 - **Debug driver.** Script steps `wait N` and `signout`; the probe line shows `ask`, `rewound`, `sleep` and `rows`.
 
+## Downloads (I3)
+
+Plan: [plans/iphone-offline.md](plans/iphone-offline.md). I3b is the engine, the store, the Downloads and offline pages, and the
+sign-out wipe; a downloaded book still streams until I3c plays it from its files.
+
+- **Transport.** `BackgroundTransport` is one background `URLSession` (`app.tendshelf.ios.downloads`, launch events on, not
+  discretionary, no cookies, no cache), so downloads go on with the app suspended or ended by the system; `AppDelegate` hands the
+  system's completion handler back once the events are delivered. The device token is an `Authorization` header of each request to
+  the pinned origin's `/api/v1/` (checked on the simulator: a background session keeps the header; the files arrive). It is never in
+  an address, in `taskDescription` (that is `<bookId>|<cacheKey>`), a row or a default. A redirect is refused, so a 3xx fails the
+  file. Resume data embeds the request, so it lives in memory only and is used once.
+- **Engine.** `Downloads` ports `Offline.kt` without Media3: manifest text, `downloadPlan` or `episodePlan`, the cover and chapters,
+  one task for every file at once, `fileComplete` before a file counts, `bookStateOf` for the book's state, `downloadRetryDelayMs`
+  for a busy server, `downloadPercent` for a percent that never goes back. A refusal is an alert in the Android words. `reconcile`
+  (launch and every return to the front) restarts a file the system holds no task for.
+- **Store.** `offline/offline.sqlite` under `Application Support`, in a folder of its own (`OfflinePaths`: excluded from backup,
+  readable after the first unlock, ids through `validId`, names with no `/`). `SqliteOfflineStore` implements the shared
+  `OfflineStore` over `SQLite3`; its `offline_files` rows cascade with the book.
+- **Wipe.** Sign-out, leaving a server and another person's sign-in delete the rows, cancel every task, remove the folder and every
+  `offline.*` default; `offline.wipePending` makes an interrupted wipe finish at launch.
+- **Pages.** `tsbundle://app/downloads` and `/offline` are drawn by the shared `downloadsPage` (the same HTML as Android);
+  `/covers/<id>` serves the stored cover. A main-frame failure or a 5xx from the connected server shows the offline page with the
+  list and Try again. The Downloads nav link, Play, Remove and Pause are the shared `Nav` commands.
+- **Debug driver.** `-TSTestDownload <id>` adds a book after sign-in and prints `TSDRIVE dl=<state>/<pct>`; `-TSTestGo <path>`
+  opens one page of the server after sign-in.
+- **Limits.** No playing from the files, automatic downloads or podcast shows (I3c), no stored text (I3d), no download
+  notification, no cellular setting.
+
 ## Cleanup
 
 `make ios-shared` leaves the synced tree and its build output on the Mac. `ios/tools/mac-build.sh clean` removes that tree;

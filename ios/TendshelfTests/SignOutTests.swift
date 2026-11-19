@@ -77,6 +77,30 @@ final class SignOutTests: XCTestCase {
         XCTAssertNil(r.store.current())
     }
 
+    /// The order the app composes in `ShellController`: the player stops, the downloads are wiped, and only then the revoke goes.
+    func testTheDownloadsWipeRunsAfterThePlayerStopsAndBeforeTheRevoke() async {
+        let r = Rig(self)
+        r.signedIn()
+        let d = DownloadsRig(self)
+        await d.downloads.add(DownloadsRig.book)
+        XCTAssertEqual(d.store.all().count, 1)
+        var order: [String] = []
+        var wipe: Task<Void, Never>?
+        r.signOut.beforeWipe = { _ in
+            order.append("player")
+            wipe = d.downloads.wipe()
+            order.append("wipe")
+            XCTAssertTrue(d.store.all().isEmpty, "the rows go at once")
+        }
+        r.api.onRevoke = { order.append("revoke") }
+        r.signOut.run(reason: nil)
+        await eventually("revoke") { r.api.revokes == ["tok-1"] }
+        await wipe?.value
+        XCTAssertEqual(order, ["player", "wipe", "revoke"])
+        XCTAssertEqual(d.transport.cancelledAll, 1)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: d.paths.root.path))
+    }
+
     func testLeavingAServerAlsoRunsTheHook() async {
         let r = Rig(self)
         r.signedIn()

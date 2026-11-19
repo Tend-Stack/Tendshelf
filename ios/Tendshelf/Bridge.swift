@@ -17,6 +17,16 @@ protocol PlaybackControl: AnyObject {
     var onChange: (() -> Void)? { get set }
 }
 
+/// What the bridge asks of the download engine (`Downloads` in the app, a fake in the tests).
+@MainActor
+protocol DownloadsControl: AnyObject {
+    func add(_ id: String) async
+    func remove(_ id: String, byPerson: Bool) async
+    func view(_ id: String) -> DlView
+    /// The bytes a person's own download may still use, before the spare is taken off.
+    func freeBytes() -> Int64
+}
+
 /// Holds the bridge weakly: a `WKUserContentController` keeps its handler alive, so without this the bridge never goes.
 @MainActor
 private final class BridgeProxy: NSObject, WKScriptMessageHandler {
@@ -37,6 +47,7 @@ final class Bridge {
     private static let perSecond: Int32 = 30
 
     private let control: PlaybackControl
+    private let downloads: DownloadsControl?
     private let userContent: WKUserContentController
     private let currentView: () -> WKWebView?
     private let currentOrigin: () -> Origin?
@@ -51,6 +62,8 @@ final class Bridge {
     private var ticker: Timer?
     private var dropped = 0
     private var attached = false
+    private var lastDownloadPush: [String: Int64] = [:]
+    private var pendingDownloadPush: [String: Timer] = [:]
 
     /// The theme colour the page asked for (`theme #rrggbb`).
     var onTheme: (String) -> Void = { _ in }
@@ -59,6 +72,7 @@ final class Bridge {
 
     init(
         control: PlaybackControl,
+        downloads: DownloadsControl? = nil,
         userContent: WKUserContentController,
         currentView: @escaping () -> WKWebView?,
         currentOrigin: @escaping () -> Origin?,
@@ -67,6 +81,7 @@ final class Bridge {
         clock: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }
     ) {
         self.control = control
+        self.downloads = downloads
         self.userContent = userContent
         self.currentView = currentView
         self.currentOrigin = currentOrigin
@@ -167,9 +182,33 @@ final class Bridge {
             if let on = feel.awake(on: m.on) { setIdleTimerDisabled(on.boolValue) }
         case let m as BridgeMessageTheme:
             onTheme(m.hex)
+        case let m as BridgeMessageDownload:
+            download(m.action, m.bookId)
+        case is BridgeMessageDownloadRoom:
+            guard let downloads, let web = pushTarget() else { return }
+            deliver(BridgeProtocolKt.encodeRoom(freeBytes: downloads.freeBytes()), web)
         default:
-            // back, dl, tts, say, fav, quiet, autodl, pagekeys: later phases or Android only.
+            // back, tts, say, fav, quiet, autodl, pagekeys: later phases or Android only.
             break
+        }
+    }
+
+    /// `dl add|remove|ask <id>`: the engine does the work, and the page is told how the book stands.
+    private func download(_ action: String, _ id: String) {
+        guard let downloads else { return }
+        switch action {
+        case "add":
+            Task { @MainActor [weak self] in
+                await downloads.add(id)
+                self?.pushDownload(id)
+            }
+        case "remove":
+            Task { @MainActor [weak self] in
+                await downloads.remove(id, byPerson: true)
+                self?.pushDownload(id)
+            }
+        default:
+            pushDownload(id)
         }
     }
 
@@ -190,6 +229,35 @@ final class Bridge {
             // The page's bar moves while sound plays: one push a second.
             ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: false) { [weak self] _ in
                 MainActor.assumeIsolated { self?.pushState() }
+            }
+        }
+    }
+
+    /// The page's window, when it may be told something: attached, said hello, in front, connected.
+    private func pushTarget() -> WKWebView? {
+        guard attached, hello, visible, isConnected() else { return nil }
+        return currentView()
+    }
+
+    /// How [id] stands on the phone, to the page (the same `dl` message Android sends).
+    func pushDownload(_ id: String) {
+        guard let downloads, let web = pushTarget() else { return }
+        lastDownloadPush[id] = clock()
+        let v = downloads.view(id)
+        deliver(BridgeProtocolKt.encodeDl(bookId: id, state: v.state, pct: v.pct, sized: v.known), web)
+    }
+
+    /// A download changed: at most one push a second for each book, and the last change always follows.
+    func downloadChanged(_ id: String) {
+        let since = clock() - (lastDownloadPush[id] ?? 0)
+        if since >= 1000 {
+            pushDownload(id)
+        } else if pendingDownloadPush[id] == nil {
+            pendingDownloadPush[id] = Timer.scheduledTimer(withTimeInterval: Double(1000 - since) / 1000, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.pendingDownloadPush[id] = nil
+                    self?.pushDownload(id)
+                }
             }
         }
     }

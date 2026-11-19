@@ -32,6 +32,9 @@ final class FakeLiveAPI: PlayerAPI {
     func progress(token: String, bookId: String) async throws -> RemoteProgress? { nil }
     func queueNext(token: String, ended: String) async throws -> String? { nil }
     func putSpeed(token: String, bookId: String, speed: Double) async throws {}
+    func manifestText(token: String, bookId: String) async throws -> String { throw ApiError(status: 0) }
+    func episodeText(token: String, id: String) async throws -> String { throw ApiError(status: 0) }
+    func chaptersText(token: String, path: String) async -> String? { nil }
     func batch(token: String, saves: [Save], deviceId: String) async throws -> [BatchItemResult] { [] }
 }
 

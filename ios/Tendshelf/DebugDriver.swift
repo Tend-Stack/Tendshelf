@@ -12,7 +12,10 @@ import WebKit
 @MainActor
 enum DebugDriver {
     static weak var playback: Playback?
+    static weak var downloads: Downloads?
     private static var started = false
+    private static var downloadStarted = false
+    private static var downloadProbe: Timer?
     private static var probe: Timer?
 
     private static var args: UserDefaults { .standard }
@@ -26,7 +29,14 @@ enum DebugDriver {
         let path = url.path
         let key = "\(url.absoluteString)"
         report(web, path)
+        if url.scheme == BundledPages.scheme, path == "/offline", let after = args.string(forKey: "TSTestRetry").flatMap(Double.init) {
+            // I3b: tap "Try again" on the offline page after [after] seconds.
+            DispatchQueue.main.asyncAfter(deadline: .now() + after) {
+                run(web, "var f=document.querySelector('form[action=\"/connect\"]'); if(f){f.requestSubmit();}")
+            }
+        }
         startPlayback(web, url)
+        startDownload(url)
         if path == "/start", args.string(forKey: "TSTestAddress") != nil, !done.contains("choose") {
             // The first-run page offers two buttons; "I have a server" opens the address form.
             done.insert("choose")
@@ -42,12 +52,30 @@ enum DebugDriver {
         } else if path.hasPrefix("/app/connect"), !done.contains("consent") {
             done.insert("consent")
             run(web, "var b=document.querySelector('main form button[type=submit]'); if(b){b.click();}")
+        } else if path == "/", let go = args.string(forKey: "TSTestGo"), !done.contains("go") {
+            // I3b: open one page of the server, such as /me/downloads, once the home page has loaded.
+            done.insert("go")
+            run(web, "location.href=\(literal(go))")
         } else if path == "/", args.bool(forKey: "TSTestSignOut"), !done.contains("tome") {
             done.insert("tome")
             run(web, "location.href='/me'")
         } else if path == "/me", args.bool(forKey: "TSTestSignOut"), !done.contains("signout") {
             done.insert("signout")
             run(web, "var f=document.querySelector('form[action=\"/logout\"]'); if(f){f.requestSubmit();}")
+        }
+    }
+
+    /// I3b: `-TSTestDownload <id>` adds that book once a page on the server has loaded, and prints `dl=<state>/<pct>` each second.
+    private static func startDownload(_ url: URL) {
+        guard let id = args.string(forKey: "TSTestDownload"), !downloadStarted, url.scheme?.hasPrefix("http") == true,
+              url.path != "/login", !url.path.hasPrefix("/app/connect"), let downloads else { return }
+        downloadStarted = true
+        Task { await downloads.add(id) }
+        downloadProbe = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            MainActor.assumeIsolated {
+                let v = downloads.view(id)
+                print("TSDRIVE dl=\(v.state)/\(v.pct) files=\(downloads.store.files(id).map { "\($0.step.name):\($0.bytes)" })")
+            }
         }
     }
 
@@ -94,9 +122,10 @@ enum DebugDriver {
         let elapsed = (info[MPNowPlayingInfoPropertyElapsedPlaybackTime] as? Double).map { String(format: "%.1f", $0) } ?? "-"
         let rate = (info[MPNowPlayingInfoPropertyPlaybackRate] as? Double).map { String($0) } ?? "-"
         let art = info[MPMediaItemPropertyArtwork] != nil
+        let dl = args.string(forKey: "TSTestDownload").flatMap { id in downloads.map { d in d.view(id) } }.map { "\($0.state)/\($0.pct)" } ?? "-"
         web.evaluateJavaScript("(window.__tsLog||[]).length + ' ' + ((window.__tsLog||[]).filter(m=>m.indexOf('\"state\"')>0).slice(-1)[0]||'')") { value, _ in
             let last = String(describing: value ?? "nil").prefix(220)
-            print("TSDRIVE probe book=\(s.bookId) pos=\(s.positionMs) dur=\(s.durationMs) playing=\(s.playing) buf=\(s.buffering) speed=\(s.speed) ch=\(s.chapterIdx) err=\(s.error) ask=\(s.ask.map { "\($0.deviceLabel)@\($0.positionMs)" } ?? "-") rewound=\(s.rewoundS)/\(s.rewoundSeq) sleep=\(s.sleep.mode.name)/\(s.sleep.leftMs)/\(s.sleep.fading) rows=\(playback.writer.rowCount()) card[title=\(title) artist=\(artist) elapsed=\(elapsed) rate=\(rate) art=\(art)] page=\(last)")
+            print("TSDRIVE probe book=\(s.bookId) pos=\(s.positionMs) dur=\(s.durationMs) playing=\(s.playing) buf=\(s.buffering) speed=\(s.speed) ch=\(s.chapterIdx) err=\(s.error) ask=\(s.ask.map { "\($0.deviceLabel)@\($0.positionMs)" } ?? "-") rewound=\(s.rewoundS)/\(s.rewoundSeq) sleep=\(s.sleep.mode.name)/\(s.sleep.leftMs)/\(s.sleep.fading) rows=\(playback.writer.rowCount()) dl=\(dl) card[title=\(title) artist=\(artist) elapsed=\(elapsed) rate=\(rate) art=\(art)] page=\(last)")
         }
     }
 

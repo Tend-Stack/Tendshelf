@@ -14,6 +14,7 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
     private(set) var signOut: SignOut!
     private(set) var playback: Playback!
     private(set) var bridge: Bridge!
+    private(set) var downloads: Downloads!
     private let configuration: WKWebViewConfiguration
 
     /// The one address the app itself is loading: it passes the policy once (a load that native code started is not a
@@ -33,30 +34,84 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         signOut = SignOut(store: store, api: client, host: self, pages: pages)
         flow = ConnectFlow(store: store, client: client, pages: pages, host: self, signOut: signOut)
         playback = Playback(store: store, client: client)
+        let paths = OfflinePaths()
+        try? paths.prepare()
+        downloads = Downloads(
+            store: SqliteOfflineStore(path: paths.database), paths: paths, transport: BackgroundTransport(incoming: paths.incoming),
+            api: { PlayerApi(origin: $0, client: client) }, connection: { store.current() }, userId: { store.userId },
+            free: { Downloads.freeBytes(important: $0) }, notice: { [weak self] in self?.notice($0) })
+        pages.coverData = { [weak self] in self?.downloads.coverData($0) }
+        pages.downloadsInput = { [weak self] offline in self?.downloadsInput(offline: offline) ?? Self.emptyDownloads }
         // Nothing keeps playing for someone who signed out or left the server: the player stops, its last place is sent once
-        // with the connection that is going, the outbox is emptied, the bridge is cut.
+        // with the connection that is going, the outbox is emptied, every download and background task goes, the bridge is cut.
         signOut.beforeWipe = { [weak self] connection in
             self?.playback.signOut(connection)
+            self?.downloads.wipe()
             self?.bridge.detach()
+        }
+        flow.beforeSave = { [weak self] userId in
+            if self?.downloads.hasOtherPerson(userId) == true { self?.downloads.wipe() }
         }
         bridge = Bridge(
             control: playback,
+            downloads: downloads,
             userContent: config.userContentController,
             currentView: { [weak self] in self?.webView },
             currentOrigin: { [weak self] in self?.flow?.origin },
             isConnected: { [weak self] in self?.flow?.state == .connected },
             front: UIApplication.shared.applicationState != .background)
         bridge.onTheme = { [weak self] hex in self?.applyTheme(hex) }
+        downloads.onChange = { [weak self] id in self?.bridge.downloadChanged(id) }
         let center = NotificationCenter.default
         center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.bridge.front(true) }
+            MainActor.assumeIsolated {
+                self?.bridge.front(true)
+                // A file the system no longer holds a task for starts again.
+                Task { await self?.downloads.reconcile() }
+            }
         }
         center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.bridge.front(false) }
         }
         #if DEBUG
         DebugDriver.playback = playback
+        DebugDriver.downloads = downloads
         #endif
+    }
+
+    // MARK: Downloads page
+
+    private static var emptyDownloads: DownloadsInput {
+        DownloadsInput(
+            rows: [], shows: [], playingId: "", playing: false, unmetered: true, autoNoRoom: false, offline: false,
+            offlineAddress: "", homeUrl: BundledPages.startUrl.absoluteString, readBase: "")
+    }
+
+    /// What the Downloads and offline pages list: the phone's own rows, the player's state, and the way home.
+    private func downloadsInput(offline: Bool) -> DownloadsInput {
+        let snapshot = playback.snapshot()
+        let rows = downloads.rows().map { book in
+            DownloadRow(
+                book: book, view: downloads.view(book.bookId), hasCover: downloads.coverData(book.bookId) != nil,
+                readable: false, hasAudio: downloads.hasAudio(book.bookId), auto: false)
+        }
+        let home = flow.origin?.homeUrl(shell: .ios) ?? ""
+        return DownloadsInput(
+            rows: rows, shows: [], playingId: snapshot.bookId, playing: snapshot.playing, unmetered: true, autoNoRoom: false,
+            offline: offline, offlineAddress: pages.offlineAddress, homeUrl: home.isEmpty ? BundledPages.startUrl.absoluteString : home,
+            readBase: offline ? "" : (flow.origin?.text ?? ""))
+    }
+
+    private func reloadDownloads(after seconds: Double = 0.4) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+            MainActor.assumeIsolated { self?.load(BundledPages.downloadsUrl) }
+        }
+    }
+
+    /// The server did not answer (or answered with a fault) while a person is connected: the phone's own list, with Try again.
+    private func showOffline(_ origin: Origin) {
+        pages.offlineAddress = origin.text
+        load(BundledPages.offlineUrl)
     }
 
     /// `theme #rrggbb` from the page: the colour behind the page while it overscrolls, and behind the window.
@@ -173,10 +228,41 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         case let n as NavLink:
             flow.onLink(n.text)
             return .cancel
+        case is NavDownloads:
+            load(BundledPages.downloadsUrl)
+            return .cancel
+        case let n as NavPlayBook:
+            playback.start(n.bookId, atMs: nil)
+            reloadDownloads()
+            return .cancel
+        case is NavTogglePlay:
+            if playback.snapshot().playing { playback.pause() } else { playback.play() }
+            reloadDownloads()
+            return .cancel
+        case let n as NavRemoveBook:
+            Task { @MainActor in
+                if playback.snapshot().bookId == n.bookId { playback.stopAndClear() }
+                await downloads.remove(n.bookId, byPerson: true)
+                reloadDownloads(after: 0)
+            }
+            return .cancel
+        case is NavAutoShow:
+            // Automatic downloads of a show are I3c.
+            reloadDownloads(after: 0)
+            return .cancel
         default:
-            // Block, and the Downloads, PlayBook, RemoveBook, AutoShow and TogglePlay commands of later phases.
             return .cancel
         }
+    }
+
+    /// A page of the server that answers with a fault while connected is the offline page; other answers load as they are.
+    func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse) async -> WKNavigationResponsePolicy {
+        if navigationResponse.isForMainFrame, let http = navigationResponse.response as? HTTPURLResponse, http.statusCode >= 500,
+           let url = http.url, let origin = flow.origin, origin.matches(url: url.absoluteString), flow.state == .connected {
+            showOffline(origin)
+            return .cancel
+        }
+        return .allow
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -203,7 +289,11 @@ final class ShellController: NSObject, WKNavigationDelegate, ShellHost {
         // A load the policy cancelled is not a failure.
         if ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled { return }
         if ns.domain == "WebKitErrorDomain" && ns.code == 102 { return }
-        if let url = ns.userInfo[NSURLErrorFailingURLErrorKey] as? URL {
+        guard let url = ns.userInfo[NSURLErrorFailingURLErrorKey] as? URL else { return }
+        // A connected person whose server cannot be reached sees what the phone holds, not the start page.
+        if flow.state == .connected, let origin = flow.origin, origin.matches(url: url.absoluteString) {
+            showOffline(origin)
+        } else {
             flow.loadFailed(url.absoluteString)
         }
     }
