@@ -150,11 +150,16 @@ func TestVisualLargeText(t *testing.T) {
 	file := func(name, theme string, w int) string {
 		return filepath.Join(out, fmt.Sprintf("largetext-%s-%s-%d.png", name, theme, w))
 	}
+	// fresh, when set, runs before each shot (the Users pages mark every session and device as seen just now).
+	var fresh func(pg ltPage)
 	run := func(t *testing.T, pages []ltPage, shots []visualShot, probes string) {
 		for _, pg := range pages {
 			for _, sh := range shots {
 				theme, w := sh.Theme, sh.Width
 				t.Run(fmt.Sprintf("%s-%s-%d", pg.name, theme, w), func(t *testing.T) {
+					if fresh != nil {
+						fresh(pg)
+					}
 					ltCheck(t, b, pg, theme, w, probes, file(pg.name, theme, w))
 				})
 			}
@@ -188,7 +193,17 @@ func TestVisualLargeText(t *testing.T) {
 		{"users", base, "/admin/users", "", false},
 		{"user", base, "/admin/users/" + danielID, "", false},
 	}
+	// The Users pages say when each device was last seen; the seed's devices were seen at the start, so
+	// they read "just now" or "1 minute ago" depending on how long the run took to get here.
+	fresh = func(pg ltPage) {
+		if pg.base == base && strings.HasPrefix(pg.path, "/admin/users") {
+			now := time.Now().UnixMilli()
+			streamExec(t, member, `UPDATE sessions SET last_seen_at = ?`, now)
+			streamExec(t, member, `UPDATE devices SET last_seen_at = ? WHERE last_seen_at IS NOT NULL`, now)
+		}
+	}
 	t.Run("signed-in", func(t *testing.T) { run(t, pages, ltShots(), "b") })
+	fresh = nil
 
 	// Rosa: a guest with one shelf.
 	guest := newTestApp(t)

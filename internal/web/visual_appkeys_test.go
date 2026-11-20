@@ -86,5 +86,15 @@ func TestAppKeysVisual(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// Fixed, distinct times: two keys made in the same millisecond were listed in either order.
+	err := a.st.WriteTx(context.Background(), func(tx *sql.Tx) error {
+		now := time.Now().UnixMilli()
+		_, err := tx.ExecContext(context.Background(), `UPDATE devices SET created_at = CASE name WHEN 'Kobo Libra' THEN ? ELSE ? END
+			WHERE kind IN ('opds','koreader')`, now-2*60_000, now-60_000)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	shoot("keys", false)
 }

@@ -54,7 +54,7 @@ func TestVisualShellNav(t *testing.T) {
 				t.Run(fmt.Sprintf("%s-%s-%d", mode, theme, w), func(t *testing.T) {
 					args := []string{"--headless", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
 						"--user-data-dir=" + profile, fmt.Sprintf("--window-size=%d,900", w)}
-					args = append(args, cdp.SandboxArgs()...)
+					args = append(append(args, cdp.SandboxArgs()...), cdp.RasterArgs()...)
 					shot := filepath.Join(out, fmt.Sprintf("shell-nav-%s-%s-%d.png", mode, theme, w))
 					args = append(args, "--screenshot="+shot, srv.URL+"/")
 					if b, err := exec.Command(browser, args...).CombinedOutput(); err != nil {

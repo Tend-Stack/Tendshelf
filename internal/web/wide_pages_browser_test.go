@@ -69,8 +69,12 @@ func TestVisualWidePages(t *testing.T) {
 		for _, p := range pages {
 			t.Run(fmt.Sprintf("%s-%d", p.name, w), func(t *testing.T) {
 				tab := b.NewTab(w, 900, w < 768, true)
+				fixedStorageEstimate(t, tab)
 				tab.Navigate(e.URL + p.path)
 				tab.WaitFor(`document.readyState === "complete" && document.getElementById("main") !== null`, 10*time.Second)
+				if p.name == "downloads" { // its storage block is drawn half a second after the list
+					tab.WaitFor(`document.querySelector("[data-ts-downloads] [data-ts-pending]") === null`, 5*time.Second)
+				}
 				time.Sleep(250 * time.Millisecond)
 				wideNoOverflow(t, tab, p.name)
 				tab.Screenshot(filepath.Join(out, fmt.Sprintf("wide-%s-%d.png", p.name, w)))
@@ -94,6 +98,13 @@ func TestVisualWidePanel(t *testing.T) {
 			fullpOpenPlayer(t, tab)
 			tab.WaitFor(`document.querySelector("#now-panel[data-book-id] .ts-np__desc") !== null`, 5*time.Second)
 			time.Sleep(400 * time.Millisecond)
+			// The book is playing, so its clock read 0:10 in one run and 0:11 in the next: stop it at a
+			// fixed place before the capture.
+			tab.Eval(`window.tsPlayer.pause()`, nil)
+			tab.WaitFor(`!window.tsPlayer.state().playing`, 5*time.Second)
+			tab.Eval(`window.tsPlayer.seek(10000)`, nil)
+			tab.WaitFor(`window.tsPlayer.state().positionMs === 10000`, 5*time.Second)
+			time.Sleep(300 * time.Millisecond)
 			wideNoOverflow(t, tab, p.name+" with the panel open")
 			tab.Screenshot(filepath.Join(out, fmt.Sprintf("wide-%s-1440-panel.png", p.name)))
 		})

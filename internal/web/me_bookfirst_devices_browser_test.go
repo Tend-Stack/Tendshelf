@@ -42,6 +42,9 @@ func TestVisualDeviceNameForm(t *testing.T) {
 	other := settingsLogin(t, a, settingsChromeLinux)
 	deviceFor(t, a, sweepUserID(t, a, owner), "Living room speaker", auth.KindMobile)
 	deviceNamePost(t, a, "/me/sessions/"+deviceNameSID(t, other)+"/name", "Kitchen laptop", other)
+	// The list is newest first; the speaker made in the same millisecond as the laptop's last visit
+	// was listed above or below it from run to run. An hour older, it always comes second.
+	streamExec(t, a, `UPDATE devices SET created_at = ? WHERE name = 'Living room speaker'`, time.Now().Add(-time.Hour).UnixMilli())
 	base := devicesAsCookie(t, a, owner)
 	for _, w := range []int{390, 768, 1440} {
 		tab := b.NewTab(w, 900, w == 390, false)

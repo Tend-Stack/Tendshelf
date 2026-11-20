@@ -60,6 +60,9 @@ func TestVisualEmailPages(t *testing.T) {
 					Small      []string `json:"small"`
 					Unlabelled []string `json:"unlabelled"`
 				}
+				// The fake mail server listens on a random port, which the settings page shows; put a fixed
+				// number in the field for the capture so the shot is the same on every run.
+				tab.Eval(`(() => { const p = document.getElementById("email-port"); if (p) p.value = "2525"; })()`, nil)
 				tab.Eval(shareProbeJS, &m)
 				if m.Over {
 					t.Errorf("horizontal overflow")

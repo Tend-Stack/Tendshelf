@@ -102,8 +102,8 @@ visual:
 # change, capture after, then `go run ./internal/testutil/capturediff /tmp/before /tmp/after`.
 visual-compare:
 	rm -rf .local/tests/visual-compare
-	TENDSHELF_VISUAL_OUT=$(CURDIR)/.local/tests/visual-compare/a $(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
-	TENDSHELF_VISUAL_OUT=$(CURDIR)/.local/tests/visual-compare/b $(GO) test -count=1 -tags dev -run '$(VISUAL_RUN)' ./internal/web/
+	TENDSHELF_VISUAL_OUT=$(CURDIR)/.local/tests/visual-compare/a $(GO) test -count=1 -tags dev -timeout 45m -run '$(VISUAL_RUN)' ./internal/web/
+	TENDSHELF_VISUAL_OUT=$(CURDIR)/.local/tests/visual-compare/b $(GO) test -count=1 -tags dev -timeout 45m -run '$(VISUAL_RUN)' ./internal/web/
 	$(GO) run ./internal/testutil/capturediff .local/tests/visual-compare/a .local/tests/visual-compare/b
 
 # The screenshots of the public site, from the real pages on a seeded public-domain library (no real books).

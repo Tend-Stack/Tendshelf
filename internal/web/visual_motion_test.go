@@ -105,10 +105,12 @@ func TestVisualKitchenSink(t *testing.T) {
 					return
 				}
 				// Toasts, then the sheet.
-				for _, kind := range []string{"ok", "hint", "err"} {
+				// One at a time: three requests in flight at once answer in any order, and the toasts stack
+				// in the order they arrive, so the capture changed from run to run.
+				for i, kind := range []string{"ok", "hint", "err"} {
 					tab.Eval(fmt.Sprintf(`document.querySelector('[hx-post$="kind=%s"]').click()`, kind), nil)
+					tab.WaitFor(fmt.Sprintf(`document.querySelectorAll('#toasts .ts-toast').length === %d`, i+1), 5*time.Second)
 				}
-				tab.WaitFor(`document.querySelectorAll('#toasts .ts-toast').length === 3`, 5*time.Second)
 				time.Sleep(400 * time.Millisecond)
 				tab.Screenshot(filepath.Join(out, fmt.Sprintf("toasts-%d.png", vp.w)))
 			})

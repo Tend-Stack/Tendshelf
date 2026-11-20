@@ -348,6 +348,7 @@ func TestOfflineDVisual(t *testing.T) {
 		theme, w := sh.Theme, sh.Width
 		newTab := func() *cdp.Tab {
 			tab := b.NewTab(w, 900, w == 390, false)
+			fixedStorageEstimate(t, tab)
 			if err := tab.Call("Network.enable", nil, nil); err != nil {
 				t.Fatal(err)
 			}

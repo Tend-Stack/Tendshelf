@@ -80,8 +80,12 @@ func TestOfflineCDownloadsVisual(t *testing.T) {
 		for _, state := range []string{"empty", "filled"} {
 			t.Run(fmt.Sprintf("downloads-%s-%s-%d", state, theme, w), func(t *testing.T) {
 				tab := b.NewTab(w, 900, w == 390, false)
+				fixedStorageEstimate(t, tab)
 				tab.Navigate(base + "/me/downloads?theme=" + theme)
 				tab.WaitFor(`document.querySelector("[data-ts-downloads]") !== null`, 5*time.Second)
+				// downloads.js draws the device's (empty) list and then the storage block, half a second
+				// later; a fill drawn before that was wiped again, and the "filled" capture showed no downloads.
+				tab.WaitFor(`document.querySelector("[data-ts-downloads] [data-ts-pending]") === null`, 5*time.Second)
 				if state == "filled" {
 					var ok bool
 					tab.Eval(offlineCFillJS, &ok)

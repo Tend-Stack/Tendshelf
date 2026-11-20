@@ -70,7 +70,7 @@ func TestVisualShell(t *testing.T) {
 			url := fmt.Sprintf("%s/?theme=%s", srv.URL, theme)
 			base := []string{"--headless", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
 				"--user-data-dir=" + profile, fmt.Sprintf("--window-size=%d,900", w)}
-			base = append(base, cdp.SandboxArgs()...)
+			base = append(append(base, cdp.SandboxArgs()...), cdp.RasterArgs()...)
 			shot := filepath.Join(out, fmt.Sprintf("shell-%s-%d.png", theme, w))
 			if b, err := exec.Command(browser, append(base, "--screenshot="+shot, url)...).CombinedOutput(); err != nil {
 				t.Fatalf("screenshot: %v\n%s", err, b)
