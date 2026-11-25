@@ -72,7 +72,12 @@ func sweepPerfPagesApp(t *testing.T) (*testApp, string) {
 			t.Fatal(err)
 		}
 	}
-	sweepPerfSessions(t, a.st, uid, ids, rand.New(rand.NewSource(7)), time.Now().UTC(), 365)
+	// The listening page's year is the calendar year up to today, and the seed's random stream is spent
+	// one step per day, so the books on the page (and the covers it asks for) used to change with the day
+	// and the hour the test ran (nightly 2026-11-23: 63 requests against 62). The seed now ends at the
+	// start of next year and always spans 366 days: the same stream, the same sessions on any date.
+	year := time.Now().UTC().Year()
+	sweepPerfSessions(t, a.st, uid, ids, rand.New(rand.NewSource(7)), time.Date(year+1, time.January, 1, 0, 0, 0, 0, time.UTC), 366)
 	return a, ids[0]
 }
 
