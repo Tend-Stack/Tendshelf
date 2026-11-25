@@ -783,10 +783,19 @@ function progressUrl(bookId) {
   return (isEpisodeId(bookId) ? "/podcasts/progress/" : "/progress/") + encode(bookId);
 }
 
+// The server keeps a save only when its client_updated_at is later than the stored one, so two saves made in the
+// same millisecond (a late timer and a pause event on a busy device) would lose the second. Each stamp is later
+// than the one before.
+let lastStamp = 0;
+function nextStamp() {
+  lastStamp = Math.max(Date.now(), lastStamp + 1);
+  return lastStamp;
+}
+
 function savePayload(extra) {
   return new URLSearchParams({
     position_ms: Math.round(bookPosition()),
-    client_updated_at: Date.now(),
+    client_updated_at: nextStamp(),
     device_id: deviceId(),
     speed: audio.playbackRate.toFixed(2),
     ...extra,
