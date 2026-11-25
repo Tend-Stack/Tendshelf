@@ -4,8 +4,13 @@ Versions are `YEAR.RELEASE.BUGFIX` ([decision 0006](docs/decisions/0006-version-
 
 ## Unreleased
 
+## 2026.14.0
+
+Released 2026-11-25. Android Auto and CarPlay now open on a Home page with what you are listening to, the next book in your series, books you have not started and new episodes. A Chromecast or Google TV can play books, episodes and stations from Chrome, and owners can add their own lookup sites.
+
 ### Fixed
 
+- **A pause is no longer lost when it lands in the same moment as another save.** Two saves made in the same millisecond in the browser kept only the first, so a podcast paused right after a progress save could reopen at the earlier place.
 - **"Continue there?" fits on a phone.** The question was squeezed into a narrow column beside its two buttons; the words now take the full width and the buttons sit in a row below them.
 - **A book without a cover no longer shows its title underlined like a link** on the Home page card.
 - **The where-you-are line uses one unit.** Under an hour it now reads "2 min left in chapter · 2 min left in book" instead of mixing "min" and "m".

@@ -1,0 +1,1 @@
+Android Auto opens on a Home page: what you are listening to, the next book in your series, books you have not started and new episodes. Downloaded episodes no longer show up as books in the car, and listening time counts the last minutes before you pause.
