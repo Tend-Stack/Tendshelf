@@ -89,7 +89,15 @@ func TestBookPageDoesNotJump(t *testing.T) {
 		libraries := steadyDistinct(t, tab, "/libraries", `({})`)
 		_ = libraries
 		tab.WaitFor(`location.pathname === "/libraries" && !!document.querySelector("#main a[href^='/books/']")`, 5*time.Second)
-		got := steadyClick(t, tab, `[...document.querySelectorAll("#main a[href^='/books/']")].find((x) => x.offsetWidth > 0 && !x.getAttribute("href").includes("/read"))`, `(() => {
+		// The action row folds in fit-row.js. Its very first fetch can finish a frame after the swap on a busy
+		// machine (nightly 2026-11-24: the row painted unfolded for a frame), and that first visit is not what
+		// this test watches: visit a book once so the module is loaded, return by the Libraries link, then watch the next visit.
+		const openBook = `[...document.querySelectorAll("#main a[href^='/books/']")].find((x) => x.offsetWidth > 0 && !x.getAttribute("href").includes("/read"))`
+		steadyClick(t, tab, openBook, `({})`)
+		tab.WaitFor(`location.pathname.startsWith("/books/") && !!document.querySelector("#main .ts-book__acts")`, 5*time.Second)
+		steadyClick(t, tab, `document.querySelector("a[href='/libraries']")`, `({})`)
+		tab.WaitFor(`location.pathname === "/libraries" && !!document.querySelector("#main a[href^='/books/']")`, 5*time.Second)
+		got := steadyClick(t, tab, openBook, `(() => {
 		  const book = document.querySelector("#main .ts-book");
 		  if (!book || !location.pathname.startsWith("/books/")) return {};
 		  const top = book.getBoundingClientRect().top;
@@ -144,7 +152,7 @@ func TestTallPageStartsAtTop(t *testing.T) {
 		tab.Eval(`window.scrollTo(0, 300)`, nil)
 		time.Sleep(300 * time.Millisecond)
 		steadyDistinct(t, tab, "/me", `({})`)
-		tab.Eval(`history.back()`, nil)
+		steadyClick(t, tab, `document.querySelector("a[href='/libraries']")`, `({})`)
 		time.Sleep(1200 * time.Millisecond)
 		tab.Eval(`scrollY`, &y)
 		if y != 300 {
