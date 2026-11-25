@@ -152,7 +152,7 @@ func TestTallPageStartsAtTop(t *testing.T) {
 		tab.Eval(`window.scrollTo(0, 300)`, nil)
 		time.Sleep(300 * time.Millisecond)
 		steadyDistinct(t, tab, "/me", `({})`)
-		steadyClick(t, tab, `document.querySelector("a[href='/libraries']")`, `({})`)
+		tab.Eval(`history.back()`, nil)
 		time.Sleep(1200 * time.Millisecond)
 		tab.Eval(`scrollY`, &y)
 		if y != 300 {
